@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  HAXE_VERSION: "4.3.7"
+
+jobs:
+  test:
+    name: Snapshots + Examples
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Haxe
+        uses: krdlab/setup-haxe@v1
+        with:
+          haxe-version: ${{ env.HAXE_VERSION }}
+
+      - name: Setup haxelib
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/haxelib"
+          haxelib setup "$HOME/haxelib"
+          haxelib dev reflaxe.rust .
+          haxe -version
+
+      - name: Setup Rust (stable + rustfmt)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Run snapshot tests
+        run: |
+          set -euo pipefail
+          bash test/run-snapshots.sh
+
+      - name: Compile + run examples
+        run: |
+          set -euo pipefail
+          (cd examples/hello && haxe compile.hxml && (cd out && cargo run -q))
+          (cd examples/classes && haxe compile.hxml && (cd out && cargo run -q))
+

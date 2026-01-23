@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  HAXE_VERSION: "4.3.7"
+
+jobs:
+  build-and-release:
+    name: Verify + Publish GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Haxe
+        uses: krdlab/setup-haxe@v1
+        with:
+          haxe-version: ${{ env.HAXE_VERSION }}
+
+      - name: Setup haxelib
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/haxelib"
+          haxelib setup "$HOME/haxelib"
+          haxelib dev reflaxe.rust .
+          haxe -version
+
+      - name: Setup Rust (stable + rustfmt)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Verify tag matches haxelib.json version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          json_version="$(python3 -c 'import json; print(json.load(open("haxelib.json","r",encoding="utf8"))["version"])')"
+          if [[ "$tag" != "$json_version" ]]; then
+            echo "ERROR: tag v${tag} does not match haxelib.json version ${json_version}" >&2
+            exit 1
+          fi
+
+      - name: Run snapshot tests
+        run: |
+          set -euo pipefail
+          bash test/run-snapshots.sh
+
+      - name: Package haxelib zip
+        run: |
+          set -euo pipefail
+          bash scripts/release/package-haxelib.sh "dist/reflaxe.rust-${GITHUB_REF_NAME}.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/reflaxe.rust-${{ github.ref_name }}.zip
+          generate_release_notes: true
+
+      - name: Publish to Haxelib (optional)
+        if: ${{ secrets.HAXELIB_PASSWORD != '' }}
+        run: |
+          set -euo pipefail
+          haxelib submit "dist/reflaxe.rust-${GITHUB_REF_NAME}.zip" "${{ secrets.HAXELIB_PASSWORD }}" --always
+

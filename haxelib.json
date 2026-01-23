@@ -1,0 +1,27 @@
+{
+  "name": "reflaxe.rust",
+  "url": "https://github.com/fullofcaffeine/reflaxe.rust",
+  "license": "GPL-3.0",
+  "tags": [
+    "cross",
+    "rust",
+    "reflaxe",
+    "macro"
+  ],
+  "description": "A Haxe compilation target for Rust (Haxe 4.3.7) built on Reflaxe.",
+  "version": "0.0.1",
+  "classPath": "src",
+  "releasenote": "POC skeleton",
+  "contributors": [
+    "fullofcaffeine"
+  ],
+  "dependencies": {},
+  "reflaxe": {
+    "name": "Rust",
+    "abbv": "rs",
+    "stdPaths": [
+      "std"
+    ]
+  }
+}
+

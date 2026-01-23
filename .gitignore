@@ -1,0 +1,15 @@
+.DS_Store
+
+# Rust build artifacts
+target/
+
+# Generated outputs (kept in snapshots via `intended/`)
+out/
+**/out/
+
+# Release artifacts
+dist/
+
+# Haxe
+*.n
+*.hl

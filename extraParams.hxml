@@ -1,0 +1,14 @@
+# reflaxe.rust (haxelib extra params)
+#
+# This file is consumed automatically when a project uses:
+#   -lib reflaxe.rust
+#
+# IMPORTANT: Keep this file *cwd-agnostic*.
+# Do not add relative classpaths like `-cp src` here: those would be resolved
+# relative to the *consumer project*, not this library.
+#
+# Bootstraps the target by registering the compiler and injecting any
+# target-conditional classpaths (e.g. std overrides) in a macro-safe way.
+--macro reflaxe.rust.CompilerBootstrap.Start()
+--macro reflaxe.rust.CompilerInit.Start()
+
