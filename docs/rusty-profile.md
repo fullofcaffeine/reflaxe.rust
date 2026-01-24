@@ -79,6 +79,8 @@ Intent:
 
 Helpers:
 - `using rust.OptionTools;` adds helpers like `isSome`, `unwrapOr`, plus macro-powered `map`/`andThen`.
+- Common Rust pattern helpers:
+  - `okOr("message")` / `okOrElse(() -> "message")` to convert `Option<T>` to `Result<T, String>`.
 
 Current limitation (POC):
 - For macro helpers that take callbacks (`map`, `andThen`, `unwrapOrElse`), prefer explicit callback typing to help the compiler:
@@ -101,6 +103,8 @@ Intent:
 Helpers:
 - `using rust.ResultTools;` adds helpers like `isOk`, `unwrapOr`, plus macro-powered `mapOk`/`mapErr`/`andThen`.
 - `ResultTools.catchAny/catchString` convert portable exceptions into `Result` at boundaries.
+- Common Rust pattern helpers:
+  - `context("prefix")` for `Result<T, String>` to add readable error context.
 
 Current limitation (POC):
 - For macro helpers that take callbacks (`mapOk`, `mapErr`, `andThen`, `unwrapOrElse`), prefer explicit callback typing to help the compiler:

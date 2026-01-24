@@ -63,6 +63,56 @@ class OptionTools {
 	}
 
 	/**
+	 * Convert `Option<T>` into `Result<T, String>` (common Rust pattern: `ok_or("...")`).
+	 *
+	 * Note: `err` is a `String` so the backend preserves Haxe semantics by cloning at callsites.
+	 */
+	@:rustGeneric("T: Clone")
+	public static inline function okOr<T>(o: Option<T>, err: String): Result<T, String> {
+		return switch (o) {
+			case Some(v): Ok(v);
+			case None: Err(err);
+		}
+	}
+
+	/**
+	 * Macro version of `okOr` to build the error lazily (common Rust pattern: `ok_or_else(|| ...)`).
+	 *
+	 * Usage: `o.okOrElse(() -> \"...\")`
+	 */
+	public static macro function okOrElse<T>(o: ExprOf<Option<T>>, err: Expr): ExprOf<Result<T, String>> {
+		#if macro
+		var f = switch (err.expr) {
+			case EFunction(_, f): f;
+			case _:
+				Context.error("okOrElse expects a function expression: () -> String", err.pos);
+				return macro null;
+		}
+
+		if (f.args.length != 0) {
+			Context.error("okOrElse callback must take 0 arguments", err.pos);
+		}
+
+		var body = stripReturn(f.expr);
+		var v = "v";
+		var outExpr: Expr = {
+			expr: ESwitch(
+				o,
+				[
+					{ values: [macro Some($i{v})], guard: null, expr: macro Ok($i{v}) },
+					{ values: [macro None], guard: null, expr: macro Err(${asValueExpr(body)}) }
+				],
+				null
+			),
+			pos: o.pos
+		};
+		return outExpr;
+		#else
+		return macro null;
+		#end
+	}
+
+	/**
 	 * Macro version to avoid requiring runtime function types in the Rust target POC.
 	 *
 	 * Usage: `o.unwrapOrElse(() -> expr)`

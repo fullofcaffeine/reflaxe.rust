@@ -17,8 +17,14 @@ class Main {
 			.mapOk(function(v: Int): Int return v + 5)
 			.andThen(function(v: Int): Result<Int, String> return (v > 100 ? Err("too big") : Ok(v)));
 
-		var msg = r2.unwrapOrElse(function(_e: String): Int return -1);
+		var msg = r2
+			.context("computing value")
+			.unwrapOrElse(function(_e: String): Int return -1);
 		trace(msg);
+
+		var o2: Option<Int> = None;
+		var r3 = o2.okOrElse(function(): String return "missing");
+		trace(r3.isErr());
 
 		var caught: Result<Int, String> = ResultTools.catchString(function(): Int {
 			var x = 1;

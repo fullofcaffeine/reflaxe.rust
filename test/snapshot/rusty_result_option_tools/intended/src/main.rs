@@ -87,23 +87,72 @@ fn main() {
             }
         }
     };
-    let msg: i32 = match r2.clone() {
-        Result::Ok(__p) => {
-            let _g_10: i32 = __p;
-            {
-                let v_6: i32 = _g_10;
-                v_6
+    let msg: i32 = {
+        let _g_10: Result<i32, String> = match r2.clone() {
+            Result::Ok(__p) => {
+                let _g_11: i32 = __p;
+                {
+                    let v_6: i32 = _g_11;
+                    Result::Ok(v_6)
+                }
             }
-        }
-        Result::Err(__p) => {
-            let _g_11: String = __p;
-            {
-                let _e_3: String = _g_11;
-                -1
+            Result::Err(__p) => {
+                let _g_12: String = __p;
+                {
+                    let e: String = _g_12;
+                    Result::Err(
+                        format!(
+                            "{}{}",
+                            format!("{}{}", String::from("computing value"), String::from(": ")),
+                            e
+                        )
+                        .clone(),
+                    )
+                }
+            }
+        };
+        match _g_10.clone() {
+            Result::Ok(__p) => {
+                let _g_13: i32 = __p;
+                {
+                    let v_7: i32 = _g_13;
+                    v_7
+                }
+            }
+            Result::Err(__p) => {
+                let _g_14: String = __p;
+                {
+                    let _e_3: String = _g_14;
+                    -1
+                }
             }
         }
     };
     println!("{}", msg);
+    let o2: Option<i32> = Option::None;
+    let r3: Result<i32, String> = match o2.clone() {
+        Option::Some(__p) => {
+            let _g_15: i32 = __p;
+            {
+                let v_8: i32 = _g_15;
+                Result::Ok(v_8)
+            }
+        }
+        Option::None => Result::Err(String::from("missing")),
+    };
+    println!(
+        "{}",
+        !(match r3.clone() {
+            Result::Ok(__p) => {
+                let _g_16: i32 = __p;
+                true
+            }
+            Result::Err(__p) => {
+                let _g_17: String = __p;
+                false
+            }
+        })
+    );
     let caught: Result<i32, String> = match hxrt::exception::catch_unwind(|| {
         Result::Ok({
             let x: i32 = 1;
@@ -115,23 +164,23 @@ fn main() {
     }) {
         Ok(__hx_ok) => __hx_ok,
         Err(__hx_ex) => {
-            let e: hxrt::dynamic::Dynamic = __hx_ex;
-            Result::Err(format!("{:?}", e).clone())
+            let e_2: hxrt::dynamic::Dynamic = __hx_ex;
+            Result::Err(format!("{:?}", e_2).clone())
         }
     };
     match caught.clone() {
         Result::Ok(__p) => {
-            let _g_12: i32 = __p;
+            let _g_18: i32 = __p;
             {
-                let v_7: i32 = _g_12;
-                println!("{}", v_7);
+                let v_9: i32 = _g_18;
+                println!("{}", v_9);
             };
         }
         Result::Err(__p) => {
-            let _g_13: String = __p;
+            let _g_19: String = __p;
             {
-                let e_2: String = _g_13;
-                println!("{}", e_2);
+                let e_3: String = _g_19;
+                println!("{}", e_3);
             };
         }
     };
