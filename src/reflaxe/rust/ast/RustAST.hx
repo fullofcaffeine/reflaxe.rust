@@ -16,6 +16,7 @@ typedef RustFile = {
 enum RustItem {
 	RFn(f: RustFunction);
 	RStruct(s: RustStruct);
+	REnum(e: RustEnum);
 	RImpl(i: RustImpl);
 	RRaw(s: String);
 }
@@ -32,6 +33,18 @@ typedef RustStructField = {
 	var isPub: Bool;
 }
 
+typedef RustEnum = {
+	var name: String;
+	var isPub: Bool;
+	var derives: Array<String>;
+	var variants: Array<RustEnumVariant>;
+}
+
+typedef RustEnumVariant = {
+	var name: String;
+	var args: Array<RustType>;
+}
+
 typedef RustImpl = {
 	var forType: String;
 	var functions: Array<RustFunction>;
@@ -40,6 +53,7 @@ typedef RustImpl = {
 typedef RustFunction = {
 	var name: String;
 	var isPub: Bool;
+	@:optional var generics: Array<String>;
 	var args: Array<RustFnArg>;
 	var ret: RustType;
 	var body: RustBlock;
@@ -64,10 +78,29 @@ typedef RustBlock = {
 	var tail: Null<RustExpr>;
 }
 
+typedef RustMatchArm = {
+	var pat: RustPattern;
+	var expr: RustExpr;
+}
+
+enum RustPattern {
+	PWildcard;
+	PBind(name: String);
+	PPath(path: String);
+	PLitInt(v: Int);
+	PLitBool(v: Bool);
+	PLitString(v: String);
+	PTupleStruct(path: String, fields: Array<RustPattern>);
+	POr(patterns: Array<RustPattern>);
+}
+
 enum RustStmt {
 	RLet(name: String, mutable: Bool, ty: Null<RustType>, expr: Null<RustExpr>);
 	RSemi(e: RustExpr);
 	RReturn(e: Null<RustExpr>);
+	RWhile(cond: RustExpr, body: RustBlock);
+	RLoop(body: RustBlock);
+	RFor(name: String, iter: RustExpr, body: RustBlock);
 }
 
 enum RustExpr {
@@ -79,10 +112,15 @@ enum RustExpr {
 	EPath(path: String);
 	ECall(func: RustExpr, args: Array<RustExpr>);
 	EMacroCall(name: String, args: Array<RustExpr>);
+	EClosure(args: Array<String>, body: RustBlock);
 	EBinary(op: String, left: RustExpr, right: RustExpr);
 	EUnary(op: String, expr: RustExpr);
+	ERange(start: RustExpr, end: RustExpr);
+	ECast(expr: RustExpr, ty: String);
+	EIndex(recv: RustExpr, index: RustExpr);
 	EBlock(b: RustBlock);
 	EIf(cond: RustExpr, thenExpr: RustExpr, elseExpr: Null<RustExpr>);
+	EMatch(scrutinee: RustExpr, arms: Array<RustMatchArm>);
 	EAssign(lhs: RustExpr, rhs: RustExpr);
 	EField(recv: RustExpr, field: String);
 }

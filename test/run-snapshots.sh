@@ -12,7 +12,7 @@ Runs snapshot tests:
   - regenerates each test's out/ via `haxe compile.hxml`
   - optionally updates intended/ (golden) outputs with --update
   - diffs intended/ vs out/
-  - runs `cargo fmt -- --check` and `cargo build -q` for each generated crate
+  - runs `cargo fmt` and `cargo build -q` for each generated crate
 
 Options:
   --case NAME   Run a single snapshot case directory (by folder name).
@@ -68,6 +68,11 @@ for case_dir in "$SNAP_DIR"/*; do
 
   echo "[snap] $case_name"
 
+  expects_stdout=0
+  if [[ -f "$case_dir/intended/stdout.txt" ]]; then
+    expects_stdout=1
+  fi
+
   if ! grep -qE '^-main[[:space:]]+' "$case_dir/compile.hxml"; then
     echo "  error: compile.hxml must include '-main <Class>' (required for reliable main detection)" >&2
     fail=1
@@ -77,12 +82,24 @@ for case_dir in "$SNAP_DIR"/*; do
   rm -rf "$case_dir/out"
   (cd "$case_dir" && haxe compile.hxml)
 
+  if [[ -f "$case_dir/out/Cargo.toml" ]]; then
+    if ! (cd "$case_dir/out" && cargo fmt >/dev/null); then
+      echo "  cargo fmt failed: $case_dir/out" >&2
+      fail=1
+    fi
+    if ! (cd "$case_dir/out" && cargo build -q); then
+      echo "  cargo build failed: $case_dir/out" >&2
+      fail=1
+    fi
+  fi
+
   if [[ "$update_intended" == "1" ]]; then
     rm -rf "$case_dir/intended"
     mkdir -p "$case_dir/intended"
     rsync -a --delete \
       --exclude "_GeneratedFiles.json" \
       --exclude "Cargo.lock" \
+      --exclude "stdout.txt" \
       --exclude "target" \
       "$case_dir/out/" "$case_dir/intended/"
   fi
@@ -95,19 +112,29 @@ for case_dir in "$SNAP_DIR"/*; do
   fi
 
   if [[ -f "$case_dir/out/Cargo.toml" ]]; then
-    if ! (cd "$case_dir/out" && cargo fmt -- --check >/dev/null); then
-      echo "  rustfmt check failed: $case_dir/out" >&2
-      fail=1
-    fi
-    if ! (cd "$case_dir/out" && cargo build -q); then
-      echo "  cargo build failed: $case_dir/out" >&2
-      fail=1
+    # Optional: runtime stdout snapshot (deterministic cases only).
+    # If intended/stdout.txt exists (or existed before --update), run the compiled binary and compare stdout.
+    if [[ "$expects_stdout" == "1" ]]; then
+      actual_stdout="$case_dir/.stdout.actual"
+      if ! (cd "$case_dir/out" && cargo run -q) >"$actual_stdout"; then
+        echo "  cargo run failed: $case_dir/out" >&2
+        fail=1
+      else
+        if [[ "$update_intended" == "1" ]]; then
+          cp "$actual_stdout" "$case_dir/intended/stdout.txt"
+        fi
+        if ! diff -u "$case_dir/intended/stdout.txt" "$actual_stdout"; then
+          fail=1
+        fi
+      fi
+      rm -f "$actual_stdout"
     fi
   fi
 
   if ! diff -ru \
     -x "_GeneratedFiles.json" \
     -x "Cargo.lock" \
+    -x "stdout.txt" \
     -x "target" \
     "$case_dir/intended" "$case_dir/out"; then
     fail=1

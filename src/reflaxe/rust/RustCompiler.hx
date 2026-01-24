@@ -5,10 +5,15 @@ package reflaxe.rust;
 import haxe.macro.Context;
 import haxe.ds.Either;
 import haxe.io.Path;
+import haxe.macro.Expr;
 import haxe.macro.Expr.Binop;
 import haxe.macro.Expr.Unop;
+import haxe.macro.ExprTools;
 import haxe.macro.Type;
 import haxe.macro.TypeTools;
+import haxe.macro.TypedExprTools;
+import sys.FileSystem;
+import sys.io.File;
 import reflaxe.GenericCompiler;
 import reflaxe.compiler.TypeUsageTracker.TypeOrModuleType;
 import reflaxe.compiler.TargetCodeInjection;
@@ -23,11 +28,19 @@ import reflaxe.rust.ast.RustAST.RustBlock;
 import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustFile;
 import reflaxe.rust.ast.RustAST.RustItem;
+import reflaxe.rust.ast.RustAST.RustMatchArm;
+import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.helpers.TypeHelper;
+import reflaxe.rust.macros.CargoMetaRegistry;
 
 using reflaxe.helpers.BaseTypeHelper;
 using reflaxe.helpers.ClassFieldHelper;
+
+enum RustProfile {
+	Portable;
+	Idiomatic;
+}
 
 /**
  * RustCompiler (POC)
@@ -43,8 +56,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var didEmitMain: Bool = false;
 	var crateName: String = "hx_app";
 	var mainBaseType: Null<BaseType> = null;
+	var mainClassKey: Null<String> = null;
 	var currentClassKey: Null<String> = null;
 	var currentClassName: Null<String> = null;
+	var extraRustSrcDir: Null<String> = null;
+	var extraRustSrcFiles: Array<{ module: String, fileName: String, fullPath: String }> = [];
+	var classHasSubclass: Null<Map<String, Bool>> = null;
+	var frameworkStdDir: Null<String> = null;
+	var frameworkRuntimeDir: Null<String> = null;
+	var profile: RustProfile = Portable;
+	var currentMutatedLocals: Null<Map<String, Bool>> = null;
 
 	public function new() {
 		super();
@@ -59,17 +80,133 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	override public function onCompileStart() {
+		// Reset cached class hierarchy info per compilation.
+		classHasSubclass = null;
+		frameworkStdDir = null;
+		frameworkRuntimeDir = null;
+
+		// Optional profile selection.
+		// - default: portable semantics
+		// - `-D rust_idiomatic` or `-D reflaxe_rust_profile=idiomatic|rusty`: prefer Rust-style output
+		var profileDefine = Context.definedValue("reflaxe_rust_profile");
+		var wantsIdiomatic = Context.defined("rust_idiomatic")
+			|| (profileDefine != null && (profileDefine == "idiomatic" || profileDefine == "rusty"));
+		profile = wantsIdiomatic ? Idiomatic : Portable;
+
+		// Collect Cargo dependencies declared via `@:rustCargo(...)` metadata.
+		CargoMetaRegistry.collectFromContext();
+
 		// Allow overriding crate name with -D rust_crate=<name>
 		var v = Context.definedValue("rust_crate");
 		if (v != null && v.length > 0) crateName = v;
+
+		// Compute this haxelib's `std/` directory, if available, so we can emit framework wrappers.
+		// (These should compile even when building from a different working directory.)
+		try {
+			var compilerPath = Context.resolvePath("reflaxe/rust/RustCompiler.hx");
+			var rustDir = Path.directory(compilerPath); // .../src/reflaxe/rust
+			var reflaxeDir = Path.directory(rustDir);   // .../src/reflaxe
+			var srcDir = Path.directory(reflaxeDir);    // .../src
+			var libraryRoot = Path.directory(srcDir);   // .../
+			frameworkStdDir = Path.normalize(Path.join([libraryRoot, "std"]));
+			frameworkRuntimeDir = Path.normalize(Path.join([libraryRoot, "runtime", "hxrt"]));
+		} catch (e: haxe.Exception) {
+			frameworkStdDir = null;
+			frameworkRuntimeDir = null;
+		}
+
+		// Optional: copy extra Rust source files into the output crate's `src/`.
+		// Configure with `-D rust_extra_src=path/to/dir` (relative to the `haxe` working directory).
+		var extra = Context.definedValue("rust_extra_src");
+		if (extra != null && extra.length > 0) {
+			extraRustSrcDir = resolveToAbsolutePath(extra);
+			if (!FileSystem.exists(extraRustSrcDir) || !FileSystem.isDirectory(extraRustSrcDir)) {
+				#if eval
+				Context.error("rust_extra_src must be a directory: " + extraRustSrcDir, Context.currentPos());
+				#end
+				extraRustSrcDir = null;
+			} else {
+				extraRustSrcFiles = [];
+				for (entry in FileSystem.readDirectory(extraRustSrcDir)) {
+					if (!StringTools.endsWith(entry, ".rs")) continue;
+					if (entry == "main.rs" || entry == "lib.rs") continue;
+
+					var full = Path.join([extraRustSrcDir, entry]);
+					if (FileSystem.isDirectory(full)) continue;
+
+					var moduleName = entry.substr(0, entry.length - 3);
+					if (!isValidRustIdent(moduleName) || isRustKeyword(moduleName)) {
+						#if eval
+						Context.error("Invalid Rust module file name for rust_extra_src: " + entry, Context.currentPos());
+						#end
+						continue;
+					}
+
+					extraRustSrcFiles.push({
+						module: moduleName,
+						fileName: entry,
+						fullPath: full
+					});
+				}
+
+				extraRustSrcFiles.sort((a, b) -> Reflect.compare(a.module, b.module));
+			}
+		}
 	}
 
 	override public function onCompileEnd() {
-		// POC Cargo project. Keep dependencies empty for now.
 		if (!didEmitMain) {
 			// No main class emitted; don't generate Cargo.toml.
 			return;
 		}
+
+		// Emit any extra Rust sources requested by `-D rust_extra_src=<dir>`.
+		for (f in extraRustSrcFiles) {
+			var content = File.getContent(f.fullPath);
+			if (!StringTools.endsWith(content, "\n")) content += "\n";
+			setExtraFile(OutputPath.fromStr("src/" + f.fileName), content);
+		}
+
+		// Emit the bundled runtime crate (hxrt) alongside the generated crate.
+		emitRuntimeCrate();
+
+		// Allow overriding the entire Cargo.toml with `-D rust_cargo_toml=path/to/Cargo.toml`.
+		var cargoTomlPath = Context.definedValue("rust_cargo_toml");
+		if (cargoTomlPath != null && cargoTomlPath.length > 0) {
+			var full = resolveToAbsolutePath(cargoTomlPath);
+			if (!FileSystem.exists(full)) {
+				#if eval
+				Context.error("rust_cargo_toml file not found: " + full, Context.currentPos());
+				#end
+			} else {
+				var content = File.getContent(full);
+				content = content.split("{{crate_name}}").join(crateName);
+				if (!StringTools.endsWith(content, "\n")) content += "\n";
+				setExtraFile(OutputPath.fromStr("Cargo.toml"), content);
+				return;
+			}
+		}
+
+		// Optional: append extra dependency lines into `[dependencies]` via `-D rust_cargo_deps_file=path`.
+		var depsExtra = "";
+		var depsFile = Context.definedValue("rust_cargo_deps_file");
+		if (depsFile != null && depsFile.length > 0) {
+			var full = resolveToAbsolutePath(depsFile);
+			if (!FileSystem.exists(full)) {
+				#if eval
+				Context.error("rust_cargo_deps_file not found: " + full, Context.currentPos());
+				#end
+			} else {
+				depsExtra = File.getContent(full);
+				if (depsExtra.length > 0 && !StringTools.endsWith(depsExtra, "\n")) depsExtra += "\n";
+			}
+		} else {
+			var depsInline = Context.definedValue("rust_cargo_deps");
+			if (depsInline != null && depsInline.length > 0) depsExtra = depsInline + "\n";
+		}
+
+		var metaDeps = CargoMetaRegistry.renderDependencyLines();
+		var deps = 'hxrt = { path = "./hxrt" }' + "\n" + metaDeps + depsExtra;
 
 		var cargo = [
 			"[package]",
@@ -78,9 +215,34 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			'edition = "2021"',
 			"",
 			"[dependencies]",
-			""
+			deps
 		].join("\n");
 		setExtraFile(OutputPath.fromStr("Cargo.toml"), cargo);
+	}
+
+	function emitRuntimeCrate(): Void {
+		if (frameworkRuntimeDir == null) return;
+
+		var root = normalizePath(frameworkRuntimeDir);
+		if (!FileSystem.exists(root) || !FileSystem.isDirectory(root)) return;
+
+		function walk(relDir: String): Void {
+			var dirPath = relDir == "" ? root : normalizePath(Path.join([root, relDir]));
+			for (entry in FileSystem.readDirectory(dirPath)) {
+				if (entry == "target" || entry == "Cargo.lock") continue;
+				var full = normalizePath(Path.join([dirPath, entry]));
+				var rel = relDir == "" ? entry : normalizePath(Path.join([relDir, entry]));
+				if (FileSystem.isDirectory(full)) {
+					walk(rel);
+				} else {
+					var content = File.getContent(full);
+					if (!StringTools.endsWith(content, "\n")) content += "\n";
+					setExtraFile(OutputPath.fromStr("hxrt/" + rel), content);
+				}
+			}
+		}
+
+		walk("");
 	}
 
 	public function compileClassImpl(classType: ClassType, varFields: Array<ClassVarData>, funcFields: Array<ClassFuncData>): Null<RustFile> {
@@ -93,6 +255,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			setOutputFileName("main");
 			didEmitMain = true;
 			mainBaseType = classType;
+			mainClassKey = classKey(classType);
 		} else {
 			setOutputFileName(rustModuleNameForClass(classType));
 		}
@@ -104,23 +267,72 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		items.push(RRaw("// Generated by reflaxe.rust (POC)"));
 
 		if (isMain) {
-			var otherUserClasses = getUserClassesForModules();
-			if (otherUserClasses.length > 0) {
-				items.push(RRaw([
-					"use std::cell::RefCell;",
-					"use std::rc::Rc;",
-					"",
-					"type HxRef<T> = Rc<RefCell<T>>;"
-				].join("\n")));
+			var headerLines: Array<String> = [];
 
-				var modLines: Array<String> = [];
-				for (cls in otherUserClasses) {
-					var modName = rustModuleNameForClass(cls);
-					modLines.push("mod " + modName + ";");
-					modLines.push("use crate::" + modName + "::" + cls.name + ";");
-				}
-				items.push(RRaw(modLines.join("\n")));
+			var modLines: Array<String> = [];
+			var useLines: Array<String> = [];
+			var seenMods = new Map<String, Bool>();
+			function addMod(name: String) {
+				if (seenMods.exists(name)) return;
+				seenMods.set(name, true);
+				modLines.push("mod " + name + ";");
 			}
+
+			// Extra modules (hand-written Rust sources)
+			for (f in extraRustSrcFiles) addMod(f.module);
+
+			// User classes
+			var otherUserClasses = getUserClassesForModules();
+			headerLines = headerLines.concat([
+				"use std::cell::RefCell;",
+				"use std::rc::Rc;",
+				"",
+				"type HxRef<T> = Rc<RefCell<T>>;",
+				""
+			]);
+
+			for (cls in otherUserClasses) {
+				var modName = rustModuleNameForClass(cls);
+				addMod(modName);
+				useLines.push("use crate::" + modName + "::" + cls.name + ";");
+			}
+
+			// User enums
+			var otherUserEnums = getUserEnumsForModules();
+			for (en in otherUserEnums) {
+				var modName = rustModuleNameForEnum(en);
+				addMod(modName);
+				useLines.push("use crate::" + modName + "::" + en.name + ";");
+			}
+
+			modLines.sort(Reflect.compare);
+			useLines.sort(Reflect.compare);
+
+			headerLines = headerLines.concat(modLines);
+			headerLines = headerLines.concat(useLines);
+			if (headerLines.length > 0) items.push(RRaw(headerLines.join("\n")));
+		} else if (classType.isInterface) {
+			// Interfaces compile to Rust traits (no struct allocation).
+			items.push(RRaw("// Haxe interface -> Rust trait"));
+
+			var traitLines: Array<String> = [];
+			traitLines.push("pub trait " + classType.name + ": std::fmt::Debug {");
+			for (f in funcFields) {
+				if (f.isStatic) continue;
+				if (f.expr != null) continue;
+
+				var args: Array<String> = [];
+				args.push("&self");
+				for (a in f.args) {
+					args.push(a.getName() + ": " + rustTypeToString(toRustType(a.type, f.field.pos)));
+				}
+
+				var ret = rustTypeToString(toRustType(f.ret, f.field.pos));
+				var sig = "\tfn " + f.field.getHaxeName() + "(" + args.join(", ") + ") -> " + ret + ";";
+				traitLines.push(sig);
+			}
+			traitLines.push("}");
+			items.push(RRaw(traitLines.join("\n")));
 		} else {
 			items.push(RRaw([
 				"use crate::HxRef;",
@@ -128,13 +340,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				"use std::rc::Rc;"
 			].join("\n")));
 
+			// Stable RTTI id for this class (portable-mode baseline).
+			items.push(RRaw("pub const __HX_TYPE_ID: u32 = " + typeIdLiteralForClass(classType) + ";"));
+
+			var derives = mergeUniqueStrings(["Debug"], rustDerivesFromMeta(classType.meta));
+			items.push(RRaw("#[derive(" + derives.join(", ") + ")]"));
+
 			var structFields: Array<reflaxe.rust.ast.RustAST.RustStructField> = [];
-			for (v in varFields) {
-				if (v.isStatic) continue;
+			for (cf in getAllInstanceVarFieldsForStruct(classType)) {
 				structFields.push({
-					name: v.field.getHaxeName(),
-					ty: toRustType(v.field.type, v.field.pos),
-					isPub: v.field.isPublic
+					name: cf.getHaxeName(),
+					ty: toRustType(cf.type, cf.pos),
+					isPub: cf.isPublic
 				});
 			}
 
@@ -160,10 +377,75 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				implFunctions.push(compileInstanceMethod(classType, f));
 			}
 
+			// Static methods (associated functions on the type).
+			for (f in funcFields) {
+				if (!f.isStatic) continue;
+				if (f.expr == null) continue;
+				if (f.field.getHaxeName() == "main") continue;
+				implFunctions.push(compileStaticMethod(classType, f));
+			}
+
 			items.push(RImpl({
 				forType: classType.name,
 				functions: implFunctions
 			}));
+
+			// Base-class polymorphism: if this class has subclasses, emit a trait for it.
+			if (classHasSubclasses(classType)) {
+				items.push(RRaw(emitClassTrait(classType, funcFields)));
+				items.push(RRaw(emitClassTraitImplForSelf(classType, funcFields)));
+			}
+
+			// If this class has polymorphic base classes, implement their traits for this type.
+			var base = classType.superClass != null ? classType.superClass.t.get() : null;
+			while (base != null) {
+				if (classHasSubclasses(base)) {
+					items.push(RRaw(emitBaseTraitImplForSubclass(base, classType, funcFields)));
+				}
+				base = base.superClass != null ? base.superClass.t.get() : null;
+			}
+
+			// Implement any Haxe interfaces as Rust traits on `RefCell<Class>`.
+			for (iface in classType.interfaces) {
+				var ifaceType = iface.t.get();
+				if (ifaceType == null) continue;
+				if (!shouldEmitClass(ifaceType, false)) continue;
+
+				var ifaceMod = rustModuleNameForClass(ifaceType);
+				var traitPath = "crate::" + ifaceMod + "::" + ifaceType.name;
+
+				var implLines: Array<String> = [];
+				implLines.push("impl " + traitPath + " for RefCell<" + classType.name + "> {");
+				for (f in funcFields) {
+					if (f.isStatic) continue;
+					if (f.field.getHaxeName() == "new") continue;
+					if (f.expr == null) continue;
+
+					// Only include methods that match interface methods by name/arity.
+					var matchesInterface = false;
+					for (ifaceFieldName in ifaceType.fields.get().map(cf -> cf.getHaxeName())) {
+						if (ifaceFieldName == f.field.getHaxeName()) {
+							matchesInterface = true;
+							break;
+						}
+					}
+					if (!matchesInterface) continue;
+
+					var sigArgs: Array<String> = ["&self"];
+					var callArgs: Array<String> = ["self"];
+					for (a in f.args) {
+						sigArgs.push(a.getName() + ": " + rustTypeToString(toRustType(a.type, f.field.pos)));
+						callArgs.push(a.getName());
+					}
+
+					var ret = rustTypeToString(toRustType(f.ret, f.field.pos));
+					implLines.push("\tfn " + f.field.getHaxeName() + "(" + sigArgs.join(", ") + ") -> " + ret + " {");
+					implLines.push("\t\t" + classType.name + "::" + f.field.getHaxeName() + "(" + callArgs.join(", ") + ")");
+					implLines.push("\t}");
+				}
+				implLines.push("}");
+				items.push(RRaw(implLines.join("\n")));
+			}
 		}
 
 		if (isMain) {
@@ -188,13 +470,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					isPub: false,
 					args: args,
 					ret: toRustType(f.ret, f.field.pos),
-					body: compileFunctionBody(f.expr, f.ret)
+					body: compileFunctionBodyWithMutability(f.expr, f.ret)
 				}));
 			}
 
 			var mainFunc = findStaticMain(funcFields);
+			// Rust `fn main()` is always unit-returning; compile as void to avoid accidental tail expressions.
 			var body: RustBlock = (mainFunc != null && mainFunc.expr != null)
-				? compileFunctionBody(mainFunc.expr, mainFunc.ret)
+				? compileVoidBodyWithMutability(mainFunc.expr)
 				: defaultMainBody();
 
 			items.push(RFn({
@@ -212,7 +495,44 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	public function compileEnumImpl(enumType: EnumType, options: Array<EnumOptionData>): Null<RustFile> {
-		return null;
+		if (!shouldEmitEnum(enumType)) return null;
+
+		setOutputFileDir("src");
+		setOutputFileName(rustModuleNameForEnum(enumType));
+
+		var items: Array<RustItem> = [];
+		items.push(RRaw("// Generated by reflaxe.rust (POC)"));
+
+		var variants: Array<reflaxe.rust.ast.RustAST.RustEnumVariant> = [];
+		var needsHxRef = false;
+
+		for (opt in options) {
+			var argTypes: Array<reflaxe.rust.ast.RustAST.RustType> = [];
+			for (a in opt.args) {
+				var rt = toRustType(a.type, opt.field.pos);
+				argTypes.push(rt);
+				switch (rt) {
+					case RPath(path) if (StringTools.startsWith(path, "HxRef<")):
+						needsHxRef = true;
+					case _:
+				}
+			}
+			variants.push({ name: opt.name, args: argTypes });
+		}
+
+		if (needsHxRef) {
+			items.push(RRaw("use crate::HxRef;"));
+		}
+
+		var derives = mergeUniqueStrings(["Clone", "Debug", "PartialEq"], rustDerivesFromMeta(enumType.meta));
+		items.push(REnum({
+			name: enumType.name,
+			isPub: true,
+			derives: derives,
+			variants: variants
+		}));
+
+		return { items: items };
 	}
 
 	override public function compileTypedefImpl(typedefType: DefType): Null<RustFile> {
@@ -224,19 +544,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	public function compileExpressionImpl(expr: TypedExpr, topLevel: Bool): Null<RustExpr> {
-		// Target code injection: __rust__("...", [args...])
-		var injected = TargetCodeInjection.checkTargetCodeInjectionGeneric(options.targetCodeInjectionName ?? "__rust__", expr, this);
-		if (injected != null) {
-			var rendered = new StringBuf();
-			for (part in injected) {
-				switch (part) {
-					case Left(s): rendered.add(s);
-					case Right(e): rendered.add(reflaxe.rust.ast.RustASTPrinter.printExprForInjection(e));
-				}
-			}
-			return ERaw(rendered.toString());
-		}
-
 		return compileExpr(expr);
 	}
 
@@ -273,17 +580,46 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (isMain) return true;
 		if (classType.isExtern) return false;
 		var file = Context.getPosInfos(classType.pos).file;
-		return isUserProjectFile(file);
+		return isUserProjectFile(file) || isFrameworkStdFile(file);
+	}
+
+	function shouldEmitEnum(enumType: EnumType): Bool {
+		if (enumType.isExtern) return false;
+		if (isBuiltinEnum(enumType)) return false;
+		var file = Context.getPosInfos(enumType.pos).file;
+		return isUserProjectFile(file) || isFrameworkStdFile(file);
 	}
 
 	function isUserProjectFile(file: String): Bool {
-		var cwd = Path.normalize(Sys.getCwd());
+		var cwd = normalizePath(Sys.getCwd());
 		var full = file;
 		if (!Path.isAbsolute(full)) {
 			full = Path.join([cwd, full]);
 		}
-		full = Path.normalize(full);
-		return StringTools.startsWith(full, cwd);
+		full = normalizePath(full);
+		return StringTools.startsWith(full, ensureTrailingSlash(cwd));
+	}
+
+	function isFrameworkStdFile(file: String): Bool {
+		if (frameworkStdDir == null) return false;
+		var stdRoot = ensureTrailingSlash(normalizePath(frameworkStdDir));
+
+		var cwd = normalizePath(Sys.getCwd());
+		var full = file;
+		if (!Path.isAbsolute(full)) {
+			full = Path.join([cwd, full]);
+		}
+		full = normalizePath(full);
+
+		return StringTools.startsWith(full, stdRoot);
+	}
+
+	function ensureTrailingSlash(path: String): String {
+		return StringTools.endsWith(path, "/") ? path : (path + "/");
+	}
+
+	function normalizePath(path: String): String {
+		return Path.normalize(path).split("\\").join("/");
 	}
 
 	function classKey(classType: ClassType): String {
@@ -292,7 +628,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function rustModuleNameForClass(classType: ClassType): String {
 		var base = (classType.pack.length > 0 ? (classType.pack.join("_") + "_") : "") + classType.name;
-		return toSnakeCase(base);
+		return sanitizeRustIdent(toSnakeCase(base));
+	}
+
+	function rustModuleNameForEnum(enumType: EnumType): String {
+		var base = (enumType.pack.length > 0 ? (enumType.pack.join("_") + "_") : "") + enumType.name;
+		return sanitizeRustIdent(toSnakeCase(base));
 	}
 
 	function toSnakeCase(s: String): String {
@@ -307,40 +648,102 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return out.toString();
 	}
 
+	function isValidRustIdent(name: String): Bool {
+		return ~/^[A-Za-z_][A-Za-z0-9_]*$/.match(name);
+	}
+
+	function sanitizeRustIdent(name: String): String {
+		return isRustKeyword(name) ? (name + "_") : name;
+	}
+
+	function isRustKeyword(name: String): Bool {
+		// Rust keywords (2021 edition + reserved).
+		return switch (name) {
+			case "as" | "break" | "const" | "continue" | "crate" | "else" | "enum" | "extern" | "false" | "fn" | "for" | "if" | "impl"
+				| "in" | "let" | "loop" | "match" | "mod" | "move" | "mut" | "pub" | "ref" | "return" | "self" | "Self" | "static"
+				| "struct" | "super" | "trait" | "true" | "type" | "unsafe" | "use" | "where" | "while" | "async" | "await" | "dyn":
+				true;
+			// Not keywords, but reserved in this codegen to avoid shadowing common Rust crates.
+			case "std" | "core" | "alloc":
+				true;
+			case _:
+				false;
+		}
+	}
+
+	function resolveToAbsolutePath(p: String): String {
+		var full = p;
+		if (!Path.isAbsolute(full)) {
+			full = Path.join([Sys.getCwd(), full]);
+		}
+		return Path.normalize(full);
+	}
+
 	function getUserClassesForModules(): Array<ClassType> {
 		var out: Array<ClassType> = [];
 		var seen = new Map<String, Bool>();
 
-		var usage = getTypeUsage();
-		if (usage == null) return out;
+		for (mt in Context.getAllModuleTypes()) {
+			switch (mt) {
+				case TClassDecl(clsRef): {
+					var cls = clsRef.get();
+					if (cls == null) continue;
+					if (isMainClass(cls)) continue;
+					if (!shouldEmitClass(cls, false)) continue;
 
-		for (level in usage.keys()) {
-			var list = usage.get(level);
-			if (list == null) continue;
-			for (entry in list) {
-				switch (entry) {
-					case EModuleType(mt): {
-						switch (mt) {
-							case TClassDecl(clsRef): {
-								var cls = clsRef.get();
-								if (cls == null) continue;
-								if (isMainClass(cls)) continue;
-								if (!shouldEmitClass(cls, false)) continue;
-
-								var key = classKey(cls);
-								if (seen.exists(key)) continue;
-								seen.set(key, true);
-								out.push(cls);
-							}
-							case _:
-						}
-					}
-					case _:
+					var key = classKey(cls);
+					if (seen.exists(key)) continue;
+					seen.set(key, true);
+					out.push(cls);
 				}
+				case _:
 			}
 		}
 
+		out.sort((a, b) -> Reflect.compare(classKey(a), classKey(b)));
 		return out;
+	}
+
+	function getUserEnumsForModules(): Array<EnumType> {
+		var out: Array<EnumType> = [];
+		var seen = new Map<String, Bool>();
+
+		for (mt in Context.getAllModuleTypes()) {
+			switch (mt) {
+				case TEnumDecl(enumRef): {
+					var en = enumRef.get();
+					if (en == null) continue;
+					if (!shouldEmitEnum(en)) continue;
+
+					var key = en.pack.join(".") + "." + en.name;
+					if (seen.exists(key)) continue;
+					seen.set(key, true);
+					out.push(en);
+				}
+				case _:
+			}
+		}
+
+		out.sort((a, b) -> Reflect.compare(enumKey(a), enumKey(b)));
+		return out;
+	}
+
+	override public function onOutputComplete() {
+		if (!didEmitMain) return;
+		if (!Context.defined("rustfmt")) return;
+		if (output == null || output.outputDir == null) return;
+
+		var outDir = output.outputDir;
+		var manifest = Path.join([outDir, "Cargo.toml"]);
+		if (!FileSystem.exists(manifest)) return;
+
+		// Best-effort formatting. Avoid hard failing compilation if cargo/rustfmt are unavailable.
+		var code = Sys.command("cargo", ["fmt", "--manifest-path", manifest]);
+		if (code != 0) {
+			#if eval
+			Context.warning("`cargo fmt` failed (exit " + code + ") for output: " + manifest, Context.currentPos());
+			#end
+		}
 	}
 
 	function findConstructor(funcFields: Array<ClassFuncData>): Null<ClassFuncData> {
@@ -356,7 +759,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (TypeHelper.isBool(t)) return "false";
 		if (TypeHelper.isInt(t)) return "0";
 		if (TypeHelper.isFloat(t)) return "0.0";
-		if (TypeHelper.isString(t)) return "String::new()";
+		if (isStringType(t)) return "String::new()";
+		if (isArrayType(t)) {
+			var elem = arrayElementType(t);
+			var elemRust = toRustType(elem, pos);
+			return "Vec::<" + rustTypeToString(elemRust) + ">::new()";
+		}
 
 		#if eval
 		Context.error("Unsupported field type in class POC: " + Std.string(t), pos);
@@ -374,9 +782,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		var fieldInits: Array<String> = [];
-		for (v in varFields) {
-			if (v.isStatic) continue;
-			fieldInits.push(v.field.getHaxeName() + ": " + defaultValueForType(v.field.type, v.field.pos));
+		for (cf in getAllInstanceVarFieldsForStruct(classType)) {
+			fieldInits.push(cf.getHaxeName() + ": " + defaultValueForType(cf.type, cf.pos));
 		}
 		var structInit = classType.name + " { " + fieldInits.join(", ") + " }";
 		var allocExpr = "Rc::new(RefCell::new(" + structInit + "))";
@@ -390,7 +797,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		));
 
 		if (f.expr != null) {
-			var bodyBlock = compileFunctionBody(f.expr, f.ret);
+			var bodyBlock = compileFunctionBodyWithMutability(f.expr, f.ret);
 			for (s in bodyBlock.stmts) stmts.push(s);
 			if (bodyBlock.tail != null) stmts.push(RSemi(bodyBlock.tail));
 		}
@@ -408,9 +815,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function compileInstanceMethod(classType: ClassType, f: ClassFuncData): reflaxe.rust.ast.RustAST.RustFunction {
 		var args: Array<reflaxe.rust.ast.RustAST.RustFnArg> = [];
+		var generics = rustGenericParamsFromFieldMeta(f.field.meta, [for (p in f.field.params) p.name]);
 		args.push({
 			name: "self_",
-			ty: RPath("&HxRef<" + classType.name + ">")
+			ty: RPath("&RefCell<" + classType.name + ">")
 		});
 		for (a in f.args) {
 			args.push({
@@ -419,15 +827,78 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			});
 		}
 
-		var body = f.expr != null ? compileFunctionBody(f.expr, f.ret) : { stmts: [], tail: null };
+		var body = f.expr != null ? compileFunctionBodyWithMutability(f.expr, f.ret) : { stmts: [], tail: null };
 
 		return {
 			name: f.field.getHaxeName(),
 			isPub: f.field.isPublic,
+			generics: generics,
 			args: args,
 			ret: toRustType(f.ret, f.field.pos),
 			body: body
 		};
+	}
+
+	function compileStaticMethod(classType: ClassType, f: ClassFuncData): reflaxe.rust.ast.RustAST.RustFunction {
+		var args: Array<reflaxe.rust.ast.RustAST.RustFnArg> = [];
+		var generics = rustGenericParamsFromFieldMeta(f.field.meta, [for (p in f.field.params) p.name]);
+		for (a in f.args) {
+			args.push({
+				name: a.getName(),
+				ty: toRustType(a.type, f.field.pos)
+			});
+		}
+
+		var body = f.expr != null ? compileFunctionBodyWithMutability(f.expr, f.ret) : { stmts: [], tail: null };
+
+		return {
+			name: f.field.getHaxeName(),
+			isPub: f.field.isPublic,
+			generics: generics,
+			args: args,
+			ret: toRustType(f.ret, f.field.pos),
+			body: body
+		};
+	}
+
+	function rustGenericParamsFromFieldMeta(meta: haxe.macro.Type.MetaAccess, fallback: Array<String>): Array<String> {
+		var out: Array<String> = [];
+		var found = false;
+
+		for (entry in meta.get()) {
+			if (entry.name != ":rustGeneric") continue;
+			found = true;
+
+			if (entry.params == null || entry.params.length == 0) {
+				#if eval
+				Context.error("`@:rustGeneric` requires a single parameter.", entry.pos);
+				#end
+				continue;
+			}
+
+			switch (entry.params[0].expr) {
+				case EConst(CString(s, _)):
+					out.push(s);
+				case EArrayDecl(values): {
+					for (v in values) {
+						switch (v.expr) {
+							case EConst(CString(s, _)):
+								out.push(s);
+							case _:
+								#if eval
+								Context.error("`@:rustGeneric` array must contain only strings.", entry.pos);
+								#end
+						}
+					}
+				}
+				case _:
+					#if eval
+					Context.error("`@:rustGeneric` must be a string or array of strings.", entry.pos);
+					#end
+			}
+		}
+
+		return found ? out : fallback;
 	}
 
 	function compileFunctionBody(e: TypedExpr, expectedReturn: Null<Type> = null): RustBlock {
@@ -468,6 +939,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return switch (e.expr) {
 			case TVar(_, _): true;
 			case TReturn(_): true;
+			case TWhile(_, _, _): true;
+			case TFor(_, _, _): true;
+			case TBreak: true;
+			case TContinue: true;
 			case _: false;
 		}
 	}
@@ -477,9 +952,48 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case TVar(v, init): {
 				var name = v.name;
 				var initExpr = init != null ? compileExpr(init) : null;
-				// POC: default to `let mut` for simplicity.
-				RLet(name, true, null, initExpr);
+				var mutable = true;
+				if (profile == Idiomatic) {
+					mutable = currentMutatedLocals != null && currentMutatedLocals.exists(name);
+				}
+				RLet(name, mutable, toRustType(v.t, e.pos), initExpr);
 			}
+			case TParenthesis(e1):
+				compileStmt(e1);
+			case TMeta(_, e1):
+				compileStmt(e1);
+			case TSwitch(switchExpr, cases, edef):
+				// Statement-position switch: force void arms.
+				RSemi(compileSwitch(switchExpr, cases, edef, Context.getType("Void")));
+			case TWhile(cond, body, normalWhile): {
+				if (normalWhile) {
+					RWhile(compileExpr(cond), compileVoidBody(body));
+				} else {
+					// do/while: `loop { body; if !cond { break; } }`
+					var b = compileVoidBody(body);
+					var stmts = b.stmts.copy();
+					if (b.tail != null) stmts.push(RSemi(b.tail));
+					stmts.push(RSemi(EIf(
+						EUnary("!", compileExpr(cond)),
+						EBlock({ stmts: [RSemi(ERaw("break"))], tail: null }),
+						null
+					)));
+					RLoop({ stmts: stmts, tail: null });
+				}
+			}
+			case TFor(v, iterable, body): {
+				var it = if (isArrayType(iterable.t)) {
+					var base = ECall(EField(compileExpr(iterable), "iter"), []);
+					ECall(EField(base, "cloned"), []);
+				} else {
+					compileExpr(iterable);
+				}
+				RFor(v.name, it, compileVoidBody(body));
+			}
+			case TBreak:
+				RSemi(ERaw("break"));
+			case TContinue:
+				RSemi(ERaw("continue"));
 			case TReturn(ret): {
 				var ex = ret != null ? compileExpr(ret) : null;
 				RReturn(ex);
@@ -490,17 +1004,132 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 	}
 
-	function compileExpr(e: TypedExpr): RustExpr {
-			return switch (e.expr) {
-				case TConst(c): switch (c) {
-					case TInt(v): ELitInt(v);
-					case TFloat(s): ELitFloat(Std.parseFloat(s));
-					case TString(s): ECall(EPath("String::from"), [ELitString(s)]);
-					case TBool(b): ELitBool(b);
-					case TNull: ERaw("None");
-					case TThis: EPath("self_");
-					case _: unsupported(e, "const");
+	function compileVoidBody(e: TypedExpr): RustBlock {
+		return switch (e.expr) {
+			case TBlock(exprs):
+				compileBlock(exprs, false);
+			case _:
+				{ stmts: [compileStmt(e)], tail: null };
+		}
+	}
+
+	function compileFunctionBodyWithMutability(e: TypedExpr, expectedReturn: Null<Type>): RustBlock {
+		var prev = currentMutatedLocals;
+		if (profile == Idiomatic) {
+			currentMutatedLocals = collectMutatedLocals(e);
+		}
+		var out = compileFunctionBody(e, expectedReturn);
+		currentMutatedLocals = prev;
+		return out;
+	}
+
+	function compileVoidBodyWithMutability(e: TypedExpr): RustBlock {
+		var prev = currentMutatedLocals;
+		if (profile == Idiomatic) {
+			currentMutatedLocals = collectMutatedLocals(e);
+		}
+		var out = compileVoidBody(e);
+		currentMutatedLocals = prev;
+		return out;
+	}
+
+	function collectMutatedLocals(root: TypedExpr): Map<String, Bool> {
+		var mutated: Map<String, Bool> = [];
+
+		function scan(e: TypedExpr): Void {
+			switch (e.expr) {
+				case TBinop(OpAssign, lhs, _): {
+					switch (lhs.expr) {
+						case TLocal(v):
+							mutated.set(v.name, true);
+						case TArray(arr, _): {
+							switch (arr.expr) {
+								case TLocal(v):
+									mutated.set(v.name, true);
+								case _:
+							}
+						}
+						case _:
+					}
 				}
+
+				case TUnop(op, _, inner) if (op == OpIncrement || op == OpDecrement): {
+					switch (inner.expr) {
+						case TLocal(v):
+							mutated.set(v.name, true);
+						case _:
+					}
+				}
+
+				case _:
+			}
+
+			TypedExprTools.iter(e, scan);
+		}
+
+		scan(root);
+		return mutated;
+	}
+
+	function compileExpr(e: TypedExpr): RustExpr {
+			// Target code injection: __rust__("...{0}...", arg0, ...)
+			var injected = TargetCodeInjection.checkTargetCodeInjectionGeneric(options.targetCodeInjectionName ?? "__rust__", e, this);
+			if (injected != null) {
+				// `checkTargetCodeInjectionGeneric` returns an empty list when there are no `{0}` placeholders.
+				// In that case, the injected code is just the first (string) argument verbatim.
+				if (injected.length == 0) {
+					var literal: Null<String> = switch (e.expr) {
+						case TCall(_, args):
+							switch (args[0].expr) {
+								case TConst(TString(s)): s;
+								case _: null;
+							}
+						case _: null;
+					};
+					return ERaw(literal != null ? literal : "");
+				}
+
+				var rendered = new StringBuf();
+				for (part in injected) {
+					switch (part) {
+						case Left(s): rendered.add(s);
+						case Right(expr): rendered.add(reflaxe.rust.ast.RustASTPrinter.printExprForInjection(expr));
+					}
+				}
+				return ERaw(rendered.toString());
+			}
+
+			return switch (e.expr) {
+			case TConst(c): switch (c) {
+				case TInt(v): ELitInt(v);
+				case TFloat(s): ELitFloat(Std.parseFloat(s));
+				case TString(s): ECall(EPath("String::from"), [ELitString(s)]);
+				case TBool(b): ELitBool(b);
+				case TNull: ERaw("None");
+				case TThis: EPath("self_");
+				case _: unsupported(e, "const");
+			}
+
+			case TArrayDecl(values): {
+				// Haxe `Array<T>` literal: `[]` or `[a, b]` -> `Vec::<T>::new()` or `vec![...]`
+				if (values.length == 0) {
+					var elem = arrayElementType(e.t);
+					var elemRust = toRustType(elem, e.pos);
+					ECall(ERaw("Vec::<" + rustTypeToString(elemRust) + ">::new"), []);
+				} else {
+					EMacroCall("vec", [for (v in values) compileExpr(v)]);
+				}
+			}
+
+			case TArray(arr, index): {
+				var idx = ECast(compileExpr(index), "usize");
+				var access = EIndex(compileExpr(arr), idx);
+				if (isCopyType(e.t)) {
+					access;
+				} else {
+					ECall(EField(access, "clone"), []);
+				}
+			}
 
 			case TLocal(v):
 				EPath(v.name);
@@ -522,15 +1151,378 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 			case TNew(clsRef, _, args): {
 				var cls = clsRef.get();
-				ECall(EPath(cls.name + "::new"), [for (x in args) compileExpr(x)]);
+				var ctorPath = (cls.isExtern ? rustExternBasePath(cls) : null);
+				ECall(EPath((ctorPath != null ? ctorPath : cls.name) + "::new"), [for (x in args) compileExpr(x)]);
 			}
+
+			case TTypeExpr(mt):
+				compileTypeExpr(mt, e);
 
 			case TField(obj, fa):
 				compileField(obj, fa, e);
 
+			case TWhile(_, _, _) | TFor(_, _, _):
+				// Loops are statements in Rust; if they appear in expression position, wrap in a block.
+				EBlock({ stmts: [compileStmt(e)], tail: null });
+
+			case TBreak:
+				ERaw("break");
+
+			case TContinue:
+				ERaw("continue");
+
+			case TSwitch(switchExpr, cases, edef):
+				compileSwitch(switchExpr, cases, edef, e.t);
+
+			case TTry(tryExpr, catches):
+				compileTry(tryExpr, catches, e);
+
+			case TThrow(thrown):
+				compileThrow(thrown, e.pos);
+
+			case TEnumIndex(e1):
+				compileEnumIndex(e1, e.pos);
+
+			case TEnumParameter(e1, ef, index):
+				compileEnumParameter(e1, ef, index, e.t, e.pos);
+
+			case TParenthesis(e1):
+				compileExpr(e1);
+
+			case TMeta(_, e1):
+				compileExpr(e1);
+
+			case TCast(e1, _):
+				compileExpr(e1);
+
 			default:
 				unsupported(e, "expr");
 		}
+	}
+
+	function compileTypeExpr(mt: ModuleType, fullExpr: TypedExpr): RustExpr {
+		return switch (mt) {
+			case TClassDecl(clsRef): {
+				var cls = clsRef.get();
+				var modName = rustModuleNameForClass(cls);
+				EPath("crate::" + modName + "::__HX_TYPE_ID");
+			}
+			case _: unsupported(fullExpr, "type expr");
+		}
+	}
+
+	function compileSwitch(switchExpr: TypedExpr, cases: Array<{ values: Array<TypedExpr>, expr: TypedExpr }>, edef: Null<TypedExpr>, expectedReturn: Type): RustExpr {
+		// Haxe may lower enum switches to `switch (@:enumIndex e)` with int case values.
+		// When detected, re-expand to a Rust `match` on the enum itself.
+		var underlying = unwrapMetaParen(switchExpr);
+		return switch (underlying.expr) {
+			case TEnumIndex(enumExpr):
+				compileEnumIndexSwitch(enumExpr, cases, edef, expectedReturn);
+			case _:
+				compileGenericSwitch(switchExpr, cases, edef, expectedReturn);
+		}
+	}
+
+	function compileExprToBlock(e: TypedExpr, expectedReturn: Type): RustBlock {
+		var allowTail = !TypeHelper.isVoid(expectedReturn);
+		return switch (e.expr) {
+			case TBlock(exprs):
+				compileBlock(exprs, allowTail);
+			case _:
+				if (allowTail && !isStmtOnlyExpr(e)) {
+					{ stmts: [], tail: compileExpr(e) };
+				} else {
+					{ stmts: [compileStmt(e)], tail: null };
+				}
+		}
+	}
+
+	function compileThrow(thrown: TypedExpr, pos: haxe.macro.Expr.Position): RustExpr {
+		var payload = ECall(EPath("hxrt::dynamic::from"), [compileExpr(thrown)]);
+		return ECall(EPath("hxrt::exception::throw"), [payload]);
+	}
+
+	function compileTry(tryExpr: TypedExpr, catches: Array<{ v: TVar, expr: TypedExpr }>, fullExpr: TypedExpr): RustExpr {
+		var expectedReturn = fullExpr.t;
+		var tryBlock = compileExprToBlock(tryExpr, expectedReturn);
+		var attempt = ECall(EPath("hxrt::exception::catch_unwind"), [EClosure([], tryBlock)]);
+
+		var okName = "__hx_ok";
+		var exName = "__hx_ex";
+
+		var arms: Array<RustMatchArm> = [
+			{ pat: PTupleStruct("Ok", [PBind(okName)]), expr: EPath(okName) },
+			{ pat: PTupleStruct("Err", [PBind(exName)]), expr: compileCatchDispatch(exName, catches, expectedReturn) }
+		];
+
+		return EMatch(attempt, arms);
+	}
+
+	function compileCatchDispatch(exVarName: String, catches: Array<{ v: TVar, expr: TypedExpr }>, expectedReturn: Type): RustExpr {
+		if (catches.length == 0) {
+			return ECall(EPath("hxrt::exception::rethrow"), [EPath(exVarName)]);
+		}
+
+		var c = catches[0];
+		var rest = catches.slice(1);
+
+		if (isDynamicType(c.v.t)) {
+			var body = compileExprToBlock(c.expr, expectedReturn);
+			var stmts = body.stmts.copy();
+			stmts.unshift(RLet(c.v.name, true, toRustType(c.v.t, c.expr.pos), EPath(exVarName)));
+			return EBlock({ stmts: stmts, tail: body.tail });
+		}
+
+		var rustTy = toRustType(c.v.t, c.expr.pos);
+		var downcast = ECall(ERaw(exVarName + ".downcast::<" + rustTypeToString(rustTy) + ">"), []);
+
+		var boxedName = "__hx_box";
+		var okBody = compileExprToBlock(c.expr, expectedReturn);
+		var okStmts = okBody.stmts.copy();
+		okStmts.unshift(RLet(c.v.name, true, rustTy, EUnary("*", EPath(boxedName))));
+		var okExpr: RustExpr = EBlock({ stmts: okStmts, tail: okBody.tail });
+
+		var errExpr = compileCatchDispatch(exVarName, rest, expectedReturn);
+
+		return EMatch(downcast, [
+			{ pat: PTupleStruct("Ok", [PBind(boxedName)]), expr: okExpr },
+			{ pat: PTupleStruct("Err", [PBind(exVarName)]), expr: errExpr }
+		]);
+	}
+
+	function compileGenericSwitch(switchExpr: TypedExpr, cases: Array<{ values: Array<TypedExpr>, expr: TypedExpr }>, edef: Null<TypedExpr>, expectedReturn: Type): RustExpr {
+		var scrutinee = compileMatchScrutinee(switchExpr);
+		var arms: Array<reflaxe.rust.ast.RustAST.RustMatchArm> = [];
+
+		for (c in cases) {
+			var patterns: Array<reflaxe.rust.ast.RustAST.RustPattern> = [];
+			for (v in c.values) {
+				var p = compilePattern(v);
+				if (p == null) {
+					return unsupported(c.expr, "switch pattern");
+				}
+				patterns.push(p);
+			}
+
+			if (patterns.length == 0) continue;
+			var pat = patterns.length == 1 ? patterns[0] : POr(patterns);
+			arms.push({ pat: pat, expr: compileSwitchArmExpr(c.expr, expectedReturn) });
+		}
+
+		arms.push({ pat: PWildcard, expr: edef != null ? compileSwitchArmExpr(edef, expectedReturn) : defaultSwitchArmExpr(expectedReturn) });
+		return EMatch(scrutinee, arms);
+	}
+
+	function compileEnumIndexSwitch(enumExpr: TypedExpr, cases: Array<{ values: Array<TypedExpr>, expr: TypedExpr }>, edef: Null<TypedExpr>, expectedReturn: Type): RustExpr {
+		var en = enumTypeFromType(enumExpr.t);
+		if (en == null) return unsupported(enumExpr, "enum switch");
+
+		var scrutinee = ECall(EField(compileExpr(enumExpr), "clone"), []);
+		var arms: Array<reflaxe.rust.ast.RustAST.RustMatchArm> = [];
+
+		for (c in cases) {
+			var patterns: Array<reflaxe.rust.ast.RustAST.RustPattern> = [];
+			for (v in c.values) {
+				var idx = switchValueToInt(v);
+				if (idx == null) return unsupported(v, "enum switch value");
+
+				var ef = enumFieldByIndex(en, idx);
+				if (ef == null) return unsupported(v, "enum switch index");
+
+				var pat = enumFieldToPattern(en, ef);
+				patterns.push(pat);
+			}
+
+			if (patterns.length == 0) continue;
+			var pat = patterns.length == 1 ? patterns[0] : POr(patterns);
+			arms.push({ pat: pat, expr: compileSwitchArmExpr(c.expr, expectedReturn) });
+		}
+
+		arms.push({ pat: PWildcard, expr: edef != null ? compileSwitchArmExpr(edef, expectedReturn) : defaultSwitchArmExpr(expectedReturn) });
+		return EMatch(scrutinee, arms);
+	}
+
+	function compileSwitchArmExpr(expr: TypedExpr, expectedReturn: Type): RustExpr {
+		if (TypeHelper.isVoid(expectedReturn)) {
+			return EBlock(compileVoidBody(expr));
+		}
+
+		return switch (expr.expr) {
+			case TBlock(_):
+				EBlock(compileFunctionBody(expr, expectedReturn));
+			case _:
+				compileExpr(expr);
+		}
+	}
+
+	function defaultSwitchArmExpr(expectedReturn: Type): RustExpr {
+		return if (TypeHelper.isVoid(expectedReturn)) {
+			EBlock({ stmts: [], tail: null });
+		} else {
+			ERaw("todo!()");
+		}
+	}
+
+	function compilePattern(value: TypedExpr): Null<reflaxe.rust.ast.RustAST.RustPattern> {
+		var v = unwrapMetaParen(value);
+		return switch (v.expr) {
+			case TConst(c): switch (c) {
+				case TInt(i): PLitInt(i);
+				case TBool(b): PLitBool(b);
+				case TString(s): PLitString(s);
+				case _: null;
+			}
+			case TField(_, FEnum(enumRef, ef)):
+				var en = enumRef.get();
+				PPath(rustEnumVariantPath(en, ef.name));
+			case TCall(callExpr, args): {
+				switch (callExpr.expr) {
+					case TField(_, FEnum(enumRef, ef)): {
+						var en = enumRef.get();
+						PTupleStruct(rustEnumVariantPath(en, ef.name), [for (_ in args) PWildcard]);
+					}
+					case _: null;
+				}
+			}
+			case _: null;
+		}
+	}
+
+	function compileMatchScrutinee(e: TypedExpr): RustExpr {
+		var ft = followType(e.t);
+		if (isStringType(ft)) {
+			return ECall(EField(compileExpr(e), "as_str"), []);
+		}
+		if (isCopyType(ft)) {
+			return compileExpr(e);
+		}
+		return ECall(EField(compileExpr(e), "clone"), []);
+	}
+
+	function unwrapMetaParen(e: TypedExpr): TypedExpr {
+		return switch (e.expr) {
+			case TParenthesis(e1): unwrapMetaParen(e1);
+			case TMeta(_, e1): unwrapMetaParen(e1);
+			case _: e;
+		}
+	}
+
+	function switchValueToInt(e: TypedExpr): Null<Int> {
+		var v = unwrapMetaParen(e);
+		return switch (v.expr) {
+			case TConst(TInt(i)): i;
+			case _: null;
+		}
+	}
+
+	function enumKey(en: EnumType): String {
+		return en.pack.join(".") + "." + en.name;
+	}
+
+	function isBuiltinEnum(en: EnumType): Bool {
+		// Enums that are represented by Rust built-ins and should not be emitted as Rust enums.
+		return switch (enumKey(en)) {
+			case "haxe.ds.Option" | "haxe.functional.Result": true;
+			case _: false;
+		}
+	}
+
+	function rustEnumVariantPath(en: EnumType, variant: String): String {
+		return switch (enumKey(en)) {
+			// Map Haxe's `Result.Error` to Rust's `Result.Err`.
+			case "haxe.functional.Result":
+				"Result::" + (variant == "Error" ? "Err" : variant);
+			case _:
+				en.name + "::" + variant;
+		}
+	}
+
+	function enumTypeFromType(t: Type): Null<EnumType> {
+		var ft = followType(t);
+		return switch (ft) {
+			case TEnum(enumRef, _): enumRef.get();
+			case _: null;
+		}
+	}
+
+	function enumFieldByIndex(en: EnumType, idx: Int): Null<EnumField> {
+		for (name in en.constructs.keys()) {
+			var ef = en.constructs.get(name);
+			if (ef != null && ef.index == idx) return ef;
+		}
+		return null;
+	}
+
+	function enumFieldArgCount(ef: EnumField): Int {
+		var ft = followType(ef.type);
+		return switch (ft) {
+			case TFun(args, _): args.length;
+			case _: 0;
+		}
+	}
+
+	function enumFieldToPattern(en: EnumType, ef: EnumField): reflaxe.rust.ast.RustAST.RustPattern {
+		var n = enumFieldArgCount(ef);
+		var path = rustEnumVariantPath(en, ef.name);
+		if (n == 0) return PPath(path);
+		return PTupleStruct(path, [for (_ in 0...n) PWildcard]);
+	}
+
+	function compileEnumIndex(e1: TypedExpr, pos: haxe.macro.Expr.Position): RustExpr {
+		var en = enumTypeFromType(e1.t);
+		if (en == null) {
+			#if eval
+			Context.error("TEnumIndex on non-enum type: " + Std.string(e1.t), pos);
+			#end
+			return ERaw("todo!()");
+		}
+
+		var scrutinee = ECall(EField(compileExpr(e1), "clone"), []);
+		var arms: Array<reflaxe.rust.ast.RustAST.RustMatchArm> = [];
+
+		for (name in en.constructs.keys()) {
+			var ef = en.constructs.get(name);
+			if (ef == null) continue;
+			arms.push({
+				pat: enumFieldToPattern(en, ef),
+				expr: ELitInt(ef.index)
+			});
+		}
+
+		arms.push({ pat: PWildcard, expr: EMacroCall("unreachable", []) });
+		return EMatch(scrutinee, arms);
+	}
+
+	function compileEnumParameter(e1: TypedExpr, ef: EnumField, index: Int, valueType: Type, pos: haxe.macro.Expr.Position): RustExpr {
+		var en = enumTypeFromType(e1.t);
+		if (en == null) {
+			#if eval
+			Context.error("TEnumParameter on non-enum type: " + Std.string(e1.t), pos);
+			#end
+			return ERaw("todo!()");
+		}
+
+		var argc = enumFieldArgCount(ef);
+		if (index < 0 || index >= argc) {
+			#if eval
+			Context.error("TEnumParameter index out of bounds: " + index, pos);
+			#end
+			return ERaw("todo!()");
+		}
+
+		var bindName = "__p";
+		var fields: Array<reflaxe.rust.ast.RustAST.RustPattern> = [];
+		for (i in 0...argc) {
+			fields.push(i == index ? PBind(bindName) : PWildcard);
+		}
+
+		var scrutinee = ECall(EField(compileExpr(e1), "clone"), []);
+		var pat = PTupleStruct(rustEnumVariantPath(en, ef.name), fields);
+
+		return EMatch(scrutinee, [
+			{ pat: pat, expr: EPath(bindName) },
+			{ pat: PWildcard, expr: EMacroCall("unreachable", []) }
+		]);
 	}
 
 	function compileBranchExpr(e: TypedExpr): RustExpr {
@@ -543,6 +1535,225 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function compileCall(callExpr: TypedExpr, args: Array<TypedExpr>, fullExpr: TypedExpr): RustExpr {
+		// Special-case: super(...) in constructors.
+		// POC: support `super()` as a no-op (base init semantics will be expanded later).
+		switch (callExpr.expr) {
+			case TConst(TSuper):
+				if (args.length > 0) return unsupported(fullExpr, "super(args)");
+				return EBlock({ stmts: [], tail: null });
+			case _:
+		}
+
+		// Special-case: Std.*
+		switch (callExpr.expr) {
+			case TField(_, FStatic(clsRef, fieldRef)):
+				var cls = clsRef.get();
+				var field = fieldRef.get();
+				if (cls.pack.length == 0 && cls.name == "Std") {
+					switch (field.name) {
+						case "isOfType": {
+							if (args.length != 2) return unsupported(fullExpr, "Std.isOfType args");
+
+							var valueExpr = args[0];
+							var typeExpr = args[1];
+
+							var expectedClass: Null<ClassType> = switch (typeExpr.expr) {
+								case TTypeExpr(TClassDecl(cls2Ref)): cls2Ref.get();
+								case _: null;
+							};
+
+							var actualClass: Null<ClassType> = switch (followType(valueExpr.t)) {
+								case TInst(cls2Ref, _): cls2Ref.get();
+								case _: null;
+							};
+
+							if (expectedClass != null && actualClass != null && isClassSubtype(actualClass, expectedClass)) {
+								return ELitBool(true);
+							}
+
+							// If the value is represented as a trait object, we can do a simple RTTI id equality check.
+							// This is partial (exact-type only), but useful for common `Std.isOfType(a, SubClass)` checks.
+							if (isPolymorphicClassType(valueExpr.t)) {
+								var actualId = ECall(EField(compileExpr(valueExpr), "__hx_type_id"), []);
+								return EBinary("==", actualId, compileExpr(typeExpr));
+							}
+
+							return ELitBool(false);
+						}
+
+						case "string": {
+							if (args.length != 1) return unsupported(fullExpr, "Std.string args");
+							var value = args[0];
+							var ft = followType(value.t);
+							if (isStringType(ft)) {
+								return ECall(EField(compileExpr(value), "clone"), []);
+							} else if (isCopyType(ft)) {
+								return ECall(EField(compileExpr(value), "to_string"), []);
+							} else {
+								return EMacroCall("format", [ELitString("{:?}"), compileExpr(value)]);
+							}
+						}
+
+						case "parseFloat": {
+							if (args.length != 1) return unsupported(fullExpr, "Std.parseFloat args");
+							var s = args[0];
+							var asStr = ECall(EField(compileExpr(s), "as_str"), []);
+							return ECall(EPath("hxrt::string::parse_float"), [asStr]);
+						}
+
+						case _:
+					}
+				}
+			case _:
+		}
+
+		// Special-case: Type.* (minimal reflection helpers)
+		switch (callExpr.expr) {
+			case TField(_, FStatic(clsRef, fieldRef)):
+				var cls = clsRef.get();
+				var field = fieldRef.get();
+				if (cls.pack.length == 0 && cls.name == "Type") {
+					switch (field.name) {
+						case "getClassName": {
+							if (args.length != 1) return unsupported(fullExpr, "Type.getClassName args");
+							var t = args[0];
+							var name = switch (t.expr) {
+								case TTypeExpr(TClassDecl(cls2Ref)): {
+									var c = cls2Ref.get();
+									var modulePath = c.module;
+									var parts = modulePath.split(".");
+									var modTail = parts.length > 0 ? parts[parts.length - 1] : modulePath;
+									modTail == c.name ? modulePath : (modulePath + "." + c.name);
+								}
+								case _: null;
+							};
+							if (name == null) return unsupported(fullExpr, "Type.getClassName");
+							return ECall(EPath("String::from"), [ELitString(name)]);
+						}
+
+						case "getEnumName": {
+							if (args.length != 1) return unsupported(fullExpr, "Type.getEnumName args");
+							var t = args[0];
+							var name = switch (t.expr) {
+								case TTypeExpr(TEnumDecl(enRef)): {
+									var en = enRef.get();
+									var modulePath = en.module;
+									var parts = modulePath.split(".");
+									var modTail = parts.length > 0 ? parts[parts.length - 1] : modulePath;
+									modTail == en.name ? modulePath : (modulePath + "." + en.name);
+								}
+								case _: null;
+							};
+							if (name == null) return unsupported(fullExpr, "Type.getEnumName");
+							return ECall(EPath("String::from"), [ELitString(name)]);
+						}
+
+						case _:
+					}
+				}
+			case _:
+		}
+
+		// Special-case: Reflect.* (minimal field get/set for constant field names)
+		switch (callExpr.expr) {
+			case TField(_, FStatic(clsRef, fieldRef)):
+				var cls = clsRef.get();
+				var field = fieldRef.get();
+				if (cls.pack.length == 0 && cls.name == "Reflect") {
+					switch (field.name) {
+						case "field": {
+							if (args.length != 2) return unsupported(fullExpr, "Reflect.field args");
+
+							var obj = args[0];
+							var nameExpr = args[1];
+							var fieldName: Null<String> = switch (nameExpr.expr) {
+								case TConst(TString(s)): s;
+								case _: null;
+							};
+							if (fieldName == null) return unsupported(fullExpr, "Reflect.field non-const");
+
+							var cf: Null<ClassField> = null;
+							switch (followType(obj.t)) {
+								case TInst(cls2Ref, _): {
+									var cls2 = cls2Ref.get();
+									for (f in cls2.fields.get()) {
+										if (f.name == fieldName || f.getHaxeName() == fieldName) {
+											cf = f;
+											break;
+										}
+									}
+								}
+								case _:
+							}
+							if (cf == null) return unsupported(fullExpr, "Reflect.field (unsupported receiver/field)");
+
+							var value = compileInstanceFieldRead(obj, cf, fullExpr);
+							return ECall(EPath("hxrt::dynamic::from"), [value]);
+						}
+
+						case "setField": {
+							if (args.length != 3) return unsupported(fullExpr, "Reflect.setField args");
+
+							var obj = args[0];
+							var nameExpr = args[1];
+							var valueExpr = args[2];
+							var fieldName: Null<String> = switch (nameExpr.expr) {
+								case TConst(TString(s)): s;
+								case _: null;
+							};
+							if (fieldName == null) return unsupported(fullExpr, "Reflect.setField non-const");
+
+							var cf: Null<ClassField> = null;
+							switch (followType(obj.t)) {
+								case TInst(cls2Ref, _): {
+									var cls2 = cls2Ref.get();
+									for (f in cls2.fields.get()) {
+										if (f.name == fieldName || f.getHaxeName() == fieldName) {
+											cf = f;
+											break;
+										}
+									}
+								}
+								case _:
+							}
+							if (cf == null) return unsupported(fullExpr, "Reflect.setField (unsupported receiver/field)");
+
+							var assigned = compileInstanceFieldAssign(obj, cf, valueExpr);
+							return EBlock({ stmts: [RSemi(assigned)], tail: null });
+						}
+
+						case _:
+					}
+				}
+			case _:
+		}
+
+		// Special-case: haxe.io.Bytes (runtime-backed)
+		switch (callExpr.expr) {
+			case TField(_, FStatic(clsRef, fieldRef)):
+				var cls = clsRef.get();
+				var field = fieldRef.get();
+				if (isBytesClass(cls)) {
+					switch (field.name) {
+						case "alloc": {
+							if (args.length != 1) return unsupported(fullExpr, "Bytes.alloc args");
+							var size = ECast(compileExpr(args[0]), "usize");
+							var inner = ECall(EPath("hxrt::bytes::Bytes::alloc"), [size]);
+							return ECall(EPath("Rc::new"), [ECall(EPath("RefCell::new"), [inner])]);
+						}
+						case "ofString": {
+							if (args.length != 1) return unsupported(fullExpr, "Bytes.ofString args");
+							var s = args[0];
+							var asStr = ECall(EField(compileExpr(s), "as_str"), []);
+							var inner = ECall(EPath("hxrt::bytes::Bytes::of_string"), [asStr]);
+							return ECall(EPath("Rc::new"), [ECall(EPath("RefCell::new"), [inner])]);
+						}
+						case _:
+					}
+				}
+			case _:
+		}
+
 		// Special-case: haxe.Log.trace(value, posInfos)
 		switch (callExpr.expr) {
 			case TField(_, FStatic(clsRef, fieldRef)):
@@ -559,8 +1770,43 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		switch (callExpr.expr) {
 			case TField(obj, FInstance(_, _, cfRef)): {
 				var cf = cfRef.get();
+				if (isBytesType(obj.t)) {
+					switch (cf.getHaxeName()) {
+						case "get": {
+							if (args.length != 1) return unsupported(fullExpr, "Bytes.get args");
+							var borrowed = ECall(EField(compileExpr(obj), "borrow"), []);
+							return ECall(EField(borrowed, "get"), [compileExpr(args[0])]);
+						}
+						case "set": {
+							if (args.length != 2) return unsupported(fullExpr, "Bytes.set args");
+							var borrowed = ECall(EField(compileExpr(obj), "borrow_mut"), []);
+							return ECall(EField(borrowed, "set"), [compileExpr(args[0]), compileExpr(args[1])]);
+						}
+						case "toString": {
+							if (args.length != 0) return unsupported(fullExpr, "Bytes.toString args");
+							var borrowed = ECall(EField(compileExpr(obj), "borrow"), []);
+							return ECall(EField(borrowed, "to_string"), []);
+						}
+						case _:
+					}
+				}
 				switch (cf.kind) {
-					case FMethod(_): {
+						case FMethod(_): {
+						// Extern instances compile as direct Rust method calls: `recv.method(args...)`.
+						if (isExternInstanceType(obj.t)) {
+							var recv = compileExpr(obj);
+							var callArgs: Array<RustExpr> = [for (x in args) compileExpr(x)];
+							return ECall(EField(recv, rustExternFieldName(cf)), callArgs);
+						}
+
+						// `this` inside concrete methods is always `&RefCell<Concrete>`; keep static dispatch.
+						if (!isThisExpr(obj) && (isInterfaceType(obj.t) || isPolymorphicClassType(obj.t))) {
+							// Interface/base-typed receiver: dynamic dispatch via trait method call.
+							var recv = compileExpr(obj);
+							var callArgs: Array<RustExpr> = [for (x in args) compileExpr(x)];
+							return ECall(EField(recv, cf.getHaxeName()), callArgs);
+						}
+
 						var clsName = classNameFromType(obj.t);
 						if (clsName == null) return unsupported(fullExpr, "instance method call");
 						var callArgs: Array<RustExpr> = [EUnary("&", compileExpr(obj))];
@@ -574,8 +1820,44 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		var f = compileExpr(callExpr);
-		var a = [for (x in args) compileExpr(x)];
+		var paramTypes: Null<Array<Type>> = switch (followType(callExpr.t)) {
+			case TFun(params, _): [for (p in params) p.t];
+			case _: null;
+		};
+
+		var a: Array<RustExpr> = [];
+		for (i in 0...args.length) {
+			var arg = args[i];
+			var compiled = compileExpr(arg);
+
+			if (paramTypes != null && i < paramTypes.length) {
+				var paramType = paramTypes[i];
+
+				// Passing into `Dynamic` should not move the source value (Haxe values are reusable).
+				if (isDynamicType(paramType) && !isDynamicType(arg.t)) {
+					if (!isCopyType(arg.t)) {
+						compiled = ECall(EField(compiled, "clone"), []);
+					}
+					compiled = ECall(EPath("hxrt::dynamic::from"), [compiled]);
+				} else if (isStringType(paramType)) {
+					// Haxe Strings are immutable and commonly re-used after calls; avoid Rust moves by cloning.
+					compiled = ECall(EField(compiled, "clone"), []);
+				}
+			}
+
+			a.push(compiled);
+		}
 		return ECall(f, a);
+	}
+
+	function isClassSubtype(actual: ClassType, expected: ClassType): Bool {
+		if (classKey(actual) == classKey(expected)) return true;
+		var cur = actual.superClass != null ? actual.superClass.t.get() : null;
+		while (cur != null) {
+			if (classKey(cur) == classKey(expected)) return true;
+			cur = cur.superClass != null ? cur.superClass.t.get() : null;
+		}
+		return false;
 	}
 
 		function compileTrace(valueExpr: RustExpr, valueType: Type): RustExpr {
@@ -589,20 +1871,52 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return EMacroCall("println", [ELitString(fmt), valueExpr]);
 		}
 
+	function isThisExpr(e: TypedExpr): Bool {
+		return switch (e.expr) {
+			case TConst(TThis): true;
+			case _: false;
+		}
+	}
+
 	function compileField(obj: TypedExpr, fa: FieldAccess, fullExpr: TypedExpr): RustExpr {
 		return switch (fa) {
 			case FStatic(clsRef, cfRef): {
 				var cls = clsRef.get();
 				var cf = cfRef.get();
 				var key = cls.pack.join(".") + "." + cls.name;
-				if (currentClassKey != null && key == currentClassKey) {
+
+				// Extern static access maps to a Rust path, optionally overridden via `@:native(...)`.
+				if (cls.isExtern) {
+					var base = rustExternBasePath(cls);
+					return EPath((base != null ? base : cls.name) + "::" + rustExternFieldName(cf));
+				}
+
+				if (mainClassKey != null && currentClassKey != null && key == currentClassKey && key == mainClassKey) {
 					EPath(cf.getHaxeName());
 				} else {
 					EPath(cls.name + "::" + cf.getHaxeName());
 				}
 			}
+			case FEnum(enumRef, efRef): {
+				var en = enumRef.get();
+				var ef = efRef;
+				EPath(rustEnumVariantPath(en, ef.name));
+			}
 			case FInstance(_, _, cfRef): {
 				var cf = cfRef.get();
+
+				// haxe.io.Bytes length: `b.length` -> `b.borrow().length()`
+				if (isBytesType(obj.t) && cf.getHaxeName() == "length") {
+					var borrowed = ECall(EField(compileExpr(obj), "borrow"), []);
+					return ECall(EField(borrowed, "length"), []);
+				}
+
+				// Haxe Array length: `arr.length` -> `arr.len() as i32`
+				if (isArrayType(obj.t) && cf.getHaxeName() == "length") {
+					var lenCall = ECall(EField(compileExpr(obj), "len"), []);
+					return ECast(lenCall, "i32");
+				}
+
 				switch (cf.kind) {
 					case FMethod(_):
 						unsupported(fullExpr, "method value");
@@ -620,6 +1934,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function compileInstanceFieldRead(obj: TypedExpr, cf: ClassField, fullExpr: TypedExpr): RustExpr {
+		if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+			return ECall(EField(compileExpr(obj), "__hx_get_" + cf.getHaxeName()), []);
+		}
+
 		var recv = compileExpr(obj);
 		var borrowed = ECall(EField(recv, "borrow"), []);
 		var access = EField(borrowed, cf.getHaxeName());
@@ -633,6 +1951,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function compileInstanceFieldAssign(obj: TypedExpr, cf: ClassField, rhs: TypedExpr): RustExpr {
+		if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+			// Haxe assignment returns the RHS value.
+			// `{ let __tmp = rhs; obj.__hx_set_field(__tmp.clone()); __tmp }`
+			var stmts: Array<RustStmt> = [];
+			stmts.push(RLet("__tmp", false, null, compileExpr(rhs)));
+
+			var rhsVal: RustExpr = isCopyType(cf.type) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
+			stmts.push(RSemi(ECall(EField(compileExpr(obj), "__hx_set_" + cf.getHaxeName()), [rhsVal])));
+
+			return EBlock({ stmts: stmts, tail: EPath("__tmp") });
+		}
+
 		// Important: evaluate RHS before taking a mutable borrow to avoid RefCell borrow panics.
 		// `{ let __tmp = rhs; obj.borrow_mut().field = __tmp.clone(); __tmp }`
 		var stmts: Array<RustStmt> = [];
@@ -651,6 +1981,20 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		});
 	}
 
+	function compileArrayIndexAssign(arr: TypedExpr, index: TypedExpr, rhs: TypedExpr): RustExpr {
+		// Haxe assignment returns the RHS value.
+		// `{ let __tmp = rhs; arr[idx] = __tmp.clone(); __tmp }`
+		var stmts: Array<RustStmt> = [];
+		stmts.push(RLet("__tmp", false, null, compileExpr(rhs)));
+
+		var idx = ECast(compileExpr(index), "usize");
+		var lhs = EIndex(compileExpr(arr), idx);
+		var rhsClone = ECall(EField(EPath("__tmp"), "clone"), []);
+		stmts.push(RSemi(EAssign(lhs, rhsClone)));
+
+		return EBlock({ stmts: stmts, tail: EPath("__tmp") });
+	}
+
 	function classNameFromType(t: Type): Null<String> {
 		var ft = TypeTools.follow(t);
 		return switch (ft) {
@@ -659,10 +2003,343 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 	}
 
+	function isExternInstanceType(t: Type): Bool {
+		return switch (followType(t)) {
+			case TInst(clsRef, _): clsRef.get().isExtern;
+			case _: false;
+		}
+	}
+
+	function rustExternBasePath(cls: ClassType): Null<String> {
+		for (entry in cls.meta.get()) {
+			if (entry.name != ":native") continue;
+			if (entry.params == null || entry.params.length == 0) continue;
+			try {
+				var v: Dynamic = ExprTools.getValue(entry.params[0]);
+				if (Std.isOfType(v, String)) return cast v;
+			} catch (_: Dynamic) {}
+		}
+		return null;
+	}
+
+	function rustExternFieldName(cf: ClassField): String {
+		for (entry in cf.meta.get()) {
+			if (entry.name != ":native") continue;
+			if (entry.params == null || entry.params.length == 0) continue;
+			try {
+				var v: Dynamic = ExprTools.getValue(entry.params[0]);
+				if (Std.isOfType(v, String)) return cast v;
+			} catch (_: Dynamic) {}
+		}
+		// For extern fields, Haxe may rewrite the field name and store the original name in `:realPath`.
+		// Use the actual (post-metadata) identifier by default.
+		return cf.name;
+	}
+
+	function rustDerivesFromMeta(meta: haxe.macro.Type.MetaAccess): Array<String> {
+		var derives: Array<String> = [];
+
+		for (entry in meta.get()) {
+			if (entry.name != ":rustDerive") continue;
+
+			if (entry.params == null || entry.params.length == 0) {
+				#if eval
+				Context.error("`@:rustDerive` requires a single parameter.", entry.pos);
+				#end
+				continue;
+			}
+
+			switch (entry.params[0].expr) {
+				case EConst(CString(s, _)):
+					derives.push(s);
+				case EArrayDecl(values): {
+					for (v in values) {
+						switch (v.expr) {
+							case EConst(CString(s, _)):
+								derives.push(s);
+							case _:
+								#if eval
+								Context.error("`@:rustDerive` array must contain only strings.", entry.pos);
+								#end
+						}
+					}
+				}
+				case _:
+					#if eval
+					Context.error("`@:rustDerive` must be a string or array of strings.", entry.pos);
+					#end
+			}
+		}
+
+		return derives;
+	}
+
+	function mergeUniqueStrings(base: Array<String>, extra: Array<String>): Array<String> {
+		var seen = new Map<String, Bool>();
+		var out: Array<String> = [];
+
+		for (s in base) {
+			if (seen.exists(s)) continue;
+			seen.set(s, true);
+			out.push(s);
+		}
+
+		for (s in extra) {
+			if (seen.exists(s)) continue;
+			seen.set(s, true);
+			out.push(s);
+		}
+
+		return out;
+	}
+
+	function isInterfaceType(t: Type): Bool {
+		var ft = followType(t);
+		return switch (ft) {
+			case TInst(clsRef, _): clsRef.get().isInterface;
+			case _: false;
+		}
+	}
+
+	function isPolymorphicClassType(t: Type): Bool {
+		var ft = followType(t);
+		return switch (ft) {
+			case TInst(clsRef, _): {
+				var cls = clsRef.get();
+				!cls.isInterface && classHasSubclasses(cls);
+			}
+			case _: false;
+		}
+	}
+
+	function ensureSubclassIndex() {
+		if (classHasSubclass != null) return;
+		classHasSubclass = new Map();
+
+		// Mark any superclass of an emitted user class as having a subclass.
+		var classes = getUserClassesForModules();
+		for (cls in classes) {
+			var cur = cls.superClass != null ? cls.superClass.t.get() : null;
+			while (cur != null) {
+				if (shouldEmitClass(cur, false)) {
+					classHasSubclass.set(classKey(cur), true);
+				}
+				cur = cur.superClass != null ? cur.superClass.t.get() : null;
+			}
+		}
+	}
+
+	function classHasSubclasses(cls: ClassType): Bool {
+		ensureSubclassIndex();
+		return classHasSubclass != null && classHasSubclass.exists(classKey(cls));
+	}
+
+	function emitClassTrait(classType: ClassType, funcFields: Array<ClassFuncData>): String {
+		var traitName = classType.name + "Trait";
+		var lines: Array<String> = [];
+		lines.push("pub trait " + traitName + ": std::fmt::Debug {");
+
+		for (cf in getAllInstanceVarFieldsForStruct(classType)) {
+			var ty = rustTypeToString(toRustType(cf.type, cf.pos));
+			lines.push("\tfn __hx_get_" + cf.getHaxeName() + "(&self) -> " + ty + ";");
+			lines.push("\tfn __hx_set_" + cf.getHaxeName() + "(&self, v: " + ty + ");");
+		}
+
+		for (f in funcFields) {
+			if (f.isStatic) continue;
+			if (f.field.getHaxeName() == "new") continue;
+			if (f.expr == null) continue;
+
+			var sigArgs: Array<String> = ["&self"];
+			for (a in f.args) {
+				sigArgs.push(a.getName() + ": " + rustTypeToString(toRustType(a.type, f.field.pos)));
+			}
+			var ret = rustTypeToString(toRustType(f.ret, f.field.pos));
+			lines.push("\tfn " + f.field.getHaxeName() + "(" + sigArgs.join(", ") + ") -> " + ret + ";");
+		}
+
+		lines.push("\tfn __hx_type_id(&self) -> u32;");
+		lines.push("}");
+		return lines.join("\n");
+	}
+
+	function emitClassTraitImplForSelf(classType: ClassType, funcFields: Array<ClassFuncData>): String {
+		var modName = rustModuleNameForClass(classType);
+		var traitPath = "crate::" + modName + "::" + classType.name + "Trait";
+
+		var lines: Array<String> = [];
+		lines.push("impl " + traitPath + " for RefCell<" + classType.name + "> {");
+
+		for (cf in getAllInstanceVarFieldsForStruct(classType)) {
+			var ty = rustTypeToString(toRustType(cf.type, cf.pos));
+
+			lines.push("\tfn __hx_get_" + cf.getHaxeName() + "(&self) -> " + ty + " {");
+			if (isCopyType(cf.type)) {
+				lines.push("\t\tself.borrow()." + cf.getHaxeName());
+			} else {
+				lines.push("\t\tself.borrow()." + cf.getHaxeName() + ".clone()");
+			}
+			lines.push("\t}");
+
+			lines.push("\tfn __hx_set_" + cf.getHaxeName() + "(&self, v: " + ty + ") {");
+			lines.push("\t\tself.borrow_mut()." + cf.getHaxeName() + " = v;");
+			lines.push("\t}");
+		}
+
+		for (f in funcFields) {
+			if (f.isStatic) continue;
+			if (f.field.getHaxeName() == "new") continue;
+			if (f.expr == null) continue;
+
+			var sigArgs: Array<String> = ["&self"];
+			var callArgs: Array<String> = ["self"];
+			for (a in f.args) {
+				sigArgs.push(a.getName() + ": " + rustTypeToString(toRustType(a.type, f.field.pos)));
+				callArgs.push(a.getName());
+			}
+			var ret = rustTypeToString(toRustType(f.ret, f.field.pos));
+			lines.push("\tfn " + f.field.getHaxeName() + "(" + sigArgs.join(", ") + ") -> " + ret + " {");
+			lines.push("\t\t" + classType.name + "::" + f.field.getHaxeName() + "(" + callArgs.join(", ") + ")");
+			lines.push("\t}");
+		}
+
+		lines.push("\tfn __hx_type_id(&self) -> u32 {");
+		lines.push("\t\tcrate::" + modName + "::__HX_TYPE_ID");
+		lines.push("\t}");
+
+		lines.push("}");
+		return lines.join("\n");
+	}
+
+	function emitBaseTraitImplForSubclass(baseType: ClassType, subType: ClassType, subFuncFields: Array<ClassFuncData>): String {
+		var baseMod = rustModuleNameForClass(baseType);
+		var baseTraitPath = "crate::" + baseMod + "::" + baseType.name + "Trait";
+
+		var overrides = new Map<String, ClassFuncData>();
+		for (f in subFuncFields) {
+			if (f.isStatic) continue;
+			if (f.field.getHaxeName() == "new") continue;
+			if (f.expr == null) continue;
+			overrides.set(f.field.getHaxeName() + "/" + f.args.length, f);
+		}
+
+		var lines: Array<String> = [];
+		lines.push("impl " + baseTraitPath + " for RefCell<" + subType.name + "> {");
+
+		for (cf in getAllInstanceVarFieldsForStruct(baseType)) {
+			var ty = rustTypeToString(toRustType(cf.type, cf.pos));
+
+			lines.push("\tfn __hx_get_" + cf.getHaxeName() + "(&self) -> " + ty + " {");
+			if (isCopyType(cf.type)) {
+				lines.push("\t\tself.borrow()." + cf.getHaxeName());
+			} else {
+				lines.push("\t\tself.borrow()." + cf.getHaxeName() + ".clone()");
+			}
+			lines.push("\t}");
+
+			lines.push("\tfn __hx_set_" + cf.getHaxeName() + "(&self, v: " + ty + ") {");
+			lines.push("\t\tself.borrow_mut()." + cf.getHaxeName() + " = v;");
+			lines.push("\t}");
+		}
+
+		for (cf in baseType.fields.get()) {
+			if (cf.getHaxeName() == "new") continue;
+			switch (cf.kind) {
+				case FMethod(_): {
+					var ft = followType(cf.type);
+					var args = switch (ft) {
+						case TFun(a, _): a;
+						case _: [];
+					}
+
+					var sigArgs: Array<String> = ["&self"];
+					var callArgs: Array<String> = ["self"];
+					for (i in 0...args.length) {
+						var a = args[i];
+						var argName = a.name != null && a.name.length > 0 ? a.name : ("a" + i);
+						sigArgs.push(argName + ": " + rustTypeToString(toRustType(a.t, cf.pos)));
+						callArgs.push(argName);
+					}
+
+					var retTy = switch (ft) {
+						case TFun(_, r): r;
+						case _: Context.getType("Void");
+					}
+					var ret = rustTypeToString(toRustType(retTy, cf.pos));
+
+					lines.push("\tfn " + cf.getHaxeName() + "(" + sigArgs.join(", ") + ") -> " + ret + " {");
+					var key = cf.getHaxeName() + "/" + args.length;
+					if (overrides.exists(key)) {
+						lines.push("\t\t" + subType.name + "::" + cf.getHaxeName() + "(" + callArgs.join(", ") + ")");
+					} else {
+						lines.push("\t\ttodo!()");
+					}
+					lines.push("\t}");
+				}
+				case _:
+			}
+		}
+
+		var subMod = rustModuleNameForClass(subType);
+		lines.push("\tfn __hx_type_id(&self) -> u32 {");
+		lines.push("\t\tcrate::" + subMod + "::__HX_TYPE_ID");
+		lines.push("\t}");
+
+		lines.push("}");
+		return lines.join("\n");
+	}
+
+	function typeIdLiteralForClass(cls: ClassType): String {
+		var id = fnv1a32(classKey(cls));
+		var hex = StringTools.hex(id, 8).toLowerCase();
+		return "0x" + hex + "u32";
+	}
+
+	function fnv1a32(s: String): Int {
+		var hash = 0x811C9DC5;
+		for (i in 0...s.length) {
+			hash = hash ^ s.charCodeAt(i);
+			hash = hash * 0x01000193;
+		}
+		return hash;
+	}
+
+	function getAllInstanceVarFieldsForStruct(classType: ClassType): Array<ClassField> {
+		var out: Array<ClassField> = [];
+		var seen = new Map<String, Bool>();
+
+		// Walk base -> derived so field layout is deterministic.
+		var chain: Array<ClassType> = [];
+		var cur: Null<ClassType> = classType;
+		while (cur != null) {
+			chain.unshift(cur);
+			cur = cur.superClass != null ? cur.superClass.t.get() : null;
+		}
+
+		for (cls in chain) {
+			for (cf in cls.fields.get()) {
+				switch (cf.kind) {
+					case FVar(_, _): {
+						var name = cf.getHaxeName();
+						if (seen.exists(name)) continue;
+						seen.set(name, true);
+						out.push(cf);
+					}
+					case _:
+				}
+			}
+		}
+
+		return out;
+	}
+
 	function compileBinop(op: Binop, e1: TypedExpr, e2: TypedExpr, fullExpr: TypedExpr): RustExpr {
 		return switch (op) {
 			case OpAssign:
 				switch (e1.expr) {
+					case TArray(arr, index): {
+						compileArrayIndexAssign(arr, index, e2);
+					}
 					case TField(obj, FInstance(_, _, cfRef)): {
 						var cf = cfRef.get();
 						switch (cf.kind) {
@@ -698,12 +2375,43 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case OpBoolAnd: EBinary("&&", compileExpr(e1), compileExpr(e2));
 			case OpBoolOr: EBinary("||", compileExpr(e1), compileExpr(e2));
 
+			case OpInterval:
+				ERange(compileExpr(e1), compileExpr(e2));
+
 			default:
 				unsupported(fullExpr, "binop" + Std.string(op));
 		}
 	}
 
 	function compileUnop(op: Unop, postFix: Bool, expr: TypedExpr, fullExpr: TypedExpr): RustExpr {
+		if (op == OpIncrement || op == OpDecrement) {
+			// POC: support ++/-- for locals (needed for Haxe's for-loop lowering).
+			return switch (expr.expr) {
+				case TLocal(v): {
+					var delta: RustExpr = TypeHelper.isFloat(expr.t) ? ELitFloat(1.0) : ELitInt(1);
+					var binop = (op == OpIncrement) ? "+" : "-";
+					if (postFix) {
+						EBlock({
+							stmts: [
+								RLet("__tmp", false, null, EPath(v.name)),
+								RSemi(EAssign(EPath(v.name), EBinary(binop, EPath(v.name), delta)))
+							],
+							tail: EPath("__tmp")
+						});
+					} else {
+						EBlock({
+							stmts: [
+								RSemi(EAssign(EPath(v.name), EBinary(binop, EPath(v.name), delta)))
+							],
+							tail: EPath(v.name)
+						});
+					}
+				}
+				case _:
+					unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " unop");
+			}
+		}
+
 		if (postFix) {
 			return unsupported(fullExpr, "postfix unop");
 		}
@@ -755,10 +2463,56 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (TypeHelper.isFloat(t)) return RF64;
 		if (isStringType(ft)) return RString;
 
+		switch (ft) {
+			case TDynamic(_):
+				return RPath("hxrt::dynamic::Dynamic");
+			case _:
+		}
+
+		if (isArrayType(ft)) {
+			var elem = arrayElementType(ft);
+			var elemRust = toRustType(elem, pos);
+			return RPath("Vec<" + rustTypeToString(elemRust) + ">");
+		}
+
 		return switch (ft) {
-			case TInst(clsRef, _): {
+			case TEnum(enumRef, params): {
+				var en = enumRef.get();
+				var key = en.pack.join(".") + "." + en.name;
+				if (key == "haxe.ds.Option" && params.length == 1) {
+					var t = toRustType(params[0], pos);
+					RPath("Option<" + rustTypeToString(t) + ">");
+				} else if (key == "haxe.functional.Result" && params.length >= 1) {
+					var okT = toRustType(params[0], pos);
+					var errT = params.length >= 2 ? toRustType(params[1], pos) : RString;
+					RPath("Result<" + rustTypeToString(okT) + ", " + rustTypeToString(errT) + ">");
+				} else {
+					RPath(en.name);
+				}
+			}
+			case TInst(clsRef, params): {
 				var cls = clsRef.get();
-				RPath("HxRef<" + cls.name + ">");
+				if (isBytesClass(cls)) {
+					return RPath("HxRef<hxrt::bytes::Bytes>");
+				}
+				if (cls.isExtern) {
+					var base = rustExternBasePath(cls);
+					var path = base != null ? base : cls.name;
+					if (params.length > 0) {
+						var rustParams = [for (p in params) rustTypeToString(toRustType(p, pos))];
+						path = path + "<" + rustParams.join(", ") + ">";
+					}
+					return RPath(path);
+				}
+				if (cls.isInterface) {
+					var modName = rustModuleNameForClass(cls);
+					RPath("std::rc::Rc<dyn crate::" + modName + "::" + cls.name + ">");
+				} else if (classHasSubclasses(cls)) {
+					var modName = rustModuleNameForClass(cls);
+					RPath("std::rc::Rc<dyn crate::" + modName + "::" + cls.name + "Trait>");
+				} else {
+					RPath("HxRef<" + cls.name + ">");
+				}
 			}
 			case _: {
 				#if eval
@@ -766,6 +2520,65 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				#end
 				RUnit;
 			}
+		}
+	}
+
+	function isCopyType(t: Type): Bool {
+		var ft = followType(t);
+		return TypeHelper.isBool(ft) || TypeHelper.isInt(ft) || TypeHelper.isFloat(ft);
+	}
+
+	function isDynamicType(t: Type): Bool {
+		return switch (followType(t)) {
+			case TDynamic(_): true;
+			case _: false;
+		}
+	}
+
+	function isBytesClass(cls: ClassType): Bool {
+		return cls.pack.join(".") == "haxe.io" && cls.name == "Bytes";
+	}
+
+	function isBytesType(t: Type): Bool {
+		return switch (followType(t)) {
+			case TInst(clsRef, _): isBytesClass(clsRef.get());
+			case _: false;
+		}
+	}
+
+	function isArrayType(t: Type): Bool {
+		var ft = followType(t);
+		return switch (ft) {
+			case TInst(clsRef, _): {
+				var cls = clsRef.get();
+				cls.pack.length == 0 && cls.module == "Array" && cls.name == "Array";
+			}
+			case _: false;
+		}
+	}
+
+	function arrayElementType(t: Type): Type {
+		var ft = followType(t);
+		return switch (ft) {
+			case TInst(clsRef, params): {
+				var cls = clsRef.get();
+				if (cls.pack.length == 0 && cls.module == "Array" && cls.name == "Array") {
+					return params.length > 0 ? params[0] : ft;
+				}
+				ft;
+			}
+			case _: ft;
+		}
+	}
+
+	function rustTypeToString(t: reflaxe.rust.ast.RustAST.RustType): String {
+		return switch (t) {
+			case RUnit: "()";
+			case RBool: "bool";
+			case RI32: "i32";
+			case RF64: "f64";
+			case RString: "String";
+			case RPath(path): path;
 		}
 	}
 }

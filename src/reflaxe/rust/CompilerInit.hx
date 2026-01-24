@@ -8,6 +8,8 @@ import haxe.macro.Context;
 import reflaxe.ReflectCompiler;
 import reflaxe.preprocessors.ExpressionPreprocessor;
 import reflaxe.preprocessors.ExpressionPreprocessor.*;
+import reflaxe.rust.macros.BoundaryEnforcer;
+import reflaxe.rust.macros.StrictModeEnforcer;
 
 /**
  * Initialization and registration of the Rust compiler.
@@ -42,6 +44,12 @@ class CompilerInit {
 			var standardLibrary = Path.normalize(Path.join([libraryRoot, "std"]));
 			Compiler.addClassPath(standardLibrary);
 		} catch (e: haxe.Exception) {}
+
+		// Repository policy: keep examples/snapshots "pure" (no __rust__ escape hatches).
+		BoundaryEnforcer.init();
+
+		// Opt-in user policy: forbid __rust__ injection in project sources.
+		StrictModeEnforcer.init();
 
 		var prepasses: Array<ExpressionPreprocessor> = [];
 

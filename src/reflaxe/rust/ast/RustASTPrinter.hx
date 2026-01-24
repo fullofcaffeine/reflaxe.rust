@@ -25,6 +25,7 @@ class RustASTPrinter {
 		return switch (item) {
 			case RFn(f): printFunction(f, 0);
 			case RStruct(s): printStruct(s);
+			case REnum(e): printEnum(e);
 			case RImpl(i): printImpl(i);
 			case RRaw(s): s;
 		}
@@ -42,6 +43,31 @@ class RustASTPrinter {
 			lines.push("    " + prefix + f.name + ": " + printType(f.ty) + ",");
 		}
 		return head + " {\n" + lines.join("\n") + "\n}";
+	}
+
+	static function printEnum(e: RustAST.RustEnum): String {
+		var parts: Array<String> = [];
+		if (e.derives.length > 0) {
+			parts.push("#[derive(" + e.derives.join(", ") + ")]");
+		}
+
+		var head = (e.isPub ? "pub " : "") + "enum " + e.name;
+		if (e.variants.length == 0) {
+			parts.push(head + " { }");
+			return parts.join("\n");
+		}
+
+		var lines: Array<String> = [];
+		for (v in e.variants) {
+			if (v.args.length == 0) {
+				lines.push("    " + v.name + ",");
+			} else {
+				var args = v.args.map(a -> printType(a)).join(", ");
+				lines.push("    " + v.name + "(" + args + "),");
+			}
+		}
+		parts.push(head + " {\n" + lines.join("\n") + "\n}");
+		return parts.join("\n");
 	}
 
 	static function printImpl(i: RustAST.RustImpl): String {
@@ -62,7 +88,11 @@ class RustASTPrinter {
 		var sigParts: Array<String> = [];
 		if (f.isPub) sigParts.push("pub");
 		sigParts.push("fn");
-		sigParts.push(f.name);
+		var name = f.name;
+		if (f.generics != null && f.generics.length > 0) {
+			name += "<" + f.generics.join(", ") + ">";
+		}
+		sigParts.push(name);
 
 		var args = f.args.map(a -> '${a.name}: ${printType(a.ty)}').join(", ");
 		var sig = sigParts.join(" ") + '($args)';
@@ -118,6 +148,12 @@ class RustASTPrinter {
 				printExpr(e, indent) + ";";
 			case RReturn(e):
 				e == null ? "return;" : ("return " + printExpr(e, indent) + ";");
+			case RWhile(cond, body):
+				"while " + printExpr(cond, indent) + " " + printBlock(body, indent);
+			case RLoop(body):
+				"loop " + printBlock(body, indent);
+			case RFor(name, iter, body):
+				"for " + name + " in " + printExpr(iter, indent) + " " + printBlock(body, indent);
 		}
 	}
 
@@ -139,14 +175,28 @@ class RustASTPrinter {
 				var a = args.map(x -> printExpr(x, indent)).join(", ");
 				printExpr(func, indent) + "(" + a + ")";
 			}
+			case EClosure(args, body): {
+				var a = args.join(", ");
+				"|" + a + "| " + printBlock(body, indent);
+			}
 			case EMacroCall(name, args): {
 				var a = args.map(x -> printExpr(x, indent)).join(", ");
-				name + "!(" + a + ")";
+				if (name == "vec") {
+					name + "![" + a + "]";
+				} else {
+					name + "!(" + a + ")";
+				}
 			}
 			case EBinary(op, left, right):
 				"(" + printExpr(left, indent) + " " + op + " " + printExpr(right, indent) + ")";
 			case EUnary(op, expr):
 				"(" + op + printExpr(expr, indent) + ")";
+			case ERange(start, end):
+				printExpr(start, indent) + ".." + printExpr(end, indent);
+			case ECast(expr, ty):
+				"(" + printExpr(expr, indent) + " as " + ty + ")";
+			case EIndex(recv, index):
+				printExpr(recv, indent) + "[" + printExpr(index, indent) + "]";
 			case EAssign(lhs, rhs):
 				printExpr(lhs, indent) + " = " + printExpr(rhs, indent);
 			case EBlock(b):
@@ -160,6 +210,40 @@ class RustASTPrinter {
 					"if " + printExpr(cond, indent) + " " + thenPrinted + " else " + elsePrinted;
 				}
 			}
+			case EMatch(scrutinee, arms): {
+				var ind = indentString(indent);
+				var innerInd = indentString(indent + 1);
+
+				var lines: Array<String> = [];
+				for (a in arms) {
+					var pat = printPattern(a.pat);
+					var ex = printExpr(a.expr, indent + 1);
+					var needsComma = switch (a.expr) {
+						case EBlock(_): false;
+						case _: true;
+					}
+					lines.push(innerInd + pat + " => " + ex + (needsComma ? "," : ""));
+				}
+
+				if (lines.length == 0) {
+					"match " + printExpr(scrutinee, indent) + " { }";
+				} else {
+					"match " + printExpr(scrutinee, indent) + " {\n" + lines.join("\n") + "\n" + ind + "}";
+				}
+			}
+		}
+	}
+
+	static function printPattern(p: RustAST.RustPattern): String {
+		return switch (p) {
+			case PWildcard: "_";
+			case PBind(name): name;
+			case PPath(path): path;
+			case PLitInt(v): Std.string(v);
+			case PLitBool(v): v ? "true" : "false";
+			case PLitString(v): '"' + escapeStringLiteral(v) + '"';
+			case PTupleStruct(path, fields): path + "(" + fields.map(printPattern).join(", ") + ")";
+			case POr(patterns): patterns.map(printPattern).join(" | ");
 		}
 	}
 

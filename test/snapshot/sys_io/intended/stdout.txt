@@ -1,0 +1,14 @@
+--- args ---
+0
+--- file content ---
+hello
+true
+false
+--- file bytes ---
+ABC
+--- dir listing ---
+true
+true
+false
+false
+false

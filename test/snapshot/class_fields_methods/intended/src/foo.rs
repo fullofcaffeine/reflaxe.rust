@@ -4,6 +4,10 @@ use crate::HxRef;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+pub const __HX_TYPE_ID: u32 = 0x43dd80b3u32;
+
+#[derive(Debug)]
+
 pub struct Foo {
     pub x: i32,
 }
@@ -19,7 +23,7 @@ impl Foo {
         return self_;
     }
 
-    pub fn inc(self_: &HxRef<Foo>) {
+    pub fn inc(self_: &RefCell<Foo>) {
         {
             let __tmp = (self_.borrow().x + 1);
             self_.borrow_mut().x = __tmp.clone();
@@ -27,7 +31,7 @@ impl Foo {
         };
     }
 
-    pub fn getX(self_: &HxRef<Foo>) -> i32 {
+    pub fn getX(self_: &RefCell<Foo>) -> i32 {
         return self_.borrow().x;
     }
 }
