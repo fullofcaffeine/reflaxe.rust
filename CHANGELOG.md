@@ -1,3 +1,10 @@
+# [0.3.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.2.0...v0.3.0) (2026-01-24)
+
+
+### Features
+
+* **compiler:** add rust_deny_warnings ([464b2b3](https://github.com/fullofcaffeine/reflaxe.rust/commit/464b2b3d32b59028dcfc539204fb70a3790f1a37))
+
 # [0.2.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.1.0...v0.2.0) (2026-01-24)
 
 
