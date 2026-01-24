@@ -13,7 +13,7 @@ fn main() {
     v.push(1);
     v.push(2);
     let mut sum: i32 = 0;
-    for x in v.iter().cloned() {
+    for x in v.iter().copied() {
         sum = sum + x;
     }
     let mut sum2: i32 = 0;
@@ -21,7 +21,7 @@ fn main() {
         let r: &Vec<i32> = &v;
         {
             let s: &[i32] = crate::rust_slice_tools::SliceTools::from_vec(r);
-            for y in s.iter().cloned() {
+            for y in s.iter().copied() {
                 sum2 = sum2 + y;
             }
         };
