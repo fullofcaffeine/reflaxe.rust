@@ -6,10 +6,10 @@ use std::rc::Rc;
 type HxRef<T> = Rc<RefCell<T>>;
 
 mod person;
-mod rust_serde__serde_json;
+mod rust_serde_serde_json;
 mod sys;
 use crate::person::Person;
-use crate::rust_serde__serde_json::SerdeJson;
+use crate::rust_serde_serde_json::SerdeJson;
 use crate::sys::Sys;
 
 fn main() {

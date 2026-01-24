@@ -70,6 +70,7 @@ enum RustType {
 	RI32;
 	RF64;
 	RString;
+	RRef(inner: RustType, mutable: Bool);
 	RPath(path: String);
 }
 

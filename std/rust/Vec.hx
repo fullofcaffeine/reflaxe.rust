@@ -14,7 +14,10 @@ package rust;
 extern class Vec<T> {
 	public function new();
 
+	@:rustMutating
 	public function push(value: T): Void;
+
+	@:rustMutating
 	public function pop(): Option<T>;
 	public function clone(): Vec<T>;
 }
