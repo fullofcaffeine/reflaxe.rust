@@ -29,26 +29,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - language: "javascript-typescript"
-            build-mode: "none"
           - language: "rust"
-            build-mode: "manual"
+            build-mode: "none"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
 
-      - name: Manual build (Rust)
-        if: matrix.language == 'rust'
-        run: |
-          set -euo pipefail
-          cargo build -q -p hxrt
-
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
