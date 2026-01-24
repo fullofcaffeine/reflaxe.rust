@@ -32,7 +32,7 @@ jobs:
           - language: "javascript-typescript"
             build-mode: "none"
           - language: "rust"
-            build-mode: "none"
+            build-mode: "manual"
 
     steps:
       - name: Checkout
@@ -43,6 +43,12 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
+
+      - name: Manual build (Rust)
+        if: matrix.language == 'rust'
+        run: |
+          set -euo pipefail
+          cargo build -q -p hxrt
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
