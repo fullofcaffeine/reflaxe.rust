@@ -14,7 +14,7 @@ test/run-snapshots.sh
 ```
 
 This:
-- recompiles each case with `haxe compile.hxml`
+- recompiles each case with `haxe compile.hxml -D rust_no_build` (codegen-only; the harness builds via Cargo)
 - checks `cargo fmt -- --check`
 - checks `cargo build -q`
 - diffs `intended/` vs `out/`
@@ -26,4 +26,3 @@ Only do this after you’ve inspected the generated Rust and you’re confident 
 ```sh
 test/run-snapshots.sh --case class_fields_methods --update
 ```
-

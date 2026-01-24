@@ -2,9 +2,9 @@
 
 ## Build a native binary
 
-After codegen (`-D rust_output=...`) you can optionally ask the compiler to invoke Cargo:
+After codegen (`-D rust_output=...`) the compiler invokes Cargo by default (debug build).
 
-- Debug: add `-D rust_build`
+- Opt-out (codegen only): add `-D rust_no_build` (alias: `-D rust_codegen_only`)
 - Release: add `-D rust_build_release` (alias: `-D rust_release`)
 - Cross target: add `-D rust_target=<triple>` (passed to `cargo build --target <triple>`)
 

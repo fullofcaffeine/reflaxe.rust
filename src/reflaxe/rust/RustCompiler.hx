@@ -796,7 +796,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 
-		var wantsBuild = Context.defined("rust_build") || Context.defined("rust_build_release") || Context.defined("rust_release");
+		var disableBuild = Context.defined("rust_no_build") || Context.defined("rust_codegen_only");
+		var wantsBuild = !disableBuild;
 		if (wantsBuild) {
 			var args = ["build", "--manifest-path", manifest];
 			if (Context.defined("rust_build_release") || Context.defined("rust_release")) {
