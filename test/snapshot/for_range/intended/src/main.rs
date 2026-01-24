@@ -14,13 +14,13 @@ fn main() {
     {
         let mut _g: i32 = 0;
         let mut _g1: i32 = n;
-        while (_g < _g1) {
+        while _g < _g1 {
             let mut i: i32 = {
                 let __tmp = _g;
-                _g = (_g + 1);
+                _g = _g + 1;
                 __tmp
             };
-            sum = (sum + i);
+            sum = sum + i;
         }
     };
     println!("{}", sum);

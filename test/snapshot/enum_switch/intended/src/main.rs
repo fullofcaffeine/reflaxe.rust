@@ -24,7 +24,6 @@ fn main() {
             }
         }
         Action::Toggle => String::from("toggle"),
-        _ => todo!(),
     };
     println!("{}", s);
 }

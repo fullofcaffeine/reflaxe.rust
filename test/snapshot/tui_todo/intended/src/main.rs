@@ -28,43 +28,42 @@ fn main() {
     let mut selected: i32 = 0;
     let mut frame: i32 = 0;
     let mut i: i32 = 0;
-    while (i < (actions.len() as i32)) {
-        let mut action: Action = actions[(i as usize)].clone();
+    while i < actions.len() as i32 {
+        let mut action: Action = actions[i as usize].clone();
         match action.clone() {
             Action::Up => {
-                if (selected > 0) {
-                    selected = (selected - 1)
+                if selected > 0 {
+                    selected = selected - 1
                 };
             }
             Action::Down => {
-                if (selected < ((tasks.len() as i32) - 1)) {
-                    selected = (selected + 1)
+                if selected < tasks.len() as i32 - 1 {
+                    selected = selected + 1
                 };
             }
             Action::Toggle => {
-                Task::toggle((&tasks[(selected as usize)].clone()));
+                Task::toggle(&tasks[selected as usize].clone());
             }
             Action::Quit => {
                 break;
             }
-            _ => {}
         };
         let mut lines: String = String::from("");
         let mut j: i32 = 0;
-        while (j < (tasks.len() as i32)) {
+        while j < tasks.len() as i32 {
             lines = format!(
                 "{}{}",
                 format!(
                     "{}{}",
                     lines,
-                    Task::line((&tasks[(j as usize)].clone()), (j == selected))
+                    Task::line(&tasks[j as usize].clone(), j == selected)
                 ),
                 String::from("\n")
             );
-            j = (j + 1);
+            j = j + 1;
         }
         crate::tui_demo::run_frame(frame, lines.clone());
-        frame = (frame + 1);
-        i = (i + 1);
+        frame = frame + 1;
+        i = i + 1;
     }
 }

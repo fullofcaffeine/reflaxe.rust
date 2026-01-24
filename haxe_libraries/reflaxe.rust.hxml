@@ -1,0 +1,17 @@
+# Reflaxe.Rust Library Configuration
+#
+# Self-referential config so examples/snapshots can use `-lib reflaxe.rust`
+# inside this repo without needing `haxelib dev`.
+#
+# Paths are resolved relative to the current working directory (CWD).
+# Use `${SCOPE_DIR}` so it works from any subdirectory.
+
+-cp ${SCOPE_DIR}/src/
+-cp ${SCOPE_DIR}/std/
+
+-lib reflaxe
+
+-D reflaxe.rust=0.0.1
+
+--macro reflaxe.rust.CompilerBootstrap.Start()
+--macro reflaxe.rust.CompilerInit.Start()

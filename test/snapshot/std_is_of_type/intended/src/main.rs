@@ -15,5 +15,5 @@ use crate::sys::Sys;
 fn main() {
     let mut a: std::rc::Rc<dyn crate::animal::AnimalTrait> = Dog::new();
     println!("{}", true);
-    println!("{}", (a.__hx_type_id() == crate::dog::__HX_TYPE_ID));
+    println!("{}", a.__hx_type_id() == crate::dog::__HX_TYPE_ID);
 }

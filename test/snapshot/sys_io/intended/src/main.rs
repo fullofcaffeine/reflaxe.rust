@@ -14,7 +14,7 @@ use crate::sys_io__file::File;
 
 fn main() {
     println!("{}", String::from("--- args ---"));
-    println!("{}", (Sys::args().len() as i32));
+    println!("{}", Sys::args().len() as i32);
     println!("{}", String::from("--- file content ---"));
     let mut path: String = String::from("tmp_sys_io.txt");
     File::saveContent(path.clone(), String::from("hello").clone());
@@ -49,22 +49,22 @@ fn main() {
     let mut foundDotDot: bool = false;
     {
         let mut _g: i32 = 0;
-        while (_g < (entries.len() as i32)) {
-            let mut e: String = entries[(_g as usize)].clone();
+        while _g < entries.len() as i32 {
+            let mut e: String = entries[_g as usize].clone();
             {
-                _g = (_g + 1);
+                _g = _g + 1;
                 _g
             };
-            if (e == String::from("a.txt")) {
+            if e == String::from("a.txt") {
                 foundA = true
             };
-            if (e == String::from("b.txt")) {
+            if e == String::from("b.txt") {
                 foundB = true
             };
-            if (e == String::from(".")) {
+            if e == String::from(".") {
                 foundDot = true
             };
-            if (e == String::from("..")) {
+            if e == String::from("..") {
                 foundDotDot = true
             };
         }

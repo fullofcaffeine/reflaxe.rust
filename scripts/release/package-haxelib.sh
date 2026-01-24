@@ -24,9 +24,13 @@ cp -R src "$tmp/src"
 cp -R vendor "$tmp/vendor"
 cp -R std "$tmp/std"
 cp -R runtime "$tmp/runtime"
+cp -R haxe_libraries "$tmp/haxe_libraries"
+cp .haxerc "$tmp/.haxerc"
+cp package.json "$tmp/package.json"
+cp package-lock.json "$tmp/package-lock.json"
 cp extraParams.hxml "$tmp/extraParams.hxml"
 cp haxelib.json "$tmp/haxelib.json"
 
-(cd "$tmp" && zip -r -X "$out_abs" src vendor std runtime extraParams.hxml haxelib.json >/dev/null)
+(cd "$tmp" && zip -r -X "$out_abs" src vendor std runtime haxe_libraries .haxerc package.json package-lock.json extraParams.hxml haxelib.json >/dev/null)
 
 echo "[package] wrote: $out"

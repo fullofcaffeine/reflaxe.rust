@@ -11,12 +11,12 @@ use crate::sys::Sys;
 fn main() {
     let mut xs: Vec<i32> = vec![1, 2, 3];
     let mut i: i32 = 1;
-    println!("{}", (xs.len() as i32));
-    println!("{}", xs[(i as usize)]);
+    println!("{}", xs.len() as i32);
+    println!("{}", xs[i as usize]);
     {
         let __tmp = 10;
-        xs[(i as usize)] = __tmp.clone();
+        xs[i as usize] = __tmp.clone();
         __tmp
     };
-    println!("{}", xs[(i as usize)]);
+    println!("{}", xs[i as usize]);
 }

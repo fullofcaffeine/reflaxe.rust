@@ -1,5 +1,9 @@
 .DS_Store
 
+# Node / lix
+node_modules/
+npm-debug.log*
+
 # Rust build artifacts
 target/
 

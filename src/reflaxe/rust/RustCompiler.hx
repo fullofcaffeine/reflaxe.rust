@@ -1319,6 +1319,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		var scrutinee = ECall(EField(compileExpr(enumExpr), "clone"), []);
 		var arms: Array<reflaxe.rust.ast.RustAST.RustMatchArm> = [];
+		var matchedVariants = new Map<String, Bool>();
 
 		for (c in cases) {
 			var patterns: Array<reflaxe.rust.ast.RustAST.RustPattern> = [];
@@ -1329,6 +1330,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				var ef = enumFieldByIndex(en, idx);
 				if (ef == null) return unsupported(v, "enum switch index");
 
+				matchedVariants.set(ef.name, true);
 				var pat = enumFieldToPattern(en, ef);
 				patterns.push(pat);
 			}
@@ -1338,7 +1340,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			arms.push({ pat: pat, expr: compileSwitchArmExpr(c.expr, expectedReturn) });
 		}
 
-		arms.push({ pat: PWildcard, expr: edef != null ? compileSwitchArmExpr(edef, expectedReturn) : defaultSwitchArmExpr(expectedReturn) });
+		// If there's no default branch and we covered every enum constructor, the match is exhaustive.
+		// In that case, omit the wildcard arm to avoid unreachable_patterns warnings and keep output idiomatic.
+		var isExhaustive = true;
+		for (name in en.constructs.keys()) {
+			if (!matchedVariants.exists(name)) {
+				isExhaustive = false;
+				break;
+			}
+		}
+
+		if (edef != null || !isExhaustive) {
+			arms.push({
+				pat: PWildcard,
+				expr: edef != null ? compileSwitchArmExpr(edef, expectedReturn) : defaultSwitchArmExpr(expectedReturn)
+			});
+		}
 		return EMatch(scrutinee, arms);
 	}
 
