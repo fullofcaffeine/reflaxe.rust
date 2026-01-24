@@ -5,6 +5,14 @@ package rust.tui;
 @:rustCargo({ name: "crossterm", version: "0.27" })
 @:native("crate::tui_demo")
 extern class TuiDemo {
+	/**
+	 * Force headless (true) or interactive (false) mode.
+	 *
+	 * If not set, `enter()` will auto-detect based on whether stdin/stdout are TTYs.
+	 */
+	@:native("set_headless")
+	public static function setHeadless(headless: Bool): Void;
+
 	@:native("run_frame")
 	public static function runFrame(frame: Int, tasks: String): Void;
 
