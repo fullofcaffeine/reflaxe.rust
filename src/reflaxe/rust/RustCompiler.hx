@@ -322,12 +322,17 @@ enum RustProfile {
 
 				// User classes
 				var otherUserClasses = getUserClassesForModules();
-				headerLines = headerLines.concat([
-					"#![allow(dead_code)]",
+				var lintLines: Array<String> = [];
+				if (Context.defined("rust_deny_warnings")) {
+					lintLines.push("#![deny(warnings)]");
+				}
+				lintLines.push("#![allow(dead_code)]");
+
+				headerLines = headerLines.concat(lintLines.concat([
 					"",
 					"type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;",
 					""
-				]);
+				]));
 
 				for (cls in otherUserClasses) {
 					var modName = rustModuleNameForClass(cls);

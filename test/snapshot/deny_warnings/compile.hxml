@@ -1,0 +1,8 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_strict_examples
+-D reflaxe_rust_profile=idiomatic
+-D rust_deny_warnings
+-D rust_output=out
+-main Main
+

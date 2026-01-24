@@ -92,6 +92,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Default: compiling with `-D rust_output=...` generates Rust and runs `cargo build` (debug) best-effort.
 - The generated Cargo crate emits a minimal `.gitignore` by default (opt-out: `-D rust_no_gitignore`).
 - Codegen-only: add `-D rust_no_build` (alias: `-D rust_codegen_only`).
+- Deny warnings (opt-in): add `-D rust_deny_warnings` to emit `#![deny(warnings)]` in the generated crate root.
 - Release: add `-D rust_build_release` / `-D rust_release`.
 - Optional target triple: `-D rust_target=x86_64-unknown-linux-gnu` (passed to `cargo build --target ...`).
 - Cargo/tooling knobs (for parity with other targets’ tool scaffolding):
