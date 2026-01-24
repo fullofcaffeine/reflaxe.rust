@@ -10,11 +10,8 @@ mod sys;
 fn main() {
     let a: crate::action::Action = crate::action::Action::Move(2);
     let s: String = match a.clone() {
-        crate::action::Action::Move(_) => {
-            let _g: i32 = match a.clone() {
-                crate::action::Action::Move(__p) => __p,
-                _ => unreachable!(),
-            };
+        crate::action::Action::Move(__p) => {
+            let _g: i32 = __p;
             {
                 let d: i32 = _g;
                 format!("{}{}", String::from("move:"), d)

@@ -45,11 +45,8 @@ fn main() {
     println!("{}", String::from("--- Option ---"));
     let o: Option<i32> = Option::Some(5);
     match o.clone() {
-        Option::Some(_) => {
-            let _g: i32 = match o.clone() {
-                Option::Some(__p) => __p,
-                _ => unreachable!(),
-            };
+        Option::Some(__p) => {
+            let _g: i32 = __p;
             {
                 let v: i32 = _g;
                 println!("{}", v);
@@ -61,11 +58,8 @@ fn main() {
     };
     let o2: Option<i32> = Option::None;
     match o2.clone() {
-        Option::Some(_) => {
-            let _g_2: i32 = match o2.clone() {
-                Option::Some(__p) => __p,
-                _ => unreachable!(),
-            };
+        Option::Some(__p) => {
+            let _g_2: i32 = __p;
             {
                 let v_2: i32 = _g_2;
                 println!("{}", v_2);
@@ -78,21 +72,15 @@ fn main() {
     println!("{}", String::from("--- Result ---"));
     let r: Result<i32, String> = Result::Ok(7);
     match r.clone() {
-        Result::Ok(_) => {
-            let _g_3: i32 = match r.clone() {
-                Result::Ok(__p) => __p,
-                _ => unreachable!(),
-            };
+        Result::Ok(__p) => {
+            let _g_3: i32 = __p;
             {
                 let v_3: i32 = _g_3;
                 println!("{}", v_3);
             };
         }
-        Result::Err(_) => {
-            let _g_4: String = match r.clone() {
-                Result::Err(__p) => __p,
-                _ => unreachable!(),
-            };
+        Result::Err(__p) => {
+            let _g_4: String = __p;
             {
                 let e: String = _g_4;
                 println!("{}", e);
@@ -101,21 +89,15 @@ fn main() {
     };
     let r2: Result<i32, String> = Result::Err(String::from("fail").clone());
     match r2.clone() {
-        Result::Ok(_) => {
-            let _g_5: i32 = match r2.clone() {
-                Result::Ok(__p) => __p,
-                _ => unreachable!(),
-            };
+        Result::Ok(__p) => {
+            let _g_5: i32 = __p;
             {
                 let v_4: i32 = _g_5;
                 println!("{}", v_4);
             };
         }
-        Result::Err(_) => {
-            let _g_6: String = match r2.clone() {
-                Result::Err(__p) => __p,
-                _ => unreachable!(),
-            };
+        Result::Err(__p) => {
+            let _g_6: String = __p;
             {
                 let e_2: String = _g_6;
                 println!("{}", e_2);

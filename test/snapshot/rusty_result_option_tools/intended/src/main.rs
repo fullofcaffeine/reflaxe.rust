@@ -13,11 +13,8 @@ fn main() {
     let n: i32 = {
         let o_2: Option<i32> = {
             let _g: Option<i32> = match o.clone() {
-                Option::Some(_) => {
-                    let _g_2: i32 = match o.clone() {
-                        Option::Some(__p) => __p,
-                        _ => unreachable!(),
-                    };
+                Option::Some(__p) => {
+                    let _g_2: i32 = __p;
                     {
                         let v: i32 = _g_2;
                         Option::Some(v + 1)
@@ -26,11 +23,8 @@ fn main() {
                 Option::None => Option::None,
             };
             match _g.clone() {
-                Option::Some(_) => {
-                    let _g_3: i32 = match _g.clone() {
-                        Option::Some(__p) => __p,
-                        _ => unreachable!(),
-                    };
+                Option::Some(__p) => {
+                    let _g_3: i32 = __p;
                     {
                         let v_2: i32 = _g_3;
                         if v_2 > 0 {
@@ -44,11 +38,8 @@ fn main() {
             }
         };
         match o_2.clone() {
-            Option::Some(_) => {
-                let _g_4: i32 = match o_2.clone() {
-                    Option::Some(__p) => __p,
-                    _ => unreachable!(),
-                };
+            Option::Some(__p) => {
+                let _g_4: i32 = __p;
                 {
                     let v_3: i32 = _g_4;
                     v_3
@@ -60,21 +51,15 @@ fn main() {
     let r: Result<i32, String> = Result::Ok(n);
     let r2: Result<i32, String> = {
         let _g_5: Result<i32, String> = match r.clone() {
-            Result::Ok(_) => {
-                let _g_6: i32 = match r.clone() {
-                    Result::Ok(__p) => __p,
-                    _ => unreachable!(),
-                };
+            Result::Ok(__p) => {
+                let _g_6: i32 = __p;
                 {
                     let v_4: i32 = _g_6;
                     Result::Ok(v_4 + 5)
                 }
             }
-            Result::Err(_) => {
-                let _g_7: String = match r.clone() {
-                    Result::Err(__p) => __p,
-                    _ => unreachable!(),
-                };
+            Result::Err(__p) => {
+                let _g_7: String = __p;
                 {
                     let _e: String = _g_7;
                     Result::Err(_e.clone())
@@ -82,11 +67,8 @@ fn main() {
             }
         };
         match _g_5.clone() {
-            Result::Ok(_) => {
-                let _g_8: i32 = match _g_5.clone() {
-                    Result::Ok(__p) => __p,
-                    _ => unreachable!(),
-                };
+            Result::Ok(__p) => {
+                let _g_8: i32 = __p;
                 {
                     let v_5: i32 = _g_8;
                     if v_5 > 100 {
@@ -96,11 +78,8 @@ fn main() {
                     }
                 }
             }
-            Result::Err(_) => {
-                let _g_9: String = match _g_5.clone() {
-                    Result::Err(__p) => __p,
-                    _ => unreachable!(),
-                };
+            Result::Err(__p) => {
+                let _g_9: String = __p;
                 {
                     let _e_2: String = _g_9;
                     Result::Err(_e_2.clone())
@@ -109,21 +88,15 @@ fn main() {
         }
     };
     let msg: i32 = match r2.clone() {
-        Result::Ok(_) => {
-            let _g_10: i32 = match r2.clone() {
-                Result::Ok(__p) => __p,
-                _ => unreachable!(),
-            };
+        Result::Ok(__p) => {
+            let _g_10: i32 = __p;
             {
                 let v_6: i32 = _g_10;
                 v_6
             }
         }
-        Result::Err(_) => {
-            let _g_11: String = match r2.clone() {
-                Result::Err(__p) => __p,
-                _ => unreachable!(),
-            };
+        Result::Err(__p) => {
+            let _g_11: String = __p;
             {
                 let _e_3: String = _g_11;
                 -1
@@ -147,21 +120,15 @@ fn main() {
         }
     };
     match caught.clone() {
-        Result::Ok(_) => {
-            let _g_12: i32 = match caught.clone() {
-                Result::Ok(__p) => __p,
-                _ => unreachable!(),
-            };
+        Result::Ok(__p) => {
+            let _g_12: i32 = __p;
             {
                 let v_7: i32 = _g_12;
                 println!("{}", v_7);
             };
         }
-        Result::Err(_) => {
-            let _g_13: String = match caught.clone() {
-                Result::Err(__p) => __p,
-                _ => unreachable!(),
-            };
+        Result::Err(__p) => {
+            let _g_13: String = __p;
             {
                 let e_2: String = _g_13;
                 println!("{}", e_2);

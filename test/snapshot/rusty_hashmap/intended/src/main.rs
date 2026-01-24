@@ -18,11 +18,8 @@ fn main() {
         {
             let v: Option<&i32> = m.get(k);
             match v.clone() {
-                Option::Some(_) => {
-                    let _g: &i32 = match v.clone() {
-                        Option::Some(__p) => __p,
-                        _ => unreachable!(),
-                    };
+                Option::Some(__p) => {
+                    let _g: &i32 = __p;
                     {
                         let x: &i32 = _g;
                         println!("{:?}", x);

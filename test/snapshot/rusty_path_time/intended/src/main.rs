@@ -28,11 +28,8 @@ fn main() {
     let elapsed_ms: f64 = crate::rust_instant_tools::InstantTools::elapsed_millis(&started);
     if os_lossy != String::from("") && elapsed_ms >= 0.0 {
         match pushed_name.clone() {
-            Option::Some(_) => {
-                let _g: String = match pushed_name.clone() {
-                    Option::Some(__p) => __p,
-                    _ => unreachable!(),
-                };
+            Option::Some(__p) => {
+                let _g: String = __p;
                 {
                     let name: String = _g;
                     println!("{}", name);

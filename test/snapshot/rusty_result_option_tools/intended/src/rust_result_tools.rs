@@ -9,18 +9,12 @@ pub struct ResultTools {}
 impl ResultTools {
     pub fn is_ok<T: Clone, E: Clone>(r: Result<T, E>) -> bool {
         return match r.clone() {
-            Result::Ok(_) => {
-                let _g: T = match r.clone() {
-                    Result::Ok(__p) => __p,
-                    _ => unreachable!(),
-                };
+            Result::Ok(__p) => {
+                let _g: T = __p;
                 true
             }
-            Result::Err(_) => {
-                let _g_2: E = match r.clone() {
-                    Result::Err(__p) => __p,
-                    _ => unreachable!(),
-                };
+            Result::Err(__p) => {
+                let _g_2: E = __p;
                 false
             }
         };
@@ -28,18 +22,12 @@ impl ResultTools {
 
     pub fn is_err<T: Clone, E: Clone>(r: Result<T, E>) -> bool {
         return !(match r.clone() {
-            Result::Ok(_) => {
-                let _g: T = match r.clone() {
-                    Result::Ok(__p) => __p,
-                    _ => unreachable!(),
-                };
+            Result::Ok(__p) => {
+                let _g: T = __p;
                 true
             }
-            Result::Err(_) => {
-                let _g_2: E = match r.clone() {
-                    Result::Err(__p) => __p,
-                    _ => unreachable!(),
-                };
+            Result::Err(__p) => {
+                let _g_2: E = __p;
                 false
             }
         });
@@ -47,21 +35,15 @@ impl ResultTools {
 
     pub fn unwrap_or<T: Clone, E: Clone>(r: Result<T, E>, fallback: T) -> T {
         return match r.clone() {
-            Result::Ok(_) => {
-                let _g: T = match r.clone() {
-                    Result::Ok(__p) => __p,
-                    _ => unreachable!(),
-                };
+            Result::Ok(__p) => {
+                let _g: T = __p;
                 {
                     let v: T = _g;
                     v
                 }
             }
-            Result::Err(_) => {
-                let _g_2: E = match r.clone() {
-                    Result::Err(__p) => __p,
-                    _ => unreachable!(),
-                };
+            Result::Err(__p) => {
+                let _g_2: E = __p;
                 fallback
             }
         };
