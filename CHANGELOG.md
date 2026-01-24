@@ -1,3 +1,10 @@
+# [0.7.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.6.0...v0.7.0) (2026-01-24)
+
+
+### Features
+
+* **rusty:** support HashMap key iteration and owned iter adapters ([af48fff](https://github.com/fullofcaffeine/reflaxe.rust/commit/af48fff79cfad897163de82bc3c3adf190cf46ef))
+
 # [0.6.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.5.0...v0.6.0) (2026-01-24)
 
 
