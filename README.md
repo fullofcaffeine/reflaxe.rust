@@ -1,5 +1,7 @@
 # reflaxe.rust
 
+[![Version](https://img.shields.io/badge/version-0.0.1-blue)](https://github.com/fullofcaffeine/reflaxe.rust/releases)
+
 ## Build a native binary
 
 After codegen (`-D rust_output=...`) the compiler invokes Cargo by default (debug build).

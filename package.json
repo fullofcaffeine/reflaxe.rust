@@ -1,14 +1,67 @@
 {
   "name": "reflaxe-rust",
   "private": true,
+  "version": "0.0.1",
   "license": "GPL-3.0",
   "description": "Haxe (4.3.7) → Rust target built on Reflaxe (dev toolchain via lix).",
   "devDependencies": {
-    "lix": "^15.12.4"
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/exec": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.3",
+    "@semantic-release/release-notes-generator": "^14.0.3",
+    "lix": "^15.12.4",
+    "semantic-release": "^24.2.5"
   },
   "scripts": {
     "postinstall": "lix download",
     "test": "bash test/run-snapshots.sh",
     "test:update": "bash test/run-snapshots.sh --update"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fullofcaffeine/reflaxe.rust.git"
+  },
+  "release": {
+    "branches": [
+      "main"
+    ],
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/changelog",
+      [
+        "@semantic-release/exec",
+        {
+          "prepareCmd": "node scripts/release/sync-versions.js ${nextRelease.version} && rm -f dist/*.zip 2>/dev/null || true && bash scripts/release/package-haxelib.sh dist/reflaxe.rust-${nextRelease.version}.zip"
+        }
+      ],
+      [
+        "@semantic-release/git",
+        {
+          "assets": [
+            "package.json",
+            "package-lock.json",
+            "haxelib.json",
+            "haxe_libraries/reflaxe.rust.hxml",
+            "README.md",
+            "CHANGELOG.md"
+          ],
+          "message": "chore(release): ${nextRelease.version}\n\n${nextRelease.notes}"
+        }
+      ],
+      [
+        "@semantic-release/github",
+        {
+          "assets": [
+            {
+              "path": "dist/*.zip",
+              "label": "reflaxe.rust haxelib package"
+            }
+          ]
+        }
+      ]
+    ]
   }
 }
