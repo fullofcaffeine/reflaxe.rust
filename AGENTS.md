@@ -116,4 +116,5 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - `.github/workflows/codeql.yml` runs CodeQL; Rust scanning expects a repo-root `Cargo.toml` workspace (points at `runtime/hxrt`).
   - Workspace gotcha: exclude `examples/` + `test/` from the root workspace so `cargo fmt/build` works inside generated `*/out/` crates during snapshot tests.
 - Conventional commits are required on `main` so semantic-release can compute the next version.
+  - Use `feat:` for minor, `fix:` for patch, and `feat!:` / `BREAKING CHANGE:` for major.
 - Version strings are kept in sync by `scripts/release/sync-versions.js` (used by semantic-release).
