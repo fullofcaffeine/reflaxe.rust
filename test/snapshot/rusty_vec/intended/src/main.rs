@@ -4,6 +4,7 @@
 
 type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
 
+mod rust_iter_tools;
 mod rust_vec_tools;
 mod sys;
 
@@ -56,4 +57,12 @@ fn main() {
             }
         };
     };
+    let mut v2: Vec<i32> = Vec::new();
+    v2.push(10);
+    v2.push(20);
+    let mut sum: i32 = 0;
+    for x_3 in crate::rust_iter_tools::IterTools::from_vec(v2).into_iter() {
+        sum = sum + x_3;
+    }
+    println!("{}", sum);
 }

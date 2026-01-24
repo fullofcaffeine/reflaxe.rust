@@ -20,7 +20,12 @@ class Main {
 			}
 		});
 
+		var keyCount = 0;
+		for (_ in m.keys()) {
+			keyCount = keyCount + 1;
+		}
+		trace(keyCount);
+
 		trace(HashMapTools.len(m));
 	}
 }
-

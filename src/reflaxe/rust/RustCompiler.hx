@@ -1115,7 +1115,25 @@ enum RustProfile {
 						return ECall(EField(base, "cloned"), []);
 					}
 
-					function extractIteratorSource(init: TypedExpr): Null<TypedExpr> {
+					function matchesFieldName(fa: FieldAccess, expected: String): Bool {
+						return switch (fa) {
+							case FInstance(_, _, cfRef):
+								var cf = cfRef.get();
+								cf != null && cf.getHaxeName() == expected;
+							case FAnon(cfRef):
+								var cf = cfRef.get();
+								cf != null && cf.getHaxeName() == expected;
+							case FClosure(_, cfRef):
+								var cf = cfRef.get();
+								cf != null && cf.getHaxeName() == expected;
+							case FDynamic(name):
+								name == expected;
+							case _:
+								false;
+						}
+					}
+
+					function extractRustForIterable(init: TypedExpr): Null<RustExpr> {
 						function unwrapMetaParenCast(e: TypedExpr): TypedExpr {
 							var u = unwrapMetaParen(e);
 							return switch (u.expr) {
@@ -1131,22 +1149,37 @@ enum RustProfile {
 								switch (c.expr) {
 									// Instance `obj.iterator()` (may print as `obj.iter()` due to @:native).
 									case TField(obj, fa): {
+										var objU = unwrapMetaParenCast(obj);
+
 										// The while-loop shape already proved this "iterator" variable is used
-										// with `.hasNext()` / `.next()`. For Rusty surfaces we only care about
-										// recovering the source container (`Vec` / `Slice`), so match by type.
-										if (isRustVecType(obj.t) || isRustSliceType(obj.t)) {
-											obj;
-										} else if (callArgs != null && callArgs.length == 1 && isRustSliceType(callArgs[0].t)) {
+										// with `.hasNext()` / `.next()`. For Rusty surfaces, recover an idiomatic
+										// Rust iterable to feed into a `for` loop.
+										if (isRustVecType(objU.t) || isRustSliceType(objU.t)) {
+											return iterClonedExpr(objU);
+										}
+
+										// Owned iterators (`rust.Iter<T>`) can be consumed directly by a Rust `for`.
+										if (isRustIterType(objU.t) && matchesFieldName(fa, "iterator")) {
+											return compileExpr(u);
+										}
+
+										// HashMap-style iterators (`keys()` / `values()`) are already valid Rust
+										// iterables; use them directly (borrowed items, no cloning).
+										if (matchesFieldName(fa, "keys") || matchesFieldName(fa, "values")) {
+											return compileExpr(u);
+										}
+
+										if (callArgs != null && callArgs.length == 1 && isRustSliceType(callArgs[0].t)) {
 											// Abstract impl calls: `Slice_Impl_.iter(s)` show up as static field calls.
 											switch (fa) {
 												case FStatic(_, _) | FDynamic(_):
-													callArgs[0];
+													return iterClonedExpr(callArgs[0]);
 												case _:
-													null;
+													return null;
 											}
-										} else {
-											null;
 										}
+
+										return null;
 									}
 									case _:
 										null;
@@ -1193,24 +1226,6 @@ enum RustProfile {
 
 						switch (second.expr) {
 							case TWhile(cond, body, normalWhile) if (normalWhile): {
-								function matchesFieldName(fa: FieldAccess, expected: String): Bool {
-									return switch (fa) {
-										case FInstance(_, _, cfRef):
-											var cf = cfRef.get();
-											cf != null && cf.getHaxeName() == expected;
-										case FAnon(cfRef):
-											var cf = cfRef.get();
-											cf != null && cf.getHaxeName() == expected;
-										case FClosure(_, cfRef):
-											var cf = cfRef.get();
-											cf != null && cf.getHaxeName() == expected;
-										case FDynamic(name):
-											name == expected;
-										case _:
-											false;
-									}
-								}
-
 								function isIterMethodCall(callExpr: TypedExpr, expected: String): Bool {
 									var c = unwrapMetaParen(callExpr);
 									return switch (c.expr) {
@@ -1264,10 +1279,9 @@ enum RustProfile {
 								}
 								if (loopVar == null) return null;
 
-								var source = extractIteratorSource(itInit);
-								if (source == null) return null;
+								var it = extractRustForIterable(itInit);
+								if (it == null) return null;
 
-								var it = iterClonedExpr(source);
 								var bodyBlock = compileBlock(bodyExprs.slice(1), false);
 								return RFor(rustLocalDeclIdent(loopVar), it, bodyBlock);
 							}
@@ -3437,6 +3451,62 @@ enum RustProfile {
 				abs != null
 					&& abs.name == "Slice"
 					&& (abs.pack.join(".") == "rust" || abs.module == "rust.Slice")
+					&& params.length == 1;
+			}
+			case _:
+				false;
+		}
+	}
+
+	function isRustHashMapType(t: Type): Bool {
+		return switch (followType(t)) {
+			case TInst(clsRef, params): {
+				var cls = clsRef.get();
+				var externPath = cls != null ? rustExternBasePath(cls) : null;
+				var isRealRustHashMap = false;
+				if (cls != null) {
+					for (m in cls.meta.get()) {
+						if (m.name != ":realPath" && m.name != "realPath") continue;
+						if (m.params == null || m.params.length != 1) continue;
+						switch (m.params[0].expr) {
+							case EConst(CString(s, _)):
+								if (s == "rust.HashMap") isRealRustHashMap = true;
+							case _:
+						}
+					}
+				}
+
+				cls != null
+					&& cls.isExtern
+					&& cls.name == "HashMap"
+					&& (isRealRustHashMap || cls.pack.join(".") == "rust" || cls.module == "rust.HashMap" || externPath == "std::collections::HashMap")
+					&& params.length == 2;
+			}
+			case _:
+				false;
+		}
+	}
+
+	function isRustIterType(t: Type): Bool {
+		return switch (followType(t)) {
+			case TInst(clsRef, params): {
+				var cls = clsRef.get();
+				var isRealRustIter = false;
+				if (cls != null) {
+					for (m in cls.meta.get()) {
+						if (m.name != ":realPath" && m.name != "realPath") continue;
+						if (m.params == null || m.params.length != 1) continue;
+						switch (m.params[0].expr) {
+							case EConst(CString(s, _)):
+								if (s == "rust.Iter") isRealRustIter = true;
+							case _:
+						}
+					}
+				}
+
+				cls != null
+					&& cls.isExtern
+					&& isRealRustIter
 					&& params.length == 1;
 			}
 			case _:

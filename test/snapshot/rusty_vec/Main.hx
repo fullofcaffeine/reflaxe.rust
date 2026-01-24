@@ -1,3 +1,4 @@
+import rust.IterTools;
 import rust.Vec;
 import rust.VecTools;
 import rust.Option;
@@ -33,5 +34,13 @@ class Main {
 			case Err(e):
 				trace(e);
 		}
+
+		var v2 = new Vec<Int>();
+		v2.push(10);
+		v2.push(20);
+
+		var sum = 0;
+		for (x in IterTools.fromVec(v2)) sum = sum + x;
+		trace(sum);
 	}
 }
