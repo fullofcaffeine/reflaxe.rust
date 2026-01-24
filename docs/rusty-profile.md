@@ -77,6 +77,14 @@ Helpers:
 Intent:
 - Expose Option explicitly, without overloading Haxe `Null<T>`.
 
+Helpers:
+- `using rust.OptionTools;` adds helpers like `isSome`, `unwrapOr`, plus macro-powered `map`/`andThen`.
+
+Current limitation (POC):
+- For macro helpers that take callbacks (`map`, `andThen`, `unwrapOrElse`), prefer explicit callback typing to help the compiler:
+  - `function(v: Int): rust.Option<Int> return ...`
+- `OptionTools.isSome/isNone/unwrapOr` require `T: Clone` in Rust output (because the compiler currently clones the matched `Option<T>`).
+
 Expected code shapes:
 - Haxe:
   - `var o: rust.Option<Int> = rust.Option.Some(123);`
@@ -89,6 +97,15 @@ Expected code shapes:
 
 Intent:
 - Use Rust-style error modeling where you want it; keep exceptions portable elsewhere.
+
+Helpers:
+- `using rust.ResultTools;` adds helpers like `isOk`, `unwrapOr`, plus macro-powered `mapOk`/`mapErr`/`andThen`.
+- `ResultTools.catchAny/catchString` convert portable exceptions into `Result` at boundaries.
+
+Current limitation (POC):
+- For macro helpers that take callbacks (`mapOk`, `mapErr`, `andThen`, `unwrapOrElse`), prefer explicit callback typing to help the compiler:
+  - `function(v: Int): rust.Result<Int, String> return ...`
+- `ResultTools.isOk/isErr/unwrapOr` require `T: Clone, E: Clone` in Rust output (because the compiler currently clones the matched `Result<T,E>`).
 
 Expected code shapes:
 - Haxe:
