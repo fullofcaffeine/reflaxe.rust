@@ -63,6 +63,19 @@ class ResultTools {
 	}
 
 	/**
+	 * Add string context to a `Result<T, String>` error (common Rust pattern: `map_err` / `context`).
+	 *
+	 * Example: `r.context(\"reading config\")` yields `Err(\"reading config: <e>\")`.
+	 */
+	@:rustGeneric("T: Clone")
+	public static inline function context<T>(r: Result<T, String>, prefix: String): Result<T, String> {
+		return switch (r) {
+			case Ok(v): Ok(v);
+			case Err(e): Err(prefix + ": " + e);
+		}
+	}
+
+	/**
 	 * Macro version to avoid requiring runtime function types in the Rust target POC.
 	 *
 	 * Usage: `r.unwrapOrElse(e -> expr)`

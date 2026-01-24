@@ -39,4 +39,17 @@ impl OptionTools {
             Option::None => fallback,
         };
     }
+
+    pub fn ok_or<T: Clone>(o: Option<T>, err: String) -> Result<T, String> {
+        return match o.clone() {
+            Option::Some(__p) => {
+                let _g: T = __p;
+                {
+                    let v: T = _g;
+                    Result::Ok(v)
+                }
+            }
+            Option::None => Result::Err(err.clone()),
+        };
+    }
 }
