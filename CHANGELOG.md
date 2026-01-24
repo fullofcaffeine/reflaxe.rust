@@ -1,3 +1,10 @@
+# [0.6.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.5.0...v0.6.0) (2026-01-24)
+
+
+### Features
+
+* **rusty:** support scoped &mut borrows in codegen ([b3963da](https://github.com/fullofcaffeine/reflaxe.rust/commit/b3963dabdfe14a906b0e5e48aab29435c8a4bf92))
+
 # [0.5.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.4.1...v0.5.0) (2026-01-24)
 
 
