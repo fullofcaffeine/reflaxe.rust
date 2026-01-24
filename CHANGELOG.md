@@ -1,3 +1,10 @@
+## [0.3.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.3.0...v0.3.1) (2026-01-24)
+
+
+### Performance Improvements
+
+* **compiler:** reduce enum match clones ([f31c859](https://github.com/fullofcaffeine/reflaxe.rust/commit/f31c859255084307d319aa80aef0e841ffc3fda5))
+
 # [0.3.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.2.0...v0.3.0) (2026-01-24)
 
 
