@@ -4,6 +4,15 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SNAP_DIR="$ROOT_DIR/test/snapshot"
 
+HAXE_BIN="${HAXE_BIN:-}"
+if [[ -z "$HAXE_BIN" ]]; then
+  if [[ -x "$ROOT_DIR/node_modules/.bin/haxe" ]]; then
+    HAXE_BIN="$ROOT_DIR/node_modules/.bin/haxe"
+  else
+    HAXE_BIN="haxe"
+  fi
+fi
+
 usage() {
   cat <<'EOF'
 Usage: test/run-snapshots.sh [--case NAME] [--update]
@@ -45,9 +54,16 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if ! command -v haxe >/dev/null 2>&1; then
-  echo "error: haxe not found in PATH" >&2
-  exit 2
+if [[ "$HAXE_BIN" == */* ]]; then
+  if [[ ! -x "$HAXE_BIN" ]]; then
+    echo "error: haxe not found or not executable: $HAXE_BIN" >&2
+    exit 2
+  fi
+else
+  if ! command -v "$HAXE_BIN" >/dev/null 2>&1; then
+    echo "error: haxe not found in PATH (HAXE_BIN=$HAXE_BIN)" >&2
+    exit 2
+  fi
 fi
 
 if ! command -v cargo >/dev/null 2>&1; then
@@ -80,7 +96,7 @@ for case_dir in "$SNAP_DIR"/*; do
   fi
 
   rm -rf "$case_dir/out"
-  (cd "$case_dir" && haxe compile.hxml)
+  (cd "$case_dir" && "$HAXE_BIN" compile.hxml)
 
   if [[ -f "$case_dir/out/Cargo.toml" ]]; then
     if ! (cd "$case_dir/out" && cargo fmt >/dev/null); then

@@ -12,6 +12,6 @@ use crate::sys::Sys;
 
 fn main() {
     let mut foo: HxRef<Foo> = Foo::new(1);
-    Foo::inc((&foo));
-    println!("{}", Foo::getX((&foo)));
+    Foo::inc(&foo);
+    println!("{}", Foo::getX(&foo));
 }

@@ -16,7 +16,7 @@ fn main() {
         Ok(__hx_ok) => __hx_ok,
         Err(__hx_ex) => match __hx_ex.downcast::<String>() {
             Ok(__hx_box) => {
-                let mut e: String = (*__hx_box);
+                let mut e: String = *__hx_box;
                 2
             }
             Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
@@ -31,7 +31,7 @@ fn main() {
             Ok(__hx_ok) => __hx_ok,
             Err(__hx_ex) => match __hx_ex.downcast::<i32>() {
                 Ok(__hx_box) => {
-                    let mut e: i32 = (*__hx_box);
+                    let mut e: i32 = *__hx_box;
                     hxrt::exception::throw(hxrt::dynamic::from(String::from("inner")))
                 }
                 Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
@@ -41,7 +41,7 @@ fn main() {
         Ok(__hx_ok) => __hx_ok,
         Err(__hx_ex) => match __hx_ex.downcast::<String>() {
             Ok(__hx_box) => {
-                let mut e: String = (*__hx_box);
+                let mut e: String = *__hx_box;
                 42
             }
             Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),

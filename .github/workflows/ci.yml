@@ -15,6 +15,7 @@ permissions:
   contents: read
 
 env:
+  NODE_VERSION: "20"
   HAXE_VERSION: "4.3.7"
 
 jobs:
@@ -28,17 +29,33 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Haxe
-        uses: krdlab/setup-haxe@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          haxe-version: ${{ env.HAXE_VERSION }}
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
 
-      - name: Setup haxelib
+      - name: Install npm dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Cache Haxe toolchain (lix)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/haxe
+          key: ${{ runner.os }}-lix-haxe-${{ env.HAXE_VERSION }}-${{ hashFiles('.haxerc', 'haxe_libraries/*.hxml', 'package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-lix-haxe-${{ env.HAXE_VERSION }}-
+
+      - name: Install Haxe (pinned via lix)
         run: |
           set -euo pipefail
-          mkdir -p "$HOME/haxelib"
-          haxelib setup "$HOME/haxelib"
-          haxelib dev reflaxe.rust .
+          # `npm ci --ignore-scripts` skips postinstall; fetch the toolchain explicitly (incl. neko).
+          npx lix download
+          npx lix download haxe "${{ env.HAXE_VERSION }}"
+          npx lix use haxe "${{ env.HAXE_VERSION }}"
+          echo "$(pwd)/node_modules/.bin" >> "$GITHUB_PATH"
+          export PATH="$(pwd)/node_modules/.bin:$PATH"
           haxe -version
 
       - name: Setup Rust (stable + rustfmt)

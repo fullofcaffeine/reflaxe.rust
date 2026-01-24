@@ -25,7 +25,7 @@ impl Foo {
 
     pub fn inc(self_: &RefCell<Foo>) {
         {
-            let __tmp = (self_.borrow().x + 1);
+            let __tmp = self_.borrow().x + 1;
             self_.borrow_mut().x = __tmp.clone();
             __tmp
         };

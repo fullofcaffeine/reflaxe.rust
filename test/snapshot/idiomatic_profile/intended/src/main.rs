@@ -11,10 +11,10 @@ use crate::sys::Sys;
 fn main() {
     let a: i32 = 1;
     let b: i32 = 2;
-    let c: i32 = (a + b);
+    let c: i32 = a + b;
     println!("{}", c);
     let mut i: i32 = 0;
-    while (i < 2) {
-        i = (i + 1);
+    while i < 2 {
+        i = i + 1;
     }
 }

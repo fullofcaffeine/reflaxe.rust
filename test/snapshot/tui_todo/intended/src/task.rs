@@ -34,7 +34,7 @@ impl Task {
 
     pub fn toggle(self_: &RefCell<Task>) {
         {
-            let __tmp = (!self_.borrow().done);
+            let __tmp = !self_.borrow().done;
             self_.borrow_mut().done = __tmp.clone();
             __tmp
         };

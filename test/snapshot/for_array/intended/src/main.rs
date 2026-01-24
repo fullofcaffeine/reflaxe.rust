@@ -13,13 +13,13 @@ fn main() {
     let mut sum: i32 = 0;
     {
         let mut _g: i32 = 0;
-        while (_g < (xs.len() as i32)) {
-            let mut x: i32 = xs[(_g as usize)];
+        while _g < xs.len() as i32 {
+            let mut x: i32 = xs[_g as usize];
             {
-                _g = (_g + 1);
+                _g = _g + 1;
                 _g
             };
-            sum = (sum + x);
+            sum = sum + x;
         }
     };
     println!("{}", sum);

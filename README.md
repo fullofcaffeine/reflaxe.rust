@@ -4,14 +4,23 @@ Haxe (4.3.7) → Rust target built on Reflaxe.
 
 ## Quickstart
 
+This repo is developed with **lix** (pinned Haxe toolchain):
+
 ```bash
-haxelib dev reflaxe.rust .
+npm install
 ```
 
 Run snapshot tests:
 
 ```bash
-bash test/run-snapshots.sh
+npm test
+# or: bash test/run-snapshots.sh
+```
+
+Optional (haxelib dev, if you prefer):
+
+```bash
+haxelib dev reflaxe.rust .
 ```
 
 ## Examples
@@ -20,7 +29,7 @@ Hello world:
 
 ```bash
 cd examples/hello
-haxe compile.hxml
+../node_modules/.bin/haxe compile.hxml
 (cd out && cargo run -q)
 ```
 
@@ -28,7 +37,7 @@ Todo TUI demo (ratatui, headless backend):
 
 ```bash
 cd examples/tui_todo
-haxe compile.hxml
+../node_modules/.bin/haxe compile.hxml
 (cd out && cargo run -q)
 ```
 
@@ -36,7 +45,7 @@ Serde JSON demo (declares Cargo deps via `@:rustCargo`, derives via `@:rustDeriv
 
 ```bash
 cd examples/serde_json
-haxe compile.hxml
+../node_modules/.bin/haxe compile.hxml
 (cd out && cargo run -q)
 ```
 

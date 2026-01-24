@@ -40,7 +40,7 @@ fn main() {
     b.borrow_mut().set(0, 72);
     println!("{}", b.borrow().to_string());
     let mut b2: HxRef<hxrt::bytes::Bytes> =
-        Rc::new(RefCell::new(hxrt::bytes::Bytes::alloc((3 as usize))));
+        Rc::new(RefCell::new(hxrt::bytes::Bytes::alloc(3 as usize)));
     b2.borrow_mut().set(0, 65);
     b2.borrow_mut().set(1, 66);
     b2.borrow_mut().set(2, 67);
@@ -61,7 +61,6 @@ fn main() {
         Option::None => {
             println!("{}", String::from("none"));
         }
-        _ => {}
     };
     let mut o2: Option<i32> = Option::None;
     match o2.clone() {
@@ -78,7 +77,6 @@ fn main() {
         Option::None => {
             println!("{}", String::from("none"));
         }
-        _ => {}
     };
     println!("{}", String::from("--- Result ---"));
     let mut r: Result<i32, String> = Result::Ok(7);
@@ -103,7 +101,6 @@ fn main() {
                 println!("{}", e);
             };
         }
-        _ => {}
     };
     let mut r2: Result<i32, String> = Result::Err(String::from("fail").clone());
     match r2.clone() {
@@ -127,7 +124,6 @@ fn main() {
                 println!("{}", e);
             };
         }
-        _ => {}
     };
     println!("{}", String::from("--- Reflect ---"));
     let mut foo: HxRef<Foo> = Foo::new(9);

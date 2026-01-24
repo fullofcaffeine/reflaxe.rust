@@ -1,0 +1,13 @@
+{
+  "name": "reflaxe-rust",
+  "private": true,
+  "description": "Haxe (4.3.7) → Rust target built on Reflaxe (dev toolchain via lix).",
+  "devDependencies": {
+    "lix": "^15.12.4"
+  },
+  "scripts": {
+    "postinstall": "lix download",
+    "test": "bash test/run-snapshots.sh",
+    "test:update": "bash test/run-snapshots.sh --update"
+  }
+}

@@ -77,6 +77,12 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - `test/run-snapshots.sh` (runs `cargo fmt` + `cargo build -q` per snapshot)
   - example smoke runs (`examples/hello`, `examples/classes`)
 
+## Tooling (lix)
+
+- This repo uses **lix** for a pinned Haxe toolchain (see `.haxerc`).
+- `haxe_libraries/reflaxe.rust.hxml` is a self-referential config so `-lib reflaxe.rust` works in `test/**` and `examples/**` without `haxelib dev`.
+- `test/run-snapshots.sh` prefers the project-local Haxe binary at `node_modules/.bin/haxe` when available (override with `HAXE_BIN=...`).
+
 ## Releases
 
 - GitHub Actions:
