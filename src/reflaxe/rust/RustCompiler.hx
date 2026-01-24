@@ -164,6 +164,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return;
 		}
 
+		// Rust project hygiene (SCM-friendly) for the generated crate.
+		// Default: emit a minimal Cargo-style .gitignore; opt out with `-D rust_no_gitignore`.
+		if (!Context.defined("rust_no_gitignore")) {
+			var gitignore = [
+				"/target",
+				"**/*.rs.bk",
+			].join("\n") + "\n";
+			setExtraFile(OutputPath.fromStr(".gitignore"), gitignore);
+		}
+
 		// Emit any extra Rust sources requested by `-D rust_extra_src=<dir>`.
 		for (f in extraRustSrcFiles) {
 			var content = File.getContent(f.fullPath);
