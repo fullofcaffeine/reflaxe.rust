@@ -1,3 +1,10 @@
+# [0.4.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.3.1...v0.4.0) (2026-01-24)
+
+
+### Features
+
+* **rusty:** support for-loops on Vec/Slice ([0bae813](https://github.com/fullofcaffeine/reflaxe.rust/commit/0bae813db93de8622880f3973da477f35be0cfa3))
+
 ## [0.3.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.3.0...v0.3.1) (2026-01-24)
 
 
