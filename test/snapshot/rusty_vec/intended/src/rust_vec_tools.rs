@@ -11,11 +11,11 @@ pub const __HX_TYPE_ID: u32 = 0xb874255eu32;
 pub struct VecTools {}
 
 impl VecTools {
-    pub fn fromArray<T: Clone>(a: Vec<T>) -> Vec<T> {
+    pub fn from_array<T: Clone>(a: Vec<T>) -> Vec<T> {
         return a.clone();
     }
 
-    pub fn toArray<T: Clone>(v: Vec<T>) -> Vec<T> {
+    pub fn to_array<T: Clone>(v: Vec<T>) -> Vec<T> {
         return v.clone();
     }
 

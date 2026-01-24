@@ -6,11 +6,11 @@ use std::rc::Rc;
 type HxRef<T> = Rc<RefCell<T>>;
 
 mod sys;
-mod sys__file_system;
-mod sys_io__file;
+mod sys_file_system;
+mod sys_io_file;
 use crate::sys::Sys;
-use crate::sys__file_system::FileSystem;
-use crate::sys_io__file::File;
+use crate::sys_file_system::FileSystem;
+use crate::sys_io_file::File;
 
 fn main() {
     println!("{}", String::from("--- args ---"));

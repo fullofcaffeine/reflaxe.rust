@@ -27,14 +27,14 @@ impl Sys {
         return std::env::args().skip(1).collect::<Vec<String>>();
     }
 
-    pub fn getCwd() -> String {
+    pub fn get_cwd() -> String {
         return std::env::current_dir()
             .unwrap()
             .to_string_lossy()
             .to_string();
     }
 
-    pub fn setCwd(path: String) {
+    pub fn set_cwd(path: String) {
         {
             std::env::set_current_dir(path.as_str()).unwrap();
         };

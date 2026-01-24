@@ -5,17 +5,17 @@ use std::rc::Rc;
 
 type HxRef<T> = Rc<RefCell<T>>;
 
-mod rust__vec_tools;
+mod rust_vec_tools;
 mod sys;
-use crate::rust__vec_tools::VecTools;
+use crate::rust_vec_tools::VecTools;
 use crate::sys::Sys;
 
-fn isEven(n: i32) -> bool {
+fn is_even(n: i32) -> bool {
     return n / 2 * 2 == n;
 }
 
-fn parseEven(n: i32) -> Result<i32, String> {
-    return if isEven(n) {
+fn parse_even(n: i32) -> Result<i32, String> {
+    return if is_even(n) {
         Result::Ok(n)
     } else {
         Result::Err(String::from("odd").clone())
@@ -44,7 +44,7 @@ fn main() {
         }
     };
     {
-        let mut _g: Result<i32, String> = parseEven(2);
+        let mut _g: Result<i32, String> = parse_even(2);
         match _g.clone() {
             Result::Ok(_) => {
                 let mut _g: i32 = match _g.clone() {

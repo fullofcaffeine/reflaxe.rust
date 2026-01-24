@@ -126,6 +126,7 @@ class RustASTPrinter {
 			case RI32: "i32";
 			case RF64: "f64";
 			case RString: "String";
+			case RRef(inner, mutable): "&" + (mutable ? "mut " : "") + printType(inner);
 			case RPath(path): path;
 		}
 	}
