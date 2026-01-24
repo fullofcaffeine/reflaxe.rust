@@ -780,19 +780,39 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	override public function onOutputComplete() {
 		if (!didEmitMain) return;
-		if (!Context.defined("rustfmt")) return;
 		if (output == null || output.outputDir == null) return;
 
 		var outDir = output.outputDir;
 		var manifest = Path.join([outDir, "Cargo.toml"]);
 		if (!FileSystem.exists(manifest)) return;
 
-		// Best-effort formatting. Avoid hard failing compilation if cargo/rustfmt are unavailable.
-		var code = Sys.command("cargo", ["fmt", "--manifest-path", manifest]);
-		if (code != 0) {
-			#if eval
-			Context.warning("`cargo fmt` failed (exit " + code + ") for output: " + manifest, Context.currentPos());
-			#end
+		// Best-effort formatting/build. Avoid hard failing compilation if cargo/rustfmt are unavailable.
+		if (Context.defined("rustfmt")) {
+			var code = Sys.command("cargo", ["fmt", "--manifest-path", manifest]);
+			if (code != 0) {
+				#if eval
+				Context.warning("`cargo fmt` failed (exit " + code + ") for output: " + manifest, Context.currentPos());
+				#end
+			}
+		}
+
+		var wantsBuild = Context.defined("rust_build") || Context.defined("rust_build_release") || Context.defined("rust_release");
+		if (wantsBuild) {
+			var args = ["build", "--manifest-path", manifest];
+			if (Context.defined("rust_build_release") || Context.defined("rust_release")) {
+				args.push("--release");
+			}
+			var target = Context.definedValue("rust_target");
+			if (target != null && target.length > 0) {
+				args.push("--target");
+				args.push(target);
+			}
+			var code = Sys.command("cargo", args);
+			if (code != 0) {
+				#if eval
+				Context.warning("`cargo build` failed (exit " + code + ") for output: " + manifest, Context.currentPos());
+				#end
+			}
 		}
 	}
 

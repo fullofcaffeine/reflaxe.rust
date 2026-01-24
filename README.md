@@ -1,5 +1,13 @@
 # reflaxe.rust
 
+## Build a native binary
+
+After codegen (`-D rust_output=...`) you can optionally ask the compiler to invoke Cargo:
+
+- Debug: add `-D rust_build`
+- Release: add `-D rust_build_release` (alias: `-D rust_release`)
+- Cross target: add `-D rust_target=<triple>` (passed to `cargo build --target <triple>`)
+
 Haxe (4.3.7) → Rust target built on Reflaxe.
 
 ## Quickstart
