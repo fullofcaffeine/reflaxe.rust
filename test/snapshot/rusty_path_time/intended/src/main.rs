@@ -12,11 +12,11 @@ mod sys;
 
 fn main() {
     let base: std::path::PathBuf =
-        crate::rust_path_buf_tools::PathBufTools::from_string(String::from("tmp").clone());
+        crate::rust_path_buf_tools::PathBufTools::from_string(String::from("tmp"));
     let child: std::path::PathBuf =
-        crate::rust_path_buf_tools::PathBufTools::join(&base, String::from("example.txt").clone());
+        crate::rust_path_buf_tools::PathBufTools::join(&base, String::from("example.txt"));
     let pushed: std::path::PathBuf =
-        crate::rust_path_buf_tools::PathBufTools::push(&base, String::from("nested").clone());
+        crate::rust_path_buf_tools::PathBufTools::push(&base, String::from("nested"));
     let child_str: String = crate::rust_path_buf_tools::PathBufTools::to_string_lossy(&child);
     let pushed_name: Option<String> = crate::rust_path_buf_tools::PathBufTools::file_name(&pushed);
     let os: std::ffi::OsString =

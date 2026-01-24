@@ -13,7 +13,7 @@ fn main() {
     println!("{}", crate::sys::Sys::args().len() as i32);
     println!("{}", String::from("--- file content ---"));
     let path: String = String::from("tmp_sys_io.txt");
-    crate::sys_io_file::File::save_content(path.clone(), String::from("hello").clone());
+    crate::sys_io_file::File::save_content(path.clone(), String::from("hello"));
     println!("{}", crate::sys_io_file::File::get_content(path.clone()));
     println!(
         "{}",
@@ -38,11 +38,11 @@ fn main() {
     crate::sys_file_system::FileSystem::create_directory(dir.clone());
     crate::sys_io_file::File::save_content(
         format!("{}{}", dir, String::from("/a.txt")).clone(),
-        String::from("a").clone(),
+        String::from("a"),
     );
     crate::sys_io_file::File::save_content(
         format!("{}{}", dir, String::from("/b.txt")).clone(),
-        String::from("b").clone(),
+        String::from("b"),
     );
     let entries: Vec<String> = crate::sys_file_system::FileSystem::read_directory(dir.clone());
     let mut found_a: bool = false;

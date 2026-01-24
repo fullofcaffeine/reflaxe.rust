@@ -87,7 +87,7 @@ fn main() {
             };
         }
     };
-    let r2: Result<i32, String> = Result::Err(String::from("fail").clone());
+    let r2: Result<i32, String> = Result::Err(String::from("fail"));
     match r2.clone() {
         Result::Ok(__p) => {
             let _g_5: i32 = __p;

@@ -72,7 +72,7 @@ fn main() {
                 {
                     let v_5: i32 = _g_8;
                     if v_5 > 100 {
-                        Result::Err(String::from("too big").clone())
+                        Result::Err(String::from("too big"))
                     } else {
                         Result::Ok(v_5)
                     }

@@ -15,7 +15,7 @@ fn parse_even(n: i32) -> Result<i32, String> {
     return if is_even(n) {
         Result::Ok(n)
     } else {
-        Result::Err(String::from("odd").clone())
+        Result::Err(String::from("odd"))
     };
 }
 
