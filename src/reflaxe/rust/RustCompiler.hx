@@ -2046,6 +2046,22 @@ enum RustProfile {
 		}
 	}
 
+	function isStringLiteralExpr(e: TypedExpr): Bool {
+		var u = unwrapMetaParen(e);
+		return switch (u.expr) {
+			case TConst(TString(_)): true;
+			case _: false;
+		}
+	}
+
+	function isArrayLiteralExpr(e: TypedExpr): Bool {
+		var u = unwrapMetaParen(e);
+		return switch (u.expr) {
+			case TArrayDecl(_): true;
+			case _: false;
+		}
+	}
+
 	function switchValueToInt(e: TypedExpr): Null<Int> {
 		var v = unwrapMetaParen(e);
 		return switch (v.expr) {
@@ -2528,13 +2544,19 @@ enum RustProfile {
 	function coerceArgForParam(compiled: RustExpr, argExpr: TypedExpr, paramType: Type): RustExpr {
 		// Passing into `Dynamic` should not move the source value (Haxe values are reusable).
 		if (isDynamicType(paramType) && !isDynamicType(argExpr.t)) {
-			if (!isCopyType(argExpr.t)) {
+			var needsClone = !isCopyType(argExpr.t);
+			// Avoid cloning obvious temporaries (literals) that won't be re-used after the call.
+			if (needsClone && isStringLiteralExpr(argExpr)) needsClone = false;
+			if (needsClone && isArrayLiteralExpr(argExpr)) needsClone = false;
+			if (needsClone) {
 				compiled = ECall(EField(compiled, "clone"), []);
 			}
 			compiled = ECall(EPath("hxrt::dynamic::from"), [compiled]);
 		} else if (isStringType(paramType)) {
 			// Haxe Strings are immutable and commonly re-used after calls; avoid Rust moves by cloning.
-			compiled = ECall(EField(compiled, "clone"), []);
+			if (!isStringLiteralExpr(argExpr)) {
+				compiled = ECall(EField(compiled, "clone"), []);
+			}
 		}
 
 		var rustParamTy = toRustType(paramType, argExpr.pos);
