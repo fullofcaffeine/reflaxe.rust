@@ -4,15 +4,19 @@ use crossterm::ExecutableCommand;
 use ratatui::backend::{CrosstermBackend, TestBackend};
 use ratatui::prelude::*;
 use ratatui::widgets::*;
-use std::cell::RefCell;
-use std::io::{self, Stdout, Write};
+use std::cell::{Cell, RefCell};
+use std::io::{self, IsTerminal, Stdout, Write};
 use std::time::Duration;
 
 thread_local! {
     static TERMINAL: RefCell<Option<Terminal<CrosstermBackend<Stdout>>>> = RefCell::new(None);
+    static HEADLESS: Cell<bool> = Cell::new(false);
+    static HEADLESS_FRAME: Cell<i32> = Cell::new(0);
+    static HEADLESS_ACTIONS: RefCell<Vec<i32>> = RefCell::new(Vec::new());
+    static HEADLESS_INDEX: Cell<usize> = Cell::new(0);
 }
 
-// Headless renderer for deterministic snapshots/tests.
+// Deterministic renderer for tests/snapshots.
 #[allow(dead_code)]
 pub fn run_frame(frame: i32, tasks: String) {
     println!("--- frame {} ---", frame);
@@ -21,6 +25,20 @@ pub fn run_frame(frame: i32, tasks: String) {
 }
 
 pub fn enter() {
+    let interactive = io::stdin().is_terminal() && io::stdout().is_terminal();
+
+    HEADLESS.with(|h| h.set(!interactive));
+    HEADLESS_FRAME.with(|f| f.set(0));
+    HEADLESS_INDEX.with(|i| i.set(0));
+    HEADLESS_ACTIONS.with(|a| {
+        // down, toggle, down, toggle, up, quit
+        *a.borrow_mut() = vec![2, 3, 2, 3, 1, 4];
+    });
+
+    if !interactive {
+        return;
+    }
+
     enable_raw_mode().unwrap();
     let mut stdout = io::stdout();
     stdout.execute(EnterAlternateScreen).unwrap();
@@ -32,6 +50,10 @@ pub fn enter() {
 }
 
 pub fn exit() {
+    if HEADLESS.with(|h| h.get()) {
+        return;
+    }
+
     TERMINAL.with(|t| {
         if let Some(mut term) = t.borrow_mut().take() {
             term.show_cursor().ok();
@@ -45,6 +67,20 @@ pub fn exit() {
 }
 
 pub fn poll_action(timeout_ms: i32) -> i32 {
+    if HEADLESS.with(|h| h.get()) {
+        let idx = HEADLESS_INDEX.with(|i| i.get());
+        let action = HEADLESS_ACTIONS.with(|a| {
+            let actions = a.borrow();
+            if idx >= actions.len() {
+                4
+            } else {
+                actions[idx]
+            }
+        });
+        HEADLESS_INDEX.with(|i| i.set(idx + 1));
+        return action;
+    }
+
     let timeout = Duration::from_millis(timeout_ms.max(0) as u64);
     if !event::poll(timeout).unwrap_or(false) {
         return 0;
@@ -63,6 +99,19 @@ pub fn poll_action(timeout_ms: i32) -> i32 {
 }
 
 pub fn render(tasks: String) {
+    if HEADLESS.with(|h| h.get()) {
+        let frame = HEADLESS_FRAME.with(|f| {
+            let v = f.get();
+            f.set(v + 1);
+            v
+        });
+        println!("--- frame {} ---", frame);
+        let rendered = render_headless(&tasks);
+        print!("{}", rendered);
+        io::stdout().flush().ok();
+        return;
+    }
+
     let lines: Vec<String> = tasks.lines().map(|s| s.to_string()).collect();
 
     TERMINAL.with(|t| {
@@ -72,8 +121,7 @@ pub fn render(tasks: String) {
         terminal
             .draw(|frame| {
                 let items: Vec<ListItem> = lines.iter().map(|l| ListItem::new(l.clone())).collect();
-                let list = List::new(items)
-                    .block(Block::default().title("Todo").borders(Borders::ALL));
+                let list = List::new(items).block(Block::default().title("Todo").borders(Borders::ALL));
                 frame.render_widget(list, frame.size());
             })
             .unwrap();
@@ -93,8 +141,7 @@ fn render_headless(tasks: &str) -> String {
                 .iter()
                 .map(|l| ListItem::new((*l).to_string()))
                 .collect();
-            let list = List::new(items)
-                .block(Block::default().title("Todo").borders(Borders::ALL));
+            let list = List::new(items).block(Block::default().title("Todo").borders(Borders::ALL));
             frame.render_widget(list, frame.size());
         })
         .unwrap();
@@ -115,3 +162,4 @@ fn buffer_to_string(buffer: &ratatui::buffer::Buffer) -> String {
     }
     out
 }
+

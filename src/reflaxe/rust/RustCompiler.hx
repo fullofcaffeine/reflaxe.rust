@@ -33,6 +33,7 @@ import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.helpers.TypeHelper;
 import reflaxe.rust.macros.CargoMetaRegistry;
+import reflaxe.rust.macros.RustExtraSrcRegistry;
 import reflaxe.rust.naming.RustNaming;
 
 using reflaxe.helpers.BaseTypeHelper;
@@ -103,6 +104,9 @@ enum RustProfile {
 		// Collect Cargo dependencies declared via `@:rustCargo(...)` metadata.
 		CargoMetaRegistry.collectFromContext();
 
+		// Collect extra Rust sources declared via metadata (framework code can bring its own modules).
+		RustExtraSrcRegistry.collectFromContext();
+
 		// Allow overriding crate name with -D rust_crate=<name>
 		var v = Context.definedValue("rust_crate");
 		if (v != null && v.length > 0) crateName = v;
@@ -122,6 +126,37 @@ enum RustProfile {
 			frameworkRuntimeDir = null;
 		}
 
+		extraRustSrcFiles = [];
+		var seenExtraRustModules = new Map<String, String>();
+		function addExtraRustSrc(moduleName: String, fileName: String, fullPath: String, pos: haxe.macro.Expr.Position): Void {
+			if (!isValidRustIdent(moduleName) || isRustKeyword(moduleName)) {
+				#if eval
+				Context.error("Invalid Rust module file name for extra Rust source: " + fileName, pos);
+				#end
+				return;
+			}
+			var existing = seenExtraRustModules.get(moduleName);
+			if (existing != null) {
+				if (existing != fullPath) {
+					#if eval
+					Context.error("Duplicate Rust extra module `" + moduleName + "` from:\n- " + existing + "\n- " + fullPath, pos);
+					#end
+				}
+				return;
+			}
+			seenExtraRustModules.set(moduleName, fullPath);
+			extraRustSrcFiles.push({
+				module: moduleName,
+				fileName: fileName,
+				fullPath: fullPath
+			});
+		}
+
+		// Metadata-driven extra Rust sources (preferred for framework code).
+		for (f in RustExtraSrcRegistry.getFiles()) {
+			addExtraRustSrc(f.module, f.fileName, f.fullPath, f.pos);
+		}
+
 		// Optional: copy extra Rust source files into the output crate's `src/`.
 		// Configure with `-D rust_extra_src=path/to/dir` (relative to the `haxe` working directory).
 		var extra = Context.definedValue("rust_extra_src");
@@ -133,7 +168,6 @@ enum RustProfile {
 				#end
 				extraRustSrcDir = null;
 			} else {
-				extraRustSrcFiles = [];
 				for (entry in FileSystem.readDirectory(extraRustSrcDir)) {
 					if (!StringTools.endsWith(entry, ".rs")) continue;
 					if (entry == "main.rs" || entry == "lib.rs") continue;
@@ -142,23 +176,12 @@ enum RustProfile {
 					if (FileSystem.isDirectory(full)) continue;
 
 					var moduleName = entry.substr(0, entry.length - 3);
-					if (!isValidRustIdent(moduleName) || isRustKeyword(moduleName)) {
-						#if eval
-						Context.error("Invalid Rust module file name for rust_extra_src: " + entry, Context.currentPos());
-						#end
-						continue;
-					}
-
-					extraRustSrcFiles.push({
-						module: moduleName,
-						fileName: entry,
-						fullPath: full
-					});
+					addExtraRustSrc(moduleName, entry, full, Context.currentPos());
 				}
-
-				extraRustSrcFiles.sort((a, b) -> Reflect.compare(a.module, b.module));
 			}
 		}
+
+		extraRustSrcFiles.sort((a, b) -> Reflect.compare(a.module, b.module));
 	}
 
 	override public function onCompileEnd() {

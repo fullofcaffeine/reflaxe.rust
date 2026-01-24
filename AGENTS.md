@@ -60,6 +60,9 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - `try { a } catch(e:T) { b }` → `match hxrt::exception::catch_unwind(|| { a }) { Ok(v) => v, Err(ex) => ...downcast chain... }`
   - Current limitation: catch type matching is Rust `Any` downcast (exact Rust type), so catching a subclass from a base-typed trait object isn’t supported yet.
 - To include external crates and hand-written Rust modules for demos/interop, use `-D rust_cargo_deps_file=...` + `-D rust_extra_src=...` (the compiler copies `*.rs` into `out/src/` and emits `mod <file>;` in `main.rs`).
+- Prefer framework-driven metadata over `.hxml` wiring when possible:
+  - `@:rustCargo(...)` declares Cargo deps from Haxe types.
+  - `@:rustExtraSrc("path/to/file.rs")` / `@:rustExtraSrcDir("path/to/dir")` lets framework code ship Rust modules without requiring apps to set `-D rust_extra_src=...`.
 - Rust module names must avoid keywords (e.g. class `Impl` becomes module `impl_`).
 - Use `Context.getAllModuleTypes()` (not `Context.getTypes()`) to enumerate generated module types for dependency closure / RTTI maps.
 - `Std.isOfType` is implemented as a compiler intrinsic (exact-type check via `__hx_type_id`, plus compile-time subtype short-circuit).

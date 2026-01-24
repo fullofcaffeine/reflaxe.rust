@@ -1,5 +1,6 @@
 package rust.tui;
 
+@:rustExtraSrc("rust/tui/native/tui_demo.rs")
 @:rustCargo({ name: "ratatui", version: "0.26" })
 @:rustCargo({ name: "crossterm", version: "0.27" })
 @:native("crate::tui_demo")

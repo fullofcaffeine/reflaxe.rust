@@ -4,5 +4,4 @@
 -D reflaxe_rust_profile=idiomatic
 -D rust_output=out
 -D rust_crate=tui_todo
--D rust_extra_src=rust
 -main Main
