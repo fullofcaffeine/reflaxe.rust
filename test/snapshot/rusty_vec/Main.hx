@@ -1,0 +1,37 @@
+import rust.Vec;
+import rust.VecTools;
+import rust.Option;
+import rust.Result;
+
+class Main {
+	static function isEven(n: Int): Bool {
+		return (n / 2) * 2 == n;
+	}
+
+	static function parseEven(n: Int): Result<Int, String> {
+		return isEven(n) ? Ok(n) : Err("odd");
+	}
+
+	static function main() {
+		var v = new Vec<Int>();
+		v.push(1);
+		v.push(2);
+
+		trace(VecTools.len(v.clone()));
+
+		var last: Option<Int> = v.pop();
+		switch (last) {
+			case Some(x):
+				trace(x);
+			case None:
+				trace(-1);
+		}
+
+		switch (parseEven(2)) {
+			case Ok(x):
+				trace(x);
+			case Err(e):
+				trace(e);
+		}
+	}
+}
