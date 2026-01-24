@@ -1104,6 +1104,184 @@ enum RustProfile {
 
 		function compileStmt(e: TypedExpr): RustStmt {
 			return switch (e.expr) {
+				case TBlock(exprs): {
+					// Haxe desugars `for (x in iterable)` into:
+					// `{ var it = iterable.iterator(); while (it.hasNext()) { var x = it.next(); body } }`
+					//
+					// For Rusty surfaces (Vec/Slice), lower this back to a Rust `for` loop and avoid
+					// having to represent Haxe's `Iterator<T>` type in the backend.
+					function iterClonedExpr(x: TypedExpr): RustExpr {
+						var base = ECall(EField(compileExpr(x), "iter"), []);
+						return ECall(EField(base, "cloned"), []);
+					}
+
+					function extractIteratorSource(init: TypedExpr): Null<TypedExpr> {
+						function unwrapMetaParenCast(e: TypedExpr): TypedExpr {
+							var u = unwrapMetaParen(e);
+							return switch (u.expr) {
+								case TCast(e1, _): unwrapMetaParenCast(e1);
+								case _: u;
+							}
+						}
+
+						var u = unwrapMetaParenCast(init);
+						return switch (u.expr) {
+							case TCall(callExpr, callArgs): {
+								var c = unwrapMetaParenCast(callExpr);
+								switch (c.expr) {
+									// Instance `obj.iterator()` (may print as `obj.iter()` due to @:native).
+									case TField(obj, fa): {
+										// The while-loop shape already proved this "iterator" variable is used
+										// with `.hasNext()` / `.next()`. For Rusty surfaces we only care about
+										// recovering the source container (`Vec` / `Slice`), so match by type.
+										if (isRustVecType(obj.t) || isRustSliceType(obj.t)) {
+											obj;
+										} else if (callArgs != null && callArgs.length == 1 && isRustSliceType(callArgs[0].t)) {
+											// Abstract impl calls: `Slice_Impl_.iter(s)` show up as static field calls.
+											switch (fa) {
+												case FStatic(_, _) | FDynamic(_):
+													callArgs[0];
+												case _:
+													null;
+											}
+										} else {
+											null;
+										}
+									}
+									case _:
+										null;
+								}
+							}
+							case _:
+								null;
+						}
+					}
+
+					function tryLowerDesugaredFor(exprs: Array<TypedExpr>): Null<RustStmt> {
+						if (exprs == null || exprs.length < 2) return null;
+
+						// Statement-position blocks often include stray `null` expressions; ignore them
+						// so we can pattern-match the canonical `for` desugaring shape.
+						function stripNulls(es: Array<TypedExpr>): Array<TypedExpr> {
+							var out: Array<TypedExpr> = [];
+							for (e in es) {
+								var u = unwrapMetaParen(e);
+								switch (u.expr) {
+									case TConst(TNull):
+									case _:
+										out.push(e);
+								}
+							}
+							return out;
+						}
+
+						var es = stripNulls(exprs);
+						if (es.length != 2) return null;
+
+						var first = unwrapMetaParen(es[0]);
+						var second = unwrapMetaParen(es[1]);
+
+						var itVar: Null<TVar> = null;
+						var itInit: Null<TypedExpr> = null;
+						switch (first.expr) {
+							case TVar(v, init) if (init != null):
+								itVar = v;
+								itInit = init;
+							case _:
+								return null;
+						}
+
+						switch (second.expr) {
+							case TWhile(cond, body, normalWhile) if (normalWhile): {
+								function matchesFieldName(fa: FieldAccess, expected: String): Bool {
+									return switch (fa) {
+										case FInstance(_, _, cfRef):
+											var cf = cfRef.get();
+											cf != null && cf.getHaxeName() == expected;
+										case FAnon(cfRef):
+											var cf = cfRef.get();
+											cf != null && cf.getHaxeName() == expected;
+										case FClosure(_, cfRef):
+											var cf = cfRef.get();
+											cf != null && cf.getHaxeName() == expected;
+										case FDynamic(name):
+											name == expected;
+										case _:
+											false;
+									}
+								}
+
+								function isIterMethodCall(callExpr: TypedExpr, expected: String): Bool {
+									var c = unwrapMetaParen(callExpr);
+									return switch (c.expr) {
+										case TField(obj, fa):
+											switch (unwrapMetaParen(obj).expr) {
+												case TLocal(v) if (itVar != null && v.id == itVar.id && matchesFieldName(fa, expected)):
+													true;
+												case _:
+													false;
+											}
+										case _:
+											false;
+									}
+								}
+
+								// Condition: it.hasNext()
+								var c = unwrapMetaParen(cond);
+								switch (c.expr) {
+									case TCall(callExpr, []) : {
+										if (!isIterMethodCall(callExpr, "hasNext")) return null;
+									}
+									case _:
+										return null;
+								}
+
+								// Body: `{ var x = it.next(); ... }`
+								var b = unwrapMetaParen(body);
+								var bodyExprs = switch (b.expr) {
+									case TBlock(es): es;
+									case _: return null;
+								}
+								bodyExprs = stripNulls(bodyExprs);
+								if (bodyExprs.length == 0) return null;
+
+								var head = unwrapMetaParen(bodyExprs[0]);
+								var loopVar: Null<TVar> = null;
+								switch (head.expr) {
+									case TVar(v, init) if (init != null): {
+										// init must be it.next()
+										var initU = unwrapMetaParen(init);
+										switch (initU.expr) {
+											case TCall(callExpr, []):
+												if (!isIterMethodCall(callExpr, "next")) return null;
+												loopVar = v;
+											case _:
+												return null;
+										}
+									}
+									case _:
+										return null;
+								}
+								if (loopVar == null) return null;
+
+								var source = extractIteratorSource(itInit);
+								if (source == null) return null;
+
+								var it = iterClonedExpr(source);
+								var bodyBlock = compileBlock(bodyExprs.slice(1), false);
+								return RFor(rustLocalDeclIdent(loopVar), it, bodyBlock);
+							}
+							case _:
+								return null;
+						}
+					}
+
+					var lowered = tryLowerDesugaredFor(exprs);
+					if (lowered != null) return lowered;
+
+					// Fallback: treat block as a statement-position expression.
+					RSemi(EBlock(compileBlock(exprs, false)));
+				}
 				case TVar(v, init): {
 					var name = rustLocalDeclIdent(v);
 					var rustTy = toRustType(v.t, e.pos);
@@ -3186,7 +3364,11 @@ enum RustProfile {
 		return switch (followType(t)) {
 			case TInst(clsRef, params): {
 				var cls = clsRef.get();
-				cls != null && cls.isExtern && cls.pack.join(".") == "rust" && cls.name == "Vec" && params.length == 1;
+				cls != null
+					&& cls.isExtern
+					&& cls.name == "Vec"
+					&& (cls.pack.join(".") == "rust" || cls.module == "rust.Vec")
+					&& params.length == 1;
 			}
 			case _:
 				false;
@@ -3197,7 +3379,10 @@ enum RustProfile {
 		return switch (followType(t)) {
 			case TAbstract(absRef, params): {
 				var abs = absRef.get();
-				abs != null && abs.pack.join(".") == "rust" && abs.name == "Slice" && params.length == 1;
+				abs != null
+					&& abs.name == "Slice"
+					&& (abs.pack.join(".") == "rust" || abs.module == "rust.Slice")
+					&& params.length == 1;
 			}
 			case _:
 				false;

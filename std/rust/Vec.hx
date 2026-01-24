@@ -20,4 +20,13 @@ extern class Vec<T> {
 	@:rustMutating
 	public function pop(): Option<T>;
 	public function clone(): Vec<T>;
+
+	/**
+	 * `iterator()` exists to make `for (x in vec)` typecheck in Haxe.
+	 *
+	 * The compiler special-cases `iterator()` on `rust.Vec<T>` and lowers it to
+	 * `vec.iter().cloned()` in Rust output (to avoid moving the vec).
+	 */
+	@:native("iter")
+	public function iterator(): Iterator<T>;
 }

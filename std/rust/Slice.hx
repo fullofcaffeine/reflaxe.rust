@@ -11,4 +11,12 @@ package rust;
  */
 @:coreType
 extern abstract Slice<T> {
+	/**
+	 * `iterator()` exists to make `for (x in slice)` typecheck in Haxe.
+	 *
+	 * The compiler special-cases `iterator()` on `rust.Slice<T>` and lowers it to
+	 * `slice.iter().cloned()` in Rust output.
+	 */
+	@:native("iter")
+	public function iterator(): Iterator<T>;
 }
