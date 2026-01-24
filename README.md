@@ -72,6 +72,7 @@ cd examples/serde_json
 
 - `-D rust_output=out` — output directory (Cargo project is generated under this folder).
 - `-D rust_crate=<name>` — Cargo crate name.
+- `-D rust_no_gitignore` — opt-out of emitting a minimal Cargo-style `.gitignore` in the generated crate.
 - `-D rust_idiomatic` (or `-D reflaxe_rust_profile=idiomatic`) — enable more idiomatic Rust output (e.g. `let` vs `let mut` inference).
 - `-D reflaxe_rust_profile=rusty` — enable the “rusty” profile (Rust-facing APIs under `rust.*`).
 - `-D rust_cargo_deps_file=<path>` — TOML lines appended under `[dependencies]` in generated `Cargo.toml` (fallback; prefer `@:rustCargo`).
