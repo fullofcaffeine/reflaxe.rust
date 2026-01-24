@@ -26,11 +26,8 @@ fn main() {
     println!("{}", crate::rust_vec_tools::VecTools::len(v.clone()));
     let last: Option<i32> = v.pop();
     match last.clone() {
-        Option::Some(_) => {
-            let _g: i32 = match last.clone() {
-                Option::Some(__p) => __p,
-                _ => unreachable!(),
-            };
+        Option::Some(__p) => {
+            let _g: i32 = __p;
             {
                 let x: i32 = _g;
                 println!("{}", x);
@@ -43,21 +40,15 @@ fn main() {
     {
         let _g_2: Result<i32, String> = parse_even(2);
         match _g_2.clone() {
-            Result::Ok(_) => {
-                let _g_3: i32 = match _g_2.clone() {
-                    Result::Ok(__p) => __p,
-                    _ => unreachable!(),
-                };
+            Result::Ok(__p) => {
+                let _g_3: i32 = __p;
                 {
                     let x_2: i32 = _g_3;
                     println!("{}", x_2);
                 };
             }
-            Result::Err(_) => {
-                let _g_4: String = match _g_2.clone() {
-                    Result::Err(__p) => __p,
-                    _ => unreachable!(),
-                };
+            Result::Err(__p) => {
+                let _g_4: String = __p;
                 {
                     let e: String = _g_4;
                     println!("{}", e);

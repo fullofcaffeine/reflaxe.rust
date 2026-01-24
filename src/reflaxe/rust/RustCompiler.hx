@@ -72,6 +72,7 @@ enum RustProfile {
 		var currentArgNames: Null<Map<String, String>> = null;
 		var currentLocalNames: Null<Map<Int, String>> = null;
 		var currentLocalUsed: Null<Map<String, Bool>> = null;
+		var currentEnumParamBinds: Null<Map<String, String>> = null;
 		var rustNamesByClass: Map<String, { fields: Map<String, String>, methods: Map<String, String> }> = [];
 
 	public function new() {
@@ -1193,11 +1194,13 @@ enum RustProfile {
 			var prevArgNames = currentArgNames;
 			var prevLocalNames = currentLocalNames;
 			var prevLocalUsed = currentLocalUsed;
+			var prevEnumParamBinds = currentEnumParamBinds;
 
 			currentMutatedLocals = collectMutatedLocals(bodyExpr);
 			currentArgNames = [];
 			currentLocalNames = [];
 			currentLocalUsed = [];
+			currentEnumParamBinds = null;
 
 			// Reserve internal temporaries to avoid collisions with user locals.
 			for (n in ["self_", "__tmp", "__hx_ok", "__hx_ex", "__hx_box", "__p"]) {
@@ -1218,6 +1221,7 @@ enum RustProfile {
 			currentArgNames = prevArgNames;
 			currentLocalNames = prevLocalNames;
 			currentLocalUsed = prevLocalUsed;
+			currentEnumParamBinds = prevEnumParamBinds;
 			return out;
 		}
 
@@ -1626,6 +1630,58 @@ enum RustProfile {
 		var scrutinee = compileMatchScrutinee(switchExpr);
 		var arms: Array<reflaxe.rust.ast.RustAST.RustMatchArm> = [];
 
+		function enumParamKey(localId: Int, variant: String, index: Int): String {
+			return localId + ":" + variant + ":" + index;
+		}
+
+		function withEnumParamBinds<T>(binds: Null<Map<String, String>>, fn: () -> T): T {
+			var prev = currentEnumParamBinds;
+			currentEnumParamBinds = binds;
+			var out = fn();
+			currentEnumParamBinds = prev;
+			return out;
+		}
+
+		function enumParamBindsForCase(values: Array<TypedExpr>): Null<Map<String, String>> {
+			var scrutLocalId: Null<Int> = null;
+			switch (unwrapMetaParen(switchExpr).expr) {
+				case TLocal(v):
+					scrutLocalId = v.id;
+				case _:
+			}
+			if (scrutLocalId == null) return null;
+			if (values == null || values.length != 1) return null;
+
+			var v0 = unwrapMetaParen(values[0]);
+			return switch (v0.expr) {
+				case TCall(callExpr, args): switch (unwrapMetaParen(callExpr).expr) {
+					case TField(_, FEnum(enumRef, ef)): {
+						var argc = args != null ? args.length : 0;
+						if (argc == 0) return null;
+
+						var m: Map<String, String> = [];
+						var any = false;
+						for (i in 0...argc) {
+							var a = unwrapMetaParen(args[i]);
+							switch (a.expr) {
+								case TLocal(_): {
+									var bindName = argc == 1 ? "__p" : "__p" + i;
+									m.set(enumParamKey(scrutLocalId, ef.name, i), bindName);
+									any = true;
+								}
+								case _:
+							}
+						}
+						any ? m : null;
+					}
+					case _:
+						null;
+				}
+				case _:
+					null;
+			}
+		}
+
 		for (c in cases) {
 			var patterns: Array<reflaxe.rust.ast.RustAST.RustPattern> = [];
 			for (v in c.values) {
@@ -1638,7 +1694,9 @@ enum RustProfile {
 
 			if (patterns.length == 0) continue;
 			var pat = patterns.length == 1 ? patterns[0] : POr(patterns);
-			arms.push({ pat: pat, expr: compileSwitchArmExpr(c.expr, expectedReturn) });
+			var binds = enumParamBindsForCase(c.values);
+			var armExpr = withEnumParamBinds(binds, () -> compileSwitchArmExpr(c.expr, expectedReturn));
+			arms.push({ pat: pat, expr: armExpr });
 		}
 
 		arms.push({ pat: PWildcard, expr: edef != null ? compileSwitchArmExpr(edef, expectedReturn) : defaultSwitchArmExpr(expectedReturn) });
@@ -1653,8 +1711,41 @@ enum RustProfile {
 		var arms: Array<reflaxe.rust.ast.RustAST.RustMatchArm> = [];
 		var matchedVariants = new Map<String, Bool>();
 
+		function enumParamKey(localId: Int, variant: String, index: Int): String {
+			return localId + ":" + variant + ":" + index;
+		}
+
+		function withEnumParamBinds<T>(binds: Null<Map<String, String>>, fn: () -> T): T {
+			var prev = currentEnumParamBinds;
+			currentEnumParamBinds = binds;
+			var out = fn();
+			currentEnumParamBinds = prev;
+			return out;
+		}
+
+		function enumParamBindsForSingleVariant(ef: EnumField): Null<Map<String, String>> {
+			var scrutLocalId: Null<Int> = null;
+			switch (unwrapMetaParen(enumExpr).expr) {
+				case TLocal(v):
+					scrutLocalId = v.id;
+				case _:
+			}
+			if (scrutLocalId == null) return null;
+
+			var argc = enumFieldArgCount(ef);
+			if (argc == 0) return null;
+
+			var m: Map<String, String> = [];
+			for (i in 0...argc) {
+				var bindName = argc == 1 ? "__p" : "__p" + i;
+				m.set(enumParamKey(scrutLocalId, ef.name, i), bindName);
+			}
+			return m;
+		}
+
 		for (c in cases) {
 			var patterns: Array<reflaxe.rust.ast.RustAST.RustPattern> = [];
+			var singleEf: Null<EnumField> = null;
 			for (v in c.values) {
 				var idx = switchValueToInt(v);
 				if (idx == null) return unsupported(v, "enum switch value");
@@ -1662,6 +1753,7 @@ enum RustProfile {
 				var ef = enumFieldByIndex(en, idx);
 				if (ef == null) return unsupported(v, "enum switch index");
 
+				if (c.values.length == 1) singleEf = ef;
 				matchedVariants.set(ef.name, true);
 				var pat = enumFieldToPattern(en, ef);
 				patterns.push(pat);
@@ -1669,7 +1761,9 @@ enum RustProfile {
 
 			if (patterns.length == 0) continue;
 			var pat = patterns.length == 1 ? patterns[0] : POr(patterns);
-			arms.push({ pat: pat, expr: compileSwitchArmExpr(c.expr, expectedReturn) });
+			var binds = singleEf != null ? enumParamBindsForSingleVariant(singleEf) : null;
+			var armExpr = withEnumParamBinds(binds, () -> compileSwitchArmExpr(c.expr, expectedReturn));
+			arms.push({ pat: pat, expr: armExpr });
 		}
 
 		// If there's no default branch and we covered every enum constructor, the match is exhaustive.
@@ -1728,7 +1822,25 @@ enum RustProfile {
 				switch (callExpr.expr) {
 					case TField(_, FEnum(enumRef, ef)): {
 						var en = enumRef.get();
-						PTupleStruct(rustEnumVariantPath(en, ef.name), [for (_ in args) PWildcard]);
+						var argc = args != null ? args.length : 0;
+						var fields: Array<reflaxe.rust.ast.RustAST.RustPattern> = [];
+						for (i in 0...argc) {
+							var a = unwrapMetaParen(args[i]);
+							fields.push(switch (a.expr) {
+								case TConst(c): switch (c) {
+									case TInt(ii): PLitInt(ii);
+									case TBool(b): PLitBool(b);
+									case TString(s): PLitString(s);
+									case _: PWildcard;
+								}
+								case TLocal(_):
+									var bindName = argc == 1 ? "__p" : "__p" + i;
+									PBind(bindName);
+								case _:
+									PWildcard;
+							});
+						}
+						PTupleStruct(rustEnumVariantPath(en, ef.name), fields);
 					}
 					case _: null;
 				}
@@ -1818,7 +1930,10 @@ enum RustProfile {
 		var n = enumFieldArgCount(ef);
 		var path = rustEnumVariantPath(en, ef.name);
 		if (n == 0) return PPath(path);
-		return PTupleStruct(path, [for (_ in 0...n) PWildcard]);
+		if (n == 1) return PTupleStruct(path, [PBind("__p")]);
+		var fields: Array<reflaxe.rust.ast.RustAST.RustPattern> = [];
+		for (i in 0...n) fields.push(PBind("__p" + i));
+		return PTupleStruct(path, fields);
 	}
 
 	function compileEnumIndex(e1: TypedExpr, pos: haxe.macro.Expr.Position): RustExpr {
@@ -1847,6 +1962,16 @@ enum RustProfile {
 	}
 
 	function compileEnumParameter(e1: TypedExpr, ef: EnumField, index: Int, valueType: Type, pos: haxe.macro.Expr.Position): RustExpr {
+		switch (unwrapMetaParen(e1).expr) {
+			case TLocal(v) if (currentEnumParamBinds != null): {
+				var key = v.id + ":" + ef.name + ":" + index;
+				if (currentEnumParamBinds.exists(key)) {
+					return EPath(currentEnumParamBinds.get(key));
+				}
+			}
+			case _:
+		}
+
 		var en = enumTypeFromType(e1.t);
 		if (en == null) {
 			#if eval

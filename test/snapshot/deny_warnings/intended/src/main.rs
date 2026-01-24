@@ -11,11 +11,8 @@ mod sys;
 fn main() {
     let o: Option<i32> = Option::Some(1);
     let v: i32 = match o.clone() {
-        Option::Some(_) => {
-            let _g: i32 = match o.clone() {
-                Option::Some(__p) => __p,
-                _ => unreachable!(),
-            };
+        Option::Some(__p) => {
+            let _g: i32 = __p;
             {
                 let v_2: i32 = _g;
                 v_2

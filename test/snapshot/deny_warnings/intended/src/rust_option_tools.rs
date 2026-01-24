@@ -9,11 +9,8 @@ pub struct OptionTools {}
 impl OptionTools {
     pub fn is_some<T: Clone>(o: Option<T>) -> bool {
         return match o.clone() {
-            Option::Some(_) => {
-                let _g: T = match o.clone() {
-                    Option::Some(__p) => __p,
-                    _ => unreachable!(),
-                };
+            Option::Some(__p) => {
+                let _g: T = __p;
                 true
             }
             Option::None => false,
@@ -22,11 +19,8 @@ impl OptionTools {
 
     pub fn is_none<T: Clone>(o: Option<T>) -> bool {
         return !(match o.clone() {
-            Option::Some(_) => {
-                let _g: T = match o.clone() {
-                    Option::Some(__p) => __p,
-                    _ => unreachable!(),
-                };
+            Option::Some(__p) => {
+                let _g: T = __p;
                 true
             }
             Option::None => false,
@@ -35,11 +29,8 @@ impl OptionTools {
 
     pub fn unwrap_or<T: Clone>(o: Option<T>, fallback: T) -> T {
         return match o.clone() {
-            Option::Some(_) => {
-                let _g: T = match o.clone() {
-                    Option::Some(__p) => __p,
-                    _ => unreachable!(),
-                };
+            Option::Some(__p) => {
+                let _g: T = __p;
                 {
                     let v: T = _g;
                     v
