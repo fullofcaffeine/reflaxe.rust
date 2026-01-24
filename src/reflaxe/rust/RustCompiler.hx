@@ -799,7 +799,37 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var disableBuild = Context.defined("rust_no_build") || Context.defined("rust_codegen_only");
 		var wantsBuild = !disableBuild;
 		if (wantsBuild) {
-			var args = ["build", "--manifest-path", manifest];
+			var cargoCmd = Context.definedValue("rust_cargo_cmd");
+			if (cargoCmd == null || cargoCmd.length == 0) cargoCmd = "cargo";
+
+			var subcommand = Context.definedValue("rust_cargo_subcommand");
+			if (subcommand == null || subcommand.length == 0) subcommand = "build";
+
+			var targetDir = Context.definedValue("rust_cargo_target_dir");
+			if (targetDir != null && targetDir.length > 0) {
+				Sys.putEnv("CARGO_TARGET_DIR", targetDir);
+			}
+
+			var args = [subcommand, "--manifest-path", manifest];
+
+			if (Context.defined("rust_cargo_quiet")) args.push("-q");
+			if (Context.defined("rust_cargo_locked")) args.push("--locked");
+			if (Context.defined("rust_cargo_offline")) args.push("--offline");
+			if (Context.defined("rust_cargo_no_default_features")) args.push("--no-default-features");
+			if (Context.defined("rust_cargo_all_features")) args.push("--all-features");
+
+			var features = Context.definedValue("rust_cargo_features");
+			if (features != null && features.length > 0) {
+				args.push("--features");
+				args.push(features);
+			}
+
+			var jobs = Context.definedValue("rust_cargo_jobs");
+			if (jobs != null && jobs.length > 0) {
+				args.push("-j");
+				args.push(jobs);
+			}
+
 			if (Context.defined("rust_build_release") || Context.defined("rust_release")) {
 				args.push("--release");
 			}
@@ -808,10 +838,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				args.push("--target");
 				args.push(target);
 			}
-			var code = Sys.command("cargo", args);
+			var code = Sys.command(cargoCmd, args);
 			if (code != 0) {
 				#if eval
-				Context.warning("`cargo build` failed (exit " + code + ") for output: " + manifest, Context.currentPos());
+				Context.warning("`" + cargoCmd + " " + subcommand + "` failed (exit " + code + ") for output: " + manifest, Context.currentPos());
 				#end
 			}
 		}

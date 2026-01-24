@@ -85,6 +85,13 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Codegen-only: add `-D rust_no_build` (alias: `-D rust_codegen_only`).
 - Release: add `-D rust_build_release` / `-D rust_release`.
 - Optional target triple: `-D rust_target=x86_64-unknown-linux-gnu` (passed to `cargo build --target ...`).
+- Cargo/tooling knobs (for parity with other targets’ tool scaffolding):
+  - `-D rust_cargo_subcommand=build|check|test|clippy|run` (default: `build`)
+  - `-D rust_cargo_features=feat1,feat2`
+  - `-D rust_cargo_no_default_features`, `-D rust_cargo_all_features`
+  - `-D rust_cargo_locked`, `-D rust_cargo_offline`, `-D rust_cargo_quiet`
+  - `-D rust_cargo_jobs=8`
+  - `-D rust_cargo_target_dir=...` (sets `CARGO_TARGET_DIR`)
 
 ## Tooling (lix)
 

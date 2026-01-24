@@ -7,6 +7,13 @@ After codegen (`-D rust_output=...`) the compiler invokes Cargo by default (debu
 - Opt-out (codegen only): add `-D rust_no_build` (alias: `-D rust_codegen_only`)
 - Release: add `-D rust_build_release` (alias: `-D rust_release`)
 - Cross target: add `-D rust_target=<triple>` (passed to `cargo build --target <triple>`)
+- Tooling knobs:
+  - `-D rust_cargo_subcommand=build|check|test|clippy|run` (default: `build`)
+  - `-D rust_cargo_features=feat1,feat2`
+  - `-D rust_cargo_no_default_features`, `-D rust_cargo_all_features`
+  - `-D rust_cargo_locked`, `-D rust_cargo_offline`, `-D rust_cargo_quiet`
+  - `-D rust_cargo_jobs=8`
+  - `-D rust_cargo_target_dir=path/to/target` (sets `CARGO_TARGET_DIR`)
 
 Haxe (4.3.7) → Rust target built on Reflaxe.
 
