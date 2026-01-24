@@ -1,3 +1,10 @@
+## [0.8.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.8.0...v0.8.1) (2026-01-24)
+
+
+### Performance Improvements
+
+* **compiler:** use copied() for Copy iterables ([aa7185b](https://github.com/fullofcaffeine/reflaxe.rust/commit/aa7185b166ed458d26694a8cf43eddac161fb43e))
+
 # [0.8.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.7.0...v0.8.0) (2026-01-24)
 
 
