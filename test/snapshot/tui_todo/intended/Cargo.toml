@@ -1,0 +1,8 @@
+[package]
+name = "hx_app"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+hxrt = { path = "./hxrt" }
+ratatui = "0.26"

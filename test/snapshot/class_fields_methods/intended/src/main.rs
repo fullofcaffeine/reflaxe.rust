@@ -6,10 +6,12 @@ use std::rc::Rc;
 type HxRef<T> = Rc<RefCell<T>>;
 
 mod foo;
+mod sys;
 use crate::foo::Foo;
+use crate::sys::Sys;
 
 fn main() {
-    let mut foo = Foo::new(1);
+    let mut foo: HxRef<Foo> = Foo::new(1);
     Foo::inc((&foo));
     println!("{}", Foo::getX((&foo)));
 }

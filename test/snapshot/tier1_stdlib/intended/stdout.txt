@@ -1,0 +1,27 @@
+--- Std.string ---
+1
+true
+1.5
+hi
+RefCell { value: Foo { x: 3 } }
+--- Std.parseFloat ---
+1.25
+NaN
+--- Type names ---
+Main.Foo
+Main.MyEnum
+--- Bytes ---
+2
+104
+Hi
+ABC
+--- Option ---
+5
+none
+--- Result ---
+7
+fail
+--- Reflect ---
+9
+9
+42

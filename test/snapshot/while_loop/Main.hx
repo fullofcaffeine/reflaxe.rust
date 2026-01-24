@@ -1,0 +1,14 @@
+class Main {
+	static function main() {
+		var i = 0;
+		var sum = 0;
+
+		while (i < 5) {
+			sum = sum + i;
+			i = i + 1;
+		}
+
+		trace(sum);
+	}
+}
+

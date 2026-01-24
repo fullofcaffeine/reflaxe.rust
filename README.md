@@ -1,1 +1,58 @@
 # reflaxe.rust
+
+Haxe (4.3.7) → Rust target built on Reflaxe.
+
+## Quickstart
+
+```bash
+haxelib dev reflaxe.rust .
+```
+
+Run snapshot tests:
+
+```bash
+bash test/run-snapshots.sh
+```
+
+## Examples
+
+Hello world:
+
+```bash
+cd examples/hello
+haxe compile.hxml
+(cd out && cargo run -q)
+```
+
+Todo TUI demo (ratatui, headless backend):
+
+```bash
+cd examples/tui_todo
+haxe compile.hxml
+(cd out && cargo run -q)
+```
+
+Serde JSON demo (declares Cargo deps via `@:rustCargo`, derives via `@:rustDerive`):
+
+```bash
+cd examples/serde_json
+haxe compile.hxml
+(cd out && cargo run -q)
+```
+
+## Useful defines
+
+- `-D rust_output=out` — output directory (Cargo project is generated under this folder).
+- `-D rust_crate=<name>` — Cargo crate name.
+- `-D rust_idiomatic` (or `-D reflaxe_rust_profile=idiomatic`) — enable more idiomatic Rust output (e.g. `let` vs `let mut` inference).
+- `-D rust_cargo_deps_file=<path>` — TOML lines appended under `[dependencies]` in generated `Cargo.toml` (fallback; prefer `@:rustCargo`).
+- `-D rust_cargo_toml=<path>` — override the entire generated `Cargo.toml` (supports `{{crate_name}}` placeholder).
+- `-D rust_extra_src=<dir>` — copy `*.rs` files from a directory into `out/src/` and auto-`mod` them from `main.rs`.
+- `-D rustfmt` — run `cargo fmt` on the generated crate after compilation (best-effort).
+
+## Rust-native interop (framework-first)
+
+- Cargo deps: `@:rustCargo("dep = \"1\"")` or `@:rustCargo({ name: "dep", version: "1", features: ["x"] })`
+- Extern bindings: `@:native("crate::path") extern class Foo { @:native("fn_name") static function bar(...): ...; }`
+- Derives: `@:rustDerive(["serde::Serialize"])` on classes/enums
+- Generic bounds (minimal): `@:rustGeneric("T: serde::Serialize")` on methods with type params
