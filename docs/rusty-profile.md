@@ -45,6 +45,33 @@ Expected code shapes:
   - `v.push(4);`
   - `for x in v.iter() { ... }`
 
+### `rust.Str` (maps to Rust `&str`)
+
+Intent:
+- Allow Rust-idiomatic borrowed string parameters without cloning at callsites.
+
+Guidance:
+- Construct `rust.Str` via borrow scope (avoid storing it):
+  - `StrTools.with(needle, s -> { ... })`
+  - Or `Borrow.withRef(needle, r -> { var s: rust.Str = cast r; ... })`
+
+### `rust.Slice<T>` (maps to Rust `&[T]`)
+
+Intent:
+- Borrowed views over contiguous data (initially via `Vec<T>.as_slice()`).
+
+Helpers:
+- `SliceTools.fromVec(Borrow.withRef(vec, ...))` produces a `Slice<T>`.
+- `SliceTools.toArray(slice)` clones into a Haxe `Array<T>` for convenient iteration.
+
+### `rust.Iter<T>` (maps to Rust `std::vec::IntoIter<T>`)
+
+Intent:
+- Enable iterator-first interop for APIs that traffic in owned iterators.
+
+Helpers:
+- `IterTools.fromVec(v)` converts a `rust.Vec<T>` into an owned iterator (consumes `v`; use `v.clone()` if needed).
+
 ### `rust.Option<T>` (maps to Rust `Option<T>`)
 
 Intent:
@@ -107,6 +134,12 @@ Compiler behavior:
 Conversions between portable Haxe containers and rusty containers are explicit:
 - `rust.Vec.fromArray(Array<T>)` / `toArray()` (clone/convert elements as needed)
 - Avoid hidden moves: rusty code should not silently invalidate a Haxe variable due to Rust ownership rules.
+
+Iteration note (current):
+- Haxe `for (x in v)` does not work directly on `rust.Vec<T>`/`rust.Slice<T>` yet because Haxe desugars iteration via `Iterator<T>`.
+- Use explicit conversions/helpers for now:
+  - `for (x in VecTools.toArray(v.clone())) ...`
+  - `for (x in SliceTools.toArray(slice)) ...`
 
 ## Non-goals (v1)
 
