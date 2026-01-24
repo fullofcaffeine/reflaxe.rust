@@ -79,6 +79,12 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - `test/run-snapshots.sh` (runs `cargo fmt` + `cargo build -q` per snapshot)
   - example smoke runs (`examples/hello`, `examples/classes`)
 
+## Build (native)
+
+- Codegen-only: run Haxe with `-D rust_output=...` (default behavior).
+- Codegen + build: add `-D rust_build` (debug) or `-D rust_build_release` / `-D rust_release` (release).
+- Optional target triple: `-D rust_target=x86_64-unknown-linux-gnu` (passed to `cargo build --target ...`).
+
 ## Tooling (lix)
 
 - This repo uses **lix** for a pinned Haxe toolchain (see `.haxerc`).
