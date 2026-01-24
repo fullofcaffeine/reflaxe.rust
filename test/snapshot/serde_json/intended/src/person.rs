@@ -15,7 +15,7 @@ pub struct Person {
 
 impl Person {
     pub fn new(name: String, age: i32) -> HxRef<Person> {
-        let mut self_: HxRef<Person> = Rc::new(RefCell::new(Person {
+        let self_: HxRef<Person> = Rc::new(RefCell::new(Person {
             name: String::new(),
             age: 0,
         }));

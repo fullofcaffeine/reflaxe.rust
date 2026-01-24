@@ -15,7 +15,7 @@ pub struct Task {
 
 impl Task {
     pub fn new(text: String, done: bool) -> HxRef<Task> {
-        let mut self_: HxRef<Task> = Rc::new(RefCell::new(Task {
+        let self_: HxRef<Task> = Rc::new(RefCell::new(Task {
             text: String::new(),
             done: false,
         }));
