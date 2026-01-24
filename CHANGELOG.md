@@ -1,3 +1,10 @@
+# [0.8.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.7.0...v0.8.0) (2026-01-24)
+
+
+### Features
+
+* **rusty:** add okOr/okOrElse and Result context ([8ed36d7](https://github.com/fullofcaffeine/reflaxe.rust/commit/8ed36d7b7d659b96bd324070122e64b6c8a82803))
+
 # [0.7.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.6.0...v0.7.0) (2026-01-24)
 
 
