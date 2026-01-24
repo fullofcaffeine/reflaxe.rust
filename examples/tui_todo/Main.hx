@@ -6,6 +6,8 @@ class Main {
 			new Task("bootstrap reflaxe.rust", true),
 			new Task("add enums + switch", false),
 			new Task("ship ratatui demo", false),
+			new Task("Yay!", true),
+			new Task("ship ratatui demo", false),
 		];
 
 		var selected = 0;
