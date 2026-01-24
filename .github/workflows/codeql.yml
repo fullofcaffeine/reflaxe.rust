@@ -28,7 +28,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ "javascript-typescript", "rust" ]
+        include:
+          - language: "javascript-typescript"
+            build-mode: "none"
+          - language: "rust"
+            build-mode: "none"
 
     steps:
       - name: Checkout
@@ -38,10 +42,7 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+          build-mode: ${{ matrix.build-mode }}
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
-
