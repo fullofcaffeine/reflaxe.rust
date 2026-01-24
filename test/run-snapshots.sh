@@ -96,7 +96,8 @@ for case_dir in "$SNAP_DIR"/*; do
   fi
 
   rm -rf "$case_dir/out"
-  (cd "$case_dir" && "$HAXE_BIN" compile.hxml)
+  # Snapshots do their own cargo build step below; keep codegen-only during `haxe compile.hxml`.
+  (cd "$case_dir" && "$HAXE_BIN" compile.hxml -D rust_no_build)
 
   if [[ -f "$case_dir/out/Cargo.toml" ]]; then
     if ! (cd "$case_dir/out" && cargo fmt >/dev/null); then
