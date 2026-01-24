@@ -15,6 +15,10 @@ After codegen (`-D rust_output=...`) the compiler invokes Cargo by default (debu
   - `-D rust_cargo_jobs=8`
   - `-D rust_cargo_target_dir=path/to/target` (sets `CARGO_TARGET_DIR`)
 
+## Roadmap
+
+- Milestones live in Beads (`bd graph haxe.rust-oo5 --compact`) and are summarized in `docs/milestones-oo5.md`.
+
 Haxe (4.3.7) → Rust target built on Reflaxe.
 
 ## Quickstart
