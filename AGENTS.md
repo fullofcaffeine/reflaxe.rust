@@ -79,6 +79,10 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 
 - Run snapshots locally: `bash test/run-snapshots.sh`
 - Update a snapshot’s golden output (after review): `bash test/run-snapshots.sh --case <name> --update`
+- Pre-push directive: keep `main` green by running the closest local equivalent of CI before `git push`:
+  - `npm ci --ignore-scripts --no-audit --no-fund`
+  - `bash test/run-snapshots.sh`
+  - Smoke-run any examples you touched (e.g. `(cd examples/tui_todo && haxe compile.hxml && (cd out && cargo run -q))`)
 - CI runs:
   - `test/run-snapshots.sh` (runs `cargo fmt` + `cargo build -q` per snapshot)
   - example smoke runs (`examples/hello`, `examples/classes`)
