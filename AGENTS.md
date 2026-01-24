@@ -109,6 +109,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - GitHub Actions:
   - `.github/workflows/ci.yml` runs on PRs/pushes to `main`.
   - `.github/workflows/release.yml` runs on tags `v*` and publishes a GitHub Release with a haxelib zip.
+  - `.github/workflows/codeql.yml` runs CodeQL; Rust scanning expects a repo-root `Cargo.toml` workspace (points at `runtime/hxrt`).
 - Tag/version policy: tag `vX.Y.Z` must match `haxelib.json` `"version": "X.Y.Z"`.
 - Package locally: `bash scripts/release/package-haxelib.sh dist/reflaxe.rust.zip`
 - Optional: set `HAXELIB_PASSWORD` secret to auto-publish to haxelib on tag releases.
