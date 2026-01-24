@@ -40,6 +40,7 @@ using reflaxe.helpers.ClassFieldHelper;
 enum RustProfile {
 	Portable;
 	Idiomatic;
+	Rusty;
 }
 
 /**
@@ -87,11 +88,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		// Optional profile selection.
 		// - default: portable semantics
-		// - `-D rust_idiomatic` or `-D reflaxe_rust_profile=idiomatic|rusty`: prefer Rust-style output
+		// - `-D rust_idiomatic` or `-D reflaxe_rust_profile=idiomatic`: prefer cleaner Rust output
+		// - `-D reflaxe_rust_profile=rusty`: opt into Rust-native APIs/interop (still framework-first)
 		var profileDefine = Context.definedValue("reflaxe_rust_profile");
-		var wantsIdiomatic = Context.defined("rust_idiomatic")
-			|| (profileDefine != null && (profileDefine == "idiomatic" || profileDefine == "rusty"));
-		profile = wantsIdiomatic ? Idiomatic : Portable;
+		var wantsRusty = profileDefine != null && profileDefine == "rusty";
+		var wantsIdiomatic = Context.defined("rust_idiomatic") || (profileDefine != null && profileDefine == "idiomatic");
+		profile = wantsRusty ? Rusty : (wantsIdiomatic ? Idiomatic : Portable);
 
 		// Collect Cargo dependencies declared via `@:rustCargo(...)` metadata.
 		CargoMetaRegistry.collectFromContext();
@@ -1439,7 +1441,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function isBuiltinEnum(en: EnumType): Bool {
 		// Enums that are represented by Rust built-ins and should not be emitted as Rust enums.
 		return switch (enumKey(en)) {
-			case "haxe.ds.Option" | "haxe.functional.Result": true;
+			case "haxe.ds.Option" | "haxe.functional.Result" | "rust.Option" | "rust.Result": true;
 			case _: false;
 		}
 	}
@@ -2486,6 +2488,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case _:
 		}
 
+		switch (ft) {
+			case TAbstract(absRef, params): {
+				var abs = absRef.get();
+				var key = abs.pack.join(".") + "." + abs.name;
+				if (key == "rust.HxRef" && params.length == 1) {
+					var inner = toRustType(params[0], pos);
+					return RPath("HxRef<" + rustTypeToString(inner) + ">");
+				}
+			}
+			case _:
+		}
+
 		if (isArrayType(ft)) {
 			var elem = arrayElementType(ft);
 			var elemRust = toRustType(elem, pos);
@@ -2496,10 +2510,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case TEnum(enumRef, params): {
 				var en = enumRef.get();
 				var key = en.pack.join(".") + "." + en.name;
-				if (key == "haxe.ds.Option" && params.length == 1) {
+				if ((key == "haxe.ds.Option" || key == "rust.Option") && params.length == 1) {
 					var t = toRustType(params[0], pos);
 					RPath("Option<" + rustTypeToString(t) + ">");
-				} else if (key == "haxe.functional.Result" && params.length >= 1) {
+				} else if ((key == "haxe.functional.Result" || key == "rust.Result") && params.length >= 1) {
 					var okT = toRustType(params[0], pos);
 					var errT = params.length >= 2 ? toRustType(params[1], pos) : RString;
 					RPath("Result<" + rustTypeToString(okT) + ", " + rustTypeToString(errT) + ">");
@@ -2509,6 +2523,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 			case TInst(clsRef, params): {
 				var cls = clsRef.get();
+				switch (cls.kind) {
+					case KTypeParameter(_):
+						return RPath(cls.name);
+					case _:
+				}
 				if (isBytesClass(cls)) {
 					return RPath("HxRef<hxrt::bytes::Bytes>");
 				}

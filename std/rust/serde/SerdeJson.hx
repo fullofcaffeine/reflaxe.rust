@@ -10,8 +10,8 @@ package rust.serde;
 @:rustCargo({ name: "serde_json", version: "1" })
 class SerdeJson {
 	@:rustGeneric("T: serde::Serialize")
-	public static function toString<T>(value: T): String {
-		// Most Haxe class instances compile to `HxRef<T>`; serialize the inner `T` via a borrow.
+	public static function toString<T>(value: rust.HxRef<T>): String {
+		// Serialize the inner `T` via a borrow.
 		return untyped __rust__("serde_json::to_string(&*{0}.borrow()).unwrap()", value);
 	}
 }

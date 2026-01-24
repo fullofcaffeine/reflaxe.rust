@@ -54,6 +54,7 @@ cd examples/serde_json
 - `-D rust_output=out` — output directory (Cargo project is generated under this folder).
 - `-D rust_crate=<name>` — Cargo crate name.
 - `-D rust_idiomatic` (or `-D reflaxe_rust_profile=idiomatic`) — enable more idiomatic Rust output (e.g. `let` vs `let mut` inference).
+- `-D reflaxe_rust_profile=rusty` — enable the “rusty” profile (Rust-facing APIs under `rust.*`).
 - `-D rust_cargo_deps_file=<path>` — TOML lines appended under `[dependencies]` in generated `Cargo.toml` (fallback; prefer `@:rustCargo`).
 - `-D rust_cargo_toml=<path>` — override the entire generated `Cargo.toml` (supports `{{crate_name}}` placeholder).
 - `-D rust_extra_src=<dir>` — copy `*.rs` files from a directory into `out/src/` and auto-`mod` them from `main.rs`.
@@ -65,3 +66,5 @@ cd examples/serde_json
 - Extern bindings: `@:native("crate::path") extern class Foo { @:native("fn_name") static function bar(...): ...; }`
 - Derives: `@:rustDerive(["serde::Serialize"])` on classes/enums
 - Generic bounds (minimal): `@:rustGeneric("T: serde::Serialize")` on methods with type params
+
+See `docs/rusty-profile.md` for the `rusty` profile design and `rust.*` APIs.
