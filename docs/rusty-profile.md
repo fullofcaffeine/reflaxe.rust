@@ -102,6 +102,37 @@ Expected code shapes:
 Intent:
 - Use Rust’s standard hash map for rusty code paths.
 
+### `rust.PathBuf` (maps to `std::path::PathBuf`)
+
+Intent:
+- Use Rust’s owned path buffer type for CLI/apps that want Rust-like path handling.
+
+Helpers:
+- `PathBufTools.fromString("path")` constructs a `PathBuf`.
+- `PathBufTools.join(p, "child")` returns a new `PathBuf` without moving `p`.
+- `PathBufTools.push(p, "child")` clones `p`, appends, and returns the new `PathBuf`.
+- `PathBufTools.toStringLossy(p)` converts to `String` via `to_string_lossy()`.
+
+Note:
+- Most helpers take `rust.Ref<PathBuf>` so you can keep using the original path value (no implicit moves).
+
+### `rust.OsString` (maps to `std::ffi::OsString`)
+
+Intent:
+- Expose OS-native strings for interop at the framework boundary.
+
+Helpers:
+- `OsStringTools.fromString(s)` / `OsStringTools.toStringLossy(os)`.
+
+### `rust.Duration` / `rust.Instant` (maps to `std::time::*`)
+
+Intent:
+- Use Rust’s monotonic clock and durations for timing, throttling, and simple benchmarks.
+
+Helpers:
+- `InstantTools.now()` / `InstantTools.elapsedMillis(i)`.
+- `DurationTools.fromMillis(ms)` / `DurationTools.sleep(d)`.
+
 ## Borrow-scoped helpers (closure-based)
 
 Haxe has no lifetime syntax, so **borrowed references must be expressed via scope**.
