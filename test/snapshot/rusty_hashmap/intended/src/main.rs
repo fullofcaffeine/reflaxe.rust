@@ -31,5 +31,10 @@ fn main() {
             };
         };
     };
+    let mut key_count: i32 = 0;
+    for _ in m.keys() {
+        key_count = key_count + 1;
+    }
+    println!("{}", key_count);
     println!("{}", crate::rust_hash_map_tools::HashMapTools::len(&m));
 }

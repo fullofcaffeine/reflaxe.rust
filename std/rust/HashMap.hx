@@ -23,5 +23,18 @@ extern class HashMap<K, V> {
 
 	@:rustMutating
 	public function remove(key: Ref<K>): Option<V>;
-}
 
+	/**
+	 * Iterate borrowed keys (`&K`) without moving the map.
+	 *
+	 * Note: this returns a Rust iterator type, but is typed as a Haxe `Iterator`
+	 * so `for (k in map.keys())` typechecks. The compiler lowers the for-loop to
+	 * a Rust `for` directly.
+	 */
+	public function keys(): Iterator<Ref<K>>;
+
+	/**
+	 * Iterate borrowed values (`&V`) without moving the map.
+	 */
+	public function values(): Iterator<Ref<V>>;
+}

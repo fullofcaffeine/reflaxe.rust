@@ -18,3 +18,7 @@ dist/
 # Haxe
 *.n
 *.hl
+
+# Haxe dumps (debugging)
+dump/
+**/dump/
