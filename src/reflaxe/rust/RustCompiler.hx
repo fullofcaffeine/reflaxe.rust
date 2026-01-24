@@ -1112,7 +1112,7 @@ enum RustProfile {
 					// having to represent Haxe's `Iterator<T>` type in the backend.
 					function iterClonedExpr(x: TypedExpr): RustExpr {
 						var base = ECall(EField(compileExpr(x), "iter"), []);
-						return ECall(EField(base, "cloned"), []);
+						return ECall(EField(base, iterBorrowMethod(x.t)), []);
 					}
 
 					function matchesFieldName(fa: FieldAccess, expected: String): Bool {
@@ -1332,7 +1332,7 @@ enum RustProfile {
 				case TFor(v, iterable, body): {
 					function iterCloned(x: TypedExpr): RustExpr {
 						var base = ECall(EField(compileExpr(x), "iter"), []);
-						return ECall(EField(base, "cloned"), []);
+						return ECall(EField(base, iterBorrowMethod(x.t)), []);
 					}
 
 					var it: RustExpr = switch (unwrapMetaParen(iterable).expr) {
@@ -3526,6 +3526,25 @@ enum RustProfile {
 			}
 			case _: ft;
 		}
+	}
+
+	function iterBorrowMethod(t: Type): String {
+		var elem: Null<Type> = null;
+		var ft = followType(t);
+
+		if (isArrayType(ft)) {
+			elem = arrayElementType(ft);
+		} else {
+			switch (ft) {
+				case TInst(_, params) if (isRustVecType(ft) && params.length == 1):
+					elem = params[0];
+				case TAbstract(_, params) if (isRustSliceType(ft) && params.length == 1):
+					elem = params[0];
+				case _:
+			}
+		}
+
+		return elem != null && isCopyType(elem) ? "copied" : "cloned";
 	}
 
 	function rustTypeToString(t: reflaxe.rust.ast.RustAST.RustType): String {
