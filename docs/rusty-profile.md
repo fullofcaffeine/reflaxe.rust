@@ -183,9 +183,11 @@ Conversions between portable Haxe containers and rusty containers are explicit:
 - `rust.Vec.fromArray(Array<T>)` / `toArray()` (clone/convert elements as needed)
 - Avoid hidden moves: rusty code should not silently invalidate a Haxe variable due to Rust ownership rules.
 
-Iteration note (current):
-- Haxe `for (x in v)` does not work directly on `rust.Vec<T>`/`rust.Slice<T>` yet because Haxe desugars iteration via `Iterator<T>`.
-- Use explicit conversions/helpers for now:
+Iteration note:
+- `for (x in v)` works for `rust.Vec<T>` and `rust.Slice<T>` by providing an `iterator()` method for Haxe typing.
+- The compiler lowers `iterator()` on these types to Rust’s `iter().cloned()` to avoid moving the container.
+  - This requires `T: Clone` in Rust output (works well for typical Haxe values like `HxRef<T>`).
+- If you need non-`Clone` iteration, fall back to explicit helpers (clone/convert as needed):
   - `for (x in VecTools.toArray(v.clone())) ...`
   - `for (x in SliceTools.toArray(slice)) ...`
 
