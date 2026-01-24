@@ -13,6 +13,7 @@ use std::time::Duration;
 thread_local! {
     static TERMINAL: RefCell<Option<Terminal<CrosstermBackend<Stdout>>>> = RefCell::new(None);
     static HEADLESS: Cell<bool> = Cell::new(false);
+    static HEADLESS_SET: Cell<bool> = Cell::new(false);
     static HEADLESS_FRAME: Cell<i32> = Cell::new(0);
     static HEADLESS_ACTIONS: RefCell<Vec<i32>> = RefCell::new(Vec::new());
     static HEADLESS_INDEX: Cell<usize> = Cell::new(0);
@@ -26,10 +27,21 @@ pub fn run_frame(frame: i32, tasks: String) {
     print!("{}", rendered);
 }
 
+pub fn set_headless(headless: bool) {
+    HEADLESS.with(|h| h.set(headless));
+    HEADLESS_SET.with(|s| s.set(true));
+}
+
 pub fn enter() {
     let interactive = io::stdin().is_terminal() && io::stdout().is_terminal();
 
-    HEADLESS.with(|h| h.set(!interactive));
+    let headless = if HEADLESS_SET.with(|s| s.get()) {
+        HEADLESS.with(|h| h.get())
+    } else {
+        !interactive
+    };
+
+    HEADLESS.with(|h| h.set(headless));
     HEADLESS_FRAME.with(|f| f.set(0));
     HEADLESS_INDEX.with(|i| i.set(0));
     HEADLESS_ACTIONS.with(|a| {
@@ -37,7 +49,7 @@ pub fn enter() {
         *a.borrow_mut() = vec![2, 3, 2, 3, 1, 4];
     });
 
-    if !interactive {
+    if headless {
         return;
     }
 

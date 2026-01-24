@@ -13,6 +13,12 @@ class Main {
 		var selected = 0;
 		var running = true;
 
+		#if tui_headless
+		TuiDemo.setHeadless(true);
+		#else
+		TuiDemo.setHeadless(false);
+		#end
+
 		TuiDemo.enter();
 		while (running) {
 			var lines = "";

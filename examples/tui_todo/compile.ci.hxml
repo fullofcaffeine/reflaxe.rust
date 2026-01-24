@@ -1,0 +1,8 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_strict_examples
+-D reflaxe_rust_profile=idiomatic
+-D tui_headless
+-D rust_output=out
+-D rust_crate=tui_todo
+-main Main
