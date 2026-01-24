@@ -1,3 +1,10 @@
+## [0.4.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.4.0...v0.4.1) (2026-01-24)
+
+
+### Performance Improvements
+
+* **compiler:** reduce cloning of literal strings/arrays ([f8ddf85](https://github.com/fullofcaffeine/reflaxe.rust/commit/f8ddf8530bed4ba9141b62e4079a2b5148e988a8))
+
 # [0.4.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.3.1...v0.4.0) (2026-01-24)
 
 
