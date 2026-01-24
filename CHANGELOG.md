@@ -1,3 +1,10 @@
+# [0.5.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.4.1...v0.5.0) (2026-01-24)
+
+
+### Features
+
+* **tui:** interactive todo + CI headless mode ([43c7ec7](https://github.com/fullofcaffeine/reflaxe.rust/commit/43c7ec766d2f33c8071a1b676dc34035f6322608))
+
 ## [0.4.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.4.0...v0.4.1) (2026-01-24)
 
 
