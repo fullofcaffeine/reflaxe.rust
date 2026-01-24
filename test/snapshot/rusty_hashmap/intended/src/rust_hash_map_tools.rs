@@ -7,7 +7,22 @@ pub const __HX_TYPE_ID: u32 = 0x6cc99212u32;
 pub struct HashMapTools {}
 
 impl HashMapTools {
-    pub fn len<K, V>(m: std::collections::HashMap<K, V>) -> i32 {
+    pub fn len<K, V>(m: &std::collections::HashMap<K, V>) -> i32 {
         return m.len() as i32;
+    }
+
+    pub fn insert<K: Eq + std::hash::Hash, V>(
+        m: &mut std::collections::HashMap<K, V>,
+        key: K,
+        value: V,
+    ) -> Option<V> {
+        return m.insert(key, value);
+    }
+
+    pub fn remove<K: Eq + std::hash::Hash, V>(
+        m: &mut std::collections::HashMap<K, V>,
+        key: &K,
+    ) -> Option<V> {
+        return m.remove(key);
     }
 }

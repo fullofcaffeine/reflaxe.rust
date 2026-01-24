@@ -31,5 +31,5 @@ fn main() {
             };
         };
     };
-    println!("{}", crate::rust_hash_map_tools::HashMapTools::len(m));
+    println!("{}", crate::rust_hash_map_tools::HashMapTools::len(&m));
 }
