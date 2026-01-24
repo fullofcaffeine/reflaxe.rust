@@ -14,7 +14,7 @@ pub struct Dog {
 
 impl Dog {
     pub fn new() -> HxRef<Dog> {
-        let mut self_: HxRef<Dog> = Rc::new(RefCell::new(Dog { age: 0 }));
+        let self_: HxRef<Dog> = Rc::new(RefCell::new(Dog { age: 0 }));
         {};
         return self_;
     }

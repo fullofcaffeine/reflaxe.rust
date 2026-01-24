@@ -12,7 +12,7 @@ pub struct Impl {}
 
 impl Impl {
     pub fn new() -> HxRef<Impl> {
-        let mut self_: HxRef<Impl> = Rc::new(RefCell::new(Impl {}));
+        let self_: HxRef<Impl> = Rc::new(RefCell::new(Impl {}));
         return self_;
     }
 

@@ -8,21 +8,30 @@ class Main {
 			new Task("ship ratatui demo", false),
 		];
 
-		var actions = [
-			Action.Down,
-			Action.Toggle,
-			Action.Down,
-			Action.Toggle,
-			Action.Up,
-			Action.Quit,
-		];
-
 		var selected = 0;
-		var frame = 0;
-		var i = 0;
+		var running = true;
 
-		while (i < actions.length) {
-			var action = actions[i];
+		TuiDemo.enter();
+		while (running) {
+			var lines = "";
+			var j = 0;
+			while (j < tasks.length) {
+				lines = lines + tasks[j].line(j == selected) + "\n";
+				j = j + 1;
+			}
+
+			TuiDemo.render(lines);
+
+			var code = TuiDemo.pollAction(250);
+			if (code == 0) continue;
+
+			var action = switch (code) {
+				case 1: Action.Up;
+				case 2: Action.Down;
+				case 3: Action.Toggle;
+				case 4: Action.Quit;
+				case _: Action.Quit;
+			};
 
 			switch (action) {
 				case Up:
@@ -32,19 +41,10 @@ class Main {
 				case Toggle:
 					tasks[selected].toggle();
 				case Quit:
-					break;
+					running = false;
 			}
-
-			var lines = "";
-			var j = 0;
-			while (j < tasks.length) {
-				lines = lines + tasks[j].line(j == selected) + "\n";
-				j = j + 1;
-			}
-
-			TuiDemo.runFrame(frame, lines);
-			frame = frame + 1;
-			i = i + 1;
 		}
+
+		TuiDemo.exit();
 	}
 }

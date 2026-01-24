@@ -892,7 +892,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var stmts: Array<RustStmt> = [];
 		stmts.push(RLet(
 			"self_",
-			true,
+			false,
 			RPath("HxRef<" + classType.name + ">"),
 			ERaw(allocExpr)
 		));

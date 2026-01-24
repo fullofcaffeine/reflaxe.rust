@@ -14,7 +14,7 @@ pub struct Animal {
 
 impl Animal {
     pub fn new() -> HxRef<Animal> {
-        let mut self_: HxRef<Animal> = Rc::new(RefCell::new(Animal { age: 0 }));
+        let self_: HxRef<Animal> = Rc::new(RefCell::new(Animal { age: 0 }));
         {
             let __tmp = 0;
             self_.borrow_mut().age = __tmp.clone();

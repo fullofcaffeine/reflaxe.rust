@@ -14,7 +14,7 @@ pub struct Foo {
 
 impl Foo {
     pub fn new(x: i32) -> HxRef<Foo> {
-        let mut self_: HxRef<Foo> = Rc::new(RefCell::new(Foo { x: 0 }));
+        let self_: HxRef<Foo> = Rc::new(RefCell::new(Foo { x: 0 }));
         {
             let __tmp = x;
             self_.borrow_mut().x = __tmp.clone();

@@ -12,7 +12,7 @@ pub struct Animal {}
 
 impl Animal {
     pub fn new() -> HxRef<Animal> {
-        let mut self_: HxRef<Animal> = Rc::new(RefCell::new(Animal {}));
+        let self_: HxRef<Animal> = Rc::new(RefCell::new(Animal {}));
         return self_;
     }
 }
