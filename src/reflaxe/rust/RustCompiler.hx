@@ -1132,12 +1132,32 @@ enum RustProfile {
 				}
 			}
 				case TFor(v, iterable, body): {
-					var it = if (isArrayType(iterable.t)) {
-						var base = ECall(EField(compileExpr(iterable), "iter"), []);
-						ECall(EField(base, "cloned"), []);
-					} else {
-						compileExpr(iterable);
+					function iterCloned(x: TypedExpr): RustExpr {
+						var base = ECall(EField(compileExpr(x), "iter"), []);
+						return ECall(EField(base, "cloned"), []);
 					}
+
+					var it: RustExpr = switch (unwrapMetaParen(iterable).expr) {
+						// Many custom iterables typecheck by providing `iterator()`. We lower specific
+						// rusty surfaces to Rust iterators to avoid moving values (Haxe values are reusable).
+						case TCall(call, []) : switch (unwrapMetaParen(call).expr) {
+							case TField(obj, FInstance(_, _, cfRef)):
+								var cf = cfRef.get();
+								if (cf != null && cf.getHaxeName() == "iterator" && (isRustVecType(obj.t) || isRustSliceType(obj.t))) {
+									iterCloned(obj);
+								} else {
+									compileExpr(iterable);
+								}
+							case _:
+								compileExpr(iterable);
+						}
+						case _:
+							if (isArrayType(iterable.t) || isRustVecType(iterable.t) || isRustSliceType(iterable.t)) {
+								iterCloned(iterable);
+							} else {
+								compileExpr(iterable);
+							}
+					};
 					RFor(rustLocalDeclIdent(v), it, compileVoidBody(body));
 				}
 			case TBreak:
@@ -2233,7 +2253,11 @@ enum RustProfile {
 			case TAbstract(absRef, _): {
 				var abs = absRef.get();
 				var key = abs.pack.join(".") + "." + abs.name;
-				if (key == "rust.Ref") "ref" else if (key == "rust.MutRef") "mutref" else null;
+				if (key == "rust.Ref") "ref"
+				else if (key == "rust.MutRef") "mutref"
+				else if (key == "rust.Str") "str"
+				else if (key == "rust.Slice") "slice"
+				else null;
 			}
 			case _:
 				null;
@@ -2922,6 +2946,13 @@ enum RustProfile {
 				if (key == "rust.MutRef" && params.length == 1) {
 					return RRef(toRustType(params[0], pos), true);
 				}
+				if (key == "rust.Str" && params.length == 0) {
+					return RRef(RPath("str"), false);
+				}
+				if (key == "rust.Slice" && params.length == 1) {
+					var inner = toRustType(params[0], pos);
+					return RRef(RPath("[" + rustTypeToString(inner) + "]"), false);
+				}
 			}
 			case _:
 		}
@@ -3018,6 +3049,28 @@ enum RustProfile {
 				cls.pack.length == 0 && cls.module == "Array" && cls.name == "Array";
 			}
 			case _: false;
+		}
+	}
+
+	function isRustVecType(t: Type): Bool {
+		return switch (followType(t)) {
+			case TInst(clsRef, params): {
+				var cls = clsRef.get();
+				cls != null && cls.isExtern && cls.pack.join(".") == "rust" && cls.name == "Vec" && params.length == 1;
+			}
+			case _:
+				false;
+		}
+	}
+
+	function isRustSliceType(t: Type): Bool {
+		return switch (followType(t)) {
+			case TAbstract(absRef, params): {
+				var abs = absRef.get();
+				abs != null && abs.pack.join(".") == "rust" && abs.name == "Slice" && params.length == 1;
+			}
+			case _:
+				false;
 		}
 	}
 

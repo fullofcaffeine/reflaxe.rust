@@ -1,4 +1,7 @@
 [workspace]
 members = ["runtime/hxrt"]
+exclude = [
+  "examples",
+  "test",
+]
 resolver = "2"
-
