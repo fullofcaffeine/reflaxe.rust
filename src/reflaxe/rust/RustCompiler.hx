@@ -1455,14 +1455,47 @@ enum RustProfile {
 		function collectMutatedLocals(root: TypedExpr): Map<Int, Bool> {
 			var mutated: Map<Int, Bool> = [];
 
-				function markLocal(e: TypedExpr): Void {
-					var cur = unwrapMetaParen(e);
+			function unwrapToLocal(e: TypedExpr): Null<TVar> {
+				var cur = unwrapMetaParen(e);
+
+				while (true) {
 					switch (cur.expr) {
-						case TLocal(v):
-							mutated.set(v.id, true);
+						case TCast(inner, _):
+							cur = unwrapMetaParen(inner);
+							continue;
+
+						// Handle `@:from` conversions that appear as calls (common for `rust.Ref` / `rust.MutRef`).
+						case TCall(callExpr, args) if (args.length == 1): {
+							switch (callExpr.expr) {
+								case TField(_, FStatic(typeRef, cfRef)): {
+									var cf = cfRef.get();
+									var full = typeRef.toString();
+									if (cf != null
+										&& cf.name == "fromValue"
+										&& (full.indexOf("rust.Ref") != -1 || full.indexOf("rust.MutRef") != -1)) {
+										cur = unwrapMetaParen(args[0]);
+										continue;
+									}
+								}
+								case _:
+							}
+						}
+
 						case _:
 					}
+					break;
 				}
+
+				return switch (cur.expr) {
+					case TLocal(v): v;
+					case _: null;
+				}
+			}
+
+			function markLocal(e: TypedExpr): Void {
+				var v = unwrapToLocal(e);
+				if (v != null) mutated.set(v.id, true);
+			}
 
 		function isRustMutRefType(t: Type): Bool {
 			return switch (followType(t)) {
