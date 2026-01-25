@@ -1,3 +1,15 @@
+# [0.10.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.9.0...v0.10.0) (2026-01-25)
+
+
+### Bug Fixes
+
+* **compiler:** reduce Rust warnings (mut + type idents) ([8c6f407](https://github.com/fullofcaffeine/reflaxe.rust/commit/8c6f40789e6ba7552a5abf081604fa331323a343))
+
+
+### Features
+
+* **compiler:** baseline function values via Rc<dyn Fn> ([f51c816](https://github.com/fullofcaffeine/reflaxe.rust/commit/f51c8164b706f54a93b784aba308289725149e8a))
+
 # [0.9.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.8.1...v0.9.0) (2026-01-25)
 
 
