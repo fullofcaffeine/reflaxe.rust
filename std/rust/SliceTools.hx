@@ -48,11 +48,13 @@ class SliceTools {
 		}
 
 		var typedValue = Context.typeExpr(value);
+		var valueIsArray = false;
 		var elemT: Null<Type> = switch (TypeTools.follow(typedValue.t)) {
 			case TInst(clsRef, params): {
 				var cls = clsRef.get();
 				// Array<T>
 				if (cls != null && cls.pack.length == 0 && cls.module == "Array" && cls.name == "Array" && params.length == 1) {
+					valueIsArray = true;
 					params[0];
 				} else if (cls != null && cls.isExtern && cls.pack.join(".") == "rust" && cls.name == "Vec" && params.length == 1) {
 					params[0];
@@ -84,8 +86,40 @@ class SliceTools {
 			pos: fn.pos
 		};
 
-		// Expand to:
+		// Expand to (Vec case):
 		// `rust.Borrow.withRef(value, r -> { var s: rust.Slice<T> = cast r; body; })`
+		//
+		// Expand to (Array case):
+		// `{ var __v: rust.Vec<T> = rust.VecTools.fromArray(value);
+		//    rust.Borrow.withRef(__v, r -> { var s: rust.Slice<T> = cast r; body; }) }`
+		//
+		// NOTE: For `Array<T>`, this clones into a temporary `Vec<T>` (read-only slice view).
+		// This keeps the API injection-free for apps while avoiding invalid casts from `Array<T>` to `&[T]`.
+		if (valueIsArray) {
+			var pi = Context.getPosInfos(value.pos);
+			var tmpName = "__hx_vec_" + pi.min;
+			var tmpDecl: Expr = {
+				expr: EVars([{
+					name: tmpName,
+					type: TPath({
+						pack: ["rust"],
+						name: "Vec",
+						params: [TPType(elemCt)]
+					}),
+					expr: macro rust.VecTools.fromArray($value)
+				}]),
+				pos: fn.pos
+			};
+			var tmpIdent: Expr = { expr: EConst(CIdent(tmpName)), pos: fn.pos };
+			return macro {
+				$tmpDecl;
+				rust.Borrow.withRef($tmpIdent, function(r) {
+					$decl;
+					${f.expr};
+				});
+			};
+		}
+
 		return macro rust.Borrow.withRef($value, function(r) {
 			$decl;
 			${f.expr};
@@ -106,7 +140,7 @@ class SliceTools {
 
 	@:rustGeneric("T: Clone")
 	public static function toArray<T>(s: Slice<T>): Array<T> {
-		return untyped __rust__("{0}.to_vec()", s);
+		return untyped __rust__("hxrt::array::Array::<T>::from_vec({0}.to_vec())", s);
 	}
 	#else
 	// Macro compilation stubs: these are only used in Rust output, never during macro typing/execution.

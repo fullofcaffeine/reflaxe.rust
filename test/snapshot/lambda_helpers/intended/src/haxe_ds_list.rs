@@ -6,7 +6,7 @@ pub const __HX_TYPE_ID: u32 = 0xd0de220eu32;
 
 pub struct List<T: Clone> {
     pub length: i32,
-    items: Vec<T>,
+    items: hxrt::array::Array<T>,
 }
 
 impl<T: Clone> List<T> {
@@ -14,10 +14,10 @@ impl<T: Clone> List<T> {
         let self_: crate::HxRef<crate::haxe_ds_list::List<T>> =
             std::rc::Rc::new(std::cell::RefCell::new(List {
                 length: 0,
-                items: Vec::<T>::new(),
+                items: hxrt::array::Array::<T>::new(),
             }));
         {
-            let __tmp = Vec::<T>::new();
+            let __tmp = hxrt::array::Array::<T>::new();
             self_.borrow_mut().items = __tmp.clone();
             __tmp
         };
@@ -39,6 +39,6 @@ impl<T: Clone> List<T> {
     }
 
     pub fn iterator(self_: &std::cell::RefCell<List<T>>) -> hxrt::iter::Iter<T> {
-        return hxrt::iter::Iter::from_vec(self_.borrow().items.clone());
+        return hxrt::iter::Iter::from_vec(self_.borrow().items.to_vec());
     }
 }

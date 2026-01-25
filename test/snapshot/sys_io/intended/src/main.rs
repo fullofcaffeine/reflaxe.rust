@@ -44,7 +44,8 @@ fn main() {
         format!("{}{}", dir, String::from("/b.txt")).clone(),
         String::from("b"),
     );
-    let entries: Vec<String> = crate::sys_file_system::FileSystem::read_directory(dir.clone());
+    let entries: hxrt::array::Array<String> =
+        crate::sys_file_system::FileSystem::read_directory(dir.clone());
     let mut found_a: bool = false;
     let mut found_b: bool = false;
     let mut found_dot: bool = false;
@@ -52,7 +53,7 @@ fn main() {
     {
         let mut _g: i32 = 0;
         while _g < entries.len() as i32 {
-            let e: String = entries[_g as usize].clone();
+            let e: String = entries.get_unchecked(_g as usize);
             {
                 _g = _g + 1;
                 _g

@@ -33,14 +33,14 @@ impl FileSystem {
         };
     }
 
-    pub fn read_directory(path: String) -> Vec<String> {
+    pub fn read_directory(path: String) -> hxrt::array::Array<String> {
         return {
             let mut out: Vec<String> = Vec::new();
             for entry in std::fs::read_dir(path.as_str()).unwrap() {
                 let name = entry.unwrap().file_name().to_string_lossy().to_string();
                 out.push(name);
             }
-            out
+            hxrt::array::Array::<String>::from_vec(out)
         };
     }
 }

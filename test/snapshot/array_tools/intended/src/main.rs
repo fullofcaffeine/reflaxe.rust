@@ -7,14 +7,14 @@ type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
 mod sys;
 
 fn main() {
-    let a: Vec<i32> = vec![1, 2, 3, 4];
-    let mapped: Vec<i32> = {
-        let mut _g: Vec<i32> = Vec::<i32>::new();
+    let a: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::from_vec(vec![1, 2, 3, 4]);
+    let mapped: hxrt::array::Array<i32> = {
+        let _g: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::new();
         {
             let mut _g1: i32 = 0;
-            let _g2: Vec<i32> = a.clone();
+            let _g2: hxrt::array::Array<i32> = a.clone();
             while _g1 < _g2.len() as i32 {
-                let v: i32 = _g2[_g1 as usize];
+                let v: i32 = _g2.get_unchecked(_g1 as usize);
                 {
                     _g1 = _g1 + 1;
                     _g1
@@ -24,13 +24,13 @@ fn main() {
         }
         _g
     };
-    let filtered: Vec<i32> = {
-        let mut _g_2: Vec<i32> = Vec::<i32>::new();
+    let filtered: hxrt::array::Array<i32> = {
+        let _g_2: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::new();
         {
             let mut _g1_2: i32 = 0;
-            let _g2_2: Vec<i32> = a.clone();
+            let _g2_2: hxrt::array::Array<i32> = a.clone();
             while _g1_2 < _g2_2.len() as i32 {
-                let v_2: i32 = _g2_2[_g1_2 as usize];
+                let v_2: i32 = _g2_2.get_unchecked(_g1_2 as usize);
                 {
                     _g1_2 = _g1_2 + 1;
                     _g1_2
@@ -47,7 +47,7 @@ fn main() {
         {
             let mut _g_3: i32 = 0;
             while _g_3 < a.len() as i32 {
-                let x: i32 = a[_g_3 as usize];
+                let x: i32 = a.get_unchecked(_g_3 as usize);
                 {
                     _g_3 = _g_3 + 1;
                     _g_3
@@ -64,7 +64,7 @@ fn main() {
         let mut found_2: Option<i32> = None;
         let mut i: i32 = 0;
         while i < a.len() as i32 {
-            let x_2: Option<i32> = a.get(i as usize).cloned();
+            let x_2: Option<i32> = a.get(i as usize);
             if {
                 let x_3: i32 = x_2.unwrap();
                 x_3 == 2
@@ -85,7 +85,7 @@ fn main() {
         {
             let mut _g_4: i32 = 0;
             while _g_4 < a.len() as i32 {
-                let x_4: i32 = a[_g_4 as usize];
+                let x_4: i32 = a.get_unchecked(_g_4 as usize);
                 {
                     _g_4 = _g_4 + 1;
                     _g_4
