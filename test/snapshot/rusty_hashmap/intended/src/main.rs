@@ -9,7 +9,8 @@ mod rust_hash_map_tools;
 mod sys;
 
 fn main() {
-    let mut m: std::collections::HashMap<String, i32> = std::collections::HashMap::new();
+    let mut m: std::collections::HashMap<String, i32> =
+        std::collections::HashMap::<String, i32>::new();
     m.insert(String::from("a"), 1);
     m.insert(String::from("b"), 2);
     let key: String = String::from("b");
@@ -32,7 +33,7 @@ fn main() {
         };
     };
     let mut key_count: i32 = 0;
-    for _ in m.keys() {
+    for _unused in m.keys() {
         key_count = key_count + 1;
     }
     println!("{}", key_count);

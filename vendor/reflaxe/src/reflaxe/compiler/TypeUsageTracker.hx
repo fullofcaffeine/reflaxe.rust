@@ -280,8 +280,14 @@ class TypeUsageTracker {
 			case TEnumDecl(e): {
 				final enm = e.get();
 
-				for(name => field in enm.constructs) {
-					addFunction(field.type);
+				// Avoid key/value iteration (`for (k => v in map)`) here to prevent the compiler from
+				// pulling in `haxe.iterators.MapKeyValueIterator` via `@:ifFeature`, which some targets
+				// (including reflaxe.rust) do not currently emit.
+				for(name in enm.constructs.keys()) {
+					final field = enm.constructs.get(name);
+					if(field != null) {
+						addFunction(field.type);
+					}
 				}
 			}
 
@@ -302,7 +308,12 @@ class TypeUsageTracker {
 			final level = Std.int(Math.pow(2, i));
 			result.set(cast level, []);
 		}
-		for(id => moduleData in modules) {
+		// Avoid key/value iteration (`for (k => v in map)`) here to prevent the compiler from
+		// pulling in `haxe.iterators.MapKeyValueIterator` via `@:ifFeature`, which some targets
+		// (including reflaxe.rust) do not currently emit.
+		for(id in modules.keys()) {
+			final moduleData = modules.get(id);
+			if(moduleData == null) continue;
 			for(i in 0...TypeUsageLevel.LevelCount()) {
 				final level = Std.int(Math.pow(2, i));
 				if((moduleData.level & level) != 0) {

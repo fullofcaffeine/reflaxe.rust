@@ -81,8 +81,14 @@ class ModuleUsageTracker {
 			}
 			case TEnumDecl(enumRef): {
 				final enm = enumRef.get();
-				for(_ => f in enm.constructs) {
-					addUsedType(f.type);
+				// Avoid key/value iteration (`for (k => v in map)`) here to prevent the compiler from
+				// pulling in `haxe.iterators.MapKeyValueIterator` via `@:ifFeature`, which some targets
+				// (including reflaxe.rust) do not currently emit.
+				for(name in enm.constructs.keys()) {
+					final f = enm.constructs.get(name);
+					if(f != null) {
+						addUsedType(f.type);
+					}
 				}
 			}
 			case TTypeDecl(defTypeRef) if(compiler.options.unwrapTypedefs): {

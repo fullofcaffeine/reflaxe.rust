@@ -89,6 +89,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Pre-push directive: keep `main` green by running the closest local equivalent of CI before `git push`:
   - `npm ci --ignore-scripts --no-audit --no-fund`
   - `bash test/run-snapshots.sh`
+  - `cargo fmt && cargo clippy -- -D warnings`
   - Smoke-run any examples you touched (e.g. `(cd examples/tui_todo && haxe compile.hxml && (cd out && cargo run -q))`)
 - CI runs:
   - `test/run-snapshots.sh` (runs `cargo fmt` + `cargo build -q` per snapshot)
@@ -121,7 +122,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - GitHub Actions:
   - `.github/workflows/ci.yml` runs on PRs/pushes to `main`.
   - `.github/workflows/release.yml` runs **semantic-release** after CI succeeds on `main` (semver tag + CHANGELOG + GitHub Release + zip asset).
-  - `.github/workflows/codeql.yml` runs CodeQL; Rust scanning expects a repo-root `Cargo.toml` workspace (points at `runtime/hxrt`).
+  - `.github/workflows/rustsec.yml` runs `cargo audit` on a schedule.
   - Workspace gotcha: exclude `examples/` + `test/` from the root workspace so `cargo fmt/build` works inside generated `*/out/` crates during snapshot tests.
 - Conventional commits are required on `main` so semantic-release can compute the next version.
   - Use `feat:` for minor, `fix:` for patch, and `feat!:` / `BREAKING CHANGE:` for major.

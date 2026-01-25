@@ -75,8 +75,12 @@ class ClassVarData {
 		if(hasDefaultValue()) {
 			final data = classType.extractPreconstructorFieldAssignments();
 			if(data != null) {
-				for(assignField => expr in data.assignments) {
-					if(field.name == assignField.name) {
+				// Avoid key/value iteration (`for (k => v in map)`) here to prevent the compiler from
+				// pulling in `haxe.iterators.MapKeyValueIterator` via `@:ifFeature`, which some targets
+				// (including reflaxe.rust) do not currently emit.
+				for(assignField in data.assignments.keys()) {
+					final expr = data.assignments.get(assignField);
+					if(expr != null && field.name == assignField.name) {
 						return expr;
 					}
 				}

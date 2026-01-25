@@ -29,7 +29,7 @@ fn main() {
     let bytes: crate::HxRef<hxrt::bytes::Bytes> = std::rc::Rc::new(std::cell::RefCell::new(
         hxrt::bytes::Bytes::of_string(String::from("ABC").as_str()),
     ));
-    crate::sys_io_file::File::save_bytes(bin.clone(), bytes);
+    crate::sys_io_file::File::save_bytes(bin.clone(), bytes.clone());
     let bytes2: crate::HxRef<hxrt::bytes::Bytes> = crate::sys_io_file::File::get_bytes(bin.clone());
     println!("{}", bytes2.borrow().to_string());
     crate::sys_file_system::FileSystem::delete_file(bin.clone());

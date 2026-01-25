@@ -46,7 +46,7 @@ impl OptionTools {
                 let _g: T = __p;
                 {
                     let v: T = _g;
-                    Result::Ok(v)
+                    Result::Ok(v.clone())
                 }
             }
             Option::None => Result::Err(err.clone()),

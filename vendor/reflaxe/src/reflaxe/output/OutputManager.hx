@@ -156,9 +156,16 @@ class OutputManager {
 			}
 		}
 
-		for(path => content in compiler.extraFiles) {
+		// Avoid key/value iteration (`for (k => v in map)`) here to prevent the compiler from
+		// pulling in `haxe.iterators.MapKeyValueIterator` via `@:ifFeature`, which some targets
+		// (including reflaxe.rust) do not currently emit.
+		for(path in compiler.extraFiles.keys()) {
+			final content = compiler.extraFiles.get(path);
+			if(content == null) continue;
+
 			final keys = [];
-			for(priority => cpp in content) {
+			for(priority in content.keys()) {
+				final cpp = content.get(priority);
 				if(StringTools.trim(cpp).length > 0) {
 					keys.push(priority);
 				}
@@ -244,12 +251,17 @@ class OutputManager {
 
 		#if debug_output_manager
 		trace('[OutputManager] Files map ready. Checking entries...');
-		for(k => v in files) {
-			trace('[OutputManager] MAP KEY: ${k} (entries: ${v.length})');
+		for(k in files.keys()) {
+			final v = files.get(k);
+			if(v != null) {
+				trace('[OutputManager] MAP KEY: ${k} (entries: ${v.length})');
+			}
 		}
 		trace('[OutputManager] Writing files...');
 		#end
-		for(moduleId => outputList in files) {
+		for(moduleId in files.keys()) {
+			final outputList = files.get(moduleId);
+			if(outputList == null) continue;
 			#if debug_output_manager
 			trace('[OutputManager] WRITE: ${getFileName(moduleId)}');
 			#end

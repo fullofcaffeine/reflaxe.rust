@@ -57,7 +57,6 @@ class CompilerInit {
 			fileOutputExtension: ".rs",
 			outputDirDefineName: "rust_output",
 			fileOutputType: FilePerModule,
-			ignoreTypes: [],
 			targetCodeInjectionName: "__rust__",
 			ignoreBodilessFunctions: false,
 			ignoreExterns: true,
