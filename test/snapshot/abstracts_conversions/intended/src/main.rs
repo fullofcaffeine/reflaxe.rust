@@ -10,12 +10,12 @@ mod sys;
 fn main() {
     let a: i32 = 5;
     let b: i32 = {
-        let mut this1: i32;
+        let this1: i32;
         this1 = 2.8 as i32;
         this1 as i32
     };
     let c: i32 = {
-        let mut this1_2: i32;
+        let this1_2: i32;
         this1_2 = a as i32 + b;
         this1_2 as i32
     };
