@@ -2,6 +2,6 @@
 
 // Haxe interface -> Rust trait
 
-pub trait IThing {
-    fn say(&self) -> String;
+pub trait IGet<T: Clone> {
+    fn get(&self) -> T;
 }

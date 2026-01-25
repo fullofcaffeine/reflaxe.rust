@@ -4,6 +4,9 @@ This document defines the **third** compilation profile for reflaxe.rust: `rusty
 
 The goal is to let developers write **Haxe** while opting into a surface that feels closer to **Rust idioms** and ecosystem types, without requiring app code to use raw Rust injection.
 
+Related:
+- `docs/generics.md` (how Haxe type parameters map to Rust)
+
 ## Profiles (summary)
 
 - **portable** (default)

@@ -11,12 +11,7 @@ pub struct Foo {
 impl Foo {
     pub fn new(x: i32) -> crate::HxRef<crate::foo::Foo> {
         let self_: crate::HxRef<crate::foo::Foo> =
-            std::rc::Rc::new(std::cell::RefCell::new(Foo { x: 0 }));
-        {
-            let __tmp = x;
-            self_.borrow_mut().x = __tmp.clone();
-            __tmp
-        };
+            std::rc::Rc::new(std::cell::RefCell::new(Foo { x: (x).clone() }));
         return self_;
     }
 }

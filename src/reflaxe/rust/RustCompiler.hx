@@ -360,7 +360,9 @@ enum RustProfile {
 			items.push(RRaw("// Haxe interface -> Rust trait"));
 
 			var traitLines: Array<String> = [];
-			traitLines.push("pub trait " + rustSelfType + ": std::fmt::Debug {");
+			var traitGenerics = classGenericDecls;
+			var traitGenericSuffix = traitGenerics.length > 0 ? "<" + traitGenerics.join(", ") + ">" : "";
+			traitLines.push("pub trait " + rustSelfType + traitGenericSuffix + " {");
 			for (f in funcFields) {
 				if (f.isStatic) continue;
 				if (f.expr != null) continue;
@@ -394,6 +396,18 @@ enum RustProfile {
 					name: rustFieldName(classType, cf),
 					ty: toRustType(cf.type, cf.pos),
 					isPub: cf.isPublic
+				});
+			}
+			if (classNeedsPhantomForUnusedTypeParams(classType)) {
+				var decls = rustGenericDeclsForClass(classType);
+				var names = rustGenericNamesFromDecls(decls);
+				var phantomTy = names.length == 1
+					? ("std::marker::PhantomData<" + names[0] + ">")
+					: ("std::marker::PhantomData<(" + names.join(", ") + ")>");
+				structFields.push({
+					name: "__hx_phantom",
+					ty: RPath(phantomTy),
+					isPub: false
 				});
 			}
 
@@ -457,9 +471,15 @@ enum RustProfile {
 
 				var ifaceMod = rustModuleNameForClass(ifaceType);
 				var traitPath = "crate::" + ifaceMod + "::" + rustTypeNameForClass(ifaceType);
+				var ifaceTypeArgs = iface.params != null && iface.params.length > 0
+					? ("<" + [for (p in iface.params) rustTypeToString(toRustType(p, classType.pos))].join(", ") + ">")
+					: "";
+				var implGenerics = classGenericDecls.length > 0 ? "<" + classGenericDecls.join(", ") + ">" : "";
+				var implGenericNames = rustGenericNamesFromDecls(classGenericDecls);
+				var implTurbofish = implGenericNames.length > 0 ? ("::<" + implGenericNames.join(", ") + ">") : "";
 
 					var implLines: Array<String> = [];
-					implLines.push("impl " + traitPath + " for std::cell::RefCell<" + rustSelfTypeInst + "> {");
+					implLines.push("impl" + implGenerics + " " + traitPath + ifaceTypeArgs + " for std::cell::RefCell<" + rustSelfTypeInst + "> {");
 					for (f in funcFields) {
 						if (f.isStatic) continue;
 						if (f.field.getHaxeName() == "new") continue;
@@ -490,7 +510,7 @@ enum RustProfile {
 					var ifaceRustName = rustMethodName(ifaceType, f.field);
 					var implRustName = rustMethodName(classType, f.field);
 					implLines.push("\tfn " + ifaceRustName + "(" + sigArgs.join(", ") + ") -> " + ret + " {");
-					implLines.push("\t\t" + rustSelfType + "::" + implRustName + "(" + callArgs.join(", ") + ")");
+					implLines.push("\t\t" + rustSelfType + implTurbofish + "::" + implRustName + "(" + callArgs.join(", ") + ")");
 					implLines.push("\t}");
 				}
 				implLines.push("}");
@@ -932,13 +952,6 @@ enum RustProfile {
 			var rustSelfType = rustTypeNameForClass(classType);
 			var selfRefTy = RPath("crate::HxRef<crate::" + modName + "::" + rustClassTypeInst(classType) + ">");
 
-			var fieldInits: Array<String> = [];
-			for (cf in getAllInstanceVarFieldsForStruct(classType)) {
-				fieldInits.push(rustFieldName(classType, cf) + ": " + defaultValueForType(cf.type, cf.pos));
-			}
-		var structInit = rustSelfType + " { " + fieldInits.join(", ") + " }";
-		var allocExpr = "std::rc::Rc::new(std::cell::RefCell::new(" + structInit + "))";
-
 			var stmts: Array<RustStmt> = [];
 			if (f.expr != null) {
 				withFunctionContext(f.expr, [for (a in f.args) a.getName()], () -> {
@@ -949,6 +962,119 @@ enum RustProfile {
 						});
 					}
 
+					// Best-effort: if the constructor starts with `this.field = <arg>` assignments, move those
+					// into the Rust struct literal so we don't require `Default` for generic fields.
+					//
+					// This keeps the rest of the constructor body intact (side effects, control flow), and is
+					// conservative: we only lift the *leading* assignments.
+					var liftedFieldInit: Map<String, String> = new Map();
+					var remainingExprs: Null<Array<TypedExpr>> = null;
+
+					var exprU = unwrapMetaParen(f.expr);
+					switch (exprU.expr) {
+						case TBlock(exprs): {
+							var ctorArgNames: Map<String, Bool> = new Map();
+							for (a in f.args) {
+								var n = a.getName();
+								if (n != null && n.length > 0) ctorArgNames.set(n, true);
+							}
+
+							function isCtorArgLocal(v: TVar): Bool {
+								return v != null && v.name != null && ctorArgNames.exists(v.name);
+							}
+
+							function tryLift(e: TypedExpr): Null<{ field: String, rhs: String }> {
+								var u = unwrapMetaParen(e);
+								return switch (u.expr) {
+									case TBinop(OpAssign, lhs, rhs): {
+										var l = unwrapMetaParen(lhs);
+										switch (l.expr) {
+											case TField(obj, fa): {
+												switch (unwrapMetaParen(obj).expr) {
+													case TConst(TThis): {
+														// Resolve the Haxe field name.
+														var haxeFieldName: Null<String> = switch (fa) {
+															case FInstance(_, _, cfRef): {
+																var cf = cfRef.get();
+																cf != null ? cf.getHaxeName() : null;
+															}
+															case FAnon(cfRef): {
+																var cf = cfRef.get();
+																cf != null ? cf.getHaxeName() : null;
+															}
+															case FDynamic(name): name;
+															case _: null;
+														}
+														if (haxeFieldName == null) return null;
+
+														var r = unwrapMetaParen(rhs);
+														switch (r.expr) {
+															case TLocal(v) if (isCtorArgLocal(v)):
+																// Keep the argument usable in the rest of the constructor by cloning.
+																{
+																	field: haxeFieldName,
+																	rhs: "(" + reflaxe.rust.ast.RustASTPrinter.printExprForInjection(compileExpr(r)) + ").clone()",
+																}
+															case _:
+																null;
+														}
+													}
+													case _:
+														null;
+												}
+											}
+											case _:
+												null;
+										}
+									}
+									case _:
+										null;
+								}
+							}
+
+							var out: Array<TypedExpr> = [];
+							var lifting = true;
+							for (e in exprs) {
+								var u = unwrapMetaParen(e);
+								switch (u.expr) {
+									case TConst(TNull):
+										// Ignore.
+										continue;
+									case _:
+								}
+
+								if (lifting) {
+									var lifted = tryLift(e);
+									if (lifted != null) {
+										liftedFieldInit.set(lifted.field, lifted.rhs);
+										continue;
+									}
+									lifting = false;
+								}
+
+								out.push(e);
+							}
+
+							remainingExprs = out;
+						}
+						case _:
+					}
+
+					var fieldInits: Array<String> = [];
+					for (cf in getAllInstanceVarFieldsForStruct(classType)) {
+						var haxeName = cf.getHaxeName();
+						if (liftedFieldInit.exists(haxeName)) {
+							fieldInits.push(rustFieldName(classType, cf) + ": " + liftedFieldInit.get(haxeName));
+						} else {
+							fieldInits.push(rustFieldName(classType, cf) + ": " + defaultValueForType(cf.type, cf.pos));
+						}
+					}
+					if (classNeedsPhantomForUnusedTypeParams(classType)) {
+						fieldInits.push("__hx_phantom: std::marker::PhantomData");
+					}
+					var structInit = rustSelfType + " { " + fieldInits.join(", ") + " }";
+					var allocExpr = "std::rc::Rc::new(std::cell::RefCell::new(" + structInit + "))";
+
 					stmts.push(RLet(
 						"self_",
 						false,
@@ -956,7 +1082,11 @@ enum RustProfile {
 						ERaw(allocExpr)
 					));
 
-					var bodyBlock = compileFunctionBody(f.expr, f.ret);
+					var bodyExpr: TypedExpr = f.expr;
+					if (remainingExprs != null) {
+						bodyExpr = { expr: TBlock(remainingExprs), pos: f.expr.pos, t: f.expr.t };
+					}
+					var bodyBlock = compileFunctionBody(bodyExpr, f.ret);
 					for (s in bodyBlock.stmts) stmts.push(s);
 					if (bodyBlock.tail != null) stmts.push(RSemi(bodyBlock.tail));
 
@@ -1110,7 +1240,52 @@ enum RustProfile {
 	}
 
 	function rustGenericDeclsForClass(classType: ClassType): Array<String> {
-		return rustGenericParamsFromFieldMeta(classType.meta, [for (p in classType.params) p.name]);
+		var out: Array<String> = [];
+		var found = false;
+
+		for (entry in classType.meta.get()) {
+			if (entry.name != ":rustGeneric") continue;
+			found = true;
+
+			if (entry.params == null || entry.params.length == 0) {
+				#if eval
+				Context.error("`@:rustGeneric` requires a single parameter.", entry.pos);
+				#end
+				continue;
+			}
+
+			switch (entry.params[0].expr) {
+				case EConst(CString(s, _)):
+					out.push(s);
+				case EArrayDecl(values): {
+					for (v in values) {
+						switch (v.expr) {
+							case EConst(CString(s, _)):
+								out.push(s);
+							case _:
+								#if eval
+								Context.error("`@:rustGeneric` array must contain only strings.", entry.pos);
+								#end
+						}
+					}
+				}
+				case _:
+					#if eval
+					Context.error("`@:rustGeneric` must be a string or array of strings.", entry.pos);
+					#end
+			}
+		}
+
+		if (found) return out;
+
+		// Default bounds policy for class-level generics:
+		//
+		// Class instances are interior-mutable (`Rc<RefCell<_>>`) and methods commonly need to return
+		// values by value while borrowing `self`. To preserve Haxe's "values are reusable" semantics,
+		// codegen often clones non-`Copy` fields/values, so we default to `T: Clone` for class params.
+		var bounded: Array<String> = [];
+		for (p in classType.params) bounded.push(p.name + ": Clone");
+		return bounded;
 	}
 
 	function rustClassTypeInst(classType: ClassType): String {
@@ -1118,6 +1293,59 @@ enum RustProfile {
 		var decls = rustGenericDeclsForClass(classType);
 		var names = rustGenericNamesFromDecls(decls);
 		return names.length > 0 ? (base + "<" + names.join(", ") + ">") : base;
+	}
+
+	function haxeTypeContainsClassTypeParam(t: Type, typeParamNames: Map<String, Bool>): Bool {
+		var ft = followType(t);
+		return switch (ft) {
+			case TInst(clsRef, params): {
+				var cls = clsRef.get();
+				if (cls != null) {
+					switch (cls.kind) {
+						case KTypeParameter(_):
+							return typeParamNames.exists(cls.name);
+						case _:
+					}
+				}
+				for (p in params) if (haxeTypeContainsClassTypeParam(p, typeParamNames)) return true;
+				false;
+			}
+			case TAbstract(_, params): {
+				for (p in params) if (haxeTypeContainsClassTypeParam(p, typeParamNames)) return true;
+				false;
+			}
+			case TEnum(_, params): {
+				for (p in params) if (haxeTypeContainsClassTypeParam(p, typeParamNames)) return true;
+				false;
+			}
+			case TFun(params, ret): {
+				for (p in params) if (haxeTypeContainsClassTypeParam(p.t, typeParamNames)) return true;
+				haxeTypeContainsClassTypeParam(ret, typeParamNames);
+			}
+			case TAnonymous(anonRef): {
+				var anon = anonRef.get();
+				if (anon != null && anon.fields != null) {
+					for (cf in anon.fields) if (haxeTypeContainsClassTypeParam(cf.type, typeParamNames)) return true;
+				}
+				false;
+			}
+			case _:
+				false;
+		}
+	}
+
+	function classNeedsPhantomForUnusedTypeParams(classType: ClassType): Bool {
+		var decls = rustGenericDeclsForClass(classType);
+		var names = rustGenericNamesFromDecls(decls);
+		if (names.length == 0) return false;
+
+		var nameSet: Map<String, Bool> = new Map();
+		for (n in names) nameSet.set(n, true);
+
+		for (cf in getAllInstanceVarFieldsForStruct(classType)) {
+			if (haxeTypeContainsClassTypeParam(cf.type, nameSet)) return false;
+		}
+		return true;
 	}
 
 	function compileFunctionBody(e: TypedExpr, expectedReturn: Null<Type> = null): RustBlock {
@@ -3249,8 +3477,10 @@ enum RustProfile {
 
 	function emitClassTrait(classType: ClassType, funcFields: Array<ClassFuncData>): String {
 		var traitName = rustTypeNameForClass(classType) + "Trait";
+		var generics = rustGenericDeclsForClass(classType);
+		var genericSuffix = generics.length > 0 ? "<" + generics.join(", ") + ">" : "";
 		var lines: Array<String> = [];
-		lines.push("pub trait " + traitName + ": std::fmt::Debug {");
+		lines.push("pub trait " + traitName + genericSuffix + " {");
 
 		for (cf in getAllInstanceVarFieldsForStruct(classType)) {
 			var ty = rustTypeToString(toRustType(cf.type, cf.pos));
@@ -3282,11 +3512,17 @@ enum RustProfile {
 
 		function emitClassTraitImplForSelf(classType: ClassType, funcFields: Array<ClassFuncData>): String {
 			var modName = rustModuleNameForClass(classType);
-			var traitPath = "crate::" + modName + "::" + rustTypeNameForClass(classType) + "Trait";
+			var traitPathBase = "crate::" + modName + "::" + rustTypeNameForClass(classType) + "Trait";
 			var rustSelfType = rustTypeNameForClass(classType);
+			var rustSelfInst = rustClassTypeInst(classType);
+			var generics = rustGenericDeclsForClass(classType);
+			var genericNames = rustGenericNamesFromDecls(generics);
+			var turbofish = genericNames.length > 0 ? ("::<" + genericNames.join(", ") + ">") : "";
+			var traitArgs = genericNames.length > 0 ? "<" + genericNames.join(", ") + ">" : "";
+			var implGenerics = generics.length > 0 ? "<" + generics.join(", ") + ">" : "";
 
 			var lines: Array<String> = [];
-			lines.push("impl " + traitPath + " for std::cell::RefCell<" + rustSelfType + "> {");
+			lines.push("impl" + implGenerics + " " + traitPathBase + traitArgs + " for std::cell::RefCell<" + rustSelfInst + "> {");
 
 		for (cf in getAllInstanceVarFieldsForStruct(classType)) {
 			var ty = rustTypeToString(toRustType(cf.type, cf.pos));
@@ -3322,7 +3558,7 @@ enum RustProfile {
 				var ret = rustTypeToString(toRustType(f.ret, f.field.pos));
 				var rustName = rustMethodName(classType, f.field);
 				lines.push("\tfn " + rustName + "(" + sigArgs.join(", ") + ") -> " + ret + " {");
-				lines.push("\t\t" + rustSelfType + "::" + rustName + "(" + callArgs.join(", ") + ")");
+				lines.push("\t\t" + rustSelfType + turbofish + "::" + rustName + "(" + callArgs.join(", ") + ")");
 			lines.push("\t}");
 		}
 
@@ -3336,8 +3572,32 @@ enum RustProfile {
 
 		function emitBaseTraitImplForSubclass(baseType: ClassType, subType: ClassType, subFuncFields: Array<ClassFuncData>): String {
 			var baseMod = rustModuleNameForClass(baseType);
-			var baseTraitPath = "crate::" + baseMod + "::" + rustTypeNameForClass(baseType) + "Trait";
+			var baseTraitPathBase = "crate::" + baseMod + "::" + rustTypeNameForClass(baseType) + "Trait";
 			var rustSubType = rustTypeNameForClass(subType);
+			var rustSubInst = rustClassTypeInst(subType);
+			var subGenerics = rustGenericDeclsForClass(subType);
+			var subGenericNames = rustGenericNamesFromDecls(subGenerics);
+			var subTurbofish = subGenericNames.length > 0 ? ("::<" + subGenericNames.join(", ") + ">") : "";
+			var subImplGenerics = subGenerics.length > 0 ? "<" + subGenerics.join(", ") + ">" : "";
+
+			function findSuperParams(sub: ClassType, base: ClassType): Array<Type> {
+				var cur: Null<ClassType> = sub;
+				while (cur != null) {
+					if (cur.superClass != null) {
+						var sup = cur.superClass.t.get();
+						if (sup != null && classKey(sup) == classKey(base)) {
+							return cur.superClass.params != null ? cur.superClass.params : [];
+						}
+					}
+					cur = cur.superClass != null ? cur.superClass.t.get() : null;
+				}
+				return [];
+			}
+
+			var baseArgs = findSuperParams(subType, baseType);
+			var baseTraitArgs = baseArgs.length > 0
+				? ("<" + [for (p in baseArgs) rustTypeToString(toRustType(p, subType.pos))].join(", ") + ">")
+				: "";
 
 		var overrides = new Map<String, ClassFuncData>();
 		for (f in subFuncFields) {
@@ -3348,7 +3608,7 @@ enum RustProfile {
 		}
 
 			var lines: Array<String> = [];
-			lines.push("impl " + baseTraitPath + " for std::cell::RefCell<" + rustSubType + "> {");
+			lines.push("impl" + subImplGenerics + " " + baseTraitPathBase + baseTraitArgs + " for std::cell::RefCell<" + rustSubInst + "> {");
 
 		for (cf in getAllInstanceVarFieldsForStruct(baseType)) {
 			var ty = rustTypeToString(toRustType(cf.type, cf.pos));
@@ -3395,12 +3655,12 @@ enum RustProfile {
 
 					lines.push("\tfn " + rustMethodName(baseType, cf) + "(" + sigArgs.join(", ") + ") -> " + ret + " {");
 					var key = cf.getHaxeName() + "/" + args.length;
-					if (overrides.exists(key)) {
-						var overrideFunc = overrides.get(key);
-						lines.push("\t\t" + rustSubType + "::" + rustMethodName(subType, overrideFunc.field) + "(" + callArgs.join(", ") + ")");
-					} else {
-						lines.push("\t\ttodo!()");
-					}
+						if (overrides.exists(key)) {
+							var overrideFunc = overrides.get(key);
+							lines.push("\t\t" + rustSubType + subTurbofish + "::" + rustMethodName(subType, overrideFunc.field) + "(" + callArgs.join(", ") + ")");
+						} else {
+							lines.push("\t\ttodo!()");
+						}
 					lines.push("\t}");
 				}
 				case _:

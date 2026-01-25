@@ -200,7 +200,7 @@ class RustExtraSrcRegistry {
 
 	static function isRustKeyword(name: String): Bool {
 		return switch (name) {
-			case "as" | "break" | "const" | "continue" | "crate" | "else" | "enum" | "extern" | "false" | "fn" | "for"
+			case "as" | "break" | "box" | "const" | "continue" | "crate" | "else" | "enum" | "extern" | "false" | "fn" | "for"
 				| "if" | "impl" | "in" | "let" | "loop" | "match" | "mod" | "move" | "mut" | "pub" | "ref" | "return"
 				| "self" | "Self" | "static" | "struct" | "super" | "trait" | "true" | "type" | "unsafe" | "use" | "where"
 				| "while" | "async" | "await" | "dyn":
@@ -211,4 +211,3 @@ class RustExtraSrcRegistry {
 	}
 }
 #end
-

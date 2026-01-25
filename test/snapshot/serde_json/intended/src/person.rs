@@ -13,19 +13,9 @@ impl Person {
     pub fn new(name: String, age: i32) -> crate::HxRef<crate::person::Person> {
         let self_: crate::HxRef<crate::person::Person> =
             std::rc::Rc::new(std::cell::RefCell::new(Person {
-                name: String::new(),
-                age: 0,
+                name: (name).clone(),
+                age: (age).clone(),
             }));
-        {
-            let __tmp = name;
-            self_.borrow_mut().name = __tmp.clone();
-            __tmp
-        };
-        {
-            let __tmp = age;
-            self_.borrow_mut().age = __tmp.clone();
-            __tmp
-        };
         return self_;
     }
 }

@@ -13,19 +13,9 @@ impl Task {
     pub fn new(text: String, done: bool) -> crate::HxRef<crate::task::Task> {
         let self_: crate::HxRef<crate::task::Task> =
             std::rc::Rc::new(std::cell::RefCell::new(Task {
-                text: String::new(),
-                done: false,
+                text: (text).clone(),
+                done: (done).clone(),
             }));
-        {
-            let __tmp = text;
-            self_.borrow_mut().text = __tmp.clone();
-            __tmp
-        };
-        {
-            let __tmp = done;
-            self_.borrow_mut().done = __tmp.clone();
-            __tmp
-        };
         return self_;
     }
 
