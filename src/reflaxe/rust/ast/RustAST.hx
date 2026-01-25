@@ -113,7 +113,7 @@ enum RustExpr {
 	EPath(path: String);
 	ECall(func: RustExpr, args: Array<RustExpr>);
 	EMacroCall(name: String, args: Array<RustExpr>);
-	EClosure(args: Array<String>, body: RustBlock);
+	EClosure(args: Array<String>, body: RustBlock, isMove: Bool);
 	EBinary(op: String, left: RustExpr, right: RustExpr);
 	EUnary(op: String, expr: RustExpr);
 	ERange(start: RustExpr, end: RustExpr);
