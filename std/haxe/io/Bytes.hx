@@ -1,7 +1,42 @@
 package haxe.io;
 
 /**
- * Rust target override: haxe.io.Bytes is runtime-backed by `hxrt::bytes::Bytes`.
+ * `haxe.io.Bytes` (Rust target override)
+ *
+ * Why:
+ * - The stock Haxe std implementation of `haxe.io.Bytes` assumes a target-specific
+ *   internal representation (and often uses `untyped`/inline tricks) to make `get/set`
+ *   fast on platforms like JS/HL/C++.
+ * - For the Rust target we want a **real Rust-owned buffer** with predictable semantics
+ *   and easy interop with the Rust ecosystem (files, networking, crates).
+ * - We therefore map `haxe.io.Bytes` to a small Rust runtime type: `hxrt::bytes::Bytes`
+ *   (shipped in `runtime/hxrt` and included in every generated Cargo crate).
+ *
+ * What:
+ * - This `Bytes` is declared `extern` so it **does not generate** a Haxe implementation.
+ * - In emitted Rust, `haxe.io.Bytes` values are represented as `HxRef<hxrt::bytes::Bytes>`
+ *   (currently `type HxRef<T> = Rc<RefCell<T>>`) to match Haxe’s “values are reusable”
+ *   semantics even when Rust would otherwise move values.
+ *
+ * How:
+ * - The compiler special-cases a small, high-impact subset of the API so typical stdlib
+ *   code continues to work:
+ *   - `alloc`, `ofString` (constructors)
+ *   - `get`, `set`, `length`, `toString`
+ * - Those operations are lowered to direct calls/borrows on the runtime type, e.g.:
+ *   - `bytes.get(i)` → `bytes.borrow().get(i)`
+ *   - `bytes.set(i, v)` → `bytes.borrow_mut().set(i, v)`
+ *   - `bytes.toString()` → `bytes.borrow().to_string()`
+ *
+ * Design notes / gotchas:
+ * - The `extern` keyword is intentional: if we let the stock std `Bytes` inline into
+ *   index operations, it would assume a representation that doesn’t exist for this target.
+ * - Interior mutability (`RefCell`) is used so codegen can safely model Haxe’s mutation-heavy
+ *   APIs while still compiling to Rust (the borrow checker cannot model arbitrary Haxe aliasing).
+ * - When adding new `extern` overrides in `std/`, document:
+ *   1) the Rust representation,
+ *   2) which members are compiler intrinsics/special-cases,
+ *   3) any semantic differences vs other targets.
  *
  * IMPORTANT:
  * - This is `extern` on purpose so the stock std implementation does not inline into
