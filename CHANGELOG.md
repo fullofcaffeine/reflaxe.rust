@@ -1,3 +1,10 @@
+## [0.17.2](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.17.1...v0.17.2) (2026-01-25)
+
+
+### Bug Fixes
+
+* **idiomatic:** cleaner statement control-flow ([f450efe](https://github.com/fullofcaffeine/reflaxe.rust/commit/f450efe14763d338972b8af3f8952edd18b84f7a))
+
 ## [0.17.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.17.0...v0.17.1) (2026-01-25)
 
 
