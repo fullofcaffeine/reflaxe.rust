@@ -111,7 +111,7 @@ fn main() {
     {
         {
             let __tmp = 42;
-            foo.borrow_mut().x = __tmp.clone();
+            foo.borrow_mut().x = __tmp;
             __tmp
         };
     };

@@ -18,7 +18,7 @@ impl Foo {
     pub fn inc(self_: &std::cell::RefCell<Foo>) {
         {
             let __tmp = self_.borrow().x + 1;
-            self_.borrow_mut().x = __tmp.clone();
+            self_.borrow_mut().x = __tmp;
             __tmp
         };
     }

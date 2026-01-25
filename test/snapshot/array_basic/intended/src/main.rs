@@ -13,7 +13,7 @@ fn main() {
     println!("{}", xs[i as usize]);
     {
         let __tmp = 10;
-        xs[i as usize] = __tmp.clone();
+        xs[i as usize] = __tmp;
         __tmp
     };
     println!("{}", xs[i as usize]);

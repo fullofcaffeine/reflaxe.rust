@@ -3289,6 +3289,12 @@ enum RustProfile {
 
 	function coerceArgForParam(compiled: RustExpr, argExpr: TypedExpr, paramType: Type): RustExpr {
 		var rustParamTy = toRustType(paramType, argExpr.pos);
+		function isCloneExpr(e: RustExpr): Bool {
+			return switch (e) {
+				case ECall(EField(_, "clone"), []): true;
+				case _: false;
+			}
+		}
 
 		// `Null<T>` (Option<T>) parameters accept either `null` (`None`) or a plain `T` (wrapped into `Some`).
 		var nullInner = nullInnerType(paramType);
@@ -3306,13 +3312,13 @@ enum RustProfile {
 			// Avoid cloning obvious temporaries (literals) that won't be re-used after the call.
 			if (needsClone && isStringLiteralExpr(argExpr)) needsClone = false;
 			if (needsClone && isArrayLiteralExpr(argExpr)) needsClone = false;
-			if (needsClone) {
+			if (needsClone && !isCloneExpr(compiled)) {
 				compiled = ECall(EField(compiled, "clone"), []);
 			}
 			compiled = ECall(EPath("hxrt::dynamic::from"), [compiled]);
 		} else if (isStringType(paramType)) {
 			// Haxe Strings are immutable and commonly re-used after calls; avoid Rust moves by cloning.
-			if (!isStringLiteralExpr(argExpr)) {
+			if (!isStringLiteralExpr(argExpr) && !isCloneExpr(compiled)) {
 				compiled = ECall(EField(compiled, "clone"), []);
 			}
 		} else {
@@ -3570,8 +3576,8 @@ enum RustProfile {
 		var recv = compileExpr(obj);
 		var borrowed = ECall(EField(recv, "borrow_mut"), []);
 		var access = EField(borrowed, rustFieldName(owner, cf));
-		var rhsClone = ECall(EField(EPath("__tmp"), "clone"), []);
-		var assigned = (fieldIsNull && !rhsIsNullish) ? ECall(EPath("Some"), [rhsClone]) : rhsClone;
+		var rhsVal: RustExpr = isCopyType(rhs.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
+		var assigned = (fieldIsNull && !rhsIsNullish) ? ECall(EPath("Some"), [rhsVal]) : rhsVal;
 		stmts.push(RSemi(EAssign(access, assigned)));
 
 		return EBlock({
@@ -3588,8 +3594,8 @@ enum RustProfile {
 
 		var idx = ECast(compileExpr(index), "usize");
 		var lhs = EIndex(compileExpr(arr), idx);
-		var rhsClone = ECall(EField(EPath("__tmp"), "clone"), []);
-		stmts.push(RSemi(EAssign(lhs, rhsClone)));
+		var rhsVal: RustExpr = isCopyType(rhs.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
+		stmts.push(RSemi(EAssign(lhs, rhsVal)));
 
 		return EBlock({ stmts: stmts, tail: EPath("__tmp") });
 	}

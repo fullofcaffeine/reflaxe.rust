@@ -23,7 +23,7 @@ impl<T: Clone> List<T> {
         };
         {
             let __tmp = 0;
-            self_.borrow_mut().length = __tmp.clone();
+            self_.borrow_mut().length = __tmp;
             __tmp
         };
         return self_;
@@ -33,7 +33,7 @@ impl<T: Clone> List<T> {
         self_.borrow().items.clone().push(x.clone());
         {
             let __tmp = self_.borrow().length + 1;
-            self_.borrow_mut().length = __tmp.clone();
+            self_.borrow_mut().length = __tmp;
             __tmp
         };
     }

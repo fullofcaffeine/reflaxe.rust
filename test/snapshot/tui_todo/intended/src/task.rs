@@ -22,7 +22,7 @@ impl Task {
     pub fn toggle(self_: &std::cell::RefCell<Task>) {
         {
             let __tmp = !self_.borrow().done;
-            self_.borrow_mut().done = __tmp.clone();
+            self_.borrow_mut().done = __tmp;
             __tmp
         };
     }
