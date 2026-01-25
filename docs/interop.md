@@ -1,0 +1,64 @@
+# Rust Interop (No `__rust__` in apps)
+
+This target supports an escape hatch (`__rust__`) for emitting raw Rust, but **v1.0 policy is:**
+
+- Application code should stay “pure Haxe” (no raw `__rust__` calls).
+- Rust interop belongs in **framework code** (`std/`, `runtime/`) behind typed APIs.
+
+This doc describes the recommended, stable pattern for binding to Rust.
+
+## Preferred pattern: `extern` + `@:native(...)` + extra Rust modules
+
+### 1) Write the Rust module (hand-written)
+
+Put a `.rs` file in a directory and include it via `-D rust_extra_src=...`:
+
+- Haxe: `-D rust_extra_src=native` (directory relative to the `haxe` working directory)
+- Rust file: `native/my_module.rs`
+
+The compiler copies it into the generated crate and emits `mod my_module;` automatically.
+
+### 2) Bind from Haxe with `extern` + `@:native(...)`
+
+```haxe
+@:native("crate::my_module")
+extern class MyModule {
+  @:native("some_fn")
+  public static function someFn(x:Int): Int;
+}
+```
+
+Notes:
+
+- `@:native("crate::my_module")` maps the extern class to a Rust module path.
+- `@:native("some_fn")` maps the Haxe field to the Rust function name.
+- Keep the extern surface tiny and then wrap it with more idiomatic Haxe APIs if needed.
+
+### 3) Test it with snapshots or cargo tests
+
+- For small APIs, add a snapshot under `test/snapshot/*` that compiles + builds the generated crate.
+- For richer behavior, add `native/*.rs` tests and run `cargo test` in CI (see `examples/tui_todo`).
+
+## Cargo dependencies from Haxe
+
+Prefer declarative dependencies:
+
+- Put `@:rustCargo({ name: "crate_name", version: "x.y" })` metadata on the extern type that needs it.
+
+This keeps Cargo wiring centralized and avoids ad-hoc `Cargo.toml` edits in app repos.
+
+## Escape hatch: `__rust__` injection (framework-only)
+
+If a binding is awkward to express as an extern (generics/closures, tricky lifetimes, etc.), you can
+use `__rust__` **inside framework code** as a last resort.
+
+Two ways exist:
+
+- `untyped __rust__("...{0}...", arg0)` — works in normal (non-macro) modules
+- `reflaxe.rust.macros.RustInjection.__rust__("...{0}...", arg0, arg1, ...)` — macro shim that provides a
+  typed callable surface (and helps in files that also define macros)
+
+Important:
+
+- Examples/snapshots are guarded by `-D reflaxe_rust_strict_examples` and will fail if `__rust__`
+  leaks into user code via inlining.
