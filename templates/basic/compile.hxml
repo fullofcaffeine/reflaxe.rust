@@ -1,0 +1,8 @@
+-cp src
+-lib reflaxe.rust
+
+-D rust_output=out
+-D rust_crate=hx_app
+
+--main Main
+

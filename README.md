@@ -23,6 +23,10 @@ After codegen (`-D rust_output=...`) the compiler invokes Cargo by default (debu
 
 Haxe (4.3.7) → Rust target built on Reflaxe.
 
+## Install (lix, GitHub-only)
+
+See `docs/install-via-lix.md`.
+
 ## Quickstart
 
 This repo is developed with **lix** (pinned Haxe toolchain):
@@ -90,3 +94,5 @@ cd examples/serde_json
 - Generic bounds (minimal): `@:rustGeneric("T: serde::Serialize")` on methods with type params
 
 See `docs/rusty-profile.md` for the `rusty` profile design and `rust.*` APIs.
+
+See `docs/workflow.md` for the full Haxe→Rust→Cargo workflow (defines, release builds, targets).
