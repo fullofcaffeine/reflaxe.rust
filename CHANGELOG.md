@@ -1,3 +1,10 @@
+# [0.18.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.17.3...v0.18.0) (2026-01-25)
+
+
+### Features
+
+* **array:** map Haxe Array to hxrt::array::Array ([68be05b](https://github.com/fullofcaffeine/reflaxe.rust/commit/68be05b9e68fa5d0d584a3eace1191953b6ce222))
+
 ## [0.17.3](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.17.2...v0.17.3) (2026-01-25)
 
 
