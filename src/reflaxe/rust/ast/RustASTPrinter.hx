@@ -201,9 +201,9 @@ class RustASTPrinter {
 				var out = fnStr + "(" + a + ")";
 				wrapIfNeeded(out, PREC_POSTFIX, ctxPrec);
 			}
-			case EClosure(args, body): {
+			case EClosure(args, body, isMove): {
 				var a = args.join(", ");
-				var out = "|" + a + "| " + printBlock(body, indent);
+				var out = (isMove ? "move " : "") + "|" + a + "| " + printBlock(body, indent);
 				wrapIfNeeded(out, PREC_LOWEST, ctxPrec);
 			}
 			case EMacroCall(name, args): {

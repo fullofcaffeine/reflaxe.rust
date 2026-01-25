@@ -1301,7 +1301,13 @@ enum RustProfile {
 					var rustTy = toRustType(v.t, e.pos);
 					var initExpr = init != null ? compileExpr(init) : null;
 					if (initExpr != null) {
-						initExpr = wrapBorrowIfNeeded(initExpr, rustTy, init);
+						switch (followType(v.t)) {
+							// Function values require coercion into our function representation.
+							case TFun(_, _):
+								initExpr = coerceArgForParam(initExpr, init, v.t);
+							case _:
+								initExpr = wrapBorrowIfNeeded(initExpr, rustTy, init);
+						}
 					}
 					var mutable = currentMutatedLocals != null && currentMutatedLocals.exists(v.id);
 					RLet(name, mutable, rustTy, initExpr);
@@ -1724,6 +1730,32 @@ enum RustProfile {
 			case TMeta(_, e1):
 				compileExpr(e1);
 
+			case TFunction(fn): {
+				// Lower a Haxe function literal to a Rust `Rc<dyn Fn(...) -> ...>`.
+				// NOTE: This is a baseline: we emit a `move` closure and rely on captured values
+				// being owned (cloned) so the closure can be `'static` for storage/passing.
+				var baseArgNames: Array<String> = [];
+				for (a in fn.args) {
+					var n = (a.v != null && a.v.name != null && a.v.name.length > 0) ? a.v.name : "a";
+					baseArgNames.push(n);
+				}
+
+				var argParts: Array<String> = [];
+				var body: RustBlock = { stmts: [], tail: null };
+
+				withFunctionContext(fn.expr, baseArgNames, () -> {
+					for (i in 0...fn.args.length) {
+						var a = fn.args[i];
+						var baseName = baseArgNames[i];
+						var rustName = rustArgIdent(baseName);
+						argParts.push(rustName + ": " + rustTypeToString(toRustType(a.v.t, e.pos)));
+					}
+					body = compileFunctionBody(fn.expr, fn.t);
+				});
+
+				ECall(EPath("std::rc::Rc::new"), [EClosure(argParts, body, true)]);
+			}
+
 			case TCast(e1, _): {
 				var inner = compileExpr(e1);
 				var fromT = followType(e1.t);
@@ -1788,7 +1820,7 @@ enum RustProfile {
 		function compileTry(tryExpr: TypedExpr, catches: Array<{ v: TVar, expr: TypedExpr }>, fullExpr: TypedExpr): RustExpr {
 		var expectedReturn = fullExpr.t;
 		var tryBlock = compileExprToBlock(tryExpr, expectedReturn);
-		var attempt = ECall(EPath("hxrt::exception::catch_unwind"), [EClosure([], tryBlock)]);
+		var attempt = ECall(EPath("hxrt::exception::catch_unwind"), [EClosure([], tryBlock, false)]);
 
 		var okName = "__hx_ok";
 		var exName = "__hx_ex";
@@ -2617,6 +2649,43 @@ enum RustProfile {
 			}
 		}
 
+		// Function values: coerce function items/paths into our function representation.
+		// Baseline representation is `std::rc::Rc<dyn Fn(...) -> ...>`.
+		switch (followType(paramType)) {
+			case TFun(params, ret): {
+				function isRcNew(e: RustExpr): Bool {
+					return switch (e) {
+						case ECall(EPath("std::rc::Rc::new"), _): true;
+						case _: false;
+					}
+				}
+
+				if (!isRcNew(compiled)) {
+					var argParts: Array<String> = [];
+					var callArgs: Array<RustExpr> = [];
+					for (i in 0...params.length) {
+						var p = params[i];
+						var name = "a" + i;
+						argParts.push(name + ": " + rustTypeToString(toRustType(p.t, argExpr.pos)));
+						callArgs.push(EPath(name));
+					}
+
+					var callExpr = ECall(compiled, callArgs);
+					var retTy = toRustType(ret, argExpr.pos);
+					var body: RustBlock = {
+						stmts: [],
+						tail: TypeHelper.isVoid(ret) ? null : callExpr
+					};
+					if (TypeHelper.isVoid(ret)) {
+						body.stmts.push(RSemi(callExpr));
+					}
+
+					compiled = ECall(EPath("std::rc::Rc::new"), [EClosure(argParts, body, true)]);
+				}
+			}
+			case _:
+		}
+
 		var rustParamTy = toRustType(paramType, argExpr.pos);
 		return wrapBorrowIfNeeded(compiled, rustParamTy, argExpr);
 	}
@@ -3317,6 +3386,19 @@ enum RustProfile {
 		switch (ft) {
 			case TDynamic(_):
 				return RPath("hxrt::dynamic::Dynamic");
+			case _:
+		}
+
+		switch (ft) {
+			case TFun(params, ret): {
+				var argTys = [for (p in params) rustTypeToString(toRustType(p.t, pos))];
+				var retTy = toRustType(ret, pos);
+				var sig = "dyn Fn(" + argTys.join(", ") + ")";
+				if (!TypeHelper.isVoid(ret)) {
+					sig += " -> " + rustTypeToString(retTy);
+				}
+				return RPath("std::rc::Rc<" + sig + ">");
+			}
 			case _:
 		}
 
