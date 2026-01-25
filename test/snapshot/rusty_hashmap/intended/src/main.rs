@@ -24,14 +24,14 @@ fn main() {
                     {
                         let x: &i32 = _g;
                         println!("{:?}", x);
-                    };
+                    }
                 }
                 Option::None => {
                     println!("{}", -1);
                 }
-            };
-        };
-    };
+            }
+        }
+    }
     let mut key_count: i32 = 0;
     for _unused in m.keys() {
         key_count = key_count + 1;

@@ -169,6 +169,8 @@ class RustASTPrinter {
 			}
 			case RSemi(e):
 				printExpr(e, indent) + ";";
+			case RExpr(e, needsSemicolon):
+				printExpr(e, indent) + (needsSemicolon ? ";" : "");
 			case RReturn(e):
 				e == null ? "return;" : ("return " + printExpr(e, indent) + ";");
 			case RWhile(cond, body):

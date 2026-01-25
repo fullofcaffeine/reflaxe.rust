@@ -158,7 +158,7 @@ fn main() {
             let x: i32 = 1;
             if x == 1 {
                 hxrt::exception::throw(hxrt::dynamic::from(String::from("boom")));
-            };
+            }
             x
         })
     }) {
@@ -174,14 +174,14 @@ fn main() {
             {
                 let v_9: i32 = _g_18;
                 println!("{}", v_9);
-            };
+            }
         }
         Result::Err(__p) => {
             let _g_19: String = __p;
             {
                 let e_3: String = _g_19;
                 println!("{}", e_3);
-            };
+            }
         }
-    };
+    }
 }

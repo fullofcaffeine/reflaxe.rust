@@ -19,6 +19,6 @@ fn main() {
             };
             sum = sum + x;
         }
-    };
+    }
     println!("{}", sum);
 }

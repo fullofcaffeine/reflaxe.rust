@@ -37,16 +37,16 @@ fn count_if(it: Vec<i32>, pred: Option<std::rc::Rc<dyn Fn(i32) -> bool>>) -> i32
                     n = n + 1;
                     __tmp
                 };
-            };
+            }
         }
-    };
+    }
     return n;
 }
 
 fn ret_null(ok: bool) -> Option<i32> {
     if ok {
         return Some(1);
-    };
+    }
     return None;
 }
 
@@ -100,9 +100,9 @@ fn main() {
                         n = n + 1;
                         __tmp
                     };
-                };
+                }
             }
-        };
+        }
         n
     };
     let t3: i32 = {
@@ -124,9 +124,9 @@ fn main() {
                         n_2 = n_2 + 1;
                         __tmp
                     };
-                };
+                }
             }
-        };
+        }
         n_2
     };
     let x_3: Option<i32>;

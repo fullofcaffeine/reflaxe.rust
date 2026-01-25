@@ -22,7 +22,7 @@ fn main() {
                 };
                 _g.push(v * 2);
             }
-        };
+        }
         _g
     };
     let filtered: Vec<i32> = {
@@ -38,9 +38,9 @@ fn main() {
                 };
                 if v_2 == 2 || v_2 == 4 {
                     _g_2.push(v_2);
-                };
+                }
             }
-        };
+        }
         _g_2
     };
     let sum: i32 = {
@@ -58,7 +58,7 @@ fn main() {
                 }) as usize];
                 first = first + x;
             }
-        };
+        }
         first
     };
     let total: i32 = {
@@ -98,9 +98,9 @@ fn main() {
                         n = n + 1;
                         __tmp
                     };
-                };
+                }
             }
-        };
+        }
         n
     };
     let has_three: bool = {
@@ -119,9 +119,9 @@ fn main() {
                 if x_3 == 3 {
                     found = true;
                     break;
-                };
+                }
             }
-        };
+        }
         found
     };
     let has_four: bool = {
@@ -140,9 +140,9 @@ fn main() {
                 if x_4 == 4 {
                     found_2 = true;
                     break;
-                };
+                }
             }
-        };
+        }
         found_2
     };
     crate::sys::Sys::println(hxrt::dynamic::from(mapped.len() as i32));

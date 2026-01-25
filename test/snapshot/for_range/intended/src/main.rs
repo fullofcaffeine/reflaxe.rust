@@ -20,6 +20,6 @@ fn main() {
             };
             sum = sum + i;
         }
-    };
+    }
     println!("{}", sum);
 }

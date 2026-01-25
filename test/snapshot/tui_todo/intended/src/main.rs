@@ -31,12 +31,12 @@ fn main() {
             crate::action::Action::Up => {
                 if selected > 0 {
                     selected = selected - 1;
-                };
+                }
             }
             crate::action::Action::Down => {
                 if selected < tasks.len() as i32 - 1 {
                     selected = selected + 1;
-                };
+                }
             }
             crate::action::Action::Toggle => {
                 crate::task::Task::toggle(&tasks[selected as usize].clone());
@@ -44,7 +44,7 @@ fn main() {
             crate::action::Action::Quit => {
                 break;
             }
-        };
+        }
         let mut lines: String = String::from("");
         let mut j: i32 = 0;
         while j < tasks.len() as i32 {
