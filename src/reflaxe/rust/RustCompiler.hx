@@ -641,6 +641,10 @@ enum RustProfile {
 	function shouldEmitClass(classType: ClassType, isMain: Bool): Bool {
 		if (isMain) return true;
 		if (classType.isExtern) return false;
+		// Framework-only helpers: `Lambda` is used heavily at compile-time (including by Haxe's own macro
+		// stdlib via `using Lambda`), but we treat it as an inline/macro-time helper and avoid emitting a
+		// Rust module for it.
+		if (classType.pack.length == 0 && classType.name == "Lambda") return false;
 		var file = Context.getPosInfos(classType.pos).file;
 		return isUserProjectFile(file) || isFrameworkStdFile(file);
 	}
@@ -1611,6 +1615,22 @@ enum RustProfile {
 					var rustTy = toRustType(v.t, e.pos);
 					var initExpr = init != null ? compileExpr(init) : null;
 					if (initExpr != null) {
+						// Haxe's inliner/desugarer frequently introduces `_g*` temporaries to preserve evaluation
+						// order (e.g. for comprehensions / iterator lowering). For `Array<T>` (mapped to `Vec<T>`),
+						// these temporaries should not *move* the original value.
+						//
+						// Heuristic: if we see a compiler-generated `_g*` temp initialized from a local array,
+						// clone it. This keeps generated Rust from failing to compile due to moves, while staying
+						// aligned with the intent of these temporaries (read-only iteration).
+						var initU = unwrapMetaParen(init);
+						if (v != null && v.name != null && StringTools.startsWith(v.name, "_g") && isArrayType(v.t)) {
+							switch (initU.expr) {
+								case TLocal(_):
+									initExpr = ECall(EField(initExpr, "clone"), []);
+								case _:
+							}
+						}
+
 						switch (followType(v.t)) {
 							// Function values require coercion into our function representation.
 							case TFun(_, _):
@@ -3738,7 +3758,20 @@ enum RustProfile {
 						}
 					}
 					case _:
-						EAssign(compileExpr(e1), compileExpr(e2));
+						switch (e1.expr) {
+							case TLocal(v) if (v != null && v.name != null && StringTools.startsWith(v.name, "_g") && isArrayType(v.t)): {
+								// Same heuristic as above for `_g*` temporaries: avoid moving arrays.
+								var rhsU = unwrapMetaParen(e2);
+								switch (rhsU.expr) {
+									case TLocal(_):
+										EAssign(compileExpr(e1), ECall(EField(compileExpr(e2), "clone"), []));
+									case _:
+										EAssign(compileExpr(e1), compileExpr(e2));
+								}
+							}
+							case _:
+								EAssign(compileExpr(e1), compileExpr(e2));
+						}
 				}
 
 			case OpAdd:
@@ -3845,16 +3878,11 @@ enum RustProfile {
 	}
 
 	function toRustType(t: Type, pos: haxe.macro.Expr.Position): reflaxe.rust.ast.RustAST.RustType {
-		var base = TypeTools.follow(t);
-		if (TypeHelper.isVoid(t)) return RUnit;
-		if (TypeHelper.isBool(t)) return RBool;
-		if (TypeHelper.isInt(t)) return RI32;
-		if (TypeHelper.isFloat(t)) return RF64;
-		if (isStringType(base)) return RString;
-
 		// Haxe `Null<T>` in Rust output is represented by `Option<T>`.
-		// Detect this before following abstracts to avoid losing the `Null` wrapper.
-		switch (base) {
+		//
+		// IMPORTANT: detect this on the *raw* type before `TypeTools.follow` potentially erases the
+		// wrapper (some follow variants will eagerly follow abstracts).
+		switch (t) {
 			case TAbstract(absRef, params): {
 				var abs = absRef.get();
 				if (abs != null && abs.module == "StdTypes" && abs.name == "Null" && params.length == 1) {
@@ -3864,6 +3892,29 @@ enum RustProfile {
 			}
 			case _:
 		}
+
+		var base = TypeTools.follow(t);
+		// Expand typedefs explicitly (e.g. `Iterable<T>`, `Iterator<T>`, many std typedef helpers).
+		// `TypeTools.follow` doesn't always erase `TType` in practice (notably in macro/std contexts),
+		// so handle it here to keep type mapping predictable.
+		switch (base) {
+			case TType(typeRef, params): {
+				var tt = typeRef.get();
+				if (tt != null) {
+					var under: Type = tt.type;
+					if (tt.params != null && tt.params.length > 0 && params != null && params.length == tt.params.length) {
+						under = TypeTools.applyTypeParameters(under, tt.params, params);
+					}
+					return toRustType(under, pos);
+				}
+			}
+			case _:
+		}
+		if (TypeHelper.isVoid(t)) return RUnit;
+		if (TypeHelper.isBool(t)) return RBool;
+		if (TypeHelper.isInt(t)) return RI32;
+		if (TypeHelper.isFloat(t)) return RF64;
+		if (isStringType(base)) return RString;
 
 		var ft = followType(base);
 
