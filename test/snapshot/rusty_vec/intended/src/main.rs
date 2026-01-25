@@ -21,7 +21,7 @@ fn parse_even(n: i32) -> Result<i32, String> {
 }
 
 fn main() {
-    let mut v: Vec<i32> = Vec::new();
+    let mut v: Vec<i32> = Vec::<i32>::new();
     v.push(1);
     v.push(2);
     println!("{}", crate::rust_vec_tools::VecTools::len(v.clone()));
@@ -57,7 +57,7 @@ fn main() {
             }
         };
     };
-    let mut v2: Vec<i32> = Vec::new();
+    let mut v2: Vec<i32> = Vec::<i32>::new();
     v2.push(10);
     v2.push(20);
     let mut sum: i32 = 0;

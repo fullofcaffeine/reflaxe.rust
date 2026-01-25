@@ -24,6 +24,7 @@ enum RustItem {
 typedef RustStruct = {
 	var name: String;
 	var isPub: Bool;
+	@:optional var generics: Array<String>;
 	var fields: Array<RustStructField>;
 }
 
@@ -46,6 +47,7 @@ typedef RustEnumVariant = {
 }
 
 typedef RustImpl = {
+	@:optional var generics: Array<String>;
 	var forType: String;
 	var functions: Array<RustFunction>;
 }
@@ -84,6 +86,11 @@ typedef RustMatchArm = {
 	var expr: RustExpr;
 }
 
+typedef RustStructLitField = {
+	var name: String;
+	var expr: RustExpr;
+}
+
 enum RustPattern {
 	PWildcard;
 	PBind(name: String);
@@ -119,6 +126,7 @@ enum RustExpr {
 	ERange(start: RustExpr, end: RustExpr);
 	ECast(expr: RustExpr, ty: String);
 	EIndex(recv: RustExpr, index: RustExpr);
+	EStructLit(path: String, fields: Array<RustStructLitField>);
 	EBlock(b: RustBlock);
 	EIf(cond: RustExpr, thenExpr: RustExpr, elseExpr: Null<RustExpr>);
 	EMatch(scrutinee: RustExpr, arms: Array<RustMatchArm>);

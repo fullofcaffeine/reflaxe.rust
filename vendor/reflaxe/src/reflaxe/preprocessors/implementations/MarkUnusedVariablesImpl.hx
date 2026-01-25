@@ -51,7 +51,11 @@ class MarkUnusedVariablesImpl {
 			iter(e);
 		}
 
-		for(id => tvar in tvarMap) {
+		// Avoid key/value iteration (`for (k => v in map)`) here to prevent the compiler from
+		// pulling in `haxe.iterators.MapKeyValueIterator` via `@:ifFeature`, which some targets
+		// (including reflaxe.rust) do not currently emit.
+		for(id in tvarMap.keys()) {
+			final tvar = tvarMap.get(id);
 			if(tvar != null) {
 				if(!tvar.meta.maybeHas("-reflaxe.unused")) {
 					tvar.meta.maybeAdd("-reflaxe.unused", [], tvarPos.get(id).trustMe());

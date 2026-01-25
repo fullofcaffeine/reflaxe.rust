@@ -10,7 +10,8 @@ mod rust_option_tools;
 mod sys;
 
 fn main() {
-    let mut m: std::collections::HashMap<String, i32> = std::collections::HashMap::new();
+    let mut m: std::collections::HashMap<String, i32> =
+        std::collections::HashMap::<String, i32>::new();
     {
         let mm: &mut std::collections::HashMap<String, i32> = &mut m;
         {

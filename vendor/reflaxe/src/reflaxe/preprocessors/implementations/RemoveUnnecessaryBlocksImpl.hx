@@ -178,8 +178,12 @@ class RemoveUnnecessaryBlocksImpl {
 		}
 		
 		final result = [];
-		for(name => useCount in varInstanceCount) {
-			if(useCount.length > 1) {
+		// Avoid key/value iteration (`for (k => v in map)`) here to prevent the compiler from
+		// pulling in `haxe.iterators.MapKeyValueIterator` via `@:ifFeature`, which some targets
+		// (including reflaxe.rust) do not currently emit.
+		for(name in varInstanceCount.keys()) {
+			final useCount = varInstanceCount.get(name);
+			if(useCount != null && useCount.length > 1) {
 				result.push(name);
 			}
 		}

@@ -35,12 +35,21 @@ class TypeHelper {
 		final resolvedTypes = getSubTypeList(t);
 		final cfSubTypes = getSubTypeList(cf.type);
 
-		for(key => subType in cfSubTypes) {
+		// Avoid key/value iteration (`for (k => v in map)`) here to prevent the compiler from
+		// pulling in `haxe.iterators.MapKeyValueIterator` via `@:ifFeature`, which some targets
+		// (including reflaxe.rust) do not currently emit.
+		for(key in cfSubTypes.keys()) {
+			final subType = cfSubTypes.get(key);
+			if(subType == null) continue;
+
 			final typeParamName = getTypeParameterName(subType);
 			if(typeParamName != null && paramNameIndexMap.exists(typeParamName)) {
 				final index = paramNameIndexMap.get(typeParamName);
 				if(index != null && result[index] == null) {
-					result[index] = resolvedTypes[key];
+					final resolved = resolvedTypes.get(key);
+					if(resolved != null) {
+						result[index] = resolved;
+					}
 				}
 			}
 		}
@@ -69,8 +78,12 @@ class TypeHelper {
 			if(subType != null) {
 				final si = Std.string(index);
 				result.set(si, subType);
-				for(id => subSubType in getSubTypeList(subType)) {
-					result.set(si + "_" + id, subSubType);
+				final subSubs = getSubTypeList(subType);
+				for(id in subSubs.keys()) {
+					final subSubType = subSubs.get(id);
+					if(subSubType != null) {
+						result.set(si + "_" + id, subSubType);
+					}
 				}
 			}
 			index++;

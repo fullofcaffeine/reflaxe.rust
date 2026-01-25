@@ -9,7 +9,7 @@ mod rust_slice_tools;
 mod sys;
 
 fn main() {
-    let mut v: Vec<i32> = Vec::new();
+    let mut v: Vec<i32> = Vec::<i32>::new();
     v.push(1);
     v.push(2);
     let mut sum: i32 = 0;

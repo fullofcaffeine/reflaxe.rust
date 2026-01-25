@@ -48,6 +48,9 @@ class RustASTPrinter {
 
 	static function printStruct(s: RustAST.RustStruct): String {
 		var head = (s.isPub ? "pub " : "") + "struct " + s.name;
+		if (s.generics != null && s.generics.length > 0) {
+			head += "<" + s.generics.join(", ") + ">";
+		}
 		if (s.fields.length == 0) {
 			return head + " { }";
 		}
@@ -86,7 +89,11 @@ class RustASTPrinter {
 	}
 
 	static function printImpl(i: RustAST.RustImpl): String {
-		var head = "impl " + i.forType;
+		var head = "impl";
+		if (i.generics != null && i.generics.length > 0) {
+			head += "<" + i.generics.join(", ") + ">";
+		}
+		head += " " + i.forType;
 		if (i.functions.length == 0) {
 			return head + " { }";
 		}
@@ -238,6 +245,11 @@ class RustASTPrinter {
 			}
 			case EIndex(recv, index):
 				wrapIfNeeded(printExprPrec(recv, indent, PREC_POSTFIX) + "[" + printExprPrec(index, indent, PREC_LOWEST) + "]", PREC_POSTFIX, ctxPrec);
+			case EStructLit(path, fields): {
+				var parts = fields.map(f -> f.name + ": " + printExprPrec(f.expr, indent, PREC_LOWEST)).join(", ");
+				var out = path + " { " + parts + " }";
+				wrapIfNeeded(out, PREC_PRIMARY, ctxPrec);
+			}
 			case EAssign(lhs, rhs): {
 				var out = printExprPrec(lhs, indent, PREC_ASSIGN) + " = " + printExprPrec(rhs, indent, PREC_ASSIGN);
 				wrapIfNeeded(out, PREC_ASSIGN, ctxPrec);
