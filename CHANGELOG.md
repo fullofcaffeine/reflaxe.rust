@@ -1,3 +1,10 @@
+# [0.13.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.12.0...v0.13.0) (2026-01-25)
+
+
+### Features
+
+* **std:** inline Lambda helpers + snapshot ([a2f542d](https://github.com/fullofcaffeine/reflaxe.rust/commit/a2f542d608209552529c34b6fa5d16f197c33dea))
+
 # [0.12.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.11.0...v0.12.0) (2026-01-25)
 
 
