@@ -3396,6 +3396,7 @@ enum RustProfile {
 				else if (key == "rust.MutRef") "mutref"
 				else if (key == "rust.Str") "str"
 				else if (key == "rust.Slice") "slice"
+				else if (key == "rust.MutSlice") "mutslice"
 				else null;
 			}
 			case _:
@@ -3404,12 +3405,20 @@ enum RustProfile {
 	}
 
 	function isDirectRustRefValue(e: TypedExpr): Bool {
-		// If we see a cast at the top-level, assume it's an implicit conversion to `Ref/MutRef`
-		// and still emit the borrow operator.
 		var cur = unwrapMetaParen(e);
 		switch (cur.expr) {
-			case TCast(_, _):
-				return false;
+			case TCast(inner, _): {
+				// Casts are often used for implicit `@:from` conversions to `Ref/MutRef`, where we still
+				// want to emit `&`/`&mut`.
+				//
+				// However, for Rusty “ref-to-ref” coercions (e.g. `MutRef<Vec<T>> -> MutSlice<T>`),
+				// the cast is type-level only and the value is already a Rust reference.
+				//
+				// Distinguish the two by checking whether both sides are already Rust ref kinds.
+				var fromKind = rustRefKind(inner.t);
+				var toKind = rustRefKind(cur.t);
+				return fromKind != null && toKind != null;
+			}
 			case _:
 		}
 
@@ -4276,6 +4285,10 @@ enum RustProfile {
 				if (key == "rust.Slice" && params.length == 1) {
 					var inner = toRustType(params[0], pos);
 					return RRef(RPath("[" + rustTypeToString(inner) + "]"), false);
+				}
+				if (key == "rust.MutSlice" && params.length == 1) {
+					var inner = toRustType(params[0], pos);
+					return RRef(RPath("[" + rustTypeToString(inner) + "]"), true);
 				}
 
 				// General abstract fallback: treat as its underlying type.

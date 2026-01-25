@@ -1,4 +1,3 @@
-import rust.Borrow;
 import rust.Slice;
 import rust.SliceTools;
 import rust.Vec;
@@ -15,8 +14,7 @@ class Main {
 		}
 
 		var sum2 = 0;
-		Borrow.withRef(v, function(r) {
-			var s: Slice<Int> = SliceTools.fromVec(r);
+		SliceTools.with(v, function(s: Slice<Int>) {
 			for (y in s) {
 				sum2 = sum2 + y;
 			}

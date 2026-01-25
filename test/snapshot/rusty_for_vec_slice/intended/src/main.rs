@@ -20,7 +20,7 @@ fn main() {
     {
         let r: &Vec<i32> = &v;
         {
-            let s: &[i32] = crate::rust_slice_tools::SliceTools::from_vec(r);
+            let s: &[i32] = r;
             for y in s.iter().copied() {
                 sum2 = sum2 + y;
             }

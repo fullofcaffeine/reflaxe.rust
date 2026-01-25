@@ -61,6 +61,7 @@ Use these types to communicate “borrow intent” to the compiler and codegen:
 - `rust.MutRef<T>`: borrowed mutable reference (`&mut T`)
 - `rust.Str`: borrowed string slice (`&str`)
 - `rust.Slice<T>`: borrowed slice (`&[T]`)
+- `rust.MutSlice<T>`: borrowed mutable slice (`&mut [T]`)
 
 Guideline:
 - Prefer `rust.Ref<T>`/`rust.Slice<T>` parameters in Rusty APIs to avoid cloning/moving.
