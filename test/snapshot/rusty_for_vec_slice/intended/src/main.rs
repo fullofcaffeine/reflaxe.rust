@@ -24,7 +24,7 @@ fn main() {
             for y in s.iter().copied() {
                 sum2 = sum2 + y;
             }
-        };
-    };
+        }
+    }
     println!("{}", sum + sum2);
 }

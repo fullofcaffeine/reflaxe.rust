@@ -50,12 +50,12 @@ fn main() {
             {
                 let v: i32 = _g;
                 println!("{}", v);
-            };
+            }
         }
         Option::None => {
             println!("{}", String::from("none"));
         }
-    };
+    }
     let o2: Option<i32> = Option::None;
     match o2.clone() {
         Option::Some(__p) => {
@@ -63,12 +63,12 @@ fn main() {
             {
                 let v_2: i32 = _g_2;
                 println!("{}", v_2);
-            };
+            }
         }
         Option::None => {
             println!("{}", String::from("none"));
         }
-    };
+    }
     println!("{}", String::from("--- Result ---"));
     let r: Result<i32, String> = Result::Ok(7);
     match r.clone() {
@@ -77,16 +77,16 @@ fn main() {
             {
                 let v_3: i32 = _g_3;
                 println!("{}", v_3);
-            };
+            }
         }
         Result::Err(__p) => {
             let _g_4: String = __p;
             {
                 let e: String = _g_4;
                 println!("{}", e);
-            };
+            }
         }
-    };
+    }
     let r2: Result<i32, String> = Result::Err(String::from("fail"));
     match r2.clone() {
         Result::Ok(__p) => {
@@ -94,16 +94,16 @@ fn main() {
             {
                 let v_4: i32 = _g_5;
                 println!("{}", v_4);
-            };
+            }
         }
         Result::Err(__p) => {
             let _g_6: String = __p;
             {
                 let e_2: String = _g_6;
                 println!("{}", e_2);
-            };
+            }
         }
-    };
+    }
     println!("{}", String::from("--- Reflect ---"));
     let foo: crate::HxRef<crate::foo::Foo> = crate::foo::Foo::new(9);
     println!("{}", foo.borrow().x);

@@ -59,18 +59,18 @@ fn main() {
             };
             if e == String::from("a.txt") {
                 found_a = true;
-            };
+            }
             if e == String::from("b.txt") {
                 found_b = true;
-            };
+            }
             if e == String::from(".") {
                 found_dot = true;
-            };
+            }
             if e == String::from("..") {
                 found_dot_dot = true;
-            };
+            }
         }
-    };
+    }
     println!("{}", found_a);
     println!("{}", found_b);
     println!("{}", found_dot);

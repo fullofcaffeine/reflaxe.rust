@@ -21,9 +21,9 @@ fn main() {
             {
                 let n: &str = r;
                 println!("{}", crate::rust_string_tools::StringTools::contains(h, n));
-            };
-        };
-    };
+            }
+        }
+    }
     let mut v: Vec<i32> = Vec::<i32>::new();
     v.push(1);
     v.push(2);
@@ -40,7 +40,7 @@ fn main() {
             };
             sum = sum + x;
         }
-    };
+    }
     println!("{}", sum);
     println!("{}", crate::rust_vec_tools::VecTools::len(v.clone()));
     {
@@ -59,9 +59,9 @@ fn main() {
                     };
                     sum2 = sum2 + x_2;
                 }
-            };
+            }
             println!("{}", sum2);
             println!("{}", crate::rust_slice_tools::SliceTools::len(s));
-        };
-    };
+        }
+    }
 }

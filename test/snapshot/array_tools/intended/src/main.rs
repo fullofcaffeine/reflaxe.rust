@@ -21,7 +21,7 @@ fn main() {
                 };
                 _g.push(v * 2);
             }
-        };
+        }
         _g
     };
     let filtered: Vec<i32> = {
@@ -37,9 +37,9 @@ fn main() {
                 };
                 if v_2 > 2 {
                     _g_2.push(v_2);
-                };
+                }
             }
-        };
+        }
         _g_2
     };
     let has_three: bool = {
@@ -55,9 +55,9 @@ fn main() {
                 if x == 3 {
                     found = true;
                     break;
-                };
+                }
             }
-        };
+        }
         found
     };
     let found_two: Option<i32> = {
@@ -71,7 +71,7 @@ fn main() {
             } {
                 found_2 = x_2;
                 break;
-            };
+            }
             {
                 let __tmp = i;
                 i = i + 1;
@@ -92,7 +92,7 @@ fn main() {
                 };
                 first = first + x_4;
             }
-        };
+        }
         first
     };
     crate::sys::Sys::println(hxrt::dynamic::from(mapped.len() as i32));

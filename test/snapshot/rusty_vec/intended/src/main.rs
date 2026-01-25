@@ -32,12 +32,12 @@ fn main() {
             {
                 let x: i32 = _g;
                 println!("{}", x);
-            };
+            }
         }
         Option::None => {
             println!("{}", -1);
         }
-    };
+    }
     {
         let _g_2: Result<i32, String> = parse_even(2);
         match _g_2.clone() {
@@ -46,17 +46,17 @@ fn main() {
                 {
                     let x_2: i32 = _g_3;
                     println!("{}", x_2);
-                };
+                }
             }
             Result::Err(__p) => {
                 let _g_4: String = __p;
                 {
                     let e: String = _g_4;
                     println!("{}", e);
-                };
+                }
             }
-        };
-    };
+        }
+    }
     let mut v2: Vec<i32> = Vec::<i32>::new();
     v2.push(10);
     v2.push(20);

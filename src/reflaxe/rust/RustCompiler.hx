@@ -1687,8 +1687,8 @@ enum RustProfile {
 					var lowered = tryLowerDesugaredFor(exprs);
 					if (lowered != null) return lowered;
 
-					// Fallback: treat block as a statement-position expression.
-					RSemi(EBlock(compileBlock(exprs, false)));
+					// Fallback: treat block as a statement-position expression (unit block; no semicolon).
+					RExpr(EBlock(compileBlock(exprs, false)), false);
 				}
 				case TVar(v, init): {
 					var name = rustLocalDeclIdent(v);
@@ -1741,13 +1741,19 @@ enum RustProfile {
 					var mutable = currentMutatedLocals != null && currentMutatedLocals.exists(v.id);
 					RLet(name, mutable, rustTy, initExpr);
 				}
+				case TIf(cond, eThen, eElse): {
+					// Statement-position if: force unit branches so we can omit a trailing semicolon.
+					var thenExpr = EBlock(compileVoidBody(eThen));
+					var elseExpr: Null<RustExpr> = eElse != null ? EBlock(compileVoidBody(eElse)) : null;
+					RExpr(EIf(compileExpr(cond), thenExpr, elseExpr), false);
+				}
 			case TParenthesis(e1):
 				compileStmt(e1);
 			case TMeta(_, e1):
 				compileStmt(e1);
 			case TSwitch(switchExpr, cases, edef):
 				// Statement-position switch: force void arms.
-				RSemi(compileSwitch(switchExpr, cases, edef, Context.getType("Void")));
+				RExpr(compileSwitch(switchExpr, cases, edef, Context.getType("Void")), false);
 			case TWhile(cond, body, normalWhile): {
 				if (normalWhile) {
 					RWhile(compileExpr(cond), compileVoidBody(body));

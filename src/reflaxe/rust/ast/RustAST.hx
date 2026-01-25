@@ -105,6 +105,9 @@ enum RustPattern {
 enum RustStmt {
 	RLet(name: String, mutable: Bool, ty: Null<RustType>, expr: Null<RustExpr>);
 	RSemi(e: RustExpr);
+	// Like `RSemi`, but allows emitting statement-like expressions without a trailing semicolon
+	// (e.g. unit-typed `if` / `match` / `{ ... }` blocks).
+	RExpr(e: RustExpr, needsSemicolon: Bool);
 	RReturn(e: Null<RustExpr>);
 	RWhile(cond: RustExpr, body: RustBlock);
 	RLoop(body: RustBlock);

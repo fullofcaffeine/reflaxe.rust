@@ -17,8 +17,8 @@ fn main() {
         {
             crate::rust_hash_map_tools::HashMapTools::insert(mm, String::from("a"), 1);
             crate::rust_hash_map_tools::HashMapTools::insert(mm, String::from("b"), 2);
-        };
-    };
+        }
+    }
     println!("{}", crate::rust_hash_map_tools::HashMapTools::len(&m));
     let key_a: String = String::from("a");
     {
@@ -38,8 +38,8 @@ fn main() {
                         Option::None => false,
                     }
                 );
-            };
-        };
-    };
+            }
+        }
+    }
     println!("{}", crate::rust_hash_map_tools::HashMapTools::len(&m));
 }

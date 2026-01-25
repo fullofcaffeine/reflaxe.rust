@@ -37,5 +37,5 @@ fn main() {
         _ => {
             println!("{}", String::from("?"));
         }
-    };
+    }
 }

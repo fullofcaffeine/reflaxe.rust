@@ -33,11 +33,11 @@ fn main() {
                 {
                     let name: String = _g;
                     println!("{}", name);
-                };
+                }
             }
             Option::None => {
                 println!("{}", os_lossy);
             }
-        };
-    };
+        }
+    }
 }

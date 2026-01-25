@@ -18,8 +18,8 @@ fn main() {
         {
             let s: &mut [i32] = r;
             crate::rust_mut_slice_tools::MutSliceTools::set(s, 1, 99);
-        };
-    };
+        }
+    }
     let mut sum: i32 = 0;
     for x in v.iter().copied() {
         sum = sum + x;
