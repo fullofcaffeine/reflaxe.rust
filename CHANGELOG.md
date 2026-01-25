@@ -1,3 +1,10 @@
+## [0.17.3](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.17.2...v0.17.3) (2026-01-25)
+
+
+### Bug Fixes
+
+* **std:** sanitize Borrow returns ([6c9ccd9](https://github.com/fullofcaffeine/reflaxe.rust/commit/6c9ccd955d7b49595c2a16ba975bd4dfca641b2e))
+
 ## [0.17.2](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.17.1...v0.17.2) (2026-01-25)
 
 
