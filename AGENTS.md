@@ -28,6 +28,12 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 
 - When a new “gotcha”, policy decision, or workflow trick is discovered, write it down in the **closest scoped `AGENTS.md`** (add one if needed), not just in chat.
 
+## Documentation (HaxeDoc)
+
+- For any **vital** or **complex** type/function (compiler, runtime, `std/` interop surface), write **didactic HaxeDoc** using a clear **Why / What / How** structure.
+- Be intentionally verbose when it prevents misuse (ownership/borrowing, injection rules, Cargo metadata, `@:coreType`/extern semantics, etc.).
+- Treat docs as part of the stability contract: if behavior changes, update the relevant HaxeDoc and (when applicable) `docs/*.md` + snapshots.
+
 ## Prior Art (local reference repos)
 
 - Use `<home>/workspace/code/haxe.elixir.reference` for patterns/APIs we previously used for the Haxe→Elixir target.
