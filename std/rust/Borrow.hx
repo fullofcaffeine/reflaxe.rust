@@ -3,6 +3,7 @@ package rust;
 #if macro
 import haxe.macro.Context;
 import haxe.macro.Expr;
+import haxe.macro.ExprTools;
 import haxe.macro.TypeTools;
 #end
 
@@ -54,7 +55,33 @@ class Borrow {
 			pos: fn.pos
 		};
 
-		var bodyExpr = f.expr;
+		// IMPORTANT:
+		// This helper *inlines* the callback body to avoid allocating a closure (and to allow mutating
+		// captured locals in a way that matches Haxe semantics).
+		//
+		// However, `return` statements inside the callback body would become `return` from the caller
+		// after macro expansion. This is almost never intended, so we strip them.
+		function sanitize(e: Expr): Expr {
+			return switch (e.expr) {
+				case EFunction(_, _):
+					e;
+				case EReturn(v): {
+					// `return;` / `return expr;` inside an inlined callback would return from the caller.
+					// Rewrite it to just evaluate the returned expression (if any) and continue.
+					if (v == null) {
+						{ expr: EBlock([]), pos: e.pos };
+					} else {
+						sanitize(v);
+					}
+				}
+				case EBlock(exprs):
+					{ expr: EBlock([for (x in exprs) sanitize(x)]), pos: e.pos };
+				case _:
+					ExprTools.map(e, sanitize);
+			}
+		}
+
+		var bodyExpr = sanitize(f.expr);
 		return macro { $varDecl; $bodyExpr; };
 	}
 	#end
