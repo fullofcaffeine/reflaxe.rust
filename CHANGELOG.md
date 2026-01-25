@@ -1,3 +1,10 @@
+## [0.15.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.15.0...v0.15.1) (2026-01-25)
+
+
+### Bug Fixes
+
+* **tui:** quiet headless + tidy nullable init ([d3cdb6e](https://github.com/fullofcaffeine/reflaxe.rust/commit/d3cdb6e4c04ce5357ef810e6c529027a1dbd8548))
+
 # [0.15.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.14.0...v0.15.0) (2026-01-25)
 
 
