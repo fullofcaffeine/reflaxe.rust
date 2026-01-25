@@ -1,3 +1,10 @@
+# [0.9.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.8.1...v0.9.0) (2026-01-25)
+
+
+### Features
+
+* **compiler:** support general abstracts and numeric casts ([790dab8](https://github.com/fullofcaffeine/reflaxe.rust/commit/790dab8fa113026e6da19ce8ac365f05a53a7f5e))
+
 ## [0.8.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.8.0...v0.8.1) (2026-01-24)
 
 
