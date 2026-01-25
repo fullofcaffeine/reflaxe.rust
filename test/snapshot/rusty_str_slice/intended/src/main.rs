@@ -19,7 +19,7 @@ fn main() {
         {
             let r: &String = &needle;
             {
-                let n: &str = &r;
+                let n: &str = r;
                 println!("{}", crate::rust_string_tools::StringTools::contains(h, n));
             };
         };
@@ -46,7 +46,7 @@ fn main() {
     {
         let vr: &Vec<i32> = &v;
         {
-            let s: &[i32] = crate::rust_slice_tools::SliceTools::from_vec(vr);
+            let s: &[i32] = vr;
             let mut sum2: i32 = 0;
             {
                 let mut _g_2: i32 = 0;

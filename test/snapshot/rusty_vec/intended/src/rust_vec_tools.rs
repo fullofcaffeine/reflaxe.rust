@@ -23,6 +23,14 @@ impl VecTools {
         return v.get(index as usize).cloned();
     }
 
+    pub fn get_ref<T>(v: &Vec<T>, index: i32) -> Option<&T> {
+        return v.get(index as usize);
+    }
+
+    pub fn get_mut<T>(v: &mut Vec<T>, index: i32) -> Option<&mut T> {
+        return v.get_mut(index as usize);
+    }
+
     pub fn set<T>(v: Vec<T>, index: i32, value: T) -> Vec<T> {
         return {
             let mut __v = v;

@@ -8,7 +8,7 @@ pub struct SliceTools {}
 
 impl SliceTools {
     pub fn from_vec<T>(v: &Vec<T>) -> &[T] {
-        return v.as_slice();
+        return v;
     }
 
     pub fn len<T>(s: &[T]) -> i32 {
