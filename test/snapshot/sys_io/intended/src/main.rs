@@ -58,16 +58,16 @@ fn main() {
                 _g
             };
             if e == String::from("a.txt") {
-                found_a = true
+                found_a = true;
             };
             if e == String::from("b.txt") {
-                found_b = true
+                found_b = true;
             };
             if e == String::from(".") {
-                found_dot = true
+                found_dot = true;
             };
             if e == String::from("..") {
-                found_dot_dot = true
+                found_dot_dot = true;
             };
         }
     };

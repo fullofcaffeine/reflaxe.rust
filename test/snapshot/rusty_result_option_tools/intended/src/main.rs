@@ -157,7 +157,7 @@ fn main() {
         Result::Ok({
             let x: i32 = 1;
             if x == 1 {
-                hxrt::exception::throw(hxrt::dynamic::from(String::from("boom")))
+                hxrt::exception::throw(hxrt::dynamic::from(String::from("boom")));
             };
             x
         })

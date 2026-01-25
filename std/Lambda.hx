@@ -124,14 +124,29 @@ class Lambda {
 	/**
 		Counts the number of elements in `it`.
 
-		Note: The stock Haxe stdlib supports an optional predicate (`count(it, pred)`), but optional
-		function arguments still need better lowering on this target. For now, prefer:
-		- `Lambda.count(it)` (total count)
-		- `Lambda.filter(it, pred).length` (count with predicate)
+		Why:
+		- This is a very common helper in Haxe codebases (`arr.count()` via `using Lambda`).
+		- On this target, optional arguments and `Null<T>` lower to idiomatic Rust `Option<T>`, so we
+		  can support the stock Haxe signature without escape-hatches.
+
+		What:
+		- When `pred` is omitted (or `null`), returns the total number of items in `it`.
+		- When `pred` is provided, counts only items where `pred(item)` returns `true`.
+
+		How:
+		- The optional predicate is typed as `Null<(item:A)->Bool>` so the backend can represent it as
+		  `Option<Rc<dyn Fn(...) -> ...>>`.
+		- Codegen relies on two core lowerings:
+		  - `pred == null` becomes `pred.is_none()` (no `PartialEq` bound required)
+		  - `pred(x)` becomes `pred.as_ref().unwrap()(x)` inside the non-null branch
 	**/
-	public static inline function count<A>(it:Iterable<A>):Int {
+	public static inline function count<A>(it:Iterable<A>, ?pred:Null<(item:A) -> Bool>):Int {
 		var n = 0;
-		for (_ in it) n++;
+		if (pred == null) {
+			for (_ in it) n++;
+		} else {
+			for (x in it) if (pred(x)) n++;
+		}
 		return n;
 	}
 

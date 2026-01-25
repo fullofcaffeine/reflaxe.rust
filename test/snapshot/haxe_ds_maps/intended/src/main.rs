@@ -28,11 +28,11 @@ fn main() {
     );
     println!(
         "{}",
-        crate::haxe_ds_string_map::StringMap::get(&sm, String::from("a")) == None
+        crate::haxe_ds_string_map::StringMap::get(&sm, String::from("a")).is_none()
     );
     println!(
         "{}",
-        crate::haxe_ds_string_map::StringMap::get(&sm, String::from("z")) == None
+        crate::haxe_ds_string_map::StringMap::get(&sm, String::from("z")).is_none()
     );
     for k in crate::haxe_ds_string_map::StringMap::keys(&sm) {
         println!("{}", format!("{}{}", String::from("k="), k));
@@ -75,8 +75,11 @@ fn main() {
     crate::haxe_ds_int_map::IntMap::set(&im, 10, 7);
     crate::haxe_ds_int_map::IntMap::set(&im, 20, 9);
     println!("{}", crate::haxe_ds_int_map::IntMap::exists(&im, 10));
-    println!("{}", crate::haxe_ds_int_map::IntMap::get(&im, 10) == None);
-    println!("{}", crate::haxe_ds_int_map::IntMap::get(&im, 999) == None);
+    println!("{}", crate::haxe_ds_int_map::IntMap::get(&im, 10).is_none());
+    println!(
+        "{}",
+        crate::haxe_ds_int_map::IntMap::get(&im, 999).is_none()
+    );
     for k_2 in crate::haxe_ds_int_map::IntMap::keys(&im) {
         println!("{}", format!("{}{}", String::from("k="), k_2));
     }
@@ -106,11 +109,11 @@ fn main() {
     );
     println!(
         "{}",
-        crate::haxe_ds_object_map::ObjectMap::get(&om, k1.clone()) == None
+        crate::haxe_ds_object_map::ObjectMap::get(&om, k1.clone()).is_none()
     );
     println!(
         "{}",
-        crate::haxe_ds_object_map::ObjectMap::get(&om, crate::key::Key::new(1)) == None
+        crate::haxe_ds_object_map::ObjectMap::get(&om, crate::key::Key::new(1)).is_none()
     );
     for k_3 in crate::haxe_ds_object_map::ObjectMap::keys(&om) {
         println!(
@@ -142,11 +145,11 @@ fn main() {
     );
     println!(
         "{}",
-        crate::haxe_ds_enum_value_map::EnumValueMap::get(&em, crate::e::E::A) == None
+        crate::haxe_ds_enum_value_map::EnumValueMap::get(&em, crate::e::E::A).is_none()
     );
     println!(
         "{}",
-        crate::haxe_ds_enum_value_map::EnumValueMap::get(&em, crate::e::E::B(999)) == None
+        crate::haxe_ds_enum_value_map::EnumValueMap::get(&em, crate::e::E::B(999)).is_none()
     );
     for k_4 in crate::haxe_ds_enum_value_map::EnumValueMap::keys(&em) {
         println!(
