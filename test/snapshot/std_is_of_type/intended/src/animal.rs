@@ -14,7 +14,7 @@ impl Animal {
     }
 }
 
-pub trait AnimalTrait: std::fmt::Debug {
+pub trait AnimalTrait {
     fn __hx_type_id(&self) -> u32;
 }
 

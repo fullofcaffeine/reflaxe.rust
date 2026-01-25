@@ -21,7 +21,7 @@ impl Animal {
     }
 }
 
-pub trait AnimalTrait: std::fmt::Debug {
+pub trait AnimalTrait {
     fn __hx_get_age(&self) -> i32;
     fn __hx_set_age(&self, v: i32);
     fn __hx_type_id(&self) -> u32;

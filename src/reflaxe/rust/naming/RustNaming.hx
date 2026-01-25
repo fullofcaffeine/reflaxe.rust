@@ -10,7 +10,7 @@ package reflaxe.rust.naming;
 class RustNaming {
 	// Rust keywords (2021 edition + reserved).
 	static final KEYWORDS: Map<String, Bool> = [
-		"as" => true, "break" => true, "const" => true, "continue" => true, "crate" => true, "else" => true, "enum" => true, "extern" => true,
+		"as" => true, "break" => true, "box" => true, "const" => true, "continue" => true, "crate" => true, "else" => true, "enum" => true, "extern" => true,
 		"false" => true, "fn" => true, "for" => true, "if" => true, "impl" => true, "in" => true, "let" => true, "loop" => true, "match" => true,
 		"mod" => true, "move" => true, "mut" => true, "pub" => true, "ref" => true, "return" => true, "self" => true, "Self" => true, "static" => true,
 		"struct" => true, "super" => true, "trait" => true, "true" => true, "type" => true, "unsafe" => true, "use" => true, "where" => true, "while" => true,
