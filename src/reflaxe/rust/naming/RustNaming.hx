@@ -98,6 +98,39 @@ class RustNaming {
 		return escapeKeyword(sanitizeIdent(toSnakeCase(name)));
 	}
 
+	/**
+	 * Converts an arbitrary identifier into a Rust type identifier (UpperCamelCase).
+	 *
+	 * Why
+	 * - Rust lints warn on non-CamelCase type names (`non_camel_case_types`).
+	 * - Haxe can generate synthetic type names containing underscores (e.g. `Foo_Impl_` for
+	 *   abstract implementation classes). Those should still become idiomatic Rust types.
+	 *
+	 * What
+	 * - Sanitizes invalid characters and leading digits.
+	 * - Splits on `_` and concatenates segments using UpperCamelCase.
+	 * - Escapes Rust keywords (best-effort; primarily relevant for `Self`).
+	 *
+	 * How
+	 * - We do not try to "re-case" already-camel segments (e.g. `URLValue` stays `URLValue`).
+	 * - Empty segments are ignored, so `Foo__Bar_` becomes `FooBar`.
+	 */
+	public static function typeIdent(name: String): String {
+		var sanitized = sanitizeIdent(name);
+		var parts = sanitized.split("_");
+		var out = new StringBuf();
+
+		for (p in parts) {
+			if (p == null || p.length == 0) continue;
+			out.add(p.charAt(0).toUpperCase());
+			if (p.length > 1) out.add(p.substr(1));
+		}
+
+		var s = out.toString();
+		if (s.length == 0) s = "_";
+		return escapeKeyword(s);
+	}
+
 	public static function stableUnique(base: String, used: Map<String, Bool>): String {
 		var name = base;
 		if (!used.exists(name)) {
@@ -115,4 +148,3 @@ class RustNaming {
 		}
 	}
 }
-

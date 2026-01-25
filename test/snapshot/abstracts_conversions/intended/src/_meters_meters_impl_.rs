@@ -4,18 +4,18 @@ pub const __HX_TYPE_ID: u32 = 0x890ee754u32;
 
 #[derive(Debug)]
 
-pub struct Meters_Impl_ {}
+pub struct MetersImpl {}
 
-impl Meters_Impl_ {
+impl MetersImpl {
     pub fn _new(v: i32) -> i32 {
-        let mut this1: i32;
+        let this1: i32;
         this1 = v;
         return this1 as i32;
     }
 
     pub fn from_float(v: f64) -> i32 {
         return {
-            let mut this1: i32;
+            let this1: i32;
             this1 = v as i32;
             this1 as i32
         };
@@ -23,7 +23,7 @@ impl Meters_Impl_ {
 
     pub fn add(this1: i32, other: i32) -> i32 {
         return {
-            let mut this2: i32;
+            let this2: i32;
             this2 = this1 + other;
             this2 as i32
         };
