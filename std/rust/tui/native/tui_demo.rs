@@ -12,9 +12,6 @@ thread_local! {
     static TERMINAL: RefCell<Option<Terminal<CrosstermBackend<Stdout>>>> = RefCell::new(None);
     static HEADLESS: Cell<bool> = Cell::new(false);
     static HEADLESS_SET: Cell<bool> = Cell::new(false);
-    static HEADLESS_FRAME: Cell<i32> = Cell::new(0);
-    static HEADLESS_ACTIONS: RefCell<Vec<i32>> = RefCell::new(Vec::new());
-    static HEADLESS_INDEX: Cell<usize> = Cell::new(0);
 }
 
 // Deterministic renderer for tests/snapshots.
@@ -46,12 +43,6 @@ pub fn enter() {
     };
 
     HEADLESS.with(|h| h.set(headless));
-    HEADLESS_FRAME.with(|f| f.set(0));
-    HEADLESS_INDEX.with(|i| i.set(0));
-    HEADLESS_ACTIONS.with(|a| {
-        // down, toggle, down, toggle, up, quit
-        *a.borrow_mut() = vec![2, 3, 2, 3, 1, 4];
-    });
 
     if headless {
         return;
@@ -86,17 +77,10 @@ pub fn exit() {
 
 pub fn poll_action(timeout_ms: i32) -> i32 {
     if HEADLESS.with(|h| h.get()) {
-        let idx = HEADLESS_INDEX.with(|i| i.get());
-        let action = HEADLESS_ACTIONS.with(|a| {
-            let actions = a.borrow();
-            if idx >= actions.len() {
-                4
-            } else {
-                actions[idx]
-            }
-        });
-        HEADLESS_INDEX.with(|i| i.set(idx + 1));
-        return action;
+        // Headless mode is meant for deterministic tests via `render_to_string(...)`.
+        // For "real" application loops (like `examples/tui_todo/Main.hx`), if we end up headless
+        // (e.g. no TTY), we immediately quit so the program doesn't spin forever.
+        return 4;
     }
 
     let timeout = Duration::from_millis(timeout_ms.max(0) as u64);
@@ -118,15 +102,9 @@ pub fn poll_action(timeout_ms: i32) -> i32 {
 
 pub fn render(tasks: String) {
     if HEADLESS.with(|h| h.get()) {
-        let frame = HEADLESS_FRAME.with(|f| {
-            let v = f.get();
-            f.set(v + 1);
-            v
-        });
-        println!("--- frame {} ---", frame);
-        let rendered = render_headless(&tasks);
-        print!("{}", rendered);
-        io::stdout().flush().ok();
+        // In headless mode, the canonical rendering path is `render_to_string(...)`.
+        // Keep `render(...)` a no-op to avoid spamming CI logs when the binary is executed
+        // without a real TTY.
         return;
     }
 

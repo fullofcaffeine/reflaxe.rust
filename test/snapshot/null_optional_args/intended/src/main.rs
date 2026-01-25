@@ -129,7 +129,7 @@ fn main() {
         };
         n_2
     };
-    let mut x_3: Option<i32> = None;
+    let x_3: Option<i32>;
     {
         let __tmp = 3;
         x_3 = Some(__tmp);
