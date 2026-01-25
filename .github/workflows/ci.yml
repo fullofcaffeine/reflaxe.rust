@@ -51,6 +51,29 @@ jobs:
       - name: Review dependencies
         uses: actions/dependency-review-action@v4
 
+  rust-tooling:
+    name: Rust tooling (fmt + clippy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust (stable + rustfmt + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: cargo fmt (workspace)
+        run: |
+          set -euo pipefail
+          cargo fmt --check --all
+
+      - name: cargo clippy (workspace)
+        run: |
+          set -euo pipefail
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+
   test:
     name: Snapshots + Examples
     runs-on: ubuntu-latest
