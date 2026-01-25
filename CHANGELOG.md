@@ -1,3 +1,10 @@
+# [0.12.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.11.0...v0.12.0) (2026-01-25)
+
+
+### Features
+
+* **lang:** generics traits + phantom params ([da1a1cb](https://github.com/fullofcaffeine/reflaxe.rust/commit/da1a1cb03b89cdefe107fcb8dfe445f047a56b0c))
+
 # [0.11.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.10.0...v0.11.0) (2026-01-25)
 
 
