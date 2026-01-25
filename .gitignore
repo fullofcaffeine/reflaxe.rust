@@ -10,6 +10,8 @@ target/
 # Generated outputs (kept in snapshots via `intended/`)
 out/
 **/out/
+out_ci/
+**/out_ci/
 
 # Release artifacts
 dist/
