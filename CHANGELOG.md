@@ -1,3 +1,10 @@
+# [0.14.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.13.0...v0.14.0) (2026-01-25)
+
+
+### Features
+
+* **lang:** Null<T> Option coercions + optional args ([08b6f8e](https://github.com/fullofcaffeine/reflaxe.rust/commit/08b6f8e1b2d462750c4dc1d07291a3414cdcc764))
+
 # [0.13.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.12.0...v0.13.0) (2026-01-25)
 
 
