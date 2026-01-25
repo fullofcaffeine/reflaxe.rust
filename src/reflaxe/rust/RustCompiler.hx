@@ -1383,7 +1383,84 @@ enum RustProfile {
 					break;
 				}
 
-				stmts.push(compileStmt(e));
+				// Rust warns on `unused_assignments` if we emit default initializers that are immediately
+				// overwritten (common for `Null<T>` locals initialized to `null` and then assigned).
+				//
+				// Keep semantics and output tidy by eliding the initializer when the very next statement
+				// is a direct assignment to that local.
+				//
+				// This is intentionally conservative: only the immediate-next statement is considered
+				// (no control-flow analysis).
+				var u = unwrapMetaParen(e);
+				switch (u.expr) {
+					case TVar(v, init) if (init != null && isNullType(v.t) && isNullConstExpr(init)): {
+						if (currentMutatedLocals != null && currentMutatedLocals.exists(v.id) && i + 1 < exprs.length) {
+							function isDirectLocalAssignTo(target: TVar, expr: TypedExpr): Bool {
+								var ue = unwrapMetaParen(expr);
+								return switch (ue.expr) {
+									case TBinop(OpAssign, lhs, _):
+										switch (unwrapMetaParen(lhs).expr) {
+											case TLocal(v2): v2.id == target.id;
+											case _: false;
+										}
+									case TBinop(OpAssignOp(_), lhs, _):
+										switch (unwrapMetaParen(lhs).expr) {
+											case TLocal(v2): v2.id == target.id;
+											case _: false;
+										}
+									case _:
+										false;
+								}
+							}
+
+							if (isDirectLocalAssignTo(v, exprs[i + 1])) {
+								var name = rustLocalDeclIdent(v);
+								var rustTy = toRustType(v.t, e.pos);
+								function countDirectAssignsTo(target: TVar, expr: TypedExpr): Int {
+									var count = 0;
+									function scan(x: TypedExpr): Void {
+										switch (x.expr) {
+											case TBinop(OpAssign, lhs, _) | TBinop(OpAssignOp(_), lhs, _): {
+												switch (unwrapMetaParen(lhs).expr) {
+													case TLocal(v2) if (v2.id == target.id):
+														count++;
+													case _:
+												}
+											}
+											case TUnop(op, _, inner) if (op == OpIncrement || op == OpDecrement): {
+												switch (unwrapMetaParen(inner).expr) {
+													case TLocal(v2) if (v2.id == target.id):
+														count++;
+													case _:
+												}
+											}
+											case _:
+										}
+										TypedExprTools.iter(x, scan);
+									}
+									scan(expr);
+									return count;
+								}
+
+								var assignCount = 0;
+								for (j in (i + 1)...exprs.length) {
+									assignCount += countDirectAssignsTo(v, exprs[j]);
+								}
+
+								// Rust allows `let x; x = value;` without `mut` (the first assignment is initialization).
+								// Only require `mut` if we see multiple assignments (or `++/--`).
+								var mutable = assignCount > 1;
+								stmts.push(RLet(name, mutable, rustTy, null));
+							} else {
+								stmts.push(compileStmt(e));
+							}
+						} else {
+							stmts.push(compileStmt(e));
+						}
+					}
+					case _:
+						stmts.push(compileStmt(e));
+				}
 
 				// Avoid emitting Rust code that is statically unreachable (and triggers `unreachable_code` warnings).
 				// Haxe may type-check expressions after `throw`/`return` even when they can never run.
