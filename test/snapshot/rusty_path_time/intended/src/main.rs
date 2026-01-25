@@ -38,6 +38,6 @@ fn main() {
             Option::None => {
                 println!("{}", os_lossy);
             }
-        }
+        };
     };
 }

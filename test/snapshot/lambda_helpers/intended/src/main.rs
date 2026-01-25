@@ -36,7 +36,7 @@ fn main() {
                     _g1_2
                 };
                 if v_2 == 2 || v_2 == 4 {
-                    _g_2.push(v_2)
+                    _g_2.push(v_2);
                 };
             }
         };
@@ -61,8 +61,9 @@ fn main() {
         first
     };
     let total: i32 = {
+        let pred: Option<std::rc::Rc<dyn Fn(i32) -> bool>> = None;
         let mut n: i32 = 0;
-        {
+        if pred.is_none() {
             let mut _g_current_2: i32;
             let _g_array_2: Vec<i32>;
             _g_current_2 = 0;
@@ -79,12 +80,7 @@ fn main() {
                     __tmp
                 };
             }
-        };
-        n
-    };
-    let has_three: bool = {
-        let mut found: bool = false;
-        {
+        } else {
             let mut _g_current_3: i32;
             let _g_array_3: Vec<i32>;
             _g_current_3 = 0;
@@ -95,16 +91,19 @@ fn main() {
                     _g_current_3 = _g_current_3 + 1;
                     __tmp
                 }) as usize];
-                if x_2 == 3 {
-                    found = true;
-                    break;
+                if pred.as_ref().unwrap()(x_2) {
+                    {
+                        let __tmp = n;
+                        n = n + 1;
+                        __tmp
+                    };
                 };
             }
         };
-        found
+        n
     };
-    let has_four: bool = {
-        let mut found_2: bool = false;
+    let has_three: bool = {
+        let mut found: bool = false;
         {
             let mut _g_current_4: i32;
             let _g_array_4: Vec<i32>;
@@ -116,7 +115,28 @@ fn main() {
                     _g_current_4 = _g_current_4 + 1;
                     __tmp
                 }) as usize];
-                if x_3 == 4 {
+                if x_3 == 3 {
+                    found = true;
+                    break;
+                };
+            }
+        };
+        found
+    };
+    let has_four: bool = {
+        let mut found_2: bool = false;
+        {
+            let mut _g_current_5: i32;
+            let _g_array_5: Vec<i32>;
+            _g_current_5 = 0;
+            _g_array_5 = a.clone();
+            while _g_current_5 < _g_array_5.len() as i32 {
+                let x_4: i32 = _g_array_5[({
+                    let __tmp = _g_current_5;
+                    _g_current_5 = _g_current_5 + 1;
+                    __tmp
+                }) as usize];
+                if x_4 == 4 {
                     found_2 = true;
                     break;
                 };

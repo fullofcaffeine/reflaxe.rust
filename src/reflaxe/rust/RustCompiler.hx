@@ -73,6 +73,7 @@ enum RustProfile {
 	var currentLocalNames: Null<Map<Int, String>> = null;
 	var currentLocalUsed: Null<Map<String, Bool>> = null;
 	var currentEnumParamBinds: Null<Map<String, String>> = null;
+	var currentFunctionReturn: Null<Type> = null;
 	var rustNamesByClass: Map<String, { fields: Map<String, String>, methods: Map<String, String> }> = [];
 	var inCodeInjectionArg: Bool = false;
 
@@ -529,7 +530,7 @@ enum RustProfile {
 
 					var args: Array<reflaxe.rust.ast.RustAST.RustFnArg> = [];
 					var body = { stmts: [], tail: null };
-					withFunctionContext(f.expr, [for (a in f.args) a.getName()], () -> {
+					withFunctionContext(f.expr, [for (a in f.args) a.getName()], f.ret, () -> {
 						for (a in f.args) {
 							args.push({
 								name: rustArgIdent(a.getName()),
@@ -958,7 +959,7 @@ enum RustProfile {
 
 			var stmts: Array<RustStmt> = [];
 			if (f.expr != null) {
-				withFunctionContext(f.expr, [for (a in f.args) a.getName()], () -> {
+				withFunctionContext(f.expr, [for (a in f.args) a.getName()], f.ret, () -> {
 					for (a in f.args) {
 						args.push({
 							name: rustArgIdent(a.getName()),
@@ -1116,7 +1117,7 @@ enum RustProfile {
 				ty: RPath("&std::cell::RefCell<" + rustClassTypeInst(classType) + ">")
 			});
 			var body = { stmts: [], tail: null };
-			withFunctionContext(f.expr, [for (a in f.args) a.getName()], () -> {
+			withFunctionContext(f.expr, [for (a in f.args) a.getName()], f.ret, () -> {
 				for (a in f.args) {
 					args.push({
 						name: rustArgIdent(a.getName()),
@@ -1140,7 +1141,7 @@ enum RustProfile {
 			var args: Array<reflaxe.rust.ast.RustAST.RustFnArg> = [];
 			var generics = rustGenericParamsFromFieldMeta(f.field.meta, [for (p in f.field.params) p.name]);
 			var body = { stmts: [], tail: null };
-			withFunctionContext(f.expr, [for (a in f.args) a.getName()], () -> {
+			withFunctionContext(f.expr, [for (a in f.args) a.getName()], f.ret, () -> {
 				for (a in f.args) {
 					args.push({
 						name: rustArgIdent(a.getName()),
@@ -1359,7 +1360,7 @@ enum RustProfile {
 		}
 
 		return switch (e.expr) {
-			case TBlock(exprs): compileBlock(exprs, allowTail);
+			case TBlock(exprs): compileBlock(exprs, allowTail, expectedReturn);
 			case _: {
 				// Single-expression function body
 				{ stmts: [compileStmt(e)], tail: null };
@@ -1367,7 +1368,7 @@ enum RustProfile {
 		}
 	}
 
-		function compileBlock(exprs: Array<TypedExpr>, allowTail: Bool = true): RustBlock {
+		function compileBlock(exprs: Array<TypedExpr>, allowTail: Bool = true, expectedTail: Null<Type> = null): RustBlock {
 			var stmts: Array<RustStmt> = [];
 			var tail: Null<RustExpr> = null;
 
@@ -1376,7 +1377,7 @@ enum RustProfile {
 				var isLast = (i == exprs.length - 1);
 
 				if (allowTail && isLast && !TypeHelper.isVoid(e.t) && !isStmtOnlyExpr(e)) {
-					tail = compileExpr(e);
+					tail = coerceExprToExpected(compileExpr(e), e, expectedTail);
 					break;
 				}
 
@@ -1638,6 +1639,18 @@ enum RustProfile {
 							case _:
 								initExpr = wrapBorrowIfNeeded(initExpr, rustTy, init);
 						}
+
+						// `Null<T>` locals must store `Some(value)` when initialized from a non-null `T`.
+						// (Avoid double-wrapping for `Null<Fn>` which is handled by `coerceArgForParam` above.)
+						if (isNullType(v.t) && !isNullType(init.t) && !isNullConstExpr(init)) {
+							switch (followType(v.t)) {
+								case TFun(_, _):
+									// handled above
+								case _:
+									var stored = maybeCloneForReuse(initExpr, init);
+									initExpr = ECall(EPath("Some"), [stored]);
+							}
+						}
 					}
 					var mutable = currentMutatedLocals != null && currentMutatedLocals.exists(v.id);
 					RLet(name, mutable, rustTy, initExpr);
@@ -1700,6 +1713,9 @@ enum RustProfile {
 				RSemi(ERaw("continue"));
 			case TReturn(ret): {
 				var ex = ret != null ? compileExpr(ret) : null;
+				if (ret != null && ex != null) {
+					ex = coerceExprToExpected(ex, ret, currentFunctionReturn);
+				}
 				RReturn(ex);
 			}
 			case _: {
@@ -1717,18 +1733,20 @@ enum RustProfile {
 			}
 		}
 
-		function withFunctionContext<T>(bodyExpr: TypedExpr, argNames: Array<String>, fn: () -> T): T {
+		function withFunctionContext<T>(bodyExpr: TypedExpr, argNames: Array<String>, expectedReturn: Null<Type>, fn: () -> T): T {
 			var prevMutated = currentMutatedLocals;
 			var prevArgNames = currentArgNames;
 			var prevLocalNames = currentLocalNames;
 			var prevLocalUsed = currentLocalUsed;
 			var prevEnumParamBinds = currentEnumParamBinds;
+			var prevReturn = currentFunctionReturn;
 
 			currentMutatedLocals = collectMutatedLocals(bodyExpr);
 			currentArgNames = [];
 			currentLocalNames = [];
 			currentLocalUsed = [];
 			currentEnumParamBinds = null;
+			currentFunctionReturn = expectedReturn;
 
 			// Reserve internal temporaries to avoid collisions with user locals.
 			for (n in ["self_", "__tmp", "__hx_ok", "__hx_ex", "__hx_box", "__p"]) {
@@ -1750,6 +1768,7 @@ enum RustProfile {
 			currentLocalNames = prevLocalNames;
 			currentLocalUsed = prevLocalUsed;
 			currentEnumParamBinds = prevEnumParamBinds;
+			currentFunctionReturn = prevReturn;
 			return out;
 		}
 
@@ -1798,11 +1817,11 @@ enum RustProfile {
 		}
 
 		function compileFunctionBodyWithContext(e: TypedExpr, expectedReturn: Null<Type>, argNames: Array<String>): RustBlock {
-			return withFunctionContext(e, argNames, () -> compileFunctionBody(e, expectedReturn));
+			return withFunctionContext(e, argNames, expectedReturn, () -> compileFunctionBody(e, expectedReturn));
 		}
 
 		function compileVoidBodyWithContext(e: TypedExpr, argNames: Array<String>): RustBlock {
-			return withFunctionContext(e, argNames, () -> compileVoidBody(e));
+			return withFunctionContext(e, argNames, Context.getType("Void"), () -> compileVoidBody(e));
 		}
 
 		function collectMutatedLocals(root: TypedExpr): Map<Int, Bool> {
@@ -2027,7 +2046,16 @@ enum RustProfile {
 				compileUnop(op, postFix, expr, e);
 
 			case TIf(cond, eThen, eElse):
-				EIf(compileExpr(cond), compileBranchExpr(eThen), eElse != null ? compileBranchExpr(eElse) : null);
+				if (eElse == null) {
+					// `if (...) expr;` in Haxe is statement-shaped; ensure the Rust `if` branches yield `()`.
+					EIf(compileExpr(cond), EBlock(compileVoidBody(eThen)), null);
+				} else if (isNullType(e.t)) {
+					var thenExpr = coerceExprToExpected(compileBranchExpr(eThen), eThen, e.t);
+					var elseExpr = coerceExprToExpected(compileBranchExpr(eElse), eElse, e.t);
+					EIf(compileExpr(cond), thenExpr, elseExpr);
+				} else {
+					EIf(compileExpr(cond), compileBranchExpr(eThen), compileBranchExpr(eElse));
+				}
 
 			case TBlock(exprs):
 				EBlock(compileBlock(exprs));
@@ -2108,7 +2136,7 @@ enum RustProfile {
 				var argParts: Array<String> = [];
 				var body: RustBlock = { stmts: [], tail: null };
 
-				withFunctionContext(fn.expr, baseArgNames, () -> {
+				withFunctionContext(fn.expr, baseArgNames, fn.t, () -> {
 					for (i in 0...fn.args.length) {
 						var a = fn.args[i];
 						var baseName = baseArgNames[i];
@@ -2468,7 +2496,7 @@ enum RustProfile {
 			case TBlock(_):
 				EBlock(compileFunctionBody(expr, expectedReturn));
 			case _:
-				compileExpr(expr);
+				coerceExprToExpected(compileExpr(expr), expr, expectedReturn);
 		}
 	}
 
@@ -2540,6 +2568,61 @@ enum RustProfile {
 			case TMeta(_, e1): unwrapMetaParen(e1);
 			case _: e;
 		}
+	}
+
+	function isNullConstExpr(e: TypedExpr): Bool {
+		return switch (unwrapMetaParen(e).expr) {
+			case TConst(TNull): true;
+			case _: false;
+		}
+	}
+
+	function nullInnerType(t: Type): Null<Type> {
+		switch (t) {
+			case TAbstract(absRef, params): {
+				var abs = absRef.get();
+				if (abs != null && abs.module == "StdTypes" && abs.name == "Null" && params.length == 1) {
+					return params[0];
+				}
+			}
+			case TLazy(f):
+				return nullInnerType(f());
+			case TType(typeRef, params): {
+				var tt = typeRef.get();
+				if (tt != null) {
+					var under: Type = tt.type;
+					if (tt.params != null && tt.params.length > 0 && params != null && params.length == tt.params.length) {
+						under = TypeTools.applyTypeParameters(under, tt.params, params);
+					}
+					return nullInnerType(under);
+				}
+			}
+			case _:
+		}
+
+		return null;
+	}
+
+	function isNullType(t: Type): Bool {
+		return nullInnerType(t) != null;
+	}
+
+	function maybeCloneForReuse(expr: RustExpr, valueExpr: TypedExpr): RustExpr {
+		if (inCodeInjectionArg) return expr;
+		if (isCopyType(valueExpr.t)) return expr;
+		if (isStringLiteralExpr(valueExpr) || isArrayLiteralExpr(valueExpr) || isNewExpr(valueExpr)) return expr;
+		if (isLocalExpr(valueExpr) && !isObviousTemporaryExpr(valueExpr)) {
+			return ECall(EField(expr, "clone"), []);
+		}
+		return expr;
+	}
+
+	function coerceExprToExpected(compiled: RustExpr, valueExpr: TypedExpr, expected: Null<Type>): RustExpr {
+		if (expected == null) return compiled;
+		if (isNullType(expected) && !isNullType(valueExpr.t) && !isNullConstExpr(valueExpr)) {
+			return ECall(EPath("Some"), [compiled]);
+		}
+		return compiled;
 	}
 
 	function isStringLiteralExpr(e: TypedExpr): Bool {
@@ -2724,12 +2807,38 @@ enum RustProfile {
 		return switch (e.expr) {
 			case TBlock(_):
 				EBlock(compileFunctionBody(e));
+			case TReturn(_) | TBreak | TContinue | TThrow(_):
+				EBlock(compileVoidBody(e));
 			case _:
 				compileExpr(e);
 		}
 	}
 
 	function compileCall(callExpr: TypedExpr, args: Array<TypedExpr>, fullExpr: TypedExpr): RustExpr {
+		function compilePositionalArgsFor(params: Null<Array<{ name: String, t: Type, opt: Bool }>>): Array<RustExpr> {
+			var out: Array<RustExpr> = [];
+
+			for (i in 0...args.length) {
+				var arg = args[i];
+				var compiled = compileExpr(arg);
+				if (params != null && i < params.length) {
+					compiled = coerceArgForParam(compiled, arg, params[i].t);
+				}
+				out.push(compiled);
+			}
+
+			// Fill omitted optional args (`null` => `None` for `Null<T>`).
+			if (params != null && args.length < params.length) {
+				for (i in args.length...params.length) {
+					if (!params[i].opt) break;
+					var t = params[i].t;
+					out.push(isNullType(t) ? ERaw("None") : ERaw(defaultValueForType(t, fullExpr.pos)));
+				}
+			}
+
+			return out;
+		}
+
 		// Special-case: super(...) in constructors.
 		// POC: support `super()` as a no-op (base init semantics will be expanded later).
 		switch (callExpr.expr) {
@@ -2999,32 +3108,26 @@ enum RustProfile {
 					}
 				}
 				switch (cf.kind) {
-						case FMethod(_): {
+					case FMethod(_): {
 						// Extern instances compile as direct Rust method calls: `recv.method(args...)`.
 						if (isExternInstanceType(obj.t)) {
 							var recv = compileExpr(obj);
-							var paramTypes: Null<Array<Type>> = switch (followType(cf.type)) {
-								case TFun(params, _): [for (p in params) p.t];
+							var paramDefs: Null<Array<{ name: String, t: Type, opt: Bool }>> = switch (TypeTools.follow(cf.type)) {
+								case TFun(params, _): params;
 								case _: null;
 							};
-							var callArgs: Array<RustExpr> = [];
-							for (i in 0...args.length) {
-								var arg = args[i];
-								var compiled = compileExpr(arg);
-								if (paramTypes != null && i < paramTypes.length) {
-									compiled = coerceArgForParam(compiled, arg, paramTypes[i]);
-								}
-								callArgs.push(compiled);
-							}
-							return ECall(EField(recv, rustExternFieldName(cf)), callArgs);
+							return ECall(EField(recv, rustExternFieldName(cf)), compilePositionalArgsFor(paramDefs));
 						}
 
 						// `this` inside concrete methods is always `&RefCell<Concrete>`; keep static dispatch.
 						if (!isThisExpr(obj) && (isInterfaceType(obj.t) || isPolymorphicClassType(obj.t))) {
 							// Interface/base-typed receiver: dynamic dispatch via trait method call.
 							var recv = compileExpr(obj);
-							var callArgs: Array<RustExpr> = [for (x in args) compileExpr(x)];
-							return ECall(EField(recv, rustMethodName(owner, cf)), callArgs);
+							var paramDefs: Null<Array<{ name: String, t: Type, opt: Bool }>> = switch (TypeTools.follow(cf.type)) {
+								case TFun(params, _): params;
+								case _: null;
+							};
+							return ECall(EField(recv, rustMethodName(owner, cf)), compilePositionalArgsFor(paramDefs));
 						}
 
 						var clsName = classNameFromType(obj.t);
@@ -3034,18 +3137,11 @@ enum RustProfile {
 						}
 						if (clsName == null) return unsupported(fullExpr, "instance method call");
 						var callArgs: Array<RustExpr> = [EUnary("&", compileExpr(obj))];
-						var paramTypes: Null<Array<Type>> = switch (followType(cf.type)) {
-							case TFun(params, _): [for (p in params) p.t];
+						var paramDefs: Null<Array<{ name: String, t: Type, opt: Bool }>> = switch (TypeTools.follow(cf.type)) {
+							case TFun(params, _): params;
 							case _: null;
 						};
-						for (i in 0...args.length) {
-							var arg = args[i];
-							var compiled = compileExpr(arg);
-							if (paramTypes != null && i < paramTypes.length) {
-								compiled = coerceArgForParam(compiled, arg, paramTypes[i]);
-							}
-							callArgs.push(compiled);
-						}
+						for (x in compilePositionalArgsFor(paramDefs)) callArgs.push(x);
 						var rustName = rustMethodName(objCls != null ? objCls : owner, cf);
 						return ECall(EPath(clsName + "::" + rustName), callArgs);
 					}
@@ -3056,27 +3152,60 @@ enum RustProfile {
 		}
 
 		var f = compileExpr(callExpr);
-		var paramTypes: Null<Array<Type>> = switch (followType(callExpr.t)) {
-			case TFun(params, _): [for (p in params) p.t];
+
+		var nullableFnInner = nullInnerType(callExpr.t);
+		var fnTypeForParams: Type = (nullableFnInner != null ? nullableFnInner : callExpr.t);
+		var paramDefs: Null<Array<{ name: String, t: Type, opt: Bool }>> = switch (TypeTools.follow(fnTypeForParams)) {
+			case TFun(params, _): params;
 			case _: null;
 		};
+
+		// Calling `Null<Fn>` values: `opt_fn(args...)` -> `opt_fn.as_ref().unwrap()(args...)`
+		if (nullableFnInner != null) {
+			switch (TypeTools.follow(nullableFnInner)) {
+				case TFun(_, _):
+					f = ECall(EField(ECall(EField(f, "as_ref"), []), "unwrap"), []);
+				case _:
+			}
+		}
 
 		var a: Array<RustExpr> = [];
 		for (i in 0...args.length) {
 			var arg = args[i];
 			var compiled = compileExpr(arg);
 
-			if (paramTypes != null && i < paramTypes.length) {
-				compiled = coerceArgForParam(compiled, arg, paramTypes[i]);
+			if (paramDefs != null && i < paramDefs.length) {
+				compiled = coerceArgForParam(compiled, arg, paramDefs[i].t);
 			}
 
 			a.push(compiled);
+		}
+
+		// Fill omitted optional arguments with their implicit default (`null`).
+		// For this target, `null` maps to `None` for `Null<T>` (Option<T>).
+		if (paramDefs != null && args.length < paramDefs.length) {
+			for (i in args.length...paramDefs.length) {
+				if (!paramDefs[i].opt) break;
+				var t = paramDefs[i].t;
+				var d: RustExpr = isNullType(t) ? ERaw("None") : ERaw(defaultValueForType(t, fullExpr.pos));
+				a.push(d);
+			}
 		}
 		return ECall(f, a);
 	}
 
 	function coerceArgForParam(compiled: RustExpr, argExpr: TypedExpr, paramType: Type): RustExpr {
 		var rustParamTy = toRustType(paramType, argExpr.pos);
+
+		// `Null<T>` (Option<T>) parameters accept either `null` (`None`) or a plain `T` (wrapped into `Some`).
+		var nullInner = nullInnerType(paramType);
+		if (nullInner != null) {
+			if (!isNullType(argExpr.t) && !isNullConstExpr(argExpr)) {
+				var innerCoerced = coerceArgForParam(compiled, argExpr, nullInner);
+				return wrapBorrowIfNeeded(ECall(EPath("Some"), [innerCoerced]), rustParamTy, argExpr);
+			}
+			return wrapBorrowIfNeeded(compiled, rustParamTy, argExpr);
+		}
 
 		// Passing into `Dynamic` should not move the source value (Haxe values are reusable).
 		if (isDynamicType(paramType) && !isDynamicType(argExpr.t)) {
@@ -3099,6 +3228,11 @@ enum RustProfile {
 			var isByRef = switch (rustParamTy) {
 				case RRef(_, _): true;
 				case _: false;
+			}
+			// Haxe Arrays are reusable and behave like shared values; avoid Rust moves by cloning locals
+			// when we pass them by value.
+			if (!isByRef && isArrayType(argExpr.t) && isLocalExpr(argExpr) && !isObviousTemporaryExpr(argExpr)) {
+				compiled = ECall(EField(compiled, "clone"), []);
 			}
 			if (!isByRef && isHxRefValueType(argExpr.t) && isLocalExpr(argExpr) && !isObviousTemporaryExpr(argExpr)) {
 				compiled = ECall(EField(compiled, "clone"), []);
@@ -3309,6 +3443,9 @@ enum RustProfile {
 	}
 
 	function compileInstanceFieldAssign(obj: TypedExpr, owner: ClassType, cf: ClassField, rhs: TypedExpr): RustExpr {
+		var fieldIsNull = isNullType(cf.type);
+		var rhsIsNullish = isNullType(rhs.t) || isNullConstExpr(rhs);
+
 		if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
 			// Haxe assignment returns the RHS value.
 			// `{ let __tmp = rhs; obj.__hx_set_field(__tmp.clone()); __tmp }`
@@ -3316,7 +3453,8 @@ enum RustProfile {
 			stmts.push(RLet("__tmp", false, null, compileExpr(rhs)));
 
 			var rhsVal: RustExpr = isCopyType(cf.type) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
-			stmts.push(RSemi(ECall(EField(compileExpr(obj), rustSetterName(owner, cf)), [rhsVal])));
+			var assigned = (fieldIsNull && !rhsIsNullish) ? ECall(EPath("Some"), [rhsVal]) : rhsVal;
+			stmts.push(RSemi(ECall(EField(compileExpr(obj), rustSetterName(owner, cf)), [assigned])));
 
 			return EBlock({ stmts: stmts, tail: EPath("__tmp") });
 		}
@@ -3331,7 +3469,8 @@ enum RustProfile {
 		var borrowed = ECall(EField(recv, "borrow_mut"), []);
 		var access = EField(borrowed, rustFieldName(owner, cf));
 		var rhsClone = ECall(EField(EPath("__tmp"), "clone"), []);
-		stmts.push(RSemi(EAssign(access, rhsClone)));
+		var assigned = (fieldIsNull && !rhsIsNullish) ? ECall(EPath("Some"), [rhsClone]) : rhsClone;
+		stmts.push(RSemi(EAssign(access, assigned)));
 
 		return EBlock({
 			stmts: stmts,
@@ -3744,6 +3883,18 @@ enum RustProfile {
 		return switch (op) {
 			case OpAssign:
 				switch (e1.expr) {
+					case TLocal(v) if (isNullType(v.t) && !isNullType(e2.t) && !isNullConstExpr(e2)): {
+						// Assignment to `Null<T>` (Option<T>) from a non-null `T`:
+						// `{ let __tmp = rhs; lhs = Some(__tmp.clone()); __tmp }`
+						var stmts: Array<RustStmt> = [];
+						stmts.push(RLet("__tmp", false, null, compileExpr(e2)));
+
+						var rhsVal: RustExpr = isCopyType(e2.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
+						var wrapped = ECall(EPath("Some"), [rhsVal]);
+						stmts.push(RSemi(EAssign(compileExpr(e1), wrapped)));
+
+						return EBlock({ stmts: stmts, tail: EPath("__tmp") });
+					}
 					case TArray(arr, index): {
 						compileArrayIndexAssign(arr, index, e2);
 					}
@@ -3787,8 +3938,25 @@ enum RustProfile {
 			case OpMult: EBinary("*", compileExpr(e1), compileExpr(e2));
 			case OpDiv: EBinary("/", compileExpr(e1), compileExpr(e2));
 
-			case OpEq: EBinary("==", compileExpr(e1), compileExpr(e2));
-			case OpNotEq: EBinary("!=", compileExpr(e1), compileExpr(e2));
+			case OpEq: {
+				// `Null<T>` compares to `null` should not require `T: PartialEq` (e.g. `Null<Fn>`).
+				if (isNullType(e1.t) && isNullConstExpr(e2)) {
+					ECall(EField(compileExpr(e1), "is_none"), []);
+				} else if (isNullType(e2.t) && isNullConstExpr(e1)) {
+					ECall(EField(compileExpr(e2), "is_none"), []);
+				} else {
+					EBinary("==", compileExpr(e1), compileExpr(e2));
+				}
+			}
+			case OpNotEq: {
+				if (isNullType(e1.t) && isNullConstExpr(e2)) {
+					ECall(EField(compileExpr(e1), "is_some"), []);
+				} else if (isNullType(e2.t) && isNullConstExpr(e1)) {
+					ECall(EField(compileExpr(e2), "is_some"), []);
+				} else {
+					EBinary("!=", compileExpr(e1), compileExpr(e2));
+				}
+			}
 			case OpLt: EBinary("<", compileExpr(e1), compileExpr(e2));
 			case OpLte: EBinary("<=", compileExpr(e1), compileExpr(e2));
 			case OpGt: EBinary(">", compileExpr(e1), compileExpr(e2));

@@ -30,12 +30,12 @@ fn main() {
         match action.clone() {
             crate::action::Action::Up => {
                 if selected > 0 {
-                    selected = selected - 1
+                    selected = selected - 1;
                 };
             }
             crate::action::Action::Down => {
                 if selected < tasks.len() as i32 - 1 {
-                    selected = selected + 1
+                    selected = selected + 1;
                 };
             }
             crate::action::Action::Toggle => {
