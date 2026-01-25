@@ -25,6 +25,12 @@ pub fn run_frame(frame: i32, tasks: String) {
     print!("{}", rendered);
 }
 
+// Deterministic renderer for tests/snapshots (no global state, no stdout).
+#[allow(dead_code)]
+pub fn render_to_string(tasks: String) -> String {
+    render_headless(&tasks)
+}
+
 pub fn set_headless(headless: bool) {
     HEADLESS.with(|h| h.set(headless));
     HEADLESS_SET.with(|s| s.set(true));

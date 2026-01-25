@@ -31,4 +31,3 @@ impl<T> HxRefLike for Rc<RefCell<T>> {
 pub fn ptr_id<K: HxRefLike>(key: &K) -> String {
     format!("{:x}", key.ptr_usize())
 }
-

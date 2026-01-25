@@ -63,12 +63,14 @@ impl<T> IntoIterator for Iter<T> {
     }
 }
 
-impl<'a, T> IntoIterator for &'a Iter<T> {
+impl<T> IntoIterator for &Iter<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        IntoIter { inner: self.clone() }
+        IntoIter {
+            inner: self.clone(),
+        }
     }
 }
 
