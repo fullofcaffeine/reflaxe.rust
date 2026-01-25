@@ -6,7 +6,6 @@ npm-debug.log*
 
 # Rust build artifacts
 target/
-Cargo.lock
 
 # Generated outputs (kept in snapshots via `intended/`)
 out/

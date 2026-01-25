@@ -74,6 +74,27 @@ jobs:
           set -euo pipefail
           cargo clippy --workspace --all-targets --locked -- -D warnings
 
+  rustsec-audit:
+    name: RustSec audit (cargo-audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      - name: Run cargo audit
+        run: |
+          set -euo pipefail
+          cargo audit
+
   test:
     name: Snapshots + Examples
     runs-on: ubuntu-latest
