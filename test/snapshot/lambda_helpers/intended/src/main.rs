@@ -8,14 +8,14 @@ mod haxe_ds_list;
 mod sys;
 
 fn main() {
-    let a: Vec<i32> = vec![1, 2, 3, 4];
-    let mapped: Vec<i32> = {
-        let mut _g: Vec<i32> = Vec::<i32>::new();
+    let a: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::from_vec(vec![1, 2, 3, 4]);
+    let mapped: hxrt::array::Array<i32> = {
+        let _g: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::new();
         {
             let mut _g1: i32 = 0;
-            let _g2: Vec<i32> = a.clone();
+            let _g2: hxrt::array::Array<i32> = a.clone();
             while _g1 < _g2.len() as i32 {
-                let v: i32 = _g2[_g1 as usize];
+                let v: i32 = _g2.get_unchecked(_g1 as usize);
                 {
                     _g1 = _g1 + 1;
                     _g1
@@ -25,13 +25,13 @@ fn main() {
         }
         _g
     };
-    let filtered: Vec<i32> = {
-        let mut _g_2: Vec<i32> = Vec::<i32>::new();
+    let filtered: hxrt::array::Array<i32> = {
+        let _g_2: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::new();
         {
             let mut _g1_2: i32 = 0;
-            let _g2_2: Vec<i32> = a.clone();
+            let _g2_2: hxrt::array::Array<i32> = a.clone();
             while _g1_2 < _g2_2.len() as i32 {
-                let v_2: i32 = _g2_2[_g1_2 as usize];
+                let v_2: i32 = _g2_2.get_unchecked(_g1_2 as usize);
                 {
                     _g1_2 = _g1_2 + 1;
                     _g1_2
@@ -47,15 +47,17 @@ fn main() {
         let mut first: i32 = 0;
         {
             let mut _g_current: i32;
-            let _g_array: Vec<i32>;
+            let _g_array: hxrt::array::Array<i32>;
             _g_current = 0;
             _g_array = a.clone();
             while _g_current < _g_array.len() as i32 {
-                let x: i32 = _g_array[({
-                    let __tmp = _g_current;
-                    _g_current = _g_current + 1;
-                    __tmp
-                }) as usize];
+                let x: i32 = _g_array.get_unchecked(
+                    ({
+                        let __tmp = _g_current;
+                        _g_current = _g_current + 1;
+                        __tmp
+                    }) as usize,
+                );
                 first = first + x;
             }
         }
@@ -66,15 +68,17 @@ fn main() {
         let mut n: i32 = 0;
         if pred.is_none() {
             let mut _g_current_2: i32;
-            let _g_array_2: Vec<i32>;
+            let _g_array_2: hxrt::array::Array<i32>;
             _g_current_2 = 0;
             _g_array_2 = a.clone();
             while _g_current_2 < _g_array_2.len() as i32 {
-                let _unused: i32 = _g_array_2[({
-                    let __tmp = _g_current_2;
-                    _g_current_2 = _g_current_2 + 1;
-                    __tmp
-                }) as usize];
+                let _unused: i32 = _g_array_2.get_unchecked(
+                    ({
+                        let __tmp = _g_current_2;
+                        _g_current_2 = _g_current_2 + 1;
+                        __tmp
+                    }) as usize,
+                );
                 {
                     let __tmp = n;
                     n = n + 1;
@@ -83,15 +87,17 @@ fn main() {
             }
         } else {
             let mut _g_current_3: i32;
-            let _g_array_3: Vec<i32>;
+            let _g_array_3: hxrt::array::Array<i32>;
             _g_current_3 = 0;
             _g_array_3 = a.clone();
             while _g_current_3 < _g_array_3.len() as i32 {
-                let x_2: i32 = _g_array_3[({
-                    let __tmp = _g_current_3;
-                    _g_current_3 = _g_current_3 + 1;
-                    __tmp
-                }) as usize];
+                let x_2: i32 = _g_array_3.get_unchecked(
+                    ({
+                        let __tmp = _g_current_3;
+                        _g_current_3 = _g_current_3 + 1;
+                        __tmp
+                    }) as usize,
+                );
                 if pred.as_ref().unwrap()(x_2) {
                     {
                         let __tmp = n;
@@ -107,15 +113,17 @@ fn main() {
         let mut found: bool = false;
         {
             let mut _g_current_4: i32;
-            let _g_array_4: Vec<i32>;
+            let _g_array_4: hxrt::array::Array<i32>;
             _g_current_4 = 0;
             _g_array_4 = a.clone();
             while _g_current_4 < _g_array_4.len() as i32 {
-                let x_3: i32 = _g_array_4[({
-                    let __tmp = _g_current_4;
-                    _g_current_4 = _g_current_4 + 1;
-                    __tmp
-                }) as usize];
+                let x_3: i32 = _g_array_4.get_unchecked(
+                    ({
+                        let __tmp = _g_current_4;
+                        _g_current_4 = _g_current_4 + 1;
+                        __tmp
+                    }) as usize,
+                );
                 if x_3 == 3 {
                     found = true;
                     break;
@@ -128,15 +136,17 @@ fn main() {
         let mut found_2: bool = false;
         {
             let mut _g_current_5: i32;
-            let _g_array_5: Vec<i32>;
+            let _g_array_5: hxrt::array::Array<i32>;
             _g_current_5 = 0;
             _g_array_5 = a.clone();
             while _g_current_5 < _g_array_5.len() as i32 {
-                let x_4: i32 = _g_array_5[({
-                    let __tmp = _g_current_5;
-                    _g_current_5 = _g_current_5 + 1;
-                    __tmp
-                }) as usize];
+                let x_4: i32 = _g_array_5.get_unchecked(
+                    ({
+                        let __tmp = _g_current_5;
+                        _g_current_5 = _g_current_5 + 1;
+                        __tmp
+                    }) as usize,
+                );
                 if x_4 == 4 {
                     found_2 = true;
                     break;

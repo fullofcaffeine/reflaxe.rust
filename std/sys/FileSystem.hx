@@ -34,10 +34,9 @@ class FileSystem {
 					let name = entry.unwrap().file_name().to_string_lossy().to_string();
 					out.push(name);
 				}
-				out
+				hxrt::array::Array::<String>::from_vec(out)
 			}",
 			path
 		);
 	}
 }
-

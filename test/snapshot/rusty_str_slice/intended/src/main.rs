@@ -31,9 +31,9 @@ fn main() {
     let mut sum: i32 = 0;
     {
         let mut _g: i32 = 0;
-        let _g1: Vec<i32> = crate::rust_vec_tools::VecTools::to_array(v.clone());
+        let _g1: hxrt::array::Array<i32> = crate::rust_vec_tools::VecTools::to_array(v.clone());
         while _g < _g1.len() as i32 {
-            let x: i32 = _g1[_g as usize];
+            let x: i32 = _g1.get_unchecked(_g as usize);
             {
                 _g = _g + 1;
                 _g
@@ -50,9 +50,10 @@ fn main() {
             let mut sum2: i32 = 0;
             {
                 let mut _g_2: i32 = 0;
-                let _g1_2: Vec<i32> = crate::rust_slice_tools::SliceTools::to_array(s);
+                let _g1_2: hxrt::array::Array<i32> =
+                    crate::rust_slice_tools::SliceTools::to_array(s);
                 while _g_2 < _g1_2.len() as i32 {
-                    let x_2: i32 = _g1_2[_g_2 as usize];
+                    let x_2: i32 = _g1_2.get_unchecked(_g_2 as usize);
                     {
                         _g_2 = _g_2 + 1;
                         _g_2

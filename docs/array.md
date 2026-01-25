@@ -19,10 +19,20 @@ we immediately hit:
 
 ## Current state (today)
 
-`Array<T>` currently maps to a Rust `Vec<T>` in portable output. The backend compensates by cloning in
-some callsites (to avoid moves), but this is not a complete semantic model of Haxe aliasing.
+`Array<T>` now maps to `hxrt::array::Array<T>` (a small runtime wrapper backed by `Rc<RefCell<Vec<T>>>`).
 
-This is acceptable for early snapshots, but **not** a long-term v1.0 semantic target.
+In generated Rust:
+
+- array literals (`[...]`) are emitted as `hxrt::array::Array::from_vec(vec![...])`
+- index reads use `get_unchecked(...)` (or `get(...)` when typed as `Null<T>`)
+- index writes use `set(...)`
+- `arr.length` lowers to `arr.len() as i32`
+
+This fixes the core semantic mismatch: **assignment and passing alias**, and cloning an array is cheap
+(`Rc::clone`, not a deep clone).
+
+Remaining work is mostly about API coverage + ergonomics (more Array methods, better iteration patterns,
+explicit bridging with `rust.Vec<T>` in the Rusty profile).
 
 ## Options considered
 
@@ -61,7 +71,7 @@ Cons:
 
 ## Decision
 
-**We will move to Option C: `hxrt::array::Array<T>` backed by `Rc<RefCell<Vec<T>>>`.**
+**We moved to Option C: `hxrt::array::Array<T>` backed by `Rc<RefCell<Vec<T>>>`.**
 
 Goals of the runtime type:
 
@@ -92,4 +102,3 @@ Goals of the runtime type:
 5. Revisit clone heuristics:
    - most `Array<T>` clones become `Rc::clone` (cheap)
    - reduce deep clones, keep Haxe reuse semantics
-

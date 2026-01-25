@@ -947,7 +947,7 @@ enum RustProfile {
 		if (isArrayType(t)) {
 			var elem = arrayElementType(t);
 			var elemRust = toRustType(elem, pos);
-			return "Vec::<" + rustTypeToString(elemRust) + ">::new()";
+			return "hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new()";
 		}
 
 		return "Default::default()";
@@ -1772,6 +1772,10 @@ enum RustProfile {
 			}
 				case TFor(v, iterable, body): {
 					function iterCloned(x: TypedExpr): RustExpr {
+						// `hxrt::array::Array<T>::iter()` returns an owned iterator; do not append `.cloned()`.
+						if (isArrayType(x.t)) {
+							return ECall(EField(compileExpr(x), "iter"), []);
+						}
 						var base = ECall(EField(compileExpr(x), "iter"), []);
 						return ECall(EField(base, iterBorrowMethod(x.t)), []);
 					}
@@ -2005,10 +2009,14 @@ enum RustProfile {
 									mutated.set(v.id, true);
 								}
 							case TArray(arr, _): {
-								switch (arr.expr) {
-									case TLocal(v):
-										mutated.set(v.id, true);
-									case _:
+								// Index assignment on Haxe arrays uses interior mutability (`hxrt::array::Array<T>`),
+								// so the binding itself does not need to be `mut`.
+								if (!isArrayType(arr.t)) {
+									switch (arr.expr) {
+										case TLocal(v):
+											mutated.set(v.id, true);
+										case _:
+									}
 								}
 							}
 							case _:
@@ -2030,16 +2038,6 @@ enum RustProfile {
 							var cf = cfRef.get();
 							if (cf != null && isMutatingMethod(cf)) {
 								markLocal(obj);
-							}
-
-							// Heuristic: common Array mutations (portable arrays map to Rust Vec).
-							if (isArrayType(obj.t)) {
-								var name = cf != null ? cf.getHaxeName() : "";
-								switch (name) {
-									case "push" | "pop" | "shift" | "unshift" | "insert" | "remove" | "reverse" | "sort" | "splice":
-										markLocal(obj);
-									case _:
-								}
 							}
 						}
 						case _:
@@ -2108,13 +2106,16 @@ enum RustProfile {
 			}
 
 			case TArrayDecl(values): {
-				// Haxe `Array<T>` literal: `[]` or `[a, b]` -> `Vec::<T>::new()` or `vec![...]`
+				// Haxe `Array<T>` literal: `[]` or `[a, b]` -> `hxrt::array::Array::<T>::new()` or `Array::from_vec(vec![...])`
 				if (values.length == 0) {
 					var elem = arrayElementType(e.t);
 					var elemRust = toRustType(elem, e.pos);
-					ECall(ERaw("Vec::<" + rustTypeToString(elemRust) + ">::new"), []);
+					ECall(ERaw("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new"), []);
 				} else {
-					EMacroCall("vec", [for (v in values) compileExpr(v)]);
+					var elem = arrayElementType(e.t);
+					var elemRust = toRustType(elem, e.pos);
+					var vecExpr = EMacroCall("vec", [for (v in values) compileExpr(v)]);
+					ECall(ERaw("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::from_vec"), [vecExpr]);
 				}
 			}
 
@@ -2123,15 +2124,9 @@ enum RustProfile {
 				// If the expression is typed as `Null<T>`, represent array access as `Option<T>`.
 				// This avoids Rust panics on out-of-bounds and matches Haxe’s “nullable access” typing.
 				if (isNullType(e.t)) {
-					var getCall = ECall(EField(compileExpr(arr), "get"), [idx]);
-					ECall(EField(getCall, "cloned"), []);
+					ECall(EField(compileExpr(arr), "get"), [idx]);
 				} else {
-					var access = EIndex(compileExpr(arr), idx);
-					if (isCopyType(e.t)) {
-						access;
-					} else {
-						ECall(EField(access, "clone"), []);
-					}
+					ECall(EField(compileExpr(arr), "get_unchecked"), [idx]);
 				}
 			}
 
@@ -3594,14 +3589,13 @@ enum RustProfile {
 
 	function compileArrayIndexAssign(arr: TypedExpr, index: TypedExpr, rhs: TypedExpr): RustExpr {
 		// Haxe assignment returns the RHS value.
-		// `{ let __tmp = rhs; arr[idx] = __tmp.clone(); __tmp }`
+		// `{ let __tmp = rhs; arr.set(idx, __tmp.clone()); __tmp }`
 		var stmts: Array<RustStmt> = [];
 		stmts.push(RLet("__tmp", false, null, compileExpr(rhs)));
 
 		var idx = ECast(compileExpr(index), "usize");
-		var lhs = EIndex(compileExpr(arr), idx);
 		var rhsVal: RustExpr = isCopyType(rhs.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
-		stmts.push(RSemi(EAssign(lhs, rhsVal)));
+		stmts.push(RSemi(ECall(EField(compileExpr(arr), "set"), [idx, rhsVal])));
 
 		return EBlock({ stmts: stmts, tail: EPath("__tmp") });
 	}
@@ -4362,7 +4356,7 @@ enum RustProfile {
 		if (isArrayType(ft)) {
 			var elem = arrayElementType(ft);
 			var elemRust = toRustType(elem, pos);
-			return RPath("Vec<" + rustTypeToString(elemRust) + ">");
+			return RPath("hxrt::array::Array<" + rustTypeToString(elemRust) + ">");
 		}
 
 		return switch (ft) {
@@ -4520,7 +4514,7 @@ enum RustProfile {
 			case TInst(clsRef, _): {
 				var cls = clsRef.get();
 				if (cls == null) return false;
-				// Arrays are represented as `Vec<T>`, not `HxRef<_>`.
+				// Arrays are represented as `hxrt::array::Array<T>`, not `HxRef<_>`.
 				if (cls.pack.length == 0 && cls.module == "Array" && cls.name == "Array") return false;
 				!cls.isExtern && !cls.isInterface;
 			}

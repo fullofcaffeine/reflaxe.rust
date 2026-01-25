@@ -7,12 +7,12 @@ pub const __HX_TYPE_ID: u32 = 0xb874255eu32;
 pub struct VecTools {}
 
 impl VecTools {
-    pub fn from_array<T: Clone>(a: Vec<T>) -> Vec<T> {
-        return a.clone();
+    pub fn from_array<T: Clone>(a: hxrt::array::Array<T>) -> Vec<T> {
+        return a.to_vec();
     }
 
-    pub fn to_array<T: Clone>(v: Vec<T>) -> Vec<T> {
-        return v.clone();
+    pub fn to_array<T: Clone>(v: Vec<T>) -> hxrt::array::Array<T> {
+        return hxrt::array::Array::<T>::from_vec(v);
     }
 
     pub fn len<T>(v: Vec<T>) -> i32 {

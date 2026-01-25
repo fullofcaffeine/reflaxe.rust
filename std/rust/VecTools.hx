@@ -11,12 +11,12 @@ package rust;
 class VecTools {
 	@:rustGeneric("T: Clone")
 	public static function fromArray<T>(a: Array<T>): Vec<T> {
-		return untyped __rust__("{0}.clone()", a);
+		return untyped __rust__("{0}.to_vec()", a);
 	}
 
 	@:rustGeneric("T: Clone")
 	public static function toArray<T>(v: Vec<T>): Array<T> {
-		return untyped __rust__("{0}.clone()", v);
+		return untyped __rust__("hxrt::array::Array::<T>::from_vec({0})", v);
 	}
 
 	public static function len<T>(v: Vec<T>): Int {

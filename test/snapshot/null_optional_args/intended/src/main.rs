@@ -7,12 +7,12 @@ type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
 mod haxe_ds_list;
 mod sys;
 
-fn count_if(it: Vec<i32>, pred: Option<std::rc::Rc<dyn Fn(i32) -> bool>>) -> i32 {
+fn count_if(it: hxrt::array::Array<i32>, pred: Option<std::rc::Rc<dyn Fn(i32) -> bool>>) -> i32 {
     let mut n: i32 = 0;
     if pred.is_none() {
         let mut _g: i32 = 0;
         while _g < it.len() as i32 {
-            let _unused: i32 = it[_g as usize];
+            let _unused: i32 = it.get_unchecked(_g as usize);
             {
                 _g = _g + 1;
                 _g
@@ -26,7 +26,7 @@ fn count_if(it: Vec<i32>, pred: Option<std::rc::Rc<dyn Fn(i32) -> bool>>) -> i32
     } else {
         let mut _g_2: i32 = 0;
         while _g_2 < it.len() as i32 {
-            let x: i32 = it[_g_2 as usize];
+            let x: i32 = it.get_unchecked(_g_2 as usize);
             {
                 _g_2 = _g_2 + 1;
                 _g_2
@@ -55,7 +55,7 @@ fn tail_null(ok: bool) -> Option<i32> {
 }
 
 fn main() {
-    let a: Vec<i32> = vec![1, 2, 3, 4];
+    let a: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::from_vec(vec![1, 2, 3, 4]);
     let t0: i32 = count_if(a.clone(), None);
     let t1: i32 = count_if(
         a.clone(),
@@ -68,15 +68,17 @@ fn main() {
         let mut n: i32 = 0;
         if pred.is_none() {
             let mut _g_current: i32;
-            let _g_array: Vec<i32>;
+            let _g_array: hxrt::array::Array<i32>;
             _g_current = 0;
             _g_array = a.clone();
             while _g_current < _g_array.len() as i32 {
-                let _unused: i32 = _g_array[({
-                    let __tmp = _g_current;
-                    _g_current = _g_current + 1;
-                    __tmp
-                }) as usize];
+                let _unused: i32 = _g_array.get_unchecked(
+                    ({
+                        let __tmp = _g_current;
+                        _g_current = _g_current + 1;
+                        __tmp
+                    }) as usize,
+                );
                 {
                     let __tmp = n;
                     n = n + 1;
@@ -85,15 +87,17 @@ fn main() {
             }
         } else {
             let mut _g_current_2: i32;
-            let _g_array_2: Vec<i32>;
+            let _g_array_2: hxrt::array::Array<i32>;
             _g_current_2 = 0;
             _g_array_2 = a.clone();
             while _g_current_2 < _g_array_2.len() as i32 {
-                let x: i32 = _g_array_2[({
-                    let __tmp = _g_current_2;
-                    _g_current_2 = _g_current_2 + 1;
-                    __tmp
-                }) as usize];
+                let x: i32 = _g_array_2.get_unchecked(
+                    ({
+                        let __tmp = _g_current_2;
+                        _g_current_2 = _g_current_2 + 1;
+                        __tmp
+                    }) as usize,
+                );
                 if pred.as_ref().unwrap()(x) {
                     {
                         let __tmp = n;
@@ -109,15 +113,17 @@ fn main() {
         let mut n_2: i32 = 0;
         {
             let mut _g_current_3: i32;
-            let _g_array_3: Vec<i32>;
+            let _g_array_3: hxrt::array::Array<i32>;
             _g_current_3 = 0;
             _g_array_3 = a.clone();
             while _g_current_3 < _g_array_3.len() as i32 {
-                let x_2: i32 = _g_array_3[({
-                    let __tmp = _g_current_3;
-                    _g_current_3 = _g_current_3 + 1;
-                    __tmp
-                }) as usize];
+                let x_2: i32 = _g_array_3.get_unchecked(
+                    ({
+                        let __tmp = _g_current_3;
+                        _g_current_3 = _g_current_3 + 1;
+                        __tmp
+                    }) as usize,
+                );
                 if x_2 > 2 {
                     {
                         let __tmp = n_2;

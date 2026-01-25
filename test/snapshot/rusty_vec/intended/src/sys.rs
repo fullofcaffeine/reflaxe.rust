@@ -19,8 +19,10 @@ impl Sys {
         };
     }
 
-    pub fn args() -> Vec<String> {
-        return std::env::args().skip(1).collect::<Vec<String>>();
+    pub fn args() -> hxrt::array::Array<String> {
+        return hxrt::array::Array::<String>::from_vec(
+            std::env::args().skip(1).collect::<Vec<String>>(),
+        );
     }
 
     pub fn get_cwd() -> String {

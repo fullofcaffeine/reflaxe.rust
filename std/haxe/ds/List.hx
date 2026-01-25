@@ -45,7 +45,7 @@ class List<T> {
 		#if macro
 		return [].iterator();
 		#else
-		return untyped __rust__("hxrt::iter::Iter::from_vec({0}.borrow().items.clone())", this);
+		return untyped __rust__("hxrt::iter::Iter::from_vec({0}.borrow().items.to_vec())", this);
 		#end
 	}
 }

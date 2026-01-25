@@ -19,7 +19,7 @@ impl SliceTools {
         return s.get(index as usize);
     }
 
-    pub fn to_array<T: Clone>(s: &[T]) -> Vec<T> {
-        return s.to_vec();
+    pub fn to_array<T: Clone>(s: &[T]) -> hxrt::array::Array<T> {
+        return hxrt::array::Array::<T>::from_vec(s.to_vec());
     }
 }

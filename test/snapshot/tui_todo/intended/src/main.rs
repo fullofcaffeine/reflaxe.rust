@@ -9,24 +9,26 @@ mod task;
 mod tui_demo;
 
 fn main() {
-    let tasks: Vec<crate::HxRef<crate::task::Task>> = vec![
-        crate::task::Task::new(String::from("bootstrap reflaxe.rust"), true),
-        crate::task::Task::new(String::from("add enums + switch"), false),
-        crate::task::Task::new(String::from("ship ratatui demo"), false),
-    ];
-    let actions: Vec<crate::action::Action> = vec![
-        crate::action::Action::Down,
-        crate::action::Action::Toggle,
-        crate::action::Action::Down,
-        crate::action::Action::Toggle,
-        crate::action::Action::Up,
-        crate::action::Action::Quit,
-    ];
+    let tasks: hxrt::array::Array<crate::HxRef<crate::task::Task>> =
+        hxrt::array::Array::<crate::HxRef<crate::task::Task>>::from_vec(vec![
+            crate::task::Task::new(String::from("bootstrap reflaxe.rust"), true),
+            crate::task::Task::new(String::from("add enums + switch"), false),
+            crate::task::Task::new(String::from("ship ratatui demo"), false),
+        ]);
+    let actions: hxrt::array::Array<crate::action::Action> =
+        hxrt::array::Array::<crate::action::Action>::from_vec(vec![
+            crate::action::Action::Down,
+            crate::action::Action::Toggle,
+            crate::action::Action::Down,
+            crate::action::Action::Toggle,
+            crate::action::Action::Up,
+            crate::action::Action::Quit,
+        ]);
     let mut selected: i32 = 0;
     let mut frame: i32 = 0;
     let mut i: i32 = 0;
     while i < actions.len() as i32 {
-        let action: crate::action::Action = actions[i as usize].clone();
+        let action: crate::action::Action = actions.get_unchecked(i as usize);
         match action.clone() {
             crate::action::Action::Up => {
                 if selected > 0 {
@@ -39,7 +41,7 @@ fn main() {
                 }
             }
             crate::action::Action::Toggle => {
-                crate::task::Task::toggle(&tasks[selected as usize].clone());
+                crate::task::Task::toggle(&tasks.get_unchecked(selected as usize));
             }
             crate::action::Action::Quit => {
                 break;
@@ -53,7 +55,7 @@ fn main() {
                 format!(
                     "{}{}",
                     lines,
-                    crate::task::Task::line(&tasks[j as usize].clone(), j == selected)
+                    crate::task::Task::line(&tasks.get_unchecked(j as usize), j == selected)
                 ),
                 String::from("\n")
             );

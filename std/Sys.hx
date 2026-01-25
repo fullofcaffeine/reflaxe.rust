@@ -13,7 +13,7 @@ class Sys {
 	}
 
 	public static function args(): Array<String> {
-		return untyped __rust__("std::env::args().skip(1).collect::<Vec<String>>()");
+		return untyped __rust__("hxrt::array::Array::<String>::from_vec(std::env::args().skip(1).collect::<Vec<String>>())");
 	}
 
 	public static function getCwd(): String {

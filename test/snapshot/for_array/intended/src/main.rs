@@ -7,12 +7,12 @@ type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
 mod sys;
 
 fn main() {
-    let xs: Vec<i32> = vec![1, 2, 3];
+    let xs: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::from_vec(vec![1, 2, 3]);
     let mut sum: i32 = 0;
     {
         let mut _g: i32 = 0;
         while _g < xs.len() as i32 {
-            let x: i32 = xs[_g as usize];
+            let x: i32 = xs.get_unchecked(_g as usize);
             {
                 _g = _g + 1;
                 _g
