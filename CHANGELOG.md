@@ -1,3 +1,11 @@
+# [0.11.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.10.0...v0.11.0) (2026-01-25)
+
+
+### Features
+
+* **std:** haxe.ds maps + iterator runtime ([0537559](https://github.com/fullofcaffeine/reflaxe.rust/commit/0537559710126ba6edd939afcc965e65d89db13f))
+* **tui:** add TestBackend harness + cargo tests ([d4a4424](https://github.com/fullofcaffeine/reflaxe.rust/commit/d4a442449ac75c15d12724077d4880bb37775580))
+
 # [0.10.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.9.0...v0.10.0) (2026-01-25)
 
 
