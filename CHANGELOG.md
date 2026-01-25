@@ -1,3 +1,10 @@
+# [0.17.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.16.0...v0.17.0) (2026-01-25)
+
+
+### Features
+
+* **examples:** add rusty tui todo ([cb54700](https://github.com/fullofcaffeine/reflaxe.rust/commit/cb5470021d7286702475c83caaefae963753f6d5))
+
 # [0.16.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.15.1...v0.16.0) (2026-01-25)
 
 
