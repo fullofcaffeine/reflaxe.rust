@@ -16,6 +16,22 @@ extern class TuiDemo {
 	@:native("run_frame")
 	public static function runFrame(frame: Int, tasks: String): Void;
 
+	/**
+	 * Render the provided `tasks` lines to a deterministic string using ratatui's `TestBackend`.
+	 *
+	 * Why:
+	 * - Lets us test/CI-verify TUIs without requiring a real TTY (similar to "Playwright", but for TUIs).
+	 *
+	 * What:
+	 * - Returns a full buffer dump (including borders/title) as a single `String`.
+	 *
+	 * How:
+	 * - Calls into the bundled Rust module (`crate::tui_demo::render_to_string`) which renders to an
+	 *   off-screen buffer and converts it to a string. This does not touch global terminal state.
+	 */
+	@:native("render_to_string")
+	public static function renderToString(tasks: String): String;
+
 	@:native("enter")
 	public static function enter(): Void;
 

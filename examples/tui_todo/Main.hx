@@ -1,4 +1,6 @@
-import rust.tui.TuiDemo;
+import rust.tui.Action;
+import rust.tui.Tui;
+import Harness;
 
 class Main {
 	static function main(): Void {
@@ -14,12 +16,12 @@ class Main {
 		var running = true;
 
 		#if tui_headless
-		TuiDemo.setHeadless(true);
+		Tui.setHeadless(true);
 		#else
-		TuiDemo.setHeadless(false);
+		Tui.setHeadless(false);
 		#end
 
-		TuiDemo.enter();
+		Tui.enter();
 		while (running) {
 			var lines = "";
 			var j = 0;
@@ -28,18 +30,10 @@ class Main {
 				j = j + 1;
 			}
 
-			TuiDemo.render(lines);
+			Tui.render(lines);
 
-			var code = TuiDemo.pollAction(250);
-			if (code == 0) continue;
-
-			var action = switch (code) {
-				case 1: Action.Up;
-				case 2: Action.Down;
-				case 3: Action.Toggle;
-				case 4: Action.Quit;
-				case _: Action.Quit;
-			};
+			var action = Tui.poll(250);
+			if (action == None) continue;
 
 			switch (action) {
 				case Up:
@@ -50,9 +44,11 @@ class Main {
 					tasks[selected].toggle();
 				case Quit:
 					running = false;
+				case None:
+					// handled above
 			}
 		}
 
-		TuiDemo.exit();
+		Tui.exit();
 	}
 }

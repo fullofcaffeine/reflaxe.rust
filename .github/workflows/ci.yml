@@ -150,4 +150,4 @@ jobs:
           (cd examples/hello && haxe compile.hxml && (cd out && cargo run -q))
           (cd examples/classes && haxe compile.hxml && (cd out && cargo run -q))
           (cd examples/serde_json && haxe compile.hxml && (cd out && cargo run -q))
-          (cd examples/tui_todo && haxe compile.ci.hxml && (cd out_ci && cargo run -q))
+          (cd examples/tui_todo && haxe compile.ci.hxml && (cd out_ci && cargo test -q) && (cd out_ci && cargo run -q))
