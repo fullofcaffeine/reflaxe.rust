@@ -646,6 +646,8 @@ enum RustProfile {
 		// stdlib via `using Lambda`), but we treat it as an inline/macro-time helper and avoid emitting a
 		// Rust module for it.
 		if (classType.pack.length == 0 && classType.name == "Lambda") return false;
+		// Same idea as `Lambda`: this is an inline-only helper surface.
+		if (classType.pack.length == 0 && classType.name == "ArrayTools") return false;
 		var file = Context.getPosInfos(classType.pos).file;
 		return isUserProjectFile(file) || isFrameworkStdFile(file);
 	}
@@ -1651,6 +1653,13 @@ enum RustProfile {
 									initExpr = ECall(EPath("Some"), [stored]);
 							}
 						}
+
+						// Haxe sometimes treats `Null<T> -> T` as "assert non-null" (e.g. null-safety off or
+						// implicit coercions in desugared code). In Rust output this is `Option<T> -> T`,
+						// so unwrap.
+						if (!isNullType(v.t) && isNullType(init.t) && !isNullConstExpr(init)) {
+							initExpr = ECall(EField(initExpr, "unwrap"), []);
+						}
 					}
 					var mutable = currentMutatedLocals != null && currentMutatedLocals.exists(v.id);
 					RLet(name, mutable, rustTy, initExpr);
@@ -1903,7 +1912,7 @@ enum RustProfile {
 					}
 				}
 
-					case TBinop(OpAssign, lhs, _): {
+					case TBinop(OpAssign, lhs, _) | TBinop(OpAssignOp(_), lhs, _): {
 						switch (lhs.expr) {
 							case TLocal(v):
 								if (declaredWithoutInit.exists(v.id)) {
@@ -2028,11 +2037,18 @@ enum RustProfile {
 
 			case TArray(arr, index): {
 				var idx = ECast(compileExpr(index), "usize");
-				var access = EIndex(compileExpr(arr), idx);
-				if (isCopyType(e.t)) {
-					access;
+				// If the expression is typed as `Null<T>`, represent array access as `Option<T>`.
+				// This avoids Rust panics on out-of-bounds and matches Haxe’s “nullable access” typing.
+				if (isNullType(e.t)) {
+					var getCall = ECall(EField(compileExpr(arr), "get"), [idx]);
+					ECall(EField(getCall, "cloned"), []);
 				} else {
-					ECall(EField(access, "clone"), []);
+					var access = EIndex(compileExpr(arr), idx);
+					if (isCopyType(e.t)) {
+						access;
+					} else {
+						ECall(EField(access, "clone"), []);
+					}
 				}
 			}
 
@@ -2154,24 +2170,24 @@ enum RustProfile {
 				var fromT = followType(e1.t);
 				var toT = followType(e.t);
 
-				function isNullAbstract(t: Type): Bool {
-					return switch (TypeTools.follow(t)) {
-						case TAbstract(absRef, params): {
-							var abs = absRef.get();
-							abs != null && abs.module == "StdTypes" && abs.name == "Null" && params.length == 1;
-						}
-						case _: false;
-					}
-				}
-
 				// Numeric casts (`Int` <-> `Float`) must be explicit in Rust.
-				if ((TypeHelper.isInt(fromT) || TypeHelper.isFloat(fromT)) && (TypeHelper.isInt(toT) || TypeHelper.isFloat(toT))) {
+				if (!isNullType(e1.t)
+					&& !isNullType(e.t)
+					&& (TypeHelper.isInt(fromT) || TypeHelper.isFloat(fromT))
+					&& (TypeHelper.isInt(toT) || TypeHelper.isFloat(toT))) {
 					var target = rustTypeToString(toRustType(toT, e.pos));
 					ECast(inner, target);
-				} else if (isNullAbstract(e1.t) && !isNullAbstract(e.t)) {
+				} else if (isNullType(e1.t) && isNullType(e.t)) {
+					// With nested nullability collapsed at the type level (`Null<Null<T>>` == `Null<T>`),
+					// null-to-null casts become a no-op.
+					inner;
+				} else if (isNullType(e1.t) && !isNullType(e.t)) {
 					// `@:nullSafety(Off)` and explicit casts from `Null<T>` to `T` are treated as
 					// "assert non-null". In Rust output, `Null<T>` is `Option<T>`, so unwrap.
 					ECall(EField(inner, "unwrap"), []);
+				} else if (!isNullType(e1.t) && isNullType(e.t)) {
+					// Explicit casts from `T` to `Null<T>` are treated as "wrap into nullability".
+					ECall(EPath("Some"), [inner]);
 				} else {
 					inner;
 				}
@@ -3937,6 +3953,21 @@ enum RustProfile {
 			case OpSub: EBinary("-", compileExpr(e1), compileExpr(e2));
 			case OpMult: EBinary("*", compileExpr(e1), compileExpr(e2));
 			case OpDiv: EBinary("/", compileExpr(e1), compileExpr(e2));
+			case OpMod: EBinary("%", compileExpr(e1), compileExpr(e2));
+
+			// Bitwise ops (Int).
+			case OpAnd: EBinary("&", compileExpr(e1), compileExpr(e2));
+			case OpOr: EBinary("|", compileExpr(e1), compileExpr(e2));
+			case OpXor: EBinary("^", compileExpr(e1), compileExpr(e2));
+			case OpShl: EBinary("<<", compileExpr(e1), compileExpr(e2));
+			case OpShr: EBinary(">>", compileExpr(e1), compileExpr(e2));
+			case OpUShr: {
+				// Unsigned shift-right (`>>>`) uses `u32` then casts back to `i32`.
+				// This matches Haxe's `Int` semantics for `>>>` (logical shift).
+				var lhs = ECast(compileExpr(e1), "u32");
+				var rhs = ECast(compileExpr(e2), "u32");
+				ECast(EBinary(">>", lhs, rhs), "i32");
+			}
 
 			case OpEq: {
 				// `Null<T>` compares to `null` should not require `T: PartialEq` (e.g. `Null<Fn>`).
@@ -3966,6 +3997,41 @@ enum RustProfile {
 
 			case OpInterval:
 				ERange(compileExpr(e1), compileExpr(e2));
+
+			case OpAssignOp(inner): {
+				// Compound assignments (`x += y`, `x %= y`, ...).
+				//
+				// POC: support locals (common in loops/desugarings). More complex lvalues
+				// (fields/indices) can be added when needed.
+				var opStr: Null<String> = switch (inner) {
+					case OpAdd: "+";
+					case OpSub: "-";
+					case OpMult: "*";
+					case OpDiv: "/";
+					case OpMod: "%";
+					case OpAnd: "&";
+					case OpOr: "|";
+					case OpXor: "^";
+					case OpShl: "<<";
+					case OpShr: ">>";
+					case _: null;
+				}
+				if (opStr == null) return unsupported(fullExpr, "assignop" + Std.string(inner));
+
+				switch (e1.expr) {
+					case TLocal(_): {
+						// `{ x = x <op> rhs; x }`
+						var lhs = compileExpr(e1);
+						var rhs = compileExpr(e2);
+						EBlock({
+							stmts: [RSemi(EAssign(lhs, EBinary(opStr, lhs, rhs)))],
+							tail: lhs
+						});
+					}
+					case _:
+						unsupported(fullExpr, "assignop lvalue");
+				}
+			}
 
 			default:
 				unsupported(fullExpr, "binop" + Std.string(op));
@@ -4009,6 +4075,7 @@ enum RustProfile {
 		return switch (op) {
 			case OpNot: EUnary("!", compileExpr(expr));
 			case OpNeg: EUnary("-", compileExpr(expr));
+			case OpNegBits: EUnary("!", compileExpr(expr));
 			default: unsupported(fullExpr, "unop" + Std.string(op));
 		}
 	}
@@ -4054,7 +4121,14 @@ enum RustProfile {
 			case TAbstract(absRef, params): {
 				var abs = absRef.get();
 				if (abs != null && abs.module == "StdTypes" && abs.name == "Null" && params.length == 1) {
-					var inner = toRustType(params[0], pos);
+					// Collapse nested nullability (`Null<Null<T>>` == `Null<T>` in practice).
+					var innerType: Type = params[0];
+					while (true) {
+						var n = nullInnerType(innerType);
+						if (n == null) break;
+						innerType = n;
+					}
+					var inner = toRustType(innerType, pos);
 					return RPath("Option<" + rustTypeToString(inner) + ">");
 				}
 			}
