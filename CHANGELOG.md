@@ -1,3 +1,15 @@
+# [0.16.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.15.1...v0.16.0) (2026-01-25)
+
+
+### Bug Fixes
+
+* **snapshot:** track rusty_mut_slice intended ([cadb77f](https://github.com/fullofcaffeine/reflaxe.rust/commit/cadb77fab2c584a12ef4386034f8439236a00fa7))
+
+
+### Features
+
+* **rusty:** borrow-first slices + mut slice ([4ddfaa8](https://github.com/fullofcaffeine/reflaxe.rust/commit/4ddfaa8f90df2609c51b9f86f1aa88447a9dec76))
+
 ## [0.15.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.15.0...v0.15.1) (2026-01-25)
 
 
