@@ -174,15 +174,13 @@ class Lambda {
 
 	public static inline function find<T>(it:Iterable<T>, f:(item:T) -> Bool):Null<T> {
 		var found:Null<T> = null;
-		var set = false;
 		for (x in it) {
 			if (f(x)) {
 				found = x;
-				set = true;
 				break;
 			}
 		}
-		return set ? found : null;
+		return found;
 	}
 
 	public static inline function findIndex<T>(it:Iterable<T>, f:(item:T) -> Bool):Int {

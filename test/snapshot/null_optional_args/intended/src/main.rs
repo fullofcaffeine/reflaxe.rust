@@ -4,6 +4,7 @@
 
 type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
 
+mod haxe_ds_list;
 mod sys;
 
 fn count_if(it: Vec<i32>, pred: Option<std::rc::Rc<dyn Fn(i32) -> bool>>) -> i32 {
