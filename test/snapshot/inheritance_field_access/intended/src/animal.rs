@@ -14,7 +14,7 @@ impl Animal {
             std::rc::Rc::new(std::cell::RefCell::new(Animal { age: 0 }));
         {
             let __tmp = 0;
-            self_.borrow_mut().age = __tmp.clone();
+            self_.borrow_mut().age = __tmp;
             __tmp
         };
         return self_;
