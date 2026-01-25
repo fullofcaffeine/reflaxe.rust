@@ -25,7 +25,7 @@ Cargo dependencies are declared from Haxe via metadata on `TuiDemo`:
 Use `renderToString(...)` and assert on the output in `cargo test`:
 
 - `examples/tui_todo/Harness.hx` produces a deterministic frame via `Tui.renderToString(...)`.
-- `examples/tui_todo/native/tui_tests.rs` calls the compiled Haxe harness and asserts on the frame.
+- `examples/tui_todo/native/tui_tests.rs` calls the compiled Haxe harness and does an **exact frame snapshot** (`assert_eq!`) against a golden string.
 
 This keeps tests:
 

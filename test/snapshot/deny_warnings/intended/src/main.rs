@@ -5,6 +5,8 @@
 
 type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
 
+mod rust_borrow;
+mod rust_mut_slice_tools;
 mod rust_option_tools;
 mod sys;
 
@@ -21,4 +23,36 @@ fn main() {
         Option::None => 0,
     };
     println!("{}", v);
+    let x: Option<i32>;
+    {
+        let __tmp = 3;
+        x = Some(__tmp);
+        __tmp
+    };
+    println!("{}", x.is_some());
+    let mut n: i32 = 0;
+    if x.is_some() {
+        n = n + 1;
+    }
+    if n == 1 {
+        n = n + 1;
+    } else {
+        n = n + 2;
+    }
+    println!("{}", n);
+    let mut vec: Vec<i32> = Vec::<i32>::new();
+    vec.push(1);
+    vec.push(2);
+    {
+        let r: &mut Vec<i32> = &mut vec;
+        {
+            let s: &mut [i32] = r;
+            crate::rust_mut_slice_tools::MutSliceTools::set(s, 1, 5);
+        }
+    }
+    let mut sum: i32 = 0;
+    for i in vec.iter().copied() {
+        sum = sum + i;
+    }
+    println!("{}", sum);
 }
