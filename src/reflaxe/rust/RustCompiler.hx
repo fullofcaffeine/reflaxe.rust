@@ -1724,8 +1724,19 @@ enum RustProfile {
 			case TMeta(_, e1):
 				compileExpr(e1);
 
-			case TCast(e1, _):
-				compileExpr(e1);
+			case TCast(e1, _): {
+				var inner = compileExpr(e1);
+				var fromT = followType(e1.t);
+				var toT = followType(e.t);
+
+				// Numeric casts (`Int` <-> `Float`) must be explicit in Rust.
+				if ((TypeHelper.isInt(fromT) || TypeHelper.isFloat(fromT)) && (TypeHelper.isInt(toT) || TypeHelper.isFloat(toT))) {
+					var target = rustTypeToString(toRustType(toT, e.pos));
+					ECast(inner, target);
+				} else {
+					inner;
+				}
+			}
 
 			default:
 				unsupported(e, "expr");
@@ -3330,6 +3341,14 @@ enum RustProfile {
 					var inner = toRustType(params[0], pos);
 					return RRef(RPath("[" + rustTypeToString(inner) + "]"), false);
 				}
+
+				// General abstract fallback: treat as its underlying type.
+				// (Most Haxe abstracts are compile-time-only; runtime representation is the backing type.)
+				var underlying: Type = abs.type;
+				if (abs.params != null && abs.params.length > 0 && params != null && params.length == abs.params.length) {
+					underlying = TypeTools.applyTypeParameters(underlying, abs.params, params);
+				}
+				return toRustType(underlying, pos);
 			}
 			case _:
 		}
