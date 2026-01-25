@@ -1,204 +1,117 @@
-# Rusty Profile (reflaxe.rust)
+# Rusty Profile Specification (`-D reflaxe_rust_profile=rusty`)
 
-This document defines the **third** compilation profile for reflaxe.rust: `rusty`.
+The Rust target supports **three profiles**:
 
-The goal is to let developers write **Haxe** while opting into a surface that feels closer to **Rust idioms** and ecosystem types, without requiring app code to use raw Rust injection.
+- `Portable` (default): prioritize Haxe semantics + portability, even if output is less idiomatic Rust.
+- `Idiomatic`: keep Haxe semantics, but bias the emitter toward cleaner, more idiomatic Rust output.
+- `Rusty`: opt into a Rust-first surface for developers who want Haxe syntax with Rust idioms.
 
-Related:
-- `docs/generics.md` (how Haxe type parameters map to Rust)
+This document defines what **Rusty** means, what it is *not*, and how user code should structure
+interop so final apps remain injection-free.
 
-## Profiles (summary)
+## Goals
 
-- **portable** (default)
-  - Priority: preserve Haxe semantics + portability.
-  - Runtime model: hxrt + `HxRef<T> = Rc<RefCell<T>>` for class instances.
-  - Output Rust may be less idiomatic (by design).
+- Let developers write code that *feels close to Rust* (ownership-aware APIs, explicit options/results,
+  slices/refs, iterators) while still using Haxe syntax and tooling.
+- Keep application code “pure Haxe”: **no raw `__rust__` in apps/examples**. Rust is an escape hatch,
+  but it belongs in framework code (`std/`, `runtime/`) behind typed APIs.
+- Make the boundary between “portable Haxe” and “Rusty Haxe” explicit and ergonomic:
+  - portable code should remain easy to write
+  - Rusty code should be explicit about where Rust concepts are used
 
-- **idiomatic**
-  - Priority: improve readability and reduce noise/warnings while preserving portable semantics.
-  - Examples: `let` vs `let mut` inference, cleaner formatting, avoid unreachable match arms.
+## Non-goals (v1.0)
 
-- **rusty** (`-D reflaxe_rust_profile=rusty`)
-  - Priority: opt into Rust’s *types and patterns* via explicit `rust.*` APIs.
-  - Still preserves the “framework-first escape hatch” rule (no raw `__rust__` in apps).
-  - Mixes well with portable code: you only get “Rustiness” where you use `rust.*`.
+- Perfect lifetime modeling. Haxe has no lifetime parameters; Rusty APIs should either:
+  - return owned values, or
+  - use `rust.Ref<T>` / `rust.MutRef<T>` / `rust.Slice<T>` as *borrow tokens* with best-effort safety.
+- Full replacement of the Rust borrow checker. Rust will still enforce borrowing rules on generated code.
+- Exposing every Rust feature. Rusty is an opinionated subset focused on “apps that feel Rusty”.
 
-## Hard rule: framework-first escape hatch
+## Selecting the profile
 
-- **Application code** (examples/snapshots/user projects) should not call `untyped __rust__()`.
-- Rust injection is allowed in **framework code** only (`std/`), behind Haxe APIs.
-- The repo enforces this for examples/snapshots via `-D reflaxe_rust_strict_examples`.
+- `Portable` (default): no define needed
+- `Idiomatic`: `-D rust_idiomatic` or `-D reflaxe_rust_profile=idiomatic`
+- `Rusty`: `-D reflaxe_rust_profile=rusty`
 
-## Rusty surface: `rust.*` types (initial v1 scope)
+## Core surfaces (Rusty)
 
-The `rust.*` package is an explicit opt-in. If you don’t use it, you keep portable Haxe behavior.
+Rusty code should prefer the explicit Rust-like surfaces under `std/rust/*` over Haxe “portable”
+surfaces when the developer wants Rust semantics.
 
-### `rust.Vec<T>` (maps to Rust `Vec<T>`)
+## Borrow-checker ergonomics (Rusty)
 
-Intent:
-- Provide an owned, contiguous, growable vector with Rust semantics.
+Rusty cannot model lifetimes directly (Haxe has no lifetime parameters), but it can still make borrowing
+feel natural by providing **borrow-first APIs** and by making “ownership boundaries” explicit.
 
-Expected code shapes:
-- Haxe:
-  - `var v = rust.Vec.fromArray([1,2,3]);`
-  - `v.push(4);`
-  - `for (x in v.iter()) trace(x);`
-- Rust output (conceptual):
-  - `let mut v: Vec<i32> = vec![1, 2, 3];`
-  - `v.push(4);`
-  - `for x in v.iter() { ... }`
+Guidelines for Rusty APIs:
 
-### `rust.Str` (maps to Rust `&str`)
+- Prefer `rust.Ref<T>` / `rust.Slice<T>` / `rust.Str` for parameters when the callee only needs to read.
+- Prefer `rust.MutRef<T>` / `rust.MutSlice<T>` (when available) when the callee mutates data.
+- Prefer returning owned values unless the performance win from borrowing is clear and safe.
+- Avoid silent cloning in Rusty APIs; when cloning is needed, prefer an explicit conversion (`toOwned`,
+  `clone`, `intoOwned`, etc.) so users can reason about allocations and moves.
 
-Intent:
-- Allow Rust-idiomatic borrowed string parameters without cloning at callsites.
+This keeps the “Rust feel” while still allowing users to write portable code in the default profile.
 
-Guidance:
-- Construct `rust.Str` via borrow scope (avoid storing it):
-  - `StrTools.with(needle, s -> { ... })`
-  - Or `Borrow.withRef(needle, r -> { var s: rust.Str = cast r; ... })`
+### Borrowing + referencing
 
-### `rust.Slice<T>` (maps to Rust `&[T]`)
+Use these types to communicate “borrow intent” to the compiler and codegen:
 
-Intent:
-- Borrowed views over contiguous data (initially via `Vec<T>.as_slice()`).
+- `rust.Ref<T>`: borrowed shared reference (`&T`)
+- `rust.MutRef<T>`: borrowed mutable reference (`&mut T`)
+- `rust.Str`: borrowed string slice (`&str`)
+- `rust.Slice<T>`: borrowed slice (`&[T]`)
 
-Helpers:
-- `SliceTools.fromVec(Borrow.withRef(vec, ...))` produces a `Slice<T>`.
-- `SliceTools.toArray(slice)` clones into a Haxe `Array<T>` for convenient iteration.
+Guideline:
+- Prefer `rust.Ref<T>`/`rust.Slice<T>` parameters in Rusty APIs to avoid cloning/moving.
+- Prefer returning owned values unless borrowing is clearly beneficial.
 
-### `rust.Iter<T>` (maps to Rust `std::vec::IntoIter<T>`)
+### Collections
 
-Intent:
-- Enable iterator-first interop for APIs that traffic in owned iterators.
+Rusty code should prefer Rust-native collections (extern wrappers) when the intent is “Rust-like”:
 
-Helpers:
-- `IterTools.fromVec(v)` converts a `rust.Vec<T>` into an owned iterator (consumes `v`; use `v.clone()` if needed).
+- `rust.Vec<T>` for growable vectors
+- `rust.HashMap<K,V>` for maps
 
-### `rust.Option<T>` (maps to Rust `Option<T>`)
+Portable `Array<T>` remains valid, but it is *not* the Rusty-first choice.
 
-Intent:
-- Expose Option explicitly, without overloading Haxe `Null<T>`.
+### Option / Result
 
-Helpers:
-- `using rust.OptionTools;` adds helpers like `isSome`, `unwrapOr`, plus macro-powered `map`/`andThen`.
-- Common Rust pattern helpers:
-  - `okOr("message")` / `okOrElse(() -> "message")` to convert `Option<T>` to `Result<T, String>`.
+Rusty code should prefer explicit `Option<T>` / `Result<T, E>` surfaces:
 
-Current limitation (POC):
-- For macro helpers that take callbacks (`map`, `andThen`, `unwrapOrElse`), prefer explicit callback typing to help the compiler:
-  - `function(v: Int): rust.Option<Int> return ...`
-- `OptionTools.isSome/isNone/unwrapOr` require `T: Clone` in Rust output (because the compiler currently clones the matched `Option<T>`).
+- `rust.Option<T>` / `haxe.ds.Option<T>` mapping to Rust `Option<T>`
+- `rust.Result<T, E>` / `haxe.functional.Result<T, E>` mapping to Rust `Result<T, E>`
 
-Expected code shapes:
-- Haxe:
-  - `var o: rust.Option<Int> = rust.Option.Some(123);`
-  - `switch (o) { case Some(v): ...; case None: ...; }`
-- Rust output:
-  - `let o: Option<i32> = Some(123);`
-  - `match o { Some(v) => ..., None => ... }`
+Guideline:
+- Use `Null<T>` only when modeling Haxe-idiomatic optionality is the goal.
+- Use `Option<T>` / `Result<T, E>` when writing Rusty APIs.
 
-### `rust.Result<T,E>` (maps to Rust `Result<T,E>`)
+### Strings
 
-Intent:
-- Use Rust-style error modeling where you want it; keep exceptions portable elsewhere.
+Rusty code should bias toward borrowed strings for inputs:
 
-Helpers:
-- `using rust.ResultTools;` adds helpers like `isOk`, `unwrapOr`, plus macro-powered `mapOk`/`mapErr`/`andThen`.
-- `ResultTools.catchAny/catchString` convert portable exceptions into `Result` at boundaries.
-- Common Rust pattern helpers:
-  - `context("prefix")` for `Result<T, String>` to add readable error context.
+- inputs: `rust.Str` (`&str`)
+- outputs: owned `String` (Haxe `String`) unless borrowing is explicit and safe
 
-Current limitation (POC):
-- For macro helpers that take callbacks (`mapOk`, `mapErr`, `andThen`, `unwrapOrElse`), prefer explicit callback typing to help the compiler:
-  - `function(v: Int): rust.Result<Int, String> return ...`
-- `ResultTools.isOk/isErr/unwrapOr` require `T: Clone, E: Clone` in Rust output (because the compiler currently clones the matched `Result<T,E>`).
+## Interop boundary (no injections in apps)
 
-Expected code shapes:
-- Haxe:
-  - `return rust.Result.Ok(value);`
-  - `return rust.Result.Err("oops");`
-- Rust output:
-  - `Ok(value)` / `Err("oops".to_string())` (or `String`, depending on E mapping)
+### Rule
 
-### `rust.HashMap<K,V>` (maps to `std::collections::HashMap<K,V>`)
+- Application code must not call `__rust__` directly.
+- Framework code may use `__rust__` as an escape hatch, but should prefer:
+  - `extern` bindings + `@:native("...")`
+  - small, typed wrappers that hide raw Rust code
 
-Intent:
-- Use Rust’s standard hash map for rusty code paths.
+### Recommended pattern
 
-### `rust.PathBuf` (maps to `std::path::PathBuf`)
+1. Add/extend a typed API in `std/` (or a dedicated framework module).
+2. Implement it using either:
+   - `extern` + `@:native(...)` (preferred), or
+   - `untyped __rust__(...)` internally (fallback)
+3. Keep examples “pure Haxe” using only the typed API.
 
-Intent:
-- Use Rust’s owned path buffer type for CLI/apps that want Rust-like path handling.
+## Compatibility notes
 
-Helpers:
-- `PathBufTools.fromString("path")` constructs a `PathBuf`.
-- `PathBufTools.join(p, "child")` returns a new `PathBuf` without moving `p`.
-- `PathBufTools.push(p, "child")` clones `p`, appends, and returns the new `PathBuf`.
-- `PathBufTools.toStringLossy(p)` converts to `String` via `to_string_lossy()`.
-
-Note:
-- Most helpers take `rust.Ref<PathBuf>` so you can keep using the original path value (no implicit moves).
-
-### `rust.OsString` (maps to `std::ffi::OsString`)
-
-Intent:
-- Expose OS-native strings for interop at the framework boundary.
-
-Helpers:
-- `OsStringTools.fromString(s)` / `OsStringTools.toStringLossy(os)`.
-
-### `rust.Duration` / `rust.Instant` (maps to `std::time::*`)
-
-Intent:
-- Use Rust’s monotonic clock and durations for timing, throttling, and simple benchmarks.
-
-Helpers:
-- `InstantTools.now()` / `InstantTools.elapsedMillis(i)`.
-- `DurationTools.fromMillis(ms)` / `DurationTools.sleep(d)`.
-
-## Borrow-scoped helpers (closure-based)
-
-Haxe has no lifetime syntax, so **borrowed references must be expressed via scope**.
-
-Design direction:
-- Provide APIs like:
-  - `rust.Borrow.withRef(value, ref -> { ... })`
-  - `rust.Borrow.withMut(value, mut -> { ... })`
-- The callback receives a “borrow view” type (likely an `abstract`) that:
-  - has no public constructors
-  - cannot be stored meaningfully outside the callback (best-effort, enforced by macros where possible)
-
-Target Rust shape:
-- `Borrow.withRef(x, f)` → `f(&x)` (or `f(x.borrow())` if the backing type is interior-mutable)
-- `Borrow.withMut(x, f)` → `f(&mut x)`
-
-## Mutability inference in rusty/idiomatic profiles
-
-Haxe method signatures do not encode `&self` vs `&mut self`.
-
-For rusty APIs we introduce explicit metadata on extern methods (future direction):
-- `@:rustMutating` on methods that require `&mut self` (e.g., `push`, `insert`, `remove`).
-
-Compiler behavior:
-- **idiomatic**: uses a conservative mutability inference (`let` vs `let mut`) based on detected mutations.
-- **rusty (current)**: defaults locals to `let mut` to avoid borrow-checker friction while the `@:rustMutating` surface is still evolving.
-
-## Conversions and portability
-
-Conversions between portable Haxe containers and rusty containers are explicit:
-- `rust.Vec.fromArray(Array<T>)` / `toArray()` (clone/convert elements as needed)
-- Avoid hidden moves: rusty code should not silently invalidate a Haxe variable due to Rust ownership rules.
-
-Iteration note:
-- `for (x in v)` works for `rust.Vec<T>` and `rust.Slice<T>` by providing an `iterator()` method for Haxe typing.
-- The compiler lowers `iterator()` on these types to Rust’s `iter().cloned()` to avoid moving the container.
-  - This requires `T: Clone` in Rust output (works well for typical Haxe values like `HxRef<T>`).
-- If you need non-`Clone` iteration, fall back to explicit helpers (clone/convert as needed):
-  - `for (x in VecTools.toArray(v.clone())) ...`
-  - `for (x in SliceTools.toArray(slice)) ...`
-
-## Non-goals (v1)
-
-- Full Rust lifetime/borrow checker UX at the Haxe surface.
-- Implicitly turning every `Array<T>` into `Vec<T>` (portable code should stay portable).
+- Rusty is **opt-in** and must not silently change Portable semantics.
+- When Rusty enables a different representation (e.g., `rust.Vec<T>` vs `Array<T>`), conversions must
+  be explicit (`intoVec`, `toArray`, etc.) and documented.
