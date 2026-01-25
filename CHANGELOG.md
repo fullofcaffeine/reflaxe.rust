@@ -1,3 +1,10 @@
+## [0.17.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.17.0...v0.17.1) (2026-01-25)
+
+
+### Bug Fixes
+
+* **idiomatic:** avoid cloning Copy temps ([13a4339](https://github.com/fullofcaffeine/reflaxe.rust/commit/13a43394940b88d80bf5117e29f6600d75c0c518))
+
 # [0.17.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.16.0...v0.17.0) (2026-01-25)
 
 
