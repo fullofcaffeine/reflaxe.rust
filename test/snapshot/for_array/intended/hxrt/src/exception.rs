@@ -2,9 +2,9 @@ use crate::dynamic::Dynamic;
 use std::cell::{Cell, RefCell};
 
 thread_local! {
-    static NEXT_ID: Cell<u64> = Cell::new(1);
-    static ACTIVE_ID: Cell<u64> = Cell::new(0);
-    static PAYLOAD: RefCell<Option<Dynamic>> = RefCell::new(None);
+    static NEXT_ID: Cell<u64> = const { Cell::new(1) };
+    static ACTIVE_ID: Cell<u64> = const { Cell::new(0) };
+    static PAYLOAD: RefCell<Option<Dynamic>> = const { RefCell::new(None) };
 }
 
 /// Throw a value using a panic-id + thread-local payload mechanism.
