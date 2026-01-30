@@ -25,6 +25,9 @@ pub struct Array<T> {
     inner: Rc<RefCell<Vec<T>>>,
 }
 
+pub type SliceCallback<T, R> = Rc<dyn Fn(&[T]) -> R>;
+pub type MutSliceCallback<T, R> = Rc<dyn Fn(&mut [T]) -> R>;
+
 impl<T> Array<T> {
     pub fn new() -> Self {
         Self {
@@ -300,4 +303,21 @@ impl<T> Array<T> {
             .collect::<Vec<_>>()
             .join(sep.as_str())
     }
+}
+
+/// Borrow an `Array<T>` as a slice (`&[T]`) for the duration of the callback.
+///
+/// This is intended to support `rust.SliceTools.with(array, s -> ...)` without cloning the array into
+/// a `Vec<T>`. The borrow is scoped to the call and cannot escape.
+pub fn with_slice<T, R>(array: Array<T>, f: SliceCallback<T, R>) -> R {
+    let borrow = array.inner.borrow();
+    f(borrow.as_slice())
+}
+
+/// Mutably borrow an `Array<T>` as a slice (`&mut [T]`) for the duration of the callback.
+///
+/// This enables zero-clone mutation patterns like `rust.MutSliceTools.with(array, s -> ...)`.
+pub fn with_mut_slice<T, R>(array: Array<T>, f: MutSliceCallback<T, R>) -> R {
+    let mut borrow = array.inner.borrow_mut();
+    f(borrow.as_mut_slice())
 }

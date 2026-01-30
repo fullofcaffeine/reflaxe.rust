@@ -33,6 +33,16 @@ class SliceTools {
 	 * Borrow a `Vec<T>` or `Array<T>` as a `rust.Slice<T>` for the duration of the callback.
 	 *
 	 * This is the slice equivalent of `rust.StrTools.with(...)`.
+	 *
+	 * Implementation notes:
+	 * - For `rust.Vec<T>`, this expands to `rust.Borrow.withRef(...)` and **inlines** the callback body
+	 *   (no closure allocation).
+	 * - For `Array<T>`, this delegates to `rust.ArrayBorrow.withSlice(...)`, which calls into the runtime
+	 *   to borrow the underlying storage as `&[T]` **without cloning**.
+	 *
+	 * Borrow rules:
+	 * - Keep the slice inside the callback; never store/return it.
+	 * - Avoid nested borrows of the same array (the runtime uses `RefCell` and will panic on invalid re-borrows).
 	 */
 	public static macro function with(value: Expr, fn: Expr): Expr {
 		#if macro
@@ -88,36 +98,27 @@ class SliceTools {
 
 		// Expand to (Vec case):
 		// `rust.Borrow.withRef(value, r -> { var s: rust.Slice<T> = cast r; body; })`
-		//
-		// Expand to (Array case):
-		// `{ var __v: rust.Vec<T> = rust.VecTools.fromArray(value);
-		//    rust.Borrow.withRef(__v, r -> { var s: rust.Slice<T> = cast r; body; }) }`
-		//
-		// NOTE: For `Array<T>`, this clones into a temporary `Vec<T>` (read-only slice view).
-		// This keeps the API injection-free for apps while avoiding invalid casts from `Array<T>` to `&[T]`.
 		if (valueIsArray) {
-			var pi = Context.getPosInfos(value.pos);
-			var tmpName = "__hx_vec_" + pi.min;
-			var tmpDecl: Expr = {
+			// For `Array<T>`, borrow the underlying Vec as a slice without cloning.
+			// This delegates to `rust.ArrayBorrow`, which calls into `hxrt::array::with_slice(...)`.
+			var sliceParam = "__hx_slice";
+			var arrayDecl: Expr = {
 				expr: EVars([{
-					name: tmpName,
+					name: argName,
 					type: TPath({
 						pack: ["rust"],
-						name: "Vec",
+						name: "Slice",
 						params: [TPType(elemCt)]
 					}),
-					expr: macro rust.VecTools.fromArray($value)
+					expr: { expr: ECast({ expr: EConst(CIdent(sliceParam)), pos: fn.pos }, null), pos: fn.pos }
 				}]),
 				pos: fn.pos
 			};
-			var tmpIdent: Expr = { expr: EConst(CIdent(tmpName)), pos: fn.pos };
-			return macro {
-				$tmpDecl;
-				rust.Borrow.withRef($tmpIdent, function(r) {
-					$decl;
-					${f.expr};
-				});
-			};
+
+			return macro rust.ArrayBorrow.withSlice($value, function(__hx_slice) {
+				$arrayDecl;
+				${f.expr};
+			});
 		}
 
 		return macro rust.Borrow.withRef($value, function(r) {

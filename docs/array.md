@@ -40,6 +40,22 @@ Some methods impose Rust trait bounds on `T`:
 - `resize` requires `T: Default` (for `Array<Null<T>>` this maps nicely to `None`)
 - `join` requires `T: ToString`
 
+## Borrowing as slices (Rusty profile)
+
+For Rust-idiomatic integrations, the Rusty profile provides slice-borrow helpers that work on
+`Array<T>` without cloning:
+
+- `rust.SliceTools.with(array, s -> ...)` borrows as `&[T]`
+- `rust.MutSliceTools.with(array, s -> ...)` borrows as `&mut [T]`
+
+These are implemented via runtime helpers (`hxrt::array::with_slice` / `with_mut_slice`) that keep the
+`RefCell` borrow guard scoped to the callback.
+
+Important rules:
+
+- Do not store or return `Slice`/`MutSlice` outside the callback.
+- Avoid nested borrows of the same array; `RefCell` will panic on invalid re-borrows.
+
 This fixes the core semantic mismatch: **assignment and passing alias**, and cloning an array is cheap
 (`Rc::clone`, not a deep clone).
 
