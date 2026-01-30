@@ -1,3 +1,10 @@
+## [0.18.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.18.0...v0.18.1) (2026-01-30)
+
+
+### Bug Fixes
+
+* **idiomatic:** elide clones for single-use locals ([a1cd554](https://github.com/fullofcaffeine/reflaxe.rust/commit/a1cd554285bc56e57ffd8e0a79f583fbe8861c95))
+
 # [0.18.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.17.3...v0.18.0) (2026-01-25)
 
 
