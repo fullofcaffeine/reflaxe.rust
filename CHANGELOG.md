@@ -1,3 +1,10 @@
+# [0.21.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.20.0...v0.21.0) (2026-01-30)
+
+
+### Features
+
+* **v1:** add support matrix + smoke snapshot ([5a73fe5](https://github.com/fullofcaffeine/reflaxe.rust/commit/5a73fe55377325e1a650fff25b5461bba9b9b93b))
+
 # [0.20.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.19.0...v0.20.0) (2026-01-30)
 
 
