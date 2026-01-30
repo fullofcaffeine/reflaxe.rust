@@ -51,7 +51,7 @@ fn main() {
             Result::Err(__p) => {
                 let _g_4: String = __p;
                 {
-                    let e: String = _g_4;
+                    let e: String = _g_4.clone();
                     println!("{}", e);
                 }
             }

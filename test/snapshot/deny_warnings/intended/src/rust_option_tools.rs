@@ -32,7 +32,7 @@ impl OptionTools {
             Option::Some(__p) => {
                 let _g: T = __p;
                 {
-                    let v: T = _g;
+                    let v: T = _g.clone();
                     v
                 }
             }
@@ -45,7 +45,7 @@ impl OptionTools {
             Option::Some(__p) => {
                 let _g: T = __p;
                 {
-                    let v: T = _g;
+                    let v: T = _g.clone();
                     Result::Ok(v.clone())
                 }
             }

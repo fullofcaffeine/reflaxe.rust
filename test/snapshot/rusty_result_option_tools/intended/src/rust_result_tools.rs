@@ -38,7 +38,7 @@ impl ResultTools {
             Result::Ok(__p) => {
                 let _g: T = __p;
                 {
-                    let v: T = _g;
+                    let v: T = _g.clone();
                     v
                 }
             }
@@ -54,14 +54,14 @@ impl ResultTools {
             Result::Ok(__p) => {
                 let _g: T = __p;
                 {
-                    let v: T = _g;
+                    let v: T = _g.clone();
                     Result::Ok(v.clone())
                 }
             }
             Result::Err(__p) => {
                 let _g_2: String = __p;
                 {
-                    let e: String = _g_2;
+                    let e: String = _g_2.clone();
                     Result::Err(
                         format!("{}{}", format!("{}{}", prefix, String::from(": ")), e).clone(),
                     )
