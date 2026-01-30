@@ -27,6 +27,18 @@ In generated Rust:
 - index reads use `get_unchecked(...)` (or `get(...)` when typed as `Null<T>`)
 - index writes use `set(...)`
 - `arr.length` lowers to `arr.len() as i32`
+- common methods are implemented on the runtime type and called directly:
+  - mutation: `push`, `pop`, `shift`, `unshift`, `insert`, `splice`, `reverse`
+  - copies: `copy`, `slice`, `concat`
+  - search: `contains`, `remove`, `index_of`, `last_index_of`
+  - helpers: `sort`, `join`
+
+Some methods impose Rust trait bounds on `T`:
+
+- methods returning a new `Array<T>` generally require `T: Clone`
+- search methods require `T: PartialEq`
+- `resize` requires `T: Default` (for `Array<Null<T>>` this maps nicely to `None`)
+- `join` requires `T: ToString`
 
 This fixes the core semantic mismatch: **assignment and passing alias**, and cloning an array is cheap
 (`Rc::clone`, not a deep clone).
