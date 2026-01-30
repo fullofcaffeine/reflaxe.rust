@@ -129,6 +129,10 @@ impl<T> Array<T> {
     pub fn insert(&self, pos: i32, value: T) {
         let mut inner = self.inner.borrow_mut();
         let len = inner.len() as i32;
+        let mut pos = pos;
+        if pos < 0 {
+            pos += len;
+        }
         let pos = pos.clamp(0, len) as usize;
         inner.insert(pos, value);
     }
@@ -302,6 +306,14 @@ impl<T> Array<T> {
             .map(|x| x.to_string())
             .collect::<Vec<_>>()
             .join(sep.as_str())
+    }
+
+    #[allow(non_snake_case)]
+    pub fn toString(&self) -> String
+    where
+        T: ToString,
+    {
+        format!("[{}]", self.join(String::from(",")))
     }
 }
 
