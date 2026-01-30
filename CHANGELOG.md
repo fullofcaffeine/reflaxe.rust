@@ -1,3 +1,10 @@
+# [0.22.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.21.0...v0.22.0) (2026-01-30)
+
+
+### Features
+
+* **array:** add toString + map/filter coverage ([3d144ba](https://github.com/fullofcaffeine/reflaxe.rust/commit/3d144baee432ce50e2f32394d3d810467a417a09))
+
 # [0.21.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.20.0...v0.21.0) (2026-01-30)
 
 
