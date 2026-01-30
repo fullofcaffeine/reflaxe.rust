@@ -69,6 +69,7 @@ enum RustProfile {
 		var frameworkRuntimeDir: Null<String> = null;
 		var profile: RustProfile = Portable;
 		var currentMutatedLocals: Null<Map<Int, Bool>> = null;
+		var currentLocalReadCounts: Null<Map<Int, Int>> = null;
 		var currentArgNames: Null<Map<String, String>> = null;
 	var currentLocalNames: Null<Map<Int, String>> = null;
 	var currentLocalUsed: Null<Map<String, Bool>> = null;
@@ -1826,6 +1827,7 @@ enum RustProfile {
 
 		function withFunctionContext<T>(bodyExpr: TypedExpr, argNames: Array<String>, expectedReturn: Null<Type>, fn: () -> T): T {
 			var prevMutated = currentMutatedLocals;
+			var prevReadCounts = currentLocalReadCounts;
 			var prevArgNames = currentArgNames;
 			var prevLocalNames = currentLocalNames;
 			var prevLocalUsed = currentLocalUsed;
@@ -1833,6 +1835,7 @@ enum RustProfile {
 			var prevReturn = currentFunctionReturn;
 
 			currentMutatedLocals = collectMutatedLocals(bodyExpr);
+			currentLocalReadCounts = collectLocalReadCounts(bodyExpr);
 			currentArgNames = [];
 			currentLocalNames = [];
 			currentLocalUsed = [];
@@ -1855,6 +1858,7 @@ enum RustProfile {
 			var out = fn();
 
 			currentMutatedLocals = prevMutated;
+			currentLocalReadCounts = prevReadCounts;
 			currentArgNames = prevArgNames;
 			currentLocalNames = prevLocalNames;
 			currentLocalUsed = prevLocalUsed;
@@ -2053,6 +2057,28 @@ enum RustProfile {
 		}
 		return mutated;
 	}
+
+		function collectLocalReadCounts(root: TypedExpr): Map<Int, Int> {
+			var counts: Map<Int, Int> = [];
+
+			function inc(v: TVar): Void {
+				if (v == null) return;
+				var prev = counts.exists(v.id) ? counts.get(v.id) : 0;
+				counts.set(v.id, prev + 1);
+			}
+
+			function scan(e: TypedExpr): Void {
+				switch (e.expr) {
+					case TLocal(v):
+						inc(v);
+					case _:
+				}
+				TypedExprTools.iter(e, scan);
+			}
+
+			scan(root);
+			return counts;
+		}
 
 	function compileExpr(e: TypedExpr): RustExpr {
 			// Target code injection: __rust__("...{0}...", arg0, ...)
@@ -2748,6 +2774,30 @@ enum RustProfile {
 				}
 			}
 			if (isAlreadyClone(expr)) return expr;
+
+			function unwrapToLocalId(e: TypedExpr): Null<Int> {
+				var cur = unwrapMetaParen(e);
+				while (true) {
+					switch (cur.expr) {
+						case TCast(inner, _):
+							cur = unwrapMetaParen(inner);
+							continue;
+						case _:
+					}
+					break;
+				}
+				return switch (cur.expr) {
+					case TLocal(v): v.id;
+					case _: null;
+				}
+			}
+
+			// If the local is used only once in this function body, prefer moving it to avoid redundant clones.
+			var localId = unwrapToLocalId(valueExpr);
+			if (localId != null && currentLocalReadCounts != null && currentLocalReadCounts.exists(localId)) {
+				var reads = currentLocalReadCounts.get(localId);
+				if (reads <= 1) return expr;
+			}
 
 			if (isLocalExpr(valueExpr) && !isObviousTemporaryExpr(valueExpr) && isHaxeReusableValueType(valueExpr.t)) {
 				return ECall(EField(expr, "clone"), []);
