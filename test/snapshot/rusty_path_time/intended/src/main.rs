@@ -31,7 +31,7 @@ fn main() {
             Option::Some(__p) => {
                 let _g: String = __p;
                 {
-                    let name: String = _g.clone();
+                    let name: String = _g;
                     println!("{}", name);
                 }
             }

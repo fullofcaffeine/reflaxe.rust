@@ -34,6 +34,14 @@ This fixes the core semantic mismatch: **assignment and passing alias**, and clo
 Remaining work is mostly about API coverage + ergonomics (more Array methods, better iteration patterns,
 explicit bridging with `rust.Vec<T>` in the Rusty profile).
 
+## Note on `.clone()` noise
+
+Because Haxe values are generally “reusable”, the backend sometimes needs to emit `.clone()` in Rust to
+avoid move errors when the *same local* is used multiple times.
+
+To keep output idiomatic, the compiler performs a small “clone elision” heuristic: when a local is only
+used once in the current function body, it prefers moving the value instead of cloning it.
+
 ## Options considered
 
 ### Option A — `Vec<T>` (owned, by value)

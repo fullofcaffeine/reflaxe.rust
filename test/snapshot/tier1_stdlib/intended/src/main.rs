@@ -82,7 +82,7 @@ fn main() {
         Result::Err(__p) => {
             let _g_4: String = __p;
             {
-                let e: String = _g_4.clone();
+                let e: String = _g_4;
                 println!("{}", e);
             }
         }
@@ -99,7 +99,7 @@ fn main() {
         Result::Err(__p) => {
             let _g_6: String = __p;
             {
-                let e_2: String = _g_6.clone();
+                let e_2: String = _g_6;
                 println!("{}", e_2);
             }
         }
