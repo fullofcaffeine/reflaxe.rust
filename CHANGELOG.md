@@ -1,3 +1,10 @@
+# [0.20.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.19.0...v0.20.0) (2026-01-30)
+
+
+### Features
+
+* **rusty:** slice borrow for Array<T> ([bdd7fa0](https://github.com/fullofcaffeine/reflaxe.rust/commit/bdd7fa0828f491df1d5f6f4a2d5d35617179e037))
+
 # [0.19.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.18.1...v0.19.0) (2026-01-30)
 
 
