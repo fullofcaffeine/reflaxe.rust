@@ -41,6 +41,15 @@ class MutSliceTools {
 	 * IMPORTANT:
 	 * - This is Rusty/profile-oriented; keep the borrow inside the callback.
 	 * - Avoid returning or storing the `MutSlice<T>` outside the callback.
+	 *
+	 * Implementation notes:
+	 * - For `rust.Vec<T>`, this expands to `rust.Borrow.withMut(...)` and **inlines** the callback body.
+	 * - For `Array<T>`, this delegates to `rust.ArrayBorrow.withMutSlice(...)`, which calls into the runtime
+	 *   to borrow the underlying storage as `&mut [T]` **without cloning**.
+	 *
+	 * Borrow rules:
+	 * - Keep the slice inside the callback; never store/return it.
+	 * - Avoid nested borrows of the same array; `RefCell` will panic on invalid re-borrows.
 	 */
 	public static macro function with(value: Expr, fn: Expr): Expr {
 		#if macro
@@ -56,11 +65,13 @@ class MutSliceTools {
 		}
 
 		var typedValue = Context.typeExpr(value);
+		var valueIsArray = false;
 		var elemT: Null<Type> = switch (TypeTools.follow(typedValue.t)) {
 			case TInst(clsRef, params): {
 				var cls = clsRef.get();
 				// Array<T>
 				if (cls != null && cls.pack.length == 0 && cls.module == "Array" && cls.name == "Array" && params.length == 1) {
+					valueIsArray = true;
 					params[0];
 				} else if (cls != null && cls.isExtern && cls.pack.join(".") == "rust" && cls.name == "Vec" && params.length == 1) {
 					params[0];
@@ -93,6 +104,29 @@ class MutSliceTools {
 			}]),
 			pos: fn.pos
 		};
+
+		if (valueIsArray) {
+			// For `Array<T>`, borrow the underlying Vec as a mutable slice without cloning.
+			// This delegates to `rust.ArrayBorrow`, which calls into `hxrt::array::with_mut_slice(...)`.
+			var sliceParam = "__hx_slice";
+			var arrayDecl: Expr = {
+				expr: EVars([{
+					name: argName,
+					type: TPath({
+						pack: ["rust"],
+						name: "MutSlice",
+						params: [TPType(elemCt)]
+					}),
+					expr: { expr: ECast({ expr: EConst(CIdent(sliceParam)), pos: fn.pos }, null), pos: fn.pos }
+				}]),
+				pos: fn.pos
+			};
+
+			return macro rust.ArrayBorrow.withMutSlice($value, function(__hx_slice) {
+				$arrayDecl;
+				${f.expr};
+			});
+		}
 
 		return macro rust.Borrow.withMut($value, function(r) {
 			$decl;
