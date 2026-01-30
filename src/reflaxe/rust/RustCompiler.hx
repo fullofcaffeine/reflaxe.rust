@@ -1699,17 +1699,8 @@ enum RustProfile {
 						// order (e.g. for comprehensions / iterator lowering). For `Array<T>` (mapped to `Vec<T>`),
 						// these temporaries should not *move* the original value.
 						//
-						// Heuristic: if we see a compiler-generated `_g*` temp initialized from a local array,
-						// clone it. This keeps generated Rust from failing to compile due to moves, while staying
-						// aligned with the intent of these temporaries (read-only iteration).
-						var initU = unwrapMetaParen(init);
-						if (v != null && v.name != null && StringTools.startsWith(v.name, "_g") && isArrayType(v.t)) {
-							switch (initU.expr) {
-								case TLocal(_):
-									initExpr = ECall(EField(initExpr, "clone"), []);
-								case _:
-							}
-						}
+						// NOTE: `Array<T>` now maps to `hxrt::array::Array<T>` (Rc-backed), so cloning is cheap
+						// and handled by `maybeCloneForReuseValue(...)` below when needed.
 
 						switch (followType(v.t)) {
 							// Function values require coercion into our function representation.
@@ -1737,6 +1728,10 @@ enum RustProfile {
 						if (!isNullType(v.t) && isNullType(init.t) && !isNullConstExpr(init)) {
 							initExpr = ECall(EField(initExpr, "unwrap"), []);
 						}
+
+						// Preserve Haxe reuse/aliasing semantics for reference-like values:
+						// `var b = a;` must not move `a` in Rust output.
+						initExpr = maybeCloneForReuseValue(initExpr, init);
 					}
 					var mutable = currentMutatedLocals != null && currentMutatedLocals.exists(v.id);
 					RLet(name, mutable, rustTy, initExpr);
@@ -2711,6 +2706,55 @@ enum RustProfile {
 		return expr;
 	}
 
+	function isIteratorStructType(t: Type): Bool {
+		var ft = followType(t);
+		return switch (ft) {
+			case TAnonymous(anonRef): {
+				var anon = anonRef.get();
+				if (anon == null || anon.fields == null || anon.fields.length != 2) return false;
+				var hasNext = false;
+				var next = false;
+				for (cf in anon.fields) {
+					switch (cf.getHaxeName()) {
+						case "hasNext": hasNext = true;
+						case "next": next = true;
+						case _:
+					}
+				}
+				hasNext && next;
+			}
+			case _:
+				false;
+		}
+	}
+
+	function isHaxeReusableValueType(t: Type): Bool {
+		// Types that behave like Haxe reference values (must not be "moved" by Rust assignments).
+		// - `Array<T>` is `hxrt::array::Array<T>` (Rc-backed).
+		// - class instances / Bytes are `HxRef<T>` (Rc-backed).
+		// - `String` is immutable and reusable in Haxe (needs clone in Rust when re-used).
+		// - structural `Iterator<T>` maps to `hxrt::iter::Iter<T>` (Rc-backed).
+		return isArrayType(t) || isHxRefValueType(t) || isStringType(t) || isIteratorStructType(t) || isDynamicType(t);
+	}
+
+		function maybeCloneForReuseValue(expr: RustExpr, valueExpr: TypedExpr): RustExpr {
+			if (inCodeInjectionArg) return expr;
+			if (isCopyType(valueExpr.t)) return expr;
+			if (isStringLiteralExpr(valueExpr) || isArrayLiteralExpr(valueExpr) || isNewExpr(valueExpr)) return expr;
+			function isAlreadyClone(e: RustExpr): Bool {
+				return switch (e) {
+					case ECall(EField(_, "clone"), []): true;
+					case _: false;
+				}
+			}
+			if (isAlreadyClone(expr)) return expr;
+
+			if (isLocalExpr(valueExpr) && !isObviousTemporaryExpr(valueExpr) && isHaxeReusableValueType(valueExpr.t)) {
+				return ECall(EField(expr, "clone"), []);
+			}
+			return expr;
+		}
+
 	function coerceExprToExpected(compiled: RustExpr, valueExpr: TypedExpr, expected: Null<Type>): RustExpr {
 		if (expected == null) return compiled;
 		if (isNullType(expected) && !isNullType(valueExpr.t) && !isNullConstExpr(valueExpr)) {
@@ -3572,7 +3616,9 @@ enum RustProfile {
 		// `{ let __tmp = rhs; obj.borrow_mut().field = __tmp.clone(); __tmp }`
 		var stmts: Array<RustStmt> = [];
 
-		stmts.push(RLet("__tmp", false, null, compileExpr(rhs)));
+		var rhsExpr = compileExpr(rhs);
+		rhsExpr = maybeCloneForReuseValue(rhsExpr, rhs);
+		stmts.push(RLet("__tmp", false, null, rhsExpr));
 
 		var recv = compileExpr(obj);
 		var borrowed = ECall(EField(recv, "borrow_mut"), []);
@@ -3591,7 +3637,9 @@ enum RustProfile {
 		// Haxe assignment returns the RHS value.
 		// `{ let __tmp = rhs; arr.set(idx, __tmp.clone()); __tmp }`
 		var stmts: Array<RustStmt> = [];
-		stmts.push(RLet("__tmp", false, null, compileExpr(rhs)));
+		var rhsExpr = compileExpr(rhs);
+		rhsExpr = maybeCloneForReuseValue(rhsExpr, rhs);
+		stmts.push(RLet("__tmp", false, null, rhsExpr));
 
 		var idx = ECast(compileExpr(index), "usize");
 		var rhsVal: RustExpr = isCopyType(rhs.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
@@ -4029,7 +4077,9 @@ enum RustProfile {
 								}
 							}
 							case _:
-								EAssign(compileExpr(e1), compileExpr(e2));
+								var rhsExpr = compileExpr(e2);
+								rhsExpr = maybeCloneForReuseValue(rhsExpr, e2);
+								EAssign(compileExpr(e1), rhsExpr);
 						}
 				}
 

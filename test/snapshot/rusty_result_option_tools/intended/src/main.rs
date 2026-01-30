@@ -61,7 +61,7 @@ fn main() {
             Result::Err(__p) => {
                 let _g_7: String = __p;
                 {
-                    let _e: String = _g_7;
+                    let _e: String = _g_7.clone();
                     Result::Err(_e.clone())
                 }
             }
@@ -81,7 +81,7 @@ fn main() {
             Result::Err(__p) => {
                 let _g_9: String = __p;
                 {
-                    let _e_2: String = _g_9;
+                    let _e_2: String = _g_9.clone();
                     Result::Err(_e_2.clone())
                 }
             }
@@ -99,7 +99,7 @@ fn main() {
             Result::Err(__p) => {
                 let _g_12: String = __p;
                 {
-                    let e: String = _g_12;
+                    let e: String = _g_12.clone();
                     Result::Err(
                         format!(
                             "{}{}",
@@ -122,7 +122,7 @@ fn main() {
             Result::Err(__p) => {
                 let _g_14: String = __p;
                 {
-                    let _e_3: String = _g_14;
+                    let _e_3: String = _g_14.clone();
                     -1
                 }
             }
@@ -179,7 +179,7 @@ fn main() {
         Result::Err(__p) => {
             let _g_19: String = __p;
             {
-                let e_3: String = _g_19;
+                let e_3: String = _g_19.clone();
                 println!("{}", e_3);
             }
         }
