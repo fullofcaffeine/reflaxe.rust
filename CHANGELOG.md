@@ -1,3 +1,10 @@
+# [0.19.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.18.1...v0.19.0) (2026-01-30)
+
+
+### Features
+
+* **array:** add common Array methods ([d4f92b0](https://github.com/fullofcaffeine/reflaxe.rust/commit/d4f92b04000d90c8cc96d9ce9d87f1706d9117c4))
+
 ## [0.18.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.18.0...v0.18.1) (2026-01-30)
 
 
