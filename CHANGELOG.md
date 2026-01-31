@@ -1,3 +1,10 @@
+# [0.30.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.29.0...v0.30.0) (2026-01-31)
+
+
+### Features
+
+* **compiler:** avoid cloning String temporaries ([46d3579](https://github.com/fullofcaffeine/reflaxe.rust/commit/46d35797dfa03fc32234eb3d917f2d6693760aa3))
+
 # [0.29.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.28.0...v0.29.0) (2026-01-31)
 
 
