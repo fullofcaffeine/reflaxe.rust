@@ -1,3 +1,10 @@
+# [0.31.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.30.0...v0.31.0) (2026-01-31)
+
+
+### Features
+
+* **bytes:** complete Bytes ops and bounds throws ([3e0162c](https://github.com/fullofcaffeine/reflaxe.rust/commit/3e0162c532af6c1910a71e7c436e5ddffecc8681))
+
 # [0.30.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.29.0...v0.30.0) (2026-01-31)
 
 
