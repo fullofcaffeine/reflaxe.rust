@@ -12,6 +12,10 @@ out/
 **/out/
 out_ci/
 **/out_ci/
+out_rusty/
+**/out_rusty/
+out_ci_rusty/
+**/out_ci_rusty/
 
 # Release artifacts
 dist/

@@ -52,8 +52,8 @@ This keeps tests:
 
 Rusty profile variant:
 
-- `cd examples/tui_todo_rusty && haxe compile.hxml`
-- `cd examples/tui_todo_rusty/out && cargo run -q`
+- `cd examples/tui_todo && haxe compile.rusty.hxml`
+- `cd examples/tui_todo/out_rusty && cargo run -q`
 
 **Headless / CI-friendly**:
 

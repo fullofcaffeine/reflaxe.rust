@@ -152,4 +152,4 @@ jobs:
           (cd examples/serde_json && haxe compile.hxml && (cd out && cargo run -q))
           (cd examples/bytes_ops && haxe compile.ci.hxml && (cd out_ci && cargo test -q) && (cd out_ci && cargo run -q))
           (cd examples/tui_todo && haxe compile.ci.hxml && (cd out_ci && cargo test -q) && (cd out_ci && cargo run -q))
-          (cd examples/tui_todo_rusty && haxe compile.ci.hxml && (cd out_ci && cargo test -q) && (cd out_ci && cargo run -q))
+          (cd examples/tui_todo && haxe compile.rusty.ci.hxml && (cd out_ci_rusty && cargo test -q) && (cd out_ci_rusty && cargo run -q))

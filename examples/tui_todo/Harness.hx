@@ -1,3 +1,7 @@
+#if tui_rusty
+import rust.Vec;
+import rust.VecTools;
+#end
 import rust.tui.Action;
 import rust.tui.Tui;
 
@@ -20,11 +24,7 @@ import rust.tui.Tui;
 @:keep
 class Harness {
 	public static function renderScenario(): String {
-		var tasks = [
-			new Task("bootstrap reflaxe.rust", true),
-			new Task("add enums + switch", false),
-			new Task("ship ratatui demo", false),
-		];
+		var tasks = buildTasks();
 
 		var selected = 0;
 
@@ -54,5 +54,20 @@ class Harness {
 		}
 		return lines;
 	}
-}
 
+	static function buildTasks(): Array<Task> {
+		#if tui_rusty
+		var v = new Vec<Task>();
+		v.push(new Task("bootstrap reflaxe.rust", true));
+		v.push(new Task("add enums + switch", false));
+		v.push(new Task("ship ratatui demo", false));
+		return VecTools.toArray(v);
+		#else
+		return [
+			new Task("bootstrap reflaxe.rust", true),
+			new Task("add enums + switch", false),
+			new Task("ship ratatui demo", false),
+		];
+		#end
+	}
+}
