@@ -23,7 +23,7 @@ class Main {
 		var sum = 0;
 		for (x in VecTools.toArray(v.clone())) sum = sum + x;
 		trace(sum);
-		trace(VecTools.len(v.clone()));
+		trace(VecTools.len(v));
 
 		Borrow.withRef(v, vr -> {
 			var s = SliceTools.fromVec(vr);

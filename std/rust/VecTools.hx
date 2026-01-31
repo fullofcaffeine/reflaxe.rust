@@ -7,6 +7,11 @@ package rust;
  *
  * IMPORTANT: Keep these as regular (non-inline) functions so `__rust__` stays inside
  * framework code and does not get inlined into application code.
+ *
+ * Borrow-first note:
+ * - Some helpers (like `len`/`get`) take a borrowed `rust.Ref<Vec<T>>` so they do not move the
+ *   underlying `Vec<T>` in Rust output.
+ * - In most cases you can pass a `Vec<T>` directly and the compiler will emit `&vec` at the call site.
  */
 class VecTools {
 	@:rustGeneric("T: Clone")
@@ -19,12 +24,12 @@ class VecTools {
 		return untyped __rust__("hxrt::array::Array::<T>::from_vec({0})", v);
 	}
 
-	public static function len<T>(v: Vec<T>): Int {
+	public static function len<T>(v: Ref<Vec<T>>): Int {
 		return untyped __rust__("{0}.len() as i32", v);
 	}
 
 	@:rustGeneric("T: Clone")
-	public static function get<T>(v: Vec<T>, index: Int): Option<T> {
+	public static function get<T>(v: Ref<Vec<T>>, index: Int): Option<T> {
 		return untyped __rust__("{0}.get({1} as usize).cloned()", v, index);
 	}
 

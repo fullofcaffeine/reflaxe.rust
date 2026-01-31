@@ -47,7 +47,7 @@ fn main() {
     println!("{}", hxrt::dynamic::from(sum));
     println!(
         "{}",
-        hxrt::dynamic::from(crate::rust_vec_tools::VecTools::len(v.clone()))
+        hxrt::dynamic::from(crate::rust_vec_tools::VecTools::len(&v))
     );
     {
         let vr: &Vec<i32> = &v;
