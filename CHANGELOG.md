@@ -1,3 +1,10 @@
+# [0.24.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.23.0...v0.24.0) (2026-01-31)
+
+
+### Features
+
+* **lang:** catch-all Dynamic + field ++/-- ([89a84e7](https://github.com/fullofcaffeine/reflaxe.rust/commit/89a84e76a445b5390e14f1f4f518b2bd10e8396a))
+
 # [0.23.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.22.0...v0.23.0) (2026-01-31)
 
 
