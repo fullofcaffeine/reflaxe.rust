@@ -13,8 +13,8 @@ impl Task {
     pub fn new(text: String, done: bool) -> crate::HxRef<crate::task::Task> {
         let self_: crate::HxRef<crate::task::Task> =
             std::rc::Rc::new(std::cell::RefCell::new(Task {
-                text: (text).clone(),
-                done: (done).clone(),
+                text: (text),
+                done: (done),
             }));
         return self_;
     }

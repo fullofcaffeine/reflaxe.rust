@@ -13,8 +13,8 @@ impl Person {
     pub fn new(name: String, age: i32) -> crate::HxRef<crate::person::Person> {
         let self_: crate::HxRef<crate::person::Person> =
             std::rc::Rc::new(std::cell::RefCell::new(Person {
-                name: (name).clone(),
-                age: (age).clone(),
+                name: (name),
+                age: (age),
             }));
         return self_;
     }
