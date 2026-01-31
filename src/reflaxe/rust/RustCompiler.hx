@@ -4299,28 +4299,86 @@ enum RustProfile {
 	function compileUnop(op: Unop, postFix: Bool, expr: TypedExpr, fullExpr: TypedExpr): RustExpr {
 		if (op == OpIncrement || op == OpDecrement) {
 			// POC: support ++/-- for locals (needed for Haxe's for-loop lowering).
-				return switch (expr.expr) {
-					case TLocal(v): {
-						var name = rustLocalRefIdent(v);
-						var delta: RustExpr = TypeHelper.isFloat(expr.t) ? ELitFloat(1.0) : ELitInt(1);
-						var binop = (op == OpIncrement) ? "+" : "-";
-						if (postFix) {
-							EBlock({
-								stmts: [
-									RLet("__tmp", false, null, EPath(name)),
-									RSemi(EAssign(EPath(name), EBinary(binop, EPath(name), delta)))
-								],
-								tail: EPath("__tmp")
-							});
-						} else {
-							EBlock({
-								stmts: [
-									RSemi(EAssign(EPath(name), EBinary(binop, EPath(name), delta)))
-								],
-								tail: EPath(name)
-							});
-						}
+			return switch (expr.expr) {
+				case TLocal(v): {
+					var name = rustLocalRefIdent(v);
+					var delta: RustExpr = TypeHelper.isFloat(expr.t) ? ELitFloat(1.0) : ELitInt(1);
+					var binop = (op == OpIncrement) ? "+" : "-";
+					if (postFix) {
+						EBlock({
+							stmts: [
+								RLet("__tmp", false, null, EPath(name)),
+								RSemi(EAssign(EPath(name), EBinary(binop, EPath(name), delta)))
+							],
+							tail: EPath("__tmp")
+						});
+					} else {
+						EBlock({
+							stmts: [
+								RSemi(EAssign(EPath(name), EBinary(binop, EPath(name), delta)))
+							],
+							tail: EPath(name)
+						});
 					}
+				}
+
+				case TField(obj, FInstance(clsRef, _, cfRef)): {
+					var owner = clsRef.get();
+					var cf = cfRef.get();
+					switch (cf.kind) {
+						case FVar(_, _): {
+							// Support ++/-- on instance fields:
+							// - `obj.field++` returns old value
+							// - `++obj.field` returns new value
+							//
+							// For `RefCell`-backed instances we must avoid overlapping borrows:
+							// read (borrow) -> compute -> write (borrow_mut).
+
+							// Polymorphic (trait object) field access uses getter/setter methods; keep it unsupported for now.
+							if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+								return unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " field unop (polymorphic)");
+							}
+
+							var recvName = "__hx_obj";
+							var recvExpr: RustExpr = if (isThisExpr(obj)) {
+								EPath("self_");
+							} else {
+								EPath(recvName);
+							}
+
+							var fieldName = rustFieldName(owner, cf);
+							var delta: RustExpr = TypeHelper.isFloat(expr.t) ? ELitFloat(1.0) : ELitInt(1);
+							var binop = (op == OpIncrement) ? "+" : "-";
+
+							var borrowRead = ECall(EField(recvExpr, "borrow"), []);
+							var readField = EField(borrowRead, fieldName);
+
+							var stmts: Array<RustStmt> = [];
+							if (!isThisExpr(obj)) {
+								// Evaluate receiver once and keep it alive for both borrows.
+								var base = compileExpr(obj);
+								stmts.push(RLet(recvName, false, null, ECall(EField(base, "clone"), [])));
+							}
+
+							if (postFix) {
+								stmts.push(RLet("__tmp", false, null, readField));
+								var borrowWrite = ECall(EField(recvExpr, "borrow_mut"), []);
+								var writeField = EField(borrowWrite, fieldName);
+								stmts.push(RSemi(EAssign(writeField, EBinary(binop, EPath("__tmp"), delta))));
+								return EBlock({ stmts: stmts, tail: EPath("__tmp") });
+							} else {
+								stmts.push(RLet("__tmp", false, null, EBinary(binop, readField, delta)));
+								var borrowWrite = ECall(EField(recvExpr, "borrow_mut"), []);
+								var writeField = EField(borrowWrite, fieldName);
+								stmts.push(RSemi(EAssign(writeField, EPath("__tmp"))));
+								return EBlock({ stmts: stmts, tail: EPath("__tmp") });
+							}
+						}
+						case _:
+							unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " field unop");
+					}
+				}
+
 				case _:
 					unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " unop");
 			}
@@ -4589,6 +4647,10 @@ enum RustProfile {
 	function isDynamicType(t: Type): Bool {
 		return switch (followType(t)) {
 			case TDynamic(_): true;
+			case TAbstract(absRef, _): {
+				var abs = absRef.get();
+				abs != null && abs.module == "StdTypes" && abs.name == "Dynamic";
+			}
 			case _: false;
 		}
 	}
