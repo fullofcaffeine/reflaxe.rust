@@ -1,6 +1,22 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+/// Identity comparison for `Rc`-backed values.
+///
+/// reflaxe.rust models Haxe reference types as `Rc<...>` (e.g. `HxRef<T> = Rc<RefCell<T>>`,
+/// interface values as `Rc<dyn Trait>`, polymorphic base classes as `Rc<dyn BaseTrait>`, etc).
+/// Haxe `==` for objects is **reference equality**, so we need a stable way to compare these values
+/// without requiring `T: PartialEq`.
+pub trait RcPtrEq {
+    fn rc_ptr_eq(&self, other: &Self) -> bool;
+}
+
+impl<T: ?Sized> RcPtrEq for Rc<T> {
+    fn rc_ptr_eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(self, other)
+    }
+}
+
 /// `hxrt::array::Array<T>`
 ///
 /// Shared, mutable array storage matching Haxe `Array<T>` semantics.
@@ -314,6 +330,85 @@ impl<T> Array<T> {
         T: ToString,
     {
         format!("[{}]", self.join(String::from(",")))
+    }
+
+    pub fn ptr_eq(&self, other: &Array<T>) -> bool {
+        Rc::ptr_eq(&self.inner, &other.inner)
+    }
+}
+
+// Haxe object arrays use identity-based search semantics.
+//
+// IMPORTANT: We cannot use `T: PartialEq` for `HxRef<T>` or `Rc<dyn Trait>` elements, because those
+// types do not implement `PartialEq`. Instead, expose explicit ref-equality APIs, and let the
+// compiler route `Array.contains/indexOf/lastIndexOf/remove` to these for object arrays.
+impl<T> Array<T>
+where
+    T: RcPtrEq,
+{
+    #[allow(non_snake_case)]
+    pub fn containsRef(&self, value: T) -> bool {
+        self.inner.borrow().iter().any(|x| x.rc_ptr_eq(&value))
+    }
+
+    #[allow(non_snake_case)]
+    pub fn removeRef(&self, value: T) -> bool {
+        let mut inner = self.inner.borrow_mut();
+        if let Some(pos) = inner.iter().position(|x| x.rc_ptr_eq(&value)) {
+            inner.remove(pos);
+            true
+        } else {
+            false
+        }
+    }
+
+    #[allow(non_snake_case)]
+    pub fn indexOfRef(&self, value: T, from_index: Option<i32>) -> i32 {
+        let inner = self.inner.borrow();
+        let len = inner.len() as i32;
+        if len == 0 {
+            return -1;
+        }
+
+        let mut start = from_index.unwrap_or(0);
+        if start < 0 {
+            start += len;
+        }
+        start = start.clamp(0, len);
+
+        for i in start..len {
+            if inner[i as usize].rc_ptr_eq(&value) {
+                return i;
+            }
+        }
+        -1
+    }
+
+    #[allow(non_snake_case)]
+    pub fn lastIndexOfRef(&self, value: T, from_index: Option<i32>) -> i32 {
+        let inner = self.inner.borrow();
+        let len = inner.len() as i32;
+        if len == 0 {
+            return -1;
+        }
+
+        let mut start = from_index.unwrap_or(len - 1);
+        if start < 0 {
+            start += len;
+        }
+        start = start.clamp(0, len - 1);
+
+        let mut i = start;
+        loop {
+            if inner[i as usize].rc_ptr_eq(&value) {
+                return i;
+            }
+            if i == 0 {
+                break;
+            }
+            i -= 1;
+        }
+        -1
     }
 }
 
