@@ -2264,10 +2264,10 @@ enum RustProfile {
 				ECall(EPath("std::rc::Rc::new"), [EClosure(argParts, body, true)]);
 			}
 
-			case TCast(e1, _): {
-				var inner = compileExpr(e1);
-				var fromT = followType(e1.t);
-				var toT = followType(e.t);
+				case TCast(e1, _): {
+					var inner = compileExpr(e1);
+					var fromT = followType(e1.t);
+					var toT = followType(e.t);
 
 				// Numeric casts (`Int` <-> `Float`) must be explicit in Rust.
 				if (!isNullType(e1.t)
@@ -2276,25 +2276,25 @@ enum RustProfile {
 					&& (TypeHelper.isInt(toT) || TypeHelper.isFloat(toT))) {
 					var target = rustTypeToString(toRustType(toT, e.pos));
 					ECast(inner, target);
-				} else if (isNullType(e1.t) && isNullType(e.t)) {
-					// With nested nullability collapsed at the type level (`Null<Null<T>>` == `Null<T>`),
-					// null-to-null casts become a no-op.
-					inner;
-				} else if (isNullType(e1.t) && !isNullType(e.t)) {
-					// `@:nullSafety(Off)` and explicit casts from `Null<T>` to `T` are treated as
-					// "assert non-null". In Rust output, `Null<T>` is `Option<T>`, so unwrap.
-					ECall(EField(inner, "unwrap"), []);
-				} else if (!isNullType(e1.t) && isNullType(e.t)) {
-					// Explicit casts from `T` to `Null<T>` are treated as "wrap into nullability".
-					ECall(EPath("Some"), [inner]);
-				} else {
-					inner;
+					} else if (isNullType(e1.t) && isNullType(e.t)) {
+						// With nested nullability collapsed at the type level (`Null<Null<T>>` == `Null<T>`),
+						// null-to-null casts become a no-op.
+						inner;
+					} else if (isNullType(e1.t) && !isNullType(e.t)) {
+						// `@:nullSafety(Off)` and explicit casts from `Null<T>` to `T` are treated as
+						// "assert non-null". In Rust output, `Null<T>` is `Option<T>`, so unwrap.
+						ECall(EField(inner, "unwrap"), []);
+					} else if (!isNullType(e1.t) && isNullType(e.t)) {
+						// Explicit casts from `T` to `Null<T>` are treated as "wrap into nullability".
+						ECall(EPath("Some"), [inner]);
+					} else {
+						inner;
+					}
 				}
-			}
 
-			case TObjectDecl(fields): {
-				// Limited support for anonymous objects:
-				// - `{ key: ..., value: ... }` (used by `KeyValueIterator<K,V>`)
+				case TObjectDecl(fields): {
+					// Limited support for anonymous objects:
+					// - `{ key: ..., value: ... }` (used by `KeyValueIterator<K,V>`)
 				if (fields == null || fields.length != 2) {
 					return unsupported(e, "object decl");
 				}
@@ -3450,12 +3450,54 @@ enum RustProfile {
 
 			var f = overrideArrayFn != null ? overrideArrayFn : compileExpr(callExpr);
 
-		var nullableFnInner = nullInnerType(callExpr.t);
-		var fnTypeForParams: Type = (nullableFnInner != null ? nullableFnInner : callExpr.t);
-		var paramDefs: Null<Array<{ name: String, t: Type, opt: Bool }>> = switch (TypeTools.follow(fnTypeForParams)) {
-			case TFun(params, _): params;
-			case _: null;
-		};
+			var nullableFnInner = nullInnerType(callExpr.t);
+			var fnTypeForParams: Type = (nullableFnInner != null ? nullableFnInner : callExpr.t);
+			// Prefer the declared field type when available so we don't lose Rusty ref-wrapper types
+			// (e.g. `rust.Ref<T>`) via aggressive type following.
+			//
+			// This is especially important for stdlib helpers like `rust.VecTools.len(get)` which take
+			// `Ref<Vec<T>>` and must lower to `&Vec<T>` at call sites.
+			if (nullableFnInner == null) {
+				switch (callExpr.expr) {
+					case TField(_, FStatic(_, fieldRef)): {
+						var cf = fieldRef.get();
+						if (cf != null) fnTypeForParams = cf.type;
+					}
+					case TField(_, FAnon(cfRef)): {
+						var cf = cfRef.get();
+						if (cf != null) fnTypeForParams = cf.type;
+					}
+					case TField(_, FInstance(_, _, cfRef)): {
+						var cf = cfRef.get();
+						if (cf != null) fnTypeForParams = cf.type;
+					}
+					case _:
+				}
+			}
+			function funParamDefs(t: Type): Null<Array<{ name: String, t: Type, opt: Bool }>> {
+				return switch (t) {
+					case TLazy(f):
+						funParamDefs(f());
+					case TType(typeRef, params): {
+						var tt = typeRef.get();
+						if (tt != null) {
+							var under: Type = tt.type;
+							if (tt.params != null && tt.params.length > 0 && params != null && params.length == tt.params.length) {
+								under = TypeTools.applyTypeParameters(under, tt.params, params);
+							}
+							funParamDefs(under);
+						} else {
+							null;
+						}
+					}
+					case TFun(params, _):
+						params;
+					case _:
+						null;
+				};
+			}
+
+			var paramDefs: Null<Array<{ name: String, t: Type, opt: Bool }>> = funParamDefs(fnTypeForParams);
 
 		// Calling `Null<Fn>` values: `opt_fn(args...)` -> `opt_fn.as_ref().unwrap()(args...)`
 		if (nullableFnInner != null) {
@@ -3614,27 +3656,30 @@ enum RustProfile {
 		}
 	}
 
-	function isDirectRustRefValue(e: TypedExpr): Bool {
-		var cur = unwrapMetaParen(e);
-		switch (cur.expr) {
-			case TCast(inner, _): {
-				// Casts are often used for implicit `@:from` conversions to `Ref/MutRef`, where we still
-				// want to emit `&`/`&mut`.
+		function isDirectRustRefValue(e: TypedExpr): Bool {
+			var cur = unwrapMetaParen(e);
+			switch (cur.expr) {
+				case TCast(inner, _): {
+					// Casts are often used for implicit `@:from` conversions to `Ref/MutRef`, where we still
+					// want to emit `&`/`&mut`.
 				//
 				// However, for Rusty “ref-to-ref” coercions (e.g. `MutRef<Vec<T>> -> MutSlice<T>`),
 				// the cast is type-level only and the value is already a Rust reference.
 				//
-				// Distinguish the two by checking whether both sides are already Rust ref kinds.
-				var fromKind = rustRefKind(inner.t);
-				var toKind = rustRefKind(cur.t);
-				return fromKind != null && toKind != null;
+					// Distinguish the two by checking whether both sides are already Rust ref kinds.
+					var fromKind = rustRefKind(inner.t);
+					var toKind = rustRefKind(cur.t);
+					// If the cast introduces a Rust ref kind (e.g. `Vec<T> -> Ref<Vec<T>>`), we still need to
+					// emit a borrow at the call site (`&vec` / `&mut vec`), so this is NOT a "direct ref value".
+					if (toKind != null && fromKind == null) return false;
+					return fromKind != null && toKind != null;
+				}
+				case _:
 			}
-			case _:
-		}
 
-		// `Ref<T>` / `MutRef<T>` locals and fields compile to `&T` / `&mut T` already.
-		return rustRefKind(cur.t) != null;
-	}
+			// `Ref<T>` / `MutRef<T>` locals and fields compile to `&T` / `&mut T` already.
+			return rustRefKind(cur.t) != null;
+		}
 
 	function isClassSubtype(actual: ClassType, expected: ClassType): Bool {
 		if (classKey(actual) == classKey(expected)) return true;
