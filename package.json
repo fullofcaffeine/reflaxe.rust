@@ -1,7 +1,7 @@
 {
   "name": "reflaxe-rust",
   "private": true,
-  "version": "0.22.0",
+  "version": "0.23.0",
   "license": "GPL-3.0",
   "description": "Haxe (4.3.7) → Rust target built on Reflaxe (dev toolchain via lix).",
   "devDependencies": {
