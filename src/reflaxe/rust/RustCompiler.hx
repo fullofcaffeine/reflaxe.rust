@@ -4307,14 +4307,40 @@ enum RustProfile {
 						}
 				}
 
-			case OpAdd:
-				var ft = followType(fullExpr.t);
-				if (isStringType(ft) || isStringType(followType(e1.t)) || isStringType(followType(e2.t))) {
-					// POC: string concatenation via `format!`.
-					EMacroCall("format", [ELitString("{}{}"), compileExpr(e1), compileExpr(e2)]);
-				} else {
-					EBinary("+", compileExpr(e1), compileExpr(e2));
-				}
+				case OpAdd:
+					var ft = followType(fullExpr.t);
+					if (isStringType(ft) || isStringType(followType(e1.t)) || isStringType(followType(e2.t))) {
+						// String concatenation via a single `format!` call.
+						//
+						// This flattens nested `a + b + c` chains into `format!("{}{}{}", a, b, c)` to avoid
+						// nested `format!` calls (cleaner, more idiomatic Rust).
+						//
+						// Evaluation order:
+						// - Haxe evaluates `+` left-to-right.
+						// - Rust evaluates macro arguments left-to-right, so the flattened form preserves order.
+						function collectParts(e: TypedExpr, out: Array<TypedExpr>): Void {
+							var u = unwrapMetaParen(e);
+							switch (u.expr) {
+								case TBinop(OpAdd, a, b) if (isStringType(followType(u.t))):
+									collectParts(a, out);
+									collectParts(b, out);
+								case _:
+									out.push(e);
+							}
+						}
+
+						var parts: Array<TypedExpr> = [];
+						collectParts(fullExpr, parts);
+
+						var fmt = "";
+						for (_ in 0...parts.length) fmt += "{}";
+
+						var args: Array<RustExpr> = [ELitString(fmt)];
+						for (p in parts) args.push(compileExpr(p));
+						EMacroCall("format", args);
+					} else {
+						EBinary("+", compileExpr(e1), compileExpr(e2));
+					}
 
 			case OpSub: EBinary("-", compileExpr(e1), compileExpr(e2));
 			case OpMult: EBinary("*", compileExpr(e1), compileExpr(e2));

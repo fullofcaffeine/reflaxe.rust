@@ -39,12 +39,11 @@ impl Task {
             String::from(" ")
         };
         return format!(
-            "{}{}",
-            format!(
-                "{}{}",
-                format!("{}{}", format!("{}{}", sel, String::from("[")), mark),
-                String::from("] ")
-            ),
+            "{}{}{}{}{}",
+            sel,
+            String::from("["),
+            mark,
+            String::from("] "),
             self_.borrow().text.clone()
         );
     }
