@@ -23,11 +23,11 @@ fn main() {
                     let _g: &i32 = __p;
                     {
                         let x: &i32 = _g;
-                        println!("{:?}", x);
+                        println!("{}", hxrt::dynamic::from(x.clone()));
                     }
                 }
                 Option::None => {
-                    println!("{}", -1);
+                    println!("{}", hxrt::dynamic::from(-1));
                 }
             }
         }
@@ -36,6 +36,9 @@ fn main() {
     for _unused in m.keys() {
         key_count = key_count + 1;
     }
-    println!("{}", key_count);
-    println!("{}", crate::rust_hash_map_tools::HashMapTools::len(&m));
+    println!("{}", hxrt::dynamic::from(key_count));
+    println!(
+        "{}",
+        hxrt::dynamic::from(crate::rust_hash_map_tools::HashMapTools::len(&m))
+    );
 }

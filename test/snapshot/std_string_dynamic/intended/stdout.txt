@@ -1,0 +1,14 @@
+--- Std.string primitives ---
+1
+true
+1.5
+hi
+--- Std.string array ---
+[1,2,3]
+[1,2,3]
+--- Std.string object ---
+<Dynamic:alloc::rc::Rc<core::cell::RefCell<hx_app::foo::Foo>>>
+--- Sys.println Dynamic ---
+<Dynamic:alloc::rc::Rc<core::cell::RefCell<hx_app::foo::Foo>>>
+null
+5

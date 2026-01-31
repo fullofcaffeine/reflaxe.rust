@@ -5,11 +5,11 @@
  */
 class Sys {
 	public static function print(v: Dynamic): Void {
-		untyped __rust__("{ print!(\"{:?}\", {0}); }", v);
+		untyped __rust__("{ print!(\"{}\", {0}); }", v);
 	}
 
 	public static function println(v: Dynamic): Void {
-		untyped __rust__("{ println!(\"{:?}\", {0}); }", v);
+		untyped __rust__("{ println!(\"{}\", {0}); }", v);
 	}
 
 	public static function args(): Array<String> {

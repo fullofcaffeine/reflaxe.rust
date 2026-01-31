@@ -32,11 +32,11 @@ fn main() {
                 let _g: String = __p;
                 {
                     let name: String = _g;
-                    println!("{}", name);
+                    println!("{}", hxrt::dynamic::from(name.clone()));
                 }
             }
             Option::None => {
-                println!("{}", os_lossy);
+                println!("{}", hxrt::dynamic::from(os_lossy.clone()));
             }
         }
     }

@@ -10,6 +10,9 @@ mod sys;
 
 fn main() {
     let a: std::rc::Rc<dyn crate::animal::AnimalTrait> = crate::dog::Dog::new();
-    println!("{}", true);
-    println!("{}", a.__hx_type_id() == crate::dog::__HX_TYPE_ID);
+    println!("{}", hxrt::dynamic::from(true));
+    println!(
+        "{}",
+        hxrt::dynamic::from(a.__hx_type_id() == crate::dog::__HX_TYPE_ID)
+    );
 }

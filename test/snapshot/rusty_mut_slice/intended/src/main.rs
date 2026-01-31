@@ -24,5 +24,5 @@ fn main() {
     for x in v.iter().copied() {
         sum = sum + x;
     }
-    println!("{}", sum);
+    println!("{}", hxrt::dynamic::from(sum));
 }

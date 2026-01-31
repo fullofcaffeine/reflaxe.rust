@@ -7,5 +7,5 @@ type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
 mod sys;
 
 fn main() {
-    println!("{}", String::from("hi"));
+    println!("{}", hxrt::dynamic::from(String::from("hi")));
 }

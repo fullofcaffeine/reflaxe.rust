@@ -128,7 +128,7 @@ fn main() {
             }
         }
     };
-    println!("{}", msg);
+    println!("{}", hxrt::dynamic::from(msg));
     let o2: Option<i32> = Option::None;
     let r3: Result<i32, String> = match o2.clone() {
         Option::Some(__p) => {
@@ -142,16 +142,18 @@ fn main() {
     };
     println!(
         "{}",
-        !(match r3.clone() {
-            Result::Ok(__p) => {
-                let _g_16: i32 = __p;
-                true
-            }
-            Result::Err(__p) => {
-                let _g_17: String = __p;
-                false
-            }
-        })
+        hxrt::dynamic::from(
+            !(match r3.clone() {
+                Result::Ok(__p) => {
+                    let _g_16: i32 = __p;
+                    true
+                }
+                Result::Err(__p) => {
+                    let _g_17: String = __p;
+                    false
+                }
+            })
+        )
     );
     let caught: Result<i32, String> = match hxrt::exception::catch_unwind(|| {
         Result::Ok({
@@ -165,7 +167,7 @@ fn main() {
         Ok(__hx_ok) => __hx_ok,
         Err(__hx_ex) => {
             let e_2: hxrt::dynamic::Dynamic = __hx_ex;
-            Result::Err(format!("{:?}", e_2).clone())
+            Result::Err(e_2.to_haxe_string().clone())
         }
     };
     match caught.clone() {
@@ -173,14 +175,14 @@ fn main() {
             let _g_18: i32 = __p;
             {
                 let v_9: i32 = _g_18;
-                println!("{}", v_9);
+                println!("{}", hxrt::dynamic::from(v_9));
             }
         }
         Result::Err(__p) => {
             let _g_19: String = __p;
             {
                 let e_3: String = _g_19;
-                println!("{}", e_3);
+                println!("{}", hxrt::dynamic::from(e_3.clone()));
             }
         }
     }

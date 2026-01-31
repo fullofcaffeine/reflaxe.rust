@@ -9,13 +9,13 @@ pub struct Sys {}
 impl Sys {
     pub fn print(v: hxrt::dynamic::Dynamic) {
         {
-            print!("{:?}", v);
+            print!("{}", v);
         };
     }
 
     pub fn println(v: hxrt::dynamic::Dynamic) {
         {
-            println!("{:?}", v);
+            println!("{}", v);
         };
     }
 

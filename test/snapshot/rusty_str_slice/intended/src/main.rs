@@ -20,7 +20,10 @@ fn main() {
             let r: &String = &needle;
             {
                 let n: &str = r;
-                println!("{}", crate::rust_string_tools::StringTools::contains(h, n));
+                println!(
+                    "{}",
+                    hxrt::dynamic::from(crate::rust_string_tools::StringTools::contains(h, n))
+                );
             }
         }
     }
@@ -41,8 +44,11 @@ fn main() {
             sum = sum + x;
         }
     }
-    println!("{}", sum);
-    println!("{}", crate::rust_vec_tools::VecTools::len(v.clone()));
+    println!("{}", hxrt::dynamic::from(sum));
+    println!(
+        "{}",
+        hxrt::dynamic::from(crate::rust_vec_tools::VecTools::len(v.clone()))
+    );
     {
         let vr: &Vec<i32> = &v;
         {
@@ -61,8 +67,11 @@ fn main() {
                     sum2 = sum2 + x_2;
                 }
             }
-            println!("{}", sum2);
-            println!("{}", crate::rust_slice_tools::SliceTools::len(s));
+            println!("{}", hxrt::dynamic::from(sum2));
+            println!(
+                "{}",
+                hxrt::dynamic::from(crate::rust_slice_tools::SliceTools::len(s))
+            );
         }
     }
 }

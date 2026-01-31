@@ -13,5 +13,5 @@ fn main() {
         sum = sum + i;
         i = i + 1;
     }
-    println!("{}", sum);
+    println!("{}", hxrt::dynamic::from(sum));
 }

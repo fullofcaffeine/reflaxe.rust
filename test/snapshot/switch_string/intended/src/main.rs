@@ -13,5 +13,5 @@ fn main() {
         "b" => 2,
         _ => 0,
     };
-    println!("{}", n);
+    println!("{}", hxrt::dynamic::from(n));
 }

@@ -10,5 +10,5 @@ mod sys;
 fn main() {
     let foo: crate::HxRef<crate::foo::Foo> = crate::foo::Foo::new(1);
     crate::foo::Foo::inc(&foo);
-    println!("{}", crate::foo::Foo::get_x(&foo));
+    println!("{}", hxrt::dynamic::from(crate::foo::Foo::get_x(&foo)));
 }

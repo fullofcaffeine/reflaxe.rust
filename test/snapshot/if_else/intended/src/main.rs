@@ -8,5 +8,5 @@ mod sys;
 
 fn main() {
     let x: i32 = 10;
-    println!("{}", x);
+    println!("{}", hxrt::dynamic::from(x));
 }

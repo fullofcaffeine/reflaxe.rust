@@ -3077,12 +3077,70 @@ enum RustProfile {
 							if (args.length != 1) return unsupported(fullExpr, "Std.string args");
 							var value = args[0];
 							var ft = followType(value.t);
+
+							function typeHasTypeParameter(t: Type): Bool {
+								var cur = followType(t);
+								return switch (cur) {
+									case TInst(clsRef, params): {
+										var cls = clsRef.get();
+										if (cls != null) {
+											switch (cls.kind) {
+												case KTypeParameter(_):
+													true;
+												case _:
+													for (p in params) if (typeHasTypeParameter(p)) return true;
+													false;
+											}
+										} else {
+											false;
+										}
+									}
+									case TAbstract(_, params): {
+										for (p in params) if (typeHasTypeParameter(p)) return true;
+										false;
+									}
+									case TEnum(_, params): {
+										for (p in params) if (typeHasTypeParameter(p)) return true;
+										false;
+									}
+									case TFun(params, ret): {
+										for (p in params) if (typeHasTypeParameter(p.t)) return true;
+										typeHasTypeParameter(ret);
+									}
+									case TAnonymous(anonRef): {
+										var anon = anonRef.get();
+										if (anon != null && anon.fields != null) {
+											for (cf in anon.fields) if (typeHasTypeParameter(cf.type)) return true;
+										}
+										false;
+									}
+									case _:
+										false;
+								}
+							}
+
 							if (isStringType(ft)) {
 								return ECall(EField(compileExpr(value), "clone"), []);
+							} else if (isDynamicType(ft)) {
+								return ECall(EField(compileExpr(value), "to_haxe_string"), []);
 							} else if (isCopyType(ft)) {
 								return ECall(EField(compileExpr(value), "to_string"), []);
-							} else {
+							} else if (typeHasTypeParameter(ft)) {
+								// `hxrt::dynamic::from(...)` requires `T: Any + 'static`, which generic type parameters
+								// don't necessarily satisfy. Fall back to `Debug` formatting for generic types.
 								return EMacroCall("format", [ELitString("{:?}"), compileExpr(value)]);
+							} else {
+								var compiled = compileExpr(value);
+								var needsClone = !isCopyType(value.t);
+								// Avoid cloning obvious temporaries (literals) that won't be re-used after stringification.
+								if (needsClone && isStringLiteralExpr(value)) needsClone = false;
+								if (needsClone && isArrayLiteralExpr(value)) needsClone = false;
+								if (needsClone) {
+									compiled = ECall(EField(compiled, "clone"), []);
+								}
+								// Route through the runtime so `Std.string`, `trace`, and `Sys.println`
+								// converge on the same formatting rules.
+								return ECall(EField(ECall(EPath("hxrt::dynamic::from"), [compiled]), "to_haxe_string"), []);
 							}
 						}
 
@@ -3264,8 +3322,10 @@ enum RustProfile {
 				var cls = clsRef.get();
 				var field = fieldRef.get();
 				if (cls.pack.join(".") == "haxe" && cls.name == "Log" && field.name == "trace") {
-					var value = args.length > 0 ? compileExpr(args[0]) : ELitString("");
-					return compileTrace(value, args.length > 0 ? args[0].t : fullExpr.t);
+					if (args.length == 0) {
+						return EMacroCall("println", [ELitString("")]);
+					}
+					return compileTrace(args[0]);
 				}
 			case _:
 		}
@@ -3537,15 +3597,21 @@ enum RustProfile {
 		return false;
 	}
 
-			function compileTrace(valueExpr: RustExpr, valueType: Type): RustExpr {
-				// Use `{}` for common primitives/strings; fall back to `{:?}`.
-				var t = followType(valueType);
-				var fmt = if (isStringType(t) || TypeHelper.isInt(t) || TypeHelper.isFloat(t) || TypeHelper.isBool(t)) {
-					"{}";
-				} else {
-					"{:?}";
+			function compileTrace(value: TypedExpr): RustExpr {
+				// Haxe `trace` uses `Std.string(value)` semantics. Route through `hxrt::dynamic::Dynamic`
+				// so formatting matches `Std.string` and `Sys.println`.
+				var compiled = compileExpr(value);
+				if (isDynamicType(followType(value.t))) {
+					// Typed AST may coerce trace args to Dynamic; print that value directly.
+					return EMacroCall("println", [ELitString("{}"), compiled]);
 				}
-				return EMacroCall("println", [ELitString(fmt), valueExpr]);
+				var needsClone = !isCopyType(value.t);
+				if (needsClone && isStringLiteralExpr(value)) needsClone = false;
+				if (needsClone && isArrayLiteralExpr(value)) needsClone = false;
+				if (needsClone) {
+					compiled = ECall(EField(compiled, "clone"), []);
+				}
+				return EMacroCall("println", [ELitString("{}"), ECall(EPath("hxrt::dynamic::from"), [compiled])]);
 			}
 
 		function exprUsesThis(e: TypedExpr): Bool {

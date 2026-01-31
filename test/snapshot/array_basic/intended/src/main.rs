@@ -9,12 +9,12 @@ mod sys;
 fn main() {
     let xs: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::from_vec(vec![1, 2, 3]);
     let i: i32 = 1;
-    println!("{}", xs.len() as i32);
-    println!("{}", xs.get_unchecked(i as usize));
+    println!("{}", hxrt::dynamic::from(xs.len() as i32));
+    println!("{}", hxrt::dynamic::from(xs.get_unchecked(i as usize)));
     {
         let __tmp = 10;
         xs.set(i as usize, __tmp);
         __tmp
     };
-    println!("{}", xs.get_unchecked(i as usize));
+    println!("{}", hxrt::dynamic::from(xs.get_unchecked(i as usize)));
 }

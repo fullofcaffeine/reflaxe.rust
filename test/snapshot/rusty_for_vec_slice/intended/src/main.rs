@@ -26,5 +26,5 @@ fn main() {
             }
         }
     }
-    println!("{}", sum + sum2);
+    println!("{}", hxrt::dynamic::from(sum + sum2));
 }

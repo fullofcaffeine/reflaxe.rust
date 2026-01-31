@@ -15,5 +15,5 @@ fn make_adder(k: i32) -> std::rc::Rc<dyn Fn(i32) -> i32> {
 fn main() {
     let add10: std::rc::Rc<dyn Fn(i32) -> i32> =
         std::rc::Rc::new(move |a0: i32| make_adder(10)(a0));
-    println!("{}", add10(1));
+    println!("{}", hxrt::dynamic::from(add10(1)));
 }
