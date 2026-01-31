@@ -1,3 +1,10 @@
+# [0.27.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.26.0...v0.27.0) (2026-01-31)
+
+
+### Features
+
+* **rusty:** borrow-first VecTools len/get ([4e63ac1](https://github.com/fullofcaffeine/reflaxe.rust/commit/4e63ac1b12f15c106fd0f41708c44e0448847a60))
+
 # [0.26.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.25.0...v0.26.0) (2026-01-31)
 
 
