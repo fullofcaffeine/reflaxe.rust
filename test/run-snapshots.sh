@@ -18,14 +18,21 @@ usage() {
 Usage: test/run-snapshots.sh [--case NAME] [--update]
 
 Runs snapshot tests:
-  - regenerates each test's out/ via `haxe compile.hxml`
-  - optionally updates intended/ (golden) outputs with --update
-  - diffs intended/ vs out/
+  - regenerates each test's out*/ via `haxe compile*.hxml`
+  - optionally updates intended*/ (golden) outputs with --update
+  - diffs intended*/ vs out*/
   - runs `cargo fmt` and `cargo build -q` for each generated crate
 
 Options:
   --case NAME   Run a single snapshot case directory (by folder name).
-  --update      Replace intended/ with the newly generated out/ (excluding Cargo.lock/target/_GeneratedFiles.json).
+  --update      Replace intended*/ with the newly generated out*/ (excluding Cargo.lock/target/_GeneratedFiles.json).
+
+Snapshot variants:
+  A case may include multiple compile files:
+    - compile.hxml              (default variant) -> out/ and intended/
+    - compile.<variant>.hxml    (extra variants)  -> out_<variant>/ and intended_<variant>/
+
+  The runner always overrides `-D rust_output=...` so each compile file can stay minimal.
 EOF
 }
 
@@ -75,7 +82,19 @@ fail=0
 
 for case_dir in "$SNAP_DIR"/*; do
   [[ -d "$case_dir" ]] || continue
-  [[ -f "$case_dir/compile.hxml" ]] || continue
+  # At least one compile file must exist for this snapshot case.
+  has_compile=0
+  if [[ -f "$case_dir/compile.hxml" ]]; then
+    has_compile=1
+  else
+    for _ in "$case_dir"/compile.*.hxml; do
+      if [[ -f "$_" ]]; then
+        has_compile=1
+        break
+      fi
+    done
+  fi
+  [[ "$has_compile" == "1" ]] || continue
 
   case_name="$(basename "$case_dir")"
   if [[ -n "$only_case" && "$case_name" != "$only_case" ]]; then
@@ -84,78 +103,106 @@ for case_dir in "$SNAP_DIR"/*; do
 
   echo "[snap] $case_name"
 
-  expects_stdout=0
-  if [[ -f "$case_dir/intended/stdout.txt" ]]; then
-    expects_stdout=1
+  compile_files=()
+  if [[ -f "$case_dir/compile.hxml" ]]; then
+    compile_files+=("compile.hxml")
   fi
+  for f in "$case_dir"/compile.*.hxml; do
+    [[ -f "$f" ]] || continue
+    compile_files+=("$(basename "$f")")
+  done
 
-  if ! grep -qE '^-main[[:space:]]+' "$case_dir/compile.hxml"; then
-    echo "  error: compile.hxml must include '-main <Class>' (required for reliable main detection)" >&2
-    fail=1
-    continue
-  fi
-
-  rm -rf "$case_dir/out"
-  # Snapshots do their own cargo build step below; keep codegen-only during `haxe compile.hxml`.
-  (cd "$case_dir" && "$HAXE_BIN" compile.hxml -D rust_no_build)
-
-  if [[ -f "$case_dir/out/Cargo.toml" ]]; then
-    if ! (cd "$case_dir/out" && cargo fmt >/dev/null); then
-      echo "  cargo fmt failed: $case_dir/out" >&2
-      fail=1
+  for compile_file in "${compile_files[@]}"; do
+    variant=""
+    if [[ "$compile_file" != "compile.hxml" ]]; then
+      variant="${compile_file#compile.}"
+      variant="${variant%.hxml}"
+      variant="${variant//./_}"
     fi
-    if ! (cd "$case_dir/out" && cargo build -q); then
-      echo "  cargo build failed: $case_dir/out" >&2
-      fail=1
+
+    out_base="out"
+    intended_base="intended"
+    if [[ -n "$variant" ]]; then
+      out_base="out_${variant}"
+      intended_base="intended_${variant}"
     fi
-  fi
 
-  if [[ "$update_intended" == "1" ]]; then
-    rm -rf "$case_dir/intended"
-    mkdir -p "$case_dir/intended"
-    rsync -a --delete \
-      --exclude "_GeneratedFiles.json" \
-      --exclude "Cargo.lock" \
-      --exclude "stdout.txt" \
-      --exclude "target" \
-      "$case_dir/out/" "$case_dir/intended/"
-  fi
+    out_dir="$case_dir/$out_base"
+    intended_dir="$case_dir/$intended_base"
 
-  if [[ ! -d "$case_dir/intended" ]]; then
-    echo "  error: missing intended/ directory: $case_dir/intended" >&2
-    echo "  hint: run: test/run-snapshots.sh --case $case_name --update" >&2
-    fail=1
-    continue
-  fi
+    expects_stdout=0
+    if [[ -f "$intended_dir/stdout.txt" ]]; then
+      expects_stdout=1
+    fi
 
-  if [[ -f "$case_dir/out/Cargo.toml" ]]; then
-    # Optional: runtime stdout snapshot (deterministic cases only).
-    # If intended/stdout.txt exists (or existed before --update), run the compiled binary and compare stdout.
-    if [[ "$expects_stdout" == "1" ]]; then
-      actual_stdout="$case_dir/.stdout.actual"
-      if ! (cd "$case_dir/out" && cargo run -q) >"$actual_stdout"; then
-        echo "  cargo run failed: $case_dir/out" >&2
+    if ! grep -qE '^-main[[:space:]]+' "$case_dir/$compile_file"; then
+      echo "  error: $compile_file must include '-main <Class>' (required for reliable main detection)" >&2
+      fail=1
+      continue
+    fi
+
+    rm -rf "$out_dir"
+    # Snapshots do their own cargo build step below; keep codegen-only during compilation.
+    (cd "$case_dir" && "$HAXE_BIN" "$compile_file" -D rust_output="$out_base" -D rust_no_build)
+
+    if [[ -f "$out_dir/Cargo.toml" ]]; then
+      if ! (cd "$out_dir" && cargo fmt >/dev/null); then
+        echo "  cargo fmt failed: $out_dir" >&2
         fail=1
-      else
-        if [[ "$update_intended" == "1" ]]; then
-          cp "$actual_stdout" "$case_dir/intended/stdout.txt"
-        fi
-        if ! diff -u "$case_dir/intended/stdout.txt" "$actual_stdout"; then
-          fail=1
-        fi
       fi
-      rm -f "$actual_stdout"
+      if ! (cd "$out_dir" && cargo build -q); then
+        echo "  cargo build failed: $out_dir" >&2
+        fail=1
+      fi
     fi
-  fi
 
-  if ! diff -ru \
-    -x "_GeneratedFiles.json" \
-    -x "Cargo.lock" \
-    -x "stdout.txt" \
-    -x "target" \
-    "$case_dir/intended" "$case_dir/out"; then
-    fail=1
-  fi
+    if [[ "$update_intended" == "1" ]]; then
+      rm -rf "$intended_dir"
+      mkdir -p "$intended_dir"
+      rsync -a --delete \
+        --exclude "_GeneratedFiles.json" \
+        --exclude "Cargo.lock" \
+        --exclude "stdout.txt" \
+        --exclude "target" \
+        "$out_dir/" "$intended_dir/"
+    fi
+
+    if [[ ! -d "$intended_dir" ]]; then
+      echo "  error: missing $intended_base/ directory: $intended_dir" >&2
+      echo "  hint: run: test/run-snapshots.sh --case $case_name --update" >&2
+      fail=1
+      continue
+    fi
+
+    if [[ -f "$out_dir/Cargo.toml" ]]; then
+      # Optional: runtime stdout snapshot (deterministic cases only).
+      # If intended*/stdout.txt exists (or existed before --update), run the compiled binary and compare stdout.
+      if [[ "$expects_stdout" == "1" ]]; then
+        actual_stdout="$case_dir/.stdout.actual"
+        if ! (cd "$out_dir" && cargo run -q) >"$actual_stdout"; then
+          echo "  cargo run failed: $out_dir" >&2
+          fail=1
+        else
+          if [[ "$update_intended" == "1" ]]; then
+            cp "$actual_stdout" "$intended_dir/stdout.txt"
+          fi
+          if ! diff -u "$intended_dir/stdout.txt" "$actual_stdout"; then
+            fail=1
+          fi
+        fi
+        rm -f "$actual_stdout"
+      fi
+    fi
+
+    if ! diff -ru \
+      -x "_GeneratedFiles.json" \
+      -x "Cargo.lock" \
+      -x "stdout.txt" \
+      -x "target" \
+      "$intended_dir" "$out_dir"; then
+      fail=1
+    fi
+  done
 done
 
 exit "$fail"
