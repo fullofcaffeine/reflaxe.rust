@@ -77,6 +77,10 @@ impl Dynamic {
             return v.toString();
         }
 
+        if let Some(v) = self.downcast_ref::<crate::io::Error>() {
+            return v.to_haxe_string();
+        }
+
         format!("<Dynamic:{}>", self.1)
     }
 

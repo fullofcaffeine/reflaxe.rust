@@ -29,18 +29,24 @@ fn main() {
         out.borrow().get(999);
     }) {
         Ok(__hx_ok) => __hx_ok,
-        Err(__hx_ex) => {
-            let e: hxrt::dynamic::Dynamic = __hx_ex;
-            println!("{}", e);
-        }
+        Err(__hx_ex) => match __hx_ex.downcast::<hxrt::io::Error>() {
+            Ok(__hx_box) => {
+                let e: hxrt::io::Error = *__hx_box;
+                println!("{}", hxrt::dynamic::from(e.clone()));
+            }
+            Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
+        },
     };
     match hxrt::exception::catch_unwind(|| {
         hxrt::bytes::blit(&out, 0, &b, 0, 999);
     }) {
         Ok(__hx_ok) => __hx_ok,
-        Err(__hx_ex) => {
-            let e_2: hxrt::dynamic::Dynamic = __hx_ex;
-            println!("{}", e_2);
-        }
+        Err(__hx_ex) => match __hx_ex.downcast::<hxrt::io::Error>() {
+            Ok(__hx_box) => {
+                let e_2: hxrt::io::Error = *__hx_box;
+                println!("{}", hxrt::dynamic::from(e_2.clone()));
+            }
+            Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
+        },
     };
 }
