@@ -11,7 +11,7 @@ pub struct Counter {
 impl Counter {
     pub fn new(n: i32) -> crate::HxRef<crate::counter::Counter> {
         let self_: crate::HxRef<crate::counter::Counter> =
-            std::rc::Rc::new(std::cell::RefCell::new(Counter { n: (n).clone() }));
+            std::rc::Rc::new(std::cell::RefCell::new(Counter { n: (n) }));
         return self_;
     }
 

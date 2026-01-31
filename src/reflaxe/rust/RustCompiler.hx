@@ -1015,17 +1015,31 @@ enum RustProfile {
 														}
 														if (haxeFieldName == null) return null;
 
-														var r = unwrapMetaParen(rhs);
-														switch (r.expr) {
-															case TLocal(v) if (isCtorArgLocal(v)):
-																// Keep the argument usable in the rest of the constructor by cloning.
-																{
-																	field: haxeFieldName,
-																	rhs: "(" + reflaxe.rust.ast.RustASTPrinter.printExprForInjection(compileExpr(r)) + ").clone()",
-																}
-															case _:
-																null;
-														}
+															var r = unwrapMetaParen(rhs);
+															switch (r.expr) {
+																case TLocal(v) if (isCtorArgLocal(v)):
+																	{
+																		var compiled = reflaxe.rust.ast.RustASTPrinter.printExprForInjection(compileExpr(r));
+																		var exprStr = "(" + compiled + ")";
+
+																		// Prefer moving constructor args into the struct init when safe:
+																		// - Copy types never need `.clone()`
+																		// - For non-Copy types, only clone when the arg is used again later in the constructor body
+																		//   (based on local read counts collected for the function context).
+																		var needsClone = !isCopyType(v.t);
+																		if (needsClone && currentLocalReadCounts != null && currentLocalReadCounts.exists(v.id)) {
+																			var reads = currentLocalReadCounts.get(v.id);
+																			if (reads <= 1) needsClone = false;
+																		}
+
+																		{
+																			field: haxeFieldName,
+																			rhs: needsClone ? (exprStr + ".clone()") : exprStr,
+																		}
+																	}
+																case _:
+																	null;
+															}
 													}
 													case _:
 														null;
