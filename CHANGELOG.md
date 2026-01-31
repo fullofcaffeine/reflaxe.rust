@@ -1,3 +1,10 @@
+# [0.26.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.25.0...v0.26.0) (2026-01-31)
+
+
+### Features
+
+* **demo:** improve rusty TUI + docs ([dcde959](https://github.com/fullofcaffeine/reflaxe.rust/commit/dcde95979ca0b5cf48ad55adca760603370a16a3))
+
 # [0.25.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.24.0...v0.25.0) (2026-01-31)
 
 
