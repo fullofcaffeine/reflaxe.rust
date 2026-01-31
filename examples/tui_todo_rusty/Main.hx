@@ -12,6 +12,10 @@ class Main {
 		tasks.push(new Task("ship ratatui demo", false));
 		tasks.push(new Task("ship rusty profile", false));
 
+		// Create an `Array<Task>` view once so we don't clone/convert the Vec on every frame.
+		// Elements are `HxRef<Task>` under the hood, so cloning the container preserves identity.
+		var a = VecTools.toArray(tasks.clone());
+
 		var selected = 0;
 		var running = true;
 
@@ -23,7 +27,6 @@ class Main {
 
 		Tui.enter();
 		while (running) {
-			var a = VecTools.toArray(tasks.clone());
 			var lines = "";
 
 			var i = 0;
