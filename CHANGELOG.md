@@ -1,3 +1,10 @@
+# [0.28.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.27.0...v0.28.0) (2026-01-31)
+
+
+### Features
+
+* **idiomatic:** elide ctor arg clones ([f2312b6](https://github.com/fullofcaffeine/reflaxe.rust/commit/f2312b610f9333ab01e25b668846315afff1a89d))
+
 # [0.27.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.26.0...v0.27.0) (2026-01-31)
 
 
