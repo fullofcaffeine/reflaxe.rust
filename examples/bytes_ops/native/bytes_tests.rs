@@ -29,14 +29,18 @@ mod tests {
 
         let r = hxrt::exception::catch_unwind(|| b.borrow().get(99));
         let err = r.expect_err("expected hxrt::exception::throw to be caught");
-        let s = err.to_haxe_string();
-        assert!(s.contains("OutsideBounds"), "unexpected error string: {s}");
+        let boxed = err
+            .downcast::<hxrt::io::Error>()
+            .expect("expected hxrt::io::Error payload");
+        assert!(matches!(*boxed, hxrt::io::Error::OutsideBounds));
 
         let out: crate::HxRef<hxrt::bytes::Bytes> =
             std::rc::Rc::new(std::cell::RefCell::new(hxrt::bytes::Bytes::alloc(2)));
         let r2 = hxrt::exception::catch_unwind(|| bytes::blit(&out, 0, &b, 0, 99));
         let err2 = r2.expect_err("expected blit oob to be caught");
-        assert!(err2.to_haxe_string().contains("OutsideBounds"));
+        let boxed2 = err2
+            .downcast::<hxrt::io::Error>()
+            .expect("expected hxrt::io::Error payload");
+        assert!(matches!(*boxed2, hxrt::io::Error::OutsideBounds));
     }
 }
-

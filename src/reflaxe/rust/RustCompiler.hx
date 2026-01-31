@@ -2885,7 +2885,7 @@ enum RustProfile {
 	function isBuiltinEnum(en: EnumType): Bool {
 		// Enums that are represented by Rust built-ins and should not be emitted as Rust enums.
 		return switch (enumKey(en)) {
-			case "haxe.ds.Option" | "haxe.functional.Result" | "rust.Option" | "rust.Result": true;
+			case "haxe.ds.Option" | "haxe.functional.Result" | "rust.Option" | "rust.Result" | "haxe.io.Error": true;
 			case _: false;
 		}
 	}
@@ -2899,6 +2899,8 @@ enum RustProfile {
 				// Map Haxe's `Result.Error` to Rust's `Result.Err`.
 				case "haxe.functional.Result":
 					"Result::" + (variant == "Error" ? "Err" : variant);
+				case "haxe.io.Error":
+					"hxrt::io::Error::" + variant;
 				case _:
 					"crate::" + rustModuleNameForEnum(en) + "::" + rustTypeNameForEnum(en) + "::" + variant;
 			}
@@ -4775,6 +4777,8 @@ enum RustProfile {
 					var okT = toRustType(params[0], pos);
 					var errT = params.length >= 2 ? toRustType(params[1], pos) : RString;
 					RPath("Result<" + rustTypeToString(okT) + ", " + rustTypeToString(errT) + ">");
+				} else if (key == "haxe.io.Error") {
+					RPath("hxrt::io::Error");
 					} else {
 						var modName = rustModuleNameForEnum(en);
 						RPath("crate::" + modName + "::" + rustTypeNameForEnum(en));

@@ -1,4 +1,5 @@
 import haxe.io.Bytes;
+import haxe.io.Error;
 
 class Main {
 	static function main(): Void {
@@ -16,17 +17,8 @@ class Main {
 		trace(out.get(0));
 		trace(out.getString(0, 2));
 
-		try {
-			out.get(999);
-		} catch (e:Dynamic) {
-			trace(e);
-		}
+		try out.get(999) catch (e:Error) trace(e);
 
-		try {
-			out.blit(0, b, 0, 999);
-		} catch (e:Dynamic) {
-			trace(e);
-		}
+		try out.blit(0, b, 0, 999) catch (e:Error) trace(e);
 	}
 }
-

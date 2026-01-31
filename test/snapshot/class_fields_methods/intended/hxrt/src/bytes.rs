@@ -1,4 +1,3 @@
-use crate::dynamic;
 use crate::exception;
 use std::fmt;
 use std::{cell::RefCell, rc::Rc};
@@ -8,33 +7,22 @@ pub struct Bytes {
     data: Vec<u8>,
 }
 
-fn throw_outside_bounds(op: &str, pos: i32, len: i32) -> ! {
-    exception::throw(dynamic::from(format!(
-        "haxe.io.Bytes.{}: OutsideBounds (pos={}, len={})",
-        op, pos, len
-    )))
-}
-
-fn throw_range_outside_bounds(op: &str, pos: i32, range_len: i32, len: i32) -> ! {
-    exception::throw(dynamic::from(format!(
-        "haxe.io.Bytes.{}: OutsideBounds (pos={}, range_len={}, len={})",
-        op, pos, range_len, len
-    )))
-}
-
 fn check_index(op: &str, pos: i32, len: i32) {
     if pos < 0 || pos >= len {
-        throw_outside_bounds(op, pos, len);
+        let _ = op;
+        exception::throw(crate::dynamic::from(crate::io::Error::OutsideBounds));
     }
 }
 
 fn check_range(op: &str, pos: i32, range_len: i32, len: i32) {
     if range_len < 0 {
-        throw_range_outside_bounds(op, pos, range_len, len);
+        let _ = op;
+        exception::throw(crate::dynamic::from(crate::io::Error::OutsideBounds));
     }
     // allow empty ranges at pos == len
     if pos < 0 || pos > len || pos + range_len > len {
-        throw_range_outside_bounds(op, pos, range_len, len);
+        let _ = op;
+        exception::throw(crate::dynamic::from(crate::io::Error::OutsideBounds));
     }
 }
 
