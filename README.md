@@ -97,4 +97,6 @@ See `docs/rusty-profile.md` for the `rusty` profile design and `rust.*` APIs.
 
 See `docs/workflow.md` for the full Haxe→Rust→Cargo workflow (defines, release builds, targets).
 
+See `docs/release.md` for how releases (semver + changelog + GitHub artifacts) are produced.
+
 See `docs/function-values.md` for callback/function-value lowering notes (baseline + constraints).
