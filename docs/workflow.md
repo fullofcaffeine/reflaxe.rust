@@ -33,3 +33,8 @@ These map to Cargo arguments/env vars at the end of compilation:
   - `@:rustCargo({ name: "dep", version: "1.2", features: ["x"] })`
   - avoid requiring users to pass `-D rust_cargo_deps_file=...`
 
+## Repo CI parity (contributors)
+
+Before pushing to `main`, run the closest local equivalent of CI:
+
+- `bash scripts/ci/local.sh`
