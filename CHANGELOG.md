@@ -1,3 +1,10 @@
+## [0.32.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.32.0...v0.32.1) (2026-01-31)
+
+
+### Bug Fixes
+
+* **runtime:** cloneable Dynamic and full haxe.io.Error ([f809c56](https://github.com/fullofcaffeine/reflaxe.rust/commit/f809c5676618a2ac5cb348a8ccf6a15e18df17da))
+
 # [0.32.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.31.0...v0.32.0) (2026-01-31)
 
 
