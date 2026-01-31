@@ -47,6 +47,34 @@ Prefer declarative dependencies:
 
 This keeps Cargo wiring centralized and avoids ad-hoc `Cargo.toml` edits in app repos.
 
+### `@:rustCargo` forms
+
+Two forms are supported:
+
+- Raw TOML line:
+  - `@:rustCargo("ratatui = \"0.26\"")`
+- Structured object (recommended; deterministic + mergeable):
+  - `@:rustCargo({ name: "serde", version: "1", features: ["derive"] })`
+
+### `@:rustCargo` object fields
+
+Supported fields:
+
+- `name` (required): crate name
+- `version`: Cargo version requirement (e.g. `"1"`, `"0.26"`, `"^1.2"`)
+- `features`: array of feature strings
+- `defaultFeatures`: boolean (`false` to emit `default-features = false`)
+- `optional`: boolean
+- `path`: local path dependency
+- `git`: git URL dependency
+- `branch` / `tag` / `rev`: optional git selectors
+- `package`: override the package name (Cargo’s `package = "..."` field)
+
+If multiple modules declare `@:rustCargo` for the same crate:
+
+- `features` are unioned + de-duped (stable order)
+- most other fields must match (conflicts produce a compile-time error)
+
 ## Escape hatch: `__rust__` injection (framework-only)
 
 If a binding is awkward to express as an extern (generics/closures, tricky lifetimes, etc.), you can

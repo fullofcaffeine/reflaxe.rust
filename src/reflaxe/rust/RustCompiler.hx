@@ -3577,8 +3577,12 @@ enum RustProfile {
 			}
 			compiled = ECall(EPath("hxrt::dynamic::from"), [compiled]);
 		} else if (isStringType(paramType)) {
-			// Haxe Strings are immutable and commonly re-used after calls; avoid Rust moves by cloning.
-			if (!isStringLiteralExpr(argExpr) && !isCloneExpr(compiled)) {
+			// Haxe Strings are immutable and commonly re-used after calls; avoid Rust moves by cloning
+			// when the argument is an existing local.
+			//
+			// For non-local expressions (calls, concatenations, constructors, etc.), the expression
+			// typically produces a fresh String value, so cloning it is redundant noise.
+			if (isLocalExpr(argExpr) && !isStringLiteralExpr(argExpr) && !isCloneExpr(compiled)) {
 				compiled = ECall(EField(compiled, "clone"), []);
 			}
 			} else {

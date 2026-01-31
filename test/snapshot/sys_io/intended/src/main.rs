@@ -55,11 +55,11 @@ fn main() {
     let dir: String = String::from("tmp_sys_dir");
     crate::sys_file_system::FileSystem::create_directory(dir.clone());
     crate::sys_io_file::File::save_content(
-        format!("{}{}", dir, String::from("/a.txt")).clone(),
+        format!("{}{}", dir, String::from("/a.txt")),
         String::from("a"),
     );
     crate::sys_io_file::File::save_content(
-        format!("{}{}", dir, String::from("/b.txt")).clone(),
+        format!("{}{}", dir, String::from("/b.txt")),
         String::from("b"),
     );
     let entries: hxrt::array::Array<String> =
@@ -94,12 +94,8 @@ fn main() {
     println!("{}", hxrt::dynamic::from(found_b));
     println!("{}", hxrt::dynamic::from(found_dot));
     println!("{}", hxrt::dynamic::from(found_dot_dot));
-    crate::sys_file_system::FileSystem::delete_file(
-        format!("{}{}", dir, String::from("/a.txt")).clone(),
-    );
-    crate::sys_file_system::FileSystem::delete_file(
-        format!("{}{}", dir, String::from("/b.txt")).clone(),
-    );
+    crate::sys_file_system::FileSystem::delete_file(format!("{}{}", dir, String::from("/a.txt")));
+    crate::sys_file_system::FileSystem::delete_file(format!("{}{}", dir, String::from("/b.txt")));
     crate::sys_file_system::FileSystem::delete_directory(dir.clone());
     println!(
         "{}",
