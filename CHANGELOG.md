@@ -1,3 +1,10 @@
+# [0.23.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.22.0...v0.23.0) (2026-01-31)
+
+
+### Features
+
+* **std:** unify Std.string/trace/Sys.println formatting ([036f3c1](https://github.com/fullofcaffeine/reflaxe.rust/commit/036f3c194d3e8f9b9e1da7207e4054e64f91cf09))
+
 # [0.22.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.21.0...v0.22.0) (2026-01-30)
 
 
