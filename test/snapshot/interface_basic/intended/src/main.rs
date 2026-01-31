@@ -10,5 +10,5 @@ mod sys;
 
 fn main() {
     let t: std::rc::Rc<dyn crate::i_thing::IThing> = crate::impl_::Impl::new();
-    println!("{}", t.say());
+    println!("{}", hxrt::dynamic::from(t.say().clone()));
 }

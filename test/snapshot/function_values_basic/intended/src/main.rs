@@ -16,9 +16,12 @@ fn apply(f: std::rc::Rc<dyn Fn(i32) -> i32>, x: i32) -> i32 {
 
 fn main() {
     let f: std::rc::Rc<dyn Fn(i32) -> i32> = std::rc::Rc::new(move |a0: i32| add1(a0));
-    println!("{}", f(5));
+    println!("{}", hxrt::dynamic::from(f(5)));
     let g: std::rc::Rc<dyn Fn(i32) -> i32> = std::rc::Rc::new(move |x: i32| {
         return x * 2;
     });
-    println!("{}", apply(std::rc::Rc::new(move |a0: i32| { g(a0) }), 3));
+    println!(
+        "{}",
+        hxrt::dynamic::from(apply(std::rc::Rc::new(move |a0: i32| { g(a0) }), 3))
+    );
 }

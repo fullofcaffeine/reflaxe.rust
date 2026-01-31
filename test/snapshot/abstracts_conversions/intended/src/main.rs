@@ -20,22 +20,22 @@ fn main() {
         this1_2 as i32
     };
     let as_int: i32 = c;
-    println!("{}", as_int);
+    println!("{}", hxrt::dynamic::from(as_int));
     let col: i32 = 1 as i32;
     let raw: i32 = col;
-    println!("{}", raw);
+    println!("{}", hxrt::dynamic::from(raw));
     match col {
         1 => {
-            println!("{}", String::from("r"));
+            println!("{}", hxrt::dynamic::from(String::from("r")));
         }
         2 => {
-            println!("{}", String::from("g"));
+            println!("{}", hxrt::dynamic::from(String::from("g")));
         }
         3 => {
-            println!("{}", String::from("b"));
+            println!("{}", hxrt::dynamic::from(String::from("b")));
         }
         _ => {
-            println!("{}", String::from("?"));
+            println!("{}", hxrt::dynamic::from(String::from("?")));
         }
     }
 }

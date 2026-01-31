@@ -8,5 +8,5 @@ mod native_math;
 mod sys;
 
 fn main() {
-    println!("{}", crate::native_math::gcd(54, 24));
+    println!("{}", hxrt::dynamic::from(crate::native_math::gcd(54, 24)));
 }

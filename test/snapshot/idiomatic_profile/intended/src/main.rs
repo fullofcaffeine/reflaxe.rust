@@ -10,7 +10,7 @@ fn main() {
     let a: i32 = 1;
     let b: i32 = 2;
     let c: i32 = a + b;
-    println!("{}", c);
+    println!("{}", hxrt::dynamic::from(c));
     let mut i: i32 = 0;
     while i < 2 {
         i = i + 1;

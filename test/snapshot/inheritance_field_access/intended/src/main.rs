@@ -15,5 +15,5 @@ fn main() {
         a.__hx_set_age(__tmp);
         __tmp
     };
-    println!("{}", a.__hx_get_age());
+    println!("{}", hxrt::dynamic::from(a.__hx_get_age()));
 }

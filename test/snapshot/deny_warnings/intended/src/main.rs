@@ -22,14 +22,14 @@ fn main() {
         }
         Option::None => 0,
     };
-    println!("{}", v);
+    println!("{}", hxrt::dynamic::from(v));
     let x: Option<i32>;
     {
         let __tmp = 3;
         x = Some(__tmp);
         __tmp
     };
-    println!("{}", x.is_some());
+    println!("{}", hxrt::dynamic::from(x.is_some()));
     let mut n: i32 = 0;
     if x.is_some() {
         n = n + 1;
@@ -39,7 +39,7 @@ fn main() {
     } else {
         n = n + 2;
     }
-    println!("{}", n);
+    println!("{}", hxrt::dynamic::from(n));
     let mut vec: Vec<i32> = Vec::<i32>::new();
     vec.push(1);
     vec.push(2);
@@ -54,5 +54,5 @@ fn main() {
     for i in vec.iter().copied() {
         sum = sum + i;
     }
-    println!("{}", sum);
+    println!("{}", hxrt::dynamic::from(sum));
 }

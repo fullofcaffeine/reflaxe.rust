@@ -16,7 +16,7 @@ fn main() {
             Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
         },
     };
-    println!("{}", x);
+    println!("{}", hxrt::dynamic::from(x));
     let y: i32 = match hxrt::exception::catch_unwind(|| {
         match hxrt::exception::catch_unwind(|| {
             hxrt::exception::throw(hxrt::dynamic::from(7));
@@ -34,5 +34,5 @@ fn main() {
             Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
         },
     };
-    println!("{}", y);
+    println!("{}", hxrt::dynamic::from(y));
 }

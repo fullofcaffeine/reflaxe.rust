@@ -8,5 +8,5 @@ mod sys;
 
 fn main() {
     let s: String = format!("{}{}", String::from("a"), String::from("b"));
-    println!("{}", s);
+    println!("{}", hxrt::dynamic::from(s.clone()));
 }

@@ -19,7 +19,10 @@ fn main() {
             crate::rust_hash_map_tools::HashMapTools::insert(mm, String::from("b"), 2);
         }
     }
-    println!("{}", crate::rust_hash_map_tools::HashMapTools::len(&m));
+    println!(
+        "{}",
+        hxrt::dynamic::from(crate::rust_hash_map_tools::HashMapTools::len(&m))
+    );
     let key_a: String = String::from("a");
     {
         let k_a: &String = &key_a;
@@ -30,16 +33,19 @@ fn main() {
                     crate::rust_hash_map_tools::HashMapTools::remove(mm_2, k_a);
                 println!(
                     "{}",
-                    match removed.clone() {
+                    hxrt::dynamic::from(match removed.clone() {
                         Option::Some(__p) => {
                             let _g: i32 = __p;
                             true
                         }
                         Option::None => false,
-                    }
+                    })
                 );
             }
         }
     }
-    println!("{}", crate::rust_hash_map_tools::HashMapTools::len(&m));
+    println!(
+        "{}",
+        hxrt::dynamic::from(crate::rust_hash_map_tools::HashMapTools::len(&m))
+    );
 }

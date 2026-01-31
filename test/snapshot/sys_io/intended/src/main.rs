@@ -9,31 +9,49 @@ mod sys_file_system;
 mod sys_io_file;
 
 fn main() {
-    println!("{}", String::from("--- args ---"));
-    println!("{}", crate::sys::Sys::args().len() as i32);
-    println!("{}", String::from("--- file content ---"));
-    let path: String = String::from("tmp_sys_io.txt");
-    crate::sys_io_file::File::save_content(path.clone(), String::from("hello"));
-    println!("{}", crate::sys_io_file::File::get_content(path.clone()));
+    println!("{}", hxrt::dynamic::from(String::from("--- args ---")));
     println!(
         "{}",
-        crate::sys_file_system::FileSystem::exists(path.clone())
+        hxrt::dynamic::from(crate::sys::Sys::args().len() as i32)
+    );
+    println!(
+        "{}",
+        hxrt::dynamic::from(String::from("--- file content ---"))
+    );
+    let path: String = String::from("tmp_sys_io.txt");
+    crate::sys_io_file::File::save_content(path.clone(), String::from("hello"));
+    println!(
+        "{}",
+        hxrt::dynamic::from(crate::sys_io_file::File::get_content(path.clone()).clone())
+    );
+    println!(
+        "{}",
+        hxrt::dynamic::from(crate::sys_file_system::FileSystem::exists(path.clone()))
     );
     crate::sys_file_system::FileSystem::delete_file(path.clone());
     println!(
         "{}",
-        crate::sys_file_system::FileSystem::exists(path.clone())
+        hxrt::dynamic::from(crate::sys_file_system::FileSystem::exists(path.clone()))
     );
-    println!("{}", String::from("--- file bytes ---"));
+    println!(
+        "{}",
+        hxrt::dynamic::from(String::from("--- file bytes ---"))
+    );
     let bin: String = String::from("tmp_sys_io.bin");
     let bytes: crate::HxRef<hxrt::bytes::Bytes> = std::rc::Rc::new(std::cell::RefCell::new(
         hxrt::bytes::Bytes::of_string(String::from("ABC").as_str()),
     ));
     crate::sys_io_file::File::save_bytes(bin.clone(), bytes.clone());
     let bytes2: crate::HxRef<hxrt::bytes::Bytes> = crate::sys_io_file::File::get_bytes(bin.clone());
-    println!("{}", bytes2.borrow().to_string());
+    println!(
+        "{}",
+        hxrt::dynamic::from(bytes2.borrow().to_string().clone())
+    );
     crate::sys_file_system::FileSystem::delete_file(bin.clone());
-    println!("{}", String::from("--- dir listing ---"));
+    println!(
+        "{}",
+        hxrt::dynamic::from(String::from("--- dir listing ---"))
+    );
     let dir: String = String::from("tmp_sys_dir");
     crate::sys_file_system::FileSystem::create_directory(dir.clone());
     crate::sys_io_file::File::save_content(
@@ -72,10 +90,10 @@ fn main() {
             }
         }
     }
-    println!("{}", found_a);
-    println!("{}", found_b);
-    println!("{}", found_dot);
-    println!("{}", found_dot_dot);
+    println!("{}", hxrt::dynamic::from(found_a));
+    println!("{}", hxrt::dynamic::from(found_b));
+    println!("{}", hxrt::dynamic::from(found_dot));
+    println!("{}", hxrt::dynamic::from(found_dot_dot));
     crate::sys_file_system::FileSystem::delete_file(
         format!("{}{}", dir, String::from("/a.txt")).clone(),
     );
@@ -85,6 +103,6 @@ fn main() {
     crate::sys_file_system::FileSystem::delete_directory(dir.clone());
     println!(
         "{}",
-        crate::sys_file_system::FileSystem::exists(dir.clone())
+        hxrt::dynamic::from(crate::sys_file_system::FileSystem::exists(dir.clone()))
     );
 }

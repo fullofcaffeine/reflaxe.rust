@@ -19,5 +19,5 @@ fn main() {
         }
         crate::action::Action::Toggle => String::from("toggle"),
     };
-    println!("{}", s);
+    println!("{}", hxrt::dynamic::from(s.clone()));
 }

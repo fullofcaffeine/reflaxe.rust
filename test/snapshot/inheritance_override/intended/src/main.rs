@@ -10,5 +10,5 @@ mod sys;
 
 fn main() {
     let a: std::rc::Rc<dyn crate::animal::AnimalTrait> = crate::dog::Dog::new();
-    println!("{}", a.speak());
+    println!("{}", hxrt::dynamic::from(a.speak().clone()));
 }

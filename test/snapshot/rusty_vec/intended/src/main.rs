@@ -24,18 +24,21 @@ fn main() {
     let mut v: Vec<i32> = Vec::<i32>::new();
     v.push(1);
     v.push(2);
-    println!("{}", crate::rust_vec_tools::VecTools::len(v.clone()));
+    println!(
+        "{}",
+        hxrt::dynamic::from(crate::rust_vec_tools::VecTools::len(v.clone()))
+    );
     let last: Option<i32> = v.pop();
     match last.clone() {
         Option::Some(__p) => {
             let _g: i32 = __p;
             {
                 let x: i32 = _g;
-                println!("{}", x);
+                println!("{}", hxrt::dynamic::from(x));
             }
         }
         Option::None => {
-            println!("{}", -1);
+            println!("{}", hxrt::dynamic::from(-1));
         }
     }
     {
@@ -45,14 +48,14 @@ fn main() {
                 let _g_3: i32 = __p;
                 {
                     let x_2: i32 = _g_3;
-                    println!("{}", x_2);
+                    println!("{}", hxrt::dynamic::from(x_2));
                 }
             }
             Result::Err(__p) => {
                 let _g_4: String = __p;
                 {
                     let e: String = _g_4;
-                    println!("{}", e);
+                    println!("{}", hxrt::dynamic::from(e.clone()));
                 }
             }
         }
@@ -64,5 +67,5 @@ fn main() {
     for x_3 in crate::rust_iter_tools::IterTools::from_vec(v2).into_iter() {
         sum = sum + x_3;
     }
-    println!("{}", sum);
+    println!("{}", hxrt::dynamic::from(sum));
 }

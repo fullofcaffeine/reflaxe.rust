@@ -13,5 +13,5 @@ fn main() {
         2 | 3 => String::from("two_or_three"),
         _ => String::from("other"),
     };
-    println!("{}", s);
+    println!("{}", hxrt::dynamic::from(s.clone()));
 }
