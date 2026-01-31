@@ -1,3 +1,10 @@
+# [0.29.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.28.0...v0.29.0) (2026-01-31)
+
+
+### Features
+
+* **compiler:** flatten string concat format ([6a457e2](https://github.com/fullofcaffeine/reflaxe.rust/commit/6a457e28e56e2173ec50390bea63c3e3d96cf69e))
+
 # [0.28.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.27.0...v0.28.0) (2026-01-31)
 
 
