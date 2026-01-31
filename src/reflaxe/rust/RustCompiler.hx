@@ -2126,19 +2126,19 @@ enum RustProfile {
 				case _: unsupported(e, "const");
 			}
 
-			case TArrayDecl(values): {
-				// Haxe `Array<T>` literal: `[]` or `[a, b]` -> `hxrt::array::Array::<T>::new()` or `Array::from_vec(vec![...])`
-				if (values.length == 0) {
-					var elem = arrayElementType(e.t);
-					var elemRust = toRustType(elem, e.pos);
-					ECall(ERaw("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new"), []);
-				} else {
-					var elem = arrayElementType(e.t);
-					var elemRust = toRustType(elem, e.pos);
-					var vecExpr = EMacroCall("vec", [for (v in values) compileExpr(v)]);
-					ECall(ERaw("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::from_vec"), [vecExpr]);
+				case TArrayDecl(values): {
+					// Haxe `Array<T>` literal: `[]` or `[a, b]` -> `hxrt::array::Array::<T>::new()` or `Array::from_vec(vec![...])`
+					if (values.length == 0) {
+						var elem = arrayElementType(e.t);
+						var elemRust = toRustType(elem, e.pos);
+						ECall(ERaw("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new"), []);
+					} else {
+						var elem = arrayElementType(e.t);
+						var elemRust = toRustType(elem, e.pos);
+						var vecExpr = EMacroCall("vec", [for (v in values) maybeCloneForReuseValue(compileExpr(v), v)]);
+						ECall(ERaw("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::from_vec"), [vecExpr]);
+					}
 				}
-			}
 
 			case TArray(arr, index): {
 				var idx = ECast(compileExpr(index), "usize");
@@ -3356,16 +3356,30 @@ enum RustProfile {
 					}
 				}
 				switch (cf.kind) {
-					case FMethod(_): {
-						// Extern instances compile as direct Rust method calls: `recv.method(args...)`.
-						if (isExternInstanceType(obj.t)) {
-							var recv = compileExpr(obj);
-							var paramDefs: Null<Array<{ name: String, t: Type, opt: Bool }>> = switch (TypeTools.follow(cf.type)) {
-								case TFun(params, _): params;
-								case _: null;
-							};
-							return ECall(EField(recv, rustExternFieldName(cf)), compilePositionalArgsFor(paramDefs));
-						}
+						case FMethod(_): {
+							// Extern instances compile as direct Rust method calls: `recv.method(args...)`.
+							if (isExternInstanceType(obj.t)) {
+								var recv = compileExpr(obj);
+								var paramDefs: Null<Array<{ name: String, t: Type, opt: Bool }>> = switch (TypeTools.follow(cf.type)) {
+									case TFun(params, _): params;
+									case _: null;
+								};
+								var rustName = rustExternFieldName(cf);
+								// Haxe object arrays require identity-based search semantics.
+								if (isArrayType(obj.t)) {
+									var elem = arrayElementType(obj.t);
+									if (isRcBackedType(elem)) {
+										rustName = switch (rustName) {
+											case "contains": "containsRef";
+											case "remove": "removeRef";
+											case "indexOf": "indexOfRef";
+											case "lastIndexOf": "lastIndexOfRef";
+											case _: rustName;
+										};
+									}
+								}
+								return ECall(EField(recv, rustName), compilePositionalArgsFor(paramDefs));
+							}
 
 						// `this` inside concrete methods is always `&RefCell<Concrete>`; keep static dispatch.
 						if (!isThisExpr(obj) && (isInterfaceType(obj.t) || isPolymorphicClassType(obj.t))) {
@@ -3399,7 +3413,42 @@ enum RustProfile {
 			case _:
 		}
 
-		var f = compileExpr(callExpr);
+			var overrideArrayFn: Null<RustExpr> = null;
+			switch (callExpr.expr) {
+				case TField(obj, fa) if (isArrayType(obj.t)): {
+					var elem = arrayElementType(obj.t);
+					if (isRcBackedType(elem)) {
+						var fieldName: Null<String> = switch (fa) {
+							case FDynamic(name): name;
+							case FAnon(cfRef): {
+								var cf = cfRef.get();
+								cf != null ? cf.getHaxeName() : null;
+							}
+							case FInstance(_, _, cfRef): {
+								var cf = cfRef.get();
+								cf != null ? cf.getHaxeName() : null;
+							}
+							case _: null;
+						};
+
+						if (fieldName != null) {
+							var refName: Null<String> = switch (fieldName) {
+								case "contains": "containsRef";
+								case "remove": "removeRef";
+								case "indexOf": "indexOfRef";
+								case "lastIndexOf": "lastIndexOfRef";
+								case _: null;
+							};
+							if (refName != null) {
+								overrideArrayFn = EField(compileExpr(obj), refName);
+							}
+						}
+					}
+				}
+				case _:
+			}
+
+			var f = overrideArrayFn != null ? overrideArrayFn : compileExpr(callExpr);
 
 		var nullableFnInner = nullInnerType(callExpr.t);
 		var fnTypeForParams: Type = (nullableFnInner != null ? nullableFnInner : callExpr.t);
@@ -3476,22 +3525,22 @@ enum RustProfile {
 			if (!isStringLiteralExpr(argExpr) && !isCloneExpr(compiled)) {
 				compiled = ECall(EField(compiled, "clone"), []);
 			}
-		} else {
-			// Haxe class instances are reusable references. When passed by value to Rust functions,
-			// clone the `Rc` so the original local remains usable.
-			var isByRef = switch (rustParamTy) {
-				case RRef(_, _): true;
-				case _: false;
-			}
+			} else {
+				// Haxe reference types are reusable references. When passed by value to Rust functions,
+				// clone the `Rc` so the original local remains usable.
+				var isByRef = switch (rustParamTy) {
+					case RRef(_, _): true;
+					case _: false;
+				}
 			// Haxe Arrays are reusable and behave like shared values; avoid Rust moves by cloning locals
 			// when we pass them by value.
-			if (!isByRef && isArrayType(argExpr.t) && isLocalExpr(argExpr) && !isObviousTemporaryExpr(argExpr)) {
-				compiled = ECall(EField(compiled, "clone"), []);
+				if (!isByRef && isArrayType(argExpr.t) && isLocalExpr(argExpr) && !isObviousTemporaryExpr(argExpr)) {
+					compiled = ECall(EField(compiled, "clone"), []);
+				}
+				if (!isByRef && isRcBackedType(argExpr.t) && isLocalExpr(argExpr) && !isObviousTemporaryExpr(argExpr)) {
+					compiled = ECall(EField(compiled, "clone"), []);
+				}
 			}
-			if (!isByRef && isHxRefValueType(argExpr.t) && isLocalExpr(argExpr) && !isObviousTemporaryExpr(argExpr)) {
-				compiled = ECall(EField(compiled, "clone"), []);
-			}
-		}
 
 		// Function values: coerce function items/paths into our function representation.
 		// Baseline representation is `std::rc::Rc<dyn Fn(...) -> ...>`.
@@ -4227,25 +4276,44 @@ enum RustProfile {
 				ECast(EBinary(">>", lhs, rhs), "i32");
 			}
 
-			case OpEq: {
-				// `Null<T>` compares to `null` should not require `T: PartialEq` (e.g. `Null<Fn>`).
-				if (isNullType(e1.t) && isNullConstExpr(e2)) {
-					ECall(EField(compileExpr(e1), "is_none"), []);
-				} else if (isNullType(e2.t) && isNullConstExpr(e1)) {
-					ECall(EField(compileExpr(e2), "is_none"), []);
-				} else {
-					EBinary("==", compileExpr(e1), compileExpr(e2));
+				case OpEq: {
+					// `Null<T>` compares to `null` should not require `T: PartialEq` (e.g. `Null<Fn>`).
+					if (isNullType(e1.t) && isNullConstExpr(e2)) {
+						ECall(EField(compileExpr(e1), "is_none"), []);
+					} else if (isNullType(e2.t) && isNullConstExpr(e1)) {
+						ECall(EField(compileExpr(e2), "is_none"), []);
+					} else {
+						var ft1 = followType(e1.t);
+						var ft2 = followType(e2.t);
+
+						// Haxe object/array equality is identity-based.
+						if (isArrayType(ft1) && isArrayType(ft2)) {
+							ECall(EField(compileExpr(e1), "ptr_eq"), [EUnary("&", compileExpr(e2))]);
+						} else if (isRcBackedType(ft1) && isRcBackedType(ft2)) {
+							ECall(EPath("std::rc::Rc::ptr_eq"), [EUnary("&", compileExpr(e1)), EUnary("&", compileExpr(e2))]);
+						} else {
+							EBinary("==", compileExpr(e1), compileExpr(e2));
+						}
+					}
 				}
-			}
-			case OpNotEq: {
-				if (isNullType(e1.t) && isNullConstExpr(e2)) {
-					ECall(EField(compileExpr(e1), "is_some"), []);
-				} else if (isNullType(e2.t) && isNullConstExpr(e1)) {
-					ECall(EField(compileExpr(e2), "is_some"), []);
-				} else {
-					EBinary("!=", compileExpr(e1), compileExpr(e2));
+				case OpNotEq: {
+					if (isNullType(e1.t) && isNullConstExpr(e2)) {
+						ECall(EField(compileExpr(e1), "is_some"), []);
+					} else if (isNullType(e2.t) && isNullConstExpr(e1)) {
+						ECall(EField(compileExpr(e2), "is_some"), []);
+					} else {
+						var ft1 = followType(e1.t);
+						var ft2 = followType(e2.t);
+
+						if (isArrayType(ft1) && isArrayType(ft2)) {
+							EUnary("!", ECall(EField(compileExpr(e1), "ptr_eq"), [EUnary("&", compileExpr(e2))]));
+						} else if (isRcBackedType(ft1) && isRcBackedType(ft2)) {
+							EUnary("!", ECall(EPath("std::rc::Rc::ptr_eq"), [EUnary("&", compileExpr(e1)), EUnary("&", compileExpr(e2))]));
+						} else {
+							EBinary("!=", compileExpr(e1), compileExpr(e2));
+						}
+					}
 				}
-			}
 			case OpLt: EBinary("<", compileExpr(e1), compileExpr(e2));
 			case OpLte: EBinary("<=", compileExpr(e1), compileExpr(e2));
 			case OpGt: EBinary(">", compileExpr(e1), compileExpr(e2));
@@ -4735,27 +4803,33 @@ enum RustProfile {
 		}
 	}
 
-	function isHxRefValueType(t: Type): Bool {
-		if (isBytesType(t)) return true;
-		var ft = followType(t);
-		return switch (ft) {
-			case TInst(clsRef, _): {
-				var cls = clsRef.get();
-				if (cls == null) return false;
-				// Arrays are represented as `hxrt::array::Array<T>`, not `HxRef<_>`.
-				if (cls.pack.length == 0 && cls.module == "Array" && cls.name == "Array") return false;
-				!cls.isExtern && !cls.isInterface;
+		function isHxRefValueType(t: Type): Bool {
+			if (isBytesType(t)) return true;
+			var ft = followType(t);
+			return switch (ft) {
+				case TInst(clsRef, _): {
+					var cls = clsRef.get();
+					if (cls == null) return false;
+					// Arrays are represented as `hxrt::array::Array<T>`, not `HxRef<_>`.
+					if (cls.pack.length == 0 && cls.module == "Array" && cls.name == "Array") return false;
+					!cls.isExtern && !cls.isInterface;
+				}
+				case _:
+					false;
 			}
-			case _:
-				false;
 		}
-	}
 
-	function isRustIterType(t: Type): Bool {
-		return switch (followType(t)) {
-			case TInst(clsRef, params): {
-				var cls = clsRef.get();
-				var isRealRustIter = false;
+		function isRcBackedType(t: Type): Bool {
+			// Concrete classes / Bytes are `HxRef<T>` (Rc-backed).
+			// Interfaces and polymorphic base classes are `Rc<dyn Trait>` (Rc-backed).
+			return isHxRefValueType(t) || isInterfaceType(t) || isPolymorphicClassType(t);
+		}
+
+		function isRustIterType(t: Type): Bool {
+			return switch (followType(t)) {
+				case TInst(clsRef, params): {
+					var cls = clsRef.get();
+					var isRealRustIter = false;
 				if (cls != null) {
 					for (m in cls.meta.get()) {
 						if (m.name != ":realPath" && m.name != "realPath") continue;

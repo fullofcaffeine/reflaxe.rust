@@ -30,13 +30,18 @@ In generated Rust:
 - common methods are implemented on the runtime type and called directly:
   - mutation: `push`, `pop`, `shift`, `unshift`, `insert`, `splice`, `reverse`
   - copies: `copy`, `slice`, `concat`
-  - search: `contains`, `remove`, `index_of`, `last_index_of`
+  - search:
+    - value semantics (requires `T: PartialEq`): `contains`, `remove`, `indexOf`, `lastIndexOf`
+    - object semantics (identity; no `PartialEq` required): `containsRef`, `removeRef`, `indexOfRef`, `lastIndexOfRef`
   - helpers: `sort`, `join`
 
 Some methods impose Rust trait bounds on `T`:
 
 - methods returning a new `Array<T>` generally require `T: Clone`
-- search methods require `T: PartialEq`
+- search methods:
+  - `contains/remove/indexOf/lastIndexOf` require `T: PartialEq`
+  - for object arrays (`Array<Foo>`, interfaces, polymorphic base classes), the compiler routes
+    calls to the `*Ref` variants which use `Rc` pointer identity instead
 - `resize` requires `T: Default` (for `Array<Null<T>>` this maps nicely to `None`)
 - `join` requires `T: ToString`
 
