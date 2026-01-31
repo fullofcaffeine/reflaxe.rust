@@ -18,17 +18,19 @@
 /// - `Error::to_haxe_string()` provides stable stringification for `trace` / `Std.string`.
 #[derive(Clone, Debug)]
 pub enum Error {
+    Blocked,
     OutsideBounds,
     Overflow,
-    Custom(String),
+    Custom(crate::dynamic::Dynamic),
 }
 
 impl Error {
     pub fn to_haxe_string(&self) -> String {
         match self {
+            Error::Blocked => String::from("Blocked"),
             Error::OutsideBounds => String::from("OutsideBounds"),
             Error::Overflow => String::from("Overflow"),
-            Error::Custom(s) => format!("Custom({})", s),
+            Error::Custom(e) => format!("Custom({})", e.to_haxe_string()),
         }
     }
 }
