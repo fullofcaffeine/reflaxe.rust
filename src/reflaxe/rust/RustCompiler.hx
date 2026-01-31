@@ -3318,7 +3318,9 @@ enum RustProfile {
 								return ECall(EPath("std::rc::Rc::new"), [ECall(EPath("std::cell::RefCell::new"), [inner])]);
 						}
 						case "ofString": {
-							if (args.length != 1) return unsupported(fullExpr, "Bytes.ofString args");
+							// Ignore optional encoding arg for now (must be null / omitted).
+							if (args.length != 1 && args.length != 2) return unsupported(fullExpr, "Bytes.ofString args");
+							if (args.length == 2 && !isNullConstExpr(args[1])) return unsupported(fullExpr, "Bytes.ofString encoding");
 							var s = args[0];
 							var asStr = ECall(EField(compileExpr(s), "as_str"), []);
 							var inner = ECall(EPath("hxrt::bytes::Bytes::of_string"), [asStr]);
@@ -3360,6 +3362,28 @@ enum RustProfile {
 							if (args.length != 2) return unsupported(fullExpr, "Bytes.set args");
 							var borrowed = ECall(EField(compileExpr(obj), "borrow_mut"), []);
 							return ECall(EField(borrowed, "set"), [compileExpr(args[0]), compileExpr(args[1])]);
+						}
+						case "blit": {
+							if (args.length != 4) return unsupported(fullExpr, "Bytes.blit args");
+							var dst = compileExpr(obj);
+							var src = compileExpr(args[1]);
+							var pos = compileExpr(args[0]);
+							var srcpos = compileExpr(args[2]);
+							var len = compileExpr(args[3]);
+							return ECall(EPath("hxrt::bytes::blit"), [EUnary("&", dst), pos, EUnary("&", src), srcpos, len]);
+						}
+						case "sub": {
+							if (args.length != 2) return unsupported(fullExpr, "Bytes.sub args");
+							var borrowed = ECall(EField(compileExpr(obj), "borrow"), []);
+							var inner = ECall(EField(borrowed, "sub"), [compileExpr(args[0]), compileExpr(args[1])]);
+							return ECall(EPath("std::rc::Rc::new"), [ECall(EPath("std::cell::RefCell::new"), [inner])]);
+						}
+						case "getString": {
+							// Ignore optional encoding arg for now (must be null / omitted).
+							if (args.length != 2 && args.length != 3) return unsupported(fullExpr, "Bytes.getString args");
+							if (args.length == 3 && !isNullConstExpr(args[2])) return unsupported(fullExpr, "Bytes.getString encoding");
+							var borrowed = ECall(EField(compileExpr(obj), "borrow"), []);
+							return ECall(EField(borrowed, "get_string"), [compileExpr(args[0]), compileExpr(args[1])]);
 						}
 						case "toString": {
 							if (args.length != 0) return unsupported(fullExpr, "Bytes.toString args");

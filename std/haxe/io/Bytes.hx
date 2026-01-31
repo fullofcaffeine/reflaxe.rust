@@ -23,6 +23,7 @@ package haxe.io;
  *   code continues to work:
  *   - `alloc`, `ofString` (constructors)
  *   - `get`, `set`, `length`, `toString`
+ *   - `blit`, `sub`, `getString`
  * - Those operations are lowered to direct calls/borrows on the runtime type, e.g.:
  *   - `bytes.get(i)` → `bytes.borrow().get(i)`
  *   - `bytes.set(i, v)` → `bytes.borrow_mut().set(i, v)`
@@ -33,7 +34,9 @@ package haxe.io;
  *   compatibility, but will currently fail compilation if used (until the runtime/compiler implement
  *   them).
  * - Bounds checks: the current runtime uses Rust indexing and may panic on out-of-bounds access.
- *   Before v1.0 we should align this with Haxe expectations (throwing a Haxe exception instead).
+ *   This target now throws a catchable Haxe exception payload (via `hxrt::exception`) instead of
+ *   panicking, but the exact thrown value is not yet guaranteed to match other targets’ `haxe.io.Error`
+ *   payloads. Prefer catching `Dynamic` for now.
  * - String encoding: `toString()` is backed by Rust’s UTF-8 conversion with replacement for invalid
  *   sequences (`from_utf8_lossy`). This matches common expectations for “bytes interpreted as UTF-8”,
  *   but is not identical to every Haxe target’s legacy encoding behavior.
