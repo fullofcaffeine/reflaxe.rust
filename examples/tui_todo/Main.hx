@@ -1,16 +1,14 @@
+#if tui_rusty
+import rust.Vec;
+import rust.VecTools;
+#end
 import rust.tui.Action;
 import rust.tui.Tui;
 import Harness;
 
 class Main {
 	static function main(): Void {
-		var tasks = [
-			new Task("bootstrap reflaxe.rust", true),
-			new Task("add enums + switch", false),
-			new Task("ship ratatui demo", false),
-			new Task("Yay!", true),
-			new Task("ship ratatui demo", false),
-		];
+		var tasks = buildTasks();
 
 		var selected = 0;
 		var running = true;
@@ -50,5 +48,28 @@ class Main {
 		}
 
 		Tui.exit();
+	}
+
+	static function buildTasks(): Array<Task> {
+		#if tui_rusty
+		var v = new Vec<Task>();
+		v.push(new Task("bootstrap reflaxe.rust", true));
+		v.push(new Task("add enums + switch", false));
+		v.push(new Task("ship ratatui demo", false));
+		v.push(new Task("Yay!", true));
+		v.push(new Task("ship ratatui demo", false));
+
+		// Convert once so the UI loop doesn't allocate/clone every frame.
+		// Elements are `HxRef<Task>` under the hood, so moving them through the Vec is fine.
+		return VecTools.toArray(v);
+		#else
+		return [
+			new Task("bootstrap reflaxe.rust", true),
+			new Task("add enums + switch", false),
+			new Task("ship ratatui demo", false),
+			new Task("Yay!", true),
+			new Task("ship ratatui demo", false),
+		];
+		#end
 	}
 }
