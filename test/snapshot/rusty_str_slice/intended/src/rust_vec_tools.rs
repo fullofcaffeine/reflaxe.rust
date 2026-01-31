@@ -15,11 +15,11 @@ impl VecTools {
         return hxrt::array::Array::<T>::from_vec(v);
     }
 
-    pub fn len<T>(v: Vec<T>) -> i32 {
+    pub fn len<T>(v: &Vec<T>) -> i32 {
         return v.len() as i32;
     }
 
-    pub fn get<T: Clone>(v: Vec<T>, index: i32) -> Option<T> {
+    pub fn get<T: Clone>(v: &Vec<T>, index: i32) -> Option<T> {
         return v.get(index as usize).cloned();
     }
 

@@ -18,7 +18,7 @@ class Main {
 		v.push(1);
 		v.push(2);
 
-		trace(VecTools.len(v.clone()));
+		trace(VecTools.len(v));
 
 		var last: Option<Int> = v.pop();
 		switch (last) {

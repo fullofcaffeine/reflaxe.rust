@@ -76,6 +76,10 @@ Rusty code should prefer Rust-native collections (extern wrappers) when the inte
 
 Portable `Array<T>` remains valid, but it is *not* the Rusty-first choice.
 
+Note:
+- Many helper APIs are borrow-first. For example, `rust.VecTools.len/get` take `rust.Ref<Vec<T>>`, so
+  calling `VecTools.len(v)` compiles to `VecTools::len(&v)` and does not move the `Vec`.
+
 ### Option / Result
 
 Rusty code should prefer explicit `Option<T>` / `Result<T, E>` surfaces:

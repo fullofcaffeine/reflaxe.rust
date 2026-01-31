@@ -26,7 +26,7 @@ fn main() {
     v.push(2);
     println!(
         "{}",
-        hxrt::dynamic::from(crate::rust_vec_tools::VecTools::len(v.clone()))
+        hxrt::dynamic::from(crate::rust_vec_tools::VecTools::len(&v))
     );
     let last: Option<i32> = v.pop();
     match last.clone() {
