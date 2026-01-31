@@ -1,3 +1,10 @@
+# [0.25.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.24.0...v0.25.0) (2026-01-31)
+
+
+### Features
+
+* **semantics:** identity equality + object array search ([85abc53](https://github.com/fullofcaffeine/reflaxe.rust/commit/85abc530e7cbfb1f9ad01cf628e882adcb21a098))
+
 # [0.24.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.23.0...v0.24.0) (2026-01-31)
 
 
