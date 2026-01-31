@@ -1,3 +1,10 @@
+# [0.32.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.31.0...v0.32.0) (2026-01-31)
+
+
+### Features
+
+* **bytes:** throw haxe.io.Error on bounds ([1416b76](https://github.com/fullofcaffeine/reflaxe.rust/commit/1416b76d61514fadc94ee51d5d8aa7bbed655c0d))
+
 # [0.31.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.30.0...v0.31.0) (2026-01-31)
 
 
