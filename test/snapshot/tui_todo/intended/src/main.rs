@@ -51,12 +51,9 @@ fn main() {
         let mut j: i32 = 0;
         while j < tasks.len() as i32 {
             lines = format!(
-                "{}{}",
-                format!(
-                    "{}{}",
-                    lines,
-                    crate::task::Task::line(&tasks.get_unchecked(j as usize), j == selected)
-                ),
+                "{}{}{}",
+                lines,
+                crate::task::Task::line(&tasks.get_unchecked(j as usize), j == selected),
                 String::from("\n")
             );
             j = j + 1;

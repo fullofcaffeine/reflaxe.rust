@@ -62,9 +62,7 @@ impl ResultTools {
                 let _g_2: String = __p;
                 {
                     let e: String = _g_2;
-                    Result::Err(
-                        format!("{}{}", format!("{}{}", prefix, String::from(": ")), e).clone(),
-                    )
+                    Result::Err(format!("{}{}{}", prefix, String::from(": "), e).clone())
                 }
             }
         };

@@ -62,14 +62,7 @@ fn main() {
     for kv in crate::haxe_ds_string_map::StringMap::key_value_iterator(&sm) {
         println!(
             "{}",
-            hxrt::dynamic::from(
-                format!(
-                    "{}{}",
-                    format!("{}{}", kv.key, String::from("=>")),
-                    kv.value
-                )
-                .clone()
-            )
+            hxrt::dynamic::from(format!("{}{}{}", kv.key, String::from("=>"), kv.value).clone())
         );
     }
     println!(
@@ -139,12 +132,7 @@ fn main() {
         println!(
             "{}",
             hxrt::dynamic::from(
-                format!(
-                    "{}{}",
-                    format!("{}{}", kv_2.key, String::from("=>")),
-                    kv_2.value
-                )
-                .clone()
+                format!("{}{}{}", kv_2.key, String::from("=>"), kv_2.value).clone()
             )
         );
     }
@@ -199,12 +187,9 @@ fn main() {
             "{}",
             hxrt::dynamic::from(
                 format!(
-                    "{}{}",
-                    format!(
-                        "{}{}",
-                        hxrt::dynamic::from(kv_3.key.clone()).to_haxe_string(),
-                        String::from("=>")
-                    ),
+                    "{}{}{}",
+                    hxrt::dynamic::from(kv_3.key.clone()).to_haxe_string(),
+                    String::from("=>"),
                     kv_3.value
                 )
                 .clone()
@@ -262,12 +247,9 @@ fn main() {
             "{}",
             hxrt::dynamic::from(
                 format!(
-                    "{}{}",
-                    format!(
-                        "{}{}",
-                        hxrt::dynamic::from(kv_4.key.clone()).to_haxe_string(),
-                        String::from("=>")
-                    ),
+                    "{}{}{}",
+                    hxrt::dynamic::from(kv_4.key.clone()).to_haxe_string(),
+                    String::from("=>"),
                     kv_4.value
                 )
                 .clone()

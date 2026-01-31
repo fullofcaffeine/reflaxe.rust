@@ -102,8 +102,9 @@ fn main() {
                     let e: String = _g_12;
                     Result::Err(
                         format!(
-                            "{}{}",
-                            format!("{}{}", String::from("computing value"), String::from(": ")),
+                            "{}{}{}",
+                            String::from("computing value"),
+                            String::from(": "),
                             e
                         )
                         .clone(),

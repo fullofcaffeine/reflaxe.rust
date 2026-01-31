@@ -17,8 +17,9 @@ impl Key {
 
     pub fn to_string(self_: &std::cell::RefCell<Key>) -> String {
         return format!(
-            "{}{}",
-            format!("{}{}", String::from("Key("), self_.borrow().id),
+            "{}{}{}",
+            String::from("Key("),
+            self_.borrow().id,
             String::from(")")
         );
     }
