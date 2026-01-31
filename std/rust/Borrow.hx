@@ -8,10 +8,34 @@ import haxe.macro.TypeTools;
 #end
 
 class Borrow {
+	/**
+	 * `Borrow.withRef(value, ref -> { ... })`
+	 *
+	 * Why:
+	 * - Rust APIs often want `&T` / `&mut T` borrows, but Haxe cannot express lifetimes.
+	 * - If users store `rust.Ref<T>` / `rust.MutRef<T>` in locals/fields “for later”, it’s easy to
+	 *   accidentally model an impossible lifetime and get confusing Rust borrow errors.
+	 *
+	 * What:
+	 * - These helpers create a short borrow “scope” in Haxe syntax: you pass a value and a callback,
+	 *   and inside the callback you get a `rust.Ref<T>` or `rust.MutRef<T>`.
+	 *
+	 * How:
+	 * - The macro expands the callback *inline* into a block:
+	 *   - `Borrow.withRef(v, r -> body)` becomes `{ var r: rust.Ref<T> = v; body; }`
+	 *   - `Borrow.withMut(v, r -> body)` becomes `{ var r: rust.MutRef<T> = v; body; }`
+	 * - The compiler recognizes `rust.Ref<T>` / `rust.MutRef<T>` as compile-time-only core types and
+	 *   prints them as Rust `&T` / `&mut T` at the usage sites.
+	 *
+	 * Important:
+	 * - Because the callback body is inlined, `return` inside it would become `return` from the caller.
+	 *   To prevent surprising control-flow, this macro strips `return` statements from the callback body.
+	 */
 	public static macro function withRef(value: haxe.macro.Expr, fn: haxe.macro.Expr): haxe.macro.Expr {
 		return expand(value, fn, false);
 	}
 
+	/** See `withRef`; this variant provides a mutable borrow (`rust.MutRef<T>` / `&mut T`). */
 	public static macro function withMut(value: haxe.macro.Expr, fn: haxe.macro.Expr): haxe.macro.Expr {
 		return expand(value, fn, true);
 	}

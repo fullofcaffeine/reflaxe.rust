@@ -28,6 +28,16 @@ package haxe.io;
  *   - `bytes.set(i, v)` → `bytes.borrow_mut().set(i, v)`
  *   - `bytes.toString()` → `bytes.borrow().to_string()`
  *
+ * Current limitations (as of the early v1 era):
+ * - Only the members listed above are compiler intrinsics today. Other methods are declared for API
+ *   compatibility, but will currently fail compilation if used (until the runtime/compiler implement
+ *   them).
+ * - Bounds checks: the current runtime uses Rust indexing and may panic on out-of-bounds access.
+ *   Before v1.0 we should align this with Haxe expectations (throwing a Haxe exception instead).
+ * - String encoding: `toString()` is backed by Rust’s UTF-8 conversion with replacement for invalid
+ *   sequences (`from_utf8_lossy`). This matches common expectations for “bytes interpreted as UTF-8”,
+ *   but is not identical to every Haxe target’s legacy encoding behavior.
+ *
  * Design notes / gotchas:
  * - The `extern` keyword is intentional: if we let the stock std `Bytes` inline into
  *   index operations, it would assume a representation that doesn’t exist for this target.

@@ -100,15 +100,12 @@ fn main() {
                 let _g_12: String = __p;
                 {
                     let e: String = _g_12;
-                    Result::Err(
-                        format!(
-                            "{}{}{}",
-                            String::from("computing value"),
-                            String::from(": "),
-                            e
-                        )
-                        .clone(),
-                    )
+                    Result::Err(format!(
+                        "{}{}{}",
+                        String::from("computing value"),
+                        String::from(": "),
+                        e
+                    ))
                 }
             }
         };
@@ -168,7 +165,7 @@ fn main() {
         Ok(__hx_ok) => __hx_ok,
         Err(__hx_ex) => {
             let e_2: hxrt::dynamic::Dynamic = __hx_ex;
-            Result::Err(e_2.to_haxe_string().clone())
+            Result::Err(e_2.to_haxe_string())
         }
     };
     match caught.clone() {
