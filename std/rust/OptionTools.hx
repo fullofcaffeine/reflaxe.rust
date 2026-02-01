@@ -63,6 +63,32 @@ class OptionTools {
 	}
 
 	/**
+	 * Rust-style `unwrap`: return the inner value or throw.
+	 *
+	 * Note:
+	 * - This throws a `String` on `None` (portable Haxe exception style).
+	 * - Prefer `unwrapOr(...)` / `unwrapOrElse(...)` for recoverable flows.
+	 */
+	@:rustGeneric("T: Clone")
+	public static inline function unwrap<T>(o: Option<T>): T {
+		return switch (o) {
+			case Some(v): v;
+			case None: throw "called Option.unwrap() on None";
+		}
+	}
+
+	/**
+	 * Rust-style `expect`: like `unwrap()`, but lets the caller provide an error message.
+	 */
+	@:rustGeneric("T: Clone")
+	public static inline function expect<T>(o: Option<T>, message: String): T {
+		return switch (o) {
+			case Some(v): v;
+			case None: throw message;
+		}
+	}
+
+	/**
 	 * Convert `Option<T>` into `Result<T, String>` (common Rust pattern: `ok_or("...")`).
 	 *
 	 * Note: `err` is a `String` so the backend preserves Haxe semantics by cloning at callsites.

@@ -1,8 +1,11 @@
+using rust.OptionTools;
+
 import rust.IterTools;
 import rust.Vec;
 import rust.VecTools;
 import rust.Option;
 import rust.Result;
+import rust.Borrow;
 
 class Main {
 	static function isEven(n: Int): Bool {
@@ -40,7 +43,13 @@ class Main {
 		v2.push(20);
 
 		var sum = 0;
-		for (x in IterTools.fromVec(v2)) sum = sum + x;
+		for (x in IterTools.fromVec(v2.clone())) sum = sum + x;
 		trace(sum);
+
+		// Borrow-first element access helpers.
+		Borrow.withRef(v2, vr -> {
+			var first = VecTools.getRef(vr, 0);
+			trace(first.isSome());
+		});
 	}
 }

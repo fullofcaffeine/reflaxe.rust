@@ -49,6 +49,53 @@ impl ResultTools {
         };
     }
 
+    pub fn unwrap<T: Clone, E: Clone + std::fmt::Debug>(r: Result<T, E>) -> T {
+        return match r.clone() {
+            Result::Ok(__p) => {
+                let _g: T = __p;
+                {
+                    let v: T = _g;
+                    v
+                }
+            }
+            Result::Err(__p) => {
+                let _g_2: E = __p;
+                {
+                    let e: E = _g_2;
+                    hxrt::exception::throw(hxrt::dynamic::from(format!(
+                        "{}{}",
+                        String::from("called Result.unwrap() on Err: "),
+                        format!("{:?}", e)
+                    )))
+                }
+            }
+        };
+    }
+
+    pub fn expect<T: Clone, E: Clone + std::fmt::Debug>(r: Result<T, E>, message: String) -> T {
+        return match r.clone() {
+            Result::Ok(__p) => {
+                let _g: T = __p;
+                {
+                    let v: T = _g;
+                    v
+                }
+            }
+            Result::Err(__p) => {
+                let _g_2: E = __p;
+                {
+                    let e: E = _g_2;
+                    hxrt::exception::throw(hxrt::dynamic::from(format!(
+                        "{}{}{}",
+                        message,
+                        String::from(": "),
+                        format!("{:?}", e)
+                    )))
+                }
+            }
+        };
+    }
+
     pub fn context<T: Clone>(r: Result<T, String>, prefix: String) -> Result<T, String> {
         return match r.clone() {
             Result::Ok(__p) => {

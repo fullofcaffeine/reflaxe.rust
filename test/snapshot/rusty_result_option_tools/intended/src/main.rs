@@ -48,58 +48,71 @@ fn main() {
             Option::None => 0,
         }
     };
+    let u1: i32 = match o.clone() {
+        Option::Some(__p) => {
+            let _g_5: i32 = __p;
+            {
+                let v_4: i32 = _g_5;
+                v_4
+            }
+        }
+        Option::None => {
+            hxrt::exception::throw(hxrt::dynamic::from(String::from("expected a value")))
+        }
+    };
+    println!("{}", hxrt::dynamic::from(u1));
     let r: Result<i32, String> = Result::Ok(n);
     let r2: Result<i32, String> = {
-        let _g_5: Result<i32, String> = match r.clone() {
+        let _g_6: Result<i32, String> = match r.clone() {
             Result::Ok(__p) => {
-                let _g_6: i32 = __p;
+                let _g_7: i32 = __p;
                 {
-                    let v_4: i32 = _g_6;
-                    Result::Ok(v_4 + 5)
+                    let v_5: i32 = _g_7;
+                    Result::Ok(v_5 + 5)
                 }
             }
             Result::Err(__p) => {
-                let _g_7: String = __p;
+                let _g_8: String = __p;
                 {
-                    let _e: String = _g_7;
+                    let _e: String = _g_8;
                     Result::Err(_e.clone())
                 }
             }
         };
-        match _g_5.clone() {
+        match _g_6.clone() {
             Result::Ok(__p) => {
-                let _g_8: i32 = __p;
+                let _g_9: i32 = __p;
                 {
-                    let v_5: i32 = _g_8;
-                    if v_5 > 100 {
+                    let v_6: i32 = _g_9;
+                    if v_6 > 100 {
                         Result::Err(String::from("too big"))
                     } else {
-                        Result::Ok(v_5)
+                        Result::Ok(v_6)
                     }
                 }
             }
             Result::Err(__p) => {
-                let _g_9: String = __p;
+                let _g_10: String = __p;
                 {
-                    let _e_2: String = _g_9;
+                    let _e_2: String = _g_10;
                     Result::Err(_e_2.clone())
                 }
             }
         }
     };
     let msg: i32 = {
-        let _g_10: Result<i32, String> = match r2.clone() {
+        let _g_11: Result<i32, String> = match r2.clone() {
             Result::Ok(__p) => {
-                let _g_11: i32 = __p;
+                let _g_12: i32 = __p;
                 {
-                    let v_6: i32 = _g_11;
-                    Result::Ok(v_6)
+                    let v_7: i32 = _g_12;
+                    Result::Ok(v_7)
                 }
             }
             Result::Err(__p) => {
-                let _g_12: String = __p;
+                let _g_13: String = __p;
                 {
-                    let e: String = _g_12;
+                    let e: String = _g_13;
                     Result::Err(format!(
                         "{}{}{}",
                         String::from("computing value"),
@@ -109,31 +122,55 @@ fn main() {
                 }
             }
         };
-        match _g_10.clone() {
+        match _g_11.clone() {
             Result::Ok(__p) => {
-                let _g_13: i32 = __p;
+                let _g_14: i32 = __p;
                 {
-                    let v_7: i32 = _g_13;
-                    v_7
+                    let v_8: i32 = _g_14;
+                    v_8
                 }
             }
             Result::Err(__p) => {
-                let _g_14: String = __p;
+                let _g_15: String = __p;
                 {
-                    let _e_3: String = _g_14;
+                    let _e_3: String = _g_15;
                     -1
                 }
             }
         }
     };
     println!("{}", hxrt::dynamic::from(msg));
+    let rr: Result<i32, String> = Result::Ok(123);
+    println!(
+        "{}",
+        hxrt::dynamic::from(match rr.clone() {
+            Result::Ok(__p) => {
+                let _g_16: i32 = __p;
+                {
+                    let v_9: i32 = _g_16;
+                    v_9
+                }
+            }
+            Result::Err(__p) => {
+                let _g_17: String = __p;
+                {
+                    let e_2: String = _g_17;
+                    hxrt::exception::throw(hxrt::dynamic::from(format!(
+                        "{}{}",
+                        String::from("called Result.unwrap() on Err: "),
+                        e_2.clone()
+                    )))
+                }
+            }
+        })
+    );
     let o2: Option<i32> = Option::None;
     let r3: Result<i32, String> = match o2.clone() {
         Option::Some(__p) => {
-            let _g_15: i32 = __p;
+            let _g_18: i32 = __p;
             {
-                let v_8: i32 = _g_15;
-                Result::Ok(v_8)
+                let v_10: i32 = _g_18;
+                Result::Ok(v_10)
             }
         }
         Option::None => Result::Err(String::from("missing")),
@@ -143,11 +180,11 @@ fn main() {
         hxrt::dynamic::from(
             !(match r3.clone() {
                 Result::Ok(__p) => {
-                    let _g_16: i32 = __p;
+                    let _g_19: i32 = __p;
                     true
                 }
                 Result::Err(__p) => {
-                    let _g_17: String = __p;
+                    let _g_20: String = __p;
                     false
                 }
             })
@@ -164,23 +201,23 @@ fn main() {
     }) {
         Ok(__hx_ok) => __hx_ok,
         Err(__hx_ex) => {
-            let e_2: hxrt::dynamic::Dynamic = __hx_ex;
-            Result::Err(e_2.to_haxe_string())
+            let e_3: hxrt::dynamic::Dynamic = __hx_ex;
+            Result::Err(e_3.to_haxe_string())
         }
     };
     match caught.clone() {
         Result::Ok(__p) => {
-            let _g_18: i32 = __p;
+            let _g_21: i32 = __p;
             {
-                let v_9: i32 = _g_18;
-                println!("{}", hxrt::dynamic::from(v_9));
+                let v_11: i32 = _g_21;
+                println!("{}", hxrt::dynamic::from(v_11));
             }
         }
         Result::Err(__p) => {
-            let _g_19: String = __p;
+            let _g_22: String = __p;
             {
-                let e_3: String = _g_19;
-                println!("{}", hxrt::dynamic::from(e_3.clone()));
+                let e_4: String = _g_22;
+                println!("{}", hxrt::dynamic::from(e_4.clone()));
             }
         }
     }

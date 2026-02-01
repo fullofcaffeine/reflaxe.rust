@@ -63,6 +63,32 @@ class ResultTools {
 	}
 
 	/**
+	 * Rust-style `unwrap`: return the success value or throw.
+	 *
+	 * Note:
+	 * - This throws a `String` on `Err` using `Std.string(error)` (portable Haxe exception style).
+	 * - Prefer `unwrapOr(...)` / `unwrapOrElse(...)` for recoverable flows.
+	 */
+	@:rustGeneric("T: Clone, E: Clone + std::fmt::Debug")
+	public static inline function unwrap<T, E>(r: Result<T, E>): T {
+		return switch (r) {
+			case Ok(v): v;
+			case Err(e): throw "called Result.unwrap() on Err: " + Std.string(e);
+		}
+	}
+
+	/**
+	 * Rust-style `expect`: like `unwrap()`, but lets the caller provide an error message.
+	 */
+	@:rustGeneric("T: Clone, E: Clone + std::fmt::Debug")
+	public static inline function expect<T, E>(r: Result<T, E>, message: String): T {
+		return switch (r) {
+			case Ok(v): v;
+			case Err(e): throw message + ": " + Std.string(e);
+		}
+	}
+
+	/**
 	 * Add string context to a `Result<T, String>` error (common Rust pattern: `map_err` / `context`).
 	 *
 	 * Example: `r.context(\"reading config\")` yields `Err(\"reading config: <e>\")`.

@@ -12,6 +12,10 @@ class Main {
 			.andThen(function(v: Int): Option<Int> return (v > 0 ? Some(v * 2) : None))
 			.unwrapOr(0);
 
+		// Unwrap helpers (Rust-style).
+		var u1 = o.expect("expected a value");
+		trace(u1);
+
 		var r: Result<Int, String> = Ok(n);
 		var r2 = r
 			.mapOk(function(v: Int): Int return v + 5)
@@ -21,6 +25,9 @@ class Main {
 			.context("computing value")
 			.unwrapOrElse(function(_e: String): Int return -1);
 		trace(msg);
+
+		var rr: Result<Int, String> = Ok(123);
+		trace(rr.unwrap());
 
 		var o2: Option<Int> = None;
 		var r3 = o2.okOrElse(function(): String return "missing");

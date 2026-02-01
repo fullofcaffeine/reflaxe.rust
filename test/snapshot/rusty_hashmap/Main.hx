@@ -9,6 +9,11 @@ class Main {
 		m.insert("a", 1);
 		m.insert("b", 2);
 
+		// Borrow-first mutation (avoid moving the map).
+		Borrow.withMut(m, mm -> {
+			HashMapTools.remove(mm, "a");
+		});
+
 		var key = "b";
 		Borrow.withRef(key, k -> {
 			var v = m.get(k);
