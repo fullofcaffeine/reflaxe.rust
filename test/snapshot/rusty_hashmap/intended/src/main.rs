@@ -13,6 +13,10 @@ fn main() {
         std::collections::HashMap::<String, i32>::new();
     m.insert(String::from("a"), 1);
     m.insert(String::from("b"), 2);
+    {
+        let mm: &mut std::collections::HashMap<String, i32> = &mut m;
+        crate::rust_hash_map_tools::HashMapTools::remove(mm, &String::from("a"));
+    }
     let key: String = String::from("b");
     {
         let k: &String = &key;

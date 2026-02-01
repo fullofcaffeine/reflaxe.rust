@@ -4,7 +4,9 @@
 
 type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
 
+mod rust_borrow;
 mod rust_iter_tools;
+mod rust_option_tools;
 mod rust_vec_tools;
 mod sys;
 
@@ -64,8 +66,24 @@ fn main() {
     v2.push(10);
     v2.push(20);
     let mut sum: i32 = 0;
-    for x_3 in crate::rust_iter_tools::IterTools::from_vec(v2).into_iter() {
+    for x_3 in crate::rust_iter_tools::IterTools::from_vec(v2.clone()).into_iter() {
         sum = sum + x_3;
     }
     println!("{}", hxrt::dynamic::from(sum));
+    {
+        let vr: &Vec<i32> = &v2;
+        {
+            let first: Option<&i32> = crate::rust_vec_tools::VecTools::get_ref(vr, 0);
+            println!(
+                "{}",
+                hxrt::dynamic::from(match first.clone() {
+                    Option::Some(__p) => {
+                        let _g_5: &i32 = __p;
+                        true
+                    }
+                    Option::None => false,
+                })
+            );
+        }
+    }
 }
