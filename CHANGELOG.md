@@ -1,3 +1,10 @@
+# [0.34.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.33.0...v0.34.0) (2026-02-01)
+
+
+### Features
+
+* **rusty:** add Option/Result unwrap+expect helpers ([5d59582](https://github.com/fullofcaffeine/reflaxe.rust/commit/5d595820e8658cb2f0dfac3764f1584b7ff30136))
+
 # [0.33.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.32.1...v0.33.0) (2026-02-01)
 
 
