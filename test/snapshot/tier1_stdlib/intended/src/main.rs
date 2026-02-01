@@ -5,6 +5,7 @@
 type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
 
 mod foo;
+mod haxe_io_encoding;
 mod my_enum;
 mod sys;
 
