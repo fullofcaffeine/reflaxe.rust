@@ -1,3 +1,10 @@
+# [0.33.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.32.1...v0.33.0) (2026-02-01)
+
+
+### Features
+
+* **std:** add BytesBuffer + Encoding + FPHelper ([7c924d9](https://github.com/fullofcaffeine/reflaxe.rust/commit/7c924d96a479c099717b488d3ac8eed1dbfe8249))
+
 ## [0.32.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.32.0...v0.32.1) (2026-01-31)
 
 
