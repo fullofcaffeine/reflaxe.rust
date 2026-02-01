@@ -792,6 +792,60 @@ enum RustProfile {
 		return "__hx_set_" + rustFieldName(classType, cf);
 	}
 
+	function isAccessorForPublicPropertyInstance(classType: ClassType, accessorField: ClassField): Bool {
+		var name = accessorField.getHaxeName();
+		if (name == null) return false;
+		var fields = classType.fields != null ? classType.fields.get() : null;
+		if (fields == null) return false;
+
+			inline function propUsesAccessor(prop: ClassField, kind: String): Bool {
+				if (!prop.isPublic) return false;
+				return switch (prop.kind) {
+					case FVar(read, write):
+						(kind == "get" && read == AccCall) || (kind == "set" && write == AccCall);
+					case _:
+						false;
+				}
+			}
+
+		if (StringTools.startsWith(name, "get_")) {
+			var propName = name.substr(4);
+			for (cf in fields) if (cf.getHaxeName() == propName) return propUsesAccessor(cf, "get");
+		}
+		if (StringTools.startsWith(name, "set_")) {
+			var propName = name.substr(4);
+			for (cf in fields) if (cf.getHaxeName() == propName) return propUsesAccessor(cf, "set");
+		}
+		return false;
+	}
+
+	function isAccessorForPublicPropertyStatic(classType: ClassType, accessorField: ClassField): Bool {
+		var name = accessorField.getHaxeName();
+		if (name == null) return false;
+		var fields = classType.statics != null ? classType.statics.get() : null;
+		if (fields == null) return false;
+
+			inline function propUsesAccessor(prop: ClassField, kind: String): Bool {
+				if (!prop.isPublic) return false;
+				return switch (prop.kind) {
+					case FVar(read, write):
+						(kind == "get" && read == AccCall) || (kind == "set" && write == AccCall);
+					case _:
+						false;
+				}
+			}
+
+		if (StringTools.startsWith(name, "get_")) {
+			var propName = name.substr(4);
+			for (cf in fields) if (cf.getHaxeName() == propName) return propUsesAccessor(cf, "get");
+		}
+		if (StringTools.startsWith(name, "set_")) {
+			var propName = name.substr(4);
+			for (cf in fields) if (cf.getHaxeName() == propName) return propUsesAccessor(cf, "set");
+		}
+		return false;
+	}
+
 	function resolveToAbsolutePath(p: String): String {
 		var full = p;
 		if (!Path.isAbsolute(full)) {
@@ -1146,7 +1200,9 @@ enum RustProfile {
 
 			return {
 				name: rustMethodName(classType, f.field),
-				isPub: f.field.isPublic,
+				// Haxe allows `public var x(get, never)` while keeping `get_x()` itself private.
+				// Rust module privacy is stricter, so make accessors public when the property is public.
+				isPub: f.field.isPublic || isAccessorForPublicPropertyInstance(classType, f.field),
 			generics: generics,
 			args: args,
 			ret: rustReturnTypeForField(f.field, f.ret, f.field.pos),
@@ -1170,7 +1226,7 @@ enum RustProfile {
 
 			return {
 				name: rustMethodName(classType, f.field),
-				isPub: f.field.isPublic,
+				isPub: f.field.isPublic || isAccessorForPublicPropertyStatic(classType, f.field),
 			generics: generics,
 			args: args,
 			ret: rustReturnTypeForField(f.field, f.ret, f.field.pos),
@@ -3322,8 +3378,17 @@ enum RustProfile {
 						case "ofString": {
 							// Ignore optional encoding arg for now (must be null / omitted).
 							if (args.length != 1 && args.length != 2) return unsupported(fullExpr, "Bytes.ofString args");
-							if (args.length == 2 && !isNullConstExpr(args[1])) return unsupported(fullExpr, "Bytes.ofString encoding");
 							var s = args[0];
+							// Preserve evaluation order/side-effects for the encoding expression (even though we
+							// currently treat encodings the same at runtime).
+							if (args.length == 2) {
+								var enc = compileExpr(args[1]);
+								// `{ let _ = enc; Rc::new(RefCell::new(Bytes::of_string(...))) }`
+								var asStr = ECall(EField(compileExpr(s), "as_str"), []);
+								var inner = ECall(EPath("hxrt::bytes::Bytes::of_string"), [asStr]);
+								var wrapped = ECall(EPath("std::rc::Rc::new"), [ECall(EPath("std::cell::RefCell::new"), [inner])]);
+								return EBlock({ stmts: [RLet("_", false, null, enc)], tail: wrapped });
+							}
 							var asStr = ECall(EField(compileExpr(s), "as_str"), []);
 							var inner = ECall(EPath("hxrt::bytes::Bytes::of_string"), [asStr]);
 								return ECall(EPath("std::rc::Rc::new"), [ECall(EPath("std::cell::RefCell::new"), [inner])]);
@@ -3383,9 +3448,13 @@ enum RustProfile {
 						case "getString": {
 							// Ignore optional encoding arg for now (must be null / omitted).
 							if (args.length != 2 && args.length != 3) return unsupported(fullExpr, "Bytes.getString args");
-							if (args.length == 3 && !isNullConstExpr(args[2])) return unsupported(fullExpr, "Bytes.getString encoding");
 							var borrowed = ECall(EField(compileExpr(obj), "borrow"), []);
-							return ECall(EField(borrowed, "get_string"), [compileExpr(args[0]), compileExpr(args[1])]);
+							var call = ECall(EField(borrowed, "get_string"), [compileExpr(args[0]), compileExpr(args[1])]);
+							if (args.length == 3) {
+								var enc = compileExpr(args[2]);
+								return EBlock({ stmts: [RLet("_", false, null, enc)], tail: call });
+							}
+							return call;
 						}
 						case "toString": {
 							if (args.length != 0) return unsupported(fullExpr, "Bytes.toString args");

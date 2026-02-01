@@ -4,6 +4,7 @@
 
 type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
 
+mod haxe_io_encoding;
 mod sys;
 mod sys_file_system;
 mod sys_io_file;
