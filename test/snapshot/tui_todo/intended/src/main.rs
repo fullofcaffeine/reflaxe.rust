@@ -52,9 +52,9 @@ fn main() {
         while j < tasks.len() as i32 {
             lines = format!(
                 "{}{}{}",
-                lines,
+                &lines,
                 crate::task::Task::line(&tasks.get_unchecked(j as usize), j == selected),
-                String::from("\n")
+                "\n"
             );
             j = j + 1;
         }

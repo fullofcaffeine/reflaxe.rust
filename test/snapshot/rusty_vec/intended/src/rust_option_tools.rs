@@ -77,7 +77,7 @@ impl OptionTools {
                     Result::Ok(v.clone())
                 }
             }
-            Option::None => Result::Err(err.clone()),
+            Option::None => Result::Err(err),
         };
     }
 }

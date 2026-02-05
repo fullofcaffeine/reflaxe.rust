@@ -3650,6 +3650,26 @@ enum RustProfile {
 			}
 		}
 
+		function localReadCount(e: TypedExpr): Null<Int> {
+			var u = unwrapMetaParen(e);
+			while (true) {
+				switch (u.expr) {
+					case TCast(inner, _):
+						u = unwrapMetaParen(inner);
+						continue;
+					case _:
+				}
+				break;
+			}
+
+			return switch (u.expr) {
+				case TLocal(v):
+					if (v != null && currentLocalReadCounts != null && currentLocalReadCounts.exists(v.id)) currentLocalReadCounts.get(v.id) else null;
+				case _:
+					null;
+			}
+		}
+
 		// `Null<T>` (Option<T>) parameters accept either `null` (`None`) or a plain `T` (wrapped into `Some`).
 		var nullInner = nullInnerType(paramType);
 		if (nullInner != null) {
@@ -3672,11 +3692,13 @@ enum RustProfile {
 			compiled = ECall(EPath("hxrt::dynamic::from"), [compiled]);
 		} else if (isStringType(paramType)) {
 			// Haxe Strings are immutable and commonly re-used after calls; avoid Rust moves by cloning
-			// when the argument is an existing local.
+			// when the argument is an existing local that is used more than once.
 			//
 			// For non-local expressions (calls, concatenations, constructors, etc.), the expression
 			// typically produces a fresh String value, so cloning it is redundant noise.
-			if (isLocalExpr(argExpr) && !isStringLiteralExpr(argExpr) && !isCloneExpr(compiled)) {
+			var reads = localReadCount(argExpr);
+			var shouldClone = reads == null ? true : (reads > 1);
+			if (shouldClone && isLocalExpr(argExpr) && !isStringLiteralExpr(argExpr) && !isCloneExpr(compiled)) {
 				compiled = ECall(EField(compiled, "clone"), []);
 			}
 			} else {
@@ -4405,7 +4427,7 @@ enum RustProfile {
 						}
 				}
 
-				case OpAdd:
+			case OpAdd:
 					var ft = followType(fullExpr.t);
 					if (isStringType(ft) || isStringType(followType(e1.t)) || isStringType(followType(e2.t))) {
 						// String concatenation via a single `format!` call.
@@ -4430,11 +4452,55 @@ enum RustProfile {
 						var parts: Array<TypedExpr> = [];
 						collectParts(fullExpr, parts);
 
+						// Prefer borrowing `String`-typed values as `&String` inside `format!` to avoid
+						// intermediate `String::clone()` allocations when all we need is to format into a
+						// new output string.
+						//
+						// Additionally, emit string literals as `&'static str` (no `String::from`) inside
+						// `format!` args to reduce heap allocation noise.
+						function formatArg(p: TypedExpr): RustExpr {
+							if (!isStringType(followType(p.t))) return compileExpr(p);
+
+							var u = unwrapMetaParen(p);
+							switch (u.expr) {
+								case TConst(TString(s)):
+									return ELitString(s);
+								case TLocal(_):
+									return EUnary("&", compileExpr(p));
+								case TField(obj, FInstance(clsRef, _, cfRef)): {
+									var owner = clsRef.get();
+									var cf = cfRef.get();
+									if (cf != null) {
+										switch (cf.kind) {
+											case FMethod(_):
+												// fall through
+											case _:
+												// Polymorphic field reads go through getters which return owned values.
+												// Borrowing those would create references to temporaries, so keep the
+												// portable clone behavior here.
+												if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+													return compileExpr(p);
+												}
+												// Special-cased property-like fields (Bytes/Array length) are not `String`.
+												// For plain instance `String` fields, borrow directly.
+												var recv = compileExpr(obj);
+												var borrowed = ECall(EField(recv, "borrow"), []);
+												var access = EField(borrowed, rustFieldName(owner, cf));
+												return EUnary("&", access);
+										}
+									}
+								}
+								case _:
+							}
+
+							return compileExpr(p);
+						}
+
 						var fmt = "";
 						for (_ in 0...parts.length) fmt += "{}";
 
 						var args: Array<RustExpr> = [ELitString(fmt)];
-						for (p in parts) args.push(compileExpr(p));
+						for (p in parts) args.push(formatArg(p));
 						EMacroCall("format", args);
 					} else {
 						EBinary("+", compileExpr(e1), compileExpr(e2));

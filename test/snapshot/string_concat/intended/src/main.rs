@@ -7,6 +7,6 @@ type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
 mod sys;
 
 fn main() {
-    let s: String = format!("{}{}", String::from("a"), String::from("b"));
+    let s: String = format!("{}{}", "a", "b");
     println!("{}", hxrt::dynamic::from(s.clone()));
 }

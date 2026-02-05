@@ -38,13 +38,6 @@ impl Task {
         } else {
             String::from(" ")
         };
-        return format!(
-            "{}{}{}{}{}",
-            sel,
-            String::from("["),
-            mark,
-            String::from("] "),
-            self_.borrow().text.clone()
-        );
+        return format!("{}{}{}{}{}", &sel, "[", &mark, "] ", &self_.borrow().text);
     }
 }
