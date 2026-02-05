@@ -1,6 +1,6 @@
 # reflaxe.rust
 
-[![Version](https://img.shields.io/badge/version-0.36.0-blue)](https://github.com/fullofcaffeine/reflaxe.rust/releases)
+[![Version](https://img.shields.io/badge/version-0.37.0-blue)](https://github.com/fullofcaffeine/reflaxe.rust/releases)
 
 ## Build a native binary
 
