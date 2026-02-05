@@ -1,3 +1,10 @@
+# [0.38.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.37.0...v0.38.0) (2026-02-05)
+
+
+### Features
+
+* support field compound assignment ([20f69d0](https://github.com/fullofcaffeine/reflaxe.rust/commit/20f69d0a630c7272ac983867a5c56100e4c32a19))
+
 # [0.37.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.36.0...v0.37.0) (2026-02-05)
 
 
