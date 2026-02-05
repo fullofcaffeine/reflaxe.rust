@@ -1,3 +1,10 @@
+# [0.35.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.34.1...v0.35.0) (2026-02-05)
+
+
+### Features
+
+* improve idiomatic String borrowing ([47ea9f6](https://github.com/fullofcaffeine/reflaxe.rust/commit/47ea9f6289c31663df7a4ad1b5b690a979047513))
+
 ## [0.34.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.34.0...v0.34.1) (2026-02-05)
 
 
