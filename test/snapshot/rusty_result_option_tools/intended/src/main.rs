@@ -75,7 +75,7 @@ fn main() {
                 let _g_8: String = __p;
                 {
                     let _e: String = _g_8;
-                    Result::Err(_e.clone())
+                    Result::Err(_e)
                 }
             }
         };
@@ -95,7 +95,7 @@ fn main() {
                 let _g_10: String = __p;
                 {
                     let _e_2: String = _g_10;
-                    Result::Err(_e_2.clone())
+                    Result::Err(_e_2)
                 }
             }
         }
@@ -113,12 +113,7 @@ fn main() {
                 let _g_13: String = __p;
                 {
                     let e: String = _g_13;
-                    Result::Err(format!(
-                        "{}{}{}",
-                        String::from("computing value"),
-                        String::from(": "),
-                        e
-                    ))
+                    Result::Err(format!("{}{}{}", "computing value", ": ", &e))
                 }
             }
         };
@@ -157,7 +152,7 @@ fn main() {
                     let e_2: String = _g_17;
                     hxrt::exception::throw(hxrt::dynamic::from(format!(
                         "{}{}",
-                        String::from("called Result.unwrap() on Err: "),
+                        "called Result.unwrap() on Err: ",
                         e_2.clone()
                     )))
                 }

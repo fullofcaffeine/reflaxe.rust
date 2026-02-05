@@ -64,7 +64,7 @@ impl ResultTools {
                     let e: E = _g_2;
                     hxrt::exception::throw(hxrt::dynamic::from(format!(
                         "{}{}",
-                        String::from("called Result.unwrap() on Err: "),
+                        "called Result.unwrap() on Err: ",
                         format!("{:?}", e)
                     )))
                 }
@@ -87,8 +87,8 @@ impl ResultTools {
                     let e: E = _g_2;
                     hxrt::exception::throw(hxrt::dynamic::from(format!(
                         "{}{}{}",
-                        message,
-                        String::from(": "),
+                        &message,
+                        ": ",
                         format!("{:?}", e)
                     )))
                 }
@@ -109,7 +109,7 @@ impl ResultTools {
                 let _g_2: String = __p;
                 {
                     let e: String = _g_2;
-                    Result::Err(format!("{}{}{}", prefix, String::from(": "), e))
+                    Result::Err(format!("{}{}{}", &prefix, ": ", &e))
                 }
             }
         };

@@ -19,8 +19,7 @@ fn main() {
         crate::rust_path_buf_tools::PathBufTools::push(&base, String::from("nested"));
     let child_str: String = crate::rust_path_buf_tools::PathBufTools::to_string_lossy(&child);
     let pushed_name: Option<String> = crate::rust_path_buf_tools::PathBufTools::file_name(&pushed);
-    let os: std::ffi::OsString =
-        crate::rust_os_string_tools::OsStringTools::from_string(child_str.clone());
+    let os: std::ffi::OsString = crate::rust_os_string_tools::OsStringTools::from_string(child_str);
     let os_lossy: String = crate::rust_os_string_tools::OsStringTools::to_string_lossy(&os);
     let started: std::time::Instant = crate::rust_instant_tools::InstantTools::now();
     let d: std::time::Duration = crate::rust_duration_tools::DurationTools::from_millis(25);

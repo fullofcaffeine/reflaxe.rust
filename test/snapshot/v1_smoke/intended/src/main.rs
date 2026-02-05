@@ -27,7 +27,7 @@ fn main() {
             let _g: i32 = __p;
             {
                 let i: i32 = _g;
-                format!("{}{}", String::from("B:"), i)
+                format!("{}{}", "B:", i)
             }
         }
     };

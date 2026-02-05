@@ -14,7 +14,7 @@ fn main() {
             let _g: i32 = __p;
             {
                 let d: i32 = _g;
-                format!("{}{}", String::from("move:"), d)
+                format!("{}{}", "move:", d)
             }
         }
         crate::action::Action::Toggle => String::from("toggle"),
