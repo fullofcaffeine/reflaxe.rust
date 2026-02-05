@@ -24,7 +24,7 @@ class Counter {
 	}
 
 	public function add(x:Int):Int {
-		n = n + x;
+		n += x;
 		return n;
 	}
 

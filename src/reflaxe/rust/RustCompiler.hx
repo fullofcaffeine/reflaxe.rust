@@ -4686,6 +4686,52 @@ enum RustProfile {
 							tail: lhs
 						});
 					}
+					case TField(obj, FInstance(clsRef, _, cfRef)): {
+						// Compound assignment on a concrete instance field: `obj.field <op>= rhs`.
+						//
+						// Like field ++/--, we must avoid overlapping `RefCell` borrows:
+						// evaluate rhs first -> read via borrow() -> write via borrow_mut().
+						var owner = clsRef.get();
+						var cf = cfRef.get();
+						switch (cf.kind) {
+							case FVar(_, _): {
+								if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+									return unsupported(fullExpr, "assignop field lvalue (polymorphic)");
+								}
+								if (!isCopyType(e1.t)) {
+									return unsupported(fullExpr, "assignop field lvalue (non-copy)");
+								}
+
+								var recvName = "__hx_obj";
+								var recvExpr: RustExpr = isThisExpr(obj) ? EPath("self_") : EPath(recvName);
+
+								var fieldName = rustFieldName(owner, cf);
+								var rhsName = "__rhs";
+								var tmpName = "__tmp";
+
+								var stmts: Array<RustStmt> = [];
+								if (!isThisExpr(obj)) {
+									// Evaluate receiver once and keep it alive across borrows.
+									var base = compileExpr(obj);
+									stmts.push(RLet(recvName, false, null, ECall(EField(base, "clone"), [])));
+								}
+
+								// Evaluate rhs before taking a mutable borrow of the receiver.
+								stmts.push(RLet(rhsName, false, null, compileExpr(e2)));
+
+								var read = EField(ECall(EField(recvExpr, "borrow"), []), fieldName);
+								var rhs = EPath(rhsName);
+								stmts.push(RLet(tmpName, false, null, EBinary(opStr, read, rhs)));
+
+								var write = EField(ECall(EField(recvExpr, "borrow_mut"), []), fieldName);
+								stmts.push(RSemi(EAssign(write, EPath(tmpName))));
+
+								EBlock({ stmts: stmts, tail: EPath(tmpName) });
+							}
+							case _:
+								unsupported(fullExpr, "assignop field lvalue");
+						}
+					}
 					case _:
 						unsupported(fullExpr, "assignop lvalue");
 				}
