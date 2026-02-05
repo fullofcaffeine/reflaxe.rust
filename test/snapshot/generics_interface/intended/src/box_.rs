@@ -11,7 +11,7 @@ pub struct Box<T: Clone> {
 impl<T: Clone> Box<T> {
     pub fn new(value: T) -> crate::HxRef<crate::box_::Box<T>> {
         let self_: crate::HxRef<crate::box_::Box<T>> =
-            std::rc::Rc::new(std::cell::RefCell::new(Box { value: (value) }));
+            std::rc::Rc::new(std::cell::RefCell::new(Box { value: value }));
         return self_;
     }
 

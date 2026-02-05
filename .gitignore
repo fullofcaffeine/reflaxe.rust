@@ -27,3 +27,6 @@ dist/
 # Haxe dumps (debugging)
 dump/
 **/dump/
+
+# Repomix bundles (local analysis artifacts)
+repomix-output*.xml

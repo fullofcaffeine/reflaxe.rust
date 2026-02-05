@@ -11,7 +11,7 @@ pub struct Key {
 impl Key {
     pub fn new(id: i32) -> crate::HxRef<crate::key::Key> {
         let self_: crate::HxRef<crate::key::Key> =
-            std::rc::Rc::new(std::cell::RefCell::new(Key { id: (id) }));
+            std::rc::Rc::new(std::cell::RefCell::new(Key { id: id }));
         return self_;
     }
 

@@ -11,7 +11,7 @@ pub struct Foo {
 impl Foo {
     pub fn new(x: i32) -> crate::HxRef<crate::foo::Foo> {
         let self_: crate::HxRef<crate::foo::Foo> =
-            std::rc::Rc::new(std::cell::RefCell::new(Foo { x: (x) }));
+            std::rc::Rc::new(std::cell::RefCell::new(Foo { x: x }));
         return self_;
     }
 }
