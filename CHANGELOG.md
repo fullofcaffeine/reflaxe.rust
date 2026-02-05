@@ -1,3 +1,10 @@
+## [0.34.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.34.0...v0.34.1) (2026-02-05)
+
+
+### Bug Fixes
+
+* **codegen:** reduce redundant parentheses ([05c3659](https://github.com/fullofcaffeine/reflaxe.rust/commit/05c3659cc05a762c6912146bf680ab65eb700c48))
+
 # [0.34.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.33.0...v0.34.0) (2026-02-01)
 
 
