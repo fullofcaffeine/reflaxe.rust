@@ -1,3 +1,10 @@
+# [0.37.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.36.0...v0.37.0) (2026-02-05)
+
+
+### Features
+
+* support instance method values ([171cb4d](https://github.com/fullofcaffeine/reflaxe.rust/commit/171cb4d6c7b9e4590e7cb89a0106641a128e6ce8))
+
 # [0.36.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.35.0...v0.36.0) (2026-02-05)
 
 
