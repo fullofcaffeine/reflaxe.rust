@@ -253,7 +253,9 @@ class RustASTPrinter {
 				wrapIfNeeded(out, PREC_PRIMARY, ctxPrec);
 			}
 			case EAssign(lhs, rhs): {
-				var out = printExprPrec(lhs, indent, PREC_ASSIGN) + " = " + printExprPrec(rhs, indent, PREC_ASSIGN);
+				// Assignments accept any Rust expression on the RHS without needing parentheses.
+				// Prefer `x = if ... { ... } else { ... }` over `x = (if ...)`.
+				var out = printExprPrec(lhs, indent, PREC_ASSIGN) + " = " + printExprPrec(rhs, indent, PREC_LOWEST);
 				wrapIfNeeded(out, PREC_ASSIGN, ctxPrec);
 			}
 			case EBlock(b):

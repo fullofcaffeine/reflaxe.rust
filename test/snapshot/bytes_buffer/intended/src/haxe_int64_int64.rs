@@ -13,8 +13,8 @@ impl Int64 {
     pub fn new(high: i32, low: i32) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
         let self_: crate::HxRef<crate::haxe_int64_int64::Int64> =
             std::rc::Rc::new(std::cell::RefCell::new(Int64 {
-                high: (high),
-                low: (low),
+                high: high,
+                low: low,
             }));
         return self_;
     }

@@ -1073,8 +1073,7 @@ enum RustProfile {
 															switch (r.expr) {
 																case TLocal(v) if (isCtorArgLocal(v)):
 																	{
-																		var compiled = reflaxe.rust.ast.RustASTPrinter.printExprForInjection(compileExpr(r));
-																		var exprStr = "(" + compiled + ")";
+																		var exprStr = reflaxe.rust.ast.RustASTPrinter.printExprForInjection(compileExpr(r));
 
 																		// Prefer moving constructor args into the struct init when safe:
 																		// - Copy types never need `.clone()`
