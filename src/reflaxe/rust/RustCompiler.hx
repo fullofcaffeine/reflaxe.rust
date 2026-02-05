@@ -3739,10 +3739,21 @@ enum RustProfile {
 		switch (followType(paramType)) {
 			case TFun(params, ret): {
 				function isRcNew(e: RustExpr): Bool {
-					return switch (e) {
+					var cur = e;
+					while (true) {
+						switch (cur) {
+							case EBlock(b):
+								if (b.tail == null) return false;
+								cur = b.tail;
+								continue;
+							case _:
+						}
+						break;
+					}
+					return switch (cur) {
 						case ECall(EPath(p), _) if (p == rcBasePath() + "::new"): true;
 						case _: false;
-					}
+					};
 				}
 
 				if (!isRcNew(compiled)) {
@@ -3906,6 +3917,15 @@ enum RustProfile {
 				var ef = efRef;
 				EPath(rustEnumVariantPath(en, ef.name));
 			}
+			case FClosure(_, cfRef): {
+				var cf = cfRef.get();
+				var owner: Null<ClassType> = switch (followType(obj.t)) {
+					case TInst(clsRef, _): clsRef.get();
+					case _: null;
+				};
+				if (owner == null) return unsupported(fullExpr, "closure field (unknown owner)");
+				compileInstanceMethodValue(obj, owner, cf, fullExpr);
+			}
 			case FInstance(clsRef, _, cfRef): {
 				var owner = clsRef.get();
 				var cf = cfRef.get();
@@ -3924,7 +3944,7 @@ enum RustProfile {
 
 				switch (cf.kind) {
 					case FMethod(_):
-						unsupported(fullExpr, "method value");
+						compileInstanceMethodValue(obj, owner, cf, fullExpr);
 					case _:
 						compileInstanceFieldRead(obj, owner, cf, fullExpr);
 				}
@@ -3936,6 +3956,53 @@ enum RustProfile {
 			case FDynamic(name): EField(compileExpr(obj), name);
 			case _: unsupported(fullExpr, "field");
 		}
+	}
+
+	function compileInstanceMethodValue(obj: TypedExpr, owner: ClassType, cf: ClassField, fullExpr: TypedExpr): RustExpr {
+		// `this.method` inside a concrete method would capture `&RefCell<Self>`; that reference cannot be
+		// stored in our baseline `'static` function-value representation (`Rc<dyn Fn...>`).
+		//
+		// For now we only support binding non-`this` receivers.
+		if (isThisExpr(obj)) return unsupported(fullExpr, "method value (this)");
+
+		var sig = switch (TypeTools.follow(cf.type)) {
+			case TFun(params, ret): { params: params, ret: ret };
+			case _: null;
+		};
+		if (sig == null) return unsupported(fullExpr, "method value (non-function type)");
+
+		var recvExpr = maybeCloneForReuseValue(compileExpr(obj), obj);
+		var recvName = "__recv";
+
+		var argParts: Array<String> = [];
+		var callArgs: Array<RustExpr> = [];
+		for (i in 0...sig.params.length) {
+			var p = sig.params[i];
+			var name = "a" + i;
+			argParts.push(name + ": " + rustTypeToString(toRustType(p.t, fullExpr.pos)));
+			callArgs.push(EPath(name));
+		}
+
+		var call: RustExpr = if (isExternInstanceType(obj.t)) {
+			ECall(EField(EPath(recvName), rustExternFieldName(cf)), callArgs);
+		} else if (isInterfaceType(obj.t) || isPolymorphicClassType(obj.t)) {
+			ECall(EField(EPath(recvName), rustMethodName(owner, cf)), callArgs);
+		} else {
+			var modName = rustModuleNameForClass(owner);
+			var path = "crate::" + modName + "::" + rustTypeNameForClass(owner) + "::" + rustMethodName(owner, cf);
+			ECall(EPath(path), [EUnary("&", EPath(recvName))].concat(callArgs));
+		};
+
+		var isVoid = TypeHelper.isVoid(sig.ret);
+		var body: RustBlock = isVoid
+			? { stmts: [RSemi(call)], tail: null }
+			: { stmts: [], tail: call };
+
+		var fnValue = ECall(EPath(rcBasePath() + "::new"), [EClosure(argParts, body, true)]);
+		return EBlock({
+			stmts: [RLet(recvName, false, null, recvExpr)],
+			tail: fnValue
+		});
 	}
 
 	function compileInstanceFieldRead(obj: TypedExpr, owner: ClassType, cf: ClassField, fullExpr: TypedExpr): RustExpr {
