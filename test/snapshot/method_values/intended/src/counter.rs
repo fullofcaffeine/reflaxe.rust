@@ -17,7 +17,8 @@ impl Counter {
 
     pub fn add(self_: &std::cell::RefCell<Counter>, x: i32) -> i32 {
         {
-            let __tmp = self_.borrow().n + x;
+            let __rhs = x;
+            let __tmp = self_.borrow().n + __rhs;
             self_.borrow_mut().n = __tmp;
             __tmp
         };
