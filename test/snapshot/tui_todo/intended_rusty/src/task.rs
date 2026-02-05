@@ -12,14 +12,14 @@ pub struct Task {
 impl Task {
     pub fn new(text: String, done: bool) -> crate::HxRef<crate::task::Task> {
         let self_: crate::HxRef<crate::task::Task> =
-            std::rc::Rc::new(std::cell::RefCell::new(Task {
+            crate::HxRc::new(crate::HxRefCell::new(Task {
                 text: text,
                 done: done,
             }));
         return self_;
     }
 
-    pub fn toggle(self_: &std::cell::RefCell<Task>) {
+    pub fn toggle(self_: &crate::HxRefCell<Task>) {
         {
             let __tmp = !self_.borrow().done;
             self_.borrow_mut().done = __tmp;
@@ -27,7 +27,7 @@ impl Task {
         };
     }
 
-    pub fn line(self_: &std::cell::RefCell<Task>, selected: bool) -> String {
+    pub fn line(self_: &crate::HxRefCell<Task>, selected: bool) -> String {
         let sel: String = if selected {
             String::from(">")
         } else {

@@ -78,6 +78,18 @@ enum RustProfile {
 	var rustNamesByClass: Map<String, { fields: Map<String, String>, methods: Map<String, String> }> = [];
 	var inCodeInjectionArg: Bool = false;
 
+	inline function wantsPreludeAliases(): Bool {
+		return profile == Idiomatic || profile == Rusty;
+	}
+
+	inline function rcBasePath(): String {
+		return wantsPreludeAliases() ? "crate::HxRc" : "std::rc::Rc";
+	}
+
+	inline function refCellBasePath(): String {
+		return wantsPreludeAliases() ? "crate::HxRefCell" : "std::cell::RefCell";
+	}
+
 	public function new() {
 		super();
 	}
@@ -335,11 +347,15 @@ enum RustProfile {
 				}
 				lintLines.push("#![allow(dead_code)]");
 
-				headerLines = headerLines.concat(lintLines.concat([
-					"",
-					"type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;",
-					""
-				]));
+				var preludeLines: Array<String> = wantsPreludeAliases()
+					? [
+						"type HxRc<T> = std::rc::Rc<T>;",
+						"type HxRefCell<T> = std::cell::RefCell<T>;",
+						"type HxRef<T> = HxRc<HxRefCell<T>>;"
+					]
+					: ["type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;"];
+
+				headerLines = headerLines.concat(lintLines.concat([""].concat(preludeLines).concat([""])));
 
 				for (cls in otherUserClasses) {
 					var modName = rustModuleNameForClass(cls);
@@ -481,7 +497,7 @@ enum RustProfile {
 				var implTurbofish = implGenericNames.length > 0 ? ("::<" + implGenericNames.join(", ") + ">") : "";
 
 					var implLines: Array<String> = [];
-					implLines.push("impl" + implGenerics + " " + traitPath + ifaceTypeArgs + " for std::cell::RefCell<" + rustSelfTypeInst + "> {");
+					implLines.push("impl" + implGenerics + " " + traitPath + ifaceTypeArgs + " for " + refCellBasePath() + "<" + rustSelfTypeInst + "> {");
 					for (f in funcFields) {
 						if (f.isStatic) continue;
 						if (f.field.getHaxeName() == "new") continue;
@@ -1148,7 +1164,7 @@ enum RustProfile {
 						fieldInits.push("__hx_phantom: std::marker::PhantomData");
 					}
 					var structInit = rustSelfType + " { " + fieldInits.join(", ") + " }";
-					var allocExpr = "std::rc::Rc::new(std::cell::RefCell::new(" + structInit + "))";
+					var allocExpr = rcBasePath() + "::new(" + refCellBasePath() + "::new(" + structInit + "))";
 
 					stmts.push(RLet(
 						"self_",
@@ -1184,7 +1200,7 @@ enum RustProfile {
 			var selfName = exprUsesThis(f.expr) ? "self_" : "_self_";
 			args.push({
 				name: selfName,
-				ty: RPath("&std::cell::RefCell<" + rustClassTypeInst(classType) + ">")
+				ty: RPath("&" + refCellBasePath() + "<" + rustClassTypeInst(classType) + ">")
 			});
 			var body = { stmts: [], tail: null };
 			withFunctionContext(f.expr, [for (a in f.args) a.getName()], f.ret, () -> {
@@ -2330,7 +2346,7 @@ enum RustProfile {
 					body = compileFunctionBody(fn.expr, fn.t);
 				});
 
-				ECall(EPath("std::rc::Rc::new"), [EClosure(argParts, body, true)]);
+				ECall(EPath(rcBasePath() + "::new"), [EClosure(argParts, body, true)]);
 			}
 
 				case TCast(e1, _): {
@@ -3372,7 +3388,7 @@ enum RustProfile {
 							if (args.length != 1) return unsupported(fullExpr, "Bytes.alloc args");
 							var size = ECast(compileExpr(args[0]), "usize");
 							var inner = ECall(EPath("hxrt::bytes::Bytes::alloc"), [size]);
-								return ECall(EPath("std::rc::Rc::new"), [ECall(EPath("std::cell::RefCell::new"), [inner])]);
+								return ECall(EPath(rcBasePath() + "::new"), [ECall(EPath(refCellBasePath() + "::new"), [inner])]);
 						}
 						case "ofString": {
 							// Ignore optional encoding arg for now (must be null / omitted).
@@ -3385,12 +3401,12 @@ enum RustProfile {
 								// `{ let _ = enc; Rc::new(RefCell::new(Bytes::of_string(...))) }`
 								var asStr = ECall(EField(compileExpr(s), "as_str"), []);
 								var inner = ECall(EPath("hxrt::bytes::Bytes::of_string"), [asStr]);
-								var wrapped = ECall(EPath("std::rc::Rc::new"), [ECall(EPath("std::cell::RefCell::new"), [inner])]);
+								var wrapped = ECall(EPath(rcBasePath() + "::new"), [ECall(EPath(refCellBasePath() + "::new"), [inner])]);
 								return EBlock({ stmts: [RLet("_", false, null, enc)], tail: wrapped });
 							}
 							var asStr = ECall(EField(compileExpr(s), "as_str"), []);
 							var inner = ECall(EPath("hxrt::bytes::Bytes::of_string"), [asStr]);
-								return ECall(EPath("std::rc::Rc::new"), [ECall(EPath("std::cell::RefCell::new"), [inner])]);
+								return ECall(EPath(rcBasePath() + "::new"), [ECall(EPath(refCellBasePath() + "::new"), [inner])]);
 						}
 						case _:
 					}
@@ -3442,7 +3458,7 @@ enum RustProfile {
 							if (args.length != 2) return unsupported(fullExpr, "Bytes.sub args");
 							var borrowed = ECall(EField(compileExpr(obj), "borrow"), []);
 							var inner = ECall(EField(borrowed, "sub"), [compileExpr(args[0]), compileExpr(args[1])]);
-							return ECall(EPath("std::rc::Rc::new"), [ECall(EPath("std::cell::RefCell::new"), [inner])]);
+							return ECall(EPath(rcBasePath() + "::new"), [ECall(EPath(refCellBasePath() + "::new"), [inner])]);
 						}
 						case "getString": {
 							// Ignore optional encoding arg for now (must be null / omitted).
@@ -3724,7 +3740,7 @@ enum RustProfile {
 			case TFun(params, ret): {
 				function isRcNew(e: RustExpr): Bool {
 					return switch (e) {
-						case ECall(EPath("std::rc::Rc::new"), _): true;
+						case ECall(EPath(p), _) if (p == rcBasePath() + "::new"): true;
 						case _: false;
 					}
 				}
@@ -3749,7 +3765,7 @@ enum RustProfile {
 						body.stmts.push(RSemi(callExpr));
 					}
 
-					compiled = ECall(EPath("std::rc::Rc::new"), [EClosure(argParts, body, true)]);
+					compiled = ECall(EPath(rcBasePath() + "::new"), [EClosure(argParts, body, true)]);
 				}
 			}
 			case _:
@@ -4181,7 +4197,7 @@ enum RustProfile {
 			var implGenerics = generics.length > 0 ? "<" + generics.join(", ") + ">" : "";
 
 			var lines: Array<String> = [];
-			lines.push("impl" + implGenerics + " " + traitPathBase + traitArgs + " for std::cell::RefCell<" + rustSelfInst + "> {");
+			lines.push("impl" + implGenerics + " " + traitPathBase + traitArgs + " for " + refCellBasePath() + "<" + rustSelfInst + "> {");
 
 		for (cf in getAllInstanceVarFieldsForStruct(classType)) {
 			var ty = rustTypeToString(toRustType(cf.type, cf.pos));
@@ -4267,7 +4283,7 @@ enum RustProfile {
 		}
 
 			var lines: Array<String> = [];
-			lines.push("impl" + subImplGenerics + " " + baseTraitPathBase + baseTraitArgs + " for std::cell::RefCell<" + rustSubInst + "> {");
+			lines.push("impl" + subImplGenerics + " " + baseTraitPathBase + baseTraitArgs + " for " + refCellBasePath() + "<" + rustSubInst + "> {");
 
 		for (cf in getAllInstanceVarFieldsForStruct(baseType)) {
 			var ty = rustTypeToString(toRustType(cf.type, cf.pos));
@@ -4539,7 +4555,7 @@ enum RustProfile {
 						if (isArrayType(ft1) && isArrayType(ft2)) {
 							ECall(EField(compileExpr(e1), "ptr_eq"), [EUnary("&", compileExpr(e2))]);
 						} else if (isRcBackedType(ft1) && isRcBackedType(ft2)) {
-							ECall(EPath("std::rc::Rc::ptr_eq"), [EUnary("&", compileExpr(e1)), EUnary("&", compileExpr(e2))]);
+							ECall(EPath(rcBasePath() + "::ptr_eq"), [EUnary("&", compileExpr(e1)), EUnary("&", compileExpr(e2))]);
 						} else {
 							EBinary("==", compileExpr(e1), compileExpr(e2));
 						}
@@ -4557,7 +4573,7 @@ enum RustProfile {
 						if (isArrayType(ft1) && isArrayType(ft2)) {
 							EUnary("!", ECall(EField(compileExpr(e1), "ptr_eq"), [EUnary("&", compileExpr(e2))]));
 						} else if (isRcBackedType(ft1) && isRcBackedType(ft2)) {
-							EUnary("!", ECall(EPath("std::rc::Rc::ptr_eq"), [EUnary("&", compileExpr(e1)), EUnary("&", compileExpr(e2))]));
+							EUnary("!", ECall(EPath(rcBasePath() + "::ptr_eq"), [EUnary("&", compileExpr(e1)), EUnary("&", compileExpr(e2))]));
 						} else {
 							EBinary("!=", compileExpr(e1), compileExpr(e2));
 						}
@@ -4807,7 +4823,7 @@ enum RustProfile {
 				if (!TypeHelper.isVoid(ret)) {
 					sig += " -> " + rustTypeToString(retTy);
 				}
-				return RPath("std::rc::Rc<" + sig + ">");
+				return RPath(rcBasePath() + "<" + sig + ">");
 			}
 			case _:
 		}
@@ -4940,10 +4956,10 @@ enum RustProfile {
 				var typeParams = params != null && params.length > 0 ? ("<" + [for (p in params) rustTypeToString(toRustType(p, pos))].join(", ") + ">") : "";
 				if (cls.isInterface) {
 					var modName = rustModuleNameForClass(cls);
-					RPath("std::rc::Rc<dyn crate::" + modName + "::" + rustTypeNameForClass(cls) + typeParams + ">");
+					RPath(rcBasePath() + "<dyn crate::" + modName + "::" + rustTypeNameForClass(cls) + typeParams + ">");
 					} else if (classHasSubclasses(cls)) {
 						var modName = rustModuleNameForClass(cls);
-						RPath("std::rc::Rc<dyn crate::" + modName + "::" + rustTypeNameForClass(cls) + "Trait" + typeParams + ">");
+						RPath(rcBasePath() + "<dyn crate::" + modName + "::" + rustTypeNameForClass(cls) + "Trait" + typeParams + ">");
 					} else {
 						var modName = rustModuleNameForClass(cls);
 						RPath("crate::HxRef<crate::" + modName + "::" + rustTypeNameForClass(cls) + typeParams + ">");

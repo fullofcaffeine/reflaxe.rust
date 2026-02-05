@@ -2,22 +2,23 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = std::rc::Rc<T>;
+type HxRefCell<T> = std::cell::RefCell<T>;
+type HxRef<T> = HxRc<HxRefCell<T>>;
 
 mod haxe_io_encoding;
 mod sys;
 
 fn main() {
-    let b: crate::HxRef<hxrt::bytes::Bytes> = std::rc::Rc::new(std::cell::RefCell::new(
+    let b: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRc::new(crate::HxRefCell::new(
         hxrt::bytes::Bytes::of_string(String::from("hello").as_str()),
     ));
     println!("{}", hxrt::dynamic::from(b.borrow().to_string().clone()));
     let s: crate::HxRef<hxrt::bytes::Bytes> =
-        std::rc::Rc::new(std::cell::RefCell::new(b.borrow().sub(1, 3)));
+        crate::HxRc::new(crate::HxRefCell::new(b.borrow().sub(1, 3)));
     println!("{}", hxrt::dynamic::from(s.borrow().to_string().clone()));
-    let out: crate::HxRef<hxrt::bytes::Bytes> = std::rc::Rc::new(std::cell::RefCell::new(
-        hxrt::bytes::Bytes::alloc(5 as usize),
-    ));
+    let out: crate::HxRef<hxrt::bytes::Bytes> =
+        crate::HxRc::new(crate::HxRefCell::new(hxrt::bytes::Bytes::alloc(5 as usize)));
     hxrt::bytes::blit(&out, 0, &b, 0, 5);
     println!("{}", hxrt::dynamic::from(out.borrow().to_string().clone()));
     out.borrow_mut().set(0, 72);
