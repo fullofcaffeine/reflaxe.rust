@@ -1,3 +1,10 @@
+# [0.36.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.35.0...v0.36.0) (2026-02-05)
+
+
+### Features
+
+* add idiomatic prelude aliases ([85ae938](https://github.com/fullofcaffeine/reflaxe.rust/commit/85ae9381896b714df8ab87da9c511585eda6c5e5))
+
 # [0.35.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.34.1...v0.35.0) (2026-02-05)
 
 
