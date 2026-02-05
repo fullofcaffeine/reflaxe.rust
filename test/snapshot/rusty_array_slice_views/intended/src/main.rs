@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = std::rc::Rc<T>;
+type HxRefCell<T> = std::cell::RefCell<T>;
+type HxRef<T> = HxRc<HxRefCell<T>>;
 
 mod rust_array_borrow;
 mod rust_mut_slice_tools;
@@ -13,7 +15,7 @@ fn main() {
     let xs: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::from_vec(vec![1, 2, 3]);
     crate::rust_array_borrow::ArrayBorrow::with_slice(
         xs.clone(),
-        std::rc::Rc::new(move |_hx_slice: &[i32]| {
+        crate::HxRc::new(move |_hx_slice: &[i32]| {
             let s: &[i32] = _hx_slice;
             {
                 crate::sys::Sys::println(hxrt::dynamic::from(
@@ -25,7 +27,7 @@ fn main() {
     );
     crate::rust_array_borrow::ArrayBorrow::with_mut_slice(
         xs.clone(),
-        std::rc::Rc::new(move |_hx_slice: &mut [i32]| {
+        crate::HxRc::new(move |_hx_slice: &mut [i32]| {
             let s: &mut [i32] = _hx_slice;
             {
                 crate::rust_mut_slice_tools::MutSliceTools::set(s, 1, 99);

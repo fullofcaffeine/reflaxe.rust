@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = std::rc::Rc<T>;
+type HxRefCell<T> = std::cell::RefCell<T>;
+type HxRef<T> = HxRc<HxRefCell<T>>;
 
 mod rust_duration_tools;
 mod rust_instant_tools;
