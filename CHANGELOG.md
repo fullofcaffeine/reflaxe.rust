@@ -1,3 +1,10 @@
+# [0.40.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.39.0...v0.40.0) (2026-02-08)
+
+
+### Features
+
+* anonymous objects ([84f668e](https://github.com/fullofcaffeine/reflaxe.rust/commit/84f668ef555d94e403569086e1d266660c0a19b8))
+
 # [0.39.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.38.0...v0.39.0) (2026-02-08)
 
 
