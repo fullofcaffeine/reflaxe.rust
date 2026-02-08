@@ -114,7 +114,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - Convention: `compile.hxml` → `out/` + `intended/`; `compile.rusty.hxml` → `out_rusty/` + `intended_rusty/`.
 - Pre-push directive: keep `main` green by running the closest local equivalent of CI before `git push`:
   - `npm ci --ignore-scripts --no-audit --no-fund`
-  - `bash test/run-snapshots.sh`
+  - `bash test/run-snapshots.sh --clippy` (runs curated clippy checks on a small subset of snapshot crates)
   - `cargo fmt && cargo clippy -- -D warnings`
   - Smoke-run any examples you touched (e.g. `(cd examples/tui_todo && haxe compile.hxml && (cd out && cargo run -q))`)
 - CI runs:
