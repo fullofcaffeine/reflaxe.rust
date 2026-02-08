@@ -11,6 +11,9 @@ This project uses **bd (beads)** for issue tracking.
 - `bd close <id>` — complete
 - `bd sync` — sync to git (once a remote is configured)
 
+Gotcha: `bd` DB state and `.beads/issues.jsonl` can drift depending on bd daemon/auto-flush settings.
+Before committing bead status changes, run `bd sync` and ensure `.beads/issues.jsonl` is included in the commit when modified.
+
 Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rust-oo3 --compact`).
 
 ## Product Source of Truth
