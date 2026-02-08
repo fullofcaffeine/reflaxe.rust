@@ -1,3 +1,10 @@
+# [0.43.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.42.0...v0.43.0) (2026-02-08)
+
+
+### Features
+
+* **std:** sys/io parity and warning-free codegen ([99e3f3b](https://github.com/fullofcaffeine/reflaxe.rust/commit/99e3f3ba399fad19ca0a4003c05d1c37ec022870))
+
 # [0.42.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.41.0...v0.42.0) (2026-02-08)
 
 
