@@ -1,3 +1,10 @@
+# [0.39.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.38.0...v0.39.0) (2026-02-08)
+
+
+### Features
+
+* support array element compound assignment ([8bc6f3e](https://github.com/fullofcaffeine/reflaxe.rust/commit/8bc6f3e8d3756d5e5d77f94b4219a14f06a5dfcd))
+
 # [0.38.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.37.0...v0.38.0) (2026-02-05)
 
 
