@@ -1,3 +1,4 @@
+pub mod anon;
 pub mod array;
 pub mod bytes;
 pub mod dynamic;
