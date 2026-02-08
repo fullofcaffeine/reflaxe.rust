@@ -129,11 +129,9 @@ fn main() {
     println!("{}", hxrt::dynamic::from(foo.borrow().x));
     println!("{}", hxrt::dynamic::from(foo.borrow().x.clone()));
     {
-        {
-            let __tmp = 42;
-            foo.borrow_mut().x = __tmp;
-            __tmp
-        };
+        let __obj = foo.clone();
+        let __val = 42;
+        __obj.borrow_mut().x = __val;
     };
     println!("{}", hxrt::dynamic::from(foo.borrow().x));
 }
