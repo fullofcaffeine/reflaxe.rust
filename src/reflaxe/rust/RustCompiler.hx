@@ -1916,6 +1916,7 @@ private typedef RustImplSpec = {
 				// This is intentionally conservative: only the immediate-next statement is considered
 				// (no control-flow analysis).
 				var u = unwrapMetaParen(e);
+				var handled = false;
 				switch (u.expr) {
 					case TVar(v, init) if (init != null && isNullType(v.t) && isNullConstExpr(init)): {
 						if (currentMutatedLocals != null && currentMutatedLocals.exists(v.id) && i + 1 < exprs.length) {
@@ -1975,15 +1976,66 @@ private typedef RustImplSpec = {
 								// Only require `mut` if we see multiple assignments (or `++/--`).
 								var mutable = assignCount > 1;
 								stmts.push(RLet(name, mutable, rustTy, null));
+								handled = true;
 							} else {
-								stmts.push(compileStmt(e));
+								// fall through to default
 							}
-						} else {
-							stmts.push(compileStmt(e));
+						}
+					}
+					case TVar(v, init) if (init != null && i + 1 < exprs.length): {
+						// Idiomatic move optimization (conservative, straight-line only):
+						// If we immediately overwrite a local `x` on the next statement, then `var y = x; x = ...;`
+						// does not need to clone `x` into `y`. Moving `x` is safe because the old value dies before
+						// any subsequent read of `x`.
+						//
+						// This is primarily useful for `String` (owned `String` in Rust), where cloning is costly.
+						function unwrapToLocal(e: TypedExpr): Null<TVar> {
+							var cur = unwrapMetaParen(e);
+							while (true) {
+								switch (cur.expr) {
+									case TCast(inner, _):
+										cur = unwrapMetaParen(inner);
+										continue;
+									case _:
+								}
+								break;
+							}
+							return switch (cur.expr) {
+								case TLocal(v): v;
+								case _: null;
+							}
+						}
+
+						var src = unwrapToLocal(init);
+						if (src != null && isStringType(src.t) && isStringType(v.t)) {
+							function isDirectLocalAssignTo(target: TVar, expr: TypedExpr): Bool {
+								var ue = unwrapMetaParen(expr);
+								return switch (ue.expr) {
+									case TBinop(OpAssign, lhs, _):
+										switch (unwrapMetaParen(lhs).expr) {
+											case TLocal(v2): v2.id == target.id;
+											case _: false;
+										}
+									case _:
+										false;
+								}
+							}
+
+							if (isDirectLocalAssignTo(src, exprs[i + 1])) {
+								var name = rustLocalDeclIdent(v);
+								var rustTy = toRustType(v.t, e.pos);
+								var initExpr = wrapBorrowIfNeeded(compileExpr(init), rustTy, init);
+								var mutable = currentMutatedLocals != null && currentMutatedLocals.exists(v.id);
+								stmts.push(RLet(name, mutable, rustTy, initExpr));
+								handled = true;
+							}
 						}
 					}
 					case _:
-						stmts.push(compileStmt(e));
+				}
+
+				if (!handled) {
+					stmts.push(compileStmt(e));
 				}
 
 				// Avoid emitting Rust code that is statically unreachable (and triggers `unreachable_code` warnings).
@@ -2599,6 +2651,30 @@ private typedef RustImplSpec = {
 
 			function scan(e: TypedExpr): Void {
 				switch (e.expr) {
+					// Writes should not count as reads: `x = expr` does not "use" `x` for move/clone analysis.
+					//
+					// However, compound assignments and ++/-- do read the previous value.
+					case TBinop(OpAssign, lhs, rhs): {
+						switch (unwrapMetaParen(lhs).expr) {
+							case TLocal(_):
+								// Skip counting the local; still scan RHS.
+							case _:
+								scan(lhs);
+						}
+						scan(rhs);
+						return;
+					}
+					case TBinop(OpAssignOp(_), lhs, rhs): {
+						// Reads + writes: count and scan both sides.
+						scan(lhs);
+						scan(rhs);
+						return;
+					}
+					case TUnop(op, _, inner) if (op == OpIncrement || op == OpDecrement): {
+						// Reads + writes: count as a read.
+						scan(inner);
+						return;
+					}
 					case TLocal(v):
 						inc(v);
 					case _:
