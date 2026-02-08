@@ -67,6 +67,11 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Reflaxe injection gotcha: `TargetCodeInjection.checkTargetCodeInjectionGeneric` returns an empty list when the injected string has no `{0}` placeholders. The compiler must treat that case as “literal injection string”.
 - `rust.Ref<T>` / `rust.MutRef<T>` use `@:from` (typically lowered to `cast`) so Haxe typing can pass `T` where refs are expected; codegen must still emit `&` / `&mut` even when the typed expression becomes `TCast(...)`.
 - Rust naming collisions across inheritance must preserve base-field names: assign names in base→derived order and only disambiguate derived names against already-used base names.
+- Inheritance method dispatch model: Rust does not “inherit” methods, so subclasses must synthesize concrete Rust methods for non-overridden base methods (compile the base body with `this` dispatch bound to the subclass). This avoids invalid calls like `Base::method(&RefCell<Sub>)` and eliminates `todo!()` stubs in base trait impls.
+- Base traits include inherited methods: if `BTrait` includes inherited `A.foo`, then `impl BTrait for RefCell<C>` must implement `foo` even if `B` didn’t declare it; emit base-trait impl methods from the base trait surface (declared + inherited), not just `baseType.fields.get()`.
+- `super.method(...)` compiles via per-base “super thunk” methods on the current class (`__hx_super_<base_mod>_<method>`), so base implementations can run with a `&RefCell<Current>` receiver.
+- Self-arg naming: treat `TSuper` as “uses receiver” so functions that call `super.*` don’t emit `_self_` but still reference `self_`.
+- Accessor naming for backing fields: when a field name starts with `_` (e.g. `_x`), avoid Rust `non_snake_case` warnings and collisions by mapping accessor suffixes to `u<count>_<name>` (e.g. `_x` → `u1_x`), rather than stripping underscores.
 - Exceptions/try-catch: implemented via `hxrt::exception` using a panic-id + thread-local payload.
   - `throw v` → `hxrt::exception::throw(hxrt::dynamic::from(v))`
   - `try { a } catch(e:T) { b }` → `match hxrt::exception::catch_unwind(|| { a }) { Ok(v) => v, Err(ex) => ...downcast chain... }`
