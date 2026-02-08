@@ -1,3 +1,10 @@
+# [0.47.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.46.0...v0.47.0) (2026-02-08)
+
+
+### Features
+
+* **interop:** emit @:rustImpl trait impl blocks ([f999381](https://github.com/fullofcaffeine/reflaxe.rust/commit/f99938128135c8b6b0947a06bc9309ae467dce5a))
+
 # [0.46.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.45.0...v0.46.0) (2026-02-08)
 
 
