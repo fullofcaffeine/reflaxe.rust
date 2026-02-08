@@ -51,6 +51,201 @@ impl Stderr {
             std::io::stderr().flush().ok();
         };
     }
+
+    pub fn close(_self_: &std::cell::RefCell<Stderr>) {}
+
+    fn set_big_endian(self_: &std::cell::RefCell<Stderr>, b: bool) -> bool {
+        {
+            let __tmp = b;
+            self_.borrow_mut().big_endian = __tmp;
+            __tmp
+        };
+        return b;
+    }
+
+    pub fn write(self_: &std::cell::RefCell<Stderr>, s: crate::HxRef<hxrt::bytes::Bytes>) {
+        let mut l: i32 = s.borrow().length();
+        let mut p: i32 = 0;
+        while l > 0 {
+            let k: i32 = crate::sys_io_stderr::Stderr::write_bytes(&self_, s.clone(), p, l);
+            if k == 0 {
+                hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+            }
+            {
+                p = p + k;
+                p
+            };
+            {
+                l = l - k;
+                l
+            };
+        }
+    }
+
+    pub fn write_full_bytes(
+        self_: &std::cell::RefCell<Stderr>,
+        s: crate::HxRef<hxrt::bytes::Bytes>,
+        pos: i32,
+        len: i32,
+    ) {
+        let mut p: i32 = pos;
+        let mut l: i32 = len;
+        while l > 0 {
+            let k: i32 = crate::sys_io_stderr::Stderr::write_bytes(&self_, s.clone(), p, l);
+            {
+                p = p + k;
+                p
+            };
+            {
+                l = l - k;
+                l
+            };
+        }
+    }
+
+    pub fn write_float(self_: &std::cell::RefCell<Stderr>, x: f64) {
+        crate::sys_io_stderr::Stderr::write_int32(
+            &self_,
+            crate::haxe_io_fp_helper::FPHelper::float_to_i32(x),
+        );
+    }
+
+    pub fn write_double(self_: &std::cell::RefCell<Stderr>, x: f64) {
+        let i64: crate::HxRef<crate::haxe_int64_int64::Int64> =
+            crate::haxe_io_fp_helper::FPHelper::double_to_i64(x);
+        if self_.borrow().big_endian {
+            crate::sys_io_stderr::Stderr::write_int32(&self_, i64.borrow().high);
+            crate::sys_io_stderr::Stderr::write_int32(&self_, i64.borrow().low);
+        } else {
+            crate::sys_io_stderr::Stderr::write_int32(&self_, i64.borrow().low);
+            crate::sys_io_stderr::Stderr::write_int32(&self_, i64.borrow().high);
+        }
+    }
+
+    pub fn write_int8(self_: &std::cell::RefCell<Stderr>, x: i32) {
+        if x < -128 || x >= 128 {
+            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
+        }
+        crate::sys_io_stderr::Stderr::write_byte(&self_, x & 255);
+    }
+
+    pub fn write_int16(self_: &std::cell::RefCell<Stderr>, x: i32) {
+        if x < -32768 || x >= 32768 {
+            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
+        }
+        crate::sys_io_stderr::Stderr::write_u_int16(&self_, x & 65535);
+    }
+
+    pub fn write_u_int16(self_: &std::cell::RefCell<Stderr>, x: i32) {
+        if x < 0 || x >= 65536 {
+            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
+        }
+        if self_.borrow().big_endian {
+            crate::sys_io_stderr::Stderr::write_byte(&self_, x >> 8);
+            crate::sys_io_stderr::Stderr::write_byte(&self_, x & 255);
+        } else {
+            crate::sys_io_stderr::Stderr::write_byte(&self_, x & 255);
+            crate::sys_io_stderr::Stderr::write_byte(&self_, x >> 8);
+        }
+    }
+
+    pub fn write_int24(self_: &std::cell::RefCell<Stderr>, x: i32) {
+        if x < -8388608 || x >= 8388608 {
+            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
+        }
+        crate::sys_io_stderr::Stderr::write_u_int24(&self_, x & 16777215);
+    }
+
+    pub fn write_u_int24(self_: &std::cell::RefCell<Stderr>, x: i32) {
+        if x < 0 || x >= 16777216 {
+            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
+        }
+        if self_.borrow().big_endian {
+            crate::sys_io_stderr::Stderr::write_byte(&self_, x >> 16);
+            crate::sys_io_stderr::Stderr::write_byte(&self_, x >> 8 & 255);
+            crate::sys_io_stderr::Stderr::write_byte(&self_, x & 255);
+        } else {
+            crate::sys_io_stderr::Stderr::write_byte(&self_, x & 255);
+            crate::sys_io_stderr::Stderr::write_byte(&self_, x >> 8 & 255);
+            crate::sys_io_stderr::Stderr::write_byte(&self_, x >> 16);
+        }
+    }
+
+    pub fn write_int32(self_: &std::cell::RefCell<Stderr>, x: i32) {
+        if self_.borrow().big_endian {
+            crate::sys_io_stderr::Stderr::write_byte(&self_, (x as u32 >> 24 as u32) as i32);
+            crate::sys_io_stderr::Stderr::write_byte(&self_, x >> 16 & 255);
+            crate::sys_io_stderr::Stderr::write_byte(&self_, x >> 8 & 255);
+            crate::sys_io_stderr::Stderr::write_byte(&self_, x & 255);
+        } else {
+            crate::sys_io_stderr::Stderr::write_byte(&self_, x & 255);
+            crate::sys_io_stderr::Stderr::write_byte(&self_, x >> 8 & 255);
+            crate::sys_io_stderr::Stderr::write_byte(&self_, x >> 16 & 255);
+            crate::sys_io_stderr::Stderr::write_byte(&self_, (x as u32 >> 24 as u32) as i32);
+        }
+    }
+
+    pub fn prepare(_self_: &std::cell::RefCell<Stderr>, _nbytes: i32) {}
+
+    pub fn write_input(
+        self_: &std::cell::RefCell<Stderr>,
+        i: std::rc::Rc<dyn crate::haxe_io_input::InputTrait>,
+        bufsize: Option<i32>,
+    ) {
+        let mut bs: Option<i32> = bufsize;
+        if bs.is_none() {
+            {
+                let __tmp = 4096;
+                bs = Some(__tmp);
+                __tmp
+            };
+        }
+        let bufsize_2: i32 = bs.unwrap();
+        let buf: crate::HxRef<hxrt::bytes::Bytes> = std::rc::Rc::new(std::cell::RefCell::new(
+            hxrt::bytes::Bytes::alloc(bufsize_2 as usize),
+        ));
+        match hxrt::exception::catch_unwind(|| loop {
+            let mut len: i32 = i.read_bytes(buf.clone(), 0, bufsize_2);
+            if len == 0 {
+                hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+            }
+            let mut p: i32 = 0;
+            while len > 0 {
+                let k: i32 = crate::sys_io_stderr::Stderr::write_bytes(&self_, buf.clone(), p, len);
+                if k == 0 {
+                    hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+                }
+                {
+                    p = p + k;
+                    p
+                };
+                {
+                    len = len - k;
+                    len
+                };
+            }
+        }) {
+            Ok(__hx_ok) => __hx_ok,
+            Err(__hx_ex) => match __hx_ex.downcast::<crate::HxRef<crate::haxe_io_eof::Eof>>() {
+                Ok(_) => {}
+                Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
+            },
+        };
+    }
+
+    pub fn write_string(
+        self_: &std::cell::RefCell<Stderr>,
+        s: String,
+        encoding: Option<crate::haxe_io_encoding::Encoding>,
+    ) {
+        let b: crate::HxRef<hxrt::bytes::Bytes> = {
+            let _ = encoding;
+            std::rc::Rc::new(std::cell::RefCell::new(hxrt::bytes::Bytes::of_string(
+                s.as_str(),
+            )))
+        };
+        crate::sys_io_stderr::Stderr::write_full_bytes(&self_, b.clone(), 0, b.borrow().length());
+    }
 }
 
 impl crate::haxe_io_output::OutputTrait for std::cell::RefCell<Stderr> {
@@ -60,63 +255,63 @@ impl crate::haxe_io_output::OutputTrait for std::cell::RefCell<Stderr> {
     fn __hx_set_big_endian(&self, v: bool) {
         self.borrow_mut().big_endian = v;
     }
+    fn close(&self) -> () {
+        Stderr::close(self)
+    }
+    fn flush(&self) -> () {
+        Stderr::flush(self)
+    }
+    fn prepare(&self, _nbytes: i32) -> () {
+        Stderr::prepare(self, _nbytes)
+    }
+    fn set_big_endian(&self, b: bool) -> bool {
+        Stderr::set_big_endian(self, b)
+    }
+    fn write(&self, s: crate::HxRef<hxrt::bytes::Bytes>) -> () {
+        Stderr::write(self, s)
+    }
     fn write_byte(&self, _c: i32) -> () {
         Stderr::write_byte(self, _c)
     }
     fn write_bytes(&self, s: crate::HxRef<hxrt::bytes::Bytes>, pos: i32, len: i32) -> i32 {
         Stderr::write_bytes(self, s, pos, len)
     }
-    fn flush(&self) -> () {
-        Stderr::flush(self)
+    fn write_double(&self, x: f64) -> () {
+        Stderr::write_double(self, x)
     }
-    fn close(&self) -> () {
-        todo!()
+    fn write_float(&self, x: f64) -> () {
+        Stderr::write_float(self, x)
     }
-    fn set_big_endian(&self, _: bool) -> bool {
-        todo!()
-    }
-    fn write(&self, _: crate::HxRef<hxrt::bytes::Bytes>) -> () {
-        todo!()
-    }
-    fn write_full_bytes(&self, _: crate::HxRef<hxrt::bytes::Bytes>, _: i32, _: i32) -> () {
-        todo!()
-    }
-    fn write_float(&self, _: f64) -> () {
-        todo!()
-    }
-    fn write_double(&self, _: f64) -> () {
-        todo!()
-    }
-    fn write_int8(&self, _: i32) -> () {
-        todo!()
-    }
-    fn write_int16(&self, _: i32) -> () {
-        todo!()
-    }
-    fn write_u_int16(&self, _: i32) -> () {
-        todo!()
-    }
-    fn write_int24(&self, _: i32) -> () {
-        todo!()
-    }
-    fn write_u_int24(&self, _: i32) -> () {
-        todo!()
-    }
-    fn write_int32(&self, _: i32) -> () {
-        todo!()
-    }
-    fn prepare(&self, _: i32) -> () {
-        todo!()
+    fn write_full_bytes(&self, s: crate::HxRef<hxrt::bytes::Bytes>, pos: i32, len: i32) -> () {
+        Stderr::write_full_bytes(self, s, pos, len)
     }
     fn write_input(
         &self,
-        _: std::rc::Rc<dyn crate::haxe_io_input::InputTrait>,
-        _: Option<i32>,
+        i: std::rc::Rc<dyn crate::haxe_io_input::InputTrait>,
+        bufsize: Option<i32>,
     ) -> () {
-        todo!()
+        Stderr::write_input(self, i, bufsize)
     }
-    fn write_string(&self, _: String, _: Option<crate::haxe_io_encoding::Encoding>) -> () {
-        todo!()
+    fn write_int16(&self, x: i32) -> () {
+        Stderr::write_int16(self, x)
+    }
+    fn write_int24(&self, x: i32) -> () {
+        Stderr::write_int24(self, x)
+    }
+    fn write_int32(&self, x: i32) -> () {
+        Stderr::write_int32(self, x)
+    }
+    fn write_int8(&self, x: i32) -> () {
+        Stderr::write_int8(self, x)
+    }
+    fn write_string(&self, s: String, encoding: Option<crate::haxe_io_encoding::Encoding>) -> () {
+        Stderr::write_string(self, s, encoding)
+    }
+    fn write_u_int16(&self, x: i32) -> () {
+        Stderr::write_u_int16(self, x)
+    }
+    fn write_u_int24(&self, x: i32) -> () {
+        Stderr::write_u_int24(self, x)
     }
     fn __hx_type_id(&self) -> u32 {
         crate::sys_io_stderr::__HX_TYPE_ID
