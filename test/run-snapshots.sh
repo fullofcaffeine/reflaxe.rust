@@ -15,17 +15,24 @@ fi
 
 usage() {
   cat <<'EOF'
-Usage: test/run-snapshots.sh [--case NAME] [--update]
+Usage: test/run-snapshots.sh [--case NAME] [--update] [--clippy]
 
 Runs snapshot tests:
   - regenerates each test's out*/ via `haxe compile*.hxml`
   - optionally updates intended*/ (golden) outputs with --update
   - diffs intended*/ vs out*/
   - runs `cargo fmt` and `cargo build -q` for each generated crate
+  - optionally runs `cargo clippy` correctness/suspicious lints for a small curated subset of cases
 
 Options:
   --case NAME   Run a single snapshot case directory (by folder name).
   --update      Replace intended*/ with the newly generated out*/ (excluding Cargo.lock/target/_GeneratedFiles.json).
+  --clippy      After `cargo build`, also run a curated `cargo clippy` check for selected cases.
+               This intentionally does NOT enforce full clippy style cleanliness for generated code.
+               Selection:
+                 - If `--case` is set: runs for that case.
+                 - Else if `SNAP_CLIPPY_CASES` is set: comma/space-separated list (e.g. "v1_smoke,idiomatic_profile").
+                 - Else: default curated list (see script).
 
 Snapshot variants:
   A case may include multiple compile files:
@@ -38,6 +45,7 @@ EOF
 
 only_case=""
 update_intended=0
+run_clippy=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -47,6 +55,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --update)
       update_intended=1
+      shift
+      ;;
+    --clippy)
+      run_clippy=1
       shift
       ;;
     -h|--help)
@@ -79,6 +91,28 @@ if ! command -v cargo >/dev/null 2>&1; then
 fi
 
 fail=0
+
+should_run_clippy_for_case() {
+  local case_name="$1"
+
+  [[ "$run_clippy" == "1" ]] || return 1
+
+  if [[ -n "$only_case" ]]; then
+    [[ "$case_name" == "$only_case" ]]
+    return
+  fi
+
+  local configured="${SNAP_CLIPPY_CASES:-}"
+  if [[ -n "$configured" ]]; then
+    # Normalize: commas -> spaces, then match whole words.
+    configured="${configured//,/ }"
+    [[ " $configured " == *" $case_name "* ]]
+    return
+  fi
+
+  # Default curated list: keep this short so CI stays fast.
+  [[ "$case_name" == "v1_smoke" || "$case_name" == "idiomatic_profile" || "$case_name" == "rusty_v1_smoke" ]]
+}
 
 for case_dir in "$SNAP_DIR"/*; do
   [[ -d "$case_dir" ]] || continue
@@ -153,6 +187,12 @@ for case_dir in "$SNAP_DIR"/*; do
       if ! (cd "$out_dir" && cargo build -q); then
         echo "  cargo build failed: $out_dir" >&2
         fail=1
+      fi
+      if should_run_clippy_for_case "$case_name"; then
+        if ! (cd "$out_dir" && cargo clippy -- -A clippy::all -D clippy::correctness -D clippy::suspicious >/dev/null); then
+          echo "  cargo clippy failed: $out_dir" >&2
+          fail=1
+        fi
       fi
     fi
 
