@@ -1,3 +1,10 @@
+# [0.48.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.47.2...v0.48.0) (2026-02-08)
+
+
+### Features
+
+* **std:** implement sys.io file handles ([bad4bbb](https://github.com/fullofcaffeine/reflaxe.rust/commit/bad4bbb312866aa20bca1eb90438f9604fa16c94))
+
 ## [0.47.2](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.47.1...v0.47.2) (2026-02-08)
 
 
