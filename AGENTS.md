@@ -86,6 +86,11 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Constructors: lift leading `this.field = <arg>` assignments into the struct literal to avoid requiring `T: Default` for generic fields (and to reduce borrow-mut noise).
 - Haxe desugaring/inlining introduces `_g*` temporaries; for `Array<T>` (mapped to `Vec<T>`), avoid accidental moves by cloning `_g* = <local array>` initializers/assignments.
 - Use `Context.getAllModuleTypes()` (not `Context.getTypes()`) to enumerate generated module types for dependency closure / RTTI maps.
+- Stdlib emission model (important for “full stdlib parity” work):
+  - The compiler only emits Rust modules for **user project files** and this repo’s `std/` overrides (`isFrameworkStdFile`).
+  - Upstream Haxe std files (the default `.../haxe/versions/<ver>/std/`) are *typed* but **not emitted** by default.
+  - Consequence: any std API type that appears in emitted signatures (e.g. `sys.io.FileSeek`) must exist under `std/`
+    (or the emission filter must be expanded intentionally).
 - `Std.isOfType` is implemented as a compiler intrinsic (exact-type check via `__hx_type_id`, plus compile-time subtype short-circuit).
 - String move semantics: many generated Rust functions take `String` by value; to preserve Haxe’s “strings are re-usable after calls” behavior, callsites currently clone String arguments based on the callee’s parameter types.
 - Dynamic args: when calling a function expecting `Dynamic` (e.g. `Sys.println(v:Dynamic)`), the compiler boxes non-`Dynamic` args via `hxrt::dynamic::from(...)` and clones non-`Copy` inputs to avoid Rust moves.
