@@ -1,3 +1,10 @@
+# [0.41.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.40.1...v0.41.0) (2026-02-08)
+
+
+### Features
+
+* anon field assignop and inc/dec ([0d5a66c](https://github.com/fullofcaffeine/reflaxe.rust/commit/0d5a66c65d2bf84bb0d8398e3975c068f196c090))
+
 ## [0.40.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.40.0...v0.40.1) (2026-02-08)
 
 
