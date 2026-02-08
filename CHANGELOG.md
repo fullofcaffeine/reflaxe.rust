@@ -1,3 +1,10 @@
+## [0.47.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.47.0...v0.47.1) (2026-02-08)
+
+
+### Bug Fixes
+
+* **printer:** avoid double semicolons for raw expr stmts ([fbca935](https://github.com/fullofcaffeine/reflaxe.rust/commit/fbca935bd7a140a935bd1c1e408f4321fef3797a))
+
 # [0.47.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.46.0...v0.47.0) (2026-02-08)
 
 
