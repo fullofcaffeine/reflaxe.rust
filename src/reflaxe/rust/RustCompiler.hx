@@ -4686,6 +4686,31 @@ enum RustProfile {
 							tail: lhs
 						});
 					}
+					case TArray(arr, index): {
+						// Compound assignment on an array element: `arr[index] <op>= rhs`.
+						//
+						// Preserve evaluation order (arr -> index -> rhs) and ensure arr/index are evaluated once.
+						// POC: only support Copy element types (mirrors instance-field support).
+						if (!isCopyType(e1.t)) {
+							return unsupported(fullExpr, "assignop array lvalue (non-copy)");
+						}
+
+						var arrName = "__hx_arr";
+						var idxName = "__hx_idx";
+						var rhsName = "__rhs";
+						var tmpName = "__tmp";
+
+						var stmts: Array<RustStmt> = [];
+						stmts.push(RLet(arrName, false, null, maybeCloneForReuseValue(compileExpr(arr), arr)));
+						stmts.push(RLet(idxName, false, null, ECast(compileExpr(index), "usize")));
+						stmts.push(RLet(rhsName, false, null, compileExpr(e2)));
+
+						var read = ECall(EField(EPath(arrName), "get_unchecked"), [EPath(idxName)]);
+						stmts.push(RLet(tmpName, false, null, EBinary(opStr, read, EPath(rhsName))));
+						stmts.push(RSemi(ECall(EField(EPath(arrName), "set"), [EPath(idxName), EPath(tmpName)])));
+
+						EBlock({ stmts: stmts, tail: EPath(tmpName) });
+					}
 					case TField(obj, FInstance(clsRef, _, cfRef)): {
 						// Compound assignment on a concrete instance field: `obj.field <op>= rhs`.
 						//
