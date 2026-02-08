@@ -1,3 +1,10 @@
+# [0.46.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.45.0...v0.46.0) (2026-02-08)
+
+
+### Features
+
+* **compiler:** property lowering and storage fields ([2bd40c5](https://github.com/fullofcaffeine/reflaxe.rust/commit/2bd40c580e3e851684f4b76a0d6aab66a7e601e8))
+
 # [0.45.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.44.0...v0.45.0) (2026-02-08)
 
 
