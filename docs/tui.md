@@ -17,6 +17,8 @@ Minimal building block used by `examples/tui_todo`.
 
 - `TuiDemo.setHeadless(true|false)` — force headless or interactive mode.
   - If not set, `TuiDemo.enter()` auto-detects based on whether stdin/stdout are TTYs.
+  - Even if set to interactive, `enter()` may fall back to headless if terminal initialization fails
+    (for example when `cargo run` is executed in CI or other non-TTY environments).
 - `TuiDemo.enter()` — initializes the terminal (raw mode + alternate screen) for interactive mode.
 - `TuiDemo.render(lines)` — renders the given newline-delimited string as a list.
   - In headless mode this is a no-op to avoid spamming CI logs.
