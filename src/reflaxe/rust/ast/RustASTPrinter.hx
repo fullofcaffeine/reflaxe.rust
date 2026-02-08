@@ -167,8 +167,12 @@ class RustASTPrinter {
 				if (expr != null) out += " = " + printExpr(expr, indent);
 				out + ";";
 			}
-			case RSemi(e):
-				printExpr(e, indent) + ";";
+			case RSemi(e): {
+				// Avoid `;;` when an injected raw expression already includes a trailing semicolon.
+				var printed = printExpr(e, indent);
+				var trimmed = StringTools.rtrim(printed);
+				if (StringTools.endsWith(trimmed, ";")) trimmed else trimmed + ";";
+			}
 			case RExpr(e, needsSemicolon):
 				printExpr(e, indent) + (needsSemicolon ? ";" : "");
 			case RReturn(e):
