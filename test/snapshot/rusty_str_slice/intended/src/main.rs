@@ -34,9 +34,9 @@ fn main() {
     {
         let h: &String = &hay;
         {
-            let r: &String = &needle;
+            let _hx_ref: &String = &needle;
             {
-                let n: &str = r;
+                let n: &str = _hx_ref;
                 println!(
                     "{}",
                     hxrt::dynamic::from(crate::rust_string_tools::StringTools::contains(h, n))

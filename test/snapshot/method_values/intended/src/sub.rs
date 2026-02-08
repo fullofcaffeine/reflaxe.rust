@@ -10,7 +10,6 @@ impl Sub {
     pub fn new() -> crate::HxRef<crate::sub::Sub> {
         let self_: crate::HxRef<crate::sub::Sub> =
             std::rc::Rc::new(std::cell::RefCell::new(Sub {}));
-        {};
         return self_;
     }
 

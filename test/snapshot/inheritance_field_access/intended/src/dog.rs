@@ -12,7 +12,11 @@ impl Dog {
     pub fn new() -> crate::HxRef<crate::dog::Dog> {
         let self_: crate::HxRef<crate::dog::Dog> =
             std::rc::Rc::new(std::cell::RefCell::new(Dog { age: 0 }));
-        {};
+        {
+            let __tmp = 0;
+            self_.borrow_mut().age = __tmp;
+            __tmp
+        };
         return self_;
     }
 }

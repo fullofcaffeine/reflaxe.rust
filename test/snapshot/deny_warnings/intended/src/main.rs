@@ -61,9 +61,9 @@ fn main() {
     vec.push(1);
     vec.push(2);
     {
-        let r: &mut Vec<i32> = &mut vec;
+        let _hx_ref: &mut Vec<i32> = &mut vec;
         {
-            let s: &mut [i32] = r;
+            let s: &mut [i32] = _hx_ref;
             crate::rust_mut_slice_tools::MutSliceTools::set(s, 1, 5);
         }
     }

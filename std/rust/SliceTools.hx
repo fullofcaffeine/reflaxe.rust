@@ -91,7 +91,7 @@ class SliceTools {
 					name: "Slice",
 					params: [TPType(elemCt)]
 				}),
-				expr: { expr: ECast({ expr: EConst(CIdent("r")), pos: fn.pos }, null), pos: fn.pos }
+				expr: { expr: ECast({ expr: EConst(CIdent("__hx_ref")), pos: fn.pos }, null), pos: fn.pos }
 			}]),
 			pos: fn.pos
 		};
@@ -121,7 +121,7 @@ class SliceTools {
 			});
 		}
 
-		return macro rust.Borrow.withRef($value, function(r) {
+		return macro rust.Borrow.withRef($value, function(__hx_ref) {
 			$decl;
 			${f.expr};
 		});
