@@ -67,6 +67,8 @@ enum RustProfile {
 	// When compiling an inherited method shim (base method body on a subclass), `this` dispatch should
 	// use `currentClassType`, but `super` resolution should use the class that defined the body.
 	var currentMethodOwnerType: Null<ClassType> = null;
+	// The method currently being compiled (used for property accessor special-casing, e.g. `default,set` setters).
+	var currentMethodField: Null<ClassField> = null;
 	// Per-class compilation state: when a method body uses `super`, we synthesize a "super thunk"
 	// method on the current class so `super.method(...)` can call the base implementation with a
 	// `&RefCell<Current>` receiver.
@@ -947,15 +949,48 @@ enum RustProfile {
 		return "__hx_set_" + rustAccessorSuffix(classType, cf);
 	}
 
-	function isAccessorForPublicPropertyInstance(classType: ClassType, accessorField: ClassField): Bool {
-		var name = accessorField.getHaxeName();
-		if (name == null) return false;
-		var fields = classType.fields != null ? classType.fields.get() : null;
-		if (fields == null) return false;
+		function isAccessorForPublicPropertyInstance(classType: ClassType, accessorField: ClassField): Bool {
+			var name = accessorField.getHaxeName();
+			if (name == null) return false;
+			if (classType.fields == null) return false;
 
-			inline function propUsesAccessor(prop: ClassField, kind: String): Bool {
-				if (!prop.isPublic) return false;
-				return switch (prop.kind) {
+				inline function propUsesAccessor(prop: ClassField, kind: String): Bool {
+					if (!prop.isPublic) return false;
+					return switch (prop.kind) {
+						case FVar(read, write):
+							(kind == "get" && read == AccCall) || (kind == "set" && write == AccCall);
+						case _:
+							false;
+					}
+				}
+
+			if (StringTools.startsWith(name, "get_")) {
+				var propName = name.substr(4);
+				var cur: Null<ClassType> = classType;
+				while (cur != null) {
+					for (cf in cur.fields.get()) if (cf.getHaxeName() == propName) return propUsesAccessor(cf, "get");
+					cur = cur.superClass != null ? cur.superClass.t.get() : null;
+				}
+			}
+			if (StringTools.startsWith(name, "set_")) {
+				var propName = name.substr(4);
+				var cur: Null<ClassType> = classType;
+				while (cur != null) {
+					for (cf in cur.fields.get()) if (cf.getHaxeName() == propName) return propUsesAccessor(cf, "set");
+					cur = cur.superClass != null ? cur.superClass.t.get() : null;
+				}
+			}
+			return false;
+		}
+
+		function isAccessorForPublicPropertyStatic(classType: ClassType, accessorField: ClassField): Bool {
+			var name = accessorField.getHaxeName();
+			if (name == null) return false;
+			if (classType.statics == null) return false;
+
+				inline function propUsesAccessor(prop: ClassField, kind: String): Bool {
+					if (!prop.isPublic) return false;
+					return switch (prop.kind) {
 					case FVar(read, write):
 						(kind == "get" && read == AccCall) || (kind == "set" && write == AccCall);
 					case _:
@@ -963,43 +998,24 @@ enum RustProfile {
 				}
 			}
 
-		if (StringTools.startsWith(name, "get_")) {
-			var propName = name.substr(4);
-			for (cf in fields) if (cf.getHaxeName() == propName) return propUsesAccessor(cf, "get");
-		}
-		if (StringTools.startsWith(name, "set_")) {
-			var propName = name.substr(4);
-			for (cf in fields) if (cf.getHaxeName() == propName) return propUsesAccessor(cf, "set");
-		}
-		return false;
-	}
-
-	function isAccessorForPublicPropertyStatic(classType: ClassType, accessorField: ClassField): Bool {
-		var name = accessorField.getHaxeName();
-		if (name == null) return false;
-		var fields = classType.statics != null ? classType.statics.get() : null;
-		if (fields == null) return false;
-
-			inline function propUsesAccessor(prop: ClassField, kind: String): Bool {
-				if (!prop.isPublic) return false;
-				return switch (prop.kind) {
-					case FVar(read, write):
-						(kind == "get" && read == AccCall) || (kind == "set" && write == AccCall);
-					case _:
-						false;
+			if (StringTools.startsWith(name, "get_")) {
+				var propName = name.substr(4);
+				var cur: Null<ClassType> = classType;
+				while (cur != null) {
+					for (cf in cur.statics.get()) if (cf.getHaxeName() == propName) return propUsesAccessor(cf, "get");
+					cur = cur.superClass != null ? cur.superClass.t.get() : null;
 				}
 			}
-
-		if (StringTools.startsWith(name, "get_")) {
-			var propName = name.substr(4);
-			for (cf in fields) if (cf.getHaxeName() == propName) return propUsesAccessor(cf, "get");
+			if (StringTools.startsWith(name, "set_")) {
+				var propName = name.substr(4);
+				var cur: Null<ClassType> = classType;
+				while (cur != null) {
+					for (cf in cur.statics.get()) if (cf.getHaxeName() == propName) return propUsesAccessor(cf, "set");
+					cur = cur.superClass != null ? cur.superClass.t.get() : null;
+				}
+			}
+			return false;
 		}
-		if (StringTools.startsWith(name, "set_")) {
-			var propName = name.substr(4);
-			for (cf in fields) if (cf.getHaxeName() == propName) return propUsesAccessor(cf, "set");
-		}
-		return false;
-	}
 
 	function resolveToAbsolutePath(p: String): String {
 		var full = p;
@@ -1533,6 +1549,8 @@ enum RustProfile {
 			var body = { stmts: [], tail: null };
 			var prevOwner = currentMethodOwnerType;
 			currentMethodOwnerType = methodOwner;
+			var prevField = currentMethodField;
+			currentMethodField = f.field;
 			withFunctionContext(f.expr, [for (a in f.args) a.getName()], f.ret, () -> {
 				for (a in f.args) {
 					args.push({
@@ -1543,6 +1561,7 @@ enum RustProfile {
 				body = compileFunctionBody(f.expr, f.ret);
 			});
 			currentMethodOwnerType = prevOwner;
+			currentMethodField = prevField;
 
 			return {
 				name: rustMethodName(classType, f.field),
@@ -1560,6 +1579,8 @@ enum RustProfile {
 			var args: Array<reflaxe.rust.ast.RustAST.RustFnArg> = [];
 			var generics = rustGenericParamsFromFieldMeta(f.field.meta, [for (p in f.field.params) p.name]);
 			var body = { stmts: [], tail: null };
+			var prevField = currentMethodField;
+			currentMethodField = f.field;
 			withFunctionContext(f.expr, [for (a in f.args) a.getName()], f.ret, () -> {
 				for (a in f.args) {
 					args.push({
@@ -1569,6 +1590,7 @@ enum RustProfile {
 				}
 				body = compileFunctionBody(f.expr, f.ret);
 			});
+			currentMethodField = prevField;
 
 			return {
 				name: rustMethodName(classType, f.field),
@@ -1630,10 +1652,13 @@ enum RustProfile {
 			var body = { stmts: [], tail: null };
 			var prevOwner = currentMethodOwnerType;
 			currentMethodOwnerType = owner;
+			var prevField = currentMethodField;
+			currentMethodField = cf;
 			withFunctionContext(bodyExpr, argNames, sig.ret, () -> {
 				body = compileFunctionBody(bodyExpr, sig.ret);
 			});
 			currentMethodOwnerType = prevOwner;
+			currentMethodField = prevField;
 
 			return {
 				name: superThunkName(owner, cf),
@@ -4585,8 +4610,8 @@ enum RustProfile {
 			}
 		}
 
-	function compileField(obj: TypedExpr, fa: FieldAccess, fullExpr: TypedExpr): RustExpr {
-		return switch (fa) {
+		function compileField(obj: TypedExpr, fa: FieldAccess, fullExpr: TypedExpr): RustExpr {
+			return switch (fa) {
 			case FStatic(clsRef, cfRef): {
 				var cls = clsRef.get();
 				var cf = cfRef.get();
@@ -4619,24 +4644,55 @@ enum RustProfile {
 				if (owner == null) return unsupported(fullExpr, "closure field (unknown owner)");
 				compileInstanceMethodValue(obj, owner, cf, fullExpr);
 			}
-			case FInstance(clsRef, _, cfRef): {
-				var owner = clsRef.get();
-				var cf = cfRef.get();
-				if (owner == null || cf == null) return unsupported(fullExpr, "instance field");
+				case FInstance(clsRef, _, cfRef): {
+					var owner = clsRef.get();
+					var cf = cfRef.get();
+					if (owner == null || cf == null) return unsupported(fullExpr, "instance field");
 
-				// `super.field` reads compile to direct struct field reads on the current receiver.
-				// We resolve the Rust field name against the current class so inherited-field renames are respected.
-				if (isSuperExpr(obj)) {
-					switch (cf.kind) {
-						case FMethod(_):
-							return unsupported(fullExpr, "super method value");
-						case _:
-					}
+					// `super.field` reads compile to direct struct field reads on the current receiver.
+					// We resolve the Rust field name against the current class so inherited-field renames are respected.
+					if (isSuperExpr(obj)) {
+						switch (cf.kind) {
+							case FMethod(_):
+								return unsupported(fullExpr, "super method value");
+							case _:
+						}
 
-					var recv = EPath("self_");
-					var borrowed = ECall(EField(recv, "borrow"), []);
-					var access = EField(borrowed, rustFieldName(currentClassType != null ? currentClassType : owner, cf));
-					if (!TypeHelper.isBool(fullExpr.t) && !TypeHelper.isInt(fullExpr.t) && !TypeHelper.isFloat(fullExpr.t)) {
+						// `super.prop` should call the base accessor when the property uses `get_...`.
+						switch (cf.kind) {
+							case FVar(read, _): {
+								if (read == AccCall) {
+									if (currentClassType == null) return unsupported(fullExpr, "super property read (no class context)");
+									var propName = cf.getHaxeName();
+									if (propName == null) return unsupported(fullExpr, "super property read (missing name)");
+									var getterName = "get_" + propName;
+									var getter: Null<ClassField> = null;
+									var cur: Null<ClassType> = owner;
+									while (cur != null && getter == null) {
+										for (f in cur.fields.get()) {
+											if (f.getHaxeName() == getterName) {
+												switch (f.kind) {
+													case FMethod(_): getter = f;
+													case _:
+												}
+												if (getter != null) break;
+											}
+										}
+										cur = cur.superClass != null ? cur.superClass.t.get() : null;
+									}
+									if (getter == null) return unsupported(fullExpr, "super property read (missing getter)");
+									var thunk = noteSuperThunk(owner, getter);
+									var clsName = classNameFromClass(currentClassType);
+									return ECall(EPath(clsName + "::" + thunk), [EUnary("&", EPath("self_"))]);
+								}
+							}
+							case _:
+						}
+
+						var recv = EPath("self_");
+						var borrowed = ECall(EField(recv, "borrow"), []);
+						var access = EField(borrowed, rustFieldName(currentClassType != null ? currentClassType : owner, cf));
+						if (!TypeHelper.isBool(fullExpr.t) && !TypeHelper.isInt(fullExpr.t) && !TypeHelper.isFloat(fullExpr.t)) {
 						return ECall(EField(access, "clone"), []);
 					}
 					return access;
@@ -4654,14 +4710,14 @@ enum RustProfile {
 					return ECast(lenCall, "i32");
 				}
 
-				switch (cf.kind) {
-					case FMethod(_):
-						compileInstanceMethodValue(obj, owner, cf, fullExpr);
-					case _:
-						compileInstanceFieldRead(obj, owner, cf, fullExpr);
+					switch (cf.kind) {
+						case FMethod(_):
+							compileInstanceMethodValue(obj, owner, cf, fullExpr);
+						case _:
+							compileInstanceFieldRead(obj, owner, cf, fullExpr);
+					}
 				}
-			}
-			case FAnon(cfRef): {
+				case FAnon(cfRef): {
 				var cf = cfRef.get();
 				// General anonymous objects are lowered to `hxrt::anon::Anon` and accessed via typed `get`.
 				// Structural iterator/keyvalue records remain direct field access.
@@ -4726,14 +4782,87 @@ enum RustProfile {
 		});
 	}
 
-	function compileInstanceFieldRead(obj: TypedExpr, owner: ClassType, cf: ClassField, fullExpr: TypedExpr): RustExpr {
-		if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
-			return ECall(EField(compileExpr(obj), rustGetterName(owner, cf)), []);
-		}
+		function compileInstanceFieldRead(obj: TypedExpr, owner: ClassType, cf: ClassField, fullExpr: TypedExpr): RustExpr {
+			function receiverClassForField(obj: TypedExpr, fallback: ClassType): ClassType {
+				// In inherited method shims, the typed AST may treat `this` as the base class, but codegen
+				// must dispatch against the concrete class being compiled.
+				if (isThisExpr(obj) && currentClassType != null) return currentClassType;
+				return switch (followType(obj.t)) {
+					case TInst(clsRef, _): {
+						var cls = clsRef.get();
+						cls != null ? cls : fallback;
+					}
+					case _: fallback;
+				}
+			}
 
-		var recv = compileExpr(obj);
-		var borrowed = ECall(EField(recv, "borrow"), []);
-		var access = EField(borrowed, rustFieldName(owner, cf));
+				function findInstanceMethodInChain(start: ClassType, haxeName: String): Null<ClassField> {
+				var cur: Null<ClassType> = start;
+				while (cur != null) {
+					for (f in cur.fields.get()) {
+						if (f.getHaxeName() != haxeName) continue;
+						switch (f.kind) {
+							case FMethod(_): return f;
+							case _:
+						}
+					}
+					cur = cur.superClass != null ? cur.superClass.t.get() : null;
+				}
+					return null;
+				}
+
+				function varHasStorage(prop: ClassField): Bool {
+					// `@:isVar` forces storage even when accessors are `get/set`.
+					for (m in prop.meta.get()) if (m.name == ":isVar") return true;
+					return switch (prop.kind) {
+						case FVar(read, write):
+							switch ([read, write]) {
+								case [AccNormal | AccNo | AccCtor, _] | [_, AccNormal | AccNo | AccCtor]:
+									true;
+								case _:
+									false;
+							}
+						case _:
+							false;
+					}
+				}
+
+				// Property reads (`var x(get, ...)`) must call `get_x()` and return its value.
+				switch (cf.kind) {
+					case FVar(read, _): {
+						if (read == AccCall) {
+							var recvCls = receiverClassForField(obj, owner);
+							var propName = cf.getHaxeName();
+							if (propName == null) return unsupported(fullExpr, "property read (missing name)");
+							// Special-case: inside `get_x()` for a storage-backed property (e.g. `default,get`),
+							// Haxe treats `x` as a direct read of the backing storage to avoid recursion.
+							var skipLower = varHasStorage(cf) && currentMethodField != null && currentMethodField.getHaxeName() == ("get_" + propName);
+							if (!skipLower) {
+								var getter = findInstanceMethodInChain(recvCls, "get_" + propName);
+								if (getter == null) return unsupported(fullExpr, "property read (missing getter)");
+
+								// Polymorphic receivers use trait-object calls.
+								if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+									return ECall(EField(compileExpr(obj), rustMethodName(recvCls, getter)), []);
+								}
+
+								var modName = rustModuleNameForClass(recvCls);
+								var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, getter);
+								return ECall(EPath(path), [EUnary("&", compileExpr(obj))]);
+							}
+						}
+					}
+					case _:
+				}
+
+			// Polymorphic field reads go through generated accessors.
+			if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+				return ECall(EField(compileExpr(obj), rustGetterName(owner, cf)), []);
+			}
+
+			var recv = compileExpr(obj);
+			var borrowed = ECall(EField(recv, "borrow"), []);
+			var access = EField(borrowed, rustFieldName(owner, cf));
 
 		// For non-Copy types, cloning is the simplest POC rule.
 		if (!TypeHelper.isBool(fullExpr.t) && !TypeHelper.isInt(fullExpr.t) && !TypeHelper.isFloat(fullExpr.t)) {
@@ -4743,14 +4872,103 @@ enum RustProfile {
 		return access;
 	}
 
-	function compileInstanceFieldAssign(obj: TypedExpr, owner: ClassType, cf: ClassField, rhs: TypedExpr): RustExpr {
-		var fieldIsNull = isNullType(cf.type);
-		var rhsIsNullish = isNullType(rhs.t) || isNullConstExpr(rhs);
+		function compileInstanceFieldAssign(obj: TypedExpr, owner: ClassType, cf: ClassField, rhs: TypedExpr): RustExpr {
+			function receiverClassForField(obj: TypedExpr, fallback: ClassType): ClassType {
+				// In inherited method shims, the typed AST may treat `this` as the base class, but codegen
+				// must dispatch against the concrete class being compiled.
+				if (isThisExpr(obj) && currentClassType != null) return currentClassType;
+				return switch (followType(obj.t)) {
+					case TInst(clsRef, _): {
+						var cls = clsRef.get();
+						cls != null ? cls : fallback;
+					}
+					case _: fallback;
+				}
+			}
 
-		if (isSuperExpr(obj)) {
-			// `super.field = rhs` assigns into the inherited struct field on the current receiver.
-			// `{ let __tmp = rhs; self_.borrow_mut().field = __tmp.clone(); __tmp }`
-			var stmts: Array<RustStmt> = [];
+			function findInstanceMethodInChain(start: ClassType, haxeName: String): Null<ClassField> {
+				var cur: Null<ClassType> = start;
+				while (cur != null) {
+					for (f in cur.fields.get()) {
+						if (f.getHaxeName() != haxeName) continue;
+						switch (f.kind) {
+							case FMethod(_): return f;
+							case _:
+						}
+					}
+					cur = cur.superClass != null ? cur.superClass.t.get() : null;
+				}
+					return null;
+				}
+
+				function varHasStorage(prop: ClassField): Bool {
+					for (m in prop.meta.get()) if (m.name == ":isVar") return true;
+					return switch (prop.kind) {
+						case FVar(read, write):
+							switch ([read, write]) {
+								case [AccNormal | AccNo | AccCtor, _] | [_, AccNormal | AccNo | AccCtor]:
+									true;
+								case _:
+									false;
+							}
+						case _:
+							false;
+					}
+				}
+
+				// Property writes (`var x(..., set)`) compile to `set_x(v)` and return the setter's return value.
+				switch (cf.kind) {
+					case FVar(_, write): {
+						if (write == AccCall) {
+							var recvCls = receiverClassForField(obj, owner);
+							var propName = cf.getHaxeName();
+							if (propName == null) return unsupported(rhs, "property write (missing name)");
+							// Special-case: inside `set_x()` for a storage-backed property (e.g. `default,set`),
+							// Haxe treats `x = v` as a direct write to backing storage to avoid recursion.
+							var skipLower = varHasStorage(cf) && currentMethodField != null && currentMethodField.getHaxeName() == ("set_" + propName);
+							if (!skipLower) {
+								var setter = findInstanceMethodInChain(recvCls, "set_" + propName);
+								if (setter == null) return unsupported(rhs, "property write (missing setter)");
+
+								var paramType: Null<Type> = switch (followType(setter.type)) {
+									case TFun(params, _):
+										(params != null && params.length > 0) ? params[0].t : null;
+									case _:
+										null;
+								};
+								if (paramType == null) return unsupported(rhs, "property write (missing setter param)");
+
+								var rhsCompiled = coerceArgForParam(compileExpr(rhs), rhs, paramType);
+
+								// `super.prop = rhs` must call the base setter implementation.
+								if (isSuperExpr(obj)) {
+									if (currentClassType == null) return unsupported(rhs, "super property write (no class context)");
+									var thunk = noteSuperThunk(owner, setter);
+									var clsName = classNameFromClass(currentClassType);
+									return ECall(EPath(clsName + "::" + thunk), [EUnary("&", EPath("self_")), rhsCompiled]);
+								}
+
+								// Polymorphic receivers call through the trait object.
+								if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+									return ECall(EField(compileExpr(obj), rustMethodName(recvCls, setter)), [rhsCompiled]);
+								}
+
+								var modName = rustModuleNameForClass(recvCls);
+								var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, setter);
+								return ECall(EPath(path), [EUnary("&", compileExpr(obj)), rhsCompiled]);
+							}
+						}
+					}
+				case _:
+			}
+
+			var fieldIsNull = isNullType(cf.type);
+			var rhsIsNullish = isNullType(rhs.t) || isNullConstExpr(rhs);
+
+			if (isSuperExpr(obj)) {
+				// `super.field = rhs` assigns into the inherited struct field on the current receiver.
+				// `{ let __tmp = rhs; self_.borrow_mut().field = __tmp.clone(); __tmp }`
+				var stmts: Array<RustStmt> = [];
 
 			var rhsExpr = compileExpr(rhs);
 			rhsExpr = maybeCloneForReuseValue(rhsExpr, rhs);
@@ -4765,18 +4983,18 @@ enum RustProfile {
 			return EBlock({ stmts: stmts, tail: EPath("__tmp") });
 		}
 
-		if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
-			// Haxe assignment returns the RHS value.
-			// `{ let __tmp = rhs; obj.__hx_set_field(__tmp.clone()); __tmp }`
-			var stmts: Array<RustStmt> = [];
-			stmts.push(RLet("__tmp", false, null, compileExpr(rhs)));
+			if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+				// Haxe assignment returns the RHS value.
+				// `{ let __tmp = rhs; obj.__hx_set_field(__tmp.clone()); __tmp }`
+				var stmts: Array<RustStmt> = [];
+				stmts.push(RLet("__tmp", false, null, compileExpr(rhs)));
 
-			var rhsVal: RustExpr = isCopyType(cf.type) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
-			var assigned = (fieldIsNull && !rhsIsNullish) ? ECall(EPath("Some"), [rhsVal]) : rhsVal;
-			stmts.push(RSemi(ECall(EField(compileExpr(obj), rustSetterName(owner, cf)), [assigned])));
+				var rhsVal: RustExpr = isCopyType(cf.type) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
+				var assigned = (fieldIsNull && !rhsIsNullish) ? ECall(EPath("Some"), [rhsVal]) : rhsVal;
+				stmts.push(RSemi(ECall(EField(compileExpr(obj), rustSetterName(owner, cf)), [assigned])));
 
-			return EBlock({ stmts: stmts, tail: EPath("__tmp") });
-		}
+				return EBlock({ stmts: stmts, tail: EPath("__tmp") });
+			}
 
 		// Important: evaluate RHS before taking a mutable borrow to avoid RefCell borrow panics.
 		// `{ let __tmp = rhs; obj.borrow_mut().field = __tmp.clone(); __tmp }`
@@ -5230,6 +5448,22 @@ enum RustProfile {
 		var out: Array<ClassField> = [];
 		var seen = new Map<String, Bool>();
 
+		function isPhysicalVarField(cls: ClassType, cf: ClassField): Bool {
+			// Haxe `var x(get,set)` style properties are not stored fields unless explicitly marked `@:isVar`
+			// or declared with default-like access (e.g. `default`, `null`, `ctor`).
+			if (cf.meta != null && cf.meta.has(":isVar")) return true;
+			return switch (cf.kind) {
+				case FVar(read, write):
+					switch ([read, write]) {
+						case [AccNormal | AccNo | AccCtor, _]: true;
+						case [_, AccNormal | AccNo | AccCtor]: true;
+						case _: false;
+					}
+				case _:
+					false;
+			};
+		}
+
 		// Walk base -> derived so field layout is deterministic.
 		var chain: Array<ClassType> = [];
 		var cur: Null<ClassType> = classType;
@@ -5242,6 +5476,7 @@ enum RustProfile {
 			for (cf in cls.fields.get()) {
 				switch (cf.kind) {
 					case FVar(_, _): {
+						if (!isPhysicalVarField(cls, cf)) continue;
 						var name = cf.getHaxeName();
 						if (seen.exists(name)) continue;
 						seen.set(name, true);
@@ -5628,51 +5863,127 @@ enum RustProfile {
 
 						EBlock({ stmts: stmts, tail: EPath(tmpName) });
 					}
-						case TField(obj, FInstance(clsRef, _, cfRef)): {
-						// Compound assignment on a concrete instance field: `obj.field <op>= rhs`.
-						//
-						// Like field ++/--, we must avoid overlapping `RefCell` borrows:
-						// evaluate rhs first -> read via borrow() -> write via borrow_mut().
-						var owner = clsRef.get();
-						var cf = cfRef.get();
-						switch (cf.kind) {
-							case FVar(_, _): {
-								if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
-									return unsupported(fullExpr, "assignop field lvalue (polymorphic)");
+							case TField(obj, FInstance(clsRef, _, cfRef)): {
+							// Compound assignment on a concrete instance field: `obj.field <op>= rhs`.
+							//
+							// Like field ++/--, we must avoid overlapping `RefCell` borrows:
+							// evaluate rhs first -> read via borrow() -> write via borrow_mut().
+							var owner = clsRef.get();
+							var cf = cfRef.get();
+							switch (cf.kind) {
+								case FVar(_, _): {
+									if (!isCopyType(e1.t)) {
+										return unsupported(fullExpr, "assignop field lvalue (non-copy)");
+									}
+
+									var read: Null<VarAccess> = null;
+									var write: Null<VarAccess> = null;
+									switch (cf.kind) {
+										case FVar(r, w):
+											read = r;
+											write = w;
+										case _:
+									}
+
+									function receiverClassForField(obj: TypedExpr, fallback: ClassType): ClassType {
+										if (isThisExpr(obj) && currentClassType != null) return currentClassType;
+										return switch (followType(obj.t)) {
+											case TInst(cls2Ref, _): {
+												var cls2 = cls2Ref.get();
+												cls2 != null ? cls2 : fallback;
+											}
+											case _: fallback;
+										}
+									}
+
+									function findInstanceMethodInChain(start: ClassType, haxeName: String): Null<ClassField> {
+										var cur: Null<ClassType> = start;
+										while (cur != null) {
+											for (f in cur.fields.get()) {
+												if (f.getHaxeName() != haxeName) continue;
+												switch (f.kind) {
+													case FMethod(_): return f;
+													case _:
+												}
+											}
+											cur = cur.superClass != null ? cur.superClass.t.get() : null;
+										}
+										return null;
+									}
+
+									function getterCall(recvCls: ClassType, recvExpr: RustExpr): RustExpr {
+										var propName = cf.getHaxeName();
+										if (propName == null) return unsupported(fullExpr, "assignop property read (missing name)");
+										var getter = findInstanceMethodInChain(recvCls, "get_" + propName);
+										if (getter == null) return unsupported(fullExpr, "assignop property read (missing getter)");
+										if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+											return ECall(EField(recvExpr, rustMethodName(recvCls, getter)), []);
+										}
+										var modName = rustModuleNameForClass(recvCls);
+										var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, getter);
+										return ECall(EPath(path), [EUnary("&", recvExpr)]);
+									}
+
+									function setterCall(recvCls: ClassType, recvExpr: RustExpr, value: RustExpr): RustExpr {
+										var propName = cf.getHaxeName();
+										if (propName == null) return unsupported(fullExpr, "assignop property write (missing name)");
+										var setter = findInstanceMethodInChain(recvCls, "set_" + propName);
+										if (setter == null) return unsupported(fullExpr, "assignop property write (missing setter)");
+										if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+											return ECall(EField(recvExpr, rustMethodName(recvCls, setter)), [value]);
+										}
+										var modName = rustModuleNameForClass(recvCls);
+										var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, setter);
+										return ECall(EPath(path), [EUnary("&", recvExpr), value]);
+									}
+
+									var recvName = "__hx_obj";
+									var recvExpr: RustExpr = isThisExpr(obj) ? EPath("self_") : EPath(recvName);
+
+									var fieldName = rustFieldName(owner, cf);
+									var rhsName = "__rhs";
+									var tmpName = "__tmp";
+
+									var stmts: Array<RustStmt> = [];
+									if (!isThisExpr(obj)) {
+										// Evaluate receiver once and keep it alive across borrows.
+										var base = compileExpr(obj);
+										stmts.push(RLet(recvName, false, null, ECall(EField(base, "clone"), [])));
+									}
+
+									// Evaluate rhs before taking a mutable borrow of the receiver.
+									stmts.push(RLet(rhsName, false, null, compileExpr(e2)));
+
+									var usesAccessors = (read == AccCall) || (write == AccCall);
+									if (usesAccessors) {
+										var recvCls = receiverClassForField(obj, owner);
+										var curVal = (read == AccCall) ? getterCall(recvCls, recvExpr) : EField(ECall(EField(recvExpr, "borrow"), []), fieldName);
+										stmts.push(RLet(tmpName, false, null, EBinary(opStr, curVal, EPath(rhsName))));
+										var assigned = (write == AccCall)
+											? setterCall(recvCls, recvExpr, EPath(tmpName))
+											: EBlock({
+												stmts: [RSemi(EAssign(EField(ECall(EField(recvExpr, "borrow_mut"), []), fieldName), EPath(tmpName)))],
+												tail: EPath(tmpName)
+											});
+										stmts.push(RLet("__assigned", false, null, assigned));
+										return EBlock({ stmts: stmts, tail: EPath("__assigned") });
+									} else {
+										if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+											return unsupported(fullExpr, "assignop field lvalue (polymorphic)");
+										}
+										var read = EField(ECall(EField(recvExpr, "borrow"), []), fieldName);
+										var rhs = EPath(rhsName);
+										stmts.push(RLet(tmpName, false, null, EBinary(opStr, read, rhs)));
+
+										var writeField = EField(ECall(EField(recvExpr, "borrow_mut"), []), fieldName);
+										stmts.push(RSemi(EAssign(writeField, EPath(tmpName))));
+
+										return EBlock({ stmts: stmts, tail: EPath(tmpName) });
+									}
 								}
-								if (!isCopyType(e1.t)) {
-									return unsupported(fullExpr, "assignop field lvalue (non-copy)");
-								}
-
-								var recvName = "__hx_obj";
-								var recvExpr: RustExpr = isThisExpr(obj) ? EPath("self_") : EPath(recvName);
-
-								var fieldName = rustFieldName(owner, cf);
-								var rhsName = "__rhs";
-								var tmpName = "__tmp";
-
-								var stmts: Array<RustStmt> = [];
-								if (!isThisExpr(obj)) {
-									// Evaluate receiver once and keep it alive across borrows.
-									var base = compileExpr(obj);
-									stmts.push(RLet(recvName, false, null, ECall(EField(base, "clone"), [])));
-								}
-
-								// Evaluate rhs before taking a mutable borrow of the receiver.
-								stmts.push(RLet(rhsName, false, null, compileExpr(e2)));
-
-								var read = EField(ECall(EField(recvExpr, "borrow"), []), fieldName);
-								var rhs = EPath(rhsName);
-								stmts.push(RLet(tmpName, false, null, EBinary(opStr, read, rhs)));
-
-								var write = EField(ECall(EField(recvExpr, "borrow_mut"), []), fieldName);
-								stmts.push(RSemi(EAssign(write, EPath(tmpName))));
-
-								EBlock({ stmts: stmts, tail: EPath(tmpName) });
+								case _:
+									unsupported(fullExpr, "assignop field lvalue");
 							}
-							case _:
-								unsupported(fullExpr, "assignop field lvalue");
-						}
 						}
 						case TField(obj, FAnon(cfRef)): {
 							// Compound assignment on an anonymous-object field: `obj.field <op>= rhs`.
@@ -5720,10 +6031,10 @@ enum RustProfile {
 		}
 	}
 
-	function compileUnop(op: Unop, postFix: Bool, expr: TypedExpr, fullExpr: TypedExpr): RustExpr {
-			if (op == OpIncrement || op == OpDecrement) {
-				// POC: support ++/-- for locals (needed for Haxe's for-loop lowering).
-				return switch (expr.expr) {
+		function compileUnop(op: Unop, postFix: Bool, expr: TypedExpr, fullExpr: TypedExpr): RustExpr {
+				if (op == OpIncrement || op == OpDecrement) {
+					// POC: support ++/-- for locals (needed for Haxe's for-loop lowering).
+					return switch (expr.expr) {
 					case TLocal(v): {
 					var name = rustLocalRefIdent(v);
 					var delta: RustExpr = TypeHelper.isFloat(expr.t) ? ELitFloat(1.0) : ELitInt(1);
@@ -5746,22 +6057,124 @@ enum RustProfile {
 					}
 				}
 
-					case TField(obj, FInstance(clsRef, _, cfRef)): {
-					var owner = clsRef.get();
-					var cf = cfRef.get();
-					switch (cf.kind) {
-						case FVar(_, _): {
-							// Support ++/-- on instance fields:
-							// - `obj.field++` returns old value
-							// - `++obj.field` returns new value
-							//
+						case TField(obj, FInstance(clsRef, _, cfRef)): {
+						var owner = clsRef.get();
+						var cf = cfRef.get();
+						switch (cf.kind) {
+							case FVar(_, _): {
+								// Properties (`var x(get,set)` / mixed `default,set`) must go through accessors.
+								var read: Null<VarAccess> = null;
+								var write: Null<VarAccess> = null;
+								switch (cf.kind) {
+									case FVar(r, w):
+										read = r;
+										write = w;
+									case _:
+								}
+
+								function receiverClassForField(obj: TypedExpr, fallback: ClassType): ClassType {
+									if (isThisExpr(obj) && currentClassType != null) return currentClassType;
+									return switch (followType(obj.t)) {
+										case TInst(cls2Ref, _): {
+											var cls2 = cls2Ref.get();
+											cls2 != null ? cls2 : fallback;
+										}
+										case _: fallback;
+									}
+								}
+
+								function findInstanceMethodInChain(start: ClassType, haxeName: String): Null<ClassField> {
+									var cur: Null<ClassType> = start;
+									while (cur != null) {
+										for (f in cur.fields.get()) {
+											if (f.getHaxeName() != haxeName) continue;
+											switch (f.kind) {
+												case FMethod(_): return f;
+												case _:
+											}
+										}
+										cur = cur.superClass != null ? cur.superClass.t.get() : null;
+									}
+									return null;
+								}
+
+								function readValue(recvCls: ClassType, recvExpr: RustExpr): RustExpr {
+									if (read == AccCall) {
+										var propName = cf.getHaxeName();
+										if (propName == null) return unsupported(fullExpr, "property unop read (missing name)");
+										var getter = findInstanceMethodInChain(recvCls, "get_" + propName);
+										if (getter == null) return unsupported(fullExpr, "property unop read (missing getter)");
+										if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+											return ECall(EField(recvExpr, rustMethodName(recvCls, getter)), []);
+										}
+										var modName = rustModuleNameForClass(recvCls);
+										var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, getter);
+										return ECall(EPath(path), [EUnary("&", recvExpr)]);
+									}
+									var fieldName = rustFieldName(owner, cf);
+									return EField(ECall(EField(recvExpr, "borrow"), []), fieldName);
+								}
+
+								function writeValue(recvCls: ClassType, recvExpr: RustExpr, value: RustExpr): RustExpr {
+									if (write == AccCall) {
+										var propName = cf.getHaxeName();
+										if (propName == null) return unsupported(fullExpr, "property unop write (missing name)");
+										var setter = findInstanceMethodInChain(recvCls, "set_" + propName);
+										if (setter == null) return unsupported(fullExpr, "property unop write (missing setter)");
+										if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+											return ECall(EField(recvExpr, rustMethodName(recvCls, setter)), [value]);
+										}
+										var modName = rustModuleNameForClass(recvCls);
+										var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, setter);
+										return ECall(EPath(path), [EUnary("&", recvExpr), value]);
+									}
+									var fieldName = rustFieldName(owner, cf);
+									var writeField = EField(ECall(EField(recvExpr, "borrow_mut"), []), fieldName);
+									return EBlock({ stmts: [RSemi(EAssign(writeField, value))], tail: value });
+								}
+
+								// If either side uses accessors, treat as a property-like operation.
+								var usesAccessors = (read == AccCall) || (write == AccCall);
+								if (usesAccessors) {
+									if (!isCopyType(expr.t)) {
+										return unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " property unop (non-copy)");
+									}
+
+									var recvCls = receiverClassForField(obj, owner);
+									var recvName = "__hx_obj";
+									var recvExpr: RustExpr = isThisExpr(obj) ? EPath("self_") : EPath(recvName);
+									var delta: RustExpr = TypeHelper.isFloat(expr.t) ? ELitFloat(1.0) : ELitInt(1);
+									var binop = (op == OpIncrement) ? "+" : "-";
+
+									var stmts: Array<RustStmt> = [];
+									if (!isThisExpr(obj)) {
+										var base = compileExpr(obj);
+										stmts.push(RLet(recvName, false, null, ECall(EField(base, "clone"), [])));
+									}
+
+									if (postFix) {
+										stmts.push(RLet("__tmp", false, null, readValue(recvCls, recvExpr)));
+										stmts.push(RLet("__new", false, null, EBinary(binop, EPath("__tmp"), delta)));
+										stmts.push(RLet("_", false, null, writeValue(recvCls, recvExpr, EPath("__new"))));
+										return EBlock({ stmts: stmts, tail: EPath("__tmp") });
+									} else {
+										stmts.push(RLet("__new", false, null, EBinary(binop, readValue(recvCls, recvExpr), delta)));
+										stmts.push(RLet("__tmp", false, null, writeValue(recvCls, recvExpr, EPath("__new"))));
+										return EBlock({ stmts: stmts, tail: EPath("__tmp") });
+									}
+								}
+
+								// Support ++/-- on instance fields:
+								// - `obj.field++` returns old value
+								// - `++obj.field` returns new value
+								//
 							// For `RefCell`-backed instances we must avoid overlapping borrows:
 							// read (borrow) -> compute -> write (borrow_mut).
 
-							// Polymorphic (trait object) field access uses getter/setter methods; keep it unsupported for now.
-							if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
-								return unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " field unop (polymorphic)");
-							}
+								// Polymorphic (trait object) field access uses getter/setter methods; keep it unsupported for now.
+								if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+									return unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " field unop (polymorphic)");
+								}
 
 							var recvName = "__hx_obj";
 							var recvExpr: RustExpr = if (isThisExpr(obj)) {

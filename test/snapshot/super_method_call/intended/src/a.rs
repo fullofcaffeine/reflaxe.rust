@@ -5,14 +5,13 @@ pub const __HX_TYPE_ID: u32 = 0x74d45d10u32;
 #[derive(Debug)]
 
 pub struct A {
-    pub x: i32,
     _x: i32,
 }
 
 impl A {
     pub fn new() -> crate::HxRef<crate::a::A> {
         let self_: crate::HxRef<crate::a::A> =
-            std::rc::Rc::new(std::cell::RefCell::new(A { x: 0, _x: 0 }));
+            std::rc::Rc::new(std::cell::RefCell::new(A { _x: 0 }));
         {
             let __tmp = 1;
             self_.borrow_mut()._x = __tmp;
@@ -44,8 +43,6 @@ impl A {
 }
 
 pub trait ATrait {
-    fn __hx_get_x(&self) -> i32;
-    fn __hx_set_x(&self, v: i32);
     fn __hx_get_u1_x(&self) -> i32;
     fn __hx_set_u1_x(&self, v: i32);
     fn get_x(&self) -> i32;
@@ -56,12 +53,6 @@ pub trait ATrait {
 }
 
 impl crate::a::ATrait for std::cell::RefCell<A> {
-    fn __hx_get_x(&self) -> i32 {
-        self.borrow().x
-    }
-    fn __hx_set_x(&self, v: i32) {
-        self.borrow_mut().x = v;
-    }
     fn __hx_get_u1_x(&self) -> i32 {
         self.borrow()._x
     }

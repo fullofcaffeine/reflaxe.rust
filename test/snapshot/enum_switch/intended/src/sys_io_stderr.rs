@@ -54,7 +54,7 @@ impl Stderr {
 
     pub fn close(_self_: &std::cell::RefCell<Stderr>) {}
 
-    fn set_big_endian(self_: &std::cell::RefCell<Stderr>, b: bool) -> bool {
+    pub fn set_big_endian(self_: &std::cell::RefCell<Stderr>, b: bool) -> bool {
         {
             let __tmp = b;
             self_.borrow_mut().big_endian = __tmp;

@@ -5,14 +5,13 @@ pub const __HX_TYPE_ID: u32 = 0x76d46036u32;
 #[derive(Debug)]
 
 pub struct C {
-    pub x: i32,
     _x: i32,
 }
 
 impl C {
     pub fn new() -> crate::HxRef<crate::c::C> {
         let self_: crate::HxRef<crate::c::C> =
-            std::rc::Rc::new(std::cell::RefCell::new(C { x: 0, _x: 0 }));
+            std::rc::Rc::new(std::cell::RefCell::new(C { _x: 0 }));
         {
             let __tmp = 1;
             self_.borrow_mut()._x = __tmp;
@@ -21,11 +20,11 @@ impl C {
         return self_;
     }
 
-    fn get_x(self_: &std::cell::RefCell<C>) -> i32 {
+    pub fn get_x(self_: &std::cell::RefCell<C>) -> i32 {
         return crate::c::C::__hx_super_b_get_x(&self_) + 100;
     }
 
-    fn set_x(self_: &std::cell::RefCell<C>, v: i32) -> i32 {
+    pub fn set_x(self_: &std::cell::RefCell<C>, v: i32) -> i32 {
         return crate::c::C::__hx_super_b_set_x(&self_, v + 100);
     }
 
@@ -81,12 +80,6 @@ impl C {
 }
 
 impl crate::b::BTrait for std::cell::RefCell<C> {
-    fn __hx_get_x(&self) -> i32 {
-        self.borrow().x
-    }
-    fn __hx_set_x(&self, v: i32) {
-        self.borrow_mut().x = v;
-    }
     fn __hx_get_u1_x(&self) -> i32 {
         self.borrow()._x
     }
@@ -111,12 +104,6 @@ impl crate::b::BTrait for std::cell::RefCell<C> {
 }
 
 impl crate::a::ATrait for std::cell::RefCell<C> {
-    fn __hx_get_x(&self) -> i32 {
-        self.borrow().x
-    }
-    fn __hx_set_x(&self, v: i32) {
-        self.borrow_mut().x = v;
-    }
     fn __hx_get_u1_x(&self) -> i32 {
         self.borrow()._x
     }

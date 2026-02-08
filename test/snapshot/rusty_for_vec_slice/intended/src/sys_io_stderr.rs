@@ -54,7 +54,7 @@ impl Stderr {
 
     pub fn close(_self_: &crate::HxRefCell<Stderr>) {}
 
-    fn set_big_endian(self_: &crate::HxRefCell<Stderr>, b: bool) -> bool {
+    pub fn set_big_endian(self_: &crate::HxRefCell<Stderr>, b: bool) -> bool {
         {
             let __tmp = b;
             self_.borrow_mut().big_endian = __tmp;

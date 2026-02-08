@@ -8,7 +8,6 @@ pub struct BytesBuffer {
     chunks: hxrt::array::Array<crate::HxRef<hxrt::bytes::Bytes>>,
     finalized: bool,
     _length: i32,
-    pub length: i32,
 }
 
 impl BytesBuffer {
@@ -18,7 +17,6 @@ impl BytesBuffer {
                 chunks: hxrt::array::Array::<crate::HxRef<hxrt::bytes::Bytes>>::new(),
                 finalized: false,
                 _length: 0,
-                length: 0,
             }));
         {
             let __tmp = hxrt::array::Array::<crate::HxRef<hxrt::bytes::Bytes>>::new();

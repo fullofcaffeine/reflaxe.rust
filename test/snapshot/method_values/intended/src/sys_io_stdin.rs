@@ -67,7 +67,7 @@ impl Stdin {
 
     pub fn close(_self_: &std::cell::RefCell<Stdin>) {}
 
-    fn set_big_endian(self_: &std::cell::RefCell<Stdin>, b: bool) -> bool {
+    pub fn set_big_endian(self_: &std::cell::RefCell<Stdin>, b: bool) -> bool {
         {
             let __tmp = b;
             self_.borrow_mut().big_endian = __tmp;
