@@ -4774,11 +4774,11 @@ enum RustProfile {
 			case OpInterval:
 				ERange(compileExpr(e1), compileExpr(e2));
 
-			case OpAssignOp(inner): {
-				// Compound assignments (`x += y`, `x %= y`, ...).
-				//
-				// POC: support locals (common in loops/desugarings). More complex lvalues
-				// (fields/indices) can be added when needed.
+				case OpAssignOp(inner): {
+					// Compound assignments (`x += y`, `x %= y`, ...).
+					//
+					// POC: support locals (common in loops/desugarings). More complex lvalues
+					// (fields/indices) can be added when needed.
 				var opStr: Null<String> = switch (inner) {
 					case OpAdd: "+";
 					case OpSub: "-";
@@ -4829,7 +4829,7 @@ enum RustProfile {
 
 						EBlock({ stmts: stmts, tail: EPath(tmpName) });
 					}
-					case TField(obj, FInstance(clsRef, _, cfRef)): {
+						case TField(obj, FInstance(clsRef, _, cfRef)): {
 						// Compound assignment on a concrete instance field: `obj.field <op>= rhs`.
 						//
 						// Like field ++/--, we must avoid overlapping `RefCell` borrows:
@@ -4874,11 +4874,47 @@ enum RustProfile {
 							case _:
 								unsupported(fullExpr, "assignop field lvalue");
 						}
+						}
+						case TField(obj, FAnon(cfRef)): {
+							// Compound assignment on an anonymous-object field: `obj.field <op>= rhs`.
+							//
+							// Preserve evaluation order (obj -> rhs) and avoid overlapping `RefCell` borrows:
+							// evaluate rhs first -> read via borrow() -> write via borrow_mut().
+							if (!isAnonObjectType(obj.t)) {
+								return unsupported(fullExpr, "assignop anon field lvalue (non-anon)");
+							}
+							if (!isCopyType(e1.t)) {
+								return unsupported(fullExpr, "assignop anon field lvalue (non-copy)");
+							}
+
+							var cf = cfRef.get();
+							if (cf == null) return unsupported(fullExpr, "assignop anon field lvalue (missing field)");
+							var fieldName = cf.getHaxeName();
+
+							var recvName = "__hx_obj";
+							var rhsName = "__rhs";
+							var tmpName = "__tmp";
+
+							var stmts: Array<RustStmt> = [];
+							stmts.push(RLet(recvName, false, null, maybeCloneForReuseValue(compileExpr(obj), obj)));
+							stmts.push(RLet(rhsName, false, null, compileExpr(e2)));
+
+							var tyStr = rustTypeToString(toRustType(cf.type, fullExpr.pos));
+							var borrowRead = ECall(EField(EPath(recvName), "borrow"), []);
+							var getter = "get::<" + tyStr + ">";
+							var read = ECall(EField(borrowRead, getter), [ELitString(fieldName)]);
+							stmts.push(RLet(tmpName, false, null, EBinary(opStr, read, EPath(rhsName))));
+
+							var borrowWrite = ECall(EField(EPath(recvName), "borrow_mut"), []);
+							var setCall = ECall(EField(borrowWrite, "set"), [ELitString(fieldName), EPath(tmpName)]);
+							stmts.push(RSemi(setCall));
+
+							EBlock({ stmts: stmts, tail: EPath(tmpName) });
+						}
+						case _:
+							unsupported(fullExpr, "assignop lvalue");
 					}
-					case _:
-						unsupported(fullExpr, "assignop lvalue");
 				}
-			}
 
 			default:
 				unsupported(fullExpr, "binop" + Std.string(op));
@@ -4886,10 +4922,10 @@ enum RustProfile {
 	}
 
 	function compileUnop(op: Unop, postFix: Bool, expr: TypedExpr, fullExpr: TypedExpr): RustExpr {
-		if (op == OpIncrement || op == OpDecrement) {
-			// POC: support ++/-- for locals (needed for Haxe's for-loop lowering).
-			return switch (expr.expr) {
-				case TLocal(v): {
+			if (op == OpIncrement || op == OpDecrement) {
+				// POC: support ++/-- for locals (needed for Haxe's for-loop lowering).
+				return switch (expr.expr) {
+					case TLocal(v): {
 					var name = rustLocalRefIdent(v);
 					var delta: RustExpr = TypeHelper.isFloat(expr.t) ? ELitFloat(1.0) : ELitInt(1);
 					var binop = (op == OpIncrement) ? "+" : "-";
@@ -4911,7 +4947,7 @@ enum RustProfile {
 					}
 				}
 
-				case TField(obj, FInstance(clsRef, _, cfRef)): {
+					case TField(obj, FInstance(clsRef, _, cfRef)): {
 					var owner = clsRef.get();
 					var cf = cfRef.get();
 					switch (cf.kind) {
@@ -4966,12 +5002,56 @@ enum RustProfile {
 						case _:
 							unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " field unop");
 					}
-				}
+					}
+					case TField(obj, FAnon(cfRef)): {
+						// Support ++/-- on anonymous-object fields (Copy types only).
+						if (!isAnonObjectType(obj.t)) {
+							return unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " anon field unop (non-anon)");
+						}
+						if (!isCopyType(expr.t)) {
+							return unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " anon field unop (non-copy)");
+						}
 
-				case _:
-					unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " unop");
+						var cf = cfRef.get();
+						if (cf == null) return unsupported(fullExpr, "anon field unop (missing field)");
+						var fieldName = cf.getHaxeName();
+
+						var recvName = "__hx_obj";
+						var tyStr = rustTypeToString(toRustType(cf.type, fullExpr.pos));
+						var getter = "get::<" + tyStr + ">";
+
+						var delta: RustExpr = TypeHelper.isFloat(expr.t) ? ELitFloat(1.0) : ELitInt(1);
+						var binop = (op == OpIncrement) ? "+" : "-";
+
+						var stmts: Array<RustStmt> = [];
+						stmts.push(RLet(recvName, false, null, maybeCloneForReuseValue(compileExpr(obj), obj)));
+
+						function readField(): RustExpr {
+							var borrowRead = ECall(EField(EPath(recvName), "borrow"), []);
+							return ECall(EField(borrowRead, getter), [ELitString(fieldName)]);
+						}
+
+						function writeField(value: RustExpr): RustStmt {
+							var borrowWrite = ECall(EField(EPath(recvName), "borrow_mut"), []);
+							return RSemi(ECall(EField(borrowWrite, "set"), [ELitString(fieldName), value]));
+						}
+
+						if (postFix) {
+							stmts.push(RLet("__tmp", false, null, readField()));
+							stmts.push(RLet("__new", false, null, EBinary(binop, EPath("__tmp"), delta)));
+							stmts.push(writeField(EPath("__new")));
+							return EBlock({ stmts: stmts, tail: EPath("__tmp") });
+						} else {
+							stmts.push(RLet("__tmp", false, null, EBinary(binop, readField(), delta)));
+							stmts.push(writeField(EPath("__tmp")));
+							return EBlock({ stmts: stmts, tail: EPath("__tmp") });
+						}
+					}
+
+					case _:
+						unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " unop");
+				}
 			}
-		}
 
 		if (postFix) {
 			return unsupported(fullExpr, "postfix unop");

@@ -15,6 +15,26 @@ fn main() {
     println!("{}", hxrt::dynamic::from(o2_s.clone()));
     o2_x = 2;
     println!("{}", hxrt::dynamic::from(o2_x));
+    {
+        o2_x = o2_x + 3;
+        o2_x
+    };
+    println!("{}", hxrt::dynamic::from(o2_x));
+    println!(
+        "{}",
+        hxrt::dynamic::from({
+            let __tmp = o2_x;
+            o2_x = o2_x + 1;
+            __tmp
+        })
+    );
+    println!("{}", hxrt::dynamic::from(o2_x));
+    {
+        let __tmp = o2_x;
+        o2_x = o2_x - 1;
+        __tmp
+    };
+    println!("{}", hxrt::dynamic::from(o2_x));
     o2_s = format!("{}{}", &o2_s, "!");
     println!("{}", hxrt::dynamic::from(o2_s.clone()));
 }
