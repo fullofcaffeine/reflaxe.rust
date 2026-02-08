@@ -10,7 +10,6 @@ impl Dog {
     pub fn new() -> crate::HxRef<crate::dog::Dog> {
         let self_: crate::HxRef<crate::dog::Dog> =
             std::rc::Rc::new(std::cell::RefCell::new(Dog {}));
-        {};
         return self_;
     }
 

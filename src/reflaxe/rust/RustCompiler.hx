@@ -68,11 +68,14 @@ enum RustProfile {
 		var frameworkStdDir: Null<String> = null;
 		var frameworkRuntimeDir: Null<String> = null;
 		var profile: RustProfile = Portable;
+		// When inlining constructor `super(...)` bodies, we need to substitute base-ctor parameter locals.
+		// Map is keyed by Haxe local name and returns a Rust expression to use in place of that local.
+		var inlineLocalSubstitutions: Null<Map<String, RustExpr>> = null;
 		var currentMutatedLocals: Null<Map<Int, Bool>> = null;
 		var currentLocalReadCounts: Null<Map<Int, Int>> = null;
 		var currentArgNames: Null<Map<String, String>> = null;
-	var currentLocalNames: Null<Map<Int, String>> = null;
-	var currentLocalUsed: Null<Map<String, Bool>> = null;
+		var currentLocalNames: Null<Map<Int, String>> = null;
+		var currentLocalUsed: Null<Map<String, Bool>> = null;
 	var currentEnumParamBinds: Null<Map<String, String>> = null;
 	var currentFunctionReturn: Null<Type> = null;
 	var rustNamesByClass: Map<String, { fields: Map<String, String>, methods: Map<String, String> }> = [];
@@ -402,6 +405,57 @@ enum RustProfile {
 			traitLines.push("}");
 			items.push(RRaw(traitLines.join("\n")));
 			} else {
+				// If this class has a base class, bring base traits into scope. This matters when we inline
+				// constructor `super(...)` bodies: base-typed method calls can compile to trait methods that
+				// need the trait to be in scope for method-call syntax on concrete receivers.
+				function baseCtorCallsThisMethods(base: ClassType): Bool {
+					if (base == null) return false;
+					if (base.constructor == null) return false;
+					var ctorField = base.constructor.get();
+					if (ctorField == null) return false;
+					var ex = ctorField.expr();
+					if (ex == null) return false;
+					var body = switch (ex.expr) {
+						case TFunction(fn): fn.expr;
+						case _: ex;
+					};
+
+					var found = false;
+					function scan(e: TypedExpr): Void {
+						if (found) return;
+						switch (e.expr) {
+							case TCall(callExpr, _):
+								switch (unwrapMetaParen(callExpr).expr) {
+									case TField(obj, FInstance(_, _, _)):
+										if (isThisExpr(obj)) {
+											found = true;
+										}
+									case _:
+								}
+							case _:
+						}
+					}
+
+					scan(body);
+					TypedExprTools.iter(body, scan);
+					return found;
+				}
+
+				var seenBaseUses: Map<String, Bool> = [];
+				var base = classType.superClass != null ? classType.superClass.t.get() : null;
+				while (base != null) {
+					if (shouldEmitClass(base, false)) {
+						var baseMod = rustModuleNameForClass(base);
+						var baseTrait = rustTypeNameForClass(base) + "Trait";
+						var key = baseMod + "::" + baseTrait;
+						if (!seenBaseUses.exists(key) && baseCtorCallsThisMethods(base)) {
+							seenBaseUses.set(key, true);
+							items.push(RRaw("use crate::" + baseMod + "::" + baseTrait + ";"));
+						}
+					}
+					base = base.superClass != null ? base.superClass.t.get() : null;
+				}
+
 				// Stable RTTI id for this class (portable-mode baseline).
 				items.push(RRaw("pub const __HX_TYPE_ID: u32 = " + typeIdLiteralForClass(classType) + ";"));
 
@@ -1032,7 +1086,36 @@ enum RustProfile {
 
 			var stmts: Array<RustStmt> = [];
 			if (f.expr != null) {
-				withFunctionContext(f.expr, [for (a in f.args) a.getName()], f.ret, () -> {
+				// If this ctor calls `super(...)`, we inline base-ctor bodies into this Rust function.
+				// Compute local mutation/read-count context over the combined (base+derived) bodies so
+				// `mut` and clone decisions remain correct and name collisions are avoided.
+				var ctxExpr: TypedExpr = f.expr;
+				if (classType.superClass != null) {
+					var chain: Array<TypedExpr> = [];
+					var cur = classType.superClass != null ? classType.superClass.t.get() : null;
+					while (cur != null) {
+						if (cur.constructor != null) {
+							var cf = cur.constructor.get();
+							if (cf != null) {
+								var ex = cf.expr();
+								if (ex != null) {
+									// ClassField.expr() returns a `TFunction` for methods; we want the body expression.
+									var body = switch (ex.expr) {
+										case TFunction(fn): fn.expr;
+										case _: ex;
+									};
+									chain.push(body);
+								}
+							}
+						}
+						cur = cur.superClass != null ? cur.superClass.t.get() : null;
+					}
+					if (chain.length > 0) {
+						ctxExpr = { expr: TBlock(chain.concat([f.expr])), pos: f.expr.pos, t: f.expr.t };
+					}
+				}
+
+				withFunctionContext(ctxExpr, [for (a in f.args) a.getName()], f.ret, () -> {
 					for (a in f.args) {
 						args.push({
 							name: rustArgIdent(a.getName()),
@@ -1173,10 +1256,170 @@ enum RustProfile {
 						ERaw(allocExpr)
 					));
 
-					var bodyExpr: TypedExpr = f.expr;
-					if (remainingExprs != null) {
-						bodyExpr = { expr: TBlock(remainingExprs), pos: f.expr.pos, t: f.expr.t };
+					function unwrapLeadingSuperCall(e: TypedExpr): Null<Array<TypedExpr>> {
+						var cur = unwrapMetaParen(e);
+						return switch (cur.expr) {
+							case TCall(target, a): {
+								var t = unwrapMetaParen(target);
+								switch (t.expr) {
+									case TConst(TSuper): a;
+									case _: null;
+								}
+							}
+							case _: null;
+						}
 					}
+
+					function allocTemp(base: String): String {
+						if (currentLocalUsed == null) return base;
+						return RustNaming.stableUnique(base, currentLocalUsed);
+					}
+
+					function ctorFieldFor(cls: ClassType): Null<ClassField> {
+						return cls != null && cls.constructor != null ? cls.constructor.get() : null;
+					}
+
+					function ctorParamsFor(cls: ClassType): Array<{ name: String, t: Type, opt: Bool }> {
+						var cf = ctorFieldFor(cls);
+						if (cf == null) return [];
+						return switch (followType(cf.type)) {
+							case TFun(params, _): params;
+							case _: [];
+						};
+					}
+
+					function ctorBodyFor(cls: ClassType): Null<TypedExpr> {
+						var cf = ctorFieldFor(cls);
+						var ex = cf != null ? cf.expr() : null;
+						if (ex == null) return null;
+						// ClassField.expr() returns a `TFunction` for methods; we want the body expression.
+						return switch (ex.expr) {
+							case TFunction(fn): fn.expr;
+							case _: ex;
+						};
+					}
+
+					function compilePositionalArgsFor(params: Array<{ name: String, t: Type, opt: Bool }>, args: Array<TypedExpr>): Array<{ param: { name: String, t: Type, opt: Bool }, rust: RustExpr, typed: Null<TypedExpr> }> {
+						var out: Array<{ param: { name: String, t: Type, opt: Bool }, rust: RustExpr, typed: Null<TypedExpr> }> = [];
+						for (i in 0...params.length) {
+							var p = params[i];
+							if (i < args.length) {
+								var a = args[i];
+								var compiled = compileExpr(a);
+								compiled = coerceArgForParam(compiled, a, p.t);
+								out.push({ param: p, rust: compiled, typed: a });
+								} else if (p.opt) {
+									var d = isNullType(p.t) ? "None" : defaultValueForType(p.t, f.field.pos);
+									out.push({ param: p, rust: ERaw(d), typed: null });
+								} else {
+									// Typechecker should prevent this; keep a deterministic fallback.
+									out.push({ param: p, rust: ERaw(defaultValueForType(p.t, f.field.pos)), typed: null });
+								}
+						}
+						return out;
+					}
+
+					function emitCtorChainInit(cls: ClassType, callArgs: Array<TypedExpr>, depth: Int): Void {
+						if (cls == null) return;
+						var ctorExpr = ctorBodyFor(cls);
+						if (ctorExpr == null) return;
+
+						var params = ctorParamsFor(cls);
+						var compiledArgs = compilePositionalArgsFor(params, callArgs);
+
+						// Evaluate super-call args once, in order, into temps.
+						var subst: Map<String, RustExpr> = new Map();
+						for (i in 0...compiledArgs.length) {
+							var p = compiledArgs[i].param;
+							var rust = compiledArgs[i].rust;
+							var typed = compiledArgs[i].typed;
+							if (typed != null) {
+								rust = maybeCloneForReuseValue(rust, typed);
+							}
+
+							var tmp = allocTemp("__hx_super_" + depth + "_" + i);
+							stmts.push(RLet(tmp, false, toRustType(p.t, f.field.pos), rust));
+
+							var byValue = EPath(tmp);
+							var useExpr = isCopyType(p.t) ? byValue : ECall(EField(byValue, "clone"), []);
+							subst.set(p.name, useExpr);
+						}
+
+						function withSubst<T>(m: Map<String, RustExpr>, fn: () -> T): T {
+							var prev = inlineLocalSubstitutions;
+							inlineLocalSubstitutions = m;
+							var out = fn();
+							inlineLocalSubstitutions = prev;
+							return out;
+						}
+
+						withSubst(subst, () -> {
+							// If this ctor starts with a `super(...)` call, inline the super-ctor first.
+							var exprU = unwrapMetaParen(ctorExpr);
+							var remaining: Array<TypedExpr> = null;
+							var superArgs: Null<Array<TypedExpr>> = null;
+							switch (exprU.expr) {
+								case TBlock(exprs) if (exprs.length > 0): {
+									superArgs = unwrapLeadingSuperCall(exprs[0]);
+									remaining = superArgs != null ? exprs.slice(1) : exprs;
+								}
+								case _:
+							}
+
+							if (superArgs != null) {
+								var base = cls.superClass != null ? cls.superClass.t.get() : null;
+								if (base == null) {
+									#if eval
+									Context.error("super() call found, but class has no superclass", ctorExpr.pos);
+									#end
+								} else {
+									emitCtorChainInit(base, superArgs, depth + 1);
+								}
+							}
+
+							if (remaining != null) {
+								var bodyExpr: TypedExpr = { expr: TBlock(remaining), pos: ctorExpr.pos, t: ctorExpr.t };
+								var block = compileVoidBody(bodyExpr);
+								for (s in block.stmts) stmts.push(s);
+								if (block.tail != null) stmts.push(RSemi(block.tail));
+							} else {
+								var block = compileVoidBody(ctorExpr);
+								for (s in block.stmts) stmts.push(s);
+								if (block.tail != null) stmts.push(RSemi(block.tail));
+							}
+							return null;
+						});
+					}
+
+					// Remove a leading `super(...)` call from the derived ctor body and inline the base ctor chain.
+					var bodyExpr: TypedExpr = f.expr;
+					var exprsForBody: Null<Array<TypedExpr>> = remainingExprs;
+					if (exprsForBody == null) {
+						switch (unwrapMetaParen(f.expr).expr) {
+							case TBlock(exprs): exprsForBody = exprs;
+							case _:
+						}
+					}
+
+						if (exprsForBody != null && exprsForBody.length > 0) {
+							var superArgs = unwrapLeadingSuperCall(exprsForBody[0]);
+							if (superArgs != null) {
+								var base = classType.superClass != null ? classType.superClass.t.get() : null;
+								if (base == null) {
+									#if eval
+									Context.error("super() call found, but class has no superclass", exprsForBody[0].pos);
+									#end
+								} else {
+									emitCtorChainInit(base, superArgs, 0);
+								}
+								exprsForBody = exprsForBody.slice(1);
+							}
+						}
+
+					if (exprsForBody != null) {
+						bodyExpr = { expr: TBlock(exprsForBody), pos: f.expr.pos, t: f.expr.t };
+					}
+
 					var bodyBlock = compileFunctionBody(bodyExpr, f.ret);
 					for (s in bodyBlock.stmts) stmts.push(s);
 					if (bodyBlock.tail != null) stmts.push(RSemi(bodyBlock.tail));
@@ -2244,6 +2487,9 @@ enum RustProfile {
 			}
 
 				case TLocal(v):
+					if (inlineLocalSubstitutions != null && inlineLocalSubstitutions.exists(v.name)) {
+						return inlineLocalSubstitutions.get(v.name);
+					}
 					EPath(rustLocalRefIdent(v));
 
 			case TBinop(op, e1, e2):

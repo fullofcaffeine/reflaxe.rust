@@ -34,14 +34,14 @@ class StrTools {
 			expr: EVars([{
 				name: argName,
 				type: TPath({ pack: ["rust"], name: "Str" }),
-				expr: { expr: ECast({ expr: EConst(CIdent("r")), pos: fn.pos }, null), pos: fn.pos }
+				expr: { expr: ECast({ expr: EConst(CIdent("__hx_ref")), pos: fn.pos }, null), pos: fn.pos }
 			}]),
 			pos: fn.pos
 		};
 
 		// Expand to:
-		// `rust.Borrow.withRef(value, r -> { var s: rust.Str = cast r; body; })`
-		return macro rust.Borrow.withRef($value, function(r) {
+		// `rust.Borrow.withRef(value, __hx_ref -> { var s: rust.Str = cast __hx_ref; body; })`
+		return macro rust.Borrow.withRef($value, function(__hx_ref) {
 			$decl;
 			${f.expr};
 		});

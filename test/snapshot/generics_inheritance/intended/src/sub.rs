@@ -14,7 +14,6 @@ impl<T: Clone> Sub<T> {
             std::rc::Rc::new(std::cell::RefCell::new(Sub {
                 __hx_phantom: std::marker::PhantomData,
             }));
-        {};
         return self_;
     }
 

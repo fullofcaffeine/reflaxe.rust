@@ -35,9 +35,9 @@ fn main() {
     }
     let mut sum2: i32 = 0;
     {
-        let r: &Vec<i32> = &v;
+        let _hx_ref: &Vec<i32> = &v;
         {
-            let s: &[i32] = r;
+            let s: &[i32] = _hx_ref;
             for y in s.iter().copied() {
                 sum2 = sum2 + y;
             }
