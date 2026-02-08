@@ -95,6 +95,8 @@ cd examples/serde_json
 
 See `docs/rusty-profile.md` for the `rusty` profile design and `rust.*` APIs.
 
+See `docs/profiles.md` for an overview of portable vs idiomatic vs rusty.
+
 See `docs/workflow.md` for the full Haxe→Rust→Cargo workflow (defines, release builds, targets).
 
 See `docs/release.md` for how releases (semver + changelog + GitHub artifacts) are produced.
