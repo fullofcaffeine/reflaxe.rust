@@ -25,6 +25,45 @@ impl Sys {
         );
     }
 
+    pub fn get_env(s: String) -> String {
+        return std::env::var(s.as_str())
+            .ok()
+            .unwrap_or_else(|| String::new());
+    }
+
+    pub fn put_env(s: String, v: Option<String>) {
+        if v.is_none() {
+            {
+                std::env::remove_var(s.as_str());
+            };
+        } else {
+            {
+                std::env::set_var(s.as_str(), v.as_ref().unwrap().as_str());
+            };
+        }
+    }
+
+    pub fn environment() -> crate::HxRef<crate::haxe_ds_string_map::StringMap<String>> {
+        return {
+            let m = crate::haxe_ds_string_map::StringMap::<String>::new();
+            for (k, v) in std::env::vars() {
+                crate::haxe_ds_string_map::StringMap::set(&m, k, v);
+            }
+            m
+        };
+    }
+
+    pub fn sleep(seconds: f64) {
+        {
+            std::thread::sleep(std::time::Duration::from_millis((seconds * 1000.0) as u64));
+        };
+    }
+
+    pub fn set_time_locale(loc: String) -> bool {
+        let _unused: String = loc;
+        return false;
+    }
+
     pub fn get_cwd() -> String {
         return std::env::current_dir()
             .unwrap()
@@ -38,7 +77,85 @@ impl Sys {
         };
     }
 
+    pub fn system_name() -> String {
+        return match std::env::consts::OS {
+            "windows" => String::from("Windows"),
+            "linux" => String::from("Linux"),
+            "macos" => String::from("Mac"),
+            "freebsd" => String::from("BSD"),
+            "netbsd" => String::from("BSD"),
+            "openbsd" => String::from("BSD"),
+            _ => String::from(std::env::consts::OS),
+        };
+    }
+
+    pub fn command(cmd: String, args: Option<hxrt::array::Array<String>>) -> i32 {
+        if args.is_none() {
+            return std::process::Command::new("sh")
+                .arg("-c")
+                .arg(cmd.as_str())
+                .status()
+                .unwrap()
+                .code()
+                .unwrap_or(1) as i32;
+        }
+        return {
+            let mut c = std::process::Command::new(cmd.as_str());
+            let args = args.as_ref().unwrap();
+            let mut i: i32 = 0;
+            while i < args.len() as i32 {
+                let a = args.get_unchecked(i as usize);
+                c.arg(a);
+                i = i + 1;
+            }
+            c.status().unwrap().code().unwrap_or(1) as i32
+        };
+    }
+
     pub fn exit(code: i32) {
         std::process::exit(code);
+    }
+
+    pub fn time() -> f64 {
+        return {
+            use std::time::{SystemTime, UNIX_EPOCH};
+            let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+            (now.as_secs_f64()) as f64
+        };
+    }
+
+    pub fn cpu_time() -> f64 {
+        return crate::sys::Sys::time();
+    }
+
+    pub fn executable_path() -> String {
+        return crate::sys::Sys::program_path();
+    }
+
+    pub fn program_path() -> String {
+        return std::env::current_exe()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+    }
+
+    pub fn get_char(echo: bool) -> i32 {
+        let c: i32 = crate::sys::Sys::stdin().read_byte();
+        if echo {
+            crate::sys::Sys::stdout().write_byte(c);
+        }
+        return c;
+    }
+
+    pub fn stdin() -> crate::HxRc<dyn crate::haxe_io_input::InputTrait> {
+        return crate::sys_io_stdin::Stdin::new();
+    }
+
+    pub fn stdout() -> crate::HxRc<dyn crate::haxe_io_output::OutputTrait> {
+        return crate::sys_io_stdout::Stdout::new();
+    }
+
+    pub fn stderr() -> crate::HxRc<dyn crate::haxe_io_output::OutputTrait> {
+        return crate::sys_io_stderr::Stderr::new();
     }
 }

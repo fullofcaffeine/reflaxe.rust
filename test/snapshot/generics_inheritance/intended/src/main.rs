@@ -5,8 +5,23 @@
 type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
 
 mod base;
+mod haxe_ds_enum_value_map;
+mod haxe_ds_int_map;
+mod haxe_ds_object_map;
+mod haxe_ds_string_map;
+mod haxe_int64_int64;
+mod haxe_int64_int64_impl_;
+mod haxe_io_bytes_buffer;
+mod haxe_io_encoding;
+mod haxe_io_eof;
+mod haxe_io_fp_helper;
+mod haxe_io_input;
+mod haxe_io_output;
 mod sub;
 mod sys;
+mod sys_io_stderr;
+mod sys_io_stdin;
+mod sys_io_stdout;
 
 fn main() {
     let b: std::rc::Rc<dyn crate::base::BaseTrait<String>> = crate::sub::Sub::<String>::new();

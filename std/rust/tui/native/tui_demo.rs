@@ -48,14 +48,38 @@ pub fn enter() {
         return;
     }
 
-    enable_raw_mode().unwrap();
+    // Even if the Haxe side explicitly requested interactive mode, CI and other non-TTY
+    // environments can still call into this. Prefer a clean headless fallback over panicking.
+    if !interactive {
+        HEADLESS.with(|h| h.set(true));
+        return;
+    }
+
+    if enable_raw_mode().is_err() {
+        HEADLESS.with(|h| h.set(true));
+        return;
+    }
     let mut stdout = io::stdout();
-    stdout.execute(EnterAlternateScreen).unwrap();
+    if stdout.execute(EnterAlternateScreen).is_err() {
+        disable_raw_mode().ok();
+        HEADLESS.with(|h| h.set(true));
+        return;
+    }
     stdout.flush().ok();
 
     let backend = CrosstermBackend::new(io::stdout());
-    let terminal = Terminal::new(backend).unwrap();
-    TERMINAL.with(|t| *t.borrow_mut() = Some(terminal));
+    match Terminal::new(backend) {
+        Ok(terminal) => {
+            TERMINAL.with(|t| *t.borrow_mut() = Some(terminal));
+        }
+        Err(_) => {
+            let mut stdout = io::stdout();
+            stdout.execute(LeaveAlternateScreen).ok();
+            stdout.flush().ok();
+            disable_raw_mode().ok();
+            HEADLESS.with(|h| h.set(true));
+        }
+    }
 }
 
 pub fn exit() {
