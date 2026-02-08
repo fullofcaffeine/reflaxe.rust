@@ -75,6 +75,38 @@ If multiple modules declare `@:rustCargo` for the same crate:
 - `features` are unioned + de-duped (stable order)
 - most other fields must match (conflicts produce a compile-time error)
 
+## Extra Rust trait impls (`@:rustImpl`)
+
+Sometimes you want to implement a Rust trait for a **Haxe-emitted type** without dropping down to raw
+`__rust__` in app code (for example `Display`, or a small marker trait).
+
+Use `@:rustImpl(...)` metadata on the Haxe class/enum:
+
+```haxe
+@:rustImpl("std::marker::Unpin")
+@:rustImpl("std::fmt::Display",
+  "fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {\n" +
+  "  write!(f, \"Foo({})\", self.x)\n" +
+  "}")
+class Foo {
+  public var x:Int;
+  public function new(x:Int) this.x = x;
+}
+```
+
+Supported forms:
+
+- `@:rustImpl("path::Trait")` emits an empty impl block: `impl path::Trait for Type { }`
+- `@:rustImpl("path::Trait", "fn ...")` emits the provided string as the **inner body** of the impl block
+- `@:rustImpl({ trait: "path::Trait", body: "fn ...", forType: "SomeType" })` (advanced)
+  - `forType` overrides the Rust type name used on the right-hand side of `for ...`
+
+Limitations:
+
+- Rust orphan rules still apply. In practice, this is primarily useful for implementing external traits
+  for **local types** (types emitted by this compiler). If both the trait and the target type are
+  external, Rust will reject the impl.
+
 ## Escape hatch: `__rust__` injection (framework-only)
 
 If a binding is awkward to express as an extern (generics/closures, tricky lifetimes, etc.), you can

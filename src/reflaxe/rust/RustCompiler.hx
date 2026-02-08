@@ -46,6 +46,12 @@ enum RustProfile {
 	Rusty;
 }
 
+private typedef RustImplSpec = {
+	var traitPath: String;
+	@:optional var forType: String;
+	@:optional var body: String;
+};
+
 /**
  * RustCompiler (POC)
  *
@@ -564,17 +570,23 @@ enum RustProfile {
 				}
 			}
 
-			items.push(RImpl({
-				generics: classGenericDecls,
-				forType: rustSelfTypeInst,
-				functions: implFunctions
-			}));
+				items.push(RImpl({
+					generics: classGenericDecls,
+					forType: rustSelfTypeInst,
+					functions: implFunctions
+				}));
 
-			// Base-class polymorphism: if this class has subclasses, emit a trait for it.
-			if (classHasSubclasses(classType)) {
-				items.push(RRaw(emitClassTrait(classType, effectiveFuncFields)));
-				items.push(RRaw(emitClassTraitImplForSelf(classType, effectiveFuncFields)));
-			}
+				// Extra Rust trait impls declared via `@:rustImpl(...)` metadata.
+				var rustImpls = rustImplsFromMeta(classType.meta);
+				for (spec in rustImpls) {
+					items.push(RRaw(renderRustImplBlock(spec, classGenericDecls, rustSelfTypeInst)));
+				}
+
+				// Base-class polymorphism: if this class has subclasses, emit a trait for it.
+				if (classHasSubclasses(classType)) {
+					items.push(RRaw(emitClassTrait(classType, effectiveFuncFields)));
+					items.push(RRaw(emitClassTraitImplForSelf(classType, effectiveFuncFields)));
+				}
 
 			// If this class has polymorphic base classes, implement their traits for this type.
 			var base = classType.superClass != null ? classType.superClass.t.get() : null;
@@ -712,15 +724,20 @@ enum RustProfile {
 			}
 
 			var derives = mergeUniqueStrings(["Clone", "Debug", "PartialEq"], rustDerivesFromMeta(enumType.meta));
-		items.push(REnum({
-			name: enumType.name,
-			isPub: true,
-			derives: derives,
-			variants: variants
-		}));
+			items.push(REnum({
+				name: enumType.name,
+				isPub: true,
+				derives: derives,
+				variants: variants
+			}));
 
-		return { items: items };
-	}
+			var rustImpls = rustImplsFromMeta(enumType.meta);
+			for (spec in rustImpls) {
+				items.push(RRaw(renderRustImplBlock(spec, [], enumType.name)));
+			}
+
+			return { items: items };
+		}
 
 	override public function compileTypedefImpl(typedefType: DefType): Null<RustFile> {
 		return null;
@@ -5118,6 +5135,140 @@ enum RustProfile {
 		}
 
 		return derives;
+	}
+
+	function rustImplsFromMeta(meta: haxe.macro.Type.MetaAccess): Array<RustImplSpec> {
+		var out: Array<RustImplSpec> = [];
+
+		function unwrap(e: Expr): Expr {
+			return switch (e.expr) {
+				case EParenthesis(inner): unwrap(inner);
+				case EMeta(_, inner): unwrap(inner);
+				case _: e;
+			}
+		}
+
+		function stringConst(e: Expr): Null<String> {
+			return switch (unwrap(e).expr) {
+				case EConst(CString(s, _)): s;
+				case _: null;
+			}
+		}
+
+		for (entry in meta.get()) {
+			if (entry.name != ":rustImpl") continue;
+
+			var pos = entry.pos;
+			if (entry.params == null || entry.params.length == 0) {
+				#if eval
+				Context.error("`@:rustImpl` requires at least one parameter.", pos);
+				#end
+				continue;
+			}
+
+			inline function expectString(v: Dynamic, label: String): Null<String> {
+				if (v == null) return null;
+				if (Std.isOfType(v, String)) return cast v;
+				#if eval
+				Context.error("`@:rustImpl` " + label + " must be a string.", pos);
+				#end
+				return null;
+			}
+
+			function addSpec(spec: RustImplSpec): Void {
+				if (spec.traitPath == null || StringTools.trim(spec.traitPath).length == 0) {
+					#if eval
+					Context.error("`@:rustImpl` trait path must be a non-empty string.", pos);
+					#end
+					return;
+				}
+				out.push(spec);
+			}
+
+			// Forms:
+			// - `@:rustImpl("path::Trait")`
+			// - `@:rustImpl("path::Trait", "fn ...")` (body is inner content)
+			// - `@:rustImpl({ trait: "...", forType: "...", body: "..." })`
+			if (entry.params.length == 1) {
+				var s = stringConst(entry.params[0]);
+				if (s != null) {
+					addSpec({ traitPath: s });
+					continue;
+				}
+				try {
+					var v: Dynamic = ExprTools.getValue(entry.params[0]);
+					if (Std.isOfType(v, String)) {
+						addSpec({ traitPath: cast v });
+						continue;
+					}
+					var traitPath = expectString(Reflect.field(v, "trait"), "field `trait`");
+					var forType = expectString(Reflect.field(v, "forType"), "field `forType`");
+					var body = expectString(Reflect.field(v, "body"), "field `body`");
+					if (traitPath != null) {
+						var spec: RustImplSpec = { traitPath: traitPath };
+						if (forType != null) spec.forType = forType;
+						if (body != null) spec.body = body;
+						addSpec(spec);
+						continue;
+					}
+				} catch (_: Dynamic) {}
+
+				#if eval
+				Context.error("`@:rustImpl` must be a compile-time constant string or object.", pos);
+				#end
+				continue;
+			}
+
+			if (entry.params.length >= 2) {
+				var traitPath: Null<String> = null;
+				var body: Null<String> = null;
+				traitPath = stringConst(entry.params[0]);
+				body = stringConst(entry.params[1]);
+				if (traitPath != null) {
+					var spec: RustImplSpec = { traitPath: traitPath };
+					if (body != null) spec.body = body;
+					addSpec(spec);
+					continue;
+				}
+				try {
+					var v0: Dynamic = ExprTools.getValue(entry.params[0]);
+					var v1: Dynamic = ExprTools.getValue(entry.params[1]);
+					traitPath = expectString(v0, "trait path");
+					body = expectString(v1, "body");
+				} catch (_: Dynamic) {}
+				if (traitPath == null) {
+					#if eval
+					Context.error("`@:rustImpl` first parameter must be a compile-time string trait path.", pos);
+					#end
+					continue;
+				}
+				var spec: RustImplSpec = { traitPath: traitPath };
+				if (body != null) spec.body = body;
+				addSpec(spec);
+				continue;
+			}
+		}
+
+		// Stable ordering for snapshots.
+		out.sort((a, b) -> Reflect.compare(a.traitPath, b.traitPath));
+		return out;
+	}
+
+	function renderRustImplBlock(spec: RustImplSpec, implGenerics: Array<String>, forType: String): String {
+		var header = "impl";
+		if (implGenerics != null && implGenerics.length > 0) header += "<" + implGenerics.join(", ") + ">";
+		header += " " + spec.traitPath + " for " + (spec.forType != null ? spec.forType : forType) + " {";
+
+		var lines: Array<String> = [header];
+		var body = spec.body;
+		if (body != null) {
+			var trimmed = StringTools.trim(body);
+			if (trimmed.length > 0) {
+				for (l in body.split("\n")) lines.push("\t" + l);
+			}
+		}
+		lines.push("}");
+		return lines.join("\n");
 	}
 
 	function mergeUniqueStrings(base: Array<String>, extra: Array<String>): Array<String> {
