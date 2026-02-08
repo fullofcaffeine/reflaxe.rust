@@ -1,3 +1,10 @@
+## [0.40.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.40.0...v0.40.1) (2026-02-08)
+
+
+### Bug Fixes
+
+* reduce unused mut in anon decl ([ba84e68](https://github.com/fullofcaffeine/reflaxe.rust/commit/ba84e68496482121430ad47402958d4e62faea1d))
+
 # [0.40.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.39.0...v0.40.0) (2026-02-08)
 
 
