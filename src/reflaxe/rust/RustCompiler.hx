@@ -1837,7 +1837,14 @@ enum RustProfile {
 				RExpr(compileSwitch(switchExpr, cases, edef, Context.getType("Void")), false);
 			case TWhile(cond, body, normalWhile): {
 				if (normalWhile) {
-					RWhile(compileExpr(cond), compileVoidBody(body));
+					// Rust lints `while true { ... }` in favor of `loop { ... }`.
+					// `deny_warnings` snapshot expects generated code to remain warning-free.
+					switch (unwrapMetaParen(cond).expr) {
+						case TConst(TBool(true)):
+							RLoop(compileVoidBody(body));
+						case _:
+							RWhile(compileExpr(cond), compileVoidBody(body));
+					}
 				} else {
 					// do/while: `loop { body; if !cond { break; } }`
 					var b = compileVoidBody(body);
@@ -4631,18 +4638,26 @@ enum RustProfile {
 					}
 					var ret = rustTypeToString(toRustType(retTy, cf.pos));
 
-					lines.push("\tfn " + rustMethodName(baseType, cf) + "(" + sigArgs.join(", ") + ") -> " + ret + " {");
-					var key = cf.getHaxeName() + "/" + args.length;
-						if (overrides.exists(key)) {
-							var overrideFunc = overrides.get(key);
-							lines.push("\t\t" + rustSubType + subTurbofish + "::" + rustMethodName(subType, overrideFunc.field) + "(" + callArgs.join(", ") + ")");
-						} else {
-							lines.push("\t\ttodo!()");
-						}
-					lines.push("\t}");
+						lines.push("\tfn " + rustMethodName(baseType, cf) + "(" + sigArgs.join(", ") + ") -> " + ret + " {");
+						var key = cf.getHaxeName() + "/" + args.length;
+							if (overrides.exists(key)) {
+								var overrideFunc = overrides.get(key);
+								lines.push("\t\t" + rustSubType + subTurbofish + "::" + rustMethodName(subType, overrideFunc.field) + "(" + callArgs.join(", ") + ")");
+							} else {
+								// Stub: keep signatures warning-free under `#![deny(warnings)]`.
+								// `_` patterns avoid `unused_variables` even when the body is `todo!()`.
+								lines.pop();
+								var stubSigArgs: Array<String> = ["&self"];
+								for (a in args) {
+									stubSigArgs.push("_: " + rustTypeToString(toRustType(a.t, cf.pos)));
+								}
+								lines.push("\tfn " + rustMethodName(baseType, cf) + "(" + stubSigArgs.join(", ") + ") -> " + ret + " {");
+								lines.push("\t\ttodo!()");
+							}
+						lines.push("\t}");
+					}
+					case _:
 				}
-				case _:
-			}
 		}
 
 		var subMod = rustModuleNameForClass(subType);

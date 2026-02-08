@@ -4,10 +4,24 @@
 
 type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
 
+mod haxe_ds_enum_value_map;
+mod haxe_ds_int_map;
+mod haxe_ds_object_map;
+mod haxe_ds_string_map;
+mod haxe_int64_int64;
+mod haxe_int64_int64_impl_;
+mod haxe_io_bytes_buffer;
 mod haxe_io_encoding;
+mod haxe_io_eof;
+mod haxe_io_fp_helper;
+mod haxe_io_input;
+mod haxe_io_output;
 mod sys;
 mod sys_file_system;
 mod sys_io_file;
+mod sys_io_stderr;
+mod sys_io_stdin;
+mod sys_io_stdout;
 
 fn main() {
     println!("{}", hxrt::dynamic::from(String::from("--- args ---")));
@@ -15,6 +29,35 @@ fn main() {
         "{}",
         hxrt::dynamic::from(crate::sys::Sys::args().len() as i32)
     );
+    println!("{}", hxrt::dynamic::from(String::from("--- env ---")));
+    crate::sys::Sys::put_env(String::from("HX_TEST_ENV"), Some(String::from("ok")));
+    println!(
+        "{}",
+        hxrt::dynamic::from(crate::sys::Sys::get_env(String::from("HX_TEST_ENV")).clone())
+    );
+    let env: crate::HxRef<crate::haxe_ds_string_map::StringMap<String>> =
+        crate::sys::Sys::environment();
+    println!(
+        "{}",
+        hxrt::dynamic::from(crate::haxe_ds_string_map::StringMap::exists(
+            &env,
+            String::from("HX_TEST_ENV")
+        ))
+    );
+    println!(
+        "{}",
+        hxrt::dynamic::from(
+            crate::haxe_ds_string_map::StringMap::get(&env, String::from("HX_TEST_ENV")).clone()
+        )
+    );
+    crate::sys::Sys::put_env(String::from("HX_TEST_ENV"), None);
+    println!(
+        "{}",
+        hxrt::dynamic::from(crate::sys::Sys::get_env(String::from("HX_TEST_ENV")).clone())
+    );
+    println!("{}", hxrt::dynamic::from(String::from("--- stdout ---")));
+    crate::sys::Sys::stdout().write_string(String::from("hello stdout\n"), None);
+    crate::sys::Sys::stdout().flush();
     println!(
         "{}",
         hxrt::dynamic::from(String::from("--- file content ---"))

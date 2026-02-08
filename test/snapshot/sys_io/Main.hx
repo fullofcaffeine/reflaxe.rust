@@ -7,6 +7,19 @@ class Main {
 		trace("--- args ---");
 		trace(Sys.args().length);
 
+		trace("--- env ---");
+		Sys.putEnv("HX_TEST_ENV", "ok");
+		trace(Sys.getEnv("HX_TEST_ENV"));
+		var env = Sys.environment();
+		trace(env.exists("HX_TEST_ENV"));
+		trace(env.get("HX_TEST_ENV"));
+		Sys.putEnv("HX_TEST_ENV", null);
+		trace(Sys.getEnv("HX_TEST_ENV"));
+
+		trace("--- stdout ---");
+		Sys.stdout().writeString("hello stdout\n");
+		Sys.stdout().flush();
+
 		trace("--- file content ---");
 		var path = "tmp_sys_io.txt";
 		File.saveContent(path, "hello");
@@ -52,4 +65,3 @@ class Main {
 		trace(FileSystem.exists(dir));
 	}
 }
-

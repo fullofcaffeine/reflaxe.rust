@@ -9,6 +9,8 @@ extern class TuiDemo {
 	 * Force headless (true) or interactive (false) mode.
 	 *
 	 * If not set, `enter()` will auto-detect based on whether stdin/stdout are TTYs.
+	 * Even if set to interactive, `enter()` may fall back to headless if terminal initialization
+	 * fails (e.g. CI / non-TTY environments).
 	 *
 	 * Notes:
 	 * - Headless mode is primarily intended for deterministic tests via `renderToString(...)`.
