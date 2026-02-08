@@ -2378,30 +2378,64 @@ enum RustProfile {
 				}
 
 				case TObjectDecl(fields): {
-					// Limited support for anonymous objects:
-					// - `{ key: ..., value: ... }` (used by `KeyValueIterator<K,V>`)
-				if (fields == null || fields.length != 2) {
-					return unsupported(e, "object decl");
-				}
+					// Anonymous objects / structural records.
+					//
+					// Special cases:
+					// - `{ key: ..., value: ... }` (used by `KeyValueIterator<K,V>`) lowers to a concrete struct.
+					// - Everything else lowers to `crate::HxRef<hxrt::anon::Anon>` for Haxe aliasing semantics.
 
-				var keyExpr: Null<TypedExpr> = null;
-				var valueExpr: Null<TypedExpr> = null;
-				for (f in fields) {
-					switch (f.name) {
-						case "key": keyExpr = f.expr;
-						case "value": valueExpr = f.expr;
-						case _:
+					// `{ key: ..., value: ... }` (exactly) -> `hxrt::iter::KeyValue { ... }`
+					if (fields != null && fields.length == 2) {
+						var keyExpr: Null<TypedExpr> = null;
+						var valueExpr: Null<TypedExpr> = null;
+						for (f in fields) {
+							switch (f.name) {
+								case "key": keyExpr = f.expr;
+								case "value": valueExpr = f.expr;
+								case _:
+							}
+						}
+
+						if (keyExpr != null && valueExpr != null) {
+							return EStructLit("hxrt::iter::KeyValue", [
+								{ name: "key", expr: compileExpr(keyExpr) },
+								{ name: "value", expr: compileExpr(valueExpr) },
+							]);
+						}
 					}
-				}
 
-				if (keyExpr == null || valueExpr == null) {
-					return unsupported(e, "object decl");
-				}
+					// General record literal -> `{ let __o = Rc::new(RefCell::new(Anon::new())); { let mut __b = __o.borrow_mut(); __b.set(...); } __o }`
+					function typedNoneForNull(t: Type, pos: haxe.macro.Expr.Position): RustExpr {
+						var inner = nullInnerType(t);
+						if (inner == null) return ERaw("None");
+						var innerRust = rustTypeToString(toRustType(inner, pos));
+						return ERaw("Option::<" + innerRust + ">::None");
+					}
 
-				return EStructLit("hxrt::iter::KeyValue", [
-					{ name: "key", expr: compileExpr(keyExpr) },
-					{ name: "value", expr: compileExpr(valueExpr) },
-				]);
+					var stmts: Array<RustStmt> = [];
+					var objName = "__o";
+
+					var newAnon = ECall(EPath("hxrt::anon::Anon::new"), []);
+					var newRef = ECall(EPath(rcBasePath() + "::new"), [ECall(EPath(refCellBasePath() + "::new"), [newAnon])]);
+					stmts.push(RLet(objName, false, null, newRef));
+
+					var innerStmts: Array<RustStmt> = [];
+					innerStmts.push(RLet("__b", true, null, ECall(EField(EPath(objName), "borrow_mut"), [])));
+					if (fields != null) {
+						for (f in fields) {
+							var valueExpr = f.expr;
+							var compiledVal: RustExpr;
+							if (isNullConstExpr(valueExpr) && isNullType(valueExpr.t)) {
+								compiledVal = typedNoneForNull(valueExpr.t, valueExpr.pos);
+							} else {
+								compiledVal = maybeCloneForReuseValue(compileExpr(valueExpr), valueExpr);
+							}
+							innerStmts.push(RSemi(ECall(EField(EPath("__b"), "set"), [ELitString(f.name), compiledVal])));
+						}
+					}
+					stmts.push(RSemi(EBlock({ stmts: innerStmts, tail: null })));
+
+					return EBlock({ stmts: stmts, tail: EPath(objName) });
 			}
 
 			default:
@@ -2839,13 +2873,46 @@ enum RustProfile {
 		}
 	}
 
+	function isKeyValueStructType(t: Type): Bool {
+		var ft = followType(t);
+		return switch (ft) {
+			case TAnonymous(anonRef): {
+				var anon = anonRef.get();
+				if (anon == null || anon.fields == null || anon.fields.length != 2) return false;
+				var key = false;
+				var value = false;
+				for (cf in anon.fields) {
+					switch (cf.getHaxeName()) {
+						case "key": key = true;
+						case "value": value = true;
+						case _:
+					}
+				}
+				key && value;
+			}
+			case _:
+				false;
+		}
+	}
+
+	function isAnonObjectType(t: Type): Bool {
+		var ft = followType(t);
+		return switch (ft) {
+			case TAnonymous(_):
+				!isIteratorStructType(t) && !isKeyValueStructType(t);
+			case _:
+				false;
+		}
+	}
+
 	function isHaxeReusableValueType(t: Type): Bool {
 		// Types that behave like Haxe reference values (must not be "moved" by Rust assignments).
 		// - `Array<T>` is `hxrt::array::Array<T>` (Rc-backed).
 		// - class instances / Bytes are `HxRef<T>` (Rc-backed).
 		// - `String` is immutable and reusable in Haxe (needs clone in Rust when re-used).
 		// - structural `Iterator<T>` maps to `hxrt::iter::Iter<T>` (Rc-backed).
-		return isArrayType(t) || isHxRefValueType(t) || isStringType(t) || isIteratorStructType(t) || isDynamicType(t);
+		// - general anonymous objects map to `crate::HxRef<hxrt::anon::Anon>` (Rc-backed).
+		return isArrayType(t) || isHxRefValueType(t) || isStringType(t) || isIteratorStructType(t) || isAnonObjectType(t) || isDynamicType(t);
 	}
 
 		function maybeCloneForReuseValue(expr: RustExpr, valueExpr: TypedExpr): RustExpr {
@@ -3951,6 +4018,15 @@ enum RustProfile {
 			}
 			case FAnon(cfRef): {
 				var cf = cfRef.get();
+				// General anonymous objects are lowered to `hxrt::anon::Anon` and accessed via typed `get`.
+				// Structural iterator/keyvalue records remain direct field access.
+				if (cf != null && isAnonObjectType(obj.t)) {
+					var recv = compileExpr(obj);
+					var borrowed = ECall(EField(recv, "borrow"), []);
+					var tyStr = rustTypeToString(toRustType(cf.type, fullExpr.pos));
+					var getter = "get::<" + tyStr + ">";
+					return ECall(EField(borrowed, getter), [ELitString(cf.getHaxeName())]);
+				}
 				EField(compileExpr(obj), cf.getHaxeName());
 			}
 			case FDynamic(name): EField(compileExpr(obj), name);
@@ -4481,6 +4557,48 @@ enum RustProfile {
 					case TArray(arr, index): {
 						compileArrayIndexAssign(arr, index, e2);
 					}
+					case TField(obj, FAnon(cfRef)): {
+						// Assignment into anonymous-object fields:
+						// `{ let __obj = obj.clone(); let __tmp = rhs; __obj.borrow_mut().set("field", __tmp.clone()); __tmp }`
+						//
+						// Only supported for general anonymous objects, not iterator/keyvalue structural types.
+						if (!isAnonObjectType(obj.t)) {
+							var rhsExpr = compileExpr(e2);
+							rhsExpr = maybeCloneForReuseValue(rhsExpr, e2);
+							return EAssign(compileExpr(e1), rhsExpr);
+						}
+
+						var cf = cfRef.get();
+						if (cf == null) return unsupported(fullExpr, "anon field assign");
+
+						var fieldIsNull = isNullType(cf.type);
+						var rhsIsNullish = isNullType(e2.t) || isNullConstExpr(e2);
+
+						function typedNoneForNull(t: Type, pos: haxe.macro.Expr.Position): RustExpr {
+							var inner = nullInnerType(t);
+							if (inner == null) return ERaw("None");
+							var innerRust = rustTypeToString(toRustType(inner, pos));
+							return ERaw("Option::<" + innerRust + ">::None");
+						}
+
+						var stmts: Array<RustStmt> = [];
+
+						// Evaluate receiver once (and clone locals to avoid moves).
+						stmts.push(RLet("__obj", false, null, maybeCloneForReuseValue(compileExpr(obj), obj)));
+
+						// Evaluate RHS before taking a mutable borrow.
+						var rhsExpr = if (isNullConstExpr(e2) && isNullType(e2.t)) typedNoneForNull(e2.t, e2.pos) else maybeCloneForReuseValue(compileExpr(e2), e2);
+						stmts.push(RLet("__tmp", false, null, rhsExpr));
+
+						var rhsVal: RustExpr = isCopyType(e2.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
+						var assigned = (fieldIsNull && !rhsIsNullish) ? ECall(EPath("Some"), [rhsVal]) : rhsVal;
+
+						var borrowed = ECall(EField(EPath("__obj"), "borrow_mut"), []);
+						var setCall = ECall(EField(borrowed, "set"), [ELitString(cf.getHaxeName()), assigned]);
+						stmts.push(RSemi(setCall));
+
+						return EBlock({ stmts: stmts, tail: EPath("__tmp") });
+					}
 					case TField(obj, FInstance(clsRef, _, cfRef)): {
 						var owner = clsRef.get();
 						var cf = cfRef.get();
@@ -4608,7 +4726,7 @@ enum RustProfile {
 				ECast(EBinary(">>", lhs, rhs), "i32");
 			}
 
-				case OpEq: {
+			case OpEq: {
 					// `Null<T>` compares to `null` should not require `T: PartialEq` (e.g. `Null<Fn>`).
 					if (isNullType(e1.t) && isNullConstExpr(e2)) {
 						ECall(EField(compileExpr(e1), "is_none"), []);
@@ -4621,14 +4739,14 @@ enum RustProfile {
 						// Haxe object/array equality is identity-based.
 						if (isArrayType(ft1) && isArrayType(ft2)) {
 							ECall(EField(compileExpr(e1), "ptr_eq"), [EUnary("&", compileExpr(e2))]);
-						} else if (isRcBackedType(ft1) && isRcBackedType(ft2)) {
-							ECall(EPath(rcBasePath() + "::ptr_eq"), [EUnary("&", compileExpr(e1)), EUnary("&", compileExpr(e2))]);
-						} else {
-							EBinary("==", compileExpr(e1), compileExpr(e2));
+							} else if (isRcBackedType(ft1) && isRcBackedType(ft2)) {
+								ECall(EPath(rcBasePath() + "::ptr_eq"), [EUnary("&", compileExpr(e1)), EUnary("&", compileExpr(e2))]);
+							} else {
+								EBinary("==", compileExpr(e1), compileExpr(e2));
+							}
 						}
 					}
-				}
-				case OpNotEq: {
+					case OpNotEq: {
 					if (isNullType(e1.t) && isNullConstExpr(e2)) {
 						ECall(EField(compileExpr(e1), "is_some"), []);
 					} else if (isNullType(e2.t) && isNullConstExpr(e1)) {
@@ -4639,13 +4757,13 @@ enum RustProfile {
 
 						if (isArrayType(ft1) && isArrayType(ft2)) {
 							EUnary("!", ECall(EField(compileExpr(e1), "ptr_eq"), [EUnary("&", compileExpr(e2))]));
-						} else if (isRcBackedType(ft1) && isRcBackedType(ft2)) {
-							EUnary("!", ECall(EPath(rcBasePath() + "::ptr_eq"), [EUnary("&", compileExpr(e1)), EUnary("&", compileExpr(e2))]));
-						} else {
-							EBinary("!=", compileExpr(e1), compileExpr(e2));
+							} else if (isRcBackedType(ft1) && isRcBackedType(ft2)) {
+								EUnary("!", ECall(EPath(rcBasePath() + "::ptr_eq"), [EUnary("&", compileExpr(e1)), EUnary("&", compileExpr(e2))]));
+							} else {
+								EBinary("!=", compileExpr(e1), compileExpr(e2));
+							}
 						}
 					}
-				}
 			case OpLt: EBinary("<", compileExpr(e1), compileExpr(e2));
 			case OpLte: EBinary("<=", compileExpr(e1), compileExpr(e2));
 			case OpGt: EBinary(">", compileExpr(e1), compileExpr(e2));
@@ -5044,6 +5162,10 @@ enum RustProfile {
 						return RPath("hxrt::iter::KeyValue<" + rustTypeToString(k) + ", " + rustTypeToString(v) + ">");
 					}
 				}
+
+				// General anonymous object / structural record.
+				// Represent as a reference value to preserve Haxe aliasing + mutability semantics.
+				return RPath("crate::HxRef<hxrt::anon::Anon>");
 			}
 			case _:
 		}
@@ -5227,7 +5349,7 @@ enum RustProfile {
 		function isRcBackedType(t: Type): Bool {
 			// Concrete classes / Bytes are `HxRef<T>` (Rc-backed).
 			// Interfaces and polymorphic base classes are `Rc<dyn Trait>` (Rc-backed).
-			return isHxRefValueType(t) || isInterfaceType(t) || isPolymorphicClassType(t);
+			return isHxRefValueType(t) || isAnonObjectType(t) || isInterfaceType(t) || isPolymorphicClassType(t);
 		}
 
 		function isRustIterType(t: Type): Bool {

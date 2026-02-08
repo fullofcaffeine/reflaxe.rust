@@ -1,0 +1,5 @@
+-cp .
+-main Main
+-lib reflaxe.rust
+-D reflaxe_rust_strict_examples
+
