@@ -6,6 +6,5 @@
 -D tui_headless
 -D rust_extra_src=native
 -D rust_output=out_ci_rusty
--D rust_crate=tui_todo_rusty
+-D rust_crate=tui_todo
 -main Main
-
