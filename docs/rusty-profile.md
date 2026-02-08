@@ -100,6 +100,44 @@ Rusty code should bias toward borrowed strings for inputs:
 
 ## Interop boundary (no injections in apps)
 
+## Example: Borrow-scoped Rusty APIs
+
+The core idea is to keep borrows short-lived and explicit, while remaining "pure Haxe".
+
+```haxe
+using rust.OptionTools;
+
+import rust.Borrow;
+import rust.SliceTools;
+import rust.StrTools;
+import rust.Vec;
+import rust.VecTools;
+
+class Main {
+  static function main(): Void {
+    var v = new Vec<Int>();
+    v.push(1); v.push(2);
+
+    // Borrow a Vec as `&Vec<T>` (typed as `rust.Ref<Vec<T>>`) and return a value from the callback.
+    var n = Borrow.withRef(v, vr -> VecTools.len(vr));
+
+    // Borrow as a slice (`&[T]`) for the duration of the callback.
+    var firstIsSome = SliceTools.with(v, s -> SliceTools.get(s, 0).isSome());
+
+    // Borrow a String as `&str` for the duration of the callback.
+    var contains = Borrow.withRef("bootstrap reflaxe.rust", hs -> {
+      StrTools.with("reflaxe", needle -> rust.StringTools.contains(hs, needle));
+    });
+
+    trace([n, firstIsSome, contains].join(","));
+  }
+}
+```
+
+Notes:
+- Prefer returning a value from the callback rather than assigning to a captured outer variable.
+- This is required for the `Array<T>` slice path today (it passes a real Rust `Fn` closure into the runtime).
+
 ### Rule
 
 - Application code must not call `__rust__` directly.
