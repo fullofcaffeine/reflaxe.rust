@@ -1,3 +1,10 @@
+# [0.44.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.43.0...v0.44.0) (2026-02-08)
+
+
+### Features
+
+* **compiler:** support super(args) ctor chaining ([baa99a8](https://github.com/fullofcaffeine/reflaxe.rust/commit/baa99a8c8c7cd083e53d8c49917d746343a4ad87))
+
 # [0.43.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.42.0...v0.43.0) (2026-02-08)
 
 
