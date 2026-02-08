@@ -2420,7 +2420,7 @@ enum RustProfile {
 					stmts.push(RLet(objName, false, null, newRef));
 
 					var innerStmts: Array<RustStmt> = [];
-					innerStmts.push(RLet("__b", true, null, ECall(EField(EPath(objName), "borrow_mut"), [])));
+					innerStmts.push(RLet("__b", false, null, ECall(EField(EPath(objName), "borrow_mut"), [])));
 					if (fields != null) {
 						for (f in fields) {
 							var valueExpr = f.expr;
