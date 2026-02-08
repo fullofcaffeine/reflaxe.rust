@@ -1,3 +1,10 @@
+## [0.47.2](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.47.1...v0.47.2) (2026-02-08)
+
+
+### Bug Fixes
+
+* **compiler:** elide string clone before immediate overwrite ([0daa07a](https://github.com/fullofcaffeine/reflaxe.rust/commit/0daa07a33c7d5e46bb14c7f31ee1df6e36a0a26a))
+
 ## [0.47.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.47.0...v0.47.1) (2026-02-08)
 
 
