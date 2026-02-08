@@ -95,6 +95,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 
 - Run snapshots locally: `bash test/run-snapshots.sh`
 - Update a snapshot’s golden output (after review): `bash test/run-snapshots.sh --case <name> --update`
+- Runtime gotcha: snapshots embed `runtime/hxrt/**` into `test/snapshot/**/intended/hxrt/`, so any change under `runtime/hxrt/` requires `bash test/run-snapshots.sh --update` to keep goldens in sync.
 - Prefer DRY snapshot cases: use multiple `compile.<variant>.hxml` files in the same `test/snapshot/<case>/`
   directory (and `#if <define>` shims when needed) rather than duplicating snapshot directories for each profile.
   - Convention: `compile.hxml` → `out/` + `intended/`; `compile.rusty.hxml` → `out_rusty/` + `intended_rusty/`.
