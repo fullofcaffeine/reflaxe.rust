@@ -19,6 +19,14 @@ package rust;
  * - The runtime creates a `RefCell` borrow guard and passes the slice to the callback.
  * - The borrow guard is dropped when the call returns, so the slice cannot escape.
  *
+ * Rust closure note (important):
+ * - For `Array<T>`, these helpers must pass a real Rust closure into the runtime.
+ * - That closure currently typechecks as `Fn(...)`, which means it cannot mutate captured outer
+ *   locals in Rust output.
+ * - Prefer returning a value from the callback instead of assigning to captured variables:
+ *   - Good: `var n = ArrayBorrow.withSlice(a, s -> SliceTools.len(s));`
+ *   - Avoid: `var n = 0; ArrayBorrow.withSlice(a, s -> { n = ...; });`
+ *
  * Rules / gotchas:
  * - Never return/store the `Slice`/`MutSlice` outside the callback; Haxe cannot express Rust lifetimes.
  * - Avoid re-borrowing the same array mutably while a slice is live (Rust will panic on nested `RefCell` borrows).
@@ -32,4 +40,3 @@ class ArrayBorrow {
 		return untyped __rust__("hxrt::array::with_mut_slice({0}, {1})", array, f);
 	}
 }
-

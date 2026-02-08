@@ -47,6 +47,10 @@ class MutSliceTools {
 	 * - For `Array<T>`, this delegates to `rust.ArrayBorrow.withMutSlice(...)`, which calls into the runtime
 	 *   to borrow the underlying storage as `&mut [T]` **without cloning**.
 	 *
+	 * Rust closure note (Array only):
+	 * - The `Array<T>` path passes a real Rust closure into the runtime, which currently typechecks as `Fn`.
+	 * - Avoid mutating captured outer locals inside the callback; prefer returning a value from the callback.
+	 *
 	 * Borrow rules:
 	 * - Keep the slice inside the callback; never store/return it.
 	 * - Avoid nested borrows of the same array; `RefCell` will panic on invalid re-borrows.
