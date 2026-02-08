@@ -1,3 +1,10 @@
+# [0.42.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.41.0...v0.42.0) (2026-02-08)
+
+
+### Features
+
+* Reflect.hasField and typed setField ([90f69a4](https://github.com/fullofcaffeine/reflaxe.rust/commit/90f69a421d3b0c368261a6289e975afa56e1ead5))
+
 # [0.41.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.40.1...v0.41.0) (2026-02-08)
 
 
