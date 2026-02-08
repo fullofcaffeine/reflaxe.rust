@@ -1,3 +1,10 @@
+# [0.45.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.44.0...v0.45.0) (2026-02-08)
+
+
+### Features
+
+* **compiler:** inherited methods and super thunks ([4a23233](https://github.com/fullofcaffeine/reflaxe.rust/commit/4a23233e32ce888caea4c10c5481969ad742170f))
+
 # [0.44.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.43.0...v0.44.0) (2026-02-08)
 
 
