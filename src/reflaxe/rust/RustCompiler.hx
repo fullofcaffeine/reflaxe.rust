@@ -2420,7 +2420,7 @@ enum RustProfile {
 					stmts.push(RLet(objName, false, null, newRef));
 
 					var innerStmts: Array<RustStmt> = [];
-					innerStmts.push(RLet("__b", false, null, ECall(EField(EPath(objName), "borrow_mut"), [])));
+					innerStmts.push(RLet("__b", true, null, ECall(EField(EPath(objName), "borrow_mut"), [])));
 					if (fields != null) {
 						for (f in fields) {
 							var valueExpr = f.expr;
@@ -3358,91 +3358,251 @@ enum RustProfile {
 			case _:
 		}
 
-		// Special-case: Reflect.* (minimal field get/set for constant field names)
-		switch (callExpr.expr) {
-			case TField(_, FStatic(clsRef, fieldRef)):
-				var cls = clsRef.get();
-				var field = fieldRef.get();
-				if (cls.pack.length == 0 && cls.name == "Reflect") {
-					switch (field.name) {
-						case "field": {
-							if (args.length != 2) return unsupported(fullExpr, "Reflect.field args");
+			// Special-case: Reflect.* (minimal field get/set for constant field names)
+			switch (callExpr.expr) {
+				case TField(_, FStatic(clsRef, fieldRef)):
+					var cls = clsRef.get();
+					var field = fieldRef.get();
+					if (cls.pack.length == 0 && cls.name == "Reflect") {
+						switch (field.name) {
+							case "field": {
+								if (args.length != 2) return unsupported(fullExpr, "Reflect.field args");
 
-							var obj = args[0];
-							var nameExpr = args[1];
-							var fieldName: Null<String> = switch (nameExpr.expr) {
-								case TConst(TString(s)): s;
-								case _: null;
-							};
-							if (fieldName == null) return unsupported(fullExpr, "Reflect.field non-const");
+								var obj = args[0];
+								var nameExpr = args[1];
+								var fieldName: Null<String> = switch (nameExpr.expr) {
+									case TConst(TString(s)): s;
+									case _: null;
+								};
+								if (fieldName == null) return unsupported(fullExpr, "Reflect.field non-const");
 
-							var cf: Null<ClassField> = null;
-							switch (followType(obj.t)) {
-								case TInst(cls2Ref, _): {
-									var cls2 = cls2Ref.get();
-									for (f in cls2.fields.get()) {
-										if (f.name == fieldName || f.getHaxeName() == fieldName) {
-											cf = f;
-											break;
+								// Classes: compile to a concrete field read and box into Dynamic.
+								switch (followType(obj.t)) {
+									case TInst(cls2Ref, _): {
+										var owner = cls2Ref.get();
+										if (owner != null) {
+											var cf: Null<ClassField> = null;
+											for (f in owner.fields.get()) {
+												if (f.name == fieldName || f.getHaxeName() == fieldName) {
+													cf = f;
+													break;
+												}
+											}
+											if (cf != null) {
+												switch (cf.kind) {
+													case FVar(_, _): {
+														var value = compileInstanceFieldRead(obj, owner, cf, fullExpr);
+														return ECall(EPath("hxrt::dynamic::from"), [value]);
+													}
+													case _:
+												}
+											}
 										}
 									}
+									case _:
 								}
-								case _:
-							}
-							if (cf == null) return unsupported(fullExpr, "Reflect.field (unsupported receiver/field)");
 
-							var owner = switch (followType(obj.t)) {
-								case TInst(cls2Ref, _): cls2Ref.get();
-								case _: null;
-							};
-							if (owner == null) return unsupported(fullExpr, "Reflect.field owner");
-
-							var value = compileInstanceFieldRead(obj, owner, cf, fullExpr);
-							return ECall(EPath("hxrt::dynamic::from"), [value]);
-						}
-
-						case "setField": {
-							if (args.length != 3) return unsupported(fullExpr, "Reflect.setField args");
-
-							var obj = args[0];
-							var nameExpr = args[1];
-							var valueExpr = args[2];
-							var fieldName: Null<String> = switch (nameExpr.expr) {
-								case TConst(TString(s)): s;
-								case _: null;
-							};
-							if (fieldName == null) return unsupported(fullExpr, "Reflect.setField non-const");
-
-							var cf: Null<ClassField> = null;
-							switch (followType(obj.t)) {
-								case TInst(cls2Ref, _): {
-									var cls2 = cls2Ref.get();
-									for (f in cls2.fields.get()) {
-										if (f.name == fieldName || f.getHaxeName() == fieldName) {
-											cf = f;
-											break;
+								// Anonymous objects: lower to `hxrt::anon::Anon` access when applicable.
+								switch (followType(obj.t)) {
+									case TAnonymous(anonRef): {
+										var anon = anonRef.get();
+										if (anon != null && anon.fields != null) {
+											var cf: Null<ClassField> = null;
+											for (f in anon.fields) {
+												if (f.name == fieldName || f.getHaxeName() == fieldName) {
+													cf = f;
+													break;
+												}
+											}
+											if (cf != null) {
+												var value: RustExpr;
+												if (isAnonObjectType(obj.t)) {
+													var recv = compileExpr(obj);
+													var borrowed = ECall(EField(recv, "borrow"), []);
+													var tyStr = rustTypeToString(toRustType(cf.type, fullExpr.pos));
+													var getter = "get::<" + tyStr + ">";
+													value = ECall(EField(borrowed, getter), [ELitString(cf.getHaxeName())]);
+												} else {
+													// KeyValue structural record etc: direct field read (clone non-Copy to avoid moves).
+													value = EField(compileExpr(obj), cf.getHaxeName());
+													if (!isCopyType(cf.type)) {
+														value = ECall(EField(value, "clone"), []);
+													}
+												}
+												return ECall(EPath("hxrt::dynamic::from"), [value]);
+											}
 										}
 									}
+									case _:
 								}
-								case _:
+
+								return unsupported(fullExpr, "Reflect.field (unsupported receiver/field)");
 							}
-							if (cf == null) return unsupported(fullExpr, "Reflect.setField (unsupported receiver/field)");
 
-							var owner = switch (followType(obj.t)) {
-								case TInst(cls2Ref, _): cls2Ref.get();
-								case _: null;
-							};
-							if (owner == null) return unsupported(fullExpr, "Reflect.setField owner");
+							case "setField": {
+								if (args.length != 3) return unsupported(fullExpr, "Reflect.setField args");
 
-							var assigned = compileInstanceFieldAssign(obj, owner, cf, valueExpr);
-							return EBlock({ stmts: [RSemi(assigned)], tail: null });
+								var obj = args[0];
+								var nameExpr = args[1];
+								var valueExpr = args[2];
+								var fieldName: Null<String> = switch (nameExpr.expr) {
+									case TConst(TString(s)): s;
+									case _: null;
+								};
+								if (fieldName == null) return unsupported(fullExpr, "Reflect.setField non-const");
+
+								// Haxe signature is `setField(o:Dynamic, field:String, value:Dynamic):Void`,
+								// so typed AST generally coerces `value` to Dynamic. Convert back via runtime downcast.
+								function dynamicToConcrete(dynVar: String, target: Type, pos: haxe.macro.Expr.Position): RustExpr {
+									var nullInner = nullInnerType(target);
+									if (nullInner != null) {
+										var innerRust = rustTypeToString(toRustType(nullInner, pos));
+										var optTyStr = "Option<" + innerRust + ">";
+										var optTry = "__opt";
+										var stmts: Array<RustStmt> = [];
+										stmts.push(RLet(optTry, false, null, ECall(EField(EPath(dynVar), "downcast_ref::<" + optTyStr + ">"), [])));
+										var hasOpt = ECall(EField(EPath(optTry), "is_some"), []);
+										var thenExpr = ECall(EField(ECall(EField(EPath(optTry), "unwrap"), []), "clone"), []);
+										var innerExpr = ECall(
+											EField(ECall(EField(EPath(dynVar), "downcast_ref::<" + innerRust + ">"), []), "unwrap"),
+											[]
+										);
+										var elseExpr = ECall(EPath("Some"), [ECall(EField(innerExpr, "clone"), [])]);
+										return EBlock({ stmts: stmts, tail: EIf(hasOpt, thenExpr, elseExpr) });
+									}
+
+									var tyStr = rustTypeToString(toRustType(target, pos));
+									var down = ECall(EField(EPath(dynVar), "downcast_ref::<" + tyStr + ">"), []);
+									var unwrapped = ECall(EField(down, "unwrap"), []);
+									return ECall(EField(unwrapped, "clone"), []);
+								}
+
+								// Class instance field assignment.
+								switch (followType(obj.t)) {
+									case TInst(cls2Ref, _): {
+										var owner = cls2Ref.get();
+										if (owner != null) {
+											var cf: Null<ClassField> = null;
+											for (f in owner.fields.get()) {
+												if (f.name == fieldName || f.getHaxeName() == fieldName) {
+													cf = f;
+													break;
+												}
+											}
+											if (cf != null) {
+												switch (cf.kind) {
+													case FVar(_, _): {
+														if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+															return unsupported(fullExpr, "Reflect.setField (polymorphic receiver)");
+														}
+
+														var stmts: Array<RustStmt> = [];
+														stmts.push(RLet("__obj", false, null, maybeCloneForReuseValue(compileExpr(obj), obj)));
+														var rhsExpr = maybeCloneForReuseValue(compileExpr(valueExpr), valueExpr);
+														if (isDynamicType(valueExpr.t)) {
+															stmts.push(RLet("__v", false, null, rhsExpr));
+															stmts.push(RLet("__val", false, null, dynamicToConcrete("__v", cf.type, fullExpr.pos)));
+														} else {
+															stmts.push(RLet("__val", false, null, coerceExprToExpected(rhsExpr, valueExpr, cf.type)));
+														}
+
+														var access = EField(ECall(EField(EPath("__obj"), "borrow_mut"), []), rustFieldName(owner, cf));
+														stmts.push(RSemi(EAssign(access, EPath("__val"))));
+														return EBlock({ stmts: stmts, tail: null });
+													}
+													case _:
+												}
+											}
+										}
+									}
+									case _:
+								}
+
+								// Anonymous object field assignment (general `hxrt::anon::Anon` only).
+								switch (followType(obj.t)) {
+									case TAnonymous(anonRef): {
+										var anon = anonRef.get();
+										if (anon != null && anon.fields != null) {
+											var cf: Null<ClassField> = null;
+											for (f in anon.fields) {
+												if (f.name == fieldName || f.getHaxeName() == fieldName) {
+													cf = f;
+													break;
+												}
+											}
+											if (cf != null && isAnonObjectType(obj.t)) {
+												var stmts: Array<RustStmt> = [];
+												stmts.push(RLet("__obj", false, null, maybeCloneForReuseValue(compileExpr(obj), obj)));
+												var rhsExpr = maybeCloneForReuseValue(compileExpr(valueExpr), valueExpr);
+												if (isDynamicType(valueExpr.t)) {
+													stmts.push(RLet("__v", false, null, rhsExpr));
+													stmts.push(RLet("__val", false, null, dynamicToConcrete("__v", cf.type, fullExpr.pos)));
+												} else {
+													stmts.push(RLet("__val", false, null, coerceExprToExpected(rhsExpr, valueExpr, cf.type)));
+												}
+												var setCall = ECall(EField(ECall(EField(EPath("__obj"), "borrow_mut"), []), "set"), [ELitString(cf.getHaxeName()), EPath("__val")]);
+												stmts.push(RSemi(setCall));
+												return EBlock({ stmts: stmts, tail: null });
+											}
+										}
+									}
+									case _:
+								}
+
+								return unsupported(fullExpr, "Reflect.setField (unsupported receiver/field)");
+							}
+
+							case "hasField": {
+								if (args.length != 2) return unsupported(fullExpr, "Reflect.hasField args");
+
+								var obj = args[0];
+								var nameExpr = args[1];
+								var fieldName: Null<String> = switch (nameExpr.expr) {
+									case TConst(TString(s)): s;
+									case _: null;
+								};
+								if (fieldName == null) return unsupported(fullExpr, "Reflect.hasField non-const");
+
+								// Classes: check declared fields (vars and methods).
+								switch (followType(obj.t)) {
+									case TInst(cls2Ref, _): {
+										var owner = cls2Ref.get();
+										if (owner != null) {
+											for (f in owner.fields.get()) {
+												if (f.name == fieldName || f.getHaxeName() == fieldName) {
+													return ELitBool(true);
+												}
+											}
+											return ELitBool(false);
+										}
+									}
+									case _:
+								}
+
+								// Anonymous objects: check structural fields.
+								switch (followType(obj.t)) {
+									case TAnonymous(anonRef): {
+										var anon = anonRef.get();
+										if (anon != null && anon.fields != null) {
+											for (f in anon.fields) {
+												if (f.name == fieldName || f.getHaxeName() == fieldName) {
+													return ELitBool(true);
+												}
+											}
+											return ELitBool(false);
+										}
+									}
+									case _:
+								}
+
+								return unsupported(fullExpr, "Reflect.hasField (unsupported receiver)");
+							}
+
+							case _:
 						}
-
-						case _:
 					}
-				}
-			case _:
-		}
+				case _:
+			}
 
 		// Special-case: haxe.io.Bytes (runtime-backed)
 		switch (callExpr.expr) {
