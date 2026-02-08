@@ -1267,22 +1267,33 @@ private typedef RustImplSpec = {
 								return switch (u.expr) {
 									case TBinop(OpAssign, lhs, rhs): {
 										var l = unwrapMetaParen(lhs);
-										switch (l.expr) {
+								switch (l.expr) {
 											case TField(obj, fa): {
 												switch (unwrapMetaParen(obj).expr) {
 													case TConst(TThis): {
 														// Resolve the Haxe field name.
-														var haxeFieldName: Null<String> = switch (fa) {
+														var haxeFieldName: Null<String> = null;
+														var haxeFieldType: Null<Type> = null;
+														switch (fa) {
 															case FInstance(_, _, cfRef): {
 																var cf = cfRef.get();
-																cf != null ? cf.getHaxeName() : null;
+																if (cf != null) {
+																	haxeFieldName = cf.getHaxeName();
+																	haxeFieldType = cf.type;
+																}
 															}
 															case FAnon(cfRef): {
 																var cf = cfRef.get();
-																cf != null ? cf.getHaxeName() : null;
+																if (cf != null) {
+																	haxeFieldName = cf.getHaxeName();
+																	haxeFieldType = cf.type;
+																}
 															}
-															case FDynamic(name): name;
-															case _: null;
+															case FDynamic(name): {
+																haxeFieldName = name;
+																haxeFieldType = null;
+															}
+															case _:
 														}
 														if (haxeFieldName == null) return null;
 
@@ -1304,7 +1315,14 @@ private typedef RustImplSpec = {
 
 																		{
 																			field: haxeFieldName,
-																			rhs: needsClone ? (exprStr + ".clone()") : exprStr,
+																			rhs: {
+																				var base = needsClone ? (exprStr + ".clone()") : exprStr;
+																				if (haxeFieldType != null && isNullType(haxeFieldType) && !isNullType(v.t)) {
+																					"Some(" + base + ")";
+																				} else {
+																					base;
+																				}
+																			},
 																		}
 																	}
 																case _:

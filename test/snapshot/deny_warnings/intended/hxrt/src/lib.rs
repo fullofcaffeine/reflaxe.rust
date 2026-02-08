@@ -3,6 +3,7 @@ pub mod array;
 pub mod bytes;
 pub mod dynamic;
 pub mod exception;
+pub mod fs;
 pub mod hxref;
 pub mod io;
 pub mod iter;

@@ -116,3 +116,21 @@ pub fn blit(dst: &Rc<RefCell<Bytes>>, pos: i32, src: &Rc<RefCell<Bytes>>, srcpos
     let end = (pos + len) as usize;
     dst_b.data[start..end].copy_from_slice(&tmp);
 }
+
+/// Write `src` bytes into `dst` starting at `pos`.
+///
+/// This is used by runtime-backed IO implementations (e.g. `sys.io.FileInput`) to efficiently
+/// fill a `haxe.io.Bytes` buffer without going through per-byte `set()` calls.
+pub fn write_from_slice(dst: &Rc<RefCell<Bytes>>, pos: i32, src: &[u8]) {
+    if src.is_empty() {
+        return;
+    }
+
+    let len = src.len() as i32;
+    let mut dst_b = dst.borrow_mut();
+    let dst_len = dst_b.length();
+    check_range("write_from_slice", pos, len, dst_len);
+    let start = pos as usize;
+    let end = (pos + len) as usize;
+    dst_b.data[start..end].copy_from_slice(src);
+}

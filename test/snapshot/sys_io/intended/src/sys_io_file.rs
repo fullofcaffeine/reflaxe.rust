@@ -8,25 +8,76 @@ pub struct File {}
 
 impl File {
     pub fn get_content(path: String) -> String {
-        return std::fs::read_to_string(path.as_str()).unwrap();
+        return match std::fs::read_to_string(path.as_str()) {
+            Ok(s) => s,
+            Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+        };
     }
 
     pub fn save_content(path: String, content: String) {
-        {
-            std::fs::write(path.as_str(), content).unwrap();
+        match std::fs::write(path.as_str(), content) {
+            Ok(()) => (),
+            Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
         };
     }
 
     pub fn get_bytes(path: String) -> crate::HxRef<hxrt::bytes::Bytes> {
         return {
-            let data = std::fs::read(path.as_str()).unwrap();
+            let data = match std::fs::read(path.as_str()) {
+                Ok(b) => b,
+                Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+            };
             std::rc::Rc::new(std::cell::RefCell::new(hxrt::bytes::Bytes::from_vec(data)))
         };
     }
 
     pub fn save_bytes(path: String, bytes: crate::HxRef<hxrt::bytes::Bytes>) {
         {
-            std::fs::write(path.as_str(), bytes.borrow().as_slice()).unwrap();
+            let b = bytes.borrow();
+            match std::fs::write(path.as_str(), b.as_slice()) {
+                Ok(()) => (),
+                Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+            }
+        };
+    }
+
+    pub fn read(path: String, binary: bool) -> crate::HxRef<crate::sys_io_file_input::FileInput> {
+        let _unused: bool = binary;
+        let fh: crate::HxRef<hxrt::fs::FileHandle> = hxrt::fs::open_read(path.as_str());
+        return crate::sys_io_file_input::FileInput::new(fh);
+    }
+
+    pub fn write(
+        path: String,
+        binary: bool,
+    ) -> crate::HxRef<crate::sys_io_file_output::FileOutput> {
+        let _unused: bool = binary;
+        let fh: crate::HxRef<hxrt::fs::FileHandle> = hxrt::fs::open_write_truncate(path.as_str());
+        return crate::sys_io_file_output::FileOutput::new(fh);
+    }
+
+    pub fn append(
+        path: String,
+        binary: bool,
+    ) -> crate::HxRef<crate::sys_io_file_output::FileOutput> {
+        let _unused: bool = binary;
+        let fh: crate::HxRef<hxrt::fs::FileHandle> = hxrt::fs::open_append(path.as_str());
+        return crate::sys_io_file_output::FileOutput::new(fh);
+    }
+
+    pub fn update(
+        path: String,
+        binary: bool,
+    ) -> crate::HxRef<crate::sys_io_file_output::FileOutput> {
+        let _unused: bool = binary;
+        let fh: crate::HxRef<hxrt::fs::FileHandle> = hxrt::fs::open_update(path.as_str());
+        return crate::sys_io_file_output::FileOutput::new(fh);
+    }
+
+    pub fn copy(src_path: String, dst_path: String) {
+        match std::fs::copy(src_path.as_str(), dst_path.as_str()) {
+            Ok(_) => (),
+            Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
         };
     }
 }

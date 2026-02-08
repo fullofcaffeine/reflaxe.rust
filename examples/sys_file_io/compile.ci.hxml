@@ -1,0 +1,8 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_strict_examples
+-D reflaxe_rust_profile=idiomatic
+-D rust_output=out_ci
+-D rust_crate=sys_file_io
+-main Main
+
