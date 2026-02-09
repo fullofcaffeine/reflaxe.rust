@@ -89,10 +89,25 @@ Cons:
 
 ## Current Status
 
-As of the current POC/runtime architecture:
+As of 2026-02-09, `reflaxe.rust` has a minimal-but-correct threaded runtime model:
 
-- `sys.net` exists and is implemented via `hxrt::net`.
-- `sys.thread` is **not** implemented because correct threading requires a deliberate runtime choice.
+- The heap model is thread-safe by construction (`HxRef<T>` is backed by `Arc<...>` + locking).
+- `sys.thread.Thread.create` spawns real OS threads.
+- `Thread.sendMessage` / `Thread.readMessage` are implemented via per-thread message queues in `hxrt`.
+- The core synchronization primitives exist (`Lock`, `Mutex` (re-entrant), `Condition`, `Semaphore`, `Tls`).
+- `sys.thread.EventLoop` exists and is backed by `hxrt::thread` per-thread event state.
+- CI includes a deterministic smoke example: `examples/sys_thread_smoke`.
 
-The tracking issue for this work is `haxe.rust-zhs`.
+Known gaps (not yet parity with upstream targets):
 
+1. `haxe.MainLoop` integration is still minimal. The current `EventLoop` is sufficient for basic
+   `haxe.EntryPoint` scheduling (`run` / `promise` / `runPromised` / `loop`), but richer integration
+   should be implemented as we approach 1.0.
+2. Thread pools and related helpers (`sys.thread.Deque`, `FixedThreadPool`, `ElasticThreadPool`, etc)
+   are tracked separately.
+
+Tracking:
+
+- Threading model baseline: `haxe.rust-zhs` (completed once CI + docs are kept in sync)
+- Core primitives: `haxe.rust-2et`
+- Pools + deeper EventLoop parity: `haxe.rust-i87`
