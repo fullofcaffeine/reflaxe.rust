@@ -32,6 +32,7 @@ import reflaxe.rust.ast.RustAST.RustItem;
 import reflaxe.rust.ast.RustAST.RustMatchArm;
 import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustStmt;
+import reflaxe.rust.ast.RustAST.RustVisibility;
 import reflaxe.helpers.TypeHelper;
 import reflaxe.rust.macros.CargoMetaRegistry;
 import reflaxe.rust.macros.RustExtraSrcRegistry;
@@ -67,6 +68,8 @@ private typedef RustImplSpec = {
 	var crateName: String = "hx_app";
 	var mainBaseType: Null<BaseType> = null;
 	var mainClassKey: Null<String> = null;
+	var cachedMainClass: Null<ClassType> = null;
+	var cachedMainClassResolved: Bool = false;
 	var currentClassKey: Null<String> = null;
 	var currentClassName: Null<String> = null;
 	var currentClassType: Null<ClassType> = null;
@@ -769,14 +772,49 @@ private typedef RustImplSpec = {
 	}
 
 	function isMainClass(classType: ClassType): Bool {
+		var mainCls = resolveMainClass();
+		return mainCls != null
+			&& (mainCls.module == classType.module
+				&& mainCls.name == classType.name
+				&& mainCls.pack.join(".") == classType.pack.join("."));
+	}
+
+	function resolveMainClass(): Null<ClassType> {
+		if (cachedMainClassResolved) return cachedMainClass;
+		cachedMainClassResolved = true;
+
+		// Prefer the "direct main call" path when available.
 		var m = getMainModule();
-		return switch (m) {
-			case TClassDecl(clsRef): {
-				var mainCls = clsRef.get();
-				(mainCls.module == classType.module && mainCls.name == classType.name && mainCls.pack.join(".") == classType.pack.join("."));
-			}
-			case _: false;
+		switch (m) {
+			case TClassDecl(clsRef):
+				cachedMainClass = clsRef.get();
+				return cachedMainClass;
+			case _:
 		}
+
+		// Some stdlib features (notably `sys.thread` / `haxe.EntryPoint`) can rewrite the "main expr"
+		// into a wrapper call. `BaseCompiler.getMainModule()` only handles direct `MyClass.main()`.
+		// Fall back to searching the typed `getMainExpr()` for a static `main` reference.
+		var mainExpr = getMainExpr();
+		if (mainExpr == null) return null;
+
+		var found: Null<ClassType> = null;
+		function visit(e: TypedExpr): Void {
+			if (found != null) return;
+			switch (e.expr) {
+				case TField(_, fa):
+					switch (fa) {
+						case FStatic(clsRef, cfRef):
+							if (cfRef.get().name == "main") found = clsRef.get();
+						case _:
+					}
+				case _:
+			}
+			TypedExprTools.iter(e, visit);
+		}
+		visit(mainExpr);
+		cachedMainClass = found;
+		return cachedMainClass;
 	}
 
 	function findStaticMain(funcFields: Array<ClassFuncData>): Null<ClassFuncData> {
@@ -1683,11 +1721,21 @@ private typedef RustImplSpec = {
 			currentMethodOwnerType = prevOwner;
 			currentMethodField = prevField;
 
+			function needsCrateVisibility(cls: ClassType, cf: ClassField): Bool {
+				// If a class/field uses `@:allow(...)` or `@:access(...)`, Haxe may permit cross-type
+				// access to private members. Rust module privacy is stricter than Haxe's, so we widen
+				// such members to `pub(crate)` to keep the generated crate compiling.
+				return (cls.meta != null && (cls.meta.has(":allow") || cls.meta.has(":access")))
+					|| (cf.meta != null && (cf.meta.has(":allow") || cf.meta.has(":access")));
+			}
+
+			var isPub = f.field.isPublic || isAccessorForPublicPropertyInstance(classType, f.field);
 			return {
 				name: rustMethodName(classType, f.field),
 				// Haxe allows `public var x(get, never)` while keeping `get_x()` itself private.
 				// Rust module privacy is stricter, so make accessors public when the property is public.
-				isPub: f.field.isPublic || isAccessorForPublicPropertyInstance(classType, f.field),
+				isPub: isPub,
+				vis: (!isPub && needsCrateVisibility(classType, f.field)) ? RustVisibility.VPubCrate : null,
 			generics: generics,
 			args: args,
 			ret: rustReturnTypeForField(f.field, f.ret, f.field.pos),
@@ -1712,9 +1760,16 @@ private typedef RustImplSpec = {
 			});
 			currentMethodField = prevField;
 
+			function needsCrateVisibility(cls: ClassType, cf: ClassField): Bool {
+				return (cls.meta != null && (cls.meta.has(":allow") || cls.meta.has(":access")))
+					|| (cf.meta != null && (cf.meta.has(":allow") || cf.meta.has(":access")));
+			}
+
+			var isPub = f.field.isPublic || isAccessorForPublicPropertyStatic(classType, f.field);
 			return {
 				name: rustMethodName(classType, f.field),
-				isPub: f.field.isPublic || isAccessorForPublicPropertyStatic(classType, f.field),
+				isPub: isPub,
+				vis: (!isPub && needsCrateVisibility(classType, f.field)) ? RustVisibility.VPubCrate : null,
 			generics: generics,
 			args: args,
 			ret: rustReturnTypeForField(f.field, f.ret, f.field.pos),
@@ -6796,6 +6851,21 @@ private typedef RustImplSpec = {
 		if (isStringType(base)) return RString;
 
 		var ft = followType(base);
+
+		// Unresolved monomorphs can occur when Haxe keeps a type variable open (most commonly due to
+		// `untyped` expressions or as-yet-unified generics). For codegen we need a concrete runtime
+		// representation. Default to `Dynamic` to preserve behavior and avoid crashing codegen.
+		switch (ft) {
+			case TMono(m): {
+				var inner = m.get();
+				if (inner != null) return toRustType(inner, pos);
+				#if eval
+				Context.warning("Rust backend: unresolved monomorph, lowering to Dynamic.", pos);
+				#end
+				return RPath("hxrt::dynamic::Dynamic");
+			}
+			case _:
+		}
 
 		switch (ft) {
 			case TDynamic(_):

@@ -46,8 +46,22 @@ class RustASTPrinter {
 		}
 	}
 
+	static function visibilityToken(vis: Null<RustAST.RustVisibility>, isPub: Bool): Null<String> {
+		var v = vis != null ? vis : (isPub ? RustAST.RustVisibility.VPub : RustAST.RustVisibility.VPrivate);
+		return switch (v) {
+			case VPrivate: null;
+			case VPub: "pub";
+			case VPubCrate: "pub(crate)";
+		}
+	}
+
+	static function visibilityPrefix(vis: Null<RustAST.RustVisibility>, isPub: Bool): String {
+		var t = visibilityToken(vis, isPub);
+		return t == null ? "" : (t + " ");
+	}
+
 	static function printStruct(s: RustAST.RustStruct): String {
-		var head = (s.isPub ? "pub " : "") + "struct " + s.name;
+		var head = visibilityPrefix(s.vis, s.isPub) + "struct " + s.name;
 		if (s.generics != null && s.generics.length > 0) {
 			head += "<" + s.generics.join(", ") + ">";
 		}
@@ -57,7 +71,7 @@ class RustASTPrinter {
 
 		var lines: Array<String> = [];
 		for (f in s.fields) {
-			var prefix = f.isPub ? "pub " : "";
+			var prefix = visibilityPrefix(f.vis, f.isPub);
 			lines.push("    " + prefix + f.name + ": " + printType(f.ty) + ",");
 		}
 		return head + " {\n" + lines.join("\n") + "\n}";
@@ -69,7 +83,7 @@ class RustASTPrinter {
 			parts.push("#[derive(" + e.derives.join(", ") + ")]");
 		}
 
-		var head = (e.isPub ? "pub " : "") + "enum " + e.name;
+		var head = visibilityPrefix(e.vis, e.isPub) + "enum " + e.name;
 		if (e.variants.length == 0) {
 			parts.push(head + " { }");
 			return parts.join("\n");
@@ -108,7 +122,8 @@ class RustASTPrinter {
 
 	static function printFunction(f: RustAST.RustFunction, indent: Int): String {
 		var sigParts: Array<String> = [];
-		if (f.isPub) sigParts.push("pub");
+		var tok = visibilityToken(f.vis, f.isPub);
+		if (tok != null) sigParts.push(tok);
 		sigParts.push("fn");
 		var name = f.name;
 		if (f.generics != null && f.generics.length > 0) {

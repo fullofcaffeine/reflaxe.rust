@@ -4,38 +4,37 @@ package sys.thread;
 	OS thread API for the Rust target.
 
 	Why
-	- The upstream Haxe std defines `sys.thread.Thread` as an extern abstract, implemented per-target.
-	- For Rust we want true OS threads, message queues, and compatibility with Haxe std patterns.
+	- Haxe's `sys.thread.*` implies real OS threads with message queues and synchronization.
+	- The Rust target provides a native runtime (`hxrt`) and implements this API on top of it.
 
 	What
-	- A small wrapper around `hxrt::thread`:
-	  - `create(job)` spawns an OS thread.
-	  - `sendMessage` sends a `Dynamic` to another thread's queue.
-	  - `readMessage(block)` reads from the current thread's queue.
+	- `Thread.create(job)` spawns an OS thread that executes `job`.
+	- `Thread.current()` identifies the current OS thread (0 = main thread).
+	- `sendMessage` / `readMessage` implement per-thread message queues with `Dynamic` payloads.
+	- `events` exposes a per-thread `EventLoop` compatible with `haxe.EntryPoint` expectations.
 
 	How
-	- Each thread has a small integer id (0 = main thread) stored in Rust thread-local storage.
-	- Event loop support is implemented in Haxe using `sys.thread.EventLoop` (upstream), and is
-	  intentionally minimal here: only `runWithEventLoop` / `createWithEventLoop` are provided.
+	- Each thread has a small integer id stored in Rust thread-local storage.
+	- `sys.thread.EventLoop` is backed by runtime queues and timers, so it can be used without
+	  relying on Haxe static-field codegen (keeps the POC smaller).
 **/
 class Thread {
 	final __id: Int;
-
-	// Event loop is optional per-thread. We track it in a global map guarded by a mutex.
-	static final __loopsMutex: Mutex = new Mutex();
-	static final __loops: Map<Int, EventLoop> = [];
 
 	function new(id: Int) {
 		__id = id;
 	}
 
+	/**
+		Event loop of this thread.
+
+		Note: the current implementation is backed by the runtime and does not integrate Haxe's
+		`haxe.MainLoop` yet. It's sufficient for `haxe.EntryPoint` usage (`run`, `promise`,
+		`runPromised`, `loop`).
+	**/
 	public var events(get, never): EventLoop;
 	function get_events(): EventLoop {
-		var id = __id;
-		__loopsMutex.acquire();
-		var loop = __loops.get(id);
-		__loopsMutex.release();
-		return loop;
+		return EventLoop.__fromThreadId(__id);
 	}
 
 	public function sendMessage(msg: Dynamic): Void {
@@ -53,26 +52,14 @@ class Thread {
 	}
 
 	public static function runWithEventLoop(job: () -> Void): Void {
-		var id: Int = untyped __rust__("hxrt::thread::thread_current_id()");
-
-		__loopsMutex.acquire();
-		var existing = __loops.exists(id);
-		if (!existing) __loops.set(id, new EventLoop());
-		var loop = __loops.get(id);
-		__loopsMutex.release();
-
 		job();
-
-		if (!existing) {
-			loop.loop();
-			__loopsMutex.acquire();
-			__loops.remove(id);
-			__loopsMutex.release();
-		}
+		var id: Int = untyped __rust__("hxrt::thread::thread_current_id()");
+		untyped __rust__("hxrt::thread::event_loop_loop({0})", id);
 	}
 
 	public static function createWithEventLoop(job: () -> Void): Thread {
-		return create(() -> runWithEventLoop(job));
+		var id: Int = untyped __rust__("hxrt::thread::thread_spawn_with_event_loop({0})", job);
+		return new Thread(id);
 	}
 
 	/**
@@ -80,11 +67,13 @@ class Thread {
 		Returns `null` if `block` is `false` and no message is available.
 	**/
 	public static function readMessage(block: Bool): Dynamic {
-		return untyped __rust__("hxrt::thread::thread_read_message({0})", block);
+		// `untyped` injections can type as monomorphs in the typed AST; force `Dynamic` here so the
+		// backend doesn't need to guess the return type.
+		return cast untyped __rust__("hxrt::thread::thread_read_message({0})", block);
 	}
 
 	private static function processEvents(): Void {
-		var loop = Thread.current().events;
-		if (loop != null) loop.progress();
+		// Minimal integration point for upstream APIs. Future work: connect to `haxe.MainLoop`.
+		Thread.current().events.progress();
 	}
 }

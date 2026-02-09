@@ -24,9 +24,11 @@ use crate::{dynamic, exception};
 use parking_lot::{Condvar, Mutex as ParkMutex};
 use std::cell::Cell;
 use std::collections::{HashMap, VecDeque};
+use std::sync::atomic::AtomicU64;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
+use std::time::Instant;
 
 fn throw_msg(msg: &str) -> ! {
     exception::throw(dynamic::from(String::from(msg)))
@@ -34,10 +36,13 @@ fn throw_msg(msg: &str) -> ! {
 
 // ---- Threads + messages ----------------------------------------------------
 
-#[derive(Debug)]
 struct ThreadState {
     queue: ParkMutex<VecDeque<Dynamic>>,
     cv: Condvar,
+
+    // Per-thread event loop (used by `sys.thread.EventLoop`).
+    events: ParkMutex<EventLoopState>,
+    events_cv: Condvar,
 }
 
 impl ThreadState {
@@ -45,19 +50,32 @@ impl ThreadState {
         Self {
             queue: ParkMutex::new(VecDeque::new()),
             cv: Condvar::new(),
+            events: ParkMutex::new(EventLoopState::default()),
+            events_cv: Condvar::new(),
         }
     }
 }
 
 static NEXT_THREAD_ID: AtomicI32 = AtomicI32::new(1);
+static NEXT_EVENT_ID: AtomicU64 = AtomicU64::new(1);
 static THREADS: OnceLock<ParkMutex<HashMap<i32, Arc<ThreadState>>>> = OnceLock::new();
+static START: OnceLock<Instant> = OnceLock::new();
 
 thread_local! {
     static CURRENT_THREAD_ID: Cell<i32> = const { Cell::new(0) };
 }
 
 fn threads() -> &'static ParkMutex<HashMap<i32, Arc<ThreadState>>> {
-    THREADS.get_or_init(|| ParkMutex::new(HashMap::new()))
+    THREADS.get_or_init(|| {
+        // The main thread (id 0) is always considered alive.
+        let mut map = HashMap::new();
+        map.insert(0, Arc::new(ThreadState::new()));
+        ParkMutex::new(map)
+    })
+}
+
+fn now_seconds() -> f64 {
+    START.get_or_init(Instant::now).elapsed().as_secs_f64()
 }
 
 fn ensure_thread_state(id: i32) -> Arc<ThreadState> {
@@ -71,6 +89,9 @@ fn ensure_thread_state(id: i32) -> Arc<ThreadState> {
 }
 
 fn remove_thread_state(id: i32) {
+    if id == 0 {
+        return;
+    }
     let mut map = threads().lock();
     map.remove(&id);
 }
@@ -86,6 +107,19 @@ pub fn thread_spawn(job: HxRc<dyn Fn() + Send + Sync>) -> i32 {
     std::thread::spawn(move || {
         CURRENT_THREAD_ID.with(|c| c.set(id));
         job2();
+        remove_thread_state(id);
+    });
+    id
+}
+
+pub fn thread_spawn_with_event_loop(job: HxRc<dyn Fn() + Send + Sync>) -> i32 {
+    let id = NEXT_THREAD_ID.fetch_add(1, Ordering::Relaxed);
+    let _ = ensure_thread_state(id);
+    let job2 = job.clone();
+    std::thread::spawn(move || {
+        CURRENT_THREAD_ID.with(|c| c.set(id));
+        job2();
+        event_loop_loop(id);
         remove_thread_state(id);
     });
     id
@@ -119,6 +153,211 @@ pub fn thread_read_message(block: bool) -> Dynamic {
         if let Some(v) = q.pop_front() {
             return v;
         }
+    }
+}
+
+// ---- EventLoop ------------------------------------------------------------
+
+#[derive(Clone)]
+struct RegularEvent {
+    id: u64,
+    next_run: f64,
+    interval: f64,
+    callback: HxRc<dyn Fn() + Send + Sync>,
+}
+
+#[derive(Default)]
+struct EventLoopState {
+    one_time: VecDeque<HxRc<dyn Fn() + Send + Sync>>,
+    promised: i32,
+    regular: Vec<RegularEvent>, // kept sorted by `next_run`
+}
+
+fn with_thread_state_or_throw<R>(thread_id: i32, f: impl FnOnce(&Arc<ThreadState>) -> R) -> R {
+    let state = {
+        let map = threads().lock();
+        map.get(&thread_id).cloned()
+    };
+    let Some(state) = state else {
+        throw_msg("Thread is not alive");
+    };
+    f(&state)
+}
+
+pub fn event_loop_promise(thread_id: i32) {
+    with_thread_state_or_throw(thread_id, |state| {
+        let mut st = state.events.lock();
+        st.promised += 1;
+    });
+}
+
+pub fn event_loop_run(thread_id: i32, event: HxRc<dyn Fn() + Send + Sync>) {
+    with_thread_state_or_throw(thread_id, |state| {
+        let mut st = state.events.lock();
+        st.one_time.push_back(event);
+        state.events_cv.notify_one();
+    });
+}
+
+pub fn event_loop_run_promised(thread_id: i32, event: HxRc<dyn Fn() + Send + Sync>) {
+    with_thread_state_or_throw(thread_id, |state| {
+        let mut st = state.events.lock();
+        st.one_time.push_back(event);
+        st.promised -= 1;
+        state.events_cv.notify_one();
+    });
+}
+
+pub fn event_loop_repeat(
+    thread_id: i32,
+    event: HxRc<dyn Fn() + Send + Sync>,
+    interval_ms: i32,
+) -> i32 {
+    let interval = (interval_ms.max(0) as f64) / 1000.0;
+    let id = NEXT_EVENT_ID.fetch_add(1, Ordering::Relaxed);
+    let next_run = now_seconds() + interval;
+    with_thread_state_or_throw(thread_id, |state| {
+        let mut st = state.events.lock();
+        let ev = RegularEvent {
+            id,
+            next_run,
+            interval,
+            callback: event,
+        };
+        // Insert sorted by next_run.
+        let idx = st
+            .regular
+            .iter()
+            .position(|x| ev.next_run < x.next_run)
+            .unwrap_or(st.regular.len());
+        st.regular.insert(idx, ev);
+        state.events_cv.notify_one();
+    });
+    id as i32
+}
+
+pub fn event_loop_cancel(thread_id: i32, event_id: i32) {
+    let id = event_id as u64;
+    with_thread_state_or_throw(thread_id, |state| {
+        let mut st = state.events.lock();
+        st.regular.retain(|e| e.id != id);
+    });
+}
+
+/// Progress the event loop once.
+///
+/// Returns a float "next event time" marker:
+/// - `-2.0` => Now (one or more events executed)
+/// - `-1.0` => Never (no more events expected)
+/// - `-3.0` => AnyTime(null) (promised events exist, but no scheduled time)
+/// - `>= 0` => At(time) in seconds since program start
+pub fn event_loop_progress(thread_id: i32) -> f64 {
+    let mut to_run: Vec<HxRc<dyn Fn() + Send + Sync>> = Vec::new();
+    let mut next_at: f64 = -1.0;
+    let mut promised: i32 = 0;
+    let now = now_seconds();
+
+    with_thread_state_or_throw(thread_id, |state| {
+        let mut st = state.events.lock();
+
+        // Drain regular events due.
+        while let Some(first) = st.regular.first() {
+            if first.next_run > now {
+                break;
+            }
+            let mut ev = st.regular.remove(0);
+            to_run.push(ev.callback.clone());
+            ev.next_run += ev.interval;
+            // Reinsert.
+            let idx = st
+                .regular
+                .iter()
+                .position(|x| ev.next_run < x.next_run)
+                .unwrap_or(st.regular.len());
+            st.regular.insert(idx, ev);
+        }
+
+        // Drain one-time events.
+        while let Some(ev) = st.one_time.pop_front() {
+            to_run.push(ev);
+        }
+
+        promised = st.promised;
+        if let Some(first) = st.regular.first() {
+            next_at = first.next_run;
+        } else {
+            next_at = -1.0;
+        }
+    });
+
+    for ev in to_run.iter() {
+        ev();
+    }
+
+    if !to_run.is_empty() {
+        return -2.0;
+    }
+    if next_at >= 0.0 {
+        return next_at;
+    }
+    if promised > 0 {
+        return -3.0;
+    }
+    -1.0
+}
+
+pub fn event_loop_wait(thread_id: i32, timeout_seconds: Option<f64>) -> bool {
+    with_thread_state_or_throw(thread_id, |state| {
+        let mut st = state.events.lock();
+
+        let has_any_pending = !st.one_time.is_empty() || !st.regular.is_empty() || st.promised > 0;
+        if !has_any_pending {
+            return false;
+        }
+        let has_ready_now = !st.one_time.is_empty()
+            || st
+                .regular
+                .first()
+                .map(|e| e.next_run <= now_seconds())
+                .unwrap_or(false);
+        if has_ready_now {
+            return true;
+        }
+
+        match timeout_seconds {
+            None => {
+                state.events_cv.wait(&mut st);
+                true
+            }
+            Some(t) => {
+                if t < 0.0 {
+                    state.events_cv.wait(&mut st);
+                    true
+                } else {
+                    let dur = Duration::from_millis((t * 1000.0).max(0.0) as u64);
+                    !state.events_cv.wait_for(&mut st, dur).timed_out()
+                }
+            }
+        }
+    })
+}
+
+pub fn event_loop_loop(thread_id: i32) {
+    loop {
+        let next = event_loop_progress(thread_id);
+        if next == -2.0 {
+            continue;
+        }
+        if next == -1.0 {
+            break;
+        }
+        if next == -3.0 {
+            let _ = event_loop_wait(thread_id, None);
+            continue;
+        }
+        // At(time)
+        let timeout = (next - now_seconds()).max(0.0);
+        let _ = event_loop_wait(thread_id, Some(timeout));
     }
 }
 

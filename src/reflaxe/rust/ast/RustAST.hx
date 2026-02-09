@@ -9,6 +9,12 @@ package reflaxe.rust.ast;
 // Main module type (required for Haxe module/type resolution).
 class RustAST {}
 
+enum RustVisibility {
+	VPrivate;
+	VPub;
+	VPubCrate;
+}
+
 typedef RustFile = {
 	var items: Array<RustItem>;
 }
@@ -24,6 +30,7 @@ enum RustItem {
 typedef RustStruct = {
 	var name: String;
 	var isPub: Bool;
+	@:optional var vis: RustVisibility;
 	@:optional var generics: Array<String>;
 	var fields: Array<RustStructField>;
 }
@@ -32,11 +39,13 @@ typedef RustStructField = {
 	var name: String;
 	var ty: RustType;
 	var isPub: Bool;
+	@:optional var vis: RustVisibility;
 }
 
 typedef RustEnum = {
 	var name: String;
 	var isPub: Bool;
+	@:optional var vis: RustVisibility;
 	var derives: Array<String>;
 	var variants: Array<RustEnumVariant>;
 }
@@ -55,6 +64,7 @@ typedef RustImpl = {
 typedef RustFunction = {
 	var name: String;
 	var isPub: Bool;
+	@:optional var vis: RustVisibility;
 	@:optional var generics: Array<String>;
 	var args: Array<RustFnArg>;
 	var ret: RustType;
