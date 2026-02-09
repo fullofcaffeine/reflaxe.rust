@@ -489,14 +489,28 @@ private typedef RustImplSpec = {
 				// Stable RTTI id for this class (portable-mode baseline).
 				items.push(RRaw("pub const __HX_TYPE_ID: u32 = " + typeIdLiteralForClass(classType) + ";"));
 
-			var derives = mergeUniqueStrings(["Debug"], rustDerivesFromMeta(classType.meta));
-			items.push(RRaw("#[derive(" + derives.join(", ") + ")]"));
+			var derives = rustDerivesFromMeta(classType.meta);
+			var canDeriveDebug = true;
+			for (cf in getAllInstanceVarFieldsForStruct(classType)) {
+				if (shouldOptionWrapStructFieldType(cf.type)) {
+					canDeriveDebug = false;
+					break;
+				}
+			}
+			if (canDeriveDebug) {
+				derives = mergeUniqueStrings(["Debug"], derives);
+			}
+			if (derives.length > 0) items.push(RRaw("#[derive(" + derives.join(", ") + ")]"));
 
 			var structFields: Array<reflaxe.rust.ast.RustAST.RustStructField> = [];
 			for (cf in getAllInstanceVarFieldsForStruct(classType)) {
+				var ty = toRustType(cf.type, cf.pos);
+				if (shouldOptionWrapStructFieldType(cf.type)) {
+					ty = RPath("Option<" + rustTypeToString(ty) + ">");
+				}
 				structFields.push({
 					name: rustFieldName(classType, cf),
-					ty: toRustType(cf.type, cf.pos),
+					ty: ty,
 					isPub: cf.isPublic
 				});
 			}
@@ -1298,6 +1312,7 @@ private typedef RustImplSpec = {
 															if (haxeFieldName == null) return null;
 
 																var r = unwrapMetaParen(rhs);
+																var wantsOptionWrap = haxeFieldType != null && shouldOptionWrapStructFieldType(haxeFieldType);
 																function rhsUsesOnlyCtorArgsAndConsts(e: TypedExpr, allowNonArgLocal: Bool = false): Bool {
 																	var u = unwrapMetaParen(e);
 																	return switch (u.expr) {
@@ -1354,6 +1369,8 @@ private typedef RustImplSpec = {
 																				var base = needsClone ? (exprStr + ".clone()") : exprStr;
 																				if (haxeFieldType != null && isNullType(haxeFieldType) && !isNullType(v.t)) {
 																					"Some(" + base + ")";
+																				} else if (wantsOptionWrap) {
+																					"Some(" + base + ")";
 																				} else {
 																					base;
 																				}
@@ -1380,6 +1397,12 @@ private typedef RustImplSpec = {
 																		var rhsStr = exprStr;
 																		if (haxeFieldType != null && isNullType(haxeFieldType) && !isNullType(r.t) && !isNullConstExpr(r)) {
 																			rhsStr = "Some(" + rhsStr + ")";
+																		}
+																		if (wantsOptionWrap && !isNullConstExpr(r)) {
+																			rhsStr = "Some(" + rhsStr + ")";
+																		}
+																		if (wantsOptionWrap && isNullConstExpr(r)) {
+																			rhsStr = "None";
 																		}
 																		{ field: haxeFieldName, rhs: rhsStr };
 																	}
@@ -1434,7 +1457,8 @@ private typedef RustImplSpec = {
 						if (liftedFieldInit.exists(haxeName)) {
 							fieldInits.push(rustFieldName(classType, cf) + ": " + liftedFieldInit.get(haxeName));
 						} else {
-							fieldInits.push(rustFieldName(classType, cf) + ": " + defaultValueForType(cf.type, cf.pos));
+							var def = shouldOptionWrapStructFieldType(cf.type) ? "None" : defaultValueForType(cf.type, cf.pos);
+							fieldInits.push(rustFieldName(classType, cf) + ": " + def);
 						}
 					}
 					if (classNeedsPhantomForUnusedTypeParams(classType)) {
@@ -3575,7 +3599,7 @@ private typedef RustImplSpec = {
 		// - `String` is immutable and reusable in Haxe (needs clone in Rust when re-used).
 		// - structural `Iterator<T>` maps to `hxrt::iter::Iter<T>` (Rc-backed).
 		// - general anonymous objects map to `crate::HxRef<hxrt::anon::Anon>` (Rc-backed).
-		return isArrayType(t) || isHxRefValueType(t) || isStringType(t) || isIteratorStructType(t) || isAnonObjectType(t) || isDynamicType(t);
+		return isArrayType(t) || isHxRefValueType(t) || isRustHxRefType(t) || isStringType(t) || isIteratorStructType(t) || isAnonObjectType(t) || isDynamicType(t);
 	}
 
 		function maybeCloneForReuseValue(expr: RustExpr, valueExpr: TypedExpr): RustExpr {
@@ -5068,6 +5092,14 @@ private typedef RustImplSpec = {
 			var borrowed = ECall(EField(recv, "borrow"), []);
 			var access = EField(borrowed, rustFieldName(owner, cf));
 
+			// Some struct fields are stored as `Option<Rc<dyn Trait>>` for allocation/defaultability
+			// reasons. Unwrap them on read to preserve the non-Option surface type.
+			if (shouldOptionWrapStructFieldType(cf.type)) {
+				var asRef = ECall(EField(access, "as_ref"), []);
+				var unwrapped = ECall(EField(asRef, "unwrap"), []);
+				return ECall(EField(unwrapped, "clone"), []);
+			}
+
 		// For non-Copy types, cloning is the simplest POC rule.
 		if (!TypeHelper.isBool(fullExpr.t) && !TypeHelper.isInt(fullExpr.t) && !TypeHelper.isFloat(fullExpr.t)) {
 			return ECall(EField(access, "clone"), []);
@@ -5167,6 +5199,7 @@ private typedef RustImplSpec = {
 			}
 
 			var fieldIsNull = isNullType(cf.type);
+			var fieldIsOptionWrapped = shouldOptionWrapStructFieldType(cf.type);
 			var rhsIsNullish = isNullType(rhs.t) || isNullConstExpr(rhs);
 
 			if (isSuperExpr(obj)) {
@@ -5181,7 +5214,9 @@ private typedef RustImplSpec = {
 			var borrowed = ECall(EField(EPath("self_"), "borrow_mut"), []);
 			var access = EField(borrowed, rustFieldName(currentClassType != null ? currentClassType : owner, cf));
 			var rhsVal: RustExpr = isCopyType(rhs.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
-			var assigned = (fieldIsNull && !rhsIsNullish) ? ECall(EPath("Some"), [rhsVal]) : rhsVal;
+			var assigned =
+				fieldIsOptionWrapped ? (rhsIsNullish ? ERaw("None") : ECall(EPath("Some"), [rhsVal]))
+				: ((fieldIsNull && !rhsIsNullish) ? ECall(EPath("Some"), [rhsVal]) : rhsVal);
 			stmts.push(RSemi(EAssign(access, assigned)));
 
 			return EBlock({ stmts: stmts, tail: EPath("__tmp") });
@@ -5191,9 +5226,13 @@ private typedef RustImplSpec = {
 				// Haxe assignment returns the RHS value.
 				// `{ let __tmp = rhs; obj.__hx_set_field(__tmp.clone()); __tmp }`
 				var stmts: Array<RustStmt> = [];
-				stmts.push(RLet("__tmp", false, null, compileExpr(rhs)));
+				var rhsExpr = compileExpr(rhs);
+				rhsExpr = maybeCloneForReuseValue(rhsExpr, rhs);
+				stmts.push(RLet("__tmp", false, null, rhsExpr));
 
 				var rhsVal: RustExpr = isCopyType(cf.type) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
+				// Note: setters expose the *surface* type, not the storage type. Storage-level
+				// `Option<...>` wrapping (for trait objects) is handled inside the setter impl.
 				var assigned = (fieldIsNull && !rhsIsNullish) ? ECall(EPath("Some"), [rhsVal]) : rhsVal;
 				stmts.push(RSemi(ECall(EField(compileExpr(obj), rustSetterName(owner, cf)), [assigned])));
 
@@ -5212,7 +5251,9 @@ private typedef RustImplSpec = {
 		var borrowed = ECall(EField(recv, "borrow_mut"), []);
 		var access = EField(borrowed, rustFieldName(owner, cf));
 		var rhsVal: RustExpr = isCopyType(rhs.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
-		var assigned = (fieldIsNull && !rhsIsNullish) ? ECall(EPath("Some"), [rhsVal]) : rhsVal;
+		var assigned =
+			fieldIsOptionWrapped ? (rhsIsNullish ? ERaw("None") : ECall(EPath("Some"), [rhsVal]))
+			: ((fieldIsNull && !rhsIsNullish) ? ECall(EPath("Some"), [rhsVal]) : rhsVal);
 		stmts.push(RSemi(EAssign(access, assigned)));
 
 		return EBlock({
@@ -5485,16 +5526,30 @@ private typedef RustImplSpec = {
 		}
 	}
 
-	function isPolymorphicClassType(t: Type): Bool {
-		var ft = followType(t);
-		return switch (ft) {
-			case TInst(clsRef, _): {
-				var cls = clsRef.get();
-				!cls.isInterface && classHasSubclasses(cls);
+		function isPolymorphicClassType(t: Type): Bool {
+			var ft = followType(t);
+			return switch (ft) {
+				case TInst(clsRef, _): {
+					var cls = clsRef.get();
+					!cls.isInterface && classHasSubclasses(cls);
+				}
+				case _: false;
 			}
-			case _: false;
 		}
-	}
+
+		function shouldOptionWrapStructFieldType(t: Type): Bool {
+			// Haxe reference types are nullable, but this backend does not model full nullability yet.
+			//
+			// One particularly important case is storing polymorphic values (interfaces / base classes)
+			// in struct fields, which becomes `Rc<dyn Trait>` in Rust.
+			//
+			// `Rc<dyn Trait>` does not implement `Default`, which breaks constructor allocation that
+			// needs some initial value before the constructor body assigns real values.
+			//
+			// Wrapping these fields in `Option<...>` makes allocation always possible (`None`), while
+			// getters/field-reads unwrap to preserve the non-Option surface type.
+			return !isNullType(t) && (isInterfaceType(t) || isPolymorphicClassType(t));
+		}
 
 	function ensureSubclassIndex() {
 		if (classHasSubclass != null) return;
@@ -5571,7 +5626,9 @@ private typedef RustImplSpec = {
 			var ty = rustTypeToString(toRustType(cf.type, cf.pos));
 
 			lines.push("\tfn " + rustGetterName(classType, cf) + "(&self) -> " + ty + " {");
-			if (isCopyType(cf.type)) {
+			if (shouldOptionWrapStructFieldType(cf.type)) {
+				lines.push("\t\tself.borrow()." + rustFieldName(classType, cf) + ".as_ref().unwrap().clone()");
+			} else if (isCopyType(cf.type)) {
 				lines.push("\t\tself.borrow()." + rustFieldName(classType, cf));
 			} else {
 				lines.push("\t\tself.borrow()." + rustFieldName(classType, cf) + ".clone()");
@@ -5579,7 +5636,11 @@ private typedef RustImplSpec = {
 			lines.push("\t}");
 
 			lines.push("\tfn " + rustSetterName(classType, cf) + "(&self, v: " + ty + ") {");
-			lines.push("\t\tself.borrow_mut()." + rustFieldName(classType, cf) + " = v;");
+			if (shouldOptionWrapStructFieldType(cf.type)) {
+				lines.push("\t\tself.borrow_mut()." + rustFieldName(classType, cf) + " = Some(v);");
+			} else {
+				lines.push("\t\tself.borrow_mut()." + rustFieldName(classType, cf) + " = v;");
+			}
 			lines.push("\t}");
 		}
 
@@ -5657,7 +5718,9 @@ private typedef RustImplSpec = {
 			var ty = rustTypeToString(toRustType(cf.type, cf.pos));
 
 			lines.push("\tfn " + rustGetterName(baseType, cf) + "(&self) -> " + ty + " {");
-			if (isCopyType(cf.type)) {
+			if (shouldOptionWrapStructFieldType(cf.type)) {
+				lines.push("\t\tself.borrow()." + rustFieldName(subType, cf) + ".as_ref().unwrap().clone()");
+			} else if (isCopyType(cf.type)) {
 				lines.push("\t\tself.borrow()." + rustFieldName(subType, cf));
 			} else {
 				lines.push("\t\tself.borrow()." + rustFieldName(subType, cf) + ".clone()");
@@ -5665,7 +5728,11 @@ private typedef RustImplSpec = {
 			lines.push("\t}");
 
 			lines.push("\tfn " + rustSetterName(baseType, cf) + "(&self, v: " + ty + ") {");
-			lines.push("\t\tself.borrow_mut()." + rustFieldName(subType, cf) + " = v;");
+			if (shouldOptionWrapStructFieldType(cf.type)) {
+				lines.push("\t\tself.borrow_mut()." + rustFieldName(subType, cf) + " = Some(v);");
+			} else {
+				lines.push("\t\tself.borrow_mut()." + rustFieldName(subType, cf) + " = v;");
+			}
 			lines.push("\t}");
 		}
 
@@ -6771,6 +6838,36 @@ private typedef RustImplSpec = {
 					return RRef(RPath("[" + rustTypeToString(inner) + "]"), true);
 				}
 
+				// `@:coreType` abstracts have no Haxe-level "underlying type" that is safe to follow.
+				// Following `abs.type` for these can recurse back into the same abstract indefinitely.
+				//
+				// For core types, we must provide an explicit Rust representation mapping.
+				if (abs.meta != null && abs.meta.has(":coreType")) {
+					// Core primitives (StdTypes) can show up as `@:coreType abstract` types.
+					// Even if earlier helpers missed them, map them to Rust primitives here.
+					switch (key) {
+						case ".Int":
+							return RI32;
+						case ".Float":
+							return RF64;
+						case ".Bool":
+							return RBool;
+						case ".Dynamic":
+							return RPath("hxrt::dynamic::Dynamic");
+						case _:
+					}
+					if (key == "haxe.io.BytesData") {
+						// Target-private storage type backing `haxe.io.Bytes`.
+						// For Rust we treat it as a plain byte vector.
+						return RPath("Vec<u8>");
+					}
+
+					#if eval
+					Context.warning('Rust backend: unmapped @:coreType abstract `' + key + '`, lowering to Dynamic for now.', pos);
+					#end
+					return RPath("hxrt::dynamic::Dynamic");
+				}
+
 				// General abstract fallback: treat as its underlying type.
 				// (Most Haxe abstracts are compile-time-only; runtime representation is the backing type.)
 				var underlying: Type = abs.type;
@@ -6991,6 +7088,20 @@ private typedef RustImplSpec = {
 		}
 	}
 
+		function isRustHxRefType(t: Type): Bool {
+			return switch (followType(t)) {
+				case TAbstract(absRef, params): {
+					var abs = absRef.get();
+					abs != null
+						&& abs.name == "HxRef"
+						&& (abs.pack.join(".") == "rust" || abs.module == "rust.HxRef")
+						&& params.length == 1;
+				}
+				case _:
+					false;
+			}
+		}
+
 		function isHxRefValueType(t: Type): Bool {
 			if (isBytesType(t)) return true;
 			var ft = followType(t);
@@ -7010,7 +7121,8 @@ private typedef RustImplSpec = {
 		function isRcBackedType(t: Type): Bool {
 			// Concrete classes / Bytes are `HxRef<T>` (Rc-backed).
 			// Interfaces and polymorphic base classes are `Rc<dyn Trait>` (Rc-backed).
-			return isHxRefValueType(t) || isAnonObjectType(t) || isInterfaceType(t) || isPolymorphicClassType(t);
+			// Additionally, `rust.HxRef<T>` is an Rc-backed reference used by framework helpers.
+			return isHxRefValueType(t) || isRustHxRefType(t) || isAnonObjectType(t) || isInterfaceType(t) || isPolymorphicClassType(t);
 		}
 
 		function isRustIterType(t: Type): Bool {

@@ -151,6 +151,7 @@ jobs:
           (cd examples/classes && haxe compile.hxml && (cd out && cargo run -q))
           (cd examples/sys_file_io && haxe compile.ci.hxml && (cd out_ci && cargo run -q))
           (cd examples/sys_process && haxe compile.ci.hxml && (cd out_ci && cargo run -q))
+          (cd examples/sys_net_loopback && haxe compile.ci.hxml && (cd out_ci && cargo run -q))
           (cd examples/serde_json && haxe compile.ci.hxml && (cd out_ci && cargo run -q))
           (cd examples/serde_json && haxe compile.rusty.ci.hxml && (cd out_ci_rusty && cargo run -q))
           (cd examples/bytes_ops && haxe compile.ci.hxml && (cd out_ci && cargo test -q) && (cd out_ci && cargo run -q))

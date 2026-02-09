@@ -44,7 +44,7 @@ impl File {
     pub fn read(path: String, binary: bool) -> crate::HxRef<crate::sys_io_file_input::FileInput> {
         let _unused: bool = binary;
         let fh: crate::HxRef<hxrt::fs::FileHandle> = hxrt::fs::open_read(path.as_str());
-        return crate::sys_io_file_input::FileInput::new(fh);
+        return crate::sys_io_file_input::FileInput::new(fh.clone());
     }
 
     pub fn write(
@@ -53,7 +53,7 @@ impl File {
     ) -> crate::HxRef<crate::sys_io_file_output::FileOutput> {
         let _unused: bool = binary;
         let fh: crate::HxRef<hxrt::fs::FileHandle> = hxrt::fs::open_write_truncate(path.as_str());
-        return crate::sys_io_file_output::FileOutput::new(fh);
+        return crate::sys_io_file_output::FileOutput::new(fh.clone());
     }
 
     pub fn append(
@@ -62,7 +62,7 @@ impl File {
     ) -> crate::HxRef<crate::sys_io_file_output::FileOutput> {
         let _unused: bool = binary;
         let fh: crate::HxRef<hxrt::fs::FileHandle> = hxrt::fs::open_append(path.as_str());
-        return crate::sys_io_file_output::FileOutput::new(fh);
+        return crate::sys_io_file_output::FileOutput::new(fh.clone());
     }
 
     pub fn update(
@@ -71,7 +71,7 @@ impl File {
     ) -> crate::HxRef<crate::sys_io_file_output::FileOutput> {
         let _unused: bool = binary;
         let fh: crate::HxRef<hxrt::fs::FileHandle> = hxrt::fs::open_update(path.as_str());
-        return crate::sys_io_file_output::FileOutput::new(fh);
+        return crate::sys_io_file_output::FileOutput::new(fh.clone());
     }
 
     pub fn copy(src_path: String, dst_path: String) {
