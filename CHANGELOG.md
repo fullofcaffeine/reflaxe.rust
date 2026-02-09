@@ -1,3 +1,10 @@
+# [0.49.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.48.0...v0.49.0) (2026-02-09)
+
+
+### Features
+
+* **std:** sys.FileSystem parity + Date runtime ([a9dc5f1](https://github.com/fullofcaffeine/reflaxe.rust/commit/a9dc5f1a0f793baafb95a6016dff345d6c23e93b))
+
 # [0.48.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.47.2...v0.48.0) (2026-02-08)
 
 
