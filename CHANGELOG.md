@@ -1,3 +1,10 @@
+# [0.50.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.49.0...v0.50.0) (2026-02-09)
+
+
+### Features
+
+* implement sys.io.Process ([29deac5](https://github.com/fullofcaffeine/reflaxe.rust/commit/29deac566d50196fe83dde03d06e4a63abeb32ee))
+
 # [0.49.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.48.0...v0.49.0) (2026-02-09)
 
 

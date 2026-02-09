@@ -11,6 +11,6 @@
 
 -lib reflaxe
 
--D reflaxe.rust=0.49.0
+-D reflaxe.rust=0.50.0
 --macro reflaxe.rust.CompilerBootstrap.Start()
 --macro reflaxe.rust.CompilerInit.Start()
