@@ -213,7 +213,10 @@ pub fn event_loop_repeat(
     event: HxRc<dyn Fn() + Send + Sync>,
     interval_ms: i32,
 ) -> i32 {
-    let interval = (interval_ms.max(0) as f64) / 1000.0;
+    // `interval_ms == 0` would cause `event_loop_progress()` to spin forever because the event is
+    // always due immediately after re-scheduling. Clamp to 1ms to keep semantics sane and prevent
+    // hangs.
+    let interval = (interval_ms.max(1) as f64) / 1000.0;
     let id = NEXT_EVENT_ID.fetch_add(1, Ordering::Relaxed);
     let next_run = now_seconds() + interval;
     with_thread_state_or_throw(thread_id, |state| {
@@ -639,5 +642,74 @@ impl SemaphoreHandle {
         let mut count = self.count.lock();
         *count += 1;
         self.cv.notify_one();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering as AtomicOrdering};
+
+    #[test]
+    fn thread_spawn_can_send_to_main_queue() {
+        let job: HxRc<dyn Fn() + Send + Sync> = HxRc::new(|| {
+            thread_send_message(0, dynamic::from(String::from("child_ready")));
+        });
+        let _id = thread_spawn(job);
+        let msg = thread_read_message(true);
+        assert_eq!(msg.downcast::<String>().unwrap().as_str(), "child_ready");
+    }
+
+    #[test]
+    fn event_loop_run_executes_on_progress() {
+        let tid = NEXT_THREAD_ID.fetch_add(1, Ordering::Relaxed);
+        let _ = ensure_thread_state(tid);
+        let seen = HxRc::new(AtomicBool::new(false));
+        let seen2 = seen.clone();
+        event_loop_run(
+            tid,
+            HxRc::new(move || {
+                seen2.store(true, AtomicOrdering::SeqCst);
+            }),
+        );
+        assert_eq!(event_loop_progress(tid), -2.0);
+        assert!(seen.load(AtomicOrdering::SeqCst));
+        remove_thread_state(tid);
+    }
+
+    #[test]
+    fn event_loop_repeat_clamps_zero_interval() {
+        let tid = NEXT_THREAD_ID.fetch_add(1, Ordering::Relaxed);
+        let _ = ensure_thread_state(tid);
+        let hits = HxRc::new(AtomicUsize::new(0));
+        let hits2 = hits.clone();
+        let _id = event_loop_repeat(
+            tid,
+            HxRc::new(move || {
+                hits2.fetch_add(1, AtomicOrdering::SeqCst);
+            }),
+            0,
+        );
+
+        // Must not hang. With a clamped interval (>= 1ms), the next scheduled time must be `At(t)`.
+        let next = event_loop_progress(tid);
+        assert!(
+            next >= 0.0,
+            "expected At(time) (>= 0.0 seconds since start), got {next}"
+        );
+        assert_eq!(hits.load(AtomicOrdering::SeqCst), 0);
+        remove_thread_state(tid);
+    }
+
+    #[test]
+    fn mutex_is_reentrant_on_same_thread() {
+        let m = mutex_new();
+        {
+            let guard = m.borrow();
+            guard.acquire();
+            guard.acquire();
+            guard.release();
+            guard.release();
+        }
     }
 }
