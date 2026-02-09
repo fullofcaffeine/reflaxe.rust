@@ -6,3 +6,5 @@ edition = "2021"
 [lib]
 path = "src/lib.rs"
 
+[dependencies]
+chrono = { version = "0.4", default-features = true }

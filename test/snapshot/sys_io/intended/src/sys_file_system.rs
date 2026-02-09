@@ -11,33 +11,258 @@ impl FileSystem {
         return std::path::Path::new(path.as_str()).exists();
     }
 
+    pub fn rename(path: String, new_path: String) {
+        match std::fs::rename(path.as_str(), new_path.as_str()) {
+            Ok(()) => (),
+            Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+        };
+    }
+
+    pub fn stat(path: String) -> crate::HxRef<hxrt::anon::Anon> {
+        let at_ms: f64 = {
+            use std::time::SystemTime;
+            let md = match std::fs::metadata(path.as_str()) {
+                Ok(m) => m,
+                Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+            };
+            let t = match md.accessed().or_else(|_| md.modified()) {
+                Ok(t) => t,
+                Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+            };
+            let dur = match t.duration_since(SystemTime::UNIX_EPOCH) {
+                Ok(d) => d,
+                Err(_) => std::time::Duration::from_secs(0),
+            };
+            dur.as_millis() as f64
+        };
+        let mt_ms: f64 = {
+            use std::time::SystemTime;
+            let md = match std::fs::metadata(path.as_str()) {
+                Ok(m) => m,
+                Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+            };
+            let t = match md.modified() {
+                Ok(t) => t,
+                Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+            };
+            let dur = match t.duration_since(SystemTime::UNIX_EPOCH) {
+                Ok(d) => d,
+                Err(_) => std::time::Duration::from_secs(0),
+            };
+            dur.as_millis() as f64
+        };
+        let ct_ms: f64 = {
+            use std::time::SystemTime;
+            let md = match std::fs::metadata(path.as_str()) {
+                Ok(m) => m,
+                Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+            };
+            let t = match md.created().or_else(|_| md.modified()) {
+                Ok(t) => t,
+                Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+            };
+            let dur = match t.duration_since(SystemTime::UNIX_EPOCH) {
+                Ok(d) => d,
+                Err(_) => std::time::Duration::from_secs(0),
+            };
+            dur.as_millis() as f64
+        };
+        let size: i32 = {
+            let md = match std::fs::metadata(path.as_str()) {
+                Ok(m) => m,
+                Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+            };
+            (md.len() as i64) as i32
+        };
+        let gid: i32 = {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::MetadataExt;
+                let md = match std::fs::metadata(path.as_str()) {
+                    Ok(m) => m,
+                    Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+                };
+                md.gid() as i32
+            }
+            #[cfg(not(unix))]
+            {
+                0i32
+            }
+        };
+        let uid: i32 = {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::MetadataExt;
+                let md = match std::fs::metadata(path.as_str()) {
+                    Ok(m) => m,
+                    Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+                };
+                md.uid() as i32
+            }
+            #[cfg(not(unix))]
+            {
+                0i32
+            }
+        };
+        let dev: i32 = {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::MetadataExt;
+                let md = match std::fs::metadata(path.as_str()) {
+                    Ok(m) => m,
+                    Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+                };
+                (md.dev() as i64) as i32
+            }
+            #[cfg(not(unix))]
+            {
+                0i32
+            }
+        };
+        let ino: i32 = {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::MetadataExt;
+                let md = match std::fs::metadata(path.as_str()) {
+                    Ok(m) => m,
+                    Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+                };
+                (md.ino() as i64) as i32
+            }
+            #[cfg(not(unix))]
+            {
+                0i32
+            }
+        };
+        let nlink: i32 = {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::MetadataExt;
+                let md = match std::fs::metadata(path.as_str()) {
+                    Ok(m) => m,
+                    Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+                };
+                (md.nlink() as i64) as i32
+            }
+            #[cfg(not(unix))]
+            {
+                0i32
+            }
+        };
+        let rdev: i32 = {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::MetadataExt;
+                let md = match std::fs::metadata(path.as_str()) {
+                    Ok(m) => m,
+                    Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+                };
+                (md.rdev() as i64) as i32
+            }
+            #[cfg(not(unix))]
+            {
+                0i32
+            }
+        };
+        let mode: i32 = {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::MetadataExt;
+                let md = match std::fs::metadata(path.as_str()) {
+                    Ok(m) => m,
+                    Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+                };
+                (md.mode() as i64) as i32
+            }
+            #[cfg(not(unix))]
+            {
+                0i32
+            }
+        };
+        return {
+            let __o = std::rc::Rc::new(std::cell::RefCell::new(hxrt::anon::Anon::new()));
+            {
+                let mut __b = __o.borrow_mut();
+                __b.set("gid", gid);
+                __b.set("uid", uid);
+                __b.set("atime", crate::date::Date::from_time(at_ms));
+                __b.set("mtime", crate::date::Date::from_time(mt_ms));
+                __b.set("ctime", crate::date::Date::from_time(ct_ms));
+                __b.set("size", size);
+                __b.set("dev", dev);
+                __b.set("ino", ino);
+                __b.set("nlink", nlink);
+                __b.set("rdev", rdev);
+                __b.set("mode", mode);
+            };
+            __o
+        };
+    }
+
+    pub fn full_path(rel_path: String) -> String {
+        return match std::fs::canonicalize(rel_path.as_str()) {
+            Ok(p) => p.to_string_lossy().to_string(),
+            Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+        };
+    }
+
+    pub fn absolute_path(rel_path: String) -> String {
+        return {
+            let p = std::path::Path::new(rel_path.as_str());
+            let out = if p.is_absolute() {
+                p.to_path_buf()
+            } else {
+                let cwd = match std::env::current_dir() {
+                    Ok(d) => d,
+                    Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+                };
+                cwd.join(p)
+            };
+            out.to_string_lossy().to_string()
+        };
+    }
+
     pub fn is_directory(path: String) -> bool {
-        return std::path::Path::new(path.as_str()).is_dir();
+        return match std::fs::metadata(path.as_str()) {
+            Ok(m) => m.is_dir(),
+            Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+        };
     }
 
     pub fn create_directory(path: String) {
-        {
-            std::fs::create_dir_all(path.as_str()).unwrap();
+        match std::fs::create_dir_all(path.as_str()) {
+            Ok(()) => (),
+            Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
         };
     }
 
     pub fn delete_file(path: String) {
-        {
-            std::fs::remove_file(path.as_str()).unwrap();
+        match std::fs::remove_file(path.as_str()) {
+            Ok(()) => (),
+            Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
         };
     }
 
     pub fn delete_directory(path: String) {
-        {
-            std::fs::remove_dir(path.as_str()).unwrap();
+        match std::fs::remove_dir(path.as_str()) {
+            Ok(()) => (),
+            Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
         };
     }
 
     pub fn read_directory(path: String) -> hxrt::array::Array<String> {
         return {
             let mut out: Vec<String> = Vec::new();
-            for entry in std::fs::read_dir(path.as_str()).unwrap() {
-                let name = entry.unwrap().file_name().to_string_lossy().to_string();
+            let rd = match std::fs::read_dir(path.as_str()) {
+                Ok(r) => r,
+                Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+            };
+            for entry in rd {
+                let e = match entry {
+                    Ok(e) => e,
+                    Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
+                };
+                let name = e.file_name().to_string_lossy().to_string();
                 out.push(name);
             }
             hxrt::array::Array::<String>::from_vec(out)

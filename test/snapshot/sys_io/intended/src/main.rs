@@ -4,6 +4,7 @@
 
 type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
 
+mod date;
 mod haxe_ds_enum_value_map;
 mod haxe_ds_int_map;
 mod haxe_ds_object_map;
