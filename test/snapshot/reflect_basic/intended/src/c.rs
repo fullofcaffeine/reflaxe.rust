@@ -12,11 +12,6 @@ impl C {
     pub fn new() -> crate::HxRef<crate::c::C> {
         let self_: crate::HxRef<crate::c::C> =
             std::rc::Rc::new(std::cell::RefCell::new(C { n: 0 }));
-        {
-            let __tmp = 0;
-            self_.borrow_mut().n = __tmp;
-            __tmp
-        };
         return self_;
     }
 }

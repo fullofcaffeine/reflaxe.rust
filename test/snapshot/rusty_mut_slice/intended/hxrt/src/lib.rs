@@ -8,6 +8,7 @@ pub mod fs;
 pub mod hxref;
 pub mod io;
 pub mod iter;
+pub mod process;
 pub mod string;
 
 pub fn init() {}

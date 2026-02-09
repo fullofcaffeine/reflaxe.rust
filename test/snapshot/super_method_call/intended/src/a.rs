@@ -11,12 +11,7 @@ pub struct A {
 impl A {
     pub fn new() -> crate::HxRef<crate::a::A> {
         let self_: crate::HxRef<crate::a::A> =
-            std::rc::Rc::new(std::cell::RefCell::new(A { _x: 0 }));
-        {
-            let __tmp = 1;
-            self_.borrow_mut()._x = __tmp;
-            __tmp
-        };
+            std::rc::Rc::new(std::cell::RefCell::new(A { _x: 1 }));
         return self_;
     }
 

@@ -42,7 +42,7 @@ fn main() {
             let _g: i32 = __p;
             {
                 let i: i32 = _g;
-                format!("{}{}", "B:", i)
+                format!("{}{}", "B:", hxrt::dynamic::from(i).to_haxe_string())
             }
         }
     };

@@ -62,12 +62,25 @@ fn main() {
         println!("{}", hxrt::dynamic::from(format!("{}{}", "k=", &k).clone()));
     }
     for v in crate::haxe_ds_string_map::StringMap::iterator(&sm) {
-        println!("{}", hxrt::dynamic::from(format!("{}{}", "v=", v).clone()));
+        println!(
+            "{}",
+            hxrt::dynamic::from(
+                format!("{}{}", "v=", hxrt::dynamic::from(v).to_haxe_string()).clone()
+            )
+        );
     }
     for kv in crate::haxe_ds_string_map::StringMap::key_value_iterator(&sm) {
         println!(
             "{}",
-            hxrt::dynamic::from(format!("{}{}{}", kv.key, "=>", kv.value).clone())
+            hxrt::dynamic::from(
+                format!(
+                    "{}{}{}",
+                    kv.key,
+                    "=>",
+                    hxrt::dynamic::from(kv.value).to_haxe_string()
+                )
+                .clone()
+            )
         );
     }
     println!(
@@ -124,19 +137,31 @@ fn main() {
     for k_2 in crate::haxe_ds_int_map::IntMap::keys(&im) {
         println!(
             "{}",
-            hxrt::dynamic::from(format!("{}{}", "k=", k_2).clone())
+            hxrt::dynamic::from(
+                format!("{}{}", "k=", hxrt::dynamic::from(k_2).to_haxe_string()).clone()
+            )
         );
     }
     for v_2 in crate::haxe_ds_int_map::IntMap::iterator(&im) {
         println!(
             "{}",
-            hxrt::dynamic::from(format!("{}{}", "v=", v_2).clone())
+            hxrt::dynamic::from(
+                format!("{}{}", "v=", hxrt::dynamic::from(v_2).to_haxe_string()).clone()
+            )
         );
     }
     for kv_2 in crate::haxe_ds_int_map::IntMap::key_value_iterator(&im) {
         println!(
             "{}",
-            hxrt::dynamic::from(format!("{}{}{}", kv_2.key, "=>", kv_2.value).clone())
+            hxrt::dynamic::from(
+                format!(
+                    "{}{}{}",
+                    hxrt::dynamic::from(kv_2.key).to_haxe_string(),
+                    "=>",
+                    hxrt::dynamic::from(kv_2.value).to_haxe_string()
+                )
+                .clone()
+            )
         );
     }
     println!(
@@ -182,7 +207,9 @@ fn main() {
     for v_3 in crate::haxe_ds_object_map::ObjectMap::iterator(&om) {
         println!(
             "{}",
-            hxrt::dynamic::from(format!("{}{}", "v=", v_3).clone())
+            hxrt::dynamic::from(
+                format!("{}{}", "v=", hxrt::dynamic::from(v_3).to_haxe_string()).clone()
+            )
         );
     }
     for kv_3 in crate::haxe_ds_object_map::ObjectMap::key_value_iterator(&om) {
@@ -193,7 +220,7 @@ fn main() {
                     "{}{}{}",
                     hxrt::dynamic::from(kv_3.key.clone()).to_haxe_string(),
                     "=>",
-                    kv_3.value
+                    hxrt::dynamic::from(kv_3.value).to_haxe_string()
                 )
                 .clone()
             )
@@ -242,7 +269,9 @@ fn main() {
     for v_4 in crate::haxe_ds_enum_value_map::EnumValueMap::iterator(&em) {
         println!(
             "{}",
-            hxrt::dynamic::from(format!("{}{}", "v=", v_4).clone())
+            hxrt::dynamic::from(
+                format!("{}{}", "v=", hxrt::dynamic::from(v_4).to_haxe_string()).clone()
+            )
         );
     }
     for kv_4 in crate::haxe_ds_enum_value_map::EnumValueMap::key_value_iterator(&em) {
@@ -253,7 +282,7 @@ fn main() {
                     "{}{}{}",
                     hxrt::dynamic::from(kv_4.key.clone()).to_haxe_string(),
                     "=>",
-                    kv_4.value
+                    hxrt::dynamic::from(kv_4.value).to_haxe_string()
                 )
                 .clone()
             )

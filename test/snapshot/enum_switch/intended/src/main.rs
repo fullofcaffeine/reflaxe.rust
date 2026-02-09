@@ -29,7 +29,7 @@ fn main() {
             let _g: i32 = __p;
             {
                 let d: i32 = _g;
-                format!("{}{}", "move:", d)
+                format!("{}{}", "move:", hxrt::dynamic::from(d).to_haxe_string())
             }
         }
         crate::action::Action::Toggle => String::from("toggle"),

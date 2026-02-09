@@ -13,12 +13,6 @@ impl Base {
     pub fn new() -> crate::HxRef<crate::base::Base> {
         let self_: crate::HxRef<crate::base::Base> =
             std::rc::Rc::new(std::cell::RefCell::new(Base { x: 0, _y: 0 }));
-        {
-            let __tmp = 0;
-            self_.borrow_mut()._y = __tmp;
-            __tmp
-        };
-        crate::base::Base::set_x(&self_, 0);
         return self_;
     }
 

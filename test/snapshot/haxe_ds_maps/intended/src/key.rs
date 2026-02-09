@@ -16,6 +16,11 @@ impl Key {
     }
 
     pub fn to_string(self_: &std::cell::RefCell<Key>) -> String {
-        return format!("{}{}{}", "Key(", self_.borrow().id, ")");
+        return format!(
+            "{}{}{}",
+            "Key(",
+            hxrt::dynamic::from(self_.borrow().id).to_haxe_string(),
+            ")"
+        );
     }
 }

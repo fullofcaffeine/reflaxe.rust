@@ -1295,13 +1295,48 @@ private typedef RustImplSpec = {
 															}
 															case _:
 														}
-														if (haxeFieldName == null) return null;
+															if (haxeFieldName == null) return null;
 
-															var r = unwrapMetaParen(rhs);
-															switch (r.expr) {
-																case TLocal(v) if (isCtorArgLocal(v)):
-																	{
-																		var exprStr = reflaxe.rust.ast.RustASTPrinter.printExprForInjection(compileExpr(r));
+																var r = unwrapMetaParen(rhs);
+																function rhsUsesOnlyCtorArgsAndConsts(e: TypedExpr, allowNonArgLocal: Bool = false): Bool {
+																	var u = unwrapMetaParen(e);
+																	return switch (u.expr) {
+																		case TConst(c): switch (c) {
+																			case TThis | TSuper:
+																				false;
+																			case _:
+																				true;
+																		}
+																		case TLocal(v):
+																			true;
+																		case TBinop(_, a, b):
+																			rhsUsesOnlyCtorArgsAndConsts(a, allowNonArgLocal) && rhsUsesOnlyCtorArgsAndConsts(b, allowNonArgLocal);
+																		case TUnop(_, _, a):
+																			rhsUsesOnlyCtorArgsAndConsts(a, allowNonArgLocal);
+																		case TCall(f2, a2):
+																			// Allow the callee itself to be a non-arg local (e.g. builtins like `__rust__`),
+																			// but keep argument expressions restricted to ctor args/constants.
+																			rhsUsesOnlyCtorArgsAndConsts(f2, true) && (a2 == null ? true : Lambda.fold(a2, (x, acc) -> acc && rhsUsesOnlyCtorArgsAndConsts(x, false), true));
+																		case TArray(a, i):
+																			rhsUsesOnlyCtorArgsAndConsts(a, allowNonArgLocal) && rhsUsesOnlyCtorArgsAndConsts(i, allowNonArgLocal);
+																		case TField(o2, _):
+																			rhsUsesOnlyCtorArgsAndConsts(o2, allowNonArgLocal);
+																		case TCast(inner, _):
+																			rhsUsesOnlyCtorArgsAndConsts(inner, allowNonArgLocal);
+																		case TParenthesis(inner):
+																			rhsUsesOnlyCtorArgsAndConsts(inner, allowNonArgLocal);
+																		case TMeta(_, inner):
+																			rhsUsesOnlyCtorArgsAndConsts(inner, allowNonArgLocal);
+																		case TTypeExpr(_):
+																			true;
+																		case _:
+																			false;
+																	}
+																}
+																switch (r.expr) {
+																	case TLocal(v) if (isCtorArgLocal(v)):
+																		{
+																			var exprStr = reflaxe.rust.ast.RustASTPrinter.printExprForInjection(compileExpr(r));
 
 																		// Prefer moving constructor args into the struct init when safe:
 																		// - Copy types never need `.clone()`
@@ -1323,12 +1358,35 @@ private typedef RustImplSpec = {
 																					base;
 																				}
 																			},
+																			}
 																		}
+																	case _ if (rhsUsesOnlyCtorArgsAndConsts(r)): {
+																		// Compile with substitutions that clone non-Copy ctor args to avoid moving them.
+																		var prevSubst = inlineLocalSubstitutions;
+																		var subst: Map<String, RustExpr> = new Map();
+																		for (a in f.args) {
+																			var n = a.getName();
+																			if (n == null || n.length == 0) continue;
+																			if (!isCopyType(a.type)) {
+																				var rustName = rustArgIdent(n);
+																				subst.set(n, ECall(EField(EPath(rustName), "clone"), []));
+																			}
+																		}
+																		inlineLocalSubstitutions = subst;
+																		var compiledRhs = compileExpr(r);
+																		inlineLocalSubstitutions = prevSubst;
+
+																		var exprStr = reflaxe.rust.ast.RustASTPrinter.printExprForInjection(compiledRhs);
+																		var rhsStr = exprStr;
+																		if (haxeFieldType != null && isNullType(haxeFieldType) && !isNullType(r.t) && !isNullConstExpr(r)) {
+																			rhsStr = "Some(" + rhsStr + ")";
+																		}
+																		{ field: haxeFieldName, rhs: rhsStr };
 																	}
-																case _:
-																	null;
-															}
-													}
+																	case _:
+																		null;
+																}
+														}
 													case _:
 														null;
 												}
@@ -2805,11 +2863,11 @@ private typedef RustImplSpec = {
 			case TCall(callExpr, args):
 				compileCall(callExpr, args, e);
 
-				case TNew(clsRef, typeParams, args): {
-					var cls = clsRef.get();
-					if (cls != null && !cls.isExtern && isMainClass(cls)) {
-						return unsupported(e, "new main class");
-					}
+					case TNew(clsRef, typeParams, args): {
+						var cls = clsRef.get();
+						if (cls != null && !cls.isExtern && isMainClass(cls)) {
+							return unsupported(e, "new main class");
+						}
 					var ctorPath = (cls != null && cls.isExtern ? rustExternBasePath(cls) : null);
 					var ctorBase = if (ctorPath != null) {
 						ctorPath;
@@ -2821,12 +2879,47 @@ private typedef RustImplSpec = {
 						"todo!()";
 					}
 					var ctorParams = "";
-					if (typeParams != null && typeParams.length > 0) {
-						var rustParams = [for (p in typeParams) rustTypeToString(toRustType(p, e.pos))];
-						ctorParams = "::<" + rustParams.join(", ") + ">";
+						if (typeParams != null && typeParams.length > 0) {
+							var rustParams = [for (p in typeParams) rustTypeToString(toRustType(p, e.pos))];
+							ctorParams = "::<" + rustParams.join(", ") + ">";
+						}
+
+						// Constructors can have optional parameters and `Null<T>` parameters.
+						// Mirror `compileCall(...)` behavior: coerce provided args and fill omitted optional args.
+						var ctorParamDefs: Null<Array<{ name: String, t: Type, opt: Bool }>> = null;
+						if (cls != null && cls.constructor != null) {
+							var cf = cls.constructor.get();
+							if (cf != null) {
+								switch (followType(cf.type)) {
+									case TFun(params, _):
+										ctorParamDefs = params;
+									case _:
+								}
+							}
+						}
+
+						var outArgs: Array<RustExpr> = [];
+						if (ctorParamDefs != null) {
+							for (i in 0...ctorParamDefs.length) {
+								var p = ctorParamDefs[i];
+								if (i < args.length) {
+									var a = args[i];
+									var compiled = compileExpr(a);
+									compiled = coerceArgForParam(compiled, a, p.t);
+									outArgs.push(compiled);
+								} else if (p.opt) {
+									outArgs.push(ERaw(defaultValueForType(p.t, e.pos)));
+								} else {
+									// Typechecker should prevent this; keep a deterministic fallback.
+									outArgs.push(ERaw(defaultValueForType(p.t, e.pos)));
+								}
+							}
+						} else {
+							outArgs = [for (x in args) compileExpr(x)];
+						}
+
+						ECall(EPath(ctorBase + ctorParams + "::new"), outArgs);
 					}
-					ECall(EPath(ctorBase + ctorParams + "::new"), [for (x in args) compileExpr(x)]);
-				}
 
 			case TTypeExpr(mt):
 				compileTypeExpr(mt, e);
@@ -5693,20 +5786,24 @@ private typedef RustImplSpec = {
 		var out: Array<ClassField> = [];
 		var seen = new Map<String, Bool>();
 
-		function isPhysicalVarField(cls: ClassType, cf: ClassField): Bool {
-			// Haxe `var x(get,set)` style properties are not stored fields unless explicitly marked `@:isVar`
-			// or declared with default-like access (e.g. `default`, `null`, `ctor`).
-			if (cf.meta != null && cf.meta.has(":isVar")) return true;
-			return switch (cf.kind) {
-				case FVar(read, write):
-					switch ([read, write]) {
-						case [AccNormal | AccNo | AccCtor, _]: true;
-						case [_, AccNormal | AccNo | AccCtor]: true;
-						case _: false;
-					}
-				case _:
-					false;
-			};
+			function isPhysicalVarField(cls: ClassType, cf: ClassField): Bool {
+				// Haxe `var x(get,set)` style properties are not stored fields unless explicitly marked `@:isVar`
+				// or declared with default-like access (e.g. `default`, `null`, `ctor`).
+				if (cf.meta != null && cf.meta.has(":isVar")) return true;
+				return switch (cf.kind) {
+					case FVar(read, write):
+						switch ([read, write]) {
+							// A backing field exists when at least one side uses direct field access (`default`)
+							// or constructor-only init access (`ctor`). `null`/`no` by itself does not imply storage.
+							case [AccNormal | AccCtor, _]: true;
+							case [_, AccNormal | AccCtor]: true;
+							// `var x(null,null)` still declares a stored field (inaccessible via accessors).
+							case [AccNo, AccNo]: true;
+							case _: false;
+						}
+					case _:
+						false;
+				};
 		}
 
 		// Walk base -> derived so field layout is deterministic.
@@ -5938,13 +6035,19 @@ private typedef RustImplSpec = {
 						//
 						// Additionally, emit string literals as `&'static str` (no `String::from`) inside
 						// `format!` args to reduce heap allocation noise.
-						function formatArg(p: TypedExpr): RustExpr {
-							if (!isStringType(followType(p.t))) return compileExpr(p);
+							function formatArg(p: TypedExpr): RustExpr {
+								if (!isStringType(followType(p.t))) {
+									// Haxe string concatenation stringifies non-String values (Std.string-like semantics).
+									// Rust's `format!` requires `Display`, which `Option<T>` and many runtime types do not
+									// implement. Route through `hxrt::dynamic::Dynamic::to_haxe_string()` for stability.
+									var v = maybeCloneForReuseValue(compileExpr(p), p);
+									return ECall(EField(ECall(EPath("hxrt::dynamic::from"), [v]), "to_haxe_string"), []);
+								}
 
-							var u = unwrapMetaParen(p);
-							switch (u.expr) {
-								case TConst(TString(s)):
-									return ELitString(s);
+								var u = unwrapMetaParen(p);
+								switch (u.expr) {
+									case TConst(TString(s)):
+										return ELitString(s);
 								case TLocal(_):
 									return EUnary("&", compileExpr(p));
 								case TField(obj, FInstance(clsRef, _, cfRef)): {
@@ -6005,15 +6108,26 @@ private typedef RustImplSpec = {
 				ECast(EBinary(">>", lhs, rhs), "i32");
 			}
 
-			case OpEq: {
-					// `Null<T>` compares to `null` should not require `T: PartialEq` (e.g. `Null<Fn>`).
-					if (isNullType(e1.t) && isNullConstExpr(e2)) {
-						ECall(EField(compileExpr(e1), "is_none"), []);
-					} else if (isNullType(e2.t) && isNullConstExpr(e1)) {
-						ECall(EField(compileExpr(e2), "is_none"), []);
-					} else {
-						var ft1 = followType(e1.t);
-						var ft2 = followType(e2.t);
+				case OpEq: {
+						// `Null<T>` compares to `null` should not require `T: PartialEq` (e.g. `Null<Fn>`).
+						if (isNullType(e1.t) && isNullConstExpr(e2)) {
+							ECall(EField(compileExpr(e1), "is_none"), []);
+						} else if (isNullType(e2.t) && isNullConstExpr(e1)) {
+							ECall(EField(compileExpr(e2), "is_none"), []);
+						} else if (isNullType(e1.t) && !isNullType(e2.t) && !isNullConstExpr(e2)) {
+							// `Option<T> == T` -> `Option<T> == Some(T)`
+							var inner = nullInnerType(e1.t);
+							var rhs = maybeCloneForReuseValue(compileExpr(e2), e2);
+							if (inner != null) rhs = coerceExprToExpected(rhs, e2, inner);
+							EBinary("==", compileExpr(e1), ECall(EPath("Some"), [rhs]));
+						} else if (isNullType(e2.t) && !isNullType(e1.t) && !isNullConstExpr(e1)) {
+							var inner = nullInnerType(e2.t);
+							var lhs = maybeCloneForReuseValue(compileExpr(e1), e1);
+							if (inner != null) lhs = coerceExprToExpected(lhs, e1, inner);
+							EBinary("==", ECall(EPath("Some"), [lhs]), compileExpr(e2));
+						} else {
+							var ft1 = followType(e1.t);
+							var ft2 = followType(e2.t);
 
 						// Haxe object/array equality is identity-based.
 						if (isArrayType(ft1) && isArrayType(ft2)) {
@@ -6025,14 +6139,24 @@ private typedef RustImplSpec = {
 							}
 						}
 					}
-					case OpNotEq: {
-					if (isNullType(e1.t) && isNullConstExpr(e2)) {
-						ECall(EField(compileExpr(e1), "is_some"), []);
-					} else if (isNullType(e2.t) && isNullConstExpr(e1)) {
-						ECall(EField(compileExpr(e2), "is_some"), []);
-					} else {
-						var ft1 = followType(e1.t);
-						var ft2 = followType(e2.t);
+						case OpNotEq: {
+						if (isNullType(e1.t) && isNullConstExpr(e2)) {
+							ECall(EField(compileExpr(e1), "is_some"), []);
+						} else if (isNullType(e2.t) && isNullConstExpr(e1)) {
+							ECall(EField(compileExpr(e2), "is_some"), []);
+						} else if (isNullType(e1.t) && !isNullType(e2.t) && !isNullConstExpr(e2)) {
+							var inner = nullInnerType(e1.t);
+							var rhs = maybeCloneForReuseValue(compileExpr(e2), e2);
+							if (inner != null) rhs = coerceExprToExpected(rhs, e2, inner);
+							EBinary("!=", compileExpr(e1), ECall(EPath("Some"), [rhs]));
+						} else if (isNullType(e2.t) && !isNullType(e1.t) && !isNullConstExpr(e1)) {
+							var inner = nullInnerType(e2.t);
+							var lhs = maybeCloneForReuseValue(compileExpr(e1), e1);
+							if (inner != null) lhs = coerceExprToExpected(lhs, e1, inner);
+							EBinary("!=", ECall(EPath("Some"), [lhs]), compileExpr(e2));
+						} else {
+							var ft1 = followType(e1.t);
+							var ft2 = followType(e2.t);
 
 						if (isArrayType(ft1) && isArrayType(ft2)) {
 							EUnary("!", ECall(EField(compileExpr(e1), "ptr_eq"), [EUnary("&", compileExpr(e2))]));
