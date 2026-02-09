@@ -1,3 +1,10 @@
+# [0.51.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.50.0...v0.51.0) (2026-02-09)
+
+
+### Features
+
+* **std:** implement sys.net (tcp/udp/host) ([768d5e6](https://github.com/fullofcaffeine/reflaxe.rust/commit/768d5e669c36ab5f5749fd1f3acf59ac864b5a34))
+
 # [0.50.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.49.0...v0.50.0) (2026-02-09)
 
 
