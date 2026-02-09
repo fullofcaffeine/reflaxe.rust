@@ -12,13 +12,8 @@ impl<T: Clone + std::fmt::Debug> IntMap<T> {
     pub fn new() -> crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> {
         let self_: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> =
             crate::HxRc::new(crate::HxRefCell::new(IntMap {
-                h: Default::default(),
+                h: std::collections::HashMap::<i32, T>::new(),
             }));
-        {
-            let __tmp = std::collections::HashMap::<i32, T>::new();
-            self_.borrow_mut().h = __tmp.clone();
-            __tmp
-        };
         return self_;
     }
 

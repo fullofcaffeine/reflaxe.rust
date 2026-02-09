@@ -18,21 +18,6 @@ impl BytesBuffer {
                 finalized: false,
                 _length: 0,
             }));
-        {
-            let __tmp = hxrt::array::Array::<crate::HxRef<hxrt::bytes::Bytes>>::new();
-            self_.borrow_mut().chunks = __tmp.clone();
-            __tmp
-        };
-        {
-            let __tmp = false;
-            self_.borrow_mut().finalized = __tmp;
-            __tmp
-        };
-        {
-            let __tmp = 0;
-            self_.borrow_mut()._length = __tmp;
-            __tmp
-        };
         return self_;
     }
 

@@ -7,6 +7,9 @@ type HxRefCell<T> = hxrt::cell::HxCell<T>;
 type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod action;
+mod haxe_call_stack_call_stack_impl_;
+mod haxe_exception;
+mod haxe_stack_item;
 mod task;
 mod tui_demo;
 

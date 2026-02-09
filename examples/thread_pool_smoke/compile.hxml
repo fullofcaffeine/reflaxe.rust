@@ -1,0 +1,7 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_strict_examples
+-D rust_output=out
+-D rust_crate=thread_pool_smoke
+-main Main
+

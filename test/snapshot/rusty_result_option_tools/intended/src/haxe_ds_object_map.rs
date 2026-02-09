@@ -18,19 +18,9 @@ impl<K: hxrt::hxref::HxRefLike + Clone + std::fmt::Debug, V: Clone + std::fmt::D
     pub fn new() -> crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> {
         let self_: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> =
             crate::HxRc::new(crate::HxRefCell::new(ObjectMap {
-                keys_map: Default::default(),
-                values_map: Default::default(),
+                keys_map: std::collections::HashMap::<String, K>::new(),
+                values_map: std::collections::HashMap::<String, V>::new(),
             }));
-        {
-            let __tmp = std::collections::HashMap::<String, K>::new();
-            self_.borrow_mut().keys_map = __tmp.clone();
-            __tmp
-        };
-        {
-            let __tmp = std::collections::HashMap::<String, V>::new();
-            self_.borrow_mut().values_map = __tmp.clone();
-            __tmp
-        };
         return self_;
     }
 

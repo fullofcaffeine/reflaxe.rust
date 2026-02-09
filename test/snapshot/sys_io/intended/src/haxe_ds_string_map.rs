@@ -12,13 +12,8 @@ impl<T: Clone + std::fmt::Debug> StringMap<T> {
     pub fn new() -> crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> {
         let self_: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> =
             crate::HxRc::new(crate::HxRefCell::new(StringMap {
-                h: Default::default(),
+                h: std::collections::HashMap::<String, T>::new(),
             }));
-        {
-            let __tmp = std::collections::HashMap::<String, T>::new();
-            self_.borrow_mut().h = __tmp.clone();
-            __tmp
-        };
         return self_;
     }
 

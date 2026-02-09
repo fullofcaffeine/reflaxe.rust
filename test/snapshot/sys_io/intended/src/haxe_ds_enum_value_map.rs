@@ -13,19 +13,9 @@ impl<K: Clone + std::fmt::Debug, V: Clone + std::fmt::Debug> EnumValueMap<K, V> 
     pub fn new() -> crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> {
         let self_: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> =
             crate::HxRc::new(crate::HxRefCell::new(EnumValueMap {
-                keys_map: Default::default(),
-                values_map: Default::default(),
+                keys_map: std::collections::HashMap::<String, K>::new(),
+                values_map: std::collections::HashMap::<String, V>::new(),
             }));
-        {
-            let __tmp = std::collections::HashMap::<String, K>::new();
-            self_.borrow_mut().keys_map = __tmp.clone();
-            __tmp
-        };
-        {
-            let __tmp = std::collections::HashMap::<String, V>::new();
-            self_.borrow_mut().values_map = __tmp.clone();
-            __tmp
-        };
         return self_;
     }
 

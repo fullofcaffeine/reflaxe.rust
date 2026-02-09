@@ -16,16 +16,6 @@ impl<T: Clone + Send + Sync> List<T> {
                 length: 0,
                 items: hxrt::array::Array::<T>::new(),
             }));
-        {
-            let __tmp = hxrt::array::Array::<T>::new();
-            self_.borrow_mut().items = __tmp.clone();
-            __tmp
-        };
-        {
-            let __tmp = 0;
-            self_.borrow_mut().length = __tmp;
-            __tmp
-        };
         return self_;
     }
 

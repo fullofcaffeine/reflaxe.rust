@@ -502,6 +502,13 @@ private typedef RustImplSpec = {
 					canDeriveDebug = false;
 					break;
 				}
+				// Trait objects (`dyn ...`) do not implement `Debug` by default, so auto-deriving `Debug`
+				// for any struct that contains them would fail to compile.
+				var tyStr = rustTypeToString(toRustType(cf.type, cf.pos));
+				if (tyStr.indexOf("dyn ") != -1) {
+					canDeriveDebug = false;
+					break;
+				}
 			}
 			if (canDeriveDebug) {
 				derives = mergeUniqueStrings(["Debug"], derives);
@@ -734,11 +741,20 @@ private typedef RustImplSpec = {
 
 			var variants: Array<reflaxe.rust.ast.RustAST.RustEnumVariant> = [];
 
+			function boxRecursiveEnumArg(rt: reflaxe.rust.ast.RustAST.RustType): reflaxe.rust.ast.RustAST.RustType {
+				var selfName = enumType.name;
+				var selfPath = "crate::" + rustModuleNameForEnum(enumType) + "::" + selfName;
+				var s = rustTypeToString(rt);
+				if (s == selfName || s == selfPath) return RPath("Box<" + selfName + ">");
+				if (s == "Option<" + selfName + ">" || s == "Option<" + selfPath + ">") return RPath("Option<Box<" + selfName + ">>");
+				return rt;
+			}
+
 			for (opt in options) {
 				var argTypes: Array<reflaxe.rust.ast.RustAST.RustType> = [];
 				for (a in opt.args) {
 					var rt = toRustType(a.type, opt.field.pos);
-					argTypes.push(rt);
+					argTypes.push(boxRecursiveEnumArg(rt));
 				}
 				variants.push({ name: opt.name, args: argTypes });
 			}
@@ -1224,29 +1240,32 @@ private typedef RustImplSpec = {
 		return null;
 	}
 
-	function defaultValueForType(t: Type, pos: haxe.macro.Expr.Position): String {
-		// `Null<T>` defaults to `null` in Haxe, which maps to `Option<T>::None` on this target.
-		switch (TypeTools.follow(t)) {
-			case TAbstract(absRef, params): {
-				var abs = absRef.get();
-				if (abs != null && abs.module == "StdTypes" && abs.name == "Null" && params.length == 1) {
-					return "None";
+		function defaultValueForType(t: Type, pos: haxe.macro.Expr.Position): String {
+			// `Null<T>` defaults to `null` in Haxe, which maps to `Option<T>::None` on this target.
+			//
+			// IMPORTANT: detect this on the raw type before `TypeTools.follow` erases the abstract wrapper.
+			switch (t) {
+				case TAbstract(absRef, params): {
+					var abs = absRef.get();
+					if (abs != null && abs.module == "StdTypes" && abs.name == "Null" && params.length == 1) {
+						return "None";
+					}
 				}
+				case _:
 			}
-			case _:
-		}
 
-		if (TypeHelper.isBool(t)) return "false";
-		if (TypeHelper.isInt(t)) return "0";
-		if (TypeHelper.isFloat(t)) return "0.0";
-		if (isStringType(t)) return "String::new()";
-		if (isRustVecType(t)) return "Vec::new()";
-		if (isRustHashMapType(t)) return "std::collections::HashMap::new()";
-		if (isArrayType(t)) {
-			var elem = arrayElementType(t);
-			var elemRust = toRustType(elem, pos);
-			return "hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new()";
-		}
+			if (TypeHelper.isBool(t)) return "false";
+			if (TypeHelper.isInt(t)) return "0";
+			if (TypeHelper.isFloat(t)) return "0.0";
+			if (isStringType(t)) return "String::new()";
+			if (isDynamicType(t)) return "hxrt::dynamic::Dynamic::null()";
+			if (isRustVecType(t)) return "Vec::new()";
+			if (isRustHashMapType(t)) return "std::collections::HashMap::new()";
+			if (isArrayType(t)) {
+				var elem = arrayElementType(t);
+				var elemRust = toRustType(elem, pos);
+				return "hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new()";
+			}
 
 		return "Default::default()";
 	}
@@ -1317,7 +1336,7 @@ private typedef RustImplSpec = {
 								return v != null && v.name != null && ctorArgNames.exists(v.name);
 							}
 
-							function tryLift(e: TypedExpr): Null<{ field: String, rhs: String }> {
+					function tryLift(e: TypedExpr): Null<{ field: String, rhs: String }> {
 								var u = unwrapMetaParen(e);
 								return switch (u.expr) {
 									case TBinop(OpAssign, lhs, rhs): {
@@ -1365,6 +1384,12 @@ private typedef RustImplSpec = {
 																		}
 																		case TLocal(v):
 																			true;
+																		case TNew(_, _, args):
+																			args == null ? true : Lambda.fold(args, (x, acc) -> acc && rhsUsesOnlyCtorArgsAndConsts(x, false), true);
+																		case TArrayDecl(values):
+																			values == null ? true : Lambda.fold(values, (x, acc) -> acc && rhsUsesOnlyCtorArgsAndConsts(x, allowNonArgLocal), true);
+																		case TObjectDecl(fields):
+																			fields == null ? true : Lambda.fold(fields, (f, acc) -> acc && rhsUsesOnlyCtorArgsAndConsts(f.expr, allowNonArgLocal), true);
 																		case TBinop(_, a, b):
 																			rhsUsesOnlyCtorArgsAndConsts(a, allowNonArgLocal) && rhsUsesOnlyCtorArgsAndConsts(b, allowNonArgLocal);
 																		case TUnop(_, _, a):
@@ -1558,25 +1583,24 @@ private typedef RustImplSpec = {
 						};
 					}
 
-					function compilePositionalArgsFor(params: Array<{ name: String, t: Type, opt: Bool }>, args: Array<TypedExpr>): Array<{ param: { name: String, t: Type, opt: Bool }, rust: RustExpr, typed: Null<TypedExpr> }> {
-						var out: Array<{ param: { name: String, t: Type, opt: Bool }, rust: RustExpr, typed: Null<TypedExpr> }> = [];
-						for (i in 0...params.length) {
-							var p = params[i];
-							if (i < args.length) {
-								var a = args[i];
-								var compiled = compileExpr(a);
-								compiled = coerceArgForParam(compiled, a, p.t);
-								out.push({ param: p, rust: compiled, typed: a });
-								} else if (p.opt) {
-									var d = isNullType(p.t) ? "None" : defaultValueForType(p.t, f.field.pos);
-									out.push({ param: p, rust: ERaw(d), typed: null });
-								} else {
-									// Typechecker should prevent this; keep a deterministic fallback.
-									out.push({ param: p, rust: ERaw(defaultValueForType(p.t, f.field.pos)), typed: null });
-								}
+						function compilePositionalArgsFor(params: Array<{ name: String, t: Type, opt: Bool }>, args: Array<TypedExpr>): Array<{ param: { name: String, t: Type, opt: Bool }, rust: RustExpr, typed: Null<TypedExpr> }> {
+							var out: Array<{ param: { name: String, t: Type, opt: Bool }, rust: RustExpr, typed: Null<TypedExpr> }> = [];
+							for (i in 0...params.length) {
+								var p = params[i];
+								if (i < args.length) {
+									var a = args[i];
+									var compiled = compileExpr(a);
+									compiled = coerceArgForParam(compiled, a, p.t);
+									out.push({ param: p, rust: compiled, typed: a });
+									} else if (p.opt) {
+										out.push({ param: p, rust: ERaw("None"), typed: null });
+									} else {
+										// Typechecker should prevent this; keep a deterministic fallback.
+										out.push({ param: p, rust: ERaw(defaultValueForType(p.t, f.field.pos)), typed: null });
+									}
+							}
+							return out;
 						}
-						return out;
-					}
 
 					function emitCtorChainInit(cls: ClassType, callArgs: Array<TypedExpr>, depth: Int): Void {
 						if (cls == null) return;
@@ -2943,14 +2967,20 @@ private typedef RustImplSpec = {
 			case TBlock(exprs):
 				EBlock(compileBlock(exprs));
 
-			case TCall(callExpr, args):
-				compileCall(callExpr, args, e);
+				case TCall(callExpr, args):
+					compileCall(callExpr, args, e);
 
-					case TNew(clsRef, typeParams, args): {
-						var cls = clsRef.get();
-						if (cls != null && !cls.isExtern && isMainClass(cls)) {
-							return unsupported(e, "new main class");
-						}
+						case TNew(clsRef, typeParams, args): {
+							// `new Array<T>()` must lower to `hxrt::array::Array::<T>::new()` rather than an extern `Array::new()`.
+							if (isArrayType(e.t) && (args == null || args.length == 0)) {
+								var elem = arrayElementType(e.t);
+								var elemRust = toRustType(elem, e.pos);
+								return ECall(ERaw("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new"), []);
+							}
+							var cls = clsRef.get();
+							if (cls != null && !cls.isExtern && isMainClass(cls)) {
+								return unsupported(e, "new main class");
+							}
 					var ctorPath = (cls != null && cls.isExtern ? rustExternBasePath(cls) : null);
 					var ctorBase = if (ctorPath != null) {
 						ctorPath;
@@ -2981,25 +3011,25 @@ private typedef RustImplSpec = {
 							}
 						}
 
-						var outArgs: Array<RustExpr> = [];
-						if (ctorParamDefs != null) {
-							for (i in 0...ctorParamDefs.length) {
-								var p = ctorParamDefs[i];
-								if (i < args.length) {
-									var a = args[i];
-									var compiled = compileExpr(a);
-									compiled = coerceArgForParam(compiled, a, p.t);
-									outArgs.push(compiled);
-								} else if (p.opt) {
-									outArgs.push(ERaw(defaultValueForType(p.t, e.pos)));
-								} else {
-									// Typechecker should prevent this; keep a deterministic fallback.
-									outArgs.push(ERaw(defaultValueForType(p.t, e.pos)));
+							var outArgs: Array<RustExpr> = [];
+							if (ctorParamDefs != null) {
+								for (i in 0...ctorParamDefs.length) {
+									var p = ctorParamDefs[i];
+									if (i < args.length) {
+										var a = args[i];
+										var compiled = compileExpr(a);
+										compiled = coerceArgForParam(compiled, a, p.t);
+										outArgs.push(compiled);
+									} else if (p.opt) {
+										outArgs.push(ERaw("None"));
+									} else {
+										// Typechecker should prevent this; keep a deterministic fallback.
+										outArgs.push(ERaw(defaultValueForType(p.t, e.pos)));
+									}
 								}
+							} else {
+								outArgs = [for (x in args) compileExpr(x)];
 							}
-						} else {
-							outArgs = [for (x in args) compileExpr(x)];
-						}
 
 						ECall(EPath(ctorBase + ctorParams + "::new"), outArgs);
 					}
@@ -4646,18 +4676,16 @@ private typedef RustImplSpec = {
 			a.push(compiled);
 		}
 
-		// Fill omitted optional arguments with their implicit default (`null`).
-		// For this target, `null` maps to `None` for `Null<T>` (Option<T>).
-		if (paramDefs != null && args.length < paramDefs.length) {
-			for (i in args.length...paramDefs.length) {
-				if (!paramDefs[i].opt) break;
-				var t = paramDefs[i].t;
-				var d: RustExpr = isNullType(t) ? ERaw("None") : ERaw(defaultValueForType(t, fullExpr.pos));
-				a.push(d);
+			// Fill omitted optional arguments with their implicit default (`null`).
+			// For this target, optional params are represented as `Option<T>`, so omit => `None`.
+			if (paramDefs != null && args.length < paramDefs.length) {
+				for (i in args.length...paramDefs.length) {
+					if (!paramDefs[i].opt) break;
+					a.push(ERaw("None"));
+				}
 			}
+			return ECall(f, a);
 		}
-		return ECall(f, a);
-	}
 
 	function coerceArgForParam(compiled: RustExpr, argExpr: TypedExpr, paramType: Type): RustExpr {
 		var rustParamTy = toRustType(paramType, argExpr.pos);
@@ -5923,8 +5951,10 @@ private typedef RustImplSpec = {
 							// or constructor-only init access (`ctor`). `null`/`no` by itself does not imply storage.
 							case [AccNormal | AccCtor, _]: true;
 							case [_, AccNormal | AccCtor]: true;
-							// `var x(null,null)` still declares a stored field (inaccessible via accessors).
-							case [AccNo, AccNo]: true;
+							// `var x(get, null)` is a common pattern for "custom getter + stored field" (write access
+							// is restricted, but storage still exists for internal usage).
+							case [AccNo, _]: true;
+							case [_, AccNo]: true;
 							case _: false;
 						}
 					case _:
