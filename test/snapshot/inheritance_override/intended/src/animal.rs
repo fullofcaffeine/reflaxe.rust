@@ -9,21 +9,21 @@ pub struct Animal {}
 impl Animal {
     pub fn new() -> crate::HxRef<crate::animal::Animal> {
         let self_: crate::HxRef<crate::animal::Animal> =
-            std::rc::Rc::new(std::cell::RefCell::new(Animal {}));
+            crate::HxRc::new(crate::HxRefCell::new(Animal {}));
         return self_;
     }
 
-    pub fn speak(_self_: &std::cell::RefCell<Animal>) -> String {
+    pub fn speak(_self_: &crate::HxRefCell<Animal>) -> String {
         return String::from("animal");
     }
 }
 
-pub trait AnimalTrait {
+pub trait AnimalTrait: Send + Sync {
     fn speak(&self) -> String;
     fn __hx_type_id(&self) -> u32;
 }
 
-impl crate::animal::AnimalTrait for std::cell::RefCell<Animal> {
+impl crate::animal::AnimalTrait for crate::HxRefCell<Animal> {
     fn speak(&self) -> String {
         Animal::speak(self)
     }

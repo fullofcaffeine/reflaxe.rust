@@ -1,6 +1,5 @@
-use std::cell::RefCell;
+use crate::cell::{HxCell, HxRc, HxRef};
 use std::iter::Peekable;
-use std::rc::Rc;
 
 #[derive(Clone, Debug)]
 pub struct KeyValue<K, V> {
@@ -27,7 +26,7 @@ pub struct KeyValue<K, V> {
 /// - `next()` consumes and panics if called when exhausted (matches Haxe's "unspecified behavior").
 #[derive(Debug)]
 pub struct Iter<T> {
-    iter: Rc<RefCell<Peekable<std::vec::IntoIter<T>>>>,
+    iter: HxRef<Peekable<std::vec::IntoIter<T>>>,
 }
 
 impl<T> Clone for Iter<T> {
@@ -77,7 +76,7 @@ impl<T> IntoIterator for &Iter<T> {
 impl<T> Iter<T> {
     pub fn from_vec(vec: Vec<T>) -> Self {
         Self {
-            iter: Rc::new(RefCell::new(vec.into_iter().peekable())),
+            iter: HxRc::new(HxCell::new(vec.into_iter().peekable())),
         }
     }
 

@@ -11,11 +11,11 @@ pub struct Foo {
 impl Foo {
     pub fn new(x: i32) -> crate::HxRef<crate::foo::Foo> {
         let self_: crate::HxRef<crate::foo::Foo> =
-            std::rc::Rc::new(std::cell::RefCell::new(Foo { x: x }));
+            crate::HxRc::new(crate::HxRefCell::new(Foo { x: x }));
         return self_;
     }
 
-    pub fn inc(self_: &std::cell::RefCell<Foo>) {
+    pub fn inc(self_: &crate::HxRefCell<Foo>) {
         {
             let __tmp = self_.borrow().x + 1;
             self_.borrow_mut().x = __tmp;
@@ -23,7 +23,7 @@ impl Foo {
         };
     }
 
-    pub fn get_x(self_: &std::cell::RefCell<Foo>) -> i32 {
+    pub fn get_x(self_: &crate::HxRefCell<Foo>) -> i32 {
         return self_.borrow().x;
     }
 }

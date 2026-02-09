@@ -8,17 +8,16 @@ pub struct Sub {}
 
 impl Sub {
     pub fn new() -> crate::HxRef<crate::sub::Sub> {
-        let self_: crate::HxRef<crate::sub::Sub> =
-            std::rc::Rc::new(std::cell::RefCell::new(Sub {}));
+        let self_: crate::HxRef<crate::sub::Sub> = crate::HxRc::new(crate::HxRefCell::new(Sub {}));
         return self_;
     }
 
-    pub fn f(_self_: &std::cell::RefCell<Sub>, x: i32) -> i32 {
+    pub fn f(_self_: &crate::HxRefCell<Sub>, x: i32) -> i32 {
         return x + 2;
     }
 }
 
-impl crate::base::BaseTrait for std::cell::RefCell<Sub> {
+impl crate::base::BaseTrait for crate::HxRefCell<Sub> {
     fn f(&self, x: i32) -> i32 {
         Sub::f(self, x)
     }

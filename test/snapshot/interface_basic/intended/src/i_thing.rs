@@ -2,6 +2,6 @@
 
 // Haxe interface -> Rust trait
 
-pub trait IThing {
+pub trait IThing: Send + Sync {
     fn say(&self) -> String;
 }

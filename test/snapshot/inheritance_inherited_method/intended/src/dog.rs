@@ -8,21 +8,20 @@ pub struct Dog {}
 
 impl Dog {
     pub fn new() -> crate::HxRef<crate::dog::Dog> {
-        let self_: crate::HxRef<crate::dog::Dog> =
-            std::rc::Rc::new(std::cell::RefCell::new(Dog {}));
+        let self_: crate::HxRef<crate::dog::Dog> = crate::HxRc::new(crate::HxRefCell::new(Dog {}));
         return self_;
     }
 
-    pub fn sound(_self_: &std::cell::RefCell<Dog>) -> String {
+    pub fn sound(_self_: &crate::HxRefCell<Dog>) -> String {
         return String::from("dog");
     }
 
-    pub fn speak(self_: &std::cell::RefCell<Dog>) -> String {
+    pub fn speak(self_: &crate::HxRefCell<Dog>) -> String {
         return crate::dog::Dog::sound(&self_);
     }
 }
 
-impl crate::animal::AnimalTrait for std::cell::RefCell<Dog> {
+impl crate::animal::AnimalTrait for crate::HxRefCell<Dog> {
     fn sound(&self) -> String {
         Dog::sound(self)
     }

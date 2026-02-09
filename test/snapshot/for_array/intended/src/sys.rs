@@ -147,15 +147,15 @@ impl Sys {
         return c;
     }
 
-    pub fn stdin() -> std::rc::Rc<dyn crate::haxe_io_input::InputTrait> {
+    pub fn stdin() -> crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync> {
         return crate::sys_io_stdin::Stdin::new();
     }
 
-    pub fn stdout() -> std::rc::Rc<dyn crate::haxe_io_output::OutputTrait> {
+    pub fn stdout() -> crate::HxRc<dyn crate::haxe_io_output::OutputTrait + Send + Sync> {
         return crate::sys_io_stdout::Stdout::new();
     }
 
-    pub fn stderr() -> std::rc::Rc<dyn crate::haxe_io_output::OutputTrait> {
+    pub fn stderr() -> crate::HxRc<dyn crate::haxe_io_output::OutputTrait + Send + Sync> {
         return crate::sys_io_stderr::Stderr::new();
     }
 }

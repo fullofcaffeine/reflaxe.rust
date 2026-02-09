@@ -98,9 +98,12 @@ private typedef RustImplSpec = {
 	var rustNamesByClass: Map<String, { fields: Map<String, String>, methods: Map<String, String> }> = [];
 	var inCodeInjectionArg: Bool = false;
 
-	inline function wantsPreludeAliases(): Bool {
-		return profile == Idiomatic || profile == Rusty;
-	}
+		inline function wantsPreludeAliases(): Bool {
+			// Always emit stable `crate::HxRc` / `crate::HxRefCell` / `crate::HxRef` aliases so:
+			// - generated code stays uniform across profiles
+			// - the runtime can evolve the underlying representation (e.g. thread-safe heap)
+			return true;
+		}
 
 	inline function rcBasePath(): String {
 		return wantsPreludeAliases() ? "crate::HxRc" : "std::rc::Rc";
@@ -380,13 +383,13 @@ private typedef RustImplSpec = {
 				}
 				lintLines.push("#![allow(dead_code)]");
 
-				var preludeLines: Array<String> = wantsPreludeAliases()
-					? [
-						"type HxRc<T> = std::rc::Rc<T>;",
-						"type HxRefCell<T> = std::cell::RefCell<T>;",
-						"type HxRef<T> = HxRc<HxRefCell<T>>;"
-					]
-					: ["type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;"];
+					var preludeLines: Array<String> = wantsPreludeAliases()
+						? [
+							"type HxRc<T> = hxrt::cell::HxRc<T>;",
+							"type HxRefCell<T> = hxrt::cell::HxCell<T>;",
+							"type HxRef<T> = hxrt::cell::HxRef<T>;"
+						]
+						: ["type HxRef<T> = hxrt::cell::HxRef<T>;"];
 
 				headerLines = headerLines.concat(lintLines.concat([""].concat(preludeLines).concat([""])));
 
@@ -413,7 +416,7 @@ private typedef RustImplSpec = {
 			var traitLines: Array<String> = [];
 			var traitGenerics = classGenericDecls;
 			var traitGenericSuffix = traitGenerics.length > 0 ? "<" + traitGenerics.join(", ") + ">" : "";
-			traitLines.push("pub trait " + rustSelfType + traitGenericSuffix + " {");
+				traitLines.push("pub trait " + rustSelfType + traitGenericSuffix + ": Send + Sync {");
 			for (f in funcFields) {
 				if (f.isStatic) continue;
 				if (f.expr != null) continue;
@@ -1911,13 +1914,13 @@ private typedef RustImplSpec = {
 
 		// Default bounds policy for class-level generics:
 		//
-		// Class instances are interior-mutable (`Rc<RefCell<_>>`) and methods commonly need to return
-		// values by value while borrowing `self`. To preserve Haxe's "values are reusable" semantics,
+			// Class instances are interior-mutable (`HxRef<_>`) and methods commonly need to return
+			// values by value while borrowing `self`. To preserve Haxe's "values are reusable" semantics,
 		// codegen often clones non-`Copy` fields/values, so we default to `T: Clone` for class params.
-		var bounded: Array<String> = [];
-		for (p in classType.params) bounded.push(p.name + ": Clone");
-		return bounded;
-	}
+			var bounded: Array<String> = [];
+			for (p in classType.params) bounded.push(p.name + ": Clone + Send + Sync");
+			return bounded;
+		}
 
 	function rustClassTypeInst(classType: ClassType): String {
 		var base = rustTypeNameForClass(classType);
@@ -2825,12 +2828,13 @@ private typedef RustImplSpec = {
 			case TConst(c): switch (c) {
 				case TInt(v): ELitInt(v);
 				case TFloat(s): ELitFloat(Std.parseFloat(s));
-				case TString(s): ECall(EPath("String::from"), [ELitString(s)]);
-				case TBool(b): ELitBool(b);
-				case TNull: ERaw("None");
-				case TThis: EPath("self_");
-				case _: unsupported(e, "const");
-			}
+					case TString(s): ECall(EPath("String::from"), [ELitString(s)]);
+					case TBool(b): ELitBool(b);
+					case TNull:
+						isDynamicType(e.t) ? ERaw("hxrt::dynamic::Dynamic::null()") : ERaw("None");
+					case TThis: EPath("self_");
+					case _: unsupported(e, "const");
+				}
 
 				case TArrayDecl(values): {
 					// Haxe `Array<T>` literal: `[]` or `[a, b]` -> `hxrt::array::Array::<T>::new()` or `Array::from_vec(vec![...])`
@@ -5541,9 +5545,9 @@ private typedef RustImplSpec = {
 			// Haxe reference types are nullable, but this backend does not model full nullability yet.
 			//
 			// One particularly important case is storing polymorphic values (interfaces / base classes)
-			// in struct fields, which becomes `Rc<dyn Trait>` in Rust.
+				// in struct fields, which becomes `HxRc<dyn Trait>` in Rust.
 			//
-			// `Rc<dyn Trait>` does not implement `Default`, which breaks constructor allocation that
+				// `HxRc<dyn Trait>` does not implement `Default`, which breaks constructor allocation that
 			// needs some initial value before the constructor body assigns real values.
 			//
 			// Wrapping these fields in `Option<...>` makes allocation always possible (`None`), while
@@ -5578,7 +5582,7 @@ private typedef RustImplSpec = {
 		var generics = rustGenericDeclsForClass(classType);
 		var genericSuffix = generics.length > 0 ? "<" + generics.join(", ") + ">" : "";
 		var lines: Array<String> = [];
-		lines.push("pub trait " + traitName + genericSuffix + " {");
+			lines.push("pub trait " + traitName + genericSuffix + ": Send + Sync {");
 
 		for (cf in getAllInstanceVarFieldsForStruct(classType)) {
 			var ty = rustTypeToString(toRustType(cf.type, cf.pos));
@@ -6800,15 +6804,16 @@ private typedef RustImplSpec = {
 		}
 
 		switch (ft) {
-			case TFun(params, ret): {
-				var argTys = [for (p in params) rustTypeToString(toRustType(p.t, pos))];
-				var retTy = toRustType(ret, pos);
-				var sig = "dyn Fn(" + argTys.join(", ") + ")";
-				if (!TypeHelper.isVoid(ret)) {
-					sig += " -> " + rustTypeToString(retTy);
+				case TFun(params, ret): {
+					var argTys = [for (p in params) rustTypeToString(toRustType(p.t, pos))];
+					var retTy = toRustType(ret, pos);
+					var sig = "dyn Fn(" + argTys.join(", ") + ")";
+					if (!TypeHelper.isVoid(ret)) {
+						sig += " -> " + rustTypeToString(retTy);
+					}
+					sig += " + Send + Sync";
+					return RPath(rcBasePath() + "<" + sig + ">");
 				}
-				return RPath(rcBasePath() + "<" + sig + ">");
-			}
 			case _:
 		}
 
@@ -6971,18 +6976,18 @@ private typedef RustImplSpec = {
 					}
 					return RPath(path);
 				}
-				var typeParams = params != null && params.length > 0 ? ("<" + [for (p in params) rustTypeToString(toRustType(p, pos))].join(", ") + ">") : "";
-				if (cls.isInterface) {
-					var modName = rustModuleNameForClass(cls);
-					RPath(rcBasePath() + "<dyn crate::" + modName + "::" + rustTypeNameForClass(cls) + typeParams + ">");
-					} else if (classHasSubclasses(cls)) {
+					var typeParams = params != null && params.length > 0 ? ("<" + [for (p in params) rustTypeToString(toRustType(p, pos))].join(", ") + ">") : "";
+					if (cls.isInterface) {
 						var modName = rustModuleNameForClass(cls);
-						RPath(rcBasePath() + "<dyn crate::" + modName + "::" + rustTypeNameForClass(cls) + "Trait" + typeParams + ">");
-					} else {
-						var modName = rustModuleNameForClass(cls);
-						RPath("crate::HxRef<crate::" + modName + "::" + rustTypeNameForClass(cls) + typeParams + ">");
+						RPath(rcBasePath() + "<dyn crate::" + modName + "::" + rustTypeNameForClass(cls) + typeParams + " + Send + Sync>");
+						} else if (classHasSubclasses(cls)) {
+							var modName = rustModuleNameForClass(cls);
+							RPath(rcBasePath() + "<dyn crate::" + modName + "::" + rustTypeNameForClass(cls) + "Trait" + typeParams + " + Send + Sync>");
+						} else {
+							var modName = rustModuleNameForClass(cls);
+							RPath("crate::HxRef<crate::" + modName + "::" + rustTypeNameForClass(cls) + typeParams + ">");
+						}
 					}
-				}
 			case _: {
 				#if eval
 				Context.error("Unsupported Rust type in POC: " + Std.string(t), pos);
@@ -7118,12 +7123,12 @@ private typedef RustImplSpec = {
 			}
 		}
 
-		function isRcBackedType(t: Type): Bool {
-			// Concrete classes / Bytes are `HxRef<T>` (Rc-backed).
-			// Interfaces and polymorphic base classes are `Rc<dyn Trait>` (Rc-backed).
-			// Additionally, `rust.HxRef<T>` is an Rc-backed reference used by framework helpers.
-			return isHxRefValueType(t) || isRustHxRefType(t) || isAnonObjectType(t) || isInterfaceType(t) || isPolymorphicClassType(t);
-		}
+			function isRcBackedType(t: Type): Bool {
+				// Concrete classes / Bytes are `HxRef<T>` (shared ref-backed).
+				// Interfaces and polymorphic base classes are `HxRc<dyn Trait>` (shared ref-backed).
+				// Additionally, `rust.HxRef<T>` is a shared ref used by framework helpers.
+				return isHxRefValueType(t) || isRustHxRefType(t) || isAnonObjectType(t) || isInterfaceType(t) || isPolymorphicClassType(t);
+			}
 
 		function isRustIterType(t: Type): Bool {
 			return switch (followType(t)) {

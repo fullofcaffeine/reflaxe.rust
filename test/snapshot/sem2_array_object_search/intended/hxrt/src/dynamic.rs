@@ -1,13 +1,13 @@
 use std::any::Any;
 
-pub trait AnyClone: Any {
+pub trait AnyClone: Any + Send + Sync {
     fn clone_box(&self) -> Box<dyn AnyClone>;
     fn as_any(&self) -> &dyn Any;
 }
 
 impl<T> AnyClone for T
 where
-    T: Any + Clone + 'static,
+    T: Any + Clone + Send + Sync + 'static,
 {
     #[inline]
     fn clone_box(&self) -> Box<dyn AnyClone> {
@@ -23,7 +23,7 @@ where
 impl Clone for Box<dyn AnyClone> {
     #[inline]
     fn clone(&self) -> Self {
-        self.clone_box()
+        (**self).clone_box()
     }
 }
 
@@ -42,7 +42,7 @@ impl Clone for Box<dyn AnyClone> {
 /// How
 /// - `to_haxe_string()` handles common primitives and a few common `Option<T>` / `Array<T>` cases.
 /// - Unknown values fall back to a stable type-name marker (`<Dynamic:...>`), not a pointer address.
-pub struct Dynamic(Box<dyn AnyClone>, &'static str);
+pub struct Dynamic(Option<Box<dyn AnyClone>>, &'static str);
 
 impl Clone for Dynamic {
     #[inline]
@@ -53,14 +53,23 @@ impl Clone for Dynamic {
 
 impl Dynamic {
     #[inline]
+    pub fn null() -> Dynamic {
+        Dynamic(None, "null")
+    }
+
+    #[inline]
     pub fn from<T>(value: T) -> Dynamic
     where
-        T: Any + Clone + 'static,
+        T: Any + Clone + Send + Sync + 'static,
     {
-        Dynamic(Box::new(value), std::any::type_name::<T>())
+        Dynamic(Some(Box::new(value)), std::any::type_name::<T>())
     }
 
     pub fn to_haxe_string(&self) -> String {
+        if self.0.is_none() {
+            return String::from("null");
+        }
+
         if let Some(v) = self.downcast_ref::<String>() {
             return v.clone();
         }
@@ -123,19 +132,23 @@ impl Dynamic {
 
     #[inline]
     pub fn downcast_ref<T: Any + 'static>(&self) -> Option<&T> {
-        let any = self.0.as_ref().as_any();
+        let any = self.0.as_ref()?.as_ref().as_any();
         any.downcast_ref::<T>()
     }
 
     #[inline]
-    pub fn downcast<T: Any + 'static>(self) -> Result<Box<T>, Dynamic> {
-        if !self.0.as_ref().as_any().is::<T>() {
-            return Err(self);
+    pub fn downcast<T: Any + Clone + 'static>(self) -> Result<Box<T>, Dynamic> {
+        match self.0 {
+            None => Err(self),
+            Some(b) => {
+                let any = b.as_ref().as_any();
+                if let Some(v) = any.downcast_ref::<T>() {
+                    Ok(Box::new(v.clone()))
+                } else {
+                    Err(Dynamic(Some(b), self.1))
+                }
+            }
         }
-
-        // At this point the type matches; this downcast must succeed.
-        let any: Box<dyn Any> = self.0;
-        Ok(any.downcast::<T>().ok().unwrap())
     }
 }
 
@@ -154,7 +167,7 @@ impl std::fmt::Display for Dynamic {
 #[inline]
 pub fn from<T>(value: T) -> Dynamic
 where
-    T: Any + Clone + 'static,
+    T: Any + Clone + Send + Sync + 'static,
 {
     Dynamic::from(value)
 }
@@ -166,11 +179,16 @@ mod tests {
     #[test]
     fn downcast_and_to_haxe_string_work() {
         let d = Dynamic::from(String::from("hi"));
-        let any = d.0.as_any();
+        let any = d.0.as_ref().unwrap().as_any();
         assert!(any.is::<String>(), "expected Any to be String");
         assert_eq!(any.downcast_ref::<String>().unwrap().as_str(), "hi");
         assert_eq!(
-            d.0.as_any().downcast_ref::<String>().unwrap().as_str(),
+            d.0.as_ref()
+                .unwrap()
+                .as_any()
+                .downcast_ref::<String>()
+                .unwrap()
+                .as_str(),
             "hi"
         );
         assert_eq!(d.downcast_ref::<String>().unwrap().as_str(), "hi");
@@ -178,5 +196,40 @@ mod tests {
 
         let d2 = Dynamic::from(123i32);
         assert_eq!(d2.to_haxe_string(), "123");
+
+        let dn = Dynamic::null();
+        assert_eq!(dn.to_haxe_string(), "null");
+    }
+
+    #[test]
+    fn owned_downcast_works() {
+        let d = Dynamic::from(String::from("boom"));
+        assert!(
+            d.downcast_ref::<String>().is_some(),
+            "downcast_ref should see String"
+        );
+        assert!(
+            d.0.as_ref().unwrap().as_any().is::<String>(),
+            "as_any().is::<String>() should be true"
+        );
+        let s = d
+            .downcast::<String>()
+            .expect("downcast String should succeed");
+        assert_eq!(s.as_str(), "boom");
+
+        let d2 = Dynamic::from(123i32);
+        assert!(
+            d2.downcast::<String>().is_err(),
+            "downcast wrong type should fail"
+        );
+    }
+
+    #[test]
+    fn owned_downcast_on_null_fails() {
+        let dn = Dynamic::null();
+        assert!(
+            dn.downcast::<String>().is_err(),
+            "downcast on null should fail"
+        );
     }
 }

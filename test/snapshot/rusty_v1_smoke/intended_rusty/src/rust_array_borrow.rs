@@ -7,13 +7,16 @@ pub const __HX_TYPE_ID: u32 = 0x019ad7a1u32;
 pub struct ArrayBorrow {}
 
 impl ArrayBorrow {
-    pub fn with_slice<T, R>(array: hxrt::array::Array<T>, f: crate::HxRc<dyn Fn(&[T]) -> R>) -> R {
+    pub fn with_slice<T, R>(
+        array: hxrt::array::Array<T>,
+        f: crate::HxRc<dyn Fn(&[T]) -> R + Send + Sync>,
+    ) -> R {
         return hxrt::array::with_slice(array, f);
     }
 
     pub fn with_mut_slice<T, R>(
         array: hxrt::array::Array<T>,
-        f: crate::HxRc<dyn Fn(&mut [T]) -> R>,
+        f: crate::HxRc<dyn Fn(&mut [T]) -> R + Send + Sync>,
     ) -> R {
         return hxrt::array::with_mut_slice(array, f);
     }

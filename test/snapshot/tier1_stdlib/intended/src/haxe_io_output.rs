@@ -9,14 +9,14 @@ pub struct Output {
 }
 
 impl Output {
-    pub fn write_byte(_self_: &std::cell::RefCell<Output>, _c: i32) {
+    pub fn write_byte(_self_: &crate::HxRefCell<Output>, _c: i32) {
         hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
             hxrt::dynamic::from(String::from("Output.writeByte is not implemented")),
         )));
     }
 
     pub fn write_bytes(
-        self_: &std::cell::RefCell<Output>,
+        self_: &crate::HxRefCell<Output>,
         s: crate::HxRef<hxrt::bytes::Bytes>,
         pos: i32,
         len: i32,
@@ -42,11 +42,11 @@ impl Output {
         return len;
     }
 
-    pub fn flush(_self_: &std::cell::RefCell<Output>) {}
+    pub fn flush(_self_: &crate::HxRefCell<Output>) {}
 
-    pub fn close(_self_: &std::cell::RefCell<Output>) {}
+    pub fn close(_self_: &crate::HxRefCell<Output>) {}
 
-    pub fn set_big_endian(self_: &std::cell::RefCell<Output>, b: bool) -> bool {
+    pub fn set_big_endian(self_: &crate::HxRefCell<Output>, b: bool) -> bool {
         {
             let __tmp = b;
             self_.borrow_mut().big_endian = __tmp;
@@ -55,7 +55,7 @@ impl Output {
         return b;
     }
 
-    pub fn write(self_: &std::cell::RefCell<Output>, s: crate::HxRef<hxrt::bytes::Bytes>) {
+    pub fn write(self_: &crate::HxRefCell<Output>, s: crate::HxRef<hxrt::bytes::Bytes>) {
         let mut l: i32 = s.borrow().length();
         let mut p: i32 = 0;
         while l > 0 {
@@ -75,7 +75,7 @@ impl Output {
     }
 
     pub fn write_full_bytes(
-        self_: &std::cell::RefCell<Output>,
+        self_: &crate::HxRefCell<Output>,
         s: crate::HxRef<hxrt::bytes::Bytes>,
         pos: i32,
         len: i32,
@@ -95,14 +95,14 @@ impl Output {
         }
     }
 
-    pub fn write_float(self_: &std::cell::RefCell<Output>, x: f64) {
+    pub fn write_float(self_: &crate::HxRefCell<Output>, x: f64) {
         crate::haxe_io_output::Output::write_int32(
             &self_,
             crate::haxe_io_fp_helper::FPHelper::float_to_i32(x),
         );
     }
 
-    pub fn write_double(self_: &std::cell::RefCell<Output>, x: f64) {
+    pub fn write_double(self_: &crate::HxRefCell<Output>, x: f64) {
         let i64: crate::HxRef<crate::haxe_int64_int64::Int64> =
             crate::haxe_io_fp_helper::FPHelper::double_to_i64(x);
         if self_.borrow().big_endian {
@@ -114,21 +114,21 @@ impl Output {
         }
     }
 
-    pub fn write_int8(self_: &std::cell::RefCell<Output>, x: i32) {
+    pub fn write_int8(self_: &crate::HxRefCell<Output>, x: i32) {
         if x < -128 || x >= 128 {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
         }
         crate::haxe_io_output::Output::write_byte(&self_, x & 255);
     }
 
-    pub fn write_int16(self_: &std::cell::RefCell<Output>, x: i32) {
+    pub fn write_int16(self_: &crate::HxRefCell<Output>, x: i32) {
         if x < -32768 || x >= 32768 {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
         }
         crate::haxe_io_output::Output::write_u_int16(&self_, x & 65535);
     }
 
-    pub fn write_u_int16(self_: &std::cell::RefCell<Output>, x: i32) {
+    pub fn write_u_int16(self_: &crate::HxRefCell<Output>, x: i32) {
         if x < 0 || x >= 65536 {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
         }
@@ -141,14 +141,14 @@ impl Output {
         }
     }
 
-    pub fn write_int24(self_: &std::cell::RefCell<Output>, x: i32) {
+    pub fn write_int24(self_: &crate::HxRefCell<Output>, x: i32) {
         if x < -8388608 || x >= 8388608 {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
         }
         crate::haxe_io_output::Output::write_u_int24(&self_, x & 16777215);
     }
 
-    pub fn write_u_int24(self_: &std::cell::RefCell<Output>, x: i32) {
+    pub fn write_u_int24(self_: &crate::HxRefCell<Output>, x: i32) {
         if x < 0 || x >= 16777216 {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
         }
@@ -163,7 +163,7 @@ impl Output {
         }
     }
 
-    pub fn write_int32(self_: &std::cell::RefCell<Output>, x: i32) {
+    pub fn write_int32(self_: &crate::HxRefCell<Output>, x: i32) {
         if self_.borrow().big_endian {
             crate::haxe_io_output::Output::write_byte(&self_, (x as u32 >> 24 as u32) as i32);
             crate::haxe_io_output::Output::write_byte(&self_, x >> 16 & 255);
@@ -177,11 +177,11 @@ impl Output {
         }
     }
 
-    pub fn prepare(_self_: &std::cell::RefCell<Output>, _nbytes: i32) {}
+    pub fn prepare(_self_: &crate::HxRefCell<Output>, _nbytes: i32) {}
 
     pub fn write_input(
-        self_: &std::cell::RefCell<Output>,
-        i: std::rc::Rc<dyn crate::haxe_io_input::InputTrait>,
+        self_: &crate::HxRefCell<Output>,
+        i: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync>,
         bufsize: Option<i32>,
     ) {
         let mut bs: Option<i32> = bufsize;
@@ -193,7 +193,7 @@ impl Output {
             };
         }
         let bufsize_2: i32 = bs.unwrap();
-        let buf: crate::HxRef<hxrt::bytes::Bytes> = std::rc::Rc::new(std::cell::RefCell::new(
+        let buf: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRc::new(crate::HxRefCell::new(
             hxrt::bytes::Bytes::alloc(bufsize_2 as usize),
         ));
         match hxrt::exception::catch_unwind(|| loop {
@@ -227,13 +227,13 @@ impl Output {
     }
 
     pub fn write_string(
-        self_: &std::cell::RefCell<Output>,
+        self_: &crate::HxRefCell<Output>,
         s: String,
         encoding: Option<crate::haxe_io_encoding::Encoding>,
     ) {
         let b: crate::HxRef<hxrt::bytes::Bytes> = {
             let _ = encoding;
-            std::rc::Rc::new(std::cell::RefCell::new(hxrt::bytes::Bytes::of_string(
+            crate::HxRc::new(crate::HxRefCell::new(hxrt::bytes::Bytes::of_string(
                 s.as_str(),
             )))
         };
@@ -241,7 +241,7 @@ impl Output {
     }
 }
 
-pub trait OutputTrait {
+pub trait OutputTrait: Send + Sync {
     fn __hx_get_big_endian(&self) -> bool;
     fn __hx_set_big_endian(&self, v: bool);
     fn write_byte(&self, _c: i32) -> ();
@@ -262,14 +262,14 @@ pub trait OutputTrait {
     fn prepare(&self, _nbytes: i32) -> ();
     fn write_input(
         &self,
-        i: std::rc::Rc<dyn crate::haxe_io_input::InputTrait>,
+        i: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync>,
         bufsize: Option<i32>,
     ) -> ();
     fn write_string(&self, s: String, encoding: Option<crate::haxe_io_encoding::Encoding>) -> ();
     fn __hx_type_id(&self) -> u32;
 }
 
-impl crate::haxe_io_output::OutputTrait for std::cell::RefCell<Output> {
+impl crate::haxe_io_output::OutputTrait for crate::HxRefCell<Output> {
     fn __hx_get_big_endian(&self) -> bool {
         self.borrow().big_endian
     }
@@ -326,7 +326,7 @@ impl crate::haxe_io_output::OutputTrait for std::cell::RefCell<Output> {
     }
     fn write_input(
         &self,
-        i: std::rc::Rc<dyn crate::haxe_io_input::InputTrait>,
+        i: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync>,
         bufsize: Option<i32>,
     ) -> () {
         Output::write_input(self, i, bufsize)

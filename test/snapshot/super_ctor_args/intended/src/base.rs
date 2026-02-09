@@ -12,12 +12,12 @@ pub struct Base {
 impl Base {
     pub fn new(x: i32, y: String) -> crate::HxRef<crate::base::Base> {
         let self_: crate::HxRef<crate::base::Base> =
-            std::rc::Rc::new(std::cell::RefCell::new(Base { x: x, y: y }));
+            crate::HxRc::new(crate::HxRefCell::new(Base { x: x, y: y }));
         return self_;
     }
 }
 
-pub trait BaseTrait {
+pub trait BaseTrait: Send + Sync {
     fn __hx_get_x(&self) -> i32;
     fn __hx_set_x(&self, v: i32);
     fn __hx_get_y(&self) -> String;
@@ -25,7 +25,7 @@ pub trait BaseTrait {
     fn __hx_type_id(&self) -> u32;
 }
 
-impl crate::base::BaseTrait for std::cell::RefCell<Base> {
+impl crate::base::BaseTrait for crate::HxRefCell<Base> {
     fn __hx_get_x(&self) -> i32 {
         self.borrow().x
     }

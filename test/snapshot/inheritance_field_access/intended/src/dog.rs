@@ -11,7 +11,7 @@ pub struct Dog {
 impl Dog {
     pub fn new() -> crate::HxRef<crate::dog::Dog> {
         let self_: crate::HxRef<crate::dog::Dog> =
-            std::rc::Rc::new(std::cell::RefCell::new(Dog { age: 0 }));
+            crate::HxRc::new(crate::HxRefCell::new(Dog { age: 0 }));
         {
             let __tmp = 0;
             self_.borrow_mut().age = __tmp;
@@ -21,7 +21,7 @@ impl Dog {
     }
 }
 
-impl crate::animal::AnimalTrait for std::cell::RefCell<Dog> {
+impl crate::animal::AnimalTrait for crate::HxRefCell<Dog> {
     fn __hx_get_age(&self) -> i32 {
         self.borrow().age
     }

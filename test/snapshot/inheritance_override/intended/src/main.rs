@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = hxrt::cell::HxRc<T>;
+type HxRefCell<T> = hxrt::cell::HxCell<T>;
+type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod animal;
 mod dog;
@@ -24,6 +26,6 @@ mod sys_io_stdin;
 mod sys_io_stdout;
 
 fn main() {
-    let a: std::rc::Rc<dyn crate::animal::AnimalTrait> = crate::dog::Dog::new();
+    let a: crate::HxRc<dyn crate::animal::AnimalTrait + Send + Sync> = crate::dog::Dog::new();
     println!("{}", hxrt::dynamic::from(a.speak().clone()));
 }

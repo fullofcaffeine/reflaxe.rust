@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = hxrt::cell::HxRc<T>;
+type HxRefCell<T> = hxrt::cell::HxCell<T>;
+type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod haxe_ds_enum_value_map;
 mod haxe_ds_int_map;
@@ -24,6 +26,6 @@ mod sys_io_stdin;
 mod sys_io_stdout;
 
 fn main() {
-    let t: std::rc::Rc<dyn crate::i_thing::IThing> = crate::impl_::Impl::new();
+    let t: crate::HxRc<dyn crate::i_thing::IThing + Send + Sync> = crate::impl_::Impl::new();
     println!("{}", hxrt::dynamic::from(t.say().clone()));
 }

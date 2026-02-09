@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = hxrt::cell::HxRc<T>;
+type HxRefCell<T> = hxrt::cell::HxCell<T>;
+type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod base;
 mod derived;
@@ -24,7 +26,7 @@ mod sys_io_stdin;
 mod sys_io_stdout;
 
 fn main() {
-    let b: std::rc::Rc<dyn crate::base::BaseTrait> = crate::base::Base::new();
+    let b: crate::HxRc<dyn crate::base::BaseTrait + Send + Sync> = crate::base::Base::new();
     println!("{}", hxrt::dynamic::from(b.set_x(7)));
     println!("{}", hxrt::dynamic::from(b.__hx_get_x()));
     println!(
@@ -42,7 +44,7 @@ fn main() {
     println!("{}", hxrt::dynamic::from(b.get_y()));
     b.set_y(b.get_y() + 2);
     println!("{}", hxrt::dynamic::from(b.get_y()));
-    let p: std::rc::Rc<dyn crate::base::BaseTrait> = crate::derived::Derived::new();
+    let p: crate::HxRc<dyn crate::base::BaseTrait + Send + Sync> = crate::derived::Derived::new();
     println!("{}", hxrt::dynamic::from(p.set_y(3)));
     println!("{}", hxrt::dynamic::from(p.get_y()));
 }

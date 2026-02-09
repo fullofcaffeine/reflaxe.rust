@@ -11,18 +11,18 @@ pub struct Animal {
 impl Animal {
     pub fn new() -> crate::HxRef<crate::animal::Animal> {
         let self_: crate::HxRef<crate::animal::Animal> =
-            std::rc::Rc::new(std::cell::RefCell::new(Animal { age: 0 }));
+            crate::HxRc::new(crate::HxRefCell::new(Animal { age: 0 }));
         return self_;
     }
 }
 
-pub trait AnimalTrait {
+pub trait AnimalTrait: Send + Sync {
     fn __hx_get_age(&self) -> i32;
     fn __hx_set_age(&self, v: i32);
     fn __hx_type_id(&self) -> u32;
 }
 
-impl crate::animal::AnimalTrait for std::cell::RefCell<Animal> {
+impl crate::animal::AnimalTrait for crate::HxRefCell<Animal> {
     fn __hx_get_age(&self) -> i32 {
         self.borrow().age
     }

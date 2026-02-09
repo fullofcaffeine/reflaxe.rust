@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = hxrt::cell::HxRc<T>;
+type HxRefCell<T> = hxrt::cell::HxCell<T>;
+type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod haxe_ds_enum_value_map;
 mod haxe_ds_int_map;
@@ -21,14 +23,14 @@ mod sys_io_stderr;
 mod sys_io_stdin;
 mod sys_io_stdout;
 
-fn make_adder(k: i32) -> std::rc::Rc<dyn Fn(i32) -> i32> {
-    return std::rc::Rc::new(move |x: i32| {
+fn make_adder(k: i32) -> crate::HxRc<dyn Fn(i32) -> i32 + Send + Sync> {
+    return crate::HxRc::new(move |x: i32| {
         return x + k;
     });
 }
 
 fn main() {
-    let add10: std::rc::Rc<dyn Fn(i32) -> i32> =
-        std::rc::Rc::new(move |a0: i32| make_adder(10)(a0));
+    let add10: crate::HxRc<dyn Fn(i32) -> i32 + Send + Sync> =
+        crate::HxRc::new(move |a0: i32| make_adder(10)(a0));
     println!("{}", hxrt::dynamic::from(add10(1)));
 }

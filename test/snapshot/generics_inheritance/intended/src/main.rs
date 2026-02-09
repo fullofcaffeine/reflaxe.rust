@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = hxrt::cell::HxRc<T>;
+type HxRefCell<T> = hxrt::cell::HxCell<T>;
+type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod base;
 mod haxe_ds_enum_value_map;
@@ -24,6 +26,7 @@ mod sys_io_stdin;
 mod sys_io_stdout;
 
 fn main() {
-    let b: std::rc::Rc<dyn crate::base::BaseTrait<String>> = crate::sub::Sub::<String>::new();
+    let b: crate::HxRc<dyn crate::base::BaseTrait<String> + Send + Sync> =
+        crate::sub::Sub::<String>::new();
     crate::sys::Sys::println(hxrt::dynamic::from(b.id(String::from("hi")).clone()));
 }

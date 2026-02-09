@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = hxrt::cell::HxRc<T>;
+type HxRefCell<T> = hxrt::cell::HxCell<T>;
+type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod counter;
 mod e;
@@ -25,7 +27,7 @@ mod sys_io_stdout;
 
 fn main() {
     let xs: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::from_vec(vec![3, 1, 2]);
-    xs.sort(std::rc::Rc::new(move |a: i32, b: i32| {
+    xs.sort(crate::HxRc::new(move |a: i32, b: i32| {
         return a - b;
     }));
     crate::sys::Sys::println(hxrt::dynamic::from(xs.join(String::from(",")).clone()));
@@ -57,7 +59,7 @@ fn main() {
         },
     };
     crate::sys::Sys::println(hxrt::dynamic::from(caught.clone()));
-    let f: std::rc::Rc<dyn Fn(i32) -> i32> = std::rc::Rc::new(move |x: i32| {
+    let f: crate::HxRc<dyn Fn(i32) -> i32 + Send + Sync> = crate::HxRc::new(move |x: i32| {
         return x + 1;
     });
     crate::sys::Sys::println(hxrt::dynamic::from(f(10)));

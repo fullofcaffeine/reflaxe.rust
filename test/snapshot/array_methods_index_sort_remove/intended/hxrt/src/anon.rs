@@ -17,7 +17,7 @@ use std::collections::BTreeMap;
 /// - Intended for compiler-generated code only (not a public ergonomic API).
 ///
 /// How
-/// - The compiler lowers object literals into a `Rc<RefCell<Anon>>` (via `crate::HxRef<Anon>`).
+/// - The compiler lowers object literals into a `HxRef<Anon>` (a shared, interior-mutable reference).
 /// - Field reads/writes are compiled into `borrow().get::<T>(...)` / `borrow_mut().set(...)`.
 /// - Keys are expected to be compile-time literals and typically `'static`.
 #[derive(Clone, Debug, Default)]
@@ -36,7 +36,7 @@ impl Anon {
     #[inline]
     pub fn set<T>(&mut self, key: &'static str, value: T)
     where
-        T: Any + Clone + 'static,
+        T: Any + Clone + Send + Sync + 'static,
     {
         self.fields.insert(key, Dynamic::from(value));
     }
@@ -44,7 +44,7 @@ impl Anon {
     #[inline]
     pub fn get<T>(&self, key: &'static str) -> T
     where
-        T: Any + Clone + 'static,
+        T: Any + Clone + Send + Sync + 'static,
     {
         let v = self
             .fields

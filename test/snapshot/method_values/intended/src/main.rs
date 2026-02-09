@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = hxrt::cell::HxRc<T>;
+type HxRefCell<T> = hxrt::cell::HxCell<T>;
+type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod base;
 mod counter;
@@ -26,24 +28,24 @@ mod sys_io_stdout;
 
 fn main() {
     let c: crate::HxRef<crate::counter::Counter> = crate::counter::Counter::new(0);
-    let add: std::rc::Rc<dyn Fn(i32) -> i32> = {
+    let add: crate::HxRc<dyn Fn(i32) -> i32 + Send + Sync> = {
         let __recv = c.clone();
-        std::rc::Rc::new(move |a0: i32| crate::counter::Counter::add(&__recv, a0))
+        crate::HxRc::new(move |a0: i32| crate::counter::Counter::add(&__recv, a0))
     };
     println!("{}", hxrt::dynamic::from(add(2)));
     println!("{}", hxrt::dynamic::from(c.borrow().n));
-    let inc: std::rc::Rc<dyn Fn()> = {
+    let inc: crate::HxRc<dyn Fn() + Send + Sync> = {
         let __recv = c.clone();
-        std::rc::Rc::new(move || {
+        crate::HxRc::new(move || {
             crate::counter::Counter::inc(&__recv);
         })
     };
     inc();
     println!("{}", hxrt::dynamic::from(c.borrow().n));
-    let b: std::rc::Rc<dyn crate::base::BaseTrait> = crate::sub::Sub::new();
-    let bf: std::rc::Rc<dyn Fn(i32) -> i32> = {
+    let b: crate::HxRc<dyn crate::base::BaseTrait + Send + Sync> = crate::sub::Sub::new();
+    let bf: crate::HxRc<dyn Fn(i32) -> i32 + Send + Sync> = {
         let __recv = b;
-        std::rc::Rc::new(move |a0: i32| __recv.f(a0))
+        crate::HxRc::new(move |a0: i32| __recv.f(a0))
     };
     println!("{}", hxrt::dynamic::from(bf(5)));
 }

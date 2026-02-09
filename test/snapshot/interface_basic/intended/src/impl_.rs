@@ -9,16 +9,16 @@ pub struct Impl {}
 impl Impl {
     pub fn new() -> crate::HxRef<crate::impl_::Impl> {
         let self_: crate::HxRef<crate::impl_::Impl> =
-            std::rc::Rc::new(std::cell::RefCell::new(Impl {}));
+            crate::HxRc::new(crate::HxRefCell::new(Impl {}));
         return self_;
     }
 
-    pub fn say(_self_: &std::cell::RefCell<Impl>) -> String {
+    pub fn say(_self_: &crate::HxRefCell<Impl>) -> String {
         return String::from("hi");
     }
 }
 
-impl crate::i_thing::IThing for std::cell::RefCell<Impl> {
+impl crate::i_thing::IThing for crate::HxRefCell<Impl> {
     fn say(&self) -> String {
         Impl::say(self)
     }

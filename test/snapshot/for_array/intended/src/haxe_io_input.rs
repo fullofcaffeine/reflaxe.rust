@@ -9,14 +9,14 @@ pub struct Input {
 }
 
 impl Input {
-    pub fn read_byte(_self_: &std::cell::RefCell<Input>) -> i32 {
+    pub fn read_byte(_self_: &crate::HxRefCell<Input>) -> i32 {
         hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
             hxrt::dynamic::from(String::from("Input.readByte is not implemented")),
         )));
     }
 
     pub fn read_bytes(
-        self_: &std::cell::RefCell<Input>,
+        self_: &crate::HxRefCell<Input>,
         s: crate::HxRef<hxrt::bytes::Bytes>,
         pos: i32,
         len: i32,
@@ -51,9 +51,9 @@ impl Input {
         return len - k;
     }
 
-    pub fn close(_self_: &std::cell::RefCell<Input>) {}
+    pub fn close(_self_: &crate::HxRefCell<Input>) {}
 
-    pub fn set_big_endian(self_: &std::cell::RefCell<Input>, b: bool) -> bool {
+    pub fn set_big_endian(self_: &crate::HxRefCell<Input>, b: bool) -> bool {
         {
             let __tmp = b;
             self_.borrow_mut().big_endian = __tmp;
@@ -63,7 +63,7 @@ impl Input {
     }
 
     pub fn read_all(
-        self_: &std::cell::RefCell<Input>,
+        self_: &crate::HxRefCell<Input>,
         bufsize: Option<i32>,
     ) -> crate::HxRef<hxrt::bytes::Bytes> {
         let mut bs: Option<i32> = bufsize;
@@ -75,7 +75,7 @@ impl Input {
             };
         }
         let bufsize_2: i32 = bs.unwrap();
-        let buf: crate::HxRef<hxrt::bytes::Bytes> = std::rc::Rc::new(std::cell::RefCell::new(
+        let buf: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRc::new(crate::HxRefCell::new(
             hxrt::bytes::Bytes::alloc(bufsize_2 as usize),
         ));
         let total: crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer> =
@@ -98,7 +98,7 @@ impl Input {
     }
 
     pub fn read_full_bytes(
-        self_: &std::cell::RefCell<Input>,
+        self_: &crate::HxRefCell<Input>,
         s: crate::HxRef<hxrt::bytes::Bytes>,
         pos: i32,
         len: i32,
@@ -121,12 +121,9 @@ impl Input {
         }
     }
 
-    pub fn read(
-        self_: &std::cell::RefCell<Input>,
-        nbytes: i32,
-    ) -> crate::HxRef<hxrt::bytes::Bytes> {
+    pub fn read(self_: &crate::HxRefCell<Input>, nbytes: i32) -> crate::HxRef<hxrt::bytes::Bytes> {
         let mut remaining: i32 = nbytes;
-        let s: crate::HxRef<hxrt::bytes::Bytes> = std::rc::Rc::new(std::cell::RefCell::new(
+        let s: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRc::new(crate::HxRefCell::new(
             hxrt::bytes::Bytes::alloc(remaining as usize),
         ));
         let mut p: i32 = 0;
@@ -147,7 +144,7 @@ impl Input {
         return s;
     }
 
-    pub fn read_until(self_: &std::cell::RefCell<Input>, end: i32) -> String {
+    pub fn read_until(self_: &crate::HxRefCell<Input>, end: i32) -> String {
         let buf: crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer> =
             crate::haxe_io_bytes_buffer::BytesBuffer::new();
         loop {
@@ -162,7 +159,7 @@ impl Input {
             .to_string();
     }
 
-    pub fn read_line(self_: &std::cell::RefCell<Input>) -> String {
+    pub fn read_line(self_: &crate::HxRefCell<Input>) -> String {
         let buf: crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer> =
             crate::haxe_io_bytes_buffer::BytesBuffer::new();
         match hxrt::exception::catch_unwind(|| loop {
@@ -192,8 +189,8 @@ impl Input {
         if bytes_len > 0 {
             let last_byte: i32 = bytes_2.borrow().get(bytes_len - 1);
             if last_byte == 13 {
-                let trimmed: crate::HxRef<hxrt::bytes::Bytes> = std::rc::Rc::new(
-                    std::cell::RefCell::new(bytes_2.borrow().sub(0, bytes_len - 1)),
+                let trimmed: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRc::new(
+                    crate::HxRefCell::new(bytes_2.borrow().sub(0, bytes_len - 1)),
                 );
                 bytes_2 = trimmed;
             }
@@ -201,13 +198,13 @@ impl Input {
         return bytes_2.borrow().to_string();
     }
 
-    pub fn read_float(self_: &std::cell::RefCell<Input>) -> f64 {
+    pub fn read_float(self_: &crate::HxRefCell<Input>) -> f64 {
         return crate::haxe_io_fp_helper::FPHelper::i32_to_float(
             crate::haxe_io_input::Input::read_int32(&self_),
         );
     }
 
-    pub fn read_double(self_: &std::cell::RefCell<Input>) -> f64 {
+    pub fn read_double(self_: &crate::HxRefCell<Input>) -> f64 {
         let i1: i32 = crate::haxe_io_input::Input::read_int32(&self_);
         let i2: i32 = crate::haxe_io_input::Input::read_int32(&self_);
         return if self_.borrow().big_endian {
@@ -217,7 +214,7 @@ impl Input {
         };
     }
 
-    pub fn read_int8(self_: &std::cell::RefCell<Input>) -> i32 {
+    pub fn read_int8(self_: &crate::HxRefCell<Input>) -> i32 {
         let n: i32 = crate::haxe_io_input::Input::read_byte(&self_);
         if n >= 128 {
             return n - 256;
@@ -225,7 +222,7 @@ impl Input {
         return n;
     }
 
-    pub fn read_int16(self_: &std::cell::RefCell<Input>) -> i32 {
+    pub fn read_int16(self_: &crate::HxRefCell<Input>) -> i32 {
         let ch1: i32 = crate::haxe_io_input::Input::read_byte(&self_);
         let ch2: i32 = crate::haxe_io_input::Input::read_byte(&self_);
         let n: i32 = if self_.borrow().big_endian {
@@ -239,7 +236,7 @@ impl Input {
         return n;
     }
 
-    pub fn read_u_int16(self_: &std::cell::RefCell<Input>) -> i32 {
+    pub fn read_u_int16(self_: &crate::HxRefCell<Input>) -> i32 {
         let ch1: i32 = crate::haxe_io_input::Input::read_byte(&self_);
         let ch2: i32 = crate::haxe_io_input::Input::read_byte(&self_);
         return if self_.borrow().big_endian {
@@ -249,7 +246,7 @@ impl Input {
         };
     }
 
-    pub fn read_int24(self_: &std::cell::RefCell<Input>) -> i32 {
+    pub fn read_int24(self_: &crate::HxRefCell<Input>) -> i32 {
         let ch1: i32 = crate::haxe_io_input::Input::read_byte(&self_);
         let ch2: i32 = crate::haxe_io_input::Input::read_byte(&self_);
         let ch3: i32 = crate::haxe_io_input::Input::read_byte(&self_);
@@ -264,7 +261,7 @@ impl Input {
         return n;
     }
 
-    pub fn read_u_int24(self_: &std::cell::RefCell<Input>) -> i32 {
+    pub fn read_u_int24(self_: &crate::HxRefCell<Input>) -> i32 {
         let ch1: i32 = crate::haxe_io_input::Input::read_byte(&self_);
         let ch2: i32 = crate::haxe_io_input::Input::read_byte(&self_);
         let ch3: i32 = crate::haxe_io_input::Input::read_byte(&self_);
@@ -275,7 +272,7 @@ impl Input {
         };
     }
 
-    pub fn read_int32(self_: &std::cell::RefCell<Input>) -> i32 {
+    pub fn read_int32(self_: &crate::HxRefCell<Input>) -> i32 {
         let ch1: i32 = crate::haxe_io_input::Input::read_byte(&self_);
         let ch2: i32 = crate::haxe_io_input::Input::read_byte(&self_);
         let ch3: i32 = crate::haxe_io_input::Input::read_byte(&self_);
@@ -288,11 +285,11 @@ impl Input {
     }
 
     pub fn read_string(
-        self_: &std::cell::RefCell<Input>,
+        self_: &crate::HxRefCell<Input>,
         len: i32,
         encoding: Option<crate::haxe_io_encoding::Encoding>,
     ) -> String {
-        let b: crate::HxRef<hxrt::bytes::Bytes> = std::rc::Rc::new(std::cell::RefCell::new(
+        let b: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRc::new(crate::HxRefCell::new(
             hxrt::bytes::Bytes::alloc(len as usize),
         ));
         crate::haxe_io_input::Input::read_full_bytes(&self_, b.clone(), 0, len);
@@ -303,7 +300,7 @@ impl Input {
     }
 }
 
-pub trait InputTrait {
+pub trait InputTrait: Send + Sync {
     fn __hx_get_big_endian(&self) -> bool;
     fn __hx_set_big_endian(&self, v: bool);
     fn read_byte(&self) -> i32;
@@ -327,7 +324,7 @@ pub trait InputTrait {
     fn __hx_type_id(&self) -> u32;
 }
 
-impl crate::haxe_io_input::InputTrait for std::cell::RefCell<Input> {
+impl crate::haxe_io_input::InputTrait for crate::HxRefCell<Input> {
     fn __hx_get_big_endian(&self) -> bool {
         self.borrow().big_endian
     }

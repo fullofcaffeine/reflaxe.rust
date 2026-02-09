@@ -9,21 +9,21 @@ pub struct Base {}
 impl Base {
     pub fn new() -> crate::HxRef<crate::base::Base> {
         let self_: crate::HxRef<crate::base::Base> =
-            std::rc::Rc::new(std::cell::RefCell::new(Base {}));
+            crate::HxRc::new(crate::HxRefCell::new(Base {}));
         return self_;
     }
 
-    pub fn f(_self_: &std::cell::RefCell<Base>, x: i32) -> i32 {
+    pub fn f(_self_: &crate::HxRefCell<Base>, x: i32) -> i32 {
         return x + 1;
     }
 }
 
-pub trait BaseTrait {
+pub trait BaseTrait: Send + Sync {
     fn f(&self, x: i32) -> i32;
     fn __hx_type_id(&self) -> u32;
 }
 
-impl crate::base::BaseTrait for std::cell::RefCell<Base> {
+impl crate::base::BaseTrait for crate::HxRefCell<Base> {
     fn f(&self, x: i32) -> i32 {
         Base::f(self, x)
     }

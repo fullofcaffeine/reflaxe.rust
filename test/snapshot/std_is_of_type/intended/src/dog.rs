@@ -8,13 +8,12 @@ pub struct Dog {}
 
 impl Dog {
     pub fn new() -> crate::HxRef<crate::dog::Dog> {
-        let self_: crate::HxRef<crate::dog::Dog> =
-            std::rc::Rc::new(std::cell::RefCell::new(Dog {}));
+        let self_: crate::HxRef<crate::dog::Dog> = crate::HxRc::new(crate::HxRefCell::new(Dog {}));
         return self_;
     }
 }
 
-impl crate::animal::AnimalTrait for std::cell::RefCell<Dog> {
+impl crate::animal::AnimalTrait for crate::HxRefCell<Dog> {
     fn __hx_type_id(&self) -> u32 {
         crate::dog::__HX_TYPE_ID
     }

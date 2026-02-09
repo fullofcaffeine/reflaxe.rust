@@ -181,7 +181,7 @@ impl Output {
 
     pub fn write_input(
         self_: &crate::HxRefCell<Output>,
-        i: crate::HxRc<dyn crate::haxe_io_input::InputTrait>,
+        i: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync>,
         bufsize: Option<i32>,
     ) {
         let mut bs: Option<i32> = bufsize;
@@ -241,7 +241,7 @@ impl Output {
     }
 }
 
-pub trait OutputTrait {
+pub trait OutputTrait: Send + Sync {
     fn __hx_get_big_endian(&self) -> bool;
     fn __hx_set_big_endian(&self, v: bool);
     fn write_byte(&self, _c: i32) -> ();
@@ -262,7 +262,7 @@ pub trait OutputTrait {
     fn prepare(&self, _nbytes: i32) -> ();
     fn write_input(
         &self,
-        i: crate::HxRc<dyn crate::haxe_io_input::InputTrait>,
+        i: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync>,
         bufsize: Option<i32>,
     ) -> ();
     fn write_string(&self, s: String, encoding: Option<crate::haxe_io_encoding::Encoding>) -> ();
@@ -326,7 +326,7 @@ impl crate::haxe_io_output::OutputTrait for crate::HxRefCell<Output> {
     }
     fn write_input(
         &self,
-        i: crate::HxRc<dyn crate::haxe_io_input::InputTrait>,
+        i: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync>,
         bufsize: Option<i32>,
     ) -> () {
         Output::write_input(self, i, bufsize)

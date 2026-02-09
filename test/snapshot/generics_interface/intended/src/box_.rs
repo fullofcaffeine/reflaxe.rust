@@ -4,23 +4,23 @@ pub const __HX_TYPE_ID: u32 = 0x9bf0ea1eu32;
 
 #[derive(Debug)]
 
-pub struct Box<T: Clone> {
+pub struct Box<T: Clone + Send + Sync> {
     pub value: T,
 }
 
-impl<T: Clone> Box<T> {
+impl<T: Clone + Send + Sync> Box<T> {
     pub fn new(value: T) -> crate::HxRef<crate::box_::Box<T>> {
         let self_: crate::HxRef<crate::box_::Box<T>> =
-            std::rc::Rc::new(std::cell::RefCell::new(Box { value: value }));
+            crate::HxRc::new(crate::HxRefCell::new(Box { value: value }));
         return self_;
     }
 
-    pub fn get(self_: &std::cell::RefCell<Box<T>>) -> T {
+    pub fn get(self_: &crate::HxRefCell<Box<T>>) -> T {
         return self_.borrow().value.clone();
     }
 }
 
-impl<T: Clone> crate::i_get::IGet<T> for std::cell::RefCell<Box<T>> {
+impl<T: Clone + Send + Sync> crate::i_get::IGet<T> for crate::HxRefCell<Box<T>> {
     fn get(&self) -> T {
         Box::<T>::get(self)
     }

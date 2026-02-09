@@ -11,11 +11,11 @@ pub struct Key {
 impl Key {
     pub fn new(id: i32) -> crate::HxRef<crate::key::Key> {
         let self_: crate::HxRef<crate::key::Key> =
-            std::rc::Rc::new(std::cell::RefCell::new(Key { id: id }));
+            crate::HxRc::new(crate::HxRefCell::new(Key { id: id }));
         return self_;
     }
 
-    pub fn to_string(self_: &std::cell::RefCell<Key>) -> String {
+    pub fn to_string(self_: &crate::HxRefCell<Key>) -> String {
         return format!(
             "{}{}{}",
             "Key(",

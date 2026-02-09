@@ -9,11 +9,11 @@ pub struct Eof {}
 impl Eof {
     pub fn new() -> crate::HxRef<crate::haxe_io_eof::Eof> {
         let self_: crate::HxRef<crate::haxe_io_eof::Eof> =
-            std::rc::Rc::new(std::cell::RefCell::new(Eof {}));
+            crate::HxRc::new(crate::HxRefCell::new(Eof {}));
         return self_;
     }
 
-    fn to_string(_self_: &std::cell::RefCell<Eof>) -> String {
+    fn to_string(_self_: &crate::HxRefCell<Eof>) -> String {
         return String::from("Eof");
     }
 }

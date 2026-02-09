@@ -180,7 +180,7 @@ impl FileSystem {
             }
         };
         return {
-            let __o = std::rc::Rc::new(std::cell::RefCell::new(hxrt::anon::Anon::new()));
+            let __o = crate::HxRc::new(crate::HxRefCell::new(hxrt::anon::Anon::new()));
             {
                 let mut __b = __o.borrow_mut();
                 __b.set("gid", gid);

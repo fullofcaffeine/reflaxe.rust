@@ -12,7 +12,7 @@ pub struct EnumValueMap<K: Clone + std::fmt::Debug, V: Clone + std::fmt::Debug> 
 impl<K: Clone + std::fmt::Debug, V: Clone + std::fmt::Debug> EnumValueMap<K, V> {
     pub fn new() -> crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> {
         let self_: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> =
-            std::rc::Rc::new(std::cell::RefCell::new(EnumValueMap {
+            crate::HxRc::new(crate::HxRefCell::new(EnumValueMap {
                 keys_map: Default::default(),
                 values_map: Default::default(),
             }));
@@ -29,7 +29,7 @@ impl<K: Clone + std::fmt::Debug, V: Clone + std::fmt::Debug> EnumValueMap<K, V> 
         return self_;
     }
 
-    pub fn set(self_: &std::cell::RefCell<EnumValueMap<K, V>>, key: K, value: V) {
+    pub fn set(self_: &crate::HxRefCell<EnumValueMap<K, V>>, key: K, value: V) {
         let id: String = format!("{:?}", key);
         {
             let mut __s = self_.borrow_mut();
@@ -38,17 +38,17 @@ impl<K: Clone + std::fmt::Debug, V: Clone + std::fmt::Debug> EnumValueMap<K, V> 
         };
     }
 
-    pub fn get(self_: &std::cell::RefCell<EnumValueMap<K, V>>, key: K) -> Option<V> {
+    pub fn get(self_: &crate::HxRefCell<EnumValueMap<K, V>>, key: K) -> Option<V> {
         let id: String = format!("{:?}", key);
         return self_.borrow().values_map.get(&id).cloned();
     }
 
-    pub fn exists(self_: &std::cell::RefCell<EnumValueMap<K, V>>, key: K) -> bool {
+    pub fn exists(self_: &crate::HxRefCell<EnumValueMap<K, V>>, key: K) -> bool {
         let id: String = format!("{:?}", key);
         return self_.borrow().values_map.contains_key(&id);
     }
 
-    pub fn remove(self_: &std::cell::RefCell<EnumValueMap<K, V>>, key: K) -> bool {
+    pub fn remove(self_: &crate::HxRefCell<EnumValueMap<K, V>>, key: K) -> bool {
         let id: String = format!("{:?}", key);
         return {
             let mut __s = self_.borrow_mut();
@@ -58,7 +58,7 @@ impl<K: Clone + std::fmt::Debug, V: Clone + std::fmt::Debug> EnumValueMap<K, V> 
         };
     }
 
-    pub fn keys(self_: &std::cell::RefCell<EnumValueMap<K, V>>) -> hxrt::iter::Iter<K> {
+    pub fn keys(self_: &crate::HxRefCell<EnumValueMap<K, V>>) -> hxrt::iter::Iter<K> {
         return hxrt::iter::Iter::from_vec(
             self_
                 .borrow()
@@ -69,7 +69,7 @@ impl<K: Clone + std::fmt::Debug, V: Clone + std::fmt::Debug> EnumValueMap<K, V> 
         );
     }
 
-    pub fn iterator(self_: &std::cell::RefCell<EnumValueMap<K, V>>) -> hxrt::iter::Iter<V> {
+    pub fn iterator(self_: &crate::HxRefCell<EnumValueMap<K, V>>) -> hxrt::iter::Iter<V> {
         return hxrt::iter::Iter::from_vec(
             self_
                 .borrow()
@@ -81,7 +81,7 @@ impl<K: Clone + std::fmt::Debug, V: Clone + std::fmt::Debug> EnumValueMap<K, V> 
     }
 
     pub fn key_value_iterator(
-        self_: &std::cell::RefCell<EnumValueMap<K, V>>,
+        self_: &crate::HxRefCell<EnumValueMap<K, V>>,
     ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<K, V>> {
         return hxrt::iter::Iter::from_vec({
             let __s = self_.borrow();
@@ -96,7 +96,7 @@ impl<K: Clone + std::fmt::Debug, V: Clone + std::fmt::Debug> EnumValueMap<K, V> 
     }
 
     pub fn copy(
-        self_: &std::cell::RefCell<EnumValueMap<K, V>>,
+        self_: &crate::HxRefCell<EnumValueMap<K, V>>,
     ) -> crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> {
         let out: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> =
             crate::haxe_ds_enum_value_map::EnumValueMap::<K, V>::new();
@@ -109,11 +109,11 @@ impl<K: Clone + std::fmt::Debug, V: Clone + std::fmt::Debug> EnumValueMap<K, V> 
         return out;
     }
 
-    pub fn to_string(self_: &std::cell::RefCell<EnumValueMap<K, V>>) -> String {
+    pub fn to_string(self_: &crate::HxRefCell<EnumValueMap<K, V>>) -> String {
         return format!("{:?}", self_.borrow().values_map);
     }
 
-    pub fn clear(self_: &std::cell::RefCell<EnumValueMap<K, V>>) {
+    pub fn clear(self_: &crate::HxRefCell<EnumValueMap<K, V>>) {
         {
             let mut __s = self_.borrow_mut();
             __s.keys_map.clear();

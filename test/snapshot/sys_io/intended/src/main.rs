@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = hxrt::cell::HxRc<T>;
+type HxRefCell<T> = hxrt::cell::HxCell<T>;
+type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod date;
 mod haxe_ds_enum_value_map;
@@ -86,7 +88,7 @@ fn main() {
         hxrt::dynamic::from(String::from("--- file bytes ---"))
     );
     let bin: String = String::from("tmp_sys_io.bin");
-    let bytes: crate::HxRef<hxrt::bytes::Bytes> = std::rc::Rc::new(std::cell::RefCell::new(
+    let bytes: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRc::new(crate::HxRefCell::new(
         hxrt::bytes::Bytes::of_string(String::from("ABC").as_str()),
     ));
     crate::sys_io_file::File::save_bytes(bin.clone(), bytes.clone());

@@ -12,7 +12,7 @@ pub struct Sub {
 
 impl Sub {
     pub fn new(x: i32, y: String, z: i32) -> crate::HxRef<crate::sub::Sub> {
-        let self_: crate::HxRef<crate::sub::Sub> = std::rc::Rc::new(std::cell::RefCell::new(Sub {
+        let self_: crate::HxRef<crate::sub::Sub> = crate::HxRc::new(crate::HxRefCell::new(Sub {
             x: 0,
             y: String::new(),
             z: 0,
@@ -38,7 +38,7 @@ impl Sub {
     }
 }
 
-impl crate::base::BaseTrait for std::cell::RefCell<Sub> {
+impl crate::base::BaseTrait for crate::HxRefCell<Sub> {
     fn __hx_get_x(&self) -> i32 {
         self.borrow().x
     }

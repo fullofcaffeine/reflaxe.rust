@@ -11,7 +11,7 @@ pub struct StringMap<T: Clone + std::fmt::Debug> {
 impl<T: Clone + std::fmt::Debug> StringMap<T> {
     pub fn new() -> crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> {
         let self_: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> =
-            std::rc::Rc::new(std::cell::RefCell::new(StringMap {
+            crate::HxRc::new(crate::HxRefCell::new(StringMap {
                 h: Default::default(),
             }));
         {
@@ -22,32 +22,32 @@ impl<T: Clone + std::fmt::Debug> StringMap<T> {
         return self_;
     }
 
-    pub fn set(self_: &std::cell::RefCell<StringMap<T>>, key: String, value: T) {
+    pub fn set(self_: &crate::HxRefCell<StringMap<T>>, key: String, value: T) {
         self_.borrow_mut().h.insert(key, value);
     }
 
-    pub fn get(self_: &std::cell::RefCell<StringMap<T>>, key: String) -> Option<T> {
+    pub fn get(self_: &crate::HxRefCell<StringMap<T>>, key: String) -> Option<T> {
         return self_.borrow().h.get(&key).cloned();
     }
 
-    pub fn exists(self_: &std::cell::RefCell<StringMap<T>>, key: String) -> bool {
+    pub fn exists(self_: &crate::HxRefCell<StringMap<T>>, key: String) -> bool {
         return self_.borrow().h.contains_key(&key);
     }
 
-    pub fn remove(self_: &std::cell::RefCell<StringMap<T>>, key: String) -> bool {
+    pub fn remove(self_: &crate::HxRefCell<StringMap<T>>, key: String) -> bool {
         return self_.borrow_mut().h.remove(&key).is_some();
     }
 
-    pub fn keys(self_: &std::cell::RefCell<StringMap<T>>) -> hxrt::iter::Iter<String> {
+    pub fn keys(self_: &crate::HxRefCell<StringMap<T>>) -> hxrt::iter::Iter<String> {
         return hxrt::iter::Iter::from_vec(self_.borrow().h.keys().cloned().collect::<Vec<_>>());
     }
 
-    pub fn iterator(self_: &std::cell::RefCell<StringMap<T>>) -> hxrt::iter::Iter<T> {
+    pub fn iterator(self_: &crate::HxRefCell<StringMap<T>>) -> hxrt::iter::Iter<T> {
         return hxrt::iter::Iter::from_vec(self_.borrow().h.values().cloned().collect::<Vec<_>>());
     }
 
     pub fn key_value_iterator(
-        self_: &std::cell::RefCell<StringMap<T>>,
+        self_: &crate::HxRefCell<StringMap<T>>,
     ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<String, T>> {
         return hxrt::iter::Iter::from_vec(
             self_
@@ -63,7 +63,7 @@ impl<T: Clone + std::fmt::Debug> StringMap<T> {
     }
 
     pub fn copy(
-        self_: &std::cell::RefCell<StringMap<T>>,
+        self_: &crate::HxRefCell<StringMap<T>>,
     ) -> crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> {
         let out: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> =
             crate::haxe_ds_string_map::StringMap::<T>::new();
@@ -71,11 +71,11 @@ impl<T: Clone + std::fmt::Debug> StringMap<T> {
         return out;
     }
 
-    pub fn to_string(self_: &std::cell::RefCell<StringMap<T>>) -> String {
+    pub fn to_string(self_: &crate::HxRefCell<StringMap<T>>) -> String {
         return format!("{:?}", self_.borrow().h);
     }
 
-    pub fn clear(self_: &std::cell::RefCell<StringMap<T>>) {
+    pub fn clear(self_: &crate::HxRefCell<StringMap<T>>) {
         self_.borrow_mut().h.clear();
     }
 }

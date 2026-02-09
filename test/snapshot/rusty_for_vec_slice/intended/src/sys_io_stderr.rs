@@ -189,7 +189,7 @@ impl Stderr {
 
     pub fn write_input(
         self_: &crate::HxRefCell<Stderr>,
-        i: crate::HxRc<dyn crate::haxe_io_input::InputTrait>,
+        i: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync>,
         bufsize: Option<i32>,
     ) {
         let mut bs: Option<i32> = bufsize;
@@ -287,7 +287,7 @@ impl crate::haxe_io_output::OutputTrait for crate::HxRefCell<Stderr> {
     }
     fn write_input(
         &self,
-        i: crate::HxRc<dyn crate::haxe_io_input::InputTrait>,
+        i: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync>,
         bufsize: Option<i32>,
     ) -> () {
         Stderr::write_input(self, i, bufsize)

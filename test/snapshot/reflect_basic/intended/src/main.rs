@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = hxrt::cell::HxRc<T>;
+type HxRefCell<T> = hxrt::cell::HxCell<T>;
+type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod c;
 mod haxe_ds_enum_value_map;
@@ -33,7 +35,7 @@ fn main() {
     };
     println!("{}", hxrt::dynamic::from(c.borrow().n));
     let o: crate::HxRef<hxrt::anon::Anon> = {
-        let __o = std::rc::Rc::new(std::cell::RefCell::new(hxrt::anon::Anon::new()));
+        let __o = crate::HxRc::new(crate::HxRefCell::new(hxrt::anon::Anon::new()));
         {
             let mut __b = __o.borrow_mut();
             __b.set("x", 1);

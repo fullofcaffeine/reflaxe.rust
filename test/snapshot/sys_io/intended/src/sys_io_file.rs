@@ -27,7 +27,7 @@ impl File {
                 Ok(b) => b,
                 Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
             };
-            std::rc::Rc::new(std::cell::RefCell::new(hxrt::bytes::Bytes::from_vec(data)))
+            crate::HxRc::new(crate::HxRefCell::new(hxrt::bytes::Bytes::from_vec(data)))
         };
     }
 

@@ -7,8 +7,8 @@ hi
 [1,2,3]
 [1,2,3]
 --- Std.string object ---
-<Dynamic:alloc::rc::Rc<core::cell::RefCell<hx_app::foo::Foo>>>
+<Dynamic:alloc::sync::Arc<hxrt::cell::HxCell<hx_app::foo::Foo>>>
 --- Sys.println Dynamic ---
-<Dynamic:alloc::rc::Rc<core::cell::RefCell<hx_app::foo::Foo>>>
+<Dynamic:alloc::sync::Arc<hxrt::cell::HxCell<hx_app::foo::Foo>>>
 null
 5

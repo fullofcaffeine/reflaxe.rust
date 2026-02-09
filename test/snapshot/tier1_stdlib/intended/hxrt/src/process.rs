@@ -1,7 +1,7 @@
+use crate::cell::{HxCell, HxRc, HxRef};
 use crate::{dynamic, exception};
 use std::io::{Read, Write};
 use std::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, ExitStatus, Stdio};
-use std::{cell::RefCell, rc::Rc};
 
 #[derive(Debug, Default)]
 pub struct Process {
@@ -113,7 +113,7 @@ fn exit_code(status: ExitStatus) -> i32 {
     status.code().unwrap_or(1)
 }
 
-pub fn spawn(cmd: &str, args: Option<Vec<String>>, detached: bool) -> Rc<RefCell<Process>> {
+pub fn spawn(cmd: &str, args: Option<Vec<String>>, detached: bool) -> HxRef<Process> {
     if detached {
         // Best-effort: still allow pid + exitCode, but no stdin/out/err.
         let mut c = Command::new(cmd);
@@ -125,7 +125,7 @@ pub fn spawn(cmd: &str, args: Option<Vec<String>>, detached: bool) -> Rc<RefCell
             Err(e) => throw_io(e),
         };
         let pid = child.id() as i32;
-        Rc::new(RefCell::new(Process {
+        HxRc::new(HxCell::new(Process {
             child: Some(child),
             pid,
             stdin: None,
@@ -148,7 +148,7 @@ pub fn spawn(cmd: &str, args: Option<Vec<String>>, detached: bool) -> Rc<RefCell
         let stdin = child.stdin.take();
         let stdout = child.stdout.take();
         let stderr = child.stderr.take();
-        Rc::new(RefCell::new(Process {
+        HxRc::new(HxCell::new(Process {
             child: Some(child),
             pid,
             stdin,

@@ -300,7 +300,7 @@ impl Input {
     }
 }
 
-pub trait InputTrait {
+pub trait InputTrait: Send + Sync {
     fn __hx_get_big_endian(&self) -> bool;
     fn __hx_set_big_endian(&self, v: bool);
     fn read_byte(&self) -> i32;

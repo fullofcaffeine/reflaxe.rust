@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = hxrt::cell::HxRc<T>;
+type HxRefCell<T> = hxrt::cell::HxCell<T>;
+type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod haxe_ds_enum_value_map;
 mod haxe_ds_int_map;
@@ -25,18 +27,19 @@ fn add1(x: i32) -> i32 {
     return x + 1;
 }
 
-fn apply(f: std::rc::Rc<dyn Fn(i32) -> i32>, x: i32) -> i32 {
+fn apply(f: crate::HxRc<dyn Fn(i32) -> i32 + Send + Sync>, x: i32) -> i32 {
     return f(x);
 }
 
 fn main() {
-    let f: std::rc::Rc<dyn Fn(i32) -> i32> = std::rc::Rc::new(move |a0: i32| add1(a0));
+    let f: crate::HxRc<dyn Fn(i32) -> i32 + Send + Sync> =
+        crate::HxRc::new(move |a0: i32| add1(a0));
     println!("{}", hxrt::dynamic::from(f(5)));
-    let g: std::rc::Rc<dyn Fn(i32) -> i32> = std::rc::Rc::new(move |x: i32| {
+    let g: crate::HxRc<dyn Fn(i32) -> i32 + Send + Sync> = crate::HxRc::new(move |x: i32| {
         return x * 2;
     });
     println!(
         "{}",
-        hxrt::dynamic::from(apply(std::rc::Rc::new(move |a0: i32| { g(a0) }), 3))
+        hxrt::dynamic::from(apply(crate::HxRc::new(move |a0: i32| { g(a0) }), 3))
     );
 }

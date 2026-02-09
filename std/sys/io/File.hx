@@ -22,7 +22,7 @@ import hxrt.fs.FileHandle;
 	- Methods are implemented via internal `__rust__` injections (framework-only).
 	- Errors throw a catchable Haxe exception payload (currently a `String` with the OS error
 	  message; this can be refined to match other targets more closely later).
-	- File handles are represented as `HxRef<hxrt.fs.FileHandle>` (runtime `Rc<RefCell<hxrt::fs::FileHandle>>`)
+		- File handles are represented as `HxRef<hxrt.fs.FileHandle>` (runtime `HxRef<hxrt::fs::FileHandle>`)
 	  and wrapped by `sys.io.FileInput` / `sys.io.FileOutput`.
 **/
 class File {
@@ -49,15 +49,15 @@ class File {
 
 	public static function getBytes(path: String): Bytes {
 		return untyped __rust__(
-			"{
-				let data = match std::fs::read({0}.as_str()) {
-					Ok(b) => b,
-					Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!(\"{}\", e))),
-				};
-				std::rc::Rc::new(std::cell::RefCell::new(hxrt::bytes::Bytes::from_vec(data)))
-			}",
-			path
-		);
+				"{
+					let data = match std::fs::read({0}.as_str()) {
+						Ok(b) => b,
+						Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!(\"{}\", e))),
+					};
+					crate::HxRc::new(crate::HxRefCell::new(hxrt::bytes::Bytes::from_vec(data)))
+				}",
+				path
+			);
 	}
 
 	public static function saveBytes(path: String, bytes: Bytes): Void {

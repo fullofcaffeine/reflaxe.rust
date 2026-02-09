@@ -2,6 +2,6 @@
 
 // Haxe interface -> Rust trait
 
-pub trait IGet<T: Clone> {
+pub trait IGet<T: Clone + Send + Sync>: Send + Sync {
     fn get(&self) -> T;
 }

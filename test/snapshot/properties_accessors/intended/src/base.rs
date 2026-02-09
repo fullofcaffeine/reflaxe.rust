@@ -12,11 +12,11 @@ pub struct Base {
 impl Base {
     pub fn new() -> crate::HxRef<crate::base::Base> {
         let self_: crate::HxRef<crate::base::Base> =
-            std::rc::Rc::new(std::cell::RefCell::new(Base { x: 0, _y: 0 }));
+            crate::HxRc::new(crate::HxRefCell::new(Base { x: 0, _y: 0 }));
         return self_;
     }
 
-    pub fn set_x(self_: &std::cell::RefCell<Base>, v: i32) -> i32 {
+    pub fn set_x(self_: &crate::HxRefCell<Base>, v: i32) -> i32 {
         return {
             let __tmp = v;
             self_.borrow_mut().x = __tmp;
@@ -24,11 +24,11 @@ impl Base {
         };
     }
 
-    pub fn get_y(self_: &std::cell::RefCell<Base>) -> i32 {
+    pub fn get_y(self_: &crate::HxRefCell<Base>) -> i32 {
         return self_.borrow()._y;
     }
 
-    pub fn set_y(self_: &std::cell::RefCell<Base>, v: i32) -> i32 {
+    pub fn set_y(self_: &crate::HxRefCell<Base>, v: i32) -> i32 {
         {
             let __tmp = v * 2;
             self_.borrow_mut()._y = __tmp;
@@ -38,7 +38,7 @@ impl Base {
     }
 }
 
-pub trait BaseTrait {
+pub trait BaseTrait: Send + Sync {
     fn __hx_get_x(&self) -> i32;
     fn __hx_set_x(&self, v: i32);
     fn __hx_get_u1_y(&self) -> i32;
@@ -49,7 +49,7 @@ pub trait BaseTrait {
     fn __hx_type_id(&self) -> u32;
 }
 
-impl crate::base::BaseTrait for std::cell::RefCell<Base> {
+impl crate::base::BaseTrait for crate::HxRefCell<Base> {
     fn __hx_get_x(&self) -> i32 {
         self.borrow().x
     }

@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = hxrt::cell::HxRc<T>;
+type HxRefCell<T> = hxrt::cell::HxCell<T>;
+type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod haxe_ds_enum_value_map;
 mod haxe_ds_int_map;
@@ -42,7 +44,7 @@ fn main() {
     match hxrt::exception::catch_unwind(|| {
         crate::haxe_io_bytes_buffer::BytesBuffer::add_bytes(
             &bb2,
-            std::rc::Rc::new(std::cell::RefCell::new(hxrt::bytes::Bytes::of_string(
+            crate::HxRc::new(crate::HxRefCell::new(hxrt::bytes::Bytes::of_string(
                 String::from("abc").as_str(),
             ))),
             0,

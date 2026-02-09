@@ -4,30 +4,30 @@ pub const __HX_TYPE_ID: u32 = 0xbc62c7dcu32;
 
 #[derive(Debug)]
 
-pub struct Base<T: Clone> {
+pub struct Base<T: Clone + Send + Sync> {
     __hx_phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: Clone> Base<T> {
+impl<T: Clone + Send + Sync> Base<T> {
     pub fn new() -> crate::HxRef<crate::base::Base<T>> {
         let self_: crate::HxRef<crate::base::Base<T>> =
-            std::rc::Rc::new(std::cell::RefCell::new(Base {
+            crate::HxRc::new(crate::HxRefCell::new(Base {
                 __hx_phantom: std::marker::PhantomData,
             }));
         return self_;
     }
 
-    pub fn id(_self_: &std::cell::RefCell<Base<T>>, x: T) -> T {
+    pub fn id(_self_: &crate::HxRefCell<Base<T>>, x: T) -> T {
         return x;
     }
 }
 
-pub trait BaseTrait<T: Clone> {
+pub trait BaseTrait<T: Clone + Send + Sync>: Send + Sync {
     fn id(&self, x: T) -> T;
     fn __hx_type_id(&self) -> u32;
 }
 
-impl<T: Clone> crate::base::BaseTrait<T> for std::cell::RefCell<Base<T>> {
+impl<T: Clone + Send + Sync> crate::base::BaseTrait<T> for crate::HxRefCell<Base<T>> {
     fn id(&self, x: T) -> T {
         Base::<T>::id(self, x)
     }

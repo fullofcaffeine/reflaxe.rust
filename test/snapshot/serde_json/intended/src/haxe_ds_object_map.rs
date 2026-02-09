@@ -17,7 +17,7 @@ impl<K: hxrt::hxref::HxRefLike + Clone + std::fmt::Debug, V: Clone + std::fmt::D
 {
     pub fn new() -> crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> {
         let self_: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> =
-            std::rc::Rc::new(std::cell::RefCell::new(ObjectMap {
+            crate::HxRc::new(crate::HxRefCell::new(ObjectMap {
                 keys_map: Default::default(),
                 values_map: Default::default(),
             }));
@@ -34,11 +34,11 @@ impl<K: hxrt::hxref::HxRefLike + Clone + std::fmt::Debug, V: Clone + std::fmt::D
         return self_;
     }
 
-    fn key_id(_self_: &std::cell::RefCell<ObjectMap<K, V>>, key: K) -> String {
+    fn key_id(_self_: &crate::HxRefCell<ObjectMap<K, V>>, key: K) -> String {
         return hxrt::hxref::ptr_id(&key);
     }
 
-    pub fn set(self_: &std::cell::RefCell<ObjectMap<K, V>>, key: K, value: V) {
+    pub fn set(self_: &crate::HxRefCell<ObjectMap<K, V>>, key: K, value: V) {
         let id: String = hxrt::hxref::ptr_id(&key);
         {
             let mut __s = self_.borrow_mut();
@@ -47,17 +47,17 @@ impl<K: hxrt::hxref::HxRefLike + Clone + std::fmt::Debug, V: Clone + std::fmt::D
         };
     }
 
-    pub fn get(self_: &std::cell::RefCell<ObjectMap<K, V>>, key: K) -> Option<V> {
+    pub fn get(self_: &crate::HxRefCell<ObjectMap<K, V>>, key: K) -> Option<V> {
         let id: String = hxrt::hxref::ptr_id(&key);
         return self_.borrow().values_map.get(&id).cloned();
     }
 
-    pub fn exists(self_: &std::cell::RefCell<ObjectMap<K, V>>, key: K) -> bool {
+    pub fn exists(self_: &crate::HxRefCell<ObjectMap<K, V>>, key: K) -> bool {
         let id: String = hxrt::hxref::ptr_id(&key);
         return self_.borrow().values_map.contains_key(&id);
     }
 
-    pub fn remove(self_: &std::cell::RefCell<ObjectMap<K, V>>, key: K) -> bool {
+    pub fn remove(self_: &crate::HxRefCell<ObjectMap<K, V>>, key: K) -> bool {
         let id: String = hxrt::hxref::ptr_id(&key);
         return {
             let mut __s = self_.borrow_mut();
@@ -67,7 +67,7 @@ impl<K: hxrt::hxref::HxRefLike + Clone + std::fmt::Debug, V: Clone + std::fmt::D
         };
     }
 
-    pub fn keys(self_: &std::cell::RefCell<ObjectMap<K, V>>) -> hxrt::iter::Iter<K> {
+    pub fn keys(self_: &crate::HxRefCell<ObjectMap<K, V>>) -> hxrt::iter::Iter<K> {
         return hxrt::iter::Iter::from_vec(
             self_
                 .borrow()
@@ -78,7 +78,7 @@ impl<K: hxrt::hxref::HxRefLike + Clone + std::fmt::Debug, V: Clone + std::fmt::D
         );
     }
 
-    pub fn iterator(self_: &std::cell::RefCell<ObjectMap<K, V>>) -> hxrt::iter::Iter<V> {
+    pub fn iterator(self_: &crate::HxRefCell<ObjectMap<K, V>>) -> hxrt::iter::Iter<V> {
         return hxrt::iter::Iter::from_vec(
             self_
                 .borrow()
@@ -90,7 +90,7 @@ impl<K: hxrt::hxref::HxRefLike + Clone + std::fmt::Debug, V: Clone + std::fmt::D
     }
 
     pub fn key_value_iterator(
-        self_: &std::cell::RefCell<ObjectMap<K, V>>,
+        self_: &crate::HxRefCell<ObjectMap<K, V>>,
     ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<K, V>> {
         return hxrt::iter::Iter::from_vec({
             let __s = self_.borrow();
@@ -105,7 +105,7 @@ impl<K: hxrt::hxref::HxRefLike + Clone + std::fmt::Debug, V: Clone + std::fmt::D
     }
 
     pub fn copy(
-        self_: &std::cell::RefCell<ObjectMap<K, V>>,
+        self_: &crate::HxRefCell<ObjectMap<K, V>>,
     ) -> crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> {
         let out: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> =
             crate::haxe_ds_object_map::ObjectMap::<K, V>::new();
@@ -118,11 +118,11 @@ impl<K: hxrt::hxref::HxRefLike + Clone + std::fmt::Debug, V: Clone + std::fmt::D
         return out;
     }
 
-    pub fn to_string(self_: &std::cell::RefCell<ObjectMap<K, V>>) -> String {
+    pub fn to_string(self_: &crate::HxRefCell<ObjectMap<K, V>>) -> String {
         return format!("{:?}", self_.borrow().values_map);
     }
 
-    pub fn clear(self_: &std::cell::RefCell<ObjectMap<K, V>>) {
+    pub fn clear(self_: &crate::HxRefCell<ObjectMap<K, V>>) {
         {
             let mut __s = self_.borrow_mut();
             __s.keys_map.clear();

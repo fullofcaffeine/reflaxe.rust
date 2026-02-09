@@ -13,7 +13,7 @@ pub struct BytesBuffer {
 impl BytesBuffer {
     pub fn new() -> crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer> {
         let self_: crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer> =
-            std::rc::Rc::new(std::cell::RefCell::new(BytesBuffer {
+            crate::HxRc::new(crate::HxRefCell::new(BytesBuffer {
                 chunks: hxrt::array::Array::<crate::HxRef<hxrt::bytes::Bytes>>::new(),
                 finalized: false,
                 _length: 0,
@@ -36,7 +36,7 @@ impl BytesBuffer {
         return self_;
     }
 
-    fn ensure_open(self_: &std::cell::RefCell<BytesBuffer>) {
+    fn ensure_open(self_: &crate::HxRefCell<BytesBuffer>) {
         if self_.borrow().finalized {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
                 hxrt::dynamic::from(String::from("BytesBuffer is finalized")),
@@ -44,19 +44,18 @@ impl BytesBuffer {
         }
     }
 
-    pub fn get_length(self_: &std::cell::RefCell<BytesBuffer>) -> i32 {
+    pub fn get_length(self_: &crate::HxRefCell<BytesBuffer>) -> i32 {
         return self_.borrow()._length;
     }
 
-    pub fn add_byte(self_: &std::cell::RefCell<BytesBuffer>, byte: i32) {
+    pub fn add_byte(self_: &crate::HxRefCell<BytesBuffer>, byte: i32) {
         if self_.borrow().finalized {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
                 hxrt::dynamic::from(String::from("BytesBuffer is finalized")),
             )));
         }
-        let b: crate::HxRef<hxrt::bytes::Bytes> = std::rc::Rc::new(std::cell::RefCell::new(
-            hxrt::bytes::Bytes::alloc(1 as usize),
-        ));
+        let b: crate::HxRef<hxrt::bytes::Bytes> =
+            crate::HxRc::new(crate::HxRefCell::new(hxrt::bytes::Bytes::alloc(1 as usize)));
         b.borrow_mut().set(0, byte);
         self_.borrow().chunks.clone().push(b.clone());
         {
@@ -66,7 +65,7 @@ impl BytesBuffer {
         };
     }
 
-    pub fn add(self_: &std::cell::RefCell<BytesBuffer>, src: crate::HxRef<hxrt::bytes::Bytes>) {
+    pub fn add(self_: &crate::HxRefCell<BytesBuffer>, src: crate::HxRef<hxrt::bytes::Bytes>) {
         if self_.borrow().finalized {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
                 hxrt::dynamic::from(String::from("BytesBuffer is finalized")),
@@ -81,7 +80,7 @@ impl BytesBuffer {
     }
 
     pub fn add_string(
-        self_: &std::cell::RefCell<BytesBuffer>,
+        self_: &crate::HxRefCell<BytesBuffer>,
         v: String,
         encoding: Option<crate::haxe_io_encoding::Encoding>,
     ) {
@@ -92,13 +91,13 @@ impl BytesBuffer {
         }
         crate::haxe_io_bytes_buffer::BytesBuffer::add(&self_, {
             let _ = encoding;
-            std::rc::Rc::new(std::cell::RefCell::new(hxrt::bytes::Bytes::of_string(
+            crate::HxRc::new(crate::HxRefCell::new(hxrt::bytes::Bytes::of_string(
                 v.as_str(),
             )))
         });
     }
 
-    pub fn add_int32(self_: &std::cell::RefCell<BytesBuffer>, v: i32) {
+    pub fn add_int32(self_: &crate::HxRefCell<BytesBuffer>, v: i32) {
         crate::haxe_io_bytes_buffer::BytesBuffer::add_byte(&self_, v & 255);
         crate::haxe_io_bytes_buffer::BytesBuffer::add_byte(&self_, v >> 8 & 255);
         crate::haxe_io_bytes_buffer::BytesBuffer::add_byte(&self_, v >> 16 & 255);
@@ -106,21 +105,21 @@ impl BytesBuffer {
     }
 
     pub fn add_int64(
-        self_: &std::cell::RefCell<BytesBuffer>,
+        self_: &crate::HxRefCell<BytesBuffer>,
         v: crate::HxRef<crate::haxe_int64_int64::Int64>,
     ) {
         crate::haxe_io_bytes_buffer::BytesBuffer::add_int32(&self_, v.borrow().low);
         crate::haxe_io_bytes_buffer::BytesBuffer::add_int32(&self_, v.borrow().high);
     }
 
-    pub fn add_float(self_: &std::cell::RefCell<BytesBuffer>, v: f64) {
+    pub fn add_float(self_: &crate::HxRefCell<BytesBuffer>, v: f64) {
         crate::haxe_io_bytes_buffer::BytesBuffer::add_int32(
             &self_,
             crate::haxe_io_fp_helper::FPHelper::float_to_i32(v),
         );
     }
 
-    pub fn add_double(self_: &std::cell::RefCell<BytesBuffer>, v: f64) {
+    pub fn add_double(self_: &crate::HxRefCell<BytesBuffer>, v: f64) {
         crate::haxe_io_bytes_buffer::BytesBuffer::add_int64(
             &self_,
             crate::haxe_io_fp_helper::FPHelper::double_to_i64(v),
@@ -128,7 +127,7 @@ impl BytesBuffer {
     }
 
     pub fn add_bytes(
-        self_: &std::cell::RefCell<BytesBuffer>,
+        self_: &crate::HxRefCell<BytesBuffer>,
         src: crate::HxRef<hxrt::bytes::Bytes>,
         pos: i32,
         len: i32,
@@ -140,17 +139,17 @@ impl BytesBuffer {
         }
         crate::haxe_io_bytes_buffer::BytesBuffer::add(
             &self_,
-            std::rc::Rc::new(std::cell::RefCell::new(src.borrow().sub(pos, len))),
+            crate::HxRc::new(crate::HxRefCell::new(src.borrow().sub(pos, len))),
         );
     }
 
-    pub fn get_bytes(self_: &std::cell::RefCell<BytesBuffer>) -> crate::HxRef<hxrt::bytes::Bytes> {
+    pub fn get_bytes(self_: &crate::HxRefCell<BytesBuffer>) -> crate::HxRef<hxrt::bytes::Bytes> {
         if self_.borrow().finalized {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
                 hxrt::dynamic::from(String::from("BytesBuffer is finalized")),
             )));
         }
-        let out: crate::HxRef<hxrt::bytes::Bytes> = std::rc::Rc::new(std::cell::RefCell::new(
+        let out: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRc::new(crate::HxRefCell::new(
             hxrt::bytes::Bytes::alloc(self_.borrow()._length as usize),
         ));
         let mut offset: i32 = 0;

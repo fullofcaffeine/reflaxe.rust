@@ -10,8 +10,7 @@ pub struct B {
 
 impl B {
     pub fn new() -> crate::HxRef<crate::b::B> {
-        let self_: crate::HxRef<crate::b::B> =
-            std::rc::Rc::new(std::cell::RefCell::new(B { _x: 0 }));
+        let self_: crate::HxRef<crate::b::B> = crate::HxRc::new(crate::HxRefCell::new(B { _x: 0 }));
         {
             let __tmp = 1;
             self_.borrow_mut()._x = __tmp;
@@ -20,27 +19,27 @@ impl B {
         return self_;
     }
 
-    pub fn get_x(self_: &std::cell::RefCell<B>) -> i32 {
+    pub fn get_x(self_: &crate::HxRefCell<B>) -> i32 {
         return crate::b::B::__hx_super_a_get_x(&self_) + 10;
     }
 
-    pub fn set_x(self_: &std::cell::RefCell<B>, v: i32) -> i32 {
+    pub fn set_x(self_: &crate::HxRefCell<B>, v: i32) -> i32 {
         return crate::b::B::__hx_super_a_set_x(&self_, v + 10);
     }
 
-    pub fn sound(_self_: &std::cell::RefCell<B>) -> String {
+    pub fn sound(_self_: &crate::HxRefCell<B>) -> String {
         return String::from("B.sound");
     }
 
-    pub fn foo(_self_: &std::cell::RefCell<B>) -> String {
+    pub fn foo(_self_: &crate::HxRefCell<B>) -> String {
         return String::from("A.foo");
     }
 
-    fn __hx_super_a_get_x(self_: &std::cell::RefCell<B>) -> i32 {
+    fn __hx_super_a_get_x(self_: &crate::HxRefCell<B>) -> i32 {
         return self_.borrow()._x;
     }
 
-    fn __hx_super_a_set_x(self_: &std::cell::RefCell<B>, v: i32) -> i32 {
+    fn __hx_super_a_set_x(self_: &crate::HxRefCell<B>, v: i32) -> i32 {
         {
             let __tmp = v;
             self_.borrow_mut()._x = __tmp;
@@ -50,7 +49,7 @@ impl B {
     }
 }
 
-pub trait BTrait {
+pub trait BTrait: Send + Sync {
     fn __hx_get_u1_x(&self) -> i32;
     fn __hx_set_u1_x(&self, v: i32);
     fn get_x(&self) -> i32;
@@ -60,7 +59,7 @@ pub trait BTrait {
     fn __hx_type_id(&self) -> u32;
 }
 
-impl crate::b::BTrait for std::cell::RefCell<B> {
+impl crate::b::BTrait for crate::HxRefCell<B> {
     fn __hx_get_u1_x(&self) -> i32 {
         self.borrow()._x
     }
@@ -84,7 +83,7 @@ impl crate::b::BTrait for std::cell::RefCell<B> {
     }
 }
 
-impl crate::a::ATrait for std::cell::RefCell<B> {
+impl crate::a::ATrait for crate::HxRefCell<B> {
     fn __hx_get_u1_x(&self) -> i32 {
         self.borrow()._x
     }

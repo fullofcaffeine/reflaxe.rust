@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = hxrt::cell::HxRc<T>;
+type HxRefCell<T> = hxrt::cell::HxCell<T>;
+type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod foo;
 mod haxe_ds_enum_value_map;
@@ -62,16 +64,15 @@ fn main() {
         hxrt::dynamic::from(String::from("Main.MyEnum").clone())
     );
     println!("{}", hxrt::dynamic::from(String::from("--- Bytes ---")));
-    let b: crate::HxRef<hxrt::bytes::Bytes> = std::rc::Rc::new(std::cell::RefCell::new(
+    let b: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRc::new(crate::HxRefCell::new(
         hxrt::bytes::Bytes::of_string(String::from("hi").as_str()),
     ));
     println!("{}", hxrt::dynamic::from(b.borrow().length()));
     println!("{}", hxrt::dynamic::from(b.borrow().get(0)));
     b.borrow_mut().set(0, 72);
     println!("{}", hxrt::dynamic::from(b.borrow().to_string().clone()));
-    let b2: crate::HxRef<hxrt::bytes::Bytes> = std::rc::Rc::new(std::cell::RefCell::new(
-        hxrt::bytes::Bytes::alloc(3 as usize),
-    ));
+    let b2: crate::HxRef<hxrt::bytes::Bytes> =
+        crate::HxRc::new(crate::HxRefCell::new(hxrt::bytes::Bytes::alloc(3 as usize)));
     b2.borrow_mut().set(0, 65);
     b2.borrow_mut().set(1, 66);
     b2.borrow_mut().set(2, 67);

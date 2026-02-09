@@ -1,6 +1,6 @@
+use crate::cell::HxRef;
 use crate::exception;
 use std::fmt;
-use std::{cell::RefCell, rc::Rc};
 
 #[derive(Debug)]
 pub struct Bytes {
@@ -91,9 +91,9 @@ impl Bytes {
 
 /// Copy `len` bytes from `src[srcpos..]` into `dst[pos..]`.
 ///
-/// This is implemented as a helper that operates on Haxe refs (`Rc<RefCell<...>>`) so we can avoid
+/// This is implemented as a helper that operates on Haxe refs (`HxRef<...>`) so we can avoid
 /// borrow conflicts when `src` and `dst` alias (it behaves like a memmove: we copy via a temporary).
-pub fn blit(dst: &Rc<RefCell<Bytes>>, pos: i32, src: &Rc<RefCell<Bytes>>, srcpos: i32, len: i32) {
+pub fn blit(dst: &HxRef<Bytes>, pos: i32, src: &HxRef<Bytes>, srcpos: i32, len: i32) {
     if len == 0 {
         return;
     }
@@ -121,7 +121,7 @@ pub fn blit(dst: &Rc<RefCell<Bytes>>, pos: i32, src: &Rc<RefCell<Bytes>>, srcpos
 ///
 /// This is used by runtime-backed IO implementations (e.g. `sys.io.FileInput`) to efficiently
 /// fill a `haxe.io.Bytes` buffer without going through per-byte `set()` calls.
-pub fn write_from_slice(dst: &Rc<RefCell<Bytes>>, pos: i32, src: &[u8]) {
+pub fn write_from_slice(dst: &HxRef<Bytes>, pos: i32, src: &[u8]) {
     if src.is_empty() {
         return;
     }

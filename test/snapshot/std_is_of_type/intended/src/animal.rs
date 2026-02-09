@@ -9,16 +9,16 @@ pub struct Animal {}
 impl Animal {
     pub fn new() -> crate::HxRef<crate::animal::Animal> {
         let self_: crate::HxRef<crate::animal::Animal> =
-            std::rc::Rc::new(std::cell::RefCell::new(Animal {}));
+            crate::HxRc::new(crate::HxRefCell::new(Animal {}));
         return self_;
     }
 }
 
-pub trait AnimalTrait {
+pub trait AnimalTrait: Send + Sync {
     fn __hx_type_id(&self) -> u32;
 }
 
-impl crate::animal::AnimalTrait for std::cell::RefCell<Animal> {
+impl crate::animal::AnimalTrait for crate::HxRefCell<Animal> {
     fn __hx_type_id(&self) -> u32 {
         crate::animal::__HX_TYPE_ID
     }

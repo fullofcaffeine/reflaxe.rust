@@ -1,5 +1,6 @@
+use crate::cell::{HxCell, HxRc, HxRef};
 use crate::{dynamic, exception};
-use std::{cell::RefCell, fs, io, rc::Rc};
+use std::{fs, io};
 
 /// Minimal file IO runtime for `sys.io.*`.
 ///
@@ -10,11 +11,11 @@ use std::{cell::RefCell, fs, io, rc::Rc};
 ///   IO failures are catchable Haxe exceptions (not `unwrap()` panics).
 ///
 /// What
-/// - `FileHandle` wraps an `Option<fs::File>` behind `Rc<RefCell<...>>` (via `HxRef<T>` in emitted
+/// - `FileHandle` wraps an `Option<fs::File>` behind `HxRef<...>` (thread-safe shared ref).
 ///   code). The `Option` enables `close()` semantics without requiring `std::fs::File: Clone`.
 ///
 /// How
-/// - Public constructors `open_read` / `open_*` return `Rc<RefCell<FileHandle>>`.
+/// - Public constructors `open_read` / `open_*` return `HxRef<FileHandle>`.
 /// - Errors throw via `hxrt::exception::throw(hxrt::dynamic::from(String))`.
 /// - EOF is signaled by returning `-1` from `read_byte` / `read_into`.
 #[derive(Debug)]
@@ -124,15 +125,15 @@ impl FileHandle {
     }
 }
 
-pub fn open_read(path: &str) -> Rc<RefCell<FileHandle>> {
+pub fn open_read(path: &str) -> HxRef<FileHandle> {
     let file = match fs::File::open(path) {
         Ok(f) => f,
         Err(e) => throw_io("open_read", e),
     };
-    Rc::new(RefCell::new(FileHandle { file: Some(file) }))
+    HxRc::new(HxCell::new(FileHandle { file: Some(file) }))
 }
 
-pub fn open_write_truncate(path: &str) -> Rc<RefCell<FileHandle>> {
+pub fn open_write_truncate(path: &str) -> HxRef<FileHandle> {
     let file = match fs::OpenOptions::new()
         .create(true)
         .write(true)
@@ -142,18 +143,18 @@ pub fn open_write_truncate(path: &str) -> Rc<RefCell<FileHandle>> {
         Ok(f) => f,
         Err(e) => throw_io("open_write_truncate", e),
     };
-    Rc::new(RefCell::new(FileHandle { file: Some(file) }))
+    HxRc::new(HxCell::new(FileHandle { file: Some(file) }))
 }
 
-pub fn open_append(path: &str) -> Rc<RefCell<FileHandle>> {
+pub fn open_append(path: &str) -> HxRef<FileHandle> {
     let file = match fs::OpenOptions::new().create(true).append(true).open(path) {
         Ok(f) => f,
         Err(e) => throw_io("open_append", e),
     };
-    Rc::new(RefCell::new(FileHandle { file: Some(file) }))
+    HxRc::new(HxCell::new(FileHandle { file: Some(file) }))
 }
 
-pub fn open_update(path: &str) -> Rc<RefCell<FileHandle>> {
+pub fn open_update(path: &str) -> HxRef<FileHandle> {
     let file = match fs::OpenOptions::new()
         .create(true)
         .read(true)
@@ -164,5 +165,5 @@ pub fn open_update(path: &str) -> Rc<RefCell<FileHandle>> {
         Ok(f) => f,
         Err(e) => throw_io("open_update", e),
     };
-    Rc::new(RefCell::new(FileHandle { file: Some(file) }))
+    HxRc::new(HxCell::new(FileHandle { file: Some(file) }))
 }

@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = hxrt::cell::HxRc<T>;
+type HxRefCell<T> = hxrt::cell::HxCell<T>;
+type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod haxe_ds_enum_value_map;
 mod haxe_ds_int_map;
@@ -30,7 +32,7 @@ fn main() {
     crate::sys::Sys::println(hxrt::dynamic::from(xs.contains(2)));
     crate::sys::Sys::println(hxrt::dynamic::from(xs.remove(1)));
     crate::sys::Sys::println(hxrt::dynamic::from(xs.join(String::from(",")).clone()));
-    xs.sort(std::rc::Rc::new(move |a: i32, b: i32| {
+    xs.sort(crate::HxRc::new(move |a: i32, b: i32| {
         return a - b;
     }));
     crate::sys::Sys::println(hxrt::dynamic::from(xs.join(String::from(",")).clone()));

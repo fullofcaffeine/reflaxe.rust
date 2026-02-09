@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = hxrt::cell::HxRc<T>;
+type HxRefCell<T> = hxrt::cell::HxCell<T>;
+type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod haxe_ds_enum_value_map;
 mod haxe_ds_int_map;
@@ -79,7 +81,7 @@ fn main() {
         first
     };
     let total: i32 = {
-        let pred: Option<std::rc::Rc<dyn Fn(i32) -> bool>> = None;
+        let pred: Option<crate::HxRc<dyn Fn(i32) -> bool + Send + Sync>> = None;
         let mut n: i32 = 0;
         if pred.is_none() {
             let mut _g_current_2: i32;

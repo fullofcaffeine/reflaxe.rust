@@ -10,16 +10,15 @@ pub struct A {
 
 impl A {
     pub fn new() -> crate::HxRef<crate::a::A> {
-        let self_: crate::HxRef<crate::a::A> =
-            std::rc::Rc::new(std::cell::RefCell::new(A { _x: 1 }));
+        let self_: crate::HxRef<crate::a::A> = crate::HxRc::new(crate::HxRefCell::new(A { _x: 1 }));
         return self_;
     }
 
-    pub fn get_x(self_: &std::cell::RefCell<A>) -> i32 {
+    pub fn get_x(self_: &crate::HxRefCell<A>) -> i32 {
         return self_.borrow()._x;
     }
 
-    pub fn set_x(self_: &std::cell::RefCell<A>, v: i32) -> i32 {
+    pub fn set_x(self_: &crate::HxRefCell<A>, v: i32) -> i32 {
         {
             let __tmp = v;
             self_.borrow_mut()._x = __tmp;
@@ -28,16 +27,16 @@ impl A {
         return v;
     }
 
-    pub fn foo(_self_: &std::cell::RefCell<A>) -> String {
+    pub fn foo(_self_: &crate::HxRefCell<A>) -> String {
         return String::from("A.foo");
     }
 
-    pub fn sound(_self_: &std::cell::RefCell<A>) -> String {
+    pub fn sound(_self_: &crate::HxRefCell<A>) -> String {
         return String::from("A.sound");
     }
 }
 
-pub trait ATrait {
+pub trait ATrait: Send + Sync {
     fn __hx_get_u1_x(&self) -> i32;
     fn __hx_set_u1_x(&self, v: i32);
     fn get_x(&self) -> i32;
@@ -47,7 +46,7 @@ pub trait ATrait {
     fn __hx_type_id(&self) -> u32;
 }
 
-impl crate::a::ATrait for std::cell::RefCell<A> {
+impl crate::a::ATrait for crate::HxRefCell<A> {
     fn __hx_get_u1_x(&self) -> i32 {
         self.borrow()._x
     }

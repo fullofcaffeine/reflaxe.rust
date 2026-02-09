@@ -1,19 +1,18 @@
-use std::cell::RefCell;
-use std::rc::Rc;
+use crate::cell::{HxCell, HxRc, HxRef};
 
-/// Identity comparison for `Rc`-backed values.
+/// Identity comparison for `HxRc`-backed values.
 ///
-/// reflaxe.rust models Haxe reference types as `Rc<...>` (e.g. `HxRef<T> = Rc<RefCell<T>>`,
-/// interface values as `Rc<dyn Trait>`, polymorphic base classes as `Rc<dyn BaseTrait>`, etc).
+/// reflaxe.rust models Haxe reference types as `HxRc<...>` (e.g. `HxRef<T> = HxRc<HxCell<T>>`,
+/// interface values as `HxRc<dyn Trait>`, polymorphic base classes as `HxRc<dyn BaseTrait>`, etc).
 /// Haxe `==` for objects is **reference equality**, so we need a stable way to compare these values
 /// without requiring `T: PartialEq`.
 pub trait RcPtrEq {
     fn rc_ptr_eq(&self, other: &Self) -> bool;
 }
 
-impl<T: ?Sized> RcPtrEq for Rc<T> {
+impl<T: ?Sized> RcPtrEq for HxRc<T> {
     fn rc_ptr_eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(self, other)
+        HxRc::ptr_eq(self, other)
     }
 }
 
@@ -29,31 +28,31 @@ impl<T: ?Sized> RcPtrEq for Rc<T> {
 /// - A plain Rust `Vec<T>` is an owned value that moves by default, and does not alias on assignment.
 ///
 /// What
-/// - A lightweight wrapper around `Rc<RefCell<Vec<T>>>`.
-/// - Cloning an `Array<T>` is cheap (it clones the `Rc`, not the underlying elements).
+/// - A lightweight wrapper around `HxRef<Vec<T>>`.
+/// - Cloning an `Array<T>` is cheap (it clones the `HxRc`, not the underlying elements).
 ///
 /// How
-/// - Mutation is performed through interior mutability (`RefCell`), so methods can take `&self`.
+/// - Mutation is performed through interior mutability (`HxCell`), so methods can take `&self`.
 /// - Indexing helpers return owned `T` values by cloning, which aligns with how the backend models
 ///   Haxe "reusable values" semantics.
 #[derive(Clone, Debug, Default)]
 pub struct Array<T> {
-    inner: Rc<RefCell<Vec<T>>>,
+    inner: HxRef<Vec<T>>,
 }
 
-pub type SliceCallback<T, R> = Rc<dyn Fn(&[T]) -> R>;
-pub type MutSliceCallback<T, R> = Rc<dyn Fn(&mut [T]) -> R>;
+pub type SliceCallback<T, R> = HxRc<dyn Fn(&[T]) -> R + Send + Sync>;
+pub type MutSliceCallback<T, R> = HxRc<dyn Fn(&mut [T]) -> R + Send + Sync>;
 
 impl<T> Array<T> {
     pub fn new() -> Self {
         Self {
-            inner: Rc::new(RefCell::new(Vec::new())),
+            inner: HxRc::new(HxCell::new(Vec::new())),
         }
     }
 
     pub fn from_vec(vec: Vec<T>) -> Self {
         Self {
-            inner: Rc::new(RefCell::new(vec)),
+            inner: HxRc::new(HxCell::new(vec)),
         }
     }
 
@@ -295,7 +294,7 @@ impl<T> Array<T> {
         self.last_index_of(value, from_index)
     }
 
-    pub fn sort(&self, compare: Rc<dyn Fn(T, T) -> i32>)
+    pub fn sort(&self, compare: HxRc<dyn Fn(T, T) -> i32 + Send + Sync>)
     where
         T: Clone,
     {
@@ -333,13 +332,13 @@ impl<T> Array<T> {
     }
 
     pub fn ptr_eq(&self, other: &Array<T>) -> bool {
-        Rc::ptr_eq(&self.inner, &other.inner)
+        HxRc::ptr_eq(&self.inner, &other.inner)
     }
 }
 
 // Haxe object arrays use identity-based search semantics.
 //
-// IMPORTANT: We cannot use `T: PartialEq` for `HxRef<T>` or `Rc<dyn Trait>` elements, because those
+// IMPORTANT: We cannot use `T: PartialEq` for `HxRef<T>` or `HxRc<dyn Trait>` elements, because those
 // types do not implement `PartialEq`. Instead, expose explicit ref-equality APIs, and let the
 // compiler route `Array.contains/indexOf/lastIndexOf/remove` to these for object arrays.
 impl<T> Array<T>

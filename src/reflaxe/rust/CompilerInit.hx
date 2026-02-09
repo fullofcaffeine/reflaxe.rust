@@ -51,6 +51,10 @@ class CompilerInit {
 		// Opt-in user policy: forbid __rust__ injection in project sources.
 		StrictModeEnforcer.init();
 
+		// Signal threaded sys support so upstream `sys.thread.*` APIs are available.
+		// We provide target overrides for the core primitives under `std/sys/thread/*`.
+		Compiler.define("target.threaded");
+
 		var prepasses: Array<ExpressionPreprocessor> = [];
 
 		ReflectCompiler.AddCompiler(new RustCompiler(), {

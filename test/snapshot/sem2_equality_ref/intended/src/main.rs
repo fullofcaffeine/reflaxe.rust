@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;
+type HxRc<T> = hxrt::cell::HxRc<T>;
+type HxRefCell<T> = hxrt::cell::HxCell<T>;
+type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod foo;
 mod haxe_ds_enum_value_map;
@@ -26,9 +28,9 @@ fn main() {
     let a: crate::HxRef<crate::foo::Foo> = crate::foo::Foo::new(1);
     let b: crate::HxRef<crate::foo::Foo> = crate::foo::Foo::new(1);
     let c: crate::HxRef<crate::foo::Foo> = a.clone();
-    crate::sys::Sys::println(hxrt::dynamic::from(std::rc::Rc::ptr_eq(&a, &b)));
-    crate::sys::Sys::println(hxrt::dynamic::from(std::rc::Rc::ptr_eq(&a, &c)));
-    crate::sys::Sys::println(hxrt::dynamic::from(!std::rc::Rc::ptr_eq(&a, &b)));
+    crate::sys::Sys::println(hxrt::dynamic::from(crate::HxRc::ptr_eq(&a, &b)));
+    crate::sys::Sys::println(hxrt::dynamic::from(crate::HxRc::ptr_eq(&a, &c)));
+    crate::sys::Sys::println(hxrt::dynamic::from(!crate::HxRc::ptr_eq(&a, &b)));
     let xs1: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::from_vec(vec![1, 2]);
     let xs2: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::from_vec(vec![1, 2]);
     let xs3: hxrt::array::Array<i32> = xs1.clone();

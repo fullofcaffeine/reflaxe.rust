@@ -1,3 +1,4 @@
+use crate::cell::{HxCell, HxRc, HxRef};
 use crate::{dynamic, exception, io};
 use mio::{Events, Interest, Poll, Token};
 use socket2::{Domain, Protocol, Socket, Type};
@@ -6,7 +7,6 @@ use std::net::{
     IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream, ToSocketAddrs, UdpSocket,
 };
 use std::time::Duration;
-use std::{cell::RefCell, rc::Rc};
 
 /// `hxrt::net`
 ///
@@ -153,16 +153,16 @@ pub fn host_local() -> String {
     }
 }
 
-pub fn socket_new_tcp() -> Rc<RefCell<SocketHandle>> {
-    Rc::new(RefCell::new(SocketHandle {
+pub fn socket_new_tcp() -> HxRef<SocketHandle> {
+    HxRc::new(HxCell::new(SocketHandle {
         kind: SocketKind::Tcp(TcpState::default()),
         timeout: None,
         blocking: true,
     }))
 }
 
-pub fn socket_new_udp() -> Rc<RefCell<SocketHandle>> {
-    Rc::new(RefCell::new(SocketHandle {
+pub fn socket_new_udp() -> HxRef<SocketHandle> {
+    HxRc::new(HxCell::new(SocketHandle {
         kind: SocketKind::Udp(UdpState::default()),
         timeout: None,
         blocking: true,
@@ -345,7 +345,7 @@ impl SocketHandle {
         t.listener = Some(listener);
     }
 
-    pub fn accept(&mut self) -> Rc<RefCell<SocketHandle>> {
+    pub fn accept(&mut self) -> HxRef<SocketHandle> {
         let blocking = self.blocking;
         let timeout = self.timeout;
         let t = self.tcp_mut();
@@ -384,7 +384,7 @@ impl SocketHandle {
             ts.write = Some(write);
         }
 
-        Rc::new(RefCell::new(out))
+        HxRc::new(HxCell::new(out))
     }
 
     pub fn shutdown(&mut self, read: bool, write: bool) {
@@ -571,7 +571,7 @@ impl AnySource {
     }
 }
 
-fn socket_source_clone(h: &Rc<RefCell<SocketHandle>>) -> Option<AnySource> {
+fn socket_source_clone(h: &HxRef<SocketHandle>) -> Option<AnySource> {
     let hb = h.borrow();
     match &hb.kind {
         SocketKind::Tcp(t) => {
@@ -597,9 +597,9 @@ fn socket_source_clone(h: &Rc<RefCell<SocketHandle>>) -> Option<AnySource> {
 }
 
 pub fn socket_select(
-    read: Vec<Rc<RefCell<SocketHandle>>>,
-    write: Vec<Rc<RefCell<SocketHandle>>>,
-    others: Vec<Rc<RefCell<SocketHandle>>>,
+    read: Vec<HxRef<SocketHandle>>,
+    write: Vec<HxRef<SocketHandle>>,
+    others: Vec<HxRef<SocketHandle>>,
     timeout_seconds: Option<f64>,
 ) -> (Vec<i32>, Vec<i32>, Vec<i32>) {
     let mut poll = match Poll::new() {
@@ -619,7 +619,7 @@ pub fn socket_select(
     let mut sources: Vec<AnySource> = vec![];
 
     let mut register_group =
-        |group: Group, interest: Interest, sockets: &Vec<Rc<RefCell<SocketHandle>>>| {
+        |group: Group, interest: Interest, sockets: &Vec<HxRef<SocketHandle>>| {
             for (idx, s) in sockets.iter().enumerate() {
                 let Some(mut src) = socket_source_clone(s) else {
                     continue;

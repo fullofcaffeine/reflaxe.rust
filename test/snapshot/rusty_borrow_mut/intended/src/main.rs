@@ -2,9 +2,9 @@
 
 #![allow(dead_code)]
 
-type HxRc<T> = std::rc::Rc<T>;
-type HxRefCell<T> = std::cell::RefCell<T>;
-type HxRef<T> = HxRc<HxRefCell<T>>;
+type HxRc<T> = hxrt::cell::HxRc<T>;
+type HxRefCell<T> = hxrt::cell::HxCell<T>;
+type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod haxe_ds_enum_value_map;
 mod haxe_ds_int_map;
