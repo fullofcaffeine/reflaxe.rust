@@ -108,6 +108,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - Optional formatter hook: `-D rustfmt` runs `cargo fmt --manifest-path <out>/Cargo.toml` after output generation (best-effort, warns on failure).
 - TUI testing: prefer ratatui `TestBackend` via `TuiDemo.renderToString(...)` and assert in `cargo test` (see `docs/tui.md` and `examples/tui_todo/native/tui_tests.rs`).
   - Non-TTY gotcha: `TuiDemo.enter()` must never `unwrap()` terminal initialization. If interactive init fails (or stdin/stdout aren’t TTY), it must fall back to headless so `cargo run` in CI doesn’t panic.
+- Threading (sys.thread): the current `Rc<RefCell<T>>`-based heap cannot safely cross OS threads (`!Send/!Sync`), so implementing real `sys.thread.Thread.create` requires an explicit runtime model decision (see `docs/threading.md` and bead `haxe.rust-zhs`).
 
 ## Testing + CI
 
