@@ -13,6 +13,7 @@ mod haxe_ds_list;
 mod haxe_ds_object_map;
 mod haxe_ds_string_map;
 mod haxe_exception;
+mod haxe_i_map;
 mod haxe_int64_int64;
 mod haxe_int64_int64_impl_;
 mod haxe_io_bytes_buffer;
@@ -22,6 +23,7 @@ mod haxe_io_fp_helper;
 mod haxe_io_input;
 mod haxe_io_output;
 mod haxe_stack_item;
+mod string_buf;
 mod sys;
 mod sys_io_stderr;
 mod sys_io_stdin;
@@ -34,7 +36,7 @@ fn main() {
         {
             let mut _g1: i32 = 0;
             let _g2: hxrt::array::Array<i32> = a.clone();
-            while _g1 < _g2.len() as i32 {
+            while _g1 < (_g2.len() as i32) {
                 let v: i32 = _g2.get_unchecked(_g1 as usize);
                 {
                     _g1 = _g1 + 1;
@@ -50,7 +52,7 @@ fn main() {
         {
             let mut _g1_2: i32 = 0;
             let _g2_2: hxrt::array::Array<i32> = a.clone();
-            while _g1_2 < _g2_2.len() as i32 {
+            while _g1_2 < (_g2_2.len() as i32) {
                 let v_2: i32 = _g2_2.get_unchecked(_g1_2 as usize);
                 {
                     _g1_2 = _g1_2 + 1;
@@ -70,7 +72,7 @@ fn main() {
             let _g_array: hxrt::array::Array<i32>;
             _g_current = 0;
             _g_array = a.clone();
-            while _g_current < _g_array.len() as i32 {
+            while _g_current < (_g_array.len() as i32) {
                 let x: i32 = _g_array.get_unchecked(
                     ({
                         let __tmp = _g_current;
@@ -91,7 +93,7 @@ fn main() {
             let _g_array_2: hxrt::array::Array<i32>;
             _g_current_2 = 0;
             _g_array_2 = a.clone();
-            while _g_current_2 < _g_array_2.len() as i32 {
+            while _g_current_2 < (_g_array_2.len() as i32) {
                 let _unused: i32 = _g_array_2.get_unchecked(
                     ({
                         let __tmp = _g_current_2;
@@ -110,7 +112,7 @@ fn main() {
             let _g_array_3: hxrt::array::Array<i32>;
             _g_current_3 = 0;
             _g_array_3 = a.clone();
-            while _g_current_3 < _g_array_3.len() as i32 {
+            while _g_current_3 < (_g_array_3.len() as i32) {
                 let x_2: i32 = _g_array_3.get_unchecked(
                     ({
                         let __tmp = _g_current_3;
@@ -136,7 +138,7 @@ fn main() {
             let _g_array_4: hxrt::array::Array<i32>;
             _g_current_4 = 0;
             _g_array_4 = a.clone();
-            while _g_current_4 < _g_array_4.len() as i32 {
+            while _g_current_4 < (_g_array_4.len() as i32) {
                 let x_3: i32 = _g_array_4.get_unchecked(
                     ({
                         let __tmp = _g_current_4;
@@ -159,7 +161,7 @@ fn main() {
             let _g_array_5: hxrt::array::Array<i32>;
             _g_current_5 = 0;
             _g_array_5 = a.clone();
-            while _g_current_5 < _g_array_5.len() as i32 {
+            while _g_current_5 < (_g_array_5.len() as i32) {
                 let x_4: i32 = _g_array_5.get_unchecked(
                     ({
                         let __tmp = _g_current_5;

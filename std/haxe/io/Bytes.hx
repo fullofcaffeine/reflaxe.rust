@@ -73,4 +73,33 @@ extern class Bytes {
 	public function sub(pos:Int, len:Int):Bytes;
 	public function getString(pos:Int, len:Int, ?encoding:Encoding):String;
 	public function toString():String;
+
+	/**
+		Returns the hexadecimal representation of this byte buffer (upper-case).
+
+		Why
+		- Various sys std implementations use `Bytes.toHex()` for SQL blobs, hashes, debugging, etc.
+		- The Rust target maps `Bytes` to a runtime-owned buffer (`hxrt::bytes::Bytes`), so we can't
+		  rely on the upstream implementation which assumes a target-specific `BytesData`.
+
+		What
+		- A pure-Haxe implementation that iterates the bytes and builds a hex string.
+
+		How
+		- Uses `get(i)` (compiler intrinsic) and emits ASCII hex digits.
+		- Kept `inline` so it does not require any additional runtime hooks.
+	**/
+	public inline function toHex():String {
+		var sb = new StringBuf();
+		var i = 0;
+		while (i < length) {
+			var v = get(i) & 0xFF;
+			var hi = (v >> 4) & 0xF;
+			var lo = v & 0xF;
+			sb.addChar(hi < 10 ? (48 + hi) : (55 + hi));
+			sb.addChar(lo < 10 ? (48 + lo) : (55 + lo));
+			i++;
+		}
+		return sb.toString();
+	}
 }

@@ -1,0 +1,7 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_strict_examples
+-D reflaxe.dont_output_metadata_id
+-dce no
+-main Main
+

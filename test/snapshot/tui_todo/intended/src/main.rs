@@ -32,7 +32,7 @@ fn main() {
     let mut selected: i32 = 0;
     let mut frame: i32 = 0;
     let mut i: i32 = 0;
-    while i < actions.len() as i32 {
+    while i < (actions.len() as i32) {
         let action: crate::action::Action = actions.get_unchecked(i as usize);
         match action.clone() {
             crate::action::Action::Up => {
@@ -54,7 +54,7 @@ fn main() {
         }
         let mut lines: String = String::from("");
         let mut j: i32 = 0;
-        while j < tasks.len() as i32 {
+        while j < (tasks.len() as i32) {
             lines = format!(
                 "{}{}{}",
                 &lines,

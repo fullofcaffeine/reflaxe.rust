@@ -90,6 +90,18 @@ if ! command -v cargo >/dev/null 2>&1; then
   exit 2
 fi
 
+# Snapshot harness performance + disk hygiene:
+# Build all generated crates into a shared target directory so we don't create
+# `*/out*/target` for every single snapshot case.
+#
+# Override with:
+# - `SNAP_CARGO_TARGET_DIR=/path/to/dir`
+# - or pre-set `CARGO_TARGET_DIR`
+if [[ -z "${CARGO_TARGET_DIR:-}" ]]; then
+  SNAP_CARGO_TARGET_DIR="${SNAP_CARGO_TARGET_DIR:-$ROOT_DIR/.cache/snapshots-target}"
+  export CARGO_TARGET_DIR="$SNAP_CARGO_TARGET_DIR"
+fi
+
 fail=0
 
 should_run_clippy_for_case() {

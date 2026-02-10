@@ -1,0 +1,32 @@
+use std::sync::Arc;
+
+/// `hxrt::hxref`
+///
+/// Tiny helpers for the Rust representation of Haxe "object references".
+///
+/// Why
+/// - reflaxe.rust represents Haxe class instances as `HxRef<T>` (currently `Arc<...>`), so values can
+///   safely cross OS-thread boundaries when `sys.thread.*` is used.
+/// - Some stdlib containers (e.g. `haxe.ds.ObjectMap`) need a stable, identity-based key derived from
+///   the underlying reference.
+///
+/// What
+/// - `HxRefLike`: a trait implemented for `Arc<T>` that can produce a stable pointer identity.
+/// - `ptr_id`: a small helper returning a hex string id for any `HxRefLike`.
+///
+/// How
+/// - `ptr_usize()` uses `Arc::as_ptr` to obtain a stable address for the allocation backing the `Arc`.
+/// - `ptr_id()` formats it as a hex string (no `0x` prefix) for convenient use as a map key.
+pub trait HxRefLike {
+    fn ptr_usize(&self) -> usize;
+}
+
+impl<T> HxRefLike for Arc<T> {
+    fn ptr_usize(&self) -> usize {
+        Arc::as_ptr(self) as usize
+    }
+}
+
+pub fn ptr_id<K: HxRefLike>(key: &K) -> String {
+    format!("{:x}", key.ptr_usize())
+}

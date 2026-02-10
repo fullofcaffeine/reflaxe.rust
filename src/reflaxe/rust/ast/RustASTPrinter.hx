@@ -245,8 +245,16 @@ class RustASTPrinter {
 			case EBinary(op, left, right): {
 				var prec = binaryPrec(op);
 				var leftStr = printExprPrec(left, indent, prec);
+				// Rust parsing gotcha: `x as i32 < 0` parses as `x as i32<0>` (generic arguments).
+				// Force parens around casts when used in comparisons.
+				if ((op == "<" || op == ">" || op == "<=" || op == ">=") && switch (left) { case ECast(_, _): true; case _: false; }) {
+					leftStr = "(" + leftStr + ")";
+				}
 				// Preserve grouping: for left-associative ops, parenthesize RHS when it has the same precedence.
 				var rightStr = printExprPrec(right, indent, prec + 1);
+				if ((op == "<" || op == ">" || op == "<=" || op == ">=") && switch (right) { case ECast(_, _): true; case _: false; }) {
+					rightStr = "(" + rightStr + ")";
+				}
 				var out = leftStr + " " + op + " " + rightStr;
 				wrapIfNeeded(out, prec, ctxPrec);
 			}

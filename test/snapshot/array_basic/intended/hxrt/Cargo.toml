@@ -13,3 +13,20 @@ socket2 = "0.5"
 hostname = "0.4"
 dns-lookup = "2"
 parking_lot = "0.12"
+rustls = "0.23"
+rustls-native-certs = "0.7"
+rustls-pemfile = "2"
+webpki-roots = "0.26"
+
+# `sys.ssl.Digest`
+md-5 = "0.10"
+ripemd = "0.1"
+sha1 = "0.10"
+sha2 = "0.10"
+rsa = { version = "0.9", features = ["pem"] }
+
+# `sys.ssl.Certificate` parsing helpers.
+x509-parser = "0.16"
+
+[dev-dependencies]
+rcgen = "0.13"

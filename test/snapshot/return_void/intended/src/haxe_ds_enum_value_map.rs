@@ -4,12 +4,19 @@ pub const __HX_TYPE_ID: u32 = 0x0cd85f36u32;
 
 #[derive(Debug)]
 
-pub struct EnumValueMap<K: Clone + std::fmt::Debug, V: Clone + std::fmt::Debug> {
+pub struct EnumValueMap<
+    K: Clone + Send + Sync + 'static + std::fmt::Debug,
+    V: Clone + Send + Sync + 'static + std::fmt::Debug,
+> {
     keys_map: std::collections::HashMap<String, K>,
     values_map: std::collections::HashMap<String, V>,
 }
 
-impl<K: Clone + std::fmt::Debug, V: Clone + std::fmt::Debug> EnumValueMap<K, V> {
+impl<
+        K: Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    > EnumValueMap<K, V>
+{
     pub fn new() -> crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> {
         let self_: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> =
             crate::HxRc::new(crate::HxRefCell::new(EnumValueMap {
@@ -109,5 +116,42 @@ impl<K: Clone + std::fmt::Debug, V: Clone + std::fmt::Debug> EnumValueMap<K, V> 
             __s.keys_map.clear();
             __s.values_map.clear();
         };
+    }
+}
+
+impl<
+        K: Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    > crate::haxe_i_map::IMap<K, V> for crate::HxRefCell<EnumValueMap<K, V>>
+{
+    fn get(&self, k: K) -> Option<V> {
+        EnumValueMap::<K, V>::get(self, k)
+    }
+    fn set(&self, k: K, v: V) -> () {
+        EnumValueMap::<K, V>::set(self, k, v)
+    }
+    fn exists(&self, k: K) -> bool {
+        EnumValueMap::<K, V>::exists(self, k)
+    }
+    fn remove(&self, k: K) -> bool {
+        EnumValueMap::<K, V>::remove(self, k)
+    }
+    fn keys(&self) -> hxrt::iter::Iter<K> {
+        EnumValueMap::<K, V>::keys(self)
+    }
+    fn iterator(&self) -> hxrt::iter::Iter<V> {
+        EnumValueMap::<K, V>::iterator(self)
+    }
+    fn key_value_iterator(&self) -> hxrt::iter::Iter<hxrt::iter::KeyValue<K, V>> {
+        EnumValueMap::<K, V>::key_value_iterator(self)
+    }
+    fn copy(&self) -> crate::HxRc<dyn crate::haxe_i_map::IMap<K, V> + Send + Sync> {
+        EnumValueMap::<K, V>::copy(self)
+    }
+    fn to_string(&self) -> String {
+        EnumValueMap::<K, V>::to_string(self)
+    }
+    fn clear(&self) -> () {
+        EnumValueMap::<K, V>::clear(self)
     }
 }

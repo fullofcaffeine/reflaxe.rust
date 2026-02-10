@@ -6,7 +6,11 @@ use std::io::{Read, Write};
 use std::net::{
     IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream, ToSocketAddrs, UdpSocket,
 };
+use std::sync::Arc;
 use std::time::Duration;
+
+use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
+use rustls::{ClientConfig, ClientConnection, RootCertStore, ServerConfig, ServerConnection};
 
 /// `hxrt::net`
 ///
@@ -60,6 +64,19 @@ struct TcpState {
     read: Option<TcpStream>,
     write: Option<TcpStream>,
     fast_send: bool,
+    tls: Option<Box<TlsState>>,
+}
+
+#[derive(Debug)]
+enum TlsState {
+    Client {
+        conn: Box<ClientConnection>,
+        peer_chain_der: Vec<Vec<u8>>,
+    },
+    Server {
+        conn: Box<ServerConnection>,
+        peer_chain_der: Vec<Vec<u8>>,
+    },
 }
 
 #[derive(Debug, Default)]
@@ -98,6 +115,77 @@ fn throw_io_err(err: std::io::Error) -> ! {
 
 fn throw_msg(msg: &str) -> ! {
     exception::throw(dynamic::from(String::from(msg)))
+}
+
+#[derive(Debug)]
+struct NoServerCertVerifier;
+
+impl rustls::client::danger::ServerCertVerifier for NoServerCertVerifier {
+    fn verify_server_cert(
+        &self,
+        _end_entity: &CertificateDer<'_>,
+        _intermediates: &[CertificateDer<'_>],
+        _server_name: &ServerName<'_>,
+        _ocsp_response: &[u8],
+        _now: UnixTime,
+    ) -> Result<rustls::client::danger::ServerCertVerified, rustls::Error> {
+        Ok(rustls::client::danger::ServerCertVerified::assertion())
+    }
+
+    fn verify_tls12_signature(
+        &self,
+        _message: &[u8],
+        _cert: &CertificateDer<'_>,
+        _dss: &rustls::DigitallySignedStruct,
+    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
+    }
+
+    fn verify_tls13_signature(
+        &self,
+        _message: &[u8],
+        _cert: &CertificateDer<'_>,
+        _dss: &rustls::DigitallySignedStruct,
+    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
+    }
+
+    fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
+        use rustls::SignatureScheme;
+        vec![
+            SignatureScheme::RSA_PKCS1_SHA256,
+            SignatureScheme::RSA_PKCS1_SHA384,
+            SignatureScheme::RSA_PKCS1_SHA512,
+            SignatureScheme::RSA_PSS_SHA256,
+            SignatureScheme::RSA_PSS_SHA384,
+            SignatureScheme::RSA_PSS_SHA512,
+            SignatureScheme::ECDSA_NISTP256_SHA256,
+            SignatureScheme::ECDSA_NISTP384_SHA384,
+        ]
+    }
+}
+
+fn tls_roots_from_cert_chain(chain_der: &[Vec<u8>]) -> RootCertStore {
+    let mut roots = RootCertStore::empty();
+    let ders: Vec<CertificateDer<'static>> = chain_der
+        .iter()
+        .cloned()
+        .map(CertificateDer::from)
+        .collect();
+    let _ = roots.add_parsable_certificates(ders);
+    roots
+}
+
+fn tls_roots_default() -> RootCertStore {
+    let mut roots = RootCertStore::empty();
+    if let Ok(store) = rustls_native_certs::load_native_certs() {
+        let _ = roots.add_parsable_certificates(store);
+        return roots;
+    }
+
+    // Fallback: no native store available. Add a minimal set.
+    roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+    roots
 }
 
 fn ipv4_to_int(ip: Ipv4Addr) -> i32 {
@@ -200,6 +288,10 @@ impl SocketHandle {
 
         match &mut self.kind {
             SocketKind::Tcp(t) => {
+                if let Some(s) = t.stream.as_ref() {
+                    let _ = s.set_read_timeout(self.timeout);
+                    let _ = s.set_write_timeout(self.timeout);
+                }
                 if let Some(r) = t.read.as_ref() {
                     let _ = r.set_read_timeout(self.timeout);
                 }
@@ -294,6 +386,148 @@ impl SocketHandle {
                 }
             }
         }
+    }
+
+    /// Upgrade an already-connected TCP socket into a TLS client connection.
+    ///
+    /// This is used by `sys.ssl.Socket.handshake()` for HTTPS support.
+    pub fn tls_handshake_client(
+        &mut self,
+        hostname: Option<String>,
+        verify_cert: Option<bool>,
+        ca: Option<HxRef<crate::ssl::Certificate>>,
+    ) {
+        let verify = verify_cert.unwrap_or(true);
+        let t = self.tcp_mut();
+        if t.tls.is_some() {
+            return;
+        }
+
+        let stream = match t.stream.as_mut() {
+            Some(s) => s,
+            None => throw_msg("Socket is not connected"),
+        };
+
+        let server_name_str = hostname.unwrap_or_else(|| "localhost".to_string());
+        let server_name = match ServerName::try_from(server_name_str) {
+            Ok(n) => n,
+            Err(_) => throw_msg("Invalid TLS hostname"),
+        };
+
+        let roots = if let Some(ca) = ca.as_ref() {
+            tls_roots_from_cert_chain(ca.borrow().chain_der())
+        } else {
+            tls_roots_default()
+        };
+
+        let mut config = ClientConfig::builder()
+            .with_root_certificates(roots)
+            .with_no_client_auth();
+
+        if !verify {
+            config
+                .dangerous()
+                .set_certificate_verifier(Arc::new(NoServerCertVerifier));
+        }
+
+        let config = Arc::new(config);
+        let mut conn = match ClientConnection::new(config, server_name) {
+            Ok(c) => c,
+            Err(_) => throw_msg("TLS client setup failed"),
+        };
+
+        // Best-effort handshake. For now we assume blocking sockets.
+        while conn.is_handshaking() {
+            if let Err(e) = conn.complete_io(stream) {
+                throw_io_err(e);
+            }
+        }
+
+        let peer_chain_der: Vec<Vec<u8>> = conn
+            .peer_certificates()
+            .map(|certs| certs.iter().map(|c| c.as_ref().to_vec()).collect())
+            .unwrap_or_default();
+
+        // Disable the raw TCP clones: TLS read/write must go through `stream` + `conn`.
+        t.read = None;
+        t.write = None;
+        t.tls = Some(Box::new(TlsState::Client {
+            conn: Box::new(conn),
+            peer_chain_der,
+        }));
+    }
+
+    pub fn tls_peer_certificate(&self) -> HxRef<crate::ssl::Certificate> {
+        match &self.kind {
+            SocketKind::Tcp(t) => {
+                if let Some(tls) = t.tls.as_ref() {
+                    let chain = match tls.as_ref() {
+                        TlsState::Client { peer_chain_der, .. } => peer_chain_der.clone(),
+                        TlsState::Server { peer_chain_der, .. } => peer_chain_der.clone(),
+                    };
+                    crate::ssl::cert_from_chain_der(chain)
+                } else {
+                    crate::ssl::cert_new()
+                }
+            }
+            SocketKind::Udp(_) => crate::ssl::cert_new(),
+        }
+    }
+
+    pub fn tls_handshake_server(
+        &mut self,
+        cert: HxRef<crate::ssl::Certificate>,
+        key: HxRef<crate::ssl::Key>,
+    ) {
+        let t = self.tcp_mut();
+        if t.tls.is_some() {
+            return;
+        }
+
+        let stream = match t.stream.as_mut() {
+            Some(s) => s,
+            None => throw_msg("Socket is not connected"),
+        };
+
+        let certs: Vec<CertificateDer<'static>> = cert
+            .borrow()
+            .chain_der()
+            .iter()
+            .cloned()
+            .map(CertificateDer::from)
+            .collect();
+
+        let key_der: rustls::pki_types::PrivateKeyDer<'static> = key
+            .borrow()
+            .private_key_der()
+            .unwrap_or_else(|| throw_msg("Key is not a private key"));
+
+        let config = ServerConfig::builder()
+            .with_no_client_auth()
+            .with_single_cert(certs, key_der)
+            .unwrap_or_else(|_| throw_msg("TLS server config failed"));
+
+        let config = Arc::new(config);
+        let mut conn =
+            ServerConnection::new(config).unwrap_or_else(|_| throw_msg("TLS server setup failed"));
+
+        while conn.is_handshaking() {
+            if let Err(e) = conn.complete_io(stream) {
+                throw_io_err(e);
+            }
+        }
+
+        let peer_chain_der: Vec<Vec<u8>> = conn
+            .peer_certificates()
+            .map(|certs| certs.iter().map(|c| c.as_ref().to_vec()).collect())
+            .unwrap_or_default();
+
+        t.read = None;
+        t.write = None;
+        t.tls = Some(Box::new(TlsState::Server {
+            conn: Box::new(conn),
+            peer_chain_der,
+        }));
     }
 
     pub fn bind(&mut self, ip: i32, port: i32) {
@@ -487,26 +721,80 @@ impl SocketHandle {
 
     pub fn read_stream(&mut self, buf: &mut [u8]) -> i32 {
         let t = self.tcp_mut();
-        let r = match t.read.as_mut() {
-            Some(s) => s,
-            None => throw_msg("Socket is not connected"),
-        };
-        match r.read(buf) {
-            Ok(0) => -1,
-            Ok(n) => n as i32,
-            Err(e) => throw_io_err(e),
+        if let Some(tls) = t.tls.as_mut() {
+            let stream = match t.stream.as_mut() {
+                Some(s) => s,
+                None => throw_msg("Socket is not connected"),
+            };
+            match tls.as_mut() {
+                TlsState::Client { conn, .. } => {
+                    let mut tls_stream = rustls::Stream::new(conn.as_mut(), stream);
+                    match tls_stream.read(buf) {
+                        Ok(0) => -1,
+                        Ok(n) => n as i32,
+                        Err(e) => throw_io_err(e),
+                    }
+                }
+                TlsState::Server { conn, .. } => {
+                    let mut tls_stream = rustls::Stream::new(conn.as_mut(), stream);
+                    match tls_stream.read(buf) {
+                        Ok(0) => -1,
+                        Ok(n) => n as i32,
+                        Err(e) => throw_io_err(e),
+                    }
+                }
+            }
+        } else {
+            let r = match t.read.as_mut() {
+                Some(s) => s,
+                None => throw_msg("Socket is not connected"),
+            };
+            match r.read(buf) {
+                Ok(0) => -1,
+                Ok(n) => n as i32,
+                Err(e) => throw_io_err(e),
+            }
         }
     }
 
     pub fn write_stream(&mut self, buf: &[u8]) -> i32 {
         let t = self.tcp_mut();
-        let w = match t.write.as_mut() {
-            Some(s) => s,
-            None => throw_msg("Socket is not connected"),
-        };
-        match w.write(buf) {
-            Ok(n) => n as i32,
-            Err(e) => throw_io_err(e),
+        if let Some(tls) = t.tls.as_mut() {
+            let stream = match t.stream.as_mut() {
+                Some(s) => s,
+                None => throw_msg("Socket is not connected"),
+            };
+            match tls.as_mut() {
+                TlsState::Client { conn, .. } => {
+                    let mut tls_stream = rustls::Stream::new(conn.as_mut(), stream);
+                    match tls_stream.write(buf) {
+                        Ok(n) => {
+                            let _ = tls_stream.flush();
+                            n as i32
+                        }
+                        Err(e) => throw_io_err(e),
+                    }
+                }
+                TlsState::Server { conn, .. } => {
+                    let mut tls_stream = rustls::Stream::new(conn.as_mut(), stream);
+                    match tls_stream.write(buf) {
+                        Ok(n) => {
+                            let _ = tls_stream.flush();
+                            n as i32
+                        }
+                        Err(e) => throw_io_err(e),
+                    }
+                }
+            }
+        } else {
+            let w = match t.write.as_mut() {
+                Some(s) => s,
+                None => throw_msg("Socket is not connected"),
+            };
+            match w.write(buf) {
+                Ok(n) => n as i32,
+                Err(e) => throw_io_err(e),
+            }
         }
     }
 

@@ -24,8 +24,8 @@ import haxe.Constraints.IMap;
 	  - Value-returning operations clone (`K: Clone`, `V: Clone`) for Haxe-like reuse semantics.
 **/
 @:rustGeneric([
-	"K: hxrt::hxref::HxRefLike + Clone + std::fmt::Debug",
-	"V: Clone + std::fmt::Debug"
+	"K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug",
+	"V: Clone + Send + Sync + 'static + std::fmt::Debug"
 ])
 class ObjectMap<K:{}, V> implements IMap<K, V> {
 	var keysMap: rust.HashMap<String, K>;

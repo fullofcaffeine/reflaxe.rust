@@ -142,7 +142,7 @@ impl BytesBuffer {
             let mut _g: i32 = 0;
             let _g1: hxrt::array::Array<crate::HxRef<hxrt::bytes::Bytes>> =
                 self_.borrow().chunks.clone();
-            while _g < _g1.len() as i32 {
+            while _g < (_g1.len() as i32) {
                 let chunk: crate::HxRef<hxrt::bytes::Bytes> = _g1.get_unchecked(_g as usize);
                 {
                     _g = _g + 1;

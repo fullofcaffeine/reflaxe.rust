@@ -13,6 +13,7 @@ mod haxe_ds_list;
 mod haxe_ds_object_map;
 mod haxe_ds_string_map;
 mod haxe_exception;
+mod haxe_i_map;
 mod haxe_int64_int64;
 mod haxe_int64_int64_impl_;
 mod haxe_io_bytes_buffer;
@@ -22,6 +23,7 @@ mod haxe_io_fp_helper;
 mod haxe_io_input;
 mod haxe_io_output;
 mod haxe_stack_item;
+mod string_buf;
 mod sys;
 mod sys_io_stderr;
 mod sys_io_stdin;
@@ -34,7 +36,7 @@ fn count_if(
     let mut n: i32 = 0;
     if pred.is_none() {
         let mut _g: i32 = 0;
-        while _g < it.len() as i32 {
+        while _g < (it.len() as i32) {
             let _unused: i32 = it.get_unchecked(_g as usize);
             {
                 _g = _g + 1;
@@ -48,7 +50,7 @@ fn count_if(
         }
     } else {
         let mut _g_2: i32 = 0;
-        while _g_2 < it.len() as i32 {
+        while _g_2 < (it.len() as i32) {
             let x: i32 = it.get_unchecked(_g_2 as usize);
             {
                 _g_2 = _g_2 + 1;
@@ -94,7 +96,7 @@ fn main() {
             let _g_array: hxrt::array::Array<i32>;
             _g_current = 0;
             _g_array = a.clone();
-            while _g_current < _g_array.len() as i32 {
+            while _g_current < (_g_array.len() as i32) {
                 let _unused: i32 = _g_array.get_unchecked(
                     ({
                         let __tmp = _g_current;
@@ -113,7 +115,7 @@ fn main() {
             let _g_array_2: hxrt::array::Array<i32>;
             _g_current_2 = 0;
             _g_array_2 = a.clone();
-            while _g_current_2 < _g_array_2.len() as i32 {
+            while _g_current_2 < (_g_array_2.len() as i32) {
                 let x: i32 = _g_array_2.get_unchecked(
                     ({
                         let __tmp = _g_current_2;
@@ -139,7 +141,7 @@ fn main() {
             let _g_array_3: hxrt::array::Array<i32>;
             _g_current_3 = 0;
             _g_array_3 = a.clone();
-            while _g_current_3 < _g_array_3.len() as i32 {
+            while _g_current_3 < (_g_array_3.len() as i32) {
                 let x_2: i32 = _g_array_3.get_unchecked(
                     ({
                         let __tmp = _g_current_3;

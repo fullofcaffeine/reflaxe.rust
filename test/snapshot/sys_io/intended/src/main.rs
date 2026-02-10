@@ -13,6 +13,7 @@ mod haxe_ds_int_map;
 mod haxe_ds_object_map;
 mod haxe_ds_string_map;
 mod haxe_exception;
+mod haxe_i_map;
 mod haxe_int64_int64;
 mod haxe_int64_int64_impl_;
 mod haxe_io_bytes_buffer;
@@ -22,6 +23,7 @@ mod haxe_io_fp_helper;
 mod haxe_io_input;
 mod haxe_io_output;
 mod haxe_stack_item;
+mod string_buf;
 mod sys;
 mod sys_file_system;
 mod sys_io_file;
@@ -117,7 +119,7 @@ fn main() {
     let mut found_dot_dot: bool = false;
     {
         let mut _g: i32 = 0;
-        while _g < entries.len() as i32 {
+        while _g < (entries.len() as i32) {
             let e: String = entries.get_unchecked(_g as usize);
             {
                 _g = _g + 1;

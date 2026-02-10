@@ -12,6 +12,7 @@ mod haxe_ds_int_map;
 mod haxe_ds_object_map;
 mod haxe_ds_string_map;
 mod haxe_exception;
+mod haxe_i_map;
 mod haxe_int64_int64;
 mod haxe_int64_int64_impl_;
 mod haxe_io_bytes_buffer;
@@ -21,6 +22,7 @@ mod haxe_io_fp_helper;
 mod haxe_io_input;
 mod haxe_io_output;
 mod haxe_stack_item;
+mod string_buf;
 mod sys;
 mod sys_io_stderr;
 mod sys_io_stdin;
@@ -33,7 +35,7 @@ fn main() {
         {
             let mut _g1: i32 = 0;
             let _g2: hxrt::array::Array<i32> = a.clone();
-            while _g1 < _g2.len() as i32 {
+            while _g1 < (_g2.len() as i32) {
                 let v: i32 = _g2.get_unchecked(_g1 as usize);
                 {
                     _g1 = _g1 + 1;
@@ -49,7 +51,7 @@ fn main() {
         {
             let mut _g1_2: i32 = 0;
             let _g2_2: hxrt::array::Array<i32> = a.clone();
-            while _g1_2 < _g2_2.len() as i32 {
+            while _g1_2 < (_g2_2.len() as i32) {
                 let v_2: i32 = _g2_2.get_unchecked(_g1_2 as usize);
                 {
                     _g1_2 = _g1_2 + 1;
@@ -66,7 +68,7 @@ fn main() {
         let mut found: bool = false;
         {
             let mut _g_3: i32 = 0;
-            while _g_3 < a.len() as i32 {
+            while _g_3 < (a.len() as i32) {
                 let x: i32 = a.get_unchecked(_g_3 as usize);
                 {
                     _g_3 = _g_3 + 1;
@@ -83,7 +85,7 @@ fn main() {
     let found_two: Option<i32> = {
         let mut found_2: Option<i32> = None;
         let mut i: i32 = 0;
-        while i < a.len() as i32 {
+        while i < (a.len() as i32) {
             let x_2: Option<i32> = a.get(i as usize);
             if {
                 let x_3: i32 = x_2.unwrap();
@@ -104,7 +106,7 @@ fn main() {
         let mut first: i32 = 0;
         {
             let mut _g_4: i32 = 0;
-            while _g_4 < a.len() as i32 {
+            while _g_4 < (a.len() as i32) {
                 let x_4: i32 = a.get_unchecked(_g_4 as usize);
                 {
                     _g_4 = _g_4 + 1;

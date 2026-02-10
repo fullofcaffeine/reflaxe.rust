@@ -311,7 +311,9 @@ private typedef RustImplSpec = {
 		function walk(relDir: String): Void {
 			var dirPath = relDir == "" ? root : normalizePath(Path.join([root, relDir]));
 			for (entry in FileSystem.readDirectory(dirPath)) {
-				if (entry == "target" || entry == "Cargo.lock") continue;
+				// Keep generated output lean: the bundled runtime is a dependency, not a dev workspace.
+				// Exclude build artifacts and dev-only folders (tests/benches/examples).
+				if (entry == "target" || entry == "Cargo.lock" || entry == "tests" || entry == "benches" || entry == "examples") continue;
 				var full = normalizePath(Path.join([dirPath, entry]));
 				var rel = relDir == "" ? entry : normalizePath(Path.join([relDir, entry]));
 				if (FileSystem.isDirectory(full)) {
@@ -641,39 +643,68 @@ private typedef RustImplSpec = {
 
 					var implLines: Array<String> = [];
 					implLines.push("impl" + implGenerics + " " + traitPath + ifaceTypeArgs + " for " + refCellBasePath() + "<" + rustSelfTypeInst + "> {");
+					// Build a lookup of class methods by name/arity so we can implement the interface
+					// using the interface's signature (Rust traits require exact signature matches).
+					var classByKey: Map<String, ClassFuncData> = [];
 					for (f in effectiveFuncFields) {
 						if (f.isStatic) continue;
 						if (f.field.getHaxeName() == "new") continue;
 						if (f.expr == null) continue;
-
-					// Only include methods that match interface methods by name/arity.
-					var matchesInterface = false;
-					for (ifaceFieldName in ifaceType.fields.get().map(cf -> cf.getHaxeName())) {
-						if (ifaceFieldName == f.field.getHaxeName()) {
-							matchesInterface = true;
-							break;
-						}
+						var argc = f.args != null ? f.args.length : 0;
+						classByKey.set(f.field.getHaxeName() + "/" + argc, f);
 					}
-					if (!matchesInterface) continue;
+
+					for (ifaceField in ifaceType.fields.get()) {
+						// Only methods participate in interface traits.
+						switch (ifaceField.kind) {
+							case FMethod(_):
+							case _:
+								continue;
+						}
+
+						var ifaceSig = followType(ifaceField.type);
+						var ifaceParams: Array<{ name: String, t: Type, opt: Bool }> = [];
+						var ifaceRet: Type = ifaceField.type;
+						switch (ifaceSig) {
+							case TFun(params, ret):
+								ifaceParams = params;
+								ifaceRet = ret;
+							case _:
+						}
+
+						// Apply the interface type arguments from `implements IFace<...>` to the raw interface
+						// method signature (so `K`/`V` type parameters become concrete types like `i32` / `T`).
+						function applyIfaceParams(t: Type): Type {
+							if (iface.params == null || iface.params.length == 0) return t;
+							if (ifaceType.params == null || ifaceType.params.length == 0) return t;
+							return TypeTools.applyTypeParameters(t, ifaceType.params, iface.params);
+						}
+
+						var key = ifaceField.getHaxeName() + "/" + ifaceParams.length;
+						if (!classByKey.exists(key)) continue;
+						var f = classByKey.get(key);
 
 						var sigArgs: Array<String> = ["&self"];
 						var callArgs: Array<String> = ["self"];
 						var usedArgNames: Map<String, Bool> = [];
-						for (a in f.args) {
-							var baseName = a.getName();
-							if (baseName == null || baseName.length == 0) baseName = "a";
+						for (i in 0...ifaceParams.length) {
+							var p = ifaceParams[i];
+							var baseName = p.name != null && p.name.length > 0 ? p.name : ("a" + i);
 							var argName = RustNaming.stableUnique(RustNaming.snakeIdent(baseName), usedArgNames);
-							sigArgs.push(argName + ": " + rustTypeToString(toRustType(a.type, f.field.pos)));
+							var pt = applyIfaceParams(p.t);
+							sigArgs.push(argName + ": " + rustTypeToString(toRustType(pt, ifaceField.pos)));
 							callArgs.push(argName);
 						}
 
-					var ret = rustTypeToString(toRustType(f.ret, f.field.pos));
-					var ifaceRustName = rustMethodName(ifaceType, f.field);
-					var implRustName = rustMethodName(classType, f.field);
-					implLines.push("\tfn " + ifaceRustName + "(" + sigArgs.join(", ") + ") -> " + ret + " {");
-					implLines.push("\t\t" + rustSelfType + implTurbofish + "::" + implRustName + "(" + callArgs.join(", ") + ")");
-					implLines.push("\t}");
-				}
+						// IMPORTANT: use the interface return type, not the class method's return type.
+						// Haxe allows covariant returns; Rust trait impls do not.
+						var ret = rustTypeToString(rustReturnTypeForField(ifaceField, applyIfaceParams(ifaceRet), ifaceField.pos));
+						var ifaceRustName = rustMethodName(ifaceType, ifaceField);
+						var implRustName = rustMethodName(classType, f.field);
+						implLines.push("\tfn " + ifaceRustName + "(" + sigArgs.join(", ") + ") -> " + ret + " {");
+						implLines.push("\t\t" + rustSelfType + implTurbofish + "::" + implRustName + "(" + callArgs.join(", ") + ")");
+						implLines.push("\t}");
+					}
 				implLines.push("}");
 				items.push(RRaw(implLines.join("\n")));
 			}
@@ -1254,6 +1285,21 @@ private typedef RustImplSpec = {
 				case _:
 			}
 
+			// Function-typed fields are common in the stdlib (callbacks, handlers).
+			//
+			// Rust trait objects (`crate::HxRc<dyn Fn(...)>`) do not implement `Default`, so we must
+			// synthesize a valid value. We use a no-op closure (or a closure returning a default value).
+			switch (followType(t)) {
+				case TFun(params, ret): {
+					var argNames: Array<String> = [];
+					for (i in 0...params.length) argNames.push("_a" + i);
+					var args = params.length == 0 ? "||" : ("|" + argNames.join(", ") + "|");
+					var body = TypeHelper.isVoid(ret) ? "{}" : ("{ " + defaultValueForType(ret, pos) + " }");
+					return rcBasePath() + "::new(" + args + " " + body + ")";
+				}
+				case _:
+			}
+
 			if (TypeHelper.isBool(t)) return "false";
 			if (TypeHelper.isInt(t)) return "0";
 			if (TypeHelper.isFloat(t)) return "0.0";
@@ -1265,6 +1311,37 @@ private typedef RustImplSpec = {
 				var elem = arrayElementType(t);
 				var elemRust = toRustType(elem, pos);
 				return "hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new()";
+			}
+
+			// For many std types we prefer constructing a real instance over `Default::default()`,
+			// because `crate::HxRef<T>` defaults require `T: Default` (not always true).
+			switch (followType(t)) {
+				case TInst(clsRef, params): {
+					var cls = clsRef.get();
+					if (cls != null && !cls.isInterface && !cls.isExtern && !classHasSubclasses(cls) && shouldEmitClass(cls, false)) {
+						var ctor: Null<ClassField> = cls.constructor != null ? cls.constructor.get() : null;
+						if (ctor != null) {
+							var sig = followType(ctor.type);
+							var ctorArgs: Array<String> = [];
+							switch (sig) {
+								case TFun(fnParams, _): {
+									for (p in fnParams) {
+										ctorArgs.push(defaultValueForType(p.t, pos));
+									}
+								}
+								case _:
+							}
+
+							var modName = rustModuleNameForClass(cls);
+							var typeName = rustTypeNameForClass(cls);
+							var typeParams = params != null && params.length > 0
+								? ("::<" + [for (p in params) rustTypeToString(toRustType(p, pos))].join(", ") + ">")
+								: "";
+							return "crate::" + modName + "::" + typeName + typeParams + "::new(" + ctorArgs.join(", ") + ")";
+						}
+					}
+				}
+				case _:
 			}
 
 		return "Default::default()";
@@ -2904,16 +2981,16 @@ private typedef RustImplSpec = {
 			}
 
 			return switch (e.expr) {
-			case TConst(c): switch (c) {
-				case TInt(v): ELitInt(v);
-				case TFloat(s): ELitFloat(Std.parseFloat(s));
-					case TString(s): ECall(EPath("String::from"), [ELitString(s)]);
-					case TBool(b): ELitBool(b);
-					case TNull:
-						isDynamicType(e.t) ? ERaw("hxrt::dynamic::Dynamic::null()") : ERaw("None");
-					case TThis: EPath("self_");
-					case _: unsupported(e, "const");
-				}
+				case TConst(c): switch (c) {
+					case TInt(v): ELitInt(v);
+					case TFloat(s): ELitFloat(Std.parseFloat(s));
+						case TString(s): ECall(EPath("String::from"), [ELitString(s)]);
+						case TBool(b): ELitBool(b);
+						case TNull:
+							isNullType(e.t) ? ERaw("None") : (isDynamicType(e.t) ? ERaw("hxrt::dynamic::Dynamic::null()") : ERaw("None"));
+						case TThis: EPath("self_");
+						case _: unsupported(e, "const");
+					}
 
 				case TArrayDecl(values): {
 					// Haxe `Array<T>` literal: `[]` or `[a, b]` -> `hxrt::array::Array::<T>::new()` or `Array::from_vec(vec![...])`
@@ -3932,9 +4009,9 @@ private typedef RustImplSpec = {
 		}
 	}
 
-	function compileCall(callExpr: TypedExpr, args: Array<TypedExpr>, fullExpr: TypedExpr): RustExpr {
-		function compilePositionalArgsFor(params: Null<Array<{ name: String, t: Type, opt: Bool }>>): Array<RustExpr> {
-			var out: Array<RustExpr> = [];
+		function compileCall(callExpr: TypedExpr, args: Array<TypedExpr>, fullExpr: TypedExpr): RustExpr {
+			function compilePositionalArgsFor(params: Null<Array<{ name: String, t: Type, opt: Bool }>>): Array<RustExpr> {
+				var out: Array<RustExpr> = [];
 
 			for (i in 0...args.length) {
 				var arg = args[i];
@@ -3945,31 +4022,53 @@ private typedef RustImplSpec = {
 				out.push(compiled);
 			}
 
-			// Fill omitted optional args (`null` => `None` for `Null<T>`).
-			if (params != null && args.length < params.length) {
-				for (i in args.length...params.length) {
-					if (!params[i].opt) break;
-					var t = params[i].t;
-					out.push(isNullType(t) ? ERaw("None") : ERaw(defaultValueForType(t, fullExpr.pos)));
+				// Fill omitted optional args (`null` => `None` for `Null<T>`).
+				if (params != null && args.length < params.length) {
+					for (i in args.length...params.length) {
+						if (!params[i].opt) break;
+						out.push(ERaw("None"));
+					}
 				}
+
+				return out;
 			}
 
-			return out;
-		}
+			function funParamDefsForCall(t: Type): Null<Array<{ name: String, t: Type, opt: Bool }>> {
+				return switch (t) {
+					case TLazy(f):
+						funParamDefsForCall(f());
+					case TType(typeRef, params): {
+						var tt = typeRef.get();
+						if (tt != null) {
+							var under: Type = tt.type;
+							if (tt.params != null && tt.params.length > 0 && params != null && params.length == tt.params.length) {
+								under = TypeTools.applyTypeParameters(under, tt.params, params);
+							}
+							funParamDefsForCall(under);
+						} else {
+							null;
+						}
+					}
+					case TFun(params, _):
+						params;
+					case _:
+						null;
+				};
+			}
 
-		// Special-case: super(...) in constructors.
-		// POC: support `super()` as a no-op (base init semantics will be expanded later).
-		switch (callExpr.expr) {
-			case TConst(TSuper):
+			// Special-case: super(...) in constructors.
+			// POC: support `super()` as a no-op (base init semantics will be expanded later).
+			switch (callExpr.expr) {
+				case TConst(TSuper):
 				if (args.length > 0) return unsupported(fullExpr, "super(args)");
 				return EBlock({ stmts: [], tail: null });
 			case _:
 		}
 
-		// Special-case: Std.*
-		switch (callExpr.expr) {
-			case TField(_, FStatic(clsRef, fieldRef)):
-				var cls = clsRef.get();
+			// Special-case: Std.*
+			switch (callExpr.expr) {
+				case TField(_, FStatic(clsRef, fieldRef)):
+					var cls = clsRef.get();
 				var field = fieldRef.get();
 				if (cls.pack.length == 0 && cls.name == "Std") {
 					switch (field.name) {
@@ -4084,13 +4183,64 @@ private typedef RustImplSpec = {
 						case _:
 					}
 				}
-			case _:
-		}
+				case _:
+			}
 
-		// Special-case: Type.* (minimal reflection helpers)
-		switch (callExpr.expr) {
-			case TField(_, FStatic(clsRef, fieldRef)):
-				var cls = clsRef.get();
+			// Special-case: `String.fromCharCode(code)` -> `hxrt::string::from_char_code(code)`.
+			switch (callExpr.expr) {
+				case TField(_, FStatic(clsRef, fieldRef)):
+					var cls = clsRef.get();
+					var field = fieldRef.get();
+					if (cls.pack.length == 0 && cls.name == "String" && field.name == "fromCharCode") {
+						if (args.length != 1) return unsupported(fullExpr, "String.fromCharCode args");
+						return ECall(EPath("hxrt::string::from_char_code"), [compileExpr(args[0])]);
+					}
+				case _:
+			}
+
+			// Special-case: String instance methods -> `hxrt::string::*` helpers.
+			switch (callExpr.expr) {
+				case TField(obj, FInstance(_, _, cfRef)) if (isStringType(obj.t)): {
+					var cf = cfRef.get();
+					if (cf == null) {
+						return unsupported(fullExpr, "string call (missing field)");
+					}
+					var name = cf.getHaxeName();
+					var recv = compileExpr(obj);
+					var asStr = ECall(EField(recv, "as_str"), []);
+					var params = funParamDefsForCall(cf.type);
+					var compiledArgs = compilePositionalArgsFor(params);
+
+					function argAsStr(i: Int): RustExpr {
+						return ECall(EField(compiledArgs[i], "as_str"), []);
+					}
+
+					switch (name) {
+						case "toLowerCase":
+							if (compiledArgs.length != 0) return unsupported(fullExpr, "String.toLowerCase args");
+							return ECall(EPath("hxrt::string::to_lower_case"), [asStr]);
+						case "charAt":
+							if (compiledArgs.length != 1) return unsupported(fullExpr, "String.charAt args");
+							return ECall(EPath("hxrt::string::char_at"), [asStr, compiledArgs[0]]);
+						case "substr":
+							if (compiledArgs.length != 2) return unsupported(fullExpr, "String.substr args");
+							return ECall(EPath("hxrt::string::substr"), [asStr, compiledArgs[0], compiledArgs[1]]);
+						case "indexOf":
+							if (compiledArgs.length != 2) return unsupported(fullExpr, "String.indexOf args");
+							return ECall(EPath("hxrt::string::index_of"), [asStr, argAsStr(0), compiledArgs[1]]);
+						case "split":
+							if (compiledArgs.length != 1) return unsupported(fullExpr, "String.split args");
+							return ECall(EPath("hxrt::string::split"), [asStr, argAsStr(0)]);
+						case _:
+					}
+				}
+				case _:
+			}
+
+			// Special-case: Type.* (minimal reflection helpers)
+			switch (callExpr.expr) {
+				case TField(_, FStatic(clsRef, fieldRef)):
+					var cls = clsRef.get();
 				var field = fieldRef.get();
 				if (cls.pack.length == 0 && cls.name == "Type") {
 					switch (field.name) {
@@ -5019,20 +5169,27 @@ private typedef RustImplSpec = {
 					return ECall(EField(borrowed, "length"), []);
 				}
 
-				// Haxe Array length: `arr.length` -> `arr.len() as i32`
-				if (isArrayType(obj.t) && cf.getHaxeName() == "length") {
-					var lenCall = ECall(EField(compileExpr(obj), "len"), []);
-					return ECast(lenCall, "i32");
-				}
+					// Haxe Array length: `arr.length` -> `arr.len() as i32`
+					if (isArrayType(obj.t) && cf.getHaxeName() == "length") {
+						var lenCall = ECall(EField(compileExpr(obj), "len"), []);
+						return ECast(lenCall, "i32");
+					}
 
-					switch (cf.kind) {
-						case FMethod(_):
-							compileInstanceMethodValue(obj, owner, cf, fullExpr);
-						case _:
+					// Haxe String length: `s.length` -> `hxrt::string::len(s.as_str())`
+					if (isStringType(obj.t) && cf.getHaxeName() == "length") {
+						var recv = compileExpr(obj);
+						var asStr = ECall(EField(recv, "as_str"), []);
+						return ECall(EPath("hxrt::string::len"), [asStr]);
+					}
+
+						switch (cf.kind) {
+							case FMethod(_):
+								compileInstanceMethodValue(obj, owner, cf, fullExpr);
+							case _:
 							compileInstanceFieldRead(obj, owner, cf, fullExpr);
 					}
-				}
-				case FAnon(cfRef): {
+			}
+			case FAnon(cfRef): {
 				var cf = cfRef.get();
 				// General anonymous objects are lowered to `hxrt::anon::Anon` and accessed via typed `get`.
 				// Structural iterator/keyvalue records remain direct field access.
@@ -5045,7 +5202,14 @@ private typedef RustImplSpec = {
 				}
 				EField(compileExpr(obj), cf.getHaxeName());
 			}
-			case FDynamic(name): EField(compileExpr(obj), name);
+			case FDynamic(name): {
+				// Dynamic field access (`obj.field` where `obj:Dynamic`).
+				//
+				// Haxe expects runtime string-keyed lookup. Lower to a runtime helper that understands
+				// `Dynamic` receivers (notably `sys.db` rows).
+				var recv = compileExpr(obj);
+				ECall(EPath("hxrt::dynamic::field_get"), [EUnary("&", recv), ELitString(name)]);
+			}
 			case _: unsupported(fullExpr, "field");
 		}
 	}
@@ -6131,6 +6295,30 @@ private typedef RustImplSpec = {
 
 						return EBlock({ stmts: stmts, tail: EPath("__tmp") });
 					}
+					case TField(obj, FDynamic(name)): {
+						// Assignment into Dynamic fields:
+						// `{ let __obj = obj.clone(); let __tmp = rhs; hxrt::dynamic::field_set(&__obj, "field", <boxed>); __tmp }`
+						//
+						// This supports cases like:
+						//   `var o:Dynamic = ...; o.x = 1;`
+						var stmts: Array<RustStmt> = [];
+						stmts.push(RLet("__obj", false, null, maybeCloneForReuseValue(compileExpr(obj), obj)));
+
+						var rhsExpr: RustExpr = maybeCloneForReuseValue(compileExpr(e2), e2);
+						stmts.push(RLet("__tmp", false, null, rhsExpr));
+
+						var rhsVal: RustExpr = isCopyType(e2.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
+						var boxed: RustExpr = if (isDynamicType(e2.t)) {
+							rhsVal;
+						} else if (isNullConstExpr(e2) && isNullType(e2.t)) {
+							ECall(EPath("hxrt::dynamic::Dynamic::null"), []);
+						} else {
+							ECall(EPath("hxrt::dynamic::from"), [rhsVal]);
+						}
+
+						stmts.push(RSemi(ECall(EPath("hxrt::dynamic::field_set"), [EUnary("&", EPath("__obj")), ELitString(name), boxed])));
+						return EBlock({ stmts: stmts, tail: EPath("__tmp") });
+					}
 					case TField(obj, FInstance(clsRef, _, cfRef)): {
 						var owner = clsRef.get();
 						var cf = cfRef.get();
@@ -6285,6 +6473,12 @@ private typedef RustImplSpec = {
 							var ft1 = followType(e1.t);
 							var ft2 = followType(e2.t);
 
+						// `Dynamic == null` should not require `Dynamic: PartialEq`.
+						if (isDynamicType(ft1) && isNullConstExpr(e2)) {
+							ECall(EField(compileExpr(e1), "is_null"), []);
+							} else if (isDynamicType(ft2) && isNullConstExpr(e1)) {
+							ECall(EField(compileExpr(e2), "is_null"), []);
+							} else {
 						// Haxe object/array equality is identity-based.
 						if (isArrayType(ft1) && isArrayType(ft2)) {
 							ECall(EField(compileExpr(e1), "ptr_eq"), [EUnary("&", compileExpr(e2))]);
@@ -6293,6 +6487,7 @@ private typedef RustImplSpec = {
 							} else {
 								EBinary("==", compileExpr(e1), compileExpr(e2));
 							}
+						}
 						}
 					}
 						case OpNotEq: {
@@ -6314,6 +6509,11 @@ private typedef RustImplSpec = {
 							var ft1 = followType(e1.t);
 							var ft2 = followType(e2.t);
 
+						if (isDynamicType(ft1) && isNullConstExpr(e2)) {
+							EUnary("!", ECall(EField(compileExpr(e1), "is_null"), []));
+							} else if (isDynamicType(ft2) && isNullConstExpr(e1)) {
+							EUnary("!", ECall(EField(compileExpr(e2), "is_null"), []));
+							} else {
 						if (isArrayType(ft1) && isArrayType(ft2)) {
 							EUnary("!", ECall(EField(compileExpr(e1), "ptr_eq"), [EUnary("&", compileExpr(e2))]));
 							} else if (isRcBackedType(ft1) && isRcBackedType(ft2)) {
@@ -6321,6 +6521,7 @@ private typedef RustImplSpec = {
 							} else {
 								EBinary("!=", compileExpr(e1), compileExpr(e2));
 							}
+						}
 						}
 					}
 			case OpLt: EBinary("<", compileExpr(e1), compileExpr(e2));

@@ -4,11 +4,11 @@ pub const __HX_TYPE_ID: u32 = 0x39e0cd5bu32;
 
 #[derive(Debug)]
 
-pub struct IntMap<T: Clone + std::fmt::Debug> {
+pub struct IntMap<T: Clone + Send + Sync + 'static + std::fmt::Debug> {
     h: std::collections::HashMap<i32, T>,
 }
 
-impl<T: Clone + std::fmt::Debug> IntMap<T> {
+impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> IntMap<T> {
     pub fn new() -> crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> {
         let self_: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> =
             crate::HxRc::new(crate::HxRefCell::new(IntMap {
@@ -72,5 +72,40 @@ impl<T: Clone + std::fmt::Debug> IntMap<T> {
 
     pub fn clear(self_: &crate::HxRefCell<IntMap<T>>) {
         self_.borrow_mut().h.clear();
+    }
+}
+
+impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> crate::haxe_i_map::IMap<i32, T>
+    for crate::HxRefCell<IntMap<T>>
+{
+    fn get(&self, k: i32) -> Option<T> {
+        IntMap::<T>::get(self, k)
+    }
+    fn set(&self, k: i32, v: T) -> () {
+        IntMap::<T>::set(self, k, v)
+    }
+    fn exists(&self, k: i32) -> bool {
+        IntMap::<T>::exists(self, k)
+    }
+    fn remove(&self, k: i32) -> bool {
+        IntMap::<T>::remove(self, k)
+    }
+    fn keys(&self) -> hxrt::iter::Iter<i32> {
+        IntMap::<T>::keys(self)
+    }
+    fn iterator(&self) -> hxrt::iter::Iter<T> {
+        IntMap::<T>::iterator(self)
+    }
+    fn key_value_iterator(&self) -> hxrt::iter::Iter<hxrt::iter::KeyValue<i32, T>> {
+        IntMap::<T>::key_value_iterator(self)
+    }
+    fn copy(&self) -> crate::HxRc<dyn crate::haxe_i_map::IMap<i32, T> + Send + Sync> {
+        IntMap::<T>::copy(self)
+    }
+    fn to_string(&self) -> String {
+        IntMap::<T>::to_string(self)
+    }
+    fn clear(&self) -> () {
+        IntMap::<T>::clear(self)
     }
 }

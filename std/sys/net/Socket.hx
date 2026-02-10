@@ -38,6 +38,7 @@ class Socket {
 	public var custom: Null<Dynamic> = null;
 
 	@:allow(sys.net.UdpSocket)
+	@:allow(sys.ssl.Socket)
 	private var handle: HxRef<SocketHandle>;
 
 	public function new(): Void {

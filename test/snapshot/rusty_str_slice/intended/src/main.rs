@@ -12,6 +12,7 @@ mod haxe_ds_int_map;
 mod haxe_ds_object_map;
 mod haxe_ds_string_map;
 mod haxe_exception;
+mod haxe_i_map;
 mod haxe_int64_int64;
 mod haxe_int64_int64_impl_;
 mod haxe_io_bytes_buffer;
@@ -26,6 +27,7 @@ mod rust_slice_tools;
 mod rust_str_tools;
 mod rust_string_tools;
 mod rust_vec_tools;
+mod string_buf;
 mod sys;
 mod sys_io_stderr;
 mod sys_io_stdin;
@@ -55,7 +57,7 @@ fn main() {
     {
         let mut _g: i32 = 0;
         let _g1: hxrt::array::Array<i32> = crate::rust_vec_tools::VecTools::to_array(v.clone());
-        while _g < _g1.len() as i32 {
+        while _g < (_g1.len() as i32) {
             let x: i32 = _g1.get_unchecked(_g as usize);
             {
                 _g = _g + 1;
@@ -78,7 +80,7 @@ fn main() {
                 let mut _g_2: i32 = 0;
                 let _g1_2: hxrt::array::Array<i32> =
                     crate::rust_slice_tools::SliceTools::to_array(s);
-                while _g_2 < _g1_2.len() as i32 {
+                while _g_2 < (_g1_2.len() as i32) {
                     let x_2: i32 = _g1_2.get_unchecked(_g_2 as usize);
                     {
                         _g_2 = _g_2 + 1;

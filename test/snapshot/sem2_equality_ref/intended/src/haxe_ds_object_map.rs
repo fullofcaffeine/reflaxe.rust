@@ -5,15 +5,17 @@ pub const __HX_TYPE_ID: u32 = 0xd7e07825u32;
 #[derive(Debug)]
 
 pub struct ObjectMap<
-    K: hxrt::hxref::HxRefLike + Clone + std::fmt::Debug,
-    V: Clone + std::fmt::Debug,
+    K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug,
+    V: Clone + Send + Sync + 'static + std::fmt::Debug,
 > {
     keys_map: std::collections::HashMap<String, K>,
     values_map: std::collections::HashMap<String, V>,
 }
 
-impl<K: hxrt::hxref::HxRefLike + Clone + std::fmt::Debug, V: Clone + std::fmt::Debug>
-    ObjectMap<K, V>
+impl<
+        K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    > ObjectMap<K, V>
 {
     pub fn new() -> crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> {
         let self_: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> =
@@ -118,5 +120,42 @@ impl<K: hxrt::hxref::HxRefLike + Clone + std::fmt::Debug, V: Clone + std::fmt::D
             __s.keys_map.clear();
             __s.values_map.clear();
         };
+    }
+}
+
+impl<
+        K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    > crate::haxe_i_map::IMap<K, V> for crate::HxRefCell<ObjectMap<K, V>>
+{
+    fn get(&self, k: K) -> Option<V> {
+        ObjectMap::<K, V>::get(self, k)
+    }
+    fn set(&self, k: K, v: V) -> () {
+        ObjectMap::<K, V>::set(self, k, v)
+    }
+    fn exists(&self, k: K) -> bool {
+        ObjectMap::<K, V>::exists(self, k)
+    }
+    fn remove(&self, k: K) -> bool {
+        ObjectMap::<K, V>::remove(self, k)
+    }
+    fn keys(&self) -> hxrt::iter::Iter<K> {
+        ObjectMap::<K, V>::keys(self)
+    }
+    fn iterator(&self) -> hxrt::iter::Iter<V> {
+        ObjectMap::<K, V>::iterator(self)
+    }
+    fn key_value_iterator(&self) -> hxrt::iter::Iter<hxrt::iter::KeyValue<K, V>> {
+        ObjectMap::<K, V>::key_value_iterator(self)
+    }
+    fn copy(&self) -> crate::HxRc<dyn crate::haxe_i_map::IMap<K, V> + Send + Sync> {
+        ObjectMap::<K, V>::copy(self)
+    }
+    fn to_string(&self) -> String {
+        ObjectMap::<K, V>::to_string(self)
+    }
+    fn clear(&self) -> () {
+        ObjectMap::<K, V>::clear(self)
     }
 }

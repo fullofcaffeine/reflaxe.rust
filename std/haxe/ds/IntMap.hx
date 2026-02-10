@@ -18,7 +18,7 @@ import haxe.Constraints.IMap;
 	- Value-returning operations clone (`T: Clone`).
 	- Iterators are returned as owned Rust iterators (`Vec<_>.into_iter()`), intended for `for` loops.
 **/
-@:rustGeneric("T: Clone + std::fmt::Debug")
+@:rustGeneric("T: Clone + Send + Sync + 'static + std::fmt::Debug")
 class IntMap<T> implements IMap<Int, T> {
 	var h: rust.HashMap<Int, T>;
 

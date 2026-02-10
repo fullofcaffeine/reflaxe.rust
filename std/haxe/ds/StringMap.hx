@@ -25,7 +25,7 @@ import haxe.Constraints.IMap;
 	  (`Vec<_>.into_iter()`), and the compiler lowers Haxe `for` loops to Rust `for` loops over these iterators.
 	  Manual `.hasNext()` / `.next()` usage is not guaranteed to work yet.
 **/
-@:rustGeneric("T: Clone + std::fmt::Debug")
+@:rustGeneric("T: Clone + Send + Sync + 'static + std::fmt::Debug")
 class StringMap<T> implements IMap<String, T> {
 	var h: rust.HashMap<String, T>;
 

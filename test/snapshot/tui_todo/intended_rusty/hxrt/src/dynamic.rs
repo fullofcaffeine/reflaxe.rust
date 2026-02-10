@@ -1,4 +1,8 @@
 use std::any::Any;
+use std::collections::BTreeMap;
+
+use crate::cell::{HxCell, HxRc, HxRef};
+use crate::exception;
 
 pub trait AnyClone: Any + Send + Sync {
     fn clone_box(&self) -> Box<dyn AnyClone>;
@@ -51,10 +55,22 @@ impl Clone for Dynamic {
     }
 }
 
+impl Default for Dynamic {
+    #[inline]
+    fn default() -> Self {
+        Dynamic::null()
+    }
+}
+
 impl Dynamic {
     #[inline]
     pub fn null() -> Dynamic {
         Dynamic(None, "null")
+    }
+
+    #[inline]
+    pub fn is_null(&self) -> bool {
+        self.0.is_none()
     }
 
     #[inline]
@@ -170,6 +186,82 @@ where
     T: Any + Clone + Send + Sync + 'static,
 {
     Dynamic::from(value)
+}
+
+/// Runtime-backed "dynamic object" with string keys.
+///
+/// Why
+/// - Haxe `Dynamic` values support field reads/writes at runtime (`obj.field` when `obj:Dynamic`).
+/// - Some sys APIs (notably `sys.db.ResultSet.next()`) return dynamic rows whose column names are
+///   only known at runtime.
+///
+/// What
+/// - A mutable, string-keyed map `String -> Dynamic`.
+/// - Stored behind `HxRef` so assignment/aliasing semantics match Haxe objects.
+///
+/// How
+/// - `sys.db` builds row objects as `HxRef<DynObject>` and boxes them into `Dynamic`.
+/// - The compiler lowers `TField(_, FDynamic(name))` into `hxrt::dynamic::field_get/field_set`.
+#[derive(Clone, Debug, Default)]
+pub struct DynObject {
+    fields: BTreeMap<String, Dynamic>,
+}
+
+impl DynObject {
+    #[inline]
+    pub fn new() -> Self {
+        Self {
+            fields: BTreeMap::new(),
+        }
+    }
+}
+
+#[inline]
+pub fn dyn_object_new() -> HxRef<DynObject> {
+    HxRc::new(HxCell::new(DynObject::new()))
+}
+
+#[inline]
+pub fn dyn_object_set(obj: &HxRef<DynObject>, key: &str, value: Dynamic) {
+    obj.borrow_mut().fields.insert(key.to_string(), value);
+}
+
+#[inline]
+pub fn dyn_object_get(obj: &HxRef<DynObject>, key: &str) -> Dynamic {
+    obj.borrow()
+        .fields
+        .get(key)
+        .cloned()
+        .unwrap_or_else(Dynamic::null)
+}
+
+/// Read a dynamic field from a `Dynamic` receiver.
+///
+/// Semantics:
+/// - If `obj` is a boxed `HxRef<DynObject>`: returns the field value or `null` if missing.
+/// - Otherwise: returns `null`.
+#[inline]
+pub fn field_get(obj: &Dynamic, key: &str) -> Dynamic {
+    if let Some(o) = obj.downcast_ref::<HxRef<DynObject>>() {
+        return dyn_object_get(o, key);
+    }
+    Dynamic::null()
+}
+
+/// Write a dynamic field into a `Dynamic` receiver.
+///
+/// Semantics:
+/// - If `obj` is a boxed `HxRef<DynObject>`: sets the field value.
+/// - Otherwise: throws (mirrors other targets where setting on non-object is an error).
+#[inline]
+pub fn field_set(obj: &Dynamic, key: &str, value: Dynamic) {
+    if let Some(o) = obj.downcast_ref::<HxRef<DynObject>>() {
+        dyn_object_set(o, key, value);
+        return;
+    }
+    exception::throw(Dynamic::from(format!(
+        "Dynamic field write on unsupported receiver (field: {key})"
+    )));
 }
 
 #[cfg(test)]

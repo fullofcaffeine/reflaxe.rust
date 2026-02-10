@@ -30,6 +30,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 ## Meta (keep instructions current)
 
 - When a new “gotcha”, policy decision, or workflow trick is discovered, write it down in the **closest scoped `AGENTS.md`** (add one if needed), not just in chat.
+- Bugs: when fixing a bug, add a regression test if it fits (snapshots, runtime tests, or example test harness).
 
 ## Documentation (HaxeDoc)
 

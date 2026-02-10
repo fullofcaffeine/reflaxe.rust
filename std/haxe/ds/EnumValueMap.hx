@@ -21,8 +21,8 @@ import haxe.Constraints.IMap;
 	  derives `Clone` for emitted enums by default.
 **/
 @:rustGeneric([
-	"K: Clone + std::fmt::Debug",
-	"V: Clone + std::fmt::Debug"
+	"K: Clone + Send + Sync + 'static + std::fmt::Debug",
+	"V: Clone + Send + Sync + 'static + std::fmt::Debug"
 ])
 class EnumValueMap<K:EnumValue, V> implements IMap<K, V> {
 	var keysMap: rust.HashMap<String, K>;
