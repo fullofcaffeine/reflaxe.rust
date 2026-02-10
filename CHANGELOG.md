@@ -1,3 +1,19 @@
+# [0.52.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.51.0...v0.52.0) (2026-02-10)
+
+
+### Bug Fixes
+
+* Dynamic downcast + threading runtime ([ff53903](https://github.com/fullofcaffeine/reflaxe.rust/commit/ff5390368c34959e1ca809eb05136561e5894486))
+* **hxrt:** clamp EventLoop repeat + add thread tests ([6e70c5b](https://github.com/fullofcaffeine/reflaxe.rust/commit/6e70c5bcabc68da1e0770ff7ce6568830de448c1))
+* restore CI green (audit + thread pool) ([aee2425](https://github.com/fullofcaffeine/reflaxe.rust/commit/aee24252e96242901ea55d8004e1d946388e625e))
+
+
+### Features
+
+* sys.db mysql + sqlite smoke test ([2c6b661](https://github.com/fullofcaffeine/reflaxe.rust/commit/2c6b661de43f343a692529442bb2ffd8343cf4f9))
+* **sys.thread:** add Deque + thread pools ([bdd11d4](https://github.com/fullofcaffeine/reflaxe.rust/commit/bdd11d45a30be19485592b902de7df09dd0134a9))
+* **sys.thread:** runtime EventLoop + smoke example ([cbaa7a4](https://github.com/fullofcaffeine/reflaxe.rust/commit/cbaa7a4d40bfbcb909458abb39bf1b5d942e6861))
+
 # [0.51.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.50.0...v0.51.0) (2026-02-09)
 
 
