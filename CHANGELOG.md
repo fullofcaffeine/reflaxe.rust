@@ -1,3 +1,10 @@
+# [0.53.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.52.0...v0.53.0) (2026-02-10)
+
+
+### Features
+
+* **tui:** crazy todo harness + rust.tui DSL ([4b0628f](https://github.com/fullofcaffeine/reflaxe.rust/commit/4b0628f1e4ce54bee2f1dd7fcf0d40b28d44a791))
+
 # [0.52.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.51.0...v0.52.0) (2026-02-10)
 
 
