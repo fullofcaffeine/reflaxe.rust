@@ -31,10 +31,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install gitleaks
+        run: |
+          set -euo pipefail
+          version="8.21.2"
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${version}/gitleaks_${version}_linux_x64.tar.gz"
+          tar -xzf gitleaks.tar.gz gitleaks
+          chmod +x gitleaks
+          echo "$PWD" >> "$GITHUB_PATH"
+
+      - name: Run gitleaks (all history)
+        run: |
+          set -euo pipefail
+          gitleaks detect --source . --config .gitleaks.toml --redact --log-opts="--all"
 
   dependency-review:
     name: Dependency review
@@ -114,6 +124,9 @@ jobs:
       - name: Install npm dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
+      - name: Run repo guard scripts
+        run: npm run hooks:check
+
       - name: Cache Haxe toolchain (lix)
         uses: actions/cache@v4
         with:
@@ -139,24 +152,7 @@ jobs:
         with:
           components: rustfmt, clippy
 
-      - name: Run snapshot tests
+      - name: Run harness (snapshots + examples)
         run: |
           set -euo pipefail
-          bash test/run-snapshots.sh --clippy
-
-      - name: Compile + run examples
-        run: |
-          set -euo pipefail
-          (cd examples/hello && haxe compile.hxml && (cd out && cargo run -q))
-          (cd examples/classes && haxe compile.hxml && (cd out && cargo run -q))
-          (cd examples/sys_file_io && haxe compile.ci.hxml && (cd out_ci && cargo run -q))
-          (cd examples/sys_process && haxe compile.ci.hxml && (cd out_ci && cargo run -q))
-          (cd examples/sys_net_loopback && haxe compile.ci.hxml && (cd out_ci && cargo run -q))
-          (cd examples/sys_thread_smoke && haxe compile.ci.hxml && (cd out_ci && cargo run -q))
-          (cd examples/thread_pool_smoke && haxe compile.ci.hxml && (cd out_ci && cargo run -q))
-          (cd examples/serde_json && haxe compile.ci.hxml && (cd out_ci && cargo run -q))
-          (cd examples/serde_json && haxe compile.rusty.ci.hxml && (cd out_ci_rusty && cargo run -q))
-          (cd examples/bytes_ops && haxe compile.ci.hxml && (cd out_ci && cargo test -q) && (cd out_ci && cargo run -q))
-          (cd examples/bytes_ops && haxe compile.rusty.ci.hxml && (cd out_ci_rusty && cargo test -q) && (cd out_ci_rusty && cargo run -q))
-          (cd examples/tui_todo && haxe compile.ci.hxml && (cd out_ci && cargo test -q) && (cd out_ci && cargo run -q))
-          (cd examples/tui_todo && haxe compile.rusty.ci.hxml && (cd out_ci_rusty && cargo test -q) && (cd out_ci_rusty && cargo run -q))
+          bash scripts/ci/harness.sh

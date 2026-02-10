@@ -1,0 +1,11 @@
+# gitleaks configuration for reflaxe.rust
+#
+# Keep this file minimal. Only add allowlist entries with a clear justification.
+
+title = "reflaxe.rust gitleaks config"
+
+[allowlist]
+# description = "..."
+# regexes = [
+#   '''...''',
+# ]

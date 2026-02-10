@@ -17,7 +17,11 @@
   "scripts": {
     "postinstall": "lix download",
     "test": "bash test/run-snapshots.sh",
-    "test:update": "bash test/run-snapshots.sh --update"
+    "test:update": "bash test/run-snapshots.sh --update",
+    "test:all": "bash scripts/ci/harness.sh",
+    "ci:local": "bash scripts/ci/local.sh",
+    "hooks:install": "bash scripts/install-git-hooks.sh",
+    "hooks:check": "bash scripts/lint/name_heuristics_guard.sh && bash scripts/lint/numeric_suffix_guard.sh"
   },
   "repository": {
     "type": "git",
