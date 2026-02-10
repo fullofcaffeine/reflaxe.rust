@@ -11,11 +11,10 @@ pub struct Host {
 
 impl Host {
     pub fn new(name: String) -> crate::HxRef<crate::sys_net_host::Host> {
-        let self_: crate::HxRef<crate::sys_net_host::Host> =
-            crate::HxRc::new(crate::HxRefCell::new(Host {
-                host: name.clone(),
-                ip: 0,
-            }));
+        let self_: crate::HxRef<crate::sys_net_host::Host> = crate::HxRef::new(Host {
+            host: name.clone(),
+            ip: 0,
+        });
         {
             let __tmp = hxrt::net::host_resolve(name.as_str());
             self_.borrow_mut().ip = __tmp;
@@ -25,11 +24,19 @@ impl Host {
     }
 
     pub fn to_string(self_: &crate::HxRefCell<Host>) -> String {
-        return hxrt::net::host_to_string(self_.borrow().ip as i32);
+        let __hx_this: crate::HxRef<crate::sys_net_host::Host> = self_.self_ref();
+        return hxrt::net::host_to_string({
+            let __b = __hx_this.borrow();
+            __b.ip
+        } as i32);
     }
 
     pub fn reverse(self_: &crate::HxRefCell<Host>) -> String {
-        return hxrt::net::host_reverse(self_.borrow().ip as i32);
+        let __hx_this: crate::HxRef<crate::sys_net_host::Host> = self_.self_ref();
+        return hxrt::net::host_reverse({
+            let __b = __hx_this.borrow();
+            __b.ip
+        } as i32);
     }
 
     pub fn localhost() -> String {

@@ -11,33 +11,47 @@ pub struct Task {
 
 impl Task {
     pub fn new(text: String, done: bool) -> crate::HxRef<crate::task::Task> {
-        let self_: crate::HxRef<crate::task::Task> =
-            crate::HxRc::new(crate::HxRefCell::new(Task {
-                text: text,
-                done: done,
-            }));
+        let self_: crate::HxRef<crate::task::Task> = crate::HxRef::new(Task {
+            text: text,
+            done: done,
+        });
         return self_;
     }
 
     pub fn toggle(self_: &crate::HxRefCell<Task>) {
+        let __hx_this: crate::HxRef<crate::task::Task> = self_.self_ref();
         {
-            let __tmp = !self_.borrow().done;
-            self_.borrow_mut().done = __tmp;
+            let __tmp = !({
+                let __b = __hx_this.borrow();
+                __b.done
+            });
+            __hx_this.borrow_mut().done = __tmp;
             __tmp
         };
     }
 
     pub fn line(self_: &crate::HxRefCell<Task>, selected: bool) -> String {
+        let __hx_this: crate::HxRef<crate::task::Task> = self_.self_ref();
         let sel: String = if selected {
             String::from(">")
         } else {
             String::from(" ")
         };
-        let mark: String = if self_.borrow().done {
+        let mark: String = if {
+            let __b = __hx_this.borrow();
+            __b.done
+        } {
             String::from("x")
         } else {
             String::from(" ")
         };
-        return format!("{}{}{}{}{}", &sel, "[", &mark, "] ", &self_.borrow().text);
+        return format!(
+            "{}{}{}{}{}",
+            &sel,
+            "[",
+            &mark,
+            "] ",
+            &__hx_this.borrow().text
+        );
     }
 }

@@ -10,7 +10,7 @@ pub struct C {
 
 impl C {
     pub fn new() -> crate::HxRef<crate::c::C> {
-        let self_: crate::HxRef<crate::c::C> = crate::HxRc::new(crate::HxRefCell::new(C { n: 0 }));
+        let self_: crate::HxRef<crate::c::C> = crate::HxRef::new(C { n: 0 });
         return self_;
     }
 }

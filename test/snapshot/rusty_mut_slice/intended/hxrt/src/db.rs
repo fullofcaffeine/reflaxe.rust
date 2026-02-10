@@ -1,5 +1,5 @@
 use crate::array::Array;
-use crate::cell::{HxCell, HxRc, HxRef};
+use crate::cell::HxRef;
 use crate::dynamic::{self, Dynamic};
 
 /// `hxrt::db`
@@ -32,12 +32,12 @@ pub struct QueryResult {
 
 #[inline]
 pub fn query_result_new(names: Array<String>, rows: Array<Array<Dynamic>>) -> HxRef<QueryResult> {
-    HxRc::new(HxCell::new(QueryResult {
+    HxRef::new(QueryResult {
         names,
         rows,
         idx: 0,
         current: None,
-    }))
+    })
 }
 
 #[inline]

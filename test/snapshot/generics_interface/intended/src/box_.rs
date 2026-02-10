@@ -10,13 +10,16 @@ pub struct Box<T: Clone + Send + Sync> {
 
 impl<T: Clone + Send + Sync> Box<T> {
     pub fn new(value: T) -> crate::HxRef<crate::box_::Box<T>> {
-        let self_: crate::HxRef<crate::box_::Box<T>> =
-            crate::HxRc::new(crate::HxRefCell::new(Box { value: value }));
+        let self_: crate::HxRef<crate::box_::Box<T>> = crate::HxRef::new(Box { value: value });
         return self_;
     }
 
     pub fn get(self_: &crate::HxRefCell<Box<T>>) -> T {
-        return self_.borrow().value.clone();
+        let __hx_this: crate::HxRef<crate::box_::Box<T>> = self_.self_ref();
+        return {
+            let __b = __hx_this.borrow();
+            __b.value.clone()
+        };
     }
 }
 

@@ -14,23 +14,41 @@ impl FileInput {
         handle: crate::HxRef<hxrt::fs::FileHandle>,
     ) -> crate::HxRef<crate::sys_io_file_input::FileInput> {
         let self_: crate::HxRef<crate::sys_io_file_input::FileInput> =
-            crate::HxRc::new(crate::HxRefCell::new(FileInput {
+            crate::HxRef::new(FileInput {
                 big_endian: false,
                 handle: handle,
-            }));
+            });
         return self_;
     }
 
     fn get_handle(self_: &crate::HxRefCell<FileInput>) -> crate::HxRef<hxrt::fs::FileHandle> {
-        return self_.borrow().handle.clone();
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
+        return {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        };
     }
 
     pub fn close(self_: &crate::HxRefCell<FileInput>) {
-        self_.borrow().handle.clone().borrow_mut().close();
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
+        {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        }
+        .borrow_mut()
+        .close();
     }
 
     pub fn read_byte(self_: &crate::HxRefCell<FileInput>) -> i32 {
-        let v: i32 = { self_.borrow().handle.clone().borrow_mut().read_byte() };
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
+        let v: i32 = {
+            {
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }
+            .borrow_mut()
+            .read_byte()
+        };
         if v == -1 {
             hxrt::exception::throw(hxrt::dynamic::from(crate::haxe_io_eof::Eof::new()));
         }
@@ -43,6 +61,7 @@ impl FileInput {
         pos: i32,
         len: i32,
     ) -> i32 {
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
         if pos < 0 || len < 0 || pos + len > s.borrow().length() {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::OutsideBounds));
         }
@@ -51,12 +70,12 @@ impl FileInput {
         }
         let out: i32 = {
             let mut buf = vec![0u8; len as usize];
-            let n: i32 = self_
-                .borrow()
-                .handle
-                .clone()
-                .borrow_mut()
-                .read_into(buf.as_mut_slice());
+            let n: i32 = {
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }
+            .borrow_mut()
+            .read_into(buf.as_mut_slice());
             if n == 0 {
                 -1i32
             } else if n == -1i32 {
@@ -77,7 +96,11 @@ impl FileInput {
         p: i32,
         pos: crate::sys_io_file_seek::FileSeek,
     ) {
-        let h: crate::HxRef<hxrt::fs::FileHandle> = self_.borrow().handle.clone();
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
+        let h: crate::HxRef<hxrt::fs::FileHandle> = {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        };
         match pos.clone() {
             crate::sys_io_file_seek::FileSeek::SeekBegin => {
                 h.borrow_mut().seek_from_start(p as u64);
@@ -92,17 +115,30 @@ impl FileInput {
     }
 
     pub fn tell(self_: &crate::HxRefCell<FileInput>) -> i32 {
-        return self_.borrow().handle.clone().borrow_mut().tell();
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
+        return {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        }
+        .borrow_mut()
+        .tell();
     }
 
     pub fn eof(self_: &crate::HxRefCell<FileInput>) -> bool {
-        return self_.borrow().handle.clone().borrow_mut().eof();
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
+        return {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        }
+        .borrow_mut()
+        .eof();
     }
 
     pub fn set_big_endian(self_: &crate::HxRefCell<FileInput>, b: bool) -> bool {
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
         {
             let __tmp = b;
-            self_.borrow_mut().big_endian = __tmp;
+            __hx_this.borrow_mut().big_endian = __tmp;
             __tmp
         };
         return b;
@@ -112,6 +148,7 @@ impl FileInput {
         self_: &crate::HxRefCell<FileInput>,
         bufsize: Option<i32>,
     ) -> crate::HxRef<hxrt::bytes::Bytes> {
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
         let mut bs: Option<i32> = bufsize;
         if bs.is_none() {
             {
@@ -120,19 +157,28 @@ impl FileInput {
                 __tmp
             };
         }
-        let bufsize_2: i32 = bs.unwrap();
-        let buf: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRc::new(crate::HxRefCell::new(
-            hxrt::bytes::Bytes::alloc(bufsize_2 as usize),
-        ));
+        let bufsize_2: i32 = {
+            let __hx_opt = bs.clone();
+            match &__hx_opt {
+                Some(__v) => __v.clone(),
+                None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
+            }
+        };
+        let buf: crate::HxRef<hxrt::bytes::Bytes> =
+            crate::HxRef::new(hxrt::bytes::Bytes::alloc(bufsize_2 as usize));
         let total: crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer> =
             crate::haxe_io_bytes_buffer::BytesBuffer::new();
         match hxrt::exception::catch_unwind(|| loop {
-            let len: i32 =
-                crate::sys_io_file_input::FileInput::read_bytes(&self_, buf.clone(), 0, bufsize_2);
+            let len: i32 = crate::sys_io_file_input::FileInput::read_bytes(
+                &*__hx_this,
+                buf.clone(),
+                0,
+                bufsize_2,
+            );
             if len == 0 {
                 hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
             }
-            crate::haxe_io_bytes_buffer::BytesBuffer::add_bytes(&total, buf.clone(), 0, len);
+            crate::haxe_io_bytes_buffer::BytesBuffer::add_bytes(&*total, buf.clone(), 0, len);
         }) {
             Ok(__hx_ok) => __hx_ok,
             Err(__hx_ex) => match __hx_ex.downcast::<crate::HxRef<crate::haxe_io_eof::Eof>>() {
@@ -140,7 +186,7 @@ impl FileInput {
                 Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
             },
         };
-        return crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&total);
+        return crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&*total);
     }
 
     pub fn read_full_bytes(
@@ -149,10 +195,12 @@ impl FileInput {
         pos: i32,
         len: i32,
     ) {
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
         let mut p: i32 = pos;
         let mut l: i32 = len;
         while l > 0 {
-            let k: i32 = crate::sys_io_file_input::FileInput::read_bytes(&self_, s.clone(), p, l);
+            let k: i32 =
+                crate::sys_io_file_input::FileInput::read_bytes(&*__hx_this, s.clone(), p, l);
             if k == 0 {
                 hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
             }
@@ -171,14 +219,18 @@ impl FileInput {
         self_: &crate::HxRefCell<FileInput>,
         nbytes: i32,
     ) -> crate::HxRef<hxrt::bytes::Bytes> {
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
         let mut remaining: i32 = nbytes;
-        let s: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRc::new(crate::HxRefCell::new(
-            hxrt::bytes::Bytes::alloc(remaining as usize),
-        ));
+        let s: crate::HxRef<hxrt::bytes::Bytes> =
+            crate::HxRef::new(hxrt::bytes::Bytes::alloc(remaining as usize));
         let mut p: i32 = 0;
         while remaining > 0 {
-            let k: i32 =
-                crate::sys_io_file_input::FileInput::read_bytes(&self_, s.clone(), p, remaining);
+            let k: i32 = crate::sys_io_file_input::FileInput::read_bytes(
+                &*__hx_this,
+                s.clone(),
+                p,
+                remaining,
+            );
             if k == 0 {
                 hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
             }
@@ -195,36 +247,38 @@ impl FileInput {
     }
 
     pub fn read_until(self_: &crate::HxRefCell<FileInput>, end: i32) -> String {
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
         let buf: crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer> =
             crate::haxe_io_bytes_buffer::BytesBuffer::new();
         loop {
-            let last: i32 = crate::sys_io_file_input::FileInput::read_byte(&self_);
+            let last: i32 = crate::sys_io_file_input::FileInput::read_byte(&*__hx_this);
             if last == end {
                 break;
             }
-            crate::haxe_io_bytes_buffer::BytesBuffer::add_byte(&buf, last);
+            crate::haxe_io_bytes_buffer::BytesBuffer::add_byte(&*buf, last);
         }
-        return crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&buf)
+        return crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&*buf)
             .borrow()
             .to_string();
     }
 
     pub fn read_line(self_: &crate::HxRefCell<FileInput>) -> String {
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
         let buf: crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer> =
             crate::haxe_io_bytes_buffer::BytesBuffer::new();
         match hxrt::exception::catch_unwind(|| loop {
-            let last: i32 = crate::sys_io_file_input::FileInput::read_byte(&self_);
+            let last: i32 = crate::sys_io_file_input::FileInput::read_byte(&*__hx_this);
             if last == 10 {
                 break;
             }
-            crate::haxe_io_bytes_buffer::BytesBuffer::add_byte(&buf, last);
+            crate::haxe_io_bytes_buffer::BytesBuffer::add_byte(&*buf, last);
         }) {
             Ok(__hx_ok) => __hx_ok,
             Err(__hx_ex) => match __hx_ex.downcast::<crate::HxRef<crate::haxe_io_eof::Eof>>() {
                 Ok(__hx_box) => {
                     let e: crate::HxRef<crate::haxe_io_eof::Eof> = *__hx_box;
                     let bytes: crate::HxRef<hxrt::bytes::Bytes> =
-                        crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&buf);
+                        crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&*buf);
                     if bytes.borrow().length() == 0 {
                         hxrt::exception::throw(hxrt::dynamic::from(e));
                     }
@@ -234,14 +288,13 @@ impl FileInput {
             },
         };
         let mut bytes_2: crate::HxRef<hxrt::bytes::Bytes> =
-            crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&buf);
+            crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&*buf);
         let bytes_len: i32 = bytes_2.borrow().length();
         if bytes_len > 0 {
             let last_byte: i32 = bytes_2.borrow().get(bytes_len - 1);
             if last_byte == 13 {
-                let trimmed: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRc::new(
-                    crate::HxRefCell::new(bytes_2.borrow().sub(0, bytes_len - 1)),
-                );
+                let trimmed: crate::HxRef<hxrt::bytes::Bytes> =
+                    crate::HxRef::new(bytes_2.borrow().sub(0, bytes_len - 1));
                 bytes_2 = trimmed;
             }
         }
@@ -249,15 +302,20 @@ impl FileInput {
     }
 
     pub fn read_float(self_: &crate::HxRefCell<FileInput>) -> f64 {
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
         return crate::haxe_io_fp_helper::FPHelper::i32_to_float(
-            crate::sys_io_file_input::FileInput::read_int32(&self_),
+            crate::sys_io_file_input::FileInput::read_int32(&*__hx_this),
         );
     }
 
     pub fn read_double(self_: &crate::HxRefCell<FileInput>) -> f64 {
-        let i1: i32 = crate::sys_io_file_input::FileInput::read_int32(&self_);
-        let i2: i32 = crate::sys_io_file_input::FileInput::read_int32(&self_);
-        return if self_.borrow().big_endian {
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
+        let i1: i32 = crate::sys_io_file_input::FileInput::read_int32(&*__hx_this);
+        let i2: i32 = crate::sys_io_file_input::FileInput::read_int32(&*__hx_this);
+        return if {
+            let __b = __hx_this.borrow();
+            __b.big_endian
+        } {
             crate::haxe_io_fp_helper::FPHelper::i64_to_double(i2, i1)
         } else {
             crate::haxe_io_fp_helper::FPHelper::i64_to_double(i1, i2)
@@ -265,7 +323,8 @@ impl FileInput {
     }
 
     pub fn read_int8(self_: &crate::HxRefCell<FileInput>) -> i32 {
-        let n: i32 = crate::sys_io_file_input::FileInput::read_byte(&self_);
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
+        let n: i32 = crate::sys_io_file_input::FileInput::read_byte(&*__hx_this);
         if n >= 128 {
             return n - 256;
         }
@@ -273,12 +332,16 @@ impl FileInput {
     }
 
     pub fn read_int16(self_: &crate::HxRefCell<FileInput>) -> i32 {
-        let ch1: i32 = crate::sys_io_file_input::FileInput::read_byte(&self_);
-        let ch2: i32 = crate::sys_io_file_input::FileInput::read_byte(&self_);
-        let n: i32 = if self_.borrow().big_endian {
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
+        let ch1: i32 = crate::sys_io_file_input::FileInput::read_byte(&*__hx_this);
+        let ch2: i32 = crate::sys_io_file_input::FileInput::read_byte(&*__hx_this);
+        let n: i32 = if {
+            let __b = __hx_this.borrow();
+            __b.big_endian
+        } {
             ch1 << 8 | ch2
         } else {
-            ch1 | (ch2 << 8)
+            ch1 | ch2 << 8
         };
         if n >= 32768 {
             return n - 65536;
@@ -287,23 +350,31 @@ impl FileInput {
     }
 
     pub fn read_u_int16(self_: &crate::HxRefCell<FileInput>) -> i32 {
-        let ch1: i32 = crate::sys_io_file_input::FileInput::read_byte(&self_);
-        let ch2: i32 = crate::sys_io_file_input::FileInput::read_byte(&self_);
-        return if self_.borrow().big_endian {
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
+        let ch1: i32 = crate::sys_io_file_input::FileInput::read_byte(&*__hx_this);
+        let ch2: i32 = crate::sys_io_file_input::FileInput::read_byte(&*__hx_this);
+        return if {
+            let __b = __hx_this.borrow();
+            __b.big_endian
+        } {
             ch1 << 8 | ch2
         } else {
-            ch1 | (ch2 << 8)
+            ch1 | ch2 << 8
         };
     }
 
     pub fn read_int24(self_: &crate::HxRefCell<FileInput>) -> i32 {
-        let ch1: i32 = crate::sys_io_file_input::FileInput::read_byte(&self_);
-        let ch2: i32 = crate::sys_io_file_input::FileInput::read_byte(&self_);
-        let ch3: i32 = crate::sys_io_file_input::FileInput::read_byte(&self_);
-        let n: i32 = if self_.borrow().big_endian {
-            ch1 << 16 | (ch2 << 8) | ch3
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
+        let ch1: i32 = crate::sys_io_file_input::FileInput::read_byte(&*__hx_this);
+        let ch2: i32 = crate::sys_io_file_input::FileInput::read_byte(&*__hx_this);
+        let ch3: i32 = crate::sys_io_file_input::FileInput::read_byte(&*__hx_this);
+        let n: i32 = if {
+            let __b = __hx_this.borrow();
+            __b.big_endian
+        } {
+            ch1 << 16 | ch2 << 8 | ch3
         } else {
-            ch1 | (ch2 << 8) | (ch3 << 16)
+            ch1 | ch2 << 8 | ch3 << 16
         };
         if n >= 8388608 {
             return n - 16777216;
@@ -312,25 +383,33 @@ impl FileInput {
     }
 
     pub fn read_u_int24(self_: &crate::HxRefCell<FileInput>) -> i32 {
-        let ch1: i32 = crate::sys_io_file_input::FileInput::read_byte(&self_);
-        let ch2: i32 = crate::sys_io_file_input::FileInput::read_byte(&self_);
-        let ch3: i32 = crate::sys_io_file_input::FileInput::read_byte(&self_);
-        return if self_.borrow().big_endian {
-            ch1 << 16 | (ch2 << 8) | ch3
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
+        let ch1: i32 = crate::sys_io_file_input::FileInput::read_byte(&*__hx_this);
+        let ch2: i32 = crate::sys_io_file_input::FileInput::read_byte(&*__hx_this);
+        let ch3: i32 = crate::sys_io_file_input::FileInput::read_byte(&*__hx_this);
+        return if {
+            let __b = __hx_this.borrow();
+            __b.big_endian
+        } {
+            ch1 << 16 | ch2 << 8 | ch3
         } else {
-            ch1 | (ch2 << 8) | (ch3 << 16)
+            ch1 | ch2 << 8 | ch3 << 16
         };
     }
 
     pub fn read_int32(self_: &crate::HxRefCell<FileInput>) -> i32 {
-        let ch1: i32 = crate::sys_io_file_input::FileInput::read_byte(&self_);
-        let ch2: i32 = crate::sys_io_file_input::FileInput::read_byte(&self_);
-        let ch3: i32 = crate::sys_io_file_input::FileInput::read_byte(&self_);
-        let ch4: i32 = crate::sys_io_file_input::FileInput::read_byte(&self_);
-        return if self_.borrow().big_endian {
-            ch4 | (ch3 << 8) | (ch2 << 16) | (ch1 << 24)
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
+        let ch1: i32 = crate::sys_io_file_input::FileInput::read_byte(&*__hx_this);
+        let ch2: i32 = crate::sys_io_file_input::FileInput::read_byte(&*__hx_this);
+        let ch3: i32 = crate::sys_io_file_input::FileInput::read_byte(&*__hx_this);
+        let ch4: i32 = crate::sys_io_file_input::FileInput::read_byte(&*__hx_this);
+        return if {
+            let __b = __hx_this.borrow();
+            __b.big_endian
+        } {
+            ch4 | ch3 << 8 | ch2 << 16 | ch1 << 24
         } else {
-            ch1 | (ch2 << 8) | (ch3 << 16) | (ch4 << 24)
+            ch1 | ch2 << 8 | ch3 << 16 | ch4 << 24
         };
     }
 
@@ -339,10 +418,10 @@ impl FileInput {
         len: i32,
         encoding: Option<crate::haxe_io_encoding::Encoding>,
     ) -> String {
-        let b: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRc::new(crate::HxRefCell::new(
-            hxrt::bytes::Bytes::alloc(len as usize),
-        ));
-        crate::sys_io_file_input::FileInput::read_full_bytes(&self_, b.clone(), 0, len);
+        let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
+        let b: crate::HxRef<hxrt::bytes::Bytes> =
+            crate::HxRef::new(hxrt::bytes::Bytes::alloc(len as usize));
+        crate::sys_io_file_input::FileInput::read_full_bytes(&*__hx_this, b.clone(), 0, len);
         return {
             let _ = encoding;
             b.borrow().get_string(0, len)

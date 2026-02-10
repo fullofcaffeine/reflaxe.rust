@@ -10,8 +10,7 @@ pub struct Dog {
 
 impl Dog {
     pub fn new() -> crate::HxRef<crate::dog::Dog> {
-        let self_: crate::HxRef<crate::dog::Dog> =
-            crate::HxRc::new(crate::HxRefCell::new(Dog { age: 0 }));
+        let self_: crate::HxRef<crate::dog::Dog> = crate::HxRef::new(Dog { age: 0 });
         {
             let __tmp = 0;
             self_.borrow_mut().age = __tmp;

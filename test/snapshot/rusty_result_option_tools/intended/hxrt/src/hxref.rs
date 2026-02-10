@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use crate::cell::{HxDynRef, HxRef};
+
 /// `hxrt::hxref`
 ///
 /// Tiny helpers for the Rust representation of Haxe "object references".
@@ -21,10 +23,33 @@ pub trait HxRefLike {
     fn ptr_usize(&self) -> usize;
 }
 
-impl<T> HxRefLike for Arc<T> {
+impl<T: ?Sized> HxRefLike for Arc<T> {
     fn ptr_usize(&self) -> usize {
-        Arc::as_ptr(self) as usize
+        Arc::as_ptr(self) as *const () as usize
     }
+}
+
+impl<T> HxRefLike for HxRef<T> {
+    fn ptr_usize(&self) -> usize {
+        match self.as_arc_opt() {
+            Some(rc) => Arc::as_ptr(rc) as *const () as usize,
+            None => 0,
+        }
+    }
+}
+
+impl<T: ?Sized> HxRefLike for HxDynRef<T> {
+    fn ptr_usize(&self) -> usize {
+        match self.as_arc_opt() {
+            Some(rc) => Arc::as_ptr(rc) as *const () as usize,
+            None => 0,
+        }
+    }
+}
+
+#[inline]
+pub fn ptr_eq<A: HxRefLike, B: HxRefLike>(a: &A, b: &B) -> bool {
+    a.ptr_usize() == b.ptr_usize()
 }
 
 pub fn ptr_id<K: HxRefLike>(key: &K) -> String {

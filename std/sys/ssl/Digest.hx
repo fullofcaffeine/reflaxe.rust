@@ -12,12 +12,14 @@ import rust.HxRef;
 
 	What
 	- `make(data, alg)` returns the hash digest as `haxe.io.Bytes`.
-	- `sign`/`verify` are implemented for RSA keys using PKCS#1 v1.5 with SHA1/SHA2 family digests.
+	- `sign` is implemented for RSA keys using PKCS#1 v1.5 with SHA256/SHA384/SHA512 digests.
+	- `verify` supports SHA1 (legacy) and SHA256/SHA384/SHA512 (RSA PKCS#1 v1.5).
 
 	How
 	- Delegates to `hxrt::ssl::{digest_make,digest_sign,digest_verify}`.
 	- Note: algorithms like MD5/RIPEMD160 are supported for `make`, but not for RSA sign/verify
 	  in the current runtime (throws for `sign`, returns `false` for `verify`).
+	- Note: for security, SHA1/SHA224 signing are intentionally not exposed.
 **/
 class Digest {
 	public static function make(data: haxe.io.Bytes, alg: DigestAlgorithm): haxe.io.Bytes {
@@ -43,4 +45,3 @@ class Digest {
 		);
 	}
 }
-

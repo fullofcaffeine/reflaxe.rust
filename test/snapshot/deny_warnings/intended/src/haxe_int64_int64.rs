@@ -11,11 +11,10 @@ pub struct Int64 {
 
 impl Int64 {
     pub fn new(high: i32, low: i32) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
-        let self_: crate::HxRef<crate::haxe_int64_int64::Int64> =
-            crate::HxRc::new(crate::HxRefCell::new(Int64 {
-                high: high,
-                low: low,
-            }));
+        let self_: crate::HxRef<crate::haxe_int64_int64::Int64> = crate::HxRef::new(Int64 {
+            high: high,
+            low: low,
+        });
         return self_;
     }
 }

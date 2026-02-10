@@ -15,65 +15,119 @@ impl MysqlResultSet {
         res: crate::HxRef<hxrt::db::QueryResult>,
     ) -> crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> {
         let self_: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
-            crate::HxRc::new(crate::HxRefCell::new(MysqlResultSet {
+            crate::HxRef::new(MysqlResultSet {
                 length: 0,
                 nfields: 0,
                 res: res,
-            }));
+            });
         return self_;
     }
 
     pub fn get_length(self_: &crate::HxRefCell<MysqlResultSet>) -> i32 {
-        return hxrt::db::query_result_length(&self_.borrow().res.clone());
+        let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
+            self_.self_ref();
+        return hxrt::db::query_result_length(&{
+            let __b = __hx_this.borrow();
+            __b.res.clone()
+        });
     }
 
     pub fn get_nfields(self_: &crate::HxRefCell<MysqlResultSet>) -> i32 {
-        return hxrt::db::query_result_nfields(&self_.borrow().res.clone());
+        let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
+            self_.self_ref();
+        return hxrt::db::query_result_nfields(&{
+            let __b = __hx_this.borrow();
+            __b.res.clone()
+        });
     }
 
     pub fn has_next(self_: &crate::HxRefCell<MysqlResultSet>) -> bool {
-        return hxrt::db::query_result_has_next(&self_.borrow().res.clone());
+        let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
+            self_.self_ref();
+        return hxrt::db::query_result_has_next(&{
+            let __b = __hx_this.borrow();
+            __b.res.clone()
+        });
     }
 
     pub fn next(self_: &crate::HxRefCell<MysqlResultSet>) -> hxrt::dynamic::Dynamic {
-        return hxrt::db::query_result_next_row_object(&self_.borrow().res.clone());
+        let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
+            self_.self_ref();
+        return hxrt::db::query_result_next_row_object(&{
+            let __b = __hx_this.borrow();
+            __b.res.clone()
+        });
     }
 
     pub fn results(
         self_: &crate::HxRefCell<MysqlResultSet>,
     ) -> crate::HxRef<crate::haxe_ds_list::List<hxrt::dynamic::Dynamic>> {
+        let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
+            self_.self_ref();
         let l: crate::HxRef<crate::haxe_ds_list::List<hxrt::dynamic::Dynamic>> =
             crate::haxe_ds_list::List::<hxrt::dynamic::Dynamic>::new();
-        while crate::sys_db_mysql_mysql_result_set::MysqlResultSet::has_next(&self_) {
+        while crate::sys_db_mysql_mysql_result_set::MysqlResultSet::has_next(&*__hx_this) {
             crate::haxe_ds_list::List::add(
-                &l,
-                crate::sys_db_mysql_mysql_result_set::MysqlResultSet::next(&self_),
+                &*l,
+                crate::sys_db_mysql_mysql_result_set::MysqlResultSet::next(&*__hx_this),
             );
         }
         return l;
     }
 
     pub fn get_result(self_: &crate::HxRefCell<MysqlResultSet>, n: i32) -> String {
-        return hxrt::db::query_result_get_result(&self_.borrow().res.clone(), n);
+        let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
+            self_.self_ref();
+        return hxrt::db::query_result_get_result(
+            &{
+                let __b = __hx_this.borrow();
+                __b.res.clone()
+            },
+            n,
+        );
     }
 
     pub fn get_int_result(self_: &crate::HxRefCell<MysqlResultSet>, n: i32) -> i32 {
-        return hxrt::db::query_result_get_int_result(&self_.borrow().res.clone(), n);
+        let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
+            self_.self_ref();
+        return hxrt::db::query_result_get_int_result(
+            &{
+                let __b = __hx_this.borrow();
+                __b.res.clone()
+            },
+            n,
+        );
     }
 
     pub fn get_float_result(self_: &crate::HxRefCell<MysqlResultSet>, n: i32) -> f64 {
-        return hxrt::db::query_result_get_float_result(&self_.borrow().res.clone(), n);
+        let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
+            self_.self_ref();
+        return hxrt::db::query_result_get_float_result(
+            &{
+                let __b = __hx_this.borrow();
+                __b.res.clone()
+            },
+            n,
+        );
     }
 
     pub fn get_fields_names(
         self_: &crate::HxRefCell<MysqlResultSet>,
-    ) -> Option<hxrt::array::Array<String>> {
+    ) -> hxrt::array::Array<String> {
+        let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
+            self_.self_ref();
         return {
-            let n = hxrt::db::query_result_nfields(&self_.borrow().res.clone());
+            let n = hxrt::db::query_result_nfields(&{
+                let __b = __hx_this.borrow();
+                __b.res.clone()
+            });
             if n == 0 {
-                None
+                hxrt::array::Array::<String>::null()
             } else {
-                Some(hxrt::db::query_result_fields(&self_.borrow().res.clone()))
+                hxrt::db::query_result_fields(&{
+                    let __b = __hx_this.borrow();
+                    __b.res.clone()
+                })
             }
         };
     }
@@ -104,7 +158,7 @@ impl crate::sys_db_result_set::ResultSet for crate::HxRefCell<MysqlResultSet> {
     fn get_float_result(&self, n: i32) -> f64 {
         MysqlResultSet::get_float_result(self, n)
     }
-    fn get_fields_names(&self) -> Option<hxrt::array::Array<String>> {
+    fn get_fields_names(&self) -> hxrt::array::Array<String> {
         MysqlResultSet::get_fields_names(self)
     }
 }

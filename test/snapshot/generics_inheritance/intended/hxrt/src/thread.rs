@@ -18,7 +18,7 @@
 //! - Threads are identified by a small `i32` id (0 = main thread), stored thread-locally.
 //! - Message queues store `hxrt::dynamic::Dynamic`, which is `Send + Sync` in this runtime.
 
-use crate::cell::{HxCell, HxRc, HxRef};
+use crate::cell::{HxDynRef, HxRc, HxRef};
 use crate::dynamic::Dynamic;
 use crate::{dynamic, exception};
 use parking_lot::{Condvar, Mutex as ParkMutex};
@@ -100,7 +100,11 @@ pub fn thread_current_id() -> i32 {
     CURRENT_THREAD_ID.with(|c| c.get())
 }
 
-pub fn thread_spawn(job: HxRc<dyn Fn() + Send + Sync>) -> i32 {
+pub fn thread_spawn(job: HxDynRef<dyn Fn() + Send + Sync>) -> i32 {
+    let job: HxRc<dyn Fn() + Send + Sync> = match job.as_arc_opt() {
+        Some(rc) => rc.clone(),
+        None => throw_msg("Null Access"),
+    };
     let id = NEXT_THREAD_ID.fetch_add(1, Ordering::Relaxed);
     let _ = ensure_thread_state(id);
     let job2 = job.clone();
@@ -112,7 +116,11 @@ pub fn thread_spawn(job: HxRc<dyn Fn() + Send + Sync>) -> i32 {
     id
 }
 
-pub fn thread_spawn_with_event_loop(job: HxRc<dyn Fn() + Send + Sync>) -> i32 {
+pub fn thread_spawn_with_event_loop(job: HxDynRef<dyn Fn() + Send + Sync>) -> i32 {
+    let job: HxRc<dyn Fn() + Send + Sync> = match job.as_arc_opt() {
+        Some(rc) => rc.clone(),
+        None => throw_msg("Null Access"),
+    };
     let id = NEXT_THREAD_ID.fetch_add(1, Ordering::Relaxed);
     let _ = ensure_thread_state(id);
     let job2 = job.clone();
@@ -191,7 +199,11 @@ pub fn event_loop_promise(thread_id: i32) {
     });
 }
 
-pub fn event_loop_run(thread_id: i32, event: HxRc<dyn Fn() + Send + Sync>) {
+pub fn event_loop_run(thread_id: i32, event: HxDynRef<dyn Fn() + Send + Sync>) {
+    let event: HxRc<dyn Fn() + Send + Sync> = match event.as_arc_opt() {
+        Some(rc) => rc.clone(),
+        None => throw_msg("Null Access"),
+    };
     with_thread_state_or_throw(thread_id, |state| {
         let mut st = state.events.lock();
         st.one_time.push_back(event);
@@ -199,7 +211,11 @@ pub fn event_loop_run(thread_id: i32, event: HxRc<dyn Fn() + Send + Sync>) {
     });
 }
 
-pub fn event_loop_run_promised(thread_id: i32, event: HxRc<dyn Fn() + Send + Sync>) {
+pub fn event_loop_run_promised(thread_id: i32, event: HxDynRef<dyn Fn() + Send + Sync>) {
+    let event: HxRc<dyn Fn() + Send + Sync> = match event.as_arc_opt() {
+        Some(rc) => rc.clone(),
+        None => throw_msg("Null Access"),
+    };
     with_thread_state_or_throw(thread_id, |state| {
         let mut st = state.events.lock();
         st.one_time.push_back(event);
@@ -210,9 +226,13 @@ pub fn event_loop_run_promised(thread_id: i32, event: HxRc<dyn Fn() + Send + Syn
 
 pub fn event_loop_repeat(
     thread_id: i32,
-    event: HxRc<dyn Fn() + Send + Sync>,
+    event: HxDynRef<dyn Fn() + Send + Sync>,
     interval_ms: i32,
 ) -> i32 {
+    let event: HxRc<dyn Fn() + Send + Sync> = match event.as_arc_opt() {
+        Some(rc) => rc.clone(),
+        None => throw_msg("Null Access"),
+    };
     // `interval_ms == 0` would cause `event_loop_progress()` to spin forever because the event is
     // always due immediately after re-scheduling. Clamp to 1ms to keep semantics sane and prevent
     // hangs.
@@ -374,7 +394,7 @@ pub struct LockHandle {
 }
 
 pub fn lock_new() -> HxRef<LockHandle> {
-    HxRc::new(HxCell::new(LockHandle::default()))
+    HxRef::new(LockHandle::default())
 }
 
 impl LockHandle {
@@ -441,7 +461,7 @@ pub struct MutexHandle {
 }
 
 pub fn mutex_new() -> HxRef<MutexHandle> {
-    HxRc::new(HxCell::new(MutexHandle::default()))
+    HxRef::new(MutexHandle::default())
 }
 
 impl MutexHandle {
@@ -516,7 +536,7 @@ pub struct ConditionHandle {
 }
 
 pub fn condition_new() -> HxRef<ConditionHandle> {
-    HxRc::new(HxCell::new(ConditionHandle::default()))
+    HxRef::new(ConditionHandle::default())
 }
 
 impl ConditionHandle {
@@ -590,10 +610,10 @@ pub struct SemaphoreHandle {
 }
 
 pub fn semaphore_new(value: i32) -> HxRef<SemaphoreHandle> {
-    HxRc::new(HxCell::new(SemaphoreHandle {
+    HxRef::new(SemaphoreHandle {
         count: ParkMutex::new(value.max(0)),
         cv: Condvar::new(),
-    }))
+    })
 }
 
 impl SemaphoreHandle {
@@ -652,9 +672,10 @@ mod tests {
 
     #[test]
     fn thread_spawn_can_send_to_main_queue() {
-        let job: HxRc<dyn Fn() + Send + Sync> = HxRc::new(|| {
+        let job_rc: HxRc<dyn Fn() + Send + Sync> = HxRc::new(|| {
             thread_send_message(0, dynamic::from(String::from("child_ready")));
         });
+        let job: HxDynRef<dyn Fn() + Send + Sync> = HxDynRef::new(job_rc);
         let _id = thread_spawn(job);
         let msg = thread_read_message(true);
         assert_eq!(msg.downcast::<String>().unwrap().as_str(), "child_ready");
@@ -666,12 +687,10 @@ mod tests {
         let _ = ensure_thread_state(tid);
         let seen = HxRc::new(AtomicBool::new(false));
         let seen2 = seen.clone();
-        event_loop_run(
-            tid,
-            HxRc::new(move || {
-                seen2.store(true, AtomicOrdering::SeqCst);
-            }),
-        );
+        let event_rc: HxRc<dyn Fn() + Send + Sync> = HxRc::new(move || {
+            seen2.store(true, AtomicOrdering::SeqCst);
+        });
+        event_loop_run(tid, HxDynRef::new(event_rc));
         assert_eq!(event_loop_progress(tid), -2.0);
         assert!(seen.load(AtomicOrdering::SeqCst));
         remove_thread_state(tid);
@@ -683,13 +702,10 @@ mod tests {
         let _ = ensure_thread_state(tid);
         let hits = HxRc::new(AtomicUsize::new(0));
         let hits2 = hits.clone();
-        let _id = event_loop_repeat(
-            tid,
-            HxRc::new(move || {
-                hits2.fetch_add(1, AtomicOrdering::SeqCst);
-            }),
-            0,
-        );
+        let event_rc: HxRc<dyn Fn() + Send + Sync> = HxRc::new(move || {
+            hits2.fetch_add(1, AtomicOrdering::SeqCst);
+        });
+        let _id = event_loop_repeat(tid, HxDynRef::new(event_rc), 0);
 
         // Must not hang. With a clamped interval (>= 1ms), the next scheduled time must be `At(t)`.
         let next = event_loop_progress(tid);

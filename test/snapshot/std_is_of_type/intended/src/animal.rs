@@ -8,8 +8,7 @@ pub struct Animal {}
 
 impl Animal {
     pub fn new() -> crate::HxRef<crate::animal::Animal> {
-        let self_: crate::HxRef<crate::animal::Animal> =
-            crate::HxRc::new(crate::HxRefCell::new(Animal {}));
+        let self_: crate::HxRef<crate::animal::Animal> = crate::HxRef::new(Animal {});
         return self_;
     }
 }

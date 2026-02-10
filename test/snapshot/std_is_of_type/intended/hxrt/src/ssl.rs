@@ -10,32 +10,40 @@
 //! What
 //! - Certificate chains (`Certificate`) backed by DER-encoded X.509 certificates.
 //! - RSA keys (`Key`) loaded from PEM/DER (subset of the upstream API for now).
-//! - Digest helpers (`digest_make`), plus best-effort RSA PKCS#1 v1.5 sign/verify.
+//! - Digest helpers (`digest_make`), plus best-effort RSA PKCS#1 v1.5 sign/verify (SHA256/SHA384/SHA512).
+//!   Verification also supports SHA1 for legacy signatures.
 //!
 //! How
-//! - Haxe wrappers in `std/sys/ssl/*` store opaque handles as `HxRef<...>` (Rc<RefCell<...>>).
+//! - Haxe wrappers in `std/sys/ssl/*` store opaque handles as `HxRef<...>` (currently `Arc<...>`).
 //! - Haxe calls into these helpers via target code injection (`untyped __rust__`).
-//! - Certificate field extraction uses `x509-parser` and returns best-effort data.
+//! - Certificate field extraction and public-key decoding use `x509-parser`.
+//! - RSA PKCS#1 v1.5 signatures use `ring`.
 
 use crate::bytes::Bytes;
-use crate::cell::{HxCell, HxRc, HxRef};
+use crate::cell::HxRef;
 use crate::exception;
 use md5::Md5;
 use oid_registry::{
-    OID_PKCS9_EMAIL_ADDRESS, OID_X509_COMMON_NAME, OID_X509_COUNTRY_NAME, OID_X509_LOCALITY_NAME,
-    OID_X509_ORGANIZATIONAL_UNIT, OID_X509_ORGANIZATION_NAME, OID_X509_STATE_OR_PROVINCE_NAME,
+    OID_PKCS1_RSAENCRYPTION, OID_PKCS9_EMAIL_ADDRESS, OID_X509_COMMON_NAME, OID_X509_COUNTRY_NAME,
+    OID_X509_LOCALITY_NAME, OID_X509_ORGANIZATIONAL_UNIT, OID_X509_ORGANIZATION_NAME,
+    OID_X509_STATE_OR_PROVINCE_NAME,
+};
+use ring::rand::SystemRandom;
+use ring::signature::{
+    RsaKeyPair, UnparsedPublicKey, RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY,
+    RSA_PKCS1_1024_8192_SHA256_FOR_LEGACY_USE_ONLY, RSA_PKCS1_1024_8192_SHA512_FOR_LEGACY_USE_ONLY,
+    RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY, RSA_PKCS1_2048_8192_SHA256,
+    RSA_PKCS1_2048_8192_SHA384, RSA_PKCS1_2048_8192_SHA512, RSA_PKCS1_SHA256, RSA_PKCS1_SHA384,
+    RSA_PKCS1_SHA512,
 };
 use ripemd::Ripemd160;
-use rsa::pkcs1::{DecodeRsaPrivateKey, DecodeRsaPublicKey};
-use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
-use rsa::signature::SignatureEncoding;
-use rsa::{RsaPrivateKey, RsaPublicKey};
 use rustls::pki_types::{PrivateKeyDer, PrivatePkcs1KeyDer, PrivatePkcs8KeyDer};
 use sha1::Sha1;
 use sha2::{Sha224, Sha256, Sha384, Sha512};
 use std::fs;
 use std::path::Path;
 use x509_parser::prelude::*;
+use x509_parser::public_key::RSAPublicKey;
 
 fn throw_custom(msg: String) -> ! {
     exception::throw(crate::dynamic::from(crate::io::Error::Custom(
@@ -156,11 +164,11 @@ fn x509_name_field(name: &X509Name<'_>, field: &str) -> Option<String> {
 }
 
 pub fn cert_new() -> HxRef<Certificate> {
-    HxRc::new(HxCell::new(Certificate::empty()))
+    HxRef::new(Certificate::empty())
 }
 
 pub fn cert_from_chain_der(chain_der: Vec<Vec<u8>>) -> HxRef<Certificate> {
-    HxRc::new(HxCell::new(Certificate::from_chain_der(chain_der)))
+    HxRef::new(Certificate::from_chain_der(chain_der))
 }
 
 pub fn cert_load_defaults() -> HxRef<Certificate> {
@@ -171,7 +179,7 @@ pub fn cert_load_defaults() -> HxRef<Certificate> {
             out.chain_der.push(cert.as_ref().to_vec());
         }
     }
-    HxRc::new(HxCell::new(out))
+    HxRef::new(out)
 }
 
 fn cert_from_pem_str(pem: &str) -> Vec<Vec<u8>> {
@@ -186,9 +194,7 @@ fn cert_from_pem_str(pem: &str) -> Vec<Vec<u8>> {
 }
 
 pub fn cert_from_string(pem: &str) -> HxRef<Certificate> {
-    HxRc::new(HxCell::new(Certificate::from_chain_der(cert_from_pem_str(
-        pem,
-    ))))
+    HxRef::new(Certificate::from_chain_der(cert_from_pem_str(pem)))
 }
 
 pub fn cert_load_file(file: &str) -> HxRef<Certificate> {
@@ -207,7 +213,7 @@ pub fn cert_load_file(file: &str) -> HxRef<Certificate> {
         vec![data]
     };
 
-    HxRc::new(HxCell::new(Certificate::from_chain_der(chain_der)))
+    HxRef::new(Certificate::from_chain_der(chain_der))
 }
 
 pub fn cert_load_path(path: &str) -> HxRef<Certificate> {
@@ -230,7 +236,7 @@ pub fn cert_load_path(path: &str) -> HxRef<Certificate> {
             }
         }
     }
-    HxRc::new(HxCell::new(out))
+    HxRef::new(out)
 }
 
 pub fn cert_next(cert: &HxRef<Certificate>) -> Option<HxRef<Certificate>> {
@@ -254,14 +260,15 @@ pub fn cert_add_der(cert: &HxRef<Certificate>, der: &[u8]) {
 #[derive(Debug)]
 enum KeyKind {
     RsaPrivate {
-        key: Box<RsaPrivateKey>,
+        key: Box<RsaKeyPair>,
         der_bytes: PrivateKeyBytes,
     },
-    RsaPublic(Box<RsaPublicKey>),
+    /// RSA public key encoded as ASN.1 DER `RSAPublicKey` (RFC 3447 Appendix A.1.1).
+    ///
+    /// This is the encoding expected by `ring::signature::UnparsedPublicKey`.
+    RsaPublic(Vec<u8>),
     /// Non-RSA private key material (kept for TLS, not for `sys.ssl.Digest.sign`).
-    PrivateDer {
-        der_bytes: PrivateKeyBytes,
-    },
+    PrivateDer { der_bytes: PrivateKeyBytes },
 }
 
 #[derive(Debug)]
@@ -278,23 +285,54 @@ enum PrivateKeyBytes {
 
 impl Key {
     pub fn private_key_der(&self) -> Option<PrivateKeyDer<'static>> {
-        match &self.kind {
-            KeyKind::RsaPrivate { der_bytes, .. } | KeyKind::PrivateDer { der_bytes } => {
-                match der_bytes {
-                    PrivateKeyBytes::Pkcs1(b) => {
-                        Some(PrivateKeyDer::Pkcs1(PrivatePkcs1KeyDer::from(b.clone())))
-                    }
-                    PrivateKeyBytes::Pkcs8(b) => {
-                        Some(PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(b.clone())))
-                    }
-                    PrivateKeyBytes::Sec1(b) => Some(PrivateKeyDer::Sec1(
-                        rustls::pki_types::PrivateSec1KeyDer::from(b.clone()),
-                    )),
+        fn from_bytes(der_bytes: &PrivateKeyBytes) -> Option<PrivateKeyDer<'static>> {
+            match der_bytes {
+                PrivateKeyBytes::Pkcs1(b) => {
+                    Some(PrivateKeyDer::Pkcs1(PrivatePkcs1KeyDer::from(b.clone())))
                 }
+                PrivateKeyBytes::Pkcs8(b) => {
+                    Some(PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(b.clone())))
+                }
+                PrivateKeyBytes::Sec1(b) => Some(PrivateKeyDer::Sec1(
+                    rustls::pki_types::PrivateSec1KeyDer::from(b.clone()),
+                )),
             }
+        }
+
+        match &self.kind {
+            KeyKind::RsaPrivate { der_bytes, .. } => from_bytes(der_bytes),
+            KeyKind::PrivateDer { der_bytes } => from_bytes(der_bytes),
             KeyKind::RsaPublic(_) => None,
         }
     }
+}
+
+fn rsa_public_key_pkcs1_from_spki_der(spki_der: &[u8]) -> Vec<u8> {
+    let (_, spki) = SubjectPublicKeyInfo::from_der(spki_der)
+        .unwrap_or_else(|_| throw_custom("Key: invalid SubjectPublicKeyInfo DER".to_string()));
+
+    if spki.algorithm.algorithm != OID_PKCS1_RSAENCRYPTION {
+        throw_custom("Key: public key is not RSA".to_string());
+    }
+
+    spki.subject_public_key.data.to_vec()
+}
+
+fn rsa_public_key_pkcs1_from_der(der: &[u8]) -> Vec<u8> {
+    if let Ok((_, spki)) = SubjectPublicKeyInfo::from_der(der) {
+        if spki.algorithm.algorithm != OID_PKCS1_RSAENCRYPTION {
+            throw_custom("Key: public key is not RSA".to_string());
+        }
+        return spki.subject_public_key.data.to_vec();
+    }
+
+    if RSAPublicKey::from_der(der).is_ok() {
+        return der.to_vec();
+    }
+
+    throw_custom(
+        "Key: unsupported public key encoding (expected SPKI or RSAPublicKey DER)".to_string(),
+    )
 }
 
 pub fn key_load_file(file: &str, is_public: bool) -> HxRef<Key> {
@@ -314,13 +352,30 @@ pub fn key_load_file(file: &str, is_public: bool) -> HxRef<Key> {
 
 pub fn key_read_pem(pem: &str, is_public: bool) -> HxRef<Key> {
     if is_public {
-        // Try PKCS#8 SubjectPublicKeyInfo first, then PKCS#1.
-        let k = RsaPublicKey::from_public_key_pem(pem)
-            .or_else(|_| RsaPublicKey::from_pkcs1_pem(pem))
+        // Prefer `rustls_pemfile` parsing ("PUBLIC KEY") but fall back to a
+        // strict PEM decode to support legacy "RSA PUBLIC KEY" blocks.
+        let mut cursor = std::io::Cursor::new(pem.as_bytes());
+        while let Ok(Some(item)) = rustls_pemfile::read_one(&mut cursor) {
+            if let rustls_pemfile::Item::SubjectPublicKeyInfo(spki) = item {
+                let pkcs1_der = rsa_public_key_pkcs1_from_spki_der(spki.as_ref());
+                return HxRef::new(Key {
+                    kind: KeyKind::RsaPublic(pkcs1_der),
+                });
+            }
+        }
+
+        let (label, der) = pem_rfc7468::decode_vec(pem.as_bytes())
             .unwrap_or_else(|e| throw_custom(format!("Key.readPEM(public): {e}")));
-        HxRc::new(HxCell::new(Key {
-            kind: KeyKind::RsaPublic(Box::new(k)),
-        }))
+        let pkcs1_der = match label {
+            "PUBLIC KEY" => rsa_public_key_pkcs1_from_spki_der(der.as_slice()),
+            "RSA PUBLIC KEY" => rsa_public_key_pkcs1_from_der(der.as_slice()),
+            _ => throw_custom(format!(
+                "Key.readPEM(public): unsupported PEM label: {label}"
+            )),
+        };
+        HxRef::new(Key {
+            kind: KeyKind::RsaPublic(pkcs1_der),
+        })
     } else {
         let mut cursor = std::io::BufReader::new(pem.as_bytes());
         let key_der = rustls_pemfile::private_key(&mut cursor)
@@ -330,7 +385,7 @@ pub fn key_read_pem(pem: &str, is_public: bool) -> HxRef<Key> {
         let kind = match key_der {
             PrivateKeyDer::Pkcs8(k8) => {
                 let bytes = k8.secret_pkcs8_der().to_vec();
-                if let Ok(rsa) = RsaPrivateKey::from_pkcs8_der(bytes.as_slice()) {
+                if let Ok(rsa) = RsaKeyPair::from_pkcs8(bytes.as_slice()) {
                     KeyKind::RsaPrivate {
                         key: Box::new(rsa),
                         der_bytes: PrivateKeyBytes::Pkcs8(bytes),
@@ -344,11 +399,15 @@ pub fn key_read_pem(pem: &str, is_public: bool) -> HxRef<Key> {
             }
             PrivateKeyDer::Pkcs1(k1) => {
                 let bytes = k1.secret_pkcs1_der().to_vec();
-                let rsa = RsaPrivateKey::from_pkcs1_der(bytes.as_slice())
-                    .unwrap_or_else(|e| throw_custom(format!("Key.readPEM(private pkcs1): {e}")));
-                KeyKind::RsaPrivate {
-                    key: Box::new(rsa),
-                    der_bytes: PrivateKeyBytes::Pkcs1(bytes),
+                if let Ok(rsa) = RsaKeyPair::from_der(bytes.as_slice()) {
+                    KeyKind::RsaPrivate {
+                        key: Box::new(rsa),
+                        der_bytes: PrivateKeyBytes::Pkcs1(bytes),
+                    }
+                } else {
+                    KeyKind::PrivateDer {
+                        der_bytes: PrivateKeyBytes::Pkcs1(bytes),
+                    }
                 }
             }
             PrivateKeyDer::Sec1(k) => {
@@ -360,43 +419,57 @@ pub fn key_read_pem(pem: &str, is_public: bool) -> HxRef<Key> {
             _ => throw_custom("Key.readPEM(private): unsupported key type".to_string()),
         };
 
-        HxRc::new(HxCell::new(Key { kind }))
+        HxRef::new(Key { kind })
     }
 }
 
 pub fn key_read_der(der: &[u8], is_public: bool) -> HxRef<Key> {
     if is_public {
-        let k = RsaPublicKey::from_public_key_der(der)
-            .or_else(|_| RsaPublicKey::from_pkcs1_der(der))
-            .unwrap_or_else(|e| throw_custom(format!("Key.readDER(public): {e}")));
-        HxRc::new(HxCell::new(Key {
-            kind: KeyKind::RsaPublic(Box::new(k)),
-        }))
+        let pkcs1_der = rsa_public_key_pkcs1_from_der(der);
+        HxRef::new(Key {
+            kind: KeyKind::RsaPublic(pkcs1_der),
+        })
     } else {
-        if let Ok(k) = RsaPrivateKey::from_pkcs8_der(der) {
-            return HxRc::new(HxCell::new(Key {
-                kind: KeyKind::RsaPrivate {
-                    key: Box::new(k),
-                    der_bytes: PrivateKeyBytes::Pkcs8(der.to_vec()),
-                },
-            }));
-        }
+        let key_der = PrivateKeyDer::try_from(der)
+            .unwrap_or_else(|e| throw_custom(format!("Key.readDER(private): {e}")));
 
-        if let Ok(k) = RsaPrivateKey::from_pkcs1_der(der) {
-            return HxRc::new(HxCell::new(Key {
-                kind: KeyKind::RsaPrivate {
-                    key: Box::new(k),
-                    der_bytes: PrivateKeyBytes::Pkcs1(der.to_vec()),
-                },
-            }));
-        }
+        let kind = match key_der {
+            PrivateKeyDer::Pkcs8(k8) => {
+                let bytes = k8.secret_pkcs8_der().to_vec();
+                if let Ok(rsa) = RsaKeyPair::from_pkcs8(bytes.as_slice()) {
+                    KeyKind::RsaPrivate {
+                        key: Box::new(rsa),
+                        der_bytes: PrivateKeyBytes::Pkcs8(bytes),
+                    }
+                } else {
+                    KeyKind::PrivateDer {
+                        der_bytes: PrivateKeyBytes::Pkcs8(bytes),
+                    }
+                }
+            }
+            PrivateKeyDer::Pkcs1(k1) => {
+                let bytes = k1.secret_pkcs1_der().to_vec();
+                if let Ok(rsa) = RsaKeyPair::from_der(bytes.as_slice()) {
+                    KeyKind::RsaPrivate {
+                        key: Box::new(rsa),
+                        der_bytes: PrivateKeyBytes::Pkcs1(bytes),
+                    }
+                } else {
+                    KeyKind::PrivateDer {
+                        der_bytes: PrivateKeyBytes::Pkcs1(bytes),
+                    }
+                }
+            }
+            PrivateKeyDer::Sec1(k) => {
+                let bytes = k.secret_sec1_der().to_vec();
+                KeyKind::PrivateDer {
+                    der_bytes: PrivateKeyBytes::Sec1(bytes),
+                }
+            }
+            _ => throw_custom("Key.readDER(private): unsupported key type".to_string()),
+        };
 
-        // Best-effort: treat it as a non-RSA PKCS#8 private key for TLS.
-        HxRc::new(HxCell::new(Key {
-            kind: KeyKind::PrivateDer {
-                der_bytes: PrivateKeyBytes::Pkcs8(der.to_vec()),
-            },
-        }))
+        HxRef::new(Key { kind })
     }
 }
 
@@ -435,62 +508,79 @@ fn digest_make_bytes(data: &[u8], alg: &str) -> Vec<u8> {
 }
 
 pub fn digest_make(data: &[u8], alg: &str) -> HxRef<Bytes> {
-    HxRc::new(HxCell::new(Bytes::from_vec(digest_make_bytes(data, alg))))
-}
-
-macro_rules! rsa_sign_pkcs1v15 {
-    ($digest:ty, $data:expr, $priv_k:expr) => {{
-        use rsa::pkcs1v15::{Signature, SigningKey};
-        use rsa::signature::Signer;
-        let signing_key = SigningKey::<$digest>::new_unprefixed($priv_k.clone());
-        let signature: Signature = signing_key.sign($data);
-        signature.to_vec()
-    }};
-}
-
-macro_rules! rsa_verify_pkcs1v15 {
-    ($digest:ty, $data:expr, $sig:expr, $pub_k:expr) => {{
-        use rsa::pkcs1v15::{Signature, VerifyingKey};
-        use rsa::signature::Verifier;
-        let verifying_key = VerifyingKey::<$digest>::new_unprefixed($pub_k.clone());
-        match Signature::try_from($sig) {
-            Ok(signature) => verifying_key.verify($data, &signature).is_ok(),
-            Err(_) => false,
-        }
-    }};
+    HxRef::new(Bytes::from_vec(digest_make_bytes(data, alg)))
 }
 
 pub fn digest_sign(data: &[u8], priv_key: &HxRef<Key>, alg: &str) -> HxRef<Bytes> {
     let key = priv_key.borrow();
-    let KeyKind::RsaPrivate { key: priv_k, .. } = &key.kind else {
+    let KeyKind::RsaPrivate { key: rsa_kp, .. } = &key.kind else {
         throw_custom("Digest.sign expects a private RSA Key".to_string())
     };
 
-    let sig: Vec<u8> = match alg {
-        "SHA1" => rsa_sign_pkcs1v15!(Sha1, data, priv_k.as_ref()),
-        "SHA224" => rsa_sign_pkcs1v15!(Sha224, data, priv_k.as_ref()),
-        "SHA256" => rsa_sign_pkcs1v15!(Sha256, data, priv_k.as_ref()),
-        "SHA384" => rsa_sign_pkcs1v15!(Sha384, data, priv_k.as_ref()),
-        "SHA512" => rsa_sign_pkcs1v15!(Sha512, data, priv_k.as_ref()),
+    let encoding: &'static dyn ring::signature::RsaEncoding = match alg {
+        // ring intentionally does not expose SHA1/SHA224 signing encodings.
+        "SHA256" => &RSA_PKCS1_SHA256,
+        "SHA384" => &RSA_PKCS1_SHA384,
+        "SHA512" => &RSA_PKCS1_SHA512,
         _ => throw_custom(format!(
             "DigestAlgorithm not supported for sign (RSA PKCS#1 v1.5): {alg}"
         )),
     };
-    HxRc::new(HxCell::new(Bytes::from_vec(sig)))
+
+    let rng = SystemRandom::new();
+    let mut sig = vec![0u8; rsa_kp.public().modulus_len()];
+    rsa_kp
+        .sign(encoding, &rng, data, sig.as_mut_slice())
+        .unwrap_or_else(|_| throw_custom("Digest.sign failed".to_string()));
+    HxRef::new(Bytes::from_vec(sig))
 }
 
 pub fn digest_verify(data: &[u8], signature: &[u8], pub_key: &HxRef<Key>, alg: &str) -> bool {
     let key = pub_key.borrow();
-    let KeyKind::RsaPublic(pub_k) = &key.kind else {
+    let KeyKind::RsaPublic(pk_der) = &key.kind else {
         return false;
     };
 
     match alg {
-        "SHA1" => rsa_verify_pkcs1v15!(Sha1, data, signature, pub_k.as_ref()),
-        "SHA224" => rsa_verify_pkcs1v15!(Sha224, data, signature, pub_k.as_ref()),
-        "SHA256" => rsa_verify_pkcs1v15!(Sha256, data, signature, pub_k.as_ref()),
-        "SHA384" => rsa_verify_pkcs1v15!(Sha384, data, signature, pub_k.as_ref()),
-        "SHA512" => rsa_verify_pkcs1v15!(Sha512, data, signature, pub_k.as_ref()),
+        "SHA1" => {
+            UnparsedPublicKey::new(
+                &RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY,
+                pk_der.as_slice(),
+            )
+            .verify(data, signature)
+            .is_ok()
+                || UnparsedPublicKey::new(
+                    &RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY,
+                    pk_der.as_slice(),
+                )
+                .verify(data, signature)
+                .is_ok()
+        }
+        "SHA256" => {
+            UnparsedPublicKey::new(&RSA_PKCS1_2048_8192_SHA256, pk_der.as_slice())
+                .verify(data, signature)
+                .is_ok()
+                || UnparsedPublicKey::new(
+                    &RSA_PKCS1_1024_8192_SHA256_FOR_LEGACY_USE_ONLY,
+                    pk_der.as_slice(),
+                )
+                .verify(data, signature)
+                .is_ok()
+        }
+        "SHA384" => UnparsedPublicKey::new(&RSA_PKCS1_2048_8192_SHA384, pk_der.as_slice())
+            .verify(data, signature)
+            .is_ok(),
+        "SHA512" => {
+            UnparsedPublicKey::new(&RSA_PKCS1_2048_8192_SHA512, pk_der.as_slice())
+                .verify(data, signature)
+                .is_ok()
+                || UnparsedPublicKey::new(
+                    &RSA_PKCS1_1024_8192_SHA512_FOR_LEGACY_USE_ONLY,
+                    pk_der.as_slice(),
+                )
+                .verify(data, signature)
+                .is_ok()
+        }
         _ => false,
     }
 }

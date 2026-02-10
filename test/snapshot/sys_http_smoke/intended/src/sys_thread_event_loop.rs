@@ -11,7 +11,7 @@ pub struct EventLoop {
 impl EventLoop {
     pub fn new() -> crate::HxRef<crate::sys_thread_event_loop::EventLoop> {
         let self_: crate::HxRef<crate::sys_thread_event_loop::EventLoop> =
-            crate::HxRc::new(crate::HxRefCell::new(EventLoop { _thread_id: 0 }));
+            crate::HxRef::new(EventLoop { _thread_id: 0 });
         {
             let __tmp = hxrt::thread::thread_current_id();
             self_.borrow_mut()._thread_id = __tmp;
@@ -22,38 +22,77 @@ impl EventLoop {
 
     pub fn repeat(
         self_: &crate::HxRefCell<EventLoop>,
-        event: crate::HxRc<dyn Fn() + Send + Sync>,
+        event: crate::HxDynRef<dyn Fn() + Send + Sync>,
         interval_ms: i32,
     ) -> i32 {
-        let id: i32 =
-            hxrt::thread::event_loop_repeat(self_.borrow()._thread_id, event, interval_ms);
+        let __hx_this: crate::HxRef<crate::sys_thread_event_loop::EventLoop> = self_.self_ref();
+        let id: i32 = hxrt::thread::event_loop_repeat(
+            {
+                let __b = __hx_this.borrow();
+                __b._thread_id
+            },
+            event,
+            interval_ms,
+        );
         return id as i32;
     }
 
     pub fn cancel(self_: &crate::HxRefCell<EventLoop>, event_handler: i32) {
+        let __hx_this: crate::HxRef<crate::sys_thread_event_loop::EventLoop> = self_.self_ref();
         let id: i32 = event_handler as i32;
-        hxrt::thread::event_loop_cancel(self_.borrow()._thread_id, id);
+        hxrt::thread::event_loop_cancel(
+            {
+                let __b = __hx_this.borrow();
+                __b._thread_id
+            },
+            id,
+        );
     }
 
     pub fn promise(self_: &crate::HxRefCell<EventLoop>) {
-        hxrt::thread::event_loop_promise(self_.borrow()._thread_id);
+        let __hx_this: crate::HxRef<crate::sys_thread_event_loop::EventLoop> = self_.self_ref();
+        hxrt::thread::event_loop_promise({
+            let __b = __hx_this.borrow();
+            __b._thread_id
+        });
     }
 
-    pub fn run(self_: &crate::HxRefCell<EventLoop>, event: crate::HxRc<dyn Fn() + Send + Sync>) {
-        hxrt::thread::event_loop_run(self_.borrow()._thread_id, event);
+    pub fn run(
+        self_: &crate::HxRefCell<EventLoop>,
+        event: crate::HxDynRef<dyn Fn() + Send + Sync>,
+    ) {
+        let __hx_this: crate::HxRef<crate::sys_thread_event_loop::EventLoop> = self_.self_ref();
+        hxrt::thread::event_loop_run(
+            {
+                let __b = __hx_this.borrow();
+                __b._thread_id
+            },
+            event,
+        );
     }
 
     pub fn run_promised(
         self_: &crate::HxRefCell<EventLoop>,
-        event: crate::HxRc<dyn Fn() + Send + Sync>,
+        event: crate::HxDynRef<dyn Fn() + Send + Sync>,
     ) {
-        hxrt::thread::event_loop_run_promised(self_.borrow()._thread_id, event);
+        let __hx_this: crate::HxRef<crate::sys_thread_event_loop::EventLoop> = self_.self_ref();
+        hxrt::thread::event_loop_run_promised(
+            {
+                let __b = __hx_this.borrow();
+                __b._thread_id
+            },
+            event,
+        );
     }
 
     pub fn progress(
         self_: &crate::HxRefCell<EventLoop>,
     ) -> crate::sys_thread_next_event_time::NextEventTime {
-        let next_at: f64 = hxrt::thread::event_loop_progress(self_.borrow()._thread_id);
+        let __hx_this: crate::HxRef<crate::sys_thread_event_loop::EventLoop> = self_.self_ref();
+        let next_at: f64 = hxrt::thread::event_loop_progress({
+            let __b = __hx_this.borrow();
+            __b._thread_id
+        });
         return if next_at == -2.0 {
             crate::sys_thread_next_event_time::NextEventTime::Now
         } else {
@@ -70,11 +109,22 @@ impl EventLoop {
     }
 
     pub fn wait(self_: &crate::HxRefCell<EventLoop>, timeout: Option<f64>) -> bool {
-        return hxrt::thread::event_loop_wait(self_.borrow()._thread_id, timeout);
+        let __hx_this: crate::HxRef<crate::sys_thread_event_loop::EventLoop> = self_.self_ref();
+        return hxrt::thread::event_loop_wait(
+            {
+                let __b = __hx_this.borrow();
+                __b._thread_id
+            },
+            timeout,
+        );
     }
 
     pub fn loop_(self_: &crate::HxRefCell<EventLoop>) {
-        hxrt::thread::event_loop_loop(self_.borrow()._thread_id);
+        let __hx_this: crate::HxRef<crate::sys_thread_event_loop::EventLoop> = self_.self_ref();
+        hxrt::thread::event_loop_loop({
+            let __b = __hx_this.borrow();
+            __b._thread_id
+        });
     }
 
     pub(crate) fn _from_thread_id(

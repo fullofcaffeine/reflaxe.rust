@@ -10,6 +10,16 @@ impl Mysql {
     pub fn connect(
         params: crate::HxRef<hxrt::anon::Anon>,
     ) -> crate::HxRc<dyn crate::sys_db_connection::Connection + Send + Sync> {
-        return crate::sys_db_mysql_mysql_connection::MysqlConnection::new(params.clone());
+        return {
+            let __tmp = crate::sys_db_mysql_mysql_connection::MysqlConnection::new(params.clone());
+            let __up: crate::HxRc<dyn crate::sys_db_connection::Connection + Send + Sync> =
+                match __tmp.as_arc_opt() {
+                    Some(__rc) => __rc.clone(),
+                    None => {
+                        hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                    }
+                };
+            __up
+        };
     }
 }

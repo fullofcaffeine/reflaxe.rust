@@ -44,8 +44,8 @@ import rust.HxRef;
 			handle = untyped __rust__(
 				"{
 					let det: bool = {2}.unwrap_or(false);
-					if {1}.is_some() {
-						let args_vec: Vec<String> = {1}.as_ref().unwrap().to_vec();
+					if !{1}.is_null() {
+						let args_vec: Vec<String> = {1}.to_vec();
 						hxrt::process::spawn({0}.as_str(), Some(args_vec), det)
 					} else {
 						// When args are not provided, `cmd` may include arguments and/or shell builtins.

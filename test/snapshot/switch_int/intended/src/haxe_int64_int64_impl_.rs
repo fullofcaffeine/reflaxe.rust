@@ -16,11 +16,17 @@ impl Int64Impl {
     }
 
     pub fn get_high(this1: crate::HxRef<crate::haxe_int64_int64::Int64>) -> i32 {
-        return this1.borrow().high;
+        return {
+            let __b = this1.borrow();
+            __b.high
+        };
     }
 
     pub fn get_low(this1: crate::HxRef<crate::haxe_int64_int64::Int64>) -> i32 {
-        return this1.borrow().low;
+        return {
+            let __b = this1.borrow();
+            __b.low
+        };
     }
 
     pub fn make(high: i32, low: i32) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
@@ -47,8 +53,14 @@ impl Int64Impl {
         this1: crate::HxRef<crate::haxe_int64_int64::Int64>,
     ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
         return {
-            let high: i32 = this1.borrow().high;
-            let low: i32 = this1.borrow().low;
+            let high: i32 = {
+                let __b = this1.borrow();
+                __b.high
+            };
+            let low: i32 = {
+                let __b = this1.borrow();
+                __b.low
+            };
             {
                 let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
                     crate::haxe_int64_int64::Int64::new(high, low);

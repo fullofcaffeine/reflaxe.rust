@@ -12,11 +12,11 @@ pub struct Sub {
 
 impl Sub {
     pub fn new(x: i32, y: String, z: i32) -> crate::HxRef<crate::sub::Sub> {
-        let self_: crate::HxRef<crate::sub::Sub> = crate::HxRc::new(crate::HxRefCell::new(Sub {
+        let self_: crate::HxRef<crate::sub::Sub> = crate::HxRef::new(Sub {
             x: 0,
             y: String::new(),
             z: 0,
-        }));
+        });
         let __hx_super_0_0: i32 = x + 1;
         let __hx_super_0_1: String = y;
         {

@@ -13,9 +13,9 @@ impl MysqlConnection {
         params: crate::HxRef<hxrt::anon::Anon>,
     ) -> crate::HxRef<crate::sys_db_mysql_mysql_connection::MysqlConnection> {
         let self_: crate::HxRef<crate::sys_db_mysql_mysql_connection::MysqlConnection> =
-            crate::HxRc::new(crate::HxRefCell::new(MysqlConnection {
+            crate::HxRef::new(MysqlConnection {
                 handle: hxrt::dynamic::Dynamic::null(),
-            }));
+            });
         let port: i32 = if params.borrow().get::<Option<i32>>("port").is_none() {
             3306
         } else {
@@ -49,8 +49,13 @@ impl MysqlConnection {
     }
 
     pub fn close(self_: &crate::HxRefCell<MysqlConnection>) {
+        let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_connection::MysqlConnection> =
+            self_.self_ref();
         {
-            let hdyn = self_.borrow().handle.clone();
+            let hdyn = {
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            };
             let h = hdyn
                 .downcast_ref::<std::sync::Arc<std::sync::Mutex<Option<mysql::Conn>>>>()
                 .unwrap_or_else(|| {
@@ -67,11 +72,16 @@ impl MysqlConnection {
         self_: &crate::HxRefCell<MysqlConnection>,
         sql: String,
     ) -> crate::HxRc<dyn crate::sys_db_result_set::ResultSet + Send + Sync> {
+        let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_connection::MysqlConnection> =
+            self_.self_ref();
         let res: crate::HxRef<hxrt::db::QueryResult> = {
             use mysql::prelude::*;
             use mysql::Value;
 
-            let hdyn = self_.borrow().handle.clone();
+            let hdyn = {
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            };
             let h = hdyn
                 .downcast_ref::<std::sync::Arc<std::sync::Mutex<Option<mysql::Conn>>>>()
                 .unwrap_or_else(|| {
@@ -147,7 +157,17 @@ impl MysqlConnection {
                 );
             hxrt::db::query_result_new(names, rows_arr)
         };
-        return crate::sys_db_mysql_mysql_result_set::MysqlResultSet::new(res.clone());
+        return {
+            let __tmp = crate::sys_db_mysql_mysql_result_set::MysqlResultSet::new(res.clone());
+            let __up: crate::HxRc<dyn crate::sys_db_result_set::ResultSet + Send + Sync> =
+                match __tmp.as_arc_opt() {
+                    Some(__rc) => __rc.clone(),
+                    None => {
+                        hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                    }
+                };
+            __up
+        };
     }
 
     pub fn escape(_self_: &crate::HxRefCell<MysqlConnection>, s: String) -> String {
@@ -161,10 +181,12 @@ impl MysqlConnection {
     }
 
     pub fn quote(self_: &crate::HxRefCell<MysqlConnection>, s: String) -> String {
+        let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_connection::MysqlConnection> =
+            self_.self_ref();
         return format!(
             "{}{}{}",
             "'",
-            crate::sys_db_mysql_mysql_connection::MysqlConnection::escape(&self_, s),
+            crate::sys_db_mysql_mysql_connection::MysqlConnection::escape(&*__hx_this, s),
             "'"
         );
     }
@@ -213,12 +235,14 @@ impl MysqlConnection {
             };
             out
         };
-        crate::string_buf::StringBuf::add(&sb, hxrt::dynamic::from(rendered.clone()));
+        crate::string_buf::StringBuf::add(&*sb, hxrt::dynamic::from(rendered));
     }
 
     pub fn last_insert_id(self_: &crate::HxRefCell<MysqlConnection>) -> i32 {
+        let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_connection::MysqlConnection> =
+            self_.self_ref();
         return crate::sys_db_mysql_mysql_connection::MysqlConnection::request(
-            &self_,
+            &*__hx_this,
             String::from("SELECT LAST_INSERT_ID()"),
         )
         .get_int_result(0);
@@ -229,22 +253,28 @@ impl MysqlConnection {
     }
 
     pub fn start_transaction(self_: &crate::HxRefCell<MysqlConnection>) {
+        let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_connection::MysqlConnection> =
+            self_.self_ref();
         crate::sys_db_mysql_mysql_connection::MysqlConnection::request(
-            &self_,
+            &*__hx_this,
             String::from("START TRANSACTION"),
         );
     }
 
     pub fn commit(self_: &crate::HxRefCell<MysqlConnection>) {
+        let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_connection::MysqlConnection> =
+            self_.self_ref();
         crate::sys_db_mysql_mysql_connection::MysqlConnection::request(
-            &self_,
+            &*__hx_this,
             String::from("COMMIT"),
         );
     }
 
     pub fn rollback(self_: &crate::HxRefCell<MysqlConnection>) {
+        let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_connection::MysqlConnection> =
+            self_.self_ref();
         crate::sys_db_mysql_mysql_connection::MysqlConnection::request(
-            &self_,
+            &*__hx_this,
             String::from("ROLLBACK"),
         );
     }

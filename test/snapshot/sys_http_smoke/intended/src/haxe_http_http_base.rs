@@ -4,51 +4,83 @@ pub const __HX_TYPE_ID: u32 = 0xf37438f4u32;
 
 pub struct HttpBase {
     pub url: String,
-    pub response_bytes: Option<crate::HxRef<hxrt::bytes::Bytes>>,
+    pub response_bytes: crate::HxRef<hxrt::bytes::Bytes>,
     response_as_string: Option<String>,
     post_data: Option<String>,
-    post_bytes: Option<crate::HxRef<hxrt::bytes::Bytes>>,
+    post_bytes: crate::HxRef<hxrt::bytes::Bytes>,
     headers: hxrt::array::Array<crate::HxRef<hxrt::anon::Anon>>,
     params: hxrt::array::Array<crate::HxRef<hxrt::anon::Anon>>,
-    pub on_data: crate::HxRc<dyn Fn(String) + Send + Sync>,
-    pub on_bytes: crate::HxRc<dyn Fn(crate::HxRef<hxrt::bytes::Bytes>) + Send + Sync>,
-    pub on_error: crate::HxRc<dyn Fn(String) + Send + Sync>,
-    pub on_status: crate::HxRc<dyn Fn(i32) + Send + Sync>,
+    pub on_data: crate::HxDynRef<dyn Fn(String) + Send + Sync>,
+    pub on_bytes: crate::HxDynRef<dyn Fn(crate::HxRef<hxrt::bytes::Bytes>) + Send + Sync>,
+    pub on_error: crate::HxDynRef<dyn Fn(String) + Send + Sync>,
+    pub on_status: crate::HxDynRef<dyn Fn(i32) + Send + Sync>,
 }
 
 impl HttpBase {
     pub fn new(url: String) -> crate::HxRef<crate::haxe_http_http_base::HttpBase> {
         let self_: crate::HxRef<crate::haxe_http_http_base::HttpBase> =
-            crate::HxRc::new(crate::HxRefCell::new(HttpBase {
+            crate::HxRef::new(HttpBase {
                 url: url,
-                response_bytes: None,
+                response_bytes: crate::HxRef::<hxrt::bytes::Bytes>::null(),
                 response_as_string: None,
                 post_data: None,
-                post_bytes: None,
+                post_bytes: crate::HxRef::<hxrt::bytes::Bytes>::null(),
                 headers: hxrt::array::Array::<crate::HxRef<hxrt::anon::Anon>>::new(),
                 params: hxrt::array::Array::<crate::HxRef<hxrt::anon::Anon>>::new(),
-                on_data: crate::HxRc::new(|_a0| {}),
-                on_bytes: crate::HxRc::new(|_a0| {}),
-                on_error: crate::HxRc::new(|_a0| {}),
-                on_status: crate::HxRc::new(|_a0| {}),
-            }));
+                on_data: {
+                    let __rc: crate::HxRc<dyn Fn(String) + Send + Sync> =
+                        crate::HxRc::new(move |_a0| {});
+                    crate::HxDynRef::new(__rc)
+                },
+                on_bytes: {
+                    let __rc: crate::HxRc<dyn Fn(crate::HxRef<hxrt::bytes::Bytes>) + Send + Sync> =
+                        crate::HxRc::new(move |_a0| {});
+                    crate::HxDynRef::new(__rc)
+                },
+                on_error: {
+                    let __rc: crate::HxRc<dyn Fn(String) + Send + Sync> =
+                        crate::HxRc::new(move |_a0| {});
+                    crate::HxDynRef::new(__rc)
+                },
+                on_status: {
+                    let __rc: crate::HxRc<dyn Fn(i32) + Send + Sync> =
+                        crate::HxRc::new(move |_a0| {});
+                    crate::HxDynRef::new(__rc)
+                },
+            });
         {
-            let __tmp = crate::HxRc::new(move |_data: String| {});
+            let __tmp = {
+                let __rc: crate::HxRc<dyn Fn(String) + Send + Sync> =
+                    crate::HxRc::new(move |_data: String| {});
+                crate::HxDynRef::new(__rc)
+            };
             self_.borrow_mut().on_data = __tmp.clone();
             __tmp
         };
         {
-            let __tmp = crate::HxRc::new(move |_data: crate::HxRef<hxrt::bytes::Bytes>| {});
+            let __tmp = {
+                let __rc: crate::HxRc<dyn Fn(crate::HxRef<hxrt::bytes::Bytes>) + Send + Sync> =
+                    crate::HxRc::new(move |_data: crate::HxRef<hxrt::bytes::Bytes>| {});
+                crate::HxDynRef::new(__rc)
+            };
             self_.borrow_mut().on_bytes = __tmp.clone();
             __tmp
         };
         {
-            let __tmp = crate::HxRc::new(move |_msg: String| {});
+            let __tmp = {
+                let __rc: crate::HxRc<dyn Fn(String) + Send + Sync> =
+                    crate::HxRc::new(move |_msg: String| {});
+                crate::HxDynRef::new(__rc)
+            };
             self_.borrow_mut().on_error = __tmp.clone();
             __tmp
         };
         {
-            let __tmp = crate::HxRc::new(move |_status: i32| {});
+            let __tmp = {
+                let __rc: crate::HxRc<dyn Fn(i32) + Send + Sync> =
+                    crate::HxRc::new(move |_status: i32| {});
+                crate::HxDynRef::new(__rc)
+            };
             self_.borrow_mut().on_status = __tmp.clone();
             __tmp
         };
@@ -56,28 +88,32 @@ impl HttpBase {
     }
 
     pub fn set_header(self_: &crate::HxRefCell<HttpBase>, name: String, value: String) {
+        let __hx_this: crate::HxRef<crate::haxe_http_http_base::HttpBase> = self_.self_ref();
         {
             let mut _g: i32 = 0;
-            let _g1: i32 = self_.borrow().headers.clone().len() as i32;
+            let _g1: i32 = ({
+                let __b = __hx_this.borrow();
+                __b.headers.clone()
+            })
+            .len() as i32;
             while _g < _g1 {
                 let i: i32 = {
                     let __tmp = _g;
                     _g = _g + 1;
                     __tmp
                 };
-                if self_
-                    .borrow()
-                    .headers
-                    .clone()
-                    .get_unchecked(i as usize)
-                    .borrow()
-                    .get::<String>("name")
+                if ({
+                    let __b = __hx_this.borrow();
+                    __b.headers.clone()
+                })
+                .get_unchecked(i as usize)
+                .borrow()
+                .get::<String>("name")
                     == name
                 {
                     {
                         let __tmp = {
-                            let __o =
-                                crate::HxRc::new(crate::HxRefCell::new(hxrt::anon::Anon::new()));
+                            let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                             {
                                 let mut __b = __o.borrow_mut();
                                 __b.set("name", name.clone());
@@ -85,19 +121,23 @@ impl HttpBase {
                             };
                             __o
                         };
-                        self_
-                            .borrow()
-                            .headers
-                            .clone()
-                            .set(i as usize, __tmp.clone());
+                        ({
+                            let __b = __hx_this.borrow();
+                            __b.headers.clone()
+                        })
+                        .set_haxe(i as usize, __tmp.clone(), move || crate::HxRef::null());
                         __tmp
                     };
                     return;
                 }
             }
         }
-        self_.borrow().headers.clone().push({
-            let __o = crate::HxRc::new(crate::HxRefCell::new(hxrt::anon::Anon::new()));
+        ({
+            let __b = __hx_this.borrow();
+            __b.headers.clone()
+        })
+        .push({
+            let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
                 __b.set("name", name.clone());
@@ -108,8 +148,13 @@ impl HttpBase {
     }
 
     pub fn add_header(self_: &crate::HxRefCell<HttpBase>, header: String, value: String) {
-        self_.borrow().headers.clone().push({
-            let __o = crate::HxRc::new(crate::HxRefCell::new(hxrt::anon::Anon::new()));
+        let __hx_this: crate::HxRef<crate::haxe_http_http_base::HttpBase> = self_.self_ref();
+        ({
+            let __b = __hx_this.borrow();
+            __b.headers.clone()
+        })
+        .push({
+            let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
                 __b.set("name", header);
@@ -120,28 +165,32 @@ impl HttpBase {
     }
 
     pub fn set_parameter(self_: &crate::HxRefCell<HttpBase>, name: String, value: String) {
+        let __hx_this: crate::HxRef<crate::haxe_http_http_base::HttpBase> = self_.self_ref();
         {
             let mut _g: i32 = 0;
-            let _g1: i32 = self_.borrow().params.clone().len() as i32;
+            let _g1: i32 = ({
+                let __b = __hx_this.borrow();
+                __b.params.clone()
+            })
+            .len() as i32;
             while _g < _g1 {
                 let i: i32 = {
                     let __tmp = _g;
                     _g = _g + 1;
                     __tmp
                 };
-                if self_
-                    .borrow()
-                    .params
-                    .clone()
-                    .get_unchecked(i as usize)
-                    .borrow()
-                    .get::<String>("name")
+                if ({
+                    let __b = __hx_this.borrow();
+                    __b.params.clone()
+                })
+                .get_unchecked(i as usize)
+                .borrow()
+                .get::<String>("name")
                     == name
                 {
                     {
                         let __tmp = {
-                            let __o =
-                                crate::HxRc::new(crate::HxRefCell::new(hxrt::anon::Anon::new()));
+                            let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                             {
                                 let mut __b = __o.borrow_mut();
                                 __b.set("name", name.clone());
@@ -149,15 +198,23 @@ impl HttpBase {
                             };
                             __o
                         };
-                        self_.borrow().params.clone().set(i as usize, __tmp.clone());
+                        ({
+                            let __b = __hx_this.borrow();
+                            __b.params.clone()
+                        })
+                        .set_haxe(i as usize, __tmp.clone(), move || crate::HxRef::null());
                         __tmp
                     };
                     return;
                 }
             }
         }
-        self_.borrow().params.clone().push({
-            let __o = crate::HxRc::new(crate::HxRefCell::new(hxrt::anon::Anon::new()));
+        ({
+            let __b = __hx_this.borrow();
+            __b.params.clone()
+        })
+        .push({
+            let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
                 __b.set("name", name.clone());
@@ -168,8 +225,13 @@ impl HttpBase {
     }
 
     pub fn add_parameter(self_: &crate::HxRefCell<HttpBase>, name: String, value: String) {
-        self_.borrow().params.clone().push({
-            let __o = crate::HxRc::new(crate::HxRefCell::new(hxrt::anon::Anon::new()));
+        let __hx_this: crate::HxRef<crate::haxe_http_http_base::HttpBase> = self_.self_ref();
+        ({
+            let __b = __hx_this.borrow();
+            __b.params.clone()
+        })
+        .push({
+            let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
                 __b.set("name", name);
@@ -180,95 +242,112 @@ impl HttpBase {
     }
 
     pub fn set_post_data(self_: &crate::HxRefCell<HttpBase>, data: Option<String>) {
+        let __hx_this: crate::HxRef<crate::haxe_http_http_base::HttpBase> = self_.self_ref();
         {
             let __tmp = data;
-            self_.borrow_mut().post_data = __tmp.clone();
+            __hx_this.borrow_mut().post_data = __tmp.clone();
             __tmp
         };
         {
-            let __tmp = None;
-            self_.borrow_mut().post_bytes = __tmp.clone();
+            let __tmp = crate::HxRef::<hxrt::bytes::Bytes>::null();
+            __hx_this.borrow_mut().post_bytes = __tmp.clone();
             __tmp
         };
     }
 
     pub fn set_post_bytes(
         self_: &crate::HxRefCell<HttpBase>,
-        data: Option<crate::HxRef<hxrt::bytes::Bytes>>,
+        data: crate::HxRef<hxrt::bytes::Bytes>,
     ) {
+        let __hx_this: crate::HxRef<crate::haxe_http_http_base::HttpBase> = self_.self_ref();
         {
             let __tmp = data;
-            self_.borrow_mut().post_bytes = __tmp.clone();
+            __hx_this.borrow_mut().post_bytes = __tmp.clone();
             __tmp
         };
         {
             let __tmp = None;
-            self_.borrow_mut().post_data = __tmp.clone();
+            __hx_this.borrow_mut().post_data = __tmp.clone();
             __tmp
         };
     }
 
     pub fn request(self_: &crate::HxRefCell<HttpBase>, _post: Option<bool>) {
-        self_.borrow().on_error.clone()(String::from(
+        let __hx_this: crate::HxRef<crate::haxe_http_http_base::HttpBase> = self_.self_ref();
+        ({
+            let __b = __hx_this.borrow();
+            __b.on_error.clone()
+        })(String::from(
             "HttpBase.request is not implemented on this target",
         ));
     }
 
     fn success(self_: &crate::HxRefCell<HttpBase>, data: crate::HxRef<hxrt::bytes::Bytes>) {
+        let __hx_this: crate::HxRef<crate::haxe_http_http_base::HttpBase> = self_.self_ref();
         {
             let __tmp = data.clone();
-            self_.borrow_mut().response_bytes = Some(__tmp.clone());
+            __hx_this.borrow_mut().response_bytes = __tmp.clone();
             __tmp
         };
         let s: String = data.borrow().to_string();
         {
             let __tmp = s.clone();
-            self_.borrow_mut().response_as_string = Some(__tmp.clone());
+            __hx_this.borrow_mut().response_as_string = Some(__tmp.clone());
             __tmp
         };
-        self_.borrow().on_data.clone()(s.clone());
-        self_.borrow().on_bytes.clone()(data.clone());
+        ({
+            let __b = __hx_this.borrow();
+            __b.on_data.clone()
+        })(s.clone());
+        ({
+            let __b = __hx_this.borrow();
+            __b.on_bytes.clone()
+        })(data.clone());
     }
 
     pub fn get_response_data(self_: &crate::HxRefCell<HttpBase>) -> Option<String> {
-        return self_.borrow().response_as_string.clone();
+        let __hx_this: crate::HxRef<crate::haxe_http_http_base::HttpBase> = self_.self_ref();
+        return {
+            let __b = __hx_this.borrow();
+            __b.response_as_string.clone()
+        };
     }
 }
 
 pub trait HttpBaseTrait: Send + Sync {
     fn __hx_get_url(&self) -> String;
     fn __hx_set_url(&self, v: String);
-    fn __hx_get_response_bytes(&self) -> Option<crate::HxRef<hxrt::bytes::Bytes>>;
-    fn __hx_set_response_bytes(&self, v: Option<crate::HxRef<hxrt::bytes::Bytes>>);
+    fn __hx_get_response_bytes(&self) -> crate::HxRef<hxrt::bytes::Bytes>;
+    fn __hx_set_response_bytes(&self, v: crate::HxRef<hxrt::bytes::Bytes>);
     fn __hx_get_response_as_string(&self) -> Option<String>;
     fn __hx_set_response_as_string(&self, v: Option<String>);
     fn __hx_get_post_data(&self) -> Option<String>;
     fn __hx_set_post_data(&self, v: Option<String>);
-    fn __hx_get_post_bytes(&self) -> Option<crate::HxRef<hxrt::bytes::Bytes>>;
-    fn __hx_set_post_bytes(&self, v: Option<crate::HxRef<hxrt::bytes::Bytes>>);
+    fn __hx_get_post_bytes(&self) -> crate::HxRef<hxrt::bytes::Bytes>;
+    fn __hx_set_post_bytes(&self, v: crate::HxRef<hxrt::bytes::Bytes>);
     fn __hx_get_headers(&self) -> hxrt::array::Array<crate::HxRef<hxrt::anon::Anon>>;
     fn __hx_set_headers(&self, v: hxrt::array::Array<crate::HxRef<hxrt::anon::Anon>>);
     fn __hx_get_params(&self) -> hxrt::array::Array<crate::HxRef<hxrt::anon::Anon>>;
     fn __hx_set_params(&self, v: hxrt::array::Array<crate::HxRef<hxrt::anon::Anon>>);
-    fn __hx_get_on_data(&self) -> crate::HxRc<dyn Fn(String) + Send + Sync>;
-    fn __hx_set_on_data(&self, v: crate::HxRc<dyn Fn(String) + Send + Sync>);
+    fn __hx_get_on_data(&self) -> crate::HxDynRef<dyn Fn(String) + Send + Sync>;
+    fn __hx_set_on_data(&self, v: crate::HxDynRef<dyn Fn(String) + Send + Sync>);
     fn __hx_get_on_bytes(
         &self,
-    ) -> crate::HxRc<dyn Fn(crate::HxRef<hxrt::bytes::Bytes>) + Send + Sync>;
+    ) -> crate::HxDynRef<dyn Fn(crate::HxRef<hxrt::bytes::Bytes>) + Send + Sync>;
     fn __hx_set_on_bytes(
         &self,
-        v: crate::HxRc<dyn Fn(crate::HxRef<hxrt::bytes::Bytes>) + Send + Sync>,
+        v: crate::HxDynRef<dyn Fn(crate::HxRef<hxrt::bytes::Bytes>) + Send + Sync>,
     );
-    fn __hx_get_on_error(&self) -> crate::HxRc<dyn Fn(String) + Send + Sync>;
-    fn __hx_set_on_error(&self, v: crate::HxRc<dyn Fn(String) + Send + Sync>);
-    fn __hx_get_on_status(&self) -> crate::HxRc<dyn Fn(i32) + Send + Sync>;
-    fn __hx_set_on_status(&self, v: crate::HxRc<dyn Fn(i32) + Send + Sync>);
+    fn __hx_get_on_error(&self) -> crate::HxDynRef<dyn Fn(String) + Send + Sync>;
+    fn __hx_set_on_error(&self, v: crate::HxDynRef<dyn Fn(String) + Send + Sync>);
+    fn __hx_get_on_status(&self) -> crate::HxDynRef<dyn Fn(i32) + Send + Sync>;
+    fn __hx_set_on_status(&self, v: crate::HxDynRef<dyn Fn(i32) + Send + Sync>);
     fn set_header(&self, name: String, value: String) -> ();
     fn add_header(&self, header: String, value: String) -> ();
     fn set_parameter(&self, name: String, value: String) -> ();
     fn add_parameter(&self, name: String, value: String) -> ();
     fn set_post_data(&self, data: Option<String>) -> ();
-    fn set_post_bytes(&self, data: Option<crate::HxRef<hxrt::bytes::Bytes>>) -> ();
+    fn set_post_bytes(&self, data: crate::HxRef<hxrt::bytes::Bytes>) -> ();
     fn request(&self, _post: Option<bool>) -> ();
     fn success(&self, data: crate::HxRef<hxrt::bytes::Bytes>) -> ();
     fn get_response_data(&self) -> Option<String>;
@@ -282,10 +361,10 @@ impl crate::haxe_http_http_base::HttpBaseTrait for crate::HxRefCell<HttpBase> {
     fn __hx_set_url(&self, v: String) {
         self.borrow_mut().url = v;
     }
-    fn __hx_get_response_bytes(&self) -> Option<crate::HxRef<hxrt::bytes::Bytes>> {
+    fn __hx_get_response_bytes(&self) -> crate::HxRef<hxrt::bytes::Bytes> {
         self.borrow().response_bytes.clone()
     }
-    fn __hx_set_response_bytes(&self, v: Option<crate::HxRef<hxrt::bytes::Bytes>>) {
+    fn __hx_set_response_bytes(&self, v: crate::HxRef<hxrt::bytes::Bytes>) {
         self.borrow_mut().response_bytes = v;
     }
     fn __hx_get_response_as_string(&self) -> Option<String> {
@@ -300,10 +379,10 @@ impl crate::haxe_http_http_base::HttpBaseTrait for crate::HxRefCell<HttpBase> {
     fn __hx_set_post_data(&self, v: Option<String>) {
         self.borrow_mut().post_data = v;
     }
-    fn __hx_get_post_bytes(&self) -> Option<crate::HxRef<hxrt::bytes::Bytes>> {
+    fn __hx_get_post_bytes(&self) -> crate::HxRef<hxrt::bytes::Bytes> {
         self.borrow().post_bytes.clone()
     }
-    fn __hx_set_post_bytes(&self, v: Option<crate::HxRef<hxrt::bytes::Bytes>>) {
+    fn __hx_set_post_bytes(&self, v: crate::HxRef<hxrt::bytes::Bytes>) {
         self.borrow_mut().post_bytes = v;
     }
     fn __hx_get_headers(&self) -> hxrt::array::Array<crate::HxRef<hxrt::anon::Anon>> {
@@ -318,33 +397,33 @@ impl crate::haxe_http_http_base::HttpBaseTrait for crate::HxRefCell<HttpBase> {
     fn __hx_set_params(&self, v: hxrt::array::Array<crate::HxRef<hxrt::anon::Anon>>) {
         self.borrow_mut().params = v;
     }
-    fn __hx_get_on_data(&self) -> crate::HxRc<dyn Fn(String) + Send + Sync> {
+    fn __hx_get_on_data(&self) -> crate::HxDynRef<dyn Fn(String) + Send + Sync> {
         self.borrow().on_data.clone()
     }
-    fn __hx_set_on_data(&self, v: crate::HxRc<dyn Fn(String) + Send + Sync>) {
+    fn __hx_set_on_data(&self, v: crate::HxDynRef<dyn Fn(String) + Send + Sync>) {
         self.borrow_mut().on_data = v;
     }
     fn __hx_get_on_bytes(
         &self,
-    ) -> crate::HxRc<dyn Fn(crate::HxRef<hxrt::bytes::Bytes>) + Send + Sync> {
+    ) -> crate::HxDynRef<dyn Fn(crate::HxRef<hxrt::bytes::Bytes>) + Send + Sync> {
         self.borrow().on_bytes.clone()
     }
     fn __hx_set_on_bytes(
         &self,
-        v: crate::HxRc<dyn Fn(crate::HxRef<hxrt::bytes::Bytes>) + Send + Sync>,
+        v: crate::HxDynRef<dyn Fn(crate::HxRef<hxrt::bytes::Bytes>) + Send + Sync>,
     ) {
         self.borrow_mut().on_bytes = v;
     }
-    fn __hx_get_on_error(&self) -> crate::HxRc<dyn Fn(String) + Send + Sync> {
+    fn __hx_get_on_error(&self) -> crate::HxDynRef<dyn Fn(String) + Send + Sync> {
         self.borrow().on_error.clone()
     }
-    fn __hx_set_on_error(&self, v: crate::HxRc<dyn Fn(String) + Send + Sync>) {
+    fn __hx_set_on_error(&self, v: crate::HxDynRef<dyn Fn(String) + Send + Sync>) {
         self.borrow_mut().on_error = v;
     }
-    fn __hx_get_on_status(&self) -> crate::HxRc<dyn Fn(i32) + Send + Sync> {
+    fn __hx_get_on_status(&self) -> crate::HxDynRef<dyn Fn(i32) + Send + Sync> {
         self.borrow().on_status.clone()
     }
-    fn __hx_set_on_status(&self, v: crate::HxRc<dyn Fn(i32) + Send + Sync>) {
+    fn __hx_set_on_status(&self, v: crate::HxDynRef<dyn Fn(i32) + Send + Sync>) {
         self.borrow_mut().on_status = v;
     }
     fn set_header(&self, name: String, value: String) -> () {
@@ -362,7 +441,7 @@ impl crate::haxe_http_http_base::HttpBaseTrait for crate::HxRefCell<HttpBase> {
     fn set_post_data(&self, data: Option<String>) -> () {
         HttpBase::set_post_data(self, data)
     }
-    fn set_post_bytes(&self, data: Option<crate::HxRef<hxrt::bytes::Bytes>>) -> () {
+    fn set_post_bytes(&self, data: crate::HxRef<hxrt::bytes::Bytes>) -> () {
         HttpBase::set_post_bytes(self, data)
     }
     fn request(&self, _post: Option<bool>) -> () {

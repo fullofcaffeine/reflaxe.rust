@@ -10,18 +10,23 @@ pub struct A {
 
 impl A {
     pub fn new() -> crate::HxRef<crate::a::A> {
-        let self_: crate::HxRef<crate::a::A> = crate::HxRc::new(crate::HxRefCell::new(A { _x: 1 }));
+        let self_: crate::HxRef<crate::a::A> = crate::HxRef::new(A { _x: 1 });
         return self_;
     }
 
     pub fn get_x(self_: &crate::HxRefCell<A>) -> i32 {
-        return self_.borrow()._x;
+        let __hx_this: crate::HxRef<crate::a::A> = self_.self_ref();
+        return {
+            let __b = __hx_this.borrow();
+            __b._x
+        };
     }
 
     pub fn set_x(self_: &crate::HxRefCell<A>, v: i32) -> i32 {
+        let __hx_this: crate::HxRef<crate::a::A> = self_.self_ref();
         {
             let __tmp = v;
-            self_.borrow_mut()._x = __tmp;
+            __hx_this.borrow_mut()._x = __tmp;
             __tmp
         };
         return v;

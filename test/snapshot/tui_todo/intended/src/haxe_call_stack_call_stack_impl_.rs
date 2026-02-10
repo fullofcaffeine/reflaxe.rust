@@ -29,9 +29,9 @@ impl CallStackImpl {
         return format!(
             "{}{}{}",
             "Exception: ",
-            crate::haxe_exception::Exception::to_string(&e),
+            crate::haxe_exception::Exception::to_string(&*e),
             crate::haxe_call_stack_call_stack_impl_::CallStackImpl::to_string(
-                crate::haxe_exception::Exception::get_stack(&e)
+                crate::haxe_exception::Exception::get_stack(&*e)
             )
         );
     }

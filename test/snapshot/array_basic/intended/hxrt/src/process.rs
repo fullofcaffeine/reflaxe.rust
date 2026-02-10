@@ -1,4 +1,4 @@
-use crate::cell::{HxCell, HxRc, HxRef};
+use crate::cell::HxRef;
 use crate::{dynamic, exception};
 use std::io::{Read, Write};
 use std::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, ExitStatus, Stdio};
@@ -125,13 +125,13 @@ pub fn spawn(cmd: &str, args: Option<Vec<String>>, detached: bool) -> HxRef<Proc
             Err(e) => throw_io(e),
         };
         let pid = child.id() as i32;
-        HxRc::new(HxCell::new(Process {
+        HxRef::new(Process {
             child: Some(child),
             pid,
             stdin: None,
             stdout: None,
             stderr: None,
-        }))
+        })
     } else {
         let mut c = Command::new(cmd);
         if let Some(a) = args {
@@ -148,12 +148,12 @@ pub fn spawn(cmd: &str, args: Option<Vec<String>>, detached: bool) -> HxRef<Proc
         let stdin = child.stdin.take();
         let stdout = child.stdout.take();
         let stderr = child.stderr.take();
-        HxRc::new(HxCell::new(Process {
+        HxRef::new(Process {
             child: Some(child),
             pid,
             stdin,
             stdout,
             stderr,
-        }))
+        })
     }
 }

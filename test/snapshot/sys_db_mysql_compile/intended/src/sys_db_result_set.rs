@@ -11,5 +11,5 @@ pub trait ResultSet: Send + Sync {
     fn get_result(&self, n: i32) -> String;
     fn get_int_result(&self, n: i32) -> i32;
     fn get_float_result(&self, n: i32) -> f64;
-    fn get_fields_names(&self) -> Option<hxrt::array::Array<String>>;
+    fn get_fields_names(&self) -> hxrt::array::Array<String>;
 }

@@ -1,4 +1,4 @@
-use crate::cell::{HxCell, HxRc, HxRef};
+use crate::cell::HxRef;
 use crate::{dynamic, exception, io};
 use mio::{Events, Interest, Poll, Token};
 use socket2::{Domain, Protocol, Socket, Type};
@@ -242,19 +242,19 @@ pub fn host_local() -> String {
 }
 
 pub fn socket_new_tcp() -> HxRef<SocketHandle> {
-    HxRc::new(HxCell::new(SocketHandle {
+    HxRef::new(SocketHandle {
         kind: SocketKind::Tcp(TcpState::default()),
         timeout: None,
         blocking: true,
-    }))
+    })
 }
 
 pub fn socket_new_udp() -> HxRef<SocketHandle> {
-    HxRc::new(HxCell::new(SocketHandle {
+    HxRef::new(SocketHandle {
         kind: SocketKind::Udp(UdpState::default()),
         timeout: None,
         blocking: true,
-    }))
+    })
 }
 
 impl SocketHandle {
@@ -618,7 +618,7 @@ impl SocketHandle {
             ts.write = Some(write);
         }
 
-        HxRc::new(HxCell::new(out))
+        HxRef::new(out)
     }
 
     pub fn shutdown(&mut self, read: bool, write: bool) {

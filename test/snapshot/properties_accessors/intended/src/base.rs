@@ -11,30 +11,38 @@ pub struct Base {
 
 impl Base {
     pub fn new() -> crate::HxRef<crate::base::Base> {
-        let self_: crate::HxRef<crate::base::Base> =
-            crate::HxRc::new(crate::HxRefCell::new(Base { x: 0, _y: 0 }));
+        let self_: crate::HxRef<crate::base::Base> = crate::HxRef::new(Base { x: 0, _y: 0 });
         return self_;
     }
 
     pub fn set_x(self_: &crate::HxRefCell<Base>, v: i32) -> i32 {
+        let __hx_this: crate::HxRef<crate::base::Base> = self_.self_ref();
         return {
             let __tmp = v;
-            self_.borrow_mut().x = __tmp;
+            __hx_this.borrow_mut().x = __tmp;
             __tmp
         };
     }
 
     pub fn get_y(self_: &crate::HxRefCell<Base>) -> i32 {
-        return self_.borrow()._y;
+        let __hx_this: crate::HxRef<crate::base::Base> = self_.self_ref();
+        return {
+            let __b = __hx_this.borrow();
+            __b._y
+        };
     }
 
     pub fn set_y(self_: &crate::HxRefCell<Base>, v: i32) -> i32 {
+        let __hx_this: crate::HxRef<crate::base::Base> = self_.self_ref();
         {
             let __tmp = v * 2;
-            self_.borrow_mut()._y = __tmp;
+            __hx_this.borrow_mut()._y = __tmp;
             __tmp
         };
-        return self_.borrow()._y;
+        return {
+            let __b = __hx_this.borrow();
+            __b._y
+        };
     }
 }
 

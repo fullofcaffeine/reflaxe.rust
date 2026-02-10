@@ -10,8 +10,7 @@ pub struct Foo {
 
 impl Foo {
     pub fn new(n: i32) -> crate::HxRef<crate::foo::Foo> {
-        let self_: crate::HxRef<crate::foo::Foo> =
-            crate::HxRc::new(crate::HxRefCell::new(Foo { n: n }));
+        let self_: crate::HxRef<crate::foo::Foo> = crate::HxRef::new(Foo { n: n });
         return self_;
     }
 }

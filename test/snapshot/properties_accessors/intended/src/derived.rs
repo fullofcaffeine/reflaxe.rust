@@ -12,35 +12,44 @@ pub struct Derived {
 impl Derived {
     pub fn new() -> crate::HxRef<crate::derived::Derived> {
         let self_: crate::HxRef<crate::derived::Derived> =
-            crate::HxRc::new(crate::HxRefCell::new(Derived { x: 0, _y: 0 }));
+            crate::HxRef::new(Derived { x: 0, _y: 0 });
         {
             let __tmp = 0;
             self_.borrow_mut()._y = __tmp;
             __tmp
         };
-        crate::derived::Derived::set_x(&self_, 0);
+        crate::derived::Derived::set_x(&*self_, 0);
         return self_;
     }
 
     pub fn set_y(self_: &crate::HxRefCell<Derived>, v: i32) -> i32 {
+        let __hx_this: crate::HxRef<crate::derived::Derived> = self_.self_ref();
         {
             let __tmp = (v + 1) * 2;
-            self_.borrow_mut()._y = __tmp;
+            __hx_this.borrow_mut()._y = __tmp;
             __tmp
         };
-        return self_.borrow()._y;
+        return {
+            let __b = __hx_this.borrow();
+            __b._y
+        };
     }
 
     pub fn set_x(self_: &crate::HxRefCell<Derived>, v: i32) -> i32 {
+        let __hx_this: crate::HxRef<crate::derived::Derived> = self_.self_ref();
         return {
             let __tmp = v;
-            self_.borrow_mut().x = __tmp;
+            __hx_this.borrow_mut().x = __tmp;
             __tmp
         };
     }
 
     pub fn get_y(self_: &crate::HxRefCell<Derived>) -> i32 {
-        return self_.borrow()._y;
+        let __hx_this: crate::HxRef<crate::derived::Derived> = self_.self_ref();
+        return {
+            let __b = __hx_this.borrow();
+            __b._y
+        };
     }
 }
 

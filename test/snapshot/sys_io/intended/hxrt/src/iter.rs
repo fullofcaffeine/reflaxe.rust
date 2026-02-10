@@ -1,4 +1,4 @@
-use crate::cell::{HxCell, HxRc, HxRef};
+use crate::cell::HxRef;
 use std::iter::Peekable;
 
 #[derive(Clone, Debug)]
@@ -76,7 +76,7 @@ impl<T> IntoIterator for &Iter<T> {
 impl<T> Iter<T> {
     pub fn from_vec(vec: Vec<T>) -> Self {
         Self {
-            iter: HxRc::new(HxCell::new(vec.into_iter().peekable())),
+            iter: HxRef::new(vec.into_iter().peekable()),
         }
     }
 

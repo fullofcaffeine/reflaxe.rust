@@ -10,16 +10,20 @@ pub struct Key {
 
 impl Key {
     pub fn new(id: i32) -> crate::HxRef<crate::key::Key> {
-        let self_: crate::HxRef<crate::key::Key> =
-            crate::HxRc::new(crate::HxRefCell::new(Key { id: id }));
+        let self_: crate::HxRef<crate::key::Key> = crate::HxRef::new(Key { id: id });
         return self_;
     }
 
     pub fn to_string(self_: &crate::HxRefCell<Key>) -> String {
+        let __hx_this: crate::HxRef<crate::key::Key> = self_.self_ref();
         return format!(
             "{}{}{}",
             "Key(",
-            hxrt::dynamic::from(self_.borrow().id).to_haxe_string(),
+            hxrt::dynamic::from({
+                let __b = __hx_this.borrow();
+                __b.id
+            })
+            .to_haxe_string(),
             ")"
         );
     }

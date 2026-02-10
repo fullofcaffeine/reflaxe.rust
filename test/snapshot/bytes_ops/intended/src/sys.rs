@@ -89,8 +89,8 @@ impl Sys {
         };
     }
 
-    pub fn command(cmd: String, args: Option<hxrt::array::Array<String>>) -> i32 {
-        if args.is_none() {
+    pub fn command(cmd: String, args: hxrt::array::Array<String>) -> i32 {
+        if args.is_null() {
             return std::process::Command::new("sh")
                 .arg("-c")
                 .arg(cmd.as_str())
@@ -101,10 +101,10 @@ impl Sys {
         }
         return {
             let mut c = std::process::Command::new(cmd.as_str());
-            let args = args.as_ref().unwrap();
+            let args_ = args;
             let mut i: i32 = 0;
-            while i < args.len() as i32 {
-                let a = args.get_unchecked(i as usize);
+            while i < args_.len() as i32 {
+                let a = args_.get_unchecked(i as usize);
                 c.arg(a);
                 i = i + 1;
             }
@@ -148,14 +148,43 @@ impl Sys {
     }
 
     pub fn stdin() -> crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync> {
-        return crate::sys_io_stdin::Stdin::new();
+        return {
+            let __tmp = crate::sys_io_stdin::Stdin::new();
+            let __up: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync> = match __tmp
+                .as_arc_opt()
+            {
+                Some(__rc) => __rc.clone(),
+                None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
+            };
+            __up
+        };
     }
 
     pub fn stdout() -> crate::HxRc<dyn crate::haxe_io_output::OutputTrait + Send + Sync> {
-        return crate::sys_io_stdout::Stdout::new();
+        return {
+            let __tmp = crate::sys_io_stdout::Stdout::new();
+            let __up: crate::HxRc<dyn crate::haxe_io_output::OutputTrait + Send + Sync> =
+                match __tmp.as_arc_opt() {
+                    Some(__rc) => __rc.clone(),
+                    None => {
+                        hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                    }
+                };
+            __up
+        };
     }
 
     pub fn stderr() -> crate::HxRc<dyn crate::haxe_io_output::OutputTrait + Send + Sync> {
-        return crate::sys_io_stderr::Stderr::new();
+        return {
+            let __tmp = crate::sys_io_stderr::Stderr::new();
+            let __up: crate::HxRc<dyn crate::haxe_io_output::OutputTrait + Send + Sync> =
+                match __tmp.as_arc_opt() {
+                    Some(__rc) => __rc.clone(),
+                    None => {
+                        hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                    }
+                };
+            __up
+        };
     }
 }

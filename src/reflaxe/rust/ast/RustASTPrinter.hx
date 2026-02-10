@@ -9,8 +9,12 @@ class RustASTPrinter {
 	static inline var PREC_ASSIGN = 10;
 	static inline var PREC_OR = 20;
 	static inline var PREC_AND = 30;
+	static inline var PREC_BITOR = 32;
+	static inline var PREC_BITXOR = 33;
+	static inline var PREC_BITAND = 34;
 	static inline var PREC_EQ = 35;
 	static inline var PREC_CMP = 40;
+	static inline var PREC_SHIFT = 50;
 	static inline var PREC_ADD = 60;
 	static inline var PREC_MUL = 70;
 	static inline var PREC_CAST = 80;
@@ -332,11 +336,15 @@ class RustASTPrinter {
 		return switch (op) {
 			case "*" | "/" | "%": PREC_MUL;
 			case "+" | "-": PREC_ADD;
+			case "<<" | ">>": PREC_SHIFT;
+			case "&": PREC_BITAND;
+			case "^": PREC_BITXOR;
+			case "|": PREC_BITOR;
 			case "==" | "!=": PREC_EQ;
 			case "<" | "<=" | ">" | ">=": PREC_CMP;
 			case "&&": PREC_AND;
 			case "||": PREC_OR;
-			case _: PREC_ADD;
+			case _: PREC_LOWEST;
 		}
 	}
 

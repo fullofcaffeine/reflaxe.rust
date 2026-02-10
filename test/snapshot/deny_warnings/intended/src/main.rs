@@ -2,8 +2,10 @@
 
 #![deny(warnings)]
 #![allow(dead_code)]
+#![allow(type_alias_bounds)]
 
 type HxRc<T> = hxrt::cell::HxRc<T>;
+type HxDynRef<T: ?Sized> = hxrt::cell::HxDynRef<T>;
 type HxRefCell<T> = hxrt::cell::HxCell<T>;
 type HxRef<T> = hxrt::cell::HxRef<T>;
 

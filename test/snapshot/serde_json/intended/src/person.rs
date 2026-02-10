@@ -11,11 +11,10 @@ pub struct Person {
 
 impl Person {
     pub fn new(name: String, age: i32) -> crate::HxRef<crate::person::Person> {
-        let self_: crate::HxRef<crate::person::Person> =
-            crate::HxRc::new(crate::HxRefCell::new(Person {
-                name: name,
-                age: age,
-            }));
+        let self_: crate::HxRef<crate::person::Person> = crate::HxRef::new(Person {
+            name: name,
+            age: age,
+        });
         return self_;
     }
 }

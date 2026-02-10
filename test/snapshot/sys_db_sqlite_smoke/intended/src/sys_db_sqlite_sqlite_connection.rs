@@ -13,9 +13,9 @@ impl SqliteConnection {
         file: String,
     ) -> crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> {
         let self_: crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> =
-            crate::HxRc::new(crate::HxRefCell::new(SqliteConnection {
+            crate::HxRef::new(SqliteConnection {
                 handle: hxrt::dynamic::Dynamic::null(),
-            }));
+            });
         {
             let __tmp = {
                 let conn = rusqlite::Connection::open(file.as_str()).unwrap_or_else(|e| {
@@ -30,8 +30,13 @@ impl SqliteConnection {
     }
 
     pub fn close(self_: &crate::HxRefCell<SqliteConnection>) {
+        let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> =
+            self_.self_ref();
         {
-            let hdyn = self_.borrow().handle.clone();
+            let hdyn = {
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            };
             let h = hdyn
                 .downcast_ref::<std::sync::Arc<std::sync::Mutex<Option<rusqlite::Connection>>>>()
                 .unwrap_or_else(|| {
@@ -48,10 +53,15 @@ impl SqliteConnection {
         self_: &crate::HxRefCell<SqliteConnection>,
         sql: String,
     ) -> crate::HxRc<dyn crate::sys_db_result_set::ResultSet + Send + Sync> {
+        let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> =
+            self_.self_ref();
         let res: crate::HxRef<hxrt::db::QueryResult> = {
             use rusqlite::types::ValueRef;
 
-            let hdyn = self_.borrow().handle.clone();
+            let hdyn = {
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            };
             let h = hdyn
                 .downcast_ref::<std::sync::Arc<std::sync::Mutex<Option<rusqlite::Connection>>>>()
                 .unwrap_or_else(|| {
@@ -118,7 +128,17 @@ impl SqliteConnection {
                 );
             hxrt::db::query_result_new(names, rows_arr)
         };
-        return crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet::new(res.clone());
+        return {
+            let __tmp = crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet::new(res.clone());
+            let __up: crate::HxRc<dyn crate::sys_db_result_set::ResultSet + Send + Sync> =
+                match __tmp.as_arc_opt() {
+                    Some(__rc) => __rc.clone(),
+                    None => {
+                        hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                    }
+                };
+            __up
+        };
     }
 
     pub fn escape(_self_: &crate::HxRefCell<SqliteConnection>, s: String) -> String {
@@ -127,10 +147,12 @@ impl SqliteConnection {
     }
 
     pub fn quote(self_: &crate::HxRefCell<SqliteConnection>, s: String) -> String {
+        let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> =
+            self_.self_ref();
         return format!(
             "{}{}{}",
             "'",
-            crate::sys_db_sqlite_sqlite_connection::SqliteConnection::escape(&self_, s),
+            crate::sys_db_sqlite_sqlite_connection::SqliteConnection::escape(&*__hx_this, s),
             "'"
         );
     }
@@ -179,12 +201,17 @@ impl SqliteConnection {
             };
             out
         };
-        crate::string_buf::StringBuf::add(&sb, hxrt::dynamic::from(rendered.clone()));
+        crate::string_buf::StringBuf::add(&*sb, hxrt::dynamic::from(rendered));
     }
 
     pub fn last_insert_id(self_: &crate::HxRefCell<SqliteConnection>) -> i32 {
+        let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> =
+            self_.self_ref();
         return {
-            let hdyn = self_.borrow().handle.clone();
+            let hdyn = {
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            };
             let h = hdyn
                 .downcast_ref::<std::sync::Arc<std::sync::Mutex<Option<rusqlite::Connection>>>>()
                 .unwrap_or_else(|| {
@@ -207,22 +234,28 @@ impl SqliteConnection {
     }
 
     pub fn start_transaction(self_: &crate::HxRefCell<SqliteConnection>) {
+        let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> =
+            self_.self_ref();
         crate::sys_db_sqlite_sqlite_connection::SqliteConnection::request(
-            &self_,
+            &*__hx_this,
             String::from("BEGIN TRANSACTION"),
         );
     }
 
     pub fn commit(self_: &crate::HxRefCell<SqliteConnection>) {
+        let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> =
+            self_.self_ref();
         crate::sys_db_sqlite_sqlite_connection::SqliteConnection::request(
-            &self_,
+            &*__hx_this,
             String::from("COMMIT"),
         );
     }
 
     pub fn rollback(self_: &crate::HxRefCell<SqliteConnection>) {
+        let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> =
+            self_.self_ref();
         crate::sys_db_sqlite_sqlite_connection::SqliteConnection::request(
-            &self_,
+            &*__hx_this,
             String::from("ROLLBACK"),
         );
     }

@@ -124,10 +124,10 @@ class Sys {
 		return untyped __rust__(
 			"{
 				let mut c = std::process::Command::new({0}.as_str());
-				let args = {1}.as_ref().unwrap();
+				let args_ = {1};
 				let mut i: i32 = 0;
-				while i < args.len() as i32 {
-					let a = args.get_unchecked(i as usize);
+				while i < args_.len() as i32 {
+					let a = args_.get_unchecked(i as usize);
 					c.arg(a);
 					i = i + 1;
 				}

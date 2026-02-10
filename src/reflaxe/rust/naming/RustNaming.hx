@@ -15,6 +15,8 @@ class RustNaming {
 		"mod" => true, "move" => true, "mut" => true, "pub" => true, "ref" => true, "return" => true, "self" => true, "Self" => true, "static" => true,
 		"struct" => true, "super" => true, "trait" => true, "true" => true, "type" => true, "unsafe" => true, "use" => true, "where" => true, "while" => true,
 		"async" => true, "await" => true, "dyn" => true,
+		// Reserved keywords not currently used in stable syntax, but still reserved.
+		"typeof" => true,
 		// Not keywords, but reserved in this codegen to avoid shadowing common Rust crates.
 		"std" => true, "core" => true, "alloc" => true,
 	];

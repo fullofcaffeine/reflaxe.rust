@@ -10,8 +10,7 @@ pub struct Animal {
 
 impl Animal {
     pub fn new() -> crate::HxRef<crate::animal::Animal> {
-        let self_: crate::HxRef<crate::animal::Animal> =
-            crate::HxRc::new(crate::HxRefCell::new(Animal { age: 0 }));
+        let self_: crate::HxRef<crate::animal::Animal> = crate::HxRef::new(Animal { age: 0 });
         return self_;
     }
 }

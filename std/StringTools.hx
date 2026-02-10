@@ -58,6 +58,57 @@ class StringTools {
 	}
 
 	/**
+		Decode an URL using the standard format.
+
+		On the Rust target, this:
+		- replaces `+` with space
+		- percent-decodes `%HH` sequences into bytes
+		- interprets the resulting bytes as UTF-8 (lossy on invalid sequences)
+	**/
+	public static function urlDecode(s:String):String {
+		#if macro
+		// Macro-time: keep this minimal but compatible with the common `%20`/`+` cases used by
+		// serializer/unserializer and basic tooling.
+		return replace(replace(s, "+", " "), "%20", " ");
+		#else
+		return untyped __rust__(
+			"{
+				fn hex_val(b: u8) -> Option<u8> {
+					match b {
+						b'0'..=b'9' => Some(b - b'0'),
+						b'a'..=b'f' => Some(b - b'a' + 10),
+						b'A'..=b'F' => Some(b - b'A' + 10),
+						_ => None,
+					}
+				}
+
+				let input = {0}.replace(\"+\", \" \");
+				let bytes = input.as_bytes();
+				let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
+
+				let mut i: usize = 0;
+				while i < bytes.len() {
+					if bytes[i] == b'%' && i + 2 < bytes.len() {
+						let h1 = hex_val(bytes[i + 1]);
+						let h2 = hex_val(bytes[i + 2]);
+						if let (Some(a), Some(b)) = (h1, h2) {
+							out.push((a << 4) | b);
+							i += 3;
+							continue;
+						}
+					}
+					out.push(bytes[i]);
+					i += 1;
+				}
+
+				String::from_utf8(out.clone()).unwrap_or_else(|_| String::from_utf8_lossy(&out).to_string())
+			}",
+			s
+		);
+		#end
+	}
+
+	/**
 		Returns `true` if `s` contains `value`.
 	**/
 	public static inline function contains(s:String, value:String):Bool {

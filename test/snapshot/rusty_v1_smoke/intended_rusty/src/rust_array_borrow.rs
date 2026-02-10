@@ -9,14 +9,14 @@ pub struct ArrayBorrow {}
 impl ArrayBorrow {
     pub fn with_slice<T, R>(
         array: hxrt::array::Array<T>,
-        f: crate::HxRc<dyn Fn(&[T]) -> R + Send + Sync>,
+        f: crate::HxDynRef<dyn Fn(&[T]) -> R + Send + Sync>,
     ) -> R {
         return hxrt::array::with_slice(array, f);
     }
 
     pub fn with_mut_slice<T, R>(
         array: hxrt::array::Array<T>,
-        f: crate::HxRc<dyn Fn(&mut [T]) -> R + Send + Sync>,
+        f: crate::HxDynRef<dyn Fn(&mut [T]) -> R + Send + Sync>,
     ) -> R {
         return hxrt::array::with_mut_slice(array, f);
     }

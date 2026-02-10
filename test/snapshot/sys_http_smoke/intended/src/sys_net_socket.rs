@@ -5,19 +5,18 @@ pub const __HX_TYPE_ID: u32 = 0x3cbd411eu32;
 pub struct Socket {
     pub input: Option<crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync>>,
     pub output: Option<crate::HxRc<dyn crate::haxe_io_output::OutputTrait + Send + Sync>>,
-    pub custom: Option<hxrt::dynamic::Dynamic>,
+    pub custom: hxrt::dynamic::Dynamic,
     handle: crate::HxRef<hxrt::net::SocketHandle>,
 }
 
 impl Socket {
     pub fn new() -> crate::HxRef<crate::sys_net_socket::Socket> {
-        let self_: crate::HxRef<crate::sys_net_socket::Socket> =
-            crate::HxRc::new(crate::HxRefCell::new(Socket {
-                input: None,
-                output: None,
-                custom: None,
-                handle: Default::default(),
-            }));
+        let self_: crate::HxRef<crate::sys_net_socket::Socket> = crate::HxRef::new(Socket {
+            input: None,
+            output: None,
+            custom: hxrt::dynamic::Dynamic::null(),
+            handle: Default::default(),
+        });
         let h: crate::HxRef<hxrt::net::SocketHandle> = hxrt::net::socket_new_tcp();
         {
             let __tmp = h.clone();
@@ -26,41 +25,65 @@ impl Socket {
         };
         {
             let __tmp = crate::sys_net_socket_input::SocketInput::new(h.clone());
-            self_.borrow_mut().input = Some(__tmp.clone());
+            self_.borrow_mut().input = Some({
+                let __tmp = __tmp.clone();
+                let __up: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync> =
+                    match __tmp.as_arc_opt() {
+                        Some(__rc) => __rc.clone(),
+                        None => {
+                            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                        }
+                    };
+                __up
+            });
             __tmp
         };
         {
             let __tmp = crate::sys_net_socket_output::SocketOutput::new(h.clone());
-            self_.borrow_mut().output = Some(__tmp.clone());
+            self_.borrow_mut().output = Some({
+                let __tmp = __tmp.clone();
+                let __up: crate::HxRc<dyn crate::haxe_io_output::OutputTrait + Send + Sync> =
+                    match __tmp.as_arc_opt() {
+                        Some(__rc) => __rc.clone(),
+                        None => {
+                            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                        }
+                    };
+                __up
+            });
             __tmp
         };
         return self_;
     }
 
     pub fn close(self_: &crate::HxRefCell<Socket>) {
-        self_.borrow().handle.clone().borrow_mut().close();
+        let __hx_this: crate::HxRef<crate::sys_net_socket::Socket> = self_.self_ref();
+        {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        }
+        .borrow_mut()
+        .close();
     }
 
     pub fn read(self_: &crate::HxRefCell<Socket>) -> String {
-        return self_
-            .borrow()
-            .input
-            .as_ref()
-            .unwrap()
-            .clone()
-            .read_all(None)
-            .borrow()
-            .to_string();
+        let __hx_this: crate::HxRef<crate::sys_net_socket::Socket> = self_.self_ref();
+        return ({
+            let __b = __hx_this.borrow();
+            __b.input.as_ref().unwrap().clone()
+        })
+        .read_all(None)
+        .borrow()
+        .to_string();
     }
 
     pub fn write(self_: &crate::HxRefCell<Socket>, content: String) {
-        self_
-            .borrow()
-            .output
-            .as_ref()
-            .unwrap()
-            .clone()
-            .write_string(content, None);
+        let __hx_this: crate::HxRef<crate::sys_net_socket::Socket> = self_.self_ref();
+        ({
+            let __b = __hx_this.borrow();
+            __b.output.as_ref().unwrap().clone()
+        })
+        .write_string(content, None);
     }
 
     pub fn connect(
@@ -68,30 +91,39 @@ impl Socket {
         host: crate::HxRef<crate::sys_net_host::Host>,
         port: i32,
     ) {
-        self_
-            .borrow()
-            .handle
-            .clone()
-            .borrow_mut()
-            .connect(host.borrow().ip as i32, port as i32);
+        let __hx_this: crate::HxRef<crate::sys_net_socket::Socket> = self_.self_ref();
+        {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        }
+        .borrow_mut()
+        .connect(
+            {
+                let __b = host.borrow();
+                __b.ip
+            } as i32,
+            port as i32,
+        );
     }
 
     pub fn listen(self_: &crate::HxRefCell<Socket>, connections: i32) {
-        self_
-            .borrow()
-            .handle
-            .clone()
-            .borrow_mut()
-            .listen(connections as i32);
+        let __hx_this: crate::HxRef<crate::sys_net_socket::Socket> = self_.self_ref();
+        {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        }
+        .borrow_mut()
+        .listen(connections as i32);
     }
 
     pub fn shutdown(self_: &crate::HxRefCell<Socket>, read: bool, write: bool) {
-        self_
-            .borrow()
-            .handle
-            .clone()
-            .borrow_mut()
-            .shutdown(read as bool, write as bool);
+        let __hx_this: crate::HxRef<crate::sys_net_socket::Socket> = self_.self_ref();
+        {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        }
+        .borrow_mut()
+        .shutdown(read as bool, write as bool);
     }
 
     pub fn bind(
@@ -99,21 +131,42 @@ impl Socket {
         host: crate::HxRef<crate::sys_net_host::Host>,
         port: i32,
     ) {
-        self_
-            .borrow()
-            .handle
-            .clone()
-            .borrow_mut()
-            .bind(host.borrow().ip as i32, port as i32);
+        let __hx_this: crate::HxRef<crate::sys_net_socket::Socket> = self_.self_ref();
+        {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        }
+        .borrow_mut()
+        .bind(
+            {
+                let __b = host.borrow();
+                __b.ip
+            } as i32,
+            port as i32,
+        );
     }
 
     pub fn accept(
         self_: &crate::HxRefCell<Socket>,
     ) -> crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync> {
-        let h: crate::HxRef<hxrt::net::SocketHandle> =
-            self_.borrow().handle.clone().borrow_mut().accept();
-        let s: crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync> =
-            crate::sys_net_socket::Socket::new();
+        let __hx_this: crate::HxRef<crate::sys_net_socket::Socket> = self_.self_ref();
+        let h: crate::HxRef<hxrt::net::SocketHandle> = {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        }
+        .borrow_mut()
+        .accept();
+        let s: crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync> = {
+            let __tmp = crate::sys_net_socket::Socket::new();
+            let __up: crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync> =
+                match __tmp.as_arc_opt() {
+                    Some(__rc) => __rc.clone(),
+                    None => {
+                        hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                    }
+                };
+            __up
+        };
         {
             let __tmp = h.clone();
             s.__hx_set_handle(__tmp.clone());
@@ -121,20 +174,46 @@ impl Socket {
         };
         {
             let __tmp = crate::sys_net_socket_input::SocketInput::new(h.clone());
-            s.__hx_set_input(__tmp.clone());
+            s.__hx_set_input({
+                let __tmp = __tmp.clone();
+                let __up: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync> =
+                    match __tmp.as_arc_opt() {
+                        Some(__rc) => __rc.clone(),
+                        None => {
+                            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                        }
+                    };
+                __up
+            });
             __tmp
         };
         {
             let __tmp = crate::sys_net_socket_output::SocketOutput::new(h.clone());
-            s.__hx_set_output(__tmp.clone());
+            s.__hx_set_output({
+                let __tmp = __tmp.clone();
+                let __up: crate::HxRc<dyn crate::haxe_io_output::OutputTrait + Send + Sync> =
+                    match __tmp.as_arc_opt() {
+                        Some(__rc) => __rc.clone(),
+                        None => {
+                            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                        }
+                    };
+                __up
+            });
             __tmp
         };
         return s;
     }
 
     pub fn peer(self_: &crate::HxRefCell<Socket>) -> crate::HxRef<hxrt::anon::Anon> {
+        let __hx_this: crate::HxRef<crate::sys_net_socket::Socket> = self_.self_ref();
         let info: hxrt::array::Array<i32> = {
-            let (ip, port) = self_.borrow().handle.clone().borrow().peer();
+            let (ip, port) = {
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }
+            .borrow()
+            .peer();
             hxrt::array::Array::<i32>::from_vec(vec![ip, port])
         };
         let host: crate::HxRef<crate::sys_net_host::Host> =
@@ -145,7 +224,7 @@ impl Socket {
             __tmp
         };
         return {
-            let __o = crate::HxRc::new(crate::HxRefCell::new(hxrt::anon::Anon::new()));
+            let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
                 __b.set("host", host.clone());
@@ -156,8 +235,14 @@ impl Socket {
     }
 
     pub fn host(self_: &crate::HxRefCell<Socket>) -> crate::HxRef<hxrt::anon::Anon> {
+        let __hx_this: crate::HxRef<crate::sys_net_socket::Socket> = self_.self_ref();
         let info: hxrt::array::Array<i32> = {
-            let (ip, port) = self_.borrow().handle.clone().borrow().host();
+            let (ip, port) = {
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }
+            .borrow()
+            .host();
             hxrt::array::Array::<i32>::from_vec(vec![ip, port])
         };
         let host: crate::HxRef<crate::sys_net_host::Host> =
@@ -168,7 +253,7 @@ impl Socket {
             __tmp
         };
         return {
-            let __o = crate::HxRc::new(crate::HxRefCell::new(hxrt::anon::Anon::new()));
+            let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
                 __b.set("host", host.clone());
@@ -179,18 +264,24 @@ impl Socket {
     }
 
     pub fn set_timeout(self_: &crate::HxRefCell<Socket>, timeout: f64) {
-        self_
-            .borrow()
-            .handle
-            .clone()
-            .borrow_mut()
-            .set_timeout(timeout as f64);
+        let __hx_this: crate::HxRef<crate::sys_net_socket::Socket> = self_.self_ref();
+        {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        }
+        .borrow_mut()
+        .set_timeout(timeout as f64);
     }
 
     pub fn wait_for_read(self_: &crate::HxRefCell<Socket>) {
+        let __hx_this: crate::HxRef<crate::sys_net_socket::Socket> = self_.self_ref();
         {
             let _ = hxrt::net::socket_select(
-                vec![self_.borrow().handle.clone().clone()],
+                vec![{
+                    let __b = __hx_this.borrow();
+                    __b.handle.clone()
+                }
+                .clone()],
                 vec![],
                 vec![],
                 Some(-1.0),
@@ -199,21 +290,23 @@ impl Socket {
     }
 
     pub fn set_blocking(self_: &crate::HxRefCell<Socket>, b: bool) {
-        self_
-            .borrow()
-            .handle
-            .clone()
-            .borrow_mut()
-            .set_blocking(b as bool);
+        let __hx_this: crate::HxRef<crate::sys_net_socket::Socket> = self_.self_ref();
+        {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        }
+        .borrow_mut()
+        .set_blocking(b as bool);
     }
 
     pub fn set_fast_send(self_: &crate::HxRefCell<Socket>, b: bool) {
-        self_
-            .borrow()
-            .handle
-            .clone()
-            .borrow_mut()
-            .set_fast_send(b as bool);
+        let __hx_this: crate::HxRef<crate::sys_net_socket::Socket> = self_.self_ref();
+        {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        }
+        .borrow_mut()
+        .set_fast_send(b as bool);
     }
 
     pub fn select(
@@ -286,7 +379,7 @@ impl Socket {
                 hxrt::array::Array::<i32>::from_vec(oi),
             ])
         };
-        let pick: crate::HxRc<
+        let pick: crate::HxDynRef<
             dyn Fn(
                     hxrt::array::Array<
                         crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync>,
@@ -296,32 +389,45 @@ impl Socket {
                     crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync>,
                 > + Send
                 + Sync,
-        > = crate::HxRc::new(
-            move |src: hxrt::array::Array<
-                crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync>,
-            >,
-                  idx: hxrt::array::Array<i32>| {
-                let out: hxrt::array::Array<
+        > = {
+            let __rc: crate::HxRc<
+                dyn Fn(
+                        hxrt::array::Array<
+                            crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync>,
+                        >,
+                        hxrt::array::Array<i32>,
+                    ) -> hxrt::array::Array<
+                        crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync>,
+                    > + Send
+                    + Sync,
+            > = crate::HxRc::new(
+                move |src: hxrt::array::Array<
                     crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync>,
-                > = hxrt::array::Array::<
-                    crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync>,
-                >::new();
-                {
-                    let mut _g: i32 = 0;
-                    while _g < (idx.len() as i32) {
-                        let i: i32 = idx.get_unchecked(_g as usize);
-                        {
-                            _g = _g + 1;
-                            _g
-                        };
-                        out.push(src.get_unchecked(i as usize));
+                >,
+                      idx: hxrt::array::Array<i32>| {
+                    let out: hxrt::array::Array<
+                        crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync>,
+                    > = hxrt::array::Array::<
+                        crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync>,
+                    >::new();
+                    {
+                        let mut _g: i32 = 0;
+                        while _g < (idx.len() as i32) {
+                            let i: i32 = idx.get_unchecked(_g as usize);
+                            {
+                                _g = _g + 1;
+                                _g
+                            };
+                            out.push(src.get_unchecked(i as usize));
+                        }
                     }
-                }
-                return out;
-            },
-        );
+                    return out;
+                },
+            );
+            crate::HxDynRef::new(__rc)
+        };
         return {
-            let __o = crate::HxRc::new(crate::HxRefCell::new(hxrt::anon::Anon::new()));
+            let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
                 __b.set(
@@ -347,8 +453,8 @@ pub trait SocketTrait: Send + Sync {
     fn __hx_set_input(&self, v: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync>);
     fn __hx_get_output(&self) -> crate::HxRc<dyn crate::haxe_io_output::OutputTrait + Send + Sync>;
     fn __hx_set_output(&self, v: crate::HxRc<dyn crate::haxe_io_output::OutputTrait + Send + Sync>);
-    fn __hx_get_custom(&self) -> Option<hxrt::dynamic::Dynamic>;
-    fn __hx_set_custom(&self, v: Option<hxrt::dynamic::Dynamic>);
+    fn __hx_get_custom(&self) -> hxrt::dynamic::Dynamic;
+    fn __hx_set_custom(&self, v: hxrt::dynamic::Dynamic);
     fn __hx_get_handle(&self) -> crate::HxRef<hxrt::net::SocketHandle>;
     fn __hx_set_handle(&self, v: crate::HxRef<hxrt::net::SocketHandle>);
     fn close(&self) -> ();
@@ -384,10 +490,10 @@ impl crate::sys_net_socket::SocketTrait for crate::HxRefCell<Socket> {
     ) {
         self.borrow_mut().output = Some(v);
     }
-    fn __hx_get_custom(&self) -> Option<hxrt::dynamic::Dynamic> {
+    fn __hx_get_custom(&self) -> hxrt::dynamic::Dynamic {
         self.borrow().custom.clone()
     }
-    fn __hx_set_custom(&self, v: Option<hxrt::dynamic::Dynamic>) {
+    fn __hx_set_custom(&self, v: hxrt::dynamic::Dynamic) {
         self.borrow_mut().custom = v;
     }
     fn __hx_get_handle(&self) -> crate::HxRef<hxrt::net::SocketHandle> {

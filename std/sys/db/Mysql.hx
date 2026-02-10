@@ -289,7 +289,7 @@ private class MysqlResultSet implements ResultSet {
 		return untyped __rust__(
 			"{
 				let n = hxrt::db::query_result_nfields(&{0});
-				if n == 0 { None } else { Some(hxrt::db::query_result_fields(&{0})) }
+				if n == 0 { hxrt::array::Array::<String>::null() } else { hxrt::db::query_result_fields(&{0}) }
 			}",
 			res
 		);

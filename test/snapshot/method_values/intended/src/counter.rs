@@ -10,22 +10,26 @@ pub struct Counter {
 
 impl Counter {
     pub fn new(n: i32) -> crate::HxRef<crate::counter::Counter> {
-        let self_: crate::HxRef<crate::counter::Counter> =
-            crate::HxRc::new(crate::HxRefCell::new(Counter { n: n }));
+        let self_: crate::HxRef<crate::counter::Counter> = crate::HxRef::new(Counter { n: n });
         return self_;
     }
 
     pub fn add(self_: &crate::HxRefCell<Counter>, x: i32) -> i32 {
+        let __hx_this: crate::HxRef<crate::counter::Counter> = self_.self_ref();
         {
             let __rhs = x;
             let __tmp = self_.borrow().n + __rhs;
             self_.borrow_mut().n = __tmp;
             __tmp
         };
-        return self_.borrow().n;
+        return {
+            let __b = __hx_this.borrow();
+            __b.n
+        };
     }
 
     pub fn inc(self_: &crate::HxRefCell<Counter>) {
+        let __hx_this: crate::HxRef<crate::counter::Counter> = self_.self_ref();
         {
             let __tmp = self_.borrow().n;
             self_.borrow_mut().n = __tmp + 1;

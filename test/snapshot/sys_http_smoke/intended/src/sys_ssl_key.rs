@@ -11,7 +11,7 @@ pub struct Key {
 impl Key {
     pub fn new(handle: crate::HxRef<hxrt::ssl::Key>) -> crate::HxRef<crate::sys_ssl_key::Key> {
         let self_: crate::HxRef<crate::sys_ssl_key::Key> =
-            crate::HxRc::new(crate::HxRefCell::new(Key { handle: handle }));
+            crate::HxRef::new(Key { handle: handle });
         return self_;
     }
 

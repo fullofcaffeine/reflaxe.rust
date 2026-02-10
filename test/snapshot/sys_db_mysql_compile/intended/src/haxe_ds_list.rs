@@ -11,24 +11,32 @@ pub struct List<T: Clone + Send + Sync> {
 
 impl<T: Clone + Send + Sync> List<T> {
     pub fn new() -> crate::HxRef<crate::haxe_ds_list::List<T>> {
-        let self_: crate::HxRef<crate::haxe_ds_list::List<T>> =
-            crate::HxRc::new(crate::HxRefCell::new(List {
-                length: 0,
-                items: hxrt::array::Array::<T>::new(),
-            }));
+        let self_: crate::HxRef<crate::haxe_ds_list::List<T>> = crate::HxRef::new(List {
+            length: 0,
+            items: hxrt::array::Array::<T>::new(),
+        });
         return self_;
     }
 
     pub fn add(self_: &crate::HxRefCell<List<T>>, x: T) {
-        self_.borrow().items.clone().push(x.clone());
+        let __hx_this: crate::HxRef<crate::haxe_ds_list::List<T>> = self_.self_ref();
+        ({
+            let __b = __hx_this.borrow();
+            __b.items.clone()
+        })
+        .push(x.clone());
         {
-            let __tmp = self_.borrow().length + 1;
-            self_.borrow_mut().length = __tmp;
+            let __tmp = ({
+                let __b = __hx_this.borrow();
+                __b.length
+            }) + 1;
+            __hx_this.borrow_mut().length = __tmp;
             __tmp
         };
     }
 
     pub fn iterator(self_: &crate::HxRefCell<List<T>>) -> hxrt::iter::Iter<T> {
-        return hxrt::iter::Iter::from_vec(self_.borrow().items.to_vec());
+        let __hx_this: crate::HxRef<crate::haxe_ds_list::List<T>> = self_.self_ref();
+        return hxrt::iter::Iter::from_vec(__hx_this.borrow().items.to_vec());
     }
 }

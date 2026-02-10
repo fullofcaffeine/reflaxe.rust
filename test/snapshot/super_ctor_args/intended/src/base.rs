@@ -11,8 +11,7 @@ pub struct Base {
 
 impl Base {
     pub fn new(x: i32, y: String) -> crate::HxRef<crate::base::Base> {
-        let self_: crate::HxRef<crate::base::Base> =
-            crate::HxRc::new(crate::HxRefCell::new(Base { x: x, y: y }));
+        let self_: crate::HxRef<crate::base::Base> = crate::HxRef::new(Base { x: x, y: y });
         return self_;
     }
 }

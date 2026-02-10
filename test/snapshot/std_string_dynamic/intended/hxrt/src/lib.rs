@@ -10,6 +10,7 @@ pub mod fs;
 pub mod hxref;
 pub mod io;
 pub mod iter;
+pub mod json;
 pub mod net;
 pub mod process;
 pub mod ssl;

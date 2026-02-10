@@ -8,7 +8,7 @@ pub struct Sub {}
 
 impl Sub {
     pub fn new() -> crate::HxRef<crate::sub::Sub> {
-        let self_: crate::HxRef<crate::sub::Sub> = crate::HxRc::new(crate::HxRefCell::new(Sub {}));
+        let self_: crate::HxRef<crate::sub::Sub> = crate::HxRef::new(Sub {});
         return self_;
     }
 

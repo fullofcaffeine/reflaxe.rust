@@ -41,8 +41,8 @@ class Socket extends sys.net.Socket {
 		if (serverCert != null && serverKey != null) {
 			untyped __rust__(
 				"{
-					let cert_handle = {1}.clone().unwrap().borrow().handle.clone();
-					let key_handle = {2}.clone().unwrap().borrow().handle.clone();
+					let cert_handle = {1}.borrow().handle.clone();
+					let key_handle = {2}.borrow().handle.clone();
 					{0}.borrow_mut().tls_handshake_server(cert_handle, key_handle);
 				}",
 				handle,
@@ -54,7 +54,7 @@ class Socket extends sys.net.Socket {
 
 		untyped __rust__(
 			"{
-				let ca_handle = match {3}.clone() {
+				let ca_handle = match {3}.as_arc_opt() {
 					None => None,
 					Some(c) => Some(c.borrow().handle.clone()),
 				};

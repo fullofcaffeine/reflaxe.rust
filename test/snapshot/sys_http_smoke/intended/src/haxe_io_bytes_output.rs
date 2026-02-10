@@ -12,19 +12,32 @@ pub struct BytesOutput {
 impl BytesOutput {
     pub fn new() -> crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> {
         let self_: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> =
-            crate::HxRc::new(crate::HxRefCell::new(BytesOutput {
+            crate::HxRef::new(BytesOutput {
                 big_endian: false,
                 b: crate::haxe_io_bytes_buffer::BytesBuffer::new(),
-            }));
+            });
         return self_;
     }
 
     pub fn get_length(self_: &crate::HxRefCell<BytesOutput>) -> i32 {
-        return crate::haxe_io_bytes_buffer::BytesBuffer::get_length(&self_.borrow().b.clone());
+        let __hx_this: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> = self_.self_ref();
+        return crate::haxe_io_bytes_buffer::BytesBuffer::get_length(
+            &*({
+                let __b = __hx_this.borrow();
+                __b.b.clone()
+            }),
+        );
     }
 
     pub fn write_byte(self_: &crate::HxRefCell<BytesOutput>, c: i32) {
-        crate::haxe_io_bytes_buffer::BytesBuffer::add_byte(&self_.borrow().b.clone(), c);
+        let __hx_this: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> = self_.self_ref();
+        crate::haxe_io_bytes_buffer::BytesBuffer::add_byte(
+            &*({
+                let __b = __hx_this.borrow();
+                __b.b.clone()
+            }),
+            c,
+        );
     }
 
     pub fn write_bytes(
@@ -33,11 +46,15 @@ impl BytesOutput {
         pos: i32,
         len: i32,
     ) -> i32 {
+        let __hx_this: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> = self_.self_ref();
         if pos < 0 || len < 0 || pos + len > buf.borrow().length() {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::OutsideBounds));
         }
         crate::haxe_io_bytes_buffer::BytesBuffer::add_bytes(
-            &self_.borrow().b.clone(),
+            &*({
+                let __b = __hx_this.borrow();
+                __b.b.clone()
+            }),
             buf.clone(),
             pos,
             len,
@@ -48,7 +65,13 @@ impl BytesOutput {
     pub fn prepare(_self_: &crate::HxRefCell<BytesOutput>, _size: i32) {}
 
     pub fn get_bytes(self_: &crate::HxRefCell<BytesOutput>) -> crate::HxRef<hxrt::bytes::Bytes> {
-        return crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&self_.borrow().b.clone());
+        let __hx_this: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> = self_.self_ref();
+        return crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(
+            &*({
+                let __b = __hx_this.borrow();
+                __b.b.clone()
+            }),
+        );
     }
 
     pub fn flush(_self_: &crate::HxRefCell<BytesOutput>) {}
@@ -56,20 +79,22 @@ impl BytesOutput {
     pub fn close(_self_: &crate::HxRefCell<BytesOutput>) {}
 
     pub fn set_big_endian(self_: &crate::HxRefCell<BytesOutput>, b: bool) -> bool {
+        let __hx_this: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> = self_.self_ref();
         {
             let __tmp = b;
-            self_.borrow_mut().big_endian = __tmp;
+            __hx_this.borrow_mut().big_endian = __tmp;
             __tmp
         };
         return b;
     }
 
     pub fn write(self_: &crate::HxRefCell<BytesOutput>, s: crate::HxRef<hxrt::bytes::Bytes>) {
+        let __hx_this: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> = self_.self_ref();
         let mut l: i32 = s.borrow().length();
         let mut p: i32 = 0;
         while l > 0 {
             let k: i32 =
-                crate::haxe_io_bytes_output::BytesOutput::write_bytes(&self_, s.clone(), p, l);
+                crate::haxe_io_bytes_output::BytesOutput::write_bytes(&*__hx_this, s.clone(), p, l);
             if k == 0 {
                 hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
             }
@@ -90,11 +115,12 @@ impl BytesOutput {
         pos: i32,
         len: i32,
     ) {
+        let __hx_this: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> = self_.self_ref();
         let mut p: i32 = pos;
         let mut l: i32 = len;
         while l > 0 {
             let k: i32 =
-                crate::haxe_io_bytes_output::BytesOutput::write_bytes(&self_, s.clone(), p, l);
+                crate::haxe_io_bytes_output::BytesOutput::write_bytes(&*__hx_this, s.clone(), p, l);
             {
                 p = p + k;
                 p
@@ -107,88 +133,120 @@ impl BytesOutput {
     }
 
     pub fn write_float(self_: &crate::HxRefCell<BytesOutput>, x: f64) {
+        let __hx_this: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> = self_.self_ref();
         crate::haxe_io_bytes_output::BytesOutput::write_int32(
-            &self_,
+            &*__hx_this,
             crate::haxe_io_fp_helper::FPHelper::float_to_i32(x),
         );
     }
 
     pub fn write_double(self_: &crate::HxRefCell<BytesOutput>, x: f64) {
+        let __hx_this: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> = self_.self_ref();
         let i64: crate::HxRef<crate::haxe_int64_int64::Int64> =
             crate::haxe_io_fp_helper::FPHelper::double_to_i64(x);
-        if self_.borrow().big_endian {
-            crate::haxe_io_bytes_output::BytesOutput::write_int32(&self_, i64.borrow().high);
-            crate::haxe_io_bytes_output::BytesOutput::write_int32(&self_, i64.borrow().low);
+        if {
+            let __b = __hx_this.borrow();
+            __b.big_endian
+        } {
+            crate::haxe_io_bytes_output::BytesOutput::write_int32(&*__hx_this, {
+                let __b = i64.borrow();
+                __b.high
+            });
+            crate::haxe_io_bytes_output::BytesOutput::write_int32(&*__hx_this, {
+                let __b = i64.borrow();
+                __b.low
+            });
         } else {
-            crate::haxe_io_bytes_output::BytesOutput::write_int32(&self_, i64.borrow().low);
-            crate::haxe_io_bytes_output::BytesOutput::write_int32(&self_, i64.borrow().high);
+            crate::haxe_io_bytes_output::BytesOutput::write_int32(&*__hx_this, {
+                let __b = i64.borrow();
+                __b.low
+            });
+            crate::haxe_io_bytes_output::BytesOutput::write_int32(&*__hx_this, {
+                let __b = i64.borrow();
+                __b.high
+            });
         }
     }
 
     pub fn write_int8(self_: &crate::HxRefCell<BytesOutput>, x: i32) {
+        let __hx_this: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> = self_.self_ref();
         if x < -128 || x >= 128 {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
         }
-        crate::haxe_io_bytes_output::BytesOutput::write_byte(&self_, x & 255);
+        crate::haxe_io_bytes_output::BytesOutput::write_byte(&*__hx_this, x & 255);
     }
 
     pub fn write_int16(self_: &crate::HxRefCell<BytesOutput>, x: i32) {
+        let __hx_this: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> = self_.self_ref();
         if x < -32768 || x >= 32768 {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
         }
-        crate::haxe_io_bytes_output::BytesOutput::write_u_int16(&self_, x & 65535);
+        crate::haxe_io_bytes_output::BytesOutput::write_u_int16(&*__hx_this, x & 65535);
     }
 
     pub fn write_u_int16(self_: &crate::HxRefCell<BytesOutput>, x: i32) {
+        let __hx_this: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> = self_.self_ref();
         if x < 0 || x >= 65536 {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
         }
-        if self_.borrow().big_endian {
-            crate::haxe_io_bytes_output::BytesOutput::write_byte(&self_, x >> 8);
-            crate::haxe_io_bytes_output::BytesOutput::write_byte(&self_, x & 255);
+        if {
+            let __b = __hx_this.borrow();
+            __b.big_endian
+        } {
+            crate::haxe_io_bytes_output::BytesOutput::write_byte(&*__hx_this, x >> 8);
+            crate::haxe_io_bytes_output::BytesOutput::write_byte(&*__hx_this, x & 255);
         } else {
-            crate::haxe_io_bytes_output::BytesOutput::write_byte(&self_, x & 255);
-            crate::haxe_io_bytes_output::BytesOutput::write_byte(&self_, x >> 8);
+            crate::haxe_io_bytes_output::BytesOutput::write_byte(&*__hx_this, x & 255);
+            crate::haxe_io_bytes_output::BytesOutput::write_byte(&*__hx_this, x >> 8);
         }
     }
 
     pub fn write_int24(self_: &crate::HxRefCell<BytesOutput>, x: i32) {
+        let __hx_this: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> = self_.self_ref();
         if x < -8388608 || x >= 8388608 {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
         }
-        crate::haxe_io_bytes_output::BytesOutput::write_u_int24(&self_, x & 16777215);
+        crate::haxe_io_bytes_output::BytesOutput::write_u_int24(&*__hx_this, x & 16777215);
     }
 
     pub fn write_u_int24(self_: &crate::HxRefCell<BytesOutput>, x: i32) {
+        let __hx_this: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> = self_.self_ref();
         if x < 0 || x >= 16777216 {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
         }
-        if self_.borrow().big_endian {
-            crate::haxe_io_bytes_output::BytesOutput::write_byte(&self_, x >> 16);
-            crate::haxe_io_bytes_output::BytesOutput::write_byte(&self_, x >> 8 & 255);
-            crate::haxe_io_bytes_output::BytesOutput::write_byte(&self_, x & 255);
+        if {
+            let __b = __hx_this.borrow();
+            __b.big_endian
+        } {
+            crate::haxe_io_bytes_output::BytesOutput::write_byte(&*__hx_this, x >> 16);
+            crate::haxe_io_bytes_output::BytesOutput::write_byte(&*__hx_this, x >> 8 & 255);
+            crate::haxe_io_bytes_output::BytesOutput::write_byte(&*__hx_this, x & 255);
         } else {
-            crate::haxe_io_bytes_output::BytesOutput::write_byte(&self_, x & 255);
-            crate::haxe_io_bytes_output::BytesOutput::write_byte(&self_, x >> 8 & 255);
-            crate::haxe_io_bytes_output::BytesOutput::write_byte(&self_, x >> 16);
+            crate::haxe_io_bytes_output::BytesOutput::write_byte(&*__hx_this, x & 255);
+            crate::haxe_io_bytes_output::BytesOutput::write_byte(&*__hx_this, x >> 8 & 255);
+            crate::haxe_io_bytes_output::BytesOutput::write_byte(&*__hx_this, x >> 16);
         }
     }
 
     pub fn write_int32(self_: &crate::HxRefCell<BytesOutput>, x: i32) {
-        if self_.borrow().big_endian {
+        let __hx_this: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> = self_.self_ref();
+        if {
+            let __b = __hx_this.borrow();
+            __b.big_endian
+        } {
             crate::haxe_io_bytes_output::BytesOutput::write_byte(
-                &self_,
+                &*__hx_this,
                 (x as u32 >> 24 as u32) as i32,
             );
-            crate::haxe_io_bytes_output::BytesOutput::write_byte(&self_, x >> 16 & 255);
-            crate::haxe_io_bytes_output::BytesOutput::write_byte(&self_, x >> 8 & 255);
-            crate::haxe_io_bytes_output::BytesOutput::write_byte(&self_, x & 255);
+            crate::haxe_io_bytes_output::BytesOutput::write_byte(&*__hx_this, x >> 16 & 255);
+            crate::haxe_io_bytes_output::BytesOutput::write_byte(&*__hx_this, x >> 8 & 255);
+            crate::haxe_io_bytes_output::BytesOutput::write_byte(&*__hx_this, x & 255);
         } else {
-            crate::haxe_io_bytes_output::BytesOutput::write_byte(&self_, x & 255);
-            crate::haxe_io_bytes_output::BytesOutput::write_byte(&self_, x >> 8 & 255);
-            crate::haxe_io_bytes_output::BytesOutput::write_byte(&self_, x >> 16 & 255);
+            crate::haxe_io_bytes_output::BytesOutput::write_byte(&*__hx_this, x & 255);
+            crate::haxe_io_bytes_output::BytesOutput::write_byte(&*__hx_this, x >> 8 & 255);
+            crate::haxe_io_bytes_output::BytesOutput::write_byte(&*__hx_this, x >> 16 & 255);
             crate::haxe_io_bytes_output::BytesOutput::write_byte(
-                &self_,
+                &*__hx_this,
                 (x as u32 >> 24 as u32) as i32,
             );
         }
@@ -199,6 +257,7 @@ impl BytesOutput {
         i: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync>,
         bufsize: Option<i32>,
     ) {
+        let __hx_this: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> = self_.self_ref();
         let mut bs: Option<i32> = bufsize;
         if bs.is_none() {
             {
@@ -207,10 +266,15 @@ impl BytesOutput {
                 __tmp
             };
         }
-        let bufsize_2: i32 = bs.unwrap();
-        let buf: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRc::new(crate::HxRefCell::new(
-            hxrt::bytes::Bytes::alloc(bufsize_2 as usize),
-        ));
+        let bufsize_2: i32 = {
+            let __hx_opt = bs.clone();
+            match &__hx_opt {
+                Some(__v) => __v.clone(),
+                None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
+            }
+        };
+        let buf: crate::HxRef<hxrt::bytes::Bytes> =
+            crate::HxRef::new(hxrt::bytes::Bytes::alloc(bufsize_2 as usize));
         match hxrt::exception::catch_unwind(|| loop {
             let mut len: i32 = i.read_bytes(buf.clone(), 0, bufsize_2);
             if len == 0 {
@@ -219,7 +283,7 @@ impl BytesOutput {
             let mut p: i32 = 0;
             while len > 0 {
                 let k: i32 = crate::haxe_io_bytes_output::BytesOutput::write_bytes(
-                    &self_,
+                    &*__hx_this,
                     buf.clone(),
                     p,
                     len,
@@ -250,14 +314,13 @@ impl BytesOutput {
         s: String,
         encoding: Option<crate::haxe_io_encoding::Encoding>,
     ) {
+        let __hx_this: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> = self_.self_ref();
         let b: crate::HxRef<hxrt::bytes::Bytes> = {
             let _ = encoding;
-            crate::HxRc::new(crate::HxRefCell::new(hxrt::bytes::Bytes::of_string(
-                s.as_str(),
-            )))
+            crate::HxRef::new(hxrt::bytes::Bytes::of_string(s.as_str()))
         };
         crate::haxe_io_bytes_output::BytesOutput::write_full_bytes(
-            &self_,
+            &*__hx_this,
             b.clone(),
             0,
             b.borrow().length(),

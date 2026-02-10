@@ -10,10 +10,9 @@ pub struct Sub<T: Clone + Send + Sync> {
 
 impl<T: Clone + Send + Sync> Sub<T> {
     pub fn new() -> crate::HxRef<crate::sub::Sub<T>> {
-        let self_: crate::HxRef<crate::sub::Sub<T>> =
-            crate::HxRc::new(crate::HxRefCell::new(Sub {
-                __hx_phantom: std::marker::PhantomData,
-            }));
+        let self_: crate::HxRef<crate::sub::Sub<T>> = crate::HxRef::new(Sub {
+            __hx_phantom: std::marker::PhantomData,
+        });
         return self_;
     }
 

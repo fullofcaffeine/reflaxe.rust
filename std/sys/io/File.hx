@@ -54,7 +54,7 @@ class File {
 						Ok(b) => b,
 						Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!(\"{}\", e))),
 					};
-					crate::HxRc::new(crate::HxRefCell::new(hxrt::bytes::Bytes::from_vec(data)))
+					crate::HxRef::new(hxrt::bytes::Bytes::from_vec(data))
 				}",
 				path
 			);

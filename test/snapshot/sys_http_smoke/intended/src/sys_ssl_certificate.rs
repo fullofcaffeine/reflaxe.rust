@@ -17,78 +17,126 @@ impl Certificate {
         handle: crate::HxRef<hxrt::ssl::Certificate>,
     ) -> crate::HxRef<crate::sys_ssl_certificate::Certificate> {
         let self_: crate::HxRef<crate::sys_ssl_certificate::Certificate> =
-            crate::HxRc::new(crate::HxRefCell::new(Certificate {
+            crate::HxRef::new(Certificate {
                 handle: handle,
                 common_name: None,
                 alt_names: hxrt::array::Array::<String>::new(),
                 not_before: crate::date::Date::new(0, 0, 0, 0, 0, 0),
                 not_after: crate::date::Date::new(0, 0, 0, 0, 0, 0),
-            }));
+            });
         return self_;
     }
 
     pub fn _hxrt_handle(
         self_: &crate::HxRefCell<Certificate>,
     ) -> crate::HxRef<hxrt::ssl::Certificate> {
-        return self_.borrow().handle.clone();
+        let __hx_this: crate::HxRef<crate::sys_ssl_certificate::Certificate> = self_.self_ref();
+        return {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        };
     }
 
     pub fn subject(self_: &crate::HxRefCell<Certificate>, field: String) -> Option<String> {
-        return self_
-            .borrow()
-            .handle
-            .clone()
-            .borrow()
-            .subject_field(field.as_str());
+        let __hx_this: crate::HxRef<crate::sys_ssl_certificate::Certificate> = self_.self_ref();
+        return {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        }
+        .borrow()
+        .subject_field(field.as_str());
     }
 
     pub fn issuer(self_: &crate::HxRefCell<Certificate>, field: String) -> Option<String> {
-        return self_
-            .borrow()
-            .handle
-            .clone()
-            .borrow()
-            .issuer_field(field.as_str());
+        let __hx_this: crate::HxRef<crate::sys_ssl_certificate::Certificate> = self_.self_ref();
+        return {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        }
+        .borrow()
+        .issuer_field(field.as_str());
     }
 
     pub fn next(
         self_: &crate::HxRefCell<Certificate>,
-    ) -> Option<crate::HxRef<crate::sys_ssl_certificate::Certificate>> {
+    ) -> crate::HxRef<crate::sys_ssl_certificate::Certificate> {
+        let __hx_this: crate::HxRef<crate::sys_ssl_certificate::Certificate> = self_.self_ref();
         return {
-            match hxrt::ssl::cert_next(&self_.borrow().handle.clone()) {
-                None => None,
-                Some(h) => Some(crate::sys_ssl_certificate::Certificate::from_handle(h)),
+            match hxrt::ssl::cert_next(&{
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }) {
+                None => crate::HxRef::<crate::sys_ssl_certificate::Certificate>::null(),
+                Some(h) => crate::sys_ssl_certificate::Certificate::from_handle(h),
             }
         };
     }
 
     pub fn add(self_: &crate::HxRefCell<Certificate>, pem: String) {
-        hxrt::ssl::cert_add_pem(&self_.borrow().handle.clone(), pem.as_str());
+        let __hx_this: crate::HxRef<crate::sys_ssl_certificate::Certificate> = self_.self_ref();
+        hxrt::ssl::cert_add_pem(
+            &{
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            },
+            pem.as_str(),
+        );
     }
 
     pub fn add_der(self_: &crate::HxRefCell<Certificate>, der: crate::HxRef<hxrt::bytes::Bytes>) {
-        hxrt::ssl::cert_add_der(&self_.borrow().handle.clone(), der.borrow().as_slice());
+        let __hx_this: crate::HxRef<crate::sys_ssl_certificate::Certificate> = self_.self_ref();
+        hxrt::ssl::cert_add_der(
+            &{
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            },
+            der.borrow().as_slice(),
+        );
     }
 
     pub fn get_common_name(self_: &crate::HxRefCell<Certificate>) -> Option<String> {
-        return self_.borrow().handle.clone().borrow().common_name();
+        let __hx_this: crate::HxRef<crate::sys_ssl_certificate::Certificate> = self_.self_ref();
+        return {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        }
+        .borrow()
+        .common_name();
     }
 
     pub fn get_alt_names(self_: &crate::HxRefCell<Certificate>) -> hxrt::array::Array<String> {
+        let __hx_this: crate::HxRef<crate::sys_ssl_certificate::Certificate> = self_.self_ref();
         return hxrt::array::Array::<String>::from_vec(
-            self_.borrow().handle.clone().borrow().alt_names(),
+            {
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }
+            .borrow()
+            .alt_names(),
         );
     }
 
     pub fn get_not_before(
         self_: &crate::HxRefCell<Certificate>,
     ) -> crate::HxRef<crate::date::Date> {
-        let ms: f64 = self_.borrow().handle.clone().borrow().not_before_ms() as f64;
+        let __hx_this: crate::HxRef<crate::sys_ssl_certificate::Certificate> = self_.self_ref();
+        let ms: f64 = {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        }
+        .borrow()
+        .not_before_ms() as f64;
         return crate::date::Date::from_time(ms);
     }
 
     pub fn get_not_after(self_: &crate::HxRefCell<Certificate>) -> crate::HxRef<crate::date::Date> {
-        let ms: f64 = self_.borrow().handle.clone().borrow().not_after_ms() as f64;
+        let __hx_this: crate::HxRef<crate::sys_ssl_certificate::Certificate> = self_.self_ref();
+        let ms: f64 = {
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        }
+        .borrow()
+        .not_after_ms() as f64;
         return crate::date::Date::from_time(ms);
     }
 

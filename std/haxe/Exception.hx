@@ -22,7 +22,7 @@ package haxe;
 class Exception {
 	var __message: String;
 	var __previous: Null<Exception>;
-	var __native: Null<Any>;
+	var __native: Any;
 	var __stack: Array<haxe.CallStack.StackItem>;
 
 	public var message(get, never): String;
@@ -36,9 +36,7 @@ class Exception {
 
 	public var native(get, never): Any;
 	final private function get_native(): Any {
-		// `__native` is stored as `Null<Any>` which compiles to `Option<Dynamic>` in Rust output.
-		// Expose `native` as `Any` by unwrapping, using `Dynamic::null()` to represent `null`.
-		return untyped __rust__("match {0} { Some(v) => v, None => hxrt::dynamic::Dynamic::null() }", __native);
+		return __native;
 	}
 
 	static private function caught(value: Any): Exception {
@@ -60,7 +58,7 @@ class Exception {
 	}
 
 	private function unwrap(): Any {
-		return untyped __rust__("match {0} { Some(v) => v, None => hxrt::dynamic::Dynamic::null() }", __native);
+		return __native;
 	}
 
 	public function toString(): String {

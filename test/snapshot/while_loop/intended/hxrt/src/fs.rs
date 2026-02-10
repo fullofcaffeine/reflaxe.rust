@@ -1,4 +1,4 @@
-use crate::cell::{HxCell, HxRc, HxRef};
+use crate::cell::HxRef;
 use crate::{dynamic, exception};
 use std::{fs, io};
 
@@ -130,7 +130,7 @@ pub fn open_read(path: &str) -> HxRef<FileHandle> {
         Ok(f) => f,
         Err(e) => throw_io("open_read", e),
     };
-    HxRc::new(HxCell::new(FileHandle { file: Some(file) }))
+    HxRef::new(FileHandle { file: Some(file) })
 }
 
 pub fn open_write_truncate(path: &str) -> HxRef<FileHandle> {
@@ -143,7 +143,7 @@ pub fn open_write_truncate(path: &str) -> HxRef<FileHandle> {
         Ok(f) => f,
         Err(e) => throw_io("open_write_truncate", e),
     };
-    HxRc::new(HxCell::new(FileHandle { file: Some(file) }))
+    HxRef::new(FileHandle { file: Some(file) })
 }
 
 pub fn open_append(path: &str) -> HxRef<FileHandle> {
@@ -151,7 +151,7 @@ pub fn open_append(path: &str) -> HxRef<FileHandle> {
         Ok(f) => f,
         Err(e) => throw_io("open_append", e),
     };
-    HxRc::new(HxCell::new(FileHandle { file: Some(file) }))
+    HxRef::new(FileHandle { file: Some(file) })
 }
 
 pub fn open_update(path: &str) -> HxRef<FileHandle> {
@@ -165,5 +165,5 @@ pub fn open_update(path: &str) -> HxRef<FileHandle> {
         Ok(f) => f,
         Err(e) => throw_io("open_update", e),
     };
-    HxRc::new(HxCell::new(FileHandle { file: Some(file) }))
+    HxRef::new(FileHandle { file: Some(file) })
 }

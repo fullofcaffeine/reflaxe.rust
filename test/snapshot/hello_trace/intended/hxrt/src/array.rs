@@ -1,4 +1,5 @@
-use crate::cell::{HxCell, HxRc, HxRef};
+use crate::cell::{HxDynRef, HxRef};
+use crate::hxref::HxRefLike;
 
 /// Identity comparison for `HxRc`-backed values.
 ///
@@ -10,9 +11,15 @@ pub trait RcPtrEq {
     fn rc_ptr_eq(&self, other: &Self) -> bool;
 }
 
-impl<T: ?Sized> RcPtrEq for HxRc<T> {
+impl<T: ?Sized> RcPtrEq for HxDynRef<T> {
     fn rc_ptr_eq(&self, other: &Self) -> bool {
-        HxRc::ptr_eq(self, other)
+        self.ptr_eq(other)
+    }
+}
+
+impl<T> RcPtrEq for HxRef<T> {
+    fn rc_ptr_eq(&self, other: &Self) -> bool {
+        self.ptr_eq(other)
     }
 }
 
@@ -40,20 +47,39 @@ pub struct Array<T> {
     inner: HxRef<Vec<T>>,
 }
 
-pub type SliceCallback<T, R> = HxRc<dyn Fn(&[T]) -> R + Send + Sync>;
-pub type MutSliceCallback<T, R> = HxRc<dyn Fn(&mut [T]) -> R + Send + Sync>;
+pub type SliceCallback<T, R> = HxDynRef<dyn Fn(&[T]) -> R + Send + Sync>;
+pub type MutSliceCallback<T, R> = HxDynRef<dyn Fn(&mut [T]) -> R + Send + Sync>;
+
+impl<T> HxRefLike for Array<T> {
+    fn ptr_usize(&self) -> usize {
+        self.inner.ptr_usize()
+    }
+}
 
 impl<T> Array<T> {
     pub fn new() -> Self {
         Self {
-            inner: HxRc::new(HxCell::new(Vec::new())),
+            inner: HxRef::new(Vec::new()),
         }
     }
 
     pub fn from_vec(vec: Vec<T>) -> Self {
         Self {
-            inner: HxRc::new(HxCell::new(vec)),
+            inner: HxRef::new(vec),
         }
+    }
+
+    /// Null array value (Haxe default for uninitialized `Array<T>`).
+    #[inline]
+    pub fn null() -> Self {
+        Self {
+            inner: HxRef::null(),
+        }
+    }
+
+    #[inline]
+    pub fn is_null(&self) -> bool {
+        self.inner.is_null()
     }
 
     pub fn to_vec(&self) -> Vec<T>
@@ -82,6 +108,40 @@ impl<T> Array<T> {
 
     pub fn set(&self, index: usize, value: T) {
         self.inner.borrow_mut()[index] = value;
+    }
+
+    /// Haxe array assignment semantics: `array[index] = value`.
+    ///
+    /// Why
+    /// - Haxe allows assigning past the current length, which grows the array and fills
+    ///   intermediate slots with `null`.
+    /// - A direct `Vec` index assignment would panic on out-of-bounds indices.
+    ///
+    /// What
+    /// - Grows the backing vector when needed.
+    /// - Uses a lazy `fill` closure so callers can provide the correct "null" value for `T`
+    ///   without paying to construct it for in-bounds writes.
+    ///
+    /// How
+    /// - When `index == len`, this is an append (no fill value needed).
+    /// - When `index > len`, extend to `index` with `fill()` and then push `value`.
+    pub fn set_haxe<F>(&self, index: usize, value: T, fill: F)
+    where
+        T: Clone,
+        F: Fn() -> T,
+    {
+        let mut inner = self.inner.borrow_mut();
+        if index == inner.len() {
+            inner.push(value);
+            return;
+        }
+        if index > inner.len() {
+            let fill_value = fill();
+            inner.resize(index, fill_value);
+            inner.push(value);
+            return;
+        }
+        inner[index] = value;
     }
 
     pub fn get(&self, index: usize) -> Option<T>
@@ -135,6 +195,28 @@ impl<T> Array<T> {
         } else {
             Some(inner.remove(0))
         }
+    }
+
+    /// Set the logical length of the array (`array.length = n`).
+    ///
+    /// Haxe semantics:
+    /// - If `n` is smaller than the current length, truncate.
+    /// - If `n` is larger, extend and fill new slots with `fill()`.
+    pub fn set_length_haxe<F>(&self, new_len: usize, fill: F)
+    where
+        T: Clone,
+        F: Fn() -> T,
+    {
+        let mut inner = self.inner.borrow_mut();
+        if new_len <= inner.len() {
+            inner.truncate(new_len);
+            return;
+        }
+        if new_len == inner.len() {
+            return;
+        }
+        let fill_value = fill();
+        inner.resize(new_len, fill_value);
     }
 
     pub fn unshift(&self, value: T) {
@@ -294,13 +376,13 @@ impl<T> Array<T> {
         self.last_index_of(value, from_index)
     }
 
-    pub fn sort(&self, compare: HxRc<dyn Fn(T, T) -> i32 + Send + Sync>)
+    pub fn sort(&self, compare: HxDynRef<dyn Fn(T, T) -> i32 + Send + Sync>)
     where
         T: Clone,
     {
         let mut inner = self.inner.borrow_mut();
         inner.sort_by(|a, b| {
-            let r = compare(a.clone(), b.clone());
+            let r = (*compare)(a.clone(), b.clone());
             if r < 0 {
                 std::cmp::Ordering::Less
             } else if r > 0 {
@@ -332,7 +414,7 @@ impl<T> Array<T> {
     }
 
     pub fn ptr_eq(&self, other: &Array<T>) -> bool {
-        HxRc::ptr_eq(&self.inner, &other.inner)
+        self.inner.ptr_eq(&other.inner)
     }
 }
 

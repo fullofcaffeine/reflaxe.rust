@@ -10,42 +10,52 @@ pub struct IntMap<T: Clone + Send + Sync + 'static + std::fmt::Debug> {
 
 impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> IntMap<T> {
     pub fn new() -> crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> {
-        let self_: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> =
-            crate::HxRc::new(crate::HxRefCell::new(IntMap {
-                h: std::collections::HashMap::<i32, T>::new(),
-            }));
+        let self_: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = crate::HxRef::new(IntMap {
+            h: std::collections::HashMap::<i32, T>::new(),
+        });
         return self_;
     }
 
     pub fn set(self_: &crate::HxRefCell<IntMap<T>>, key: i32, value: T) {
-        self_.borrow_mut().h.insert(key, value);
+        let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
+        __hx_this.borrow_mut().h.insert(key, value);
     }
 
     pub fn get(self_: &crate::HxRefCell<IntMap<T>>, key: i32) -> Option<T> {
-        return self_.borrow().h.get(&key).cloned();
+        let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
+        return __hx_this.borrow().h.get(&key).cloned();
     }
 
     pub fn exists(self_: &crate::HxRefCell<IntMap<T>>, key: i32) -> bool {
-        return self_.borrow().h.contains_key(&key);
+        let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
+        return __hx_this.borrow().h.contains_key(&key);
     }
 
     pub fn remove(self_: &crate::HxRefCell<IntMap<T>>, key: i32) -> bool {
-        return self_.borrow_mut().h.remove(&key).is_some();
+        let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
+        return __hx_this.borrow_mut().h.remove(&key).is_some();
     }
 
     pub fn keys(self_: &crate::HxRefCell<IntMap<T>>) -> hxrt::iter::Iter<i32> {
-        return hxrt::iter::Iter::from_vec(self_.borrow().h.keys().cloned().collect::<Vec<_>>());
+        let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
+        return hxrt::iter::Iter::from_vec(
+            __hx_this.borrow().h.keys().cloned().collect::<Vec<_>>(),
+        );
     }
 
     pub fn iterator(self_: &crate::HxRefCell<IntMap<T>>) -> hxrt::iter::Iter<T> {
-        return hxrt::iter::Iter::from_vec(self_.borrow().h.values().cloned().collect::<Vec<_>>());
+        let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
+        return hxrt::iter::Iter::from_vec(
+            __hx_this.borrow().h.values().cloned().collect::<Vec<_>>(),
+        );
     }
 
     pub fn key_value_iterator(
         self_: &crate::HxRefCell<IntMap<T>>,
     ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<i32, T>> {
+        let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
         return hxrt::iter::Iter::from_vec(
-            self_
+            __hx_this
                 .borrow()
                 .h
                 .iter()
@@ -60,18 +70,21 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> IntMap<T> {
     pub fn copy(
         self_: &crate::HxRefCell<IntMap<T>>,
     ) -> crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> {
+        let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
         let out: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> =
             crate::haxe_ds_int_map::IntMap::<T>::new();
-        out.borrow_mut().h = self_.borrow().h.clone();
+        out.borrow_mut().h = __hx_this.borrow().h.clone();
         return out;
     }
 
     pub fn to_string(self_: &crate::HxRefCell<IntMap<T>>) -> String {
-        return format!("{:?}", self_.borrow().h);
+        let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
+        return format!("{:?}", __hx_this.borrow().h);
     }
 
     pub fn clear(self_: &crate::HxRefCell<IntMap<T>>) {
-        self_.borrow_mut().h.clear();
+        let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
+        __hx_this.borrow_mut().h.clear();
     }
 }
 
@@ -100,7 +113,13 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> crate::haxe_i_map::IMap
         IntMap::<T>::key_value_iterator(self)
     }
     fn copy(&self) -> crate::HxRc<dyn crate::haxe_i_map::IMap<i32, T> + Send + Sync> {
-        IntMap::<T>::copy(self)
+        let __tmp = IntMap::<T>::copy(self);
+        let __up: crate::HxRc<dyn crate::haxe_i_map::IMap<i32, T> + Send + Sync> =
+            match __tmp.as_arc_opt() {
+                Some(__rc) => __rc.clone(),
+                None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
+            };
+        __up
     }
     fn to_string(&self) -> String {
         IntMap::<T>::to_string(self)

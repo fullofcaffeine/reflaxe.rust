@@ -76,8 +76,8 @@ class Certificate {
 		return untyped __rust__(
 			"{
 				match hxrt::ssl::cert_next(&{0}) {
-					None => None,
-					Some(h) => Some(crate::sys_ssl_certificate::Certificate::from_handle(h)),
+					None => crate::HxRef::<crate::sys_ssl_certificate::Certificate>::null(),
+					Some(h) => crate::sys_ssl_certificate::Certificate::from_handle(h),
 				}
 			}",
 			handle

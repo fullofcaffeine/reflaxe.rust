@@ -8,8 +8,7 @@ pub struct Eof {}
 
 impl Eof {
     pub fn new() -> crate::HxRef<crate::haxe_io_eof::Eof> {
-        let self_: crate::HxRef<crate::haxe_io_eof::Eof> =
-            crate::HxRc::new(crate::HxRefCell::new(Eof {}));
+        let self_: crate::HxRef<crate::haxe_io_eof::Eof> = crate::HxRef::new(Eof {});
         return self_;
     }
 

@@ -1,3 +1,5 @@
+use crate::array::Array;
+use crate::cell::HxRef;
 use crate::dynamic::Dynamic;
 use std::any::Any;
 use std::collections::BTreeMap;
@@ -19,10 +21,10 @@ use std::collections::BTreeMap;
 /// How
 /// - The compiler lowers object literals into a `HxRef<Anon>` (a shared, interior-mutable reference).
 /// - Field reads/writes are compiled into `borrow().get::<T>(...)` / `borrow_mut().set(...)`.
-/// - Keys are expected to be compile-time literals and typically `'static`.
+/// - For v1 stdlib parity, we also support runtime string keys (Reflect/JSON use-cases).
 #[derive(Clone, Debug, Default)]
 pub struct Anon {
-    fields: BTreeMap<&'static str, Dynamic>,
+    fields: BTreeMap<String, Dynamic>,
 }
 
 impl Anon {
@@ -34,15 +36,15 @@ impl Anon {
     }
 
     #[inline]
-    pub fn set<T>(&mut self, key: &'static str, value: T)
+    pub fn set<T>(&mut self, key: &str, value: T)
     where
         T: Any + Clone + Send + Sync + 'static,
     {
-        self.fields.insert(key, Dynamic::from(value));
+        self.fields.insert(key.to_string(), Dynamic::from(value));
     }
 
     #[inline]
-    pub fn get<T>(&self, key: &'static str) -> T
+    pub fn get<T>(&self, key: &str) -> T
     where
         T: Any + Clone + Send + Sync + 'static,
     {
@@ -54,4 +56,57 @@ impl Anon {
             .unwrap_or_else(|| panic!("anon field has wrong type: {}", key))
             .clone()
     }
+
+    #[inline]
+    pub fn get_dyn(&self, key: &str) -> Dynamic {
+        self.fields.get(key).cloned().unwrap_or_else(Dynamic::null)
+    }
+
+    #[inline]
+    pub fn set_dyn(&mut self, key: &str, value: Dynamic) {
+        self.fields.insert(key.to_string(), value);
+    }
+
+    #[inline]
+    pub fn has_key(&self, key: &str) -> bool {
+        self.fields.contains_key(key)
+    }
+
+    #[inline]
+    pub fn keys(&self) -> Array<String> {
+        Array::from_vec(self.fields.keys().cloned().collect())
+    }
+}
+
+#[inline]
+pub fn anon_get(obj: &HxRef<Anon>, key: &str) -> Dynamic {
+    obj.borrow().get_dyn(key)
+}
+
+#[inline]
+pub fn anon_set(obj: &HxRef<Anon>, key: &str, value: Dynamic) {
+    obj.borrow_mut().set_dyn(key, value)
+}
+
+#[inline]
+pub fn anon_has(obj: &HxRef<Anon>, key: &str) -> bool {
+    obj.borrow().has_key(key)
+}
+
+#[inline]
+pub fn anon_keys(obj: &HxRef<Anon>) -> Array<String> {
+    obj.borrow().keys()
+}
+
+/// Return a cloned list of `(key, value)` entries for an `Anon` object.
+///
+/// This is intentionally cloning: `Anon` is stored behind interior mutability, and callers
+/// (JSON, reflection helpers) should not hold borrows across arbitrary code.
+#[inline]
+pub fn anon_entries(obj: &HxRef<Anon>) -> Vec<(String, Dynamic)> {
+    obj.borrow()
+        .fields
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect()
 }

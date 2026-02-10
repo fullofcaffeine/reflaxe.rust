@@ -17,8 +17,7 @@ impl Date {
         min: i32,
         sec: i32,
     ) -> crate::HxRef<crate::date::Date> {
-        let self_: crate::HxRef<crate::date::Date> =
-            crate::HxRc::new(crate::HxRefCell::new(Date { ms: 0.0 }));
+        let self_: crate::HxRef<crate::date::Date> = crate::HxRef::new(Date { ms: 0.0 });
         {
             let __tmp = hxrt::date::local_to_ms(year, month, day, hour, min, sec) as f64;
             self_.borrow_mut().ms = __tmp;
@@ -28,71 +27,139 @@ impl Date {
     }
 
     pub fn get_time(self_: &crate::HxRefCell<Date>) -> f64 {
-        return self_.borrow().ms;
+        let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
+        return {
+            let __b = __hx_this.borrow();
+            __b.ms
+        };
     }
 
     pub fn get_hours(self_: &crate::HxRefCell<Date>) -> i32 {
-        return hxrt::date::local_hours(self_.borrow().ms as i64);
+        let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
+        return hxrt::date::local_hours({
+            let __b = __hx_this.borrow();
+            __b.ms
+        } as i64);
     }
 
     pub fn get_minutes(self_: &crate::HxRefCell<Date>) -> i32 {
-        return hxrt::date::local_minutes(self_.borrow().ms as i64);
+        let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
+        return hxrt::date::local_minutes({
+            let __b = __hx_this.borrow();
+            __b.ms
+        } as i64);
     }
 
     pub fn get_seconds(self_: &crate::HxRefCell<Date>) -> i32 {
-        return hxrt::date::local_seconds(self_.borrow().ms as i64);
+        let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
+        return hxrt::date::local_seconds({
+            let __b = __hx_this.borrow();
+            __b.ms
+        } as i64);
     }
 
     pub fn get_full_year(self_: &crate::HxRefCell<Date>) -> i32 {
-        return hxrt::date::local_full_year(self_.borrow().ms as i64);
+        let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
+        return hxrt::date::local_full_year({
+            let __b = __hx_this.borrow();
+            __b.ms
+        } as i64);
     }
 
     pub fn get_month(self_: &crate::HxRefCell<Date>) -> i32 {
-        return hxrt::date::local_month0(self_.borrow().ms as i64);
+        let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
+        return hxrt::date::local_month0({
+            let __b = __hx_this.borrow();
+            __b.ms
+        } as i64);
     }
 
     pub fn get_date(self_: &crate::HxRefCell<Date>) -> i32 {
-        return hxrt::date::local_date(self_.borrow().ms as i64);
+        let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
+        return hxrt::date::local_date({
+            let __b = __hx_this.borrow();
+            __b.ms
+        } as i64);
     }
 
     pub fn get_day(self_: &crate::HxRefCell<Date>) -> i32 {
-        return hxrt::date::local_day(self_.borrow().ms as i64);
+        let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
+        return hxrt::date::local_day({
+            let __b = __hx_this.borrow();
+            __b.ms
+        } as i64);
     }
 
     pub fn get_utc_hours(self_: &crate::HxRefCell<Date>) -> i32 {
-        return hxrt::date::utc_hours(self_.borrow().ms as i64);
+        let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
+        return hxrt::date::utc_hours({
+            let __b = __hx_this.borrow();
+            __b.ms
+        } as i64);
     }
 
     pub fn get_utc_minutes(self_: &crate::HxRefCell<Date>) -> i32 {
-        return hxrt::date::utc_minutes(self_.borrow().ms as i64);
+        let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
+        return hxrt::date::utc_minutes({
+            let __b = __hx_this.borrow();
+            __b.ms
+        } as i64);
     }
 
     pub fn get_utc_seconds(self_: &crate::HxRefCell<Date>) -> i32 {
-        return hxrt::date::utc_seconds(self_.borrow().ms as i64);
+        let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
+        return hxrt::date::utc_seconds({
+            let __b = __hx_this.borrow();
+            __b.ms
+        } as i64);
     }
 
     pub fn get_utc_full_year(self_: &crate::HxRefCell<Date>) -> i32 {
-        return hxrt::date::utc_full_year(self_.borrow().ms as i64);
+        let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
+        return hxrt::date::utc_full_year({
+            let __b = __hx_this.borrow();
+            __b.ms
+        } as i64);
     }
 
     pub fn get_utc_month(self_: &crate::HxRefCell<Date>) -> i32 {
-        return hxrt::date::utc_month0(self_.borrow().ms as i64);
+        let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
+        return hxrt::date::utc_month0({
+            let __b = __hx_this.borrow();
+            __b.ms
+        } as i64);
     }
 
     pub fn get_utc_date(self_: &crate::HxRefCell<Date>) -> i32 {
-        return hxrt::date::utc_date(self_.borrow().ms as i64);
+        let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
+        return hxrt::date::utc_date({
+            let __b = __hx_this.borrow();
+            __b.ms
+        } as i64);
     }
 
     pub fn get_utc_day(self_: &crate::HxRefCell<Date>) -> i32 {
-        return hxrt::date::utc_day(self_.borrow().ms as i64);
+        let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
+        return hxrt::date::utc_day({
+            let __b = __hx_this.borrow();
+            __b.ms
+        } as i64);
     }
 
     pub fn get_timezone_offset(self_: &crate::HxRefCell<Date>) -> i32 {
-        return hxrt::date::timezone_offset_minutes(self_.borrow().ms as i64);
+        let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
+        return hxrt::date::timezone_offset_minutes({
+            let __b = __hx_this.borrow();
+            __b.ms
+        } as i64);
     }
 
     pub fn to_string(self_: &crate::HxRefCell<Date>) -> String {
-        return hxrt::date::format_local(self_.borrow().ms as i64);
+        let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
+        return hxrt::date::format_local({
+            let __b = __hx_this.borrow();
+            __b.ms
+        } as i64);
     }
 
     pub fn now() -> crate::HxRef<crate::date::Date> {

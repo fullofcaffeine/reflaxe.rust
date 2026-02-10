@@ -11,18 +11,29 @@ pub struct Thread {
 impl Thread {
     pub fn new(id: i32) -> crate::HxRef<crate::sys_thread_thread::Thread> {
         let self_: crate::HxRef<crate::sys_thread_thread::Thread> =
-            crate::HxRc::new(crate::HxRefCell::new(Thread { _id: id }));
+            crate::HxRef::new(Thread { _id: id });
         return self_;
     }
 
     pub fn get_events(
         self_: &crate::HxRefCell<Thread>,
     ) -> crate::HxRef<crate::sys_thread_event_loop::EventLoop> {
-        return crate::sys_thread_event_loop::EventLoop::_from_thread_id(self_.borrow()._id);
+        let __hx_this: crate::HxRef<crate::sys_thread_thread::Thread> = self_.self_ref();
+        return crate::sys_thread_event_loop::EventLoop::_from_thread_id({
+            let __b = __hx_this.borrow();
+            __b._id
+        });
     }
 
     pub fn send_message(self_: &crate::HxRefCell<Thread>, msg: hxrt::dynamic::Dynamic) {
-        hxrt::thread::thread_send_message(self_.borrow()._id, msg);
+        let __hx_this: crate::HxRef<crate::sys_thread_thread::Thread> = self_.self_ref();
+        hxrt::thread::thread_send_message(
+            {
+                let __b = __hx_this.borrow();
+                __b._id
+            },
+            msg,
+        );
     }
 
     pub fn current() -> crate::HxRef<crate::sys_thread_thread::Thread> {
@@ -31,20 +42,20 @@ impl Thread {
     }
 
     pub fn create(
-        job: crate::HxRc<dyn Fn() + Send + Sync>,
+        job: crate::HxDynRef<dyn Fn() + Send + Sync>,
     ) -> crate::HxRef<crate::sys_thread_thread::Thread> {
         let id: i32 = hxrt::thread::thread_spawn(job);
         return crate::sys_thread_thread::Thread::new(id);
     }
 
-    pub fn run_with_event_loop(job: crate::HxRc<dyn Fn() + Send + Sync>) {
+    pub fn run_with_event_loop(job: crate::HxDynRef<dyn Fn() + Send + Sync>) {
         job();
         let id: i32 = hxrt::thread::thread_current_id();
         hxrt::thread::event_loop_loop(id);
     }
 
     pub fn create_with_event_loop(
-        job: crate::HxRc<dyn Fn() + Send + Sync>,
+        job: crate::HxDynRef<dyn Fn() + Send + Sync>,
     ) -> crate::HxRef<crate::sys_thread_thread::Thread> {
         let id: i32 = hxrt::thread::thread_spawn_with_event_loop(job);
         return crate::sys_thread_thread::Thread::new(id);
@@ -56,8 +67,8 @@ impl Thread {
 
     fn process_events() {
         crate::sys_thread_event_loop::EventLoop::progress(
-            &crate::sys_thread_thread::Thread::get_events(
-                &crate::sys_thread_thread::Thread::current(),
+            &*crate::sys_thread_thread::Thread::get_events(
+                &*crate::sys_thread_thread::Thread::current(),
             ),
         );
     }
