@@ -117,8 +117,12 @@ class StringTools {
 
 	/**
 		Tells if `s` starts with `start`.
+
+		Notes
+		- Intentionally not `inline`: the Rust-target implementation uses `__rust__` injection and
+		  inlining would leak that injection into callers (breaking the “examples are pure” rule).
 	**/
-	public static inline function startsWith(s:String, start:String):Bool {
+	public static function startsWith(s:String, start:String):Bool {
 		#if macro
 		return (s.length >= start.length && s.indexOf(start, 0) == 0);
 		#else
@@ -128,8 +132,12 @@ class StringTools {
 
 	/**
 		Tells if `s` ends with `end`.
+
+		Notes
+		- Intentionally not `inline`: the Rust-target implementation uses `__rust__` injection and
+		  inlining would leak that injection into callers (breaking the “examples are pure” rule).
 	**/
-	public static inline function endsWith(s:String, end:String):Bool {
+	public static function endsWith(s:String, end:String):Bool {
 		#if macro
 		var elen = end.length;
 		var slen = s.length;

@@ -12,6 +12,13 @@ mod action;
 mod haxe_call_stack_call_stack_impl_;
 mod haxe_exception;
 mod haxe_stack_item;
+mod rust_tui_constraint;
+mod rust_tui_event;
+mod rust_tui_key_code;
+mod rust_tui_key_mods_key_mods_impl_;
+mod rust_tui_layout_dir;
+mod rust_tui_style_token;
+mod rust_tui_ui_node;
 mod task;
 mod tui_demo;
 

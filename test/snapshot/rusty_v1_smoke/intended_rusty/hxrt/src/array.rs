@@ -47,6 +47,18 @@ pub struct Array<T> {
     inner: HxRef<Vec<T>>,
 }
 
+// Haxe array equality (`==`) is reference equality, not deep equality. Implement `PartialEq`
+// accordingly so compiler-emitted derives (e.g. enums that carry `Array<T>` fields) compile
+// without requiring `T: PartialEq`.
+impl<T> PartialEq for Array<T> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.inner.ptr_eq(&other.inner)
+    }
+}
+
+impl<T> Eq for Array<T> {}
+
 pub type SliceCallback<T, R> = HxDynRef<dyn Fn(&[T]) -> R + Send + Sync>;
 pub type MutSliceCallback<T, R> = HxDynRef<dyn Fn(&mut [T]) -> R + Send + Sync>;
 

@@ -49,6 +49,21 @@ extern class TuiDemo {
 	public static function render(tasks: String): Void;
 
 	/**
+		Render a structured `UiNode` tree to the interactive terminal.
+
+		Notes:
+		- In headless mode, this is a no-op (same as `render(...)`).
+	**/
+	@:native("render_ui")
+	public static function renderUi(ui: UiNode): Void;
+
+	/**
+		Render a structured `UiNode` tree to a deterministic string buffer.
+	**/
+	@:native("render_ui_to_string")
+	public static function renderUiToString(ui: UiNode, width: Int, height: Int): String;
+
+	/**
 	 * Returns an action code:
 	 * - 0 = none
 	 * - 1 = up
@@ -62,4 +77,20 @@ extern class TuiDemo {
 	 */
 	@:native("poll_action")
 	public static function pollAction(timeoutMs: Int): Int;
+
+	/**
+		Poll a high-level `Event`.
+
+		Why
+		- Allows rich apps (text input, resize-aware layouts) without encoding everything into a
+		  tiny action code.
+
+		What
+		- Returns an `Event` value directly from native Rust.
+
+		How
+		- In headless mode, this returns `Event.Quit` immediately so application loops don't spin.
+	**/
+	@:native("poll_event")
+	public static function pollEvent(timeoutMs: Int): Event;
 }

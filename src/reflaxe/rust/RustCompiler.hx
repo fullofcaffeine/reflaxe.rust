@@ -7126,6 +7126,24 @@ private typedef RustImplSpec = {
 			}
 
 			var recv = compileExpr(obj);
+			function isStableBorrowReceiver(e: RustExpr): Bool {
+				return switch (e) {
+					case EPath(_): true;
+					case EField(base, _): isStableBorrowReceiver(base);
+					case _: false;
+				}
+			}
+
+			// `RefCell::borrow()` returns a guard with a lifetime tied to the receiver.
+			// If the receiver is a temporary expression (e.g. `{ ... }.borrow()`), Rust rejects it with
+			// "temporary value dropped while borrowed". Keep complex receivers alive via a local binding.
+			var stmts: Array<RustStmt> = [];
+			var borrowRecv: RustExpr = recv;
+			if (!isStableBorrowReceiver(recv)) {
+				stmts.push(RLet("__hx_recv", false, null, recv));
+				borrowRecv = EPath("__hx_recv");
+			}
+
 			var fieldName = rustFieldName(owner, cf);
 			var access = EField(EPath("__b"), fieldName);
 
@@ -7136,7 +7154,7 @@ private typedef RustImplSpec = {
 				var unwrapped = ECall(EField(asRef, "unwrap"), []);
 				var tail = ECall(EField(unwrapped, "clone"), []);
 				return EBlock({
-					stmts: [RLet("__b", false, null, ECall(EField(recv, "borrow"), []))],
+					stmts: stmts.concat([RLet("__b", false, null, ECall(EField(borrowRecv, "borrow"), []))]),
 					tail: tail
 				});
 			}
@@ -7146,7 +7164,7 @@ private typedef RustImplSpec = {
 				: access;
 
 			return EBlock({
-				stmts: [RLet("__b", false, null, ECall(EField(recv, "borrow"), []))],
+				stmts: stmts.concat([RLet("__b", false, null, ECall(EField(borrowRecv, "borrow"), []))]),
 				tail: tail
 			});
 	}

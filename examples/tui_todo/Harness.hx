@@ -1,73 +1,80 @@
-#if tui_rusty
-import rust.Vec;
-import rust.VecTools;
-#end
-import rust.tui.Action;
+import app.App;
+import model.Store;
+import rust.tui.Event;
+import rust.tui.KeyCode;
+import rust.tui.KeyMods;
 import rust.tui.Tui;
 
 /**
- * Deterministic runner for CI tests.
- *
- * Why:
- * - TUIs are interactive, so regressions can be hard to catch with unit tests alone.
- * - We use ratatui's `TestBackend` (via `Tui.renderToString`) to render frames off-screen and assert
- *   on the output in `cargo test`, without requiring a real terminal.
- *
- * What:
- * - Applies a scripted sequence of `Action`s to a small todo list and returns the rendered frame as
- *   a string.
- *
- * How:
- * - Keep this file "pure Haxe" (no `__rust__`): all native logic lives behind `std/` APIs.
- * - Rust tests call into the compiled output at `crate::harness::Harness::render_scenario()`.
- */
+	Deterministic runner for CI tests.
+
+	Why
+	- TUIs are interactive, so regressions can be hard to catch with unit tests alone.
+	- We use ratatui's headless `TestBackend` (via `Tui.renderUiToString`) to render frames off-screen
+	  and assert on them in `cargo test`, without requiring a real terminal.
+
+	What
+	- Applies scripted `Event`s to an `App` instance and returns the rendered frame as a string.
+
+	How
+	- Keep this file pure Haxe (no `__rust__`): all native logic lives behind `std/` APIs.
+	- Rust tests call into the compiled output at `crate::harness::Harness::*`.
+**/
 @:keep
 class Harness {
-	public static function renderScenario(): String {
-		var tasks = buildTasks();
+	static inline final W = 80;
+	static inline final H = 24;
 
-		var selected = 0;
+	// Linker anchor: referenced from `Main` in CI builds so this module is emitted even though
+	// Rust tests call into it directly (outside of Haxe's DCE reachability).
+	public static function __link(): Void {}
 
-		var actions: Array<Action> = [Down, Toggle, Down, Toggle, Up];
-		for (action in actions) {
-			switch (action) {
-				case Up:
-					if (selected > 0) selected = selected - 1;
-				case Down:
-					if (selected < tasks.length - 1) selected = selected + 1;
-				case Toggle:
-					tasks[selected].toggle();
-				case Quit | None:
-					// not used by this scenario
-			}
-		}
-
-		return Tui.renderToString(buildLines(tasks, selected));
+	static function seeded(): App {
+		var s = new Store();
+		s.seedDemo();
+		var app = new App(s);
+		app.setTerminalSize(W, H);
+		return app;
 	}
 
-	static function buildLines(tasks: Array<Task>, selected: Int): String {
-		var lines = "";
-		var i = 0;
-		while (i < tasks.length) {
-			lines = lines + tasks[i].line(i == selected) + "\n";
-			i = i + 1;
-		}
-		return lines;
-	}
-
-	static function buildTasks(): Array<Task> {
-		#if tui_rusty
-		var v = new Vec<Task>();
-		v.push(new Task("bootstrap reflaxe.rust", true));
-		v.push(new Task("add enums + switch", false));
-		v.push(new Task("ship ratatui demo", false));
-		return VecTools.toArray(v);
-		#else
-		return [
-			new Task("bootstrap reflaxe.rust", true),
-			new Task("add enums + switch", false),
-			new Task("ship ratatui demo", false),
+	public static function renderScenarioTasks(): String {
+		var app = seeded();
+		var events: Array<Event> = [
+			Tick(50),
+			Key(Down, KeyMods.None),
+			Key(Char(" "), KeyMods.None),
+			Key(Down, KeyMods.None),
+			Key(Enter, KeyMods.None),
+			Tick(50),
 		];
-		#end
+		for (e in events) app.handle(e);
+		return Tui.renderUiToString(app.view(), W, H);
+	}
+
+	public static function renderScenarioPalette(): String {
+		var app = seeded();
+		var events: Array<Event> = [
+			Key(Char(":"), KeyMods.None),
+			Key(Char("g"), KeyMods.None),
+			Key(Char("o"), KeyMods.None),
+			Key(Char(":"), KeyMods.None),
+			Tick(50),
+		];
+		for (e in events) app.handle(e);
+		return Tui.renderUiToString(app.view(), W, H);
+	}
+
+	public static function renderScenarioEditTitle(): String {
+		var app = seeded();
+		var events: Array<Event> = [
+			Key(Enter, KeyMods.None),
+			Key(Char("e"), KeyMods.None),
+			Key(Char("X"), KeyMods.None),
+			Key(Char("!"), KeyMods.None),
+			Key(Enter, KeyMods.None),
+			Tick(50),
+		];
+		for (e in events) app.handle(e);
+		return Tui.renderUiToString(app.view(), W, H);
 	}
 }
