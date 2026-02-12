@@ -1,8 +1,39 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root_dir"
+
+current_step="bootstrap"
+
+log() {
+  printf '[windows-smoke] %s\n' "$*"
+}
+
+run_step() {
+  local label="$1"
+  shift
+
+  local step_started
+  step_started="$(date +%s)"
+  current_step="$label"
+  log "start: $label"
+  "$@"
+  local elapsed
+  elapsed="$(( $(date +%s) - step_started ))"
+  log "done:  $label (${elapsed}s)"
+}
+
+on_error() {
+  local exit_code="$1"
+  local line_no="$2"
+  local command="$3"
+  log "fail:  $current_step (exit=${exit_code}, line=${line_no})"
+  log "cmd:   $command"
+  return "$exit_code"
+}
+
+trap 'on_error "$?" "$LINENO" "$BASH_COMMAND"' ERR
 
 is_truthy() {
   local value="${1:-}"
@@ -21,7 +52,7 @@ cleanup_artifacts() {
   local cleanup_args=()
 
   if is_truthy "${KEEP_ARTIFACTS:-0}"; then
-    echo "[windows-smoke] keep artifacts enabled (KEEP_ARTIFACTS=1)"
+    log "keep artifacts enabled (KEEP_ARTIFACTS=1)"
     return "$original_exit"
   fi
 
@@ -34,9 +65,9 @@ cleanup_artifacts() {
   fi
 
   if [[ "${#cleanup_args[@]}" -gt 0 ]]; then
-    echo "[windows-smoke] cleanup (${cleanup_args[*]})"
+    log "cleanup (${cleanup_args[*]})"
     if ! "$root_dir/scripts/ci/clean-artifacts.sh" "${cleanup_args[@]}"; then
-      echo "[windows-smoke] WARN: artifact cleanup failed"
+      log "WARN: artifact cleanup failed"
     fi
   fi
 
@@ -78,22 +109,22 @@ run_example() {
   local out_dir
   out_dir="$(extract_out_dir "$dir/$hxml")"
 
-  echo "[windows-smoke] compile: ${dir} (${hxml})"
+  log "compile: ${dir} (${hxml})"
   (cd "$dir" && haxe "$hxml")
   (cd "$dir/$out_dir" && cargo test -q)
   (cd "$dir/$out_dir" && cargo run -q)
 }
 
-echo "[windows-smoke] snapshots"
-bash test/run-snapshots.sh --case hello_trace
-bash test/run-snapshots.sh --case sys_io
+log "snapshots"
+run_step "snapshot hello_trace" bash test/run-snapshots.sh --case hello_trace
+run_step "snapshot sys_io" bash test/run-snapshots.sh --case sys_io
 
 if [[ -z "${CARGO_TARGET_DIR:-}" ]]; then
   export CARGO_TARGET_DIR="$root_dir/.cache/examples-target-windows-smoke"
 fi
 
-echo "[windows-smoke] examples"
-run_example "examples/sys_file_io"
-run_example "examples/sys_net_loopback"
+log "examples"
+run_step "example sys_file_io" run_example "examples/sys_file_io"
+run_step "example sys_net_loopback" run_example "examples/sys_net_loopback"
 
-echo "[windows-smoke] ok"
+log "ok"
