@@ -203,6 +203,16 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Free runner disk space (before harness)
+        run: |
+          set -euo pipefail
+          echo "[disk] before cleanup"
+          df -h
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/share/dotnet /opt/hostedtoolcache/CodeQL || true
+          docker system prune -af || true
+          echo "[disk] after cleanup"
+          df -h
+
       - name: Run harness (snapshots + examples)
         run: |
           set -euo pipefail
