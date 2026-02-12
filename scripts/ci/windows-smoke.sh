@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -Eeuo pipefail
+set -euo pipefail
 
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root_dir"
@@ -23,17 +23,6 @@ run_step() {
   elapsed="$(( $(date +%s) - step_started ))"
   log "done:  $label (${elapsed}s)"
 }
-
-on_error() {
-  local exit_code="$1"
-  local line_no="$2"
-  local command="$3"
-  log "fail:  $current_step (exit=${exit_code}, line=${line_no})"
-  log "cmd:   $command"
-  return "$exit_code"
-}
-
-trap 'on_error "$?" "$LINENO" "$BASH_COMMAND"' ERR
 
 is_truthy() {
   local value="${1:-}"
