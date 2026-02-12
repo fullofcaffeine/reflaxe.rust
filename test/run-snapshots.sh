@@ -14,14 +14,14 @@ if [[ -z "$HAXE_BIN" ]]; then
 fi
 
 usage() {
-  cat <<'EOF'
-Usage: test/run-snapshots.sh [--case NAME] [--update] [--clippy]
+  cat <<'EOUSAGE'
+Usage: test/run-snapshots.sh [--case NAME] [--update] [--clippy] [--no-diff]
 
 Runs snapshot tests:
   - regenerates each test's out*/ via `haxe compile*.hxml`
   - optionally updates intended*/ (golden) outputs with --update
   - diffs intended*/ vs out*/
-  - runs `cargo fmt` and `cargo build -q` for each generated crate
+  - runs `cargo fmt` and `cargo build` for each generated crate (quiet by default; set `SNAP_CARGO_QUIET=0` for verbose logs)
   - optionally runs `cargo clippy` correctness/suspicious lints for a small curated subset of cases
 
 Options:
@@ -33,6 +33,8 @@ Options:
                  - If `--case` is set: runs for that case.
                  - Else if `SNAP_CLIPPY_CASES` is set: comma/space-separated list (e.g. "v1_smoke,idiomatic_profile").
                  - Else: default curated list (see script).
+  --no-diff     Skip intended*/ diffs and stdout snapshot checks.
+               Useful for host smoke runs where we only care about compile/build health.
 
 Snapshot variants:
   A case may include multiple compile files:
@@ -40,12 +42,13 @@ Snapshot variants:
     - compile.<variant>.hxml    (extra variants)  -> out_<variant>/ and intended_<variant>/
 
   The runner always overrides `-D rust_output=...` so each compile file can stay minimal.
-EOF
+EOUSAGE
 }
 
 only_case=""
 update_intended=0
 run_clippy=0
+no_diff=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -59,6 +62,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --clippy)
       run_clippy=1
+      shift
+      ;;
+    --no-diff)
+      no_diff=1
       shift
       ;;
     -h|--help)
@@ -106,6 +113,20 @@ else
 fi
 
 fail=0
+
+is_truthy() {
+  local value="${1:-}"
+  case "$value" in
+    1|true|TRUE|yes|YES|on|ON)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+SNAP_CARGO_QUIET="${SNAP_CARGO_QUIET:-1}"
 
 should_run_clippy_for_case() {
   local case_name="$1"
@@ -181,7 +202,7 @@ for case_dir in "$SNAP_DIR"/*; do
     case_target_dir="$SNAP_CARGO_TARGET_BASE/$case_name/$out_base"
 
     expects_stdout=0
-    if [[ -f "$intended_dir/stdout.txt" ]]; then
+    if [[ "$no_diff" != "1" && -f "$intended_dir/stdout.txt" ]]; then
       expects_stdout=1
     fi
 
@@ -193,17 +214,27 @@ for case_dir in "$SNAP_DIR"/*; do
 
     rm -rf "$out_dir"
     # Snapshots do their own cargo build step below; keep codegen-only during compilation.
+    echo "  compile: $compile_file -> $out_base"
     (cd "$case_dir" && "$HAXE_BIN" "$compile_file" -D rust_output="$out_base" -D rust_no_build)
 
     if [[ -f "$out_dir/Cargo.toml" ]]; then
+      echo "  cargo fmt: $out_base"
       if ! (cd "$out_dir" && CARGO_TARGET_DIR="$case_target_dir" cargo fmt >/dev/null); then
         echo "  cargo fmt failed: $out_dir" >&2
         fail=1
       fi
-      if ! (cd "$out_dir" && CARGO_TARGET_DIR="$case_target_dir" cargo build -q); then
+
+      cargo_build_cmd=(cargo build)
+      if is_truthy "$SNAP_CARGO_QUIET"; then
+        cargo_build_cmd+=(-q)
+      fi
+
+      echo "  cargo build: $out_base"
+      if ! (cd "$out_dir" && CARGO_TARGET_DIR="$case_target_dir" "${cargo_build_cmd[@]}"); then
         echo "  cargo build failed: $out_dir" >&2
         fail=1
       fi
+
       if should_run_clippy_for_case "$case_name"; then
         if ! (cd "$out_dir" && CARGO_TARGET_DIR="$case_target_dir" cargo clippy -- -A clippy::all -D clippy::correctness -D clippy::suspicious >/dev/null); then
           echo "  cargo clippy failed: $out_dir" >&2
@@ -223,14 +254,18 @@ for case_dir in "$SNAP_DIR"/*; do
         "$out_dir/" "$intended_dir/"
     fi
 
-    if [[ ! -d "$intended_dir" ]]; then
-      echo "  error: missing $intended_base/ directory: $intended_dir" >&2
-      echo "  hint: run: test/run-snapshots.sh --case $case_name --update" >&2
-      fail=1
-      continue
+    if [[ "$no_diff" != "1" ]]; then
+      if [[ ! -d "$intended_dir" ]]; then
+        echo "  error: missing $intended_base/ directory: $intended_dir" >&2
+        echo "  hint: run: test/run-snapshots.sh --case $case_name --update" >&2
+        fail=1
+        continue
+      fi
+    else
+      echo "  skip intended/stdout diff checks (--no-diff)"
     fi
 
-    if [[ -f "$out_dir/Cargo.toml" ]]; then
+    if [[ "$no_diff" != "1" && -f "$out_dir/Cargo.toml" ]]; then
       # Optional: runtime stdout snapshot (deterministic cases only).
       # If intended*/stdout.txt exists (or existed before --update), run the compiled binary and compare stdout.
       if [[ "$expects_stdout" == "1" ]]; then
@@ -250,13 +285,15 @@ for case_dir in "$SNAP_DIR"/*; do
       fi
     fi
 
-    if ! diff -ru \
-      -x "_GeneratedFiles.json" \
-      -x "Cargo.lock" \
-      -x "stdout.txt" \
-      -x "target" \
-      "$intended_dir" "$out_dir"; then
-      fail=1
+    if [[ "$no_diff" != "1" ]]; then
+      if ! diff -ru \
+        -x "_GeneratedFiles.json" \
+        -x "Cargo.lock" \
+        -x "stdout.txt" \
+        -x "target" \
+        "$intended_dir" "$out_dir"; then
+        fail=1
+      fi
     fi
   done
 done

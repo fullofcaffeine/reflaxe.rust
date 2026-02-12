@@ -53,6 +53,18 @@ npm test
 # or: bash test/run-snapshots.sh
 ```
 
+Run host smoke snapshots without golden diffs (useful on non-Linux hosts):
+
+```bash
+SNAP_CARGO_QUIET=0 bash test/run-snapshots.sh --case hello_trace --no-diff
+```
+
+Run the Windows-safe smoke subset locally:
+
+```bash
+bash scripts/ci/windows-smoke.sh
+```
+
 Run full local harness (snapshots + examples + CI-like checks):
 
 ```bash

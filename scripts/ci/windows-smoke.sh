@@ -100,13 +100,14 @@ run_example() {
 
   log "compile: ${dir} (${hxml})"
   (cd "$dir" && haxe "$hxml")
-  (cd "$dir/$out_dir" && cargo test -q)
-  (cd "$dir/$out_dir" && cargo run -q)
+  (cd "$dir/$out_dir" && cargo test)
+  (cd "$dir/$out_dir" && cargo run)
 }
 
 log "snapshots"
-run_step "snapshot hello_trace" bash test/run-snapshots.sh --case hello_trace
-run_step "snapshot sys_io" bash test/run-snapshots.sh --case sys_io
+export SNAP_CARGO_QUIET="${SNAP_CARGO_QUIET:-0}"
+run_step "snapshot hello_trace" bash test/run-snapshots.sh --case hello_trace --no-diff
+run_step "snapshot sys_io" bash test/run-snapshots.sh --case sys_io --no-diff
 
 if [[ -z "${CARGO_TARGET_DIR:-}" ]]; then
   export CARGO_TARGET_DIR="$root_dir/.cache/examples-target-windows-smoke"
