@@ -7,6 +7,15 @@ clean_outputs=0
 clean_cache=0
 dry_run=0
 
+display_path() {
+  local path="$1"
+  if [[ "$path" == "$root_dir/"* ]]; then
+    printf ".%s\n" "${path#$root_dir}"
+    return 0
+  fi
+  printf "%s\n" "$path"
+}
+
 usage() {
   cat <<'EOF'
 Usage: scripts/ci/clean-artifacts.sh [--outputs] [--cache] [--all] [--dry-run]
@@ -86,13 +95,14 @@ fi
 removed=0
 for path in "${paths[@]}"; do
   [[ -e "$path" ]] || continue
+  shown_path="$(display_path "$path")"
   if [[ "$dry_run" -eq 1 ]]; then
-    echo "[clean] would remove: $path"
+    echo "[clean] would remove: $shown_path"
     removed=$((removed + 1))
     continue
   fi
   rm -rf "$path"
-  echo "[clean] removed: $path"
+  echo "[clean] removed: $shown_path"
   removed=$((removed + 1))
 done
 

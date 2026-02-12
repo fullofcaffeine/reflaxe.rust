@@ -20,6 +20,6 @@ enum CommandId {
 	EditTitle;
 
 	Save;
+	CycleFx;
 	Quit;
 }
-

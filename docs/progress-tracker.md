@@ -8,8 +8,8 @@ It maps directly to Beads issues so status is auditable and not hand-wavy.
 ## Executive summary
 
 - Core compiler roadmap epic (`haxe.rust-oo3`) is complete.
-- 1.0 parity epic (`haxe.rust-4jb`) is still open because one P0 blocker is in progress and one docs task is open.
-- Advanced TUI harness epic (`haxe.rust-cu0`) is mostly complete; animation/effects work remains open.
+- 1.0 parity epic (`haxe.rust-4jb`) is still open because one P0 blocker is in progress and one docs task is in progress.
+- Advanced TUI harness epic (`haxe.rust-cu0`) is complete (including deterministic animation/effects coverage).
 
 ## Progress at a glance
 
@@ -18,7 +18,7 @@ Use this as a planning signal, not an SLA.
 - **Foundation compiler milestones**: complete (`haxe.rust-oo3`)
 - **v1.0 stdlib/sys parity**: mostly complete, blocked by `haxe.rust-f63` (String nullability representation)
 - **Docs and onboarding quality**: in progress (`haxe.rust-cfh`)
-- **Battle-test example harness**: mostly complete (`haxe.rust-cu0`), polish still open (`haxe.rust-vrd`)
+- **Battle-test example harness**: complete (`haxe.rust-cu0`)
 
 ## Live workstreams (direct Beads mapping)
 
@@ -43,9 +43,12 @@ Use this as a planning signal, not an SLA.
 
 ### 3) Advanced TUI harness as production stress-test
 
-- Epic: `haxe.rust-cu0` (open, most children complete)
-- Open child: `haxe.rust-vrd` (animations/effects)
+- Epic: `haxe.rust-cu0` (closed)
 - Why it matters: this app is the “real app” harness that catches compiler/runtime edge cases and verifies profile behavior under richer UI state/event flows.
+- Current state:
+  - deterministic headless rendering assertions in `cargo test`
+  - portable + rusty CI variants in the harness matrix
+  - deterministic FX rendering (`FxKind` + `UiNode.FxText`) covered by tests
 
 ## 1.0 exit criteria (plain language)
 

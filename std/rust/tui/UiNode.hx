@@ -27,26 +27,26 @@ enum UiNode {
 	Empty;
 
 	/** A layout split node. **/
-	Layout(dir: LayoutDir, constraints: Array<Constraint>, children: Array<UiNode>);
+	Layout(dir:LayoutDir, constraints:Array<Constraint>, children:Array<UiNode>);
 
 	/**
 		Draw children over the same area in order.
 
 		Typical usage: `[baseLayout, modalNode, toastNode]`.
 	**/
-	Overlay(children: Array<UiNode>);
+	Overlay(children:Array<UiNode>);
 
 	/** A bordered block container. Children are rendered into the inner area. **/
-	Block(title: String, children: Array<UiNode>, style: StyleToken);
+	Block(title:String, children:Array<UiNode>, style:StyleToken);
 
 	/** Paragraph widget (optionally wrapped). **/
-	Paragraph(text: String, wrap: Bool, style: StyleToken);
+	Paragraph(text:String, wrap:Bool, style:StyleToken);
 
 	/** Tabs widget. **/
-	Tabs(titles: Array<String>, selected: Int, style: StyleToken);
+	Tabs(titles:Array<String>, selected:Int, style:StyleToken);
 
 	/** A progress gauge (0..100). **/
-	Gauge(title: String, percent: Int, style: StyleToken);
+	Gauge(title:String, percent:Int, style:StyleToken);
 
 	/**
 		List widget.
@@ -54,7 +54,7 @@ enum UiNode {
 		Notes:
 		- `selected = -1` means no selection.
 	**/
-	List(title: String, items: Array<String>, selected: Int, style: StyleToken);
+	List(title:String, items:Array<String>, selected:Int, style:StyleToken);
 
 	/**
 		Centered modal/popup.
@@ -62,6 +62,22 @@ enum UiNode {
 		Notes:
 		- `wPercent`/`hPercent` are clamped to sane ranges by the backend.
 	**/
-	Modal(title: String, body: Array<String>, wPercent: Int, hPercent: Int, style: StyleToken);
-}
+	Modal(title:String, body:Array<String>, wPercent:Int, hPercent:Int, style:StyleToken);
 
+	/**
+		Animated text block with deterministic effects.
+
+		Why
+		- Gives apps an explicit way to express motion/energy in the UI without raw target injection.
+		- Keeps animation deterministic for CI by driving it from an explicit `phase` integer.
+
+		What
+		- Renders a bordered block (`title`) containing transformed `text`.
+		- `effect` controls the visual transformation.
+		- `phase` is the animation position (usually advanced on `Tick` events).
+
+		How
+		- The Rust renderer applies the effect algorithm and then draws the result as a paragraph.
+	**/
+	FxText(title:String, text:String, effect:FxKind, phase:Int, style:StyleToken);
+}

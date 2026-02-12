@@ -14,6 +14,7 @@ mod haxe_exception;
 mod haxe_stack_item;
 mod rust_tui_constraint;
 mod rust_tui_event;
+mod rust_tui_fx_kind;
 mod rust_tui_key_code;
 mod rust_tui_key_mods_key_mods_impl_;
 mod rust_tui_layout_dir;

@@ -11,6 +11,19 @@ Most Haxe code should use:
 
 The low-level native binding (`TuiDemo`) still exists, but examples should prefer `Tui`.
 
+## UI DSL effects (`rust.tui.UiNode.FxText`)
+
+For richer, animated dashboards without using raw `__rust__`, the UI DSL includes:
+
+- `UiNode.FxText(title, text, effect, phase, style)`
+- `FxKind`: `Marquee`, `Typewriter`, `Pulse`, `Glitch`, `None`
+
+Design intent:
+
+- Deterministic animations: app code controls `phase` (typically advanced on `Event.Tick`).
+- Testability: the same tick sequence yields exactly the same frame output in headless mode.
+- No injection in app code: effects are implemented in the native renderer layer.
+
 ## `rust.tui.TuiDemo`
 
 Minimal building block used by `examples/tui_todo`.
@@ -65,3 +78,4 @@ Rusty profile variant:
 Notes:
 - In headless mode, use `renderToString(...)` for validation; `render(...)` is intentionally a no-op.
 - The headless mode flag can be set from Haxe (`-D tui_headless` in the example `compile.ci.hxml`) or by calling `Tui.setHeadless(true)` before `enter()`.
+- `examples/tui_todo` includes deterministic FX assertions in `native/tui_tests.rs` so animation paths are CI-covered.

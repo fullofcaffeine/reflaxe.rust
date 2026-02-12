@@ -1,5 +1,7 @@
 use crossterm::event::{self, Event, KeyCode};
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+};
 use crossterm::ExecutableCommand;
 use ratatui::backend::{CrosstermBackend, TestBackend};
 use ratatui::prelude::*;
@@ -16,25 +18,130 @@ thread_local! {
 
 // High-level events and key codes are defined in Haxe under `std/rust/tui/*` and compiled to Rust
 // modules named `rust_tui_*`.
-use crate::rust_tui_event::Event as HxEvent;
-use crate::rust_tui_key_code::KeyCode as HxKeyCode;
-use crate::rust_tui_ui_node::UiNode as HxUiNode;
-use crate::rust_tui_style_token::StyleToken as HxStyleToken;
-use crate::rust_tui_layout_dir::LayoutDir as HxLayoutDir;
 use crate::rust_tui_constraint::Constraint as HxConstraint;
+use crate::rust_tui_event::Event as HxEvent;
+use crate::rust_tui_fx_kind::FxKind as HxFxKind;
+use crate::rust_tui_key_code::KeyCode as HxKeyCode;
+use crate::rust_tui_layout_dir::LayoutDir as HxLayoutDir;
+use crate::rust_tui_style_token::StyleToken as HxStyleToken;
+use crate::rust_tui_ui_node::UiNode as HxUiNode;
+
+fn transform_fx_line(line: &str, effect: &HxFxKind, phase: i32, width: usize) -> String {
+    const GLITCH_CHARS: [char; 8] = ['#', '@', '%', '*', '+', '~', '!', '?'];
+
+    match effect {
+        HxFxKind::None => line.to_string(),
+        HxFxKind::Typewriter => {
+            let chars: Vec<char> = line.chars().collect();
+            if chars.is_empty() {
+                return String::new();
+            }
+            let reveal = (phase.max(0) as usize) % (chars.len() + 1);
+            chars.into_iter().take(reveal).collect()
+        }
+        HxFxKind::Pulse => line
+            .chars()
+            .enumerate()
+            .flat_map(|(idx, ch)| {
+                if !ch.is_ascii_alphabetic() {
+                    return vec![ch];
+                }
+                let pulse_phase = (phase / 2).rem_euclid(4);
+                if ((idx as i32 + pulse_phase) % 2) == 0 {
+                    vec![ch.to_ascii_uppercase()]
+                } else {
+                    vec![ch.to_ascii_lowercase()]
+                }
+            })
+            .collect(),
+        HxFxKind::Glitch => line
+            .chars()
+            .enumerate()
+            .map(|(idx, ch)| {
+                if ch.is_whitespace() {
+                    return ch;
+                }
+                let gate = (phase + (idx as i32 * 3)).rem_euclid(23);
+                if gate == 0 || gate == 11 {
+                    GLITCH_CHARS[(phase.rem_euclid(GLITCH_CHARS.len() as i32) as usize + idx)
+                        % GLITCH_CHARS.len()]
+                } else {
+                    ch
+                }
+            })
+            .collect(),
+        HxFxKind::Marquee => {
+            if width == 0 {
+                return String::new();
+            }
+            let chars: Vec<char> = line.chars().collect();
+            if chars.is_empty() {
+                return String::new();
+            }
+
+            let pad = width.max(4);
+            let mut track: Vec<char> = Vec::with_capacity(chars.len() + (pad * 2));
+            track.extend(std::iter::repeat(' ').take(pad));
+            track.extend(chars.iter().copied());
+            track.extend(std::iter::repeat(' ').take(pad));
+
+            let len = track.len();
+            if len == 0 {
+                return String::new();
+            }
+
+            let start = phase.rem_euclid(len as i32) as usize;
+            (0..width)
+                .map(|offset| {
+                    let idx = (start + offset) % len;
+                    track[idx]
+                })
+                .collect()
+        }
+    }
+}
+
+fn transform_fx_text(text: &str, effect: &HxFxKind, phase: i32, width: usize) -> String {
+    let mut out: Vec<String> = Vec::new();
+    let mut has_lines = false;
+
+    for (line_idx, line) in text.lines().enumerate() {
+        has_lines = true;
+        out.push(transform_fx_line(
+            line,
+            effect,
+            phase + line_idx as i32,
+            width,
+        ));
+    }
+
+    if !has_lines {
+        return transform_fx_line(text, effect, phase, width);
+    }
+
+    out.join("\n")
+}
 
 fn style_for(token: &HxStyleToken) -> Style {
     match token.clone() {
         HxStyleToken::Normal => Style::default(),
         HxStyleToken::Muted => Style::default().fg(Color::DarkGray),
-        HxStyleToken::Title => Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
-        HxStyleToken::Accent => Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+        HxStyleToken::Title => Style::default()
+            .fg(Color::Cyan)
+            .add_modifier(Modifier::BOLD),
+        HxStyleToken::Accent => Style::default()
+            .fg(Color::Magenta)
+            .add_modifier(Modifier::BOLD),
         HxStyleToken::Selected => Style::default()
             .fg(Color::Black)
             .bg(Color::LightCyan)
             .add_modifier(Modifier::BOLD),
-        HxStyleToken::Success => Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
-        HxStyleToken::Warning => Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+        HxStyleToken::Success => Style::default()
+            .fg(Color::Green)
+            .add_modifier(Modifier::BOLD),
+        HxStyleToken::Warning => Style::default()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD),
         HxStyleToken::Danger => Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
     }
 }
@@ -92,7 +199,10 @@ fn render_node(frame: &mut Frame, area: Rect, node: &HxUiNode) {
 
             let cons: Vec<ratatui::layout::Constraint> =
                 constraints.iter().map(|c| constraint_for(&c)).collect();
-            let areas = Layout::default().direction(direction).constraints(cons).split(area);
+            let areas = Layout::default()
+                .direction(direction)
+                .constraints(cons)
+                .split(area);
 
             let mut i: usize = 0;
             for child in children.iter() {
@@ -180,6 +290,22 @@ fn render_node(frame: &mut Frame, area: Rect, node: &HxUiNode) {
             let p = Paragraph::new(text)
                 .wrap(Wrap { trim: false })
                 .style(style_for(&HxStyleToken::Normal));
+            frame.render_widget(p, inner);
+        }
+
+        HxUiNode::FxText(title, text, effect, phase, style) => {
+            let block = Block::default()
+                .title(title.as_str())
+                .borders(Borders::ALL)
+                .style(style_for(style));
+            let inner = block.inner(area);
+            frame.render_widget(block, area);
+
+            let transformed =
+                transform_fx_text(text.as_str(), effect, *phase, inner.width as usize);
+            let p = Paragraph::new(transformed)
+                .wrap(Wrap { trim: false })
+                .style(style_for(style));
             frame.render_widget(p, inner);
         }
     }
@@ -312,13 +438,19 @@ pub fn poll_event(timeout_ms: i32) -> HxEvent {
             // Map crossterm modifiers into the Haxe bitmask:
             // 1 = ctrl, 2 = alt, 4 = shift
             let mut mods: i32 = 0;
-            if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
+            if key
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::CONTROL)
+            {
                 mods |= 1;
             }
             if key.modifiers.contains(crossterm::event::KeyModifiers::ALT) {
                 mods |= 2;
             }
-            if key.modifiers.contains(crossterm::event::KeyModifiers::SHIFT) {
+            if key
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::SHIFT)
+            {
                 mods |= 4;
             }
 
@@ -367,7 +499,9 @@ pub fn render_ui(ui: HxUiNode) {
 
     TERMINAL.with(|t| {
         let mut borrow = t.borrow_mut();
-        let terminal = borrow.as_mut().expect("TuiDemo.enter() must be called before render()");
+        let terminal = borrow
+            .as_mut()
+            .expect("TuiDemo.enter() must be called before render()");
 
         terminal
             .draw(|frame| {

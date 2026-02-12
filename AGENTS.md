@@ -131,6 +131,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - Optional formatter hook: `-D rustfmt` runs `cargo fmt --manifest-path <out>/Cargo.toml` after output generation (best-effort, warns on failure).
 - TUI testing: prefer ratatui `TestBackend` via `TuiDemo.renderToString(...)` and assert in `cargo test` (see `docs/tui.md` and `examples/tui_todo/native/tui_tests.rs`).
   - Non-TTY gotcha: `TuiDemo.enter()` must never `unwrap()` terminal initialization. If interactive init fails (or stdin/stdout aren’t TTY), it must fall back to headless so `cargo run` in CI doesn’t panic.
+  - Rust test harness gotcha: when using a shared `Mutex` in tests, recover poisoned locks with `lock().unwrap_or_else(|e| e.into_inner())` so one failing assertion does not cascade into unrelated `PoisonError` failures.
+  - Path privacy gotcha: cleanup/util scripts should log repository-relative paths (not machine-absolute paths) to avoid leaking local filesystem details in terminal/CI logs.
   - Harness linkage gotcha: keep `Harness.__link()` reachable in all compile variants (not only `tui_headless`) so Rust tests that call `crate::harness::*` compile in both dev and CI outputs.
 - `@:coreApi` gotcha: core types must match upstream public API exactly. Any extra helpers must be private.
   - Use `@:allow(...)`/`@:access(...)` to make private helpers usable by sibling std types.

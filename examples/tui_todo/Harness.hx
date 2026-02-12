@@ -9,10 +9,10 @@ import sys.io.File;
 import util.Paths;
 
 private class SandboxContext {
-	public var prevConfig(default, null): Null<String>;
-	public var dir(default, null): String;
+	public var prevConfig(default, null):Null<String>;
+	public var dir(default, null):String;
 
-	public function new(prevConfig: Null<String>, dir: String) {
+	public function new(prevConfig:Null<String>, dir:String) {
 		this.prevConfig = prevConfig;
 		this.dir = dir;
 	}
@@ -41,9 +41,9 @@ class Harness {
 
 	// Linker anchor: referenced from `Main` in CI builds so this module is emitted even though
 	// Rust tests call into it directly (outside of Haxe's DCE reachability).
-	public static function __link(): Void {}
+	public static function __link():Void {}
 
-	static function seeded(): App {
+	static function seeded():App {
 		var s = new Store();
 		s.seedDemo();
 		var app = new App(s);
@@ -51,9 +51,9 @@ class Harness {
 		return app;
 	}
 
-	public static function renderScenarioTasks(): String {
+	public static function renderScenarioTasks():String {
 		var app = seeded();
-		var events: Array<Event> = [
+		var events:Array<Event> = [
 			Tick(50),
 			Key(Down, KeyMods.None),
 			Key(Char(" "), KeyMods.None),
@@ -61,26 +61,28 @@ class Harness {
 			Key(Enter, KeyMods.None),
 			Tick(50),
 		];
-		for (e in events) app.handle(e);
+		for (e in events)
+			app.handle(e);
 		return Tui.renderUiToString(app.view(), W, H);
 	}
 
-	public static function renderScenarioPalette(): String {
+	public static function renderScenarioPalette():String {
 		var app = seeded();
-		var events: Array<Event> = [
+		var events:Array<Event> = [
 			Key(Char(":"), KeyMods.None),
 			Key(Char("g"), KeyMods.None),
 			Key(Char("o"), KeyMods.None),
 			Key(Char(":"), KeyMods.None),
 			Tick(50),
 		];
-		for (e in events) app.handle(e);
+		for (e in events)
+			app.handle(e);
 		return Tui.renderUiToString(app.view(), W, H);
 	}
 
-	public static function renderScenarioEditTitle(): String {
+	public static function renderScenarioEditTitle():String {
 		var app = seeded();
-		var events: Array<Event> = [
+		var events:Array<Event> = [
 			Key(Enter, KeyMods.None),
 			Key(Char("e"), KeyMods.None),
 			Key(Char("X"), KeyMods.None),
@@ -88,14 +90,32 @@ class Harness {
 			Key(Enter, KeyMods.None),
 			Tick(50),
 		];
-		for (e in events) app.handle(e);
+		for (e in events)
+			app.handle(e);
+		return Tui.renderUiToString(app.view(), W, H);
+	}
+
+	public static function renderScenarioDashboardFx():String {
+		var app = seeded();
+		var events:Array<Event> = [
+			Key(Tab, KeyMods.None),
+			Key(Tab, KeyMods.None),
+			Tick(80),
+			Tick(80),
+			Key(Char("f"), KeyMods.None),
+			Tick(80),
+			Key(Char("f"), KeyMods.None),
+			Tick(80),
+		];
+		for (e in events)
+			app.handle(e);
 		return Tui.renderUiToString(app.view(), W, H);
 	}
 
 	/**
 		Persistence regression: saving then loading preserves task payload fields.
 	**/
-	public static function persistenceRoundtrip(): Bool {
+	public static function persistenceRoundtrip():Bool {
 		var sandbox = enterSandbox("roundtrip");
 		var ok = false;
 		try {
@@ -110,15 +130,10 @@ class Harness {
 			loaded.load();
 			if (loaded.tasks.length == 1) {
 				var out = loaded.tasks[0];
-				ok = out.title == "ship compiler"
-				&& !out.done
-				&& out.notes == "check persistence"
-				&& out.tags.length == 2
-				&& out.tags[0] == "haxe"
-				&& out.tags[1] == "rust"
-				&& out.project == "reflaxe";
+				ok = out.title == "ship compiler" && !out.done && out.notes == "check persistence" && out.tags.length == 2 && out.tags[0] == "haxe"
+					&& out.tags[1] == "rust" && out.project == "reflaxe";
 			}
-		} catch (e: haxe.Exception) {
+		} catch (e:haxe.Exception) {
 			exitSandbox(sandbox);
 			throw e;
 		}
@@ -129,7 +144,7 @@ class Harness {
 	/**
 		Persistence regression: legacy v0 payloads migrate to v1 and are normalized on disk.
 	**/
-	public static function persistenceMigratesV0(): Bool {
+	public static function persistenceMigratesV0():Bool {
 		var sandbox = enterSandbox("migrate_v0");
 		var ok = false;
 		try {
@@ -144,11 +159,10 @@ class Harness {
 				var validTask = loaded.title == "legacy task" && loaded.done && loaded.project == "inbox";
 				if (validTask) {
 					var normalized = File.getContent(path);
-					ok = normalized.indexOf('"version": 1') != -1
-						&& normalized.indexOf('"title": "legacy task"') != -1;
+					ok = normalized.indexOf('"version": 1') != -1 && normalized.indexOf('"title": "legacy task"') != -1;
 				}
 			}
-		} catch (e: haxe.Exception) {
+		} catch (e:haxe.Exception) {
 			exitSandbox(sandbox);
 			throw e;
 		}
@@ -159,7 +173,7 @@ class Harness {
 	/**
 		Persistence regression: autosave uses debounce timing, not every tick.
 	**/
-	public static function persistenceAutosaveDebounce(): Bool {
+	public static function persistenceAutosaveDebounce():Bool {
 		var sandbox = enterSandbox("autosave_debounce");
 		var ok = false;
 		try {
@@ -176,7 +190,7 @@ class Harness {
 				app.handle(Tick(400));
 				ok = FileSystem.exists(path);
 			}
-		} catch (e: haxe.Exception) {
+		} catch (e:haxe.Exception) {
 			exitSandbox(sandbox);
 			throw e;
 		}
@@ -184,23 +198,25 @@ class Harness {
 		return ok;
 	}
 
-	static function enterSandbox(label: String): SandboxContext {
+	static function enterSandbox(label:String):SandboxContext {
 		var prev = Sys.getEnv("REFLAXE_RUST_TUI_CONFIG_DIR");
 		var dir = newSandboxDir(label);
 		Sys.putEnv("REFLAXE_RUST_TUI_CONFIG_DIR", dir);
 		return new SandboxContext(prev, dir);
 	}
 
-	static function exitSandbox(sandbox: SandboxContext): Void {
+	static function exitSandbox(sandbox:SandboxContext):Void {
 		var prev = sandbox.prevConfig;
 		Sys.putEnv("REFLAXE_RUST_TUI_CONFIG_DIR", prev != null ? prev : "");
 		deleteTreeSafe(sandbox.dir);
 	}
 
-	static function newSandboxDir(label: String): String {
+	static function newSandboxDir(label:String):String {
 		var base = Sys.getEnv("TMPDIR");
-		if (base == null || base.length == 0) base = Sys.getEnv("TEMP");
-		if (base == null || base.length == 0) base = ".";
+		if (base == null || base.length == 0)
+			base = Sys.getEnv("TEMP");
+		if (base == null || base.length == 0)
+			base = ".";
 
 		sandboxCounter = sandboxCounter + 1;
 		var dir = base + "/reflaxe_rust_tui_todo_" + label + "_" + sandboxCounter;
@@ -211,10 +227,13 @@ class Harness {
 		return dir;
 	}
 
-	static function deleteTreeSafe(path: String): Void {
-		if (!FileSystem.exists(path)) return;
+	static function deleteTreeSafe(path:String):Void {
+		if (!FileSystem.exists(path))
+			return;
 		if (!FileSystem.isDirectory(path)) {
-			try FileSystem.deleteFile(path) catch (_: haxe.Exception) {}
+			try
+				FileSystem.deleteFile(path)
+			catch (_:haxe.Exception) {}
 			return;
 		}
 
@@ -223,10 +242,14 @@ class Harness {
 			if (FileSystem.isDirectory(child)) {
 				deleteTreeSafe(child);
 			} else {
-				try FileSystem.deleteFile(child) catch (_: haxe.Exception) {}
+				try
+					FileSystem.deleteFile(child)
+				catch (_:haxe.Exception) {}
 			}
 		}
 
-		try FileSystem.deleteDirectory(path) catch (_: haxe.Exception) {}
+		try
+			FileSystem.deleteDirectory(path)
+		catch (_:haxe.Exception) {}
 	}
 }

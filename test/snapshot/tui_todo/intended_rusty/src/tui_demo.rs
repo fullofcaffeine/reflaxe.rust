@@ -20,10 +20,107 @@ thread_local! {
 // modules named `rust_tui_*`.
 use crate::rust_tui_constraint::Constraint as HxConstraint;
 use crate::rust_tui_event::Event as HxEvent;
+use crate::rust_tui_fx_kind::FxKind as HxFxKind;
 use crate::rust_tui_key_code::KeyCode as HxKeyCode;
 use crate::rust_tui_layout_dir::LayoutDir as HxLayoutDir;
 use crate::rust_tui_style_token::StyleToken as HxStyleToken;
 use crate::rust_tui_ui_node::UiNode as HxUiNode;
+
+fn transform_fx_line(line: &str, effect: &HxFxKind, phase: i32, width: usize) -> String {
+    const GLITCH_CHARS: [char; 8] = ['#', '@', '%', '*', '+', '~', '!', '?'];
+
+    match effect {
+        HxFxKind::None => line.to_string(),
+        HxFxKind::Typewriter => {
+            let chars: Vec<char> = line.chars().collect();
+            if chars.is_empty() {
+                return String::new();
+            }
+            let reveal = (phase.max(0) as usize) % (chars.len() + 1);
+            chars.into_iter().take(reveal).collect()
+        }
+        HxFxKind::Pulse => line
+            .chars()
+            .enumerate()
+            .flat_map(|(idx, ch)| {
+                if !ch.is_ascii_alphabetic() {
+                    return vec![ch];
+                }
+                let pulse_phase = (phase / 2).rem_euclid(4);
+                if ((idx as i32 + pulse_phase) % 2) == 0 {
+                    vec![ch.to_ascii_uppercase()]
+                } else {
+                    vec![ch.to_ascii_lowercase()]
+                }
+            })
+            .collect(),
+        HxFxKind::Glitch => line
+            .chars()
+            .enumerate()
+            .map(|(idx, ch)| {
+                if ch.is_whitespace() {
+                    return ch;
+                }
+                let gate = (phase + (idx as i32 * 3)).rem_euclid(23);
+                if gate == 0 || gate == 11 {
+                    GLITCH_CHARS[(phase.rem_euclid(GLITCH_CHARS.len() as i32) as usize + idx)
+                        % GLITCH_CHARS.len()]
+                } else {
+                    ch
+                }
+            })
+            .collect(),
+        HxFxKind::Marquee => {
+            if width == 0 {
+                return String::new();
+            }
+            let chars: Vec<char> = line.chars().collect();
+            if chars.is_empty() {
+                return String::new();
+            }
+
+            let pad = width.max(4);
+            let mut track: Vec<char> = Vec::with_capacity(chars.len() + (pad * 2));
+            track.extend(std::iter::repeat(' ').take(pad));
+            track.extend(chars.iter().copied());
+            track.extend(std::iter::repeat(' ').take(pad));
+
+            let len = track.len();
+            if len == 0 {
+                return String::new();
+            }
+
+            let start = phase.rem_euclid(len as i32) as usize;
+            (0..width)
+                .map(|offset| {
+                    let idx = (start + offset) % len;
+                    track[idx]
+                })
+                .collect()
+        }
+    }
+}
+
+fn transform_fx_text(text: &str, effect: &HxFxKind, phase: i32, width: usize) -> String {
+    let mut out: Vec<String> = Vec::new();
+    let mut has_lines = false;
+
+    for (line_idx, line) in text.lines().enumerate() {
+        has_lines = true;
+        out.push(transform_fx_line(
+            line,
+            effect,
+            phase + line_idx as i32,
+            width,
+        ));
+    }
+
+    if !has_lines {
+        return transform_fx_line(text, effect, phase, width);
+    }
+
+    out.join("\n")
+}
 
 fn style_for(token: &HxStyleToken) -> Style {
     match token.clone() {
@@ -193,6 +290,22 @@ fn render_node(frame: &mut Frame, area: Rect, node: &HxUiNode) {
             let p = Paragraph::new(text)
                 .wrap(Wrap { trim: false })
                 .style(style_for(&HxStyleToken::Normal));
+            frame.render_widget(p, inner);
+        }
+
+        HxUiNode::FxText(title, text, effect, phase, style) => {
+            let block = Block::default()
+                .title(title.as_str())
+                .borders(Borders::ALL)
+                .style(style_for(style));
+            let inner = block.inner(area);
+            frame.render_widget(block, area);
+
+            let transformed =
+                transform_fx_text(text.as_str(), effect, *phase, inner.width as usize);
+            let p = Paragraph::new(transformed)
+                .wrap(Wrap { trim: false })
+                .style(style_for(style));
             frame.render_widget(p, inner);
         }
     }

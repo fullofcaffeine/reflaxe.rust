@@ -36,4 +36,11 @@ pub enum UiNode {
         i32,
         crate::rust_tui_style_token::StyleToken,
     ),
+    FxText(
+        String,
+        String,
+        crate::rust_tui_fx_kind::FxKind,
+        i32,
+        crate::rust_tui_style_token::StyleToken,
+    ),
 }
