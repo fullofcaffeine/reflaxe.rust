@@ -192,9 +192,15 @@ pub fn split(s: &str, delim: &str) -> crate::array::Array<String> {
 
 pub fn split_hx(s: &str, delim: &str) -> crate::array::Array<HxString> {
     if delim.is_empty() {
-        return crate::array::Array::from_vec(s.chars().map(|c| HxString::from(c.to_string())).collect());
+        return crate::array::Array::from_vec(
+            s.chars().map(|c| HxString::from(c.to_string())).collect(),
+        );
     }
-    crate::array::Array::from_vec(s.split(delim).map(|x| HxString::from(x.to_string())).collect())
+    crate::array::Array::from_vec(
+        s.split(delim)
+            .map(|x| HxString::from(x.to_string()))
+            .collect(),
+    )
 }
 
 /// Haxe `String.fromCharCode(code)`.
