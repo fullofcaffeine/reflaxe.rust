@@ -11,7 +11,7 @@
 /// How
 /// - `as_str()` throws a catchable Haxe exception on null dereference ("Null Access").
 /// - `to_haxe_string()` matches `Std.string` behavior: null becomes `"null"`.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HxString(Option<String>);
 
 impl HxString {
@@ -63,6 +63,13 @@ impl From<String> for HxString {
     #[inline]
     fn from(value: String) -> Self {
         Self::new(value)
+    }
+}
+
+impl AsRef<str> for HxString {
+    #[inline]
+    fn as_ref(&self) -> &str {
+        self.as_str()
     }
 }
 
@@ -181,6 +188,13 @@ pub fn split(s: &str, delim: &str) -> crate::array::Array<String> {
         return crate::array::Array::from_vec(s.chars().map(|c| c.to_string()).collect());
     }
     crate::array::Array::from_vec(s.split(delim).map(|x| x.to_string()).collect())
+}
+
+pub fn split_hx(s: &str, delim: &str) -> crate::array::Array<HxString> {
+    if delim.is_empty() {
+        return crate::array::Array::from_vec(s.chars().map(|c| HxString::from(c.to_string())).collect());
+    }
+    crate::array::Array::from_vec(s.split(delim).map(|x| HxString::from(x.to_string())).collect())
 }
 
 /// Haxe `String.fromCharCode(code)`.

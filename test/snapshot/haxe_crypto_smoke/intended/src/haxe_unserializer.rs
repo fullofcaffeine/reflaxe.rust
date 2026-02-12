@@ -314,7 +314,7 @@ impl Unserializer {
                 let __name = {
                     let __hx_dyn = k.clone();
                     if __hx_dyn.is_null() {
-                        hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                        String::from("null")
                     } else {
                         if __hx_dyn.downcast_ref::<String>().is_some() {
                             __hx_dyn.downcast_ref::<String>().unwrap().clone()
@@ -414,7 +414,7 @@ impl Unserializer {
                         let __hx_dyn =
                             crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this);
                         if __hx_dyn.is_null() {
-                            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                            String::from("null")
                         } else {
                             if __hx_dyn.downcast_ref::<String>().is_some() {
                                 __hx_dyn.downcast_ref::<String>().unwrap().clone()
@@ -453,7 +453,7 @@ impl Unserializer {
                         let __hx_dyn =
                             crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this);
                         if __hx_dyn.is_null() {
-                            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                            String::from("null")
                         } else {
                             if __hx_dyn.downcast_ref::<String>().is_some() {
                                 __hx_dyn.downcast_ref::<String>().unwrap().clone()
@@ -492,7 +492,7 @@ impl Unserializer {
                         let __hx_dyn =
                             crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this);
                         if __hx_dyn.is_null() {
-                            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                            String::from("null")
                         } else {
                             if __hx_dyn.downcast_ref::<String>().is_some() {
                                 __hx_dyn.downcast_ref::<String>().unwrap().clone()
@@ -746,9 +746,7 @@ impl Unserializer {
                             let __hx_dyn =
                                 crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this);
                             if __hx_dyn.is_null() {
-                                hxrt::exception::throw(hxrt::dynamic::from(String::from(
-                                    "Null Access",
-                                )))
+                                String::from("null")
                             } else {
                                 if __hx_dyn.downcast_ref::<String>().is_some() {
                                     __hx_dyn.downcast_ref::<String>().unwrap().clone()
@@ -784,7 +782,7 @@ impl Unserializer {
                         let __hx_dyn =
                             crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this);
                         if __hx_dyn.is_null() {
-                            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                            String::from("null")
                         } else {
                             if __hx_dyn.downcast_ref::<String>().is_some() {
                                 __hx_dyn.downcast_ref::<String>().unwrap().clone()
@@ -849,7 +847,7 @@ impl Unserializer {
                         let __hx_dyn =
                             crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this);
                         if __hx_dyn.is_null() {
-                            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                            String::from("null")
                         } else {
                             if __hx_dyn.downcast_ref::<String>().is_some() {
                                 __hx_dyn.downcast_ref::<String>().unwrap().clone()
@@ -893,7 +891,7 @@ impl Unserializer {
                         hxrt::array::Array::<String>::new()
                     })
                     .get_unchecked(index as usize);
-                    if tag == String::new() {
+                    if tag == String::from("null") {
                         hxrt::exception::throw(hxrt::dynamic::from(format!(
                             "{}{}{}{}",
                             "Unknown enum index ",
@@ -1377,7 +1375,7 @@ impl Unserializer {
                         let __hx_dyn =
                             crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this);
                         if __hx_dyn.is_null() {
-                            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                            String::from("null")
                         } else {
                             if __hx_dyn.downcast_ref::<String>().is_some() {
                                 __hx_dyn.downcast_ref::<String>().unwrap().clone()
@@ -1418,9 +1416,7 @@ impl Unserializer {
                                     &*__hx_this,
                                 );
                                 if __hx_dyn.is_null() {
-                                    hxrt::exception::throw(hxrt::dynamic::from(String::from(
-                                        "Null Access",
-                                    )))
+                                    String::from("null")
                                 } else {
                                     if __hx_dyn.downcast_ref::<String>().is_some() {
                                         __hx_dyn.downcast_ref::<String>().unwrap().clone()
@@ -1539,7 +1535,7 @@ impl Unserializer {
                 __b.pos
             })
             .to_haxe_string()
-        )))
+        )));
     }
 
     fn init_codes() -> hxrt::array::Array<i32> {

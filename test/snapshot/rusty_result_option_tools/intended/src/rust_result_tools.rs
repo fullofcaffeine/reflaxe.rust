@@ -66,7 +66,7 @@ impl ResultTools {
                         "{}{}",
                         "called Result.unwrap() on Err: ",
                         format!("{:?}", e)
-                    )))
+                    )));
                 }
             }
         };
@@ -90,7 +90,7 @@ impl ResultTools {
                         &message,
                         ": ",
                         format!("{:?}", e)
-                    )))
+                    )));
                 }
             }
         };

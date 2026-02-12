@@ -472,9 +472,7 @@ impl Serializer {
                                     {
                                         let __hx_dyn = v.clone();
                                         if __hx_dyn.is_null() {
-                                            hxrt::exception::throw(hxrt::dynamic::from(
-                                                String::from("Null Access"),
-                                            ))
+                                            String::from("null")
                                         } else {
                                             if __hx_dyn.downcast_ref::<String>().is_some() {
                                                 __hx_dyn.downcast_ref::<String>().unwrap().clone()
@@ -1312,9 +1310,7 @@ impl Serializer {
                                     {
                                         let __hx_dyn = hxrt::dynamic::index_get_i32(&v, 0);
                                         if __hx_dyn.is_null() {
-                                            hxrt::exception::throw(hxrt::dynamic::from(
-                                                String::from("Null Access"),
-                                            ))
+                                            String::from("null")
                                         } else {
                                             if __hx_dyn.downcast_ref::<String>().is_some() {
                                                 __hx_dyn.downcast_ref::<String>().unwrap().clone()

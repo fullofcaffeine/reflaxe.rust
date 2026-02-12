@@ -149,6 +149,34 @@ fn dynamic_to_json_value(v: &Dynamic) -> Value {
     if let Some(arr) = v.downcast_ref::<Array<String>>() {
         return Value::Array(arr.to_vec().into_iter().map(Value::String).collect());
     }
+    if let Some(arr) = v.downcast_ref::<Array<HxRef<crate::anon::Anon>>>() {
+        return Value::Array(
+            arr.to_vec()
+                .into_iter()
+                .map(|obj| {
+                    let mut out = serde_json::Map::new();
+                    for (k, dv) in crate::anon::anon_entries(&obj) {
+                        out.insert(k, dynamic_to_json_value(&dv));
+                    }
+                    Value::Object(out)
+                })
+                .collect(),
+        );
+    }
+    if let Some(arr) = v.downcast_ref::<Array<HxRef<DynObject>>>() {
+        return Value::Array(
+            arr.to_vec()
+                .into_iter()
+                .map(|obj| {
+                    let mut out = serde_json::Map::new();
+                    for (k, dv) in crate::dynamic::dyn_object_entries(&obj) {
+                        out.insert(k, dynamic_to_json_value(&dv));
+                    }
+                    Value::Object(out)
+                })
+                .collect(),
+        );
+    }
 
     // Best-effort fallback: stringify and encode as a JSON string.
     Value::String(v.to_haxe_string())

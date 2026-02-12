@@ -3,16 +3,9 @@ import sys.io.Process;
 class Main {
 	static function main() {
 		// Start a process and verify we can communicate.
-		var cmd: String;
-		var args: Array<String>;
-
-		if (Sys.systemName() == "Windows") {
-			cmd = "cmd";
-			args = ["/C", "more"];
-		} else {
-			cmd = "sh";
-			args = ["-c", "cat"];
-		}
+		var isWindows = Sys.systemName() == "Windows";
+		var cmd = isWindows ? "cmd" : "sh";
+		var args = isWindows ? ["/C", "more"] : ["-c", "cat"];
 
 		var p = new Process(cmd, args);
 		p.stdin.writeString("hello");

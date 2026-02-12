@@ -1,5 +1,7 @@
 package sys.thread;
 
+import hxrt.thread.NativeThread;
+
 /**
 	OS thread API for the Rust target.
 
@@ -67,9 +69,7 @@ class Thread {
 		Returns `null` if `block` is `false` and no message is available.
 	**/
 	public static function readMessage(block: Bool): Dynamic {
-		// `untyped` injections can type as monomorphs in the typed AST; force `Dynamic` here so the
-		// backend doesn't need to guess the return type.
-		return cast untyped __rust__("hxrt::thread::thread_read_message({0})", block);
+		return NativeThread.readMessage(block);
 	}
 
 	private static function processEvents(): Void {

@@ -4,41 +4,113 @@ set -euo pipefail
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root_dir"
 
+is_truthy() {
+  local value="${1:-}"
+  case "$value" in
+    1|true|TRUE|yes|YES|on|ON)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+cleanup_artifacts() {
+  local original_exit="${1:-0}"
+  local cleanup_args=()
+
+  if is_truthy "${KEEP_ARTIFACTS:-0}"; then
+    echo "[harness] keep artifacts enabled (KEEP_ARTIFACTS=1)"
+    return "$original_exit"
+  fi
+
+  if is_truthy "${HARNESS_CLEAN_OUTPUTS:-1}"; then
+    cleanup_args+=(--outputs)
+  fi
+
+  if is_truthy "${HARNESS_CLEAN_CACHE:-1}"; then
+    cleanup_args+=(--cache)
+  fi
+
+  if [[ "${#cleanup_args[@]}" -gt 0 ]]; then
+    echo "[harness] cleanup (${cleanup_args[*]})"
+    if ! "$root_dir/scripts/ci/clean-artifacts.sh" "${cleanup_args[@]}"; then
+      echo "[harness] WARN: artifact cleanup failed"
+    fi
+  fi
+
+  return "$original_exit"
+}
+
+trap 'cleanup_artifacts $?' EXIT
+
+extract_out_dir() {
+  local compile_file="$1"
+  local out_dir
+  out_dir="$(awk '
+    /^-D[[:space:]]+rust_output=/ {
+      sub(/^-D[[:space:]]+rust_output=/, "", $0);
+      print $0;
+      exit;
+    }
+  ' "$compile_file")"
+  if [[ -z "${out_dir:-}" ]]; then
+    echo "error: missing '-D rust_output=...' in $compile_file" >&2
+    exit 2
+  fi
+  printf "%s\n" "$out_dir"
+}
+
+compile_example() {
+  local dir="$1"
+  local hxml="$2"
+
+  echo "[harness] compile: ${dir} (${hxml})"
+  (cd "$dir" && haxe "$hxml")
+}
+
 run_example() {
   local dir="$1"
   local hxml="$2"
-  local out_dir="$3"
-  local run_tests="$4"
-  local run_bin="$5"
+  local out_dir
+  out_dir="$(extract_out_dir "$dir/$hxml")"
 
-  echo "[harness] example: ${dir} (${hxml} -> ${out_dir})"
-  (cd "$dir" && haxe "$hxml")
-
-  if [[ "$run_tests" -eq 1 ]]; then
-    (cd "$dir/$out_dir" && cargo test -q)
-  fi
-
-  if [[ "$run_bin" -eq 1 ]]; then
-    (cd "$dir/$out_dir" && cargo run -q)
-  fi
+  compile_example "$dir" "$hxml"
+  (cd "$dir/$out_dir" && cargo test -q)
+  (cd "$dir/$out_dir" && cargo run -q)
 }
 
 echo "[harness] snapshots"
 bash test/run-snapshots.sh --clippy
 
-echo "[harness] examples"
-run_example examples/hello compile.hxml out 0 1
-run_example examples/classes compile.hxml out 0 1
-run_example examples/sys_file_io compile.ci.hxml out_ci 0 1
-run_example examples/sys_process compile.ci.hxml out_ci 0 1
-run_example examples/sys_net_loopback compile.ci.hxml out_ci 0 1
-run_example examples/sys_thread_smoke compile.ci.hxml out_ci 0 1
-run_example examples/thread_pool_smoke compile.ci.hxml out_ci 0 1
-run_example examples/serde_json compile.ci.hxml out_ci 0 1
-run_example examples/serde_json compile.rusty.ci.hxml out_ci_rusty 0 1
-run_example examples/bytes_ops compile.ci.hxml out_ci 1 1
-run_example examples/bytes_ops compile.rusty.ci.hxml out_ci_rusty 1 1
-run_example examples/tui_todo compile.ci.hxml out_ci 1 1
-run_example examples/tui_todo compile.rusty.ci.hxml out_ci_rusty 1 1
+echo "[harness] upstream stdlib sweep"
+bash test/run-upstream-stdlib-sweep.sh
+
+# Example compiles trigger cargo builds via the Rust backend. Share one target dir
+# so all example crates reuse artifacts (keeps local/CI runtime reasonable).
+if [[ -z "${CARGO_TARGET_DIR:-}" ]]; then
+  export CARGO_TARGET_DIR="${EXAMPLES_CARGO_TARGET_DIR:-$root_dir/.cache/examples-target}"
+fi
+
+echo "[harness] examples (compile-only developer variants)"
+while IFS= read -r compile_file; do
+  example_dir="$(dirname "$compile_file")"
+  compile_name="$(basename "$compile_file")"
+  compile_example "$example_dir" "$compile_name"
+done < <(find examples -mindepth 2 -maxdepth 2 -type f \( -name 'compile.hxml' -o -name 'compile.rusty.hxml' \) | sort)
+
+echo "[harness] examples (CI run matrix)"
+while IFS= read -r example_dir; do
+  if [[ -f "$example_dir/compile.ci.hxml" ]]; then
+    run_example "$example_dir" "compile.ci.hxml"
+  elif [[ -f "$example_dir/compile.hxml" ]]; then
+    run_example "$example_dir" "compile.hxml"
+  fi
+
+  if [[ -f "$example_dir/compile.rusty.ci.hxml" ]]; then
+    run_example "$example_dir" "compile.rusty.ci.hxml"
+  fi
+done < <(find examples -mindepth 1 -maxdepth 1 -type d | sort)
 
 echo "[harness] ok"

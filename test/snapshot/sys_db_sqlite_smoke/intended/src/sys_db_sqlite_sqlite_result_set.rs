@@ -26,37 +26,45 @@ impl SqliteResultSet {
     pub fn get_length(self_: &crate::HxRefCell<SqliteResultSet>) -> i32 {
         let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet> =
             self_.self_ref();
-        return hxrt::db::query_result_length(&{
-            let __b = __hx_this.borrow();
-            __b.res.clone()
-        });
+        return hxrt::db::query_result_length(
+            &({
+                let __b = __hx_this.borrow();
+                __b.res.clone()
+            }),
+        );
     }
 
     pub fn get_nfields(self_: &crate::HxRefCell<SqliteResultSet>) -> i32 {
         let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet> =
             self_.self_ref();
-        return hxrt::db::query_result_nfields(&{
-            let __b = __hx_this.borrow();
-            __b.res.clone()
-        });
+        return hxrt::db::query_result_nfields(
+            &({
+                let __b = __hx_this.borrow();
+                __b.res.clone()
+            }),
+        );
     }
 
     pub fn has_next(self_: &crate::HxRefCell<SqliteResultSet>) -> bool {
         let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet> =
             self_.self_ref();
-        return hxrt::db::query_result_has_next(&{
-            let __b = __hx_this.borrow();
-            __b.res.clone()
-        });
+        return hxrt::db::query_result_has_next(
+            &({
+                let __b = __hx_this.borrow();
+                __b.res.clone()
+            }),
+        );
     }
 
     pub fn next(self_: &crate::HxRefCell<SqliteResultSet>) -> hxrt::dynamic::Dynamic {
         let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet> =
             self_.self_ref();
-        return hxrt::db::query_result_next_row_object(&{
-            let __b = __hx_this.borrow();
-            __b.res.clone()
-        });
+        return hxrt::db::query_result_next_row_object(
+            &({
+                let __b = __hx_this.borrow();
+                __b.res.clone()
+            }),
+        );
     }
 
     pub fn results(
@@ -79,10 +87,10 @@ impl SqliteResultSet {
         let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet> =
             self_.self_ref();
         return hxrt::db::query_result_get_result(
-            &{
+            &({
                 let __b = __hx_this.borrow();
                 __b.res.clone()
-            },
+            }),
             n,
         );
     }
@@ -91,10 +99,10 @@ impl SqliteResultSet {
         let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet> =
             self_.self_ref();
         return hxrt::db::query_result_get_int_result(
-            &{
+            &({
                 let __b = __hx_this.borrow();
                 __b.res.clone()
-            },
+            }),
             n,
         );
     }
@@ -103,10 +111,10 @@ impl SqliteResultSet {
         let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet> =
             self_.self_ref();
         return hxrt::db::query_result_get_float_result(
-            &{
+            &({
                 let __b = __hx_this.borrow();
                 __b.res.clone()
-            },
+            }),
             n,
         );
     }
@@ -116,19 +124,17 @@ impl SqliteResultSet {
     ) -> hxrt::array::Array<String> {
         let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet> =
             self_.self_ref();
-        return {
-            let n = hxrt::db::query_result_nfields(&{
-                let __b = __hx_this.borrow();
-                __b.res.clone()
-            });
-            if n == 0 {
-                hxrt::array::Array::<String>::null()
-            } else {
-                hxrt::db::query_result_fields(&{
+        return if crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet::get_nfields(&*__hx_this)
+            == 0
+        {
+            hxrt::array::Array::<String>::null()
+        } else {
+            hxrt::db::query_result_fields(
+                &({
                     let __b = __hx_this.borrow();
                     __b.res.clone()
-                })
-            }
+                }),
+            )
         };
     }
 }

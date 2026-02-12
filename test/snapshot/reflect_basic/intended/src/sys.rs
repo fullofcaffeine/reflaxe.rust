@@ -105,7 +105,7 @@ impl Sys {
             let mut i: i32 = 0;
             while i < args_.len() as i32 {
                 let a = args_.get_unchecked(i as usize);
-                c.arg(a);
+                c.arg(a.as_str());
                 i = i + 1;
             }
             c.status().unwrap().code().unwrap_or(1) as i32

@@ -6,17 +6,23 @@ import rust.tui.Tui;
 class Main {
 	static function main(): Void {
 		var store = new Store();
+		#if tui_ephemeral
+		store.seedDemo();
+		#else
 		try {
 			store.load();
-		} catch (e: Dynamic) {
+		} catch (e: haxe.Exception) {
 			// Fall back to demo data if persistence fails (missing permissions, parse errors, etc).
 			store.seedDemo();
 		}
+		#end
 
 		var app = new App(store);
 
-		#if tui_headless
+		// Always link the deterministic harness module so `cargo test` works for both
+		// default and CI compile variants.
 		Harness.__link();
+		#if tui_headless
 		Tui.setHeadless(true);
 		#else
 		Tui.setHeadless(false);
@@ -33,17 +39,19 @@ class Main {
 
 				running = !app.handle(ev);
 			}
-		} catch (e: Dynamic) {
+		} catch (e: haxe.Exception) {
 			// Ensure terminal state is restored even on unexpected failures.
 		}
 
 		Tui.exit();
 
+		#if !tui_ephemeral
 		// Best-effort final save.
 		if (store.dirty) {
 			try {
 				store.save();
-			} catch (e: Dynamic) {}
+			} catch (e: haxe.Exception) {}
 		}
+		#end
 	}
 }

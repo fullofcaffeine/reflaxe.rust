@@ -19,6 +19,29 @@ This:
 - checks `cargo build -q`
 - diffs `intended/` vs `out/`
 
+## Full harness and artifact cleanup
+
+Run the full local CI harness (snapshots + upstream stdlib sweep + examples):
+
+```sh
+npm run test:all
+```
+
+By default, `test:all` removes generated `out*` folders and `.cache/*target*` at the end of the run to control disk growth.
+
+- Keep artifacts for debugging:
+
+```sh
+npm run test:all:keep
+```
+
+- Manual cleanup commands:
+
+```sh
+npm run clean:artifacts
+npm run clean:artifacts:all
+```
+
 ## Update intended outputs
 
 Only do this after you’ve inspected the generated Rust and you’re confident it’s the correct output.

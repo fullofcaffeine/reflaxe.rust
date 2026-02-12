@@ -19,13 +19,24 @@ After codegen (`-D rust_output=...`) the compiler invokes Cargo by default (debu
 
 ## Roadmap
 
-- Milestones live in Beads (`bd graph haxe.rust-oo5 --compact`) and are summarized in `docs/milestones-oo5.md`.
+- Core milestone roadmap (historical compiler build-out): `bd graph haxe.rust-oo3 --compact`
+- Production 1.0 parity gate (active): `bd graph haxe.rust-4jb --compact`
+- Human-readable readiness tracker: `docs/progress-tracker.md`
 
 Haxe (4.3.7) → Rust target built on Reflaxe.
 
 ## Install (lix, GitHub-only)
 
 See `docs/install-via-lix.md`.
+
+## 1.0 Progress & Docs Index
+
+- Start here (non-expert friendly): `docs/start-here.md`
+- Live production-readiness tracker: `docs/progress-tracker.md`
+- Vision vs current implementation: `docs/vision-vs-implementation.md`
+- Full docs map: `docs/index.md`
+- Profile model (portable/idiomatic/rusty): `docs/profiles.md`
+- Technical support matrix: `docs/v1.md`
 
 ## Quickstart
 
@@ -40,6 +51,12 @@ Run snapshot tests:
 ```bash
 npm test
 # or: bash test/run-snapshots.sh
+```
+
+Run full local harness (snapshots + examples + CI-like checks):
+
+```bash
+npm run test:all
 ```
 
 Optional (haxelib dev, if you prefer):

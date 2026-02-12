@@ -1,5 +1,7 @@
 package haxe;
 
+import hxrt.json.NativeJson;
+
 /**
 	`haxe.Json` (Rust target override)
 
@@ -30,7 +32,7 @@ class Json {
 		#if macro
 		return haxe.format.JsonParser.parse(text);
 		#else
-		return untyped __rust__("hxrt::json::parse({0}.as_str())", text);
+		return NativeJson.parse(text);
 		#end
 	}
 
@@ -48,7 +50,7 @@ class Json {
 		if (replacer != null) {
 			throw "haxe.Json.stringify: replacer is not supported on the Rust target yet";
 		}
-		return untyped __rust__("hxrt::json::stringify(&{0}, {1}.as_deref())", value, space);
+		return (untyped __rust__("hxrt::json::stringify(&{0}, {1}.as_deref())", value, space) : String);
 		#end
 	}
 }

@@ -15,6 +15,7 @@ import sys.FileSystem;
 	  - the JSON data file path
 
 	How
+	- Test/dev override: `REFLAXE_RUST_TUI_CONFIG_DIR` (exact directory path)
 	- Linux: `$XDG_CONFIG_HOME` or `~/.config`
 	- macOS: `~/Library/Application Support`
 	- Windows: `%APPDATA%` (fallback to `~\\AppData\\Roaming` best-effort)
@@ -24,6 +25,9 @@ class Paths {
 	static inline final FILE_NAME = "tui_todo.json";
 
 	public static function configDir(): String {
+		var overrideDir = Sys.getEnv("REFLAXE_RUST_TUI_CONFIG_DIR");
+		if (overrideDir != null && overrideDir.length > 0) return overrideDir;
+
 		var sys = Sys.systemName();
 		var home = Sys.getEnv("HOME");
 
@@ -62,4 +66,3 @@ class Paths {
 		return a + sep + b;
 	}
 }
-

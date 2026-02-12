@@ -1,5 +1,12 @@
 #[cfg(test)]
 mod tests {
+    use std::sync::{Mutex, OnceLock};
+
+    fn harness_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
     fn normalize_frame(s: &str) -> String {
         let trimmed = s.trim_end_matches(&['\r', '\n'][..]);
         trimmed
@@ -11,6 +18,7 @@ mod tests {
 
     #[test]
     fn scenario_tasks_renders() {
+        let _guard = harness_lock().lock().unwrap();
         let frame = crate::harness::Harness::render_scenario_tasks();
         let got = normalize_frame(&frame);
         assert_eq!(got.lines().count(), 24);
@@ -44,6 +52,7 @@ mod tests {
 
     #[test]
     fn scenario_palette_renders() {
+        let _guard = harness_lock().lock().unwrap();
         let frame = crate::harness::Harness::render_scenario_palette();
         let got = normalize_frame(&frame);
         assert_eq!(got.lines().count(), 24);
@@ -51,7 +60,7 @@ mod tests {
         let expected = r#" Dashboard | Tasks | Help
 ┌Tasks─────────────────────────────────────────────────────────────────────────┐
 │[x] [inbox] bootstrap reflaxe.rust                                            │
-│[ ] [inbox] ship crazy TUI harness                                            │
+│[ ] [inbox] ship TUI harness                                                  │
 │[ ] [inbox] reach v1.0 stdlib parity                                          │
 │[ ] [in┌Command Palette───────────────────────────────────────────────┐       │
 │       │> go:                                                         │       │
@@ -77,6 +86,7 @@ mod tests {
 
     #[test]
     fn scenario_edit_title_renders() {
+        let _guard = harness_lock().lock().unwrap();
         let frame = crate::harness::Harness::render_scenario_edit_title();
         let got = normalize_frame(&frame);
         assert_eq!(got.lines().count(), 24);
@@ -106,5 +116,23 @@ mod tests {
 └──────────────────────────────────────────────────────────────────────────────┘
 [/] details | 1/4* | updated"#;
         assert_eq!(got, expected);
+    }
+
+    #[test]
+    fn persistence_roundtrip() {
+        let _guard = harness_lock().lock().unwrap();
+        assert!(crate::harness::Harness::persistence_roundtrip());
+    }
+
+    #[test]
+    fn persistence_migrates_v0() {
+        let _guard = harness_lock().lock().unwrap();
+        assert!(crate::harness::Harness::persistence_migrates_v0());
+    }
+
+    #[test]
+    fn persistence_autosave_debounce() {
+        let _guard = harness_lock().lock().unwrap();
+        assert!(crate::harness::Harness::persistence_autosave_debounce());
     }
 }

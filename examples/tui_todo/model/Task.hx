@@ -1,5 +1,19 @@
 package model;
 
+import haxe.Json;
+
+typedef TaskDataV1 = {
+	var id: String;
+	var title: String;
+	var done: Bool;
+	@:optional var notes: Null<String>;
+	@:optional var tags: Null<Array<String>>;
+	@:optional var project: Null<String>;
+	var createdAt: Int;
+	@:optional var updatedAt: Null<Int>;
+	@:optional var due: Null<Int>;
+};
+
 /**
 	A single todo task.
 
@@ -8,7 +22,7 @@ package model;
 	  - classes + fields + methods
 	  - nullable fields (due date)
 	  - arrays (tags)
-	  - conversion to/from `Dynamic` for JSON persistence
+	  - conversion to/from a typed JSON payload for persistence
 
 	What
 	- Minimal productivity fields: title, notes, tags, done, timestamps.
@@ -77,7 +91,7 @@ class Task {
 		return out;
 	}
 
-	public function toDyn(): Dynamic {
+	public function toData(): TaskDataV1 {
 		return {
 			id: id,
 			title: title,
@@ -91,16 +105,91 @@ class Task {
 		};
 	}
 
-	public static function fromDyn(d: Dynamic): Task {
-		var id: String = d.id;
-		var title: String = d.title;
-		var done: Bool = d.done;
-		var notes: String = d.notes != null ? cast(d.notes, String) : "";
-		var tags: Array<String> = d.tags != null ? cast d.tags : [];
-		var project: String = d.project != null ? cast(d.project, String) : "inbox";
-		var createdAt: Int = d.createdAt;
-		var updatedAt: Int = d.updatedAt != null ? cast(d.updatedAt, Int) : createdAt;
-		var due: Null<Int> = d.due != null ? cast(d.due, Int) : null;
+	public static function fromData(d: Dynamic): Task {
+		var id = readRequiredString(d, "id");
+		var title = readRequiredString(d, "title");
+		var done = readRequiredBool(d, "done");
+		var notes = readStringOrDefault(d, "notes", "");
+		var tags = readStringArrayOrDefault(d, "tags", []);
+		var project = readStringOrDefault(d, "project", "inbox");
+		var createdAt = readRequiredInt(d, "createdAt");
+		var updatedAt = readIntOrDefault(d, "updatedAt", createdAt);
+		var due = readOptionalInt(d, "due");
 		return new Task(id, title, done, notes, tags, project, createdAt, updatedAt, due);
+	}
+
+	static function readRequiredString(raw: Dynamic, field: String): String {
+		var value: Dynamic = Reflect.field(raw, field);
+		if (value == null) throw "Missing task field: " + field;
+		return Std.string(value);
+	}
+
+	static function readOptionalString(raw: Dynamic, field: String): Null<String> {
+		var value: Dynamic = Reflect.field(raw, field);
+		if (value == null) return null;
+		if (Std.string(value) == "null") return null;
+		return Std.string(value);
+	}
+
+	static function readRequiredBool(raw: Dynamic, field: String): Bool {
+		var value: Dynamic = Reflect.field(raw, field);
+		if (value == null) throw "Missing task field: " + field;
+		var s = Std.string(value).toLowerCase();
+		if (s == "true") return true;
+		if (s == "false") return false;
+		throw "Invalid bool field: " + field;
+		return false;
+	}
+
+	static function readRequiredInt(raw: Dynamic, field: String): Int {
+		var value: Dynamic = Reflect.field(raw, field);
+		if (value == null) throw "Missing task field: " + field;
+		return readInt(value, field);
+	}
+
+	static function readOptionalInt(raw: Dynamic, field: String): Null<Int> {
+		var value: Dynamic = Reflect.field(raw, field);
+		if (value == null) return null;
+		if (Std.string(value) == "null") return null;
+		return readInt(value, field);
+	}
+
+	static function readIntOrDefault(raw: Dynamic, field: String, fallback: Int): Int {
+		var value = readOptionalInt(raw, field);
+		if (value == null) return fallback;
+		return (value : Int);
+	}
+
+	static function readInt(value: Dynamic, field: String): Int {
+		var parsed = Std.parseFloat(Std.string(value));
+		if (!Math.isNaN(parsed)) return Std.int(parsed);
+		throw "Invalid int field: " + field;
+		return 0;
+	}
+
+	static function readOptionalStringArray(raw: Dynamic, field: String): Null<Array<String>> {
+		var value: Dynamic = Reflect.field(raw, field);
+		if (value == null) return null;
+		if (Std.string(value) == "null") return null;
+		var replacer: (Dynamic, Dynamic) -> Dynamic = null;
+		var json = Json.stringify(value, replacer, null);
+		var normalized: Dynamic = Json.parse(json);
+		var arr: Array<Dynamic> = cast normalized;
+		if (arr == null) return null;
+		var out: Array<String> = [];
+		for (entry in arr) out.push(Std.string(entry));
+		return out;
+	}
+
+	static function readStringOrDefault(raw: Dynamic, field: String, fallback: String): String {
+		var value = readOptionalString(raw, field);
+		if (value == null) return fallback;
+		return (value : String);
+	}
+
+	static function readStringArrayOrDefault(raw: Dynamic, field: String, fallback: Array<String>): Array<String> {
+		var value = readOptionalStringArray(raw, field);
+		if (value == null) return fallback;
+		return (value : Array<String>);
 	}
 }

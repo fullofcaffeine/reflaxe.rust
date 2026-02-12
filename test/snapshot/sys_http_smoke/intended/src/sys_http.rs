@@ -23,7 +23,7 @@ pub struct Http {
 impl Http {
     pub fn new(url: String) -> crate::HxRef<crate::sys_http::Http> {
         let self_: crate::HxRef<crate::sys_http::Http> = crate::HxRef::new(Http {
-            url: String::new(),
+            url: String::from("null"),
             response_bytes: crate::HxRef::<hxrt::bytes::Bytes>::null(),
             response_as_string: None,
             post_data: None,

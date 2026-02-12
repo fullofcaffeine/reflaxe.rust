@@ -13,7 +13,13 @@ class Sys {
 	}
 
 	public static function args(): Array<String> {
+		#if rust_string_nullable
+		return untyped __rust__(
+			"hxrt::array::Array::<hxrt::string::HxString>::from_vec(std::env::args().skip(1).map(hxrt::string::HxString::from).collect::<Vec<hxrt::string::HxString>>())"
+		);
+		#else
 		return untyped __rust__("hxrt::array::Array::<String>::from_vec(std::env::args().skip(1).collect::<Vec<String>>())");
+		#end
 	}
 
 	/**
@@ -34,10 +40,17 @@ class Sys {
 	 *   so we return `""` (empty string) when the variable is missing.
 	 */
 	public static function getEnv(s: String): String {
+		#if rust_string_nullable
+		return untyped __rust__(
+			"hxrt::string::HxString::from(std::env::var({0}.as_str()).ok().unwrap_or_else(|| String::new()))",
+			s
+		);
+		#else
 		return untyped __rust__(
 			"std::env::var({0}.as_str()).ok().unwrap_or_else(|| String::new())",
 			s
 		);
+		#end
 	}
 
 	/**
@@ -50,9 +63,13 @@ class Sys {
 		if (v == null) {
 			untyped __rust__("{ std::env::remove_var({0}.as_str()); }", s);
 		} else {
+			#if rust_string_nullable
+			untyped __rust__("{ std::env::set_var({0}.as_str(), {1}.as_str()); }", s, v);
+			#else
 			// `v` is typed as `Null<String>` which lowers to `Option<String>` in Rust.
 			// We already checked for `null` above, so unwrap here in Rust to get the inner `String`.
 			untyped __rust__("{ std::env::set_var({0}.as_str(), {1}.as_ref().unwrap().as_str()); }", s, v);
+			#end
 		}
 	}
 
@@ -66,6 +83,17 @@ class Sys {
 	 * - Uses `std::env::vars` and builds a `haxe.ds.StringMap`.
 	 */
 	public static function environment(): Map<String, String> {
+		#if rust_string_nullable
+		return untyped __rust__(
+			"{
+				let m = crate::haxe_ds_string_map::StringMap::<hxrt::string::HxString>::new();
+				for (k, v) in std::env::vars() {
+					crate::haxe_ds_string_map::StringMap::set(&m, hxrt::string::HxString::from(k), hxrt::string::HxString::from(v));
+				}
+				m
+			}"
+		);
+		#else
 		return untyped __rust__(
 			"{
 				let m = crate::haxe_ds_string_map::StringMap::<String>::new();
@@ -75,6 +103,7 @@ class Sys {
 				m
 			}"
 		);
+		#end
 	}
 
 	/** Suspend execution for the given duration in seconds. */
@@ -92,7 +121,11 @@ class Sys {
 	}
 
 	public static function getCwd(): String {
+		#if rust_string_nullable
+		return untyped __rust__("hxrt::string::HxString::from(std::env::current_dir().unwrap().to_string_lossy().to_string())");
+		#else
 		return untyped __rust__("std::env::current_dir().unwrap().to_string_lossy().to_string()");
+		#end
 	}
 
 	public static function setCwd(path: String): Void {
@@ -100,6 +133,19 @@ class Sys {
 	}
 
 	public static function systemName(): String {
+		#if rust_string_nullable
+		return untyped __rust__(
+			"hxrt::string::HxString::from(match std::env::consts::OS {
+				\"windows\" => String::from(\"Windows\"),
+				\"linux\" => String::from(\"Linux\"),
+				\"macos\" => String::from(\"Mac\"),
+				\"freebsd\" => String::from(\"BSD\"),
+				\"netbsd\" => String::from(\"BSD\"),
+				\"openbsd\" => String::from(\"BSD\"),
+				_ => String::from(std::env::consts::OS),
+			})"
+		);
+		#else
 		return untyped __rust__(
 			"match std::env::consts::OS {
 				\"windows\" => String::from(\"Windows\"),
@@ -111,6 +157,7 @@ class Sys {
 				_ => String::from(std::env::consts::OS),
 			}"
 		);
+		#end
 	}
 
 	public static function command(cmd: String, ?args: Array<String>): Int {
@@ -125,13 +172,13 @@ class Sys {
 			"{
 				let mut c = std::process::Command::new({0}.as_str());
 				let args_ = {1};
-				let mut i: i32 = 0;
-				while i < args_.len() as i32 {
-					let a = args_.get_unchecked(i as usize);
-					c.arg(a);
-					i = i + 1;
-				}
-				c.status().unwrap().code().unwrap_or(1) as i32
+					let mut i: i32 = 0;
+					while i < args_.len() as i32 {
+						let a = args_.get_unchecked(i as usize);
+						c.arg(a.as_str());
+						i = i + 1;
+					}
+					c.status().unwrap().code().unwrap_or(1) as i32
 			}",
 			cmd,
 			args
@@ -162,9 +209,15 @@ class Sys {
 	}
 
 	public static function programPath(): String {
+		#if rust_string_nullable
+		return untyped __rust__(
+			"hxrt::string::HxString::from(std::env::current_exe().unwrap().to_string_lossy().to_string())"
+		);
+		#else
 		return untyped __rust__(
 			"std::env::current_exe().unwrap().to_string_lossy().to_string()"
 		);
+		#end
 	}
 
 	public static function getChar(echo: Bool): Int {

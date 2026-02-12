@@ -91,15 +91,18 @@ if ! command -v cargo >/dev/null 2>&1; then
 fi
 
 # Snapshot harness performance + disk hygiene:
-# Build all generated crates into a shared target directory so we don't create
-# `*/out*/target` for every single snapshot case.
+# Use a shared *base* cache directory, but isolate Cargo target dirs per case/variant.
+# This avoids binary collisions because snapshot crates commonly share the same crate name.
 #
 # Override with:
-# - `SNAP_CARGO_TARGET_DIR=/path/to/dir`
-# - or pre-set `CARGO_TARGET_DIR`
-if [[ -z "${CARGO_TARGET_DIR:-}" ]]; then
-  SNAP_CARGO_TARGET_DIR="${SNAP_CARGO_TARGET_DIR:-$ROOT_DIR/.cache/snapshots-target}"
-  export CARGO_TARGET_DIR="$SNAP_CARGO_TARGET_DIR"
+# - `SNAP_CARGO_TARGET_DIR=/path/to/base`
+# - or pre-set `CARGO_TARGET_DIR=/path/to/base`
+if [[ -n "${SNAP_CARGO_TARGET_DIR:-}" ]]; then
+  SNAP_CARGO_TARGET_BASE="$SNAP_CARGO_TARGET_DIR"
+elif [[ -n "${CARGO_TARGET_DIR:-}" ]]; then
+  SNAP_CARGO_TARGET_BASE="$CARGO_TARGET_DIR"
+else
+  SNAP_CARGO_TARGET_BASE="$ROOT_DIR/.cache/snapshots-target"
 fi
 
 fail=0
@@ -175,6 +178,7 @@ for case_dir in "$SNAP_DIR"/*; do
 
     out_dir="$case_dir/$out_base"
     intended_dir="$case_dir/$intended_base"
+    case_target_dir="$SNAP_CARGO_TARGET_BASE/$case_name/$out_base"
 
     expects_stdout=0
     if [[ -f "$intended_dir/stdout.txt" ]]; then
@@ -192,16 +196,16 @@ for case_dir in "$SNAP_DIR"/*; do
     (cd "$case_dir" && "$HAXE_BIN" "$compile_file" -D rust_output="$out_base" -D rust_no_build)
 
     if [[ -f "$out_dir/Cargo.toml" ]]; then
-      if ! (cd "$out_dir" && cargo fmt >/dev/null); then
+      if ! (cd "$out_dir" && CARGO_TARGET_DIR="$case_target_dir" cargo fmt >/dev/null); then
         echo "  cargo fmt failed: $out_dir" >&2
         fail=1
       fi
-      if ! (cd "$out_dir" && cargo build -q); then
+      if ! (cd "$out_dir" && CARGO_TARGET_DIR="$case_target_dir" cargo build -q); then
         echo "  cargo build failed: $out_dir" >&2
         fail=1
       fi
       if should_run_clippy_for_case "$case_name"; then
-        if ! (cd "$out_dir" && cargo clippy -- -A clippy::all -D clippy::correctness -D clippy::suspicious >/dev/null); then
+        if ! (cd "$out_dir" && CARGO_TARGET_DIR="$case_target_dir" cargo clippy -- -A clippy::all -D clippy::correctness -D clippy::suspicious >/dev/null); then
           echo "  cargo clippy failed: $out_dir" >&2
           fail=1
         fi
@@ -231,7 +235,7 @@ for case_dir in "$SNAP_DIR"/*; do
       # If intended*/stdout.txt exists (or existed before --update), run the compiled binary and compare stdout.
       if [[ "$expects_stdout" == "1" ]]; then
         actual_stdout="$case_dir/.stdout.actual"
-        if ! (cd "$out_dir" && cargo run -q) >"$actual_stdout"; then
+        if ! (cd "$out_dir" && CARGO_TARGET_DIR="$case_target_dir" cargo run -q) >"$actual_stdout"; then
           echo "  cargo run failed: $out_dir" >&2
           fail=1
         else

@@ -8,7 +8,7 @@ pub struct Json {}
 
 impl Json {
     pub fn parse(text: String) -> hxrt::dynamic::Dynamic {
-        return hxrt::json::parse(text.as_str());
+        return hxrt::json::parse(&text);
     }
 
     pub fn stringify(

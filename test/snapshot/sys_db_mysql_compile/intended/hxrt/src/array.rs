@@ -405,8 +405,9 @@ impl<T> Array<T> {
         });
     }
 
-    pub fn join(&self, sep: String) -> String
+    pub fn join<S>(&self, sep: S) -> String
     where
+        S: AsRef<str>,
         T: ToString,
     {
         self.inner
@@ -414,7 +415,7 @@ impl<T> Array<T> {
             .iter()
             .map(|x| x.to_string())
             .collect::<Vec<_>>()
-            .join(sep.as_str())
+            .join(sep.as_ref())
     }
 
     #[allow(non_snake_case)]

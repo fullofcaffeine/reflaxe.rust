@@ -8,6 +8,7 @@ type HxDynRef<T: ?Sized> = hxrt::cell::HxDynRef<T>;
 type HxRefCell<T> = hxrt::cell::HxCell<T>;
 type HxRef<T> = hxrt::cell::HxRef<T>;
 
+mod db_sqlite_driver;
 mod haxe_call_stack_call_stack_impl_;
 mod haxe_ds_enum_value_map;
 mod haxe_ds_int_map;

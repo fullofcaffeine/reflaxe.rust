@@ -1,0 +1,5 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_strict_examples
+-D rust_output=out
+-main Main

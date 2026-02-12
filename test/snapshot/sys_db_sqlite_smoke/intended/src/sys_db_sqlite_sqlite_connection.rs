@@ -14,18 +14,8 @@ impl SqliteConnection {
     ) -> crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> {
         let self_: crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> =
             crate::HxRef::new(SqliteConnection {
-                handle: hxrt::dynamic::Dynamic::null(),
+                handle: crate::db_sqlite_driver::open_handle(file.clone()),
             });
-        {
-            let __tmp = {
-                let conn = rusqlite::Connection::open(file.as_str()).unwrap_or_else(|e| {
-                    hxrt::exception::throw(hxrt::dynamic::from(format!("Sqlite.open: {e}")))
-                });
-                hxrt::dynamic::from(std::sync::Arc::new(std::sync::Mutex::new(Some(conn))))
-            };
-            self_.borrow_mut().handle = __tmp.clone();
-            __tmp
-        };
         return self_;
     }
 

@@ -1,6 +1,8 @@
 package sys.db;
 
 import hxrt.db.QueryResultHandle;
+import hxrt.db.NativeSqliteDriver;
+import hxrt.db.NativeQueryResult;
 import rust.HxRef;
 
 /**
@@ -21,6 +23,7 @@ import rust.HxRef;
 	  `hxrt::db::QueryResult` for cursor-style access.
 **/
 @:rustCargo({ name: "rusqlite", version: "0.38", features: ["bundled"] })
+@:rustExtraSrc("sys/db/native/db_sqlite_driver.rs")
 @:coreApi
 class Sqlite {
 	public static function open(file:String):Connection {
@@ -32,14 +35,7 @@ private class SqliteConnection implements Connection {
 	var handle: Dynamic;
 
 	public function new(file:String) {
-		handle = untyped __rust__(
-			"{
-				let conn = rusqlite::Connection::open({0}.as_str())
-					.unwrap_or_else(|e| hxrt::exception::throw(hxrt::dynamic::from(format!(\"Sqlite.open: {e}\"))));
-				hxrt::dynamic::from(std::sync::Arc::new(std::sync::Mutex::new(Some(conn))))
-			}",
-			file
-		);
+		handle = NativeSqliteDriver.openHandle(file);
 	}
 
 	public function close():Void {
@@ -200,23 +196,23 @@ private class SqliteResultSet implements ResultSet {
 	}
 
 	function get_length():Int {
-		return untyped __rust__("hxrt::db::query_result_length(&{0})", res);
+		return NativeQueryResult.length(res);
 	}
 
 	function get_nfields():Int {
-		return untyped __rust__("hxrt::db::query_result_nfields(&{0})", res);
+		return NativeQueryResult.nfields(res);
 	}
 
 	public function hasNext():Bool {
-		return untyped __rust__("hxrt::db::query_result_has_next(&{0})", res);
+		return NativeQueryResult.hasNext(res);
 	}
 
 	public function next():Dynamic {
-		return untyped __rust__("hxrt::db::query_result_next_row_object(&{0})", res);
+		return NativeQueryResult.nextRowObject(res);
 	}
 
 	public function results():List<Dynamic> {
-		var l = new List();
+		var l: List<Dynamic> = new List<Dynamic>();
 		while (hasNext()) {
 			l.add(next());
 		}
@@ -224,25 +220,19 @@ private class SqliteResultSet implements ResultSet {
 	}
 
 	public function getResult(n:Int):String {
-		return untyped __rust__("hxrt::db::query_result_get_result(&{0}, {1})", res, n);
+		return NativeQueryResult.getResult(res, n);
 	}
 
 	public function getIntResult(n:Int):Int {
-		return untyped __rust__("hxrt::db::query_result_get_int_result(&{0}, {1})", res, n);
+		return NativeQueryResult.getIntResult(res, n);
 	}
 
 	public function getFloatResult(n:Int):Float {
-		return untyped __rust__("hxrt::db::query_result_get_float_result(&{0}, {1})", res, n);
+		return NativeQueryResult.getFloatResult(res, n);
 	}
 
 	public function getFieldsNames():Null<Array<String>> {
 		// The upstream API is nullable; return `null` when there are no fields.
-		return untyped __rust__(
-			"{
-				let n = hxrt::db::query_result_nfields(&{0});
-				if n == 0 { hxrt::array::Array::<String>::null() } else { hxrt::db::query_result_fields(&{0}) }
-			}",
-			res
-		);
+		return nfields == 0 ? null : NativeQueryResult.fields(res);
 	}
 }

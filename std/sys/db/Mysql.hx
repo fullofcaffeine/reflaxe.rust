@@ -1,6 +1,8 @@
 package sys.db;
 
 import hxrt.db.QueryResultHandle;
+import hxrt.db.NativeMysqlDriver;
+import hxrt.db.NativeQueryResult;
 import rust.HxRef;
 
 /**
@@ -32,6 +34,7 @@ import rust.HxRef;
 // Use `defaultFeatures: false` only if we need to avoid native-tls/openssl in CI.
 // For now, keep defaults and tighten once we confirm the feature matrix we want.
 @:rustCargo({ name: "mysql", version: "27" })
+@:rustExtraSrc("sys/db/native/db_mysql_driver.rs")
 @:coreApi
 class Mysql {
 	public static function connect(params:{
@@ -58,33 +61,12 @@ private class MysqlConnection implements Connection {
 		?database:String
 	}) {
 		var port:Int = params.port == null ? 3306 : (params.port : Int);
-			handle = untyped __rust__(
-				"{
-					let socket = {4};
-					let db_name = {5};
-					let mut b = mysql::OptsBuilder::new()
-						.ip_or_hostname(Some({0}.as_str()))
-						.user(Some({1}.as_str()))
-						.pass(Some({2}.as_str()))
-						.tcp_port({3} as u16);
-					if let Some(s) = socket.as_ref() {
-						b = b.socket(Some(s.as_str()));
-					}
-					if let Some(db) = db_name.as_ref() {
-						b = b.db_name(Some(db.as_str()));
-					}
-
-				let conn = mysql::Conn::new(b)
-					.unwrap_or_else(|e| hxrt::exception::throw(hxrt::dynamic::from(format!(\"Mysql.connect: {e}\"))));
-				hxrt::dynamic::from(std::sync::Arc::new(std::sync::Mutex::new(Some(conn))))
-			}",
-			params.host,
-			params.user,
-			params.pass,
-			port,
-			params.socket,
-			params.database
-		);
+		var host:String = params.host;
+		var user:String = params.user;
+		var pass:String = params.pass;
+		var socket:Null<String> = params.socket;
+		var database:Null<String> = params.database;
+		handle = NativeMysqlDriver.openHandle(host, user, pass, port, socket, database);
 	}
 
 	public function close():Void {
@@ -250,23 +232,23 @@ private class MysqlResultSet implements ResultSet {
 	}
 
 	function get_length():Int {
-		return untyped __rust__("hxrt::db::query_result_length(&{0})", res);
+		return NativeQueryResult.length(res);
 	}
 
 	function get_nfields():Int {
-		return untyped __rust__("hxrt::db::query_result_nfields(&{0})", res);
+		return NativeQueryResult.nfields(res);
 	}
 
 	public function hasNext():Bool {
-		return untyped __rust__("hxrt::db::query_result_has_next(&{0})", res);
+		return NativeQueryResult.hasNext(res);
 	}
 
 	public function next():Dynamic {
-		return untyped __rust__("hxrt::db::query_result_next_row_object(&{0})", res);
+		return NativeQueryResult.nextRowObject(res);
 	}
 
 	public function results():List<Dynamic> {
-		var l = new List();
+		var l: List<Dynamic> = new List<Dynamic>();
 		while (hasNext()) {
 			l.add(next());
 		}
@@ -274,24 +256,18 @@ private class MysqlResultSet implements ResultSet {
 	}
 
 	public function getResult(n:Int):String {
-		return untyped __rust__("hxrt::db::query_result_get_result(&{0}, {1})", res, n);
+		return NativeQueryResult.getResult(res, n);
 	}
 
 	public function getIntResult(n:Int):Int {
-		return untyped __rust__("hxrt::db::query_result_get_int_result(&{0}, {1})", res, n);
+		return NativeQueryResult.getIntResult(res, n);
 	}
 
 	public function getFloatResult(n:Int):Float {
-		return untyped __rust__("hxrt::db::query_result_get_float_result(&{0}, {1})", res, n);
+		return NativeQueryResult.getFloatResult(res, n);
 	}
 
 	public function getFieldsNames():Null<Array<String>> {
-		return untyped __rust__(
-			"{
-				let n = hxrt::db::query_result_nfields(&{0});
-				if n == 0 { hxrt::array::Array::<String>::null() } else { hxrt::db::query_result_fields(&{0}) }
-			}",
-			res
-		);
+		return nfields == 0 ? null : NativeQueryResult.fields(res);
 	}
 }

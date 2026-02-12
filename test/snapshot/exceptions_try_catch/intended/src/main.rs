@@ -47,7 +47,9 @@ fn main() {
         }) {
             Ok(__hx_ok) => __hx_ok,
             Err(__hx_ex) => match __hx_ex.downcast::<i32>() {
-                Ok(_) => hxrt::exception::throw(hxrt::dynamic::from(String::from("inner"))),
+                Ok(_) => {
+                    hxrt::exception::throw(hxrt::dynamic::from(String::from("inner")));
+                }
                 Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
             },
         }

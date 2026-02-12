@@ -81,7 +81,7 @@ fn main() {
             }
         }
         Option::None => {
-            hxrt::exception::throw(hxrt::dynamic::from(String::from("expected a value")))
+            hxrt::exception::throw(hxrt::dynamic::from(String::from("expected a value")));
         }
     };
     println!("{}", hxrt::dynamic::from(u1));
@@ -178,7 +178,7 @@ fn main() {
                         "{}{}",
                         "called Result.unwrap() on Err: ",
                         e_2.clone()
-                    )))
+                    )));
                 }
             }
         })

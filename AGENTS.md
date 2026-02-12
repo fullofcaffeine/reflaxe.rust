@@ -26,6 +26,14 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Keep the pipeline **AST-first**: Builder → Transformer passes → Printer (avoid string-gen except at the printer).
 - Prefer typed analysis + passes over regex/string heuristics.
 - Portable mode first; keep a single runtime abstraction point so backends can evolve (e.g., `HxRef<T>`).
+- Prefer `import` (and small local `typedef` aliases when appropriate) to avoid verbose fully-qualified type paths in compiler code
+  (example: avoid `reflaxe.rust.ast.RustAST.RustMatchArm` when `import reflaxe.rust.ast.RustAST.RustMatchArm` lets you use `RustMatchArm`).
+- Prefer strong typing: avoid `Dynamic` in compiler/runtime/examples unless the upstream Haxe API forces it (for example `haxe.Json.parse`, cross-thread message payloads, exception catch-alls).
+  When you must cross a `Dynamic` boundary, immediately validate/cast/convert into a typed structure (often a `typedef` schema) and keep the rest of the code typed.
+- `Dynamic` policy (strict): use `Dynamic` only when explicitly justified by upstream std/API contracts or unavoidable runtime boundaries.
+  Default to concrete `typedef`/class/abstract/external bindings and leverage Haxe’s type system end-to-end.
+- Path privacy policy: never disclose machine-specific absolute local paths (for example `<home>/...`).
+  Always use repository-relative paths; for sibling repos, use relative references like `../haxe.elixir.reference`.
 
 ## Meta (keep instructions current)
 
@@ -41,8 +49,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 
 ## Prior Art (local reference repos)
 
-- Use `<home>/workspace/code/haxe.elixir.reference` for patterns/APIs we previously used for the Haxe→Elixir target.
-- Use `<home>/workspace/code/haxe.elixir.codex` for the original Haxe→Elixir compiler implementation (**read-only; do not modify anything in that repo**).
+- Use `../haxe.elixir.reference` for patterns/APIs we previously used for the Haxe→Elixir target.
+- Use `../haxe.elixir.codex` for the original Haxe→Elixir compiler implementation (**read-only; do not modify anything in that repo**).
 
 ## Important Lessons (POC)
 
@@ -53,6 +61,12 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Lint hygiene policy (default): snake_case all emitted members + locals/args, trim code after diverging ops (`throw/return/break/continue`), omit unused catch vars / unused `self_` params, and add crate-level `#![allow(dead_code)]` to keep `cargo build` warning-free.
   - Rust lint gotcha: emit `loop { ... }` instead of `while true { ... }` to stay warning-free under `#![deny(warnings)]` (`while_true`).
   - Stub trait methods that `todo!()` must use `_` argument patterns to avoid `unused_variables` under `#![deny(warnings)]`.
+  - Enum-match gotcha: avoid emitting wildcard `unreachable!()` arms when the match is already exhaustive (Rust warns with `unreachable_patterns`).
+  - Dynamic-runtime gotcha: prefer typed `std/hxrt/*` extern wrappers over raw `untyped __rust__` for runtime APIs returning `Dynamic`
+    (example: `haxe.Json.parse`, `sys.thread.Thread.readMessage`) to avoid unresolved monomorph warnings.
+  - Unresolved-monomorph warning policy: keep warnings for user/project code, but suppress them by default for framework/upstream stdlib internals
+    (fallback to `Dynamic` is an intentional compatibility bridge there). To audit std warnings explicitly, enable `-D rust_warn_unresolved_monomorph_std`.
+  - JSON boundary gotcha: do not `cast Json.parse(...)` directly to a typed anonymous structure in app/runtime code. The Rust runtime may return a `DynObject` representation that fails anon downcasts; decode through `Reflect.field` + typed validators at the boundary, then stay strongly typed.
 - The generated crate always includes the bundled runtime crate at `./hxrt` and adds `hxrt = { path = "./hxrt" }` to `Cargo.toml`.
 - For class instance semantics, the current POC uses `type HxRef<T> = Rc<RefCell<T>>` and:
   - concrete calls use `Class::method(&obj, ...)` where methods take `&RefCell<Class>`
@@ -81,6 +95,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Prefer framework-driven metadata over `.hxml` wiring when possible:
   - `@:rustCargo(...)` declares Cargo deps from Haxe types.
   - `@:rustExtraSrc("path/to/file.rs")` / `@:rustExtraSrcDir("path/to/dir")` lets framework code ship Rust modules without requiring apps to set `-D rust_extra_src=...`.
+  - For std overrides that need complex backend-specific setup (for example DB driver connection builders),
+    prefer moving Rust-heavy constructors into typed extern modules (`std/hxrt/**` + `@:rustExtraSrc`) rather than inline `untyped __rust__` in Haxe methods.
 - Rust module names must avoid keywords (e.g. class `Impl` becomes module `impl_`).
 - Rust keyword escaping must include reserved keywords like `box` (Rust 2021); keep `RustNaming.KEYWORDS` / extra-src keyword checks in sync.
 - Generics: Rust rejects unused type params on structs; emit a `PhantomData` field (e.g. `__hx_phantom`) when a class has type params not referenced by any instance fields.
@@ -94,6 +110,12 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
     (or the emission filter must be expanded intentionally).
 - `Std.isOfType` is implemented as a compiler intrinsic (exact-type check via `__hx_type_id`, plus compile-time subtype short-circuit).
 - String move semantics: many generated Rust functions take `String` by value; to preserve Haxe’s “strings are re-usable after calls” behavior, callsites currently clone String arguments based on the callee’s parameter types.
+- Nullable-string migration gotcha: a full switch to `hxrt::string::HxString` as the emitted Rust `String` representation touches broad stdlib/runtime surfaces (notably map key types, `toString` trait bridges, and hardcoded `String` paths).
+  Keep `-D rust_string_nullable` disabled on mainline until those compatibility points are fully migrated and covered by snapshots.
+  - Concrete breakage pattern while the migration is incomplete: generated code can expect `HxString` while runtime/native APIs still take raw `String`
+    (for example `hxrt::array::Array::join`, `sys.io.*.writeString/readLine`, `std::process::Command` args), producing large `E0308` type-mismatch cascades.
+  - Interop guardrail: runtime APIs that conceptually accept string separators/paths/labels should prefer flexible signatures (`AsRef<str>`/`&str`) so both `String` and `hxrt::string::HxString` work without callsite churn.
+    - Current concrete fix: `hxrt::array::Array::join` is generic over `AsRef<str>` and `HxString` implements `AsRef<str>`.
 - Dynamic args: when calling a function expecting `Dynamic` (e.g. `Sys.println(v:Dynamic)`), the compiler boxes non-`Dynamic` args via `hxrt::dynamic::from(...)` and clones non-`Copy` inputs to avoid Rust moves.
 - Nullable locals: when a `Null<T>` local is initialized to `null` and the **very next statement** assigns it, codegen elides the initial `None` to avoid Rust `unused_assignments` / `unused_mut` warnings (see `test/snapshot/null_optional_args`).
 - Extern bindings: for `extern class` types, `@:native("some::rust::path")` maps the class to a Rust path, and `@:native("fn_name")` maps fields/methods.
@@ -109,6 +131,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - Optional formatter hook: `-D rustfmt` runs `cargo fmt --manifest-path <out>/Cargo.toml` after output generation (best-effort, warns on failure).
 - TUI testing: prefer ratatui `TestBackend` via `TuiDemo.renderToString(...)` and assert in `cargo test` (see `docs/tui.md` and `examples/tui_todo/native/tui_tests.rs`).
   - Non-TTY gotcha: `TuiDemo.enter()` must never `unwrap()` terminal initialization. If interactive init fails (or stdin/stdout aren’t TTY), it must fall back to headless so `cargo run` in CI doesn’t panic.
+  - Harness linkage gotcha: keep `Harness.__link()` reachable in all compile variants (not only `tui_headless`) so Rust tests that call `crate::harness::*` compile in both dev and CI outputs.
 - `@:coreApi` gotcha: core types must match upstream public API exactly. Any extra helpers must be private.
   - Use `@:allow(...)`/`@:access(...)` to make private helpers usable by sibling std types.
   - Backend rule: private members in an `@:allow/@:access` class are emitted as `pub(crate)` in Rust so cross-module calls compile.
@@ -118,21 +141,33 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 ## Testing + CI
 
 - Run snapshots locally: `bash test/run-snapshots.sh`
+- Run upstream stdlib sweep locally: `bash test/run-upstream-stdlib-sweep.sh` (or single-module: `--module haxe.Json`).
+- Run Windows-safe smoke subset locally: `bash scripts/ci/windows-smoke.sh` (same subset used by the Windows CI job).
 - Update a snapshot’s golden output (after review): `bash test/run-snapshots.sh --case <name> --update`
 - Run the full CI-style harness locally (snapshots + all examples): `npm run test:all` (alias for `bash scripts/ci/harness.sh`)
-- Install the repo pre-commit hook (gitleaks + guards): `npm run hooks:install` (requires `gitleaks` installed)
+  - Harness cleanup policy: by default, `scripts/ci/harness.sh` and `scripts/ci/windows-smoke.sh` clean generated `out*` folders and `.cache/*target*` on exit.
+    - Keep artifacts intentionally for debugging with `KEEP_ARTIFACTS=1`.
+    - Manual cleanup: `npm run clean:artifacts` (outputs only) and `npm run clean:artifacts:all` (outputs + caches).
+- Install the repo pre-commit hook (gitleaks + guards + beads flush): run `bd hooks install` then `npm run hooks:install` (requires `gitleaks` installed)
 - Runtime gotcha: snapshots embed `runtime/hxrt/**` into `test/snapshot/**/intended/hxrt/`, so any change under `runtime/hxrt/` requires `bash test/run-snapshots.sh --update` to keep goldens in sync.
+- Snapshot runner gotcha: many snapshot crates share the same crate name (`hx_app`), so `test/run-snapshots.sh` must isolate `CARGO_TARGET_DIR` per case/variant
+  (using a shared base cache) to avoid binary collisions and incorrect `stdout.txt` comparisons.
+- Disk-space gotcha: full snapshot regeneration and full harness runs can consume many GB in `test/snapshot/**/out*`, `examples/**/out*`, Cargo caches/registries, and `.cache/examples-target`.
+  If you hit `No space left on device`, run `npm run clean:artifacts:all` before re-running, then regenerate snapshots.
 - Prefer DRY snapshot cases: use multiple `compile.<variant>.hxml` files in the same `test/snapshot/<case>/`
   directory (and `#if <define>` shims when needed) rather than duplicating snapshot directories for each profile.
   - Convention: `compile.hxml` → `out/` + `intended/`; `compile.rusty.hxml` → `out_rusty/` + `intended_rusty/`.
 - Pre-push directive: keep `main` green by running the closest local equivalent of CI before `git push`:
   - `npm ci --ignore-scripts --no-audit --no-fund`
   - `bash test/run-snapshots.sh --clippy` (runs curated clippy checks on a small subset of snapshot crates)
+  - `bash test/run-upstream-stdlib-sweep.sh` (curated upstream std imports under `-D rust_emit_upstream_std`)
   - `cargo fmt && cargo clippy -- -D warnings`
   - Smoke-run any examples you touched (e.g. `(cd examples/tui_todo && haxe compile.hxml && (cd out && cargo run -q))`)
 - CI runs:
   - `test/run-snapshots.sh` (runs `cargo fmt` + `cargo build -q` per snapshot)
-  - example smoke runs (`examples/hello`, `examples/classes`)
+  - `test/run-upstream-stdlib-sweep.sh` (per-module actionable compile/fmt/check for upstream std modules)
+  - `scripts/ci/harness.sh` compiles developer variants (`compile.hxml`, `compile.rusty.hxml`) and runs a CI matrix across all `examples/*` (`compile.ci.hxml` or fallback `compile.hxml`, plus `compile.rusty.ci.hxml` when present), including `cargo test` + `cargo run`.
+  - `scripts/ci/windows-smoke.sh` runs on `windows-latest` and validates a Windows-safe subset (fmt/clippy + `hello_trace`/`sys_io` snapshots + `examples/sys_file_io` + `examples/sys_net_loopback`).
 
 ## Build (native)
 

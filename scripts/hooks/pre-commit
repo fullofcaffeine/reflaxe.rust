@@ -3,6 +3,13 @@ set -euo pipefail
 
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 
+if command -v bd >/dev/null 2>&1; then
+  echo "[pre-commit] Running bd pre-commit hook (beads flush/staleness)..."
+  bd hooks run pre-commit
+else
+  echo "[pre-commit] WARN: bd not found; skipping beads hook."
+fi
+
 if ! command -v gitleaks >/dev/null 2>&1; then
   echo "[pre-commit] ERROR: gitleaks is required but not installed." >&2
   echo "[pre-commit] Install: https://github.com/gitleaks/gitleaks#installing" >&2

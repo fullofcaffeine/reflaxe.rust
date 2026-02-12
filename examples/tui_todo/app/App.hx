@@ -14,7 +14,7 @@ import rust.tui.UiNode;
 import util.Fuzzy;
 
 /**
-	Crazy todo/productivity TUI app state machine.
+	Todo/productivity TUI app state machine.
 
 	Why
 	- This example is intended to be a "battle harness" for reflaxe.rust:
@@ -33,6 +33,8 @@ import util.Fuzzy;
 	- Text input is implemented in Haxe (buffer + key handling), rendered via modals.
 **/
 class App {
+	static inline final AUTOSAVE_DEBOUNCE_MS = 700;
+
 	public final store: Store;
 
 	public var screen(default, null): Screen;
@@ -40,6 +42,8 @@ class App {
 
 	var selected: Int = 0;
 	var spinnerPhase: Int = 0;
+	var autosaveElapsedMs: Int = 0;
+	var observedDirtyVersion: Int = 0;
 
 	var termWidth: Int = 80;
 	var termHeight: Int = 24;
@@ -50,6 +54,7 @@ class App {
 		this.store = store;
 		screen = Tasks;
 		modal = None;
+		observedDirtyVersion = store.dirtyVersion;
 	}
 
 	public static function demo(): App {
@@ -71,15 +76,26 @@ class App {
 				setTerminalSize(w, h);
 			case Tick(dtMs):
 				spinnerPhase = (spinnerPhase + 1) % 4;
-				// Simple autosave trigger: in interactive mode this will run periodically.
-				if (store.dirty && (spinnerPhase == 0)) {
-					trySave("autosave");
+				if (store.dirty) {
+					if (store.dirtyVersion != observedDirtyVersion) {
+						observedDirtyVersion = store.dirtyVersion;
+						autosaveElapsedMs = 0;
+					}
+					autosaveElapsedMs = autosaveElapsedMs + dtMs;
+					if (autosaveElapsedMs >= AUTOSAVE_DEBOUNCE_MS) {
+						trySave("autosave");
+						autosaveElapsedMs = 0;
+						observedDirtyVersion = store.dirtyVersion;
+					}
+				} else {
+					autosaveElapsedMs = 0;
+					observedDirtyVersion = store.dirtyVersion;
 				}
 			case None:
 				// no-op
 			case Key(code, mods):
 				if (modal != None) {
-					handleModalKey(code, mods);
+					handleModalKey(code);
 				} else {
 					if (handleNoModalKey(code, mods)) return true;
 				}
@@ -89,6 +105,8 @@ class App {
 
 	function handleNoModalKey(code: KeyCode, mods: KeyMods): Bool {
 		switch (code) {
+			case Char("c") if (mods.has(Ctrl)):
+				return true;
 			case Char("q"):
 				return true;
 			case Char(":"):
@@ -190,7 +208,7 @@ class App {
 		}
 	}
 
-	function handleModalKey(code: KeyCode, mods: KeyMods): Bool {
+	function handleModalKey(code: KeyCode): Bool {
 		switch (modal) {
 			case None:
 				return false;
@@ -344,7 +362,7 @@ class App {
 		try {
 			store.save();
 			statusMsg = source + ": ok";
-		} catch (e: Dynamic) {
+		} catch (e: haxe.Exception) {
 			statusMsg = source + ": failed";
 		}
 	}
@@ -463,6 +481,8 @@ class App {
 	function viewHelp(): UiNode {
 		var text = ""
 			+ "Keys:\n"
+			+ "  q              quit\n"
+			+ "  Ctrl+C         quit\n"
 			+ "  Tab            cycle screens\n"
 			+ "  :              command palette\n"
 			+ "  ?              help\n"

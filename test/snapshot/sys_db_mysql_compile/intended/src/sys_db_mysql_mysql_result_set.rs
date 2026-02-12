@@ -26,37 +26,45 @@ impl MysqlResultSet {
     pub fn get_length(self_: &crate::HxRefCell<MysqlResultSet>) -> i32 {
         let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
             self_.self_ref();
-        return hxrt::db::query_result_length(&{
-            let __b = __hx_this.borrow();
-            __b.res.clone()
-        });
+        return hxrt::db::query_result_length(
+            &({
+                let __b = __hx_this.borrow();
+                __b.res.clone()
+            }),
+        );
     }
 
     pub fn get_nfields(self_: &crate::HxRefCell<MysqlResultSet>) -> i32 {
         let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
             self_.self_ref();
-        return hxrt::db::query_result_nfields(&{
-            let __b = __hx_this.borrow();
-            __b.res.clone()
-        });
+        return hxrt::db::query_result_nfields(
+            &({
+                let __b = __hx_this.borrow();
+                __b.res.clone()
+            }),
+        );
     }
 
     pub fn has_next(self_: &crate::HxRefCell<MysqlResultSet>) -> bool {
         let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
             self_.self_ref();
-        return hxrt::db::query_result_has_next(&{
-            let __b = __hx_this.borrow();
-            __b.res.clone()
-        });
+        return hxrt::db::query_result_has_next(
+            &({
+                let __b = __hx_this.borrow();
+                __b.res.clone()
+            }),
+        );
     }
 
     pub fn next(self_: &crate::HxRefCell<MysqlResultSet>) -> hxrt::dynamic::Dynamic {
         let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
             self_.self_ref();
-        return hxrt::db::query_result_next_row_object(&{
-            let __b = __hx_this.borrow();
-            __b.res.clone()
-        });
+        return hxrt::db::query_result_next_row_object(
+            &({
+                let __b = __hx_this.borrow();
+                __b.res.clone()
+            }),
+        );
     }
 
     pub fn results(
@@ -79,10 +87,10 @@ impl MysqlResultSet {
         let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
             self_.self_ref();
         return hxrt::db::query_result_get_result(
-            &{
+            &({
                 let __b = __hx_this.borrow();
                 __b.res.clone()
-            },
+            }),
             n,
         );
     }
@@ -91,10 +99,10 @@ impl MysqlResultSet {
         let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
             self_.self_ref();
         return hxrt::db::query_result_get_int_result(
-            &{
+            &({
                 let __b = __hx_this.borrow();
                 __b.res.clone()
-            },
+            }),
             n,
         );
     }
@@ -103,10 +111,10 @@ impl MysqlResultSet {
         let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
             self_.self_ref();
         return hxrt::db::query_result_get_float_result(
-            &{
+            &({
                 let __b = __hx_this.borrow();
                 __b.res.clone()
-            },
+            }),
             n,
         );
     }
@@ -116,19 +124,17 @@ impl MysqlResultSet {
     ) -> hxrt::array::Array<String> {
         let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
             self_.self_ref();
-        return {
-            let n = hxrt::db::query_result_nfields(&{
-                let __b = __hx_this.borrow();
-                __b.res.clone()
-            });
-            if n == 0 {
-                hxrt::array::Array::<String>::null()
-            } else {
-                hxrt::db::query_result_fields(&{
+        return if crate::sys_db_mysql_mysql_result_set::MysqlResultSet::get_nfields(&*__hx_this)
+            == 0
+        {
+            hxrt::array::Array::<String>::null()
+        } else {
+            hxrt::db::query_result_fields(
+                &({
                     let __b = __hx_this.borrow();
                     __b.res.clone()
-                })
-            }
+                }),
+            )
         };
     }
 }
