@@ -8,6 +8,16 @@ This watcher gives you a fast local loop while building Haxe -> Rust apps:
 
 You do not need to know compiler internals to use it.
 
+## Incremental compile cache (default)
+
+In watch mode, the script starts its own Haxe compile server (`haxe --wait`) and compiles with `--connect`.
+
+- First compile: warms up the compile server cache.
+- Next compiles: usually faster because Haxe can reuse typed/incremental state.
+- When you stop the watcher: it stops the owned compile server automatically.
+
+`--once` does a direct compile by default (no server), which is useful for one-off checks.
+
 ## Install `watchexec` once
 
 The watcher script uses [`watchexec`](https://github.com/watchexec/watchexec).
@@ -51,6 +61,18 @@ Run one cycle and exit (no watcher required):
 npm run dev:watch -- --hxml examples/hello/compile.hxml --once
 ```
 
+Disable the compile server (force direct Haxe compile each cycle):
+
+```bash
+npm run dev:watch -- --hxml examples/hello/compile.hxml --no-haxe-server
+```
+
+Equivalent environment override:
+
+```bash
+HAXE_RUST_WATCH_NO_SERVER=1 npm run dev:watch -- --hxml examples/hello/compile.hxml
+```
+
 ## Arguments
 
 - `--hxml <path>`: required build target file.
@@ -58,6 +80,7 @@ npm run dev:watch -- --hxml examples/hello/compile.hxml --once
 - `--watch <path>`: add extra paths to watch (repeatable).
 - `--debounce-ms <n>`: delay before rebuild. Default `250`.
 - `--once`: run one cycle without starting file watch.
+- `--no-haxe-server`: skip the incremental Haxe compile server and compile directly.
 - `--haxe-bin <path>`: override Haxe binary.
 - `--cargo-bin <path>`: override Cargo binary.
 
@@ -66,6 +89,7 @@ npm run dev:watch -- --hxml examples/hello/compile.hxml --once
 - Start with one example or app `.hxml`, then switch to your project target.
 - Use `--mode test` in active development for faster feedback on regressions.
 - Keep generated output out of your watch roots to avoid loops (the script already ignores common generated folders).
+- If your compile behavior ever looks stale, restart watch mode once to reset the compile server cache.
 
 ## Related docs
 

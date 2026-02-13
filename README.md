@@ -58,6 +58,9 @@ Then run:
 npm run dev:watch -- --hxml examples/hello/compile.hxml
 ```
 
+Watch mode uses a session-owned Haxe compile server by default, so compiles are faster after warm-up.
+Use `--no-haxe-server` if you want direct compile-only behavior.
+
 More usage options: [Dev Watcher guide](docs/dev-watcher.md).
 
 ## Pick Your Profile

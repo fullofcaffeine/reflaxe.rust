@@ -19,6 +19,7 @@ Options:
   --debounce-ms <n>     Watch debounce in milliseconds. Default: 250.
   --haxe-bin <path>     Haxe binary. Default: $HAXE_BIN or haxe.
   --cargo-bin <path>    Cargo binary. Default: $CARGO_BIN or cargo.
+  --no-haxe-server      Disable Haxe compile server in watch mode.
   --once                Run one cycle without watching.
   -h, --help            Show this help.
 
@@ -32,6 +33,13 @@ USAGE
 fail() {
   echo "error: $*" >&2
   exit 2
+}
+
+is_truthy() {
+  case "${1:-}" in
+    1|true|TRUE|yes|YES|on|ON) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 display_path() {
@@ -137,6 +145,15 @@ hxml_arg=""
 once=0
 haxe_bin="${HAXE_BIN:-haxe}"
 cargo_bin="${CARGO_BIN:-cargo}"
+no_haxe_server=0
+if is_truthy "${HAXE_RUST_WATCH_NO_SERVER:-0}"; then
+  no_haxe_server=1
+fi
+haxe_server_port="${HAXE_RUST_WATCH_SERVER_PORT:-}"
+haxe_server_owned=0
+use_haxe_server=0
+haxe_server_pid=""
+haxe_server_log=""
 declare -a extra_watch_paths=()
 declare -a watch_paths=()
 declare -a ignore_paths=()
@@ -173,6 +190,15 @@ while [[ $# -gt 0 ]]; do
       cargo_bin="$2"
       shift 2
       ;;
+    --no-haxe-server)
+      no_haxe_server=1
+      shift
+      ;;
+    --haxe-server-port)
+      [[ $# -ge 2 ]] || fail "--haxe-server-port requires a value"
+      haxe_server_port="$2"
+      shift 2
+      ;;
     --once)
       once=1
       shift
@@ -193,6 +219,19 @@ case "$mode" in
   *) fail "invalid --mode '$mode' (expected: run, build, or test)" ;;
 esac
 [[ "$debounce_ms" =~ ^[0-9]+$ ]] || fail "--debounce-ms must be a non-negative integer"
+if [[ "$no_haxe_server" -eq 1 && -n "$haxe_server_port" ]]; then
+  fail "--no-haxe-server cannot be combined with --haxe-server-port"
+fi
+if [[ -n "$haxe_server_port" && ! "$haxe_server_port" =~ ^[0-9]+$ ]]; then
+  fail "--haxe-server-port must be a non-negative integer"
+fi
+if [[ -n "$haxe_server_port" ]]; then
+  use_haxe_server=1
+fi
+if [[ "$once" -eq 0 && "$no_haxe_server" -eq 0 ]]; then
+  use_haxe_server=1
+  haxe_server_owned=1
+fi
 
 if [[ "$hxml_arg" == /* && -f "$hxml_arg" ]]; then
   hxml_abs="$(normalize_existing_path "$hxml_arg")"
@@ -216,9 +255,111 @@ if [[ "$mode" != "build" && -z "$rust_output_abs" ]]; then
   fail "missing '-D rust_output=...' in $(display_path "$hxml_abs"), required for mode '$mode'"
 fi
 
+stop_haxe_server() {
+  if [[ -n "$haxe_server_pid" ]]; then
+    if kill -0 "$haxe_server_pid" >/dev/null 2>&1; then
+      kill "$haxe_server_pid" >/dev/null 2>&1 || true
+    fi
+    wait "$haxe_server_pid" >/dev/null 2>&1 || true
+    haxe_server_pid=""
+  fi
+}
+
+cleanup() {
+  stop_haxe_server
+  if [[ -n "$haxe_server_log" && -f "$haxe_server_log" ]]; then
+    rm -f "$haxe_server_log"
+  fi
+}
+
+trap cleanup EXIT INT TERM
+
+wait_for_haxe_server_ready() {
+  local attempt
+  for ((attempt = 1; attempt <= 40; attempt++)); do
+    if "$haxe_bin" --connect "$haxe_server_port" -version >/dev/null 2>&1; then
+      return 0
+    fi
+    if [[ -n "$haxe_server_pid" ]] && ! kill -0 "$haxe_server_pid" >/dev/null 2>&1; then
+      return 1
+    fi
+    sleep 0.1
+  done
+  return 1
+}
+
+start_owned_haxe_server() {
+  local max_attempts=12
+  local forced_port=0
+  if [[ -n "$haxe_server_port" ]]; then
+    forced_port=1
+    max_attempts=1
+  fi
+
+  haxe_server_log="$(mktemp "${TMPDIR:-/tmp}/haxe-rust-watch-server.XXXXXX.log")"
+
+  local attempt
+  for ((attempt = 1; attempt <= max_attempts; attempt++)); do
+    local candidate_port
+    if [[ "$forced_port" -eq 1 ]]; then
+      candidate_port="$haxe_server_port"
+    else
+      candidate_port="$((20000 + RANDOM % 30000))"
+    fi
+
+    haxe_server_port="$candidate_port"
+    "$haxe_bin" --wait "$haxe_server_port" >"$haxe_server_log" 2>&1 &
+    haxe_server_pid="$!"
+
+    if wait_for_haxe_server_ready; then
+      echo "[watch] haxe compile server ready on port $haxe_server_port"
+      return 0
+    fi
+
+    stop_haxe_server
+  done
+
+  echo "[watch] warning: unable to start haxe compile server; continuing without incremental cache." >&2
+  if [[ -s "$haxe_server_log" ]]; then
+    echo "[watch] haxe --wait log (last 10 lines):" >&2
+    tail -n 10 "$haxe_server_log" >&2 || true
+  fi
+
+  use_haxe_server=0
+  haxe_server_owned=0
+  haxe_server_port=""
+  return 1
+}
+
+run_haxe_compile_direct() {
+  (cd "$hxml_dir" && "$haxe_bin" "$hxml_file")
+}
+
+run_haxe_compile_via_server() {
+  [[ -n "$haxe_server_port" ]] || return 1
+  (cd "$hxml_dir" && "$haxe_bin" --connect "$haxe_server_port" "$hxml_file")
+}
+
+run_haxe_compile() {
+  if [[ "$use_haxe_server" -eq 1 ]]; then
+    if run_haxe_compile_via_server; then
+      return 0
+    fi
+
+    echo "[watch] warning: haxe --connect failed on port $haxe_server_port; retrying once." >&2
+    if run_haxe_compile_via_server; then
+      return 0
+    fi
+
+    echo "[watch] warning: falling back to direct haxe compile for this cycle." >&2
+  fi
+
+  run_haxe_compile_direct
+}
+
 run_cycle() {
   echo "[watch] compiling $(display_path "$hxml_abs")"
-  (cd "$hxml_dir" && "$haxe_bin" "$hxml_file")
+  run_haxe_compile
 
   case "$mode" in
     build)
@@ -262,7 +403,7 @@ fi
 path_in_watch_paths() {
   local target="$1"
   local existing
-  for existing in "${watch_paths[@]}"; do
+  for existing in "${watch_paths[@]:-}"; do
     if [[ "$existing" == "$target" ]]; then
       return 0
     fi
@@ -273,7 +414,7 @@ path_in_watch_paths() {
 path_in_ignore_paths() {
   local target="$1"
   local existing
-  for existing in "${ignore_paths[@]}"; do
+  for existing in "${ignore_paths[@]:-}"; do
     if [[ "$existing" == "$target" ]]; then
       return 0
     fi
@@ -318,7 +459,7 @@ add_watch_path "$root_dir/runtime"
 add_watch_path "$root_dir/templates"
 add_watch_path "$root_dir/haxe_libraries/reflaxe.rust.hxml"
 
-for extra_path in "${extra_watch_paths[@]}"; do
+for extra_path in "${extra_watch_paths[@]:-}"; do
   add_watch_path "$(resolve_path_from_base "$extra_path" "$invocation_dir")"
 done
 
@@ -328,7 +469,16 @@ add_ignore_path "$root_dir/target"
 add_ignore_path "$root_dir/node_modules"
 add_ignore_path "$rust_output_abs"
 
-echo "[watch] mode=$mode debounce=${debounce_ms}ms hxml=$(display_path "$hxml_abs")"
+if [[ "$haxe_server_owned" -eq 1 ]]; then
+  start_owned_haxe_server || true
+fi
+
+haxe_server_label="disabled"
+if [[ "$use_haxe_server" -eq 1 && -n "$haxe_server_port" ]]; then
+  haxe_server_label="enabled(port=$haxe_server_port)"
+fi
+
+echo "[watch] mode=$mode debounce=${debounce_ms}ms hxml=$(display_path "$hxml_abs") haxe_server=${haxe_server_label}"
 echo "[watch] watch roots:"
 for path in "${watch_paths[@]}"; do
   echo "  - $(display_path "$path")"
@@ -339,6 +489,9 @@ for path in "${ignore_paths[@]}"; do
 done
 
 watch_cmd=(bash "$script_path" --once --hxml "$hxml_abs" --mode "$mode" --haxe-bin "$haxe_bin" --cargo-bin "$cargo_bin")
+if [[ "$use_haxe_server" -eq 1 && -n "$haxe_server_port" ]]; then
+  watch_cmd+=(--haxe-server-port "$haxe_server_port")
+fi
 watchexec_args=(-r -d "${debounce_ms}ms")
 
 for path in "${watch_paths[@]}"; do
@@ -350,4 +503,4 @@ for path in "${ignore_paths[@]}"; do
 done
 
 watchexec_args+=(-- "${watch_cmd[@]}")
-exec watchexec "${watchexec_args[@]}"
+watchexec "${watchexec_args[@]}"

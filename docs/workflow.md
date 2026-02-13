@@ -19,12 +19,15 @@ Use the watcher when you want fast feedback while editing:
 npm run dev:watch -- --hxml examples/hello/compile.hxml
 ```
 
+By default, watch mode uses a session-owned Haxe compile server (`--wait`/`--connect`) so incremental compiles are faster after warm-up.
+
 Common variants:
 
 - Compile + run on change (default): `--mode run`
 - Compile + test on change: `--mode test`
 - Compile only on change: `--mode build`
 - One cycle without watcher: `--once`
+- Disable compile server in watch mode: `--no-haxe-server`
 
 Full guide: [Dev Watcher](dev-watcher.md).
 

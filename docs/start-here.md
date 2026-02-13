@@ -69,6 +69,8 @@ npm run dev:watch -- --hxml examples/hello/compile.hxml
 
 Detailed watcher docs: [Dev Watcher](dev-watcher.md).
 
+By default, watch mode keeps a Haxe compile server warm for faster incremental rebuilds.
+
 ## Recommended profile choice
 
 - Pick `portable` if your team is mostly Haxe-first.

@@ -194,6 +194,10 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - This repo uses **lix** for a pinned Haxe toolchain (see `.haxerc`).
 - `haxe_libraries/reflaxe.rust.hxml` is a self-referential config so `-lib reflaxe.rust` works in `test/**` and `examples/**` without `haxelib dev`.
 - `test/run-snapshots.sh` prefers the project-local Haxe binary at `node_modules/.bin/haxe` when available (override with `HAXE_BIN=...`).
+- Dev watcher policy: `scripts/dev/watch-haxe-rust.sh` owns a session-local Haxe compile server in watch mode (`haxe --wait` + `--connect`) for fast incremental rebuilds.
+  - Keep server ownership scoped to the watcher session (avoid attaching to external long-lived servers by default).
+  - `--once` intentionally compiles directly by default.
+  - Disable server mode explicitly with `--no-haxe-server` or `HAXE_RUST_WATCH_NO_SERVER=1` when debugging cache-related behavior.
 
 ## Releases
 
