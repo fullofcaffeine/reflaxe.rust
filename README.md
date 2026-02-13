@@ -12,6 +12,7 @@ This project lets you write Haxe and ship native Rust binaries, with a path for 
 - New here: [Start Here guide](docs/start-here.md)
 - Building async apps: [Async/Await preview guide](docs/async-await.md)
 - Production rollout: [Production Readiness guide](docs/production-readiness.md)
+- Post-1.0 quality cadence: [Weekly CI Evidence runbook](docs/weekly-ci-evidence.md)
 - Fast edit-compile-run loop: [Dev Watcher guide](docs/dev-watcher.md)
 - Full docs map: [Documentation Index](docs/index.md)
 
@@ -97,6 +98,7 @@ Read more: [Profiles guide](docs/profiles.md) and [Rusty profile details](docs/r
 - Live tracker: [Compiler Progress Tracker](docs/progress-tracker.md)
 - Vision vs implementation: [Reality check](docs/vision-vs-implementation.md)
 - Execution playbook: [Road to 1.0](docs/road-to-1.0.md)
+- Weekly post-1.0 operations: [Weekly CI Evidence](docs/weekly-ci-evidence.md)
 - Technical support matrix: [v1 scope](docs/v1.md)
 
 ## Defines (Common)

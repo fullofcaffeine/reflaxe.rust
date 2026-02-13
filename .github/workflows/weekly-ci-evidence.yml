@@ -1,0 +1,186 @@
+name: Weekly CI Evidence
+
+on:
+  schedule:
+    - cron: "0 10 * * 1" # Mondays 10:00 UTC
+  workflow_dispatch: {}
+
+concurrency:
+  group: weekly-ci-evidence-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "20"
+  HAXE_VERSION: "4.3.7"
+
+jobs:
+  local-equivalent:
+    name: Weekly local CI equivalent (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install npm dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Cache Haxe toolchain (lix)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/haxe
+          key: ${{ runner.os }}-lix-haxe-${{ env.HAXE_VERSION }}-${{ hashFiles('.haxerc', 'haxe_libraries/*.hxml', 'package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-lix-haxe-${{ env.HAXE_VERSION }}-
+
+      - name: Install Haxe (pinned via lix)
+        run: |
+          set -euo pipefail
+          npx lix download
+          npx lix download haxe "${{ env.HAXE_VERSION }}"
+          npx lix use haxe "${{ env.HAXE_VERSION }}"
+          echo "$(pwd)/node_modules/.bin" >> "$GITHUB_PATH"
+          export PATH="$(pwd)/node_modules/.bin:$PATH"
+          haxe -version
+
+      - name: Setup Rust (stable + rustfmt + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Free runner disk space (before harness)
+        run: |
+          set -euo pipefail
+          echo "[disk] before cleanup"
+          df -h
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/share/dotnet /opt/hostedtoolcache/CodeQL || true
+          docker system prune -af || true
+          echo "[disk] after cleanup"
+          df -h
+
+      - name: Verify docs sync state
+        run: |
+          set -euo pipefail
+          npm run docs:sync:progress
+          git diff --exit-code -- docs/progress-tracker.md docs/vision-vs-implementation.md
+
+      - name: Run full local CI equivalent
+        run: |
+          set -euo pipefail
+          HARNESS_CLEAN_OUTPUTS=1 HARNESS_CLEAN_CACHE=1 bash scripts/ci/local.sh
+
+      - name: Publish Linux evidence summary
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          {
+            echo "## Weekly CI Evidence (Linux local equivalent)"
+            echo "- Result: ${JOB_STATUS}"
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo "- Run: ${run_url}"
+            echo "- Commands:"
+            echo "  - \`npm run docs:sync:progress\`"
+            echo "  - \`bash scripts/ci/local.sh\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  windows-smoke:
+    name: Weekly Windows smoke
+    runs-on: windows-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install npm dependencies
+        shell: bash
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Install Haxe (pinned via lix)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx lix download
+          npx lix download haxe "${{ env.HAXE_VERSION }}"
+          npx lix use haxe "${{ env.HAXE_VERSION }}"
+          echo "$(pwd)/node_modules/.bin" >> "$GITHUB_PATH"
+          export PATH="$(pwd)/node_modules/.bin:$PATH"
+          haxe -version
+
+      - name: Setup Rust (stable + rustfmt + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Run Windows smoke harness
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/ci/windows-smoke.sh
+
+      - name: Publish Windows evidence summary
+        if: always()
+        shell: bash
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          {
+            echo "## Weekly CI Evidence (Windows smoke)"
+            echo "- Result: ${JOB_STATUS}"
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo "- Run: ${run_url}"
+            echo "- Command: \`bash scripts/ci/windows-smoke.sh\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  follow-up-guidance:
+    name: Weekly evidence guidance
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - local-equivalent
+      - windows-smoke
+    steps:
+      - name: Publish follow-up instructions
+        run: |
+          set -euo pipefail
+          run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          linux_status="${{ needs.local-equivalent.result }}"
+          windows_status="${{ needs.windows-smoke.result }}"
+
+          {
+            echo "## Weekly CI Evidence Rollup"
+            echo "- Linux local-equivalent job: **${linux_status}**"
+            echo "- Windows smoke job: **${windows_status}**"
+            echo "- Run URL: ${run_url}"
+            echo ""
+            if [[ "${linux_status}" != "success" || "${windows_status}" != "success" ]]; then
+              echo "### Action Required"
+              echo "Open a regression issue in the tracker the same day, assign an owner, and include:"
+              echo "- failing job + failing step"
+              echo "- run URL + relevant log excerpt"
+              echo "- expected behavior vs actual behavior"
+              echo "- mitigation plan and target date"
+            else
+              echo "No follow-up issue is required for this weekly run."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -9,6 +9,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - Building async Rusty apps: [Async/Await preview](async-await.md)
 - Planning production rollout: [Production Readiness](production-readiness.md)
 - Planning release closeout: [Road to 1.0](road-to-1.0.md)
+- Running post-1.0 weekly operations: [Weekly CI Evidence](weekly-ci-evidence.md)
 - Using the release-gate template: [Release Gate Closeout](release-gate-closeout.md)
 - Tracking 1.0 status: [Progress Tracker](progress-tracker.md)
 - Checking vision vs reality: [Vision vs Implementation](vision-vs-implementation.md)
@@ -20,6 +21,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Defines reference](defines-reference.md): practical `-D` reference for build/profile/CI knobs.
 - [v1 support matrix](v1.md): technical support matrix and parity constraints.
 - [Workflow](workflow.md): Haxe -> Rust -> Cargo workflow.
+- [Weekly CI Evidence](weekly-ci-evidence.md): post-1.0 validation cadence and evidence protocol.
 - [Dev Watcher](dev-watcher.md): local edit-compile-run watch loop.
 - [Install via lix](install-via-lix.md): toolchain setup.
 

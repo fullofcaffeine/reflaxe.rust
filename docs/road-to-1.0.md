@@ -86,6 +86,11 @@ Success signal:
   - `bash scripts/ci/local.sh`
 - Log any new production risks immediately in the internal tracker.
 
+Automation status:
+
+- The cadence above is automated in `.github/workflows/weekly-ci-evidence.yml`.
+- See `docs/weekly-ci-evidence.md` for evidence format and regression follow-up protocol.
+
 ## Common failure modes to avoid
 
 - Assuming dependency closure means release closure.
@@ -108,3 +113,4 @@ Success signal:
 - `docs/v1.md`
 - `docs/release-gate-closeout.md`
   - helper command: `npm run docs:prep:closeout`
+- `docs/weekly-ci-evidence.md`
