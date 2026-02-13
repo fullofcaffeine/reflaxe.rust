@@ -45,6 +45,33 @@ cleanup_artifacts() {
 
 trap 'cleanup_artifacts $?' EXIT
 
+intermediate_cleanup() {
+  local stage="${1:-unknown}"
+  local cleanup_args=()
+
+  if is_truthy "${KEEP_ARTIFACTS:-0}"; then
+    echo "[harness] keep artifacts enabled (skip intermediate cleanup after ${stage})"
+    return 0
+  fi
+
+  if is_truthy "${HARNESS_CLEAN_OUTPUTS:-1}"; then
+    cleanup_args+=(--outputs)
+  fi
+
+  if is_truthy "${HARNESS_CLEAN_CACHE:-1}"; then
+    cleanup_args+=(--cache)
+  fi
+
+  if [[ "${#cleanup_args[@]}" -eq 0 ]]; then
+    return 0
+  fi
+
+  echo "[harness] intermediate cleanup after ${stage} (${cleanup_args[*]})"
+  if ! "$root_dir/scripts/ci/clean-artifacts.sh" "${cleanup_args[@]}"; then
+    echo "[harness] WARN: intermediate cleanup failed after ${stage}"
+  fi
+}
+
 extract_out_dir() {
   local compile_file="$1"
   local out_dir
@@ -83,9 +110,11 @@ run_example() {
 
 echo "[harness] snapshots"
 bash test/run-snapshots.sh --clippy
+intermediate_cleanup "snapshots"
 
 echo "[harness] upstream stdlib sweep"
 bash test/run-upstream-stdlib-sweep.sh
+intermediate_cleanup "upstream-stdlib-sweep"
 
 # Example compiles trigger cargo builds via the Rust backend. Share one target dir
 # so all example crates reuse artifacts (keeps local/CI runtime reasonable).
