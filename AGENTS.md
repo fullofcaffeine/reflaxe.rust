@@ -155,6 +155,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Snapshot runner gotcha: many snapshot crates share the same crate name (`hx_app`), so `test/run-snapshots.sh` must isolate `CARGO_TARGET_DIR` per case/variant
   (using a shared base cache) to avoid binary collisions and incorrect `stdout.txt` comparisons.
 - Docs tracker gotcha: for progress-doc drift checks, compare docs before/after `npm run docs:sync:progress` (not against git HEAD) so checks work in dirty worktrees too.
+- Docs tracker guard policy: `npm run docs:check:progress` must fail on stale tracker-backed docs even when `bd` is unavailable (fallback source is `.beads/issues.jsonl`, so keep tracker status commits synced via `bd sync`).
 - Disk-space gotcha: full snapshot regeneration and full harness runs can consume many GB in `test/snapshot/**/out*`, `examples/**/out*`, Cargo caches/registries, and `.cache/examples-target`.
   If you hit `No space left on device`, run `npm run clean:artifacts:all` before re-running, then regenerate snapshots.
 - Prefer DRY snapshot cases: use multiple `compile.<variant>.hxml` files in the same `test/snapshot/<case>/`

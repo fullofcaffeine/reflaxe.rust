@@ -88,6 +88,8 @@ Read more: [Profiles guide](docs/profiles.md) and [Rusty profile details](docs/r
 ## Most Useful Commands
 
 - Watch mode for local development: `npm run dev:watch -- --hxml examples/hello/compile.hxml`
+- Refresh tracker-backed status docs: `npm run docs:sync:progress`
+- Verify tracker-backed status docs are in sync: `npm run docs:check:progress`
 - Snapshot tests: `bash test/run-snapshots.sh`
 - Upstream stdlib sweep: `bash test/run-upstream-stdlib-sweep.sh`
 - Windows-safe smoke subset: `bash scripts/ci/windows-smoke.sh`

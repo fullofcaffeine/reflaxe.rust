@@ -23,6 +23,9 @@ const PROGRESS_START = '<!-- GENERATED:progress-status:start -->'
 const PROGRESS_END = '<!-- GENERATED:progress-status:end -->'
 const VISION_START = '<!-- GENERATED:vision-status:start -->'
 const VISION_END = '<!-- GENERATED:vision-status:end -->'
+const BEADS_ISSUES_JSONL = '.beads/issues.jsonl'
+
+let cachedIssuesById = null
 
 function readUtf8(filePath) {
   return fs.readFileSync(filePath, 'utf8')
@@ -32,7 +35,22 @@ function writeUtf8(filePath, content) {
   fs.writeFileSync(filePath, content)
 }
 
-function runIssueShow(issueId) {
+function parseIssueShowJson(raw, commandLabel) {
+  let parsed
+  try {
+    parsed = JSON.parse(raw)
+  } catch (_error) {
+    throw new Error(`Invalid JSON from: ${commandLabel}`)
+  }
+
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error(`Tracker issue not found for: ${commandLabel}`)
+  }
+
+  return parsed[0]
+}
+
+function runIssueShowFromBd(issueId) {
   let raw
   try {
     raw = execFileSync('bd', ['show', issueId, '--json'], {
@@ -41,23 +59,101 @@ function runIssueShow(issueId) {
     })
   } catch (error) {
     const stderr = error && error.stderr ? String(error.stderr) : ''
-    throw new Error(
-      `Failed to read internal tracker issue ${issueId}.` +
-        (stderr.length > 0 ? `\n${stderr.trim()}` : '')
-    )
+    const message =
+      `Failed to read internal tracker issue ${issueId} via bd.` +
+      (stderr.length > 0 ? `\n${stderr.trim()}` : '')
+    throw new Error(message)
   }
 
-  let parsed
+  return parseIssueShowJson(raw, `bd show ${issueId} --json`)
+}
+
+function parseIssueJsonl(line, lineNumber) {
   try {
-    parsed = JSON.parse(raw)
+    return JSON.parse(line)
   } catch (_error) {
-    throw new Error(`Invalid JSON from: bd show ${issueId} --json`)
+    throw new Error(`Invalid JSON in ${BEADS_ISSUES_JSONL}:${lineNumber}`)
+  }
+}
+
+function loadIssuesByIdFromJsonl() {
+  if (cachedIssuesById !== null) {
+    return cachedIssuesById
   }
 
-  if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new Error(`Tracker issue not found: ${issueId}`)
+  const issuesPath = path.resolve(BEADS_ISSUES_JSONL)
+  if (!fs.existsSync(issuesPath)) {
+    throw new Error(`Fallback tracker data not found: ${BEADS_ISSUES_JSONL}`)
   }
-  return parsed[0]
+
+  const issuesById = new Map()
+  const raw = readUtf8(issuesPath)
+  const lines = raw.split(/\r?\n/)
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i].trim()
+    if (line.length === 0) {
+      continue
+    }
+
+    const issue = parseIssueJsonl(line, i + 1)
+    if (issue && typeof issue.id === 'string' && issue.id.length > 0) {
+      issuesById.set(issue.id, issue)
+    }
+  }
+
+  cachedIssuesById = issuesById
+  return issuesById
+}
+
+function runIssueShowFromJsonl(issueId) {
+  const issuesById = loadIssuesByIdFromJsonl()
+  const issue = issuesById.get(issueId)
+  if (!issue) {
+    throw new Error(`Tracker issue not found in ${BEADS_ISSUES_JSONL}: ${issueId}`)
+  }
+
+  const dependencies = Array.isArray(issue.dependencies) ? issue.dependencies : []
+  const expandedDependencies = dependencies.map((dep) => {
+    const dependsOnId =
+      typeof dep.depends_on_id === 'string' && dep.depends_on_id.length > 0
+        ? dep.depends_on_id
+        : ''
+    const relatedIssue = dependsOnId.length > 0 ? issuesById.get(dependsOnId) : null
+
+    return {
+      id: dependsOnId,
+      title: relatedIssue && relatedIssue.title ? relatedIssue.title : dependsOnId || 'unknown',
+      status: relatedIssue && relatedIssue.status ? relatedIssue.status : 'unknown',
+      dependency_type: dep.type || 'unknown'
+    }
+  })
+
+  return {
+    ...issue,
+    dependencies: expandedDependencies
+  }
+}
+
+function resolveIssueReader() {
+  try {
+    const foundationIssue = runIssueShowFromBd(ISSUE_IDS.foundation)
+    return {
+      reader: runIssueShowFromBd,
+      sourceLabel: 'bd',
+      foundationIssue
+    }
+  } catch (error) {
+    const details = error && error.message ? error.message : String(error)
+    process.stderr.write(
+      `[docs] bd unavailable; using ${BEADS_ISSUES_JSONL} fallback for progress sync.\n`
+    )
+    process.stderr.write(`[docs] bd probe details: ${details}\n`)
+    loadIssuesByIdFromJsonl()
+    return {
+      reader: runIssueShowFromJsonl,
+      sourceLabel: BEADS_ISSUES_JSONL
+    }
+  }
 }
 
 function summarizeDependencies(issue) {
@@ -203,9 +299,10 @@ function replaceGeneratedSection(filePath, startMarker, endMarker, replacement) 
 }
 
 function main() {
-  const foundation = runIssueShow(ISSUE_IDS.foundation)
-  const harness = runIssueShow(ISSUE_IDS.harness)
-  const releaseGate = runIssueShow(ISSUE_IDS.releaseGate)
+  const issueReader = resolveIssueReader()
+  const foundation = issueReader.foundationIssue || issueReader.reader(ISSUE_IDS.foundation)
+  const harness = issueReader.reader(ISSUE_IDS.harness)
+  const releaseGate = issueReader.reader(ISSUE_IDS.releaseGate)
   const depSummary = summarizeDependencies(releaseGate)
 
   const data = {
@@ -222,6 +319,7 @@ function main() {
     buildProgressBlock(data)
   )
   replaceGeneratedSection(VISION_DOC, VISION_START, VISION_END, buildVisionBlock(data))
+  process.stdout.write(`[docs] tracker docs synced from ${issueReader.sourceLabel}\n`)
 }
 
 main()

@@ -35,6 +35,7 @@ Actions:
   - `bash scripts/ci/local.sh`
 - Keep `docs/progress-tracker.md` and `docs/vision-vs-implementation.md` in sync:
   - `npm run docs:sync:progress`
+  - `npm run docs:check:progress`
 - Enforce no new undocumented behavior changes in profiles/interop/runtime.
 
 Success signal:
@@ -83,6 +84,7 @@ Success signal:
 
 - Once per week, run and review:
   - `npm run docs:sync:progress`
+  - `npm run docs:check:progress`
   - `bash scripts/ci/local.sh`
 - Log any new production risks immediately in the internal tracker.
 

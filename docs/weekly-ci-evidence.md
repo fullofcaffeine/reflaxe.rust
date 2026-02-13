@@ -16,9 +16,16 @@ Jobs:
 
 1. Linux local-equivalent validation:
    - `npm run docs:sync:progress`
+   - `npm run docs:check:progress` (inside `scripts/ci/local.sh`)
    - `bash scripts/ci/local.sh`
 2. Windows smoke validation:
    - `bash scripts/ci/windows-smoke.sh`
+
+## Docs sync guard discipline
+
+- `npm run docs:check:progress` is a required guard for CI/local-CI.
+- The guard does not skip when `bd` is unavailable; it falls back to `.beads/issues.jsonl`.
+- If tracker-backed sections are stale, regenerate with `npm run docs:sync:progress` and commit docs updates.
 
 ## Where evidence is recorded
 
@@ -46,6 +53,7 @@ Treat regressions as release-discipline work, even when they do not block an imm
 
 ```bash
 npm run docs:sync:progress
+npm run docs:check:progress
 bash scripts/ci/local.sh
 bash scripts/ci/windows-smoke.sh
 ```

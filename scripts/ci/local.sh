@@ -4,6 +4,9 @@ set -euo pipefail
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root_dir"
 
+echo "[ci] docs tracker sync guard"
+npm run docs:check:progress
+
 echo "[ci] rustfmt"
 cargo fmt --check --all
 
