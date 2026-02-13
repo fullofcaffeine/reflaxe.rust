@@ -1,25 +1,29 @@
-# Start Here (for non-compiler users)
+# Start Here (plain-language onboarding)
 
-This guide is for people who want to build Rust apps with Haxe, but are not compiler experts.
-It explains the practical path to success first, then points to deeper technical docs when needed.
+This guide is for teams that want native Rust binaries without becoming compiler experts.
 
-## What `reflaxe.rust` is
+## What this compiler does
 
-`reflaxe.rust` is a Haxe target that compiles Haxe 4.3.7 code into a Rust crate, then builds a native binary via Cargo by default.
+`reflaxe.rust` compiles Haxe 4.3.7 code into a Rust crate and then runs Cargo by default.
 
-In plain terms:
+In practice:
 
-- You write Haxe.
-- The compiler generates Rust in `out/`.
-- Cargo builds your app as a native executable.
+1. You write Haxe.
+2. The target emits Rust into `out/`.
+3. Cargo builds a native executable.
 
-## Choose your profile
+## Two usage styles, three profiles
 
-The project currently supports **three** profiles (not two):
+Most users think in two styles:
 
-1. `portable` (default): best for cross-target Haxe code and teams that do not want to think about Rust details.
-2. `idiomatic`: same semantics as portable, but cleaner Rust output (fewer warnings/noise).
-3. `rusty`: Rust-first APIs (`rust.*`) for teams that want more direct control over ownership/borrowing surfaces.
+- Portable-first: keep code mostly cross-target Haxe.
+- Rust-first: write Haxe with explicit Rust concepts.
+
+Implementation detail: the compiler provides three profiles:
+
+- `portable` (default): safest default, best for Haxe-first teams.
+- `idiomatic`: same semantics as portable, cleaner Rust output.
+- `rusty`: Rust-first APIs and borrow-oriented surface.
 
 Set profile with:
 
@@ -27,13 +31,13 @@ Set profile with:
 -D reflaxe_rust_profile=portable|idiomatic|rusty
 ```
 
-Compatibility alias:
+Alias:
 
 ```bash
 -D rust_idiomatic
 ```
 
-## Fast path: first native app
+## Fast path for first success
 
 1. Install dependencies:
 
@@ -41,7 +45,7 @@ Compatibility alias:
 npm install
 ```
 
-2. Build and run a sample:
+2. Build and run the hello example:
 
 ```bash
 cd examples/hello
@@ -49,42 +53,46 @@ cd examples/hello
 (cd out && cargo run -q)
 ```
 
-3. Run project tests:
+3. Run the CI-style local harness:
 
 ```bash
 npm run test:all
 ```
 
-## What “production ready” means here
+## Recommended profile choice
 
-For this project, 1.0 means:
+- Pick `portable` if your team is mostly Haxe-first.
+- Pick `idiomatic` if you want cleaner generated Rust but no behavior shift.
+- Pick `rusty` if your team wants tighter control over Rust-like ownership/interop surfaces.
 
-- full sys-target stdlib parity for Haxe 4.3.7 (with documented exceptions),
-- stable compiler/runtime behavior across profiles,
-- CI + local harness coverage for compiler output and example apps,
-- clear docs for both Haxe-first and Rust-first users.
+## Interop ladder (use highest-level option first)
 
-Track live status in `docs/progress-tracker.md`.
+1. Pure Haxe + standard library/runtime APIs.
+2. Typed externs + metadata (`@:native`, `@:rustCargo`, `@:rustExtraSrc`).
+3. Framework wrappers around hand-written Rust modules.
+4. Raw `__rust__` escape hatch only when necessary.
 
-## Interop ladder (recommended order)
+Policy target for production apps:
 
-Use the highest-level option that solves your problem:
+- app code stays pure Haxe,
+- low-level Rust stays behind typed boundaries.
 
-1. Pure Haxe + std overrides/runtime APIs.
-2. Typed externs (`@:native`) and metadata (`@:rustCargo`, `@:rustExtraSrc`).
-3. Framework-level wrappers around native Rust modules.
-4. Raw `__rust__` escape hatch (last resort, not app-level default).
+## What "production-ready 1.0" means in this repo
 
-Policy for apps/examples:
+- The release gate epic `haxe.rust-4jb` is closed.
+- Sys-target stdlib parity scope is met and tested.
+- CI harness (`npm run test:all`) is green.
+- Docs match real compiler/runtime behavior.
 
-- avoid direct `__rust__` calls in app code,
-- keep injections behind typed APIs in framework/runtime layers.
+Track status here:
+
+- `docs/progress-tracker.md`
 
 ## Read next
 
-- `docs/progress-tracker.md` (current readiness to 1.0)
-- `docs/vision-vs-implementation.md` (what matches the original vision, what still gaps)
-- `docs/profiles.md` (portable/idiomatic/rusty model)
-- `docs/workflow.md` (build knobs and Cargo controls)
-- `docs/rusty-profile.md` (Rust-first authoring style)
-- `docs/v1.md` (technical support matrix)
+- `docs/production-readiness.md`
+- `docs/road-to-1.0.md`
+- `docs/profiles.md`
+- `docs/defines-reference.md`
+- `docs/vision-vs-implementation.md`
+- `docs/workflow.md`

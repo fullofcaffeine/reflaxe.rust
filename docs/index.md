@@ -1,32 +1,32 @@
 # Documentation Index
 
-Use this page as the top-level map for `reflaxe.rust` docs.
+Use this page as the map for `reflaxe.rust` docs.
 
-## If you are new here
+## Quick start by audience
 
-- `docs/start-here.md`: plain-language onboarding, profile choice, and first app workflow.
-- `docs/progress-tracker.md`: current path to production-ready 1.0 (tied to Beads).
-- `docs/vision-vs-implementation.md`: what already matches the vision and what is still open.
+- New to compiler internals: `docs/start-here.md`
+- Planning production rollout: `docs/production-readiness.md`
+- Planning release closeout: `docs/road-to-1.0.md`
+- Using the release-gate template: `docs/release-gate-closeout.md`
+- Tracking 1.0 status: `docs/progress-tracker.md`
+- Checking vision vs reality: `docs/vision-vs-implementation.md`
 
-## Build and release workflow
+## Core product docs
 
-- `docs/workflow.md`: Haxe -> Rust -> Cargo flow and build defines.
-- `docs/release.md`: semantic-release, changelog, and GitHub release flow.
-- `docs/install-via-lix.md`: GitHub/lix setup.
+- `docs/profiles.md`: portable vs idiomatic vs rusty, and when to choose each.
+- `docs/defines-reference.md`: practical `-D` reference for build/profile/CI knobs.
+- `docs/v1.md`: technical support matrix and parity constraints.
+- `docs/workflow.md`: Haxe -> Rust -> Cargo workflow.
+- `docs/install-via-lix.md`: toolchain setup.
 
-## Profile model
+## Rust interop and runtime
 
-- `docs/profiles.md`: portable vs idiomatic vs rusty (quick comparison).
-- `docs/rusty-profile.md`: Rust-first authoring model and boundaries.
-- `docs/v1.md`: v1 support matrix and technical constraints.
+- `docs/interop.md`: externs, metadata-driven Cargo deps, extra Rust modules, and escape hatch policy.
+- `docs/rusty-profile.md`: Rust-first authoring model details.
+- `docs/threading.md`: threading model and runtime guarantees.
+- `docs/tui.md`: deterministic TUI testing approach.
 
-## Interop and runtime details
-
-- `docs/interop.md`: typed Rust interop (`@:native`, metadata-driven deps, extra source).
-- `docs/threading.md`: threading model and runtime behavior.
-- `docs/tui.md`: ratatui/test backend approach for deterministic TUI testing.
-
-## Feature deep dives
+## Language and codegen deep dives
 
 - `docs/array.md`
 - `docs/generics.md`
@@ -35,3 +35,7 @@ Use this page as the top-level map for `reflaxe.rust` docs.
 - `docs/lambda.md`
 - `docs/null-option.md`
 - `docs/operators.md`
+
+## Release and governance
+
+- `docs/release.md`: semantic-release flow and release artifacts.

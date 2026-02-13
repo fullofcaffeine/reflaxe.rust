@@ -2,6 +2,33 @@
 
 [![Version](https://img.shields.io/badge/version-0.53.0-blue)](https://github.com/fullofcaffeine/reflaxe.rust/releases)
 
+Haxe (4.3.7) -> Rust target built on Reflaxe.
+
+## Start Here (1.0 docs and quickstart)
+
+- Plain-language onboarding: `docs/start-here.md`
+- Production rollout guidance: `docs/production-readiness.md`
+- 1.0 execution playbook: `docs/road-to-1.0.md`
+- 1.0 gate closeout template: `docs/release-gate-closeout.md`
+- Live 1.0 tracker (Beads-backed): `docs/progress-tracker.md`
+- Vision vs implementation reality check: `docs/vision-vs-implementation.md`
+- Profile model (portable/idiomatic/rusty): `docs/profiles.md`
+- Defines reference: `docs/defines-reference.md`
+- Full docs map: `docs/index.md`
+- Technical support matrix: `docs/v1.md`
+
+Keep tracker status synchronized from Beads:
+
+```bash
+npm run docs:sync:progress
+```
+
+Check for tracker drift (non-zero exit if stale):
+
+```bash
+npm run docs:check:progress
+```
+
 ## Build a native binary
 
 After codegen (`-D rust_output=...`) the compiler invokes Cargo by default (debug build).
@@ -23,20 +50,9 @@ After codegen (`-D rust_output=...`) the compiler invokes Cargo by default (debu
 - Production 1.0 parity gate (active): `bd graph haxe.rust-4jb --compact`
 - Human-readable readiness tracker: `docs/progress-tracker.md`
 
-Haxe (4.3.7) → Rust target built on Reflaxe.
-
 ## Install (lix, GitHub-only)
 
 See `docs/install-via-lix.md`.
-
-## 1.0 Progress & Docs Index
-
-- Start here (non-expert friendly): `docs/start-here.md`
-- Live production-readiness tracker: `docs/progress-tracker.md`
-- Vision vs current implementation: `docs/vision-vs-implementation.md`
-- Full docs map: `docs/index.md`
-- Profile model (portable/idiomatic/rusty): `docs/profiles.md`
-- Technical support matrix: `docs/v1.md`
 
 ## Quickstart
 
@@ -105,15 +121,17 @@ cd examples/serde_json
 
 ## Useful defines
 
-- `-D rust_output=out` — output directory (Cargo project is generated under this folder).
-- `-D rust_crate=<name>` — Cargo crate name.
-- `-D rust_no_gitignore` — opt-out of emitting a minimal Cargo-style `.gitignore` in the generated crate.
-- `-D rust_idiomatic` (or `-D reflaxe_rust_profile=idiomatic`) — enable more idiomatic Rust output (e.g. `let` vs `let mut` inference).
-- `-D reflaxe_rust_profile=rusty` — enable the “rusty” profile (Rust-facing APIs under `rust.*`).
-- `-D rust_cargo_deps_file=<path>` — TOML lines appended under `[dependencies]` in generated `Cargo.toml` (fallback; prefer `@:rustCargo`).
-- `-D rust_cargo_toml=<path>` — override the entire generated `Cargo.toml` (supports `{{crate_name}}` placeholder).
-- `-D rust_extra_src=<dir>` — copy `*.rs` files from a directory into `out/src/` and auto-`mod` them from `main.rs`.
-- `-D rustfmt` — run `cargo fmt` on the generated crate after compilation (best-effort).
+- `-D rust_output=out` - output directory (Cargo project is generated under this folder).
+- `-D rust_crate=<name>` - Cargo crate name.
+- `-D rust_no_gitignore` - opt-out of emitting a minimal Cargo-style `.gitignore` in the generated crate.
+- `-D rust_idiomatic` (or `-D reflaxe_rust_profile=idiomatic`) - enable more idiomatic Rust output (for example `let` vs `let mut` inference).
+- `-D reflaxe_rust_profile=rusty` - enable Rust-first profile surfaces under `rust.*`.
+- `-D rust_cargo_deps_file=<path>` - TOML lines appended under `[dependencies]` in generated `Cargo.toml` (fallback; prefer `@:rustCargo`).
+- `-D rust_cargo_toml=<path>` - override the entire generated `Cargo.toml` (supports `{{crate_name}}` placeholder).
+- `-D rust_extra_src=<dir>` - copy `*.rs` files from a directory into `out/src/` and auto-`mod` them from `main.rs`.
+- `-D rustfmt` - run `cargo fmt` on the generated crate after compilation (best-effort).
+
+See `docs/defines-reference.md` for the full reference.
 
 ## Rust-native interop (framework-first)
 
@@ -122,11 +140,9 @@ cd examples/serde_json
 - Derives: `@:rustDerive(["serde::Serialize"])` on classes/enums
 - Generic bounds (minimal): `@:rustGeneric("T: serde::Serialize")` on methods with type params
 
-See `docs/rusty-profile.md` for the `rusty` profile design and `rust.*` APIs.
+See `docs/rusty-profile.md` for the Rust-first profile design and `rust.*` APIs.
 
-See `docs/profiles.md` for an overview of portable vs idiomatic vs rusty.
-
-See `docs/workflow.md` for the full Haxe→Rust→Cargo workflow (defines, release builds, targets).
+See `docs/workflow.md` for the full Haxe->Rust->Cargo workflow (defines, release builds, targets).
 
 See `docs/release.md` for how releases (semver + changelog + GitHub artifacts) are produced.
 

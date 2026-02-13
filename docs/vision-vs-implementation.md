@@ -1,81 +1,81 @@
-# Vision vs Implementation (reality check)
+# Vision vs Implementation (plain-language reality check)
 
-This document validates the project vision against what is implemented today.
-It is written for users who want an honest production-readiness picture without reading compiler internals first.
+This document checks whether the original product vision matches what is implemented today.
 
-## Vision statement (simplified)
+## Vision in one paragraph
 
-The intended product is:
+`reflaxe.rust` should let teams ship native Rust binaries from Haxe with two practical authoring styles:
 
-- a production-grade Haxe 4.3.7 -> Rust target,
-- usable by non-Rust experts in a portable mode,
-- with an opt-in Rust-first mode for low-level control,
-- while still allowing escape hatches when needed.
+- portable Haxe-first development,
+- Rust-first development when lower-level control is needed,
 
-## Alignment matrix
+while preserving escape hatches behind typed boundaries.
 
-### 1) “Compile Haxe to native Rust binaries by default”
+## Live implementation status (auto-generated)
 
-- Status: **Aligned**
-- Evidence:
-  - `-D rust_output=...` generates a Cargo crate.
-  - compiler runs Cargo build by default unless `-D rust_no_build` is set.
-- Notes:
-  - this is already the default workflow for examples and CI.
+<!-- GENERATED:vision-status:start -->
+_Generated from Beads on 2026-02-13 via `npm run docs:sync:progress`._
 
-### 2) “Two usage styles: portable and Rust-first”
+| Vision checkpoint | Source | Status |
+| --- | --- | --- |
+| Milestone roadmap complete | `haxe.rust-oo3` | closed |
+| Real-app harness complete | `haxe.rust-cu0` | closed |
+| 1.0 parity gate | `haxe.rust-4jb` | closed |
 
-- Status: **Mostly aligned, with one clarification**
-- Clarification:
-  - implementation has **three** profiles: `portable`, `idiomatic`, `rusty`.
-  - `idiomatic` is a middle ground: same semantics as portable, cleaner Rust output.
-- Practical guidance:
-  - choose `portable` for cross-target code,
-  - `idiomatic` for cleaner generated Rust without changing app model,
-  - `rusty` for Rust-oriented APIs and ownership-aware authoring.
+- 1.0 parity dependencies closed: **21 / 21 (100%)**
+- 1.0 parity dependencies still open: **0**
+<!-- GENERATED:vision-status:end -->
 
-### 3) “Users should not need raw Rust in app code”
+## Alignment by major promise
 
-- Status: **Aligned (policy + enforcement available)**
-- Evidence:
-  - repo policy: apps/examples should avoid direct `__rust__`.
-  - strict define for examples/tests: `-D reflaxe_rust_strict_examples`.
-  - interop path exists through typed externs/metadata and framework wrappers.
-- Remaining risk:
-  - complex interop areas still need continued std/runtime wrapper expansion to keep app code fully typed.
+### 1) Native binary workflow should be the default
 
-### 4) “Full stdlib/sys parity for production 1.0”
+Status: aligned
 
-- Status: **Partially aligned (critical work remains)**
-- Evidence:
-  - parity epic exists and is the formal 1.0 gate: `haxe.rust-4jb`.
-  - most dependency work is already closed.
-  - one P0 blocker remains in progress: `haxe.rust-f63` (String nullability representation).
-- Impact:
-  - until `f63` closes, full parity claim is incomplete.
+- `-D rust_output=...` generates a Cargo crate.
+- Cargo build runs by default unless `-D rust_no_build` or `-D rust_codegen_only` is set.
 
-### 5) “Battle-tested with a real app harness”
+### 2) Product should support both portable and Rust-first usage
 
-- Status: **Partially aligned**
-- Evidence:
-  - advanced TUI harness epic exists: `haxe.rust-cu0`.
-  - most children are done (scripted scenarios, persistence, multi-screen runtime).
-  - animations/effects task still open: `haxe.rust-vrd`.
-- Impact:
-  - compiler is already exercised by non-trivial app flows, but harness polish/depth is still expanding.
+Status: aligned, with one important clarification
 
-## Gaps to close before 1.0 claim
+- User-facing model: portable-first and Rust-first workflows.
+- Implementation model: three profiles (`portable`, `idiomatic`, `rusty`).
+- `idiomatic` is intentionally a bridge profile, not a separate philosophy.
 
-1. Close `haxe.rust-f63` (nullable string representation end-to-end).
-2. Finish docs parity task `haxe.rust-cfh` (stability contract docs match runtime/codegen reality).
-3. Complete remaining advanced TUI harness work (`haxe.rust-vrd`) and keep it in CI.
-4. Keep `test:all` as required green gate on every push/PR.
+### 3) Users should not need raw Rust in app code
 
-## What this means for users today
+Status: aligned with enforcement options
 
-- You can already build and ship real native Rust apps with this target.
-- The safest current production posture is:
-  - use `portable` or `idiomatic` unless you need Rust-first APIs,
-  - use typed interop (`extern`/metadata/wrappers) before raw injections,
-  - keep CI strict with `npm run test:all`.
-- Treat 1.0 as “close, but not final” until the remaining P0/P1 parity work closes.
+- Typed interop surfaces exist (`extern`, `@:native`, `@:rustCargo`, extra source metadata).
+- Strict modes exist to prevent direct injection in app-facing code paths.
+- Escape hatch still exists for framework/runtime internals.
+
+### 4) 1.0 should represent production-grade stdlib/sys parity
+
+Status: aligned
+
+- The dedicated release gate (`haxe.rust-4jb`) is closed.
+- Closeout evidence includes green `scripts/ci/local.sh` and `scripts/ci/windows-smoke.sh` on 2026-02-13.
+- Remaining focus is sustained validation quality as new changes land.
+
+### 5) Product should be battle-tested by a real application harness
+
+Status: aligned
+
+- Advanced TUI harness epic (`haxe.rust-cu0`) is closed.
+- Harness coverage remains part of CI-style checks.
+
+## Post-1.0 watchlist
+
+1. CI stability should hold across repeated runs, not only one green pass.
+2. Docs and defines reference must stay synchronized with implementation changes.
+3. Cross-platform sys behavior edge cases should be logged in Beads as soon as they appear.
+
+## Related docs
+
+- `docs/progress-tracker.md`
+- `docs/production-readiness.md`
+- `docs/profiles.md`
+- `docs/defines-reference.md`
+- `docs/road-to-1.0.md`

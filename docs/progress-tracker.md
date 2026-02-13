@@ -1,71 +1,70 @@
 # Compiler Progress Tracker (toward 1.0)
 
-Last updated: 2026-02-12
+This page answers, in plain language, how close `reflaxe.rust` is to a production-ready 1.0.
 
-This is the non-expert view of where `reflaxe.rust` stands for production use.
-It maps directly to Beads issues so status is auditable and not hand-wavy.
+The status section is generated from Beads so this document does not drift from actual issue state.
 
-## Executive summary
+## Live status (auto-generated)
 
-- Core compiler roadmap epic (`haxe.rust-oo3`) is complete.
-- 1.0 parity epic (`haxe.rust-4jb`) is still open because one P0 blocker is in progress and one docs task is in progress.
-- Advanced TUI harness epic (`haxe.rust-cu0`) is complete (including deterministic animation/effects coverage).
+<!-- GENERATED:beads-progress:start -->
+_Generated from Beads on 2026-02-13 via `npm run docs:sync:progress`._
 
-## Progress at a glance
+| Workstream | Bead | Status |
+| --- | --- | --- |
+| Foundation milestone roadmap | `haxe.rust-oo3` | closed |
+| Advanced TUI stress harness | `haxe.rust-cu0` | closed |
+| 1.0 release gate | `haxe.rust-4jb` | closed |
 
-Use this as a planning signal, not an SLA.
+- Release-gate dependency completion: **21 / 21 closed (100%)**
+- Remaining release-gate dependencies: **0**
+<!-- GENERATED:beads-progress:end -->
 
-- **Foundation compiler milestones**: complete (`haxe.rust-oo3`)
-- **v1.0 stdlib/sys parity**: mostly complete, blocked by `haxe.rust-f63` (String nullability representation)
-- **Docs and onboarding quality**: in progress (`haxe.rust-cfh`)
-- **Battle-test example harness**: complete (`haxe.rust-cu0`)
+## 1.0 gate checklist (now satisfied)
 
-## Live workstreams (direct Beads mapping)
+These conditions were used to determine whether 1.0 was defensible for production:
 
-### 1) P0 release blocker: String nullability
+1. The release gate epic `haxe.rust-4jb` is closed.
+2. No P0 or P1 blockers remain for sys-target parity.
+3. CI-equivalent checks pass (`npm run test:all`, plus workflow checks in CI).
+4. Portable and rusty example paths continue to compile and run.
+5. Docs remain aligned with current implementation and policy.
 
-- Issue: `haxe.rust-f63` (in progress)
-- Why it matters: Haxe `String` is nullable by default; Rust `String` is not.
-- Current state: nullable representation exists in runtime (`HxString`), but switching all typed call paths is incomplete and causes broad type mismatches.
-- Exit condition:
-  - `var s:String = null; Sys.println(s);` behaves correctly,
-  - string concat with null matches Haxe semantics,
-  - snapshots/examples remain green.
+Current state: all five conditions are satisfied.
 
-### 2) P1 docs parity task
+## Confidence windows (planning aid, not SLA)
 
-- Issue: `haxe.rust-cfh` (open)
-- Why it matters: docs currently mix old/new runtime assumptions and are hard for non-compiler users.
-- Exit condition:
-  - docs reflect current runtime/emission model,
-  - profile behavior and known limitations are explicit and consistent,
-  - onboarding path is clear for both Haxe-first and Rust-first teams.
+These windows are confidence-based and depend on no major regressions appearing during validation.
 
-### 3) Advanced TUI harness as production stress-test
+- High confidence: 1 to 2 weeks.
+  - Conditions: release-gate closeout is completed, CI stays green, no new P0/P1 regressions.
+- Medium confidence: 2 to 6 weeks.
+  - Conditions: one or two meaningful regressions or cross-platform gaps appear and need follow-up.
+- Low confidence: 6+ weeks.
+  - Conditions: major parity regressions or runtime behavior changes reopen the release gate.
 
-- Epic: `haxe.rust-cu0` (closed)
-- Why it matters: this app is the “real app” harness that catches compiler/runtime edge cases and verifies profile behavior under richer UI state/event flows.
-- Current state:
-  - deterministic headless rendering assertions in `cargo test`
-  - portable + rusty CI variants in the harness matrix
-  - deterministic FX rendering (`FxKind` + `UiNode.FxText`) covered by tests
+## Current interpretation (February 13, 2026)
 
-## 1.0 exit criteria (plain language)
+- Foundation roadmap is complete.
+- Advanced TUI stress harness is complete.
+- The 1.0 gate is closed in Beads.
+- Current work should focus on post-1.0 regression discipline (CI cadence, docs sync, and fast issue capture when regressions appear).
 
-We should only call the compiler 1.0 production-ready when all of the following are true:
+## Risk radar
 
-1. `haxe.rust-4jb` is closed.
-2. No P0/P1 readiness blockers remain open in Beads.
-3. `npm run test:all` is green locally and in CI on push/PR.
-4. Example matrix compiles/runs across portable + rusty variants (including `examples/tui_todo` harness checks).
-5. Public docs match real behavior (profiles, runtime semantics, interop rules, known limitations).
+- Cross-platform drift can still appear late when sys APIs are exercised in less common combinations.
+- String mode/profile behavior must remain clearly documented to avoid user confusion.
+- Escape-hatch usage can hide portability regressions if not kept behind typed boundaries.
 
-## How to check status yourself
+## How to refresh this page
 
 ```bash
-bd graph haxe.rust-4jb --compact
-bd ready
-npm run test:all
+npm run docs:sync:progress
 ```
 
-If these disagree with this doc, trust Beads/CI first and update this file.
+## Related docs
+
+- `docs/production-readiness.md`
+- `docs/vision-vs-implementation.md`
+- `docs/v1.md`
+- `docs/start-here.md`
+- `docs/road-to-1.0.md`

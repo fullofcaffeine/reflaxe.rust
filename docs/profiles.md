@@ -1,61 +1,65 @@
 # Profiles (`-D reflaxe_rust_profile=...`)
 
-`reflaxe.rust` supports three output profiles. Profiles are compile-time flags that trade off Haxe
-portability vs Rust idioms.
+This target supports three compile-time profiles.
 
-Select a profile via:
+## Why this matters
 
-- `-D reflaxe_rust_profile=portable|idiomatic|rusty`
+Users usually talk about two modes:
 
-Compatibility note:
+- portable Haxe workflows,
+- rusty Haxe workflows.
 
-- `-D rust_idiomatic` is an alias for `-D reflaxe_rust_profile=idiomatic`.
+The compiler adds a practical middle option (`idiomatic`) so teams can improve Rust output quality without changing app semantics.
 
-## Portable (default)
+## Profile selector
 
-Goal: compile “normal Haxe” with predictable Haxe semantics.
+```bash
+-D reflaxe_rust_profile=portable|idiomatic|rusty
+```
 
-- Prioritizes Haxe aliasing and reuse semantics over Rust ownership purity.
-- Uses runtime wrappers when needed (for example `Array<T>` is `hxrt::array::Array<T>`).
-- Default choice for portable libraries and cross-target code.
+Compatibility alias:
 
-## Idiomatic
+```bash
+-D rust_idiomatic
+```
 
-Goal: keep Portable semantics, but emit cleaner Rust.
+## Profile comparison
 
-- Same runtime representation as Portable.
-- Tries to reduce noise and warnings (clone elision, cleaner blocks, avoid unreachable code, etc.).
-- Intended to be rustfmt-clean and warning-free for core examples/snapshots.
+| Profile | Who it is for | Semantics | Output style |
+| --- | --- | --- | --- |
+| `portable` (default) | Haxe-first teams and cross-target code | Prioritizes Haxe portability | Predictable, may be less Rust-idiomatic |
+| `idiomatic` | Teams that want cleaner Rust output | Same as portable | Cleaner blocks, fewer warnings/noise |
+| `rusty` | Rust-aware teams using lower-level control | Rust-first APIs (`rust.*`) | More explicit ownership/borrow-oriented output |
 
-## Rusty
+## String representation defaults
 
-Goal: opt into a Rust-first surface while still writing Haxe syntax.
+- Portable and idiomatic default to nullable string mode.
+- Rusty defaults to legacy non-null Rust `String` mode.
+- You can override explicitly with:
+  - `-D rust_string_nullable`
+  - `-D rust_string_non_nullable`
 
-- Enables the Rust-facing APIs under `std/rust/*` (Vec/Slice/Str/Option/Result, borrow helpers).
-- Prefers borrow-first APIs (`rust.Ref`, `rust.MutRef`, slices) so Rust output can be more idiomatic
-  without silently cloning/moving.
-- Still aims to keep app code “pure Haxe” (see injection policy below).
+## Injection and boundary policy
 
-Details: `docs/rusty-profile.md`.
+For production apps and examples, preferred policy is:
 
-## Injection policy (apps stay pure)
+- no direct `__rust__` in app code,
+- keep Rust details behind typed APIs (externs, wrappers, runtime/std layers).
 
-Rule:
+Repo enforcement options:
 
-- Apps/examples should not call `__rust__` directly.
-- Rust injections belong in framework code (`std/`, runtime, or dedicated interop modules) behind
-  typed APIs (externs/abstracts/macros).
+- `-D reflaxe_rust_strict_examples` for examples/snapshots.
+- `-D reflaxe_rust_strict` for user projects that want strict enforcement.
 
-Enforcement:
+## Where profile behavior is validated
 
-- Examples and snapshot tests compile with `-D reflaxe_rust_strict_examples`.
+- Snapshot matrix under `test/snapshot/*`.
+- Rusty-specific variants under `compile.rusty.hxml` and `intended_rusty/` cases.
+- Full CI-style local validation via `npm run test:all`.
 
-## Where profile differences are tested
+## Related docs
 
-- Rusty-specific snapshots live under `test/snapshot/rusty_*`.
-- Some cases (for example `test/snapshot/tui_todo`) include `compile.rusty.hxml` variants.
-
-See also:
-
-- `docs/v1.md` for the v1.0 support matrix and build workflow.
-
+- `docs/start-here.md`
+- `docs/rusty-profile.md`
+- `docs/v1.md`
+- `docs/defines-reference.md`
