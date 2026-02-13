@@ -4,38 +4,40 @@ Use this page as the map for `reflaxe.rust` docs.
 
 ## Quick start by audience
 
-- New to compiler internals: `docs/start-here.md`
-- Planning production rollout: `docs/production-readiness.md`
-- Planning release closeout: `docs/road-to-1.0.md`
-- Using the release-gate template: `docs/release-gate-closeout.md`
-- Tracking 1.0 status: `docs/progress-tracker.md`
-- Checking vision vs reality: `docs/vision-vs-implementation.md`
+- New to compiler internals: [Start Here](start-here.md)
+- Need a fast local rebuild loop: [Dev Watcher](dev-watcher.md)
+- Planning production rollout: [Production Readiness](production-readiness.md)
+- Planning release closeout: [Road to 1.0](road-to-1.0.md)
+- Using the release-gate template: [Release Gate Closeout](release-gate-closeout.md)
+- Tracking 1.0 status: [Progress Tracker](progress-tracker.md)
+- Checking vision vs reality: [Vision vs Implementation](vision-vs-implementation.md)
 
 ## Core product docs
 
-- `docs/profiles.md`: portable vs idiomatic vs rusty, and when to choose each.
-- `docs/defines-reference.md`: practical `-D` reference for build/profile/CI knobs.
-- `docs/v1.md`: technical support matrix and parity constraints.
-- `docs/workflow.md`: Haxe -> Rust -> Cargo workflow.
-- `docs/install-via-lix.md`: toolchain setup.
+- [Profiles](profiles.md): portable vs idiomatic vs rusty, and when to choose each.
+- [Defines reference](defines-reference.md): practical `-D` reference for build/profile/CI knobs.
+- [v1 support matrix](v1.md): technical support matrix and parity constraints.
+- [Workflow](workflow.md): Haxe -> Rust -> Cargo workflow.
+- [Dev Watcher](dev-watcher.md): local edit-compile-run watch loop.
+- [Install via lix](install-via-lix.md): toolchain setup.
 
 ## Rust interop and runtime
 
-- `docs/interop.md`: externs, metadata-driven Cargo deps, extra Rust modules, and escape hatch policy.
-- `docs/rusty-profile.md`: Rust-first authoring model details.
-- `docs/threading.md`: threading model and runtime guarantees.
-- `docs/tui.md`: deterministic TUI testing approach.
+- [Interop](interop.md): externs, metadata-driven Cargo deps, extra Rust modules, and escape hatch policy.
+- [Rusty profile](rusty-profile.md): Rust-first authoring model details.
+- [Threading](threading.md): threading model and runtime guarantees.
+- [TUI](tui.md): deterministic TUI testing approach.
 
 ## Language and codegen deep dives
 
-- `docs/array.md`
-- `docs/generics.md`
-- `docs/abstracts-and-casts.md`
-- `docs/function-values.md`
-- `docs/lambda.md`
-- `docs/null-option.md`
-- `docs/operators.md`
+- [Array](array.md)
+- [Generics](generics.md)
+- [Abstracts and casts](abstracts-and-casts.md)
+- [Function values](function-values.md)
+- [Lambda](lambda.md)
+- [Null option](null-option.md)
+- [Operators](operators.md)
 
 ## Release and governance
 
-- `docs/release.md`: semantic-release flow and release artifacts.
+- [Release](release.md): semantic-release flow and release artifacts.

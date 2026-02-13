@@ -1,4 +1,4 @@
-# Workflow (Haxe → Rust → native)
+# Workflow (Haxe -> Rust -> native)
 
 `reflaxe.rust` generates a Cargo crate under `-D rust_output=...`.
 
@@ -10,6 +10,23 @@ By default it then runs Cargo (debug build). You can opt out to generate Rust on
 - Opt-out (codegen only): `-D rust_no_build` (alias: `-D rust_codegen_only`)
 - Release: `-D rust_build_release` (alias: `-D rust_release`)
 - Optional rustfmt: `-D rustfmt` (best-effort `cargo fmt` after output generation)
+
+## Fast local loop (watch mode)
+
+Use the watcher when you want fast feedback while editing:
+
+```bash
+npm run dev:watch -- --hxml examples/hello/compile.hxml
+```
+
+Common variants:
+
+- Compile + run on change (default): `--mode run`
+- Compile + test on change: `--mode test`
+- Compile only on change: `--mode build`
+- One cycle without watcher: `--once`
+
+Full guide: [Dev Watcher](dev-watcher.md).
 
 ## Cargo knobs (defines)
 

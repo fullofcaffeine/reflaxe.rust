@@ -59,6 +59,16 @@ npx haxe compile.hxml
 npm run test:all
 ```
 
+## Faster local loop while you iterate
+
+When you want instant feedback after each file save, use the watcher:
+
+```bash
+npm run dev:watch -- --hxml examples/hello/compile.hxml
+```
+
+Detailed watcher docs: [Dev Watcher](dev-watcher.md).
+
 ## Recommended profile choice
 
 - Pick `portable` if your team is mostly Haxe-first.
@@ -86,13 +96,14 @@ Policy target for production apps:
 
 Track status here:
 
-- `docs/progress-tracker.md`
+- [Progress Tracker](progress-tracker.md)
 
 ## Read next
 
-- `docs/production-readiness.md`
-- `docs/road-to-1.0.md`
-- `docs/profiles.md`
-- `docs/defines-reference.md`
-- `docs/vision-vs-implementation.md`
-- `docs/workflow.md`
+- [Dev Watcher](dev-watcher.md)
+- [Production Readiness](production-readiness.md)
+- [Road to 1.0](road-to-1.0.md)
+- [Profiles](profiles.md)
+- [Defines reference](defines-reference.md)
+- [Vision vs Implementation](vision-vs-implementation.md)
+- [Workflow](workflow.md)

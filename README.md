@@ -11,6 +11,7 @@ This project lets you write Haxe and ship native Rust binaries, with a path for 
 
 - New here: [Start Here guide](docs/start-here.md)
 - Production rollout: [Production Readiness guide](docs/production-readiness.md)
+- Fast edit-compile-run loop: [Dev Watcher guide](docs/dev-watcher.md)
 - Full docs map: [Documentation Index](docs/index.md)
 
 ## Quick Start (First Successful Run)
@@ -41,6 +42,21 @@ npm test
 npm run test:all
 ```
 
+## Fast Dev Loop (Watcher)
+
+Install watcher engine once:
+
+- Homebrew: [`brew install watchexec`](https://formulae.brew.sh/formula/watchexec)
+- Cargo: [`cargo install watchexec-cli`](https://crates.io/crates/watchexec-cli)
+
+Then run:
+
+```bash
+npm run dev:watch -- --hxml examples/hello/compile.hxml
+```
+
+More usage options: [Dev Watcher guide](docs/dev-watcher.md).
+
 ## Pick Your Profile
 
 Use `-D reflaxe_rust_profile=portable|idiomatic|rusty`.
@@ -67,6 +83,7 @@ Read more: [Profiles guide](docs/profiles.md) and [Rusty profile details](docs/r
 
 ## Most Useful Commands
 
+- Watch mode for local development: `npm run dev:watch -- --hxml examples/hello/compile.hxml`
 - Snapshot tests: `bash test/run-snapshots.sh`
 - Upstream stdlib sweep: `bash test/run-upstream-stdlib-sweep.sh`
 - Windows-safe smoke subset: `bash scripts/ci/windows-smoke.sh`

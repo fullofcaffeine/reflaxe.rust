@@ -23,6 +23,7 @@
     "test:all": "bash scripts/ci/harness.sh",
     "test:all:keep": "KEEP_ARTIFACTS=1 bash scripts/ci/harness.sh",
     "ci:local": "bash scripts/ci/local.sh",
+    "dev:watch": "bash scripts/dev/watch-haxe-rust.sh",
     "clean:artifacts": "bash scripts/ci/clean-artifacts.sh --outputs",
     "clean:artifacts:all": "bash scripts/ci/clean-artifacts.sh --all",
     "hooks:install": "bash scripts/install-git-hooks.sh",
