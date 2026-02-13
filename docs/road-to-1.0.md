@@ -90,6 +90,7 @@ Automation status:
 
 - The cadence above is automated in `.github/workflows/weekly-ci-evidence.yml`.
 - See `docs/weekly-ci-evidence.md` for evidence format and regression follow-up protocol.
+- Use `docs/sys-regression-watchlist.md` as the live intake board for cross-platform `sys.*` regressions.
 
 ## Common failure modes to avoid
 
@@ -114,3 +115,4 @@ Automation status:
 - `docs/release-gate-closeout.md`
   - helper command: `npm run docs:prep:closeout`
 - `docs/weekly-ci-evidence.md`
+- `docs/sys-regression-watchlist.md`
