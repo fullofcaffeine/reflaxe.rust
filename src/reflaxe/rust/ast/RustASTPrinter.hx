@@ -22,8 +22,8 @@ class RustASTPrinter {
 	static inline var PREC_POSTFIX = 90; // call/field/index
 	static inline var PREC_PRIMARY = 100;
 
-	public static function printFile(file: RustAST.RustFile): String {
-		var parts: Array<String> = [];
+	public static function printFile(file:RustAST.RustFile):String {
+		var parts:Array<String> = [];
 		for (item in file.items) {
 			parts.push(printItem(item));
 		}
@@ -36,11 +36,11 @@ class RustASTPrinter {
 	 *
 	 * This intentionally prints a single expression without any surrounding context.
 	 */
-	public static function printExprForInjection(e: RustAST.RustExpr): String {
+	public static function printExprForInjection(e:RustAST.RustExpr):String {
 		return printExprPrec(e, 0, PREC_LOWEST);
 	}
 
-	static function printItem(item: RustAST.RustItem): String {
+	static function printItem(item:RustAST.RustItem):String {
 		return switch (item) {
 			case RFn(f): printFunction(f, 0);
 			case RStruct(s): printStruct(s);
@@ -50,7 +50,7 @@ class RustASTPrinter {
 		}
 	}
 
-	static function visibilityToken(vis: Null<RustAST.RustVisibility>, isPub: Bool): Null<String> {
+	static function visibilityToken(vis:Null<RustAST.RustVisibility>, isPub:Bool):Null<String> {
 		var v = vis != null ? vis : (isPub ? RustAST.RustVisibility.VPub : RustAST.RustVisibility.VPrivate);
 		return switch (v) {
 			case VPrivate: null;
@@ -59,12 +59,12 @@ class RustASTPrinter {
 		}
 	}
 
-	static function visibilityPrefix(vis: Null<RustAST.RustVisibility>, isPub: Bool): String {
+	static function visibilityPrefix(vis:Null<RustAST.RustVisibility>, isPub:Bool):String {
 		var t = visibilityToken(vis, isPub);
 		return t == null ? "" : (t + " ");
 	}
 
-	static function printStruct(s: RustAST.RustStruct): String {
+	static function printStruct(s:RustAST.RustStruct):String {
 		var head = visibilityPrefix(s.vis, s.isPub) + "struct " + s.name;
 		if (s.generics != null && s.generics.length > 0) {
 			head += "<" + s.generics.join(", ") + ">";
@@ -73,7 +73,7 @@ class RustASTPrinter {
 			return head + " { }";
 		}
 
-		var lines: Array<String> = [];
+		var lines:Array<String> = [];
 		for (f in s.fields) {
 			var prefix = visibilityPrefix(f.vis, f.isPub);
 			lines.push("    " + prefix + f.name + ": " + printType(f.ty) + ",");
@@ -81,8 +81,8 @@ class RustASTPrinter {
 		return head + " {\n" + lines.join("\n") + "\n}";
 	}
 
-	static function printEnum(e: RustAST.RustEnum): String {
-		var parts: Array<String> = [];
+	static function printEnum(e:RustAST.RustEnum):String {
+		var parts:Array<String> = [];
 		if (e.derives.length > 0) {
 			parts.push("#[derive(" + e.derives.join(", ") + ")]");
 		}
@@ -93,7 +93,7 @@ class RustASTPrinter {
 			return parts.join("\n");
 		}
 
-		var lines: Array<String> = [];
+		var lines:Array<String> = [];
 		for (v in e.variants) {
 			if (v.args.length == 0) {
 				lines.push("    " + v.name + ",");
@@ -106,7 +106,7 @@ class RustASTPrinter {
 		return parts.join("\n");
 	}
 
-	static function printImpl(i: RustAST.RustImpl): String {
+	static function printImpl(i:RustAST.RustImpl):String {
 		var head = "impl";
 		if (i.generics != null && i.generics.length > 0) {
 			head += "<" + i.generics.join(", ") + ">";
@@ -116,7 +116,7 @@ class RustASTPrinter {
 			return head + " { }";
 		}
 
-		var parts: Array<String> = [];
+		var parts:Array<String> = [];
 		for (f in i.functions) {
 			parts.push(printFunction(f, 1));
 		}
@@ -124,10 +124,13 @@ class RustASTPrinter {
 		return head + " {\n" + body + "\n}";
 	}
 
-	static function printFunction(f: RustAST.RustFunction, indent: Int): String {
-		var sigParts: Array<String> = [];
+	static function printFunction(f:RustAST.RustFunction, indent:Int):String {
+		var sigParts:Array<String> = [];
 		var tok = visibilityToken(f.vis, f.isPub);
-		if (tok != null) sigParts.push(tok);
+		if (tok != null)
+			sigParts.push(tok);
+		if (f.isAsync == true)
+			sigParts.push("async");
 		sigParts.push("fn");
 		var name = f.name;
 		if (f.generics != null && f.generics.length > 0) {
@@ -145,7 +148,7 @@ class RustASTPrinter {
 		return ind + sig + " " + printBlock(f.body, indent);
 	}
 
-	static function printType(t: RustAST.RustType): String {
+	static function printType(t:RustAST.RustType):String {
 		return switch (t) {
 			case RUnit: "()";
 			case RBool: "bool";
@@ -157,11 +160,11 @@ class RustASTPrinter {
 		}
 	}
 
-	static function printBlock(b: RustAST.RustBlock, indent: Int): String {
+	static function printBlock(b:RustAST.RustBlock, indent:Int):String {
 		var ind = indentString(indent);
 		var innerInd = indentString(indent + 1);
 
-		var lines: Array<String> = [];
+		var lines:Array<String> = [];
 		for (s in b.stmts) {
 			lines.push(innerInd + printStmt(s, indent + 1));
 		}
@@ -176,22 +179,28 @@ class RustASTPrinter {
 		return "{\n" + lines.join("\n") + "\n" + ind + "}";
 	}
 
-	static function printStmt(s: RustAST.RustStmt, indent: Int): String {
+	static function printStmt(s:RustAST.RustStmt, indent:Int):String {
 		return switch (s) {
 			case RLet(name, mutable, ty, expr): {
-				var out = "let";
-				if (mutable) out += " mut";
-				out += " " + name;
-				if (ty != null) out += ": " + printType(ty);
-				if (expr != null) out += " = " + printExpr(expr, indent);
-				out + ";";
-			}
+					var out = "let";
+					if (mutable)
+						out += " mut";
+					out += " " + name;
+					if (ty != null)
+						out += ": " + printType(ty);
+					if (expr != null)
+						out += " = " + printExpr(expr, indent);
+					out + ";";
+				}
 			case RSemi(e): {
-				// Avoid `;;` when an injected raw expression already includes a trailing semicolon.
-				var printed = printExpr(e, indent);
-				var trimmed = StringTools.rtrim(printed);
-				if (StringTools.endsWith(trimmed, ";")) trimmed else trimmed + ";";
-			}
+					// Avoid `;;` when an injected raw expression already includes a trailing semicolon.
+					var printed = printExpr(e, indent);
+					var trimmed = StringTools.rtrim(printed);
+					if (StringTools.endsWith(trimmed, ";"))
+						trimmed
+					else
+						trimmed + ";";
+				}
 			case RExpr(e, needsSemicolon):
 				printExpr(e, indent) + (needsSemicolon ? ";" : "");
 			case RReturn(e):
@@ -205,134 +214,146 @@ class RustASTPrinter {
 		}
 	}
 
-	static function printExpr(e: RustAST.RustExpr, indent: Int): String {
+	static function printExpr(e:RustAST.RustExpr, indent:Int):String {
 		return printExprPrec(e, indent, PREC_LOWEST);
 	}
 
-	static function printExprPrec(e: RustAST.RustExpr, indent: Int, ctxPrec: Int): String {
+	static function printExprPrec(e:RustAST.RustExpr, indent:Int, ctxPrec:Int):String {
 		return switch (e) {
 			case ERaw(s): s;
 			case ELitInt(v): Std.string(v);
 			case ELitFloat(v): {
-				// Rust requires a decimal point for float literals in some contexts (e.g. `1.`).
-				var s = Std.string(v);
-				if (s.indexOf(".") == -1 && s.indexOf("e") == -1 && s.indexOf("E") == -1) s += ".0";
-				s;
-			}
+					// Rust requires a decimal point for float literals in some contexts (e.g. `1.`).
+					var s = Std.string(v);
+					if (s.indexOf(".") == -1 && s.indexOf("e") == -1 && s.indexOf("E") == -1)
+						s += ".0";
+					s;
+				}
 			case ELitBool(v): v ? "true" : "false";
 			case ELitString(v): '"' + escapeStringLiteral(v) + '"';
 			case EPath(path): path;
+			case EAwait(expr): {
+					var inner = printExprPrec(expr, indent, PREC_POSTFIX);
+					var out = inner + ".await";
+					wrapIfNeeded(out, PREC_POSTFIX, ctxPrec);
+				}
 			case EField(recv, field): {
-				var recvStr = printExprPrec(recv, indent, PREC_POSTFIX);
-				var out = recvStr + "." + field;
-				wrapIfNeeded(out, PREC_POSTFIX, ctxPrec);
-			}
+					var recvStr = printExprPrec(recv, indent, PREC_POSTFIX);
+					var out = recvStr + "." + field;
+					wrapIfNeeded(out, PREC_POSTFIX, ctxPrec);
+				}
 			case ECall(func, args): {
-				var a = args.map(x -> printExprPrec(x, indent, PREC_LOWEST)).join(", ");
-				var fnStr = printExprPrec(func, indent, PREC_POSTFIX);
-				var out = fnStr + "(" + a + ")";
-				wrapIfNeeded(out, PREC_POSTFIX, ctxPrec);
-			}
+					var a = args.map(x -> printExprPrec(x, indent, PREC_LOWEST)).join(", ");
+					var fnStr = printExprPrec(func, indent, PREC_POSTFIX);
+					var out = fnStr + "(" + a + ")";
+					wrapIfNeeded(out, PREC_POSTFIX, ctxPrec);
+				}
 			case EClosure(args, body, isMove): {
-				var a = args.join(", ");
-				var out = (isMove ? "move " : "") + "|" + a + "| " + printBlock(body, indent);
-				wrapIfNeeded(out, PREC_LOWEST, ctxPrec);
-			}
+					var a = args.join(", ");
+					var out = (isMove ? "move " : "") + "|" + a + "| " + printBlock(body, indent);
+					wrapIfNeeded(out, PREC_LOWEST, ctxPrec);
+				}
 			case EMacroCall(name, args): {
-				var a = args.map(x -> printExprPrec(x, indent, PREC_LOWEST)).join(", ");
-				if (name == "vec") {
-					wrapIfNeeded(name + "![" + a + "]", PREC_PRIMARY, ctxPrec);
-				} else {
-					wrapIfNeeded(name + "!(" + a + ")", PREC_PRIMARY, ctxPrec);
+					var a = args.map(x -> printExprPrec(x, indent, PREC_LOWEST)).join(", ");
+					if (name == "vec") {
+						wrapIfNeeded(name + "![" + a + "]", PREC_PRIMARY, ctxPrec);
+					} else {
+						wrapIfNeeded(name + "!(" + a + ")", PREC_PRIMARY, ctxPrec);
+					}
 				}
-			}
 			case EBinary(op, left, right): {
-				var prec = binaryPrec(op);
-				var leftStr = printExprPrec(left, indent, prec);
-				// Rust parsing gotcha: `x as i32 < 0` parses as `x as i32<0>` (generic arguments).
-				// Force parens around casts when used in comparisons.
-				if ((op == "<" || op == ">" || op == "<=" || op == ">=") && switch (left) { case ECast(_, _): true; case _: false; }) {
-					leftStr = "(" + leftStr + ")";
+					var prec = binaryPrec(op);
+					var leftStr = printExprPrec(left, indent, prec);
+					// Rust parsing gotcha: `x as i32 < 0` parses as `x as i32<0>` (generic arguments).
+					// Force parens around casts when used in comparisons.
+					if ((op == "<" || op == ">" || op == "<=" || op == ">=") && switch (left) {
+							case ECast(_, _): true;
+							case _: false;
+						}) {
+						leftStr = "(" + leftStr + ")";
+						}
+					// Preserve grouping: for left-associative ops, parenthesize RHS when it has the same precedence.
+					var rightStr = printExprPrec(right, indent, prec + 1);
+					if ((op == "<" || op == ">" || op == "<=" || op == ">=") && switch (right) {
+							case ECast(_, _): true;
+							case _: false;
+						}) {
+						rightStr = "(" + rightStr + ")";
+						}
+					var out = leftStr + " " + op + " " + rightStr;
+					wrapIfNeeded(out, prec, ctxPrec);
 				}
-				// Preserve grouping: for left-associative ops, parenthesize RHS when it has the same precedence.
-				var rightStr = printExprPrec(right, indent, prec + 1);
-				if ((op == "<" || op == ">" || op == "<=" || op == ">=") && switch (right) { case ECast(_, _): true; case _: false; }) {
-					rightStr = "(" + rightStr + ")";
-				}
-				var out = leftStr + " " + op + " " + rightStr;
-				wrapIfNeeded(out, prec, ctxPrec);
-			}
 			case EUnary(op, expr): {
-				var inner = printExprPrec(expr, indent, PREC_UNARY);
-				var out = op + inner;
-				wrapIfNeeded(out, PREC_UNARY, ctxPrec);
-			}
+					var inner = printExprPrec(expr, indent, PREC_UNARY);
+					var out = op + inner;
+					wrapIfNeeded(out, PREC_UNARY, ctxPrec);
+				}
 			case ERange(start, end): {
-				var out = printExprPrec(start, indent, PREC_LOWEST) + ".." + printExprPrec(end, indent, PREC_LOWEST);
-				wrapIfNeeded(out, PREC_LOWEST, ctxPrec);
-			}
+					var out = printExprPrec(start, indent, PREC_LOWEST) + ".." + printExprPrec(end, indent, PREC_LOWEST);
+					wrapIfNeeded(out, PREC_LOWEST, ctxPrec);
+				}
 			case ECast(expr, ty): {
-				var inner = printExprPrec(expr, indent, PREC_CAST);
-				var out = inner + " as " + ty;
-				wrapIfNeeded(out, PREC_CAST, ctxPrec);
-			}
+					var inner = printExprPrec(expr, indent, PREC_CAST);
+					var out = inner + " as " + ty;
+					wrapIfNeeded(out, PREC_CAST, ctxPrec);
+				}
 			case EIndex(recv, index):
 				wrapIfNeeded(printExprPrec(recv, indent, PREC_POSTFIX) + "[" + printExprPrec(index, indent, PREC_LOWEST) + "]", PREC_POSTFIX, ctxPrec);
 			case EStructLit(path, fields): {
-				var parts = fields.map(f -> f.name + ": " + printExprPrec(f.expr, indent, PREC_LOWEST)).join(", ");
-				var out = path + " { " + parts + " }";
-				wrapIfNeeded(out, PREC_PRIMARY, ctxPrec);
-			}
+					var parts = fields.map(f -> f.name + ": " + printExprPrec(f.expr, indent, PREC_LOWEST)).join(", ");
+					var out = path + " { " + parts + " }";
+					wrapIfNeeded(out, PREC_PRIMARY, ctxPrec);
+				}
 			case EAssign(lhs, rhs): {
-				// Assignments accept any Rust expression on the RHS without needing parentheses.
-				// Prefer `x = if ... { ... } else { ... }` over `x = (if ...)`.
-				var out = printExprPrec(lhs, indent, PREC_ASSIGN) + " = " + printExprPrec(rhs, indent, PREC_LOWEST);
-				wrapIfNeeded(out, PREC_ASSIGN, ctxPrec);
-			}
+					// Assignments accept any Rust expression on the RHS without needing parentheses.
+					// Prefer `x = if ... { ... } else { ... }` over `x = (if ...)`.
+					var out = printExprPrec(lhs, indent, PREC_ASSIGN) + " = " + printExprPrec(rhs, indent, PREC_LOWEST);
+					wrapIfNeeded(out, PREC_ASSIGN, ctxPrec);
+				}
 			case EBlock(b):
 				var out = printBlock(b, indent);
 				wrapIfNeeded(out, PREC_LOWEST, ctxPrec);
 			case EIf(cond, thenExpr, elseExpr): {
-				var thenPrinted = printIfBranch(thenExpr, indent);
-				if (elseExpr == null) {
-					var out = "if " + printExprPrec(cond, indent, PREC_LOWEST) + " " + thenPrinted;
-					wrapIfNeeded(out, PREC_LOWEST, ctxPrec);
-				} else {
-					var elsePrinted = printIfBranch(elseExpr, indent);
-					var out = "if " + printExprPrec(cond, indent, PREC_LOWEST) + " " + thenPrinted + " else " + elsePrinted;
-					wrapIfNeeded(out, PREC_LOWEST, ctxPrec);
-				}
-			}
-			case EMatch(scrutinee, arms): {
-				var ind = indentString(indent);
-				var innerInd = indentString(indent + 1);
-
-				var lines: Array<String> = [];
-				for (a in arms) {
-					var pat = printPattern(a.pat);
-					var ex = printExprPrec(a.expr, indent + 1, PREC_LOWEST);
-					var needsComma = switch (a.expr) {
-						case EBlock(_): false;
-						case _: true;
+					var thenPrinted = printIfBranch(thenExpr, indent);
+					if (elseExpr == null) {
+						var out = "if " + printExprPrec(cond, indent, PREC_LOWEST) + " " + thenPrinted;
+						wrapIfNeeded(out, PREC_LOWEST, ctxPrec);
+					} else {
+						var elsePrinted = printIfBranch(elseExpr, indent);
+						var out = "if " + printExprPrec(cond, indent, PREC_LOWEST) + " " + thenPrinted + " else " + elsePrinted;
+						wrapIfNeeded(out, PREC_LOWEST, ctxPrec);
 					}
-					lines.push(innerInd + pat + " => " + ex + (needsComma ? "," : ""));
 				}
+			case EMatch(scrutinee, arms): {
+					var ind = indentString(indent);
+					var innerInd = indentString(indent + 1);
 
-				if (lines.length == 0) {
-					wrapIfNeeded("match " + printExprPrec(scrutinee, indent, PREC_LOWEST) + " { }", PREC_LOWEST, ctxPrec);
-				} else {
-					var out = "match " + printExprPrec(scrutinee, indent, PREC_LOWEST) + " {\n" + lines.join("\n") + "\n" + ind + "}";
-					wrapIfNeeded(out, PREC_LOWEST, ctxPrec);
+					var lines:Array<String> = [];
+					for (a in arms) {
+						var pat = printPattern(a.pat);
+						var ex = printExprPrec(a.expr, indent + 1, PREC_LOWEST);
+						var needsComma = switch (a.expr) {
+							case EBlock(_): false;
+							case _: true;
+						}
+						lines.push(innerInd + pat + " => " + ex + (needsComma ? "," : ""));
+					}
+
+					if (lines.length == 0) {
+						wrapIfNeeded("match " + printExprPrec(scrutinee, indent, PREC_LOWEST) + " { }", PREC_LOWEST, ctxPrec);
+					} else {
+						var out = "match " + printExprPrec(scrutinee, indent, PREC_LOWEST) + " {\n" + lines.join("\n") + "\n" + ind + "}";
+						wrapIfNeeded(out, PREC_LOWEST, ctxPrec);
+					}
 				}
-			}
 		}
 	}
 
-	static function wrapIfNeeded(s: String, exprPrec: Int, ctxPrec: Int): String {
+	static function wrapIfNeeded(s:String, exprPrec:Int, ctxPrec:Int):String {
 		return (exprPrec < ctxPrec) ? ("(" + s + ")") : s;
 	}
 
-	static function binaryPrec(op: String): Int {
+	static function binaryPrec(op:String):Int {
 		return switch (op) {
 			case "*" | "/" | "%": PREC_MUL;
 			case "+" | "-": PREC_ADD;
@@ -348,7 +369,7 @@ class RustASTPrinter {
 		}
 	}
 
-	static function printPattern(p: RustAST.RustPattern): String {
+	static function printPattern(p:RustAST.RustPattern):String {
 		return switch (p) {
 			case PWildcard: "_";
 			case PBind(name): name;
@@ -361,31 +382,38 @@ class RustASTPrinter {
 		}
 	}
 
-	static function printIfBranch(e: RustAST.RustExpr, indent: Int): String {
+	static function printIfBranch(e:RustAST.RustExpr, indent:Int):String {
 		return switch (e) {
 			case EBlock(_): printExpr(e, indent);
 			case _: "{ " + printExpr(e, indent) + " }";
 		}
 	}
 
-	static function indentString(level: Int): String {
+	static function indentString(level:Int):String {
 		var out = new StringBuf();
-		for (_ in 0...level) out.add("    ");
+		for (_ in 0...level)
+			out.add("    ");
 		return out.toString();
 	}
 
-	static function escapeStringLiteral(s: String): String {
+	static function escapeStringLiteral(s:String):String {
 		// Minimal escaping for Rust string literals.
 		var out = new StringBuf();
 		for (i in 0...s.length) {
 			var ch = s.charAt(i);
 			switch (ch) {
-				case "\\": out.add("\\\\");
-				case "\"": out.add("\\\"");
-				case "\n": out.add("\\n");
-				case "\r": out.add("\\r");
-				case "\t": out.add("\\t");
-				default: out.add(ch);
+				case "\\":
+					out.add("\\\\");
+				case "\"":
+					out.add("\\\"");
+				case "\n":
+					out.add("\\n");
+				case "\r":
+					out.add("\\r");
+				case "\t":
+					out.add("\\t");
+				default:
+					out.add(ch);
 			}
 		}
 		return out.toString();

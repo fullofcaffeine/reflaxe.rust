@@ -27,6 +27,9 @@ This page is a practical reference for the most relevant compiler defines.
   - Main profile switch.
 - `rust_idiomatic`
   - Alias for `reflaxe_rust_profile=idiomatic`.
+- `rust_async_preview`
+  - Enable async/await preview surfaces (`rust.async.Future`, `rust.async.Async.*`).
+  - Requires `reflaxe_rust_profile=rusty`.
 - `rust_string_nullable`
   - Force nullable string representation.
 - `rust_string_non_nullable`
@@ -79,6 +82,7 @@ This page is a practical reference for the most relevant compiler defines.
 ## Related docs
 
 - `docs/profiles.md`
+- `docs/async-await.md`
 - `docs/workflow.md`
 - `docs/interop.md`
 - `docs/v1.md`

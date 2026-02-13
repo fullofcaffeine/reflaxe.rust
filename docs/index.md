@@ -6,6 +6,7 @@ Use this page as the map for `reflaxe.rust` docs.
 
 - New to compiler internals: [Start Here](start-here.md)
 - Need a fast local rebuild loop: [Dev Watcher](dev-watcher.md)
+- Building async Rusty apps: [Async/Await preview](async-await.md)
 - Planning production rollout: [Production Readiness](production-readiness.md)
 - Planning release closeout: [Road to 1.0](road-to-1.0.md)
 - Using the release-gate template: [Release Gate Closeout](release-gate-closeout.md)
@@ -15,6 +16,7 @@ Use this page as the map for `reflaxe.rust` docs.
 ## Core product docs
 
 - [Profiles](profiles.md): portable vs idiomatic vs rusty, and when to choose each.
+- [Async/Await preview](async-await.md): Rusty async workflow and current constraints.
 - [Defines reference](defines-reference.md): practical `-D` reference for build/profile/CI knobs.
 - [v1 support matrix](v1.md): technical support matrix and parity constraints.
 - [Workflow](workflow.md): Haxe -> Rust -> Cargo workflow.

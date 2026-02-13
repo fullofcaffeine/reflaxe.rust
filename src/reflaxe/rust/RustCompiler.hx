@@ -102,6 +102,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var currentLocalUsed:Null<Map<String, Bool>> = null;
 	var currentEnumParamBinds:Null<Map<String, String>> = null;
 	var currentFunctionReturn:Null<Type> = null;
+	var currentFunctionIsAsync:Bool = false;
 	var warnedUnresolvedMonomorphPos:Map<String, Bool> = [];
 	// Rust identifier to use for Haxe `this` (`TThis`) in the current function body.
 	// - constructors: `"self_"` (a local `HxRef<T>`)
@@ -133,6 +134,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (Context.defined("rust_string_non_nullable"))
 			return false;
 		return Context.defined("rust_string_nullable");
+	}
+
+	inline function asyncPreviewEnabled():Bool {
+		return Context.defined("rust_async_preview");
 	}
 
 	inline function rustStringTypePath():String {
@@ -926,15 +931,37 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 				var args:Array<reflaxe.rust.ast.RustAST.RustFnArg> = [];
 				var body = {stmts: [], tail: null};
-				withFunctionContext(f.expr, [for (a in f.args) a.getName()], f.ret, () -> {
+				var isAsyncMethod = hasAsyncFunctionMeta(f.field.meta);
+				var asyncInnerRet:Null<Type> = null;
+				if (isAsyncMethod) {
+					ensureAsyncPreviewAllowed(f.field.pos);
+					asyncInnerRet = rustFutureInnerType(f.ret);
+					if (asyncInnerRet == null) {
+						#if eval
+						Context.error("`@:async`/`@:rustAsync` static methods must return `rust.async.Future<T>` (got `" + TypeTools.toString(f.ret) + "`).",
+							f.field.pos);
+						#end
+					}
+				}
+				withFunctionContext(f.expr, [for (a in f.args) a.getName()], isAsyncMethod ? asyncInnerRet : f.ret, () -> {
 					for (a in f.args) {
 						args.push({
 							name: rustArgIdent(a.getName()),
 							ty: toRustType(a.type, f.field.pos)
 						});
 					}
-					body = compileFunctionBody(f.expr, f.ret);
-				});
+					if (isAsyncMethod) {
+						var innerBody = compileFunctionBody(f.expr, asyncInnerRet);
+						var innerBlockExpr = EBlock(innerBody);
+						var innerBlockSrc = reflaxe.rust.ast.RustASTPrinter.printExprForInjection(innerBlockExpr);
+						body = {
+							stmts: [RReturn(ERaw("Box::pin(async move " + innerBlockSrc + ")"))],
+							tail: null
+						};
+					} else {
+						body = compileFunctionBody(f.expr, f.ret);
+					}
+				}, isAsyncMethod);
 
 				items.push(RFn({
 					name: rustMethodName(classType, f.field),
@@ -946,6 +973,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 
 			var mainFunc = findStaticMain(funcFields);
+			if (mainFunc != null && hasAsyncFunctionMeta(mainFunc.field.meta)) {
+				ensureAsyncPreviewAllowed(mainFunc.field.pos);
+				#if eval
+				Context.error("`main` cannot be marked async in preview mode. Keep `main` sync and call `rust.async.Async.blockOn(...)` at the boundary.",
+					mainFunc.field.pos);
+				#end
+			}
 			// Rust `fn main()` is always unit-returning; compile as void to avoid accidental tail expressions.
 			var body:RustBlock = (mainFunc != null && mainFunc.expr != null) ? compileVoidBodyWithContext(mainFunc.expr, []) : defaultMainBody();
 
@@ -1357,6 +1391,160 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// Avoid double underscores when `rustName` begins with `_` (common for private fields like `_x`).
 		// Rust's `non_snake_case` lint flags names like `__hx_static_get__x`; prefer `__hx_static_get_x`.
 		return StringTools.startsWith(rustName, "_") ? (prefix + rustName) : (prefix + "_" + rustName);
+	}
+
+	function metaNameEquals(actual:String, expected:String):Bool {
+		return actual == expected || actual == (":" + expected);
+	}
+
+	function metaHasAny(meta:haxe.macro.Type.MetaAccess, names:Array<String>):Bool {
+		if (meta == null || names == null || names.length == 0)
+			return false;
+		for (entry in meta.get()) {
+			for (name in names) {
+				if (metaNameEquals(entry.name, name))
+					return true;
+			}
+		}
+		return false;
+	}
+
+	function hasAsyncFunctionMeta(meta:haxe.macro.Type.MetaAccess):Bool {
+		return metaHasAny(meta, ["async", "rustAsync"]);
+	}
+
+	function isAwaitMetaName(name:String):Bool {
+		return name == ":await" || name == "await" || name == ":rustAwait" || name == "rustAwait";
+	}
+
+	function ensureAsyncPreviewAllowed(pos:haxe.macro.Expr.Position):Void {
+		if (!asyncPreviewEnabled()) {
+			#if eval
+			Context.error("Async preview requires `-D rust_async_preview`.", pos);
+			#end
+			return;
+		}
+		if (profile != Rusty) {
+			#if eval
+			Context.error("Async preview currently requires `-D reflaxe_rust_profile=rusty`.", pos);
+			#end
+		}
+	}
+
+	function isRustAsyncClass(cls:ClassType):Bool {
+		if (cls == null)
+			return false;
+		var packPath = cls.pack != null ? cls.pack.join(".") : "";
+		var fullPath = (packPath.length > 0 ? packPath + "." : "") + cls.name;
+		if ((cls.name == "Async" && packPath == "rust.async") || fullPath == "hxrt.async_" || fullPath == "hxrt::async_")
+			return true;
+		var nativePath = rustExternBasePath(cls);
+		return nativePath == "hxrt::async_";
+	}
+
+	function isRustAsyncFutureClass(cls:ClassType):Bool {
+		if (cls == null)
+			return false;
+		var packPath = cls.pack != null ? cls.pack.join(".") : "";
+		var fullPath = (packPath.length > 0 ? packPath + "." : "") + cls.name;
+		if ((cls.name == "Future" && packPath == "rust.async")
+			|| fullPath == "hxrt.async_.HxFuture"
+			|| fullPath == "hxrt::async_::HxFuture")
+			return true;
+		var nativePath = rustExternBasePath(cls);
+		return nativePath == "hxrt::async_::HxFuture";
+	}
+
+	function rustFutureInnerType(t:Type):Null<Type> {
+		function resolve(cur:Type):Null<Type> {
+			if (cur == null)
+				return null;
+			return switch (cur) {
+				case TInst(clsRef, params):
+					var cls = clsRef.get();
+					if (params != null && params.length == 1) {
+						if (isRustAsyncFutureClass(cls))
+							params[0];
+						else {
+							var tStr = TypeTools.toString(cur);
+							if (StringTools.startsWith(tStr, "rust.async.Future<")
+								|| StringTools.startsWith(tStr, "hxrt::async_::HxFuture<"))
+								params[0]
+							else
+								null;
+						}
+					} else {
+						null;
+					}
+				case TType(typeRef, params):
+					var tt = typeRef.get();
+					if (tt == null) {
+						null;
+					} else {
+						var under:Type = tt.type;
+						if (tt.params != null && tt.params.length > 0 && params != null && params.length == tt.params.length) {
+							under = TypeTools.applyTypeParameters(under, tt.params, params);
+						}
+						resolve(under);
+					}
+				case TAbstract(absRef, params):
+					var abs = absRef.get();
+					if (params != null && params.length == 1) {
+						var absPath = (abs.pack != null && abs.pack.length > 0 ? abs.pack.join(".") + "." : "") + abs.name;
+						if (absPath == "rust.async.Future" || absPath == "hxrt::async_.HxFuture")
+							params[0]
+						else
+							null;
+					} else {
+						null;
+					}
+				case TLazy(f):
+					resolve(f());
+				case _:
+					null;
+			}
+		}
+
+		var fromDirect = resolve(t);
+		if (fromDirect != null)
+			return fromDirect;
+		var fromFollow = resolve(followType(t));
+		if (fromFollow != null)
+			return fromFollow;
+		return null;
+	}
+
+	function isRustFutureType(t:Type):Bool {
+		return rustFutureInnerType(t) != null;
+	}
+
+	function extractAsyncReadyValue(expr:TypedExpr):Null<TypedExpr> {
+		var cur = expr;
+		while (true) {
+			switch (cur.expr) {
+				case TMeta(_, inner):
+					cur = inner;
+					continue;
+				case TParenthesis(inner):
+					cur = inner;
+					continue;
+				case _:
+			}
+			break;
+		}
+		return switch (cur.expr) {
+			case TCall(callExpr, args) if (args.length == 1):
+				switch (callExpr.expr) {
+					case TField(_, FStatic(clsRef, fieldRef)):
+						var cls = clsRef.get();
+						var field = fieldRef.get();
+						if (isRustAsyncClass(cls) && field.getHaxeName() == "ready") args[0] else null;
+					case _:
+						null;
+				}
+			case _:
+				null;
+		}
 	}
 
 	function rustAccessorSuffix(classType:ClassType, cf:ClassField):String {
@@ -1851,6 +2039,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function compileConstructor(classType:ClassType, varFields:Array<ClassVarData>, f:ClassFuncData):reflaxe.rust.ast.RustAST.RustFunction {
+		if (hasAsyncFunctionMeta(f.field.meta)) {
+			ensureAsyncPreviewAllowed(f.field.pos);
+			#if eval
+			Context.error("Constructors cannot be marked `@:async` / `@:rustAsync` in preview mode.", f.field.pos);
+			#end
+		}
 		var args:Array<reflaxe.rust.ast.RustAST.RustFnArg> = [];
 		var modName = rustModuleNameForClass(classType);
 		var rustSelfType = rustTypeNameForClass(classType);
@@ -1983,10 +2177,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 																					allowNonArgLocal) && rhsUsesOnlyCtorArgsAndConsts(b, allowNonArgLocal);
 																			case TUnop(_, _, a):
 																				rhsUsesOnlyCtorArgsAndConsts(a, allowNonArgLocal);
-																			case TCall(f2, a2): // Allow the callee itself to be a non-arg local (e.g. builtins like `__rust__`),
+																			case TCall(f2,
+																				a2): // Allow the callee itself to be a non-arg local (e.g. builtins like `__rust__`),
 																				// but keep argument expressions restricted to ctor args/constants.
-																				rhsUsesOnlyCtorArgsAndConsts(f2,
-																					true) && (a2 == null ? true : Lambda.fold(a2,
+																				rhsUsesOnlyCtorArgsAndConsts(f2, true)
+																				&& (a2 == null ? true : Lambda.fold(a2,
 																					(x, acc) -> acc && rhsUsesOnlyCtorArgsAndConsts(x, false), true));
 																			case TArray(a, i): rhsUsesOnlyCtorArgsAndConsts(a,
 																					allowNonArgLocal) && rhsUsesOnlyCtorArgsAndConsts(i, allowNonArgLocal);
@@ -2326,6 +2521,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function compileInstanceMethod(classType:ClassType, f:ClassFuncData, methodOwner:ClassType):reflaxe.rust.ast.RustAST.RustFunction {
+		if (hasAsyncFunctionMeta(f.field.meta)) {
+			ensureAsyncPreviewAllowed(f.field.pos);
+			#if eval
+			Context.error("`@:async`/`@:rustAsync` is currently supported only on static methods.", f.field.pos);
+			#end
+		}
 		var args:Array<reflaxe.rust.ast.RustAST.RustFnArg> = [];
 		var generics = rustGenericParamsFromFieldMeta(f.field.meta, [for (p in f.field.params) p.name]);
 		var selfName = exprUsesThis(f.expr) ? "self_" : "_self_";
@@ -2385,17 +2586,39 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var args:Array<reflaxe.rust.ast.RustAST.RustFnArg> = [];
 		var generics = rustGenericParamsFromFieldMeta(f.field.meta, [for (p in f.field.params) p.name]);
 		var body = {stmts: [], tail: null};
+		var isAsyncMethod = hasAsyncFunctionMeta(f.field.meta);
+		var asyncInnerRet:Null<Type> = null;
+		if (isAsyncMethod) {
+			ensureAsyncPreviewAllowed(f.field.pos);
+			asyncInnerRet = rustFutureInnerType(f.ret);
+			if (asyncInnerRet == null) {
+				#if eval
+				Context.error("`@:async`/`@:rustAsync` static methods must return `rust.async.Future<T>` (got `" + TypeTools.toString(f.ret) + "`).",
+					f.field.pos);
+				#end
+			}
+		}
 		var prevField = currentMethodField;
 		currentMethodField = f.field;
-		withFunctionContext(f.expr, [for (a in f.args) a.getName()], f.ret, () -> {
+		withFunctionContext(f.expr, [for (a in f.args) a.getName()], isAsyncMethod ? asyncInnerRet : f.ret, () -> {
 			for (a in f.args) {
 				args.push({
 					name: rustArgIdent(a.getName()),
 					ty: toRustType(a.type, f.field.pos)
 				});
 			}
-			body = compileFunctionBody(f.expr, f.ret);
-		});
+			if (isAsyncMethod) {
+				var innerBody = compileFunctionBody(f.expr, asyncInnerRet);
+				var innerBlockExpr = EBlock(innerBody);
+				var innerBlockSrc = reflaxe.rust.ast.RustASTPrinter.printExprForInjection(innerBlockExpr);
+				body = {
+					stmts: [RReturn(ERaw("Box::pin(async move " + innerBlockSrc + ")"))],
+					tail: null
+				};
+			} else {
+				body = compileFunctionBody(f.expr, f.ret);
+			}
+		}, isAsyncMethod);
 		currentMethodField = prevField;
 
 		function needsCrateVisibility(cls:ClassType, cf:ClassField):Bool {
@@ -3259,9 +3482,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case TContinue:
 				RSemi(ERaw("continue"));
 			case TReturn(ret): {
-					var ex = ret != null ? compileExpr(ret) : null;
-					if (ret != null && ex != null) {
-						ex = coerceExprToExpected(ex, ret, currentFunctionReturn);
+					var retExpr = ret;
+					if (currentFunctionIsAsync && ret != null) {
+						var inner = extractAsyncReadyValue(ret);
+						if (inner != null) {
+							retExpr = inner;
+						}
+					}
+					var ex = retExpr != null ? compileExpr(retExpr) : null;
+					if (retExpr != null && ex != null) {
+						ex = coerceExprToExpected(ex, retExpr, currentFunctionReturn);
 					}
 					RReturn(ex);
 				}
@@ -3305,7 +3535,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 	}
 
-	function withFunctionContext<T>(bodyExpr:TypedExpr, argNames:Array<String>, expectedReturn:Null<Type>, fn:() -> T):T {
+	function withFunctionContext<T>(bodyExpr:TypedExpr, argNames:Array<String>, expectedReturn:Null<Type>, fn:() -> T, isAsync:Bool = false):T {
 		var prevMutated = currentMutatedLocals;
 		var prevReadCounts = currentLocalReadCounts;
 		var prevArgNames = currentArgNames;
@@ -3314,6 +3544,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var prevEnumParamBinds = currentEnumParamBinds;
 		var prevReturn = currentFunctionReturn;
 		var prevMutatedArgs = currentMutatedArgs;
+		var prevIsAsync = currentFunctionIsAsync;
 
 		currentMutatedLocals = collectMutatedLocals(bodyExpr);
 		currentLocalReadCounts = collectLocalReadCounts(bodyExpr);
@@ -3323,6 +3554,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		currentEnumParamBinds = null;
 		currentFunctionReturn = expectedReturn;
 		currentMutatedArgs = [];
+		currentFunctionIsAsync = isAsync;
 
 		// Reserve internal temporaries to avoid collisions with user locals.
 		for (n in [
@@ -3358,6 +3590,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		currentEnumParamBinds = prevEnumParamBinds;
 		currentFunctionReturn = prevReturn;
 		currentMutatedArgs = prevMutatedArgs;
+		currentFunctionIsAsync = prevIsAsync;
 		return out;
 	}
 
@@ -4201,8 +4434,17 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case TParenthesis(e1):
 				compileExpr(e1);
 
-			case TMeta(_, e1):
-				compileExpr(e1);
+			case TMeta(m, e1):
+				if (isAwaitMetaName(m.name)) {
+					if (!currentFunctionIsAsync) {
+						#if eval
+						Context.error("`@:await` / `@:rustAwait` is only allowed inside `@:async` / `@:rustAsync` functions.", e.pos);
+						#end
+					}
+					EAwait(compileExpr(e1));
+				} else {
+					compileExpr(e1);
+				}
 
 			case TFunction(fn): {
 					// Lower a Haxe function literal to our runtime function representation.
@@ -5725,6 +5967,82 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				if (args.length > 0)
 					return unsupported(fullExpr, "super(args)");
 				return EBlock({stmts: [], tail: null});
+			case _:
+		}
+
+		// Special-case: rust.async.Async.*
+		switch (callExpr.expr) {
+			case TField(_, FStatic(clsRef, fieldRef)):
+				var cls = clsRef.get();
+				var field = fieldRef.get();
+				if (isRustAsyncClass(cls)) {
+					ensureAsyncPreviewAllowed(fullExpr.pos);
+					var fieldName = field.getHaxeName();
+					switch (fieldName) {
+						case "await": {
+								if (args.length != 1)
+									return unsupported(fullExpr, "Async.await args");
+								if (!currentFunctionIsAsync) {
+									#if eval
+									Context.error("`Async.await(...)` / `@:await` is only allowed inside `@:async` / `@:rustAsync` functions.", fullExpr.pos);
+									#end
+								}
+								return EAwait(compileExpr(args[0]));
+							}
+						case "blockOn": {
+								if (args.length != 1)
+									return unsupported(fullExpr, "Async.blockOn args");
+								if (currentFunctionIsAsync) {
+									#if eval
+									Context.error("`Async.blockOn(...)` is not allowed inside async functions. Use `await` instead.", fullExpr.pos);
+									#end
+								}
+								return ECall(EPath("hxrt::async_::block_on"), [compileExpr(args[0])]);
+							}
+						case "ready": {
+								if (args.length != 1)
+									return unsupported(fullExpr, "Async.ready args");
+								var v = maybeCloneForReuseValue(compileExpr(args[0]), args[0]);
+								return ECall(EPath("hxrt::async_::ready"), [v]);
+							}
+						case "sleepMs": {
+								if (args.length != 1)
+									return unsupported(fullExpr, "Async.sleepMs args");
+								return ECall(EPath("hxrt::async_::sleep_ms"), [compileExpr(args[0])]);
+							}
+						case "sleep": {
+								if (args.length != 1)
+									return unsupported(fullExpr, "Async.sleep args");
+								return ECall(EPath("hxrt::async_::sleep"), [compileExpr(args[0])]);
+							}
+						case "await_haxe": {
+								if (args.length != 1)
+									return unsupported(fullExpr, "Async.await args");
+								if (!currentFunctionIsAsync) {
+									#if eval
+									Context.error("`Async.await(...)` / `@:await` is only allowed inside `@:async` / `@:rustAsync` functions.", fullExpr.pos);
+									#end
+								}
+								return EAwait(compileExpr(args[0]));
+							}
+						case "block_on": {
+								if (args.length != 1)
+									return unsupported(fullExpr, "Async.blockOn args");
+								if (currentFunctionIsAsync) {
+									#if eval
+									Context.error("`Async.blockOn(...)` is not allowed inside async functions. Use `await` instead.", fullExpr.pos);
+									#end
+								}
+								return ECall(EPath("hxrt::async_::block_on"), [compileExpr(args[0])]);
+							}
+						case "sleep_ms": {
+								if (args.length != 1)
+									return unsupported(fullExpr, "Async.sleepMs args");
+								return ECall(EPath("hxrt::async_::sleep_ms"), [compileExpr(args[0])]);
+							}
+						case _:
+					}
+				}
 			case _:
 		}
 
@@ -10094,6 +10412,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 			case TInst(clsRef, params): {
 					var cls = clsRef.get();
+					if (isRustAsyncFutureClass(cls)) {
+						if (params == null || params.length != 1) {
+							#if eval
+							Context.error("`rust.async.Future<T>` requires exactly one type parameter.", pos);
+							#end
+							return RPath("hxrt::async_::HxFuture<()>");
+						}
+						var inner = toRustType(params[0], pos);
+						return RPath("hxrt::async_::HxFuture<" + rustTypeToString(inner) + ">");
+					}
 					switch (cls.kind) {
 						case KTypeParameter(_):
 							return RPath(cls.name);

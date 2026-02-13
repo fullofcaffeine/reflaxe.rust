@@ -7,6 +7,7 @@ import haxe.macro.Context;
 import reflaxe.ReflectCompiler;
 import reflaxe.preprocessors.ExpressionPreprocessor;
 import reflaxe.preprocessors.ExpressionPreprocessor.*;
+import reflaxe.rust.macros.AsyncSyntaxMacro;
 import reflaxe.rust.macros.BoundaryEnforcer;
 import reflaxe.rust.macros.StrictModeEnforcer;
 
@@ -70,6 +71,15 @@ class CompilerInit {
 			if (!wantsRusty) {
 				Compiler.define("rust_string_nullable");
 			}
+		}
+
+		if (Context.defined("rust_async_preview")) {
+			var profileForAsync = Context.definedValue("reflaxe_rust_profile");
+			var asyncPreviewRusty = profileForAsync != null && profileForAsync == "rusty";
+			if (!asyncPreviewRusty) {
+				Context.error("`-D rust_async_preview` currently requires `-D reflaxe_rust_profile=rusty`.", Context.currentPos());
+			}
+			AsyncSyntaxMacro.init();
 		}
 
 		var prepasses:Array<ExpressionPreprocessor> = [];

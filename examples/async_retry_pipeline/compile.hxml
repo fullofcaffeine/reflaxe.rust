@@ -1,0 +1,8 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_strict_examples
+-D reflaxe_rust_profile=rusty
+-D rust_async_preview
+-D rust_output=out
+-D rust_crate=async_retry_pipeline
+-main Main

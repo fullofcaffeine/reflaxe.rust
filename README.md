@@ -10,6 +10,7 @@ This project lets you write Haxe and ship native Rust binaries, with a path for 
 ## Start Here
 
 - New here: [Start Here guide](docs/start-here.md)
+- Building async apps: [Async/Await preview guide](docs/async-await.md)
 - Production rollout: [Production Readiness guide](docs/production-readiness.md)
 - Fast edit-compile-run loop: [Dev Watcher guide](docs/dev-watcher.md)
 - Full docs map: [Documentation Index](docs/index.md)
@@ -72,6 +73,7 @@ Read more: [Profiles guide](docs/profiles.md) and [Rusty profile details](docs/r
 ## Examples
 
 - [hello](examples/hello)
+- [async_retry_pipeline](examples/async_retry_pipeline)
 - [classes](examples/classes)
 - [serde_json](examples/serde_json)
 - [sys_file_io](examples/sys_file_io)
@@ -105,6 +107,7 @@ Read more: [Profiles guide](docs/profiles.md) and [Rusty profile details](docs/r
 - `-D rust_target=<triple>` - pass target triple to Cargo
 - `-D rust_idiomatic` - alias for `-D reflaxe_rust_profile=idiomatic`
 - `-D reflaxe_rust_profile=rusty` - enable Rust-first profile surfaces
+- `-D rust_async_preview` - enable Rusty async/await preview (`docs/async-await.md`)
 - `-D rustfmt` - run `cargo fmt` on generated output (best effort)
 
 Full list: [Defines reference](docs/defines-reference.md).

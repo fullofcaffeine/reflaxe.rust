@@ -1,5 +1,6 @@
 pub mod anon;
 pub mod array;
+pub mod async_;
 pub mod bytes;
 pub mod cell;
 pub mod date;

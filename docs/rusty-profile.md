@@ -38,6 +38,21 @@ interop so final apps remain injection-free.
 Rusty code should prefer the explicit Rust-like surfaces under `std/rust/*` over Haxe “portable”
 surfaces when the developer wants Rust semantics.
 
+### Async/await preview (Rusty)
+
+Rusty currently includes an async/await preview surface behind:
+
+- `-D reflaxe_rust_profile=rusty`
+- `-D rust_async_preview`
+
+Core types/APIs:
+
+- `rust.async.Future<T>`
+- `rust.async.Async.await(...)` or `@:rustAwait ...`
+- `rust.async.Async.blockOn(...)`
+
+See: [Async/Await preview guide](async-await.md).
+
 ## Borrow-checker ergonomics (Rusty)
 
 Rusty cannot model lifetimes directly (Haxe has no lifetime parameters), but it can still make borrowing
