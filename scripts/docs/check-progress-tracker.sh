@@ -4,6 +4,13 @@ set -euo pipefail
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root_dir"
 
+# CI runners do not always include the internal tracker CLI.
+# Skip this guard when unavailable instead of failing unrelated jobs.
+if ! command -v bd >/dev/null 2>&1; then
+  echo "[docs] internal tracker CLI not found; skipping progress-tracker sync check"
+  exit 0
+fi
+
 before_progress="$(mktemp)"
 before_vision="$(mktemp)"
 trap 'rm -f "$before_progress" "$before_vision"' EXIT
