@@ -1,3 +1,26 @@
+# [0.54.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.53.0...v0.54.0) (2026-02-13)
+
+
+### Bug Fixes
+
+* **ci:** apply rustfmt for hxrt split_hx ([c68cf2d](https://github.com/fullofcaffeine/reflaxe.rust/commit/c68cf2d9cc0ab76d601495e7cee0d7ca03aff414))
+* **ci:** free runner disk before harness ([372fd89](https://github.com/fullofcaffeine/reflaxe.rust/commit/372fd895376fa3f9bb3c47b35e93d1b0df32035e))
+* **ci:** harden windows smoke loopback and diagnostics ([add42cc](https://github.com/fullofcaffeine/reflaxe.rust/commit/add42ccc500566d204dd081e6abda532054b616a))
+* **ci:** increase snapshots+examples timeout to 45m ([53d2ac6](https://github.com/fullofcaffeine/reflaxe.rust/commit/53d2ac60bda97d1c8f003735bf6328fd124f08b9))
+* **ci:** make windows smoke snapshots host-tolerant ([18f2ba7](https://github.com/fullofcaffeine/reflaxe.rust/commit/18f2ba7e3742f4dfc02a75a8ea5fce764070ad69))
+* **ci:** raise snapshots+examples timeout to 75m ([036f5f8](https://github.com/fullofcaffeine/reflaxe.rust/commit/036f5f8e1a7b4fd58ee218dd1a292afef39f5c82))
+* **ci:** reclaim artifacts between harness phases ([1eb06fd](https://github.com/fullofcaffeine/reflaxe.rust/commit/1eb06fd5e419c53cb95744c11f7888530fc9f465))
+* **ci:** skip docs tracker guard when bd CLI is unavailable ([91ec5e7](https://github.com/fullofcaffeine/reflaxe.rust/commit/91ec5e7832ce57bedaa45c433259510df9af56df))
+* improve nullable string interop across std/runtime ([2f19554](https://github.com/fullofcaffeine/reflaxe.rust/commit/2f19554c48bfc75d02984197ac3606d6402d1113))
+
+
+### Features
+
+* **async:** add rusty async preview with docs and snapshots ([58d8b4c](https://github.com/fullofcaffeine/reflaxe.rust/commit/58d8b4c4f23b5f0bb9dc1da555b0bbf85dec205c))
+* **dev:** add beginner-friendly Haxe->Rust watcher workflow ([5aba59a](https://github.com/fullofcaffeine/reflaxe.rust/commit/5aba59aa774b299a4f545334bb1a8caa69d0fb04))
+* **tui:** add deterministic FX dashboard harness ([c56ccac](https://github.com/fullofcaffeine/reflaxe.rust/commit/c56ccac93a3908f9800a59d8bc64573bd6bc9b5b))
+* **v1:** improve docs, parity surfaces, and test harness ([edf8887](https://github.com/fullofcaffeine/reflaxe.rust/commit/edf8887d71f9bea894718038a3d60a91bdcd03a1))
+
 # [0.53.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.52.0...v0.53.0) (2026-02-10)
 
 
