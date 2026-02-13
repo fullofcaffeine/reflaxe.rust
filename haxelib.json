@@ -9,9 +9,9 @@
     "macro"
   ],
   "description": "A Haxe compilation target for Rust (Haxe 4.3.7) built on Reflaxe.",
-  "version": "0.54.0",
+  "version": "0.55.0",
   "classPath": "src",
-  "releasenote": "v0.54.0: See CHANGELOG.md",
+  "releasenote": "v0.55.0: See CHANGELOG.md",
   "contributors": [
     "fullofcaffeine"
   ],

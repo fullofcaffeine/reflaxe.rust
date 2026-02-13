@@ -1,3 +1,10 @@
+# [0.55.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.54.0...v0.55.0) (2026-02-13)
+
+
+### Features
+
+* **dev:** add incremental haxe server watch loop ([3c79416](https://github.com/fullofcaffeine/reflaxe.rust/commit/3c7941634499e23af818f46c4b0a0b563877fc36))
+
 # [0.54.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.53.0...v0.54.0) (2026-02-13)
 
 
