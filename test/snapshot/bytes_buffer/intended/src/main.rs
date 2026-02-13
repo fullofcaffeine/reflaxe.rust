@@ -33,9 +33,17 @@ mod sys_io_stdout;
 fn main() {
     let bb: crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer> =
         crate::haxe_io_bytes_buffer::BytesBuffer::new();
-    crate::haxe_io_bytes_buffer::BytesBuffer::add_string(&*bb, String::from("Hi"), None);
+    crate::haxe_io_bytes_buffer::BytesBuffer::add_string(
+        &*bb,
+        hxrt::string::HxString::from(hxrt::string::HxString::from("Hi")),
+        None,
+    );
     crate::haxe_io_bytes_buffer::BytesBuffer::add_byte(&*bb, 32);
-    crate::haxe_io_bytes_buffer::BytesBuffer::add_string(&*bb, String::from("Rust"), None);
+    crate::haxe_io_bytes_buffer::BytesBuffer::add_string(
+        &*bb,
+        hxrt::string::HxString::from(hxrt::string::HxString::from("Rust")),
+        None,
+    );
     crate::haxe_io_bytes_buffer::BytesBuffer::add_byte(&*bb, 33);
     crate::sys::Sys::println(hxrt::dynamic::from(
         crate::haxe_io_bytes_buffer::BytesBuffer::get_length(&*bb),
@@ -50,19 +58,21 @@ fn main() {
     match hxrt::exception::catch_unwind(|| {
         crate::haxe_io_bytes_buffer::BytesBuffer::add_bytes(
             &*bb2,
-            crate::HxRef::new(hxrt::bytes::Bytes::of_string(String::from("abc").as_str())),
+            crate::HxRef::new(hxrt::bytes::Bytes::of_string(
+                hxrt::string::HxString::from("abc").as_str(),
+            )),
             0,
             999,
         );
-        crate::sys::Sys::println(hxrt::dynamic::from(String::from("nope")));
+        crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from("nope")));
     }) {
         Ok(__hx_ok) => __hx_ok,
         Err(__hx_ex) => match __hx_ex.downcast::<hxrt::io::Error>() {
             Ok(__hx_box) => {
                 let e: hxrt::io::Error = *__hx_box;
-                crate::sys::Sys::println(hxrt::dynamic::from(
+                crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(
                     hxrt::dynamic::from(e.clone()).to_haxe_string(),
-                ));
+                )));
             }
             Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
         },

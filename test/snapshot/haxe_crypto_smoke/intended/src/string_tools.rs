@@ -7,8 +7,8 @@ pub const __HX_TYPE_ID: u32 = 0x70f28bdfu32;
 pub struct StringTools {}
 
 impl StringTools {
-    pub fn url_encode(s: String) -> String {
-        return {
+    pub fn url_encode(s: hxrt::string::HxString) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from({
             let bytes = s.as_bytes();
             let mut out = String::new();
             for &b in bytes {
@@ -21,11 +21,11 @@ impl StringTools {
                 }
             }
             out
-        };
+        });
     }
 
-    pub fn url_decode(s: String) -> String {
-        return {
+    pub fn url_decode(s: hxrt::string::HxString) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from({
             fn hex_val(b: u8) -> Option<u8> {
                 match b {
                     b'0'..=b'9' => Some(b - b'0'),
@@ -56,76 +56,101 @@ impl StringTools {
 
             String::from_utf8(out.clone())
                 .unwrap_or_else(|_| String::from_utf8_lossy(&out).to_string())
-        };
+        });
     }
 
-    pub fn contains(s: String, value: String) -> bool {
-        return hxrt::string::index_of(s.as_str(), value.as_str(), None) != -1;
+    pub fn contains(s: hxrt::string::HxString, value: hxrt::string::HxString) -> bool {
+        return hxrt::string::index_of(
+            s.as_str(),
+            hxrt::string::HxString::from(value).as_str(),
+            None,
+        ) != -1;
     }
 
-    pub fn starts_with(s: String, start: String) -> bool {
+    pub fn starts_with(s: hxrt::string::HxString, start: hxrt::string::HxString) -> bool {
         return s.starts_with(start.as_str());
     }
 
-    pub fn ends_with(s: String, end: String) -> bool {
+    pub fn ends_with(s: hxrt::string::HxString, end: hxrt::string::HxString) -> bool {
         return s.ends_with(end.as_str());
     }
 
-    pub fn is_space(s: String, pos: i32) -> bool {
+    pub fn is_space(s: hxrt::string::HxString, pos: i32) -> bool {
         if hxrt::string::len(s.as_str()) == 0 || pos < 0 || pos >= hxrt::string::len(s.as_str()) {
             return false;
         }
-        let c: i32 = crate::string_tools::StringTools::fast_code_at(s.clone(), pos);
+        let c: i32 = crate::string_tools::StringTools::fast_code_at(
+            hxrt::string::HxString::from(s.clone()),
+            pos,
+        );
         return c > 8 && c < 14 || c == 32;
     }
 
-    pub fn ltrim(s: String) -> String {
+    pub fn ltrim(s: hxrt::string::HxString) -> hxrt::string::HxString {
         let l: i32 = hxrt::string::len(s.as_str());
         let mut r: i32 = 0;
-        while r < l && crate::string_tools::StringTools::is_space(s.clone(), r) {
+        while r < l
+            && crate::string_tools::StringTools::is_space(
+                hxrt::string::HxString::from(s.clone()),
+                r,
+            )
+        {
             {
                 let __tmp = r;
                 r = r + 1;
                 __tmp
             };
         }
-        return if r > 0 {
-            hxrt::string::substr(s.as_str(), r, Some(l - r))
+        return hxrt::string::HxString::from(if r > 0 {
+            hxrt::string::HxString::from(hxrt::string::substr(s.as_str(), r, Some(l - r)))
         } else {
             s
-        };
+        });
     }
 
-    pub fn rtrim(s: String) -> String {
+    pub fn rtrim(s: hxrt::string::HxString) -> hxrt::string::HxString {
         let l: i32 = hxrt::string::len(s.as_str());
         let mut r: i32 = 0;
-        while r < l && crate::string_tools::StringTools::is_space(s.clone(), l - r - 1) {
+        while r < l
+            && crate::string_tools::StringTools::is_space(
+                hxrt::string::HxString::from(s.clone()),
+                l - r - 1,
+            )
+        {
             {
                 let __tmp = r;
                 r = r + 1;
                 __tmp
             };
         }
-        return if r > 0 {
-            hxrt::string::substr(s.as_str(), 0, Some(l - r))
+        return hxrt::string::HxString::from(if r > 0 {
+            hxrt::string::HxString::from(hxrt::string::substr(s.as_str(), 0, Some(l - r)))
         } else {
             s
-        };
+        });
     }
 
-    pub fn trim(s: String) -> String {
-        return crate::string_tools::StringTools::ltrim(crate::string_tools::StringTools::rtrim(s));
+    pub fn trim(s: hxrt::string::HxString) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(crate::string_tools::StringTools::ltrim(
+            hxrt::string::HxString::from(crate::string_tools::StringTools::rtrim(
+                hxrt::string::HxString::from(s),
+            )),
+        ));
     }
 
-    pub fn lpad(s: String, c: String, l: i32) -> String {
+    pub fn lpad(
+        s: hxrt::string::HxString,
+        c: hxrt::string::HxString,
+        l: i32,
+    ) -> hxrt::string::HxString {
         if hxrt::string::len(c.as_str()) <= 0 {
-            return s;
+            return hxrt::string::HxString::from(s);
         }
         let pad_len: i32 = l - hxrt::string::len(s.as_str());
         if pad_len <= 0 {
-            return s;
+            return hxrt::string::HxString::from(s);
         }
-        return {
+        return hxrt::string::HxString::from({
             let mut buf = String::new();
             let mut cur: i32 = 0;
             while cur < pad_len {
@@ -133,18 +158,22 @@ impl StringTools {
                 cur = hxrt::string::len(buf.as_str());
             }
             format!("{}{}", buf, s)
-        };
+        });
     }
 
-    pub fn rpad(s: String, c: String, l: i32) -> String {
+    pub fn rpad(
+        s: hxrt::string::HxString,
+        c: hxrt::string::HxString,
+        l: i32,
+    ) -> hxrt::string::HxString {
         if hxrt::string::len(c.as_str()) <= 0 {
-            return s;
+            return hxrt::string::HxString::from(s);
         }
         if l <= hxrt::string::len(s.as_str()) {
-            return s;
+            return hxrt::string::HxString::from(s);
         }
         let pad_len: i32 = l - hxrt::string::len(s.as_str());
-        return {
+        return hxrt::string::HxString::from({
             let mut buf = String::new();
             let mut cur: i32 = 0;
             while cur < pad_len {
@@ -152,25 +181,29 @@ impl StringTools {
                 cur = hxrt::string::len(buf.as_str());
             }
             format!("{}{}", s, buf)
-        };
+        });
     }
 
-    pub fn replace(s: String, sub: String, by: String) -> String {
-        return s.replace(sub.as_str(), by.as_str());
+    pub fn replace(
+        s: hxrt::string::HxString,
+        sub: hxrt::string::HxString,
+        by: hxrt::string::HxString,
+    ) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(s.replace(sub.as_str(), by.as_str()));
     }
 
-    pub fn hex(n: i32, digits: Option<i32>) -> String {
-        return {
+    pub fn hex(n: i32, digits: Option<i32>) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from({
             let mut s = format!("{:X}", n as u32);
             let d: i32 = digits.unwrap_or(0);
             while d != 0 && (hxrt::string::len(s.as_str()) < d) {
                 s = format!("0{}", s);
             }
             s
-        };
+        });
     }
 
-    pub fn fast_code_at(s: String, index: i32) -> i32 {
+    pub fn fast_code_at(s: hxrt::string::HxString, index: i32) -> i32 {
         return s
             .chars()
             .nth(index as usize)
@@ -178,8 +211,11 @@ impl StringTools {
             .unwrap_or(-1);
     }
 
-    pub fn unsafe_code_at(s: String, index: i32) -> i32 {
-        return crate::string_tools::StringTools::fast_code_at(s, index);
+    pub fn unsafe_code_at(s: hxrt::string::HxString, index: i32) -> i32 {
+        return crate::string_tools::StringTools::fast_code_at(
+            hxrt::string::HxString::from(s),
+            index,
+        );
     }
 
     pub fn is_eof(c: i32) -> bool {
@@ -187,22 +223,32 @@ impl StringTools {
     }
 
     pub fn iterator(
-        s: String,
+        s: hxrt::string::HxString,
     ) -> crate::HxRef<crate::haxe_iterators_string_iterator::StringIterator> {
-        return crate::haxe_iterators_string_iterator::StringIterator::new(s);
+        return crate::haxe_iterators_string_iterator::StringIterator::new(
+            hxrt::string::HxString::from(s),
+        );
     }
 
     pub fn key_value_iterator(
-        s: String,
+        s: hxrt::string::HxString,
     ) -> crate::HxRef<crate::haxe_iterators_string_key_value_iterator::StringKeyValueIterator> {
-        return crate::haxe_iterators_string_key_value_iterator::StringKeyValueIterator::new(s);
+        return crate::haxe_iterators_string_key_value_iterator::StringKeyValueIterator::new(
+            hxrt::string::HxString::from(s),
+        );
     }
 
-    fn utf16_code_point_at(s: String, index: i32) -> i32 {
-        let mut c: i32 = crate::string_tools::StringTools::fast_code_at(s.clone(), index);
+    fn utf16_code_point_at(s: hxrt::string::HxString, index: i32) -> i32 {
+        let mut c: i32 = crate::string_tools::StringTools::fast_code_at(
+            hxrt::string::HxString::from(s.clone()),
+            index,
+        );
         if c >= 55296 && c <= 56319 {
             c = c - 55232 << 10
-                | crate::string_tools::StringTools::fast_code_at(s.clone(), index + 1) & 1023;
+                | crate::string_tools::StringTools::fast_code_at(
+                    hxrt::string::HxString::from(s.clone()),
+                    index + 1,
+                ) & 1023;
         }
         return c;
     }

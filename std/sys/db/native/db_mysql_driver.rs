@@ -1,24 +1,28 @@
 pub fn open_handle(
-    host: String,
-    user: String,
-    pass: String,
+    host: impl Into<hxrt::string::HxString>,
+    user: impl Into<hxrt::string::HxString>,
+    pass: impl Into<hxrt::string::HxString>,
     port: i32,
-    socket: Option<String>,
-    database: Option<String>,
+    socket: impl Into<hxrt::string::HxString>,
+    database: impl Into<hxrt::string::HxString>,
 ) -> hxrt::dynamic::Dynamic {
-    let socket = socket;
-    let db_name = database;
+    let host: hxrt::string::HxString = host.into();
+    let user: hxrt::string::HxString = user.into();
+    let pass: hxrt::string::HxString = pass.into();
+    let socket: hxrt::string::HxString = socket.into();
+    let db_name: hxrt::string::HxString = database.into();
+
     let mut b = mysql::OptsBuilder::new()
         .ip_or_hostname(Some(host.as_str()))
         .user(Some(user.as_str()))
         .pass(Some(pass.as_str()))
         .tcp_port(port as u16);
 
-    if let Some(s) = socket.as_ref() {
-        b = b.socket(Some(s.as_str()));
+    if let Some(s) = socket.as_deref() {
+        b = b.socket(Some(s));
     }
-    if let Some(db) = db_name.as_ref() {
-        b = b.db_name(Some(db.as_str()));
+    if let Some(db) = db_name.as_deref() {
+        b = b.db_name(Some(db));
     }
 
     let conn = mysql::Conn::new(b)

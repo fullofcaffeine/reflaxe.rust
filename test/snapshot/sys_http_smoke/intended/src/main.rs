@@ -57,21 +57,35 @@ fn main() {
             };
         __up
     };
-    server.bind(crate::sys_net_host::Host::new(String::from("127.0.0.1")), 0);
+    server.bind(
+        crate::sys_net_host::Host::new(hxrt::string::HxString::from(hxrt::string::HxString::from(
+            "127.0.0.1",
+        ))),
+        0,
+    );
     server.listen(1);
     let port: i32 = server.host().borrow().get::<i32>("port");
     crate::sys_thread_thread::Thread::create({
         let __rc: crate::HxRc<dyn Fn() + Send + Sync> = crate::HxRc::new(move || {
             let client: crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync> =
                 server.accept();
-            let req: String = client.__hx_get_input().read_all(None).borrow().to_string();
-            if hxrt::string::index_of(req.as_str(), String::from("\r\n\r\n").as_str(), None) < 0 {
+            let req: hxrt::string::HxString = hxrt::string::HxString::from(
+                client.__hx_get_input().read_all(None).borrow().to_string(),
+            );
+            if hxrt::string::index_of(
+                req.as_str(),
+                hxrt::string::HxString::from(hxrt::string::HxString::from("\r\n\r\n")).as_str(),
+                None,
+            ) < 0
+            {
                 client.close();
                 server.close();
                 return;
             }
             client.__hx_get_output().write_string(
-                String::from("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok"),
+                hxrt::string::HxString::from(hxrt::string::HxString::from(
+                    "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok",
+                )),
                 None,
             );
             client.close();
@@ -79,16 +93,18 @@ fn main() {
         });
         crate::HxDynRef::new(__rc)
     });
-    let h: crate::HxRef<crate::sys_http::Http> = crate::sys_http::Http::new(format!(
-        "{}{}{}",
-        "http://127.0.0.1:",
-        hxrt::dynamic::from(port).to_haxe_string(),
-        "/"
-    ));
+    let h: crate::HxRef<crate::sys_http::Http> = crate::sys_http::Http::new(
+        hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+            "{}{}{}",
+            "http://127.0.0.1:",
+            hxrt::dynamic::from(port).to_haxe_string(),
+            "/"
+        ))),
+    );
     {
         let __tmp = {
-            let __rc: crate::HxRc<dyn Fn(String) + Send + Sync> =
-                crate::HxRc::new(move |d: String| {
+            let __rc: crate::HxRc<dyn Fn(hxrt::string::HxString) + Send + Sync> =
+                crate::HxRc::new(move |d: hxrt::string::HxString| {
                     crate::sys::Sys::println(hxrt::dynamic::from(d));
                 });
             crate::HxDynRef::new(__rc)
@@ -98,8 +114,8 @@ fn main() {
     };
     {
         let __tmp = {
-            let __rc: crate::HxRc<dyn Fn(String) + Send + Sync> =
-                crate::HxRc::new(move |e: String| {
+            let __rc: crate::HxRc<dyn Fn(hxrt::string::HxString) + Send + Sync> =
+                crate::HxRc::new(move |e: hxrt::string::HxString| {
                     hxrt::exception::throw(hxrt::dynamic::from(e));
                 });
             crate::HxDynRef::new(__rc)

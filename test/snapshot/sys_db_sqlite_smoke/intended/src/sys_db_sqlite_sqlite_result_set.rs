@@ -83,16 +83,16 @@ impl SqliteResultSet {
         return l;
     }
 
-    pub fn get_result(self_: &crate::HxRefCell<SqliteResultSet>, n: i32) -> String {
+    pub fn get_result(self_: &crate::HxRefCell<SqliteResultSet>, n: i32) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet> =
             self_.self_ref();
-        return hxrt::db::query_result_get_result(
+        return hxrt::string::HxString::from(hxrt::db::query_result_get_result(
             &({
                 let __b = __hx_this.borrow();
                 __b.res.clone()
             }),
             n,
-        );
+        ));
     }
 
     pub fn get_int_result(self_: &crate::HxRefCell<SqliteResultSet>, n: i32) -> i32 {
@@ -121,13 +121,13 @@ impl SqliteResultSet {
 
     pub fn get_fields_names(
         self_: &crate::HxRefCell<SqliteResultSet>,
-    ) -> hxrt::array::Array<String> {
+    ) -> hxrt::array::Array<hxrt::string::HxString> {
         let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet> =
             self_.self_ref();
         return if crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet::get_nfields(&*__hx_this)
             == 0
         {
-            hxrt::array::Array::<String>::null()
+            hxrt::array::Array::<hxrt::string::HxString>::null()
         } else {
             hxrt::db::query_result_fields(
                 &({
@@ -155,7 +155,7 @@ impl crate::sys_db_result_set::ResultSet for crate::HxRefCell<SqliteResultSet> {
     fn results(&self) -> crate::HxRef<crate::haxe_ds_list::List<hxrt::dynamic::Dynamic>> {
         SqliteResultSet::results(self)
     }
-    fn get_result(&self, n: i32) -> String {
+    fn get_result(&self, n: i32) -> hxrt::string::HxString {
         SqliteResultSet::get_result(self, n)
     }
     fn get_int_result(&self, n: i32) -> i32 {
@@ -164,7 +164,7 @@ impl crate::sys_db_result_set::ResultSet for crate::HxRefCell<SqliteResultSet> {
     fn get_float_result(&self, n: i32) -> f64 {
         SqliteResultSet::get_float_result(self, n)
     }
-    fn get_fields_names(&self) -> hxrt::array::Array<String> {
+    fn get_fields_names(&self) -> hxrt::array::Array<hxrt::string::HxString> {
         SqliteResultSet::get_fields_names(self)
     }
 }

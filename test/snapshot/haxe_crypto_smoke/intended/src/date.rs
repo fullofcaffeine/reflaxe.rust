@@ -154,12 +154,12 @@ impl Date {
         } as i64);
     }
 
-    pub fn to_string(self_: &crate::HxRefCell<Date>) -> String {
+    pub fn to_string(self_: &crate::HxRefCell<Date>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::date::Date> = self_.self_ref();
-        return hxrt::date::format_local({
+        return hxrt::string::HxString::from(hxrt::date::format_local({
             let __b = __hx_this.borrow();
             __b.ms
-        } as i64);
+        } as i64));
     }
 
     pub fn now() -> crate::HxRef<crate::date::Date> {
@@ -176,7 +176,7 @@ impl Date {
         return d;
     }
 
-    pub fn from_string(s: String) -> crate::HxRef<crate::date::Date> {
+    pub fn from_string(s: hxrt::string::HxString) -> crate::HxRef<crate::date::Date> {
         let t: f64 = hxrt::date::parse_to_ms(s.as_str()) as f64;
         return crate::date::Date::from_time(t);
     }

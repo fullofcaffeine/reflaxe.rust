@@ -393,7 +393,7 @@ impl SocketHandle {
     /// This is used by `sys.ssl.Socket.handshake()` for HTTPS support.
     pub fn tls_handshake_client(
         &mut self,
-        hostname: Option<String>,
+        hostname: impl Into<crate::string::HxString>,
         verify_cert: Option<bool>,
         ca: Option<HxRef<crate::ssl::Certificate>>,
     ) {
@@ -408,7 +408,8 @@ impl SocketHandle {
             None => throw_msg("Socket is not connected"),
         };
 
-        let server_name_str = hostname.unwrap_or_else(|| "localhost".to_string());
+        let hostname: crate::string::HxString = hostname.into();
+        let server_name_str = hostname.as_deref().unwrap_or("localhost").to_string();
         let server_name = match ServerName::try_from(server_name_str) {
             Ok(n) => n,
             Err(_) => throw_msg("Invalid TLS hostname"),

@@ -19,35 +19,45 @@ impl Sys {
         };
     }
 
-    pub fn args() -> hxrt::array::Array<String> {
-        return hxrt::array::Array::<String>::from_vec(
-            std::env::args().skip(1).collect::<Vec<String>>(),
+    pub fn args() -> hxrt::array::Array<hxrt::string::HxString> {
+        return hxrt::array::Array::<hxrt::string::HxString>::from_vec(
+            std::env::args()
+                .skip(1)
+                .map(hxrt::string::HxString::from)
+                .collect::<Vec<hxrt::string::HxString>>(),
         );
     }
 
-    pub fn get_env(s: String) -> String {
-        return std::env::var(s.as_str())
-            .ok()
-            .unwrap_or_else(|| String::new());
+    pub fn get_env(s: hxrt::string::HxString) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from(
+            std::env::var(s.as_str())
+                .ok()
+                .unwrap_or_else(|| String::new()),
+        ));
     }
 
-    pub fn put_env(s: String, v: Option<String>) {
-        if v.is_none() {
+    pub fn put_env(s: hxrt::string::HxString, v: hxrt::string::HxString) {
+        if v.is_null() {
             {
                 std::env::remove_var(s.as_str());
             };
         } else {
             {
-                std::env::set_var(s.as_str(), v.as_ref().unwrap().as_str());
+                std::env::set_var(s.as_str(), v.as_str());
             };
         }
     }
 
-    pub fn environment() -> crate::HxRef<crate::haxe_ds_string_map::StringMap<String>> {
+    pub fn environment(
+    ) -> crate::HxRef<crate::haxe_ds_string_map::StringMap<hxrt::string::HxString>> {
         return {
-            let m = crate::haxe_ds_string_map::StringMap::<String>::new();
+            let m = crate::haxe_ds_string_map::StringMap::<hxrt::string::HxString>::new();
             for (k, v) in std::env::vars() {
-                crate::haxe_ds_string_map::StringMap::set(&m, k, v);
+                crate::haxe_ds_string_map::StringMap::set(
+                    &m,
+                    hxrt::string::HxString::from(k),
+                    hxrt::string::HxString::from(v),
+                );
             }
             m
         };
@@ -59,37 +69,44 @@ impl Sys {
         };
     }
 
-    pub fn set_time_locale(loc: String) -> bool {
-        let _unused: String = loc;
+    pub fn set_time_locale(loc: hxrt::string::HxString) -> bool {
+        let _unused: hxrt::string::HxString = hxrt::string::HxString::from(loc);
         return false;
     }
 
-    pub fn get_cwd() -> String {
-        return std::env::current_dir()
-            .unwrap()
-            .to_string_lossy()
-            .to_string();
+    pub fn get_cwd() -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from(
+            std::env::current_dir()
+                .unwrap()
+                .to_string_lossy()
+                .to_string(),
+        ));
     }
 
-    pub fn set_cwd(path: String) {
+    pub fn set_cwd(path: hxrt::string::HxString) {
         {
             std::env::set_current_dir(path.as_str()).unwrap();
         };
     }
 
-    pub fn system_name() -> String {
-        return match std::env::consts::OS {
-            "windows" => String::from("Windows"),
-            "linux" => String::from("Linux"),
-            "macos" => String::from("Mac"),
-            "freebsd" => String::from("BSD"),
-            "netbsd" => String::from("BSD"),
-            "openbsd" => String::from("BSD"),
-            _ => String::from(std::env::consts::OS),
-        };
+    pub fn system_name() -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from(
+            match std::env::consts::OS {
+                "windows" => String::from("Windows"),
+                "linux" => String::from("Linux"),
+                "macos" => String::from("Mac"),
+                "freebsd" => String::from("BSD"),
+                "netbsd" => String::from("BSD"),
+                "openbsd" => String::from("BSD"),
+                _ => String::from(std::env::consts::OS),
+            },
+        ));
     }
 
-    pub fn command(cmd: String, args: hxrt::array::Array<String>) -> i32 {
+    pub fn command(
+        cmd: hxrt::string::HxString,
+        args: hxrt::array::Array<hxrt::string::HxString>,
+    ) -> i32 {
         if args.is_null() {
             return std::process::Command::new("sh")
                 .arg("-c")
@@ -128,15 +145,17 @@ impl Sys {
         return crate::sys::Sys::time();
     }
 
-    pub fn executable_path() -> String {
-        return crate::sys::Sys::program_path();
+    pub fn executable_path() -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(crate::sys::Sys::program_path());
     }
 
-    pub fn program_path() -> String {
-        return std::env::current_exe()
-            .unwrap()
-            .to_string_lossy()
-            .to_string();
+    pub fn program_path() -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from(
+            std::env::current_exe()
+                .unwrap()
+                .to_string_lossy()
+                .to_string(),
+        ));
     }
 
     pub fn get_char(echo: bool) -> i32 {

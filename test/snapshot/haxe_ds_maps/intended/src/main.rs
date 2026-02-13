@@ -35,46 +35,70 @@ mod sys_io_stdout;
 fn main() {
     println!(
         "{}",
-        hxrt::dynamic::from(String::from("--- StringMap<Int> ---"))
+        hxrt::dynamic::from(hxrt::string::HxString::from("--- StringMap<Int> ---"))
     );
     let sm: crate::HxRef<crate::haxe_ds_string_map::StringMap<i32>> =
         crate::haxe_ds_string_map::StringMap::<i32>::new();
-    crate::haxe_ds_string_map::StringMap::set(&*sm, String::from("a"), 1);
-    crate::haxe_ds_string_map::StringMap::set(&*sm, String::from("b"), 2);
+    crate::haxe_ds_string_map::StringMap::set(
+        &*sm,
+        hxrt::string::HxString::from(hxrt::string::HxString::from("a")),
+        1,
+    );
+    crate::haxe_ds_string_map::StringMap::set(
+        &*sm,
+        hxrt::string::HxString::from(hxrt::string::HxString::from("b")),
+        2,
+    );
     println!(
         "{}",
         hxrt::dynamic::from(crate::haxe_ds_string_map::StringMap::exists(
             &*sm,
-            String::from("a")
+            hxrt::string::HxString::from(hxrt::string::HxString::from("a"))
         ))
     );
     println!(
         "{}",
         hxrt::dynamic::from(crate::haxe_ds_string_map::StringMap::exists(
             &*sm,
-            String::from("z")
+            hxrt::string::HxString::from(hxrt::string::HxString::from("z"))
         ))
     );
     println!(
         "{}",
         hxrt::dynamic::from(
-            crate::haxe_ds_string_map::StringMap::get(&*sm, String::from("a")).is_none()
+            crate::haxe_ds_string_map::StringMap::get(
+                &*sm,
+                hxrt::string::HxString::from(hxrt::string::HxString::from("a"))
+            )
+            .is_none()
         )
     );
     println!(
         "{}",
         hxrt::dynamic::from(
-            crate::haxe_ds_string_map::StringMap::get(&*sm, String::from("z")).is_none()
+            crate::haxe_ds_string_map::StringMap::get(
+                &*sm,
+                hxrt::string::HxString::from(hxrt::string::HxString::from("z"))
+            )
+            .is_none()
         )
     );
     for k in crate::haxe_ds_string_map::StringMap::keys(&*sm) {
-        println!("{}", hxrt::dynamic::from(format!("{}{}", "k=", &k).clone()));
+        println!(
+            "{}",
+            hxrt::dynamic::from(hxrt::string::HxString::from(format!("{}{}", "k=", &k)).clone())
+        );
     }
     for v in crate::haxe_ds_string_map::StringMap::iterator(&*sm) {
         println!(
             "{}",
             hxrt::dynamic::from(
-                format!("{}{}", "v=", hxrt::dynamic::from(v).to_haxe_string()).clone()
+                hxrt::string::HxString::from(format!(
+                    "{}{}",
+                    "v=",
+                    hxrt::dynamic::from(v).to_haxe_string()
+                ))
+                .clone()
             )
         );
     }
@@ -82,12 +106,12 @@ fn main() {
         println!(
             "{}",
             hxrt::dynamic::from(
-                format!(
+                hxrt::string::HxString::from(format!(
                     "{}{}{}",
                     kv.key,
                     "=>",
                     hxrt::dynamic::from(kv.value).to_haxe_string()
-                )
+                ))
                 .clone()
             )
         );
@@ -96,14 +120,14 @@ fn main() {
         "{}",
         hxrt::dynamic::from(crate::haxe_ds_string_map::StringMap::remove(
             &*sm,
-            String::from("a")
+            hxrt::string::HxString::from(hxrt::string::HxString::from("a"))
         ))
     );
     println!(
         "{}",
         hxrt::dynamic::from(crate::haxe_ds_string_map::StringMap::exists(
             &*sm,
-            String::from("a")
+            hxrt::string::HxString::from(hxrt::string::HxString::from("a"))
         ))
     );
     let sm2: crate::HxRef<crate::haxe_ds_string_map::StringMap<i32>> =
@@ -112,7 +136,7 @@ fn main() {
         "{}",
         hxrt::dynamic::from(crate::haxe_ds_string_map::StringMap::exists(
             &*sm2,
-            String::from("b")
+            hxrt::string::HxString::from(hxrt::string::HxString::from("b"))
         ))
     );
     crate::haxe_ds_string_map::StringMap::clear(&*sm);
@@ -120,12 +144,12 @@ fn main() {
         "{}",
         hxrt::dynamic::from(crate::haxe_ds_string_map::StringMap::exists(
             &*sm,
-            String::from("b")
+            hxrt::string::HxString::from(hxrt::string::HxString::from("b"))
         ))
     );
     println!(
         "{}",
-        hxrt::dynamic::from(String::from("--- IntMap<Int> ---"))
+        hxrt::dynamic::from(hxrt::string::HxString::from("--- IntMap<Int> ---"))
     );
     let im: crate::HxRef<crate::haxe_ds_int_map::IntMap<i32>> =
         crate::haxe_ds_int_map::IntMap::<i32>::new();
@@ -147,7 +171,12 @@ fn main() {
         println!(
             "{}",
             hxrt::dynamic::from(
-                format!("{}{}", "k=", hxrt::dynamic::from(k_2).to_haxe_string()).clone()
+                hxrt::string::HxString::from(format!(
+                    "{}{}",
+                    "k=",
+                    hxrt::dynamic::from(k_2).to_haxe_string()
+                ))
+                .clone()
             )
         );
     }
@@ -155,7 +184,12 @@ fn main() {
         println!(
             "{}",
             hxrt::dynamic::from(
-                format!("{}{}", "v=", hxrt::dynamic::from(v_2).to_haxe_string()).clone()
+                hxrt::string::HxString::from(format!(
+                    "{}{}",
+                    "v=",
+                    hxrt::dynamic::from(v_2).to_haxe_string()
+                ))
+                .clone()
             )
         );
     }
@@ -163,19 +197,19 @@ fn main() {
         println!(
             "{}",
             hxrt::dynamic::from(
-                format!(
+                hxrt::string::HxString::from(format!(
                     "{}{}{}",
                     hxrt::dynamic::from(kv_2.key).to_haxe_string(),
                     "=>",
                     hxrt::dynamic::from(kv_2.value).to_haxe_string()
-                )
+                ))
                 .clone()
             )
         );
     }
     println!(
         "{}",
-        hxrt::dynamic::from(String::from("--- ObjectMap<Key, Int> ---"))
+        hxrt::dynamic::from(hxrt::string::HxString::from("--- ObjectMap<Key, Int> ---"))
     );
     let om: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<crate::HxRef<crate::key::Key>, i32>> =
         crate::haxe_ds_object_map::ObjectMap::<crate::HxRef<crate::key::Key>, i32>::new();
@@ -204,11 +238,11 @@ fn main() {
         println!(
             "{}",
             hxrt::dynamic::from(
-                format!(
+                hxrt::string::HxString::from(format!(
                     "{}{}",
                     "k=",
-                    hxrt::dynamic::from(k_3.clone()).to_haxe_string()
-                )
+                    hxrt::string::HxString::from(hxrt::dynamic::from(k_3.clone()).to_haxe_string())
+                ))
                 .clone()
             )
         );
@@ -217,7 +251,12 @@ fn main() {
         println!(
             "{}",
             hxrt::dynamic::from(
-                format!("{}{}", "v=", hxrt::dynamic::from(v_3).to_haxe_string()).clone()
+                hxrt::string::HxString::from(format!(
+                    "{}{}",
+                    "v=",
+                    hxrt::dynamic::from(v_3).to_haxe_string()
+                ))
+                .clone()
             )
         );
     }
@@ -225,19 +264,21 @@ fn main() {
         println!(
             "{}",
             hxrt::dynamic::from(
-                format!(
+                hxrt::string::HxString::from(format!(
                     "{}{}{}",
-                    hxrt::dynamic::from(kv_3.key.clone()).to_haxe_string(),
+                    hxrt::string::HxString::from(
+                        hxrt::dynamic::from(kv_3.key.clone()).to_haxe_string()
+                    ),
                     "=>",
                     hxrt::dynamic::from(kv_3.value).to_haxe_string()
-                )
+                ))
                 .clone()
             )
         );
     }
     println!(
         "{}",
-        hxrt::dynamic::from(String::from("--- EnumValueMap<E, Int> ---"))
+        hxrt::dynamic::from(hxrt::string::HxString::from("--- EnumValueMap<E, Int> ---"))
     );
     let em: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<crate::e::E, i32>> =
         crate::haxe_ds_enum_value_map::EnumValueMap::<crate::e::E, i32>::new();
@@ -266,11 +307,11 @@ fn main() {
         println!(
             "{}",
             hxrt::dynamic::from(
-                format!(
+                hxrt::string::HxString::from(format!(
                     "{}{}",
                     "k=",
-                    hxrt::dynamic::from(k_4.clone()).to_haxe_string()
-                )
+                    hxrt::string::HxString::from(hxrt::dynamic::from(k_4.clone()).to_haxe_string())
+                ))
                 .clone()
             )
         );
@@ -279,7 +320,12 @@ fn main() {
         println!(
             "{}",
             hxrt::dynamic::from(
-                format!("{}{}", "v=", hxrt::dynamic::from(v_4).to_haxe_string()).clone()
+                hxrt::string::HxString::from(format!(
+                    "{}{}",
+                    "v=",
+                    hxrt::dynamic::from(v_4).to_haxe_string()
+                ))
+                .clone()
             )
         );
     }
@@ -287,12 +333,14 @@ fn main() {
         println!(
             "{}",
             hxrt::dynamic::from(
-                format!(
+                hxrt::string::HxString::from(format!(
                     "{}{}{}",
-                    hxrt::dynamic::from(kv_4.key.clone()).to_haxe_string(),
+                    hxrt::string::HxString::from(
+                        hxrt::dynamic::from(kv_4.key.clone()).to_haxe_string()
+                    ),
                     "=>",
                     hxrt::dynamic::from(kv_4.value).to_haxe_string()
-                )
+                ))
                 .clone()
             )
         );

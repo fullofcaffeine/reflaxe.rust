@@ -41,10 +41,18 @@ fn main() {
             });
         crate::HxDynRef::new(__rc)
     });
-    crate::sys::Sys::println(hxrt::dynamic::from(xs.join(String::from(","))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(xs.join(
+        hxrt::string::HxString::from(hxrt::string::HxString::from(",")),
+    ))));
     let removed: hxrt::array::Array<i32> = xs.splice(1, 1);
-    crate::sys::Sys::println(hxrt::dynamic::from(removed.join(String::from(","))));
-    crate::sys::Sys::println(hxrt::dynamic::from(xs.join(String::from(","))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(
+        removed.join(hxrt::string::HxString::from(hxrt::string::HxString::from(
+            ",",
+        ))),
+    )));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(xs.join(
+        hxrt::string::HxString::from(hxrt::string::HxString::from(",")),
+    ))));
     let c: crate::HxRef<crate::counter::Counter> = crate::counter::Counter::new(0);
     crate::counter::Counter::inc(&*c);
     crate::sys::Sys::println(hxrt::dynamic::from({
@@ -52,26 +60,32 @@ fn main() {
         __b.n
     }));
     let e: crate::e::E = crate::e::E::B(7);
-    let msg: String = match e.clone() {
-        crate::e::E::A => String::from("A"),
+    let msg: hxrt::string::HxString = hxrt::string::HxString::from(match e.clone() {
+        crate::e::E::A => hxrt::string::HxString::from(hxrt::string::HxString::from("A")),
         crate::e::E::B(__p) => {
             let _g: i32 = __p;
-            {
+            hxrt::string::HxString::from({
                 let i: i32 = _g;
-                format!("{}{}", "B:", hxrt::dynamic::from(i).to_haxe_string())
-            }
+                hxrt::string::HxString::from(format!(
+                    "{}{}",
+                    "B:",
+                    hxrt::dynamic::from(i).to_haxe_string()
+                ))
+            })
         }
-    };
+    });
     crate::sys::Sys::println(hxrt::dynamic::from(msg));
-    let caught: String = match hxrt::exception::catch_unwind(|| {
-        hxrt::exception::throw(hxrt::dynamic::from(String::from("boom")));
-    }) {
-        Ok(__hx_ok) => __hx_ok,
-        Err(__hx_ex) => match __hx_ex.downcast::<String>() {
-            Ok(_) => String::from("caught"),
-            Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
+    let caught: hxrt::string::HxString = hxrt::string::HxString::from(
+        match hxrt::exception::catch_unwind(|| {
+            hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from("boom")));
+        }) {
+            Ok(__hx_ok) => __hx_ok,
+            Err(__hx_ex) => match __hx_ex.downcast::<hxrt::string::HxString>() {
+                Ok(_) => hxrt::string::HxString::from("caught"),
+                Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
+            },
         },
-    };
+    );
     crate::sys::Sys::println(hxrt::dynamic::from(caught));
     let f: crate::HxDynRef<dyn Fn(i32) -> i32 + Send + Sync> = {
         let __rc: crate::HxRc<dyn Fn(i32) -> i32 + Send + Sync> =

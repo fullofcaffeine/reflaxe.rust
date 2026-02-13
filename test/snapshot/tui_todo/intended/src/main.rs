@@ -24,12 +24,22 @@ mod task;
 mod tui_demo;
 
 fn main() {
-    let tasks: hxrt::array::Array<crate::HxRef<crate::task::Task>> =
-        hxrt::array::Array::<crate::HxRef<crate::task::Task>>::from_vec(vec![
-            crate::task::Task::new(String::from("bootstrap reflaxe.rust"), true),
-            crate::task::Task::new(String::from("add enums + switch"), false),
-            crate::task::Task::new(String::from("ship ratatui demo"), false),
-        ]);
+    let tasks: hxrt::array::Array<crate::HxRef<crate::task::Task>> = hxrt::array::Array::<
+        crate::HxRef<crate::task::Task>,
+    >::from_vec(vec![
+        crate::task::Task::new(
+            hxrt::string::HxString::from(hxrt::string::HxString::from("bootstrap reflaxe.rust")),
+            true,
+        ),
+        crate::task::Task::new(
+            hxrt::string::HxString::from(hxrt::string::HxString::from("add enums + switch")),
+            false,
+        ),
+        crate::task::Task::new(
+            hxrt::string::HxString::from(hxrt::string::HxString::from("ship ratatui demo")),
+            false,
+        ),
+    ]);
     let actions: hxrt::array::Array<crate::action::Action> =
         hxrt::array::Array::<crate::action::Action>::from_vec(vec![
             crate::action::Action::Down,
@@ -62,18 +72,19 @@ fn main() {
                 break;
             }
         }
-        let mut lines: String = String::from("");
+        let mut lines: hxrt::string::HxString =
+            hxrt::string::HxString::from(hxrt::string::HxString::from(""));
         let mut j: i32 = 0;
         while j < (tasks.len() as i32) {
-            lines = format!(
+            lines = hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
                 "{}{}{}",
                 &lines,
                 crate::task::Task::line(&*tasks.get_unchecked(j as usize), j == selected),
                 "\n"
-            );
+            )));
             j = j + 1;
         }
-        crate::tui_demo::run_frame(frame, lines.clone());
+        crate::tui_demo::run_frame(frame, hxrt::string::HxString::from(lines.clone()));
         frame = frame + 1;
         i = i + 1;
     }

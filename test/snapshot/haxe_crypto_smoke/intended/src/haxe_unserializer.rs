@@ -12,8 +12,8 @@ fn __hx_static_cell_default_resolver() -> &'static hxrt::cell::HxCell<crate::HxR
             let mut __b = __hx_o.borrow_mut();
             __b.set("resolveClass", {
                 let __recv = __hx_src.clone();
-                let __rc: crate::HxRc<dyn Fn(String) -> u32 + Send + Sync> =
-                    crate::HxRc::new(move |a0: String| {
+                let __rc: crate::HxRc<dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync> =
+                    crate::HxRc::new(move |a0: hxrt::string::HxString| {
                         crate::haxe_unserializer_default_resolver::DefaultResolver::resolve_class(
                             &*__recv, a0,
                         )
@@ -22,8 +22,8 @@ fn __hx_static_cell_default_resolver() -> &'static hxrt::cell::HxCell<crate::HxR
             });
             __b.set("resolveEnum", {
                 let __recv = __hx_src.clone();
-                let __rc: crate::HxRc<dyn Fn(String) -> u32 + Send + Sync> =
-                    crate::HxRc::new(move |a0: String| {
+                let __rc: crate::HxRc<dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync> =
+                    crate::HxRc::new(move |a0: hxrt::string::HxString| {
                         crate::haxe_unserializer_default_resolver::DefaultResolver::resolve_enum(
                             &*__recv, a0,
                         )
@@ -42,19 +42,19 @@ pub(crate) fn __hx_static_set_default_resolver(value: crate::HxRef<hxrt::anon::A
     *__hx_static_cell_default_resolver().borrow_mut() = value;
 }
 
-static __HX_STATIC_BASE64: std::sync::OnceLock<hxrt::cell::HxCell<String>> =
+static __HX_STATIC_BASE64: std::sync::OnceLock<hxrt::cell::HxCell<hxrt::string::HxString>> =
     std::sync::OnceLock::new();
-fn __hx_static_cell_base64() -> &'static hxrt::cell::HxCell<String> {
+fn __hx_static_cell_base64() -> &'static hxrt::cell::HxCell<hxrt::string::HxString> {
     __HX_STATIC_BASE64.get_or_init(|| {
-        hxrt::cell::HxCell::new(String::from(
+        hxrt::cell::HxCell::new(hxrt::string::HxString::from(hxrt::string::HxString::from(
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%:",
-        ))
+        )))
     })
 }
-pub(crate) fn __hx_static_get_base64() -> String {
+pub(crate) fn __hx_static_get_base64() -> hxrt::string::HxString {
     __hx_static_cell_base64().borrow().clone()
 }
-pub(crate) fn __hx_static_set_base64(value: String) {
+pub(crate) fn __hx_static_set_base64(value: hxrt::string::HxString) {
     *__hx_static_cell_base64().borrow_mut() = value;
 }
 
@@ -75,23 +75,25 @@ pub const __HX_TYPE_ID: u32 = 0xb43e7e96u32;
 #[derive(Debug)]
 
 pub struct Unserializer {
-    buf: String,
+    buf: hxrt::string::HxString,
     pos: i32,
     length: i32,
     cache: hxrt::array::Array<hxrt::dynamic::Dynamic>,
-    scache: hxrt::array::Array<String>,
+    scache: hxrt::array::Array<hxrt::string::HxString>,
     resolver: crate::HxRef<hxrt::anon::Anon>,
 }
 
 impl Unserializer {
-    pub fn new(buf: String) -> crate::HxRef<crate::haxe_unserializer::Unserializer> {
+    pub fn new(
+        buf: hxrt::string::HxString,
+    ) -> crate::HxRef<crate::haxe_unserializer::Unserializer> {
         let self_: crate::HxRef<crate::haxe_unserializer::Unserializer> =
             crate::HxRef::new(Unserializer {
                 buf: buf,
                 pos: 0,
                 length: 0,
                 cache: hxrt::array::Array::<hxrt::dynamic::Dynamic>::new(),
-                scache: hxrt::array::Array::<String>::new(),
+                scache: hxrt::array::Array::<hxrt::string::HxString>::new(),
                 resolver: Default::default(),
             });
         {
@@ -111,7 +113,7 @@ impl Unserializer {
             __tmp
         };
         {
-            let __tmp = hxrt::array::Array::<String>::new();
+            let __tmp = hxrt::array::Array::<hxrt::string::HxString>::new();
             self_.borrow_mut().scache = __tmp.clone();
             __tmp
         };
@@ -129,14 +131,14 @@ impl Unserializer {
                 let mut __b = __hx_o.borrow_mut();
                 __b.set("resolveClass", {
                     let __recv = __hx_src.clone();
-                    let __rc: crate::HxRc<dyn Fn(String) -> u32 + Send + Sync> = crate::HxRc::new(move |a0: String| {
+                    let __rc: crate::HxRc<dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync> = crate::HxRc::new(move |a0: hxrt::string::HxString| {
                         crate::haxe_unserializer_default_resolver::DefaultResolver::resolve_class(&*__recv, a0)
                     });
                     crate::HxDynRef::new(__rc)
                 });
                 __b.set("resolveEnum", {
                     let __recv = __hx_src.clone();
-                    let __rc: crate::HxRc<dyn Fn(String) -> u32 + Send + Sync> = crate::HxRc::new(move |a0: String| {
+                    let __rc: crate::HxRc<dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync> = crate::HxRc::new(move |a0: hxrt::string::HxString| {
                         crate::haxe_unserializer_default_resolver::DefaultResolver::resolve_enum(&*__recv, a0)
                     });
                     crate::HxDynRef::new(__rc)
@@ -173,10 +175,10 @@ impl Unserializer {
                     __b.pos
                 };
                 crate::string_tools::StringTools::fast_code_at(
-                    {
+                    hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
-                    },
+                    }),
                     p,
                 )
             };
@@ -231,10 +233,10 @@ impl Unserializer {
                     __b.pos
                 };
                 crate::string_tools::StringTools::fast_code_at(
-                    {
+                    hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
-                    },
+                    }),
                     p,
                 )
             };
@@ -253,15 +255,15 @@ impl Unserializer {
         }
         return hxrt::string::parse_float(
             ({
-                let s: String = {
+                let s: hxrt::string::HxString = hxrt::string::HxString::from({
                     let __b = __hx_this.borrow();
                     __b.buf.clone()
-                };
+                });
                 let length: i32 = ({
                     let __b = __hx_this.borrow();
                     __b.pos
                 }) - p1;
-                hxrt::string::substr(s.as_str(), p1, Some(length))
+                hxrt::string::HxString::from(hxrt::string::substr(s.as_str(), p1, Some(length)))
             })
             .as_str(),
         );
@@ -280,7 +282,9 @@ impl Unserializer {
                 let __b = __hx_this.borrow();
                 __b.length
             }) {
-                hxrt::exception::throw(hxrt::dynamic::from(String::from("Invalid object")));
+                hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
+                    "Invalid object",
+                )));
             }
             if ({
                 let p: i32 = {
@@ -288,10 +292,10 @@ impl Unserializer {
                     __b.pos
                 };
                 crate::string_tools::StringTools::fast_code_at(
-                    {
+                    hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
-                    },
+                    }),
                     p,
                 )
             }) == 103
@@ -305,7 +309,9 @@ impl Unserializer {
                 __dyn.downcast_ref::<String>().is_some()
                     || __dyn.downcast_ref::<hxrt::string::HxString>().is_some()
             }) {
-                hxrt::exception::throw(hxrt::dynamic::from(String::from("Invalid object key")));
+                hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
+                    "Invalid object key",
+                )));
             }
             let v: hxrt::dynamic::Dynamic =
                 crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this);
@@ -314,16 +320,18 @@ impl Unserializer {
                 let __name = {
                     let __hx_dyn = k.clone();
                     if __hx_dyn.is_null() {
-                        String::from("null")
+                        hxrt::string::HxString::null()
                     } else {
                         if __hx_dyn.downcast_ref::<String>().is_some() {
-                            __hx_dyn.downcast_ref::<String>().unwrap().clone()
+                            hxrt::string::HxString::from(
+                                __hx_dyn.downcast_ref::<String>().unwrap().clone(),
+                            )
                         } else {
                             if __hx_dyn.downcast_ref::<hxrt::string::HxString>().is_some() {
                                 __hx_dyn
                                     .downcast_ref::<hxrt::string::HxString>()
                                     .unwrap()
-                                    .to_haxe_string()
+                                    .clone()
                             } else {
                                 hxrt::exception::throw(hxrt::dynamic::from(String::from(
                                     "Null Access",
@@ -344,7 +352,11 @@ impl Unserializer {
         };
     }
 
-    fn unserialize_enum<T>(self_: &crate::HxRefCell<Unserializer>, edecl: u32, tag: String) -> T {
+    fn unserialize_enum<T>(
+        self_: &crate::HxRefCell<Unserializer>,
+        edecl: u32,
+        tag: hxrt::string::HxString,
+    ) -> T {
         let __hx_this: crate::HxRef<crate::haxe_unserializer::Unserializer> = self_.self_ref();
         if ({
             let p: i32 = {
@@ -353,15 +365,17 @@ impl Unserializer {
                 __tmp
             };
             crate::string_tools::StringTools::fast_code_at(
-                {
+                hxrt::string::HxString::from({
                     let __b = __hx_this.borrow();
                     __b.buf.clone()
-                },
+                }),
                 p,
             )
         }) != 58
         {
-            hxrt::exception::throw(hxrt::dynamic::from(String::from("Invalid enum format")));
+            hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
+                "Invalid enum format",
+            )));
         }
         let mut nargs: i32 = crate::haxe_unserializer::Unserializer::read_digits(&*__hx_this);
         if nargs == 0 {
@@ -401,29 +415,31 @@ impl Unserializer {
                     __tmp
                 };
                 crate::string_tools::StringTools::fast_code_at(
-                    {
+                    hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
-                    },
+                    }),
                     p,
                 )
             };
             match _g {
                 65 => {
-                    let name: String = {
+                    let name: hxrt::string::HxString = {
                         let __hx_dyn =
                             crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this);
                         if __hx_dyn.is_null() {
-                            String::from("null")
+                            hxrt::string::HxString::null()
                         } else {
                             if __hx_dyn.downcast_ref::<String>().is_some() {
-                                __hx_dyn.downcast_ref::<String>().unwrap().clone()
+                                hxrt::string::HxString::from(
+                                    __hx_dyn.downcast_ref::<String>().unwrap().clone(),
+                                )
                             } else {
                                 if __hx_dyn.downcast_ref::<hxrt::string::HxString>().is_some() {
                                     __hx_dyn
                                         .downcast_ref::<hxrt::string::HxString>()
                                         .unwrap()
-                                        .to_haxe_string()
+                                        .clone()
                                 } else {
                                     hxrt::exception::throw(hxrt::dynamic::from(String::from(
                                         "Null Access",
@@ -437,32 +453,35 @@ impl Unserializer {
                         __b.resolver.clone()
                     })
                     .borrow()
-                    .get::<crate::HxDynRef<dyn Fn(String) -> u32 + Send + Sync>>("resolveClass")(
-                        name.clone(),
+                    .get::<crate::HxDynRef<
+                        dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                    >>("resolveClass")(
+                        hxrt::string::HxString::from(name.clone())
                     );
                     if cl == 0u32 {
-                        hxrt::exception::throw(hxrt::dynamic::from(format!(
-                            "{}{}",
-                            "Class not found ", &name
+                        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
+                            format!("{}{}", "Class not found ", &name),
                         )));
                     }
                     return hxrt::dynamic::from(cl);
                 }
                 66 => {
-                    let name_2: String = {
+                    let name_2: hxrt::string::HxString = {
                         let __hx_dyn =
                             crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this);
                         if __hx_dyn.is_null() {
-                            String::from("null")
+                            hxrt::string::HxString::null()
                         } else {
                             if __hx_dyn.downcast_ref::<String>().is_some() {
-                                __hx_dyn.downcast_ref::<String>().unwrap().clone()
+                                hxrt::string::HxString::from(
+                                    __hx_dyn.downcast_ref::<String>().unwrap().clone(),
+                                )
                             } else {
                                 if __hx_dyn.downcast_ref::<hxrt::string::HxString>().is_some() {
                                     __hx_dyn
                                         .downcast_ref::<hxrt::string::HxString>()
                                         .unwrap()
-                                        .to_haxe_string()
+                                        .clone()
                                 } else {
                                     hxrt::exception::throw(hxrt::dynamic::from(String::from(
                                         "Null Access",
@@ -476,32 +495,35 @@ impl Unserializer {
                         __b.resolver.clone()
                     })
                     .borrow()
-                    .get::<crate::HxDynRef<dyn Fn(String) -> u32 + Send + Sync>>("resolveEnum")(
-                        name_2.clone(),
+                    .get::<crate::HxDynRef<
+                        dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                    >>("resolveEnum")(
+                        hxrt::string::HxString::from(name_2.clone())
                     );
                     if e == 0u32 {
-                        hxrt::exception::throw(hxrt::dynamic::from(format!(
-                            "{}{}",
-                            "Enum not found ", &name_2
+                        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
+                            format!("{}{}", "Enum not found ", &name_2),
                         )));
                     }
                     return hxrt::dynamic::from(e);
                 }
                 67 => {
-                    let name_3: String = {
+                    let name_3: hxrt::string::HxString = {
                         let __hx_dyn =
                             crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this);
                         if __hx_dyn.is_null() {
-                            String::from("null")
+                            hxrt::string::HxString::null()
                         } else {
                             if __hx_dyn.downcast_ref::<String>().is_some() {
-                                __hx_dyn.downcast_ref::<String>().unwrap().clone()
+                                hxrt::string::HxString::from(
+                                    __hx_dyn.downcast_ref::<String>().unwrap().clone(),
+                                )
                             } else {
                                 if __hx_dyn.downcast_ref::<hxrt::string::HxString>().is_some() {
                                     __hx_dyn
                                         .downcast_ref::<hxrt::string::HxString>()
                                         .unwrap()
-                                        .to_haxe_string()
+                                        .clone()
                                 } else {
                                     hxrt::exception::throw(hxrt::dynamic::from(String::from(
                                         "Null Access",
@@ -515,13 +537,14 @@ impl Unserializer {
                         __b.resolver.clone()
                     })
                     .borrow()
-                    .get::<crate::HxDynRef<dyn Fn(String) -> u32 + Send + Sync>>("resolveClass")(
-                        name_3.clone(),
+                    .get::<crate::HxDynRef<
+                        dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                    >>("resolveClass")(
+                        hxrt::string::HxString::from(name_3.clone())
                     );
                     if cl_2 == 0u32 {
-                        hxrt::exception::throw(hxrt::dynamic::from(format!(
-                            "{}{}",
-                            "Class not found ", &name_3
+                        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
+                            format!("{}{}", "Class not found ", &name_3),
                         )));
                     }
                     let o: hxrt::dynamic::Dynamic = {
@@ -561,15 +584,15 @@ impl Unserializer {
                             __tmp
                         };
                         crate::string_tools::StringTools::fast_code_at(
-                            {
+                            hxrt::string::HxString::from({
                                 let __b = __hx_this.borrow();
                                 __b.buf.clone()
-                            },
+                            }),
                             p_2,
                         )
                     }) != 103
                     {
-                        hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             "Invalid custom data",
                         )));
                     }
@@ -590,20 +613,20 @@ impl Unserializer {
                         __b.cache.clone()
                     })
                     .push(hxrt::dynamic::from_ref(h.clone()));
-                    let buf: String = {
+                    let buf: hxrt::string::HxString = hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
-                    };
+                    });
                     while ({
                         let p_3: i32 = {
                             let __b = __hx_this.borrow();
                             __b.pos
                         };
                         crate::string_tools::StringTools::fast_code_at(
-                            {
+                            hxrt::string::HxString::from({
                                 let __b = __hx_this.borrow();
                                 __b.buf.clone()
-                            },
+                            }),
                             p_3,
                         )
                     }) != 104
@@ -644,7 +667,7 @@ impl Unserializer {
                         })
                         .len() as i32)
                     {
-                        hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             "Invalid string reference",
                         )));
                     }
@@ -657,10 +680,10 @@ impl Unserializer {
                     );
                 }
                 97 => {
-                    let buf_2: String = {
+                    let buf_2: hxrt::string::HxString = hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
-                    };
+                    });
                     let a: hxrt::array::Array<hxrt::dynamic::Dynamic> =
                         hxrt::array::Array::<hxrt::dynamic::Dynamic>::new();
                     ({
@@ -675,10 +698,10 @@ impl Unserializer {
                                 __b.pos
                             };
                             crate::string_tools::StringTools::fast_code_at(
-                                {
+                                hxrt::string::HxString::from({
                                     let __b = __hx_this.borrow();
                                     __b.buf.clone()
-                                },
+                                }),
                                 p_4,
                             )
                         };
@@ -724,38 +747,40 @@ impl Unserializer {
                         __b.cache.clone()
                     })
                     .push(hxrt::dynamic::from_ref(h_2.clone()));
-                    let buf_3: String = {
+                    let buf_3: hxrt::string::HxString = hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
-                    };
+                    });
                     while ({
                         let p_5: i32 = {
                             let __b = __hx_this.borrow();
                             __b.pos
                         };
                         crate::string_tools::StringTools::fast_code_at(
-                            {
+                            hxrt::string::HxString::from({
                                 let __b = __hx_this.borrow();
                                 __b.buf.clone()
-                            },
+                            }),
                             p_5,
                         )
                     }) != 104
                     {
-                        let s_2: String = {
+                        let s_2: hxrt::string::HxString = {
                             let __hx_dyn =
                                 crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this);
                             if __hx_dyn.is_null() {
-                                String::from("null")
+                                hxrt::string::HxString::null()
                             } else {
                                 if __hx_dyn.downcast_ref::<String>().is_some() {
-                                    __hx_dyn.downcast_ref::<String>().unwrap().clone()
+                                    hxrt::string::HxString::from(
+                                        __hx_dyn.downcast_ref::<String>().unwrap().clone(),
+                                    )
                                 } else {
                                     if __hx_dyn.downcast_ref::<hxrt::string::HxString>().is_some() {
                                         __hx_dyn
                                             .downcast_ref::<hxrt::string::HxString>()
                                             .unwrap()
-                                            .to_haxe_string()
+                                            .clone()
                                     } else {
                                         hxrt::exception::throw(hxrt::dynamic::from(String::from(
                                             "Null Access",
@@ -766,7 +791,7 @@ impl Unserializer {
                         };
                         crate::haxe_ds_string_map::StringMap::set(
                             &*h_2,
-                            s_2.clone(),
+                            hxrt::string::HxString::from(s_2.clone()),
                             crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this),
                         );
                     }
@@ -778,20 +803,22 @@ impl Unserializer {
                     return hxrt::dynamic::from_ref(h_2.clone());
                 }
                 99 => {
-                    let name_4: String = {
+                    let name_4: hxrt::string::HxString = {
                         let __hx_dyn =
                             crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this);
                         if __hx_dyn.is_null() {
-                            String::from("null")
+                            hxrt::string::HxString::null()
                         } else {
                             if __hx_dyn.downcast_ref::<String>().is_some() {
-                                __hx_dyn.downcast_ref::<String>().unwrap().clone()
+                                hxrt::string::HxString::from(
+                                    __hx_dyn.downcast_ref::<String>().unwrap().clone(),
+                                )
                             } else {
                                 if __hx_dyn.downcast_ref::<hxrt::string::HxString>().is_some() {
                                     __hx_dyn
                                         .downcast_ref::<hxrt::string::HxString>()
                                         .unwrap()
-                                        .to_haxe_string()
+                                        .clone()
                                 } else {
                                     hxrt::exception::throw(hxrt::dynamic::from(String::from(
                                         "Null Access",
@@ -805,13 +832,14 @@ impl Unserializer {
                         __b.resolver.clone()
                     })
                     .borrow()
-                    .get::<crate::HxDynRef<dyn Fn(String) -> u32 + Send + Sync>>("resolveClass")(
-                        name_4.clone(),
+                    .get::<crate::HxDynRef<
+                        dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                    >>("resolveClass")(
+                        hxrt::string::HxString::from(name_4.clone())
                     );
                     if cl_3 == 0u32 {
-                        hxrt::exception::throw(hxrt::dynamic::from(format!(
-                            "{}{}",
-                            "Class not found ", &name_4
+                        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
+                            format!("{}{}", "Class not found ", &name_4),
                         )));
                     }
                     let o_2: crate::HxRef<hxrt::anon::Anon> = {
@@ -843,20 +871,22 @@ impl Unserializer {
                     );
                 }
                 106 => {
-                    let name_5: String = {
+                    let name_5: hxrt::string::HxString = {
                         let __hx_dyn =
                             crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this);
                         if __hx_dyn.is_null() {
-                            String::from("null")
+                            hxrt::string::HxString::null()
                         } else {
                             if __hx_dyn.downcast_ref::<String>().is_some() {
-                                __hx_dyn.downcast_ref::<String>().unwrap().clone()
+                                hxrt::string::HxString::from(
+                                    __hx_dyn.downcast_ref::<String>().unwrap().clone(),
+                                )
                             } else {
                                 if __hx_dyn.downcast_ref::<hxrt::string::HxString>().is_some() {
                                     __hx_dyn
                                         .downcast_ref::<hxrt::string::HxString>()
                                         .unwrap()
-                                        .to_haxe_string()
+                                        .clone()
                                 } else {
                                     hxrt::exception::throw(hxrt::dynamic::from(String::from(
                                         "Null Access",
@@ -870,13 +900,14 @@ impl Unserializer {
                         __b.resolver.clone()
                     })
                     .borrow()
-                    .get::<crate::HxDynRef<dyn Fn(String) -> u32 + Send + Sync>>("resolveEnum")(
-                        name_5.clone(),
+                    .get::<crate::HxDynRef<
+                        dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                    >>("resolveEnum")(
+                        hxrt::string::HxString::from(name_5.clone())
                     );
                     if edecl == 0u32 {
-                        hxrt::exception::throw(hxrt::dynamic::from(format!(
-                            "{}{}",
-                            "Enum not found ", &name_5
+                        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
+                            format!("{}{}", "Enum not found ", &name_5),
                         )));
                     }
                     {
@@ -886,25 +917,29 @@ impl Unserializer {
                     };
                     let index: i32 =
                         crate::haxe_unserializer::Unserializer::read_digits(&*__hx_this);
-                    let tag: String = ({
-                        let _ = edecl;
-                        hxrt::array::Array::<String>::new()
-                    })
-                    .get_unchecked(index as usize);
-                    if tag == String::from("null") {
-                        hxrt::exception::throw(hxrt::dynamic::from(format!(
-                            "{}{}{}{}",
-                            "Unknown enum index ",
-                            &name_5,
-                            "@",
-                            hxrt::dynamic::from(index).to_haxe_string()
+                    let tag: hxrt::string::HxString = hxrt::string::HxString::from(
+                        ({
+                            let _ = edecl;
+                            hxrt::array::Array::<String>::new()
+                        })
+                        .get_unchecked(index as usize),
+                    );
+                    if tag == hxrt::string::HxString::null() {
+                        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
+                            format!(
+                                "{}{}{}{}",
+                                "Unknown enum index ",
+                                &name_5,
+                                "@",
+                                hxrt::dynamic::from(index).to_haxe_string()
+                            ),
                         )));
                     }
                     let e_2: hxrt::dynamic::Dynamic =
                         crate::haxe_unserializer::Unserializer::unserialize_enum(
                             &*__hx_this,
                             edecl,
-                            tag.clone(),
+                            hxrt::string::HxString::from(tag.clone()),
                         );
                     ({
                         let __b = __hx_this.borrow();
@@ -924,20 +959,20 @@ impl Unserializer {
                         __b.cache.clone()
                     })
                     .push(hxrt::dynamic::from_ref(l.clone()));
-                    let buf_4: String = {
+                    let buf_4: hxrt::string::HxString = hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
-                    };
+                    });
                     while ({
                         let p_6: i32 = {
                             let __b = __hx_this.borrow();
                             __b.pos
                         };
                         crate::string_tools::StringTools::fast_code_at(
-                            {
+                            hxrt::string::HxString::from({
                                 let __b = __hx_this.borrow();
                                 __b.buf.clone()
-                            },
+                            }),
                             p_6,
                         )
                     }) != 104
@@ -990,10 +1025,10 @@ impl Unserializer {
                         __b.cache.clone()
                     })
                     .push(hxrt::dynamic::from_ref(h_3.clone()));
-                    let buf_5: String = {
+                    let buf_5: hxrt::string::HxString = hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
-                    };
+                    });
                     let mut c_2: i32 = {
                         let p_7: i32 = {
                             let __tmp = self_.borrow().pos;
@@ -1001,10 +1036,10 @@ impl Unserializer {
                             __tmp
                         };
                         crate::string_tools::StringTools::fast_code_at(
-                            {
+                            hxrt::string::HxString::from({
                                 let __b = __hx_this.borrow();
                                 __b.buf.clone()
-                            },
+                            }),
                             p_7,
                         )
                     };
@@ -1023,16 +1058,16 @@ impl Unserializer {
                                 __tmp
                             };
                             crate::string_tools::StringTools::fast_code_at(
-                                {
+                                hxrt::string::HxString::from({
                                     let __b = __hx_this.borrow();
                                     __b.buf.clone()
-                                },
+                                }),
                                 p_8,
                             )
                         };
                     }
                     if c_2 != 104 {
-                        hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             "Invalid IntMap format",
                         )));
                     }
@@ -1048,7 +1083,7 @@ impl Unserializer {
                             })
                             .len() as i32)
                     {
-                        hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             "Invalid reference",
                         )));
                     }
@@ -1060,10 +1095,10 @@ impl Unserializer {
                 }
                 115 => {
                     let len: i32 = crate::haxe_unserializer::Unserializer::read_digits(&*__hx_this);
-                    let buf_6: String = {
+                    let buf_6: hxrt::string::HxString = hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
-                    };
+                    });
                     if ({
                         let p_9: i32 = {
                             let __tmp = self_.borrow().pos;
@@ -1071,10 +1106,10 @@ impl Unserializer {
                             __tmp
                         };
                         crate::string_tools::StringTools::fast_code_at(
-                            {
+                            hxrt::string::HxString::from({
                                 let __b = __hx_this.borrow();
                                 __b.buf.clone()
-                            },
+                            }),
                             p_9,
                         )
                     }) != 58
@@ -1086,7 +1121,7 @@ impl Unserializer {
                             __b.pos
                         }) < len
                     {
-                        hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             "Invalid bytes length",
                         )));
                     }
@@ -1111,20 +1146,24 @@ impl Unserializer {
                         crate::HxRef::new(hxrt::bytes::Bytes::alloc(size as usize));
                     let mut bpos: i32 = 0;
                     while i_2 < max {
-                        let c1: i32 = codes.get_unchecked(
-                            crate::string_tools::StringTools::fast_code_at(buf_6.clone(), {
-                                let __tmp = i_2;
-                                i_2 = i_2 + 1;
-                                __tmp
-                            }) as usize,
-                        );
-                        let c2: i32 = codes.get_unchecked(
-                            crate::string_tools::StringTools::fast_code_at(buf_6.clone(), {
-                                let __tmp = i_2;
-                                i_2 = i_2 + 1;
-                                __tmp
-                            }) as usize,
-                        );
+                        let c1: i32 =
+                            codes.get_unchecked(crate::string_tools::StringTools::fast_code_at(
+                                hxrt::string::HxString::from(buf_6.clone()),
+                                {
+                                    let __tmp = i_2;
+                                    i_2 = i_2 + 1;
+                                    __tmp
+                                },
+                            ) as usize);
+                        let c2: i32 =
+                            codes.get_unchecked(crate::string_tools::StringTools::fast_code_at(
+                                hxrt::string::HxString::from(buf_6.clone()),
+                                {
+                                    let __tmp = i_2;
+                                    i_2 = i_2 + 1;
+                                    __tmp
+                                },
+                            ) as usize);
                         bytes.borrow_mut().set(
                             {
                                 let __tmp = bpos;
@@ -1133,13 +1172,15 @@ impl Unserializer {
                             },
                             c1 << 2 | c2 >> 4,
                         );
-                        let c3: i32 = codes.get_unchecked(
-                            crate::string_tools::StringTools::fast_code_at(buf_6.clone(), {
-                                let __tmp = i_2;
-                                i_2 = i_2 + 1;
-                                __tmp
-                            }) as usize,
-                        );
+                        let c3: i32 =
+                            codes.get_unchecked(crate::string_tools::StringTools::fast_code_at(
+                                hxrt::string::HxString::from(buf_6.clone()),
+                                {
+                                    let __tmp = i_2;
+                                    i_2 = i_2 + 1;
+                                    __tmp
+                                },
+                            ) as usize);
                         bytes.borrow_mut().set(
                             {
                                 let __tmp = bpos;
@@ -1148,13 +1189,15 @@ impl Unserializer {
                             },
                             c2 << 4 | c3 >> 2,
                         );
-                        let c4: i32 = codes.get_unchecked(
-                            crate::string_tools::StringTools::fast_code_at(buf_6.clone(), {
-                                let __tmp = i_2;
-                                i_2 = i_2 + 1;
-                                __tmp
-                            }) as usize,
-                        );
+                        let c4: i32 =
+                            codes.get_unchecked(crate::string_tools::StringTools::fast_code_at(
+                                hxrt::string::HxString::from(buf_6.clone()),
+                                {
+                                    let __tmp = i_2;
+                                    i_2 = i_2 + 1;
+                                    __tmp
+                                },
+                            ) as usize);
                         bytes.borrow_mut().set(
                             {
                                 let __tmp = bpos;
@@ -1165,20 +1208,24 @@ impl Unserializer {
                         );
                     }
                     if rest >= 2 {
-                        let c1_2: i32 = codes.get_unchecked(
-                            crate::string_tools::StringTools::fast_code_at(buf_6.clone(), {
-                                let __tmp = i_2;
-                                i_2 = i_2 + 1;
-                                __tmp
-                            }) as usize,
-                        );
-                        let c2_2: i32 = codes.get_unchecked(
-                            crate::string_tools::StringTools::fast_code_at(buf_6.clone(), {
-                                let __tmp = i_2;
-                                i_2 = i_2 + 1;
-                                __tmp
-                            }) as usize,
-                        );
+                        let c1_2: i32 =
+                            codes.get_unchecked(crate::string_tools::StringTools::fast_code_at(
+                                hxrt::string::HxString::from(buf_6.clone()),
+                                {
+                                    let __tmp = i_2;
+                                    i_2 = i_2 + 1;
+                                    __tmp
+                                },
+                            ) as usize);
+                        let c2_2: i32 =
+                            codes.get_unchecked(crate::string_tools::StringTools::fast_code_at(
+                                hxrt::string::HxString::from(buf_6.clone()),
+                                {
+                                    let __tmp = i_2;
+                                    i_2 = i_2 + 1;
+                                    __tmp
+                                },
+                            ) as usize);
                         bytes.borrow_mut().set(
                             {
                                 let __tmp = bpos;
@@ -1189,11 +1236,14 @@ impl Unserializer {
                         );
                         if rest == 3 {
                             let c3_2: i32 = codes.get_unchecked(
-                                crate::string_tools::StringTools::fast_code_at(buf_6.clone(), {
-                                    let __tmp = i_2;
-                                    i_2 = i_2 + 1;
-                                    __tmp
-                                }) as usize,
+                                crate::string_tools::StringTools::fast_code_at(
+                                    hxrt::string::HxString::from(buf_6.clone()),
+                                    {
+                                        let __tmp = i_2;
+                                        i_2 = i_2 + 1;
+                                        __tmp
+                                    },
+                                ) as usize,
                             );
                             bytes.borrow_mut().set(
                                 {
@@ -1229,10 +1279,10 @@ impl Unserializer {
                             __b.pos
                         };
                         crate::string_tools::StringTools::fast_code_at(
-                            {
+                            hxrt::string::HxString::from({
                                 let __b = __hx_this.borrow();
                                 __b.buf.clone()
-                            },
+                            }),
                             p_10,
                         )
                     }) >= 48
@@ -1242,10 +1292,10 @@ impl Unserializer {
                                 __b.pos
                             };
                             crate::string_tools::StringTools::fast_code_at(
-                                {
+                                hxrt::string::HxString::from({
                                     let __b = __hx_this.borrow();
                                     __b.buf.clone()
-                                },
+                                }),
                                 p_11,
                             )
                         }) <= 57
@@ -1255,10 +1305,10 @@ impl Unserializer {
                                 __b.pos
                             }) + 1;
                             crate::string_tools::StringTools::fast_code_at(
-                                {
+                                hxrt::string::HxString::from({
                                     let __b = __hx_this.borrow();
                                     __b.buf.clone()
-                                },
+                                }),
                                 p_12,
                             )
                         }) >= 48
@@ -1268,10 +1318,10 @@ impl Unserializer {
                                 __b.pos
                             }) + 1;
                             crate::string_tools::StringTools::fast_code_at(
-                                {
+                                hxrt::string::HxString::from({
                                     let __b = __hx_this.borrow();
                                     __b.buf.clone()
-                                },
+                                }),
                                 p_13,
                             )
                         }) <= 57
@@ -1281,10 +1331,10 @@ impl Unserializer {
                                 __b.pos
                             }) + 2;
                             crate::string_tools::StringTools::fast_code_at(
-                                {
+                                hxrt::string::HxString::from({
                                     let __b = __hx_this.borrow();
                                     __b.buf.clone()
-                                },
+                                }),
                                 p_14,
                             )
                         }) >= 48
@@ -1294,10 +1344,10 @@ impl Unserializer {
                                 __b.pos
                             }) + 2;
                             crate::string_tools::StringTools::fast_code_at(
-                                {
+                                hxrt::string::HxString::from({
                                     let __b = __hx_this.borrow();
                                     __b.buf.clone()
-                                },
+                                }),
                                 p_15,
                             )
                         }) <= 57
@@ -1307,10 +1357,10 @@ impl Unserializer {
                                 __b.pos
                             }) + 3;
                             crate::string_tools::StringTools::fast_code_at(
-                                {
+                                hxrt::string::HxString::from({
                                     let __b = __hx_this.borrow();
                                     __b.buf.clone()
-                                },
+                                }),
                                 p_16,
                             )
                         }) >= 48
@@ -1320,10 +1370,10 @@ impl Unserializer {
                                 __b.pos
                             }) + 3;
                             crate::string_tools::StringTools::fast_code_at(
-                                {
+                                hxrt::string::HxString::from({
                                     let __b = __hx_this.borrow();
                                     __b.buf.clone()
-                                },
+                                }),
                                 p_17,
                             )
                         }) <= 57
@@ -1333,25 +1383,29 @@ impl Unserializer {
                                 __b.pos
                             }) + 4;
                             crate::string_tools::StringTools::fast_code_at(
-                                {
+                                hxrt::string::HxString::from({
                                     let __b = __hx_this.borrow();
                                     __b.buf.clone()
-                                },
+                                }),
                                 p_18,
                             )
                         }) == 45
                     {
-                        d = crate::date::Date::from_string({
-                            let s_3: String = {
+                        d = crate::date::Date::from_string(hxrt::string::HxString::from({
+                            let s_3: hxrt::string::HxString = hxrt::string::HxString::from({
                                 let __b = __hx_this.borrow();
                                 __b.buf.clone()
-                            };
+                            });
                             let pos: i32 = {
                                 let __b = __hx_this.borrow();
                                 __b.pos
                             };
-                            hxrt::string::substr(s_3.as_str(), pos, Some(19))
-                        });
+                            hxrt::string::HxString::from(hxrt::string::substr(
+                                s_3.as_str(),
+                                pos,
+                                Some(19),
+                            ))
+                        }));
                         {
                             let __rhs = 19;
                             let __tmp = self_.borrow().pos + __rhs;
@@ -1371,20 +1425,22 @@ impl Unserializer {
                     return hxrt::dynamic::from_ref(d.clone());
                 }
                 119 => {
-                    let name_6: String = {
+                    let name_6: hxrt::string::HxString = {
                         let __hx_dyn =
                             crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this);
                         if __hx_dyn.is_null() {
-                            String::from("null")
+                            hxrt::string::HxString::null()
                         } else {
                             if __hx_dyn.downcast_ref::<String>().is_some() {
-                                __hx_dyn.downcast_ref::<String>().unwrap().clone()
+                                hxrt::string::HxString::from(
+                                    __hx_dyn.downcast_ref::<String>().unwrap().clone(),
+                                )
                             } else {
                                 if __hx_dyn.downcast_ref::<hxrt::string::HxString>().is_some() {
                                     __hx_dyn
                                         .downcast_ref::<hxrt::string::HxString>()
                                         .unwrap()
-                                        .to_haxe_string()
+                                        .clone()
                                 } else {
                                     hxrt::exception::throw(hxrt::dynamic::from(String::from(
                                         "Null Access",
@@ -1398,13 +1454,14 @@ impl Unserializer {
                         __b.resolver.clone()
                     })
                     .borrow()
-                    .get::<crate::HxDynRef<dyn Fn(String) -> u32 + Send + Sync>>("resolveEnum")(
-                        name_6.clone(),
+                    .get::<crate::HxDynRef<
+                        dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                    >>("resolveEnum")(
+                        hxrt::string::HxString::from(name_6.clone())
                     );
                     if edecl_2 == 0u32 {
-                        hxrt::exception::throw(hxrt::dynamic::from(format!(
-                            "{}{}",
-                            "Enum not found ", &name_6
+                        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
+                            format!("{}{}", "Enum not found ", &name_6),
                         )));
                     }
                     let e_3: hxrt::dynamic::Dynamic =
@@ -1416,10 +1473,12 @@ impl Unserializer {
                                     &*__hx_this,
                                 );
                                 if __hx_dyn.is_null() {
-                                    String::from("null")
+                                    hxrt::string::HxString::null()
                                 } else {
                                     if __hx_dyn.downcast_ref::<String>().is_some() {
-                                        __hx_dyn.downcast_ref::<String>().unwrap().clone()
+                                        hxrt::string::HxString::from(
+                                            __hx_dyn.downcast_ref::<String>().unwrap().clone(),
+                                        )
                                     } else {
                                         if __hx_dyn
                                             .downcast_ref::<hxrt::string::HxString>()
@@ -1428,7 +1487,7 @@ impl Unserializer {
                                             __hx_dyn
                                                 .downcast_ref::<hxrt::string::HxString>()
                                                 .unwrap()
-                                                .to_haxe_string()
+                                                .clone()
                                         } else {
                                             hxrt::exception::throw(hxrt::dynamic::from(
                                                 String::from("Null Access"),
@@ -1460,10 +1519,10 @@ impl Unserializer {
                             __tmp
                         };
                         crate::string_tools::StringTools::fast_code_at(
-                            {
+                            hxrt::string::HxString::from({
                                 let __b = __hx_this.borrow();
                                 __b.buf.clone()
-                            },
+                            }),
                             p_19,
                         )
                     }) != 58
@@ -1475,33 +1534,40 @@ impl Unserializer {
                             __b.pos
                         }) < len_2
                     {
-                        hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             "Invalid string length",
                         )));
                     }
-                    let mut s_4: String = {
-                        let s_5: String = {
+                    let mut s_4: hxrt::string::HxString = hxrt::string::HxString::from({
+                        let s_5: hxrt::string::HxString = hxrt::string::HxString::from({
                             let __b = __hx_this.borrow();
                             __b.buf.clone()
-                        };
+                        });
                         let pos_2: i32 = {
                             let __b = __hx_this.borrow();
                             __b.pos
                         };
-                        hxrt::string::substr(s_5.as_str(), pos_2, Some(len_2))
-                    };
+                        hxrt::string::HxString::from(hxrt::string::substr(
+                            s_5.as_str(),
+                            pos_2,
+                            Some(len_2),
+                        ))
+                    });
                     {
                         let __rhs = len_2;
                         let __tmp = self_.borrow().pos + __rhs;
                         self_.borrow_mut().pos = __tmp;
                         __tmp
                     };
-                    s_4 = crate::string_tools::StringTools::url_decode(s_4.clone());
+                    s_4 =
+                        hxrt::string::HxString::from(crate::string_tools::StringTools::url_decode(
+                            hxrt::string::HxString::from(s_4.clone()),
+                        ));
                     ({
                         let __b = __hx_this.borrow();
                         __b.scache.clone()
                     })
-                    .push(s_4.clone());
+                    .push(hxrt::string::HxString::from(s_4.clone()));
                     return hxrt::dynamic::from(s_4.clone());
                 }
                 122 => {
@@ -1515,19 +1581,19 @@ impl Unserializer {
             self_.borrow_mut().pos = __tmp - 1;
             __tmp
         };
-        hxrt::exception::throw(hxrt::dynamic::from(format!(
+        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
             "{}{}{}{}",
             "Invalid char ",
             {
-                let s_6: String = {
+                let s_6: hxrt::string::HxString = hxrt::string::HxString::from({
                     let __b = __hx_this.borrow();
                     __b.buf.clone()
-                };
+                });
                 let pos_3: i32 = {
                     let __b = __hx_this.borrow();
                     __b.pos
                 };
-                hxrt::string::char_at(s_6.as_str(), pos_3)
+                hxrt::string::HxString::from(hxrt::string::char_at(s_6.as_str(), pos_3))
             },
             " at position ",
             hxrt::dynamic::from({
@@ -1535,7 +1601,7 @@ impl Unserializer {
                 __b.pos
             })
             .to_haxe_string()
-        )));
+        ))));
     }
 
     fn init_codes() -> hxrt::array::Array<i32> {
@@ -1554,7 +1620,9 @@ impl Unserializer {
                     let __tmp = i;
                     codes.set_haxe(
                         crate::string_tools::StringTools::fast_code_at(
-                            crate::haxe_unserializer::__hx_static_get_base64(),
+                            hxrt::string::HxString::from(
+                                crate::haxe_unserializer::__hx_static_get_base64(),
+                            ),
                             i,
                         ) as usize,
                         __tmp,
@@ -1567,9 +1635,9 @@ impl Unserializer {
         return codes;
     }
 
-    pub fn run(v: String) -> hxrt::dynamic::Dynamic {
+    pub fn run(v: hxrt::string::HxString) -> hxrt::dynamic::Dynamic {
         return crate::haxe_unserializer::Unserializer::unserialize(
-            &*crate::haxe_unserializer::Unserializer::new(v),
+            &*crate::haxe_unserializer::Unserializer::new(hxrt::string::HxString::from(v)),
         );
     }
 }

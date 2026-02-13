@@ -241,7 +241,7 @@ fn render_node(frame: &mut Frame, area: Rect, node: &HxUiNode) {
         HxUiNode::Tabs(titles, selected, style) => {
             let tabs: Vec<Line> = titles
                 .iter()
-                .map(|t| Line::from(vec![Span::raw(t)]))
+                .map(|t| Line::from(vec![Span::raw(t.as_str().to_string())]))
                 .collect();
             let w = Tabs::new(tabs)
                 .select((*selected).max(0) as usize)
@@ -261,7 +261,11 @@ fn render_node(frame: &mut Frame, area: Rect, node: &HxUiNode) {
         }
 
         HxUiNode::List(title, items, selected, style) => {
-            let list_items: Vec<ListItem> = items.iter().map(ListItem::new).collect();
+            let list_items: Vec<ListItem> =
+                items
+                .iter()
+                .map(|item| ListItem::new(item.as_str().to_string()))
+                .collect();
             let list = List::new(list_items)
                 .block(Block::default().title(title.as_str()).borders(Borders::ALL))
                 .style(style_for(style))
@@ -286,7 +290,11 @@ fn render_node(frame: &mut Frame, area: Rect, node: &HxUiNode) {
             let inner = block.inner(rect);
             frame.render_widget(block, rect);
 
-            let text = body.iter().collect::<Vec<String>>().join("\n");
+            let text = body
+                .iter()
+                .map(|line| line.as_str().to_string())
+                .collect::<Vec<String>>()
+                .join("\n");
             let p = Paragraph::new(text)
                 .wrap(Wrap { trim: false })
                 .style(style_for(&HxStyleToken::Normal));
@@ -313,16 +321,16 @@ fn render_node(frame: &mut Frame, area: Rect, node: &HxUiNode) {
 
 // Deterministic renderer for tests/snapshots.
 #[allow(dead_code)]
-pub fn run_frame(frame: i32, tasks: String) {
+pub fn run_frame(frame: i32, tasks: impl AsRef<str>) {
     println!("--- frame {} ---", frame);
-    let rendered = render_headless(&tasks);
+    let rendered = render_headless(tasks.as_ref());
     print!("{}", rendered);
 }
 
 // Deterministic renderer for tests/snapshots (no global state, no stdout).
 #[allow(dead_code)]
-pub fn render_to_string(tasks: String) -> String {
-    render_headless(&tasks)
+pub fn render_to_string(tasks: impl AsRef<str>) -> String {
+    render_headless(tasks.as_ref())
 }
 
 pub fn set_headless(headless: bool) {
@@ -455,7 +463,7 @@ pub fn poll_event(timeout_ms: i32) -> HxEvent {
             }
 
             let code: HxKeyCode = match key.code {
-                KeyCode::Char(c) => HxKeyCode::Char(c.to_string()),
+                KeyCode::Char(c) => HxKeyCode::Char(c.to_string().into()),
                 KeyCode::Enter => HxKeyCode::Enter,
                 KeyCode::Tab => HxKeyCode::Tab,
                 KeyCode::Backspace => HxKeyCode::Backspace,
@@ -481,7 +489,7 @@ pub fn poll_event(timeout_ms: i32) -> HxEvent {
     }
 }
 
-pub fn render(tasks: String) {
+pub fn render(tasks: impl AsRef<str>) {
     if HEADLESS.with(|h| h.get()) {
         // In headless mode, the canonical rendering path is `render_to_string(...)`.
         // Keep `render(...)` a no-op to avoid spamming CI logs when the binary is executed
@@ -489,7 +497,7 @@ pub fn render(tasks: String) {
         return;
     }
 
-    render_ui(lines_to_ui(tasks));
+    render_ui(lines_to_ui(tasks.as_ref()));
 }
 
 pub fn render_ui(ui: HxUiNode) {
@@ -531,7 +539,7 @@ pub fn render_ui_to_string(ui: HxUiNode, width: i32, height: i32) -> String {
 
 #[allow(dead_code)]
 fn render_headless(tasks: &str) -> String {
-    let ui = lines_to_ui(tasks.to_string());
+    let ui = lines_to_ui(tasks);
 
     render_ui_to_string(ui, 60, 10)
 }
@@ -550,9 +558,15 @@ fn buffer_to_string(buffer: &ratatui::buffer::Buffer) -> String {
     out
 }
 
-fn lines_to_ui(tasks: String) -> HxUiNode {
-    let lines: Vec<String> = tasks.lines().map(|s| s.to_string()).collect();
-    let items = hxrt::array::Array::<String>::from_vec(lines);
+fn lines_to_ui(tasks: &str) -> HxUiNode {
+    fn to_string_array<S>(input: &str) -> hxrt::array::Array<S>
+    where
+        S: From<String> + Clone,
+    {
+        let values: Vec<S> = input.lines().map(|line| S::from(line.to_string())).collect();
+        hxrt::array::Array::from_vec(values)
+    }
 
-    HxUiNode::List(String::from("Todo"), items, -1, HxStyleToken::Normal)
+    let items = to_string_array(tasks);
+    HxUiNode::List("Todo".to_string().into(), items, -1, HxStyleToken::Normal)
 }

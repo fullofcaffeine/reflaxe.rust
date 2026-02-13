@@ -39,72 +39,90 @@ mod sys_io_stdout;
 
 fn main() {
     let cnx: crate::HxRc<dyn crate::sys_db_connection::Connection + Send + Sync> =
-        crate::sys_db_sqlite::Sqlite::open(String::from(":memory:"));
-    cnx.request(String::from("CREATE TABLE todo (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, done INTEGER NOT NULL)"));
-    cnx.request(format!(
-        "{}{}{}",
-        "INSERT INTO todo (name, done) VALUES (",
-        cnx.quote(String::from("bootstrap reflaxe.rust")),
-        ", 1)"
-    ));
-    cnx.request(format!(
-        "{}{}{}",
-        "INSERT INTO todo (name, done) VALUES (",
-        cnx.quote(String::from("ship sys.db sqlite")),
-        ", 0)"
-    ));
+        crate::sys_db_sqlite::Sqlite::open(hxrt::string::HxString::from(
+            hxrt::string::HxString::from(":memory:"),
+        ));
+    cnx.request(hxrt::string::HxString::from(hxrt::string::HxString::from("CREATE TABLE todo (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, done INTEGER NOT NULL)")));
+    cnx.request(hxrt::string::HxString::from(hxrt::string::HxString::from(
+        format!(
+            "{}{}{}",
+            "INSERT INTO todo (name, done) VALUES (",
+            cnx.quote(hxrt::string::HxString::from(hxrt::string::HxString::from(
+                "bootstrap reflaxe.rust"
+            ))),
+            ", 1)"
+        ),
+    )));
+    cnx.request(hxrt::string::HxString::from(hxrt::string::HxString::from(
+        format!(
+            "{}{}{}",
+            "INSERT INTO todo (name, done) VALUES (",
+            cnx.quote(hxrt::string::HxString::from(hxrt::string::HxString::from(
+                "ship sys.db sqlite"
+            ))),
+            ", 0)"
+        ),
+    )));
     let rs: crate::HxRc<dyn crate::sys_db_result_set::ResultSet + Send + Sync> =
-        cnx.request(String::from("SELECT id, name, done FROM todo ORDER BY id"));
-    let fields: hxrt::array::Array<String> = rs.get_fields_names();
-    crate::sys::Sys::println(hxrt::dynamic::from(format!("{}{}", "db=", cnx.db_name())));
-    crate::sys::Sys::println(hxrt::dynamic::from(format!(
+        cnx.request(hxrt::string::HxString::from(hxrt::string::HxString::from(
+            "SELECT id, name, done FROM todo ORDER BY id",
+        )));
+    let fields: hxrt::array::Array<hxrt::string::HxString> = rs.get_fields_names();
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
+        "{}{}",
+        "db=",
+        cnx.db_name()
+    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "fields=",
         if fields.is_null() {
-            String::from("null")
+            hxrt::string::HxString::from("null")
         } else {
-            fields.join(String::from(","))
+            hxrt::string::HxString::from(fields.join(hxrt::string::HxString::from(
+                hxrt::string::HxString::from(","),
+            )))
         }
-    )));
-    crate::sys::Sys::println(hxrt::dynamic::from(format!(
+    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}{}{}",
         "len0=",
         hxrt::dynamic::from(rs.get_length()).to_haxe_string(),
         " nf=",
         hxrt::dynamic::from(rs.get_nfields()).to_haxe_string()
-    )));
+    ))));
     let r1: hxrt::dynamic::Dynamic = rs.next();
-    crate::sys::Sys::println(hxrt::dynamic::from(format!(
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}{}{}{}{}{}{}{}{}",
         "len1=",
         hxrt::dynamic::from(rs.get_length()).to_haxe_string(),
         " row1=",
-        hxrt::dynamic::field_get(&r1, "id").to_haxe_string(),
+        hxrt::string::HxString::from(hxrt::dynamic::field_get(&r1, "id").to_haxe_string()),
         ",",
-        hxrt::dynamic::field_get(&r1, "name").to_haxe_string(),
+        hxrt::string::HxString::from(hxrt::dynamic::field_get(&r1, "name").to_haxe_string()),
         ",",
-        hxrt::dynamic::field_get(&r1, "done").to_haxe_string(),
+        hxrt::string::HxString::from(hxrt::dynamic::field_get(&r1, "done").to_haxe_string()),
         " get0=",
         hxrt::dynamic::from(rs.get_int_result(0)).to_haxe_string()
-    )));
+    ))));
     let r2: hxrt::dynamic::Dynamic = rs.next();
-    crate::sys::Sys::println(hxrt::dynamic::from(format!(
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}{}{}{}{}{}{}{}{}",
         "len2=",
         hxrt::dynamic::from(rs.get_length()).to_haxe_string(),
         " row2=",
-        hxrt::dynamic::field_get(&r2, "id").to_haxe_string(),
+        hxrt::string::HxString::from(hxrt::dynamic::field_get(&r2, "id").to_haxe_string()),
         ",",
-        hxrt::dynamic::field_get(&r2, "name").to_haxe_string(),
+        hxrt::string::HxString::from(hxrt::dynamic::field_get(&r2, "name").to_haxe_string()),
         ",",
-        hxrt::dynamic::field_get(&r2, "done").to_haxe_string(),
+        hxrt::string::HxString::from(hxrt::dynamic::field_get(&r2, "done").to_haxe_string()),
         " get1=",
         rs.get_result(1)
-    )));
+    ))));
     let r3: hxrt::dynamic::Dynamic = rs.next();
-    crate::sys::Sys::println(hxrt::dynamic::from(format!(
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "end=",
-        r3.is_null().to_string()
-    )));
+        hxrt::string::HxString::from(r3.is_null().to_string())
+    ))));
 }

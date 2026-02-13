@@ -12,21 +12,21 @@ impl Dog {
         return self_;
     }
 
-    pub fn sound(_self_: &crate::HxRefCell<Dog>) -> String {
-        return String::from("dog");
+    pub fn sound(_self_: &crate::HxRefCell<Dog>) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from("dog"));
     }
 
-    pub fn speak(self_: &crate::HxRefCell<Dog>) -> String {
+    pub fn speak(self_: &crate::HxRefCell<Dog>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::dog::Dog> = self_.self_ref();
-        return crate::dog::Dog::sound(&*__hx_this);
+        return hxrt::string::HxString::from(crate::dog::Dog::sound(&*__hx_this));
     }
 }
 
 impl crate::animal::AnimalTrait for crate::HxRefCell<Dog> {
-    fn sound(&self) -> String {
+    fn sound(&self) -> hxrt::string::HxString {
         Dog::sound(self)
     }
-    fn speak(&self) -> String {
+    fn speak(&self) -> hxrt::string::HxString {
         Dog::speak(self)
     }
     fn __hx_type_id(&self) -> u32 {

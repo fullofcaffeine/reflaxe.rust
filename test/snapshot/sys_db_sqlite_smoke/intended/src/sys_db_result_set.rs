@@ -8,8 +8,8 @@ pub trait ResultSet: Send + Sync {
     fn has_next(&self) -> bool;
     fn next(&self) -> hxrt::dynamic::Dynamic;
     fn results(&self) -> crate::HxRef<crate::haxe_ds_list::List<hxrt::dynamic::Dynamic>>;
-    fn get_result(&self, n: i32) -> String;
+    fn get_result(&self, n: i32) -> hxrt::string::HxString;
     fn get_int_result(&self, n: i32) -> i32;
     fn get_float_result(&self, n: i32) -> f64;
-    fn get_fields_names(&self) -> hxrt::array::Array<String>;
+    fn get_fields_names(&self) -> hxrt::array::Array<hxrt::string::HxString>;
 }

@@ -5,12 +5,12 @@ pub const __HX_TYPE_ID: u32 = 0x1d340e64u32;
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 
 pub struct Person {
-    pub name: String,
+    pub name: hxrt::string::HxString,
     pub age: i32,
 }
 
 impl Person {
-    pub fn new(name: String, age: i32) -> crate::HxRef<crate::person::Person> {
+    pub fn new(name: hxrt::string::HxString, age: i32) -> crate::HxRef<crate::person::Person> {
         let self_: crate::HxRef<crate::person::Person> = crate::HxRef::new(Person {
             name: name,
             age: age,

@@ -31,5 +31,8 @@ mod sys_io_stdin;
 mod sys_io_stdout;
 
 fn main() {
-    println!("{}", hxrt::dynamic::from(String::from("hi")));
+    println!(
+        "{}",
+        hxrt::dynamic::from(hxrt::string::HxString::from("hi"))
+    );
 }

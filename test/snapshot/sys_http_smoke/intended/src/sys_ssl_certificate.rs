@@ -6,8 +6,8 @@ pub const __HX_TYPE_ID: u32 = 0x2d898137u32;
 
 pub struct Certificate {
     pub handle: crate::HxRef<hxrt::ssl::Certificate>,
-    pub common_name: Option<String>,
-    pub alt_names: hxrt::array::Array<String>,
+    pub common_name: hxrt::string::HxString,
+    pub alt_names: hxrt::array::Array<hxrt::string::HxString>,
     pub not_before: crate::HxRef<crate::date::Date>,
     pub not_after: crate::HxRef<crate::date::Date>,
 }
@@ -19,8 +19,8 @@ impl Certificate {
         let self_: crate::HxRef<crate::sys_ssl_certificate::Certificate> =
             crate::HxRef::new(Certificate {
                 handle: handle,
-                common_name: None,
-                alt_names: hxrt::array::Array::<String>::new(),
+                common_name: hxrt::string::HxString::null(),
+                alt_names: hxrt::array::Array::<hxrt::string::HxString>::new(),
                 not_before: crate::date::Date::new(0, 0, 0, 0, 0, 0),
                 not_after: crate::date::Date::new(0, 0, 0, 0, 0, 0),
             });
@@ -37,24 +37,34 @@ impl Certificate {
         };
     }
 
-    pub fn subject(self_: &crate::HxRefCell<Certificate>, field: String) -> Option<String> {
+    pub fn subject(
+        self_: &crate::HxRefCell<Certificate>,
+        field: hxrt::string::HxString,
+    ) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_ssl_certificate::Certificate> = self_.self_ref();
-        return {
-            let __b = __hx_this.borrow();
-            __b.handle.clone()
-        }
-        .borrow()
-        .subject_field(field.as_str());
+        return hxrt::string::HxString::from(
+            {
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }
+            .borrow()
+            .subject_field(field.as_str()),
+        );
     }
 
-    pub fn issuer(self_: &crate::HxRefCell<Certificate>, field: String) -> Option<String> {
+    pub fn issuer(
+        self_: &crate::HxRefCell<Certificate>,
+        field: hxrt::string::HxString,
+    ) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_ssl_certificate::Certificate> = self_.self_ref();
-        return {
-            let __b = __hx_this.borrow();
-            __b.handle.clone()
-        }
-        .borrow()
-        .issuer_field(field.as_str());
+        return hxrt::string::HxString::from(
+            {
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }
+            .borrow()
+            .issuer_field(field.as_str()),
+        );
     }
 
     pub fn next(
@@ -72,7 +82,7 @@ impl Certificate {
         };
     }
 
-    pub fn add(self_: &crate::HxRefCell<Certificate>, pem: String) {
+    pub fn add(self_: &crate::HxRefCell<Certificate>, pem: hxrt::string::HxString) {
         let __hx_this: crate::HxRef<crate::sys_ssl_certificate::Certificate> = self_.self_ref();
         hxrt::ssl::cert_add_pem(
             &{
@@ -94,25 +104,32 @@ impl Certificate {
         );
     }
 
-    pub fn get_common_name(self_: &crate::HxRefCell<Certificate>) -> Option<String> {
+    pub fn get_common_name(self_: &crate::HxRefCell<Certificate>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_ssl_certificate::Certificate> = self_.self_ref();
-        return {
-            let __b = __hx_this.borrow();
-            __b.handle.clone()
-        }
-        .borrow()
-        .common_name();
-    }
-
-    pub fn get_alt_names(self_: &crate::HxRefCell<Certificate>) -> hxrt::array::Array<String> {
-        let __hx_this: crate::HxRef<crate::sys_ssl_certificate::Certificate> = self_.self_ref();
-        return hxrt::array::Array::<String>::from_vec(
+        return hxrt::string::HxString::from(
             {
                 let __b = __hx_this.borrow();
                 __b.handle.clone()
             }
             .borrow()
-            .alt_names(),
+            .common_name(),
+        );
+    }
+
+    pub fn get_alt_names(
+        self_: &crate::HxRefCell<Certificate>,
+    ) -> hxrt::array::Array<hxrt::string::HxString> {
+        let __hx_this: crate::HxRef<crate::sys_ssl_certificate::Certificate> = self_.self_ref();
+        return hxrt::array::Array::<hxrt::string::HxString>::from_vec(
+            {
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }
+            .borrow()
+            .alt_names()
+            .into_iter()
+            .map(hxrt::string::HxString::from)
+            .collect::<Vec<hxrt::string::HxString>>(),
         );
     }
 
@@ -146,17 +163,23 @@ impl Certificate {
         return crate::sys_ssl_certificate::Certificate::new(handle.clone());
     }
 
-    pub fn load_file(file: String) -> crate::HxRef<crate::sys_ssl_certificate::Certificate> {
+    pub fn load_file(
+        file: hxrt::string::HxString,
+    ) -> crate::HxRef<crate::sys_ssl_certificate::Certificate> {
         let h: crate::HxRef<hxrt::ssl::Certificate> = hxrt::ssl::cert_load_file(file.as_str());
         return crate::sys_ssl_certificate::Certificate::new(h.clone());
     }
 
-    pub fn load_path(path: String) -> crate::HxRef<crate::sys_ssl_certificate::Certificate> {
+    pub fn load_path(
+        path: hxrt::string::HxString,
+    ) -> crate::HxRef<crate::sys_ssl_certificate::Certificate> {
         let h: crate::HxRef<hxrt::ssl::Certificate> = hxrt::ssl::cert_load_path(path.as_str());
         return crate::sys_ssl_certificate::Certificate::new(h.clone());
     }
 
-    pub fn from_string(str: String) -> crate::HxRef<crate::sys_ssl_certificate::Certificate> {
+    pub fn from_string(
+        str: hxrt::string::HxString,
+    ) -> crate::HxRef<crate::sys_ssl_certificate::Certificate> {
         let h: crate::HxRef<hxrt::ssl::Certificate> = hxrt::ssl::cert_from_string(str.as_str());
         return crate::sys_ssl_certificate::Certificate::new(h.clone());
     }

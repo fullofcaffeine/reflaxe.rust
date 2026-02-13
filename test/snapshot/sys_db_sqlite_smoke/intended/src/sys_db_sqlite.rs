@@ -8,10 +8,12 @@ pub struct Sqlite {}
 
 impl Sqlite {
     pub fn open(
-        file: String,
+        file: hxrt::string::HxString,
     ) -> crate::HxRc<dyn crate::sys_db_connection::Connection + Send + Sync> {
         return {
-            let __tmp = crate::sys_db_sqlite_sqlite_connection::SqliteConnection::new(file);
+            let __tmp = crate::sys_db_sqlite_sqlite_connection::SqliteConnection::new(
+                hxrt::string::HxString::from(file),
+            );
             let __up: crate::HxRc<dyn crate::sys_db_connection::Connection + Send + Sync> =
                 match __tmp.as_arc_opt() {
                     Some(__rc) => __rc.clone(),

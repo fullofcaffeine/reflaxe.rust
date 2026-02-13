@@ -31,15 +31,31 @@ mod sys_io_stdin;
 mod sys_io_stdout;
 
 fn main() {
-    let xs: hxrt::array::Array<String> = hxrt::array::Array::<String>::from_vec(vec![
-        String::from("a"),
-        String::from("b"),
-        String::from("c"),
-    ]);
-    xs.insert(-1, String::from("X"));
-    crate::sys::Sys::println(hxrt::dynamic::from(xs.join(String::from(""))));
-    xs.insert(-100, String::from("Y"));
-    crate::sys::Sys::println(hxrt::dynamic::from(xs.join(String::from(""))));
-    xs.insert(999, String::from("Z"));
-    crate::sys::Sys::println(hxrt::dynamic::from(xs.join(String::from(""))));
+    let xs: hxrt::array::Array<hxrt::string::HxString> =
+        hxrt::array::Array::<hxrt::string::HxString>::from_vec(vec![
+            hxrt::string::HxString::from("a"),
+            hxrt::string::HxString::from("b"),
+            hxrt::string::HxString::from("c"),
+        ]);
+    xs.insert(
+        -1,
+        hxrt::string::HxString::from(hxrt::string::HxString::from("X")),
+    );
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(xs.join(
+        hxrt::string::HxString::from(hxrt::string::HxString::from("")),
+    ))));
+    xs.insert(
+        -100,
+        hxrt::string::HxString::from(hxrt::string::HxString::from("Y")),
+    );
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(xs.join(
+        hxrt::string::HxString::from(hxrt::string::HxString::from("")),
+    ))));
+    xs.insert(
+        999,
+        hxrt::string::HxString::from(hxrt::string::HxString::from("Z")),
+    );
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(xs.join(
+        hxrt::string::HxString::from(hxrt::string::HxString::from("")),
+    ))));
 }

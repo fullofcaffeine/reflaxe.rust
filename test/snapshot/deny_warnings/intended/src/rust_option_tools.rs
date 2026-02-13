@@ -50,14 +50,14 @@ impl OptionTools {
                 }
             }
             Option::None => {
-                hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                     "called Option.unwrap() on None",
                 )));
             }
         };
     }
 
-    pub fn expect<T: Clone>(o: Option<T>, message: String) -> T {
+    pub fn expect<T: Clone>(o: Option<T>, message: hxrt::string::HxString) -> T {
         return match o.clone() {
             Option::Some(__p) => {
                 let _g: T = __p;
@@ -72,7 +72,10 @@ impl OptionTools {
         };
     }
 
-    pub fn ok_or<T: Clone>(o: Option<T>, err: String) -> Result<T, String> {
+    pub fn ok_or<T: Clone>(
+        o: Option<T>,
+        err: hxrt::string::HxString,
+    ) -> Result<T, hxrt::string::HxString> {
         return match o.clone() {
             Option::Some(__p) => {
                 let _g: T = __p;
@@ -81,7 +84,7 @@ impl OptionTools {
                     Result::Ok(v.clone())
                 }
             }
-            Option::None => Result::Err(err),
+            Option::None => Result::Err(hxrt::string::HxString::from(err)),
         };
     }
 }

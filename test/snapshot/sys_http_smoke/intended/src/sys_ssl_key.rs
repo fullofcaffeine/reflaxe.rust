@@ -16,9 +16,9 @@ impl Key {
     }
 
     pub fn load_file(
-        file: String,
+        file: hxrt::string::HxString,
         is_public: Option<bool>,
-        _pass: Option<String>,
+        _pass: hxrt::string::HxString,
     ) -> crate::HxRef<crate::sys_ssl_key::Key> {
         let pub_: bool = is_public == Some(true);
         let h: crate::HxRef<hxrt::ssl::Key> = hxrt::ssl::key_load_file(file.as_str(), pub_ as bool);
@@ -26,9 +26,9 @@ impl Key {
     }
 
     pub fn read_pem(
-        data: String,
+        data: hxrt::string::HxString,
         is_public: bool,
-        _pass: Option<String>,
+        _pass: hxrt::string::HxString,
     ) -> crate::HxRef<crate::sys_ssl_key::Key> {
         let h: crate::HxRef<hxrt::ssl::Key> =
             hxrt::ssl::key_read_pem(data.as_str(), is_public as bool);

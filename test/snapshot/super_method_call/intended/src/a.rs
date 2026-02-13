@@ -32,12 +32,12 @@ impl A {
         return v;
     }
 
-    pub fn foo(_self_: &crate::HxRefCell<A>) -> String {
-        return String::from("A.foo");
+    pub fn foo(_self_: &crate::HxRefCell<A>) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from("A.foo"));
     }
 
-    pub fn sound(_self_: &crate::HxRefCell<A>) -> String {
-        return String::from("A.sound");
+    pub fn sound(_self_: &crate::HxRefCell<A>) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from("A.sound"));
     }
 }
 
@@ -46,8 +46,8 @@ pub trait ATrait: Send + Sync {
     fn __hx_set_u1_x(&self, v: i32);
     fn get_x(&self) -> i32;
     fn set_x(&self, v: i32) -> i32;
-    fn foo(&self) -> String;
-    fn sound(&self) -> String;
+    fn foo(&self) -> hxrt::string::HxString;
+    fn sound(&self) -> hxrt::string::HxString;
     fn __hx_type_id(&self) -> u32;
 }
 
@@ -64,10 +64,10 @@ impl crate::a::ATrait for crate::HxRefCell<A> {
     fn set_x(&self, v: i32) -> i32 {
         A::set_x(self, v)
     }
-    fn foo(&self) -> String {
+    fn foo(&self) -> hxrt::string::HxString {
         A::foo(self)
     }
-    fn sound(&self) -> String {
+    fn sound(&self) -> hxrt::string::HxString {
         A::sound(self)
     }
     fn __hx_type_id(&self) -> u32 {

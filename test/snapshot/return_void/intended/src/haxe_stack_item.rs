@@ -5,8 +5,13 @@ pub const __HX_TYPE_ID: u32 = 0xd7cb7b80u32;
 #[derive(Clone, Debug, PartialEq)]
 pub enum StackItem {
     CFunction,
-    Module(String),
-    FilePos(Option<Box<StackItem>>, String, i32, Option<i32>),
-    Method(Option<String>, String),
+    Module(hxrt::string::HxString),
+    FilePos(
+        Option<Box<StackItem>>,
+        hxrt::string::HxString,
+        i32,
+        Option<i32>,
+    ),
+    Method(hxrt::string::HxString, hxrt::string::HxString),
     LocalFunction(Option<i32>),
 }

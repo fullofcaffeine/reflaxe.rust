@@ -12,7 +12,7 @@ impl Eof {
         return self_;
     }
 
-    fn to_string(_self_: &crate::HxRefCell<Eof>) -> String {
-        return String::from("Eof");
+    fn to_string(_self_: &crate::HxRefCell<Eof>) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from("Eof"));
     }
 }

@@ -60,8 +60,19 @@ pub fn query_result_has_next(q: &HxRef<QueryResult>) -> bool {
 }
 
 #[inline]
-pub fn query_result_fields(q: &HxRef<QueryResult>) -> Array<String> {
-    q.borrow().names.clone()
+fn map_string_array<S>(values: Array<String>) -> Array<S>
+where
+    S: From<String> + Clone,
+{
+    Array::from_vec(values.to_vec().into_iter().map(S::from).collect())
+}
+
+#[inline]
+pub fn query_result_fields<S>(q: &HxRef<QueryResult>) -> Array<S>
+where
+    S: From<String> + Clone,
+{
+    map_string_array(q.borrow().names.clone())
 }
 
 pub fn query_result_next(q: &HxRef<QueryResult>) -> Option<Array<Dynamic>> {

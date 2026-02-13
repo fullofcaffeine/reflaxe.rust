@@ -323,8 +323,12 @@ impl Sha256 {
         return hash;
     }
 
-    fn hex(_self_: &crate::HxRefCell<Sha256>, a: hxrt::array::Array<i32>) -> String {
-        let mut str: String = String::from("");
+    fn hex(
+        _self_: &crate::HxRefCell<Sha256>,
+        a: hxrt::array::Array<i32>,
+    ) -> hxrt::string::HxString {
+        let mut str: hxrt::string::HxString =
+            hxrt::string::HxString::from(hxrt::string::HxString::from(""));
         {
             let mut _g: i32 = 0;
             while _g < (a.len() as i32) {
@@ -335,25 +339,30 @@ impl Sha256 {
                 };
                 {
                     let __tmp = crate::string_tools::StringTools::hex(num, Some(8));
-                    str = format!("{}{}", str, __tmp);
+                    str = hxrt::string::HxString::from(format!("{}{}", str, __tmp));
                 }
             }
         }
-        return hxrt::string::to_lower_case(str.as_str());
+        return hxrt::string::HxString::from(hxrt::string::HxString::from(
+            hxrt::string::to_lower_case(str.as_str()),
+        ));
     }
 
-    pub fn encode(s: String) -> String {
+    pub fn encode(s: hxrt::string::HxString) -> hxrt::string::HxString {
         let sh: crate::HxRef<crate::haxe_crypto_sha256::Sha256> =
             crate::haxe_crypto_sha256::Sha256::new();
         let h: hxrt::array::Array<i32> = crate::haxe_crypto_sha256::Sha256::do_encode(
             &*sh,
-            crate::haxe_crypto_sha256::Sha256::str2blks(s.clone()),
+            crate::haxe_crypto_sha256::Sha256::str2blks(hxrt::string::HxString::from(s.clone())),
             hxrt::string::len(s.as_str()) * 8,
         );
-        return crate::haxe_crypto_sha256::Sha256::hex(&*sh, h.clone());
+        return hxrt::string::HxString::from(crate::haxe_crypto_sha256::Sha256::hex(
+            &*sh,
+            h.clone(),
+        ));
     }
 
-    fn str2blks(s: String) -> hxrt::array::Array<i32> {
+    fn str2blks(s: hxrt::string::HxString) -> hxrt::array::Array<i32> {
         let s_2: crate::HxRef<hxrt::bytes::Bytes> =
             crate::HxRef::new(hxrt::bytes::Bytes::of_string(s.as_str()));
         let nblk: i32 = (s_2.borrow().length() + 8 >> 6) + 1;

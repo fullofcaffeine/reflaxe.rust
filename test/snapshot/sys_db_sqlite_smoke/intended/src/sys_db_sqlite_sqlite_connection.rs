@@ -10,11 +10,13 @@ pub struct SqliteConnection {
 
 impl SqliteConnection {
     pub fn new(
-        file: String,
+        file: hxrt::string::HxString,
     ) -> crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> {
         let self_: crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> =
             crate::HxRef::new(SqliteConnection {
-                handle: crate::db_sqlite_driver::open_handle(file.clone()),
+                handle: crate::db_sqlite_driver::open_handle(hxrt::string::HxString::from(
+                    file.clone(),
+                )),
             });
         return self_;
     }
@@ -41,7 +43,7 @@ impl SqliteConnection {
 
     pub fn request(
         self_: &crate::HxRefCell<SqliteConnection>,
-        sql: String,
+        sql: hxrt::string::HxString,
     ) -> crate::HxRc<dyn crate::sys_db_result_set::ResultSet + Send + Sync> {
         let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> =
             self_.self_ref();
@@ -131,20 +133,36 @@ impl SqliteConnection {
         };
     }
 
-    pub fn escape(_self_: &crate::HxRefCell<SqliteConnection>, s: String) -> String {
-        return hxrt::string::split(s.as_str(), String::from("'").as_str())
-            .join(String::from("''"));
+    pub fn escape(
+        _self_: &crate::HxRefCell<SqliteConnection>,
+        s: hxrt::string::HxString,
+    ) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from(
+            hxrt::string::split_hx(
+                s.as_str(),
+                hxrt::string::HxString::from(hxrt::string::HxString::from("'")).as_str(),
+            )
+            .join(hxrt::string::HxString::from(hxrt::string::HxString::from(
+                "''",
+            ))),
+        ));
     }
 
-    pub fn quote(self_: &crate::HxRefCell<SqliteConnection>, s: String) -> String {
+    pub fn quote(
+        self_: &crate::HxRefCell<SqliteConnection>,
+        s: hxrt::string::HxString,
+    ) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> =
             self_.self_ref();
-        return format!(
+        return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
             "{}{}{}",
             "'",
-            crate::sys_db_sqlite_sqlite_connection::SqliteConnection::escape(&*__hx_this, s),
+            crate::sys_db_sqlite_sqlite_connection::SqliteConnection::escape(
+                &*__hx_this,
+                hxrt::string::HxString::from(s)
+            ),
             "'"
-        );
+        )));
     }
 
     pub fn add_value(
@@ -152,7 +170,7 @@ impl SqliteConnection {
         sb: crate::HxRef<crate::string_buf::StringBuf>,
         v: hxrt::dynamic::Dynamic,
     ) {
-        let rendered: String = {
+        let rendered: hxrt::string::HxString = hxrt::string::HxString::from({
             let v = v;
             let out: String = if v.is_null() {
                 String::from("NULL")
@@ -190,7 +208,7 @@ impl SqliteConnection {
                 format!("'{}'", escaped)
             };
             out
-        };
+        });
         crate::string_buf::StringBuf::add(&*sb, hxrt::dynamic::from(rendered));
     }
 
@@ -219,8 +237,8 @@ impl SqliteConnection {
         };
     }
 
-    pub fn db_name(_self_: &crate::HxRefCell<SqliteConnection>) -> String {
-        return String::from("SQLite");
+    pub fn db_name(_self_: &crate::HxRefCell<SqliteConnection>) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from("SQLite"));
     }
 
     pub fn start_transaction(self_: &crate::HxRefCell<SqliteConnection>) {
@@ -228,7 +246,7 @@ impl SqliteConnection {
             self_.self_ref();
         crate::sys_db_sqlite_sqlite_connection::SqliteConnection::request(
             &*__hx_this,
-            String::from("BEGIN TRANSACTION"),
+            hxrt::string::HxString::from(hxrt::string::HxString::from("BEGIN TRANSACTION")),
         );
     }
 
@@ -237,7 +255,7 @@ impl SqliteConnection {
             self_.self_ref();
         crate::sys_db_sqlite_sqlite_connection::SqliteConnection::request(
             &*__hx_this,
-            String::from("COMMIT"),
+            hxrt::string::HxString::from(hxrt::string::HxString::from("COMMIT")),
         );
     }
 
@@ -246,7 +264,7 @@ impl SqliteConnection {
             self_.self_ref();
         crate::sys_db_sqlite_sqlite_connection::SqliteConnection::request(
             &*__hx_this,
-            String::from("ROLLBACK"),
+            hxrt::string::HxString::from(hxrt::string::HxString::from("ROLLBACK")),
         );
     }
 }
@@ -254,17 +272,17 @@ impl SqliteConnection {
 impl crate::sys_db_connection::Connection for crate::HxRefCell<SqliteConnection> {
     fn request(
         &self,
-        s: String,
+        s: hxrt::string::HxString,
     ) -> crate::HxRc<dyn crate::sys_db_result_set::ResultSet + Send + Sync> {
         SqliteConnection::request(self, s)
     }
     fn close(&self) -> () {
         SqliteConnection::close(self)
     }
-    fn escape(&self, s: String) -> String {
+    fn escape(&self, s: hxrt::string::HxString) -> hxrt::string::HxString {
         SqliteConnection::escape(self, s)
     }
-    fn quote(&self, s: String) -> String {
+    fn quote(&self, s: hxrt::string::HxString) -> hxrt::string::HxString {
         SqliteConnection::quote(self, s)
     }
     fn add_value(
@@ -277,7 +295,7 @@ impl crate::sys_db_connection::Connection for crate::HxRefCell<SqliteConnection>
     fn last_insert_id(&self) -> i32 {
         SqliteConnection::last_insert_id(self)
     }
-    fn db_name(&self) -> String {
+    fn db_name(&self) -> hxrt::string::HxString {
         SqliteConnection::db_name(self)
     }
     fn start_transaction(&self) -> () {

@@ -12,18 +12,18 @@ impl Animal {
         return self_;
     }
 
-    pub fn speak(_self_: &crate::HxRefCell<Animal>) -> String {
-        return String::from("animal");
+    pub fn speak(_self_: &crate::HxRefCell<Animal>) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from("animal"));
     }
 }
 
 pub trait AnimalTrait: Send + Sync {
-    fn speak(&self) -> String;
+    fn speak(&self) -> hxrt::string::HxString;
     fn __hx_type_id(&self) -> u32;
 }
 
 impl crate::animal::AnimalTrait for crate::HxRefCell<Animal> {
-    fn speak(&self) -> String {
+    fn speak(&self) -> hxrt::string::HxString {
         Animal::speak(self)
     }
     fn __hx_type_id(&self) -> u32 {

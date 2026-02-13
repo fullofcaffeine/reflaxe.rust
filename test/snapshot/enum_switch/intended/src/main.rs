@@ -33,15 +33,21 @@ mod sys_io_stdout;
 
 fn main() {
     let a: crate::action::Action = crate::action::Action::Move(2);
-    let s: String = match a.clone() {
+    let s: hxrt::string::HxString = hxrt::string::HxString::from(match a.clone() {
         crate::action::Action::Move(__p) => {
             let _g: i32 = __p;
-            {
+            hxrt::string::HxString::from({
                 let d: i32 = _g;
-                format!("{}{}", "move:", hxrt::dynamic::from(d).to_haxe_string())
-            }
+                hxrt::string::HxString::from(format!(
+                    "{}{}",
+                    "move:",
+                    hxrt::dynamic::from(d).to_haxe_string()
+                ))
+            })
         }
-        crate::action::Action::Toggle => String::from("toggle"),
-    };
+        crate::action::Action::Toggle => {
+            hxrt::string::HxString::from(hxrt::string::HxString::from("toggle"))
+        }
+    });
     println!("{}", hxrt::dynamic::from(s.clone()));
 }

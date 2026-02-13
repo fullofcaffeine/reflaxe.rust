@@ -32,10 +32,10 @@ mod sys_io_stdout;
 
 fn main() {
     let x: i32 = 2;
-    let s: String = match x {
-        1 => String::from("one"),
-        2 | 3 => String::from("two_or_three"),
-        _ => String::from("other"),
-    };
+    let s: hxrt::string::HxString = hxrt::string::HxString::from(match x {
+        1 => hxrt::string::HxString::from(hxrt::string::HxString::from("one")),
+        2 | 3 => hxrt::string::HxString::from(hxrt::string::HxString::from("two_or_three")),
+        _ => hxrt::string::HxString::from(hxrt::string::HxString::from("other")),
+    });
     println!("{}", hxrt::dynamic::from(s.clone()));
 }

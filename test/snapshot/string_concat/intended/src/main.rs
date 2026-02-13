@@ -31,6 +31,7 @@ mod sys_io_stdin;
 mod sys_io_stdout;
 
 fn main() {
-    let s: String = format!("{}{}", "a", "b");
+    let s: hxrt::string::HxString =
+        hxrt::string::HxString::from(hxrt::string::HxString::from(format!("{}{}", "a", "b")));
     println!("{}", hxrt::dynamic::from(s.clone()));
 }

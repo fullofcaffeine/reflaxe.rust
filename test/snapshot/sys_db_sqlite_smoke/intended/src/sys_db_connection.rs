@@ -5,18 +5,18 @@
 pub trait Connection: Send + Sync {
     fn request(
         &self,
-        s: String,
+        s: hxrt::string::HxString,
     ) -> crate::HxRc<dyn crate::sys_db_result_set::ResultSet + Send + Sync>;
     fn close(&self) -> ();
-    fn escape(&self, s: String) -> String;
-    fn quote(&self, s: String) -> String;
+    fn escape(&self, s: hxrt::string::HxString) -> hxrt::string::HxString;
+    fn quote(&self, s: hxrt::string::HxString) -> hxrt::string::HxString;
     fn add_value(
         &self,
         s: crate::HxRef<crate::string_buf::StringBuf>,
         v: hxrt::dynamic::Dynamic,
     ) -> ();
     fn last_insert_id(&self) -> i32;
-    fn db_name(&self) -> String;
+    fn db_name(&self) -> hxrt::string::HxString;
     fn start_transaction(&self) -> ();
     fn commit(&self) -> ();
     fn rollback(&self) -> ();

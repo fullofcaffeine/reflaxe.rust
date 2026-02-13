@@ -32,7 +32,7 @@ mod sys_io_stdout;
 
 fn main() {
     let b: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRef::new(hxrt::bytes::Bytes::of_string(
-        String::from("hello").as_str(),
+        hxrt::string::HxString::from("hello").as_str(),
     ));
     println!("{}", hxrt::dynamic::from(b.borrow().to_string().clone()));
     let s: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRef::new(b.borrow().sub(1, 3));

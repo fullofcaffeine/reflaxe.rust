@@ -20,24 +20,19 @@ package sys;
 	- `stat()` returns a `sys.FileStat` anonymous object.
 **/
 class FileSystem {
-	public static function exists(path: String): Bool {
+	public static function exists(path:String):Bool {
 		return untyped __rust__("std::path::Path::new({0}.as_str()).exists()", path);
 	}
 
-	public static function rename(path: String, newPath: String): Void {
-		untyped __rust__(
-			"match std::fs::rename({0}.as_str(), {1}.as_str()) {
+	public static function rename(path:String, newPath:String):Void {
+		untyped __rust__("match std::fs::rename({0}.as_str(), {1}.as_str()) {
 				Ok(()) => (),
 				Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!(\"{}\", e))),
-			}",
-			path,
-			newPath
-		);
+			}", path, newPath);
 	}
 
-	public static function stat(path: String): FileStat {
-		var atMs: Float = untyped __rust__(
-			"{
+	public static function stat(path:String):FileStat {
+		var atMs:Float = untyped __rust__("{
 				use std::time::SystemTime;
 				let md = match std::fs::metadata({0}.as_str()) {
 					Ok(m) => m,
@@ -52,11 +47,8 @@ class FileSystem {
 					Err(_) => std::time::Duration::from_secs(0),
 				};
 				dur.as_millis() as f64
-			}",
-			path
-		);
-		var mtMs: Float = untyped __rust__(
-			"{
+			}", path);
+		var mtMs:Float = untyped __rust__("{
 				use std::time::SystemTime;
 				let md = match std::fs::metadata({0}.as_str()) {
 					Ok(m) => m,
@@ -71,11 +63,8 @@ class FileSystem {
 					Err(_) => std::time::Duration::from_secs(0),
 				};
 				dur.as_millis() as f64
-			}",
-			path
-		);
-		var ctMs: Float = untyped __rust__(
-			"{
+			}", path);
+		var ctMs:Float = untyped __rust__("{
 				use std::time::SystemTime;
 				let md = match std::fs::metadata({0}.as_str()) {
 					Ok(m) => m,
@@ -90,24 +79,18 @@ class FileSystem {
 					Err(_) => std::time::Duration::from_secs(0),
 				};
 				dur.as_millis() as f64
-			}",
-			path
-		);
+			}", path);
 
-		var size: Int = untyped __rust__(
-			"{
+		var size:Int = untyped __rust__("{
 				let md = match std::fs::metadata({0}.as_str()) {
 					Ok(m) => m,
 					Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!(\"{}\", e))),
 				};
 				(md.len() as i64) as i32
-			}",
-			path
-		);
+			}", path);
 
 		// Unix-only extended metadata; best-effort elsewhere.
-		var gid: Int = untyped __rust__(
-			"{
+		var gid:Int = untyped __rust__("{
 				#[cfg(unix)]
 				{
 					use std::os::unix::fs::MetadataExt;
@@ -119,11 +102,8 @@ class FileSystem {
 				}
 				#[cfg(not(unix))]
 				{ 0i32 }
-			}",
-			path
-		);
-		var uid: Int = untyped __rust__(
-			"{
+			}", path);
+		var uid:Int = untyped __rust__("{
 				#[cfg(unix)]
 				{
 					use std::os::unix::fs::MetadataExt;
@@ -135,11 +115,8 @@ class FileSystem {
 				}
 				#[cfg(not(unix))]
 				{ 0i32 }
-			}",
-			path
-		);
-		var dev: Int = untyped __rust__(
-			"{
+			}", path);
+		var dev:Int = untyped __rust__("{
 				#[cfg(unix)]
 				{
 					use std::os::unix::fs::MetadataExt;
@@ -151,11 +128,8 @@ class FileSystem {
 				}
 				#[cfg(not(unix))]
 				{ 0i32 }
-			}",
-			path
-		);
-		var ino: Int = untyped __rust__(
-			"{
+			}", path);
+		var ino:Int = untyped __rust__("{
 				#[cfg(unix)]
 				{
 					use std::os::unix::fs::MetadataExt;
@@ -167,11 +141,8 @@ class FileSystem {
 				}
 				#[cfg(not(unix))]
 				{ 0i32 }
-			}",
-			path
-		);
-		var nlink: Int = untyped __rust__(
-			"{
+			}", path);
+		var nlink:Int = untyped __rust__("{
 				#[cfg(unix)]
 				{
 					use std::os::unix::fs::MetadataExt;
@@ -183,11 +154,8 @@ class FileSystem {
 				}
 				#[cfg(not(unix))]
 				{ 0i32 }
-			}",
-			path
-		);
-		var rdev: Int = untyped __rust__(
-			"{
+			}", path);
+		var rdev:Int = untyped __rust__("{
 				#[cfg(unix)]
 				{
 					use std::os::unix::fs::MetadataExt;
@@ -199,11 +167,8 @@ class FileSystem {
 				}
 				#[cfg(not(unix))]
 				{ 0i32 }
-			}",
-			path
-		);
-		var mode: Int = untyped __rust__(
-			"{
+			}", path);
+		var mode:Int = untyped __rust__("{
 				#[cfg(unix)]
 				{
 					use std::os::unix::fs::MetadataExt;
@@ -215,9 +180,7 @@ class FileSystem {
 				}
 				#[cfg(not(unix))]
 				{ 0i32 }
-			}",
-			path
-		);
+			}", path);
 
 		return {
 			gid: gid,
@@ -234,19 +197,15 @@ class FileSystem {
 		};
 	}
 
-	public static function fullPath(relPath: String): String {
-		return untyped __rust__(
-			"match std::fs::canonicalize({0}.as_str()) {
+	public static function fullPath(relPath:String):String {
+		return untyped __rust__("match std::fs::canonicalize({0}.as_str()) {
 				Ok(p) => p.to_string_lossy().to_string(),
 				Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!(\"{}\", e))),
-			}",
-			relPath
-		);
+			}", relPath);
 	}
 
-	public static function absolutePath(relPath: String): String {
-		return untyped __rust__(
-			"{
+	public static function absolutePath(relPath:String):String {
+		return untyped __rust__("{
 				let p = std::path::Path::new({0}.as_str());
 				let out = if p.is_absolute() {
 					p.to_path_buf()
@@ -258,54 +217,57 @@ class FileSystem {
 					cwd.join(p)
 				};
 				out.to_string_lossy().to_string()
-			}",
-			relPath
-		);
+			}", relPath);
 	}
 
-	public static function isDirectory(path: String): Bool {
-		return untyped __rust__(
-			"match std::fs::metadata({0}.as_str()) {
+	public static function isDirectory(path:String):Bool {
+		return untyped __rust__("match std::fs::metadata({0}.as_str()) {
 				Ok(m) => m.is_dir(),
 				Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!(\"{}\", e))),
-			}",
-			path
-		);
+			}", path);
 	}
 
-	public static function createDirectory(path: String): Void {
-		untyped __rust__(
-			"match std::fs::create_dir_all({0}.as_str()) {
+	public static function createDirectory(path:String):Void {
+		untyped __rust__("match std::fs::create_dir_all({0}.as_str()) {
 				Ok(()) => (),
 				Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!(\"{}\", e))),
-			}",
-			path
-		);
+			}", path);
 	}
 
-	public static function deleteFile(path: String): Void {
-		untyped __rust__(
-			"match std::fs::remove_file({0}.as_str()) {
+	public static function deleteFile(path:String):Void {
+		untyped __rust__("match std::fs::remove_file({0}.as_str()) {
 				Ok(()) => (),
 				Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!(\"{}\", e))),
-			}",
-			path
-		);
+			}", path);
 	}
 
-	public static function deleteDirectory(path: String): Void {
-		untyped __rust__(
-			"match std::fs::remove_dir({0}.as_str()) {
+	public static function deleteDirectory(path:String):Void {
+		untyped __rust__("match std::fs::remove_dir({0}.as_str()) {
 				Ok(()) => (),
 				Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!(\"{}\", e))),
-			}",
-			path
-		);
+			}", path);
 	}
 
-	public static function readDirectory(path: String): Array<String> {
-		return untyped __rust__(
-			"{
+	public static function readDirectory(path:String):Array<String> {
+		#if rust_string_nullable
+		return untyped __rust__("{
+				let mut out: Vec<String> = Vec::new();
+				let rd = match std::fs::read_dir({0}.as_str()) {
+					Ok(r) => r,
+					Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!(\"{}\", e))),
+				};
+				for entry in rd {
+					let e = match entry {
+						Ok(e) => e,
+						Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!(\"{}\", e))),
+					};
+					let name = e.file_name().to_string_lossy().to_string();
+					out.push(name);
+				}
+				hxrt::array::Array::<hxrt::string::HxString>::from_vec(out.into_iter().map(hxrt::string::HxString::from).collect::<Vec<hxrt::string::HxString>>())
+			}", path);
+		#else
+		return untyped __rust__("{
 				let mut out: Vec<String> = Vec::new();
 				let rd = match std::fs::read_dir({0}.as_str()) {
 					Ok(r) => r,
@@ -320,8 +282,7 @@ class FileSystem {
 					out.push(name);
 				}
 				hxrt::array::Array::<String>::from_vec(out)
-			}",
-			path
-		);
+			}", path);
+		#end
 	}
 }

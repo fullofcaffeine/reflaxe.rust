@@ -35,44 +35,62 @@ mod sys_io_stdout;
 fn main() {
     println!(
         "{}",
-        hxrt::dynamic::from(String::from("--- Std.string ---"))
+        hxrt::dynamic::from(hxrt::string::HxString::from("--- Std.string ---"))
     );
-    println!("{}", hxrt::dynamic::from(String::from("1")));
-    println!("{}", hxrt::dynamic::from(String::from("true")));
-    println!("{}", hxrt::dynamic::from(1.5.to_string().clone()));
-    println!("{}", hxrt::dynamic::from(String::from("hi")));
+    println!("{}", hxrt::dynamic::from(hxrt::string::HxString::from("1")));
+    println!(
+        "{}",
+        hxrt::dynamic::from(hxrt::string::HxString::from("true"))
+    );
+    println!(
+        "{}",
+        hxrt::dynamic::from(hxrt::string::HxString::from(1.5.to_string()).clone())
+    );
+    println!(
+        "{}",
+        hxrt::dynamic::from(hxrt::string::HxString::from("hi"))
+    );
     println!(
         "{}",
         hxrt::dynamic::from(
-            hxrt::dynamic::from(crate::foo::Foo::new(3).clone())
-                .to_haxe_string()
-                .clone()
+            hxrt::string::HxString::from(
+                hxrt::dynamic::from(crate::foo::Foo::new(3).clone()).to_haxe_string()
+            )
+            .clone()
         )
     );
     println!(
         "{}",
-        hxrt::dynamic::from(String::from("--- Std.parseFloat ---"))
+        hxrt::dynamic::from(hxrt::string::HxString::from("--- Std.parseFloat ---"))
     );
     println!(
         "{}",
-        hxrt::dynamic::from(hxrt::string::parse_float(String::from("1.25").as_str()))
+        hxrt::dynamic::from(hxrt::string::parse_float(
+            hxrt::string::HxString::from("1.25").as_str()
+        ))
     );
     println!(
         "{}",
-        hxrt::dynamic::from(hxrt::string::parse_float(String::from("nope").as_str()))
+        hxrt::dynamic::from(hxrt::string::parse_float(
+            hxrt::string::HxString::from("nope").as_str()
+        ))
     );
     println!(
         "{}",
-        hxrt::dynamic::from(String::from("--- Type names ---"))
+        hxrt::dynamic::from(hxrt::string::HxString::from("--- Type names ---"))
     );
     println!("{}", hxrt::dynamic::from(String::from("Main.Foo").clone()));
     println!(
         "{}",
         hxrt::dynamic::from(String::from("Main.MyEnum").clone())
     );
-    println!("{}", hxrt::dynamic::from(String::from("--- Bytes ---")));
-    let b: crate::HxRef<hxrt::bytes::Bytes> =
-        crate::HxRef::new(hxrt::bytes::Bytes::of_string(String::from("hi").as_str()));
+    println!(
+        "{}",
+        hxrt::dynamic::from(hxrt::string::HxString::from("--- Bytes ---"))
+    );
+    let b: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRef::new(hxrt::bytes::Bytes::of_string(
+        hxrt::string::HxString::from("hi").as_str(),
+    ));
     println!("{}", hxrt::dynamic::from(b.borrow().length()));
     println!("{}", hxrt::dynamic::from(b.borrow().get(0)));
     b.borrow_mut().set(0, 72);
@@ -83,7 +101,10 @@ fn main() {
     b2.borrow_mut().set(1, 66);
     b2.borrow_mut().set(2, 67);
     println!("{}", hxrt::dynamic::from(b2.borrow().to_string().clone()));
-    println!("{}", hxrt::dynamic::from(String::from("--- Option ---")));
+    println!(
+        "{}",
+        hxrt::dynamic::from(hxrt::string::HxString::from("--- Option ---"))
+    );
     let o: Option<i32> = Option::Some(5);
     match o.clone() {
         Option::Some(__p) => {
@@ -94,7 +115,10 @@ fn main() {
             }
         }
         Option::None => {
-            println!("{}", hxrt::dynamic::from(String::from("none")));
+            println!(
+                "{}",
+                hxrt::dynamic::from(hxrt::string::HxString::from("none"))
+            );
         }
     }
     let o2: Option<i32> = Option::None;
@@ -107,11 +131,17 @@ fn main() {
             }
         }
         Option::None => {
-            println!("{}", hxrt::dynamic::from(String::from("none")));
+            println!(
+                "{}",
+                hxrt::dynamic::from(hxrt::string::HxString::from("none"))
+            );
         }
     }
-    println!("{}", hxrt::dynamic::from(String::from("--- Result ---")));
-    let r: Result<i32, String> = Result::Ok(7);
+    println!(
+        "{}",
+        hxrt::dynamic::from(hxrt::string::HxString::from("--- Result ---"))
+    );
+    let r: Result<i32, hxrt::string::HxString> = Result::Ok(7);
     match r.clone() {
         Result::Ok(__p) => {
             let _g_3: i32 = __p;
@@ -121,14 +151,16 @@ fn main() {
             }
         }
         Result::Err(__p) => {
-            let _g_4: String = __p;
+            let _g_4: hxrt::string::HxString = hxrt::string::HxString::from(__p);
             {
-                let e: String = _g_4;
+                let e: hxrt::string::HxString = hxrt::string::HxString::from(_g_4);
                 println!("{}", hxrt::dynamic::from(e.clone()));
             }
         }
     }
-    let r2: Result<i32, String> = Result::Err(String::from("fail"));
+    let r2: Result<i32, hxrt::string::HxString> = Result::Err(hxrt::string::HxString::from(
+        hxrt::string::HxString::from("fail"),
+    ));
     match r2.clone() {
         Result::Ok(__p) => {
             let _g_5: i32 = __p;
@@ -138,14 +170,17 @@ fn main() {
             }
         }
         Result::Err(__p) => {
-            let _g_6: String = __p;
+            let _g_6: hxrt::string::HxString = hxrt::string::HxString::from(__p);
             {
-                let e_2: String = _g_6;
+                let e_2: hxrt::string::HxString = hxrt::string::HxString::from(_g_6);
                 println!("{}", hxrt::dynamic::from(e_2.clone()));
             }
         }
     }
-    println!("{}", hxrt::dynamic::from(String::from("--- Reflect ---")));
+    println!(
+        "{}",
+        hxrt::dynamic::from(hxrt::string::HxString::from("--- Reflect ---"))
+    );
     let foo: crate::HxRef<crate::foo::Foo> = crate::foo::Foo::new(9);
     println!(
         "{}",

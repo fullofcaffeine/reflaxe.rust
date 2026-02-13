@@ -21,19 +21,23 @@ impl CallStackImpl {
         return hxrt::array::Array::<crate::haxe_stack_item::StackItem>::new();
     }
 
-    pub fn to_string(_stack: hxrt::array::Array<crate::haxe_stack_item::StackItem>) -> String {
-        return String::from("");
+    pub fn to_string(
+        _stack: hxrt::array::Array<crate::haxe_stack_item::StackItem>,
+    ) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from(""));
     }
 
-    pub(crate) fn exception_to_string(e: crate::HxRef<crate::haxe_exception::Exception>) -> String {
-        return format!(
+    pub(crate) fn exception_to_string(
+        e: crate::HxRef<crate::haxe_exception::Exception>,
+    ) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
             "{}{}{}",
             "Exception: ",
             crate::haxe_exception::Exception::to_string(&*e),
             crate::haxe_call_stack_call_stack_impl_::CallStackImpl::to_string(
                 crate::haxe_exception::Exception::get_stack(&*e)
             )
-        );
+        )));
     }
 
     pub fn subtract(

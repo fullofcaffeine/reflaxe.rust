@@ -29,18 +29,18 @@ impl C {
         return crate::c::C::__hx_super_b_set_x(&*self_, v + 100);
     }
 
-    pub fn sound(_self_: &crate::HxRefCell<C>) -> String {
-        return String::from("C.sound");
+    pub fn sound(_self_: &crate::HxRefCell<C>) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from("C.sound"));
     }
 
-    pub fn call_super_sound(self_: &crate::HxRefCell<C>) -> String {
+    pub fn call_super_sound(self_: &crate::HxRefCell<C>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::c::C> = self_.self_ref();
-        return crate::c::C::__hx_super_b_sound(&*self_);
+        return hxrt::string::HxString::from(crate::c::C::__hx_super_b_sound(&*self_));
     }
 
-    pub fn call_super_foo(self_: &crate::HxRefCell<C>) -> String {
+    pub fn call_super_foo(self_: &crate::HxRefCell<C>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::c::C> = self_.self_ref();
-        return crate::c::C::__hx_super_a_foo(&*self_);
+        return hxrt::string::HxString::from(crate::c::C::__hx_super_a_foo(&*self_));
     }
 
     pub fn inc_super_x(self_: &crate::HxRefCell<C>) -> i32 {
@@ -49,12 +49,12 @@ impl C {
         return crate::c::C::__hx_super_b_get_x(&*self_);
     }
 
-    pub fn foo(_self_: &crate::HxRefCell<C>) -> String {
-        return String::from("A.foo");
+    pub fn foo(_self_: &crate::HxRefCell<C>) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from("A.foo"));
     }
 
-    fn __hx_super_a_foo(_self_: &crate::HxRefCell<C>) -> String {
-        return String::from("A.foo");
+    fn __hx_super_a_foo(_self_: &crate::HxRefCell<C>) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from("A.foo"));
     }
 
     fn __hx_super_b_get_x(self_: &crate::HxRefCell<C>) -> i32 {
@@ -67,8 +67,8 @@ impl C {
         return crate::c::C::__hx_super_a_set_x(&*self_, v + 10);
     }
 
-    fn __hx_super_b_sound(_self_: &crate::HxRefCell<C>) -> String {
-        return String::from("B.sound");
+    fn __hx_super_b_sound(_self_: &crate::HxRefCell<C>) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from("B.sound"));
     }
 
     fn __hx_super_a_get_x(self_: &crate::HxRefCell<C>) -> i32 {
@@ -97,7 +97,7 @@ impl crate::b::BTrait for crate::HxRefCell<C> {
     fn __hx_set_u1_x(&self, v: i32) {
         self.borrow_mut()._x = v;
     }
-    fn foo(&self) -> String {
+    fn foo(&self) -> hxrt::string::HxString {
         C::foo(self)
     }
     fn get_x(&self) -> i32 {
@@ -106,7 +106,7 @@ impl crate::b::BTrait for crate::HxRefCell<C> {
     fn set_x(&self, v: i32) -> i32 {
         C::set_x(self, v)
     }
-    fn sound(&self) -> String {
+    fn sound(&self) -> hxrt::string::HxString {
         C::sound(self)
     }
     fn __hx_type_id(&self) -> u32 {
@@ -121,7 +121,7 @@ impl crate::a::ATrait for crate::HxRefCell<C> {
     fn __hx_set_u1_x(&self, v: i32) {
         self.borrow_mut()._x = v;
     }
-    fn foo(&self) -> String {
+    fn foo(&self) -> hxrt::string::HxString {
         C::foo(self)
     }
     fn get_x(&self) -> i32 {
@@ -130,7 +130,7 @@ impl crate::a::ATrait for crate::HxRefCell<C> {
     fn set_x(&self, v: i32) -> i32 {
         C::set_x(self, v)
     }
-    fn sound(&self) -> String {
+    fn sound(&self) -> hxrt::string::HxString {
         C::sound(self)
     }
     fn __hx_type_id(&self) -> u32 {

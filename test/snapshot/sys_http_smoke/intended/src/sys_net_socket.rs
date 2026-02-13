@@ -66,24 +66,26 @@ impl Socket {
         .close();
     }
 
-    pub fn read(self_: &crate::HxRefCell<Socket>) -> String {
+    pub fn read(self_: &crate::HxRefCell<Socket>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_net_socket::Socket> = self_.self_ref();
-        return ({
-            let __b = __hx_this.borrow();
-            __b.input.as_ref().unwrap().clone()
-        })
-        .read_all(None)
-        .borrow()
-        .to_string();
+        return hxrt::string::HxString::from(
+            ({
+                let __b = __hx_this.borrow();
+                __b.input.as_ref().unwrap().clone()
+            })
+            .read_all(None)
+            .borrow()
+            .to_string(),
+        );
     }
 
-    pub fn write(self_: &crate::HxRefCell<Socket>, content: String) {
+    pub fn write(self_: &crate::HxRefCell<Socket>, content: hxrt::string::HxString) {
         let __hx_this: crate::HxRef<crate::sys_net_socket::Socket> = self_.self_ref();
         ({
             let __b = __hx_this.borrow();
             __b.output.as_ref().unwrap().clone()
         })
-        .write_string(content, None);
+        .write_string(hxrt::string::HxString::from(content), None);
     }
 
     pub fn connect(
@@ -216,8 +218,9 @@ impl Socket {
             .peer();
             hxrt::array::Array::<i32>::from_vec(vec![ip, port])
         };
-        let host: crate::HxRef<crate::sys_net_host::Host> =
-            crate::sys_net_host::Host::new(String::from("127.0.0.1"));
+        let host: crate::HxRef<crate::sys_net_host::Host> = crate::sys_net_host::Host::new(
+            hxrt::string::HxString::from(hxrt::string::HxString::from("127.0.0.1")),
+        );
         {
             let __tmp = info.get_unchecked(0 as usize);
             host.borrow_mut().ip = __tmp;
@@ -245,8 +248,9 @@ impl Socket {
             .host();
             hxrt::array::Array::<i32>::from_vec(vec![ip, port])
         };
-        let host: crate::HxRef<crate::sys_net_host::Host> =
-            crate::sys_net_host::Host::new(String::from("127.0.0.1"));
+        let host: crate::HxRef<crate::sys_net_host::Host> = crate::sys_net_host::Host::new(
+            hxrt::string::HxString::from(hxrt::string::HxString::from("127.0.0.1")),
+        );
         {
             let __tmp = info.get_unchecked(0 as usize);
             host.borrow_mut().ip = __tmp;
@@ -458,8 +462,8 @@ pub trait SocketTrait: Send + Sync {
     fn __hx_get_handle(&self) -> crate::HxRef<hxrt::net::SocketHandle>;
     fn __hx_set_handle(&self, v: crate::HxRef<hxrt::net::SocketHandle>);
     fn close(&self) -> ();
-    fn read(&self) -> String;
-    fn write(&self, content: String) -> ();
+    fn read(&self) -> hxrt::string::HxString;
+    fn write(&self, content: hxrt::string::HxString) -> ();
     fn connect(&self, host: crate::HxRef<crate::sys_net_host::Host>, port: i32) -> ();
     fn listen(&self, connections: i32) -> ();
     fn shutdown(&self, read: bool, write: bool) -> ();
@@ -505,10 +509,10 @@ impl crate::sys_net_socket::SocketTrait for crate::HxRefCell<Socket> {
     fn close(&self) -> () {
         Socket::close(self)
     }
-    fn read(&self) -> String {
+    fn read(&self) -> hxrt::string::HxString {
         Socket::read(self)
     }
-    fn write(&self, content: String) -> () {
+    fn write(&self, content: hxrt::string::HxString) -> () {
         Socket::write(self, content)
     }
     fn connect(&self, host: crate::HxRef<crate::sys_net_host::Host>, port: i32) -> () {

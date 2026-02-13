@@ -7,7 +7,7 @@ pub const __HX_TYPE_ID: u32 = 0x9b8d53fbu32;
 pub struct Json {}
 
 impl Json {
-    pub fn parse(text: String) -> hxrt::dynamic::Dynamic {
+    pub fn parse(text: hxrt::string::HxString) -> hxrt::dynamic::Dynamic {
         return hxrt::json::parse(&text);
     }
 
@@ -18,13 +18,13 @@ impl Json {
                 + Send
                 + Sync,
         >,
-        space: Option<String>,
-    ) -> String {
+        space: hxrt::string::HxString,
+    ) -> hxrt::string::HxString {
         if !replacer.is_null() {
-            hxrt::exception::throw(hxrt::dynamic::from(String::from(
+            hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                 "haxe.Json.stringify: replacer is not supported on the Rust target yet",
             )));
         }
-        return hxrt::json::stringify(&value, space.as_deref());
+        return hxrt::string::HxString::from(hxrt::json::stringify(&value, space.as_deref()));
     }
 }

@@ -11,7 +11,9 @@ pub struct Input {
 impl Input {
     pub fn read_byte(_self_: &crate::HxRefCell<Input>) -> i32 {
         hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
-            hxrt::dynamic::from(String::from("Input.readByte is not implemented")),
+            hxrt::dynamic::from(hxrt::string::HxString::from(
+                "Input.readByte is not implemented",
+            )),
         )));
     }
 
@@ -154,7 +156,7 @@ impl Input {
         return s;
     }
 
-    pub fn read_until(self_: &crate::HxRefCell<Input>, end: i32) -> String {
+    pub fn read_until(self_: &crate::HxRefCell<Input>, end: i32) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::haxe_io_input::Input> = self_.self_ref();
         let buf: crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer> =
             crate::haxe_io_bytes_buffer::BytesBuffer::new();
@@ -165,12 +167,14 @@ impl Input {
             }
             crate::haxe_io_bytes_buffer::BytesBuffer::add_byte(&*buf, last);
         }
-        return crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&*buf)
-            .borrow()
-            .to_string();
+        return hxrt::string::HxString::from(
+            crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&*buf)
+                .borrow()
+                .to_string(),
+        );
     }
 
-    pub fn read_line(self_: &crate::HxRefCell<Input>) -> String {
+    pub fn read_line(self_: &crate::HxRefCell<Input>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::haxe_io_input::Input> = self_.self_ref();
         let buf: crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer> =
             crate::haxe_io_bytes_buffer::BytesBuffer::new();
@@ -190,7 +194,7 @@ impl Input {
                     if bytes.borrow().length() == 0 {
                         hxrt::exception::throw(hxrt::dynamic::from(e));
                     }
-                    return bytes.borrow().to_string();
+                    return hxrt::string::HxString::from(bytes.borrow().to_string());
                 }
                 Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
             },
@@ -206,7 +210,7 @@ impl Input {
                 bytes_2 = trimmed;
             }
         }
-        return bytes_2.borrow().to_string();
+        return hxrt::string::HxString::from(bytes_2.borrow().to_string());
     }
 
     pub fn read_float(self_: &crate::HxRefCell<Input>) -> f64 {
@@ -325,15 +329,15 @@ impl Input {
         self_: &crate::HxRefCell<Input>,
         len: i32,
         encoding: Option<crate::haxe_io_encoding::Encoding>,
-    ) -> String {
+    ) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::haxe_io_input::Input> = self_.self_ref();
         let b: crate::HxRef<hxrt::bytes::Bytes> =
             crate::HxRef::new(hxrt::bytes::Bytes::alloc(len as usize));
         crate::haxe_io_input::Input::read_full_bytes(&*__hx_this, b.clone(), 0, len);
-        return {
+        return hxrt::string::HxString::from({
             let _ = encoding;
             b.borrow().get_string(0, len)
-        };
+        });
     }
 }
 
@@ -347,8 +351,8 @@ pub trait InputTrait: Send + Sync {
     fn read_all(&self, bufsize: Option<i32>) -> crate::HxRef<hxrt::bytes::Bytes>;
     fn read_full_bytes(&self, s: crate::HxRef<hxrt::bytes::Bytes>, pos: i32, len: i32) -> ();
     fn read(&self, nbytes: i32) -> crate::HxRef<hxrt::bytes::Bytes>;
-    fn read_until(&self, end: i32) -> String;
-    fn read_line(&self) -> String;
+    fn read_until(&self, end: i32) -> hxrt::string::HxString;
+    fn read_line(&self) -> hxrt::string::HxString;
     fn read_float(&self) -> f64;
     fn read_double(&self) -> f64;
     fn read_int8(&self) -> i32;
@@ -357,7 +361,11 @@ pub trait InputTrait: Send + Sync {
     fn read_int24(&self) -> i32;
     fn read_u_int24(&self) -> i32;
     fn read_int32(&self) -> i32;
-    fn read_string(&self, len: i32, encoding: Option<crate::haxe_io_encoding::Encoding>) -> String;
+    fn read_string(
+        &self,
+        len: i32,
+        encoding: Option<crate::haxe_io_encoding::Encoding>,
+    ) -> hxrt::string::HxString;
     fn __hx_type_id(&self) -> u32;
 }
 
@@ -389,10 +397,10 @@ impl crate::haxe_io_input::InputTrait for crate::HxRefCell<Input> {
     fn read(&self, nbytes: i32) -> crate::HxRef<hxrt::bytes::Bytes> {
         Input::read(self, nbytes)
     }
-    fn read_until(&self, end: i32) -> String {
+    fn read_until(&self, end: i32) -> hxrt::string::HxString {
         Input::read_until(self, end)
     }
-    fn read_line(&self) -> String {
+    fn read_line(&self) -> hxrt::string::HxString {
         Input::read_line(self)
     }
     fn read_float(&self) -> f64 {
@@ -419,7 +427,11 @@ impl crate::haxe_io_input::InputTrait for crate::HxRefCell<Input> {
     fn read_int32(&self) -> i32 {
         Input::read_int32(self)
     }
-    fn read_string(&self, len: i32, encoding: Option<crate::haxe_io_encoding::Encoding>) -> String {
+    fn read_string(
+        &self,
+        len: i32,
+        encoding: Option<crate::haxe_io_encoding::Encoding>,
+    ) -> hxrt::string::HxString {
         Input::read_string(self, len, encoding)
     }
     fn __hx_type_id(&self) -> u32 {

@@ -167,7 +167,7 @@ impl Stdin {
         return s;
     }
 
-    pub fn read_until(self_: &crate::HxRefCell<Stdin>, end: i32) -> String {
+    pub fn read_until(self_: &crate::HxRefCell<Stdin>, end: i32) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_io_stdin::Stdin> = self_.self_ref();
         let buf: crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer> =
             crate::haxe_io_bytes_buffer::BytesBuffer::new();
@@ -178,12 +178,14 @@ impl Stdin {
             }
             crate::haxe_io_bytes_buffer::BytesBuffer::add_byte(&*buf, last);
         }
-        return crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&*buf)
-            .borrow()
-            .to_string();
+        return hxrt::string::HxString::from(
+            crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&*buf)
+                .borrow()
+                .to_string(),
+        );
     }
 
-    pub fn read_line(self_: &crate::HxRefCell<Stdin>) -> String {
+    pub fn read_line(self_: &crate::HxRefCell<Stdin>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_io_stdin::Stdin> = self_.self_ref();
         let buf: crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer> =
             crate::haxe_io_bytes_buffer::BytesBuffer::new();
@@ -203,7 +205,7 @@ impl Stdin {
                     if bytes.borrow().length() == 0 {
                         hxrt::exception::throw(hxrt::dynamic::from(e));
                     }
-                    return bytes.borrow().to_string();
+                    return hxrt::string::HxString::from(bytes.borrow().to_string());
                 }
                 Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
             },
@@ -219,7 +221,7 @@ impl Stdin {
                 bytes_2 = trimmed;
             }
         }
-        return bytes_2.borrow().to_string();
+        return hxrt::string::HxString::from(bytes_2.borrow().to_string());
     }
 
     pub fn read_float(self_: &crate::HxRefCell<Stdin>) -> f64 {
@@ -338,15 +340,15 @@ impl Stdin {
         self_: &crate::HxRefCell<Stdin>,
         len: i32,
         encoding: Option<crate::haxe_io_encoding::Encoding>,
-    ) -> String {
+    ) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_io_stdin::Stdin> = self_.self_ref();
         let b: crate::HxRef<hxrt::bytes::Bytes> =
             crate::HxRef::new(hxrt::bytes::Bytes::alloc(len as usize));
         crate::sys_io_stdin::Stdin::read_full_bytes(&*__hx_this, b.clone(), 0, len);
-        return {
+        return hxrt::string::HxString::from({
             let _ = encoding;
             b.borrow().get_string(0, len)
-        };
+        });
     }
 }
 
@@ -393,10 +395,14 @@ impl crate::haxe_io_input::InputTrait for crate::HxRefCell<Stdin> {
     fn read_int8(&self) -> i32 {
         Stdin::read_int8(self)
     }
-    fn read_line(&self) -> String {
+    fn read_line(&self) -> hxrt::string::HxString {
         Stdin::read_line(self)
     }
-    fn read_string(&self, len: i32, encoding: Option<crate::haxe_io_encoding::Encoding>) -> String {
+    fn read_string(
+        &self,
+        len: i32,
+        encoding: Option<crate::haxe_io_encoding::Encoding>,
+    ) -> hxrt::string::HxString {
         Stdin::read_string(self, len, encoding)
     }
     fn read_u_int16(&self) -> i32 {
@@ -405,7 +411,7 @@ impl crate::haxe_io_input::InputTrait for crate::HxRefCell<Stdin> {
     fn read_u_int24(&self) -> i32 {
         Stdin::read_u_int24(self)
     }
-    fn read_until(&self, end: i32) -> String {
+    fn read_until(&self, end: i32) -> hxrt::string::HxString {
         Stdin::read_until(self, end)
     }
     fn set_big_endian(&self, b: bool) -> bool {

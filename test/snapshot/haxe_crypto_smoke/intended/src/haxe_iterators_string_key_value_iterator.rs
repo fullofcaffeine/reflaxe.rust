@@ -6,12 +6,12 @@ pub const __HX_TYPE_ID: u32 = 0x0a67ae35u32;
 
 pub struct StringKeyValueIterator {
     offset: i32,
-    s: String,
+    s: hxrt::string::HxString,
 }
 
 impl StringKeyValueIterator {
     pub fn new(
-        s: String,
+        s: hxrt::string::HxString,
     ) -> crate::HxRef<crate::haxe_iterators_string_key_value_iterator::StringKeyValueIterator> {
         let self_: crate::HxRef<
             crate::haxe_iterators_string_key_value_iterator::StringKeyValueIterator,
@@ -47,10 +47,10 @@ impl StringKeyValueIterator {
                 __b.offset
             },
             value: crate::string_tools::StringTools::fast_code_at(
-                {
+                hxrt::string::HxString::from({
                     let __b = __hx_this.borrow();
                     __b.s.clone()
-                },
+                }),
                 {
                     let __tmp = self_.borrow().offset;
                     self_.borrow_mut().offset = __tmp + 1;

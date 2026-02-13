@@ -50,16 +50,16 @@ fn main() {
     println!("{}", hxrt::dynamic::from(raw));
     match col {
         1 => {
-            println!("{}", hxrt::dynamic::from(String::from("r")));
+            println!("{}", hxrt::dynamic::from(hxrt::string::HxString::from("r")));
         }
         2 => {
-            println!("{}", hxrt::dynamic::from(String::from("g")));
+            println!("{}", hxrt::dynamic::from(hxrt::string::HxString::from("g")));
         }
         3 => {
-            println!("{}", hxrt::dynamic::from(String::from("b")));
+            println!("{}", hxrt::dynamic::from(hxrt::string::HxString::from("b")));
         }
         _ => {
-            println!("{}", hxrt::dynamic::from(String::from("?")));
+            println!("{}", hxrt::dynamic::from(hxrt::string::HxString::from("?")));
         }
     }
 }

@@ -5,7 +5,7 @@ pub const __HX_TYPE_ID: u32 = 0xad5d98ceu32;
 #[derive(Debug)]
 
 pub struct Exception {
-    _message: String,
+    _message: hxrt::string::HxString,
     _previous: crate::HxRef<crate::haxe_exception::Exception>,
     _native: hxrt::dynamic::Dynamic,
     _stack: hxrt::array::Array<crate::haxe_stack_item::StackItem>,
@@ -13,7 +13,7 @@ pub struct Exception {
 
 impl Exception {
     pub fn new(
-        message: String,
+        message: hxrt::string::HxString,
         previous: crate::HxRef<crate::haxe_exception::Exception>,
         native: hxrt::dynamic::Dynamic,
     ) -> crate::HxRef<crate::haxe_exception::Exception> {
@@ -26,12 +26,12 @@ impl Exception {
         return self_;
     }
 
-    pub fn get_message(self_: &crate::HxRefCell<Exception>) -> String {
+    pub fn get_message(self_: &crate::HxRefCell<Exception>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::haxe_exception::Exception> = self_.self_ref();
-        return {
+        return hxrt::string::HxString::from({
             let __b = __hx_this.borrow();
             __b._message.clone()
-        };
+        });
     }
 
     pub fn get_stack(
@@ -70,29 +70,29 @@ impl Exception {
         };
     }
 
-    pub fn to_string(self_: &crate::HxRefCell<Exception>) -> String {
+    pub fn to_string(self_: &crate::HxRefCell<Exception>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::haxe_exception::Exception> = self_.self_ref();
-        return {
+        return hxrt::string::HxString::from({
             let __b = __hx_this.borrow();
             __b._message.clone()
-        };
+        });
     }
 
-    pub fn details(self_: &crate::HxRefCell<Exception>) -> String {
+    pub fn details(self_: &crate::HxRefCell<Exception>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::haxe_exception::Exception> = self_.self_ref();
-        return format!(
+        return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
             "{}{}{}",
             "Exception: ",
             crate::haxe_exception::Exception::to_string(&*__hx_this),
             crate::haxe_call_stack_call_stack_impl_::CallStackImpl::to_string(
                 crate::haxe_exception::Exception::get_stack(&*__hx_this)
             )
-        );
+        )));
     }
 
     fn caught(value: hxrt::dynamic::Dynamic) -> crate::HxRef<crate::haxe_exception::Exception> {
         return crate::haxe_exception::Exception::new(
-            String::from("Exception"),
+            hxrt::string::HxString::from(hxrt::string::HxString::from("Exception")),
             crate::HxRef::<crate::haxe_exception::Exception>::null(),
             value.clone(),
         );

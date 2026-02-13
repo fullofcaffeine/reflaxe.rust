@@ -14,9 +14,9 @@ impl Key {
         return self_;
     }
 
-    pub fn to_string(self_: &crate::HxRefCell<Key>) -> String {
+    pub fn to_string(self_: &crate::HxRefCell<Key>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::key::Key> = self_.self_ref();
-        return format!(
+        return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
             "{}{}{}",
             "Key(",
             hxrt::dynamic::from({
@@ -25,6 +25,6 @@ impl Key {
             })
             .to_haxe_string(),
             ")"
-        );
+        )));
     }
 }

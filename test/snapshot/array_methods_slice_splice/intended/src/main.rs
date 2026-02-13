@@ -33,10 +33,20 @@ mod sys_io_stdout;
 fn main() {
     let xs: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::from_vec(vec![1, 2, 3, 4, 5]);
     let s1: hxrt::array::Array<i32> = xs.slice(1, Some(4));
-    crate::sys::Sys::println(hxrt::dynamic::from(s1.join(String::from(","))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(s1.join(
+        hxrt::string::HxString::from(hxrt::string::HxString::from(",")),
+    ))));
     let removed: hxrt::array::Array<i32> = xs.splice(-2, 10);
-    crate::sys::Sys::println(hxrt::dynamic::from(removed.join(String::from(","))));
-    crate::sys::Sys::println(hxrt::dynamic::from(xs.join(String::from(","))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(
+        removed.join(hxrt::string::HxString::from(hxrt::string::HxString::from(
+            ",",
+        ))),
+    )));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(xs.join(
+        hxrt::string::HxString::from(hxrt::string::HxString::from(",")),
+    ))));
     let ys: hxrt::array::Array<i32> = xs.concat(hxrt::array::Array::<i32>::from_vec(vec![9, 10]));
-    crate::sys::Sys::println(hxrt::dynamic::from(ys.join(String::from(","))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(ys.join(
+        hxrt::string::HxString::from(hxrt::string::HxString::from(",")),
+    ))));
 }

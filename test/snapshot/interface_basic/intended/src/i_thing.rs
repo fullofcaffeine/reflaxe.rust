@@ -3,5 +3,5 @@
 // Haxe interface -> Rust trait
 
 pub trait IThing: Send + Sync {
-    fn say(&self) -> String;
+    fn say(&self) -> hxrt::string::HxString;
 }

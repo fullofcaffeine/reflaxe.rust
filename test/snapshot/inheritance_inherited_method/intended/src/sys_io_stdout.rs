@@ -277,7 +277,7 @@ impl Stdout {
 
     pub fn write_string(
         self_: &crate::HxRefCell<Stdout>,
-        s: String,
+        s: hxrt::string::HxString,
         encoding: Option<crate::haxe_io_encoding::Encoding>,
     ) {
         let __hx_this: crate::HxRef<crate::sys_io_stdout::Stdout> = self_.self_ref();
@@ -350,7 +350,11 @@ impl crate::haxe_io_output::OutputTrait for crate::HxRefCell<Stdout> {
     fn write_int8(&self, x: i32) -> () {
         Stdout::write_int8(self, x)
     }
-    fn write_string(&self, s: String, encoding: Option<crate::haxe_io_encoding::Encoding>) -> () {
+    fn write_string(
+        &self,
+        s: hxrt::string::HxString,
+        encoding: Option<crate::haxe_io_encoding::Encoding>,
+    ) -> () {
         Stdout::write_string(self, s, encoding)
     }
     fn write_u_int16(&self, x: i32) -> () {

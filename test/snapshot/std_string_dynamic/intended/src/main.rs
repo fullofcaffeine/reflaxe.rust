@@ -34,34 +34,52 @@ mod sys_io_stdout;
 fn main() {
     println!(
         "{}",
-        hxrt::dynamic::from(String::from("--- Std.string primitives ---"))
+        hxrt::dynamic::from(hxrt::string::HxString::from(
+            "--- Std.string primitives ---"
+        ))
     );
-    println!("{}", hxrt::dynamic::from(String::from("1")));
-    println!("{}", hxrt::dynamic::from(String::from("true")));
-    println!("{}", hxrt::dynamic::from(1.5.to_string().clone()));
-    println!("{}", hxrt::dynamic::from(String::from("hi")));
+    println!("{}", hxrt::dynamic::from(hxrt::string::HxString::from("1")));
     println!(
         "{}",
-        hxrt::dynamic::from(String::from("--- Std.string array ---"))
+        hxrt::dynamic::from(hxrt::string::HxString::from("true"))
+    );
+    println!(
+        "{}",
+        hxrt::dynamic::from(hxrt::string::HxString::from(1.5.to_string()).clone())
+    );
+    println!(
+        "{}",
+        hxrt::dynamic::from(hxrt::string::HxString::from("hi"))
+    );
+    println!(
+        "{}",
+        hxrt::dynamic::from(hxrt::string::HxString::from("--- Std.string array ---"))
     );
     let xs: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::from_vec(vec![1, 2, 3]);
     println!(
         "{}",
-        hxrt::dynamic::from(hxrt::dynamic::from(xs.clone()).to_haxe_string().clone())
+        hxrt::dynamic::from(
+            hxrt::string::HxString::from(hxrt::dynamic::from(xs.clone()).to_haxe_string()).clone()
+        )
     );
-    println!("{}", hxrt::dynamic::from(xs.toString().clone()));
     println!(
         "{}",
-        hxrt::dynamic::from(String::from("--- Std.string object ---"))
+        hxrt::dynamic::from(hxrt::string::HxString::from(xs.toString()).clone())
+    );
+    println!(
+        "{}",
+        hxrt::dynamic::from(hxrt::string::HxString::from("--- Std.string object ---"))
     );
     let foo: crate::HxRef<crate::foo::Foo> = crate::foo::Foo::new(3);
     println!(
         "{}",
-        hxrt::dynamic::from(hxrt::dynamic::from(foo.clone()).to_haxe_string().clone())
+        hxrt::dynamic::from(
+            hxrt::string::HxString::from(hxrt::dynamic::from(foo.clone()).to_haxe_string()).clone()
+        )
     );
     println!(
         "{}",
-        hxrt::dynamic::from(String::from("--- Sys.println Dynamic ---"))
+        hxrt::dynamic::from(hxrt::string::HxString::from("--- Sys.println Dynamic ---"))
     );
     crate::sys::Sys::println(hxrt::dynamic::from_ref(foo.clone()));
     let mut n: Option<i32> = None;

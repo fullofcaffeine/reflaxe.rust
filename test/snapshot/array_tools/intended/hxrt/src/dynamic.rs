@@ -279,8 +279,19 @@ pub fn dyn_object_get(obj: &HxRef<DynObject>, key: &str) -> Dynamic {
 }
 
 #[inline]
-pub fn dyn_object_keys(obj: &HxRef<DynObject>) -> Array<String> {
-    obj.borrow().keys()
+fn map_string_array<S>(values: Array<String>) -> Array<S>
+where
+    S: From<String> + Clone,
+{
+    Array::from_vec(values.to_vec().into_iter().map(S::from).collect())
+}
+
+#[inline]
+pub fn dyn_object_keys<S>(obj: &HxRef<DynObject>) -> Array<S>
+where
+    S: From<String> + Clone,
+{
+    map_string_array(obj.borrow().keys())
 }
 
 /// Return a cloned list of `(key, value)` entries for a `DynObject`.
@@ -303,14 +314,17 @@ pub fn dyn_object_entries(obj: &HxRef<DynObject>) -> Vec<(String, Dynamic)> {
 /// - If `obj` is a boxed `HxRef<anon::Anon>`: returns its keys.
 /// - Otherwise: returns an empty array.
 #[inline]
-pub fn field_names(obj: &Dynamic) -> Array<String> {
+pub fn field_names<S>(obj: &Dynamic) -> Array<S>
+where
+    S: From<String> + Clone,
+{
     if let Some(o) = obj.downcast_ref::<HxRef<DynObject>>() {
         return dyn_object_keys(o);
     }
     if let Some(a) = obj.downcast_ref::<crate::cell::HxRef<crate::anon::Anon>>() {
-        return crate::anon::anon_keys(a);
+        return map_string_array(crate::anon::anon_keys(a));
     }
-    Array::<String>::new()
+    Array::<S>::new()
 }
 
 /// Read a dynamic field from a `Dynamic` receiver.

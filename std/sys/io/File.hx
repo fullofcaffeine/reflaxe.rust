@@ -26,86 +26,68 @@ import hxrt.fs.FileHandle;
 	  and wrapped by `sys.io.FileInput` / `sys.io.FileOutput`.
 **/
 class File {
-	public static function getContent(path: String): String {
-		return untyped __rust__(
-			"match std::fs::read_to_string({0}.as_str()) {
+	public static function getContent(path:String):String {
+		return untyped __rust__("match std::fs::read_to_string({0}.as_str()) {
 				Ok(s) => s,
 				Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!(\"{}\", e))),
-			}",
-			path
-		);
+			}", path);
 	}
 
-	public static function saveContent(path: String, content: String): Void {
-		untyped __rust__(
-			"match std::fs::write({0}.as_str(), {1}) {
+	public static function saveContent(path:String, content:String):Void {
+		untyped __rust__("match std::fs::write({0}.as_str(), {1}.as_str().as_bytes()) {
 				Ok(()) => (),
 				Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!(\"{}\", e))),
-			}",
-			path,
-			content
-		);
+			}", path, content);
 	}
 
-	public static function getBytes(path: String): Bytes {
-		return untyped __rust__(
-				"{
+	public static function getBytes(path:String):Bytes {
+		return untyped __rust__("{
 					let data = match std::fs::read({0}.as_str()) {
 						Ok(b) => b,
 						Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!(\"{}\", e))),
 					};
 					crate::HxRef::new(hxrt::bytes::Bytes::from_vec(data))
-				}",
-				path
-			);
+				}", path);
 	}
 
-	public static function saveBytes(path: String, bytes: Bytes): Void {
-		untyped __rust__(
-			"{
+	public static function saveBytes(path:String, bytes:Bytes):Void {
+		untyped __rust__("{
 				let b = {1}.borrow();
 				match std::fs::write({0}.as_str(), b.as_slice()) {
 					Ok(()) => (),
 					Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!(\"{}\", e))),
 				}
-			}",
-			path,
-			bytes
-		);
+			}", path, bytes);
 	}
 
-	public static function read(path: String, binary: Bool = true): FileInput {
+	public static function read(path:String, binary:Bool = true):FileInput {
 		var _ = binary;
-		var fh: HxRef<FileHandle> = untyped __rust__("hxrt::fs::open_read({0}.as_str())", path);
+		var fh:HxRef<FileHandle> = untyped __rust__("hxrt::fs::open_read({0}.as_str())", path);
 		return new FileInput(fh);
 	}
 
-	public static function write(path: String, binary: Bool = true): FileOutput {
+	public static function write(path:String, binary:Bool = true):FileOutput {
 		var _ = binary;
-		var fh: HxRef<FileHandle> = untyped __rust__("hxrt::fs::open_write_truncate({0}.as_str())", path);
+		var fh:HxRef<FileHandle> = untyped __rust__("hxrt::fs::open_write_truncate({0}.as_str())", path);
 		return new FileOutput(fh);
 	}
 
-	public static function append(path: String, binary: Bool = true): FileOutput {
+	public static function append(path:String, binary:Bool = true):FileOutput {
 		var _ = binary;
-		var fh: HxRef<FileHandle> = untyped __rust__("hxrt::fs::open_append({0}.as_str())", path);
+		var fh:HxRef<FileHandle> = untyped __rust__("hxrt::fs::open_append({0}.as_str())", path);
 		return new FileOutput(fh);
 	}
 
-	public static function update(path: String, binary: Bool = true): FileOutput {
+	public static function update(path:String, binary:Bool = true):FileOutput {
 		var _ = binary;
-		var fh: HxRef<FileHandle> = untyped __rust__("hxrt::fs::open_update({0}.as_str())", path);
+		var fh:HxRef<FileHandle> = untyped __rust__("hxrt::fs::open_update({0}.as_str())", path);
 		return new FileOutput(fh);
 	}
 
-	public static function copy(srcPath: String, dstPath: String): Void {
-		untyped __rust__(
-			"match std::fs::copy({0}.as_str(), {1}.as_str()) {
+	public static function copy(srcPath:String, dstPath:String):Void {
+		untyped __rust__("match std::fs::copy({0}.as_str(), {1}.as_str()) {
 				Ok(_) => (),
 				Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!(\"{}\", e))),
-			}",
-			srcPath,
-			dstPath
-		);
+			}", srcPath, dstPath);
 	}
 }

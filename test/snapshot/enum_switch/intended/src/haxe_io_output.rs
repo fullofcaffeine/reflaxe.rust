@@ -11,7 +11,9 @@ pub struct Output {
 impl Output {
     pub fn write_byte(_self_: &crate::HxRefCell<Output>, _c: i32) {
         hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
-            hxrt::dynamic::from(String::from("Output.writeByte is not implemented")),
+            hxrt::dynamic::from(hxrt::string::HxString::from(
+                "Output.writeByte is not implemented",
+            )),
         )));
     }
 
@@ -270,7 +272,7 @@ impl Output {
 
     pub fn write_string(
         self_: &crate::HxRefCell<Output>,
-        s: String,
+        s: hxrt::string::HxString,
         encoding: Option<crate::haxe_io_encoding::Encoding>,
     ) {
         let __hx_this: crate::HxRef<crate::haxe_io_output::Output> = self_.self_ref();
@@ -311,7 +313,11 @@ pub trait OutputTrait: Send + Sync {
         i: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync>,
         bufsize: Option<i32>,
     ) -> ();
-    fn write_string(&self, s: String, encoding: Option<crate::haxe_io_encoding::Encoding>) -> ();
+    fn write_string(
+        &self,
+        s: hxrt::string::HxString,
+        encoding: Option<crate::haxe_io_encoding::Encoding>,
+    ) -> ();
     fn __hx_type_id(&self) -> u32;
 }
 
@@ -377,7 +383,11 @@ impl crate::haxe_io_output::OutputTrait for crate::HxRefCell<Output> {
     ) -> () {
         Output::write_input(self, i, bufsize)
     }
-    fn write_string(&self, s: String, encoding: Option<crate::haxe_io_encoding::Encoding>) -> () {
+    fn write_string(
+        &self,
+        s: hxrt::string::HxString,
+        encoding: Option<crate::haxe_io_encoding::Encoding>,
+    ) -> () {
         Output::write_string(self, s, encoding)
     }
     fn __hx_type_id(&self) -> u32 {

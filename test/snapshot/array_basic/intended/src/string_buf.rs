@@ -5,13 +5,13 @@ pub const __HX_TYPE_ID: u32 = 0x9ce3c7b1u32;
 #[derive(Debug)]
 
 pub struct StringBuf {
-    b: String,
+    b: hxrt::string::HxString,
 }
 
 impl StringBuf {
     pub fn new() -> crate::HxRef<crate::string_buf::StringBuf> {
         let self_: crate::HxRef<crate::string_buf::StringBuf> = crate::HxRef::new(StringBuf {
-            b: String::from(""),
+            b: hxrt::string::HxString::from(""),
         });
         return self_;
     }
@@ -30,8 +30,12 @@ impl StringBuf {
     pub fn add(self_: &crate::HxRefCell<StringBuf>, x: hxrt::dynamic::Dynamic) {
         let __hx_this: crate::HxRef<crate::string_buf::StringBuf> = self_.self_ref();
         {
-            let __tmp = format!("{}{}", &__hx_this.borrow().b, x.to_haxe_string());
-            __hx_this.borrow_mut().b = __tmp.clone();
+            let __tmp = hxrt::string::HxString::from(format!(
+                "{}{}",
+                &__hx_this.borrow().b,
+                hxrt::string::HxString::from(x.to_haxe_string())
+            ));
+            __hx_this.borrow_mut().b = hxrt::string::HxString::from(__tmp.clone());
             __tmp
         };
     }
@@ -39,38 +43,43 @@ impl StringBuf {
     pub fn add_char(self_: &crate::HxRefCell<StringBuf>, c: i32) {
         let __hx_this: crate::HxRef<crate::string_buf::StringBuf> = self_.self_ref();
         {
-            let __tmp = format!(
+            let __tmp = hxrt::string::HxString::from(format!(
                 "{}{}",
                 &__hx_this.borrow().b,
-                hxrt::string::from_char_code(c)
-            );
-            __hx_this.borrow_mut().b = __tmp.clone();
+                hxrt::string::HxString::from(hxrt::string::from_char_code(c))
+            ));
+            __hx_this.borrow_mut().b = hxrt::string::HxString::from(__tmp.clone());
             __tmp
         };
     }
 
-    pub fn add_sub(self_: &crate::HxRefCell<StringBuf>, s: String, pos: i32, len: Option<i32>) {
+    pub fn add_sub(
+        self_: &crate::HxRefCell<StringBuf>,
+        s: hxrt::string::HxString,
+        pos: i32,
+        len: Option<i32>,
+    ) {
         let __hx_this: crate::HxRef<crate::string_buf::StringBuf> = self_.self_ref();
         {
-            let __tmp = format!(
+            let __tmp = hxrt::string::HxString::from(format!(
                 "{}{}",
                 &__hx_this.borrow().b,
                 if len.is_none() {
-                    hxrt::string::substr(s.as_str(), pos, None)
+                    hxrt::string::HxString::from(hxrt::string::substr(s.as_str(), pos, None))
                 } else {
-                    hxrt::string::substr(s.as_str(), pos, len)
+                    hxrt::string::HxString::from(hxrt::string::substr(s.as_str(), pos, len))
                 }
-            );
-            __hx_this.borrow_mut().b = __tmp.clone();
+            ));
+            __hx_this.borrow_mut().b = hxrt::string::HxString::from(__tmp.clone());
             __tmp
         };
     }
 
-    pub fn to_string(self_: &crate::HxRefCell<StringBuf>) -> String {
+    pub fn to_string(self_: &crate::HxRefCell<StringBuf>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::string_buf::StringBuf> = self_.self_ref();
-        return {
+        return hxrt::string::HxString::from({
             let __b = __hx_this.borrow();
             __b.b.clone()
-        };
+        });
     }
 }

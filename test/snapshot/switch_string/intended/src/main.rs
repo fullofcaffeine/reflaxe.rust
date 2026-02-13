@@ -31,7 +31,7 @@ mod sys_io_stdin;
 mod sys_io_stdout;
 
 fn main() {
-    let s: String = String::from("b");
+    let s: hxrt::string::HxString = hxrt::string::HxString::from(hxrt::string::HxString::from("b"));
     let n: i32 = match s.as_str() {
         "a" => 1,
         "b" => 2,

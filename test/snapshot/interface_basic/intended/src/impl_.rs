@@ -12,13 +12,13 @@ impl Impl {
         return self_;
     }
 
-    pub fn say(_self_: &crate::HxRefCell<Impl>) -> String {
-        return String::from("hi");
+    pub fn say(_self_: &crate::HxRefCell<Impl>) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from("hi"));
     }
 }
 
 impl crate::i_thing::IThing for crate::HxRefCell<Impl> {
-    fn say(&self) -> String {
+    fn say(&self) -> hxrt::string::HxString {
         Impl::say(self)
     }
 }

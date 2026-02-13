@@ -12,27 +12,27 @@ impl Animal {
         return self_;
     }
 
-    pub fn sound(_self_: &crate::HxRefCell<Animal>) -> String {
-        return String::from("animal");
+    pub fn sound(_self_: &crate::HxRefCell<Animal>) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from("animal"));
     }
 
-    pub fn speak(self_: &crate::HxRefCell<Animal>) -> String {
+    pub fn speak(self_: &crate::HxRefCell<Animal>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::animal::Animal> = self_.self_ref();
-        return crate::animal::Animal::sound(&*__hx_this);
+        return hxrt::string::HxString::from(crate::animal::Animal::sound(&*__hx_this));
     }
 }
 
 pub trait AnimalTrait: Send + Sync {
-    fn sound(&self) -> String;
-    fn speak(&self) -> String;
+    fn sound(&self) -> hxrt::string::HxString;
+    fn speak(&self) -> hxrt::string::HxString;
     fn __hx_type_id(&self) -> u32;
 }
 
 impl crate::animal::AnimalTrait for crate::HxRefCell<Animal> {
-    fn sound(&self) -> String {
+    fn sound(&self) -> hxrt::string::HxString {
         Animal::sound(self)
     }
-    fn speak(&self) -> String {
+    fn speak(&self) -> hxrt::string::HxString {
         Animal::speak(self)
     }
     fn __hx_type_id(&self) -> u32 {

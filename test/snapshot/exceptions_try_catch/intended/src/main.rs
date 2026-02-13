@@ -32,10 +32,10 @@ mod sys_io_stdout;
 
 fn main() {
     let x: i32 = match hxrt::exception::catch_unwind(|| {
-        hxrt::exception::throw(hxrt::dynamic::from(String::from("boom")));
+        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from("boom")));
     }) {
         Ok(__hx_ok) => __hx_ok,
-        Err(__hx_ex) => match __hx_ex.downcast::<String>() {
+        Err(__hx_ex) => match __hx_ex.downcast::<hxrt::string::HxString>() {
             Ok(_) => 2,
             Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
         },
@@ -48,14 +48,16 @@ fn main() {
             Ok(__hx_ok) => __hx_ok,
             Err(__hx_ex) => match __hx_ex.downcast::<i32>() {
                 Ok(_) => {
-                    hxrt::exception::throw(hxrt::dynamic::from(String::from("inner")));
+                    hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
+                        "inner",
+                    )));
                 }
                 Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
             },
         }
     }) {
         Ok(__hx_ok) => __hx_ok,
-        Err(__hx_ex) => match __hx_ex.downcast::<String>() {
+        Err(__hx_ex) => match __hx_ex.downcast::<hxrt::string::HxString>() {
             Ok(_) => 42,
             Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
         },

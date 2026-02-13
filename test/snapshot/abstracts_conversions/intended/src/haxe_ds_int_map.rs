@@ -77,9 +77,9 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> IntMap<T> {
         return out;
     }
 
-    pub fn to_string(self_: &crate::HxRefCell<IntMap<T>>) -> String {
+    pub fn to_string(self_: &crate::HxRefCell<IntMap<T>>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
-        return format!("{:?}", __hx_this.borrow().h);
+        return hxrt::string::HxString::from(format!("{:?}", __hx_this.borrow().h));
     }
 
     pub fn clear(self_: &crate::HxRefCell<IntMap<T>>) {
@@ -121,7 +121,7 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> crate::haxe_i_map::IMap
             };
         __up
     }
-    fn to_string(&self) -> String {
+    fn to_string(&self) -> hxrt::string::HxString {
         IntMap::<T>::to_string(self)
     }
     fn clear(&self) -> () {

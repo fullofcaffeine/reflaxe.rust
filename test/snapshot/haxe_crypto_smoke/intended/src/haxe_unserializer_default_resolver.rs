@@ -13,14 +13,20 @@ impl DefaultResolver {
         return self_;
     }
 
-    pub fn resolve_class(_self_: &crate::HxRefCell<DefaultResolver>, name: String) -> u32 {
+    pub fn resolve_class(
+        _self_: &crate::HxRefCell<DefaultResolver>,
+        name: hxrt::string::HxString,
+    ) -> u32 {
         return {
             let _ = name;
             0u32
         };
     }
 
-    pub fn resolve_enum(_self_: &crate::HxRefCell<DefaultResolver>, name: String) -> u32 {
+    pub fn resolve_enum(
+        _self_: &crate::HxRefCell<DefaultResolver>,
+        name: hxrt::string::HxString,
+    ) -> u32 {
         return {
             let _ = name;
             0u32

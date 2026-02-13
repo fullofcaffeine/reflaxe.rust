@@ -32,9 +32,9 @@ mod sys_io_stdout;
 
 fn main() {
     let mut o2_x: i32;
-    let mut o2_s: String;
+    let mut o2_s: hxrt::string::HxString;
     o2_x = 1;
-    o2_s = String::from("hi");
+    o2_s = hxrt::string::HxString::from(hxrt::string::HxString::from("hi"));
     println!("{}", hxrt::dynamic::from(o2_x));
     println!("{}", hxrt::dynamic::from(o2_s.clone()));
     o2_x = 2;
@@ -59,6 +59,6 @@ fn main() {
         __tmp
     };
     println!("{}", hxrt::dynamic::from(o2_x));
-    o2_s = format!("{}{}", &o2_s, "!");
+    o2_s = hxrt::string::HxString::from(hxrt::string::HxString::from(format!("{}{}", &o2_s, "!")));
     println!("{}", hxrt::dynamic::from(o2_s.clone()));
 }

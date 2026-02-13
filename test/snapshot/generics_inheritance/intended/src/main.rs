@@ -33,14 +33,16 @@ mod sys_io_stdin;
 mod sys_io_stdout;
 
 fn main() {
-    let b: crate::HxRc<dyn crate::base::BaseTrait<String> + Send + Sync> = {
-        let __tmp = crate::sub::Sub::<String>::new();
-        let __up: crate::HxRc<dyn crate::base::BaseTrait<String> + Send + Sync> =
+    let b: crate::HxRc<dyn crate::base::BaseTrait<hxrt::string::HxString> + Send + Sync> = {
+        let __tmp = crate::sub::Sub::<hxrt::string::HxString>::new();
+        let __up: crate::HxRc<dyn crate::base::BaseTrait<hxrt::string::HxString> + Send + Sync> =
             match __tmp.as_arc_opt() {
                 Some(__rc) => __rc.clone(),
                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
             };
         __up
     };
-    crate::sys::Sys::println(hxrt::dynamic::from(b.id(String::from("hi"))));
+    crate::sys::Sys::println(hxrt::dynamic::from(b.id(hxrt::string::HxString::from(
+        hxrt::string::HxString::from("hi"),
+    ))));
 }

@@ -36,6 +36,11 @@ impl HxString {
     }
 
     #[inline]
+    pub fn as_deref(&self) -> Option<&str> {
+        self.0.as_deref()
+    }
+
+    #[inline]
     pub fn as_str(&self) -> &str {
         match &self.0 {
             Some(s) => s.as_str(),
@@ -66,6 +71,23 @@ impl From<String> for HxString {
     }
 }
 
+impl From<Option<String>> for HxString {
+    #[inline]
+    fn from(value: Option<String>) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Option<HxString>> for HxString {
+    #[inline]
+    fn from(value: Option<HxString>) -> Self {
+        match value {
+            Some(v) => v,
+            None => HxString::null(),
+        }
+    }
+}
+
 impl AsRef<str> for HxString {
     #[inline]
     fn as_ref(&self) -> &str {
@@ -73,9 +95,37 @@ impl AsRef<str> for HxString {
     }
 }
 
+impl std::ops::Deref for HxString {
+    type Target = str;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.as_str()
+    }
+}
+
 impl std::fmt::Display for HxString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.to_haxe_string())
+    }
+}
+
+impl serde::Serialize for HxString {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serde::Serialize::serialize(&self.0, serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for HxString {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = <Option<String> as serde::Deserialize<'de>>::deserialize(deserializer)?;
+        Ok(HxString::from(value))
     }
 }
 

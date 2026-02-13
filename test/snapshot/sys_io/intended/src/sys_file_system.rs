@@ -7,18 +7,18 @@ pub const __HX_TYPE_ID: u32 = 0xce0a9f5fu32;
 pub struct FileSystem {}
 
 impl FileSystem {
-    pub fn exists(path: String) -> bool {
+    pub fn exists(path: hxrt::string::HxString) -> bool {
         return std::path::Path::new(path.as_str()).exists();
     }
 
-    pub fn rename(path: String, new_path: String) {
+    pub fn rename(path: hxrt::string::HxString, new_path: hxrt::string::HxString) {
         match std::fs::rename(path.as_str(), new_path.as_str()) {
             Ok(()) => (),
             Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
         };
     }
 
-    pub fn stat(path: String) -> crate::HxRef<hxrt::anon::Anon> {
+    pub fn stat(path: hxrt::string::HxString) -> crate::HxRef<hxrt::anon::Anon> {
         let at_ms: f64 = {
             use std::time::SystemTime;
             let md = match std::fs::metadata(path.as_str()) {
@@ -199,15 +199,15 @@ impl FileSystem {
         };
     }
 
-    pub fn full_path(rel_path: String) -> String {
-        return match std::fs::canonicalize(rel_path.as_str()) {
+    pub fn full_path(rel_path: hxrt::string::HxString) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(match std::fs::canonicalize(rel_path.as_str()) {
             Ok(p) => p.to_string_lossy().to_string(),
             Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
-        };
+        });
     }
 
-    pub fn absolute_path(rel_path: String) -> String {
-        return {
+    pub fn absolute_path(rel_path: hxrt::string::HxString) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from({
             let p = std::path::Path::new(rel_path.as_str());
             let out = if p.is_absolute() {
                 p.to_path_buf()
@@ -219,38 +219,40 @@ impl FileSystem {
                 cwd.join(p)
             };
             out.to_string_lossy().to_string()
-        };
+        });
     }
 
-    pub fn is_directory(path: String) -> bool {
+    pub fn is_directory(path: hxrt::string::HxString) -> bool {
         return match std::fs::metadata(path.as_str()) {
             Ok(m) => m.is_dir(),
             Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
         };
     }
 
-    pub fn create_directory(path: String) {
+    pub fn create_directory(path: hxrt::string::HxString) {
         match std::fs::create_dir_all(path.as_str()) {
             Ok(()) => (),
             Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
         };
     }
 
-    pub fn delete_file(path: String) {
+    pub fn delete_file(path: hxrt::string::HxString) {
         match std::fs::remove_file(path.as_str()) {
             Ok(()) => (),
             Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
         };
     }
 
-    pub fn delete_directory(path: String) {
+    pub fn delete_directory(path: hxrt::string::HxString) {
         match std::fs::remove_dir(path.as_str()) {
             Ok(()) => (),
             Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
         };
     }
 
-    pub fn read_directory(path: String) -> hxrt::array::Array<String> {
+    pub fn read_directory(
+        path: hxrt::string::HxString,
+    ) -> hxrt::array::Array<hxrt::string::HxString> {
         return {
             let mut out: Vec<String> = Vec::new();
             let rd = match std::fs::read_dir(path.as_str()) {
@@ -265,7 +267,11 @@ impl FileSystem {
                 let name = e.file_name().to_string_lossy().to_string();
                 out.push(name);
             }
-            hxrt::array::Array::<String>::from_vec(out)
+            hxrt::array::Array::<hxrt::string::HxString>::from_vec(
+                out.into_iter()
+                    .map(hxrt::string::HxString::from)
+                    .collect::<Vec<hxrt::string::HxString>>(),
+            )
         };
     }
 }

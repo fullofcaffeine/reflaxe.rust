@@ -8,8 +8,8 @@ pub struct ObjectMap<
     K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug,
     V: Clone + Send + Sync + 'static + std::fmt::Debug,
 > {
-    keys_map: std::collections::HashMap<String, K>,
-    values_map: std::collections::HashMap<String, V>,
+    keys_map: std::collections::HashMap<hxrt::string::HxString, K>,
+    values_map: std::collections::HashMap<hxrt::string::HxString, V>,
 }
 
 impl<
@@ -20,19 +20,19 @@ impl<
     pub fn new() -> crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> {
         let self_: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> =
             crate::HxRef::new(ObjectMap {
-                keys_map: std::collections::HashMap::<String, K>::new(),
-                values_map: std::collections::HashMap::<String, V>::new(),
+                keys_map: std::collections::HashMap::<hxrt::string::HxString, K>::new(),
+                values_map: std::collections::HashMap::<hxrt::string::HxString, V>::new(),
             });
         return self_;
     }
 
-    fn key_id(_self_: &crate::HxRefCell<ObjectMap<K, V>>, key: K) -> String {
-        return hxrt::hxref::ptr_id(&key);
+    fn key_id(_self_: &crate::HxRefCell<ObjectMap<K, V>>, key: K) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::hxref::ptr_id(&key));
     }
 
     pub fn set(self_: &crate::HxRefCell<ObjectMap<K, V>>, key: K, value: V) {
         let __hx_this: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> = self_.self_ref();
-        let id: String = hxrt::hxref::ptr_id(&key);
+        let id: hxrt::string::HxString = hxrt::string::HxString::from(hxrt::hxref::ptr_id(&key));
         {
             let mut __s = __hx_this.borrow_mut();
             __s.keys_map.insert(id.clone(), key);
@@ -42,19 +42,19 @@ impl<
 
     pub fn get(self_: &crate::HxRefCell<ObjectMap<K, V>>, key: K) -> Option<V> {
         let __hx_this: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> = self_.self_ref();
-        let id: String = hxrt::hxref::ptr_id(&key);
+        let id: hxrt::string::HxString = hxrt::string::HxString::from(hxrt::hxref::ptr_id(&key));
         return __hx_this.borrow().values_map.get(&id).cloned();
     }
 
     pub fn exists(self_: &crate::HxRefCell<ObjectMap<K, V>>, key: K) -> bool {
         let __hx_this: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> = self_.self_ref();
-        let id: String = hxrt::hxref::ptr_id(&key);
+        let id: hxrt::string::HxString = hxrt::string::HxString::from(hxrt::hxref::ptr_id(&key));
         return __hx_this.borrow().values_map.contains_key(&id);
     }
 
     pub fn remove(self_: &crate::HxRefCell<ObjectMap<K, V>>, key: K) -> bool {
         let __hx_this: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> = self_.self_ref();
-        let id: String = hxrt::hxref::ptr_id(&key);
+        let id: hxrt::string::HxString = hxrt::string::HxString::from(hxrt::hxref::ptr_id(&key));
         return {
             let mut __s = __hx_this.borrow_mut();
             let __existed = __s.values_map.remove(&id).is_some();
@@ -118,9 +118,9 @@ impl<
         return out;
     }
 
-    pub fn to_string(self_: &crate::HxRefCell<ObjectMap<K, V>>) -> String {
+    pub fn to_string(self_: &crate::HxRefCell<ObjectMap<K, V>>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> = self_.self_ref();
-        return format!("{:?}", __hx_this.borrow().values_map);
+        return hxrt::string::HxString::from(format!("{:?}", __hx_this.borrow().values_map));
     }
 
     pub fn clear(self_: &crate::HxRefCell<ObjectMap<K, V>>) {
@@ -168,7 +168,7 @@ impl<
             };
         __up
     }
-    fn to_string(&self) -> String {
+    fn to_string(&self) -> hxrt::string::HxString {
         ObjectMap::<K, V>::to_string(self)
     }
     fn clear(&self) -> () {

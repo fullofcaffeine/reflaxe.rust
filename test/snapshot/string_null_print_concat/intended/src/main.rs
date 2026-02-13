@@ -31,7 +31,10 @@ mod sys_io_stdin;
 mod sys_io_stdout;
 
 fn main() {
-    let s: String = String::from("null");
+    let s: hxrt::string::HxString = hxrt::string::HxString::from(hxrt::string::HxString::null());
     crate::sys::Sys::println(hxrt::dynamic::from(s.clone()));
-    crate::sys::Sys::println(hxrt::dynamic::from(format!("{}{}", "x", &s)));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
+        "{}{}",
+        "x", &s
+    ))));
 }

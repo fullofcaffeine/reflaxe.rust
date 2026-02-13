@@ -28,7 +28,7 @@ impl BaseCode {
             };
         }
         if nbits > 8 || len != 1 << nbits {
-            hxrt::exception::throw(hxrt::dynamic::from(String::from(
+            hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                 "BaseCode : base length must be a power of two.",
             )));
         }

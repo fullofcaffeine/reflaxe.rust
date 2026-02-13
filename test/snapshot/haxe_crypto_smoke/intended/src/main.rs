@@ -44,57 +44,75 @@ mod sys_io_stdout;
 mod value_type;
 
 fn main() {
-    crate::sys::Sys::println(hxrt::dynamic::from(format!(
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "sha256=",
-        crate::haxe_crypto_sha256::Sha256::encode(String::from("hello"))
-    )));
-    let b: crate::HxRef<hxrt::bytes::Bytes> =
-        crate::HxRef::new(hxrt::bytes::Bytes::of_string(String::from("hi").as_str()));
-    crate::sys::Sys::println(hxrt::dynamic::from(format!(
+        crate::haxe_crypto_sha256::Sha256::encode(hxrt::string::HxString::from(
+            hxrt::string::HxString::from("hello")
+        ))
+    ))));
+    let b: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRef::new(hxrt::bytes::Bytes::of_string(
+        hxrt::string::HxString::from("hi").as_str(),
+    ));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "b64=",
         crate::haxe_crypto_base64::Base64::encode(b.clone(), true)
-    )));
+    ))));
     let obj: crate::HxRef<hxrt::anon::Anon> = {
         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
         {
             let mut __b = __o.borrow_mut();
             __b.set("a", 1);
-            __b.set("b", String::from("x"));
+            __b.set("b", hxrt::string::HxString::from("x"));
         };
         __o
     };
-    let json: String = crate::haxe_json::Json::stringify(
-        hxrt::dynamic::from_ref(obj.clone()),
-        crate::HxDynRef::<
-            dyn Fn(hxrt::dynamic::Dynamic, hxrt::dynamic::Dynamic) -> hxrt::dynamic::Dynamic
-                + Send
-                + Sync,
-        >::null(),
-        None,
-    );
-    crate::sys::Sys::println(hxrt::dynamic::from(format!("{}{}", "json=", &json)));
-    let parsed: hxrt::dynamic::Dynamic = crate::haxe_json::Json::parse(json.clone());
-    crate::sys::Sys::println(hxrt::dynamic::from(format!(
+    let json: hxrt::string::HxString =
+        hxrt::string::HxString::from(crate::haxe_json::Json::stringify(
+            hxrt::dynamic::from_ref(obj.clone()),
+            crate::HxDynRef::<
+                dyn Fn(hxrt::dynamic::Dynamic, hxrt::dynamic::Dynamic) -> hxrt::dynamic::Dynamic
+                    + Send
+                    + Sync,
+            >::null(),
+            hxrt::string::HxString::from(hxrt::string::HxString::null()),
+        ));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
+        "{}{}",
+        "json=", &json
+    ))));
+    let parsed: hxrt::dynamic::Dynamic =
+        crate::haxe_json::Json::parse(hxrt::string::HxString::from(json.clone()));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "parsed.a=",
-        ({
-            let __obj = parsed;
-            hxrt::dynamic::field_get(&__obj, "a")
-        })
-        .to_haxe_string()
-    )));
-    let ser: String = crate::haxe_serializer::Serializer::run(hxrt::dynamic::from_ref(obj.clone()));
-    crate::sys::Sys::println(hxrt::dynamic::from(format!("{}{}", "ser=", &ser)));
-    let unser: hxrt::dynamic::Dynamic = crate::haxe_unserializer::Unserializer::run(ser.clone());
-    crate::sys::Sys::println(hxrt::dynamic::from(format!(
+        hxrt::string::HxString::from(
+            ({
+                let __obj = parsed;
+                hxrt::dynamic::field_get(&__obj, "a")
+            })
+            .to_haxe_string()
+        )
+    ))));
+    let ser: hxrt::string::HxString = hxrt::string::HxString::from(
+        crate::haxe_serializer::Serializer::run(hxrt::dynamic::from_ref(obj.clone())),
+    );
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
+        "{}{}",
+        "ser=", &ser
+    ))));
+    let unser: hxrt::dynamic::Dynamic =
+        crate::haxe_unserializer::Unserializer::run(hxrt::string::HxString::from(ser.clone()));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "unser.b=",
-        ({
-            let __obj = unser;
-            hxrt::dynamic::field_get(&__obj, "b")
-        })
-        .to_haxe_string()
-    )));
+        hxrt::string::HxString::from(
+            ({
+                let __obj = unser;
+                hxrt::dynamic::field_get(&__obj, "b")
+            })
+            .to_haxe_string()
+        )
+    ))));
 }

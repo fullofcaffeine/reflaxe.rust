@@ -12,13 +12,13 @@ impl Dog {
         return self_;
     }
 
-    pub fn speak(_self_: &crate::HxRefCell<Dog>) -> String {
-        return String::from("dog");
+    pub fn speak(_self_: &crate::HxRefCell<Dog>) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(hxrt::string::HxString::from("dog"));
     }
 }
 
 impl crate::animal::AnimalTrait for crate::HxRefCell<Dog> {
-    fn speak(&self) -> String {
+    fn speak(&self) -> hxrt::string::HxString {
         Dog::speak(self)
     }
     fn __hx_type_id(&self) -> u32 {

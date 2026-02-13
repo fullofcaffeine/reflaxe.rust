@@ -31,9 +31,10 @@ mod sys_io_stdin;
 mod sys_io_stdout;
 
 fn main() {
-    let mut s: String = String::from("x");
-    let t: String = s;
-    s = String::from("y");
+    let mut s: hxrt::string::HxString =
+        hxrt::string::HxString::from(hxrt::string::HxString::from("x"));
+    let t: hxrt::string::HxString = s;
+    s = hxrt::string::HxString::from(hxrt::string::HxString::from("y"));
     println!("{}", hxrt::dynamic::from(t.clone()));
     println!("{}", hxrt::dynamic::from(s.clone()));
 }

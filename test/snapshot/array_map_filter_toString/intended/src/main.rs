@@ -32,7 +32,9 @@ mod sys_io_stdout;
 
 fn main() {
     let xs: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::from_vec(vec![1, 2, 3]);
-    crate::sys::Sys::println(hxrt::dynamic::from(xs.toString()));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(
+        xs.toString(),
+    )));
     let ys: hxrt::array::Array<i32> = {
         let _g: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::new();
         {
@@ -49,7 +51,9 @@ fn main() {
         }
         _g
     };
-    crate::sys::Sys::println(hxrt::dynamic::from(ys.join(String::from(","))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(ys.join(
+        hxrt::string::HxString::from(hxrt::string::HxString::from(",")),
+    ))));
     let zs: hxrt::array::Array<i32> = {
         let _g_2: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::new();
         {
@@ -68,7 +72,9 @@ fn main() {
         }
         _g_2
     };
-    crate::sys::Sys::println(hxrt::dynamic::from(zs.join(String::from(","))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(zs.join(
+        hxrt::string::HxString::from(hxrt::string::HxString::from(",")),
+    ))));
     let mut it_current: i32;
     let it_array: hxrt::array::Array<i32>;
     it_current = 0;

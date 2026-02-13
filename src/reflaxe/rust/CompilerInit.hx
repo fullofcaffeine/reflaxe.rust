@@ -1,7 +1,6 @@
 package reflaxe.rust;
 
 #if (macro || reflaxe_runtime)
-
 import haxe.io.Path;
 import haxe.macro.Compiler;
 import haxe.macro.Context;
@@ -15,7 +14,7 @@ import reflaxe.rust.macros.StrictModeEnforcer;
  * Initialization and registration of the Rust compiler.
  */
 class CompilerInit {
-	static var compilerRegistered: Bool = false;
+	static var compilerRegistered:Bool = false;
 
 	/**
 	 * Initialize the Rust compiler.
@@ -25,9 +24,11 @@ class CompilerInit {
 		// For Haxe 4 builds, `target.name` may be unset; `-D rust_output=...` is the stable signal.
 		var targetName = Context.definedValue("target.name");
 		var isRustBuild = (targetName == "rust" || Context.defined("rust_output"));
-		if (!isRustBuild) return;
+		if (!isRustBuild)
+			return;
 
-		if (compilerRegistered) return;
+		if (compilerRegistered)
+			return;
 		compilerRegistered = true;
 
 		// Ensure Reflaxe hooks are initialized (vendored under vendor/reflaxe).
@@ -38,12 +39,12 @@ class CompilerInit {
 		try {
 			var compilerInitPath = Context.resolvePath("reflaxe/rust/CompilerInit.hx");
 			var rustDir = Path.directory(compilerInitPath); // .../src/reflaxe/rust
-			var reflaxeDir = Path.directory(rustDir);       // .../src/reflaxe
-			var srcDir = Path.directory(reflaxeDir);        // .../src
-			var libraryRoot = Path.directory(srcDir);       // .../
+			var reflaxeDir = Path.directory(rustDir); // .../src/reflaxe
+			var srcDir = Path.directory(reflaxeDir); // .../src
+			var libraryRoot = Path.directory(srcDir); // .../
 			var standardLibrary = Path.normalize(Path.join([libraryRoot, "std"]));
 			Compiler.addClassPath(standardLibrary);
-		} catch (e: haxe.Exception) {}
+		} catch (e:haxe.Exception) {}
 
 		// Repository policy: keep examples/snapshots "pure" (no __rust__ escape hatches).
 		BoundaryEnforcer.init();
@@ -55,7 +56,23 @@ class CompilerInit {
 		// We provide target overrides for the core primitives under `std/sys/thread/*`.
 		Compiler.define("target.threaded");
 
-		var prepasses: Array<ExpressionPreprocessor> = [];
+		// String representation policy:
+		// - portable/idiomatic default to nullable HxString
+		// - rusty keeps legacy non-null String unless explicitly overridden
+		var hasNullableStrings = Context.defined("rust_string_nullable");
+		var hasNonNullableStrings = Context.defined("rust_string_non_nullable");
+		if (hasNullableStrings && hasNonNullableStrings) {
+			Context.error("Conflicting defines: choose only one of -D rust_string_nullable or -D rust_string_non_nullable.", Context.currentPos());
+		}
+		if (!hasNullableStrings && !hasNonNullableStrings) {
+			var profileDefine = Context.definedValue("reflaxe_rust_profile");
+			var wantsRusty = profileDefine != null && profileDefine == "rusty";
+			if (!wantsRusty) {
+				Compiler.define("rust_string_nullable");
+			}
+		}
+
+		var prepasses:Array<ExpressionPreprocessor> = [];
 
 		ReflectCompiler.AddCompiler(new RustCompiler(), {
 			fileOutputExtension: ".rs",
@@ -69,5 +86,4 @@ class CompilerInit {
 		});
 	}
 }
-
 #end

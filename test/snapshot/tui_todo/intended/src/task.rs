@@ -5,12 +5,12 @@ pub const __HX_TYPE_ID: u32 = 0xad9a8cc0u32;
 #[derive(Debug)]
 
 pub struct Task {
-    pub text: String,
+    pub text: hxrt::string::HxString,
     pub done: bool,
 }
 
 impl Task {
-    pub fn new(text: String, done: bool) -> crate::HxRef<crate::task::Task> {
+    pub fn new(text: hxrt::string::HxString, done: bool) -> crate::HxRef<crate::task::Task> {
         let self_: crate::HxRef<crate::task::Task> = crate::HxRef::new(Task {
             text: text,
             done: done,
@@ -30,28 +30,30 @@ impl Task {
         };
     }
 
-    pub fn line(self_: &crate::HxRefCell<Task>, selected: bool) -> String {
+    pub fn line(self_: &crate::HxRefCell<Task>, selected: bool) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::task::Task> = self_.self_ref();
-        let sel: String = if selected {
-            String::from(">")
+        let sel: hxrt::string::HxString = hxrt::string::HxString::from(if selected {
+            hxrt::string::HxString::from(">")
         } else {
-            String::from(" ")
-        };
-        let mark: String = if {
-            let __b = __hx_this.borrow();
-            __b.done
-        } {
-            String::from("x")
-        } else {
-            String::from(" ")
-        };
-        return format!(
+            hxrt::string::HxString::from(" ")
+        });
+        let mark: hxrt::string::HxString = hxrt::string::HxString::from(
+            if {
+                let __b = __hx_this.borrow();
+                __b.done
+            } {
+                hxrt::string::HxString::from("x")
+            } else {
+                hxrt::string::HxString::from(" ")
+            },
+        );
+        return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
             "{}{}{}{}{}",
             &sel,
             "[",
             &mark,
             "] ",
             &__hx_this.borrow().text
-        );
+        )));
     }
 }

@@ -5,7 +5,7 @@ pub const __HX_TYPE_ID: u32 = 0x56ba80c3u32;
 #[derive(Clone, Debug, PartialEq)]
 pub enum KeyCode {
     Unknown,
-    Char(String),
+    Char(hxrt::string::HxString),
     Enter,
     Esc,
     Tab,

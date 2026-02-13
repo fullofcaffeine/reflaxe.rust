@@ -33,8 +33,11 @@ mod sys_io_stdin;
 mod sys_io_stdout;
 
 fn main() {
-    let person: crate::HxRef<crate::person::Person> =
-        crate::person::Person::new(String::from("Alice"), 30);
-    let json: String = crate::rust_serde_serde_json::SerdeJson::to_string(person);
+    let person: crate::HxRef<crate::person::Person> = crate::person::Person::new(
+        hxrt::string::HxString::from(hxrt::string::HxString::from("Alice")),
+        30,
+    );
+    let json: hxrt::string::HxString =
+        hxrt::string::HxString::from(crate::rust_serde_serde_json::SerdeJson::to_string(person));
     crate::sys::Sys::println(hxrt::dynamic::from(json));
 }

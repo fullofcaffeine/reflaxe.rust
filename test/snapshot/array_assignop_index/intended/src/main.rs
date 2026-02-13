@@ -40,7 +40,15 @@ fn main() {
         __hx_arr.set(__hx_idx, __tmp);
         __tmp
     };
-    println!("{}", hxrt::dynamic::from(a.join(String::from(",")).clone()));
+    println!(
+        "{}",
+        hxrt::dynamic::from(
+            hxrt::string::HxString::from(a.join(hxrt::string::HxString::from(
+                hxrt::string::HxString::from(",")
+            )))
+            .clone()
+        )
+    );
     {
         let __hx_arr = a.clone();
         let __hx_idx = 0 as usize;
@@ -49,7 +57,15 @@ fn main() {
         __hx_arr.set(__hx_idx, __tmp);
         __tmp
     };
-    println!("{}", hxrt::dynamic::from(a.join(String::from(",")).clone()));
+    println!(
+        "{}",
+        hxrt::dynamic::from(
+            hxrt::string::HxString::from(a.join(hxrt::string::HxString::from(
+                hxrt::string::HxString::from(",")
+            )))
+            .clone()
+        )
+    );
     let b: hxrt::array::Array<f64> = hxrt::array::Array::<f64>::from_vec(vec![1.0, 2.0]);
     {
         let __hx_arr = b.clone();
@@ -59,5 +75,13 @@ fn main() {
         __hx_arr.set(__hx_idx, __tmp);
         __tmp
     };
-    println!("{}", hxrt::dynamic::from(b.join(String::from(",")).clone()));
+    println!(
+        "{}",
+        hxrt::dynamic::from(
+            hxrt::string::HxString::from(b.join(hxrt::string::HxString::from(
+                hxrt::string::HxString::from(",")
+            )))
+            .clone()
+        )
+    );
 }

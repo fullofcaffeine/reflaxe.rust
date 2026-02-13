@@ -5,39 +5,41 @@ pub const __HX_TYPE_ID: u32 = 0x181f937bu32;
 #[derive(Debug)]
 
 pub struct StringMap<T: Clone + Send + Sync + 'static + std::fmt::Debug> {
-    h: std::collections::HashMap<String, T>,
+    h: std::collections::HashMap<hxrt::string::HxString, T>,
 }
 
 impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> StringMap<T> {
     pub fn new() -> crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> {
         let self_: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> =
             crate::HxRef::new(StringMap {
-                h: std::collections::HashMap::<String, T>::new(),
+                h: std::collections::HashMap::<hxrt::string::HxString, T>::new(),
             });
         return self_;
     }
 
-    pub fn set(self_: &crate::HxRefCell<StringMap<T>>, key: String, value: T) {
+    pub fn set(self_: &crate::HxRefCell<StringMap<T>>, key: hxrt::string::HxString, value: T) {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
         __hx_this.borrow_mut().h.insert(key, value);
     }
 
-    pub fn get(self_: &crate::HxRefCell<StringMap<T>>, key: String) -> Option<T> {
+    pub fn get(self_: &crate::HxRefCell<StringMap<T>>, key: hxrt::string::HxString) -> Option<T> {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
         return __hx_this.borrow().h.get(&key).cloned();
     }
 
-    pub fn exists(self_: &crate::HxRefCell<StringMap<T>>, key: String) -> bool {
+    pub fn exists(self_: &crate::HxRefCell<StringMap<T>>, key: hxrt::string::HxString) -> bool {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
         return __hx_this.borrow().h.contains_key(&key);
     }
 
-    pub fn remove(self_: &crate::HxRefCell<StringMap<T>>, key: String) -> bool {
+    pub fn remove(self_: &crate::HxRefCell<StringMap<T>>, key: hxrt::string::HxString) -> bool {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
         return __hx_this.borrow_mut().h.remove(&key).is_some();
     }
 
-    pub fn keys(self_: &crate::HxRefCell<StringMap<T>>) -> hxrt::iter::Iter<String> {
+    pub fn keys(
+        self_: &crate::HxRefCell<StringMap<T>>,
+    ) -> hxrt::iter::Iter<hxrt::string::HxString> {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
         return hxrt::iter::Iter::from_vec(
             __hx_this.borrow().h.keys().cloned().collect::<Vec<_>>(),
@@ -53,7 +55,7 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> StringMap<T> {
 
     pub fn key_value_iterator(
         self_: &crate::HxRefCell<StringMap<T>>,
-    ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<String, T>> {
+    ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<hxrt::string::HxString, T>> {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
         return hxrt::iter::Iter::from_vec(
             __hx_this
@@ -78,9 +80,9 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> StringMap<T> {
         return out;
     }
 
-    pub fn to_string(self_: &crate::HxRefCell<StringMap<T>>) -> String {
+    pub fn to_string(self_: &crate::HxRefCell<StringMap<T>>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
-        return format!("{:?}", __hx_this.borrow().h);
+        return hxrt::string::HxString::from(format!("{:?}", __hx_this.borrow().h));
     }
 
     pub fn clear(self_: &crate::HxRefCell<StringMap<T>>) {
@@ -89,40 +91,45 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> StringMap<T> {
     }
 }
 
-impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> crate::haxe_i_map::IMap<String, T>
-    for crate::HxRefCell<StringMap<T>>
+impl<T: Clone + Send + Sync + 'static + std::fmt::Debug>
+    crate::haxe_i_map::IMap<hxrt::string::HxString, T> for crate::HxRefCell<StringMap<T>>
 {
-    fn get(&self, k: String) -> Option<T> {
+    fn get(&self, k: hxrt::string::HxString) -> Option<T> {
         StringMap::<T>::get(self, k)
     }
-    fn set(&self, k: String, v: T) -> () {
+    fn set(&self, k: hxrt::string::HxString, v: T) -> () {
         StringMap::<T>::set(self, k, v)
     }
-    fn exists(&self, k: String) -> bool {
+    fn exists(&self, k: hxrt::string::HxString) -> bool {
         StringMap::<T>::exists(self, k)
     }
-    fn remove(&self, k: String) -> bool {
+    fn remove(&self, k: hxrt::string::HxString) -> bool {
         StringMap::<T>::remove(self, k)
     }
-    fn keys(&self) -> hxrt::iter::Iter<String> {
+    fn keys(&self) -> hxrt::iter::Iter<hxrt::string::HxString> {
         StringMap::<T>::keys(self)
     }
     fn iterator(&self) -> hxrt::iter::Iter<T> {
         StringMap::<T>::iterator(self)
     }
-    fn key_value_iterator(&self) -> hxrt::iter::Iter<hxrt::iter::KeyValue<String, T>> {
+    fn key_value_iterator(
+        &self,
+    ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<hxrt::string::HxString, T>> {
         StringMap::<T>::key_value_iterator(self)
     }
-    fn copy(&self) -> crate::HxRc<dyn crate::haxe_i_map::IMap<String, T> + Send + Sync> {
+    fn copy(
+        &self,
+    ) -> crate::HxRc<dyn crate::haxe_i_map::IMap<hxrt::string::HxString, T> + Send + Sync> {
         let __tmp = StringMap::<T>::copy(self);
-        let __up: crate::HxRc<dyn crate::haxe_i_map::IMap<String, T> + Send + Sync> =
-            match __tmp.as_arc_opt() {
-                Some(__rc) => __rc.clone(),
-                None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
-            };
+        let __up: crate::HxRc<
+            dyn crate::haxe_i_map::IMap<hxrt::string::HxString, T> + Send + Sync,
+        > = match __tmp.as_arc_opt() {
+            Some(__rc) => __rc.clone(),
+            None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
+        };
         __up
     }
-    fn to_string(&self) -> String {
+    fn to_string(&self) -> hxrt::string::HxString {
         StringMap::<T>::to_string(self)
     }
     fn clear(&self) -> () {

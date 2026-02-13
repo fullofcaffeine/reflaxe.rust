@@ -24,19 +24,19 @@ pub(crate) fn __hx_static_set_use_enum_index(value: bool) {
     *__hx_static_cell_use_enum_index().borrow_mut() = value;
 }
 
-static __HX_STATIC_BASE64: std::sync::OnceLock<hxrt::cell::HxCell<String>> =
+static __HX_STATIC_BASE64: std::sync::OnceLock<hxrt::cell::HxCell<hxrt::string::HxString>> =
     std::sync::OnceLock::new();
-fn __hx_static_cell_base64() -> &'static hxrt::cell::HxCell<String> {
+fn __hx_static_cell_base64() -> &'static hxrt::cell::HxCell<hxrt::string::HxString> {
     __HX_STATIC_BASE64.get_or_init(|| {
-        hxrt::cell::HxCell::new(String::from(
+        hxrt::cell::HxCell::new(hxrt::string::HxString::from(hxrt::string::HxString::from(
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%:",
-        ))
+        )))
     })
 }
-pub(crate) fn __hx_static_get_base64() -> String {
+pub(crate) fn __hx_static_get_base64() -> hxrt::string::HxString {
     __hx_static_cell_base64().borrow().clone()
 }
-pub(crate) fn __hx_static_set_base64(value: String) {
+pub(crate) fn __hx_static_set_base64(value: hxrt::string::HxString) {
     *__hx_static_cell_base64().borrow_mut() = value;
 }
 
@@ -81,17 +81,17 @@ impl Serializer {
         return self_;
     }
 
-    pub fn to_string(self_: &crate::HxRefCell<Serializer>) -> String {
+    pub fn to_string(self_: &crate::HxRefCell<Serializer>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::haxe_serializer::Serializer> = self_.self_ref();
-        return crate::string_buf::StringBuf::to_string(
+        return hxrt::string::HxString::from(crate::string_buf::StringBuf::to_string(
             &*({
                 let __b = __hx_this.borrow();
                 __b.buf.clone()
             }),
-        );
+        ));
     }
 
-    fn serialize_string(self_: &crate::HxRefCell<Serializer>, s: String) {
+    fn serialize_string(self_: &crate::HxRefCell<Serializer>, s: hxrt::string::HxString) {
         let __hx_this: crate::HxRef<crate::haxe_serializer::Serializer> = self_.self_ref();
         let mut s = s;
         let x: Option<i32> = crate::haxe_ds_string_map::StringMap::get(
@@ -99,7 +99,7 @@ impl Serializer {
                 let __b = __hx_this.borrow();
                 __b.shash.clone()
             }),
-            s.clone(),
+            hxrt::string::HxString::from(s.clone()),
         );
         if x.is_some() {
             crate::string_buf::StringBuf::add(
@@ -107,7 +107,7 @@ impl Serializer {
                     let __b = __hx_this.borrow();
                     __b.buf.clone()
                 }),
-                hxrt::dynamic::from(String::from("R")),
+                hxrt::dynamic::from(hxrt::string::HxString::from("R")),
             );
             crate::string_buf::StringBuf::add(
                 &*({
@@ -129,7 +129,7 @@ impl Serializer {
                 let __b = __hx_this.borrow();
                 __b.shash.clone()
             }),
-            s.clone(),
+            hxrt::string::HxString::from(s.clone()),
             {
                 let __tmp = self_.borrow().scount;
                 self_.borrow_mut().scount = __tmp + 1;
@@ -141,9 +141,11 @@ impl Serializer {
                 let __b = __hx_this.borrow();
                 __b.buf.clone()
             }),
-            hxrt::dynamic::from(String::from("y")),
+            hxrt::dynamic::from(hxrt::string::HxString::from("y")),
         );
-        s = crate::string_tools::StringTools::url_encode(s.clone());
+        s = hxrt::string::HxString::from(crate::string_tools::StringTools::url_encode(
+            hxrt::string::HxString::from(s.clone()),
+        ));
         crate::string_buf::StringBuf::add(
             &*({
                 let __b = __hx_this.borrow();
@@ -156,7 +158,7 @@ impl Serializer {
                 let __b = __hx_this.borrow();
                 __b.buf.clone()
             }),
-            hxrt::dynamic::from(String::from(":")),
+            hxrt::dynamic::from(hxrt::string::HxString::from(":")),
         );
         crate::string_buf::StringBuf::add(
             &*({
@@ -195,7 +197,7 @@ impl Serializer {
                             let __b = __hx_this.borrow();
                             __b.buf.clone()
                         }),
-                        hxrt::dynamic::from(String::from("r")),
+                        hxrt::dynamic::from(hxrt::string::HxString::from("r")),
                     );
                     crate::string_buf::StringBuf::add(
                         &*({
@@ -220,18 +222,22 @@ impl Serializer {
         let __hx_this: crate::HxRef<crate::haxe_serializer::Serializer> = self_.self_ref();
         {
             let mut _g: i32 = 0;
-            let _g1: hxrt::array::Array<String> = {
+            let _g1: hxrt::array::Array<hxrt::string::HxString> = {
                 let __obj = v.clone();
                 let __dyn = hxrt::dynamic::from(__obj);
                 hxrt::dynamic::field_names(&__dyn)
             };
             while _g < (_g1.len() as i32) {
-                let f: String = _g1.get_unchecked(_g as usize);
+                let f: hxrt::string::HxString =
+                    hxrt::string::HxString::from(_g1.get_unchecked(_g as usize));
                 {
                     _g = _g + 1;
                     _g
                 };
-                crate::haxe_serializer::Serializer::serialize_string(&*__hx_this, f.clone());
+                crate::haxe_serializer::Serializer::serialize_string(
+                    &*__hx_this,
+                    hxrt::string::HxString::from(f.clone()),
+                );
                 crate::haxe_serializer::Serializer::serialize(&*__hx_this, {
                     let __obj = v.clone();
                     let __name = f.clone();
@@ -245,7 +251,7 @@ impl Serializer {
                 let __b = __hx_this.borrow();
                 __b.buf.clone()
             }),
-            hxrt::dynamic::from(String::from("g")),
+            hxrt::dynamic::from(hxrt::string::HxString::from("g")),
         );
     }
 
@@ -286,7 +292,7 @@ impl Serializer {
                             let __b = __hx_this.borrow();
                             __b.buf.clone()
                         }),
-                        hxrt::dynamic::from(String::from("n")),
+                        hxrt::dynamic::from(hxrt::string::HxString::from("n")),
                     );
                 }
                 crate::value_type::ValueType::TInt => {
@@ -304,7 +310,7 @@ impl Serializer {
                                 let __b = __hx_this.borrow();
                                 __b.buf.clone()
                             }),
-                            hxrt::dynamic::from(String::from("z")),
+                            hxrt::dynamic::from(hxrt::string::HxString::from("z")),
                         );
                         return;
                     }
@@ -313,7 +319,7 @@ impl Serializer {
                             let __b = __hx_this.borrow();
                             __b.buf.clone()
                         }),
-                        hxrt::dynamic::from(String::from("i")),
+                        hxrt::dynamic::from(hxrt::string::HxString::from("i")),
                     );
                     crate::string_buf::StringBuf::add(
                         &*({
@@ -338,7 +344,7 @@ impl Serializer {
                                 let __b = __hx_this.borrow();
                                 __b.buf.clone()
                             }),
-                            hxrt::dynamic::from(String::from("k")),
+                            hxrt::dynamic::from(hxrt::string::HxString::from("k")),
                         );
                     } else {
                         if !v_3.is_finite() {
@@ -348,9 +354,9 @@ impl Serializer {
                                     __b.buf.clone()
                                 }),
                                 if v_3 < (0 as f64) {
-                                    hxrt::dynamic::from(String::from("m"))
+                                    hxrt::dynamic::from(hxrt::string::HxString::from("m"))
                                 } else {
-                                    hxrt::dynamic::from(String::from("p"))
+                                    hxrt::dynamic::from(hxrt::string::HxString::from("p"))
                                 },
                             );
                         } else {
@@ -359,7 +365,7 @@ impl Serializer {
                                     let __b = __hx_this.borrow();
                                     __b.buf.clone()
                                 }),
-                                hxrt::dynamic::from(String::from("d")),
+                                hxrt::dynamic::from(hxrt::string::HxString::from("d")),
                             );
                             crate::string_buf::StringBuf::add(
                                 &*({
@@ -387,28 +393,28 @@ impl Serializer {
                                 __hx_dyn.downcast_ref::<bool>().unwrap().clone()
                             }
                         } {
-                            hxrt::dynamic::from(String::from("t"))
+                            hxrt::dynamic::from(hxrt::string::HxString::from("t"))
                         } else {
-                            hxrt::dynamic::from(String::from("f"))
+                            hxrt::dynamic::from(hxrt::string::HxString::from("f"))
                         },
                     );
                 }
                 crate::value_type::ValueType::TObject => {
                     if false {
-                        let class_name: String = {
+                        let class_name: hxrt::string::HxString = hxrt::string::HxString::from({
                             let _ = v;
                             String::from("<unknown class>")
-                        };
+                        });
                         crate::string_buf::StringBuf::add(
                             &*({
                                 let __b = __hx_this.borrow();
                                 __b.buf.clone()
                             }),
-                            hxrt::dynamic::from(String::from("A")),
+                            hxrt::dynamic::from(hxrt::string::HxString::from("A")),
                         );
                         crate::haxe_serializer::Serializer::serialize_string(
                             &*__hx_this,
-                            class_name,
+                            hxrt::string::HxString::from(class_name),
                         );
                     } else {
                         if false {
@@ -417,12 +423,15 @@ impl Serializer {
                                     let __b = __hx_this.borrow();
                                     __b.buf.clone()
                                 }),
-                                hxrt::dynamic::from(String::from("B")),
+                                hxrt::dynamic::from(hxrt::string::HxString::from("B")),
                             );
-                            crate::haxe_serializer::Serializer::serialize_string(&*__hx_this, {
-                                let _ = v;
-                                String::from("<unknown enum>")
-                            });
+                            crate::haxe_serializer::Serializer::serialize_string(
+                                &*__hx_this,
+                                hxrt::string::HxString::from({
+                                    let _ = v;
+                                    String::from("<unknown enum>")
+                                }),
+                            );
                         } else {
                             if ({
                                 let __b = __hx_this.borrow();
@@ -438,7 +447,7 @@ impl Serializer {
                                     let __b = __hx_this.borrow();
                                     __b.buf.clone()
                                 }),
-                                hxrt::dynamic::from(String::from("o")),
+                                hxrt::dynamic::from(hxrt::string::HxString::from("o")),
                             );
                             crate::haxe_serializer::Serializer::serialize_fields(&*__hx_this, {
                                 let __hx_dyn = v.clone();
@@ -457,7 +466,7 @@ impl Serializer {
                     }
                 }
                 crate::value_type::ValueType::TFunction => {
-                    hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                    hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                         "Cannot serialize function",
                     )));
                 }
@@ -472,10 +481,15 @@ impl Serializer {
                                     {
                                         let __hx_dyn = v.clone();
                                         if __hx_dyn.is_null() {
-                                            String::from("null")
+                                            hxrt::string::HxString::null()
                                         } else {
                                             if __hx_dyn.downcast_ref::<String>().is_some() {
-                                                __hx_dyn.downcast_ref::<String>().unwrap().clone()
+                                                hxrt::string::HxString::from(
+                                                    __hx_dyn
+                                                        .downcast_ref::<String>()
+                                                        .unwrap()
+                                                        .clone(),
+                                                )
                                             } else {
                                                 if __hx_dyn
                                                     .downcast_ref::<hxrt::string::HxString>()
@@ -484,7 +498,7 @@ impl Serializer {
                                                     __hx_dyn
                                                         .downcast_ref::<hxrt::string::HxString>()
                                                         .unwrap()
-                                                        .to_haxe_string()
+                                                        .clone()
                                                 } else {
                                                     hxrt::exception::throw(hxrt::dynamic::from(
                                                         String::from("Null Access"),
@@ -514,12 +528,12 @@ impl Serializer {
                                             let __b = __hx_this.borrow();
                                             __b.buf.clone()
                                         }),
-                                        hxrt::dynamic::from(String::from("a")),
+                                        hxrt::dynamic::from(hxrt::string::HxString::from("a")),
                                     );
                                     let l: i32 = {
                                         let __hx_dyn = hxrt::dynamic::index_get_str(
                                             &v,
-                                            String::from("length").as_str(),
+                                            hxrt::string::HxString::from("length").as_str(),
                                         );
                                         if __hx_dyn.is_null() {
                                             hxrt::exception::throw(hxrt::dynamic::from(
@@ -552,7 +566,9 @@ impl Serializer {
                                                                 let __b = __hx_this.borrow();
                                                                 __b.buf.clone()
                                                             }),
-                                                            hxrt::dynamic::from(String::from("n")),
+                                                            hxrt::dynamic::from(
+                                                                hxrt::string::HxString::from("n"),
+                                                            ),
                                                         );
                                                     } else {
                                                         crate::string_buf::StringBuf::add(
@@ -560,7 +576,9 @@ impl Serializer {
                                                                 let __b = __hx_this.borrow();
                                                                 __b.buf.clone()
                                                             }),
-                                                            hxrt::dynamic::from(String::from("u")),
+                                                            hxrt::dynamic::from(
+                                                                hxrt::string::HxString::from("u"),
+                                                            ),
                                                         );
                                                         crate::string_buf::StringBuf::add(
                                                             &*({
@@ -586,7 +604,9 @@ impl Serializer {
                                                     let __b = __hx_this.borrow();
                                                     __b.buf.clone()
                                                 }),
-                                                hxrt::dynamic::from(String::from("n")),
+                                                hxrt::dynamic::from(hxrt::string::HxString::from(
+                                                    "n",
+                                                )),
                                             );
                                         } else {
                                             crate::string_buf::StringBuf::add(
@@ -594,7 +614,9 @@ impl Serializer {
                                                     let __b = __hx_this.borrow();
                                                     __b.buf.clone()
                                                 }),
-                                                hxrt::dynamic::from(String::from("u")),
+                                                hxrt::dynamic::from(hxrt::string::HxString::from(
+                                                    "u",
+                                                )),
                                             );
                                             crate::string_buf::StringBuf::add(
                                                 &*({
@@ -610,7 +632,7 @@ impl Serializer {
                                             let __b = __hx_this.borrow();
                                             __b.buf.clone()
                                         }),
-                                        hxrt::dynamic::from(String::from("h")),
+                                        hxrt::dynamic::from(hxrt::string::HxString::from("h")),
                                     );
                                 } else {
                                     if __s == 0x0d3c0cadu32.clone() {
@@ -629,7 +651,7 @@ impl Serializer {
                                                 let __b = __hx_this.borrow();
                                                 __b.buf.clone()
                                             }),
-                                            hxrt::dynamic::from(String::from("v")),
+                                            hxrt::dynamic::from(hxrt::string::HxString::from("v")),
                                         );
                                         crate::string_buf::StringBuf::add(
                                             &*({
@@ -645,7 +667,9 @@ impl Serializer {
                                                     let __b = __hx_this.borrow();
                                                     __b.buf.clone()
                                                 }),
-                                                hxrt::dynamic::from(String::from("q")),
+                                                hxrt::dynamic::from(hxrt::string::HxString::from(
+                                                    "q",
+                                                )),
                                             );
                                             let v_8: crate::HxRef<
                                                 crate::haxe_ds_int_map::IntMap<
@@ -675,7 +699,9 @@ impl Serializer {
                                                         let __b = __hx_this.borrow();
                                                         __b.buf.clone()
                                                     }),
-                                                    hxrt::dynamic::from(String::from(":")),
+                                                    hxrt::dynamic::from(
+                                                        hxrt::string::HxString::from(":"),
+                                                    ),
                                                 );
                                                 crate::string_buf::StringBuf::add(
                                                     &*({
@@ -703,7 +729,9 @@ impl Serializer {
                                                     let __b = __hx_this.borrow();
                                                     __b.buf.clone()
                                                 }),
-                                                hxrt::dynamic::from(String::from("h")),
+                                                hxrt::dynamic::from(hxrt::string::HxString::from(
+                                                    "h",
+                                                )),
                                             );
                                         } else {
                                             if __s == 0xd0de220eu32.clone() {
@@ -712,7 +740,9 @@ impl Serializer {
                                                         let __b = __hx_this.borrow();
                                                         __b.buf.clone()
                                                     }),
-                                                    hxrt::dynamic::from(String::from("l")),
+                                                    hxrt::dynamic::from(
+                                                        hxrt::string::HxString::from("l"),
+                                                    ),
                                                 );
                                                 let v_7: crate::HxRef<
                                                     crate::haxe_ds_list::List<
@@ -749,7 +779,9 @@ impl Serializer {
                                                         let __b = __hx_this.borrow();
                                                         __b.buf.clone()
                                                     }),
-                                                    hxrt::dynamic::from(String::from("h")),
+                                                    hxrt::dynamic::from(
+                                                        hxrt::string::HxString::from("h"),
+                                                    ),
                                                 );
                                             } else {
                                                 if __s == 0xd7e07825u32.clone() {
@@ -758,7 +790,9 @@ impl Serializer {
                                                             let __b = __hx_this.borrow();
                                                             __b.buf.clone()
                                                         }),
-                                                        hxrt::dynamic::from(String::from("M")),
+                                                        hxrt::dynamic::from(
+                                                            hxrt::string::HxString::from("M"),
+                                                        ),
                                                     );
                                                     let v_6: crate::HxRef<
                                                         crate::haxe_ds_object_map::ObjectMap<
@@ -796,7 +830,9 @@ impl Serializer {
                                                             let __b = __hx_this.borrow();
                                                             __b.buf.clone()
                                                         }),
-                                                        hxrt::dynamic::from(String::from("h")),
+                                                        hxrt::dynamic::from(
+                                                            hxrt::string::HxString::from("h"),
+                                                        ),
                                                     );
                                                 } else {
                                                     if __s == 0x181f937bu32.clone() {
@@ -805,7 +841,9 @@ impl Serializer {
                                                                 let __b = __hx_this.borrow();
                                                                 __b.buf.clone()
                                                             }),
-                                                            hxrt::dynamic::from(String::from("b")),
+                                                            hxrt::dynamic::from(
+                                                                hxrt::string::HxString::from("b"),
+                                                            ),
                                                         );
                                                         let v_5: crate::HxRef<
                                                             crate::haxe_ds_string_map::StringMap<
@@ -824,9 +862,9 @@ impl Serializer {
                                                             }
                                                         };
                                                         for k in crate::haxe_ds_string_map::StringMap::keys(&*v_5) {
-                                        crate::haxe_serializer::Serializer::serialize_string(&*__hx_this, k.clone());
+                                        crate::haxe_serializer::Serializer::serialize_string(&*__hx_this, hxrt::string::HxString::from(k.clone()));
                                         crate::haxe_serializer::Serializer::serialize(&*__hx_this, {
-                                            let __hx_opt = crate::haxe_ds_string_map::StringMap::get(&*v_5, k.clone());
+                                            let __hx_opt = crate::haxe_ds_string_map::StringMap::get(&*v_5, hxrt::string::HxString::from(k.clone()));
                                             match __hx_opt {
                                                 Some(__v) => __v,
                                                 None => hxrt::dynamic::Dynamic::null(),
@@ -838,7 +876,9 @@ impl Serializer {
                                                                 let __b = __hx_this.borrow();
                                                                 __b.buf.clone()
                                                             }),
-                                                            hxrt::dynamic::from(String::from("h")),
+                                                            hxrt::dynamic::from(
+                                                                hxrt::string::HxString::from("h"),
+                                                            ),
                                                         );
                                                     } else {
                                                         if __s == 0xc3d25954u32.clone() {
@@ -863,9 +903,11 @@ impl Serializer {
                                                                     let __b = __hx_this.borrow();
                                                                     __b.buf.clone()
                                                                 }),
-                                                                hxrt::dynamic::from(String::from(
-                                                                    "s",
-                                                                )),
+                                                                hxrt::dynamic::from(
+                                                                    hxrt::string::HxString::from(
+                                                                        "s",
+                                                                    ),
+                                                                ),
                                                             );
                                                             crate::string_buf::StringBuf::add(
                                                                 &*({
@@ -884,9 +926,11 @@ impl Serializer {
                                                                     let __b = __hx_this.borrow();
                                                                     __b.buf.clone()
                                                                 }),
-                                                                hxrt::dynamic::from(String::from(
-                                                                    ":",
-                                                                )),
+                                                                hxrt::dynamic::from(
+                                                                    hxrt::string::HxString::from(
+                                                                        ":",
+                                                                    ),
+                                                                ),
                                                             );
                                                             let mut i: i32 = 0;
                                                             let max: i32 =
@@ -1145,20 +1189,14 @@ impl Serializer {
                                                             )
                                                             .is_null()
                                                             {
-                                                                crate::string_buf::StringBuf::add(
-                                                                    &*({
-                                                                        let __b =
-                                                                            __hx_this.borrow();
-                                                                        __b.buf.clone()
-                                                                    }),
-                                                                    hxrt::dynamic::from(
-                                                                        String::from("C"),
-                                                                    ),
-                                                                );
-                                                                crate::haxe_serializer::Serializer::serialize_string(&*__hx_this, {
+                                                                crate::string_buf::StringBuf::add(&*({
+                                            let __b = __hx_this.borrow();
+                                            __b.buf.clone()
+                                        }), hxrt::dynamic::from(hxrt::string::HxString::from("C")));
+                                                                crate::haxe_serializer::Serializer::serialize_string(&*__hx_this, hxrt::string::HxString::from({
                                             let _ = c;
                                             String::from("<unknown class>")
-                                        });
+                                        }));
                                                                 if {
                                                                     let __b = __hx_this.borrow();
                                                                     __b.use_cache
@@ -1195,31 +1233,19 @@ impl Serializer {
                                                                         }
                                                                     }
                                                                 };
-                                                                crate::string_buf::StringBuf::add(
-                                                                    &*({
-                                                                        let __b =
-                                                                            __hx_this.borrow();
-                                                                        __b.buf.clone()
-                                                                    }),
-                                                                    hxrt::dynamic::from(
-                                                                        String::from("g"),
-                                                                    ),
-                                                                );
+                                                                crate::string_buf::StringBuf::add(&*({
+                                            let __b = __hx_this.borrow();
+                                            __b.buf.clone()
+                                        }), hxrt::dynamic::from(hxrt::string::HxString::from("g")));
                                                             } else {
-                                                                crate::string_buf::StringBuf::add(
-                                                                    &*({
-                                                                        let __b =
-                                                                            __hx_this.borrow();
-                                                                        __b.buf.clone()
-                                                                    }),
-                                                                    hxrt::dynamic::from(
-                                                                        String::from("c"),
-                                                                    ),
-                                                                );
-                                                                crate::haxe_serializer::Serializer::serialize_string(&*__hx_this, {
+                                                                crate::string_buf::StringBuf::add(&*({
+                                            let __b = __hx_this.borrow();
+                                            __b.buf.clone()
+                                        }), hxrt::dynamic::from(hxrt::string::HxString::from("c")));
+                                                                crate::haxe_serializer::Serializer::serialize_string(&*__hx_this, hxrt::string::HxString::from({
                                             let _ = c;
                                             String::from("<unknown class>")
-                                        });
+                                        }));
                                                                 if {
                                                                     let __b = __hx_this.borrow();
                                                                     __b.use_cache
@@ -1277,15 +1303,18 @@ impl Serializer {
                                     let __b = __hx_this.borrow();
                                     __b.use_enum_index
                                 } {
-                                    hxrt::dynamic::from(String::from("j"))
+                                    hxrt::dynamic::from(hxrt::string::HxString::from("j"))
                                 } else {
-                                    hxrt::dynamic::from(String::from("w"))
+                                    hxrt::dynamic::from(hxrt::string::HxString::from("w"))
                                 },
                             );
-                            crate::haxe_serializer::Serializer::serialize_string(&*__hx_this, {
-                                let _ = e;
-                                String::from("<unknown enum>")
-                            });
+                            crate::haxe_serializer::Serializer::serialize_string(
+                                &*__hx_this,
+                                hxrt::string::HxString::from({
+                                    let _ = e;
+                                    String::from("<unknown enum>")
+                                }),
+                            );
                             if {
                                 let __b = __hx_this.borrow();
                                 __b.use_enum_index
@@ -1295,7 +1324,7 @@ impl Serializer {
                                         let __b = __hx_this.borrow();
                                         __b.buf.clone()
                                     }),
-                                    hxrt::dynamic::from(String::from(":")),
+                                    hxrt::dynamic::from(hxrt::string::HxString::from(":")),
                                 );
                                 crate::string_buf::StringBuf::add(
                                     &*({
@@ -1307,13 +1336,18 @@ impl Serializer {
                             } else {
                                 crate::haxe_serializer::Serializer::serialize_string(
                                     &*__hx_this,
-                                    {
+                                    hxrt::string::HxString::from({
                                         let __hx_dyn = hxrt::dynamic::index_get_i32(&v, 0);
                                         if __hx_dyn.is_null() {
-                                            String::from("null")
+                                            hxrt::string::HxString::null()
                                         } else {
                                             if __hx_dyn.downcast_ref::<String>().is_some() {
-                                                __hx_dyn.downcast_ref::<String>().unwrap().clone()
+                                                hxrt::string::HxString::from(
+                                                    __hx_dyn
+                                                        .downcast_ref::<String>()
+                                                        .unwrap()
+                                                        .clone(),
+                                                )
                                             } else {
                                                 if __hx_dyn
                                                     .downcast_ref::<hxrt::string::HxString>()
@@ -1322,7 +1356,7 @@ impl Serializer {
                                                     __hx_dyn
                                                         .downcast_ref::<hxrt::string::HxString>()
                                                         .unwrap()
-                                                        .to_haxe_string()
+                                                        .clone()
                                                 } else {
                                                     hxrt::exception::throw(hxrt::dynamic::from(
                                                         String::from("Null Access"),
@@ -1330,7 +1364,7 @@ impl Serializer {
                                                 }
                                             }
                                         }
-                                    },
+                                    }),
                                 );
                             }
                             crate::string_buf::StringBuf::add(
@@ -1338,12 +1372,12 @@ impl Serializer {
                                     let __b = __hx_this.borrow();
                                     __b.buf.clone()
                                 }),
-                                hxrt::dynamic::from(String::from(":")),
+                                hxrt::dynamic::from(hxrt::string::HxString::from(":")),
                             );
                             let l_2: i32 = {
                                 let __hx_dyn = hxrt::dynamic::index_get_str(
                                     &v,
-                                    String::from("length").as_str(),
+                                    hxrt::string::HxString::from("length").as_str(),
                                 );
                                 if __hx_dyn.is_null() {
                                     hxrt::exception::throw(hxrt::dynamic::from(String::from(
@@ -1389,20 +1423,22 @@ impl Serializer {
                     }
                 }
                 _ => {
-                    hxrt::exception::throw(hxrt::dynamic::from(format!(
-                        "{}{}",
-                        "Cannot serialize ",
-                        v.to_haxe_string()
+                    hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
+                        format!(
+                            "{}{}",
+                            "Cannot serialize ",
+                            hxrt::string::HxString::from(v.to_haxe_string())
+                        ),
                     )));
                 }
             }
         }
     }
 
-    pub fn run(v: hxrt::dynamic::Dynamic) -> String {
+    pub fn run(v: hxrt::dynamic::Dynamic) -> hxrt::string::HxString {
         let s: crate::HxRef<crate::haxe_serializer::Serializer> =
             crate::haxe_serializer::Serializer::new();
         crate::haxe_serializer::Serializer::serialize(&*s, v.clone());
-        return crate::haxe_serializer::Serializer::to_string(&*s);
+        return hxrt::string::HxString::from(crate::haxe_serializer::Serializer::to_string(&*s));
     }
 }

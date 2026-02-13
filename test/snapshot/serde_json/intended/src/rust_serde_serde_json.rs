@@ -7,7 +7,7 @@ pub const __HX_TYPE_ID: u32 = 0x6c73415du32;
 pub struct SerdeJson {}
 
 impl SerdeJson {
-    pub fn to_string<T: serde::Serialize>(value: crate::HxRef<T>) -> String {
-        return serde_json::to_string(&*value.borrow()).unwrap();
+    pub fn to_string<T: serde::Serialize>(value: crate::HxRef<T>) -> hxrt::string::HxString {
+        return hxrt::string::HxString::from(serde_json::to_string(&*value.borrow()).unwrap());
     }
 }

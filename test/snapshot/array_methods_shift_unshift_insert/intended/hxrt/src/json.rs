@@ -2,6 +2,7 @@ use crate::array::Array;
 use crate::cell::HxRef;
 use crate::dynamic::{DynObject, Dynamic};
 use crate::exception;
+use crate::string::HxString;
 use serde_json::Value;
 
 fn throw_json(msg: String) -> ! {
@@ -50,8 +51,11 @@ fn dynamic_to_json_value(v: &Dynamic) -> Value {
         return Value::Null;
     }
 
-    if let Some(v) = v.downcast_ref::<crate::string::HxString>() {
-        return Value::String(v.as_str().to_string());
+    if let Some(v) = v.downcast_ref::<HxString>() {
+        return match v.as_deref() {
+            Some(s) => Value::String(s.to_string()),
+            None => Value::Null,
+        };
     }
     if let Some(v) = v.downcast_ref::<String>() {
         return Value::String(v.clone());
@@ -94,6 +98,15 @@ fn dynamic_to_json_value(v: &Dynamic) -> Value {
     if let Some(v) = v.downcast_ref::<Option<String>>() {
         return match v {
             Some(x) => Value::String(x.clone()),
+            None => Value::Null,
+        };
+    }
+    if let Some(v) = v.downcast_ref::<Option<HxString>>() {
+        return match v {
+            Some(x) => match x.as_deref() {
+                Some(s) => Value::String(s.to_string()),
+                None => Value::Null,
+            },
             None => Value::Null,
         };
     }
@@ -148,6 +161,17 @@ fn dynamic_to_json_value(v: &Dynamic) -> Value {
     }
     if let Some(arr) = v.downcast_ref::<Array<String>>() {
         return Value::Array(arr.to_vec().into_iter().map(Value::String).collect());
+    }
+    if let Some(arr) = v.downcast_ref::<Array<HxString>>() {
+        return Value::Array(
+            arr.to_vec()
+                .into_iter()
+                .map(|x| match x.as_deref() {
+                    Some(s) => Value::String(s.to_string()),
+                    None => Value::Null,
+                })
+                .collect(),
+        );
     }
     if let Some(arr) = v.downcast_ref::<Array<HxRef<crate::anon::Anon>>>() {
         return Value::Array(

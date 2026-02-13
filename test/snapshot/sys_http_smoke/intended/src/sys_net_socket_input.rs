@@ -190,7 +190,7 @@ impl SocketInput {
         return s;
     }
 
-    pub fn read_until(self_: &crate::HxRefCell<SocketInput>, end: i32) -> String {
+    pub fn read_until(self_: &crate::HxRefCell<SocketInput>, end: i32) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_net_socket_input::SocketInput> = self_.self_ref();
         let buf: crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer> =
             crate::haxe_io_bytes_buffer::BytesBuffer::new();
@@ -201,12 +201,14 @@ impl SocketInput {
             }
             crate::haxe_io_bytes_buffer::BytesBuffer::add_byte(&*buf, last);
         }
-        return crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&*buf)
-            .borrow()
-            .to_string();
+        return hxrt::string::HxString::from(
+            crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&*buf)
+                .borrow()
+                .to_string(),
+        );
     }
 
-    pub fn read_line(self_: &crate::HxRefCell<SocketInput>) -> String {
+    pub fn read_line(self_: &crate::HxRefCell<SocketInput>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_net_socket_input::SocketInput> = self_.self_ref();
         let buf: crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer> =
             crate::haxe_io_bytes_buffer::BytesBuffer::new();
@@ -226,7 +228,7 @@ impl SocketInput {
                     if bytes.borrow().length() == 0 {
                         hxrt::exception::throw(hxrt::dynamic::from(e));
                     }
-                    return bytes.borrow().to_string();
+                    return hxrt::string::HxString::from(bytes.borrow().to_string());
                 }
                 Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
             },
@@ -242,7 +244,7 @@ impl SocketInput {
                 bytes_2 = trimmed;
             }
         }
-        return bytes_2.borrow().to_string();
+        return hxrt::string::HxString::from(bytes_2.borrow().to_string());
     }
 
     pub fn read_float(self_: &crate::HxRefCell<SocketInput>) -> f64 {
@@ -361,15 +363,15 @@ impl SocketInput {
         self_: &crate::HxRefCell<SocketInput>,
         len: i32,
         encoding: Option<crate::haxe_io_encoding::Encoding>,
-    ) -> String {
+    ) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_net_socket_input::SocketInput> = self_.self_ref();
         let b: crate::HxRef<hxrt::bytes::Bytes> =
             crate::HxRef::new(hxrt::bytes::Bytes::alloc(len as usize));
         crate::sys_net_socket_input::SocketInput::read_full_bytes(&*__hx_this, b.clone(), 0, len);
-        return {
+        return hxrt::string::HxString::from({
             let _ = encoding;
             b.borrow().get_string(0, len)
-        };
+        });
     }
 
     fn __hx_super_haxe_io_input_close(_self_: &crate::HxRefCell<SocketInput>) {}
@@ -418,10 +420,14 @@ impl crate::haxe_io_input::InputTrait for crate::HxRefCell<SocketInput> {
     fn read_int8(&self) -> i32 {
         SocketInput::read_int8(self)
     }
-    fn read_line(&self) -> String {
+    fn read_line(&self) -> hxrt::string::HxString {
         SocketInput::read_line(self)
     }
-    fn read_string(&self, len: i32, encoding: Option<crate::haxe_io_encoding::Encoding>) -> String {
+    fn read_string(
+        &self,
+        len: i32,
+        encoding: Option<crate::haxe_io_encoding::Encoding>,
+    ) -> hxrt::string::HxString {
         SocketInput::read_string(self, len, encoding)
     }
     fn read_u_int16(&self) -> i32 {
@@ -430,7 +436,7 @@ impl crate::haxe_io_input::InputTrait for crate::HxRefCell<SocketInput> {
     fn read_u_int24(&self) -> i32 {
         SocketInput::read_u_int24(self)
     }
-    fn read_until(&self, end: i32) -> String {
+    fn read_until(&self, end: i32) -> hxrt::string::HxString {
         SocketInput::read_until(self, end)
     }
     fn set_big_endian(&self, b: bool) -> bool {

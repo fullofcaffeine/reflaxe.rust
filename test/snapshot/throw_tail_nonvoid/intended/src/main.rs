@@ -34,7 +34,9 @@ fn decode(v: i32) -> i32 {
     if v == 0 {
         return 10;
     }
-    hxrt::exception::throw(hxrt::dynamic::from(String::from("bad value")));
+    hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
+        "bad value",
+    )));
 }
 
 fn main() {
@@ -45,7 +47,7 @@ fn main() {
         Ok(__hx_ok) => __hx_ok,
         Err(__hx_ex) => {
             let _ = __hx_ex;
-            crate::sys::Sys::println(hxrt::dynamic::from(String::from("caught")));
+            crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from("caught")));
         }
     };
 }

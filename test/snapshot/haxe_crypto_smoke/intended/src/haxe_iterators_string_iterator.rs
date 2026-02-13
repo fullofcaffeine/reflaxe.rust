@@ -6,11 +6,13 @@ pub const __HX_TYPE_ID: u32 = 0xee4111fdu32;
 
 pub struct StringIterator {
     offset: i32,
-    s: String,
+    s: hxrt::string::HxString,
 }
 
 impl StringIterator {
-    pub fn new(s: String) -> crate::HxRef<crate::haxe_iterators_string_iterator::StringIterator> {
+    pub fn new(
+        s: hxrt::string::HxString,
+    ) -> crate::HxRef<crate::haxe_iterators_string_iterator::StringIterator> {
         let self_: crate::HxRef<crate::haxe_iterators_string_iterator::StringIterator> =
             crate::HxRef::new(StringIterator { offset: 0, s: s });
         return self_;
@@ -35,16 +37,16 @@ impl StringIterator {
         let __hx_this: crate::HxRef<crate::haxe_iterators_string_iterator::StringIterator> =
             self_.self_ref();
         return {
-            let s: String = {
+            let s: hxrt::string::HxString = hxrt::string::HxString::from({
                 let __b = __hx_this.borrow();
                 __b.s.clone()
-            };
+            });
             let index: i32 = {
                 let __tmp = self_.borrow().offset;
                 self_.borrow_mut().offset = __tmp + 1;
                 __tmp
             };
-            crate::string_tools::StringTools::fast_code_at(s, index)
+            crate::string_tools::StringTools::fast_code_at(hxrt::string::HxString::from(s), index)
         };
     }
 }

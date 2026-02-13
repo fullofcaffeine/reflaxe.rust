@@ -28,7 +28,7 @@ impl BytesBuffer {
             __b.finalized
         } {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
-                hxrt::dynamic::from(String::from("BytesBuffer is finalized")),
+                hxrt::dynamic::from(hxrt::string::HxString::from("BytesBuffer is finalized")),
             )));
         }
     }
@@ -48,7 +48,7 @@ impl BytesBuffer {
             __b.finalized
         } {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
-                hxrt::dynamic::from(String::from("BytesBuffer is finalized")),
+                hxrt::dynamic::from(hxrt::string::HxString::from("BytesBuffer is finalized")),
             )));
         }
         let b: crate::HxRef<hxrt::bytes::Bytes> =
@@ -76,7 +76,7 @@ impl BytesBuffer {
             __b.finalized
         } {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
-                hxrt::dynamic::from(String::from("BytesBuffer is finalized")),
+                hxrt::dynamic::from(hxrt::string::HxString::from("BytesBuffer is finalized")),
             )));
         }
         ({
@@ -96,7 +96,7 @@ impl BytesBuffer {
 
     pub fn add_string(
         self_: &crate::HxRefCell<BytesBuffer>,
-        v: String,
+        v: hxrt::string::HxString,
         encoding: Option<crate::haxe_io_encoding::Encoding>,
     ) {
         let __hx_this: crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer> = self_.self_ref();
@@ -105,7 +105,7 @@ impl BytesBuffer {
             __b.finalized
         } {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
-                hxrt::dynamic::from(String::from("BytesBuffer is finalized")),
+                hxrt::dynamic::from(hxrt::string::HxString::from("BytesBuffer is finalized")),
             )));
         }
         crate::haxe_io_bytes_buffer::BytesBuffer::add(&*__hx_this, {
@@ -168,7 +168,7 @@ impl BytesBuffer {
             __b.finalized
         } {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
-                hxrt::dynamic::from(String::from("BytesBuffer is finalized")),
+                hxrt::dynamic::from(hxrt::string::HxString::from("BytesBuffer is finalized")),
             )));
         }
         crate::haxe_io_bytes_buffer::BytesBuffer::add(
@@ -184,7 +184,7 @@ impl BytesBuffer {
             __b.finalized
         } {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
-                hxrt::dynamic::from(String::from("BytesBuffer is finalized")),
+                hxrt::dynamic::from(hxrt::string::HxString::from("BytesBuffer is finalized")),
             )));
         }
         let out: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRef::new(hxrt::bytes::Bytes::alloc(

@@ -31,17 +31,32 @@ mod sys_io_stdin;
 mod sys_io_stdout;
 
 fn main() {
-    let xs: hxrt::array::Array<String> =
-        hxrt::array::Array::<String>::from_vec(vec![String::from("b"), String::from("c")]);
-    xs.unshift(String::from("a"));
-    xs.push(String::from("d"));
-    xs.insert(2, String::from("X"));
-    crate::sys::Sys::println(hxrt::dynamic::from(xs.join(String::from(""))));
-    let first: Option<String> = xs.shift();
-    if first.is_none() {
-        crate::sys::Sys::println(hxrt::dynamic::from(String::from("null")));
+    let xs: hxrt::array::Array<hxrt::string::HxString> =
+        hxrt::array::Array::<hxrt::string::HxString>::from_vec(vec![
+            hxrt::string::HxString::from("b"),
+            hxrt::string::HxString::from("c"),
+        ]);
+    xs.unshift(hxrt::string::HxString::from(hxrt::string::HxString::from(
+        "a",
+    )));
+    xs.push(hxrt::string::HxString::from(hxrt::string::HxString::from(
+        "d",
+    )));
+    xs.insert(
+        2,
+        hxrt::string::HxString::from(hxrt::string::HxString::from("X")),
+    );
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(xs.join(
+        hxrt::string::HxString::from(hxrt::string::HxString::from("")),
+    ))));
+    let first: hxrt::string::HxString =
+        hxrt::string::HxString::from(hxrt::string::HxString::from(xs.shift()));
+    if first.is_null() {
+        crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from("null")));
     } else {
-        crate::sys::Sys::println(hxrt::dynamic::from(first.unwrap()));
+        crate::sys::Sys::println(hxrt::dynamic::from(first));
     }
-    crate::sys::Sys::println(hxrt::dynamic::from(xs.join(String::from(""))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(xs.join(
+        hxrt::string::HxString::from(hxrt::string::HxString::from("")),
+    ))));
 }

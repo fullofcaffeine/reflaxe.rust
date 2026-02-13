@@ -83,16 +83,16 @@ impl MysqlResultSet {
         return l;
     }
 
-    pub fn get_result(self_: &crate::HxRefCell<MysqlResultSet>, n: i32) -> String {
+    pub fn get_result(self_: &crate::HxRefCell<MysqlResultSet>, n: i32) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
             self_.self_ref();
-        return hxrt::db::query_result_get_result(
+        return hxrt::string::HxString::from(hxrt::db::query_result_get_result(
             &({
                 let __b = __hx_this.borrow();
                 __b.res.clone()
             }),
             n,
-        );
+        ));
     }
 
     pub fn get_int_result(self_: &crate::HxRefCell<MysqlResultSet>, n: i32) -> i32 {
@@ -121,13 +121,13 @@ impl MysqlResultSet {
 
     pub fn get_fields_names(
         self_: &crate::HxRefCell<MysqlResultSet>,
-    ) -> hxrt::array::Array<String> {
+    ) -> hxrt::array::Array<hxrt::string::HxString> {
         let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
             self_.self_ref();
         return if crate::sys_db_mysql_mysql_result_set::MysqlResultSet::get_nfields(&*__hx_this)
             == 0
         {
-            hxrt::array::Array::<String>::null()
+            hxrt::array::Array::<hxrt::string::HxString>::null()
         } else {
             hxrt::db::query_result_fields(
                 &({
@@ -155,7 +155,7 @@ impl crate::sys_db_result_set::ResultSet for crate::HxRefCell<MysqlResultSet> {
     fn results(&self) -> crate::HxRef<crate::haxe_ds_list::List<hxrt::dynamic::Dynamic>> {
         MysqlResultSet::results(self)
     }
-    fn get_result(&self, n: i32) -> String {
+    fn get_result(&self, n: i32) -> hxrt::string::HxString {
         MysqlResultSet::get_result(self, n)
     }
     fn get_int_result(&self, n: i32) -> i32 {
@@ -164,7 +164,7 @@ impl crate::sys_db_result_set::ResultSet for crate::HxRefCell<MysqlResultSet> {
     fn get_float_result(&self, n: i32) -> f64 {
         MysqlResultSet::get_float_result(self, n)
     }
-    fn get_fields_names(&self) -> hxrt::array::Array<String> {
+    fn get_fields_names(&self) -> hxrt::array::Array<hxrt::string::HxString> {
         MysqlResultSet::get_fields_names(self)
     }
 }
