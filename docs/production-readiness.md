@@ -27,7 +27,7 @@ For this project, production-ready means:
 
 ### Stage 3: Broad production rollout
 
-- Confirm release-gate and parity issues are closed in Beads.
+- Confirm the release-readiness checklist is fully closed.
 - Document team profile policy (who can use `rusty`, when).
 - Add periodic regression runs against representative workloads.
 
@@ -42,7 +42,7 @@ For this project, production-ready means:
 4. Failure behavior
    - Ensure expected IO/process/network failures are catchable and tested.
 5. Change control
-   - Tie release decisions to Beads status plus green CI evidence.
+   - Tie release decisions to documented readiness criteria plus green CI evidence.
 
 ## Choosing conservative defaults
 
@@ -53,11 +53,11 @@ For teams new to this compiler:
 - Interop: typed externs and metadata first.
 - Escape hatch: framework-only.
 
-## What can still move before 1.0
+## What can still move after 1.0
 
 - Minor ergonomics and docs can still change.
 - Some low-level runtime/internal APIs may continue to evolve.
-- Release-gate closeout timing depends on regression-free validation windows.
+- Confidence windows depend on sustained regression-free validation.
 
 ## Source of truth links
 

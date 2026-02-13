@@ -1,6 +1,6 @@
-# 1.0 Release-Gate Closeout Template
+# 1.0 Release Closeout Template
 
-Use this template when closing Beads issue `haxe.rust-4jb`.
+Use this template when finalizing the 1.0 release-readiness gate in your internal tracker.
 
 It keeps release evidence consistent and auditable.
 
@@ -13,8 +13,6 @@ It keeps release evidence consistent and auditable.
 ## Command checklist
 
 ```bash
-bd graph haxe.rust-4jb --compact
-bd ready
 npm run docs:sync:progress
 npm run docs:check:progress
 bash scripts/ci/local.sh
@@ -32,14 +30,13 @@ Generate a prefilled evidence block first:
 npm run docs:prep:closeout
 ```
 
-## Evidence block (copy/paste into Beads notes)
+## Evidence block (copy/paste into your release notes)
 
 ```text
 1.0 closeout evidence (YYYY-MM-DD)
 
-- Gate issue: haxe.rust-4jb
-- Gate status at review time: in_progress
-- Dependency completion: <N>/<N> closed
+- Release gate status at review time: CLOSED|IN_PROGRESS
+- Checklist completion: <N>/<N> closed
 
 Validation runs:
 - npm run docs:sync:progress -> PASS
@@ -58,25 +55,13 @@ Residual risks:
 - <list, or "none">
 
 Decision:
-- Close haxe.rust-4jb now: YES|NO
+- Declare release gate closed now: YES|NO
 - If NO, next action + owner + target date: <...>
 ```
 
-## Suggested close command
+## Closeout step
 
-After adding closeout notes:
-
-```bash
-bd close haxe.rust-4jb
-```
-
-## Post-close sync
-
-If Beads JSONL changed, sync and include `.beads/issues.jsonl` in your commit:
-
-```bash
-bd sync
-```
+After adding closeout notes, mark the release gate as closed in your internal tracker.
 
 ## Related docs
 

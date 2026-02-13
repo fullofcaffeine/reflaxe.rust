@@ -6,10 +6,10 @@ It is written for teams that are not compiler specialists.
 
 ## Current baseline (as of February 13, 2026)
 
-- Foundation roadmap epic: closed (`haxe.rust-oo3`).
-- Advanced stress harness epic: closed (`haxe.rust-cu0`).
-- 1.0 release gate: closed (`haxe.rust-4jb`).
-- Release-gate dependencies: 100% closed.
+- Core compiler/runtime foundation work: closed.
+- Advanced real-app stress harness work: closed.
+- 1.0 production release gate: closed.
+- Release-gate checks: 100% closed.
 
 Meaning: the 1.0 closeout gate is complete. Remaining work is post-1.0 quality discipline.
 
@@ -17,7 +17,7 @@ Meaning: the 1.0 closeout gate is complete. Remaining work is post-1.0 quality d
 
 Ship 1.0 only when all conditions below are true at the same time:
 
-1. `haxe.rust-4jb` is closed.
+1. The release readiness gate is closed.
 2. CI-equivalent checks are green on the release candidate branch.
 3. Cross-platform CI (including Windows smoke) is green.
 4. Docs and implementation are synchronized (profiles, defines, runtime assumptions).
@@ -49,7 +49,7 @@ Goal: convert technical readiness into explicit release readiness.
 
 Actions:
 
-- Re-validate release-gate evidence in Beads (`haxe.rust-4jb`):
+- Re-validate release-gate evidence in the internal tracker:
   - acceptance criteria references,
   - latest green CI links,
   - documented known limitations.
@@ -61,7 +61,7 @@ Actions:
 
 Success signal:
 
-- Beads issue `haxe.rust-4jb` is explicitly closed with evidence.
+- The release gate is explicitly marked closed with evidence.
 
 Status: completed on February 13, 2026.
 
@@ -82,10 +82,9 @@ Success signal:
 ## Weekly operating cadence (recommended)
 
 - Once per week, run and review:
-  - `bd graph haxe.rust-4jb --compact`
   - `npm run docs:sync:progress`
   - `bash scripts/ci/local.sh`
-- Log any new production risks as Beads tasks immediately.
+- Log any new production risks immediately in the internal tracker.
 
 ## Common failure modes to avoid
 
@@ -96,9 +95,9 @@ Success signal:
 ## Closeout checklist (completed on February 13, 2026)
 
 1. CI evidence is fresh and repeatable.
-2. Tracker docs are synced from Beads.
+2. Tracker docs are synchronized.
 3. Profile and define docs reflect current behavior.
-4. Release gate issue has explicit closeout notes.
+4. Release gate has explicit closeout notes.
 
 ## Related docs
 

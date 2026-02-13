@@ -1,18 +1,18 @@
-# Milestones — `haxe.rust-oo5`
+# Milestones — Ongoing Quality Program
 
-This doc mirrors the Beads epic `haxe.rust-oo5` and explains the intent behind each milestone.
+This document explains the intent behind the current quality milestones in plain language.
 
-## `haxe.rust-oo5.1` — Compiler hygiene: warnings + output polish
+## Milestone 1 — Compiler hygiene: warnings + output polish
 
-Goal: generated Rust should feel “production grade” (low noise, clean imports, fewer `unused_mut`, fewer style warnings).
+Goal: generated Rust should feel production-grade (low noise, clean imports, fewer `unused_mut`, fewer style warnings).
 
 Planned work:
-- Import hygiene (TypeUsageTracker-driven `use` + `HxRef` only when needed, or fully-qualified paths).
+- Import hygiene (`use` only when needed, avoid over-qualification noise).
 - Better mutability inference and constructor/local fixes to reduce `unused_mut`.
-- Portable mode style-warning policy: keep builds warning-free by default (snake_case naming + lint strategy so builds aren’t spammy).
+- Portable mode style-warning policy: keep builds warning-light by default (snake_case naming + lint strategy so builds are readable).
 - Optional strictness: `-D rust_deny_warnings` for users/CI that want warning-free output.
 
-## `haxe.rust-oo5.2` — Rusty runtime + stdlib parity
+## Milestone 2 — Rusty runtime + stdlib parity
 
 Goal: expand `rust.*` so Rust-idiomatic apps can be written in Haxe without raw `__rust__` in app code.
 
@@ -23,7 +23,7 @@ Planned work:
 - Error model helpers: improve Option/Result ergonomics and design a bridge between portable exceptions and rusty Result.
 - Tooling glue: let framework code ship Rust modules via `@:rustExtraSrc(...)` (prefer over `-D rust_extra_src=...` in apps).
 
-## `haxe.rust-oo5.3` — CI security guardrails
+## Milestone 3 — CI security guardrails
 
 Goal: catch leaks and risky dependency changes early.
 

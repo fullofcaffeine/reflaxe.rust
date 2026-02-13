@@ -14,16 +14,16 @@ while preserving escape hatches behind typed boundaries.
 ## Live implementation status (auto-generated)
 
 <!-- GENERATED:vision-status:start -->
-_Generated from Beads on 2026-02-13 via `npm run docs:sync:progress`._
+_Status snapshot generated from the internal release tracker via `npm run docs:sync:progress`._
 
-| Vision checkpoint | Source | Status |
+| Vision checkpoint | What this means | Status |
 | --- | --- | --- |
-| Milestone roadmap complete | `haxe.rust-oo3` | closed |
-| Real-app harness complete | `haxe.rust-cu0` | closed |
-| 1.0 parity gate | `haxe.rust-4jb` | closed |
+| Foundation complete | Core compiler/runtime architecture is stable. | closed |
+| Real-app harness complete | App-scale behavior is validated in CI-style flows. | closed |
+| 1.0 parity gate complete | Final production-readiness criteria are met. | closed |
 
-- 1.0 parity dependencies closed: **21 / 21 (100%)**
-- 1.0 parity dependencies still open: **0**
+- 1.0 parity checks closed: **21 / 21 (100%)**
+- 1.0 parity checks still open: **0**
 <!-- GENERATED:vision-status:end -->
 
 ## Alignment by major promise
@@ -55,7 +55,7 @@ Status: aligned with enforcement options
 
 Status: aligned
 
-- The dedicated release gate (`haxe.rust-4jb`) is closed.
+- The release readiness gate is closed.
 - Closeout evidence includes green `scripts/ci/local.sh` and `scripts/ci/windows-smoke.sh` on 2026-02-13.
 - Remaining focus is sustained validation quality as new changes land.
 
@@ -63,14 +63,14 @@ Status: aligned
 
 Status: aligned
 
-- Advanced TUI harness epic (`haxe.rust-cu0`) is closed.
+- The advanced TUI stress harness is complete.
 - Harness coverage remains part of CI-style checks.
 
 ## Post-1.0 watchlist
 
 1. CI stability should hold across repeated runs, not only one green pass.
 2. Docs and defines reference must stay synchronized with implementation changes.
-3. Cross-platform sys behavior edge cases should be logged in Beads as soon as they appear.
+3. Cross-platform sys behavior edge cases should be logged immediately in the internal tracker.
 
 ## Related docs
 

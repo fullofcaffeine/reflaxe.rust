@@ -1,149 +1,109 @@
 # reflaxe.rust
 
 [![Version](https://img.shields.io/badge/version-0.53.0-blue)](https://github.com/fullofcaffeine/reflaxe.rust/releases)
+[![CI](https://github.com/fullofcaffeine/reflaxe.rust/actions/workflows/ci.yml/badge.svg)](https://github.com/fullofcaffeine/reflaxe.rust/actions/workflows/ci.yml)
 
-Haxe (4.3.7) -> Rust target built on Reflaxe.
+Haxe 4.3.7 -> Rust target built on Reflaxe.
 
-## Start Here (1.0 docs and quickstart)
+This project lets you write Haxe and ship native Rust binaries, with a path for both Haxe-first and Rust-first teams.
 
-- Plain-language onboarding: `docs/start-here.md`
-- Production rollout guidance: `docs/production-readiness.md`
-- 1.0 execution playbook: `docs/road-to-1.0.md`
-- 1.0 gate closeout template: `docs/release-gate-closeout.md`
-- Live 1.0 tracker (Beads-backed): `docs/progress-tracker.md`
-- Vision vs implementation reality check: `docs/vision-vs-implementation.md`
-- Profile model (portable/idiomatic/rusty): `docs/profiles.md`
-- Defines reference: `docs/defines-reference.md`
-- Full docs map: `docs/index.md`
-- Technical support matrix: `docs/v1.md`
+## Start Here
 
-Keep tracker status synchronized from Beads:
+- New here: [Start Here guide](docs/start-here.md)
+- Production rollout: [Production Readiness guide](docs/production-readiness.md)
+- Full docs map: [Documentation Index](docs/index.md)
 
-```bash
-npm run docs:sync:progress
-```
+## Quick Start (First Successful Run)
 
-Check for tracker drift (non-zero exit if stale):
-
-```bash
-npm run docs:check:progress
-```
-
-## Build a native binary
-
-After codegen (`-D rust_output=...`) the compiler invokes Cargo by default (debug build).
-
-- Opt-out (codegen only): add `-D rust_no_build` (alias: `-D rust_codegen_only`)
-- Release: add `-D rust_build_release` (alias: `-D rust_release`)
-- Cross target: add `-D rust_target=<triple>` (passed to `cargo build --target <triple>`)
-- Tooling knobs:
-  - `-D rust_cargo_subcommand=build|check|test|clippy|run` (default: `build`)
-  - `-D rust_cargo_features=feat1,feat2`
-  - `-D rust_cargo_no_default_features`, `-D rust_cargo_all_features`
-  - `-D rust_cargo_locked`, `-D rust_cargo_offline`, `-D rust_cargo_quiet`
-  - `-D rust_cargo_jobs=8`
-  - `-D rust_cargo_target_dir=path/to/target` (sets `CARGO_TARGET_DIR`)
-
-## Roadmap
-
-- Core milestone roadmap (historical compiler build-out): `bd graph haxe.rust-oo3 --compact`
-- Production 1.0 parity gate (active): `bd graph haxe.rust-4jb --compact`
-- Human-readable readiness tracker: `docs/progress-tracker.md`
-
-## Install (lix, GitHub-only)
-
-See `docs/install-via-lix.md`.
-
-## Quickstart
-
-This repo is developed with **lix** (pinned Haxe toolchain):
+1. Install dependencies (toolchain is pinned via lix):
 
 ```bash
 npm install
 ```
 
-Run snapshot tests:
+2. Compile and run the hello example:
+
+```bash
+cd examples/hello
+npx haxe compile.hxml
+(cd out && cargo run -q)
+```
+
+3. Run snapshot tests:
 
 ```bash
 npm test
-# or: bash test/run-snapshots.sh
 ```
 
-Run host smoke snapshots without golden diffs (useful on non-Linux hosts):
-
-```bash
-SNAP_CARGO_QUIET=0 bash test/run-snapshots.sh --case hello_trace --no-diff
-```
-
-Run the Windows-safe smoke subset locally:
-
-```bash
-bash scripts/ci/windows-smoke.sh
-```
-
-Run full local harness (snapshots + examples + CI-like checks):
+4. Run the CI-style local harness (snapshots + examples):
 
 ```bash
 npm run test:all
 ```
 
-Optional (haxelib dev, if you prefer):
+## Pick Your Profile
 
-```bash
-haxelib dev reflaxe.rust .
-```
+Use `-D reflaxe_rust_profile=portable|idiomatic|rusty`.
+
+| Profile | Best for | What you get |
+| --- | --- | --- |
+| `portable` (default) | Haxe-first teams | Stable Haxe semantics and portability-first behavior |
+| `idiomatic` | Teams that want cleaner Rust output without semantic shifts | Same behavior as portable, cleaner emitted Rust |
+| `rusty` | Rust-aware teams | Rust-first APIs and borrow/ownership-oriented surface |
+
+Read more: [Profiles guide](docs/profiles.md) and [Rusty profile details](docs/rusty-profile.md).
 
 ## Examples
 
-Hello world:
+- [hello](examples/hello)
+- [classes](examples/classes)
+- [serde_json](examples/serde_json)
+- [sys_file_io](examples/sys_file_io)
+- [sys_net_loopback](examples/sys_net_loopback)
+- [sys_process](examples/sys_process)
+- [sys_thread_smoke](examples/sys_thread_smoke)
+- [thread_pool_smoke](examples/thread_pool_smoke)
+- [tui_todo](examples/tui_todo)
 
-```bash
-cd examples/hello
-../node_modules/.bin/haxe compile.hxml
-(cd out && cargo run -q)
-```
+## Most Useful Commands
 
-Todo TUI demo (ratatui, headless backend):
+- Snapshot tests: `bash test/run-snapshots.sh`
+- Upstream stdlib sweep: `bash test/run-upstream-stdlib-sweep.sh`
+- Windows-safe smoke subset: `bash scripts/ci/windows-smoke.sh`
+- Full local CI equivalent: `bash scripts/ci/local.sh`
+- Clean generated artifacts: `npm run clean:artifacts:all`
 
-```bash
-cd examples/tui_todo
-../node_modules/.bin/haxe compile.hxml
-(cd out && cargo run -q)
-```
+## 1.0 Status and Roadmap
 
-Serde JSON demo (declares Cargo deps via `@:rustCargo`, derives via `@:rustDerive`):
+- Live tracker: [Compiler Progress Tracker](docs/progress-tracker.md)
+- Vision vs implementation: [Reality check](docs/vision-vs-implementation.md)
+- Execution playbook: [Road to 1.0](docs/road-to-1.0.md)
+- Technical support matrix: [v1 scope](docs/v1.md)
 
-```bash
-cd examples/serde_json
-../node_modules/.bin/haxe compile.hxml
-(cd out && cargo run -q)
-```
+## Defines (Common)
 
-## Useful defines
+- `-D rust_output=out` - output directory for the generated Cargo project
+- `-D rust_no_build` / `-D rust_codegen_only` - codegen only, skip Cargo build
+- `-D rust_build_release` / `-D rust_release` - release build mode
+- `-D rust_target=<triple>` - pass target triple to Cargo
+- `-D rust_idiomatic` - alias for `-D reflaxe_rust_profile=idiomatic`
+- `-D reflaxe_rust_profile=rusty` - enable Rust-first profile surfaces
+- `-D rustfmt` - run `cargo fmt` on generated output (best effort)
 
-- `-D rust_output=out` - output directory (Cargo project is generated under this folder).
-- `-D rust_crate=<name>` - Cargo crate name.
-- `-D rust_no_gitignore` - opt-out of emitting a minimal Cargo-style `.gitignore` in the generated crate.
-- `-D rust_idiomatic` (or `-D reflaxe_rust_profile=idiomatic`) - enable more idiomatic Rust output (for example `let` vs `let mut` inference).
-- `-D reflaxe_rust_profile=rusty` - enable Rust-first profile surfaces under `rust.*`.
-- `-D rust_cargo_deps_file=<path>` - TOML lines appended under `[dependencies]` in generated `Cargo.toml` (fallback; prefer `@:rustCargo`).
-- `-D rust_cargo_toml=<path>` - override the entire generated `Cargo.toml` (supports `{{crate_name}}` placeholder).
-- `-D rust_extra_src=<dir>` - copy `*.rs` files from a directory into `out/src/` and auto-`mod` them from `main.rs`.
-- `-D rustfmt` - run `cargo fmt` on the generated crate after compilation (best-effort).
+Full list: [Defines reference](docs/defines-reference.md).
 
-See `docs/defines-reference.md` for the full reference.
+## Rust Interop
 
-## Rust-native interop (framework-first)
+Preferred order:
 
-- Cargo deps: `@:rustCargo("dep = \"1\"")` or `@:rustCargo({ name: "dep", version: "1", features: ["x"] })`
-- Extern bindings: `@:native("crate::path") extern class Foo { @:native("fn_name") static function bar(...): ...; }`
-- Derives: `@:rustDerive(["serde::Serialize"])` on classes/enums
-- Generic bounds (minimal): `@:rustGeneric("T: serde::Serialize")` on methods with type params
+1. Pure Haxe + runtime/std APIs
+2. Typed externs and metadata (`@:native`, `@:rustCargo`, `@:rustExtraSrc`)
+3. Framework wrappers around hand-written Rust modules
+4. Raw `__rust__` only when necessary
 
-See `docs/rusty-profile.md` for the Rust-first profile design and `rust.*` APIs.
+Read: [Interop guide](docs/interop.md) and [Workflow guide](docs/workflow.md).
 
-See `docs/workflow.md` for the full Haxe->Rust->Cargo workflow (defines, release builds, targets).
+## Installation and Release Docs
 
-See `docs/release.md` for how releases (semver + changelog + GitHub artifacts) are produced.
-
-See `docs/function-values.md` for callback/function-value lowering notes (baseline + constraints).
+- Toolchain install details: [Install via lix](docs/install-via-lix.md)
+- Release process: [Release docs](docs/release.md)

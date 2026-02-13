@@ -49,7 +49,7 @@ npm install
 
 ```bash
 cd examples/hello
-../node_modules/.bin/haxe compile.hxml
+npx haxe compile.hxml
 (cd out && cargo run -q)
 ```
 
@@ -79,7 +79,7 @@ Policy target for production apps:
 
 ## What "production-ready 1.0" means in this repo
 
-- The release gate epic `haxe.rust-4jb` is closed.
+- The 1.0 release readiness gate is closed.
 - Sys-target stdlib parity scope is met and tested.
 - CI harness (`npm run test:all`) is green.
 - Docs match real compiler/runtime behavior.

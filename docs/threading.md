@@ -106,8 +106,8 @@ Known gaps (not yet parity with upstream targets):
 2. Thread pools and related helpers (`sys.thread.Deque`, `FixedThreadPool`, `ElasticThreadPool`, etc)
    are tracked separately.
 
-Tracking:
+Tracking summary:
 
-- Threading model baseline: `haxe.rust-zhs` (completed once CI + docs are kept in sync)
-- Core primitives: `haxe.rust-2et`
-- Pools + deeper EventLoop parity: `haxe.rust-i87`
+- Thread-safe heap baseline is complete and validated in CI.
+- Core threading primitives are implemented.
+- Thread pools and deeper EventLoop parity remain active follow-up work.

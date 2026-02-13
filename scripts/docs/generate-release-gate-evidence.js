@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Print a prefilled Beads closeout evidence block for haxe.rust-4jb.
+ * Print a prefilled release closeout evidence block.
  *
  * Usage:
  *   npm run docs:prep:closeout
@@ -10,7 +10,7 @@ const { execFileSync } = require('child_process')
 
 const GATE_ID = 'haxe.rust-4jb'
 
-function runBdShow(issueId) {
+function runIssueShow(issueId) {
   let raw
   try {
     raw = execFileSync('bd', ['show', issueId, '--json'], {
@@ -20,7 +20,7 @@ function runBdShow(issueId) {
   } catch (error) {
     const stderr = error && error.stderr ? String(error.stderr).trim() : ''
     const suffix = stderr.length > 0 ? `\n${stderr}` : ''
-    throw new Error(`Failed to read Beads issue ${issueId}.${suffix}`)
+    throw new Error(`Failed to read internal tracker issue ${issueId}.${suffix}`)
   }
 
   let parsed
@@ -31,7 +31,7 @@ function runBdShow(issueId) {
   }
 
   if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new Error(`Beads issue not found: ${issueId}`)
+    throw new Error(`Tracker issue not found: ${issueId}`)
   }
 
   return parsed[0]
@@ -42,7 +42,7 @@ function todayIsoDate() {
 }
 
 function main() {
-  const gate = runBdShow(GATE_ID)
+  const gate = runIssueShow(GATE_ID)
   const deps = Array.isArray(gate.dependencies) ? gate.dependencies : []
   const closedDeps = deps.filter((dep) => dep.status === 'closed')
   const remainingDeps = deps.filter((dep) => dep.status !== 'closed')
@@ -50,20 +50,16 @@ function main() {
   const lines = []
   lines.push('1.0 closeout evidence (' + todayIsoDate() + ')')
   lines.push('')
-  lines.push('- Gate issue: ' + GATE_ID)
-  lines.push('- Gate status at review time: ' + (gate.status || 'unknown'))
-  lines.push('- Dependency completion: ' + closedDeps.length + '/' + deps.length + ' closed')
+  lines.push('- Release gate status at review time: ' + (gate.status || 'unknown'))
+  lines.push('- Checklist completion: ' + closedDeps.length + '/' + deps.length + ' closed')
 
   if (remainingDeps.length > 0) {
-    lines.push('- Remaining dependencies:')
+    lines.push('- Remaining checklist items:')
     for (const dep of remainingDeps) {
-      const priority = typeof dep.priority === 'number' ? `P${dep.priority}` : 'n/a'
-      lines.push(
-        '  - ' + dep.id + ' [' + priority + '] (' + (dep.status || 'unknown') + '): ' + dep.title
-      )
+      lines.push('  - (' + (dep.status || 'unknown') + ') ' + dep.title)
     }
   } else {
-    lines.push('- Remaining dependencies: none')
+    lines.push('- Remaining checklist items: none')
   }
 
   lines.push('')
@@ -86,7 +82,7 @@ function main() {
   lines.push('- <list, or "none">')
   lines.push('')
   lines.push('Decision:')
-  lines.push('- Close haxe.rust-4jb now: YES|NO')
+  lines.push('- Declare release gate closed now: YES|NO')
   lines.push('- If NO, next action + owner + target date: <...>')
 
   process.stdout.write(lines.join('\n') + '\n')
