@@ -106,6 +106,7 @@ Track status here:
 - [Production Readiness](production-readiness.md)
 - [Road to 1.0](road-to-1.0.md)
 - [Profiles](profiles.md)
+- [Lifetime encoding design](lifetime-encoding.md)
 - [Async/Await preview](async-await.md)
 - [Defines reference](defines-reference.md)
 - [Vision vs Implementation](vision-vs-implementation.md)

@@ -19,6 +19,18 @@ interop so final apps remain injection-free.
   - portable code should remain easy to write
   - Rusty code should be explicit about where Rust concepts are used
 
+## Why Rusty Is Worth It
+
+Rusty is the profile that gives Haxe code the strongest access to high-value Rust ideas:
+
+- **Explicit ownership boundaries** in API design (owned values vs borrowed views).
+- **Borrow-shaped signatures** (`Ref`, `MutRef`, slices, `&str`-like inputs) instead of implicit clone-heavy flows.
+- **Rust-native error/data modeling** (`Option` / `Result`) as a default style, not a compatibility afterthought.
+- **Predictable interop contracts** where low-level Rust concerns are visible in Haxe types rather than hidden in `Dynamic` or raw injections.
+
+This is the main reason to choose Rusty: it lets teams keep Haxe tooling while writing APIs that map
+more directly to Rust performance and correctness habits.
+
 ## Non-goals (v1.0)
 
 - Perfect lifetime modeling. Haxe has no lifetime parameters; Rusty APIs should either:
@@ -26,6 +38,14 @@ interop so final apps remain injection-free.
   - use `rust.Ref<T>` / `rust.MutRef<T>` / `rust.Slice<T>` as *borrow tokens* with best-effort safety.
 - Full replacement of the Rust borrow checker. Rust will still enforce borrowing rules on generated code.
 - Exposing every Rust feature. Rusty is an opinionated subset focused on “apps that feel Rusty”.
+
+## What Rusty Is Not
+
+- It is **not** "handwritten Rust with Haxe syntax."
+- It is **not** a full lifetime-parameter language.
+- It is **not** a guarantee that every generated function is zero-cost or clone-free.
+
+Rusty is a pragmatic Rust-first authoring mode, not a complete reimplementation of the Rust type system.
 
 ## Selecting the profile
 
@@ -57,6 +77,16 @@ See: [Async/Await preview guide](async-await.md).
 
 Rusty cannot model lifetimes directly (Haxe has no lifetime parameters), but it can still make borrowing
 feel natural by providing **borrow-first APIs** and by making “ownership boundaries” explicit.
+
+### How this relates to the real borrow checker
+
+- Borrow intent is expressed in Haxe via `rust.Ref<T>`, `rust.MutRef<T>`, `rust.Slice<T>`, etc.
+- The Rust compiler still performs the final authority check on the emitted code.
+- Where Haxe cannot express a Rust lifetime relationship, Rusty APIs should stay scoped (callback-style)
+  or return owned values.
+- If an API truly needs complex lifetime generics, use typed extern boundaries and handwritten Rust.
+
+See also: [Lifetime Encoding Design](lifetime-encoding.md).
 
 Guidelines for Rusty APIs:
 
@@ -115,7 +145,7 @@ Rusty code should bias toward borrowed strings for inputs:
 
 ## Interop boundary (no injections in apps)
 
-## Example: Borrow-scoped Rusty APIs
+### Example: Borrow-scoped Rusty APIs
 
 The core idea is to keep borrows short-lived and explicit, while remaining "pure Haxe".
 

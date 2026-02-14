@@ -77,7 +77,8 @@ Use `-D reflaxe_rust_profile=portable|idiomatic|rusty`.
 | `idiomatic` | Teams that want cleaner Rust output without semantic shifts | Same behavior as portable, cleaner emitted Rust |
 | `rusty` | Rust-aware teams | Rust-first APIs and borrow/ownership-oriented surface |
 
-Read more: [Profiles guide](docs/profiles.md) and [Rusty profile details](docs/rusty-profile.md).
+Read more: [Profiles guide](docs/profiles.md), [Rusty profile details](docs/rusty-profile.md), and
+[Lifetime encoding design](docs/lifetime-encoding.md).
 
 ## Examples
 

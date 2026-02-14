@@ -18,6 +18,7 @@ Use this page as the map for `reflaxe.rust` docs.
 ## Core product docs
 
 - [Profiles](profiles.md): portable vs idiomatic vs rusty, and when to choose each.
+- [Lifetime encoding design](lifetime-encoding.md): what lifetime-like guarantees are possible in Haxe and where extern Rust is still required.
 - [Async/Await preview](async-await.md): Rusty async workflow and current constraints.
 - [Defines reference](defines-reference.md): practical `-D` reference for build/profile/CI knobs.
 - [v1 support matrix](v1.md): technical support matrix and parity constraints.
@@ -31,6 +32,7 @@ Use this page as the map for `reflaxe.rust` docs.
 
 - [Interop](interop.md): externs, metadata-driven Cargo deps, extra Rust modules, and escape hatch policy.
 - [Rusty profile](rusty-profile.md): Rust-first authoring model details.
+- [Lifetime encoding design](lifetime-encoding.md): borrow/lifetime modeling constraints and roadmap.
 - [Threading](threading.md): threading model and runtime guarantees.
 - [TUI](tui.md): deterministic TUI testing approach.
 
