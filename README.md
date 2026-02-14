@@ -20,6 +20,7 @@ This project lets you write Haxe and ship native Rust binaries, with a path for 
 - Cross-platform sys risk tracking: [Sys Regression Watchlist](docs/sys-regression-watchlist.md)
 - Fast edit-compile-run loop: [Dev Watcher guide](docs/dev-watcher.md)
 - Full docs map: [Documentation Index](docs/index.md)
+- Profile/scenario examples map: [Examples Matrix](docs/examples-matrix.md)
 
 ## Quick Start (First Successful Run)
 
@@ -83,6 +84,7 @@ Read more: [Profiles guide](docs/profiles.md), [Rusty profile details](docs/rust
 
 ## Examples
 
+- [chat_loopback](examples/chat_loopback) (cross-profile flagship: portable/idiomatic/rusty/metal)
 - [hello](examples/hello)
 - [async_retry_pipeline](examples/async_retry_pipeline)
 - [classes](examples/classes)
@@ -93,6 +95,8 @@ Read more: [Profiles guide](docs/profiles.md), [Rusty profile details](docs/rust
 - [sys_thread_smoke](examples/sys_thread_smoke)
 - [thread_pool_smoke](examples/thread_pool_smoke)
 - [tui_todo](examples/tui_todo)
+
+Coverage map: [docs/examples-matrix.md](docs/examples-matrix.md).
 
 ## Most Useful Commands
 

@@ -1,0 +1,8 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_strict_examples
+-D reflaxe_rust_profile=rusty
+-D chat_profile_rusty
+-D rust_output=out_rusty
+-D rust_crate=chat_loopback
+-main Main

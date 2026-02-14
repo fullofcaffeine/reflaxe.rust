@@ -39,6 +39,18 @@ Current typed façade:
 
 These compile through the framework injection shim and keep the interop surface documented and typed.
 
+Reference example:
+
+- `examples/chat_loopback/profile/MetalRuntime.hx` demonstrates both `Code.expr(...)` and
+  `Code.stmt(...)` in a strict-boundary app flow.
+- Build with:
+
+```bash
+cd examples/chat_loopback
+npx haxe compile.metal.hxml
+(cd out_metal && cargo run -q)
+```
+
 ## Relationship To Rusty
 
 - `rusty`: Rust-first APIs and ownership/borrow-oriented standard surfaces.

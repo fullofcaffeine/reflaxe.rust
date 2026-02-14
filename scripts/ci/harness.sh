@@ -131,22 +131,18 @@ while IFS= read -r compile_file; do
   example_dir="$(dirname "$compile_file")"
   compile_name="$(basename "$compile_file")"
   compile_example "$example_dir" "$compile_name"
-done < <(find examples -mindepth 2 -maxdepth 2 -type f \( -name 'compile.hxml' -o -name 'compile.rusty.hxml' -o -name 'compile.metal.hxml' \) | sort)
+done < <(find examples -mindepth 2 -maxdepth 2 -type f -name 'compile*.hxml' ! -name '*.ci.hxml' | sort)
 
 echo "[harness] examples (CI run matrix)"
 while IFS= read -r example_dir; do
-  if [[ -f "$example_dir/compile.ci.hxml" ]]; then
-    run_example "$example_dir" "compile.ci.hxml"
-  elif [[ -f "$example_dir/compile.hxml" ]]; then
+  ci_found=0
+  while IFS= read -r ci_compile; do
+    ci_found=1
+    run_example "$example_dir" "$(basename "$ci_compile")"
+  done < <(find "$example_dir" -mindepth 1 -maxdepth 1 -type f -name 'compile*.ci.hxml' | sort)
+
+  if [[ "$ci_found" -eq 0 && -f "$example_dir/compile.hxml" ]]; then
     run_example "$example_dir" "compile.hxml"
-  fi
-
-  if [[ -f "$example_dir/compile.rusty.ci.hxml" ]]; then
-    run_example "$example_dir" "compile.rusty.ci.hxml"
-  fi
-
-  if [[ -f "$example_dir/compile.metal.ci.hxml" ]]; then
-    run_example "$example_dir" "compile.metal.ci.hxml"
   fi
 done < <(find examples -mindepth 1 -maxdepth 1 -type d | sort)
 

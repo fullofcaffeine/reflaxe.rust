@@ -122,11 +122,13 @@ For a concrete design discussion, see [Lifetime Encoding Design](lifetime-encodi
 
 - Snapshot matrix under `test/snapshot/*`.
 - Rusty/metal variants under `compile.rusty.hxml` / `compile.metal.hxml` and corresponding `intended_*` cases.
+- Cross-profile flagship app: `examples/chat_loopback` (`compile.portable*.hxml`, `compile.idiomatic*.hxml`, `compile.rusty*.hxml`, `compile.metal*.hxml`).
 - Full CI-style local validation via `npm run test:all`.
 
 ## Related docs
 
 - `docs/start-here.md`
+- `docs/examples-matrix.md`
 - `docs/rusty-profile.md`
 - `docs/metal-profile.md`
 - `docs/lifetime-encoding.md`

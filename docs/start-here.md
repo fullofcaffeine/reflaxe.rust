@@ -80,6 +80,20 @@ By default, watch mode keeps a Haxe compile server warm for faster incremental r
 - Pick `rusty` if your team wants tighter control over Rust-like ownership/interop surfaces.
 - Pick `metal` when `rusty` is not enough and you need typed low-level Rust snippets behind strict boundaries.
 
+## Profile reference app (side-by-side)
+
+Use `examples/chat_loopback` when you want to compare the same scenario across all profiles.
+
+```bash
+cd examples/chat_loopback
+npx haxe compile.portable.hxml && (cd out_portable && cargo run -q)
+npx haxe compile.idiomatic.hxml && (cd out_idiomatic && cargo run -q)
+npx haxe compile.rusty.hxml && (cd out_rusty && cargo run -q)
+npx haxe compile.metal.hxml && (cd out_metal && cargo run -q)
+```
+
+Full scenario/profile map: [Examples matrix](examples-matrix.md).
+
 ## Interop ladder (use highest-level option first)
 
 1. Pure Haxe + standard library/runtime APIs.
@@ -109,6 +123,7 @@ Track status here:
 - [Production Readiness](production-readiness.md)
 - [Road to 1.0](road-to-1.0.md)
 - [Profiles](profiles.md)
+- [Examples matrix](examples-matrix.md)
 - [Metal profile](metal-profile.md)
 - [Lifetime encoding design](lifetime-encoding.md)
 - [Async/Await preview](async-await.md)

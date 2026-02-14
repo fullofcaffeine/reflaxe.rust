@@ -180,7 +180,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - CI runs:
   - `test/run-snapshots.sh` (runs `cargo fmt` + `cargo build -q` per snapshot)
   - `test/run-upstream-stdlib-sweep.sh` (per-module actionable compile/fmt/check for upstream std modules)
-  - `scripts/ci/harness.sh` compiles developer variants (`compile.hxml`, `compile.rusty.hxml`) and runs a CI matrix across all `examples/*` (`compile.ci.hxml` or fallback `compile.hxml`, plus `compile.rusty.ci.hxml` when present), including `cargo test` + `cargo run`.
+  - `scripts/ci/harness.sh` compiles all non-CI example variants (`compile*.hxml`, excluding `*.ci.hxml`) and runs every CI variant present (`compile*.ci.hxml`, fallback `compile.hxml` when no CI file exists), including `cargo test` + `cargo run`.
   - `scripts/ci/windows-smoke.sh` runs on `windows-latest` and validates a Windows-safe subset (fmt/clippy + `hello_trace`/`sys_io` snapshots + `examples/sys_file_io` + `examples/sys_net_loopback`).
 
 ## Build (native)

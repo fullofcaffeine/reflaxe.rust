@@ -18,6 +18,7 @@ Use this page as the map for `reflaxe.rust` docs.
 ## Core product docs
 
 - [Profiles](profiles.md): portable vs idiomatic vs rusty vs metal, and when to choose each.
+- [Examples matrix](examples-matrix.md): scenario coverage and profile-by-profile example entrypoints.
 - [Metal profile](metal-profile.md): experimental Rust-first+ profile with typed low-level interop façade.
 - [Lifetime encoding design](lifetime-encoding.md): what lifetime-like guarantees are possible in Haxe and where extern Rust is still required.
 - [Async/Await preview](async-await.md): Rust-first async workflow and current constraints.
