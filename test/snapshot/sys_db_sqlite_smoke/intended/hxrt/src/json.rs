@@ -343,7 +343,8 @@ pub fn value_array_get(value: Dynamic, index: i32) -> Dynamic {
         throw_json(String::from("Expected JSON array"));
     };
     let idx = index.max(0) as usize;
-    arr.get(idx).unwrap_or_else(|| throw_json(format!("JSON array index out of range: {index}")))
+    arr.get(idx)
+        .unwrap_or_else(|| throw_json(format!("JSON array index out of range: {index}")))
 }
 
 pub fn value_object_keys<S>(value: Dynamic) -> Array<S>
