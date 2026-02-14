@@ -5,7 +5,7 @@ pub const __HX_TYPE_ID: u32 = 0xe52d85f9u32;
 #[derive(Debug)]
 
 pub struct MysqlConnection {
-    handle: hxrt::dynamic::Dynamic,
+    handle: crate::HxRef<crate::db_mysql_driver::MysqlConnectionHandle>,
 }
 
 impl MysqlConnection {
@@ -14,7 +14,7 @@ impl MysqlConnection {
     ) -> crate::HxRef<crate::sys_db_mysql_mysql_connection::MysqlConnection> {
         let self_: crate::HxRef<crate::sys_db_mysql_mysql_connection::MysqlConnection> =
             crate::HxRef::new(MysqlConnection {
-                handle: hxrt::dynamic::Dynamic::null(),
+                handle: Default::default(),
             });
         let port: i32 = if params.borrow().get::<Option<i32>>("port").is_none() {
             3306
@@ -49,21 +49,12 @@ impl MysqlConnection {
     pub fn close(self_: &crate::HxRefCell<MysqlConnection>) {
         let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_connection::MysqlConnection> =
             self_.self_ref();
-        {
-            let hdyn = {
+        crate::db_mysql_driver::close_handle(
+            &({
                 let __b = __hx_this.borrow();
                 __b.handle.clone()
-            };
-            let h = hdyn
-                .downcast_ref::<std::sync::Arc<std::sync::Mutex<Option<mysql::Conn>>>>()
-                .unwrap_or_else(|| {
-                    hxrt::exception::throw(hxrt::dynamic::from(
-                        "Mysql.close: invalid handle".to_string(),
-                    ))
-                });
-            let mut g = h.lock().unwrap();
-            let _ = g.take();
-        };
+            }),
+        );
     }
 
     pub fn request(
@@ -72,89 +63,13 @@ impl MysqlConnection {
     ) -> crate::HxRc<dyn crate::sys_db_result_set::ResultSet + Send + Sync> {
         let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_connection::MysqlConnection> =
             self_.self_ref();
-        let res: crate::HxRef<hxrt::db::QueryResult> = {
-            use mysql::prelude::*;
-            use mysql::Value;
-
-            let hdyn = {
+        let res: crate::HxRef<hxrt::db::QueryResult> = crate::db_mysql_driver::request(
+            &({
                 let __b = __hx_this.borrow();
                 __b.handle.clone()
-            };
-            let h = hdyn
-                .downcast_ref::<std::sync::Arc<std::sync::Mutex<Option<mysql::Conn>>>>()
-                .unwrap_or_else(|| {
-                    hxrt::exception::throw(hxrt::dynamic::from(
-                        "Mysql.request: invalid handle".to_string(),
-                    ))
-                });
-            let mut g = h.lock().unwrap();
-            let conn = g.as_mut().unwrap_or_else(|| {
-                hxrt::exception::throw(hxrt::dynamic::from(
-                    "Mysql.request: connection closed".to_string(),
-                ))
-            });
-
-            let mut q = conn.query_iter(sql.as_str()).unwrap_or_else(|e| {
-                hxrt::exception::throw(hxrt::dynamic::from(format!("Mysql.request: {e}")))
-            });
-
-            let cols = q.columns();
-            let names_vec: Vec<String> = cols
-                .as_ref()
-                .iter()
-                .map(|c| c.name_str().to_string())
-                .collect();
-            let names = hxrt::array::Array::<String>::from_vec(names_vec);
-
-            let mut rows_out: Vec<hxrt::array::Array<hxrt::dynamic::Dynamic>> = Vec::new();
-            for row_res in q.by_ref() {
-                let row = row_res.unwrap_or_else(|e| {
-                    hxrt::exception::throw(hxrt::dynamic::from(format!("Mysql.request: {e}")))
-                });
-                let mut vals: Vec<hxrt::dynamic::Dynamic> = Vec::new();
-                for v in row.unwrap().into_iter() {
-                    let d = match v {
-                        Value::NULL => hxrt::dynamic::Dynamic::null(),
-                        Value::Int(x) => {
-                            let y: i32 = (x.clamp(i32::MIN as i64, i32::MAX as i64)) as i32;
-                            hxrt::dynamic::from(y)
-                        }
-                        Value::UInt(x) => {
-                            let y: i32 = (x.min(i32::MAX as u64)) as i32;
-                            hxrt::dynamic::from(y)
-                        }
-                        Value::Float(x) => hxrt::dynamic::from(x as f64),
-                        Value::Double(x) => hxrt::dynamic::from(x),
-                        Value::Bytes(b) => match String::from_utf8(b.clone()) {
-                            Ok(s) => hxrt::dynamic::from(s),
-                            Err(_) => {
-                                let bytes = hxrt::bytes::Bytes::from_vec(b);
-                                let href = hxrt::cell::HxRc::new(hxrt::cell::HxCell::new(bytes));
-                                hxrt::dynamic::from(href)
-                            }
-                        },
-                        Value::Date(y, m, d, hh, mm, ss, micros) => {
-                            let s =
-                                format!("{y:04}-{m:02}-{d:02} {hh:02}:{mm:02}:{ss:02}.{micros:06}");
-                            hxrt::dynamic::from(s)
-                        }
-                        Value::Time(neg, days, hh, mm, ss, micros) => {
-                            let sign = if neg { "-" } else { "" };
-                            let s = format!("{sign}{days}:{hh:02}:{mm:02}:{ss:02}.{micros:06}");
-                            hxrt::dynamic::from(s)
-                        }
-                    };
-                    vals.push(d);
-                }
-                rows_out.push(hxrt::array::Array::<hxrt::dynamic::Dynamic>::from_vec(vals));
-            }
-
-            let rows_arr =
-                hxrt::array::Array::<hxrt::array::Array<hxrt::dynamic::Dynamic>>::from_vec(
-                    rows_out,
-                );
-            hxrt::db::query_result_new(names, rows_arr)
-        };
+            }),
+            &sql,
+        );
         return {
             let __tmp = crate::sys_db_mysql_mysql_result_set::MysqlResultSet::new(res.clone());
             let __up: crate::HxRc<dyn crate::sys_db_result_set::ResultSet + Send + Sync> =
@@ -214,46 +129,10 @@ impl MysqlConnection {
         sb: crate::HxRef<crate::string_buf::StringBuf>,
         v: hxrt::dynamic::Dynamic,
     ) {
-        let rendered: hxrt::string::HxString = hxrt::string::HxString::from({
-            let v = v;
-            let out: String = if v.is_null() {
-                String::from("NULL")
-            } else if let Some(x) = v.downcast_ref::<i32>() {
-                x.to_string()
-            } else if let Some(x) = v.downcast_ref::<f64>() {
-                x.to_string()
-            } else if let Some(x) = v.downcast_ref::<bool>() {
-                if *x {
-                    "1".to_string()
-                } else {
-                    "0".to_string()
-                }
-            } else if let Some(b) = v.downcast_ref::<hxrt::cell::HxRef<hxrt::bytes::Bytes>>() {
-                // Bytes: x'ABCD...'
-                let data = b.borrow();
-                let slice = data.as_slice();
-                let mut s = String::with_capacity(2 + slice.len() * 2 + 1);
-                s.push_str("x'");
-                const HEX: &[u8; 16] = b"0123456789ABCDEF";
-                for byte in slice {
-                    s.push(HEX[(byte >> 4) as usize] as char);
-                    s.push(HEX[(byte & 0xF) as usize] as char);
-                }
-                s.push_str("'");
-                s
-            } else {
-                // Strings (and everything else): quote + MySQL-ish escaping.
-                let s = if let Some(s) = v.downcast_ref::<String>() {
-                    s.clone()
-                } else {
-                    v.to_haxe_string()
-                };
-                let escaped = s.replace("\\", "\\\\").replace("'", "\\'");
-                format!("'{}'", escaped)
-            };
-            out
-        });
-        crate::string_buf::StringBuf::add(&*sb, hxrt::dynamic::from(rendered));
+        crate::string_buf::StringBuf::add(
+            &*sb,
+            hxrt::dynamic::from(crate::db_mysql_driver::render_sql_value(v.clone())),
+        );
     }
 
     pub fn last_insert_id(self_: &crate::HxRefCell<MysqlConnection>) -> i32 {

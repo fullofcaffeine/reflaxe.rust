@@ -91,35 +91,65 @@ fn main() {
         " nf=",
         hxrt::dynamic::from(rs.get_nfields()).to_haxe_string()
     ))));
-    let r1: hxrt::dynamic::Dynamic = rs.next();
+    let r1: crate::HxRef<hxrt::anon::Anon> = {
+        let __hx_dyn = rs.next();
+        if __hx_dyn.is_null() {
+            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+        } else {
+            __hx_dyn
+                .downcast_ref::<crate::HxRef<hxrt::anon::Anon>>()
+                .unwrap()
+                .clone()
+        }
+    };
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}{}{}{}{}{}{}{}{}",
         "len1=",
         hxrt::dynamic::from(rs.get_length()).to_haxe_string(),
         " row1=",
-        hxrt::string::HxString::from(hxrt::dynamic::field_get(&r1, "id").to_haxe_string()),
+        hxrt::dynamic::from(r1.borrow().get::<i32>("id")).to_haxe_string(),
         ",",
-        hxrt::string::HxString::from(hxrt::dynamic::field_get(&r1, "name").to_haxe_string()),
+        r1.borrow().get::<hxrt::string::HxString>("name"),
         ",",
-        hxrt::string::HxString::from(hxrt::dynamic::field_get(&r1, "done").to_haxe_string()),
+        hxrt::dynamic::from(r1.borrow().get::<i32>("done")).to_haxe_string(),
         " get0=",
         hxrt::dynamic::from(rs.get_int_result(0)).to_haxe_string()
     ))));
-    let r2: hxrt::dynamic::Dynamic = rs.next();
+    let r2: crate::HxRef<hxrt::anon::Anon> = {
+        let __hx_dyn = rs.next();
+        if __hx_dyn.is_null() {
+            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+        } else {
+            __hx_dyn
+                .downcast_ref::<crate::HxRef<hxrt::anon::Anon>>()
+                .unwrap()
+                .clone()
+        }
+    };
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}{}{}{}{}{}{}{}{}",
         "len2=",
         hxrt::dynamic::from(rs.get_length()).to_haxe_string(),
         " row2=",
-        hxrt::string::HxString::from(hxrt::dynamic::field_get(&r2, "id").to_haxe_string()),
+        hxrt::dynamic::from(r2.borrow().get::<i32>("id")).to_haxe_string(),
         ",",
-        hxrt::string::HxString::from(hxrt::dynamic::field_get(&r2, "name").to_haxe_string()),
+        r2.borrow().get::<hxrt::string::HxString>("name"),
         ",",
-        hxrt::string::HxString::from(hxrt::dynamic::field_get(&r2, "done").to_haxe_string()),
+        hxrt::dynamic::from(r2.borrow().get::<i32>("done")).to_haxe_string(),
         " get1=",
         rs.get_result(1)
     ))));
-    let r3: hxrt::dynamic::Dynamic = rs.next();
+    let r3: crate::HxRef<hxrt::anon::Anon> = {
+        let __hx_dyn = rs.next();
+        if __hx_dyn.is_null() {
+            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+        } else {
+            __hx_dyn
+                .downcast_ref::<crate::HxRef<hxrt::anon::Anon>>()
+                .unwrap()
+                .clone()
+        }
+    };
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "end=",

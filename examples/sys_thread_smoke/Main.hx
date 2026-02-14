@@ -18,7 +18,10 @@ class Main {
 			mainThread.sendMessage("child_ready");
 		});
 
-		final msg: Dynamic = Thread.readMessage(true);
+		final msg = Thread.readMessageString(true);
+		if (msg == null) {
+			throw "expected a string message from child thread";
+		}
 		Sys.println(msg);
 	}
 }

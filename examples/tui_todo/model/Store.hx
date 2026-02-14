@@ -1,6 +1,8 @@
 package model;
 
 import haxe.Json;
+import haxe.ds.StringMap;
+import haxe.json.Value;
 import model.Task.TaskDataV1;
 import sys.FileSystem;
 import sys.io.File;
@@ -103,7 +105,7 @@ class Store {
 			return;
 
 		var content = File.getContent(path);
-		var decoded = decodeStoreData(Json.parse(content));
+		var decoded = decodeStoreData(Json.parseValue(content));
 		var obj = decoded.data;
 
 		var list:Array<TaskDataV1> = obj.tasks != null ? obj.tasks : [];
@@ -164,16 +166,18 @@ class Store {
 		dirty = false;
 	}
 
-	static function decodeStoreData(raw:Dynamic):StoreLoadResult {
-		var version = readOptionalInt(raw, "version");
-		if (version == null) {
+	static function decodeStoreData(raw:Value):StoreLoadResult {
+		var root = requireObject(raw, "Invalid store data: root must be an object.");
+		var versionValue = readField(root, "version");
+
+		if (versionValue == null || isNullValue(versionValue)) {
 			// Legacy payloads sometimes omitted `version`. Try current format first,
 			// then fall back to v0 migration.
 			try {
 				return {
 					data: {
 						version: 1,
-						tasks: decodeTaskListV1(raw),
+						tasks: decodeTaskListV1(root),
 					},
 					migrated: true,
 				};
@@ -181,18 +185,19 @@ class Store {
 				return {
 					data: {
 						version: 1,
-						tasks: decodeTaskListV0(raw),
+						tasks: decodeTaskListV0(root),
 					},
 					migrated: true,
 				};
 			}
 		}
 
+		var version = requireInt(versionValue, "Invalid store data: 'version' must be an integer.");
 		if (version == 1) {
 			return {
 				data: {
 					version: 1,
-					tasks: decodeTaskListV1(raw),
+					tasks: decodeTaskListV1(root),
 				},
 				migrated: false,
 			};
@@ -202,41 +207,44 @@ class Store {
 			return {
 				data: {
 					version: 1,
-					tasks: decodeTaskListV0(raw),
+					tasks: decodeTaskListV0(root),
 				},
 				migrated: true,
 			};
 		}
 
-		throw "Unsupported data version: " + version;
+		throw new haxe.Exception("Unsupported data version: " + version);
 	}
 
-	static function decodeTaskListV1(raw:Dynamic):Array<TaskDataV1> {
-		var tasks:Array<TaskDataV1> = [];
-		var rawTasks:Dynamic = Reflect.field(raw, "tasks");
-		if (rawTasks != null) {
-			for (rawTask in requireDynamicArray(rawTasks, "Invalid store data: 'tasks' must be an array.")) {
-				tasks.push(decodeTaskData(rawTask));
-			}
-		}
-		return tasks;
-	}
-
-	static function decodeTaskListV0(raw:Dynamic):Array<TaskDataV1> {
+	static function decodeTaskListV1(raw:StringMap<Value>):Array<TaskDataV1> {
 		var out:Array<TaskDataV1> = [];
-		var rawTasks:Dynamic = Reflect.field(raw, "tasks");
-		if (rawTasks == null)
+		var tasksValue = readField(raw, "tasks");
+		if (tasksValue == null || isNullValue(tasksValue))
 			return out;
-		var legacyTasks = requireDynamicArray(rawTasks, "Invalid legacy store data: 'tasks' must be an array.");
 
+		var entries = requireArray(tasksValue, "Invalid store data: 'tasks' must be an array.");
+		for (entry in entries) {
+			out.push(decodeTaskData(entry));
+		}
+		return out;
+	}
+
+	static function decodeTaskListV0(raw:StringMap<Value>):Array<TaskDataV1> {
+		var out:Array<TaskDataV1> = [];
+		var tasksValue = readField(raw, "tasks");
+		if (tasksValue == null || isNullValue(tasksValue))
+			return out;
+
+		var legacyTasks = requireArray(tasksValue, "Invalid legacy store data: 'tasks' must be an array.");
 		var now = Std.int(Date.now().getTime());
 		var index = 0;
 		for (entry in legacyTasks) {
-			var title = readRequiredString(entry, "text");
-			var done = readRequiredBool(entry, "done");
-			var createdAtValue = readOptionalInt(entry, "createdAt");
+			var legacy = requireObject(entry, "Invalid legacy store data: each task entry must be an object.");
+			var title = readRequiredString(legacy, "text");
+			var done = readRequiredBool(legacy, "done");
+			var createdAtValue = readOptionalInt(legacy, "createdAt");
 			var createdAt = createdAtValue != null ? (createdAtValue : Int) : now;
-			var updatedAtValue = readOptionalInt(entry, "updatedAt");
+			var updatedAtValue = readOptionalInt(legacy, "updatedAt");
 			var updatedAt = updatedAtValue != null ? (updatedAtValue : Int) : createdAt;
 
 			out.push({
@@ -255,98 +263,124 @@ class Store {
 		return out;
 	}
 
-	static function decodeTaskData(raw:Dynamic):TaskDataV1 {
+	static function decodeTaskData(raw:Value):TaskDataV1 {
+		var obj = requireObject(raw, "Invalid task data: each task entry must be an object.");
 		return {
-			id: readRequiredString(raw, "id"),
-			title: readRequiredString(raw, "title"),
-			done: readRequiredBool(raw, "done"),
-			notes: readOptionalString(raw, "notes"),
-			tags: readOptionalStringArray(raw, "tags"),
-			project: readOptionalString(raw, "project"),
-			createdAt: readRequiredInt(raw, "createdAt"),
-			updatedAt: readOptionalInt(raw, "updatedAt"),
-			due: readOptionalInt(raw, "due"),
+			id: readRequiredString(obj, "id"),
+			title: readRequiredString(obj, "title"),
+			done: readRequiredBool(obj, "done"),
+			notes: readOptionalString(obj, "notes"),
+			tags: readOptionalStringArray(obj, "tags"),
+			project: readOptionalString(obj, "project"),
+			createdAt: readRequiredInt(obj, "createdAt"),
+			updatedAt: readOptionalInt(obj, "updatedAt"),
+			due: readOptionalInt(obj, "due"),
 		};
 	}
 
-	static function readRequiredString(raw:Dynamic, field:String):String {
-		var value:Dynamic = Reflect.field(raw, field);
-		if (value == null) {
-			throw "Invalid task data: '" + field + "' must be a string.";
-		}
-		return Std.string(value);
-	}
-
-	static function readOptionalString(raw:Dynamic, field:String):Null<String> {
-		var value:Dynamic = Reflect.field(raw, field);
+	static function readRequiredString(raw:StringMap<Value>, field:String):String {
+		var value = readField(raw, field);
 		if (value == null)
+			throw new haxe.Exception("Invalid task data: '" + field + "' is required and must be a string.");
+		return requireString(value, "Invalid task data: '" + field + "' must be a string.");
+	}
+
+	static function readOptionalString(raw:StringMap<Value>, field:String):Null<String> {
+		var value = readField(raw, field);
+		if (value == null || isNullValue(value))
 			return null;
-		if (Std.string(value) == "null")
-			return null;
-		return Std.string(value);
+		return requireString(value, "Invalid task data: '" + field + "' must be a string.");
 	}
 
-	static function readRequiredBool(raw:Dynamic, field:String):Bool {
-		var value:Dynamic = Reflect.field(raw, field);
-		if (value == null) {
-			throw "Invalid task data: '" + field + "' must be a bool.";
-		}
-		var s = Std.string(value).toLowerCase();
-		if (s == "true")
-			return true;
-		if (s == "false")
-			return false;
-		throw "Invalid task data: '" + field + "' must be a bool.";
-		return false;
-	}
-
-	static function readRequiredInt(raw:Dynamic, field:String):Int {
-		var value:Dynamic = Reflect.field(raw, field);
-		if (value == null) {
-			throw "Invalid task data: '" + field + "' is required.";
-		}
-		return readIntValue(value, field);
-	}
-
-	static function readOptionalInt(raw:Dynamic, field:String):Null<Int> {
-		var value:Dynamic = Reflect.field(raw, field);
+	static function readRequiredBool(raw:StringMap<Value>, field:String):Bool {
+		var value = readField(raw, field);
 		if (value == null)
-			return null;
-		if (Std.string(value) == "null")
-			return null;
-		return readIntValue(value, field);
+			throw new haxe.Exception("Invalid task data: '" + field + "' is required and must be a bool.");
+		return requireBool(value, "Invalid task data: '" + field + "' must be a bool.");
 	}
 
-	static function readIntValue(value:Dynamic, field:String):Int {
-		var parsed = Std.parseFloat(Std.string(value));
-		if (!Math.isNaN(parsed))
-			return Std.int(parsed);
-		throw "Invalid task data: '" + field + "' must be numeric.";
-		return 0;
-	}
-
-	static function readOptionalStringArray(raw:Dynamic, field:String):Null<Array<String>> {
-		var value:Dynamic = Reflect.field(raw, field);
+	static function readRequiredInt(raw:StringMap<Value>, field:String):Int {
+		var value = readField(raw, field);
 		if (value == null)
+			throw new haxe.Exception("Invalid task data: '" + field + "' is required and must be an integer.");
+		return requireInt(value, "Invalid task data: '" + field + "' must be an integer.");
+	}
+
+	static function readOptionalInt(raw:StringMap<Value>, field:String):Null<Int> {
+		var value = readField(raw, field);
+		if (value == null || isNullValue(value))
 			return null;
-		if (Std.string(value) == "null")
+		return requireInt(value, "Invalid task data: '" + field + "' must be an integer.");
+	}
+
+	static function readOptionalStringArray(raw:StringMap<Value>, field:String):Null<Array<String>> {
+		var value = readField(raw, field);
+		if (value == null || isNullValue(value))
 			return null;
-		var values = requireDynamicArray(value, "Invalid task data: '" + field + "' must be an array of strings.");
+
+		var values = requireArray(value, "Invalid task data: '" + field + "' must be an array of strings.");
 		var out:Array<String> = [];
 		for (entry in values) {
-			out.push(Std.string(entry));
+			out.push(requireString(entry, "Invalid task data: '" + field + "' must contain only strings."));
 		}
 		return out;
 	}
 
-	static function requireDynamicArray(value:Dynamic, message:String):Array<Dynamic> {
-		var replacer:(Dynamic, Dynamic) -> Dynamic = null;
-		var json = Json.stringify(value, replacer, null);
-		var normalized:Dynamic = Json.parse(json);
-		var arr:Array<Dynamic> = cast normalized;
-		if (arr == null) {
-			throw message;
-		}
-		return arr;
+	static function readField(raw:StringMap<Value>, field:String):Null<Value> {
+		return raw.exists(field) ? raw.get(field) : null;
+	}
+
+	static function requireObject(value:Value, message:String):StringMap<Value> {
+		return switch (value) {
+			case JObject(keys, values):
+				var out = new StringMap<Value>();
+				var limit = keys.length < values.length ? keys.length : values.length;
+				for (i in 0...limit) {
+					out.set(keys[i], values[i]);
+				}
+				out;
+			case _: throw new haxe.Exception(message);
+		};
+	}
+
+	static function requireArray(value:Value, message:String):Array<Value> {
+		return switch (value) {
+			case JArray(items): items;
+			case _: throw new haxe.Exception(message);
+		};
+	}
+
+	static function requireString(value:Value, message:String):String {
+		return switch (value) {
+			case JString(s): s;
+			case _: throw new haxe.Exception(message);
+		};
+	}
+
+	static function requireBool(value:Value, message:String):Bool {
+		return switch (value) {
+			case JBool(b): b;
+			case _: throw new haxe.Exception(message);
+		};
+	}
+
+	static function requireInt(value:Value, message:String):Int {
+		return switch (value) {
+			case JNumber(n):
+				if (Math.isNaN(n) || !Math.isFinite(n))
+					throw new haxe.Exception(message);
+				var intValue = Std.int(n);
+				if (intValue != n)
+					throw new haxe.Exception(message);
+				intValue;
+			case _: throw new haxe.Exception(message);
+		};
+	}
+
+	static function isNullValue(value:Value):Bool {
+		return switch (value) {
+			case JNull: true;
+			case _: false;
+		};
 	}
 }

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/haxe.rust-logo.png" alt="reflaxe.rust logo" width="360" />
+</p>
+
 # reflaxe.rust
 
 [![Version](https://img.shields.io/badge/version-0.55.0-blue)](https://github.com/fullofcaffeine/reflaxe.rust/releases)

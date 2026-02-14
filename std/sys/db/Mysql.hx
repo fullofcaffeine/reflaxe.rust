@@ -3,6 +3,7 @@ package sys.db;
 import hxrt.db.QueryResultHandle;
 import hxrt.db.NativeMysqlDriver;
 import hxrt.db.NativeQueryResult;
+import hxrt.db.MysqlConnectionHandle;
 import rust.HxRef;
 
 /**
@@ -20,8 +21,9 @@ import rust.HxRef;
 
 	How
 	- Uses the Rust `mysql` crate behind the scenes.
-	- The connection is stored as a `Dynamic` handle containing:
-	  `Arc<Mutex<Option<mysql::Conn>>>`, so `close()` can drop it safely and idempotently.
+	- Connection state lives behind `HxRef<hxrt.db.MysqlConnectionHandle>` (typed extern handle).
+	- Driver-specific logic (open/close/request/SQL rendering) lives in
+	  `std/sys/db/native/db_mysql_driver.rs` and is reached through `hxrt.db.NativeMysqlDriver`.
 	- Queries are executed synchronously. The first result-set is materialized; multi-result
 	  statements are not supported yet.
 	- Row values are converted into Haxe-friendly `Dynamic` values:
@@ -33,7 +35,8 @@ import rust.HxRef;
 **/
 // Use `defaultFeatures: false` only if we need to avoid native-tls/openssl in CI.
 // For now, keep defaults and tighten once we confirm the feature matrix we want.
-@:rustCargo({ name: "mysql", version: "27" })
+
+@:rustCargo({name: "mysql", version: "27"})
 @:rustExtraSrc("sys/db/native/db_mysql_driver.rs")
 @:coreApi
 class Mysql {
@@ -50,7 +53,7 @@ class Mysql {
 }
 
 private class MysqlConnection implements Connection {
-	var handle:Dynamic;
+	var handle:HxRef<MysqlConnectionHandle>;
 
 	public function new(params:{
 		host:String,
@@ -70,85 +73,11 @@ private class MysqlConnection implements Connection {
 	}
 
 	public function close():Void {
-		untyped __rust__(
-			"{
-				let hdyn = {0};
-				let h = hdyn.downcast_ref::<std::sync::Arc<std::sync::Mutex<Option<mysql::Conn>>>>()
-					.unwrap_or_else(|| hxrt::exception::throw(hxrt::dynamic::from(\"Mysql.close: invalid handle\".to_string())));
-				let mut g = h.lock().unwrap();
-				let _ = g.take();
-			}",
-			handle
-		);
+		NativeMysqlDriver.closeHandle(handle);
 	}
 
 	public function request(sql:String):ResultSet {
-		var res:HxRef<QueryResultHandle> = untyped __rust__(
-			"{
-				use mysql::prelude::*;
-				use mysql::Value;
-
-				let hdyn = {0};
-				let h = hdyn.downcast_ref::<std::sync::Arc<std::sync::Mutex<Option<mysql::Conn>>>>()
-					.unwrap_or_else(|| hxrt::exception::throw(hxrt::dynamic::from(\"Mysql.request: invalid handle\".to_string())));
-				let mut g = h.lock().unwrap();
-				let conn = g.as_mut().unwrap_or_else(|| hxrt::exception::throw(hxrt::dynamic::from(\"Mysql.request: connection closed\".to_string())));
-
-				let mut q = conn.query_iter({1}.as_str())
-					.unwrap_or_else(|e| hxrt::exception::throw(hxrt::dynamic::from(format!(\"Mysql.request: {e}\"))));
-
-					let cols = q.columns();
-					let names_vec: Vec<String> = cols.as_ref().iter().map(|c| c.name_str().to_string()).collect();
-					let names = hxrt::array::Array::<String>::from_vec(names_vec);
-
-				let mut rows_out: Vec<hxrt::array::Array<hxrt::dynamic::Dynamic>> = Vec::new();
-				for row_res in q.by_ref() {
-					let row = row_res.unwrap_or_else(|e| hxrt::exception::throw(hxrt::dynamic::from(format!(\"Mysql.request: {e}\"))));
-					let mut vals: Vec<hxrt::dynamic::Dynamic> = Vec::new();
-					for v in row.unwrap().into_iter() {
-						let d = match v {
-							Value::NULL => hxrt::dynamic::Dynamic::null(),
-							Value::Int(x) => {
-								let y: i32 = (x.clamp(i32::MIN as i64, i32::MAX as i64)) as i32;
-								hxrt::dynamic::from(y)
-							}
-							Value::UInt(x) => {
-								let y: i32 = (x.min(i32::MAX as u64)) as i32;
-								hxrt::dynamic::from(y)
-							}
-							Value::Float(x) => hxrt::dynamic::from(x as f64),
-							Value::Double(x) => hxrt::dynamic::from(x),
-							Value::Bytes(b) => {
-								match String::from_utf8(b.clone()) {
-									Ok(s) => hxrt::dynamic::from(s),
-									Err(_) => {
-										let bytes = hxrt::bytes::Bytes::from_vec(b);
-										let href = hxrt::cell::HxRc::new(hxrt::cell::HxCell::new(bytes));
-										hxrt::dynamic::from(href)
-									}
-								}
-							}
-							Value::Date(y, m, d, hh, mm, ss, micros) => {
-								let s = format!(\"{y:04}-{m:02}-{d:02} {hh:02}:{mm:02}:{ss:02}.{micros:06}\");
-								hxrt::dynamic::from(s)
-							}
-							Value::Time(neg, days, hh, mm, ss, micros) => {
-								let sign = if neg { \"-\" } else { \"\" };
-								let s = format!(\"{sign}{days}:{hh:02}:{mm:02}:{ss:02}.{micros:06}\");
-								hxrt::dynamic::from(s)
-							}
-						};
-						vals.push(d);
-					}
-					rows_out.push(hxrt::array::Array::<hxrt::dynamic::Dynamic>::from_vec(vals));
-				}
-
-				let rows_arr = hxrt::array::Array::<hxrt::array::Array<hxrt::dynamic::Dynamic>>::from_vec(rows_out);
-				hxrt::db::query_result_new(names, rows_arr)
-			}",
-			handle,
-			sql
-		);
+		var res:HxRef<QueryResultHandle> = NativeMysqlDriver.request(handle, sql);
 		return new MysqlResultSet(res);
 	}
 
@@ -163,41 +92,7 @@ private class MysqlConnection implements Connection {
 	}
 
 	public function addValue(sb:StringBuf, v:Dynamic):Void {
-		var rendered:String = untyped __rust__(
-			"{
-				let v = {0};
-				let out: String = if v.is_null() {
-					String::from(\"NULL\")
-				} else if let Some(x) = v.downcast_ref::<i32>() {
-					x.to_string()
-				} else if let Some(x) = v.downcast_ref::<f64>() {
-					x.to_string()
-				} else if let Some(x) = v.downcast_ref::<bool>() {
-					if *x { \"1\".to_string() } else { \"0\".to_string() }
-				} else if let Some(b) = v.downcast_ref::<hxrt::cell::HxRef<hxrt::bytes::Bytes>>() {
-					// Bytes: x'ABCD...'
-					let data = b.borrow();
-					let slice = data.as_slice();
-					let mut s = String::with_capacity(2 + slice.len() * 2 + 1);
-					s.push_str(\"x'\");
-					const HEX: &[u8; 16] = b\"0123456789ABCDEF\";
-					for byte in slice {
-						s.push(HEX[(byte >> 4) as usize] as char);
-						s.push(HEX[(byte & 0xF) as usize] as char);
-					}
-					s.push_str(\"'\");
-					s
-				} else {
-					// Strings (and everything else): quote + MySQL-ish escaping.
-					let s = if let Some(s) = v.downcast_ref::<String>() { s.clone() } else { v.to_haxe_string() };
-					let escaped = s.replace(\"\\\\\", \"\\\\\\\\\").replace(\"'\", \"\\\\'\");
-					format!(\"'{}'\", escaped)
-				};
-				out
-			}",
-			v
-		);
-		sb.add(rendered);
+		sb.add(NativeMysqlDriver.renderSqlValue(v));
 	}
 
 	public function lastInsertId():Int {
@@ -248,7 +143,7 @@ private class MysqlResultSet implements ResultSet {
 	}
 
 	public function results():List<Dynamic> {
-		var l: List<Dynamic> = new List<Dynamic>();
+		var l:List<Dynamic> = new List<Dynamic>();
 		while (hasNext()) {
 			l.add(next());
 		}

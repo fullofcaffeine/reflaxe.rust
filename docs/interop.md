@@ -122,3 +122,22 @@ Important:
 
 - Examples/snapshots are guarded by `-D reflaxe_rust_strict_examples` and will fail if `__rust__`
   leaks into user code via inlining.
+
+## Dynamic boundaries (stdlib compatibility)
+
+Some Haxe std APIs are intentionally dynamic across all targets. For those, this backend keeps
+`Dynamic` only at the API boundary, then converts immediately to typed data.
+
+Current important example:
+
+- `haxe.Json.parse(text):Dynamic`
+  - Required by upstream std API contract.
+  - Rust runtime parses with typed `serde_json::Value`.
+  - The `Dynamic` value is only the outward compatibility layer.
+  - `haxe.Json.parseValue(text):haxe.json.Value` is the typed path and should be preferred in
+    compiler/runtime/example code.
+
+Rule of thumb:
+
+- If upstream API requires `Dynamic`, keep it only at that seam and document the conversion path.
+- Otherwise, prefer typed externs/typedefs/classes end-to-end.

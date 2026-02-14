@@ -198,6 +198,31 @@ class Harness {
 		return ok;
 	}
 
+	/**
+		Persistence regression: strict schema decoding rejects malformed v1 payloads.
+	**/
+	public static function persistenceRejectsInvalidSchema():Bool {
+		var sandbox = enterSandbox("strict_schema");
+		var threw = false;
+		try {
+			Paths.ensureConfigDir();
+			var path = Paths.dataFile();
+			File.saveContent(path, '{"version":1,"tasks":[{"id":"x","title":"oops","done":"true","createdAt":1}]}' + "\n");
+
+			var store = new Store();
+			try {
+				store.load();
+			} catch (_:haxe.Exception) {
+				threw = true;
+			}
+		} catch (e:haxe.Exception) {
+			exitSandbox(sandbox);
+			throw e;
+		}
+		exitSandbox(sandbox);
+		return threw;
+	}
+
 	static function enterSandbox(label:String):SandboxContext {
 		var prev = Sys.getEnv("REFLAXE_RUST_TUI_CONFIG_DIR");
 		var dir = newSandboxDir(label);

@@ -11,6 +11,12 @@ impl Json {
         return hxrt::json::parse(&text);
     }
 
+    pub fn parse_value(text: hxrt::string::HxString) -> crate::haxe_json_value::Value {
+        return crate::haxe_json::Json::dynamic_to_value(crate::haxe_json::Json::parse(
+            hxrt::string::HxString::from(text),
+        ));
+    }
+
     pub fn stringify(
         value: hxrt::dynamic::Dynamic,
         replacer: crate::HxDynRef<
@@ -26,5 +32,78 @@ impl Json {
             )));
         }
         return hxrt::string::HxString::from(hxrt::json::stringify(&value, space.as_deref()));
+    }
+
+    fn dynamic_to_value(value: hxrt::dynamic::Dynamic) -> crate::haxe_json_value::Value {
+        {
+            let _g: i32 = hxrt::json::value_kind(value.clone());
+            match _g {
+                0 => {
+                    return crate::haxe_json_value::Value::JNull;
+                }
+                1 => {
+                    return crate::haxe_json_value::Value::JBool(hxrt::json::value_as_bool(
+                        value.clone(),
+                    ));
+                }
+                2 => {
+                    return crate::haxe_json_value::Value::JNumber(hxrt::json::value_as_int(
+                        value.clone(),
+                    ) as f64);
+                }
+                3 => {
+                    return crate::haxe_json_value::Value::JNumber(hxrt::json::value_as_float(
+                        value.clone(),
+                    ));
+                }
+                4 => {
+                    return crate::haxe_json_value::Value::JString(hxrt::string::HxString::from(
+                        hxrt::json::value_as_string(value.clone()),
+                    ));
+                }
+                5 => {
+                    let len: i32 = hxrt::json::value_array_length(value.clone());
+                    let out: hxrt::array::Array<crate::haxe_json_value::Value> =
+                        hxrt::array::Array::<crate::haxe_json_value::Value>::new();
+                    let mut i: i32 = 0;
+                    while i < len {
+                        out.push(crate::haxe_json::Json::dynamic_to_value(
+                            hxrt::json::value_array_get(value.clone(), i),
+                        ));
+                        i = i + 1;
+                    }
+                    return crate::haxe_json_value::Value::JArray(out.clone());
+                }
+                6 => {
+                    let keys: hxrt::array::Array<hxrt::string::HxString> =
+                        hxrt::json::value_object_keys(value.clone());
+                    let values: hxrt::array::Array<crate::haxe_json_value::Value> =
+                        hxrt::array::Array::<crate::haxe_json_value::Value>::new();
+                    {
+                        let mut _g_2: i32 = 0;
+                        while _g_2 < (keys.len() as i32) {
+                            let name: hxrt::string::HxString =
+                                hxrt::string::HxString::from(keys.get_unchecked(_g_2 as usize));
+                            {
+                                _g_2 = _g_2 + 1;
+                                _g_2
+                            };
+                            values.push(crate::haxe_json::Json::dynamic_to_value(
+                                hxrt::json::value_object_field(
+                                    value.clone(),
+                                    hxrt::string::HxString::from(name.clone()),
+                                ),
+                            ));
+                        }
+                    }
+                    return crate::haxe_json_value::Value::JObject(keys.clone(), values.clone());
+                }
+                _ => {
+                    hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
+                        "haxe.Json.parseValue: unsupported parsed value kind",
+                    )));
+                }
+            }
+        }
     }
 }

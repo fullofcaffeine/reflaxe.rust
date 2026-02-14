@@ -15,11 +15,11 @@ import haxe.macro.Expr;
  */
 class ResultTools {
 	#if macro
-	static function asValueExpr(e: Expr): Expr {
-		return { expr: EParenthesis(e), pos: e.pos };
+	static function asValueExpr(e:Expr):Expr {
+		return {expr: EParenthesis(e), pos: e.pos};
 	}
 
-	static function stripReturn(e: Expr): Expr {
+	static function stripReturn(e:Expr):Expr {
 		return switch (e.expr) {
 			case EReturn(ret):
 				ret == null ? macro null : ret;
@@ -33,7 +33,7 @@ class ResultTools {
 						case EReturn(ret): ret == null ? macro null : ret;
 						case _: last;
 					}
-					{ expr: EBlock(out), pos: e.pos };
+					{expr: EBlock(out), pos: e.pos};
 				}
 			case _:
 				e;
@@ -42,7 +42,7 @@ class ResultTools {
 	#end
 
 	@:rustGeneric("T: Clone, E: Clone")
-	public static inline function isOk<T, E>(r: Result<T, E>): Bool {
+	public static inline function isOk<T, E>(r:Result<T, E>):Bool {
 		return switch (r) {
 			case Ok(_): true;
 			case Err(_): false;
@@ -50,12 +50,12 @@ class ResultTools {
 	}
 
 	@:rustGeneric("T: Clone, E: Clone")
-	public static inline function isErr<T, E>(r: Result<T, E>): Bool {
+	public static inline function isErr<T, E>(r:Result<T, E>):Bool {
 		return !isOk(r);
 	}
 
 	@:rustGeneric("T: Clone, E: Clone")
-	public static inline function unwrapOr<T, E>(r: Result<T, E>, fallback: T): T {
+	public static inline function unwrapOr<T, E>(r:Result<T, E>, fallback:T):T {
 		return switch (r) {
 			case Ok(v): v;
 			case Err(_): fallback;
@@ -70,7 +70,7 @@ class ResultTools {
 	 * - Prefer `unwrapOr(...)` / `unwrapOrElse(...)` for recoverable flows.
 	 */
 	@:rustGeneric("T: Clone, E: Clone + std::fmt::Debug")
-	public static inline function unwrap<T, E>(r: Result<T, E>): T {
+	public static inline function unwrap<T, E>(r:Result<T, E>):T {
 		return switch (r) {
 			case Ok(v): v;
 			case Err(e): throw "called Result.unwrap() on Err: " + Std.string(e);
@@ -81,7 +81,7 @@ class ResultTools {
 	 * Rust-style `expect`: like `unwrap()`, but lets the caller provide an error message.
 	 */
 	@:rustGeneric("T: Clone, E: Clone + std::fmt::Debug")
-	public static inline function expect<T, E>(r: Result<T, E>, message: String): T {
+	public static inline function expect<T, E>(r:Result<T, E>, message:String):T {
 		return switch (r) {
 			case Ok(v): v;
 			case Err(e): throw message + ": " + Std.string(e);
@@ -94,7 +94,7 @@ class ResultTools {
 	 * Example: `r.context(\"reading config\")` yields `Err(\"reading config: <e>\")`.
 	 */
 	@:rustGeneric("T: Clone")
-	public static inline function context<T>(r: Result<T, String>, prefix: String): Result<T, String> {
+	public static inline function context<T>(r:Result<T, String>, prefix:String):Result<T, String> {
 		return switch (r) {
 			case Ok(v): Ok(v);
 			case Err(e): Err(prefix + ": " + e);
@@ -106,10 +106,7 @@ class ResultTools {
 	 *
 	 * Usage: `r.unwrapOrElse(e -> expr)`
 	 */
-	public static macro function unwrapOrElse<T, E>(
-		r: ExprOf<Result<T, E>>,
-		fallback: Expr
-	): ExprOf<T> {
+	public static macro function unwrapOrElse<T, E>(r:ExprOf<Result<T, E>>, fallback:Expr):ExprOf<T> {
 		#if macro
 		var f = switch (fallback.expr) {
 			case EFunction(_, f): f;
@@ -125,15 +122,11 @@ class ResultTools {
 		var argName = f.args[0].name;
 		var body = stripReturn(f.expr);
 		var v = "v";
-		var outExpr: Expr = {
-			expr: ESwitch(
-				r,
-				[
-					{ values: [macro Ok($i{v})], guard: null, expr: macro $i{v} },
-					{ values: [macro Err($i{argName})], guard: null, expr: asValueExpr(body) }
-				],
-				null
-			),
+		var outExpr:Expr = {
+			expr: ESwitch(r, [
+				{values: [macro Ok($i{v})], guard: null, expr: macro $i{v}},
+				{values: [macro Err($i{argName})], guard: null, expr: asValueExpr(body)}
+			], null),
 			pos: r.pos
 		};
 		return outExpr;
@@ -147,10 +140,7 @@ class ResultTools {
 	 *
 	 * Usage: `r.mapOk(v -> expr)`
 	 */
-	public static macro function mapOk<T, E, U>(
-		r: ExprOf<Result<T, E>>,
-		f: Expr
-	): ExprOf<Result<U, E>> {
+	public static macro function mapOk<T, E, U>(r:ExprOf<Result<T, E>>, f:Expr):ExprOf<Result<U, E>> {
 		#if macro
 		var fn = switch (f.expr) {
 			case EFunction(_, f): f;
@@ -165,15 +155,11 @@ class ResultTools {
 
 		var argName = fn.args[0].name;
 		var body = stripReturn(fn.expr);
-		var outExpr: Expr = {
-			expr: ESwitch(
-				r,
-				[
-					{ values: [macro Ok($i{argName})], guard: null, expr: macro Ok(${asValueExpr(body)}) },
-					{ values: [macro Err(__e)], guard: null, expr: macro Err(__e) }
-				],
-				null
-			),
+		var outExpr:Expr = {
+			expr: ESwitch(r, [
+				{values: [macro Ok($i{argName})], guard: null, expr: macro Ok(${asValueExpr(body)})},
+				{values: [macro Err(__e)], guard: null, expr: macro Err(__e)}
+			], null),
 			pos: r.pos
 		};
 		return outExpr;
@@ -187,10 +173,7 @@ class ResultTools {
 	 *
 	 * Usage: `r.mapErr(e -> expr)`
 	 */
-	public static macro function mapErr<T, E, F>(
-		r: ExprOf<Result<T, E>>,
-		f: Expr
-	): ExprOf<Result<T, F>> {
+	public static macro function mapErr<T, E, F>(r:ExprOf<Result<T, E>>, f:Expr):ExprOf<Result<T, F>> {
 		#if macro
 		var fn = switch (f.expr) {
 			case EFunction(_, f): f;
@@ -205,15 +188,11 @@ class ResultTools {
 
 		var argName = fn.args[0].name;
 		var body = stripReturn(fn.expr);
-		var outExpr: Expr = {
-			expr: ESwitch(
-				r,
-				[
-					{ values: [macro Ok(__v)], guard: null, expr: macro Ok(__v) },
-					{ values: [macro Err($i{argName})], guard: null, expr: macro Err(${asValueExpr(body)}) }
-				],
-				null
-			),
+		var outExpr:Expr = {
+			expr: ESwitch(r, [
+				{values: [macro Ok(__v)], guard: null, expr: macro Ok(__v)},
+				{values: [macro Err($i{argName})], guard: null, expr: macro Err(${asValueExpr(body)})}
+			], null),
 			pos: r.pos
 		};
 		return outExpr;
@@ -227,10 +206,7 @@ class ResultTools {
 	 *
 	 * Usage: `r.andThen(v -> exprReturningResult)`
 	 */
-	public static macro function andThen<T, E, U>(
-		r: ExprOf<Result<T, E>>,
-		f: Expr
-	): ExprOf<Result<U, E>> {
+	public static macro function andThen<T, E, U>(r:ExprOf<Result<T, E>>, f:Expr):ExprOf<Result<U, E>> {
 		#if macro
 		var fn = switch (f.expr) {
 			case EFunction(_, f): f;
@@ -245,15 +221,11 @@ class ResultTools {
 
 		var argName = fn.args[0].name;
 		var body = stripReturn(fn.expr);
-		var outExpr: Expr = {
-			expr: ESwitch(
-				r,
-				[
-					{ values: [macro Ok($i{argName})], guard: null, expr: asValueExpr(body) },
-					{ values: [macro Err(__e)], guard: null, expr: macro Err(__e) }
-				],
-				null
-			),
+		var outExpr:Expr = {
+			expr: ESwitch(r, [
+				{values: [macro Ok($i{argName})], guard: null, expr: asValueExpr(body)},
+				{values: [macro Err(__e)], guard: null, expr: macro Err(__e)}
+			], null),
 			pos: r.pos
 		};
 		return outExpr;
@@ -267,7 +239,31 @@ class ResultTools {
 	 *
 	 * Useful at framework boundaries (e.g. converting a throwing API to `Result`).
 	 */
-	public static macro function catchAny<T>(fn: Expr): ExprOf<Result<T, Dynamic>> {
+	public static macro function catchException<T>(fn:Expr):ExprOf<Result<T, haxe.Exception>> {
+		#if macro
+		var f = switch (fn.expr) {
+			case EFunction(_, f): f;
+			case _:
+				Context.error("catchException expects a function expression: () -> expr", fn.pos);
+				return macro null;
+		}
+
+		if (f.args.length != 0) {
+			Context.error("catchException callback must take 0 arguments", fn.pos);
+		}
+
+		var body = stripReturn(f.expr);
+		return macro(try Ok(${asValueExpr(body)}) catch (e:haxe.Exception) Err(e));
+		#else
+		return macro null;
+		#end
+	}
+
+	/**
+	 * Deprecated: prefer `catchException` when the throwing API uses typed exceptions.
+	 */
+	@:deprecated("Prefer catchException for typed exception flows.")
+	public static macro function catchAny<T>(fn:Expr):ExprOf<Result<T, Dynamic>> {
 		#if macro
 		var f = switch (fn.expr) {
 			case EFunction(_, f): f;
@@ -281,7 +277,7 @@ class ResultTools {
 		}
 
 		var body = stripReturn(f.expr);
-		return macro (try Ok(${asValueExpr(body)}) catch (e: Dynamic) Err(e));
+		return macro(try Ok(${asValueExpr(body)}) catch (e:Dynamic) Err(e));
 		#else
 		return macro null;
 		#end
@@ -290,7 +286,7 @@ class ResultTools {
 	/**
 	 * Like `catchAny`, but captures the error as a `String` via `Std.string`.
 	 */
-	public static macro function catchString<T>(fn: Expr): ExprOf<Result<T, String>> {
+	public static macro function catchString<T>(fn:Expr):ExprOf<Result<T, String>> {
 		#if macro
 		var f = switch (fn.expr) {
 			case EFunction(_, f): f;
@@ -304,7 +300,7 @@ class ResultTools {
 		}
 
 		var body = stripReturn(f.expr);
-		return macro (try Ok(${asValueExpr(body)}) catch (e: Dynamic) Err(Std.string(e)));
+		return macro(try Ok(${asValueExpr(body)}) catch (e:Dynamic) Err(Std.string(e)));
 		#else
 		return macro null;
 		#end

@@ -172,20 +172,31 @@ impl Http {
             );
         }) {
             Ok(__hx_ok) => __hx_ok,
-            Err(__hx_ex) => {
-                let e: hxrt::dynamic::Dynamic = __hx_ex;
-                {
-                    let __tmp = crate::haxe_io_bytes_output::BytesOutput::get_bytes(&*output);
-                    __hx_this.borrow_mut().response_bytes = __tmp.clone();
-                    __tmp
-                };
-                ({
-                    let __b = __hx_this.borrow();
-                    __b.on_error.clone()
-                })(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                    format!("{}{}", "", hxrt::string::HxString::from(e.to_haxe_string())),
-                )));
-            }
+            Err(__hx_ex) => match __hx_ex
+                .downcast::<crate::HxRef<crate::haxe_exception::Exception>>()
+            {
+                Ok(__hx_box) => {
+                    let e: crate::HxRef<crate::haxe_exception::Exception> = *__hx_box;
+                    {
+                        let __tmp = crate::haxe_io_bytes_output::BytesOutput::get_bytes(&*output);
+                        __hx_this.borrow_mut().response_bytes = __tmp.clone();
+                        __tmp
+                    };
+                    ({
+                        let __b = __hx_this.borrow();
+                        __b.on_error.clone()
+                    })(hxrt::string::HxString::from(
+                        hxrt::string::HxString::from(format!(
+                            "{}{}",
+                            "",
+                            hxrt::string::HxString::from(
+                                hxrt::dynamic::from(e.clone()).to_haxe_string()
+                            )
+                        )),
+                    ));
+                }
+                Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
+            },
         };
     }
 
@@ -510,21 +521,35 @@ impl Http {
         }) {
             Ok(__hx_ok) => __hx_ok,
             Err(__hx_ex) => {
-                let e: hxrt::dynamic::Dynamic = __hx_ex;
-                match hxrt::exception::catch_unwind(|| {
-                    s.close();
-                }) {
-                    Ok(__hx_ok) => __hx_ok,
-                    Err(__hx_ex) => {
-                        let _ = __hx_ex;
+                match __hx_ex.downcast::<crate::HxRef<crate::haxe_exception::Exception>>() {
+                    Ok(__hx_box) => {
+                        let e: crate::HxRef<crate::haxe_exception::Exception> = *__hx_box;
+                        match hxrt::exception::catch_unwind(|| {
+                            s.close();
+                        }) {
+                            Ok(__hx_ok) => __hx_ok,
+                            Err(__hx_ex) => match __hx_ex
+                                .downcast::<crate::HxRef<crate::haxe_exception::Exception>>()
+                            {
+                                Ok(_) => {}
+                                Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
+                            },
+                        };
+                        ({
+                            let __b = __hx_this.borrow();
+                            __b.on_error.clone()
+                        })(hxrt::string::HxString::from(
+                            hxrt::string::HxString::from(format!(
+                                "{}{}",
+                                "",
+                                hxrt::string::HxString::from(
+                                    hxrt::dynamic::from(e.clone()).to_haxe_string()
+                                )
+                            )),
+                        ));
                     }
-                };
-                ({
-                    let __b = __hx_this.borrow();
-                    __b.on_error.clone()
-                })(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                    format!("{}{}", "", hxrt::string::HxString::from(e.to_haxe_string())),
-                )));
+                    Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
+                }
             }
         };
     }

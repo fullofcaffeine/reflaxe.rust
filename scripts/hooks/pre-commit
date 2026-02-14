@@ -38,6 +38,9 @@ echo "[pre-commit] Running name-heuristics guard..."
 echo "[pre-commit] Running numeric-suffix guard..."
 "$ROOT_DIR/scripts/lint/numeric_suffix_guard.sh"
 
+echo "[pre-commit] Running Dynamic usage guard..."
+"$ROOT_DIR/scripts/lint/dynamic_usage_guard.sh"
+
 STAGED_FILES="$(git diff --cached --name-only --diff-filter=ACMR || true)"
 if printf '%s\n' "$STAGED_FILES" | grep -Eq '^(docs/|README\.md$|\.beads/issues\.jsonl$|scripts/docs/)'; then
   echo "[pre-commit] Running docs progress-tracker drift check..."

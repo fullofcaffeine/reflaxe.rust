@@ -9,6 +9,34 @@ fn throw_json(msg: String) -> ! {
     exception::throw(Dynamic::from(msg))
 }
 
+const VALUE_KIND_NULL: i32 = 0;
+const VALUE_KIND_BOOL: i32 = 1;
+const VALUE_KIND_INT: i32 = 2;
+const VALUE_KIND_FLOAT: i32 = 3;
+const VALUE_KIND_STRING: i32 = 4;
+const VALUE_KIND_ARRAY: i32 = 5;
+const VALUE_KIND_OBJECT: i32 = 6;
+
+fn dynamic_json_number_kind(v: &Dynamic) -> Option<i32> {
+    if v.downcast_ref::<i32>().is_some() {
+        return Some(VALUE_KIND_INT);
+    }
+    if v.downcast_ref::<f64>().is_some() {
+        return Some(VALUE_KIND_FLOAT);
+    }
+    None
+}
+
+fn dynamic_json_string(v: &Dynamic) -> Option<String> {
+    if let Some(s) = v.downcast_ref::<String>() {
+        return Some(s.clone());
+    }
+    if let Some(s) = v.downcast_ref::<HxString>() {
+        return Some(s.as_deref().unwrap_or("").to_string());
+    }
+    None
+}
+
 fn json_value_to_dynamic(v: Value) -> Dynamic {
     match v {
         Value::Null => Dynamic::null(),
@@ -239,4 +267,101 @@ pub fn stringify(value: &Dynamic, space: Option<&str>) -> String {
     }
 
     serde_json::to_string(&v).unwrap_or_else(|e| throw_json(e.to_string()))
+}
+
+/// Return a stable runtime kind tag for JSON-backed dynamic values.
+///
+/// Kind values:
+/// - `0`: null
+/// - `1`: bool
+/// - `2`: int
+/// - `3`: float
+/// - `4`: string
+/// - `5`: array
+/// - `6`: object
+pub fn value_kind(value: Dynamic) -> i32 {
+    let value = &value;
+    if value.is_null() {
+        return VALUE_KIND_NULL;
+    }
+    if value.downcast_ref::<bool>().is_some() {
+        return VALUE_KIND_BOOL;
+    }
+    if let Some(kind) = dynamic_json_number_kind(value) {
+        return kind;
+    }
+    if dynamic_json_string(value).is_some() {
+        return VALUE_KIND_STRING;
+    }
+    if value.downcast_ref::<Array<Dynamic>>().is_some() {
+        return VALUE_KIND_ARRAY;
+    }
+    if value.downcast_ref::<HxRef<DynObject>>().is_some() {
+        return VALUE_KIND_OBJECT;
+    }
+
+    throw_json(format!(
+        "Unsupported value in haxe.Json.parseValue boundary: {}",
+        value.to_haxe_string()
+    ))
+}
+
+pub fn value_as_bool(value: Dynamic) -> bool {
+    value
+        .downcast_ref::<bool>()
+        .copied()
+        .unwrap_or_else(|| throw_json(String::from("Expected JSON bool")))
+}
+
+pub fn value_as_int(value: Dynamic) -> i32 {
+    value
+        .downcast_ref::<i32>()
+        .copied()
+        .unwrap_or_else(|| throw_json(String::from("Expected JSON int")))
+}
+
+pub fn value_as_float(value: Dynamic) -> f64 {
+    value
+        .downcast_ref::<f64>()
+        .copied()
+        .unwrap_or_else(|| throw_json(String::from("Expected JSON float")))
+}
+
+pub fn value_as_string(value: Dynamic) -> String {
+    dynamic_json_string(&value).unwrap_or_else(|| throw_json(String::from("Expected JSON string")))
+}
+
+pub fn value_array_length(value: Dynamic) -> i32 {
+    value
+        .downcast_ref::<Array<Dynamic>>()
+        .map(|a| a.len() as i32)
+        .unwrap_or_else(|| throw_json(String::from("Expected JSON array")))
+}
+
+pub fn value_array_get(value: Dynamic, index: i32) -> Dynamic {
+    let Some(arr) = value.downcast_ref::<Array<Dynamic>>() else {
+        throw_json(String::from("Expected JSON array"));
+    };
+    let idx = index.max(0) as usize;
+    arr.get(idx).unwrap_or_else(|| throw_json(format!("JSON array index out of range: {index}")))
+}
+
+pub fn value_object_keys<S>(value: Dynamic) -> Array<S>
+where
+    S: From<String> + Clone,
+{
+    let Some(obj) = value.downcast_ref::<HxRef<DynObject>>() else {
+        throw_json(String::from("Expected JSON object"));
+    };
+    crate::dynamic::dyn_object_keys::<S>(obj)
+}
+
+pub fn value_object_field<K>(value: Dynamic, key: K) -> Dynamic
+where
+    K: AsRef<str>,
+{
+    let Some(obj) = value.downcast_ref::<HxRef<DynObject>>() else {
+        throw_json(String::from("Expected JSON object"));
+    };
+    crate::dynamic::dyn_object_get(obj, key.as_ref())
 }

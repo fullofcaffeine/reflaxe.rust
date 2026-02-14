@@ -31,6 +31,7 @@ mod haxe_io_output;
 mod haxe_iterators_string_iterator;
 mod haxe_iterators_string_key_value_iterator;
 mod haxe_json;
+mod haxe_json_value;
 mod haxe_serializer;
 mod haxe_stack_item;
 mod haxe_unserializer;
@@ -82,18 +83,71 @@ fn main() {
         "{}{}",
         "json=", &json
     ))));
-    let parsed: hxrt::dynamic::Dynamic =
-        crate::haxe_json::Json::parse(hxrt::string::HxString::from(json.clone()));
+    let parsed: crate::haxe_json_value::Value =
+        crate::haxe_json::Json::parse_value(hxrt::string::HxString::from(json.clone()));
+    let parsed_a: i32 = if (match parsed.clone() {
+        crate::haxe_json_value::Value::JString(__p) => 3,
+        crate::haxe_json_value::Value::JObject(__p0, __p1) => 4,
+        crate::haxe_json_value::Value::JNumber(__p) => 2,
+        crate::haxe_json_value::Value::JNull => 0,
+        crate::haxe_json_value::Value::JBool(__p) => 1,
+        crate::haxe_json_value::Value::JArray(__p) => 5,
+    }) == 4
+    {
+        let _g: hxrt::array::Array<hxrt::string::HxString> = match parsed.clone() {
+            crate::haxe_json_value::Value::JObject(__p, _) => __p,
+            _ => unreachable!(),
+        };
+        let _g1: hxrt::array::Array<crate::haxe_json_value::Value> = match parsed.clone() {
+            crate::haxe_json_value::Value::JObject(_, __p) => __p,
+            _ => unreachable!(),
+        };
+        {
+            let keys: hxrt::array::Array<hxrt::string::HxString> = _g;
+            let values: hxrt::array::Array<crate::haxe_json_value::Value> = _g1;
+            {
+                let mut out: i32 = -1;
+                let mut i: i32 = 0;
+                while i < (keys.len() as i32) {
+                    if keys.get_unchecked(i as usize) == hxrt::string::HxString::from("a") {
+                        out = {
+                            let _g_2: crate::haxe_json_value::Value =
+                                values.get_unchecked(i as usize);
+                            if (match _g_2.clone() {
+                                crate::haxe_json_value::Value::JString(__p) => 3,
+                                crate::haxe_json_value::Value::JObject(__p0, __p1) => 4,
+                                crate::haxe_json_value::Value::JNumber(__p) => 2,
+                                crate::haxe_json_value::Value::JNull => 0,
+                                crate::haxe_json_value::Value::JBool(__p) => 1,
+                                crate::haxe_json_value::Value::JArray(__p) => 5,
+                            }) == 2
+                            {
+                                let _g_3: f64 = match _g_2.clone() {
+                                    crate::haxe_json_value::Value::JNumber(__p) => __p,
+                                    _ => unreachable!(),
+                                };
+                                {
+                                    let n: f64 = _g_3;
+                                    n as i32
+                                }
+                            } else {
+                                -1
+                            }
+                        };
+                        break;
+                    }
+                    i = i + 1;
+                }
+                out
+            }
+        }
+    } else {
+        -1
+    };
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "parsed.a=",
-        hxrt::string::HxString::from(
-            ({
-                let __obj = parsed;
-                hxrt::dynamic::field_get(&__obj, "a")
-            })
-            .to_haxe_string()
-        )
+        hxrt::dynamic::from(parsed_a).to_haxe_string()
     ))));
     let ser: hxrt::string::HxString = hxrt::string::HxString::from(
         crate::haxe_serializer::Serializer::run(hxrt::dynamic::from_ref(obj.clone())),
@@ -102,17 +156,21 @@ fn main() {
         "{}{}",
         "ser=", &ser
     ))));
-    let unser: hxrt::dynamic::Dynamic =
-        crate::haxe_unserializer::Unserializer::run(hxrt::string::HxString::from(ser.clone()));
+    let unser: crate::HxRef<hxrt::anon::Anon> = {
+        let __hx_dyn =
+            crate::haxe_unserializer::Unserializer::run(hxrt::string::HxString::from(ser.clone()));
+        if __hx_dyn.is_null() {
+            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+        } else {
+            __hx_dyn
+                .downcast_ref::<crate::HxRef<hxrt::anon::Anon>>()
+                .unwrap()
+                .clone()
+        }
+    };
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "unser.b=",
-        hxrt::string::HxString::from(
-            ({
-                let __obj = unser;
-                hxrt::dynamic::field_get(&__obj, "b")
-            })
-            .to_haxe_string()
-        )
+        unser.borrow().get::<hxrt::string::HxString>("b")
     ))));
 }

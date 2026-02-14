@@ -17,7 +17,7 @@ private typedef ParsedUrl = {
 	var path:String;
 }
 
-	/**
+/**
 		`sys.Http` (Rust target implementation)
 
 	Why
@@ -36,11 +36,12 @@ private typedef ParsedUrl = {
 		- HTTPS (`https://`) uses `sys.ssl.Socket` to upgrade the underlying TCP connection to TLS.
 		- Header parsing is line-based (`Input.readLine()`); bodies are read via `Content-Length`,
 		  `Transfer-Encoding: chunked`, or EOF.
-	**/
-	class Http extends haxe.http.HttpBase {
+**/
+class Http extends haxe.http.HttpBase {
 	public var noShutdown:Bool = false;
 	public var cnxTimeout:Float = 10;
 	public var responseHeaders:Map<String, String>;
+
 	var responseHeadersSM:haxe.ds.StringMap<String>;
 
 	public function new(url:String) {
@@ -62,7 +63,7 @@ private typedef ParsedUrl = {
 		try {
 			customRequest(false, output);
 			success(output.getBytes());
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			responseBytes = output.getBytes();
 			onError("" + e);
 		}
@@ -87,7 +88,8 @@ private typedef ParsedUrl = {
 		// Backend limitation: `Null<T>` narrowing is not fully modeled yet.
 		// Keep this API usable by returning an empty array when absent instead of `null`.
 		var v = responseHeadersSM.get(key);
-		if (v == null) return [];
+		if (v == null)
+			return [];
 		return [cast v];
 	}
 
@@ -98,21 +100,23 @@ private typedef ParsedUrl = {
 		this.responseHeadersSM = new haxe.ds.StringMap();
 		this.responseHeaders = this.responseHeadersSM;
 
-			var parsed = parseUrl(url);
-			if (parsed.host.length == 0) {
-				onError("Invalid URL");
-				return;
-			}
-			if (post) {
-				onError("POST/request bodies are not implemented on this target yet.");
-				return;
-			}
+		var parsed = parseUrl(url);
+		if (parsed.host.length == 0) {
+			onError("Invalid URL");
+			return;
+		}
+		if (post) {
+			onError("POST/request bodies are not implemented on this target yet.");
+			return;
+		}
 
 		var host = parsed.host;
 		var port = parsed.port;
 		var request = parsed.path;
-		if (request.length == 0) request = "/";
-		if (request.charAt(0) != "/") request = "/" + request;
+		if (request.length == 0)
+			request = "/";
+		if (request.charAt(0) != "/")
+			request = "/" + request;
 
 		var uri = "";
 		if (params.length > 0) {
@@ -131,7 +135,10 @@ private typedef ParsedUrl = {
 		b.writeString(request);
 
 		if (uri != "") {
-			if (request.indexOf("?", 0) >= 0) b.writeString("&"); else b.writeString("?");
+			if (request.indexOf("?", 0) >= 0)
+				b.writeString("&");
+			else
+				b.writeString("?");
 			b.writeString(uri);
 		}
 
@@ -146,31 +153,33 @@ private typedef ParsedUrl = {
 		}
 		b.writeString("\r\n");
 
-			// Ignore the optional `sock` parameter for now.
-			// Keep `s` non-null so backend Option/Null narrowing never blocks compilation.
-			var s:Socket = new Socket();
+		// Ignore the optional `sock` parameter for now.
+		// Keep `s` non-null so backend Option/Null narrowing never blocks compilation.
+		var s:Socket = new Socket();
 
-			try {
-				if (parsed.secure) {
-					var ss = new sys.ssl.Socket();
-					s = ss;
-					ss.setTimeout(cnxTimeout);
-					ss.setHostname(host);
-					ss.connect(new Host(host), port);
-					ss.handshake();
-				} else {
-					s.setTimeout(cnxTimeout);
-					s.connect(new Host(host), port);
-				}
-
-				writeBody(b, s);
-				readHttpResponse(api, s);
-				s.close();
-			} catch (e:Dynamic) {
-				try s.close() catch (e:Dynamic) {};
-				onError("" + e);
+		try {
+			if (parsed.secure) {
+				var ss = new sys.ssl.Socket();
+				s = ss;
+				ss.setTimeout(cnxTimeout);
+				ss.setHostname(host);
+				ss.connect(new Host(host), port);
+				ss.handshake();
+			} else {
+				s.setTimeout(cnxTimeout);
+				s.connect(new Host(host), port);
 			}
+
+			writeBody(b, s);
+			readHttpResponse(api, s);
+			s.close();
+		} catch (e:haxe.Exception) {
+			try
+				s.close()
+			catch (_:haxe.Exception) {};
+			onError("" + e);
 		}
+	}
 
 	static function parseUrl(url:String):ParsedUrl {
 		var u = url;
@@ -189,7 +198,12 @@ private typedef ParsedUrl = {
 		var path = slash >= 0 ? u.substr(slash) : "/";
 
 		if (hostPort.length == 0) {
-			return {secure: secure, host: "", port: 0, path: "/"};
+			return {
+				secure: secure,
+				host: "",
+				port: 0,
+				path: "/"
+			};
 		}
 
 		var host = hostPort;
@@ -199,11 +213,23 @@ private typedef ParsedUrl = {
 		if (colon >= 0) {
 			host = hostPort.substr(0, colon);
 			var p = parseDecInt(hostPort.substr(colon + 1));
-			if (p < 0) return {secure: secure, host: "", port: 0, path: "/"};
+			if (p < 0)
+				return {
+					secure: secure,
+					host: "",
+					port: 0,
+					path: "/"
+				};
 			port = p;
 		}
 
-		if (host.length == 0) return {secure: secure, host: "", port: 0, path: "/"};
+		if (host.length == 0)
+			return {
+				secure: secure,
+				host: "",
+				port: 0,
+				path: "/"
+			};
 
 		return {
 			secure: secure,
@@ -227,10 +253,7 @@ private typedef ParsedUrl = {
 		var n = Std.parseInt("0x" + s);
 		return n == null ? -1 : n;
 		#else
-		return untyped __rust__(
-			"i32::from_str_radix({0}.trim(), 16).unwrap_or(-1)",
-			s
-		);
+		return untyped __rust__("i32::from_str_radix({0}.trim(), 16).unwrap_or(-1)", s);
 		#end
 	}
 
@@ -250,9 +273,11 @@ private typedef ParsedUrl = {
 
 		while (true) {
 			var line = sock.input.readLine();
-			if (line == "") break;
+			if (line == "")
+				break;
 			var sep = line.indexOf(":", 0);
-			if (sep < 0) continue;
+			if (sep < 0)
+				continue;
 			var hname = line.substr(0, sep);
 			var hval = StringTools.trim(line.substr(sep + 1));
 
@@ -275,11 +300,13 @@ private typedef ParsedUrl = {
 		if (chunked) {
 			readChunked(api, sock);
 		} else if (size < 0) {
-			if (!noShutdown) sock.shutdown(false, true);
+			if (!noShutdown)
+				sock.shutdown(false, true);
 			try {
 				while (true) {
 					var len = sock.input.readBytes(buf, 0, bufsize);
-					if (len == 0) break;
+					if (len == 0)
+						break;
 					api.writeBytes(buf, 0, len);
 				}
 			} catch (e:haxe.io.Eof) {}
@@ -290,7 +317,8 @@ private typedef ParsedUrl = {
 				while (remaining > 0) {
 					var want = (remaining > bufsize) ? bufsize : remaining;
 					var len = sock.input.readBytes(buf, 0, want);
-					if (len == 0) throw "Transfer aborted";
+					if (len == 0)
+						throw "Transfer aborted";
 					api.writeBytes(buf, 0, len);
 					remaining -= len;
 				}
@@ -299,19 +327,23 @@ private typedef ParsedUrl = {
 			}
 		}
 
-		if (status < 200 || status >= 400) throw "Http Error #" + status;
+		if (status < 200 || status >= 400)
+			throw "Http Error #" + status;
 		api.close();
 	}
 
 	static function parseStatus(line:String):Int {
 		// Expected: HTTP/1.1 200 OK
 		var first = line.indexOf(" ", 0);
-		if (first < 0) throw "Response status error";
+		if (first < 0)
+			throw "Response status error";
 		var second = line.indexOf(" ", first + 1);
-		if (second < 0) second = line.length;
+		if (second < 0)
+			second = line.length;
 		var codeStr = line.substr(first + 1, second - first - 1);
 		var n = parseDecInt(codeStr);
-		if (n < 0) throw "Response status error";
+		if (n < 0)
+			throw "Response status error";
 		return n;
 	}
 
@@ -320,16 +352,19 @@ private typedef ParsedUrl = {
 			var sizeLine = sock.input.readLine();
 			// Strip chunk extensions: "<hex>;<ext...>"
 			var semi = sizeLine.indexOf(";", 0);
-			if (semi >= 0) sizeLine = sizeLine.substr(0, semi);
+			if (semi >= 0)
+				sizeLine = sizeLine.substr(0, semi);
 			sizeLine = StringTools.trim(sizeLine);
 			var size = parseHexInt(sizeLine);
-			if (size < 0) throw "Invalid chunk";
+			if (size < 0)
+				throw "Invalid chunk";
 			if (size == 0) {
 				// Consume the trailing empty line after final chunk (and optional trailer headers).
 				// Read until a blank line.
 				while (true) {
 					var trailer = sock.input.readLine();
-					if (trailer == "") break;
+					if (trailer == "")
+						break;
 				}
 				return;
 			}

@@ -5,7 +5,7 @@ pub const __HX_TYPE_ID: u32 = 0x905152c9u32;
 #[derive(Debug)]
 
 pub struct SqliteConnection {
-    handle: hxrt::dynamic::Dynamic,
+    handle: crate::HxRef<crate::db_sqlite_driver::SqliteConnectionHandle>,
 }
 
 impl SqliteConnection {
@@ -24,21 +24,12 @@ impl SqliteConnection {
     pub fn close(self_: &crate::HxRefCell<SqliteConnection>) {
         let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> =
             self_.self_ref();
-        {
-            let hdyn = {
+        crate::db_sqlite_driver::close_handle(
+            &({
                 let __b = __hx_this.borrow();
                 __b.handle.clone()
-            };
-            let h = hdyn
-                .downcast_ref::<std::sync::Arc<std::sync::Mutex<Option<rusqlite::Connection>>>>()
-                .unwrap_or_else(|| {
-                    hxrt::exception::throw(hxrt::dynamic::from(
-                        "Sqlite.close: invalid handle".to_string(),
-                    ))
-                });
-            let mut g = h.lock().unwrap();
-            let _ = g.take();
-        };
+            }),
+        );
     }
 
     pub fn request(
@@ -47,79 +38,13 @@ impl SqliteConnection {
     ) -> crate::HxRc<dyn crate::sys_db_result_set::ResultSet + Send + Sync> {
         let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> =
             self_.self_ref();
-        let res: crate::HxRef<hxrt::db::QueryResult> = {
-            use rusqlite::types::ValueRef;
-
-            let hdyn = {
+        let res: crate::HxRef<hxrt::db::QueryResult> = crate::db_sqlite_driver::request(
+            &({
                 let __b = __hx_this.borrow();
                 __b.handle.clone()
-            };
-            let h = hdyn
-                .downcast_ref::<std::sync::Arc<std::sync::Mutex<Option<rusqlite::Connection>>>>()
-                .unwrap_or_else(|| {
-                    hxrt::exception::throw(hxrt::dynamic::from(
-                        "Sqlite.request: invalid handle".to_string(),
-                    ))
-                });
-            let mut g = h.lock().unwrap();
-            let conn = g.as_mut().unwrap_or_else(|| {
-                hxrt::exception::throw(hxrt::dynamic::from(
-                    "Sqlite.request: connection closed".to_string(),
-                ))
-            });
-
-            let mut stmt = conn.prepare(sql.as_str()).unwrap_or_else(|e| {
-                hxrt::exception::throw(hxrt::dynamic::from(format!("Sqlite.request: {e}")))
-            });
-
-            let names_vec: Vec<String> = stmt
-                .column_names()
-                .into_iter()
-                .map(|s| s.to_string())
-                .collect();
-            let names = hxrt::array::Array::<String>::from_vec(names_vec);
-            let col_count: usize = stmt.column_count();
-
-            let mut rows_out: Vec<hxrt::array::Array<hxrt::dynamic::Dynamic>> = Vec::new();
-            let mut rows = stmt.query([]).unwrap_or_else(|e| {
-                hxrt::exception::throw(hxrt::dynamic::from(format!("Sqlite.request: {e}")))
-            });
-
-            while let Some(row) = rows.next().unwrap_or_else(|e| {
-                hxrt::exception::throw(hxrt::dynamic::from(format!("Sqlite.request: {e}")))
-            }) {
-                let mut vals: Vec<hxrt::dynamic::Dynamic> = Vec::new();
-                for i in 0..col_count {
-                    let v = row.get_ref(i).unwrap_or_else(|e| {
-                        hxrt::exception::throw(hxrt::dynamic::from(format!("Sqlite.request: {e}")))
-                    });
-                    let d = match v {
-                        ValueRef::Null => hxrt::dynamic::Dynamic::null(),
-                        ValueRef::Integer(x) => {
-                            let y: i32 = (x.clamp(i32::MIN as i64, i32::MAX as i64)) as i32;
-                            hxrt::dynamic::from(y)
-                        }
-                        ValueRef::Real(x) => hxrt::dynamic::from(x),
-                        ValueRef::Text(b) => {
-                            hxrt::dynamic::from(String::from_utf8_lossy(b).to_string())
-                        }
-                        ValueRef::Blob(b) => {
-                            let bytes = hxrt::bytes::Bytes::from_vec(b.to_vec());
-                            let href = hxrt::cell::HxRc::new(hxrt::cell::HxCell::new(bytes));
-                            hxrt::dynamic::from(href)
-                        }
-                    };
-                    vals.push(d);
-                }
-                rows_out.push(hxrt::array::Array::<hxrt::dynamic::Dynamic>::from_vec(vals));
-            }
-
-            let rows_arr =
-                hxrt::array::Array::<hxrt::array::Array<hxrt::dynamic::Dynamic>>::from_vec(
-                    rows_out,
-                );
-            hxrt::db::query_result_new(names, rows_arr)
-        };
+            }),
+            &sql,
+        );
         return {
             let __tmp = crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet::new(res.clone());
             let __up: crate::HxRc<dyn crate::sys_db_result_set::ResultSet + Send + Sync> =
@@ -170,71 +95,21 @@ impl SqliteConnection {
         sb: crate::HxRef<crate::string_buf::StringBuf>,
         v: hxrt::dynamic::Dynamic,
     ) {
-        let rendered: hxrt::string::HxString = hxrt::string::HxString::from({
-            let v = v;
-            let out: String = if v.is_null() {
-                String::from("NULL")
-            } else if let Some(x) = v.downcast_ref::<i32>() {
-                x.to_string()
-            } else if let Some(x) = v.downcast_ref::<f64>() {
-                x.to_string()
-            } else if let Some(x) = v.downcast_ref::<bool>() {
-                if *x {
-                    "1".to_string()
-                } else {
-                    "0".to_string()
-                }
-            } else if let Some(b) = v.downcast_ref::<hxrt::cell::HxRef<hxrt::bytes::Bytes>>() {
-                // Bytes: x'ABCD...'
-                let data = b.borrow();
-                let slice = data.as_slice();
-                let mut s = String::with_capacity(2 + slice.len() * 2 + 1);
-                s.push_str("x'");
-                const HEX: &[u8; 16] = b"0123456789ABCDEF";
-                for byte in slice {
-                    s.push(HEX[(byte >> 4) as usize] as char);
-                    s.push(HEX[(byte & 0xF) as usize] as char);
-                }
-                s.push_str("'");
-                s
-            } else {
-                // Strings (and everything else): quote + escape single quotes by doubling.
-                let s = if let Some(s) = v.downcast_ref::<String>() {
-                    s.clone()
-                } else {
-                    v.to_haxe_string()
-                };
-                let escaped = s.replace("'", "''");
-                format!("'{}'", escaped)
-            };
-            out
-        });
-        crate::string_buf::StringBuf::add(&*sb, hxrt::dynamic::from(rendered));
+        crate::string_buf::StringBuf::add(
+            &*sb,
+            hxrt::dynamic::from(crate::db_sqlite_driver::render_sql_value(v.clone())),
+        );
     }
 
     pub fn last_insert_id(self_: &crate::HxRefCell<SqliteConnection>) -> i32 {
         let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> =
             self_.self_ref();
-        return {
-            let hdyn = {
+        return crate::db_sqlite_driver::last_insert_id(
+            &({
                 let __b = __hx_this.borrow();
                 __b.handle.clone()
-            };
-            let h = hdyn
-                .downcast_ref::<std::sync::Arc<std::sync::Mutex<Option<rusqlite::Connection>>>>()
-                .unwrap_or_else(|| {
-                    hxrt::exception::throw(hxrt::dynamic::from(
-                        "Sqlite.lastInsertId: invalid handle".to_string(),
-                    ))
-                });
-            let mut g = h.lock().unwrap();
-            let conn = g.as_mut().unwrap_or_else(|| {
-                hxrt::exception::throw(hxrt::dynamic::from(
-                    "Sqlite.lastInsertId: connection closed".to_string(),
-                ))
-            });
-            conn.last_insert_rowid() as i32
-        };
+            }),
+        );
     }
 
     pub fn db_name(_self_: &crate::HxRefCell<SqliteConnection>) -> hxrt::string::HxString {

@@ -65,6 +65,42 @@ impl Thread {
         return hxrt::thread::thread_read_message(block);
     }
 
+    pub fn read_message_as<T>(
+        block: bool,
+        decode: crate::HxDynRef<dyn Fn(hxrt::dynamic::Dynamic) -> Option<T> + Send + Sync>,
+    ) -> Option<T> {
+        let raw: hxrt::dynamic::Dynamic = crate::sys_thread_thread::Thread::read_message(block);
+        if raw.is_null() {
+            return None;
+        }
+        return decode(raw.clone());
+    }
+
+    pub fn read_message_string(block: bool) -> hxrt::string::HxString {
+        let raw: hxrt::dynamic::Dynamic = crate::sys_thread_thread::Thread::read_message(block);
+        if raw.is_null() {
+            return hxrt::string::HxString::from(hxrt::string::HxString::null());
+        }
+        if {
+            let __dyn = raw.clone();
+            __dyn.downcast_ref::<String>().is_some()
+                || __dyn.downcast_ref::<hxrt::string::HxString>().is_some()
+        } {
+            return hxrt::string::HxString::from({
+                let __hx_dyn = raw;
+                if __hx_dyn.is_null() {
+                    hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                } else {
+                    __hx_dyn
+                        .downcast_ref::<hxrt::string::HxString>()
+                        .unwrap()
+                        .clone()
+                }
+            });
+        }
+        return hxrt::string::HxString::from(hxrt::string::HxString::null());
+    }
+
     fn process_events() {
         crate::sys_thread_event_loop::EventLoop::progress(
             &*crate::sys_thread_thread::Thread::get_events(

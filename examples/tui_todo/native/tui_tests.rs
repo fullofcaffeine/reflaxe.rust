@@ -147,4 +147,10 @@ mod tests {
         let _guard = harness_lock().lock().unwrap_or_else(|e| e.into_inner());
         assert!(crate::harness::Harness::persistence_autosave_debounce());
     }
+
+    #[test]
+    fn persistence_rejects_invalid_schema() {
+        let _guard = harness_lock().lock().unwrap_or_else(|e| e.into_inner());
+        assert!(crate::harness::Harness::persistence_rejects_invalid_schema());
+    }
 }

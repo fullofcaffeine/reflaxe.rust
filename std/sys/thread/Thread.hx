@@ -21,9 +21,9 @@ import hxrt.thread.NativeThread;
 	  relying on Haxe static-field codegen (keeps the POC smaller).
 **/
 class Thread {
-	final __id: Int;
+	final __id:Int;
 
-	function new(id: Int) {
+	function new(id:Int) {
 		__id = id;
 	}
 
@@ -34,33 +34,34 @@ class Thread {
 		`haxe.MainLoop` yet. It's sufficient for `haxe.EntryPoint` usage (`run`, `promise`,
 		`runPromised`, `loop`).
 	**/
-	public var events(get, never): EventLoop;
-	function get_events(): EventLoop {
+	public var events(get, never):EventLoop;
+
+	function get_events():EventLoop {
 		return EventLoop.__fromThreadId(__id);
 	}
 
-	public function sendMessage(msg: Dynamic): Void {
+	public function sendMessage(msg:Dynamic):Void {
 		untyped __rust__("hxrt::thread::thread_send_message({0}, {1})", __id, msg);
 	}
 
-	public static function current(): Thread {
-		var id: Int = untyped __rust__("hxrt::thread::thread_current_id()");
+	public static function current():Thread {
+		var id:Int = untyped __rust__("hxrt::thread::thread_current_id()");
 		return new Thread(id);
 	}
 
-	public static function create(job: () -> Void): Thread {
-		var id: Int = untyped __rust__("hxrt::thread::thread_spawn({0})", job);
+	public static function create(job:() -> Void):Thread {
+		var id:Int = untyped __rust__("hxrt::thread::thread_spawn({0})", job);
 		return new Thread(id);
 	}
 
-	public static function runWithEventLoop(job: () -> Void): Void {
+	public static function runWithEventLoop(job:() -> Void):Void {
 		job();
-		var id: Int = untyped __rust__("hxrt::thread::thread_current_id()");
+		var id:Int = untyped __rust__("hxrt::thread::thread_current_id()");
 		untyped __rust__("hxrt::thread::event_loop_loop({0})", id);
 	}
 
-	public static function createWithEventLoop(job: () -> Void): Thread {
-		var id: Int = untyped __rust__("hxrt::thread::thread_spawn_with_event_loop({0})", job);
+	public static function createWithEventLoop(job:() -> Void):Thread {
+		var id:Int = untyped __rust__("hxrt::thread::thread_spawn_with_event_loop({0})", job);
 		return new Thread(id);
 	}
 
@@ -68,11 +69,36 @@ class Thread {
 		Read a message from the *current* thread's queue.
 		Returns `null` if `block` is `false` and no message is available.
 	**/
-	public static function readMessage(block: Bool): Dynamic {
+	public static function readMessage(block:Bool):Dynamic {
 		return NativeThread.readMessage(block);
 	}
 
-	private static function processEvents(): Void {
+	/**
+		Read a message and decode it to a typed value immediately.
+
+		`decode` receives the raw payload as `Any` and should return `null` when the payload
+		does not match the expected shape.
+	**/
+	public static function readMessageAs<T>(block:Bool, decode:Any->Null<T>):Null<T> {
+		var raw:Any = cast readMessage(block);
+		if (raw == null)
+			return null;
+		return decode(raw);
+	}
+
+	/**
+		Convenience typed read for string payloads.
+	**/
+	public static function readMessageString(block:Bool):Null<String> {
+		var raw:Any = cast readMessage(block);
+		if (raw == null)
+			return null;
+		if (Std.isOfType(raw, String))
+			return cast raw;
+		return null;
+	}
+
+	private static function processEvents():Void {
 		// Minimal integration point for upstream APIs. Future work: connect to `haxe.MainLoop`.
 		Thread.current().events.progress();
 	}

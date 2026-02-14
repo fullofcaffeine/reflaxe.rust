@@ -124,6 +124,13 @@ for module in "${modules[@]}"; do
   slug="${module//./_}"
   out_dir="$WORK_DIR/out/$slug"
   target_dir="$SWEEP_TARGET_BASE/$slug"
+  macro_cmd="include('$module')"
+  if [[ "$module" == "haxe.Json" ]]; then
+    # On case-insensitive filesystems, include('haxe.Json') can collide with
+    # std/haxe/json/* and trigger a false haxe.Json.Value vs haxe.json.Value error.
+    # Resolve this one module by exact type lookup.
+    macro_cmd="haxe.macro.Context.getType('$module')"
+  fi
   mkdir -p "$out_dir"
 
   echo "[upstream-std] [$index/$total] $module"
@@ -137,7 +144,7 @@ for module in "${modules[@]}"; do
     -D rust_no_build \
     -D "rust_output=$out_dir" \
     -main Main \
-    --macro "include('$module')" >/dev/null; then
+    --macro "$macro_cmd" >/dev/null; then
     echo "[upstream-std] FAIL (haxe compile): $module" >&2
     failures+=("$module:haxe")
     continue

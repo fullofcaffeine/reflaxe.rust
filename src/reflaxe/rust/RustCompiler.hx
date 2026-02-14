@@ -631,13 +631,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var initExpr:Null<TypedExpr> = null;
 					try
 						initExpr = cf.expr()
-					catch (_:Dynamic) {}
+					catch (_:haxe.Exception) {}
 					if (initExpr == null) {
 						var untypedDefault = varData.getDefaultUntypedExpr();
 						if (untypedDefault != null) {
 							try
 								initExpr = Context.typeExpr(untypedDefault)
-							catch (_:Dynamic) {}
+							catch (_:haxe.Exception) {}
 						}
 					}
 
@@ -6072,6 +6072,23 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									case TTypeExpr(TClassDecl(cls2Ref)): cls2Ref.get();
 									case _: null;
 								};
+								var expectedPrimitive:Null<String> = switch (typeExpr.expr) {
+									case TTypeExpr(TAbstract(absRef)): {
+											var abs = absRef.get();
+											if (abs != null && abs.module == "StdTypes") {
+												switch (abs.name) {
+													case "Bool", "Int", "Float":
+														abs.name;
+													case _:
+														null;
+												}
+											} else {
+												null;
+											}
+										}
+									case _:
+										null;
+								};
 
 								var actualClass:Null<ClassType> = switch (followType(valueExpr.t)) {
 									case TInst(cls2Ref, _): cls2Ref.get();
@@ -6086,7 +6103,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								//
 								// Upstream stdlib relies on this for e.g. `haxe.Unserializer` validating object keys
 								// (`Std.isOfType(k, String)` where `k` is a `Dynamic` returned from `unserialize()`).
-								if (expectedClass != null && isDynamicType(valueExpr.t)) {
+								if ((expectedClass != null || expectedPrimitive != null) && isDynamicType(valueExpr.t)) {
 									var stmts:Array<RustStmt> = [];
 									stmts.push(RLet("__dyn", false, null, maybeCloneForReuseValue(compileExpr(valueExpr), valueExpr)));
 
@@ -6096,6 +6113,24 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 										var isHxString = ECall(EField(ECall(EField(EPath("__dyn"), "downcast_ref::<hxrt::string::HxString>"), []), "is_some"),
 											[]);
 										return EBlock({stmts: stmts, tail: EBinary("||", isString, isHxString)});
+									}
+
+									if (expectedPrimitive != null) {
+										switch (expectedPrimitive) {
+											case "Bool": {
+													var isBool = ECall(EField(ECall(EField(EPath("__dyn"), "downcast_ref::<bool>"), []), "is_some"), []);
+													return EBlock({stmts: stmts, tail: isBool});
+												}
+											case "Int": {
+													var isInt = ECall(EField(ECall(EField(EPath("__dyn"), "downcast_ref::<i32>"), []), "is_some"), []);
+													return EBlock({stmts: stmts, tail: isInt});
+												}
+											case "Float": {
+													var isFloat = ECall(EField(ECall(EField(EPath("__dyn"), "downcast_ref::<f64>"), []), "is_some"), []);
+													return EBlock({stmts: stmts, tail: isFloat});
+												}
+											case _:
+										}
 									}
 
 									// TODO: class/enum `Dynamic` values should use a runtime type-id registry for
@@ -8267,17 +8302,30 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 	}
 
+	function unwrapMetaExpr(e:Expr):Expr {
+		return switch (e.expr) {
+			case EParenthesis(inner): unwrapMetaExpr(inner);
+			case EMeta(_, inner): unwrapMetaExpr(inner);
+			case _: e;
+		}
+	}
+
+	function readConstStringExpr(e:Expr):Null<String> {
+		return switch (unwrapMetaExpr(e).expr) {
+			case EConst(CString(s, _)): s;
+			case _: null;
+		}
+	}
+
 	function rustExternBasePath(cls:ClassType):Null<String> {
 		for (entry in cls.meta.get()) {
 			if (entry.name != ":native")
 				continue;
 			if (entry.params == null || entry.params.length == 0)
 				continue;
-			try {
-				var v:Dynamic = ExprTools.getValue(entry.params[0]);
-				if (Std.isOfType(v, String))
-					return cast v;
-			} catch (_:Dynamic) {}
+			var path = readConstStringExpr(entry.params[0]);
+			if (path != null)
+				return path;
 		}
 		return null;
 	}
@@ -8302,11 +8350,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				continue;
 			if (entry.params == null || entry.params.length == 0)
 				continue;
-			try {
-				var v:Dynamic = ExprTools.getValue(entry.params[0]);
-				if (Std.isOfType(v, String))
-					return escapeRustPathOrIdent(cast v);
-			} catch (_:Dynamic) {}
+			var nativeName = readConstStringExpr(entry.params[0]);
+			if (nativeName != null)
+				return escapeRustPathOrIdent(nativeName);
 		}
 		// For extern fields, Haxe may rewrite the field name and store the original name in `:realPath`.
 		// Use the actual (post-metadata) identifier by default.
@@ -8383,17 +8429,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				continue;
 			}
 
-			inline function expectString(v:Dynamic, label:String):Null<String> {
-				if (v == null)
-					return null;
-				if (Std.isOfType(v, String))
-					return cast v;
-				#if eval
-				Context.error("`@:rustImpl` " + label + " must be a string.", pos);
-				#end
-				return null;
-			}
-
 			function addSpec(spec:RustImplSpec):Void {
 				if (spec.traitPath == null || StringTools.trim(spec.traitPath).length == 0) {
 					#if eval
@@ -8414,25 +8449,50 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					addSpec({traitPath: s});
 					continue;
 				}
-				try {
-					var v:Dynamic = ExprTools.getValue(entry.params[0]);
-					if (Std.isOfType(v, String)) {
-						addSpec({traitPath: cast v});
-						continue;
-					}
-					var traitPath = expectString(Reflect.field(v, "trait"), "field `trait`");
-					var forType = expectString(Reflect.field(v, "forType"), "field `forType`");
-					var body = expectString(Reflect.field(v, "body"), "field `body`");
-					if (traitPath != null) {
-						var spec:RustImplSpec = {traitPath: traitPath};
-						if (forType != null)
-							spec.forType = forType;
-						if (body != null)
-							spec.body = body;
-						addSpec(spec);
-						continue;
-					}
-				} catch (_:Dynamic) {}
+				switch (unwrap(entry.params[0]).expr) {
+					case EObjectDecl(fields):
+						var traitPath:Null<String> = null;
+						var forType:Null<String> = null;
+						var body:Null<String> = null;
+
+						for (field in fields) {
+							switch (field.field) {
+								case "trait":
+									traitPath = stringConst(field.expr);
+									if (traitPath == null) {
+										#if eval
+										Context.error("`@:rustImpl` field `trait` must be a string.", pos);
+										#end
+									}
+								case "forType":
+									forType = stringConst(field.expr);
+									if (forType == null) {
+										#if eval
+										Context.error("`@:rustImpl` field `forType` must be a string.", pos);
+										#end
+									}
+								case "body":
+									body = stringConst(field.expr);
+									if (body == null) {
+										#if eval
+										Context.error("`@:rustImpl` field `body` must be a string.", pos);
+										#end
+									}
+								case _:
+							}
+						}
+
+						if (traitPath != null) {
+							var spec:RustImplSpec = {traitPath: traitPath};
+							if (forType != null)
+								spec.forType = forType;
+							if (body != null)
+								spec.body = body;
+							addSpec(spec);
+							continue;
+						}
+					case _:
+				}
 
 				#if eval
 				Context.error("`@:rustImpl` must be a compile-time constant string or object.", pos);
@@ -8452,12 +8512,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					addSpec(spec);
 					continue;
 				}
-				try {
-					var v0:Dynamic = ExprTools.getValue(entry.params[0]);
-					var v1:Dynamic = ExprTools.getValue(entry.params[1]);
-					traitPath = expectString(v0, "trait path");
-					body = expectString(v1, "body");
-				} catch (_:Dynamic) {}
 				if (traitPath == null) {
 					#if eval
 					Context.error("`@:rustImpl` first parameter must be a compile-time string trait path.", pos);

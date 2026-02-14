@@ -1,5 +1,11 @@
 import sys.db.Sqlite;
 
+private typedef TodoRow = {
+	var id:Int;
+	var name:String;
+	var done:Int;
+};
+
 class Main {
 	static function main() {
 		var cnx = Sqlite.open(":memory:");
@@ -15,13 +21,13 @@ class Main {
 		Sys.println("fields=" + (fields == null ? "null" : (cast fields : Array<String>).join(",")));
 		Sys.println("len0=" + rs.length + " nf=" + rs.nfields);
 
-		var r1:Dynamic = rs.next();
+		var r1:TodoRow = cast rs.next();
 		Sys.println("len1=" + rs.length + " row1=" + r1.id + "," + r1.name + "," + r1.done + " get0=" + rs.getIntResult(0));
 
-		var r2:Dynamic = rs.next();
+		var r2:TodoRow = cast rs.next();
 		Sys.println("len2=" + rs.length + " row2=" + r2.id + "," + r2.name + "," + r2.done + " get1=" + rs.getResult(1));
 
-		var r3:Dynamic = rs.next();
+		var r3:Null<TodoRow> = cast rs.next();
 		Sys.println("end=" + (r3 == null));
 	}
 }
