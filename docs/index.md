@@ -6,7 +6,7 @@ Use this page as the map for `reflaxe.rust` docs.
 
 - New to compiler internals: [Start Here](start-here.md)
 - Need a fast local rebuild loop: [Dev Watcher](dev-watcher.md)
-- Building async Rusty apps: [Async/Await preview](async-await.md)
+- Building async Rust-first apps: [Async/Await preview](async-await.md)
 - Planning production rollout: [Production Readiness](production-readiness.md)
 - Planning release closeout: [Road to 1.0](road-to-1.0.md)
 - Running post-1.0 weekly operations: [Weekly CI Evidence](weekly-ci-evidence.md)
@@ -17,9 +17,10 @@ Use this page as the map for `reflaxe.rust` docs.
 
 ## Core product docs
 
-- [Profiles](profiles.md): portable vs idiomatic vs rusty, and when to choose each.
+- [Profiles](profiles.md): portable vs idiomatic vs rusty vs metal, and when to choose each.
+- [Metal profile](metal-profile.md): experimental Rust-first+ profile with typed low-level interop façade.
 - [Lifetime encoding design](lifetime-encoding.md): what lifetime-like guarantees are possible in Haxe and where extern Rust is still required.
-- [Async/Await preview](async-await.md): Rusty async workflow and current constraints.
+- [Async/Await preview](async-await.md): Rust-first async workflow and current constraints.
 - [Defines reference](defines-reference.md): practical `-D` reference for build/profile/CI knobs.
 - [v1 support matrix](v1.md): technical support matrix and parity constraints.
 - [Workflow](workflow.md): Haxe -> Rust -> Cargo workflow.
@@ -32,6 +33,7 @@ Use this page as the map for `reflaxe.rust` docs.
 
 - [Interop](interop.md): externs, metadata-driven Cargo deps, extra Rust modules, and escape hatch policy.
 - [Rusty profile](rusty-profile.md): Rust-first authoring model details.
+- [Metal profile](metal-profile.md): Rust-first+ authoring model and boundary policy.
 - [Lifetime encoding design](lifetime-encoding.md): borrow/lifetime modeling constraints and roadmap.
 - [Threading](threading.md): threading model and runtime guarantees.
 - [TUI](tui.md): deterministic TUI testing approach.

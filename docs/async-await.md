@@ -6,17 +6,19 @@ This page explains the current async/await support in plain language.
 
 Use this when:
 
-- you are using the Rusty profile (`-D reflaxe_rust_profile=rusty`), and
+- you are using a Rust-first profile (`-D reflaxe_rust_profile=rusty|metal`), and
 - you want Haxe code that compiles into idiomatic Rust async (`async` / `.await`).
 
 ## Quick start
 
-1. Enable Rusty + async preview:
+1. Enable a Rust-first profile + async preview:
 
 ```bash
 -D reflaxe_rust_profile=rusty
 -D rust_async_preview
 ```
+
+(`metal` also works: `-D reflaxe_rust_profile=metal`)
 
 2. Use `rust.async.Future<T>` return types for async functions.
 3. Mark async functions with `@:rustAsync` (or `@:async`).
@@ -82,6 +84,7 @@ This is a preview feature intended for early production trials in Rusty projects
 ## Related docs
 
 - [Rusty profile](rusty-profile.md)
+- [Metal profile](metal-profile.md)
 - [Defines reference](defines-reference.md)
 - [Workflow](workflow.md)
 - [Example: async_retry_pipeline](../examples/async_retry_pipeline)

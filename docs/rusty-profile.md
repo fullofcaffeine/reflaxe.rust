@@ -1,10 +1,11 @@
 # Rusty Profile Specification (`-D reflaxe_rust_profile=rusty`)
 
-The Rust target supports **three profiles**:
+The Rust target supports **four profiles**:
 
 - `Portable` (default): prioritize Haxe semantics + portability, even if output is less idiomatic Rust.
 - `Idiomatic`: keep Haxe semantics, but bias the emitter toward cleaner, more idiomatic Rust output.
 - `Rusty`: opt into a Rust-first surface for developers who want Haxe syntax with Rust idioms.
+- `Metal` (experimental): Rusty+ profile for typed low-level interop and stricter default app boundaries.
 
 This document defines what **Rusty** means, what it is *not*, and how user code should structure
 interop so final apps remain injection-free.
@@ -52,6 +53,7 @@ Rusty is a pragmatic Rust-first authoring mode, not a complete reimplementation 
 - `Portable` (default): no define needed
 - `Idiomatic`: `-D rust_idiomatic` or `-D reflaxe_rust_profile=idiomatic`
 - `Rusty`: `-D reflaxe_rust_profile=rusty`
+- `Metal` (experimental): `-D rust_metal` or `-D reflaxe_rust_profile=metal`
 
 ## Core surfaces (Rusty)
 
@@ -60,9 +62,9 @@ surfaces when the developer wants Rust semantics.
 
 ### Async/await preview (Rusty)
 
-Rusty currently includes an async/await preview surface behind:
+Rust-first profiles currently include an async/await preview surface behind:
 
-- `-D reflaxe_rust_profile=rusty`
+- `-D reflaxe_rust_profile=rusty|metal`
 - `-D rust_async_preview`
 
 Core types/APIs:
@@ -72,6 +74,7 @@ Core types/APIs:
 - `rust.async.Async.blockOn(...)`
 
 See: [Async/Await preview guide](async-await.md).
+For the low-level typed façade available in metal, see [Metal profile](metal-profile.md).
 
 ## Borrow-checker ergonomics (Rusty)
 

@@ -69,16 +69,17 @@ More usage options: [Dev Watcher guide](docs/dev-watcher.md).
 
 ## Pick Your Profile
 
-Use `-D reflaxe_rust_profile=portable|idiomatic|rusty`.
+Use `-D reflaxe_rust_profile=portable|idiomatic|rusty|metal`.
 
 | Profile | Best for | What you get |
 | --- | --- | --- |
 | `portable` (default) | Haxe-first teams | Stable Haxe semantics and portability-first behavior |
 | `idiomatic` | Teams that want cleaner Rust output without semantic shifts | Same behavior as portable, cleaner emitted Rust |
 | `rusty` | Rust-aware teams | Rust-first APIs and borrow/ownership-oriented surface |
+| `metal` (experimental) | Rust-heavy teams that need typed low-level interop | Rusty+ profile with typed metal injection façade and stricter app-side injection boundaries |
 
-Read more: [Profiles guide](docs/profiles.md), [Rusty profile details](docs/rusty-profile.md), and
-[Lifetime encoding design](docs/lifetime-encoding.md).
+Read more: [Profiles guide](docs/profiles.md), [Rusty profile details](docs/rusty-profile.md),
+[Metal profile details](docs/metal-profile.md), and [Lifetime encoding design](docs/lifetime-encoding.md).
 
 ## Examples
 
@@ -120,8 +121,9 @@ Read more: [Profiles guide](docs/profiles.md), [Rusty profile details](docs/rust
 - `-D rust_build_release` / `-D rust_release` - release build mode
 - `-D rust_target=<triple>` - pass target triple to Cargo
 - `-D rust_idiomatic` - alias for `-D reflaxe_rust_profile=idiomatic`
-- `-D reflaxe_rust_profile=rusty` - enable Rust-first profile surfaces
-- `-D rust_async_preview` - enable Rusty async/await preview (`docs/async-await.md`)
+- `-D rust_metal` - alias for `-D reflaxe_rust_profile=metal`
+- `-D reflaxe_rust_profile=rusty|metal` - enable Rust-first profile surfaces
+- `-D rust_async_preview` - enable Rust-first async/await preview (`docs/async-await.md`)
 - `-D rustfmt` - run `cargo fmt` on generated output (best effort)
 
 Full list: [Defines reference](docs/defines-reference.md).

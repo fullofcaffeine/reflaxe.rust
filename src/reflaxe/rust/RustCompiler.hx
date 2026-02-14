@@ -36,15 +36,11 @@ import reflaxe.helpers.TypeHelper;
 import reflaxe.rust.macros.CargoMetaRegistry;
 import reflaxe.rust.macros.RustExtraSrcRegistry;
 import reflaxe.rust.naming.RustNaming;
+import reflaxe.rust.ProfileResolver;
+import reflaxe.rust.RustProfile;
 
 using reflaxe.helpers.BaseTypeHelper;
 using reflaxe.helpers.ClassFieldHelper;
-
-enum RustProfile {
-	Portable;
-	Idiomatic;
-	Rusty;
-}
 
 private typedef RustImplSpec = {
 	var traitPath:String;
@@ -181,14 +177,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		frameworkRuntimeDir = null;
 		warnedUnresolvedMonomorphPos = [];
 
-		// Optional profile selection.
-		// - default: portable semantics
-		// - `-D rust_idiomatic` or `-D reflaxe_rust_profile=idiomatic`: prefer cleaner Rust output
-		// - `-D reflaxe_rust_profile=rusty`: opt into Rust-native APIs/interop (still framework-first)
-		var profileDefine = Context.definedValue("reflaxe_rust_profile");
-		var wantsRusty = profileDefine != null && profileDefine == "rusty";
-		var wantsIdiomatic = Context.defined("rust_idiomatic") || (profileDefine != null && profileDefine == "idiomatic");
-		profile = wantsRusty ? Rusty : (wantsIdiomatic ? Idiomatic : Portable);
+		// Profile selection and define validation are centralized to keep all feature gates consistent.
+		profile = ProfileResolver.resolve();
 		#if eval
 		if (Context.defined("rust_debug_string_types")) {
 			Context.warning("rust_debug_string_types active", Context.currentPos());
@@ -1424,9 +1414,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			#end
 			return;
 		}
-		if (profile != Rusty) {
+		if (!ProfileResolver.isRustFirst(profile)) {
 			#if eval
-			Context.error("Async preview currently requires `-D reflaxe_rust_profile=rusty`.", pos);
+			Context.error("Async preview currently requires a Rust-first profile: `-D reflaxe_rust_profile=rusty|metal`.", pos);
 			#end
 		}
 	}

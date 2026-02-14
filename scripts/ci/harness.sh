@@ -112,6 +112,10 @@ echo "[harness] snapshots"
 bash test/run-snapshots.sh --clippy
 intermediate_cleanup "snapshots"
 
+echo "[harness] metal boundary policy"
+bash scripts/ci/check-metal-policy.sh
+intermediate_cleanup "metal-policy"
+
 echo "[harness] upstream stdlib sweep"
 bash test/run-upstream-stdlib-sweep.sh
 intermediate_cleanup "upstream-stdlib-sweep"
@@ -127,7 +131,7 @@ while IFS= read -r compile_file; do
   example_dir="$(dirname "$compile_file")"
   compile_name="$(basename "$compile_file")"
   compile_example "$example_dir" "$compile_name"
-done < <(find examples -mindepth 2 -maxdepth 2 -type f \( -name 'compile.hxml' -o -name 'compile.rusty.hxml' \) | sort)
+done < <(find examples -mindepth 2 -maxdepth 2 -type f \( -name 'compile.hxml' -o -name 'compile.rusty.hxml' -o -name 'compile.metal.hxml' \) | sort)
 
 echo "[harness] examples (CI run matrix)"
 while IFS= read -r example_dir; do
@@ -139,6 +143,10 @@ while IFS= read -r example_dir; do
 
   if [[ -f "$example_dir/compile.rusty.ci.hxml" ]]; then
     run_example "$example_dir" "compile.rusty.ci.hxml"
+  fi
+
+  if [[ -f "$example_dir/compile.metal.ci.hxml" ]]; then
+    run_example "$example_dir" "compile.metal.ci.hxml"
   fi
 done < <(find examples -mindepth 1 -maxdepth 1 -type d | sort)
 

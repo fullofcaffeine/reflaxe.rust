@@ -10,6 +10,8 @@ import reflaxe.preprocessors.ExpressionPreprocessor.*;
 import reflaxe.rust.macros.AsyncSyntaxMacro;
 import reflaxe.rust.macros.BoundaryEnforcer;
 import reflaxe.rust.macros.StrictModeEnforcer;
+import reflaxe.rust.ProfileResolver;
+import reflaxe.rust.RustProfile;
 
 /**
  * Initialization and registration of the Rust compiler.
@@ -47,10 +49,18 @@ class CompilerInit {
 			Compiler.addClassPath(standardLibrary);
 		} catch (e:haxe.Exception) {}
 
+		var profile = ProfileResolver.resolve();
+
 		// Repository policy: keep examples/snapshots "pure" (no __rust__ escape hatches).
 		BoundaryEnforcer.init();
 
-		// Opt-in user policy: forbid __rust__ injection in project sources.
+		// Metal policy: enable strict app-boundary mode by default so raw `__rust__` does not leak
+		// into project sources. Framework-provided typed facades remain available.
+		if (profile == RustProfile.Metal && !Context.defined("reflaxe_rust_strict")) {
+			Compiler.define("reflaxe_rust_strict");
+		}
+
+		// Opt-in user policy (and metal default): forbid raw `__rust__` injection in project sources.
 		StrictModeEnforcer.init();
 
 		// Signal threaded sys support so upstream `sys.thread.*` APIs are available.
@@ -59,25 +69,21 @@ class CompilerInit {
 
 		// String representation policy:
 		// - portable/idiomatic default to nullable HxString
-		// - rusty keeps legacy non-null String unless explicitly overridden
+		// - rusty/metal keep legacy non-null String unless explicitly overridden
 		var hasNullableStrings = Context.defined("rust_string_nullable");
 		var hasNonNullableStrings = Context.defined("rust_string_non_nullable");
 		if (hasNullableStrings && hasNonNullableStrings) {
 			Context.error("Conflicting defines: choose only one of -D rust_string_nullable or -D rust_string_non_nullable.", Context.currentPos());
 		}
 		if (!hasNullableStrings && !hasNonNullableStrings) {
-			var profileDefine = Context.definedValue("reflaxe_rust_profile");
-			var wantsRusty = profileDefine != null && profileDefine == "rusty";
-			if (!wantsRusty) {
+			if (!ProfileResolver.isRustFirst(profile)) {
 				Compiler.define("rust_string_nullable");
 			}
 		}
 
 		if (Context.defined("rust_async_preview")) {
-			var profileForAsync = Context.definedValue("reflaxe_rust_profile");
-			var asyncPreviewRusty = profileForAsync != null && profileForAsync == "rusty";
-			if (!asyncPreviewRusty) {
-				Context.error("`-D rust_async_preview` currently requires `-D reflaxe_rust_profile=rusty`.", Context.currentPos());
+			if (!ProfileResolver.isRustFirst(profile)) {
+				Context.error("`-D rust_async_preview` currently requires `-D reflaxe_rust_profile=rusty|metal`.", Context.currentPos());
 			}
 			AsyncSyntaxMacro.init();
 		}

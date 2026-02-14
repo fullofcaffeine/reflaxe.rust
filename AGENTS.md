@@ -129,7 +129,10 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - Storage-backed accessors (`default,get` / `default,set`) commonly use `return x = v;` in Haxe; codegen must treat `x` inside `get_x`/`set_x` as direct backing-field access to avoid recursive calls.
   - In inherited method shims, the typed AST may type `this` as the base class; for property/field lowering, treat `this` as `currentClassType` (the concrete class being compiled) to avoid calling base methods with `&RefCell<Sub>` receivers.
 - Profiles:
-  - Default is portable output; enable more idiomatic output with `-D rust_idiomatic` or `-D reflaxe_rust_profile=idiomatic|rusty`.
+  - Default is portable output; enable more idiomatic output with `-D rust_idiomatic` or `-D reflaxe_rust_profile=idiomatic|rusty|metal`.
+  - `-D rust_metal` is an alias for `-D reflaxe_rust_profile=metal`.
+  - Metal policy: `reflaxe_rust_profile=metal` auto-enables strict app-boundary mode (`reflaxe_rust_strict`) so raw app-side `__rust__` is rejected by default.
+    Typed framework facades in `src/reflaxe/rust/macros` and `std/rust/metal` remain allowed.
   - Optional formatter hook: `-D rustfmt` runs `cargo fmt --manifest-path <out>/Cargo.toml` after output generation (best-effort, warns on failure).
 - TUI testing: prefer ratatui `TestBackend` via `TuiDemo.renderToString(...)` and assert in `cargo test` (see `docs/tui.md` and `examples/tui_todo/native/tui_tests.rs`).
   - Non-TTY gotcha: `TuiDemo.enter()` must never `unwrap()` terminal initialization. If interactive init fails (or stdin/stdout aren’t TTY), it must fall back to headless so `cargo run` in CI doesn’t panic.

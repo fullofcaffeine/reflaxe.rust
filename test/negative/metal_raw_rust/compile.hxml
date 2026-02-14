@@ -1,0 +1,6 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_profile=metal
+-D rust_no_build
+-D rust_output=out
+-main Main

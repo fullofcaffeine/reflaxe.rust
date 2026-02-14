@@ -12,29 +12,31 @@ In practice:
 2. The target emits Rust into `out/`.
 3. Cargo builds a native executable.
 
-## Two usage styles, three profiles
+## Two usage styles, four profiles
 
 Most users think in two styles:
 
 - Portable-first: keep code mostly cross-target Haxe.
 - Rust-first: write Haxe with explicit Rust concepts.
 
-Implementation detail: the compiler provides three profiles:
+Implementation detail: the compiler provides four profiles:
 
 - `portable` (default): safest default, best for Haxe-first teams.
 - `idiomatic`: same semantics as portable, cleaner Rust output.
 - `rusty`: Rust-first APIs and borrow-oriented surface.
+- `metal` (experimental): Rusty+ with typed low-level interop façade and stricter default app-boundary rules.
 
 Set profile with:
 
 ```bash
--D reflaxe_rust_profile=portable|idiomatic|rusty
+-D reflaxe_rust_profile=portable|idiomatic|rusty|metal
 ```
 
 Alias:
 
 ```bash
 -D rust_idiomatic
+-D rust_metal
 ```
 
 ## Fast path for first success
@@ -76,6 +78,7 @@ By default, watch mode keeps a Haxe compile server warm for faster incremental r
 - Pick `portable` if your team is mostly Haxe-first.
 - Pick `idiomatic` if you want cleaner generated Rust but no behavior shift.
 - Pick `rusty` if your team wants tighter control over Rust-like ownership/interop surfaces.
+- Pick `metal` when `rusty` is not enough and you need typed low-level Rust snippets behind strict boundaries.
 
 ## Interop ladder (use highest-level option first)
 
@@ -106,6 +109,7 @@ Track status here:
 - [Production Readiness](production-readiness.md)
 - [Road to 1.0](road-to-1.0.md)
 - [Profiles](profiles.md)
+- [Metal profile](metal-profile.md)
 - [Lifetime encoding design](lifetime-encoding.md)
 - [Async/Await preview](async-await.md)
 - [Defines reference](defines-reference.md)

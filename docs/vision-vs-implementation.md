@@ -40,8 +40,9 @@ Status: aligned
 Status: aligned, with one important clarification
 
 - User-facing model: portable-first and Rust-first workflows.
-- Implementation model: three profiles (`portable`, `idiomatic`, `rusty`).
+- Implementation model: four profiles (`portable`, `idiomatic`, `rusty`, `metal`).
 - `idiomatic` is intentionally a bridge profile, not a separate philosophy.
+- `metal` is an additive experimental Rust-first+ option, not a replacement for `rusty`.
 
 ### 3) Users should not need raw Rust in app code
 

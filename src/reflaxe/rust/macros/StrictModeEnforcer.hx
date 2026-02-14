@@ -5,6 +5,8 @@ import haxe.io.Path;
 import haxe.macro.Context;
 import haxe.macro.Type;
 import haxe.macro.TypedExprTools;
+import reflaxe.rust.ProfileResolver;
+import reflaxe.rust.RustProfile;
 
 /**
  * StrictModeEnforcer
@@ -21,50 +23,63 @@ import haxe.macro.TypedExprTools;
  * - Enable with `-D reflaxe_rust_strict` in the user's `.hxml`.
  * - Scans project-local sources (under current working directory), excluding this compiler’s
  *   own `src/reflaxe/**` and `std/**` sources when developing the compiler repo.
+ *
+ * Metal profile note
+ * - `reflaxe_rust_profile=metal` enables strict mode by default in `CompilerInit`.
+ * - In metal mode we still reject raw project-side `__rust__`, but allow framework-origin
+ *   typed wrappers (for example macro facades in `src/reflaxe/rust/macros` and `std/rust/metal`).
  */
 class StrictModeEnforcer {
-	public static function init(): Void {
-		if (!isRustBuild()) return;
-		if (!Context.defined("reflaxe_rust_strict")) return;
+	public static function init():Void {
+		if (!isRustBuild())
+			return;
+		if (!Context.defined("reflaxe_rust_strict"))
+			return;
 
 		var projectRoot = normalizePath(Sys.getCwd());
-		Context.onAfterTyping(types -> enforce(types, projectRoot));
+		var allowFrameworkTypedInjections = ProfileResolver.resolve() == RustProfile.Metal;
+		Context.onAfterTyping(types -> enforce(types, projectRoot, allowFrameworkTypedInjections));
 	}
 
-	static function enforce(types: Array<ModuleType>, projectRoot: String): Void {
+	static function enforce(types:Array<ModuleType>, projectRoot:String, allowFrameworkTypedInjections:Bool):Void {
 		for (moduleType in types) {
 			switch (moduleType) {
 				case TClassDecl(classRef):
 					var classType = classRef.get();
-					if (!isStrictProjectSource(classType.pos, projectRoot)) continue;
-					enforceNoRustInjectionInClass(classType);
+					if (!isStrictProjectSource(classType.pos, projectRoot))
+						continue;
+					enforceNoRustInjectionInClass(classType, projectRoot, allowFrameworkTypedInjections);
 				case _:
 			}
 		}
 	}
 
-	static function enforceNoRustInjectionInClass(classType: ClassType): Void {
+	static function enforceNoRustInjectionInClass(classType:ClassType, projectRoot:String, allowFrameworkTypedInjections:Bool):Void {
 		var allFields = classType.fields.get().concat(classType.statics.get());
 		for (field in allFields) {
 			var expr = field.expr();
-			if (expr == null) continue;
-			scanForRustInjection(expr);
+			if (expr == null)
+				continue;
+			scanForRustInjection(expr, projectRoot, allowFrameworkTypedInjections);
 		}
 	}
 
-	static function scanForRustInjection(expr: TypedExpr): Void {
+	static function scanForRustInjection(expr:TypedExpr, projectRoot:String, allowFrameworkTypedInjections:Bool):Void {
 		if (isRustInjectionCall(expr)) {
-			Context.error(
-				"Strict mode forbids `__rust__()` code injection in application code. " +
-				"Prefer a typed wrapper or move target-specific interop into `std/`.",
-				expr.pos
-			);
+			if (allowFrameworkTypedInjections && isFrameworkTypedInjectionExpr(expr.pos, projectRoot)) {
+				TypedExprTools.iter(expr, e -> scanForRustInjection(e, projectRoot, allowFrameworkTypedInjections));
+				return;
+			}
+
+			Context.error("Strict mode forbids `__rust__()` code injection in application code. "
+				+ "Prefer a typed wrapper or move target-specific interop into `std/`.",
+				expr.pos);
 		}
 
-		TypedExprTools.iter(expr, scanForRustInjection);
+		TypedExprTools.iter(expr, e -> scanForRustInjection(e, projectRoot, allowFrameworkTypedInjections));
 	}
 
-	static function isRustInjectionCall(expr: TypedExpr): Bool {
+	static function isRustInjectionCall(expr:TypedExpr):Bool {
 		return switch (expr.expr) {
 			case TCall(callTarget, _):
 				switch (callTarget.expr) {
@@ -89,10 +104,11 @@ class StrictModeEnforcer {
 		}
 	}
 
-	static function isStrictProjectSource(pos: haxe.macro.Expr.Position, projectRoot: String): Bool {
+	static function isStrictProjectSource(pos:haxe.macro.Expr.Position, projectRoot:String):Bool {
 		var root = ensureTrailingSlash(projectRoot);
 		var file = normalizePath(Context.getPosInfos(pos).file);
-		if (file == null || file == "") return false;
+		if (file == null || file == "")
+			return false;
 
 		if (!Path.isAbsolute(file)) {
 			file = normalizePath(Path.join([root, file]));
@@ -111,19 +127,37 @@ class StrictModeEnforcer {
 		return true;
 	}
 
-	static function ensureTrailingSlash(path: String): String {
+	static function isFrameworkTypedInjectionExpr(pos:haxe.macro.Expr.Position, projectRoot:String):Bool {
+		var root = ensureTrailingSlash(projectRoot);
+		var file = normalizePath(Context.getPosInfos(pos).file);
+		if (file == null || file == "")
+			return false;
+
+		if (!Path.isAbsolute(file)) {
+			file = normalizePath(Path.join([root, file]));
+		}
+
+		// Dependency/library source outside the project root is framework code.
+		if (!StringTools.startsWith(file, root)) {
+			return true;
+		}
+
+		// Allow only known framework facades within this repo.
+		return file.indexOf("/src/reflaxe/rust/macros/") != -1 || file.indexOf("/std/rust/metal/") != -1;
+	}
+
+	static function ensureTrailingSlash(path:String):String {
 		var normalized = normalizePath(path);
 		return StringTools.endsWith(normalized, "/") ? normalized : normalized + "/";
 	}
 
-	static function normalizePath(path: String): String {
+	static function normalizePath(path:String):String {
 		return Path.normalize(path).split("\\").join("/");
 	}
 
-	static function isRustBuild(): Bool {
+	static function isRustBuild():Bool {
 		var targetName = Context.definedValue("target.name");
 		return targetName == "rust" || Context.defined("rust_output");
 	}
 }
 #end
-
