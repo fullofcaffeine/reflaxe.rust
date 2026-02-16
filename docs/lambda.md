@@ -1,6 +1,6 @@
 # Lambda Helpers (reflaxe.rust)
 
-This target ships a `std/Lambda.hx` implementation that is designed to work well with reflaxe.rust’s current iteration model.
+This target ships a `std/Lambda.cross.hx` implementation that is designed to work well with reflaxe.rust’s current iteration model.
 
 ## Key design choice: inline-only, non-emitted
 
@@ -20,4 +20,3 @@ Why:
 - `Lambda.count(it, pred)` (optional predicate) is not provided yet because optional function arguments need better lowering for this target.
   - Use `Lambda.count(it)` for total count.
   - Use `Lambda.filter(it, pred).length` to count with a predicate.
-

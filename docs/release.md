@@ -25,6 +25,14 @@ Those updates are committed back to `main` as `chore(release): <version>`.
   - `scripts/release/sync-versions.js`
   - `scripts/release/package-haxelib.sh`
 - The zip is uploaded to the GitHub Release as an asset.
+- Packaging semantics intentionally mirror Reflaxe `build` behavior:
+  - copy `classPath` into the package root
+  - merge `reflaxe.stdPaths` into `classPath`
+  - include `LICENSE` + `README.md`
+  - sanitize `haxelib.json` by removing the `reflaxe` metadata block
+- Target-specific additions (required by this backend):
+  - bundled runtime sources under `runtime/`
+  - vendored Reflaxe framework sources under `vendor/`
 
 Note: even though we package a “haxelib style” zip, the intended distribution path for now is GitHub
 releases + lix (not publishing to haxelib).
@@ -39,4 +47,3 @@ releases + lix (not publishing to haxelib).
 To see what semantic-release *would* do (without pushing), you can run:
 
 `npx semantic-release --dry-run`
-

@@ -110,6 +110,10 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - Upstream Haxe std files (the default `.../haxe/versions/<ver>/std/`) are *typed* but **not emitted** by default.
   - Consequence: any std API type that appears in emitted signatures (e.g. `sys.io.FileSeek`) must exist under `std/`
     (or the emission filter must be expanded intentionally).
+  - File suffix policy: upstream-colliding overrides under `std/` should use `.cross.hx` so they are selected only for cross/custom-target
+    compilation, avoiding accidental pickup in eval/macro/non-target contexts.
+  - Packaging gotcha: release packaging flattens `reflaxe.stdPaths` into `classPath` (`src/**`), so framework-stdlib detection must support both
+    local layout (`std/**`) and packaged layout (`src/haxe/**`, `src/sys/**`, top-level std modules).
 - `Std.isOfType` is implemented as a compiler intrinsic (exact-type check via `__hx_type_id`, plus compile-time subtype short-circuit).
 - String move semantics: many generated Rust functions take `String` by value; to preserve Haxe’s “strings are re-usable after calls” behavior, callsites currently clone String arguments based on the callee’s parameter types.
 - Nullable-string migration gotcha: a full switch to `hxrt::string::HxString` as the emitted Rust `String` representation touches broad stdlib/runtime surfaces (notably map key types, `toString` trait bridges, and hardcoded `String` paths).
@@ -159,7 +163,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
     - Keep artifacts intentionally for debugging with `KEEP_ARTIFACTS=1`.
     - Manual cleanup: `npm run clean:artifacts` (outputs only) and `npm run clean:artifacts:all` (outputs + caches).
 - Install the repo pre-commit hook (gitleaks + guards + beads flush): run `bd hooks install` then `npm run hooks:install` (requires `gitleaks` installed)
-- Dynamic policy guard: `scripts/lint/dynamic_usage_guard.sh` is part of hooks/CI and fails on any non-allowlisted `Dynamic` mention in first-party `*.hx` files.
+- Dynamic policy guard: `scripts/lint/dynamic_usage_guard.sh` is part of hooks/CI and fails on any non-allowlisted `Dynamic` mention in first-party `*.hx`/`*.cross.hx` files.
   Keep intentional compatibility/runtime boundaries in `scripts/lint/dynamic_allowlist.txt` and remove avoidable `Dynamic` elsewhere.
 - Runtime gotcha: snapshots embed `runtime/hxrt/**` into `test/snapshot/**/intended/hxrt/`, so any change under `runtime/hxrt/` requires `bash test/run-snapshots.sh --update` to keep goldens in sync.
 - Snapshot runner gotcha: many snapshot crates share the same crate name (`hx_app`), so `test/run-snapshots.sh` must isolate `CARGO_TARGET_DIR` per case/variant
@@ -216,6 +220,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - `.github/workflows/release.yml` runs **semantic-release** after CI succeeds on `main` (semver tag + CHANGELOG + GitHub Release + zip asset).
   - `.github/workflows/rustsec.yml` runs `cargo audit` on a schedule.
   - Workspace gotcha: exclude `examples/` + `test/` from the root workspace so `cargo fmt/build` works inside generated `*/out/` crates during snapshot tests.
+- Packaging policy: `scripts/release/package-haxelib.sh` mirrors Reflaxe build flow by merging `reflaxe.stdPaths` into `classPath` and sanitizing `haxelib.json` (remove `reflaxe` field), while still shipping target-required `runtime/` + `vendor/`.
 - Conventional commits are required on `main` so semantic-release can compute the next version.
   - Use `feat:` for minor, `fix:` for patch, and `feat!:` / `BREAKING CHANGE:` for major.
 - Version strings are kept in sync by `scripts/release/sync-versions.js` (used by semantic-release).

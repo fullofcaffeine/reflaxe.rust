@@ -52,3 +52,4 @@ Use this page as the map for `reflaxe.rust` docs.
 ## Release and governance
 
 - [Release](release.md): semantic-release flow and release artifacts.
+- [Haxelib Packaging Notes](haxelib-packaging.md): package layout rules, flattening behavior, and `.cross.hx` rationale.

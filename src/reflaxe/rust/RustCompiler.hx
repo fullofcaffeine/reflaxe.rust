@@ -81,6 +81,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var extraRustSrcFiles:Array<{module:String, fileName:String, fullPath:String}> = [];
 	var classHasSubclass:Null<Map<String, Bool>> = null;
 	var frameworkStdDir:Null<String> = null;
+	var frameworkSrcDir:Null<String> = null;
 	var upstreamStdDirs:Array<String> = [];
 	var frameworkRuntimeDir:Null<String> = null;
 	var profile:RustProfile = Portable;
@@ -173,6 +174,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// Reset cached class hierarchy info per compilation.
 		classHasSubclass = null;
 		frameworkStdDir = null;
+		frameworkSrcDir = null;
 		upstreamStdDirs = [];
 		frameworkRuntimeDir = null;
 		warnedUnresolvedMonomorphPos = [];
@@ -196,8 +198,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (v != null && v.length > 0)
 			crateName = v;
 
-		// Compute this haxelib's `std/` directory, if available, so we can emit framework wrappers.
-		// (These should compile even when building from a different working directory.)
+		// Compute this haxelib's key roots:
+		// - `std/` for local-dev layout in this repository
+		// - `src/` for flattened package layout (where std overrides are merged into classPath)
+		//
+		// We intentionally keep both so framework std classification stays correct in both environments.
 		try {
 			var compilerPath = Context.resolvePath("reflaxe/rust/RustCompiler.hx");
 			var rustDir = Path.directory(compilerPath); // .../src/reflaxe/rust
@@ -205,9 +210,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var srcDir = Path.directory(reflaxeDir); // .../src
 			var libraryRoot = Path.directory(srcDir); // .../
 			frameworkStdDir = Path.normalize(Path.join([libraryRoot, "std"]));
+			frameworkSrcDir = Path.normalize(Path.join([libraryRoot, "src"]));
 			frameworkRuntimeDir = Path.normalize(Path.join([libraryRoot, "runtime", "hxrt"]));
 		} catch (e:haxe.Exception) {
 			frameworkStdDir = null;
+			frameworkSrcDir = null;
 			frameworkRuntimeDir = null;
 		}
 
@@ -1167,15 +1174,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function isFrameworkStdFile(file:String):Bool {
-		var stdRoot:Null<String> = null;
-		if (frameworkStdDir != null) {
-			stdRoot = ensureTrailingSlash(normalizePath(frameworkStdDir));
-		}
-
 		var cwd = normalizePath(Sys.getCwd());
 		var full = resolvePosFileToAbsolute(file, cwd);
 
-		if (stdRoot != null && StringTools.startsWith(full, stdRoot))
+		if (isUnderFrameworkStdRoot(full))
 			return true;
 
 		if (upstreamStdDirs.length > 0) {
@@ -1187,6 +1189,77 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		return false;
+	}
+
+	/**
+		Returns whether an absolute file path belongs to this library's framework std overrides.
+
+		Why
+		- During local development, overrides live under `<repo>/std/**`.
+		- In release packages, we flatten `stdPaths` into `classPath` (`src/**`) to mirror Reflaxe's
+		  build flow and keep install-time classpaths simple.
+		- We need one classifier that works in both layouts so emission and warning policies remain
+		  deterministic regardless of install method.
+
+		How
+		- First check the explicit `std/` root when present.
+		- Then check flattened `src/` paths against known std roots/modules (`haxe/`, `sys/`,
+		  `rust/`, `hxrt/`, plus top-level std modules like `Date`/`Sys`).
+	**/
+	function isUnderFrameworkStdRoot(full:String):Bool {
+		if (frameworkStdDir != null) {
+			var stdRoot = ensureTrailingSlash(normalizePath(frameworkStdDir));
+			if (StringTools.startsWith(full, stdRoot))
+				return true;
+		}
+
+		if (frameworkSrcDir != null) {
+			var srcRoot = ensureTrailingSlash(normalizePath(frameworkSrcDir));
+			if (StringTools.startsWith(full, srcRoot)) {
+				var rel = full.substr(srcRoot.length);
+				if (isFrameworkStdRelativePath(rel))
+					return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+		Returns true when a path relative to framework `src/` points to a flattened std override file.
+
+		Examples
+		- `haxe/Json.cross.hx` -> true
+		- `sys/net/Socket.cross.hx` -> true
+		- `rust/tui/TuiDemo.hx` -> true
+		- `reflaxe/rust/RustCompiler.hx` -> false
+	**/
+	function isFrameworkStdRelativePath(rel:String):Bool {
+		if (rel == null || rel.length == 0)
+			return false;
+
+		var normalized = normalizePath(rel);
+		while (StringTools.startsWith(normalized, "./"))
+			normalized = normalized.substr(2);
+
+		if (StringTools.startsWith(normalized, "haxe/")
+			|| StringTools.startsWith(normalized, "sys/")
+			|| StringTools.startsWith(normalized, "rust/")
+			|| StringTools.startsWith(normalized, "hxrt/"))
+			return true;
+
+		// Top-level framework std overrides (no subdirectories).
+		if (normalized.indexOf("/") != -1 || !StringTools.endsWith(normalized, ".hx"))
+			return false;
+
+		var stem = Path.withoutExtension(normalized); // `Date.cross` or `Date`
+		if (StringTools.endsWith(stem, ".cross"))
+			stem = stem.substr(0, stem.length - ".cross".length);
+
+		return switch (stem) {
+			case "Date" | "Lambda" | "StringBuf" | "StringTools" | "Sys" | "ArrayTools": true;
+			case _: false;
+		}
 	}
 
 	/**

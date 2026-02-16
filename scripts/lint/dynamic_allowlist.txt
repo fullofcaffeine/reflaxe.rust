@@ -1,15 +1,15 @@
 # Dynamic allowlist entries.
 # - `path` allows every `Dynamic` mention in that file.
 # - `path:line` allows only that exact line.
-# Keep this list minimal. Any non-listed `.hx` `Dynamic` mention fails CI.
+# Keep this list minimal. Any non-listed `.hx`/`.cross.hx` `Dynamic` mention fails CI.
 
 src/reflaxe/rust/RustCompiler.hx
-std/StringBuf.hx
-std/haxe/Constraints.hx
-std/haxe/Exception.hx
-std/haxe/Json.hx
-std/haxe/io/Bytes.hx
-std/haxe/iterators/MapKeyValueIterator.hx
+std/StringBuf.cross.hx
+std/haxe/Constraints.cross.hx
+std/haxe/Exception.cross.hx
+std/haxe/Json.cross.hx
+std/haxe/io/Bytes.cross.hx
+std/haxe/iterators/MapKeyValueIterator.cross.hx
 std/hxrt/db/NativeQueryResult.hx
 std/hxrt/fs/FileHandle.hx
 std/hxrt/json/NativeJson.hx
@@ -17,32 +17,32 @@ std/hxrt/process/ProcessHandle.hx
 std/hxrt/thread/NativeThread.hx
 std/rust/ResultTools.hx
 std/rust/fs/NativeFile.hx
-std/sys/thread/Thread.hx
-std/sys/thread/Tls.hx
+std/sys/thread/Thread.cross.hx
+std/sys/thread/Tls.cross.hx
 test/snapshot/catch_dynamic/Main.hx
 test/snapshot/std_string_dynamic/Main.hx
 test/snapshot/throw_tail_nonvoid/Main.hx
 
 # Core stdlib boundaries (line-scoped)
-std/Sys.hx:7
-std/Sys.hx:11
-std/sys/net/Socket.hx:36
-std/sys/net/Socket.hx:38
-std/sys/db/Connection.hx:26
-std/sys/db/ResultSet.hx:12
-std/sys/db/ResultSet.hx:18
-std/sys/db/ResultSet.hx:43
-std/sys/db/ResultSet.hx:48
-std/sys/db/Sqlite.hx:61
-std/sys/db/Sqlite.hx:108
-std/sys/db/Sqlite.hx:112
-std/sys/db/Sqlite.hx:113
-std/sys/db/Mysql.hx:20
-std/sys/db/Mysql.hx:29
-std/sys/db/Mysql.hx:94
-std/sys/db/Mysql.hx:141
-std/sys/db/Mysql.hx:145
-std/sys/db/Mysql.hx:146
+std/Sys.cross.hx:7
+std/Sys.cross.hx:11
+std/sys/net/Socket.cross.hx:36
+std/sys/net/Socket.cross.hx:38
+std/sys/db/Connection.cross.hx:26
+std/sys/db/ResultSet.cross.hx:12
+std/sys/db/ResultSet.cross.hx:18
+std/sys/db/ResultSet.cross.hx:43
+std/sys/db/ResultSet.cross.hx:48
+std/sys/db/Sqlite.cross.hx:61
+std/sys/db/Sqlite.cross.hx:108
+std/sys/db/Sqlite.cross.hx:112
+std/sys/db/Sqlite.cross.hx:113
+std/sys/db/Mysql.cross.hx:20
+std/sys/db/Mysql.cross.hx:29
+std/sys/db/Mysql.cross.hx:94
+std/sys/db/Mysql.cross.hx:141
+std/sys/db/Mysql.cross.hx:145
+std/sys/db/Mysql.cross.hx:146
 std/hxrt/db/NativeSqliteDriver.hx:35
 std/hxrt/db/NativeSqliteDriver.hx:38
 std/hxrt/db/NativeSqliteDriver.hx:42

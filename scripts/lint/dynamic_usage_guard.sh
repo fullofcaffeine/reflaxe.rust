@@ -25,7 +25,7 @@ while IFS= read -r raw || [ -n "$raw" ]; do
   fi
 done < "$ALLOWLIST_FILE"
 
-echo "[guard:dynamic] Scanning .hx files for Dynamic usage..."
+echo "[guard:dynamic] Scanning Haxe source files (.hx / .cross.hx) for Dynamic usage..."
 MATCHES="$(
   rg -n --no-heading --color never '\bDynamic\b' \
     --glob '*.hx' \
