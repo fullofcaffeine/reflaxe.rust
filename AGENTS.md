@@ -114,6 +114,10 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
     compilation, avoiding accidental pickup in eval/macro/non-target contexts.
   - Packaging gotcha: release packaging flattens `reflaxe.stdPaths` into `classPath` (`src/**`), so framework-stdlib detection must support both
     local layout (`std/**`) and packaged layout (`src/haxe/**`, `src/sys/**`, top-level std modules).
+  - Path-alias gotcha: framework std detection must canonicalize absolute paths (`FileSystem.fullPath`) before prefix checks, otherwise
+    symlink aliases (for example `/var/...` vs `/private/var/...`) can make packaged std overrides look like non-framework files and skip emission.
+  - Validation gotcha: `.cross.hx` std override behavior must be validated through a real `-lib reflaxe.rust` install path (`haxelib newrepo` + `haxelib install <zip>`).
+    A raw `-cp <pkg>/src` compile is not an equivalent packaging test and can resolve upstream std modules instead.
 - `Std.isOfType` is implemented as a compiler intrinsic (exact-type check via `__hx_type_id`, plus compile-time subtype short-circuit).
 - String move semantics: many generated Rust functions take `String` by value; to preserve Haxe’s “strings are re-usable after calls” behavior, callsites currently clone String arguments based on the callee’s parameter types.
 - Nullable-string migration gotcha: a full switch to `hxrt::string::HxString` as the emitted Rust `String` representation touches broad stdlib/runtime surfaces (notably map key types, `toString` trait bridges, and hardcoded `String` paths).
@@ -154,6 +158,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Run snapshots locally: `bash test/run-snapshots.sh`
 - Run upstream stdlib sweep locally: `bash test/run-upstream-stdlib-sweep.sh` (or single-module: `--module haxe.Json`).
 - Run Windows-safe smoke subset locally: `bash scripts/ci/windows-smoke.sh` (same subset used by the Windows CI job).
+- Run packaged-install smoke locally: `bash scripts/ci/package-smoke.sh` (build zip, install into local haxelib repo, compile, cargo build).
 - Update a snapshot’s golden output (after review): `bash test/run-snapshots.sh --case <name> --update`
 - Run the full CI-style harness locally (snapshots + all examples): `npm run test:all` (alias for `bash scripts/ci/harness.sh`)
   - Change-gate rule: for any non-trivial compiler/runtime/std/example code change, run the full harness (`npm run check:harness`)

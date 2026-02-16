@@ -23,6 +23,19 @@ selection and avoid accidental use in eval/macro/non-target contexts.
 
 In packaged zips, those files are merged under `src/**` but keep the `.cross.hx` suffix.
 
+## Validation workflow
+
+Use `bash scripts/ci/package-smoke.sh` to validate the shipped artifact end-to-end:
+
+- Build the zip with `scripts/release/package-haxelib.sh`.
+- Verify package layout + metadata invariants (`src/` flattening, sanitized `haxelib.json`, pruned runtime artifacts).
+- Create an isolated local haxelib repo (`haxelib newrepo`) and install the zip.
+- Compile a minimal app with `-lib reflaxe.rust` and confirm std override modules are emitted.
+- Build the generated Rust crate with `cargo build`.
+
+Important: validate packaged behavior through `haxelib install` + `-lib reflaxe.rust`, not raw `-cp <pkg>/src`.
+Raw classpath-only tests are not equivalent for `.cross.hx` std override selection.
+
 ## Backend-specific requirement
 
 The compiler resolves runtime assets relative to library root (`runtime/hxrt`) and bootstrap classpaths

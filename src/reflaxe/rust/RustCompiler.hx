@@ -209,9 +209,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var reflaxeDir = Path.directory(rustDir); // .../src/reflaxe
 			var srcDir = Path.directory(reflaxeDir); // .../src
 			var libraryRoot = Path.directory(srcDir); // .../
-			frameworkStdDir = Path.normalize(Path.join([libraryRoot, "std"]));
-			frameworkSrcDir = Path.normalize(Path.join([libraryRoot, "src"]));
-			frameworkRuntimeDir = Path.normalize(Path.join([libraryRoot, "runtime", "hxrt"]));
+			frameworkStdDir = canonicalizePath(Path.normalize(Path.join([libraryRoot, "std"])));
+			frameworkSrcDir = canonicalizePath(Path.normalize(Path.join([libraryRoot, "src"])));
+			frameworkRuntimeDir = canonicalizePath(Path.normalize(Path.join([libraryRoot, "runtime", "hxrt"])));
 		} catch (e:haxe.Exception) {
 			frameworkStdDir = null;
 			frameworkSrcDir = null;
@@ -1293,6 +1293,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		- If the path is absolute, keep it.
 		- Else, try `Context.resolvePath(file)` (classpath-based) to get the real absolute location.
 		- If resolution fails, fall back to `cwd + file` so local relative files still work.
+		- Canonicalize existing paths (`FileSystem.fullPath`) so symlink aliases (for example
+		  `/var/...` vs `/private/var/...`) don't break framework-stdlib prefix checks.
 	**/
 	function resolvePosFileToAbsolute(file:String, cwd:String):String {
 		var full = file;
@@ -1318,7 +1320,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 			}
 		}
-		return normalizePath(full);
+		return canonicalizePath(full);
 	}
 
 	function ensureTrailingSlash(path:String):String {
@@ -1327,6 +1329,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function normalizePath(path:String):String {
 		return Path.normalize(path).split("\\").join("/");
+	}
+
+	function canonicalizePath(path:String):String {
+		var p = path;
+		try {
+			if (FileSystem.exists(p))
+				p = FileSystem.fullPath(p);
+		} catch (e:haxe.Exception) {}
+		return normalizePath(p);
 	}
 
 	function classKey(classType:ClassType):String {

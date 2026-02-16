@@ -33,6 +33,8 @@ Those updates are committed back to `main` as `chore(release): <version>`.
 - Target-specific additions (required by this backend):
   - bundled runtime sources under `runtime/`
   - vendored Reflaxe framework sources under `vendor/`
+- CI guard: `scripts/ci/package-smoke.sh` validates the built zip by installing it into an isolated
+  local haxelib repo and compiling/building a smoke app via `-lib reflaxe.rust`.
 
 Note: even though we package a “haxelib style” zip, the intended distribution path for now is GitHub
 releases + lix (not publishing to haxelib).

@@ -203,6 +203,11 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Package smoke (haxelib zip install)
+        run: |
+          set -euo pipefail
+          bash scripts/ci/package-smoke.sh
+
       - name: Free runner disk space (before harness)
         run: |
           set -euo pipefail
