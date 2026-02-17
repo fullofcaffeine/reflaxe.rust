@@ -1,10 +1,12 @@
 package sys.net;
 
+import haxe.BoundaryTypes.SocketCustomBoundaryValue;
+
 /**
 	`sys.net` boundary value aliases (Rust target override)
 
 	Why
-	- Upstream `sys.net.Socket` exposes `custom:Dynamic` so app code can attach
+	- Upstream `sys.net.Socket` exposes `custom` as an untyped payload so app code can attach
 	  arbitrary values and recover them after `Socket.select`.
 	- We preserve that API while keeping backend implementation code explicit
 	  about untyped boundaries.
@@ -13,8 +15,8 @@ package sys.net;
 	- `SocketCustomValue`: value stored in `Socket.custom`.
 
 	How
-	- This alias maps to `Dynamic` to match upstream behavior.
+	- This alias delegates to `haxe.BoundaryTypes.SocketCustomBoundaryValue` to match upstream behavior.
 	- Treat values as boundary payloads and validate/cast immediately where
 	  concrete typing is required.
 **/
-typedef SocketCustomValue = Dynamic;
+typedef SocketCustomValue = SocketCustomBoundaryValue;

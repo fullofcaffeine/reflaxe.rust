@@ -4,17 +4,8 @@
 # Keep this list minimal. Any non-listed `.hx`/`.cross.hx` `Dynamic` mention fails CI.
 
 src/reflaxe/rust/RustCompiler.hx
-std/StringBuf.cross.hx
 std/haxe/BoundaryTypes.cross.hx
 std/rust/ResultTools.hx
-std/SysTypes.cross.hx
-std/sys/net/Types.cross.hx
-std/sys/thread/Types.cross.hx
 test/snapshot/catch_dynamic/Main.hx
 test/snapshot/std_string_dynamic/Main.hx
 test/snapshot/throw_tail_nonvoid/Main.hx
-
-# Core stdlib boundaries (line-scoped)
-std/sys/db/Types.cross.hx:16
-std/sys/db/Types.cross.hx:20
-std/sys/db/Types.cross.hx:22

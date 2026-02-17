@@ -1,5 +1,8 @@
 package sys.db;
 
+import haxe.BoundaryTypes.DbResultRowBoundaryValue;
+import haxe.BoundaryTypes.SqlBoundaryValue;
+
 /**
 	`sys.db` boundary value aliases (Rust target override)
 
@@ -13,10 +16,10 @@ package sys.db;
 	- `ResultRow`: row object returned by `ResultSet.next()` and `ResultSet.results()`.
 
 	How
-	- Both aliases map to `Dynamic` to preserve upstream `sys.db` compatibility.
+	- Both aliases delegate to `haxe.BoundaryTypes` compatibility aliases to preserve upstream `sys.db` behavior.
 	- Compiler/runtime code should treat these aliases as **boundary types** and immediately convert
 	  to concrete typed structures where practical.
 **/
-typedef SqlValue = Dynamic;
+typedef SqlValue = SqlBoundaryValue;
 
-typedef ResultRow = Dynamic;
+typedef ResultRow = DbResultRowBoundaryValue;

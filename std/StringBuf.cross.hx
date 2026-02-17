@@ -1,3 +1,5 @@
+import haxe.BoundaryTypes.StringBufAddBoundaryValue;
+
 /**
 	`StringBuf` (reflaxe.rust std override)
 
@@ -14,8 +16,8 @@
 	How
 	- Keeps a single `String` buffer field and updates it using plain assignment:
 	  `b = b + ...` (no `+=`).
-	- Converts `add<T>` arguments through `Std.string` after first boxing to `Dynamic` so we avoid
-	  generic type-parameter formatting constraints in Rust codegen.
+	- Uses `StringBufAddBoundaryValue` for `add(...)` so this file keeps the boundary explicit without
+	  repeating raw untyped payload markers.
 **/
 class StringBuf {
 	var b:String;
@@ -33,7 +35,7 @@ class StringBuf {
 		return b.length;
 	}
 
-	public function add(x:Dynamic):Void {
+	public function add(x:StringBufAddBoundaryValue):Void {
 		b = b + Std.string(x);
 	}
 
