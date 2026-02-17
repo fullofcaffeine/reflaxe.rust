@@ -2,6 +2,7 @@ package hxrt.db;
 
 import rust.HxRef;
 import rust.Ref;
+import sys.db.Types.ResultRow;
 
 /**
 	`hxrt.db.NativeQueryResult` (Rust runtime binding)
@@ -21,26 +22,26 @@ import rust.Ref;
 @:native("hxrt::db")
 extern class NativeQueryResult {
 	@:native("query_result_length")
-	public static function length(res: Ref<HxRef<QueryResultHandle>>): Int;
+	public static function length(res:Ref<HxRef<QueryResultHandle>>):Int;
 
 	@:native("query_result_nfields")
-	public static function nfields(res: Ref<HxRef<QueryResultHandle>>): Int;
+	public static function nfields(res:Ref<HxRef<QueryResultHandle>>):Int;
 
 	@:native("query_result_has_next")
-	public static function hasNext(res: Ref<HxRef<QueryResultHandle>>): Bool;
+	public static function hasNext(res:Ref<HxRef<QueryResultHandle>>):Bool;
 
 	@:native("query_result_next_row_object")
-	public static function nextRowObject(res: Ref<HxRef<QueryResultHandle>>): Dynamic;
+	public static function nextRowObject(res:Ref<HxRef<QueryResultHandle>>):ResultRow;
 
 	@:native("query_result_get_result")
-	public static function getResult(res: Ref<HxRef<QueryResultHandle>>, n: Int): String;
+	public static function getResult(res:Ref<HxRef<QueryResultHandle>>, n:Int):String;
 
 	@:native("query_result_get_int_result")
-	public static function getIntResult(res: Ref<HxRef<QueryResultHandle>>, n: Int): Int;
+	public static function getIntResult(res:Ref<HxRef<QueryResultHandle>>, n:Int):Int;
 
 	@:native("query_result_get_float_result")
-	public static function getFloatResult(res: Ref<HxRef<QueryResultHandle>>, n: Int): Float;
+	public static function getFloatResult(res:Ref<HxRef<QueryResultHandle>>, n:Int):Float;
 
 	@:native("query_result_fields")
-	public static function fields(res: Ref<HxRef<QueryResultHandle>>): Array<String>;
+	public static function fields(res:Ref<HxRef<QueryResultHandle>>):Array<String>;
 }

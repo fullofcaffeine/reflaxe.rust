@@ -5,7 +5,7 @@ package rust.fs;
 
 	Why
 	- `sys.io.FileInput` / `sys.io.FileOutput` need to keep an OS file handle open across calls.
-	- Storing a Rust file handle inside `Dynamic` is not viable: `hxrt::dynamic::Dynamic` requires
+	- Storing a Rust file handle inside an untyped runtime box is not viable because that box requires
 	  `Clone`, and `std::fs::File` is not `Clone`.
 	- The Rust target already uses `rust.HxRef<T>` (`Rc<RefCell<T>>`) for shared, cloneable handles.
 
@@ -21,4 +21,3 @@ package rust.fs;
 **/
 @:native("std::fs::File")
 extern class NativeFile {}
-

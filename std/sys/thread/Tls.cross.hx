@@ -6,7 +6,7 @@ package sys.thread;
 	Why
 	- `sys.thread.Tls<T>` is generic, and the Rust backend currently represents "null" via `Option<T>`.
 	- Modeling a fully type-safe, nullable `Tls<T>.value:T` directly in Rust would require deeper
-	  compiler/runtime work around `Dynamic` nullability.
+	  compiler/runtime work around untyped-null payload compatibility.
 
 	What
 	- A per-instance mapping from thread id to a stored value.

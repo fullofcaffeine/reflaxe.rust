@@ -1,10 +1,13 @@
 package hxrt.thread;
 
+import sys.thread.Types.ThreadMessage;
+
 /**
 	`hxrt.thread.NativeThread` (Rust runtime binding)
 
 	Why
-	- `sys.thread.Thread` needs a small set of runtime hooks that return `Dynamic`.
+	- `sys.thread.Thread` needs a small set of runtime hooks that return boundary-typed
+	  message payloads.
 	- Calling these hooks through raw `untyped __rust__` can leave unresolved monomorphs in
 	  the typed AST and produce noisy backend warnings in user builds.
 
@@ -18,5 +21,5 @@ package hxrt.thread;
 @:native("hxrt::thread")
 extern class NativeThread {
 	@:native("thread_read_message")
-	public static function readMessage(block: Bool): Dynamic;
+	public static function readMessage(block:Bool):ThreadMessage;
 }

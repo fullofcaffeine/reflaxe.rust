@@ -50,7 +50,7 @@ class Main {
 		var threw = false;
 		try {
 			FileSystem.isDirectory("reflaxe_rust_missing_dir_hopefully");
-		} catch (_:Dynamic) {
+		} catch (_:Any) {
 			// Sys/FileSystem may throw non-Exception payloads depending on platform/backend.
 			threw = true;
 		}

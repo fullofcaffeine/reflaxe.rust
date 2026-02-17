@@ -5,7 +5,7 @@ package hxrt.process;
 
 	Why
 	- `sys.io.Process` needs to hold a live OS process (`std::process::Child`) plus pipes.
-	- `Child` and its stdio handles are not `Clone`, so they cannot be stored inside `Dynamic`.
+	- `Child` and its stdio handles are not `Clone`, so they cannot be stored inside an untyped box.
 	- reflaxe.rust solves this by storing runtime handles behind `rust.HxRef<T>` (`Rc<RefCell<T>>`),
 	  which *is* cloneable and preserves Haxe's "values are reusable" expectations.
 
@@ -17,4 +17,3 @@ package hxrt.process;
 **/
 @:native("hxrt::process::Process")
 extern class ProcessHandle {}
-

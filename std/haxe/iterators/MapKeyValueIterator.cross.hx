@@ -18,7 +18,7 @@ package haxe.iterators;
 	- If you end up here at runtime, `next()` throws with an actionable message.
 **/
 class MapKeyValueIterator<K, V> {
-	public function new(map:Dynamic) {}
+	public function new(map:Any) {}
 
 	public function hasNext():Bool {
 		return false;

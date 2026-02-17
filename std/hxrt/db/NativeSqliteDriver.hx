@@ -2,6 +2,7 @@ package hxrt.db;
 
 import rust.HxRef;
 import rust.Ref;
+import sys.db.Types.SqlValue;
 
 /**
 	`hxrt.db.NativeSqliteDriver` (typed binding)
@@ -32,12 +33,12 @@ extern class NativeSqliteDriver {
 
 	/**
 		Why
-		- `sys.db.Connection.addValue` is defined upstream as `addValue(sb, v:Dynamic)`.
+		- `sys.db.Connection.addValue` is defined upstream as `addValue(sb, v:SqlValue)`.
 
 		How
-		- Keep `Dynamic` only at this required boundary and delegate immediately to Rust for
+		- Keep this boundary value typed as `SqlValue` and delegate immediately to Rust for
 		  deterministic SQL literal rendering.
 	**/
 	@:native("render_sql_value")
-	public static function renderSqlValue(v:Dynamic):String;
+	public static function renderSqlValue(v:SqlValue):String;
 }

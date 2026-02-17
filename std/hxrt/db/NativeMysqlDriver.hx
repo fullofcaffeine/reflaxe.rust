@@ -2,6 +2,7 @@ package hxrt.db;
 
 import rust.HxRef;
 import rust.Ref;
+import sys.db.Types.SqlValue;
 
 /**
 	`hxrt.db.NativeMysqlDriver` (typed binding)
@@ -29,11 +30,11 @@ extern class NativeMysqlDriver {
 
 	/**
 		Why
-		- `sys.db.Connection.addValue` is fixed by upstream API as `addValue(sb, v:Dynamic)`.
+		- `sys.db.Connection.addValue` is fixed by upstream API as `addValue(sb, v:SqlValue)`.
 
 		How
-		- Keep `Dynamic` at this boundary only; convert to SQL text in Rust immediately.
+		- Keep this boundary value typed as `SqlValue`; convert to SQL text in Rust immediately.
 	**/
 	@:native("render_sql_value")
-	public static function renderSqlValue(v:Dynamic):String;
+	public static function renderSqlValue(v:SqlValue):String;
 }

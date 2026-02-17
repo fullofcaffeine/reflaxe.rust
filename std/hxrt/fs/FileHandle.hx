@@ -5,7 +5,7 @@ package hxrt.fs;
 
 	Why
 	- `sys.io.FileInput` / `sys.io.FileOutput` must keep a file handle open across calls.
-	- We cannot store `std::fs::File` directly in a Haxe `Dynamic` or other boxed value because it is
+	- We cannot store `std::fs::File` directly in an untyped boxed value because it is
 	  not `Clone`, but Haxe values are generally assumed to be reusable.
 
 	What
@@ -17,4 +17,3 @@ package hxrt.fs;
 **/
 @:native("hxrt::fs::FileHandle")
 extern class FileHandle {}
-

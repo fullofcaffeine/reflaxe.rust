@@ -48,7 +48,7 @@ class Exception {
 
 	static private function caught(value:Any):Exception {
 		// Minimal, deterministic semantics:
-		// - Avoid `Std.string(value)` because its null checks become `Dynamic == null` comparisons on this target.
+		// - Avoid `Std.string(value)` because its null checks become untyped-null comparisons on this target.
 		// - Keep the thrown value accessible via `.native`.
 		return new Exception("Exception", null, value);
 	}

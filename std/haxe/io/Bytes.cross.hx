@@ -36,7 +36,7 @@ package haxe.io;
  * - Bounds checks: the current runtime uses Rust indexing and may panic on out-of-bounds access.
  *   This target now throws a catchable Haxe exception payload (via `hxrt::exception`) instead of
  *   panicking, but the exact thrown value is not yet guaranteed to match other targets’ `haxe.io.Error`
- *   payloads. Prefer catching `Dynamic` for now.
+ *   payloads. Prefer catching an untyped payload (`catch (e:Any)`) for now.
  * - String encoding: `toString()` is backed by Rust’s UTF-8 conversion with replacement for invalid
  *   sequences (`from_utf8_lossy`). This matches common expectations for “bytes interpreted as UTF-8”,
  *   but is not identical to every Haxe target’s legacy encoding behavior.

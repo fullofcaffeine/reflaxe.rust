@@ -1,6 +1,7 @@
 package sys.thread;
 
 import hxrt.thread.NativeThread;
+import sys.thread.Types.ThreadMessage;
 
 /**
 	OS thread API for the Rust target.
@@ -12,7 +13,8 @@ import hxrt.thread.NativeThread;
 	What
 	- `Thread.create(job)` spawns an OS thread that executes `job`.
 	- `Thread.current()` identifies the current OS thread (0 = main thread).
-	- `sendMessage` / `readMessage` implement per-thread message queues with `Dynamic` payloads.
+	- `sendMessage` / `readMessage` implement per-thread message queues with boundary payloads
+	  (`ThreadMessage`).
 	- `events` exposes a per-thread `EventLoop` compatible with `haxe.EntryPoint` expectations.
 
 	How
@@ -40,7 +42,7 @@ class Thread {
 		return EventLoop.__fromThreadId(__id);
 	}
 
-	public function sendMessage(msg:Dynamic):Void {
+	public function sendMessage(msg:ThreadMessage):Void {
 		untyped __rust__("hxrt::thread::thread_send_message({0}, {1})", __id, msg);
 	}
 
@@ -69,7 +71,7 @@ class Thread {
 		Read a message from the *current* thread's queue.
 		Returns `null` if `block` is `false` and no message is available.
 	**/
-	public static function readMessage(block:Bool):Dynamic {
+	public static function readMessage(block:Bool):ThreadMessage {
 		return NativeThread.readMessage(block);
 	}
 
