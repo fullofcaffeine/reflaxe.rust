@@ -100,6 +100,20 @@ class Main {
 }
 HX
 
+assert_emitted_std_modules() {
+  local crate_dir="$1"
+  local main_rs="$crate_dir/src/main.rs"
+  [[ -f "$main_rs" ]]
+  if ! rg -q "mod haxe_ds_list;" "$main_rs"; then
+    echo "error: generated main.rs is missing haxe_ds_list module import" >&2
+    exit 1
+  fi
+  if ! rg -q "mod haxe_exception;" "$main_rs"; then
+    echo "error: generated main.rs is missing haxe_exception module import" >&2
+    exit 1
+  fi
+}
+
 (
   cd "$app_dir"
   haxelib newrepo >/dev/null
@@ -107,21 +121,37 @@ HX
   haxe -cp . -lib reflaxe.rust -main Main -D rust_output=out -D rust_no_build
 )
 
-[[ -f "$app_dir/out/src/main.rs" ]]
-if ! rg -q "mod haxe_ds_list;" "$app_dir/out/src/main.rs"; then
-  echo "error: generated main.rs is missing haxe_ds_list module import" >&2
-  exit 1
-fi
-if ! rg -q "mod haxe_exception;" "$app_dir/out/src/main.rs"; then
-  echo "error: generated main.rs is missing haxe_exception module import" >&2
-  exit 1
-fi
+assert_emitted_std_modules "$app_dir/out"
 
 if [[ -z "${CARGO_TARGET_DIR:-}" ]]; then
   export CARGO_TARGET_DIR="$root_dir/.cache/package-smoke-target"
 fi
 (
   cd "$app_dir/out"
+  cargo build -q
+)
+
+log "compile via symlinked cwd alias (path canonicalization regression)"
+alias_dir="$tmp_root/app_symlink"
+ln -s "$app_dir" "$alias_dir"
+verbose_log="$tmp_root/haxe-symlink-verbose.log"
+(
+  cd "$alias_dir"
+  haxe -v -cp . -lib reflaxe.rust -main Main -D rust_output=out_symlink -D rust_no_build >"$verbose_log" 2>&1
+)
+
+if ! rg -q "^Classpath:" "$verbose_log"; then
+  echo "error: verbose compile log missing classpath line for symlink regression compile" >&2
+  exit 1
+fi
+if ! rg -Fq ".haxelib/reflaxe,rust/" "$verbose_log"; then
+  echo "error: verbose compile log missing reflaxe.rust haxelib classpath entry" >&2
+  exit 1
+fi
+
+assert_emitted_std_modules "$app_dir/out_symlink"
+(
+  cd "$app_dir/out_symlink"
   cargo build -q
 )
 

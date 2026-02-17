@@ -20,6 +20,7 @@
     "test:update": "bash test/run-snapshots.sh --update",
     "test:watcher": "bash test/scripts/watch-haxe-rust.sh",
     "test:upstream-stdlib": "bash test/run-upstream-stdlib-sweep.sh",
+    "test:package-smoke": "bash scripts/ci/package-smoke.sh",
     "test:windows-smoke": "bash scripts/ci/windows-smoke.sh",
     "test:all": "bash scripts/ci/harness.sh",
     "test:all:keep": "KEEP_ARTIFACTS=1 bash scripts/ci/harness.sh",

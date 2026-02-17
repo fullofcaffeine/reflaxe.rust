@@ -159,6 +159,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Run upstream stdlib sweep locally: `bash test/run-upstream-stdlib-sweep.sh` (or single-module: `--module haxe.Json`).
 - Run Windows-safe smoke subset locally: `bash scripts/ci/windows-smoke.sh` (same subset used by the Windows CI job).
 - Run packaged-install smoke locally: `bash scripts/ci/package-smoke.sh` (build zip, install into local haxelib repo, compile, cargo build).
+  - Regression coverage includes a symlinked working-directory compile pass to catch path-alias mismatches when classifying framework std files.
 - Update a snapshot’s golden output (after review): `bash test/run-snapshots.sh --case <name> --update`
 - Run the full CI-style harness locally (snapshots + all examples): `npm run test:all` (alias for `bash scripts/ci/harness.sh`)
   - Change-gate rule: for any non-trivial compiler/runtime/std/example code change, run the full harness (`npm run check:harness`)
@@ -189,7 +190,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - CI runs:
   - `test/run-snapshots.sh` (runs `cargo fmt` + `cargo build -q` per snapshot)
   - `test/run-upstream-stdlib-sweep.sh` (per-module actionable compile/fmt/check for upstream std modules)
-  - `scripts/ci/harness.sh` compiles all non-CI example variants (`compile*.hxml`, excluding `*.ci.hxml`) and runs every CI variant present (`compile*.ci.hxml`, fallback `compile.hxml` when no CI file exists), including `cargo test` + `cargo run`.
+  - `scripts/ci/package-smoke.sh` validates the packaged artifact via isolated local `haxelib` install + Rust build (including symlink-cwd alias regression).
+  - `scripts/ci/harness.sh` runs snapshots, metal boundary policy, upstream stdlib sweep, package smoke, then compiles all non-CI example variants (`compile*.hxml`, excluding `*.ci.hxml`) and runs every CI variant present (`compile*.ci.hxml`, fallback `compile.hxml` when no CI file exists), including `cargo test` + `cargo run`.
   - `scripts/ci/windows-smoke.sh` runs on `windows-latest` and validates a Windows-safe subset (fmt/clippy + `hello_trace`/`sys_io` snapshots + `examples/sys_file_io` + `examples/sys_net_loopback`).
 
 ## Build (native)

@@ -31,6 +31,7 @@ Use `bash scripts/ci/package-smoke.sh` to validate the shipped artifact end-to-e
 - Verify package layout + metadata invariants (`src/` flattening, sanitized `haxelib.json`, pruned runtime artifacts).
 - Create an isolated local haxelib repo (`haxelib newrepo`) and install the zip.
 - Compile a minimal app with `-lib reflaxe.rust` and confirm std override modules are emitted.
+- Compile again from a symlinked working-directory alias to exercise path canonicalization behavior.
 - Build the generated Rust crate with `cargo build`.
 
 Important: validate packaged behavior through `haxelib install` + `-lib reflaxe.rust`, not raw `-cp <pkg>/src`.
