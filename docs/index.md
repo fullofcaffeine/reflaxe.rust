@@ -25,6 +25,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Defines reference](defines-reference.md): practical `-D` reference for build/profile/CI knobs.
 - [v1 support matrix](v1.md): technical support matrix and parity constraints.
 - [Workflow](workflow.md): Haxe -> Rust -> Cargo workflow.
+- [Dynamic boundaries](dynamic-boundaries.md): intentional untyped boundaries and allowlist policy.
 - [Weekly CI Evidence](weekly-ci-evidence.md): post-1.0 validation cadence and evidence protocol.
 - [Sys Regression Watchlist](sys-regression-watchlist.md): active cross-platform sys risk tracking.
 - [Dev Watcher](dev-watcher.md): local edit-compile-run watch loop.

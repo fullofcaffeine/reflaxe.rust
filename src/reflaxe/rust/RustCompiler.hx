@@ -4613,7 +4613,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						ECast(inner, target);
 					} else if (!fromIsDyn && toIsDyn) {
 						// Casting to `Dynamic` must box the value (our `Dynamic` is a runtime wrapper).
-						coerceExprToExpected(inner, e1, Context.getType("Dynamic"));
+						coerceExprToExpected(inner, e1, haxeDynamicBoundaryType());
 					} else if (fromIsDyn && !toIsDyn) {
 						// Casting from `Dynamic` to a concrete type: downcast through the runtime wrapper.
 						dynamicToConcrete(inner, e.t, e.pos);
@@ -9564,7 +9564,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							// `Dynamic == Dynamic` (and mixed `Dynamic == T`) cannot rely on Rust `PartialEq`.
 							// Route through runtime equality helpers.
 							if (isDyn1 || isDyn2) {
-								var dynTy = Context.getType("Dynamic");
+								var dynTy = haxeDynamicBoundaryType();
 								function toDynamic(te:TypedExpr, compiled:RustExpr):RustExpr {
 									if (isNullConstExpr(te))
 										return ECall(EPath("hxrt::dynamic::Dynamic::null"), []);
@@ -9654,7 +9654,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							EUnary("!", ECall(EField(compileExpr(e2), "is_null"), []));
 						} else {
 							if (isDyn1 || isDyn2) {
-								var dynTy = Context.getType("Dynamic");
+								var dynTy = haxeDynamicBoundaryType();
 								function toDynamic(te:TypedExpr, compiled:RustExpr):RustExpr {
 									if (isNullConstExpr(te))
 										return ECall(EPath("hxrt::dynamic::Dynamic::null"), []);
@@ -10592,6 +10592,25 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function isCopyType(t:Type):Bool {
 		var ft = followType(t);
 		return TypeHelper.isBool(ft) || TypeHelper.isInt(ft) || TypeHelper.isFloat(ft);
+	}
+
+	var cachedHaxeDynamicType:Null<Type> = null;
+
+	/**
+		Returns the Haxe `Dynamic` type used at unavoidable compiler boundary coercions.
+
+		Why
+		- `Dynamic` lookups are used in several lowering paths (casts, equality coercions).
+		- Keeping this lookup centralized makes boundary usage explicit and easier to audit.
+
+		How
+		- Lazily resolves and caches `Context.getType("Dynamic")`.
+	**/
+	function haxeDynamicBoundaryType():Type {
+		if (cachedHaxeDynamicType == null) {
+			cachedHaxeDynamicType = Context.getType("Dynamic");
+		}
+		return cachedHaxeDynamicType;
 	}
 
 	function isDynamicType(t:Type):Bool {

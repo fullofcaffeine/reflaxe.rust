@@ -3,7 +3,7 @@
 # - `path:line` allows only that exact line.
 # Keep this list minimal. Any non-listed `.hx`/`.cross.hx` `Dynamic` mention fails CI.
 
-src/reflaxe/rust/RustCompiler.hx
+src/reflaxe/rust/RustCompiler.hx # FILE_SCOPE_JUSTIFICATION: Compiler-wide Dynamic lowering/boxing bridge; tracked in docs/dynamic-boundaries.md
 std/haxe/BoundaryTypes.cross.hx:27
 std/haxe/BoundaryTypes.cross.hx:29
 std/haxe/BoundaryTypes.cross.hx:31

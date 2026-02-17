@@ -14,16 +14,34 @@ allowlist_lines_tmp="$(mktemp)"
 hits_tmp="$(mktemp)"
 trap 'rm -f "$allowlist_files_tmp" "$allowlist_lines_tmp" "$hits_tmp"' EXIT
 
+allowlist_parse_errors=0
 while IFS= read -r raw || [ -n "$raw" ]; do
-  line="${raw%%#*}"
+  trimmed_raw="$(printf '%s' "$raw" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+  [ -z "$trimmed_raw" ] && continue
+  if printf '%s' "$trimmed_raw" | grep -Eq '^#'; then
+    continue
+  fi
+
+  line="${trimmed_raw%%#*}"
   line="$(printf '%s' "$line" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
   [ -z "$line" ] && continue
   if printf '%s' "$line" | grep -Eq '^.+:[0-9]+$'; then
     printf '%s\n' "$line" >> "$allowlist_lines_tmp"
   else
+    if ! printf '%s' "$trimmed_raw" | grep -Eq '#[[:space:]]*FILE_SCOPE_JUSTIFICATION:[[:space:]]*.+$'; then
+      if [ $allowlist_parse_errors -eq 0 ]; then
+        echo "[guard:dynamic] ERROR: File-scoped allowlist entries require an inline justification comment." >&2
+      fi
+      echo "[guard:dynamic] $line (missing '# FILE_SCOPE_JUSTIFICATION: ...')" >&2
+      allowlist_parse_errors=$((allowlist_parse_errors + 1))
+    fi
     printf '%s\n' "$line" >> "$allowlist_files_tmp"
   fi
 done < "$ALLOWLIST_FILE"
+
+if [ $allowlist_parse_errors -ne 0 ]; then
+  exit 1
+fi
 
 echo "[guard:dynamic] Scanning Haxe source files (.hx / .cross.hx) for Dynamic usage..."
 MATCHES="$(
