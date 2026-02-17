@@ -6,18 +6,21 @@ This document is the source of truth for intentional `Dynamic` usage in `reflaxe
 
 - Default rule: do not use `Dynamic`.
 - Allowlist rule: prefer exact `path:line` entries in `scripts/lint/dynamic_allowlist.txt`.
-- Exception rule: file-scoped allowlist entries are temporary and must include
+- Exception rule: any future file-scoped allowlist entry is temporary and must include
   `# FILE_SCOPE_JUSTIFICATION: ...` inline in the allowlist.
 
 ## Current Allowlist
 
-### `src/reflaxe/rust/RustCompiler.hx` (file-scoped, temporary)
+### `src/reflaxe/rust/RustCompiler.hx` (line-scoped)
 
 - Why: compiler internals still contain multiple dynamic lowering/boxing bridges required to preserve
   upstream Haxe semantics while targeting Rust runtime `hxrt::dynamic::Dynamic`.
-- Status: temporary broad scope, explicitly justified in `scripts/lint/dynamic_allowlist.txt`.
-- Exit criteria: move to line-scoped entries (or remove entirely) as dynamic bridges are narrowed and
-  centralized.
+- Status: line-scoped entries are generated from actual `Dynamic` usage lines.
+- Exit criteria: remove line entries as bridge points are typed or refactored away.
+
+### File-scoped entries
+
+- None currently.
 
 ### `std/haxe/BoundaryTypes.cross.hx` (line-scoped)
 
