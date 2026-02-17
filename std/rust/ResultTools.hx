@@ -261,9 +261,13 @@ class ResultTools {
 
 	/**
 	 * Deprecated: prefer `catchException` when the throwing API uses typed exceptions.
+	 *
+	 * Why `Any`:
+	 * - This helper intentionally captures non-`haxe.Exception` throws for compatibility.
+	 * - `Any` expresses that catch-all boundary without requiring raw untyped payload markers in this API.
 	 */
 	@:deprecated("Prefer catchException for typed exception flows.")
-	public static macro function catchAny<T>(fn:Expr):ExprOf<Result<T, Dynamic>> {
+	public static macro function catchAny<T>(fn:Expr):ExprOf<Result<T, Any>> {
 		#if macro
 		var f = switch (fn.expr) {
 			case EFunction(_, f): f;
@@ -277,7 +281,7 @@ class ResultTools {
 		}
 
 		var body = stripReturn(f.expr);
-		return macro(try Ok(${asValueExpr(body)}) catch (e:Dynamic) Err(e));
+		return macro(try Ok(${asValueExpr(body)}) catch (e:Any) Err(e));
 		#else
 		return macro null;
 		#end
@@ -300,7 +304,7 @@ class ResultTools {
 		}
 
 		var body = stripReturn(f.expr);
-		return macro(try Ok(${asValueExpr(body)}) catch (e:Dynamic) Err(Std.string(e)));
+		return macro(try Ok(${asValueExpr(body)}) catch (e:Any) Err(Std.string(e)));
 		#else
 		return macro null;
 		#end

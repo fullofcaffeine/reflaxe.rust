@@ -221,7 +221,11 @@ fn main() {
         Ok(__hx_ok) => __hx_ok,
         Err(__hx_ex) => {
             let e_3: hxrt::dynamic::Dynamic = __hx_ex;
-            Result::Err(e_3.to_haxe_string())
+            Result::Err(if e_3.is_null() {
+                String::from("null")
+            } else {
+                e_3.to_haxe_string()
+            })
         }
     };
     match caught.clone() {

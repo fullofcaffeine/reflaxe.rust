@@ -5,7 +5,6 @@
 
 src/reflaxe/rust/RustCompiler.hx
 std/haxe/BoundaryTypes.cross.hx
-std/rust/ResultTools.hx
 test/snapshot/catch_dynamic/Main.hx
 test/snapshot/std_string_dynamic/Main.hx
 test/snapshot/throw_tail_nonvoid/Main.hx
