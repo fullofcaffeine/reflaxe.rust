@@ -5,9 +5,7 @@
 
 src/reflaxe/rust/RustCompiler.hx
 std/StringBuf.cross.hx
-std/haxe/Constraints.cross.hx
-std/haxe/Json.cross.hx
-std/hxrt/json/NativeJson.hx
+std/haxe/BoundaryTypes.cross.hx
 std/rust/ResultTools.hx
 std/SysTypes.cross.hx
 std/sys/net/Types.cross.hx

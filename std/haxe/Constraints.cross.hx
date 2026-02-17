@@ -1,5 +1,7 @@
 package haxe;
 
+import haxe.BoundaryTypes.ConstraintValue;
+
 /**
 	`haxe.Constraints` (Rust target override)
 
@@ -16,31 +18,32 @@ package haxe;
 	  - `IMap<K, V>`
 
 	How
-	- These are compile-time constraints. Their runtime representation is `Dynamic` where applicable.
+	- These are compile-time constraints. Their runtime representation is `ConstraintValue`
+	  where applicable.
 	- `IMap` is implemented by concrete map types such as `haxe.ds.StringMap`.
 **/
 /**
 	This type unifies with any function type.
 
-	If used as a real type, the underlying type is `Dynamic`.
+	If used as a real type, the underlying type is `ConstraintValue`.
 **/
 @:callable
-abstract Function(Dynamic) {}
+abstract Function(ConstraintValue) {}
 
 /**
 	This type unifies with an enum instance if all constructors of the enum require no arguments.
 **/
-abstract FlatEnum(Dynamic) {}
+abstract FlatEnum(ConstraintValue) {}
 
 /**
 	This type unifies with anything but `Void`.
 **/
-abstract NotVoid(Dynamic) {}
+abstract NotVoid(ConstraintValue) {}
 
 /**
 	This type unifies with any instance of classes that have a constructor which unifies with `T`.
 **/
-abstract Constructible<T>(Dynamic) {}
+abstract Constructible<T>(ConstraintValue) {}
 
 /**
 	A minimal map interface used by `Map<K, V>` and concrete map implementations.

@@ -1,5 +1,7 @@
 package haxe;
 
+import haxe.BoundaryTypes.JsonReplacer;
+import haxe.BoundaryTypes.JsonValue;
 import haxe.json.Value;
 import hxrt.json.NativeJson;
 
@@ -14,15 +16,15 @@ import hxrt.json.NativeJson;
 	  2) leverages Rust's mature JSON ecosystem.
 
 	What
-	- `parse(text:String):Dynamic`
+	- `parse(text:String):JsonValue`
 	- `parseValue(text:String):haxe.json.Value`
-	- `stringify(value:Dynamic, ?replacer, ?space):String`
+	- `stringify(value:JsonValue, ?replacer, ?space):String`
 
 	How
 	- Implemented by calling into the bundled Rust runtime (`hxrt`) via target-code injection.
 	- `parse` returns:
-	  - JSON objects as runtime `DynObject` boxed into `Dynamic` (works with `Reflect.field`)
-	  - JSON arrays as `Array<Dynamic>` boxed into `Dynamic`
+	  - JSON objects as runtime `DynObject` boxed into `JsonValue` (works with `Reflect.field`)
+	  - JSON arrays as `Array<JsonValue>` boxed into `JsonValue`
 	- `stringify` supports `space` for pretty printing (indent string per nesting level).
 	  `replacer` is accepted for API compatibility but is not implemented yet on this target.
 **/
@@ -36,9 +38,9 @@ class Json {
 	static inline var KIND_OBJECT:Int = 6;
 
 	/**
-		Parses a JSON string into a Haxe `Dynamic` value.
+		Parses a JSON string into a Haxe `JsonValue` boundary payload.
 	**/
-	public static function parse(text:String):Dynamic {
+	public static function parse(text:String):JsonValue {
 		#if macro
 		return haxe.format.JsonParser.parse(text);
 		#else
@@ -49,7 +51,7 @@ class Json {
 	/**
 		Parses a JSON string into a typed `haxe.json.Value`.
 
-		This keeps the stdlib-compatible `Dynamic` parse boundary at one point while allowing
+		This keeps the stdlib-compatible `JsonValue` parse boundary at one point while allowing
 		callers to switch to exhaustive typed matching immediately afterwards.
 	**/
 	public static function parseValue(text:String):Value {
@@ -61,13 +63,13 @@ class Json {
 	}
 
 	/**
-		Encodes a Haxe `Dynamic` value as JSON.
+		Encodes a Haxe `JsonValue` boundary payload as JSON.
 
 		Notes
 		- `space` enables pretty-printing (indent string per nesting level).
 		- `replacer` is not supported yet on the Rust target.
 	**/
-	public static function stringify(value:Dynamic, ?replacer:(key:Dynamic, value:Dynamic) -> Dynamic, ?space:String):String {
+	public static function stringify(value:JsonValue, ?replacer:JsonReplacer, ?space:String):String {
 		#if macro
 		return haxe.format.JsonPrinter.print(value, replacer, space);
 		#else
@@ -80,18 +82,18 @@ class Json {
 
 	#if !macro
 	/**
-		Converts the runtime JSON `Dynamic` shape into typed `haxe.json.Value`.
+		Converts the runtime JSON `JsonValue` shape into typed `haxe.json.Value`.
 
 		Why
-		- `haxe.Json.parse` must stay `Dynamic` for stdlib compatibility.
-		- The rest of compiler/runtime/example code should avoid carrying `Dynamic`.
+		- `haxe.Json.parse` must stay boundary-typed (`JsonValue`) for stdlib compatibility.
+		- The rest of compiler/runtime/example code should avoid carrying untyped values.
 
 		How
 		- Reads a stable runtime kind tag from `hxrt::json`.
 		- Uses typed accessors per kind and recurses for arrays/objects.
 		- No stringify/reflect heuristics are used in this path.
 	**/
-	static function dynamicToValue(value:Dynamic):Value {
+	static function dynamicToValue(value:JsonValue):Value {
 		switch (NativeJson.valueKind(value)) {
 			case KIND_NULL:
 				return JNull;
@@ -126,7 +128,7 @@ class Json {
 	#end
 
 	#if macro
-	static function macroDynamicToValue(value:Dynamic):Value {
+	static function macroDynamicToValue(value:JsonValue):Value {
 		if (value == null)
 			return JNull;
 		if (Std.isOfType(value, Bool))
@@ -139,7 +141,7 @@ class Json {
 			return JString(cast value);
 
 		if (Std.isOfType(value, Array)) {
-			var input:Array<Dynamic> = cast value;
+			var input:Array<JsonValue> = cast value;
 			var out:Array<Value> = [];
 			for (entry in input) {
 				out.push(macroDynamicToValue(entry));
