@@ -3,12 +3,15 @@
  *
  * Intentionally minimal for now (Milestone 8 acceptance coverage).
  */
+
+import SysTypes.SysPrintValue;
+
 class Sys {
-	public static function print(v:Dynamic):Void {
+	public static function print(v:SysPrintValue):Void {
 		untyped __rust__("{ print!(\"{}\", {0}); }", v);
 	}
 
-	public static function println(v:Dynamic):Void {
+	public static function println(v:SysPrintValue):Void {
 		untyped __rust__("{ println!(\"{}\", {0}); }", v);
 	}
 

@@ -32,6 +32,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   When you must cross a `Dynamic` boundary, immediately validate/cast/convert into a typed structure (often a `typedef` schema) and keep the rest of the code typed.
 - `Dynamic` policy (strict): use `Dynamic` only when explicitly justified by upstream std/API contracts or unavoidable runtime boundaries.
   Default to concrete `typedef`/class/abstract/external bindings and leverage Haxe’s type system end-to-end.
+- For unavoidable stdlib API boundaries, prefer a descriptive `typedef` alias module (for example `*Types.cross.hx`)
+  so raw `Dynamic` is centralized and documented instead of scattered across implementation files.
 - Path privacy policy: never disclose machine-specific absolute local paths (for example `<home>/...`).
   Always use repository-relative paths; for sibling repos, use relative references like `../haxe.elixir.reference`.
 

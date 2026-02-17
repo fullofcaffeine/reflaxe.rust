@@ -5,6 +5,7 @@ import hxrt.net.SocketHandle;
 import rust.HxRef;
 import sys.net._SocketIO.SocketInput;
 import sys.net._SocketIO.SocketOutput;
+import sys.net.Types.SocketCustomValue;
 
 /**
 	`sys.net.Socket` (Rust target implementation)
@@ -33,9 +34,10 @@ class Socket {
 	/**
 		A custom value that can be associated with the socket.
 
-		Note: on this target we store it as `Null<Dynamic>` so it can be `null` by default.
+		Note: this remains a boundary-typed payload (`SocketCustomValue`) to match
+		upstream `sys.net.Socket` behavior while documenting intentional untyped storage.
 	**/
-	public var custom:Null<Dynamic> = null;
+	public var custom:Null<SocketCustomValue> = null;
 
 	@:allow(sys.net.UdpSocket)
 	@:allow(sys.ssl.Socket)

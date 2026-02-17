@@ -17,17 +17,15 @@ std/hxrt/process/ProcessHandle.hx
 std/hxrt/thread/NativeThread.hx
 std/rust/ResultTools.hx
 std/rust/fs/NativeFile.hx
+std/SysTypes.cross.hx
 std/sys/thread/Thread.cross.hx
 std/sys/thread/Tls.cross.hx
+std/sys/net/Types.cross.hx
 test/snapshot/catch_dynamic/Main.hx
 test/snapshot/std_string_dynamic/Main.hx
 test/snapshot/throw_tail_nonvoid/Main.hx
 
 # Core stdlib boundaries (line-scoped)
-std/Sys.cross.hx:7
-std/Sys.cross.hx:11
-std/sys/net/Socket.cross.hx:36
-std/sys/net/Socket.cross.hx:38
 std/sys/db/Types.cross.hx:16
 std/sys/db/Types.cross.hx:20
 std/sys/db/Types.cross.hx:22
