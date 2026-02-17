@@ -1,5 +1,7 @@
 package sys.db;
 
+import sys.db.Types.SqlValue;
+
 /**
 	`sys.db.Connection` (Rust target override)
 
@@ -23,7 +25,7 @@ interface Connection {
 	function close():Void;
 	function escape(s:String):String;
 	function quote(s:String):String;
-	function addValue(s:StringBuf, v:Dynamic):Void;
+	function addValue(s:StringBuf, v:SqlValue):Void;
 	function lastInsertId():Int;
 	function dbName():String;
 	function startTransaction():Void;

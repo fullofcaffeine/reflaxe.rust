@@ -5,6 +5,8 @@ import hxrt.db.NativeMysqlDriver;
 import hxrt.db.NativeQueryResult;
 import hxrt.db.MysqlConnectionHandle;
 import rust.HxRef;
+import sys.db.Types.ResultRow;
+import sys.db.Types.SqlValue;
 
 /**
 	`sys.db.Mysql` (Rust target override)
@@ -17,7 +19,7 @@ import rust.HxRef;
 	What
 	- `connect(params)` opens a MySQL connection and returns a `sys.db.Connection`.
 	- Implements the `Connection` contract using the same runtime cursor container as SQLite:
-	  results are materialized into `hxrt::db::QueryResult`, and rows are exposed as `Dynamic`.
+	  results are materialized into `hxrt::db::QueryResult`, and rows are exposed as `ResultRow`.
 
 	How
 	- Uses the Rust `mysql` crate behind the scenes.
@@ -26,7 +28,7 @@ import rust.HxRef;
 	  `std/sys/db/native/db_mysql_driver.rs` and is reached through `hxrt.db.NativeMysqlDriver`.
 	- Queries are executed synchronously. The first result-set is materialized; multi-result
 	  statements are not supported yet.
-	- Row values are converted into Haxe-friendly `Dynamic` values:
+	- Row values are converted into Haxe-friendly row values:
 	  - `NULL` -> `null`
 	  - integers -> `Int` (clamped to 32-bit)
 	  - floats -> `Float`
@@ -91,7 +93,7 @@ private class MysqlConnection implements Connection {
 		return "'" + escape(s) + "'";
 	}
 
-	public function addValue(sb:StringBuf, v:Dynamic):Void {
+	public function addValue(sb:StringBuf, v:SqlValue):Void {
 		sb.add(NativeMysqlDriver.renderSqlValue(v));
 	}
 
@@ -138,12 +140,12 @@ private class MysqlResultSet implements ResultSet {
 		return NativeQueryResult.hasNext(res);
 	}
 
-	public function next():Dynamic {
+	public function next():ResultRow {
 		return NativeQueryResult.nextRowObject(res);
 	}
 
-	public function results():List<Dynamic> {
-		var l:List<Dynamic> = new List<Dynamic>();
+	public function results():List<ResultRow> {
+		var l:List<ResultRow> = new List<ResultRow>();
 		while (hasNext()) {
 			l.add(next());
 		}

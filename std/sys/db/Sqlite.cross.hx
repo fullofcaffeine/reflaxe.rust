@@ -5,6 +5,8 @@ import hxrt.db.NativeSqliteDriver;
 import hxrt.db.NativeQueryResult;
 import hxrt.db.SqliteConnectionHandle;
 import rust.HxRef;
+import sys.db.Types.ResultRow;
+import sys.db.Types.SqlValue;
 
 /**
 	`sys.db.Sqlite` (Rust target override)
@@ -58,7 +60,7 @@ private class SqliteConnection implements Connection {
 		return "'" + escape(s) + "'";
 	}
 
-	public function addValue(sb:StringBuf, v:Dynamic):Void {
+	public function addValue(sb:StringBuf, v:SqlValue):Void {
 		sb.add(NativeSqliteDriver.renderSqlValue(v));
 	}
 
@@ -105,12 +107,12 @@ private class SqliteResultSet implements ResultSet {
 		return NativeQueryResult.hasNext(res);
 	}
 
-	public function next():Dynamic {
+	public function next():ResultRow {
 		return NativeQueryResult.nextRowObject(res);
 	}
 
-	public function results():List<Dynamic> {
-		var l:List<Dynamic> = new List<Dynamic>();
+	public function results():List<ResultRow> {
+		var l:List<ResultRow> = new List<ResultRow>();
 		while (hasNext()) {
 			l.add(next());
 		}

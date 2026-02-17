@@ -1,5 +1,7 @@
 package sys.db;
 
+import sys.db.Types.ResultRow;
+
 /**
 	`sys.db.ResultSet` (Rust target override)
 
@@ -9,13 +11,13 @@ package sys.db;
 
 	What
 	- A cursor over rows produced by a query.
-	- `next()` returns the next row as `Dynamic` (end-of-result returns `null`).
+	- `next()` returns the next row as `ResultRow` (end-of-result returns `null`).
 	- Accessors `getResult*` read from the **current row** (the last row returned by `next()`).
 
 	How
 	- The Rust target stores query results in a small runtime container (`hxrt::db::QueryResult`) and
 	  exposes a row object as a runtime dynamic-object (`hxrt::dynamic::DynObject`).
-	- Dynamic field reads (`row.field` when `row:Dynamic`) are lowered to `hxrt::dynamic::field_get`.
+	- Field reads on `ResultRow` (`row.field`) are lowered to `hxrt::dynamic::field_get`.
 **/
 interface ResultSet {
 	/**
@@ -40,12 +42,12 @@ interface ResultSet {
 	/**
 		Fetch next row.
 	**/
-	function next():Dynamic;
+	function next():ResultRow;
 
 	/**
 		Fetch all the rows not fetched yet.
 	**/
-	function results():List<Dynamic>;
+	function results():List<ResultRow>;
 
 	/**
 		Get the value of `n`-th column of the current row.
