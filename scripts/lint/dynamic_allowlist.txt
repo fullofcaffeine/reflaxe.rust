@@ -4,7 +4,14 @@
 # Keep this list minimal. Any non-listed `.hx`/`.cross.hx` `Dynamic` mention fails CI.
 
 src/reflaxe/rust/RustCompiler.hx
-std/haxe/BoundaryTypes.cross.hx
-test/snapshot/catch_dynamic/Main.hx
-test/snapshot/std_string_dynamic/Main.hx
-test/snapshot/throw_tail_nonvoid/Main.hx
+std/haxe/BoundaryTypes.cross.hx:27
+std/haxe/BoundaryTypes.cross.hx:29
+std/haxe/BoundaryTypes.cross.hx:31
+std/haxe/BoundaryTypes.cross.hx:32
+std/haxe/BoundaryTypes.cross.hx:33
+std/haxe/BoundaryTypes.cross.hx:34
+std/haxe/BoundaryTypes.cross.hx:35
+std/haxe/BoundaryTypes.cross.hx:36
+std/haxe/BoundaryTypes.cross.hx:37
+test/snapshot/catch_dynamic/Main.hx:6
+test/snapshot/throw_tail_nonvoid/Main.hx:12

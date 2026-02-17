@@ -8,7 +8,7 @@ hi
 [1,2,3]
 --- Std.string object ---
 <Dynamic:hxrt::cell::HxRef<hx_app::foo::Foo>>
---- Sys.println Dynamic ---
+--- Sys.println untyped values ---
 <Dynamic:hxrt::cell::HxRef<hx_app::foo::Foo>>
 null
 5

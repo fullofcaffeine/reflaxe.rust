@@ -6,7 +6,7 @@ package haxe;
 	Why
 	- Some upstream `haxe.*` std APIs are intentionally untyped and must remain that way for
 	  cross-target compatibility (notably JSON payloads and constraint runtime carriers).
-	- We still want implementation files to avoid raw `Dynamic` mentions and keep boundaries explicit.
+	- We still want implementation files to avoid raw untyped markers and keep boundaries explicit.
 
 	What
 	- `ConstraintValue`: runtime carrier for `haxe.Constraints.*` abstracts.
@@ -21,7 +21,7 @@ package haxe;
 	- `ExceptionBoundaryValue`: payload captured by legacy catch-all helpers.
 
 	How
-	- These aliases map to `Dynamic` at the unavoidable std API boundary.
+	- These aliases map to the backend untyped runtime carrier at unavoidable std API boundaries.
 	- Code crossing these boundaries should decode to concrete typed structures immediately.
 **/
 typedef ConstraintValue = Dynamic;

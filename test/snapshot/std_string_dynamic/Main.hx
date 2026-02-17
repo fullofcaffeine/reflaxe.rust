@@ -1,6 +1,8 @@
 class Foo {
 	public var x:Int;
-	public function new(x:Int) this.x = x;
+
+	public function new(x:Int)
+		this.x = x;
 }
 
 class Main {
@@ -20,7 +22,7 @@ class Main {
 		var foo = new Foo(3);
 		trace(Std.string(foo));
 
-		trace("--- Sys.println Dynamic ---");
+		trace("--- Sys.println untyped values ---");
 		Sys.println(foo);
 		var n:Null<Int> = null;
 		Sys.println(n);
@@ -28,4 +30,3 @@ class Main {
 		Sys.println(n);
 	}
 }
-

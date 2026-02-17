@@ -79,7 +79,9 @@ fn main() {
     );
     println!(
         "{}",
-        hxrt::dynamic::from(hxrt::string::HxString::from("--- Sys.println Dynamic ---"))
+        hxrt::dynamic::from(hxrt::string::HxString::from(
+            "--- Sys.println untyped values ---"
+        ))
     );
     crate::sys::Sys::println(hxrt::dynamic::from_ref(foo.clone()));
     let mut n: Option<i32> = None;
