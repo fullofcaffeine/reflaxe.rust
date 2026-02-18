@@ -158,6 +158,43 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return useNullableStringRepresentation() ? "hxrt::string::HxString::null()" : "String::from(\"null\")";
 	}
 
+	/**
+		Returns the canonical Rust runtime path used for Haxe's dynamic carrier type.
+
+		Why
+		- Backend lowering touches this path in many places (`Null<T>` bridging, casts, monomorph fallbacks).
+		- Repeating the raw string literal across the compiler makes audits noisy and brittle.
+
+		How
+		- Keep one canonical path string here and route all dynamic-path checks/constructors through it.
+	**/
+	inline function rustDynamicPath():String {
+		return "hxrt::dynamic::Dynamic";
+	}
+
+	/**
+		Returns the fully-qualified Rust path to `Dynamic::null`.
+
+		Why
+		- `Dynamic::null()` is the runtime null sentinel at unavoidable dynamic boundaries.
+		- Centralizing the constructor path keeps boundary handling consistent and easy to review.
+	**/
+	inline function rustDynamicNullPath():String {
+		return rustDynamicPath() + "::null";
+	}
+
+	inline function rustDynamicNullRaw():String {
+		return rustDynamicNullPath() + "()";
+	}
+
+	inline function rustDynamicNullExpr():RustExpr {
+		return ECall(EPath(rustDynamicNullPath()), []);
+	}
+
+	inline function isRustDynamicPath(path:String):Bool {
+		return path == rustDynamicPath();
+	}
+
 	public function new() {
 		super();
 	}
@@ -1901,8 +1938,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var innerStr = rustTypeToString(inner);
 
 						// Some Rust representations already have an explicit null value (no extra `Option<...>` needed).
-						if (innerStr == "hxrt::dynamic::Dynamic") {
-							return "hxrt::dynamic::Dynamic::null()";
+						if (isRustDynamicPath(innerStr)) {
+							return rustDynamicNullRaw();
 						}
 						if (innerStr == "hxrt::string::HxString") {
 							return "hxrt::string::HxString::null()";
@@ -1980,7 +2017,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (isStringType(t))
 			return stringNullDefaultValue();
 		if (isDynamicType(t))
-			return "hxrt::dynamic::Dynamic::null()";
+			return rustDynamicNullRaw();
 		if (isRustVecType(t))
 			return "Vec::new()";
 		if (isRustHashMapType(t))
@@ -2053,8 +2090,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var innerStr = rustTypeToString(inner);
 
 						// Some Rust representations already have an explicit null value (no extra `Option<...>` needed).
-						if (innerStr == "hxrt::dynamic::Dynamic") {
-							return ERaw("hxrt::dynamic::Dynamic::null()");
+						if (isRustDynamicPath(innerStr)) {
+							return ERaw(rustDynamicNullRaw());
 						}
 						if (innerStr == "hxrt::string::HxString") {
 							return ERaw("hxrt::string::HxString::null()");
@@ -2094,7 +2131,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (isStringType(t))
 			return stringNullExpr();
 		if (isDynamicType(t))
-			return ERaw("hxrt::dynamic::Dynamic::null()");
+			return ERaw(rustDynamicNullRaw());
 
 		if (isArrayType(t)) {
 			var elem = arrayElementType(t);
@@ -4151,7 +4188,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						} else if (isStringType(e.t)) {
 							stringNullExpr();
 						} else if (mapsToRustDynamic(e.t, e.pos)) {
-							ERaw("hxrt::dynamic::Dynamic::null()");
+							ERaw(rustDynamicNullRaw());
 						} else {
 							// Core `Class<T>` / `Enum<T>` handles are represented as `u32` ids.
 							// Use `0u32` as the null sentinel (matches `Type.resolveClass`/`resolveEnum` stubs today).
@@ -5262,7 +5299,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// Some Rust representations already have an explicit null value (no extra `Option<...>` needed).
 		var innerRust = rustTypeToString(toRustType(innerType, pos));
 		// `Dynamic` already carries its own null sentinel (`Dynamic::null()`).
-		if (innerRust == "hxrt::dynamic::Dynamic")
+		if (isRustDynamicPath(innerRust))
 			return null;
 		// Portable/idiomatic `String` uses `HxString` with an internal null sentinel.
 		if (innerRust == "hxrt::string::HxString")
@@ -5498,7 +5535,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// Boxing to `Dynamic`.
 		if (expectedIsDyn && !actualIsDyn) {
 			if (isNullConstExpr(valueExpr)) {
-				return ECall(EPath("hxrt::dynamic::Dynamic::null"), []);
+				return rustDynamicNullExpr();
 			}
 
 			var valueNullInner = nullOptionInnerType(valueExpr.t, valueExpr.pos);
@@ -5519,7 +5556,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					stmts: [RLet("__hx_opt", false, null, optExpr)],
 					tail: EMatch(EPath("__hx_opt"), [
 						{pat: PTupleStruct("Some", [PBind("__v")]), expr: someExpr},
-						{pat: PPath("None"), expr: ECall(EPath("hxrt::dynamic::Dynamic::null"), [])}
+						{pat: PPath("None"), expr: rustDynamicNullExpr()}
 					])
 				});
 			}
@@ -6543,7 +6580,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								if (mapsToRustDynamic(fullExpr.t, fullExpr.pos)) {
 									return EBlock({
 										stmts: stmts,
-										tail: ECall(EPath("hxrt::dynamic::Dynamic::null"), [])
+										tail: rustDynamicNullExpr()
 									});
 								}
 								return EBlock({
@@ -7137,7 +7174,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 												stmts: [RLet("__hx_opt", false, null, call)],
 												tail: EMatch(EPath("__hx_opt"), [
 													{pat: PTupleStruct("Some", [PBind("__v")]), expr: EPath("__v")},
-													{pat: PPath("None"), expr: ECall(EPath("hxrt::dynamic::Dynamic::null"), [])}
+													{pat: PPath("None"), expr: rustDynamicNullExpr()}
 												])
 											});
 										}
@@ -7179,8 +7216,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 										if (nullOptionInnerType(retApplied, fullExpr.pos) == null) {
 											function explicitNullExprForExpected(t:Type, pos:haxe.macro.Expr.Position):Null<RustExpr> {
 												var rust = rustTypeToString(toRustType(t, pos));
-												if (rust == "hxrt::dynamic::Dynamic")
-													return ECall(EPath("hxrt::dynamic::Dynamic::null"), []);
+												if (isRustDynamicPath(rust))
+													return rustDynamicNullExpr();
 												if (isCoreClassOrEnumHandleType(t))
 													return ERaw("0u32");
 												if (StringTools.startsWith(rust, "crate::HxRef<"))
@@ -9302,7 +9339,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							var boxed:RustExpr = if (mapsToRustDynamic(e2.t, e2.pos)) {
 								rhsVal;
 							} else if (isNullConstExpr(e2)) {
-								ECall(EPath("hxrt::dynamic::Dynamic::null"), []);
+								rustDynamicNullExpr();
 							} else {
 								ECall(EPath("hxrt::dynamic::from"), [rhsVal]);
 							}
@@ -9567,7 +9604,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								var dynTy = haxeDynamicBoundaryType();
 								function toDynamic(te:TypedExpr, compiled:RustExpr):RustExpr {
 									if (isNullConstExpr(te))
-										return ECall(EPath("hxrt::dynamic::Dynamic::null"), []);
+										return rustDynamicNullExpr();
 									return coerceExprToExpected(compiled, te, dynTy);
 								}
 								var lhs = toDynamic(e1, compileExpr(e1));
@@ -9657,7 +9694,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								var dynTy = haxeDynamicBoundaryType();
 								function toDynamic(te:TypedExpr, compiled:RustExpr):RustExpr {
 									if (isNullConstExpr(te))
-										return ECall(EPath("hxrt::dynamic::Dynamic::null"), []);
+										return rustDynamicNullExpr();
 									return coerceExprToExpected(compiled, te, dynTy);
 								}
 								var lhs = toDynamic(e1, compileExpr(e1));
@@ -10291,7 +10328,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 						// Some Rust representations already have an explicit null value (no extra `Option<...>` needed).
 						// `Dynamic` already carries its own null sentinel (`Dynamic::null()`).
-						if (innerStr == "hxrt::dynamic::Dynamic") {
+						if (isRustDynamicPath(innerStr)) {
 							return inner;
 						}
 						// Portable/idiomatic `String` uses `HxString`, which already models null.
@@ -10362,14 +10399,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						Context.warning("Rust backend: unresolved monomorph, lowering to Dynamic.", pos);
 					}
 					#end
-					return RPath("hxrt::dynamic::Dynamic");
+					return RPath(rustDynamicPath());
 				}
 			case _:
 		}
 
 		switch (ft) {
 			case TDynamic(_):
-				return RPath("hxrt::dynamic::Dynamic");
+				return RPath(rustDynamicPath());
 			case _:
 		}
 
@@ -10437,7 +10474,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								// Same representation strategy as `Class<T>`.
 								return RPath("u32");
 							case ".Dynamic":
-								return RPath("hxrt::dynamic::Dynamic");
+								return RPath(rustDynamicPath());
 							case _:
 						}
 						if (key == "haxe.io.BytesData") {
@@ -10449,7 +10486,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						#if eval
 						Context.warning('Rust backend: unmapped @:coreType abstract `' + key + '`, lowering to Dynamic for now.', pos);
 						#end
-						return RPath("hxrt::dynamic::Dynamic");
+						return RPath(rustDynamicPath());
 					}
 
 					// General abstract fallback: treat as its underlying type.
@@ -10645,7 +10682,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (isDynamicType(t))
 			return true;
 		return switch (toRustType(t, pos)) {
-			case RPath(p): p == "hxrt::dynamic::Dynamic";
+			case RPath(p): isRustDynamicPath(p);
 			case _: false;
 		}
 	}

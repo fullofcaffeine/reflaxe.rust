@@ -15,6 +15,8 @@ This document is the source of truth for intentional `Dynamic` usage in `reflaxe
 
 - Why: compiler internals still contain multiple dynamic lowering/boxing bridges required to preserve
   upstream Haxe semantics while targeting Rust runtime `hxrt::dynamic::Dynamic`.
+- Current narrowing: repeated runtime path/null constructors are centralized via
+  `rustDynamicPath()` / `rustDynamicNullExpr()` helpers to reduce scattered literal boundaries.
 - Status: line-scoped entries are generated from actual `Dynamic` usage lines.
 - Exit criteria: remove line entries as bridge points are typed or refactored away.
 
