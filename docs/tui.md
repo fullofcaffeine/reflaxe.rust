@@ -49,8 +49,9 @@ Cargo dependencies are declared from Haxe via metadata on `TuiDemo`:
 
 Use `renderToString(...)` and assert on the output in `cargo test`:
 
-- `examples/tui_todo/Harness.hx` produces a deterministic frame via `Tui.renderToString(...)`.
-- `examples/tui_todo/native/tui_tests.rs` calls the compiled Haxe harness and does an **exact frame snapshot** (`assert_eq!`) against a golden string.
+- `examples/tui_todo/Harness.hx` produces deterministic frames via `Tui.renderUiToString(...)`.
+- `examples/tui_todo/TuiTests.hx` declares `@:rustTest` methods that call harness assertions, and the compiler
+  emits Rust `#[test]` wrappers automatically.
 
 This keeps tests:
 
@@ -78,4 +79,4 @@ Rusty profile variant:
 Notes:
 - In headless mode, use `renderToString(...)` for validation; `render(...)` is intentionally a no-op.
 - The headless mode flag can be set from Haxe (`-D tui_headless` in the example `compile.ci.hxml`) or by calling `Tui.setHeadless(true)` before `enter()`.
-- `examples/tui_todo` includes deterministic FX assertions in `native/tui_tests.rs` so animation paths are CI-covered.
+- `examples/tui_todo` includes deterministic FX assertions in `TuiTests.hx` (`@:rustTest`) so animation paths are CI-covered.

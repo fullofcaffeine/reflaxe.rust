@@ -48,6 +48,20 @@ private typedef RustImplSpec = {
 	@:optional var body:String;
 };
 
+private enum RustTestReturnKind {
+	TestVoid;
+	TestBool;
+}
+
+private typedef RustTestSpec = {
+	var classType:ClassType;
+	var field:ClassField;
+	var wrapperName:String;
+	var serial:Bool;
+	var returnKind:RustTestReturnKind;
+	var pos:haxe.macro.Expr.Position;
+};
+
 /**
  * RustCompiler (POC)
  *
@@ -107,6 +121,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var currentThisIdent:Null<String> = null;
 	var rustNamesByClass:Map<String, {fields:Map<String, String>, methods:Map<String, String>}> = [];
 	var inCodeInjectionArg:Bool = false;
+	var rustTestSpecs:Array<RustTestSpec> = [];
 
 	inline function wantsPreludeAliases():Bool {
 		// Always emit stable `crate::HxRc` / `crate::HxRefCell` / `crate::HxRef` aliases so:
@@ -229,6 +244,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		upstreamStdDirs = [];
 		frameworkRuntimeDir = null;
 		warnedUnresolvedMonomorphPos = [];
+		rustTestSpecs = [];
 
 		// Profile selection and define validation are centralized to keep all feature gates consistent.
 		profile = ProfileResolver.resolve();
@@ -304,6 +320,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				upstreamStdDirs = [];
 			}
 		}
+
+		// Collect Haxe-authored Rust test wrappers (`@:rustTest`) once per compile.
+		collectRustTests();
 
 		extraRustSrcFiles = [];
 		var seenExtraRustModules = new Map<String, String>();
@@ -1038,6 +1057,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				ret: RUnit,
 				body: body
 			}));
+
+			var rustTests = renderRustTestModule();
+			if (rustTests != null && rustTests.length > 0) {
+				items.push(RRaw(rustTests));
+			}
 		}
 
 		currentClassKey = null;
@@ -1585,6 +1609,293 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 		return false;
+	}
+
+	function hasRustTestMeta(meta:haxe.macro.Type.MetaAccess):Bool {
+		return metaHasAny(meta, ["rustTest"]);
+	}
+
+	/**
+		Collects Haxe-authored Rust test declarations (`@:rustTest`) from typed modules.
+
+		Why
+		- We want application tests to stay in typed Haxe while still integrating with `cargo test`.
+		- Keeping the collection centralized lets us validate constraints once and emit deterministic
+		  wrappers in the main crate module.
+
+		What
+		- Accepts `@:rustTest` on `public static` methods with zero params and return type `Void` or `Bool`.
+		- Supports optional metadata parameter:
+		  - string: custom Rust wrapper name
+		  - object: `{ name: String, serial: Bool }`
+
+		How
+		- Walks `Context.getAllModuleTypes()`.
+		- Validates each candidate at compile-time and records a typed `RustTestSpec`.
+		- Wrapper names are snake-cased and de-duplicated deterministically via `RustNaming.stableUnique`.
+	**/
+	function collectRustTests():Void {
+		var pending:Array<{
+			classType:ClassType,
+			field:ClassField,
+			wrapperBase:String,
+			serial:Bool,
+			returnKind:RustTestReturnKind,
+			pos:haxe.macro.Expr.Position
+		}> = [];
+
+		function readConstString(e:Expr):Null<String> {
+			return switch (unwrapMetaExpr(e).expr) {
+				case EConst(CString(s, _)): s;
+				case _: null;
+			};
+		}
+
+		function readConstBool(e:Expr):Null<Bool> {
+			return switch (unwrapMetaExpr(e).expr) {
+				case EConst(CIdent("true")): true;
+				case EConst(CIdent("false")): false;
+				case _: null;
+			};
+		}
+
+		function readRustTestConfig(cf:ClassField):Null<{nameOverride:Null<String>, serial:Bool}> {
+			if (cf.meta == null || !hasRustTestMeta(cf.meta))
+				return null;
+
+			var cfg = {nameOverride: null, serial: true};
+			var seen = 0;
+			for (entry in cf.meta.get()) {
+				if (!metaNameEquals(entry.name, "rustTest"))
+					continue;
+				seen++;
+				if (seen > 1) {
+					#if eval
+					Context.error("`@:rustTest` can only be declared once per method.", entry.pos);
+					#end
+					continue;
+				}
+
+				if (entry.params == null || entry.params.length == 0)
+					continue;
+
+				if (entry.params.length != 1) {
+					#if eval
+					Context.error("`@:rustTest` accepts no params or a single string/object parameter.", entry.pos);
+					#end
+					continue;
+				}
+
+				var param = unwrapMetaExpr(entry.params[0]);
+				switch (param.expr) {
+					case EConst(CString(s, _)):
+						cfg.nameOverride = StringTools.trim(s);
+					case EObjectDecl(fields):
+						for (field in fields) {
+							switch (field.field) {
+								case "name":
+									var nameValue = readConstString(field.expr);
+									if (nameValue == null) {
+										#if eval
+										Context.error("`@:rustTest` field `name` must be a compile-time string.", field.expr.pos);
+										#end
+										continue;
+									}
+									cfg.nameOverride = StringTools.trim(nameValue);
+								case "serial":
+									var serialValue = readConstBool(field.expr);
+									if (serialValue == null) {
+										#if eval
+										Context.error("`@:rustTest` field `serial` must be a compile-time bool.", field.expr.pos);
+										#end
+										continue;
+									}
+									cfg.serial = serialValue;
+								case _:
+									#if eval
+									Context.error("`@:rustTest` only supports `name` and `serial` fields.", field.expr.pos);
+									#end
+							}
+						}
+					case _:
+						#if eval
+						Context.error("`@:rustTest` parameter must be a string name or object `{ name, serial }`.", entry.pos);
+						#end
+				}
+			}
+			return cfg;
+		}
+
+		for (moduleType in Context.getAllModuleTypes()) {
+			switch (moduleType) {
+				case TClassDecl(clsRef):
+					var cls = clsRef.get();
+					if (cls == null || cls.isExtern)
+						continue;
+
+					var isMain = isMainClass(cls);
+					if (!shouldEmitClass(cls, isMain))
+						continue;
+
+					for (cf in cls.statics.get()) {
+						switch (cf.kind) {
+							case FMethod(_):
+							case _:
+								continue;
+						}
+
+						var cfg = readRustTestConfig(cf);
+						if (cfg == null)
+							continue;
+
+						if (isMain) {
+							#if eval
+							Context.error("`@:rustTest` methods must live in non-main classes so wrappers can call `crate::<module>::Type::method`.", cf.pos);
+							#end
+							continue;
+						}
+
+						if (!cf.isPublic) {
+							#if eval
+							Context.error("`@:rustTest` methods must be `public static` so generated wrappers can call them.", cf.pos);
+							#end
+							continue;
+						}
+
+						var returnKind:Null<RustTestReturnKind> = null;
+						switch (followType(cf.type)) {
+							case TFun(params, ret):
+								if (params.length != 0) {
+									#if eval
+									Context.error("`@:rustTest` methods must have zero parameters.", cf.pos);
+									#end
+									continue;
+								}
+
+								if (TypeHelper.isVoid(ret)) {
+									returnKind = TestVoid;
+								} else if (TypeHelper.isBool(ret)) {
+									returnKind = TestBool;
+								} else {
+									#if eval
+									Context.error("`@:rustTest` methods must return `Void` or `Bool` (got `" + TypeTools.toString(ret) + "`).", cf.pos);
+									#end
+									continue;
+								}
+							case _:
+								#if eval
+								Context.error("`@:rustTest` can only be used on methods.", cf.pos);
+								#end
+								continue;
+						}
+
+						var baseName = cfg.nameOverride;
+						if (baseName == null || baseName.length == 0) {
+							var prefix = cls.pack.length > 0 ? (cls.pack.join("_") + "_") : "";
+							baseName = prefix + cls.name + "_" + cf.getHaxeName();
+						}
+						baseName = RustNaming.snakeIdent(baseName);
+						if (baseName == null || baseName.length == 0)
+							baseName = "hx_test";
+
+						pending.push({
+							classType: cls,
+							field: cf,
+							wrapperBase: baseName,
+							serial: cfg.serial,
+							returnKind: returnKind,
+							pos: cf.pos
+						});
+					}
+				case _:
+			}
+		}
+
+		pending.sort((a, b) -> {
+			var ak = classKey(a.classType) + "." + a.field.getHaxeName();
+			var bk = classKey(b.classType) + "." + b.field.getHaxeName();
+			return Reflect.compare(ak, bk);
+		});
+
+		var used:Map<String, Bool> = [];
+		for (p in pending) {
+			var wrapper = RustNaming.stableUnique(p.wrapperBase, used);
+			rustTestSpecs.push({
+				classType: p.classType,
+				field: p.field,
+				wrapperName: wrapper,
+				serial: p.serial,
+				returnKind: p.returnKind,
+				pos: p.pos
+			});
+		}
+	}
+
+	/**
+		Renders the Rust `#[cfg(test)]` module for collected Haxe tests.
+
+		Why
+		- Rust's test harness requires `#[test]` functions at crate/module scope.
+		- Generated wrappers keep app tests authored in Haxe while preserving native Rust test UX.
+
+		How
+		- Emits `mod __hx_tests` in `main.rs`.
+		- Each wrapper calls the compiled Haxe static method.
+		- `Bool` tests emit `assert!(...)`; `Void` tests succeed if no exception/panic occurs.
+		- `serial=true` tests acquire a shared `Mutex` guard to keep stateful harness tests deterministic.
+	**/
+	function renderRustTestModule():Null<String> {
+		if (rustTestSpecs == null || rustTestSpecs.length == 0)
+			return null;
+
+		var tests = rustTestSpecs.copy();
+		tests.sort((a, b) -> Reflect.compare(a.wrapperName, b.wrapperName));
+
+		var hasSerial = false;
+		for (spec in tests) {
+			if (spec.serial) {
+				hasSerial = true;
+				break;
+			}
+		}
+
+		var lines:Array<String> = [];
+		lines.push("#[cfg(test)]");
+		lines.push("mod __hx_tests {");
+		if (hasSerial) {
+			lines.push("\tuse std::sync::{Mutex, OnceLock};");
+			lines.push("");
+			lines.push("\tfn __hx_test_lock() -> &'static Mutex<()> {");
+			lines.push("\t\tstatic LOCK: OnceLock<Mutex<()>> = OnceLock::new();");
+			lines.push("\t\tLOCK.get_or_init(|| Mutex::new(()))");
+			lines.push("\t}");
+			lines.push("");
+		}
+
+		for (spec in tests) {
+			var methodPath = "crate::" + rustModuleNameForClass(spec.classType) + "::" + rustTypeNameForClass(spec.classType) + "::"
+				+ rustMethodName(spec.classType, spec.field);
+
+			lines.push("\t#[test]");
+			lines.push("\tfn " + spec.wrapperName + "() {");
+			if (spec.serial) {
+				lines.push("\t\tlet _guard = __hx_test_lock().lock().unwrap_or_else(|e| e.into_inner());");
+			}
+			switch (spec.returnKind) {
+				case TestBool:
+					lines.push("\t\tassert!(" + methodPath + "());");
+				case TestVoid:
+					lines.push("\t\t" + methodPath + "();");
+			}
+			lines.push("\t}");
+			lines.push("");
+		}
+
+		while (lines.length > 0 && StringTools.trim(lines[lines.length - 1]).length == 0) {
+			lines.pop();
+		}
+		lines.push("}");
+		return lines.join("\n");
 	}
 
 	function hasAsyncFunctionMeta(meta:haxe.macro.Type.MetaAccess):Bool {

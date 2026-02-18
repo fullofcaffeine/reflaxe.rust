@@ -2,6 +2,7 @@
 -lib reflaxe.rust
 -D reflaxe_rust_strict_examples
 -D reflaxe_rust_profile=idiomatic
--D rust_output=out
--D rust_crate=tui_todo
+-D storyboard_profile_idiomatic
+-D rust_output=out_idiomatic
+-D rust_crate=profile_storyboard
 -main Main

@@ -4,7 +4,7 @@
 # Keep this list minimal. Any non-listed `.hx`/`.cross.hx` `Dynamic` mention fails CI.
 
 # Rust compiler dynamic bridge points (line-scoped; see docs/dynamic-boundaries.md)
-src/reflaxe/rust/RustCompiler.hx:172
+src/reflaxe/rust/RustCompiler.hx:187
 std/haxe/BoundaryTypes.cross.hx:27
 std/haxe/BoundaryTypes.cross.hx:29
 std/haxe/BoundaryTypes.cross.hx:31

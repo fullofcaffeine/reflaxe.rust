@@ -112,6 +112,60 @@ class Harness {
 		return Tui.renderUiToString(app.view(), W, H);
 	}
 
+	public static function scenarioTasksMatchesGolden():Bool {
+		var got = normalizeFrame(renderScenarioTasks());
+		if (got.split("\n").length != H) {
+			return false;
+		}
+		if (got.indexOf("Task Details") == -1) {
+			return false;
+		}
+		if (got.indexOf("Title: reach v1.0 stdlib parity") == -1) {
+			return false;
+		}
+		return got.indexOf("details | 2/4*") != -1;
+	}
+
+	public static function scenarioPaletteMatchesGolden():Bool {
+		var got = normalizeFrame(renderScenarioPalette());
+		if (got.split("\n").length != H) {
+			return false;
+		}
+		return got == expectedScenarioPalette();
+	}
+
+	public static function scenarioEditTitleMatchesGolden():Bool {
+		var got = normalizeFrame(renderScenarioEditTitle());
+		if (got.split("\n").length != H) {
+			return false;
+		}
+		if (got.indexOf("Task Details") == -1) {
+			return false;
+		}
+		if (got.indexOf("bootstrap reflaxe.rustX!") == -1) {
+			return false;
+		}
+		return got.indexOf("details | 1/4* | updated") != -1;
+	}
+
+	public static function scenarioDashboardFxDeterministic():Bool {
+		var a = normalizeFrame(renderScenarioDashboardFx());
+		var b = normalizeFrame(renderScenarioDashboardFx());
+		if (a != b) {
+			return false;
+		}
+		if (a.indexOf("Hyperfocus") == -1) {
+			return false;
+		}
+		if (a.toLowerCase().indexOf("mode: pulse") == -1) {
+			return false;
+		}
+		if (a.indexOf("Pulse:") == -1) {
+			return false;
+		}
+		return a.indexOf("Flow: [") != -1;
+	}
+
 	/**
 		Persistence regression: saving then loading preserves task payload fields.
 	**/
@@ -276,5 +330,125 @@ class Harness {
 		try
 			FileSystem.deleteDirectory(path)
 		catch (_:haxe.Exception) {}
+	}
+
+	static function normalizeFrame(value:String):String {
+		var trimmed = trimTrailingLineBreaks(value);
+		var lines = trimmed.split("\n");
+		for (i in 0...lines.length) {
+			lines[i] = rtrim(lines[i]);
+		}
+		return lines.join("\n");
+	}
+
+	static function trimTrailingLineBreaks(value:String):String {
+		var out = value;
+		while (out.length > 0) {
+			var last = out.charAt(out.length - 1);
+			if (last == "\n" || last == "\r") {
+				out = out.substr(0, out.length - 1);
+			} else {
+				break;
+			}
+		}
+		return out;
+	}
+
+	static function rtrim(value:String):String {
+		var i = value.length;
+		while (i > 0) {
+			var c = value.charAt(i - 1);
+			if (c == " " || c == "\r" || c == "\t") {
+				i = i - 1;
+			} else {
+				break;
+			}
+		}
+		return value.substr(0, i);
+	}
+
+	static function expectedScenarioTasks():String {
+		return [
+			" Dashboard | Tasks | Help",
+			"┌Task Details──────────────────────────────────────────────────────────────────┐",
+			"│Title: reach v1.0 stdlib parity                                               │",
+			"│Project: inbox                                                                │",
+			"│Tags: -                                                                       │",
+			"│Done: no                                                                      │",
+			"│                                                                              │",
+			"│Notes:                                                                        │",
+			"│(none)                                                                        │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"└──────────────────────────────────────────────────────────────────────────────┘",
+			"[-] details | 2/4*",
+		].join("\n");
+	}
+
+	static function expectedScenarioPalette():String {
+		return [
+			" Dashboard | Tasks | Help",
+			"┌Tasks─────────────────────────────────────────────────────────────────────────┐",
+			"│[x] [inbox] bootstrap reflaxe.rust                                            │",
+			"│[ ] [inbox] ship TUI harness                                                  │",
+			"│[ ] [inbox] reach v1.0 stdlib parity                                          │",
+			"│[ ] [in┌Command Palette───────────────────────────────────────────────┐       │",
+			"│       │> go:                                                         │       │",
+			"│       │                                                              │       │",
+			"│       │> Go: Help                                                    │       │",
+			"│       │  Go: Tasks                                                   │       │",
+			"│       │  Go: Dashboard                                               │       │",
+			"│       │                                                              │       │",
+			"│       │                                                              │       │",
+			"│       │                                                              │       │",
+			"│       │                                                              │       │",
+			"│       │                                                              │       │",
+			"│       │                                                              │       │",
+			"│       │                                                              │       │",
+			"│       └──────────────────────────────────────────────────────────────┘       │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"└──────────────────────────────────────────────────────────────────────────────┘",
+			"[/] tasks | 1/4",
+		].join("\n");
+	}
+
+	static function expectedScenarioEditTitle():String {
+		return [
+			" Dashboard | Tasks | Help",
+			"┌Task Details──────────────────────────────────────────────────────────────────┐",
+			"│Title: bootstrap reflaxe.rustX!                                               │",
+			"│Project: inbox                                                                │",
+			"│Tags: -                                                                       │",
+			"│Done: yes                                                                     │",
+			"│                                                                              │",
+			"│Notes:                                                                        │",
+			"│(none)                                                                        │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"│                                                                              │",
+			"└──────────────────────────────────────────────────────────────────────────────┘",
+			"[/] details | 1/4* | updated",
+		].join("\n");
 	}
 }

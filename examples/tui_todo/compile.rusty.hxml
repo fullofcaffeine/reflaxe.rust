@@ -3,7 +3,6 @@
 -D reflaxe_rust_strict_examples
 -D reflaxe_rust_profile=rusty
 -D tui_rusty
--D rust_extra_src=native
 -D rust_output=out_rusty
 -D rust_crate=tui_todo
 -main Main

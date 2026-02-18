@@ -1,0 +1,8 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_strict_examples
+-D reflaxe_rust_profile=metal
+-D storyboard_profile_metal
+-D rust_output=out_metal
+-D rust_crate=profile_storyboard
+-main Main

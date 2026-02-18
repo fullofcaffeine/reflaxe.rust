@@ -85,6 +85,7 @@ Read more: [Profiles guide](docs/profiles.md), [Rusty profile details](docs/rust
 ## Examples
 
 - [chat_loopback](examples/chat_loopback) (cross-profile flagship: portable/idiomatic/rusty/metal)
+- [profile_storyboard](examples/profile_storyboard) (cross-profile micro-app focused on profile-specific coding style + `@:rustTest`)
 - [hello](examples/hello)
 - [async_retry_pipeline](examples/async_retry_pipeline)
 - [classes](examples/classes)

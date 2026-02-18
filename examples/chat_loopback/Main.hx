@@ -1,22 +1,35 @@
+import app.ChatUiApp;
+import profile.RuntimeFactory;
+import rust.tui.Event;
+import rust.tui.Tui;
+
 class Main {
 	static function main():Void {
 		Harness.__link();
+		ChatTests.__link();
 
-		var profile = Harness.profileName();
-		var transcript = Harness.runTranscript();
-		Sys.println("profile=" + profile);
-		Sys.println(transcript);
+		var app = new ChatUiApp(RuntimeFactory.create());
 
-		if (!Harness.transcriptHasExpectedShape()) {
-			throw "transcript shape mismatch";
-		}
-		if (!Harness.parserRejectsInvalidCommand()) {
-			throw "invalid command should be rejected";
-		}
-		if (!Harness.codecRoundtripWorks()) {
-			throw "codec roundtrip failed";
-		}
+		#if chat_tui_headless
+		Tui.setHeadless(true);
+		#else
+		Tui.setHeadless(false);
+		#end
 
-		Sys.println("ok");
+		Tui.enter();
+		try {
+			var running = true;
+			while (running) {
+				Tui.renderUi(app.view());
+				var ev = Tui.pollEvent(50);
+				if (ev == None) {
+					ev = Tick(50);
+				}
+				running = !app.handle(ev);
+			}
+		} catch (_:haxe.Exception) {
+			// Ensure terminal cleanup on unexpected runtime failures.
+		}
+		Tui.exit();
 	}
 }

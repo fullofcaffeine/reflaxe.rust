@@ -1,0 +1,8 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_strict_examples
+-D reflaxe_rust_profile=portable
+-D storyboard_profile_portable
+-D rust_output=out_portable
+-D rust_crate=profile_storyboard
+-main Main

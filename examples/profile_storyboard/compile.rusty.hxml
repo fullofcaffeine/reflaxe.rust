@@ -2,9 +2,7 @@
 -lib reflaxe.rust
 -D reflaxe_rust_strict_examples
 -D reflaxe_rust_profile=rusty
--D tui_rusty
--D tui_headless
--D tui_ephemeral
--D rust_output=out_ci_rusty
--D rust_crate=tui_todo
+-D storyboard_profile_rusty
+-D rust_output=out_rusty
+-D rust_crate=profile_storyboard
 -main Main
