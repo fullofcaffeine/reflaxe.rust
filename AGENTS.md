@@ -68,8 +68,15 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - Enum-match gotcha: avoid emitting wildcard `unreachable!()` arms when the match is already exhaustive (Rust warns with `unreachable_patterns`).
   - Dynamic-runtime gotcha: prefer typed `std/hxrt/*` extern wrappers over raw `untyped __rust__` for runtime APIs returning `Dynamic`
     (example: `haxe.Json.parse`, `sys.thread.Thread.readMessage`) to avoid unresolved monomorph warnings.
-  - Unresolved-monomorph warning policy: keep warnings for user/project code, but suppress them by default for framework/upstream stdlib internals
-    (fallback to `Dynamic` is an intentional compatibility bridge there). To audit std warnings explicitly, enable `-D rust_warn_unresolved_monomorph_std`.
+  - Unresolved-monomorph fallback policy:
+    - User/project code now **errors by default** on unresolved monomorphs (avoid silent runtime-dynamic degradation).
+    - Framework/upstream stdlib internals may still fall back to `Dynamic` as a compatibility bridge.
+    - Escape hatch: `-D rust_allow_unresolved_monomorph_dynamic`.
+    - Std warning audit switch remains: `-D rust_warn_unresolved_monomorph_std`.
+  - Unmapped `@:coreType` fallback policy mirrors unresolved monomorphs:
+    - User/project code errors by default; framework/upstream std may fallback to `Dynamic`.
+    - Escape hatch: `-D rust_allow_unmapped_coretype_dynamic`.
+    - Std warning audit switch: `-D rust_warn_unmapped_coretype_std`.
   - JSON boundary gotcha: do not `cast Json.parse(...)` directly to a typed anonymous structure in app/runtime code. The Rust runtime may return a `DynObject` representation that fails anon downcasts; decode through `Reflect.field` + typed validators at the boundary, then stay strongly typed.
 - The generated crate always includes the bundled runtime crate at `./hxrt` and adds `hxrt = { path = "./hxrt" }` to `Cargo.toml`.
 - For class instance semantics, the current POC uses `type HxRef<T> = Rc<RefCell<T>>` and:

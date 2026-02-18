@@ -17,6 +17,8 @@ This document is the source of truth for intentional `Dynamic` usage in `reflaxe
   upstream Haxe semantics while targeting Rust runtime `hxrt::dynamic::Dynamic`.
 - Current narrowing: repeated runtime path/null constructors are centralized via
   `rustDynamicPath()` / `rustDynamicNullExpr()` helpers to reduce scattered literal boundaries.
+- Guardrail: unresolved monomorph and unmapped `@:coreType` fallback now errors in user/project code
+  by default (fallback remains only for framework/upstream std compatibility).
 - Status: line-scoped entries are generated from actual `Dynamic` usage lines.
 - Exit criteria: remove line entries as bridge points are typed or refactored away.
 

@@ -1318,6 +1318,59 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
+		Returns whether unresolved monomorph -> runtime dynamic fallback is permitted at this position.
+
+		Policy
+		- User/project code should not silently degrade to runtime-dynamic typing; fail fast so type
+		  annotations or explicit casts can fix the root cause.
+		- Framework/upstream std internals may still use this compatibility fallback to preserve
+		  existing behavior.
+		- Emergency escape hatch: `-D rust_allow_unresolved_monomorph_dynamic`.
+	**/
+	function shouldAllowUnresolvedMonomorphDynamicFallback(pos:haxe.macro.Expr.Position):Bool {
+		if (Context.defined("rust_allow_unresolved_monomorph_dynamic"))
+			return true;
+		var info = Context.getPosInfos(pos);
+		if (info == null)
+			return false;
+		return isFrameworkStdFile(info.file);
+	}
+
+	/**
+		Returns whether unmapped `@:coreType` -> runtime dynamic fallback should emit a warning.
+
+		Policy
+		- Keep warnings enabled for user/project code.
+		- Suppress stdlib/framework warning noise by default (compatibility fallback can be expected there).
+		- Allow forcing std warnings back on with `-D rust_warn_unmapped_coretype_std`.
+	**/
+	function shouldWarnUnmappedCoreType(pos:haxe.macro.Expr.Position):Bool {
+		if (Context.defined("rust_warn_unmapped_coretype_std"))
+			return true;
+		var info = Context.getPosInfos(pos);
+		if (info == null)
+			return true;
+		return !isFrameworkStdFile(info.file);
+	}
+
+	/**
+		Returns whether unmapped `@:coreType` -> runtime dynamic fallback is permitted at this position.
+
+		Policy
+		- User/project code should fail fast so backend authors add explicit typed mappings.
+		- Framework/upstream std internals may still use this fallback for compatibility.
+		- Emergency escape hatch: `-D rust_allow_unmapped_coretype_dynamic`.
+	**/
+	function shouldAllowUnmappedCoreTypeDynamicFallback(pos:haxe.macro.Expr.Position):Bool {
+		if (Context.defined("rust_allow_unmapped_coretype_dynamic"))
+			return true;
+		var info = Context.getPosInfos(pos);
+		if (info == null)
+			return false;
+		return isFrameworkStdFile(info.file);
+	}
+
+	/**
 		Normalize and resolve a `pos.file` path from the Haxe typer.
 
 		Gotcha
@@ -10385,13 +10438,23 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		// Unresolved monomorphs can occur when Haxe keeps a type variable open (most commonly due to
 		// `untyped` expressions or as-yet-unified generics). For codegen we need a concrete runtime
-		// representation. Default to `Dynamic` to preserve behavior and avoid crashing codegen.
+		// representation.
+		//
+		// Policy:
+		// - user/project code fails fast (typed mapping required)
+		// - framework/upstream std can still use runtime-dynamic compatibility fallback
 		switch (ft) {
 			case TMono(m):
 				{
 					var inner = m.get();
 					if (inner != null)
 						return toRustType(inner, pos);
+					#if eval
+					if (!shouldAllowUnresolvedMonomorphDynamicFallback(pos)) {
+						Context.error("Rust backend: unresolved monomorph in user code. Add an explicit type annotation/cast instead of relying on dynamic fallback.",
+							pos);
+					}
+					#end
 					#if eval
 					var key = Std.string(pos);
 					if (shouldWarnUnresolvedMonomorph(pos) && !warnedUnresolvedMonomorphPos.exists(key)) {
@@ -10460,9 +10523,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						// Core primitives (StdTypes) can show up as `@:coreType abstract` types.
 						// Even if earlier helpers missed them, map them to Rust primitives here.
 						switch (key) {
+							case ".Void":
+								return RUnit;
 							case ".Int":
 								return RI32;
 							case ".Float":
+								return RF64;
+							case ".Single":
+								// Rust backend currently uses `f64` for Haxe floating-point arithmetic semantics.
+								// Keep `Single` aligned with that representation until a dedicated f32 mode exists.
 								return RF64;
 							case ".Bool":
 								return RBool;
@@ -10484,7 +10553,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						}
 
 						#if eval
-						Context.warning('Rust backend: unmapped @:coreType abstract `' + key + '`, lowering to Dynamic for now.', pos);
+						if (!shouldAllowUnmappedCoreTypeDynamicFallback(pos)) {
+							Context.error('Rust backend: unmapped @:coreType abstract `'
+								+ key
+								+ '` in user code. Add a typed mapping in `toRustType` instead of relying on dynamic fallback.',
+								pos);
+						}
+						if (shouldWarnUnmappedCoreType(pos)) {
+							Context.warning('Rust backend: unmapped @:coreType abstract `' + key + '`, lowering to Dynamic for now.', pos);
+						}
 						#end
 						return RPath(rustDynamicPath());
 					}
