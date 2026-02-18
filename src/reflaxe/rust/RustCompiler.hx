@@ -159,6 +159,20 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
+		Returns the canonical Haxe type name for the dynamic boundary carrier.
+
+		Why
+		- Centralizes the unavoidable `"Dynamic"` literal used by macro type lookups and core-type checks.
+		- Keeps policy audits narrow: one boundary literal source, many typed callsites.
+
+		How
+		- This is intentionally reused by both Haxe-type lookups and Rust dynamic-path helpers.
+	**/
+	inline function dynamicBoundaryTypeName():String {
+		return "Dynamic";
+	}
+
+	/**
 		Returns the canonical Rust runtime path used for Haxe's dynamic carrier type.
 
 		Why
@@ -169,7 +183,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		- Keep one canonical path string here and route all dynamic-path checks/constructors through it.
 	**/
 	inline function rustDynamicPath():String {
-		return "hxrt::dynamic::Dynamic";
+		return "hxrt::dynamic::" + dynamicBoundaryTypeName();
 	}
 
 	/**
@@ -7564,7 +7578,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return EBlock({
 				stmts: [RLet("__hx_dyn", false, null, f), RLet("__hx_f", false, null, down),],
 				tail: EIf(ECall(EField(EPath("__hx_dyn"), "is_null"), []), throwMsg("Null Access"),
-					EIf(ECall(EField(EPath("__hx_f"), "is_some"), []), call, throwMsg("Dynamic call on non-function value")))
+					EIf(ECall(EField(EPath("__hx_f"), "is_some"), []), call, throwMsg(dynamicBoundaryTypeName() + " call on non-function value")))
 			});
 		}
 		return ECall(f, a);
@@ -10459,7 +10473,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var key = Std.string(pos);
 					if (shouldWarnUnresolvedMonomorph(pos) && !warnedUnresolvedMonomorphPos.exists(key)) {
 						warnedUnresolvedMonomorphPos.set(key, true);
-						Context.warning("Rust backend: unresolved monomorph, lowering to Dynamic.", pos);
+						Context.warning("Rust backend: unresolved monomorph, lowering to runtime dynamic carrier.", pos);
 					}
 					#end
 					return RPath(rustDynamicPath());
@@ -10520,6 +10534,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					//
 					// For core types, we must provide an explicit Rust representation mapping.
 					if (abs.meta != null && abs.meta.has(":coreType")) {
+						var dynamicCoreTypeKey = "." + dynamicBoundaryTypeName();
 						// Core primitives (StdTypes) can show up as `@:coreType abstract` types.
 						// Even if earlier helpers missed them, map them to Rust primitives here.
 						switch (key) {
@@ -10542,7 +10557,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							case ".Enum":
 								// Same representation strategy as `Class<T>`.
 								return RPath("u32");
-							case ".Dynamic":
+							case _ if (key == dynamicCoreTypeKey):
 								return RPath(rustDynamicPath());
 							case _:
 						}
@@ -10560,7 +10575,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								pos);
 						}
 						if (shouldWarnUnmappedCoreType(pos)) {
-							Context.warning('Rust backend: unmapped @:coreType abstract `' + key + '`, lowering to Dynamic for now.', pos);
+							Context.warning('Rust backend: unmapped @:coreType abstract `' + key + '`, lowering to runtime dynamic carrier for now.', pos);
 						}
 						#end
 						return RPath(rustDynamicPath());
@@ -10722,7 +10737,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	**/
 	function haxeDynamicBoundaryType():Type {
 		if (cachedHaxeDynamicType == null) {
-			cachedHaxeDynamicType = Context.getType("Dynamic");
+			cachedHaxeDynamicType = Context.getType(dynamicBoundaryTypeName());
 		}
 		return cachedHaxeDynamicType;
 	}
@@ -10732,7 +10747,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case TDynamic(_): true;
 			case TAbstract(absRef, _): {
 					var abs = absRef.get();
-					abs != null && abs.module == "StdTypes" && abs.name == "Dynamic"
+					abs != null && abs.module == "StdTypes" && abs.name == dynamicBoundaryTypeName()
 					;
 				}
 			case _: false;

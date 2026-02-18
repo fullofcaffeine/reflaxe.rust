@@ -15,8 +15,11 @@ This document is the source of truth for intentional `Dynamic` usage in `reflaxe
 
 - Why: compiler internals still contain multiple dynamic lowering/boxing bridges required to preserve
   upstream Haxe semantics while targeting Rust runtime `hxrt::dynamic::Dynamic`.
-- Current narrowing: repeated runtime path/null constructors are centralized via
-  `rustDynamicPath()` / `rustDynamicNullExpr()` helpers to reduce scattered literal boundaries.
+- Current narrowing:
+  - repeated runtime path/null constructors are centralized via
+    `rustDynamicPath()` / `rustDynamicNullExpr()` helpers.
+  - Haxe type-name checks/lookups route through `dynamicBoundaryTypeName()` so the raw `Dynamic`
+    literal is centralized to one code line.
 - Guardrail: unresolved monomorph and unmapped `@:coreType` fallback now errors in user/project code
   by default (fallback remains only for framework/upstream std compatibility).
 - Status: line-scoped entries are generated from non-comment `Dynamic` usage lines
