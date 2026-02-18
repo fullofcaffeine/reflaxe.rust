@@ -20,6 +20,32 @@ is_truthy() {
   esac
 }
 
+# CI runners may not have ripgrep; prefer it when available and fall back to grep otherwise.
+use_rg=0
+if [[ "${REFLAXE_NO_RG:-0}" != "1" ]] && command -v rg >/dev/null 2>&1; then
+  use_rg=1
+fi
+
+match_regex() {
+  local pattern="$1"
+  local file="$2"
+  if [[ "$use_rg" -eq 1 ]]; then
+    rg -q -- "$pattern" "$file"
+  else
+    grep -Eq -- "$pattern" "$file"
+  fi
+}
+
+match_fixed() {
+  local needle="$1"
+  local file="$2"
+  if [[ "$use_rg" -eq 1 ]]; then
+    rg -Fq -- "$needle" "$file"
+  else
+    grep -Fq -- "$needle" "$file"
+  fi
+}
+
 tmp_root=""
 
 cleanup() {
@@ -104,11 +130,11 @@ assert_emitted_std_modules() {
   local crate_dir="$1"
   local main_rs="$crate_dir/src/main.rs"
   [[ -f "$main_rs" ]]
-  if ! rg -q "mod haxe_ds_list;" "$main_rs"; then
+  if ! match_regex "mod haxe_ds_list;" "$main_rs"; then
     echo "error: generated main.rs is missing haxe_ds_list module import" >&2
     exit 1
   fi
-  if ! rg -q "mod haxe_exception;" "$main_rs"; then
+  if ! match_regex "mod haxe_exception;" "$main_rs"; then
     echo "error: generated main.rs is missing haxe_exception module import" >&2
     exit 1
   fi
@@ -140,11 +166,11 @@ verbose_log="$tmp_root/haxe-symlink-verbose.log"
   haxe -v -cp . -lib reflaxe.rust -main Main -D rust_output=out_symlink -D rust_no_build >"$verbose_log" 2>&1
 )
 
-if ! rg -q "^Classpath:" "$verbose_log"; then
+if ! match_regex "^Classpath:" "$verbose_log"; then
   echo "error: verbose compile log missing classpath line for symlink regression compile" >&2
   exit 1
 fi
-if ! rg -Fq ".haxelib/reflaxe,rust/" "$verbose_log"; then
+if ! match_fixed ".haxelib/reflaxe,rust/" "$verbose_log"; then
   echo "error: verbose compile log missing reflaxe.rust haxelib classpath entry" >&2
   exit 1
 fi
