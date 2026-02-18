@@ -1,3 +1,25 @@
+# [0.56.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.55.0...v0.56.0) (2026-02-18)
+
+
+### Bug Fixes
+
+* **ci:** fallback to grep when ripgrep is unavailable ([6591c0b](https://github.com/fullofcaffeine/reflaxe.rust/commit/6591c0bf7fb8f145753e4b3153ce8584ccd2a234))
+* **ci:** harden shell scripts when rg is unavailable ([2480fce](https://github.com/fullofcaffeine/reflaxe.rust/commit/2480fceb276876a5165cbbc7b51eaaaee8d64aa0))
+* format hxrt json runtime for ci rustfmt ([6aaaf18](https://github.com/fullofcaffeine/reflaxe.rust/commit/6aaaf18ebff45cf9833407f8763c79320e49b8e2))
+* harden packaged std detection and add package smoke CI ([0c07c3e](https://github.com/fullofcaffeine/reflaxe.rust/commit/0c07c3ed9094cce22ff79cce9396d0bd162a4af3))
+* make dynamic usage guard comment-aware ([f7c72ae](https://github.com/fullofcaffeine/reflaxe.rust/commit/f7c72ae1e0aea5ae18a6ccdf1b9821a8853a6ffa))
+* make logo's background transparent ([f867d5c](https://github.com/fullofcaffeine/reflaxe.rust/commit/f867d5caa573b8ea948461d24bc2caa50515d601))
+* **std:** isolate sys.db Dynamic usage behind typed aliases ([f311793](https://github.com/fullofcaffeine/reflaxe.rust/commit/f31179393516ee0bbdbd7e37afb73797b9637e91))
+* **std:** use .cross.hx overrides and align package flow ([8c31ce3](https://github.com/fullofcaffeine/reflaxe.rust/commit/8c31ce3a21a332bd2a53e479406395ea7c84fcde))
+
+
+### Features
+
+* add experimental metal profile and typed interop facade ([36a433e](https://github.com/fullofcaffeine/reflaxe.rust/commit/36a433e461bdc732233704d60daee515e10ab67c))
+* add profile matrix flagship example and harness variant discovery ([e3ba902](https://github.com/fullofcaffeine/reflaxe.rust/commit/e3ba902d38edaf4b75d099c22e06ced443e873c3))
+* fail fast dynamic fallback in user code ([947a07a](https://github.com/fullofcaffeine/reflaxe.rust/commit/947a07af5f2870241c82b8802974302eca66e4b3))
+* tighten dynamic boundaries and typed runtime interop ([74becc7](https://github.com/fullofcaffeine/reflaxe.rust/commit/74becc780eddede8f5932856147b6cefb6423b7b))
+
 # [0.55.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.54.0...v0.55.0) (2026-02-13)
 
 
