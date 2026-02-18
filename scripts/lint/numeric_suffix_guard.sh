@@ -26,6 +26,10 @@ echo "[guard:numeric] Checking ${TARGET_DIR} for numeric-suffixed identifiers...
 #  - function parameters (name: Type)
 DECL_PATTERN='\b(var|final|function)\s+[A-Za-z_][A-Za-z0-9_]*[0-9]+\b'
 PARAM_PATTERN='function[^\(]*\([^)]*[A-Za-z_][A-Za-z0-9_]*[0-9]+\s*:'
+use_rg=0
+if [[ "${REFLAXE_NO_RG:-0}" != "1" ]] && command -v rg >/dev/null 2>&1; then
+  use_rg=1
+fi
 
 found=0
 
@@ -88,7 +92,7 @@ fi
 if [[ "$FULL_SCAN" -ne 0 ]]; then
   echo "[guard:numeric] Full scan enabled; scanning entire ${TARGET_DIR} tree..."
 
-  if command -v rg >/dev/null 2>&1; then
+  if [[ "$use_rg" -eq 1 ]]; then
     if rg -n -e "${DECL_PATTERN}" -e "${PARAM_PATTERN}" "${TARGET_DIR}" --no-heading --hidden --glob '!**/docs/**' --glob '!**/test/**' ; then
       found=1
     fi

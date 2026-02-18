@@ -3,6 +3,10 @@ set -euo pipefail
 
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 ALLOWLIST_FILE="$ROOT_DIR/scripts/lint/dynamic_allowlist.txt"
+use_rg=0
+if [[ "${REFLAXE_NO_RG:-0}" != "1" ]] && command -v rg >/dev/null 2>&1; then
+  use_rg=1
+fi
 
 if [ ! -f "$ALLOWLIST_FILE" ]; then
   echo "[guard:dynamic] ERROR: allowlist not found at $ALLOWLIST_FILE" >&2
@@ -47,15 +51,29 @@ echo "[guard:dynamic] Scanning Haxe source files (.hx / .cross.hx) for Dynamic u
 
 # Find candidate files quickly, then run a lightweight comment-aware scan per file so
 # comment-only mentions (including block-doc text) don't churn the allowlist.
-CANDIDATE_FILES="$(
-  rg -l --no-heading --color never '\bDynamic\b' \
-    --glob '*.hx' \
-    --glob '!vendor/**' \
-    --glob '!**/out*/**' \
-    --glob '!**/intended/**' \
-    --glob '!**/native/**' \
-    "$ROOT_DIR" || true
-)"
+if [[ "$use_rg" -eq 1 ]]; then
+  CANDIDATE_FILES="$(
+    rg -l --no-heading --color never '\bDynamic\b' \
+      --glob '*.hx' \
+      --glob '!vendor/**' \
+      --glob '!**/out*/**' \
+      --glob '!**/intended/**' \
+      --glob '!**/native/**' \
+      "$ROOT_DIR" || true
+  )"
+else
+  CANDIDATE_FILES="$(
+    find "$ROOT_DIR" \
+      \( -path '*/vendor/*' -o -path '*/out*/*' -o -path '*/intended/*' -o -path '*/native/*' \) -prune -o \
+      -type f \( -name '*.hx' -o -name '*.cross.hx' \) -print \
+      | while IFS= read -r file || [ -n "$file" ]; do
+        [ -z "$file" ] && continue
+        if grep -Eq '(^|[^[:alnum:]_])Dynamic([^[:alnum:]_]|$)' "$file"; then
+          printf '%s\n' "$file"
+        fi
+      done
+  )"
+fi
 
 if [ -z "$CANDIDATE_FILES" ]; then
   echo "[guard:dynamic] OK (no Dynamic usage found)"

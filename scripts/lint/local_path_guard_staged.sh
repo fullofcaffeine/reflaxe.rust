@@ -4,6 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 cd "$ROOT_DIR"
 
+use_rg=0
+if [[ "${REFLAXE_NO_RG:-0}" != "1" ]] && command -v rg >/dev/null 2>&1; then
+  use_rg=1
+fi
+
 STAGED_ADDED_LINES="$(
   git diff --cached --unified=0 --no-color -- . \
     | awk '
@@ -30,7 +35,11 @@ fi
 ABSOLUTE_LOCAL_PATTERN="(/Users/[^[:space:]\"'<>()[\\]{}]+|/home/[^[:space:]\"'<>()[\\]{}]+|/var/folders/[^[:space:]\"'<>()[\\]{}]+|/private/var/folders/[^[:space:]\"'<>()[\\]{}]+|[A-Za-z]:\\\\Users\\\\[^[:space:]\"'<>()[\\]{}]+)"
 RELATIVE_PATH_PATTERN="(^|[^[:alnum:]_])(\\./|\\.\\./)[^[:space:]\"'<>()[\\]{}]+"
 
-ABSOLUTE_HITS="$(printf '%s\n' "$STAGED_ADDED_LINES" | rg -n -P "$ABSOLUTE_LOCAL_PATTERN" || true)"
+if [[ "$use_rg" -eq 1 ]]; then
+  ABSOLUTE_HITS="$(printf '%s\n' "$STAGED_ADDED_LINES" | rg -n -P "$ABSOLUTE_LOCAL_PATTERN" || true)"
+else
+  ABSOLUTE_HITS="$(printf '%s\n' "$STAGED_ADDED_LINES" | grep -En "$ABSOLUTE_LOCAL_PATTERN" || true)"
+fi
 if [[ -n "$ABSOLUTE_HITS" ]]; then
   echo "[guard:local-paths] ERROR: Absolute local filesystem paths detected in staged changes."
   echo "[guard:local-paths] Use repository-relative paths instead."
@@ -39,7 +48,11 @@ if [[ -n "$ABSOLUTE_HITS" ]]; then
   exit 1
 fi
 
-RELATIVE_HITS="$(printf '%s\n' "$STAGED_ADDED_LINES" | rg -n -P "$RELATIVE_PATH_PATTERN" || true)"
+if [[ "$use_rg" -eq 1 ]]; then
+  RELATIVE_HITS="$(printf '%s\n' "$STAGED_ADDED_LINES" | rg -n -P "$RELATIVE_PATH_PATTERN" || true)"
+else
+  RELATIVE_HITS="$(printf '%s\n' "$STAGED_ADDED_LINES" | grep -En "$RELATIVE_PATH_PATTERN" || true)"
+fi
 if [[ -z "$RELATIVE_HITS" ]]; then
   exit 0
 fi

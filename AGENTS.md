@@ -205,6 +205,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - `test/run-snapshots.sh` (runs `cargo fmt` + `cargo build -q` per snapshot)
   - `test/run-upstream-stdlib-sweep.sh` (per-module actionable compile/fmt/check for upstream std modules)
   - `scripts/ci/package-smoke.sh` validates the packaged artifact via isolated local `haxelib` install + Rust build (including symlink-cwd alias regression).
+  - CI shell-tooling compatibility: scripts must not hard-require `rg`; always keep a `grep`/`find` fallback.
+    - Fallback test knob: set `REFLAXE_NO_RG=1` to force non-`rg` paths during local validation.
   - `scripts/ci/harness.sh` runs snapshots, metal boundary policy, upstream stdlib sweep, package smoke, then compiles all non-CI example variants (`compile*.hxml`, excluding `*.ci.hxml`) and runs every CI variant present (`compile*.ci.hxml`, fallback `compile.hxml` when no CI file exists), including `cargo test` + `cargo run`.
   - `scripts/ci/windows-smoke.sh` runs on `windows-latest` and validates a Windows-safe subset (fmt/clippy + `hello_trace`/`sys_io` snapshots + `examples/sys_file_io` + `examples/sys_net_loopback`).
 
