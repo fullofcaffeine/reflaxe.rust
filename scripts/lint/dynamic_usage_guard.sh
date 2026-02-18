@@ -44,8 +44,11 @@ if [ $allowlist_parse_errors -ne 0 ]; then
 fi
 
 echo "[guard:dynamic] Scanning Haxe source files (.hx / .cross.hx) for Dynamic usage..."
-MATCHES="$(
-  rg -n --no-heading --color never '\bDynamic\b' \
+
+# Find candidate files quickly, then run a lightweight comment-aware scan per file so
+# comment-only mentions (including block-doc text) don't churn the allowlist.
+CANDIDATE_FILES="$(
+  rg -l --no-heading --color never '\bDynamic\b' \
     --glob '*.hx' \
     --glob '!vendor/**' \
     --glob '!**/out*/**' \
@@ -54,22 +57,86 @@ MATCHES="$(
     "$ROOT_DIR" || true
 )"
 
-if [ -z "$MATCHES" ]; then
+if [ -z "$CANDIDATE_FILES" ]; then
   echo "[guard:dynamic] OK (no Dynamic usage found)"
   exit 0
 fi
 
-while IFS= read -r hit || [ -n "$hit" ]; do
-  [ -z "$hit" ] && continue
-  file="${hit%%:*}"
-  rest="${hit#*:}"
-  line="${rest%%:*}"
-  if ! printf '%s' "$line" | grep -Eq '^[0-9]+$'; then
-    continue
-  fi
-  rel="${file#$ROOT_DIR/}"
-  printf '%s:%s\n' "$rel" "$line" >> "$hits_tmp"
-done <<< "$MATCHES"
+while IFS= read -r file || [ -n "$file" ]; do
+  [ -z "$file" ] && continue
+
+  awk '
+    BEGIN {
+      in_block = 0;
+    }
+    {
+      line = $0;
+      code = "";
+      i = 1;
+      in_str = 0;
+      str_ch = "";
+
+      while (i <= length(line)) {
+        c = substr(line, i, 1);
+        two = substr(line, i, 2);
+
+        if (in_block) {
+          if (two == "*/") {
+            in_block = 0;
+            i += 2;
+            continue;
+          }
+          i++;
+          continue;
+        }
+
+        if (in_str) {
+          code = code c;
+          if (c == "\\") {
+            if (i < length(line)) {
+              code = code substr(line, i + 1, 1);
+              i += 2;
+              continue;
+            }
+          }
+          if (c == str_ch) {
+            in_str = 0;
+            str_ch = "";
+          }
+          i++;
+          continue;
+        }
+
+        if (two == "/*") {
+          in_block = 1;
+          i += 2;
+          continue;
+        }
+        if (two == "//") {
+          break;
+        }
+        if (c == "\"" || c == "'\''") {
+          in_str = 1;
+          str_ch = c;
+          code = code c;
+          i++;
+          continue;
+        }
+
+        code = code c;
+        i++;
+      }
+
+      if (code ~ /(^|[^[:alnum:]_])Dynamic([^[:alnum:]_]|$)/) {
+        print FNR;
+      }
+    }
+  ' "$file" | while IFS= read -r line || [ -n "$line" ]; do
+    [ -z "$line" ] && continue
+    rel="${file#$ROOT_DIR/}"
+    printf '%s:%s\n' "$rel" "$line" >> "$hits_tmp"
+  done
+done <<< "$CANDIDATE_FILES"
 
 sort -u "$hits_tmp" -o "$hits_tmp"
 

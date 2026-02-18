@@ -19,7 +19,8 @@ This document is the source of truth for intentional `Dynamic` usage in `reflaxe
   `rustDynamicPath()` / `rustDynamicNullExpr()` helpers to reduce scattered literal boundaries.
 - Guardrail: unresolved monomorph and unmapped `@:coreType` fallback now errors in user/project code
   by default (fallback remains only for framework/upstream std compatibility).
-- Status: line-scoped entries are generated from actual `Dynamic` usage lines.
+- Status: line-scoped entries are generated from non-comment `Dynamic` usage lines
+  (comment-only/doc-text mentions are ignored by the guard).
 - Exit criteria: remove line entries as bridge points are typed or refactored away.
 
 ### File-scoped entries

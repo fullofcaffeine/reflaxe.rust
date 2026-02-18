@@ -180,6 +180,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Install the repo pre-commit hook (gitleaks + guards + beads flush): run `bd hooks install` then `npm run hooks:install` (requires `gitleaks` installed)
 - Dynamic policy guard: `scripts/lint/dynamic_usage_guard.sh` is part of hooks/CI and fails on any non-allowlisted `Dynamic` mention in first-party `*.hx`/`*.cross.hx` files.
   Keep intentional compatibility/runtime boundaries in `scripts/lint/dynamic_allowlist.txt` and remove avoidable `Dynamic` elsewhere.
+  - Scan model: the guard is comment-aware; comment-only/doc-text mentions are ignored so the allowlist tracks code boundaries, not prose churn.
   - Allowlist strictness: file-scoped entries must include an inline `# FILE_SCOPE_JUSTIFICATION: ...` comment in
     `scripts/lint/dynamic_allowlist.txt`; otherwise the guard fails during parsing.
 - Runtime gotcha: snapshots embed `runtime/hxrt/**` into `test/snapshot/**/intended/hxrt/`, so any change under `runtime/hxrt/` requires `bash test/run-snapshots.sh --update` to keep goldens in sync.
