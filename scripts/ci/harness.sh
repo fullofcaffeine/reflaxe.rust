@@ -124,6 +124,10 @@ echo "[harness] package smoke"
 PACKAGE_ZIP_REL=".cache/package-smoke/reflaxe.rust-audit.zip" bash scripts/ci/package-smoke.sh
 intermediate_cleanup "package-smoke"
 
+echo "[harness] template smoke"
+bash scripts/ci/template-smoke.sh
+intermediate_cleanup "template-smoke"
+
 # Example compiles trigger cargo builds via the Rust backend. Share one target dir
 # so all example crates reuse artifacts (keeps local/CI runtime reasonable).
 if [[ -z "${CARGO_TARGET_DIR:-}" ]]; then

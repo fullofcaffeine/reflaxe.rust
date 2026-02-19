@@ -99,7 +99,12 @@ class LoopbackScenario {
 	}
 
 	static function commandPlan():Array<ChatCommand> {
-		return [Send("alice", "hello-team"), Send("bob", "ship-it"), History, Quit];
+		return [
+			Send("alice", "#ops", "hello-team"),
+			Send("bob", "#ops", "ship-it"),
+			History,
+			Quit
+		];
 	}
 
 	/**

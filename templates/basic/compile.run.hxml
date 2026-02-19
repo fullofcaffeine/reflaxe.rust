@@ -6,3 +6,4 @@
 -D rust_cargo_subcommand=run
 
 --main Main
+

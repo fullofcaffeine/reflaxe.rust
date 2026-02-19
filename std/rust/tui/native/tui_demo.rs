@@ -125,24 +125,26 @@ fn transform_fx_text(text: &str, effect: &HxFxKind, phase: i32, width: usize) ->
 fn style_for(token: &HxStyleToken) -> Style {
     match token.clone() {
         HxStyleToken::Normal => Style::default(),
-        HxStyleToken::Muted => Style::default().fg(Color::DarkGray),
+        HxStyleToken::Muted => Style::default().fg(Color::Rgb(138, 152, 173)),
         HxStyleToken::Title => Style::default()
-            .fg(Color::Cyan)
+            .fg(Color::Rgb(224, 232, 243))
             .add_modifier(Modifier::BOLD),
         HxStyleToken::Accent => Style::default()
-            .fg(Color::Magenta)
+            .fg(Color::Rgb(122, 172, 214))
             .add_modifier(Modifier::BOLD),
         HxStyleToken::Selected => Style::default()
-            .fg(Color::Black)
-            .bg(Color::LightCyan)
+            .fg(Color::Rgb(228, 236, 246))
+            .bg(Color::Rgb(53, 72, 96))
             .add_modifier(Modifier::BOLD),
         HxStyleToken::Success => Style::default()
-            .fg(Color::Green)
+            .fg(Color::Rgb(126, 196, 154))
             .add_modifier(Modifier::BOLD),
         HxStyleToken::Warning => Style::default()
-            .fg(Color::Yellow)
+            .fg(Color::Rgb(214, 175, 112))
             .add_modifier(Modifier::BOLD),
-        HxStyleToken::Danger => Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        HxStyleToken::Danger => Style::default()
+            .fg(Color::Rgb(209, 112, 122))
+            .add_modifier(Modifier::BOLD),
     }
 }
 

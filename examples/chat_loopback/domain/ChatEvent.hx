@@ -10,6 +10,8 @@ package domain;
  * What
  * - `Delivered(...)` for accepted writes.
  * - `HistorySnapshot(entries)` for read-model snapshots (string tokens for deterministic wire output).
+ *   - Message entries use `id:user:channel:body:fingerprint:origin`.
+ *   - Presence entries use `@presence:<user>` so clients can detect join/leave changes over polling.
  * - `Bye(reason)` for graceful exit acknowledgements.
  * - `Rejected(reason)` for validation/parser failures.
  *
@@ -17,7 +19,7 @@ package domain;
  * - Produced by profile runtimes and formatted by `protocol.Codec.encodeEvent`.
  */
 enum ChatEvent {
-	Delivered(id:Int, user:String, body:String, fingerprint:Int, origin:String);
+	Delivered(id:Int, user:String, channel:String, body:String, fingerprint:Int, origin:String);
 	HistorySnapshot(entries:Array<String>);
 	Bye(reason:String);
 	Rejected(reason:String);

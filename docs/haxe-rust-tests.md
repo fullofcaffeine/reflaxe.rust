@@ -52,5 +52,6 @@ This is why tests must live in **non-main classes** (the main class emits free f
 
 - `examples/profile_storyboard/StoryboardTests.hx` contains a didactic `@:rustTest` HaxeDoc reference
   that documents `name`/`serial` metadata usage in-place.
+- `examples/bytes_ops/BytesTests.hx` is a focused runtime-behavior suite.
 - `examples/chat_loopback/ChatTests.hx` and `examples/tui_todo/TuiTests.hx` show larger real-app suites
   using the same contract.

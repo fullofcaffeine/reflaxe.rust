@@ -111,7 +111,7 @@ fi
 if [[ "$clean_cache" -eq 1 ]]; then
   while IFS= read -r -d '' path; do
     paths+=("$path")
-  done < <(find "$root_dir/.cache" -mindepth 1 -maxdepth 1 -type d \( -name 'examples-target*' -o -name 'snapshots-target*' -o -name 'upstream-stdlib-target*' \) -print0 2>/dev/null || true)
+  done < <(find "$root_dir/.cache" -mindepth 1 -maxdepth 1 -type d \( -name 'examples-target*' -o -name 'snapshots-target*' -o -name 'upstream-stdlib-target*' -o -name 'package-smoke-target*' -o -name 'template-smoke-target*' \) -print0 2>/dev/null || true)
 fi
 
 if [[ "${#paths[@]}" -eq 0 ]]; then

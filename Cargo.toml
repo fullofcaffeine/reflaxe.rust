@@ -3,5 +3,6 @@ members = ["runtime/hxrt"]
 exclude = [
   "examples",
   "test",
+  ".cache",
 ]
 resolver = "2"

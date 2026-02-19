@@ -3,6 +3,7 @@
 
 -D rust_output=out
 -D rust_crate=hx_app
--D rust_cargo_subcommand=run
+-D rust_cargo_subcommand=build
 
 --main Main
+

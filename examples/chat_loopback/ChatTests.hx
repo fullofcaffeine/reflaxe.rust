@@ -51,4 +51,40 @@ class ChatTests {
 	public static function pulseSceneIsDeterministic():Void {
 		Assert.isTrue(Harness.pulseSceneDeterministic(), "animation scene should be deterministic under fixed ticks");
 	}
+
+	@:rustTest
+	public static function historyPresenceSyncWorks():Void {
+		Assert.isTrue(Harness.historyPresenceSyncWorks(), "history refresh should sync remote operators into the UI list");
+	}
+
+	@:rustTest
+	public static function diagnosticsPanelShowsSignals():Void {
+		Assert.isTrue(Harness.diagnosticsPanelShowsSignals(), "diagnostics panel should render typed runtime/action signals");
+	}
+
+	@:rustTest
+	public static function channelIsolationAndActivityLogWorks():Void {
+		Assert.isTrue(Harness.channelIsolationAndActivityLogWorks(), "timeline should filter by channel and activity log should show online/offline markers");
+	}
+
+	@:rustTest
+	public static function historySnapshotsAvoidSpamLines():Void {
+		Assert.isTrue(Harness.historySnapshotsAvoidSpamLines(), "history snapshots should import new messages without timeline spam");
+	}
+
+	@:rustTest
+	public static function chatServerLogsQuietByDefault():Void {
+		Assert.isTrue(Harness.chatServerLogsAreQuietByDefault(), "chat server logs must stay disabled by default to keep TUI output stable");
+	}
+
+	@:rustTest
+	public static function remoteRealtimeFlowStable():Void {
+		Assert.isTrue(Harness.remoteRealtimeFlowStable(), "remote runtime should keep multi-client polling stable and reflect new messages");
+	}
+
+	@:rustTest
+	public static function generatedIdentityVariesAcrossCalls():Void {
+		Assert.isTrue(Harness.generatedIdentityVariesAcrossCalls(), "auto identity generation should not reuse a constant seed");
+		Assert.isTrue(Harness.foldedIdentitySeedAvoidsSaturation(), "time folding should avoid Int saturation collisions");
+	}
 }

@@ -61,6 +61,18 @@ npx haxe compile.hxml
 npm run test:all
 ```
 
+## Scaffold a new app
+
+Use the built-in template generator:
+
+```bash
+npm run dev:new-project -- ./my_haxe_rust_app
+cd my_haxe_rust_app
+haxe compile.hxml
+```
+
+The scaffold includes explicit task HXMLs for build/run and release build/run variants.
+
 ## Faster local loop while you iterate
 
 When you want instant feedback after each file save, use the watcher:

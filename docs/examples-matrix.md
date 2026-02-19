@@ -67,7 +67,7 @@ npx haxe compile.metal.hxml
 | `examples/chat_loopback` | Yes | Yes | Yes | Yes | Flagship comparison app (interactive neon TUI + network loopback + profile runtimes + Haxe-authored Rust tests). |
 | `examples/profile_storyboard` | Yes | Yes | Yes | Yes | Compact profile-style reference app (typed board domain, four runtime idioms, Haxe-authored Rust tests with `@:rustTest` metadata forms). |
 | `examples/hello` | No | Yes | No | Yes | Minimal sanity check; includes dedicated metal variant. |
-| `examples/bytes_ops` | No | Yes | Yes | No | Bytes APIs + native Rust tests for runtime behavior. |
+| `examples/bytes_ops` | No | Yes | Yes | No | Bytes APIs + Haxe-authored Rust tests (`@:rustTest`) for runtime behavior. |
 | `examples/serde_json` | No | Yes | Yes | No | Typed Serde JSON surface usage. |
 | `examples/async_retry_pipeline` | No | No | Yes | No | Rust-first async preview scenario. |
 | `examples/tui_todo` | No | Yes | Yes | No | Large real app with deterministic TUI harness tests. |
@@ -100,5 +100,5 @@ Use these examples to study profile-specific style:
 
 ## Test Authoring
 
-- `examples/chat_loopback`, `examples/profile_storyboard`, and `examples/tui_todo` use Haxe-authored Rust tests (`@:rustTest`) instead of `native/*.rs`.
+- `examples/bytes_ops`, `examples/chat_loopback`, `examples/profile_storyboard`, and `examples/tui_todo` use Haxe-authored Rust tests (`@:rustTest`) instead of `native/*.rs`.
 - See `docs/haxe-rust-tests.md` for the metadata contract and generated wrapper behavior.

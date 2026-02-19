@@ -32,6 +32,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   When you must cross a `Dynamic` boundary, immediately validate/cast/convert into a typed structure (often a `typedef` schema) and keep the rest of the code typed.
 - `Dynamic` policy (strict): use `Dynamic` only when explicitly justified by upstream std/API contracts or unavoidable runtime boundaries.
   Default to concrete `typedef`/class/abstract/external bindings and leverage Haxe’s type system end-to-end.
+- `Reflect`/`Any` policy (strict): avoid `Reflect.*` APIs and `Any`-typed payloads in first-party compiler/runtime/example code.
+  Prefer typed fields/enums/interfaces; if an upstream/runtime boundary forces `Reflect` or `Any`, keep it tightly scoped and convert back to typed data immediately.
 - For unavoidable stdlib API boundaries, prefer a descriptive `typedef` alias module (for example `*Types.cross.hx`)
   so raw `Dynamic` is centralized and documented instead of scattered across implementation files.
 - Path privacy policy: never disclose machine-specific absolute local paths (for example `<home>/...`).
@@ -40,7 +42,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 ## Meta (keep instructions current)
 
 - When a new “gotcha”, policy decision, or workflow trick is discovered, write it down in the **closest scoped `AGENTS.md`** (add one if needed), not just in chat.
-- Bugs: when fixing a bug, add a regression test if it fits (snapshots, runtime tests, or example test harness).
+- Fix/test policy: after each fix, update tests and/or add a regression test (snapshots, runtime tests, or example test harness), unless an existing test update already covers the behavior change.
 
 ## Documentation (HaxeDoc)
 
@@ -101,6 +103,9 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Exceptions/try-catch: implemented via `hxrt::exception` using a panic-id + thread-local payload.
   - `throw v` → `hxrt::exception::throw(hxrt::dynamic::from(v))`
   - `try { a } catch(e:T) { b }` → `match hxrt::exception::catch_unwind(|| { a }) { Ok(v) => v, Err(ex) => ...downcast chain... }`
+  - Nested catch-unwind gotcha: panic-output suppression in `hxrt::exception` must be depth-counted (not boolean).
+    Inner `catch_unwind` frames can otherwise re-enable panic-hook output too early and leak noisy `Box<dyn Any>` lines
+    even when throws are correctly caught by an outer frame (observed with socket `readLine` + server/client wrappers).
   - Current limitation: catch type matching is Rust `Any` downcast (exact Rust type), so catching a subclass from a base-typed trait object isn’t supported yet.
 - To include external crates and hand-written Rust modules for demos/interop, use `-D rust_cargo_deps_file=...` + `-D rust_extra_src=...` (the compiler copies `*.rs` into `out/src/` and emits `mod <file>;` in `main.rs`).
 - Prefer framework-driven metadata over `.hxml` wiring when possible:
@@ -205,14 +210,17 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - `test/run-snapshots.sh` (runs `cargo fmt` + `cargo build -q` per snapshot)
   - `test/run-upstream-stdlib-sweep.sh` (per-module actionable compile/fmt/check for upstream std modules)
   - `scripts/ci/package-smoke.sh` validates the packaged artifact via isolated local `haxelib` install + Rust build (including symlink-cwd alias regression).
+  - `scripts/ci/template-smoke.sh` scaffolds `templates/basic` via `scripts/dev/new-project.sh` and executes the full task-HXML matrix (`compile.build`, `compile`, `compile.run`, `compile.release`, `compile.release.run`).
   - CI shell-tooling compatibility: scripts must not hard-require `rg`; always keep a `grep`/`find` fallback.
     - Fallback test knob: set `REFLAXE_NO_RG=1` to force non-`rg` paths during local validation.
-  - `scripts/ci/harness.sh` runs snapshots, metal boundary policy, upstream stdlib sweep, package smoke, then compiles all non-CI example variants (`compile*.hxml`, excluding `*.ci.hxml`) and runs every CI variant present (`compile*.ci.hxml`, fallback `compile.hxml` when no CI file exists), including `cargo test` + `cargo run`.
+  - `scripts/ci/harness.sh` runs snapshots, metal boundary policy, upstream stdlib sweep, package smoke, template smoke, then compiles all non-CI example variants (`compile*.hxml`, excluding `*.ci.hxml`) and runs every CI variant present (`compile*.ci.hxml`, fallback `compile.hxml` when no CI file exists), including `cargo test` + `cargo run`.
   - `scripts/ci/windows-smoke.sh` runs on `windows-latest` and validates a Windows-safe subset (fmt/clippy + `hello_trace`/`sys_io` snapshots + `examples/sys_file_io` + `examples/sys_net_loopback`).
 
 ## Build (native)
 
 - Default: compiling with `-D rust_output=...` generates Rust and runs `cargo build` (debug) best-effort.
+- HXML default policy: new user-facing `compile*.hxml` files should compile+run by default via `-D rust_cargo_subcommand=run`
+  (and usually `-D rust_cargo_quiet`), unless the file is explicitly CI/headless/build-only scoped.
 - The generated Cargo crate emits a minimal `.gitignore` by default (opt-out: `-D rust_no_gitignore`).
 - Codegen-only: add `-D rust_no_build` (alias: `-D rust_codegen_only`).
 - Deny warnings (opt-in): add `-D rust_deny_warnings` to emit `#![deny(warnings)]` in the generated crate root.
@@ -242,7 +250,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - `.github/workflows/ci.yml` runs on PRs/pushes to `main`.
   - `.github/workflows/release.yml` runs **semantic-release** after CI succeeds on `main` (semver tag + CHANGELOG + GitHub Release + zip asset).
   - `.github/workflows/rustsec.yml` runs `cargo audit` on a schedule.
-  - Workspace gotcha: exclude `examples/` + `test/` from the root workspace so `cargo fmt/build` works inside generated `*/out/` crates during snapshot tests.
+  - Workspace gotcha: exclude `examples/` + `test/` + `.cache/` from the root workspace so `cargo fmt/build` works inside generated `*/out/` crates during snapshot and template-smoke runs.
 - Packaging policy: `scripts/release/package-haxelib.sh` mirrors Reflaxe build flow by merging `reflaxe.stdPaths` into `classPath` and sanitizing `haxelib.json` (remove `reflaxe` field), while still shipping target-required `runtime/` + `vendor/`.
 - Conventional commits are required on `main` so semantic-release can compute the next version.
   - Use `feat:` for minor, `fix:` for patch, and `feat!:` / `BREAKING CHANGE:` for major.

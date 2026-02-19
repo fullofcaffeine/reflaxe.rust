@@ -102,10 +102,12 @@ Coverage map: [docs/examples-matrix.md](docs/examples-matrix.md).
 ## Most Useful Commands
 
 - Watch mode for local development: `npm run dev:watch -- --hxml examples/hello/compile.hxml`
+- Scaffold a new starter project: `npm run dev:new-project -- ./my_haxe_rust_app`
 - Refresh tracker-backed status docs: `npm run docs:sync:progress`
 - Verify tracker-backed status docs are in sync: `npm run docs:check:progress`
 - Snapshot tests: `bash test/run-snapshots.sh`
 - Upstream stdlib sweep: `bash test/run-upstream-stdlib-sweep.sh`
+- Template task-matrix smoke: `bash scripts/ci/template-smoke.sh`
 - Windows-safe smoke subset: `bash scripts/ci/windows-smoke.sh`
 - Full local CI equivalent: `bash scripts/ci/local.sh`
 - Clean generated artifacts: `npm run clean:artifacts:all`

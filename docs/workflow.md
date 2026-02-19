@@ -53,6 +53,22 @@ These map to Cargo arguments/env vars at the end of compilation:
   - `@:rustCargo({ name: "dep", version: "1.2", features: ["x"] })`
   - avoid requiring users to pass `-D rust_cargo_deps_file=...`
 
+## New project scaffold + task hxmls
+
+Create a starter project from the built-in template:
+
+```bash
+npm run dev:new-project -- ./my_haxe_rust_app
+```
+
+Generated task files:
+
+- `compile.build.hxml` -> debug compile only (`cargo build`)
+- `compile.hxml` -> debug compile+run (`cargo run`) default
+- `compile.run.hxml` -> explicit debug compile+run (`cargo run`)
+- `compile.release.hxml` -> release compile only (`cargo build --release`)
+- `compile.release.run.hxml` -> release compile+run (`cargo run --release`)
+
 ## Repo CI parity (contributors)
 
 Before pushing to `main`, run the closest local equivalent of CI:

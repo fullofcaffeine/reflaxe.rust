@@ -1,8 +1,10 @@
 -cp src
 -lib reflaxe.rust
 
--D rust_output=out
+-D rust_output=out_release
 -D rust_crate=hx_app
+-D rust_release
 -D rust_cargo_subcommand=run
 
 --main Main
+

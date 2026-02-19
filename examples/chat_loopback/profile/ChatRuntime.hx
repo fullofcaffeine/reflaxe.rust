@@ -14,6 +14,7 @@ import domain.ChatEvent;
  * - A typed runtime contract with two operations:
  *   - `profileName()` identifies the active profile in output/tests.
  *   - `handle(command)` applies command semantics and returns a typed event.
+ *   - `pollEvents()` emits asynchronous inbound events (usually empty for local runtimes).
  *
  * How
  * - `RuntimeFactory` selects a concrete implementation by compile define.
@@ -22,4 +23,5 @@ import domain.ChatEvent;
 interface ChatRuntime {
 	function profileName():String;
 	function handle(command:ChatCommand):ChatEvent;
+	function pollEvents():Array<ChatEvent>;
 }
