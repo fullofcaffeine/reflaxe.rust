@@ -191,6 +191,24 @@ class Harness {
 		return frame.indexOf("typed ? boundary") != -1;
 	}
 
+	public static function momentumTadaOverlayWorks():Bool {
+		var app = seeded();
+		for (i in 0...12) {
+			sendText(app, "burst-" + i);
+		}
+
+		if (!app.tadaActive()) {
+			return false;
+		}
+		var hotFrame = normalizeFrame(Tui.renderUiToString(app.view(), W, H));
+		if (hotFrame.indexOf("tada overdrive") == -1 && hotFrame.indexOf("momentum 100") == -1) {
+			return false;
+		}
+
+		app.handle(Tick(2200));
+		return !app.tadaActive();
+	}
+
 	public static function channelIsolationAndActivityLogWorks():Bool {
 		var app = new ChatUiApp(RuntimeFactory.create(), "host_user");
 		app.setTerminalSize(W, H);

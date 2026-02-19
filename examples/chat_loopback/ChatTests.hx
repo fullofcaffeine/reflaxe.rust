@@ -68,6 +68,11 @@ class ChatTests {
 	}
 
 	@:rustTest
+	public static function momentumTadaOverlayWorks():Void {
+		Assert.isTrue(Harness.momentumTadaOverlayWorks(), "momentum=100 should trigger a temporary full-frame tada overlay");
+	}
+
+	@:rustTest
 	public static function historySnapshotsAvoidSpamLines():Void {
 		Assert.isTrue(Harness.historySnapshotsAvoidSpamLines(), "history snapshots should import new messages without timeline spam");
 	}

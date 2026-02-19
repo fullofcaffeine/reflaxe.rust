@@ -51,6 +51,7 @@ class ChatUiApp {
 	static inline final MAX_DIAGNOSTICS = 24;
 	static inline final MAX_ACTIVITY = 24;
 	static inline final ANIMATION_STEP_MS = 50;
+	static inline final TADA_DURATION_MS = 1800;
 	static inline final PRESENCE_PREFIX = "@presence:";
 	static inline final GLOBAL_TIMELINE = "*";
 	static final DISCOVERY_MOODS = [
@@ -86,6 +87,7 @@ class ChatUiApp {
 	var fixedOperatorName:Null<String> = null;
 	var operatorLocked:Bool = false;
 	var animationCarryMs:Int = 0;
+	var tadaRemainingMs:Int = 0;
 	var diagnostics:Array<String>;
 	var activityLog:Array<String>;
 	var onlineUsers:StringMap<Bool>;
@@ -137,6 +139,10 @@ class ChatUiApp {
 		return fixedOperatorName;
 	}
 
+	public function tadaActive():Bool {
+		return tadaRemainingMs > 0;
+	}
+
 	public function handle(ev:Event):Bool {
 		switch (ev) {
 			case Quit:
@@ -156,8 +162,16 @@ class ChatUiApp {
 
 	public function view():UiNode {
 		var base = Layout(Vertical, [Fixed(1), Fill, Fixed(5), Fixed(1)], [topTabs(), bodyPane(), composerPane(), statusBar()]);
-		if (showHelp) {
-			return Overlay([base, helpModal()]);
+		if (tadaRemainingMs > 0 || showHelp) {
+			var layers = new Array<UiNode>();
+			layers.push(base);
+			if (tadaRemainingMs > 0) {
+				layers.push(tadaOverlay());
+			}
+			if (showHelp) {
+				layers.push(helpModal());
+			}
+			return Overlay(layers);
 		}
 		return base;
 	}
@@ -165,6 +179,12 @@ class ChatUiApp {
 	function advanceAnimation(dtMs:Int):Void {
 		if (dtMs <= 0) {
 			return;
+		}
+		if (tadaRemainingMs > 0) {
+			tadaRemainingMs = tadaRemainingMs - dtMs;
+			if (tadaRemainingMs < 0) {
+				tadaRemainingMs = 0;
+			}
 		}
 		animationCarryMs = animationCarryMs + dtMs;
 		var step = Std.int(animationCarryMs / ANIMATION_STEP_MS);
@@ -296,7 +316,7 @@ class ChatUiApp {
 				ensureOperator(user);
 				markUserOnline(user);
 				seenMessageIds.set(id, true);
-				commandCount = commandCount + 1;
+				incrementCommandCount(1);
 				addTimeline(chatLead() + " " + id + " [" + channel + "] " + user + " ▸ " + body + "  [" + origin + ":" + fingerprint + "]", channel);
 				statusLine = "delivered via " + origin + " @ " + channel;
 				addDiagnostic("delivered #" + id + " channel=" + channel + " origin=" + origin + " fp=" + fingerprint);
@@ -332,6 +352,25 @@ class ChatUiApp {
 
 	function addGlobalTimeline(line:String):Void {
 		addTimeline(line, GLOBAL_TIMELINE);
+	}
+
+	function incrementCommandCount(delta:Int):Void {
+		if (delta <= 0) {
+			return;
+		}
+		var before = commandDensityPercentFor(commandCount);
+		commandCount = commandCount + delta;
+		var after = commandDensityPercentFor(commandCount);
+		if (before < 100 && after >= 100) {
+			triggerTada();
+		}
+	}
+
+	function triggerTada():Void {
+		tadaRemainingMs = TADA_DURATION_MS;
+		statusLine = "momentum 100 • tada!";
+		addActivity("tada burst at momentum 100");
+		addDiagnostic("chat momentum reached 100");
 	}
 
 	function addDiagnostic(line:String):Void {
@@ -440,11 +479,32 @@ class ChatUiApp {
 	}
 
 	function commandDensityPercent():Int {
-		var scaled = commandCount * 9;
+		return commandDensityPercentFor(commandCount);
+	}
+
+	function commandDensityPercentFor(count:Int):Int {
+		var scaled = count * 9;
 		if (scaled > 100) {
 			return 100;
 		}
 		return scaled;
+	}
+
+	function tadaOverlay():UiNode {
+		var boom = emojiEnabled() ? "🎉" : "TADA";
+		var sparkle = emojiEnabled() ? "✨" : "*";
+		var effect = if ((fxPhase % 24) < 8) Marquee else if ((fxPhase % 24) < 16) Pulse else Glitch;
+		var body = boom
+			+ " MOMENTUM 100 "
+			+ boom
+			+ "\n"
+			+ sparkle
+			+ " full-frame party mode "
+			+ sparkle
+			+ "\nchannel "
+			+ channels[selectedChannel]
+			+ " lit";
+		return Block("tada overdrive", [FxText("confetti storm", body, effect, fxPhase * 3, Warning)], Accent);
 	}
 
 	function fxKind():FxKind {
@@ -535,7 +595,7 @@ class ChatUiApp {
 				markUserOnline(parsed.user);
 				if (!seenMessageIds.exists(parsed.id)) {
 					seenMessageIds.set(parsed.id, true);
-					commandCount = commandCount + 1;
+					incrementCommandCount(1);
 					imported = imported + 1;
 					addTimeline(chatLead() + " " + parsed.id + " [" + parsed.channel + "] " + parsed.user + " ▸ " + parsed.body + "  [" + parsed.origin
 						+ ":" + parsed.fingerprint + "]",
