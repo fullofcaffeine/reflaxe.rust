@@ -25,7 +25,7 @@ Environment:
   HXRT_PERF_HELLO_ITERS     Startup loop count for hello case (default: 300)
   HXRT_PERF_ARRAY_ITERS     Startup loop count for array case (default: 300)
   HXRT_PERF_HOT_LOOP_ITERS  Startup loop count for hot_loop case (default: 300)
-  HXRT_PERF_HOT_LOOP_INPROC_RUNS In-process sample count for hot_loop_inproc binaries (default: 8)
+  HXRT_PERF_HOT_LOOP_INPROC_RUNS In-process sample count for hot_loop_inproc binaries (default: 20)
   HXRT_PERF_CHAT_ITERS      Startup loop count for chat headless case (default: 40)
 USAGE
 }
@@ -148,21 +148,38 @@ measure_inprocess_ms() {
   local bin="$1"
   local sample_count="$2"
   local timing_log="$3"
+  HXRT_PERF_BIN="$bin" HXRT_PERF_RUNS="$sample_count" node <<'NODE' > "$timing_log"
+const { spawnSync } = require("child_process");
 
-  ITER="$sample_count" BIN="$bin" "$time_bin" -p bash -c '
-    i=0
-    while [ "$i" -lt "$ITER" ]; do
-      "$BIN" >/dev/null 2>&1 || exit 1
-      i=$((i + 1))
-    done
-  ' >/dev/null 2>"$timing_log"
+const bin = process.env.HXRT_PERF_BIN || "";
+const runs = Number(process.env.HXRT_PERF_RUNS || "0");
+if (!bin || !Number.isFinite(runs) || runs <= 0) {
+  console.error("invalid in-process timing inputs");
+  process.exit(2);
+}
 
-  local real_seconds
-  real_seconds="$(awk '/^real[[:space:]]+/ { print $2; exit }' "$timing_log")"
-  if [[ -z "${real_seconds:-}" ]]; then
+const startedNs = process.hrtime.bigint();
+for (let i = 0; i < runs; i += 1) {
+  const runResult = spawnSync(bin, [], { stdio: "ignore" });
+  if (runResult.error) {
+    console.error(runResult.error.message);
+    process.exit(1);
+  }
+  if (runResult.status !== 0) {
+    process.exit(runResult.status || 1);
+  }
+}
+const elapsedNs = Number(process.hrtime.bigint() - startedNs);
+const avgMs = elapsedNs / 1e6 / runs;
+process.stdout.write(`${avgMs.toFixed(6)}\n`);
+NODE
+
+  local runtime_avg_ms
+  runtime_avg_ms="$(tr -d '\r' < "$timing_log" | tail -n 1)"
+  if [[ -z "${runtime_avg_ms:-}" ]]; then
     fail "failed to parse in-process timing from $(display_path "$timing_log")"
   fi
-  awk -v real="$real_seconds" -v count="$sample_count" 'BEGIN { printf "%.6f\n", (real * 1000.0) / count }'
+  printf "%s\n" "$runtime_avg_ms"
 }
 
 write_pure_hello_crate() {
@@ -252,7 +269,7 @@ EOF
 fn crunch(mut acc: i32, n: i32) -> i32 {
     let mut i: i32 = 0;
     while i < n {
-        acc = (acc.wrapping_add(((i.wrapping_mul(31)) ^ (i >> 3)) & 0x7fff_ffff)) & 0x7fff_ffff;
+        acc = acc + ((i * 31 ^ (i as u32 >> 3) as i32) & 0x7fff_ffff) & 0x7fff_ffff;
         i += 1;
     }
     acc
@@ -272,7 +289,7 @@ fn main() {
 
     let mut run: i32 = 0;
     while run < OUTER_RUNS {
-        acc = crunch((acc.wrapping_add(run)) & 0x7fff_ffff, INNER_ITERS);
+        acc = crunch((acc + run) & 0x7fff_ffff, INNER_ITERS);
         run += 1;
     }
 
@@ -280,7 +297,6 @@ fn main() {
         println!("unreachable");
     }
 
-    std::hint::black_box(acc);
 }
 EOF
 }
@@ -317,7 +333,7 @@ runtime_warn_pct="${HXRT_PERF_RUNTIME_WARN_PCT:-10}"
 hello_iters="${HXRT_PERF_HELLO_ITERS:-300}"
 array_iters="${HXRT_PERF_ARRAY_ITERS:-300}"
 hot_loop_iters="${HXRT_PERF_HOT_LOOP_ITERS:-300}"
-hot_loop_inproc_runs="${HXRT_PERF_HOT_LOOP_INPROC_RUNS:-8}"
+hot_loop_inproc_runs="${HXRT_PERF_HOT_LOOP_INPROC_RUNS:-20}"
 chat_iters="${HXRT_PERF_CHAT_ITERS:-40}"
 
 if [[ -x /usr/bin/time ]]; then
@@ -574,7 +590,7 @@ const runtimeWarnPct = Number(process.env.HXRT_PERF_RUNTIME_WARN_PCT || "10");
 const helloIters = Number(process.env.HXRT_PERF_HELLO_ITERS || "300");
 const arrayIters = Number(process.env.HXRT_PERF_ARRAY_ITERS || "300");
 const hotLoopIters = Number(process.env.HXRT_PERF_HOT_LOOP_ITERS || "300");
-const hotLoopInprocRuns = Number(process.env.HXRT_PERF_HOT_LOOP_INPROC_RUNS || "8");
+const hotLoopInprocRuns = Number(process.env.HXRT_PERF_HOT_LOOP_INPROC_RUNS || "20");
 const chatIters = Number(process.env.HXRT_PERF_CHAT_ITERS || "40");
 const haxeVersion = process.env.HXRT_PERF_HAXE_VERSION || "";
 const rustcVersion = process.env.HXRT_PERF_RUSTC_VERSION || "";
