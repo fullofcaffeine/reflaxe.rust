@@ -243,6 +243,10 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - Keep server ownership scoped to the watcher session (avoid attaching to external long-lived servers by default).
   - `--once` intentionally compiles directly by default.
   - Disable server mode explicitly with `--no-haxe-server` or `HAXE_RUST_WATCH_NO_SERVER=1` when debugging cache-related behavior.
+  - Watch-mode cargo gotcha: normalize compile phase by mode (`run/test` force `-D rust_no_build`, `build` forces `rust_cargo_subcommand=build`) so task-style `.hxml` defaults (for example `rust_cargo_subcommand=run`) do not cause duplicate cargo invocations.
+- Cargo task driver: use `cargo hx ...` (alias for `scripts/dev/cargo-hx.sh`) to select example/profile/action with flags instead of proliferating task-specific `compile.*.hxml` files.
+  - Convenience aliasing: `examples/.cargo/config.toml` keeps `cargo hx ...` working from inside any `examples/<name>/` directory (so `--example` becomes optional there).
+  - Template parity: generated projects from `scripts/dev/new-project.sh` must include a local `cargo hx` alias/driver too (`templates/basic/.cargo/config.toml` + `templates/basic/scripts/dev/cargo-hx.sh`).
 
 ## Releases
 

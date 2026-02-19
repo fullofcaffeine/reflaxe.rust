@@ -54,4 +54,18 @@ log "run task hxml matrix"
   haxe compile.release.run.hxml
 )
 
+log "run cargo hx task driver"
+(
+  cd "$app_dir"
+  cargo hx --action run
+  cargo hx --action test
+  cargo hx --action build --release
+)
+
+log "watcher one-shot smoke"
+(
+  cd "$app_dir"
+  bash scripts/dev/watch-haxe-rust.sh --hxml compile.hxml --once --mode test --no-haxe-server
+)
+
 log "ok"

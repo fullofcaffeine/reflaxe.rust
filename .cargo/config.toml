@@ -1,0 +1,2 @@
+[alias]
+hx = "run --quiet --manifest-path tools/hx/Cargo.toml --"

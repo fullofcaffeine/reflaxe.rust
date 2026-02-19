@@ -121,4 +121,4 @@ fi
 
 echo "[new-project] created $target_display"
 echo "[new-project] crate ${crate_name}"
-echo "[new-project] run: cd ${target_display} && haxe compile.hxml"
+echo "[new-project] run: cd ${target_display} && cargo hx --action run"

@@ -31,6 +31,11 @@ Common variants:
 
 Full guide: [Dev Watcher](dev-watcher.md).
 
+Watcher mode semantics are normalized so task-style HXML defaults do not conflict:
+
+- `--mode run|test`: Haxe compile is forced to codegen-only (`-D rust_no_build`) and watcher runs Cargo itself.
+- `--mode build`: compile step is forced to `rust_cargo_subcommand=build` (never accidental `cargo run/test`).
+
 ## Cargo knobs (defines)
 
 These map to Cargo arguments/env vars at the end of compilation:
@@ -46,6 +51,19 @@ These map to Cargo arguments/env vars at the end of compilation:
 - `-D rust_target=<triple>` (adds `--target <triple>`)
 - `-D rust_cargo_target_dir=path/to/target` (sets `CARGO_TARGET_DIR`)
 
+## Cargo-First Example Driver
+
+Use the cargo alias to run example scenarios with flags (instead of adding task HXML variants):
+
+```bash
+cargo hx --example chat_loopback --profile portable --action run
+cargo hx --example chat_loopback --profile portable --ci --action test
+cargo hx --example chat_loopback --profile metal --action build --release
+
+# from inside examples/chat_loopback you can omit --example:
+# cargo hx --profile portable --action run
+```
+
 ## Recommended project workflow
 
 - Keep `Cargo.lock` committed in your project (and use `-D rust_cargo_locked` in CI) for reproducibility.
@@ -59,6 +77,21 @@ Create a starter project from the built-in template:
 
 ```bash
 npm run dev:new-project -- ./my_haxe_rust_app
+```
+
+Generated projects include this plumbing by default:
+
+- `cargo hx ...` task driver (compile Haxe+Rust, then run/test/build/check/clippy).
+- task HXML compatibility files (`compile*.hxml`).
+- local watcher script (`scripts/dev/watch-haxe-rust.sh`) for edit-compile-run/test loops.
+
+Generated projects also include a local cargo alias:
+
+```bash
+cd my_haxe_rust_app
+cargo hx --action run
+cargo hx --action test
+cargo hx --action build --release
 ```
 
 Generated task files:

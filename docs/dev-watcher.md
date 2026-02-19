@@ -41,6 +41,11 @@ That runs in `run` mode by default:
 - run generated Rust with `cargo run -q`
 - repeat on file changes
 
+Mode guardrail:
+
+- `run`/`test` modes force compile to codegen-only (`-D rust_no_build`) to avoid double cargo invocations when an `.hxml` default already sets `rust_cargo_subcommand=run`.
+- `build` mode forces `rust_cargo_subcommand=build` so it never accidentally runs/tests during compile.
+
 ## Common commands
 
 Run tests on every change:

@@ -53,6 +53,7 @@ fixture_dir="$tmp_root/fixture"
 bin_dir="$tmp_root/bin"
 haxe_log="$tmp_root/haxe.log"
 watchexec_log="$tmp_root/watchexec.log"
+cargo_log="$tmp_root/cargo.log"
 wait_pid_file="$tmp_root/haxe_wait_pid.txt"
 wait_port_file="$tmp_root/haxe_wait_port.txt"
 connect_fail_flag_file="$tmp_root/connect_fail_once.flag"
@@ -64,6 +65,13 @@ cat > "$fixture_dir/compile.hxml" <<'EOF'
 -main Main
 -D rust_output=out
 -D rust_no_build
+EOF
+
+cat > "$fixture_dir/compile.run-default.hxml" <<'EOF'
+-cp src
+-main Main
+-D rust_output=out_run
+-D rust_cargo_subcommand=run
 EOF
 
 cat > "$fixture_dir/src/Main.hx" <<'EOF'
@@ -78,6 +86,22 @@ set -euo pipefail
 
 log_file="${FAKE_HAXE_LOG:?}"
 printf '%s\n' "$*" >> "$log_file"
+
+resolve_out_dir() {
+  local hxml_file="$1"
+  local output_rel
+  output_rel="$(awk '
+    /^-D[[:space:]]+rust_output=/ {
+      sub(/^-D[[:space:]]+rust_output=/, "", $0)
+      print $0
+      exit
+    }
+  ' "$hxml_file")"
+  if [[ -z "${output_rel:-}" ]]; then
+    output_rel="out"
+  fi
+  printf '%s/%s\n' "$(dirname "$hxml_file")" "$output_rel"
+}
 
 if [[ "${1:-}" == "--wait" ]]; then
   printf '%s\n' "${2:-}" > "${FAKE_HAXE_WAIT_PORT_FILE:?}"
@@ -111,14 +135,14 @@ if [[ "${1:-}" == "--connect" ]]; then
   fi
 
   hxml_file="${1:-}"
-  out_dir="$(dirname "$hxml_file")/out"
+  out_dir="$(resolve_out_dir "$hxml_file")"
   mkdir -p "$out_dir"
   touch "$out_dir/Cargo.toml"
   exit 0
 fi
 
 hxml_file="${1:-}"
-out_dir="$(dirname "$hxml_file")/out"
+out_dir="$(resolve_out_dir "$hxml_file")"
 mkdir -p "$out_dir"
 touch "$out_dir/Cargo.toml"
 EOF
@@ -150,11 +174,19 @@ fi
 "${command[@]}"
 EOF
 
-chmod +x "$bin_dir/haxe" "$bin_dir/watchexec"
+cat > "$bin_dir/cargo" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+log_file="${FAKE_CARGO_LOG:?}"
+printf '%s\n' "$*" >> "$log_file"
+EOF
+
+chmod +x "$bin_dir/haxe" "$bin_dir/watchexec" "$bin_dir/cargo"
 
 reset_logs() {
   : > "$haxe_log"
   : > "$watchexec_log"
+  : > "$cargo_log"
   rm -f "$wait_pid_file" "$wait_port_file" "$connect_fail_flag_file"
 }
 
@@ -164,6 +196,7 @@ run_watch() {
   FAKE_HAXE_WAIT_PID_FILE="$wait_pid_file" \
   FAKE_HAXE_WAIT_PORT_FILE="$wait_port_file" \
   FAKE_HAXE_CONNECT_FAIL_FLAG_FILE="$connect_fail_flag_file" \
+  FAKE_CARGO_LOG="$cargo_log" \
   FAKE_WATCHEXEC_LOG="$watchexec_log" \
   bash "$watch_script" --hxml "$fixture_dir/compile.hxml" --mode build --haxe-bin "$bin_dir/haxe" "$@"
 }
@@ -172,7 +205,7 @@ reset_logs
 run_watch >/dev/null 2>&1
 assert_regex "$haxe_log" '^--wait [0-9]+$'
 assert_regex "$haxe_log" '^--connect [0-9]+ -version$'
-assert_regex "$haxe_log" '^--connect [0-9]+ compile\.hxml$'
+assert_regex "$haxe_log" '^--connect [0-9]+ compile\.hxml -D rust_cargo_subcommand=build$'
 if [[ ! -f "$wait_pid_file" ]]; then
   fail "expected watcher-owned haxe --wait pid file"
 fi
@@ -185,13 +218,13 @@ reset_logs
 run_watch --no-haxe-server >/dev/null 2>&1
 assert_not_regex "$haxe_log" '^--wait '
 assert_not_regex "$haxe_log" '^--connect '
-assert_regex "$haxe_log" '^compile\.hxml$'
+assert_regex "$haxe_log" '^compile\.hxml -D rust_cargo_subcommand=build$'
 
 reset_logs
 run_watch --once >/dev/null 2>&1
 assert_not_regex "$haxe_log" '^--wait '
 assert_not_regex "$haxe_log" '^--connect '
-assert_regex "$haxe_log" '^compile\.hxml$'
+assert_regex "$haxe_log" '^compile\.hxml -D rust_cargo_subcommand=build$'
 
 reset_logs
 PATH="$bin_dir:$PATH" \
@@ -199,13 +232,14 @@ FAKE_HAXE_LOG="$haxe_log" \
 FAKE_HAXE_WAIT_PID_FILE="$wait_pid_file" \
 FAKE_HAXE_WAIT_PORT_FILE="$wait_port_file" \
 FAKE_HAXE_CONNECT_FAIL_FLAG_FILE="$connect_fail_flag_file" \
+FAKE_CARGO_LOG="$cargo_log" \
 FAKE_HAXE_CONNECT_FAIL_FIRST=1 \
 bash "$watch_script" --once --hxml "$fixture_dir/compile.hxml" --mode build --haxe-bin "$bin_dir/haxe" --haxe-server-port 6111 >/dev/null 2>&1
-connect_attempts="$(count_regex "$haxe_log" '^--connect 6111 compile\.hxml$')"
+connect_attempts="$(count_regex "$haxe_log" '^--connect 6111 compile\.hxml -D rust_cargo_subcommand=build$')"
 if [[ "$connect_attempts" -ne 2 ]]; then
   fail "expected 2 connect compile attempts after single transient failure, got $connect_attempts"
 fi
-assert_not_regex "$haxe_log" '^compile\.hxml$'
+assert_not_regex "$haxe_log" '^compile\.hxml -D rust_cargo_subcommand=build$'
 
 reset_logs
 PATH="$bin_dir:$PATH" \
@@ -213,12 +247,27 @@ FAKE_HAXE_LOG="$haxe_log" \
 FAKE_HAXE_WAIT_PID_FILE="$wait_pid_file" \
 FAKE_HAXE_WAIT_PORT_FILE="$wait_port_file" \
 FAKE_HAXE_CONNECT_FAIL_FLAG_FILE="$connect_fail_flag_file" \
+FAKE_CARGO_LOG="$cargo_log" \
 FAKE_HAXE_CONNECT_ALWAYS_FAIL=1 \
 bash "$watch_script" --once --hxml "$fixture_dir/compile.hxml" --mode build --haxe-bin "$bin_dir/haxe" --haxe-server-port 6111 >/dev/null 2>&1
-connect_attempts="$(count_regex "$haxe_log" '^--connect 6111 compile\.hxml$')"
+connect_attempts="$(count_regex "$haxe_log" '^--connect 6111 compile\.hxml -D rust_cargo_subcommand=build$')"
 if [[ "$connect_attempts" -ne 2 ]]; then
   fail "expected 2 connect compile attempts before direct fallback, got $connect_attempts"
 fi
-assert_regex "$haxe_log" '^compile\.hxml$'
+assert_regex "$haxe_log" '^compile\.hxml -D rust_cargo_subcommand=build$'
+
+reset_logs
+PATH="$bin_dir:$PATH" \
+FAKE_HAXE_LOG="$haxe_log" \
+FAKE_HAXE_WAIT_PID_FILE="$wait_pid_file" \
+FAKE_HAXE_WAIT_PORT_FILE="$wait_port_file" \
+FAKE_HAXE_CONNECT_FAIL_FLAG_FILE="$connect_fail_flag_file" \
+FAKE_CARGO_LOG="$cargo_log" \
+bash "$watch_script" --once --hxml "$fixture_dir/compile.run-default.hxml" --mode run --no-haxe-server --haxe-bin "$bin_dir/haxe" >/dev/null 2>&1
+assert_regex "$haxe_log" '^compile\.run-default\.hxml -D rust_no_build$'
+run_count="$(count_regex "$cargo_log" '^run -q$')"
+if [[ "$run_count" -ne 1 ]]; then
+  fail "expected exactly 1 cargo run invocation in watch run mode, got $run_count"
+fi
 
 echo "[watcher-test] ok"

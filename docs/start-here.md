@@ -68,10 +68,14 @@ Use the built-in template generator:
 ```bash
 npm run dev:new-project -- ./my_haxe_rust_app
 cd my_haxe_rust_app
-haxe compile.hxml
+cargo hx --action run
 ```
 
-The scaffold includes explicit task HXMLs for build/run and release build/run variants.
+The scaffold includes plumbing by default:
+
+- `cargo hx ...` task driver (`run/test/build/release` flows).
+- `scripts/dev/watch-haxe-rust.sh` for watch-mode compile+run/test loops.
+- explicit `compile*.hxml` compatibility tasks.
 
 ## Faster local loop while you iterate
 
@@ -102,6 +106,18 @@ npx haxe compile.portable.hxml && (cd out_portable && cargo run -q)
 npx haxe compile.idiomatic.hxml && (cd out_idiomatic && cargo run -q)
 npx haxe compile.rusty.hxml && (cd out_rusty && cargo run -q)
 npx haxe compile.metal.hxml && (cd out_metal && cargo run -q)
+```
+
+Cargo-flag workflow (same scenarios, less HXML-task sprawl):
+
+```bash
+cargo hx --example chat_loopback --profile portable --action run
+cargo hx --example chat_loopback --profile idiomatic --action run
+cargo hx --example chat_loopback --profile rusty --action run
+cargo hx --example chat_loopback --profile metal --action run
+
+# from inside examples/chat_loopback you can omit --example:
+# cargo hx --profile portable --action run
 ```
 
 Full scenario/profile map: [Examples matrix](examples-matrix.md).

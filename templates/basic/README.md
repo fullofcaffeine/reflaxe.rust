@@ -8,6 +8,12 @@ From this repository, you can scaffold this template directly with:
 npm run dev:new-project -- ./my_haxe_rust_app
 ```
 
+Generator plumbing included out of the box:
+
+- compile Haxe -> Rust codegen + Cargo build/run/test via `cargo hx ...`
+- optional task HXML compatibility files
+- local watcher script for fast edit-compile-run/test loops
+
 ## Setup
 
 From this folder:
@@ -25,6 +31,38 @@ npx lix use haxe 4.3.7
 ```
 
 ## Build
+
+Primary workflow (cargo flags drive scenario selection):
+
+```bash
+cargo hx --action run
+cargo hx --action test
+cargo hx --action build --release
+```
+
+This runs Haxe codegen first and then the selected Cargo action.
+
+## Watcher (Fast Edit Loop)
+
+Run one compile+run cycle:
+
+```bash
+bash scripts/dev/watch-haxe-rust.sh --hxml compile.hxml --once
+```
+
+Continuous watch mode:
+
+```bash
+bash scripts/dev/watch-haxe-rust.sh --hxml compile.hxml
+```
+
+Test-on-change mode:
+
+```bash
+bash scripts/dev/watch-haxe-rust.sh --hxml compile.hxml --mode test
+```
+
+Compatibility task HXMLs are still available:
 
 The template ships explicit task HXMLs:
 

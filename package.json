@@ -28,6 +28,7 @@
     "check:harness": "bash scripts/ci/harness.sh",
     "ci:local": "bash scripts/ci/local.sh",
     "dev:watch": "bash scripts/dev/watch-haxe-rust.sh",
+    "dev:hx": "bash scripts/dev/cargo-hx.sh",
     "dev:new-project": "bash scripts/dev/new-project.sh",
     "clean:artifacts": "bash scripts/ci/clean-artifacts.sh --outputs",
     "clean:artifacts:all": "bash scripts/ci/clean-artifacts.sh --all",

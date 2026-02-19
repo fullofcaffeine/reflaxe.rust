@@ -4,5 +4,6 @@ exclude = [
   "examples",
   "test",
   ".cache",
+  "tools/hx",
 ]
 resolver = "2"

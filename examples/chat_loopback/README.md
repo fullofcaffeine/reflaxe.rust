@@ -10,7 +10,7 @@ Flagship cross-profile chat example (`portable`, `idiomatic`, `rusty`, `metal`).
 - In-frame diagnostics (`diag stream`) so transport/activity signals stay inside the TUI.
 - Channel-scoped timeline rendering (`#ops`, `#compiler`, `#shiproom`, `#nightwatch`) so each room has its own feed.
 - Presence-driven activity log (`online` / `offline`) shown in its own TUI frame.
-- Momentum celebration effect: when chat momentum reaches `100`, a temporary full-frame `tada` overlay plays.
+- Momentum celebration effect: each room tracks momentum independently; hitting `100` triggers a temporary full-frame center-origin particle burst (colorized ASCII particles, emoji headline when enabled) and resets that room’s momentum so it can be earned again.
 - Realtime history-sync behavior that imports new messages once (no repeated full-history spam lines).
 - Presence heartbeats + timeout pruning so closed instances disappear from the operator list automatically.
 
@@ -44,6 +44,22 @@ cargo run -q
 ```
 
 Each instance gets an auto-generated funny name. Presence updates are automatic; `/history` is still available for manual refresh.
+
+## Cargo Task Driver
+
+Use the repo cargo alias with flags instead of adding many task HXML files:
+
+```bash
+cargo hx --example chat_loopback --profile portable --action run
+cargo hx --example chat_loopback --profile idiomatic --action run
+cargo hx --example chat_loopback --profile portable --ci --action test
+cargo hx --example chat_loopback --profile metal --action build --release
+
+# when you're already inside examples/chat_loopback:
+# cargo hx --profile portable --action run
+```
+
+This keeps profile selection in existing `compile.<profile>.hxml` files while build/run/test behavior is selected via cargo flags.
 
 ## Key Bindings
 
