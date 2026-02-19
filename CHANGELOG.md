@@ -1,3 +1,10 @@
+# [0.57.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.56.0...v0.57.0) (2026-02-19)
+
+
+### Features
+
+* add Haxe-authored Rust test flow and profile storyboard examples ([7fc1c98](https://github.com/fullofcaffeine/reflaxe.rust/commit/7fc1c9831bcf7552615f8efd5aa44072c5402423))
+
 # [0.56.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.55.0...v0.56.0) (2026-02-18)
 
 
