@@ -8,13 +8,13 @@ cd "$root_dir"
 usage() {
   cat <<'USAGE'
 Usage:
-  bash scripts/dev/cargo-hx.sh [--example <name>] [options]
+  bash scripts/dev/cargo-hx.sh [options]
 
 Options:
-  --example <name>          Optional. Folder name under examples/. If omitted and the
-                            current working directory is inside examples/<name>/..., it
-                            is inferred automatically.
+  --project <path>          Optional. Project directory containing compile*.hxml.
+                            Default: current working directory.
   --profile <name>          Optional. Profile suffix (portable/idiomatic/rusty/metal).
+  --hxml <path>             Optional. Explicit hxml file (relative to --project by default).
   --ci                      Prefer compile*.ci.hxml variants.
   --action <name>           Cargo action: build|run|test|check|clippy. Default: run.
   --release                 Run cargo action with --release and pass -D rust_release to Haxe.
@@ -25,10 +25,9 @@ Options:
   -h, --help                Show this help.
 
 Examples:
-  cargo hx --example chat_loopback --profile portable --action run
   cd examples/chat_loopback && cargo hx --profile portable --action run
-  cargo hx --example chat_loopback --profile portable --ci --action test
-  cargo hx --example chat_loopback --profile metal --action build --release
+  cargo hx --project examples/chat_loopback --profile portable --ci --action test
+  cargo hx --project ./my_haxe_rust_app --action build --release
 USAGE
 }
 
@@ -39,14 +38,34 @@ fail() {
 
 display_path() {
   local input="$1"
-  if [[ "$input" == "$root_dir" ]]; then
+  if [[ "$input" == "$invocation_dir" ]]; then
+    printf ".\n"
+  elif [[ "$input" == "$invocation_dir/"* ]]; then
+    printf ".%s\n" "${input#"$invocation_dir"}"
+  elif [[ "$input" == "$root_dir" ]]; then
     printf ".\n"
   elif [[ "$input" == "$root_dir/"* ]]; then
     printf "%s\n" "${input#"$root_dir/"}"
-  elif [[ "$input" == "$invocation_dir/"* ]]; then
-    printf ".%s\n" "${input#"$invocation_dir"}"
   else
     printf "[external:%s]\n" "$(basename "$input")"
+  fi
+}
+
+normalize_existing_dir() {
+  local input="$1"
+  if [[ ! -d "$input" ]]; then
+    fail "project directory not found: $(display_path "$input")"
+  fi
+  (cd "$input" && pwd)
+}
+
+resolve_path_from_base() {
+  local input="$1"
+  local base="$2"
+  if [[ "$input" == /* ]]; then
+    printf "%s\n" "$input"
+  else
+    printf "%s/%s\n" "$base" "$input"
   fi
 }
 
@@ -81,8 +100,9 @@ extract_rust_output() {
   ' "$hxml_path"
 }
 
-example_name=""
+project_arg="$invocation_dir"
 profile=""
+hxml_arg=""
 action="run"
 ci=0
 release=0
@@ -92,14 +112,19 @@ cargo_quiet=1
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --example)
-      [[ $# -ge 2 ]] || fail "--example requires a value"
-      example_name="$2"
+    --project)
+      [[ $# -ge 2 ]] || fail "--project requires a value"
+      project_arg="$2"
       shift 2
       ;;
     --profile)
       [[ $# -ge 2 ]] || fail "--profile requires a value"
       profile="$2"
+      shift 2
+      ;;
+    --hxml)
+      [[ $# -ge 2 ]] || fail "--hxml requires a value"
+      hxml_arg="$2"
       shift 2
       ;;
     --action)
@@ -143,66 +168,74 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$example_name" ]]; then
-  invocation_abs="$(cd "$invocation_dir" && pwd)"
-  if [[ "$invocation_abs" == "$root_dir/examples/"* ]]; then
-    rel="${invocation_abs#"$root_dir/examples/"}"
-    example_name="${rel%%/*}"
-  else
-    fail "missing --example <name> (or run from examples/<name>/...)"
-  fi
-fi
 case "$action" in
   build|run|test|check|clippy) ;;
   *) fail "invalid --action '$action' (expected: build, run, test, check, or clippy)" ;;
 esac
 
-example_dir="$root_dir/examples/$example_name"
-[[ -d "$example_dir" ]] || fail "example not found: examples/$example_name"
+project_abs="$(resolve_path_from_base "$project_arg" "$invocation_dir")"
+project_dir="$(normalize_existing_dir "$project_abs")"
 
-declare -a candidates=()
-if [[ "$ci" -eq 1 ]]; then
-  if [[ -n "$profile" ]]; then
-    candidates+=("compile.${profile}.ci.hxml")
+if [[ -n "$hxml_arg" && ( -n "$profile" || "$ci" -eq 1 ) ]]; then
+  fail "--hxml cannot be combined with --profile/--ci"
+fi
+
+selected_hxml_arg=""
+selected_hxml_abs=""
+
+if [[ -n "$hxml_arg" ]]; then
+  selected_hxml_abs="$(resolve_path_from_base "$hxml_arg" "$project_dir")"
+  [[ -f "$selected_hxml_abs" ]] || fail "hxml not found: $(display_path "$selected_hxml_abs")"
+  if [[ "$selected_hxml_abs" == "$project_dir/"* ]]; then
+    selected_hxml_arg="${selected_hxml_abs#"$project_dir/"}"
+  else
+    selected_hxml_arg="$selected_hxml_abs"
   fi
-  candidates+=("compile.ci.hxml")
-  if [[ -n "$profile" ]]; then
-    candidates+=("compile.${profile}.hxml")
-  fi
-  candidates+=("compile.hxml")
 else
-  if [[ -n "$profile" ]]; then
-    candidates+=("compile.${profile}.hxml")
+  declare -a candidates=()
+  if [[ "$ci" -eq 1 ]]; then
+    if [[ -n "$profile" ]]; then
+      candidates+=("compile.${profile}.ci.hxml")
+    fi
+    candidates+=("compile.ci.hxml")
+    if [[ -n "$profile" ]]; then
+      candidates+=("compile.${profile}.hxml")
+    fi
+    candidates+=("compile.hxml")
+  else
+    if [[ -n "$profile" ]]; then
+      candidates+=("compile.${profile}.hxml")
+    fi
+    candidates+=("compile.hxml")
   fi
-  candidates+=("compile.hxml")
+
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "$project_dir/$candidate" ]]; then
+      selected_hxml_arg="$candidate"
+      selected_hxml_abs="$project_dir/$candidate"
+      break
+    fi
+  done
+
+  if [[ -z "$selected_hxml_arg" ]]; then
+    available="$(cd "$project_dir" && ls compile*.hxml 2>/dev/null | tr '\n' ' ' || true)"
+    fail "no matching hxml in $(display_path "$project_dir") (tried: ${candidates[*]}). Available: ${available:-<none>}"
+  fi
 fi
 
-selected_hxml=""
-for candidate in "${candidates[@]}"; do
-  if [[ -f "$example_dir/$candidate" ]]; then
-    selected_hxml="$candidate"
-    break
-  fi
-done
+rust_output_rel="$(extract_rust_output "$selected_hxml_abs" || true)"
+[[ -n "$rust_output_rel" ]] || fail "missing '-D rust_output=...' in $(display_path "$selected_hxml_abs")"
+rust_output_abs="$(resolve_path_from_base "$rust_output_rel" "$project_dir")"
 
-if [[ -z "$selected_hxml" ]]; then
-  available="$(cd "$example_dir" && ls compile*.hxml 2>/dev/null | tr '\n' ' ' || true)"
-  fail "no matching hxml for example '$example_name' (tried: ${candidates[*]}). Available: ${available:-<none>}"
-fi
+echo "[hx-cargo] project=$(display_path "$project_dir") profile=${profile:-auto} ci=$ci action=$action release=$release"
+echo "[hx-cargo] hxml=$selected_hxml_arg out=$(display_path "$rust_output_abs")"
 
-rust_output_rel="$(extract_rust_output "$example_dir/$selected_hxml" || true)"
-[[ -n "$rust_output_rel" ]] || fail "missing '-D rust_output=...' in examples/$example_name/$selected_hxml"
-rust_output_abs="$example_dir/$rust_output_rel"
-
-echo "[hx-cargo] example=$example_name profile=${profile:-auto} ci=$ci action=$action release=$release"
-echo "[hx-cargo] hxml=$(display_path "$example_dir/$selected_hxml") out=$(display_path "$rust_output_abs")"
-
-declare -a haxe_args=("$selected_hxml" "-D" "rust_no_build")
+declare -a haxe_args=("$selected_hxml_arg" "-D" "rust_no_build")
 if [[ "$release" -eq 1 ]]; then
   haxe_args+=("-D" "rust_release")
 fi
 
-(cd "$example_dir" && "$haxe_bin" "${haxe_args[@]}")
+(cd "$project_dir" && "$haxe_bin" "${haxe_args[@]}")
 
 if [[ ! -f "$rust_output_abs/Cargo.toml" ]]; then
   fail "Cargo.toml not found after Haxe compile: $(display_path "$rust_output_abs")"

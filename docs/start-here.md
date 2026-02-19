@@ -111,12 +111,12 @@ npx haxe compile.metal.hxml && (cd out_metal && cargo run -q)
 Cargo-flag workflow (same scenarios, less HXML-task sprawl):
 
 ```bash
-cargo hx --example chat_loopback --profile portable --action run
-cargo hx --example chat_loopback --profile idiomatic --action run
-cargo hx --example chat_loopback --profile rusty --action run
-cargo hx --example chat_loopback --profile metal --action run
+cargo hx --project examples/chat_loopback --profile portable --action run
+cargo hx --project examples/chat_loopback --profile idiomatic --action run
+cargo hx --project examples/chat_loopback --profile rusty --action run
+cargo hx --project examples/chat_loopback --profile metal --action run
 
-# from inside examples/chat_loopback you can omit --example:
+# from inside examples/chat_loopback you can omit --project:
 # cargo hx --profile portable --action run
 ```
 

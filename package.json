@@ -33,8 +33,8 @@
     "clean:artifacts": "bash scripts/ci/clean-artifacts.sh --outputs",
     "clean:artifacts:all": "bash scripts/ci/clean-artifacts.sh --all",
     "hooks:install": "bash scripts/install-git-hooks.sh",
-    "hooks:check": "bash scripts/lint/name_heuristics_guard.sh && bash scripts/lint/numeric_suffix_guard.sh && bash scripts/lint/dynamic_usage_guard.sh && bash scripts/docs/check-progress-tracker.sh && npm run test:watcher",
-    "hooks:check:full": "bash scripts/lint/name_heuristics_guard.sh && bash scripts/lint/numeric_suffix_guard.sh && bash scripts/lint/dynamic_usage_guard.sh && bash scripts/docs/check-progress-tracker.sh && npm run check:harness",
+    "hooks:check": "bash scripts/lint/name_heuristics_guard.sh && bash scripts/lint/numeric_suffix_guard.sh && bash scripts/lint/dynamic_usage_guard.sh && bash scripts/lint/cargo_hx_project_guard.sh && bash scripts/docs/check-progress-tracker.sh && npm run test:watcher",
+    "hooks:check:full": "bash scripts/lint/name_heuristics_guard.sh && bash scripts/lint/numeric_suffix_guard.sh && bash scripts/lint/dynamic_usage_guard.sh && bash scripts/lint/cargo_hx_project_guard.sh && bash scripts/docs/check-progress-tracker.sh && npm run check:harness",
     "docs:sync:progress": "node scripts/docs/sync-progress-tracker.js",
     "docs:check:progress": "bash scripts/docs/check-progress-tracker.sh",
     "docs:prep:closeout": "node scripts/docs/generate-release-gate-evidence.js"

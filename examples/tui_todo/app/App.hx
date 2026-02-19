@@ -407,7 +407,8 @@ class App {
 			case Marquee: Typewriter;
 			case Typewriter: Pulse;
 			case Pulse: Glitch;
-			case Glitch: Marquee;
+			case Glitch: ParticleBurst;
+			case ParticleBurst: Marquee;
 			case None: Marquee;
 		}
 	}
@@ -579,6 +580,7 @@ class App {
 			case Typewriter: "typewriter";
 			case Pulse: "pulse";
 			case Glitch: "glitch";
+			case ParticleBurst: "particle-burst";
 			case None: "none";
 		}
 	}

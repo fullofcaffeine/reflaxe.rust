@@ -193,6 +193,9 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Runtime gotcha: snapshots embed `runtime/hxrt/**` into `test/snapshot/**/intended/hxrt/`, so any change under `runtime/hxrt/` requires `bash test/run-snapshots.sh --update` to keep goldens in sync.
 - Snapshot runner gotcha: many snapshot crates share the same crate name (`hx_app`), so `test/run-snapshots.sh` must isolate `CARGO_TARGET_DIR` per case/variant
   (using a shared base cache) to avoid binary collisions and incorrect `stdout.txt` comparisons.
+- `cargo hx` wrapper gotcha: when a smoke/test run compiles both the repo wrapper tool (`tools/hx`) and generated-template wrappers with a shared `CARGO_TARGET_DIR`,
+  Cargo can reuse a binary compiled with the wrong `CARGO_MANIFEST_DIR` and resolve `scripts/dev/cargo-hx.sh` to the template copy.
+  Keep wrapper-target dirs isolated for mixed-root/template checks (see `scripts/ci/template-smoke.sh`).
 - Docs tracker gotcha: for progress-doc drift checks, compare docs before/after `npm run docs:sync:progress` (not against git HEAD) so checks work in dirty worktrees too.
 - Docs tracker guard policy: `npm run docs:check:progress` must fail on stale tracker-backed docs even when `bd` is unavailable (fallback source is `.beads/issues.jsonl`, so keep tracker status commits synced via `bd sync`).
 - Disk-space gotcha: full snapshot regeneration and full harness runs can consume many GB in `test/snapshot/**/out*`, `examples/**/out*`, Cargo caches/registries, and `.cache/examples-target`.
@@ -244,8 +247,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - `--once` intentionally compiles directly by default.
   - Disable server mode explicitly with `--no-haxe-server` or `HAXE_RUST_WATCH_NO_SERVER=1` when debugging cache-related behavior.
   - Watch-mode cargo gotcha: normalize compile phase by mode (`run/test` force `-D rust_no_build`, `build` forces `rust_cargo_subcommand=build`) so task-style `.hxml` defaults (for example `rust_cargo_subcommand=run`) do not cause duplicate cargo invocations.
-- Cargo task driver: use `cargo hx ...` (alias for `scripts/dev/cargo-hx.sh`) to select example/profile/action with flags instead of proliferating task-specific `compile.*.hxml` files.
-  - Convenience aliasing: `examples/.cargo/config.toml` keeps `cargo hx ...` working from inside any `examples/<name>/` directory (so `--example` becomes optional there).
+- Cargo task driver: use `cargo hx ...` (alias for `scripts/dev/cargo-hx.sh`) as a project-local runner (`compile -> cargo action`) instead of proliferating task-specific `compile.*.hxml` files.
+  - Convenience aliasing: `examples/.cargo/config.toml` keeps `cargo hx ...` working from inside any `examples/<name>/` directory without extra flags.
   - Template parity: generated projects from `scripts/dev/new-project.sh` must include a local `cargo hx` alias/driver too (`templates/basic/.cargo/config.toml` + `templates/basic/scripts/dev/cargo-hx.sh`).
 
 ## Releases

@@ -22,6 +22,22 @@ This project lets you write Haxe and ship native Rust binaries, with a path for 
 - Full docs map: [Documentation Index](docs/index.md)
 - Profile/scenario examples map: [Examples Matrix](docs/examples-matrix.md)
 
+## Scaffold A New Project (Generator)
+
+Generate a ready-to-run Haxe.rust project:
+
+```bash
+npm run dev:new-project -- ./my_haxe_rust_app
+cd my_haxe_rust_app
+```
+
+The generated project includes the full task plumbing:
+
+- `cargo hx --action run` (compile Haxe->Rust, then run)
+- `cargo hx --action test` (compile Haxe->Rust, then test)
+- `cargo hx --action build --release` (production build)
+- `bash scripts/dev/watch-haxe-rust.sh --hxml compile.hxml` (watch loop)
+
 ## Quick Start (First Successful Run)
 
 1. Install dependencies (toolchain is pinned via lix):

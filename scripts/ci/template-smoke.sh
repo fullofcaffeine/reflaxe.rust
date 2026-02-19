@@ -62,6 +62,15 @@ log "run cargo hx task driver"
   cargo hx --action build --release
 )
 
+log "run root cargo-hx wrapper with --project"
+(
+  cd "$root_dir"
+  # Keep the wrapper tool target dir isolated so env!("CARGO_MANIFEST_DIR")
+  # points at the repo script path, not the generated template copy.
+  CARGO_TARGET_DIR="$root_dir/.cache/template-smoke-root-hx-target" \
+    cargo run --quiet --manifest-path tools/hx/Cargo.toml -- --project "$app_dir" --action test
+)
+
 log "watcher one-shot smoke"
 (
   cd "$app_dir"

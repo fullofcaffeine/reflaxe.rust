@@ -51,16 +51,16 @@ These map to Cargo arguments/env vars at the end of compilation:
 - `-D rust_target=<triple>` (adds `--target <triple>`)
 - `-D rust_cargo_target_dir=path/to/target` (sets `CARGO_TARGET_DIR`)
 
-## Cargo-First Example Driver
+## Cargo-First Project Driver
 
-Use the cargo alias to run example scenarios with flags (instead of adding task HXML variants):
+Use the cargo alias as a project-local task runner (instead of adding task-specific HXML variants):
 
 ```bash
-cargo hx --example chat_loopback --profile portable --action run
-cargo hx --example chat_loopback --profile portable --ci --action test
-cargo hx --example chat_loopback --profile metal --action build --release
+cargo hx --project examples/chat_loopback --profile portable --action run
+cargo hx --project examples/chat_loopback --profile portable --ci --action test
+cargo hx --project examples/chat_loopback --profile metal --action build --release
 
-# from inside examples/chat_loopback you can omit --example:
+# from inside examples/chat_loopback you can omit --project:
 # cargo hx --profile portable --action run
 ```
 
