@@ -185,6 +185,10 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
     - Keep artifacts intentionally for debugging with `KEEP_ARTIFACTS=1`.
     - Manual cleanup: `npm run clean:artifacts` (outputs only) and `npm run clean:artifacts:all` (outputs + caches).
 - Install the repo pre-commit hook (gitleaks + guards + beads flush): run `bd hooks install` then `npm run hooks:install` (requires `gitleaks` installed)
+- Canonical gitleaks entrypoint: use `scripts/security/run-gitleaks.sh` (`npm run security:gitleaks`, `npm run security:gitleaks:staged`).
+  Keep pre-commit + CI wired to this shared script to avoid drift in flags/version behavior.
+- Local-path leak policy: run `scripts/lint/local_path_guard_staged.sh` in pre-commit and `scripts/lint/local_path_guard_repo.sh`
+  in repo-wide guard checks/CI to prevent machine-local paths from entering tracked files.
 - Dynamic policy guard: `scripts/lint/dynamic_usage_guard.sh` is part of hooks/CI and fails on any non-allowlisted `Dynamic` mention in first-party `*.hx`/`*.cross.hx` files.
   Keep intentional compatibility/runtime boundaries in `scripts/lint/dynamic_allowlist.txt` and remove avoidable `Dynamic` elsewhere.
   - Scan model: the guard is comment-aware; comment-only/doc-text mentions are ignored so the allowlist tracks code boundaries, not prose churn.

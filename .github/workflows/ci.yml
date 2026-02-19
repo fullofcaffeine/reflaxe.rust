@@ -43,7 +43,7 @@ jobs:
       - name: Run gitleaks (all history)
         run: |
           set -euo pipefail
-          gitleaks detect --source . --config .gitleaks.toml --redact --log-opts="--all"
+          bash scripts/security/run-gitleaks.sh
 
   dependency-review:
     name: Dependency review
