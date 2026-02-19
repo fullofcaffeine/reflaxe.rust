@@ -23,6 +23,8 @@
     "test:package-smoke": "bash scripts/ci/package-smoke.sh",
     "test:template-smoke": "bash scripts/ci/template-smoke.sh",
     "test:windows-smoke": "bash scripts/ci/windows-smoke.sh",
+    "test:perf:hxrt": "bash scripts/ci/perf-hxrt-overhead.sh",
+    "test:perf:hxrt:update-baseline": "bash scripts/ci/perf-hxrt-overhead.sh --update-baseline",
     "test:all": "bash scripts/ci/harness.sh",
     "test:all:keep": "KEEP_ARTIFACTS=1 bash scripts/ci/harness.sh",
     "check:harness": "bash scripts/ci/harness.sh",

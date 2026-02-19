@@ -16,6 +16,7 @@ This project lets you write Haxe and ship native Rust binaries, with a path for 
 - New here: [Start Here guide](docs/start-here.md)
 - Building async apps: [Async/Await preview guide](docs/async-await.md)
 - Production rollout: [Production Readiness guide](docs/production-readiness.md)
+- HXRT overhead visibility: [HXRT overhead benchmarks](docs/perf-hxrt-overhead.md)
 - Post-1.0 quality cadence: [Weekly CI Evidence runbook](docs/weekly-ci-evidence.md)
 - Cross-platform sys risk tracking: [Sys Regression Watchlist](docs/sys-regression-watchlist.md)
 - Fast edit-compile-run loop: [Dev Watcher guide](docs/dev-watcher.md)
@@ -90,13 +91,13 @@ Use `-D reflaxe_rust_profile=portable|idiomatic|rusty|metal`.
 
 | Profile | Best for | What you get |
 | --- | --- | --- |
-| `portable` (default) | Haxe-first teams | Stable Haxe semantics and portability-first behavior |
+| `portable` (default) | Haxe-first teams | Stable Haxe semantics and portability-first behavior (largest intentional UX/semantic tradeoff envelope vs pure Rust) |
 | `idiomatic` | Teams that want cleaner Rust output without semantic shifts | Same behavior as portable, cleaner emitted Rust |
 | `rusty` | Rust-aware teams | Rust-first APIs and borrow/ownership-oriented surface |
-| `metal` (experimental) | Rust-heavy teams that need typed low-level interop | Rusty+ profile with typed metal injection façade and stricter app-side injection boundaries |
+| `metal` (experimental) | Rust-heavy teams that need typed low-level interop | Rusty+ profile with typed metal injection façade, stricter app-side injection boundaries, and the primary near-pure-Rust hot-path performance objective |
 
 Read more: [Profiles guide](docs/profiles.md), [Rusty profile details](docs/rusty-profile.md),
-[Metal profile details](docs/metal-profile.md), and [Lifetime encoding design](docs/lifetime-encoding.md).
+[Metal profile details](docs/metal-profile.md), [HXRT overhead benchmarks](docs/perf-hxrt-overhead.md), and [Lifetime encoding design](docs/lifetime-encoding.md).
 
 ## Examples
 
@@ -125,6 +126,7 @@ Coverage map: [docs/examples-matrix.md](docs/examples-matrix.md).
 - Upstream stdlib sweep: `bash test/run-upstream-stdlib-sweep.sh`
 - Template task-matrix smoke: `bash scripts/ci/template-smoke.sh`
 - Windows-safe smoke subset: `bash scripts/ci/windows-smoke.sh`
+- HXRT overhead benchmark + soft-budget warnings: `bash scripts/ci/perf-hxrt-overhead.sh`
 - Full local CI equivalent: `bash scripts/ci/local.sh`
 - Clean generated artifacts: `npm run clean:artifacts:all`
 

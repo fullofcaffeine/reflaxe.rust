@@ -86,6 +86,18 @@ Cons:
 - Experimental profile: API shape may evolve faster than stable profiles.
 - Typed low-level snippets still need careful review for maintainability.
 
+## Performance intent by profile
+
+Performance policy is profile-sensitive:
+
+- `metal`: target profile for near-pure-Rust runtime behavior in hot paths.
+  - Stretch goal: keep steady-state runtime ratios very close to pure Rust (`~1.00x`, practical warning target currently `<=1.05x` on hot-loop class benchmarks).
+- `rusty`: Rust-first profile that should trend close to metal where low-level escape hatches are not required.
+- `idiomatic`: no semantic shift vs portable; performance should stay in the same envelope unless specific codegen improvements are intentional.
+- `portable`: accepts the largest intentional overhead in exchange for Haxe-first ergonomics and semantic portability guarantees.
+
+Tracked benchmark details live in [HXRT overhead benchmarks](perf-hxrt-overhead.md).
+
 ## String representation defaults
 
 - Portable and idiomatic default to nullable string mode.

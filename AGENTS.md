@@ -174,6 +174,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Run Windows-safe smoke subset locally: `bash scripts/ci/windows-smoke.sh` (same subset used by the Windows CI job).
 - Run packaged-install smoke locally: `bash scripts/ci/package-smoke.sh` (build zip, install into local haxelib repo, compile, cargo build).
   - Regression coverage includes a symlinked working-directory compile pass to catch path-alias mismatches when classifying framework std files.
+- Run HXRT overhead benchmarks locally: `bash scripts/ci/perf-hxrt-overhead.sh`
+  - Refresh baseline intentionally: `bash scripts/ci/perf-hxrt-overhead.sh --update-baseline`
 - Update a snapshot’s golden output (after review): `bash test/run-snapshots.sh --case <name> --update`
 - Run the full CI-style harness locally (snapshots + all examples): `npm run test:all` (alias for `bash scripts/ci/harness.sh`)
   - Change-gate rule: for any non-trivial compiler/runtime/std/example code change, run the full harness (`npm run check:harness`)
@@ -207,12 +209,14 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - `npm ci --ignore-scripts --no-audit --no-fund`
   - `bash test/run-snapshots.sh --clippy` (runs curated clippy checks on a small subset of snapshot crates)
   - `bash test/run-upstream-stdlib-sweep.sh` (curated upstream std imports under `-D rust_emit_upstream_std`)
+  - `bash scripts/ci/perf-hxrt-overhead.sh` (soft-budget warnings + artifact report)
   - `cargo fmt && cargo clippy -- -D warnings`
   - Smoke-run any examples you touched (e.g. `(cd examples/tui_todo && haxe compile.hxml && (cd out && cargo run -q))`)
 - CI runs:
   - `test/run-snapshots.sh` (runs `cargo fmt` + `cargo build -q` per snapshot)
   - `test/run-upstream-stdlib-sweep.sh` (per-module actionable compile/fmt/check for upstream std modules)
   - `scripts/ci/package-smoke.sh` validates the packaged artifact via isolated local `haxelib` install + Rust build (including symlink-cwd alias regression).
+  - `scripts/ci/perf-hxrt-overhead.sh` benchmarks HXRT overhead (`hello`/`array`/`hot_loop`/`hot_loop_inproc` vs pure Rust baselines + chat profile spread) and emits soft-budget warnings + artifacts.
   - `scripts/ci/template-smoke.sh` scaffolds `templates/basic` via `scripts/dev/new-project.sh` and executes the full task-HXML matrix (`compile.build`, `compile`, `compile.run`, `compile.release`, `compile.release.run`).
   - CI shell-tooling compatibility: scripts must not hard-require `rg`; always keep a `grep`/`find` fallback.
     - Fallback test knob: set `REFLAXE_NO_RG=1` to force non-`rg` paths during local validation.

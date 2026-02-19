@@ -8,6 +8,17 @@ from Haxe while still using typed framework boundaries.
 - Keep Rust-first API design (`Ref`, `MutRef`, `Slice`, `Option`, `Result`, etc.).
 - Add a typed low-level interop surface for gaps that are not yet modeled as dedicated `std/` APIs.
 - Keep app code analyzable and policy-enforced (no raw escape hatches by default).
+- Make `metal` the primary profile for near-pure-Rust hot-path performance.
+
+## Performance objective
+
+`metal` is the profile where performance parity work is focused first.
+
+- Directional target: approach pure Rust runtime throughput in steady-state workloads.
+- Practical benchmark target (current soft policy): keep hot-loop runtime very close to pure Rust (around `<= 1.05x` where feasible).
+- Size/startup overhead from `hxrt` still exists today; reducing that footprint is an active optimization track.
+
+Benchmark mechanics and current ratios are tracked in [HXRT overhead benchmarks](perf-hxrt-overhead.md).
 
 ## Non-goals (current milestone)
 

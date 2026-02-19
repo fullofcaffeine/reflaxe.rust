@@ -107,3 +107,13 @@ Generated task files:
 Before pushing to `main`, run the closest local equivalent of CI:
 
 - `bash scripts/ci/local.sh`
+- `bash scripts/ci/perf-hxrt-overhead.sh` (already included by `scripts/ci/local.sh`)
+
+## HXRT overhead tracking
+
+To track runtime footprint regressions explicitly:
+
+- compare mode: `bash scripts/ci/perf-hxrt-overhead.sh`
+- baseline update: `bash scripts/ci/perf-hxrt-overhead.sh --update-baseline`
+
+See [HXRT overhead benchmarks](perf-hxrt-overhead.md) for methodology and warning policy.

@@ -24,6 +24,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Async/Await preview](async-await.md): Rust-first async workflow and current constraints.
 - [Defines reference](defines-reference.md): practical `-D` reference for build/profile/CI knobs.
 - [v1 support matrix](v1.md): technical support matrix and parity constraints.
+- [HXRT overhead benchmarks](perf-hxrt-overhead.md): size/startup tracking, soft perf budgets, and baseline workflow.
 - [Workflow](workflow.md): Haxe -> Rust -> Cargo workflow.
 - [Haxe-authored Rust tests](haxe-rust-tests.md): `@:rustTest` metadata and generated Rust test wrappers.
 - [Dynamic boundaries](dynamic-boundaries.md): intentional untyped boundaries and allowlist policy.

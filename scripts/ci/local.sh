@@ -16,4 +16,7 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 echo "[ci] harness (snapshots + examples)"
 bash scripts/ci/harness.sh
 
+echo "[ci] hxrt overhead benchmarks (soft-budget warnings)"
+bash scripts/ci/perf-hxrt-overhead.sh
+
 echo "[ci] ok"

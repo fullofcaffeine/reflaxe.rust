@@ -222,3 +222,16 @@ jobs:
         run: |
           set -euo pipefail
           HARNESS_CLEAN_OUTPUTS=1 HARNESS_CLEAN_CACHE=1 bash scripts/ci/harness.sh
+
+      - name: Run HXRT overhead benchmarks (soft-budget warnings)
+        run: |
+          set -euo pipefail
+          bash scripts/ci/perf-hxrt-overhead.sh
+
+      - name: Upload HXRT overhead benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hxrt-overhead-benchmarks
+          path: .cache/perf-hxrt/results
+          if-no-files-found: warn
