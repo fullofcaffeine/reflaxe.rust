@@ -1,3 +1,18 @@
+# [0.58.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.57.0...v0.58.0) (2026-02-19)
+
+
+### Bug Fixes
+
+* **tooling:** make cargo hx project-local and add guardrails ([49635fd](https://github.com/fullofcaffeine/reflaxe.rust/commit/49635fd1e25d5b4c8260292ddffa1b4b324f74d0))
+
+
+### Features
+
+* **chat:** add center-burst overlay and per-room momentum reset ([72ba698](https://github.com/fullofcaffeine/reflaxe.rust/commit/72ba6987dad45b1f513cee8280e8141399a22e37))
+* **chat:** add momentum-100 full-frame tada overlay ([50a1c80](https://github.com/fullofcaffeine/reflaxe.rust/commit/50a1c806084f99eb5e6b72f1ebe520200bc53556))
+* improve chat loopback UX and scaffold workflow ([12dd146](https://github.com/fullofcaffeine/reflaxe.rust/commit/12dd146bd20e745fb8a6aa0bbcae3cdb2da740e4))
+* **tooling:** add cargo hx task driver and template watch plumbing ([75941f3](https://github.com/fullofcaffeine/reflaxe.rust/commit/75941f3b66c3ae6740e61a86987d79586110c7dc))
+
 # [0.57.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.56.0...v0.57.0) (2026-02-19)
 
 

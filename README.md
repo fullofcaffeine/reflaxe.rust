@@ -4,7 +4,7 @@
 
 # reflaxe.rust
 
-[![Version](https://img.shields.io/badge/version-0.57.0-blue)](https://github.com/fullofcaffeine/reflaxe.rust/releases)
+[![Version](https://img.shields.io/badge/version-0.58.0-blue)](https://github.com/fullofcaffeine/reflaxe.rust/releases)
 [![CI](https://github.com/fullofcaffeine/reflaxe.rust/actions/workflows/ci.yml/badge.svg)](https://github.com/fullofcaffeine/reflaxe.rust/actions/workflows/ci.yml)
 
 Haxe 4.3.7 -> Rust target built on Reflaxe.
