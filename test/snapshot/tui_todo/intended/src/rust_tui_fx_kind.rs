@@ -9,4 +9,5 @@ pub enum FxKind {
     Typewriter,
     Pulse,
     Glitch,
+    ParticleBurst,
 }
