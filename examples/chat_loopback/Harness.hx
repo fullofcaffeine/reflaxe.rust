@@ -197,16 +197,88 @@ class Harness {
 			sendText(app, "burst-" + i);
 		}
 
+		app.handle(Tick(420));
 		if (!app.tadaActive()) {
 			return false;
 		}
 		var hotFrame = normalizeFrame(Tui.renderUiToString(app.view(), W, H));
-		if (hotFrame.indexOf("tada overdrive") == -1 && hotFrame.indexOf("momentum 100") == -1) {
+		if (hotFrame.indexOf("tada overdrive") == -1 && hotFrame.indexOf("MOMENTUM 100") == -1) {
+			return false;
+		}
+		var hotBurstCount = countBurstGlyphs(hotFrame);
+		var hasBurstOnlyGlyph = hotFrame.indexOf("^") != -1 || hotFrame.indexOf("~") != -1;
+		if (hotBurstCount < 12 || !hasBurstOnlyGlyph) {
 			return false;
 		}
 
 		app.handle(Tick(2200));
-		return !app.tadaActive();
+		if (app.tadaActive()) {
+			return false;
+		}
+		var coolFrame = normalizeFrame(Tui.renderUiToString(app.view(), W, H));
+		var coolBurstCount = countBurstGlyphs(coolFrame);
+		return hotBurstCount > coolBurstCount + 6;
+	}
+
+	public static function roomMomentumResetsAndIsolated():Bool {
+		var app = seeded();
+		for (i in 0...11) {
+			sendText(app, "ops-charge-" + i);
+		}
+		if (app.currentChannelMomentumPercent() != 99) {
+			return false;
+		}
+		if (app.tadaActive()) {
+			return false;
+		}
+		sendText(app, "ops-charge-11");
+		if (!app.tadaActive()) {
+			return false;
+		}
+		if (app.currentChannelMomentumPercent() != 0) {
+			return false;
+		}
+
+		app.handle(Tick(2200));
+		if (app.tadaActive()) {
+			return false;
+		}
+
+		app.handle(Key(Tab, KeyMods.None)); // #compiler
+		if (app.currentChannelMomentumPercent() != 0) {
+			return false;
+		}
+		for (i in 0...5) {
+			sendText(app, "compiler-charge-" + i);
+		}
+		if (app.currentChannelMomentumPercent() != 45) {
+			return false;
+		}
+
+		app.handle(Key(Tab, KeyMods.None)); // #shiproom
+		if (app.currentChannelMomentumPercent() != 0) {
+			return false;
+		}
+		app.handle(Key(Tab, KeyMods.None)); // #nightwatch
+		if (app.currentChannelMomentumPercent() != 0) {
+			return false;
+		}
+		app.handle(Key(Tab, KeyMods.None)); // #ops
+		if (app.currentChannelMomentumPercent() != 0) {
+			return false;
+		}
+		app.handle(Key(Tab, KeyMods.None)); // #compiler
+		if (app.currentChannelMomentumPercent() != 45) {
+			return false;
+		}
+
+		for (i in 0...7) {
+			sendText(app, "compiler-burst-" + i);
+		}
+		if (!app.tadaActive()) {
+			return false;
+		}
+		return app.currentChannelMomentumPercent() == 0 && app.channelMomentumPercent("#ops") == 0;
 	}
 
 	public static function channelIsolationAndActivityLogWorks():Bool {
@@ -421,6 +493,18 @@ class Harness {
 			}
 		}
 		return value.substr(0, i);
+	}
+
+	static function countBurstGlyphs(frame:String):Int {
+		var count = 0;
+		for (i in 0...frame.length) {
+			switch (frame.charAt(i)) {
+				case "@", "%", "^", "~", "*", "+":
+					count = count + 1;
+				case _:
+			}
+		}
+		return count;
 	}
 
 	static function reserveLocalPort():Int {

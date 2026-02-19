@@ -79,7 +79,7 @@ class ChatUiApp {
 	var selectedOperator:Int = 0;
 	var fxPhase:Int = 0;
 	var linkPercent:Int = 72;
-	var commandCount:Int = 0;
+	var commandCounts:Array<Int>;
 	var statusLine:String = "sunset relay online";
 	var showHelp:Bool = false;
 	var termWidth:Int = 100;
@@ -88,6 +88,8 @@ class ChatUiApp {
 	var operatorLocked:Bool = false;
 	var animationCarryMs:Int = 0;
 	var tadaRemainingMs:Int = 0;
+	var tadaChannel:String = "";
+	var lastTadaCommandCount:Int = 0;
 	var diagnostics:Array<String>;
 	var activityLog:Array<String>;
 	var onlineUsers:StringMap<Bool>;
@@ -102,6 +104,8 @@ class ChatUiApp {
 		this.onlineUsers = new StringMap();
 		this.seenMessageIds = new IntMap();
 		this.channels = ["#ops", "#compiler", "#shiproom", "#nightwatch"];
+		this.commandCounts = [for (_ in 0...this.channels.length) 0];
+		this.tadaChannel = this.channels[0];
 		if (forcedUserName != null && StringTools.trim(forcedUserName) != "") {
 			var normalized = StringTools.trim(forcedUserName);
 			this.fixedOperatorName = normalized;
@@ -196,7 +200,7 @@ class ChatUiApp {
 			step = 6;
 		}
 		fxPhase = (fxPhase + step) % 4096;
-		linkPercent = 58 + ((fxPhase * 7 + commandCount * 11) % 42);
+		linkPercent = 58 + ((fxPhase * 7 + currentCommandCount() * 11) % 42);
 	}
 
 	function handleKey(code:KeyCode, mods:KeyMods):Void {
@@ -316,7 +320,7 @@ class ChatUiApp {
 				ensureOperator(user);
 				markUserOnline(user);
 				seenMessageIds.set(id, true);
-				incrementCommandCount(1);
+				incrementCommandCount(channel, 1);
 				addTimeline(chatLead() + " " + id + " [" + channel + "] " + user + " ▸ " + body + "  [" + origin + ":" + fingerprint + "]", channel);
 				statusLine = "delivered via " + origin + " @ " + channel;
 				addDiagnostic("delivered #" + id + " channel=" + channel + " origin=" + origin + " fp=" + fingerprint);
@@ -354,23 +358,33 @@ class ChatUiApp {
 		addTimeline(line, GLOBAL_TIMELINE);
 	}
 
-	function incrementCommandCount(delta:Int):Void {
+	function incrementCommandCount(channel:String, delta:Int):Void {
 		if (delta <= 0) {
 			return;
 		}
-		var before = commandDensityPercentFor(commandCount);
-		commandCount = commandCount + delta;
-		var after = commandDensityPercentFor(commandCount);
+		var channelIdx = channelIndex(channel);
+		if (channelIdx < 0 || channelIdx >= commandCounts.length) {
+			return;
+		}
+		var beforeCount = commandCounts[channelIdx];
+		var before = commandDensityPercentFor(beforeCount);
+		var updated = beforeCount + delta;
+		commandCounts[channelIdx] = updated;
+		var after = commandDensityPercentFor(updated);
 		if (before < 100 && after >= 100) {
-			triggerTada();
+			triggerTada(channel, updated);
+			commandCounts[channelIdx] = 0;
+			addDiagnostic("chat momentum reset for " + channel);
 		}
 	}
 
-	function triggerTada():Void {
+	function triggerTada(channel:String, commandTotal:Int):Void {
 		tadaRemainingMs = TADA_DURATION_MS;
-		statusLine = "momentum 100 • tada!";
-		addActivity("tada burst at momentum 100");
-		addDiagnostic("chat momentum reached 100");
+		tadaChannel = channel;
+		lastTadaCommandCount = commandTotal;
+		statusLine = "momentum 100 @ " + channel + " • tada!";
+		addActivity("tada burst at momentum 100 in " + channel);
+		addDiagnostic("chat momentum reached 100 in " + channel);
 	}
 
 	function addDiagnostic(line:String):Void {
@@ -461,7 +475,15 @@ class ChatUiApp {
 	function statusBar():UiNode {
 		var pulse = fxPhase % 200;
 		var icon = emojiEnabled() ? "🌈" : "*";
-		var text = icon + " " + statusLine + "  | cmds=" + commandCount + "  | channel=" + channels[selectedChannel] + "  | pulse=" + pulse;
+		var text = icon
+			+ " "
+			+ statusLine
+			+ "  | room-cmds="
+			+ currentCommandCount()
+			+ "  | channel="
+			+ channels[selectedChannel]
+			+ "  | pulse="
+			+ pulse;
 		return Paragraph(text, false, Muted);
 	}
 
@@ -479,7 +501,7 @@ class ChatUiApp {
 	}
 
 	function commandDensityPercent():Int {
-		return commandDensityPercentFor(commandCount);
+		return commandDensityPercentFor(currentCommandCount());
 	}
 
 	function commandDensityPercentFor(count:Int):Int {
@@ -492,19 +514,17 @@ class ChatUiApp {
 
 	function tadaOverlay():UiNode {
 		var boom = emojiEnabled() ? "🎉" : "TADA";
-		var sparkle = emojiEnabled() ? "✨" : "*";
-		var effect = if ((fxPhase % 24) < 8) Marquee else if ((fxPhase % 24) < 16) Pulse else Glitch;
+		var sparkle = emojiEnabled() ? "✨🎊" : "ASCII confetti";
 		var body = boom
-			+ " MOMENTUM 100 "
+			+ " momentum 100 "
 			+ boom
 			+ "\n"
 			+ sparkle
-			+ " full-frame party mode "
-			+ sparkle
-			+ "\nchannel "
-			+ channels[selectedChannel]
-			+ " lit";
-		return Block("tada overdrive", [FxText("confetti storm", body, effect, fxPhase * 3, Warning)], Accent);
+			+ " center burst from "
+			+ tadaChannel
+			+ "\ncommands fired "
+			+ lastTadaCommandCount;
+		return Block("tada overdrive", [FxText("confetti storm", body, ParticleBurst, fxPhase, Warning)], Accent);
 	}
 
 	function fxKind():FxKind {
@@ -519,15 +539,15 @@ class ChatUiApp {
 	function fxText():String {
 		var icon = emojiEnabled() ? "🧠" : "FX";
 		var mood = operatorMoods[selectedOperator];
-		return icon + " profile: " + runtime.profileName() + "\nchannel: " + channels[selectedChannel] + "\noperator mood: " + mood + "\ncommands sent: "
-			+ commandCount;
+		return icon + " profile: " + runtime.profileName() + "\nchannel: " + channels[selectedChannel] + "\noperator mood: " + mood + "\nroom momentum: "
+			+ commandDensityPercent() + "%" + "\ncommands sent: " + currentCommandCount();
 	}
 
 	function channelLines():Array<String> {
 		var out = new Array<String>();
 		for (i in 0...channels.length) {
 			var marker = i == selectedChannel ? (emojiEnabled() ? "▶" : ">") : " ";
-			out.push(marker + " " + channels[i]);
+			out.push(marker + " " + channels[i] + "  " + commandDensityPercentFor(commandCounts[i]) + "%");
 		}
 		return out;
 	}
@@ -595,7 +615,7 @@ class ChatUiApp {
 				markUserOnline(parsed.user);
 				if (!seenMessageIds.exists(parsed.id)) {
 					seenMessageIds.set(parsed.id, true);
-					incrementCommandCount(1);
+					incrementCommandCount(parsed.channel, 1);
 					imported = imported + 1;
 					addTimeline(chatLead() + " " + parsed.id + " [" + parsed.channel + "] " + parsed.user + " ▸ " + parsed.body + "  [" + parsed.origin
 						+ ":" + parsed.fingerprint + "]",
@@ -652,6 +672,34 @@ class ChatUiApp {
 			fingerprint: tail.fingerprint,
 			origin: tail.origin
 		};
+	}
+
+	function channelIndex(channel:String):Int {
+		for (i in 0...channels.length) {
+			if (channels[i] == channel) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	function currentCommandCount():Int {
+		if (selectedChannel < 0 || selectedChannel >= commandCounts.length) {
+			return 0;
+		}
+		return commandCounts[selectedChannel];
+	}
+
+	public function channelMomentumPercent(channel:String):Int {
+		var idx = channelIndex(channel);
+		if (idx < 0 || idx >= commandCounts.length) {
+			return 0;
+		}
+		return commandDensityPercentFor(commandCounts[idx]);
+	}
+
+	public function currentChannelMomentumPercent():Int {
+		return commandDensityPercent();
 	}
 
 	function parseHistoryTail(entry:String, bodyStart:Int):Null<{body:String, fingerprint:Int, origin:String}> {

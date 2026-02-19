@@ -7,6 +7,7 @@ use ratatui::backend::{CrosstermBackend, TestBackend};
 use ratatui::prelude::*;
 use ratatui::widgets::*;
 use std::cell::{Cell, RefCell};
+use std::f32::consts::PI;
 use std::io::{self, IsTerminal, Stdout, Write};
 use std::time::Duration;
 
@@ -98,6 +99,7 @@ fn transform_fx_line(line: &str, effect: &HxFxKind, phase: i32, width: usize) ->
                 })
                 .collect()
         }
+        HxFxKind::ParticleBurst => line.to_string(),
     }
 }
 
@@ -120,6 +122,190 @@ fn transform_fx_text(text: &str, effect: &HxFxKind, phase: i32, width: usize) ->
     }
 
     out.join("\n")
+}
+
+fn particle_burst_palette() -> [Color; 6] {
+    [
+        Color::Rgb(255, 110, 148),
+        Color::Rgb(255, 172, 87),
+        Color::Rgb(255, 225, 102),
+        Color::Rgb(114, 214, 166),
+        Color::Rgb(112, 188, 255),
+        Color::Rgb(194, 152, 255),
+    ]
+}
+
+fn hash_u32(mut value: u32) -> u32 {
+    value ^= value >> 16;
+    value = value.wrapping_mul(0x7feb_352d);
+    value ^= value >> 15;
+    value = value.wrapping_mul(0x846c_a68b);
+    value ^ (value >> 16)
+}
+
+fn set_particle_cell(
+    chars: &mut [Vec<char>],
+    colors: &mut [Vec<Option<Color>>],
+    x: i32,
+    y: i32,
+    ch: char,
+    color: Color,
+) {
+    if x < 0 || y < 0 {
+        return;
+    }
+    let ux = x as usize;
+    let uy = y as usize;
+    if uy >= chars.len() || ux >= chars[uy].len() {
+        return;
+    }
+    chars[uy][ux] = ch;
+    colors[uy][ux] = Some(color);
+}
+
+fn write_center_text(
+    chars: &mut [Vec<char>],
+    colors: &mut [Vec<Option<Color>>],
+    text: &str,
+    center_y: i32,
+    color: Color,
+) {
+    if text.is_empty() || chars.is_empty() {
+        return;
+    }
+    let width = chars[0].len() as i32;
+    let y = center_y.clamp(0, chars.len() as i32 - 1);
+    let text_len = text.chars().count() as i32;
+    let start_x = ((width - text_len) / 2).max(0);
+    for (idx, ch) in text.chars().enumerate() {
+        set_particle_cell(chars, colors, start_x + idx as i32, y, ch, color);
+    }
+}
+
+fn particle_burst_lines(text: &str, phase: i32, width: usize, height: usize) -> Vec<Line<'static>> {
+    if width == 0 || height == 0 {
+        return Vec::new();
+    }
+
+    let mut chars = vec![vec![' '; width]; height];
+    let mut colors = vec![vec![None; width]; height];
+    let palette = particle_burst_palette();
+    let ascii_glyphs: [char; 10] = ['*', '+', 'x', 'o', '.', '@', '%', ':', '^', '~'];
+
+    let cx = (width as f32 - 1.0) * 0.5;
+    let cy = (height as f32 - 1.0) * 0.5;
+    let safe_phase = phase.max(0);
+    let phase_f = safe_phase as f32;
+    let phase_u = safe_phase as usize;
+    let cycle = 68.0;
+    let cycle_phase = phase_f % cycle;
+    let count = ((width * height) / 11).clamp(72, 360);
+    let max_age = 30.0;
+    let gravity = 0.036;
+
+    for i in 0..count {
+        let seed = hash_u32((i as u32).wrapping_mul(97_531) ^ 0x9e37_79b9);
+        let launch_offset = (seed % 24) as f32;
+        let mut age = cycle_phase - launch_offset;
+        if age < 0.0 {
+            age += cycle;
+        }
+        if age > max_age {
+            continue;
+        }
+
+        let age_norm = age / max_age;
+        let angle_seed = hash_u32(seed ^ (safe_phase as u32).wrapping_mul(31_337));
+        let angle = (((angle_seed % 3600) as f32) / 10.0) * (PI / 180.0);
+        let speed = 0.70 + (((seed >> 7) % 170) as f32 / 170.0) * 1.35;
+        let radial = age * speed;
+        let swirl = ((phase_f * 0.09) + i as f32 * 0.37).sin() * (1.0 - age_norm) * 0.95;
+        let drift = ((phase_f * 0.07) + i as f32 * 0.21).cos() * 0.42;
+
+        let x = cx + angle.cos() * radial + swirl;
+        let y = cy + angle.sin() * radial * 0.58 + age * age * gravity + drift;
+
+        let color_shift = (phase_u / 3) % palette.len();
+        let color = palette[(((seed >> 16) as usize) + color_shift) % palette.len()];
+        let glyph = ascii_glyphs[((seed >> 22) as usize + (phase_u / 2)) % ascii_glyphs.len()];
+        set_particle_cell(&mut chars, &mut colors, x.round() as i32, y.round() as i32, glyph, color);
+
+        // Draw a short path towards the center so particles clearly read as "thrown from center".
+        let trail_segments = if age < 8.0 { 3 } else { 2 };
+        for seg in 1..=trail_segments {
+            let back = seg as f32 / (trail_segments as f32 + 1.0);
+            let tx = x + (cx - x) * back;
+            let ty = y + (cy - y) * back;
+            let trail_char = if seg == trail_segments { '.' } else { ':' };
+            let trail_color = palette[((seed >> (8 + seg)) as usize + color_shift) % palette.len()];
+            set_particle_cell(
+                &mut chars,
+                &mut colors,
+                tx.round() as i32,
+                ty.round() as i32,
+                trail_char,
+                trail_color,
+            );
+        }
+    }
+
+    // Flashing center core keeps the burst origin visually obvious during the whole celebration.
+    let core_color = palette[(phase_u / 2) % palette.len()];
+    set_particle_cell(&mut chars, &mut colors, cx.round() as i32, cy.round() as i32, '*', core_color);
+    set_particle_cell(
+        &mut chars,
+        &mut colors,
+        cx.round() as i32 - 1,
+        cy.round() as i32,
+        '+',
+        core_color,
+    );
+    set_particle_cell(
+        &mut chars,
+        &mut colors,
+        cx.round() as i32 + 1,
+        cy.round() as i32,
+        '+',
+        core_color,
+    );
+
+    let mut lines = text.lines().filter(|line| !line.trim().is_empty());
+    let title = lines.next().unwrap_or("MOMENTUM 100").trim().to_uppercase();
+    let subtitle = lines.next().unwrap_or("").trim().to_string();
+    write_center_text(
+        &mut chars,
+        &mut colors,
+        &title,
+        cy.round() as i32,
+        Color::Rgb(245, 245, 250),
+    );
+    if !subtitle.is_empty() {
+        write_center_text(
+            &mut chars,
+            &mut colors,
+            &subtitle,
+            cy.round() as i32 + 1,
+            Color::Rgb(196, 207, 227),
+        );
+    }
+
+    let mut out: Vec<Line<'static>> = Vec::with_capacity(height);
+    for y in 0..height {
+        let mut spans: Vec<Span<'static>> = Vec::with_capacity(width);
+        for x in 0..width {
+            let ch = chars[y][x].to_string();
+            if let Some(color) = colors[y][x] {
+                spans.push(Span::styled(
+                    ch,
+                    Style::default().fg(color).add_modifier(Modifier::BOLD),
+                ));
+            } else {
+                spans.push(Span::raw(ch));
+            }
+        }
+        out.push(Line::from(spans));
+    }
+    out
 }
 
 fn style_for(token: &HxStyleToken) -> Style {
@@ -311,11 +497,24 @@ fn render_node(frame: &mut Frame, area: Rect, node: &HxUiNode) {
             let inner = block.inner(area);
             frame.render_widget(block, area);
 
-            let transformed =
-                transform_fx_text(text.as_str(), effect, *phase, inner.width as usize);
-            let p = Paragraph::new(transformed)
-                .wrap(Wrap { trim: false })
-                .style(style_for(style));
+            let p = match effect {
+                HxFxKind::ParticleBurst => {
+                    let lines = particle_burst_lines(
+                        text.as_str(),
+                        *phase,
+                        inner.width as usize,
+                        inner.height as usize,
+                    );
+                    Paragraph::new(lines)
+                }
+                _ => {
+                    let transformed =
+                        transform_fx_text(text.as_str(), effect, *phase, inner.width as usize);
+                    Paragraph::new(transformed)
+                }
+            }
+            .wrap(Wrap { trim: false })
+            .style(style_for(style));
             frame.render_widget(p, inner);
         }
     }

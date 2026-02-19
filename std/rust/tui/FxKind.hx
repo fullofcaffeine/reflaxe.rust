@@ -15,6 +15,7 @@ package rust.tui;
 	- `Typewriter`: reveal text progressively.
 	- `Pulse`: deterministic casing pulse for emphasis.
 	- `Glitch`: lightweight, deterministic character jitter for "high-energy" UI accents.
+	- `ParticleBurst`: center-origin particle animation intended for celebratory overlays.
 
 	How
 	- Effects are resolved in the Rust renderer (`std/rust/tui/native/tui_demo.rs`).
@@ -26,4 +27,5 @@ enum FxKind {
 	Typewriter;
 	Pulse;
 	Glitch;
+	ParticleBurst;
 }

@@ -73,6 +73,11 @@ class ChatTests {
 	}
 
 	@:rustTest
+	public static function roomMomentumResetsAndIsolated():Void {
+		Assert.isTrue(Harness.roomMomentumResetsAndIsolated(), "each room should track momentum independently and reset after reaching 100");
+	}
+
+	@:rustTest
 	public static function historySnapshotsAvoidSpamLines():Void {
 		Assert.isTrue(Harness.historySnapshotsAvoidSpamLines(), "history snapshots should import new messages without timeline spam");
 	}
