@@ -27,4 +27,7 @@ impl<T: Clone + Send + Sync> crate::i_get::IGet<T> for crate::HxRefCell<Box<T>> 
     fn get(&self) -> T {
         Box::<T>::get(self)
     }
+    fn __hx_type_id(&self) -> u32 {
+        crate::box_::__HX_TYPE_ID
+    }
 }

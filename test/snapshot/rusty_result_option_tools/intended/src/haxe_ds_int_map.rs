@@ -127,4 +127,7 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> crate::haxe_i_map::IMap
     fn clear(&self) -> () {
         IntMap::<T>::clear(self)
     }
+    fn __hx_type_id(&self) -> u32 {
+        crate::haxe_ds_int_map::__HX_TYPE_ID
+    }
 }

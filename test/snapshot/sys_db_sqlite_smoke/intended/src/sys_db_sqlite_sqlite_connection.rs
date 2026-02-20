@@ -182,4 +182,7 @@ impl crate::sys_db_connection::Connection for crate::HxRefCell<SqliteConnection>
     fn rollback(&self) -> () {
         SqliteConnection::rollback(self)
     }
+    fn __hx_type_id(&self) -> u32 {
+        crate::sys_db_sqlite_sqlite_connection::__HX_TYPE_ID
+    }
 }

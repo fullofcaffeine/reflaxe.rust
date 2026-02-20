@@ -174,4 +174,7 @@ impl<
     fn clear(&self) -> () {
         ObjectMap::<K, V>::clear(self)
     }
+    fn __hx_type_id(&self) -> u32 {
+        crate::haxe_ds_object_map::__HX_TYPE_ID
+    }
 }

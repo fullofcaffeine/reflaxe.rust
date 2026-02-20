@@ -27,6 +27,7 @@ mod haxe_io_input;
 mod haxe_io_output;
 mod haxe_stack_item;
 mod mood;
+mod pet;
 mod string_buf;
 mod sys;
 mod sys_io_stderr;
@@ -42,7 +43,11 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
         return true;
     }
     match actual {
-        0x6002daa5u32 => matches!(expected, 0x111fa3c1u32),
+        0x6002daa5u32 => matches!(expected, 0x111fa3c1u32 | 0xef2923e2u32),
+        0x0cd85f36u32 => matches!(expected, 0x44f4c432u32),
+        0x39e0cd5bu32 => matches!(expected, 0x44f4c432u32),
+        0xd7e07825u32 => matches!(expected, 0x44f4c432u32),
+        0x181f937bu32 => matches!(expected, 0x44f4c432u32),
         0x163b1f5au32 => matches!(expected, 0xe82620b4u32),
         0xfb16179cu32 => matches!(expected, 0xd50291cbu32),
         0x9402c169u32 => matches!(expected, 0xe82620b4u32),
@@ -61,7 +66,20 @@ fn main() {
         __up
     };
     println!("{}", hxrt::dynamic::from(true));
-    println!("{}", hxrt::dynamic::from(a.__hx_type_id() == 0x6002daa5u32));
+    println!(
+        "{}",
+        hxrt::dynamic::from(crate::__hx_is_subtype_type_id(
+            a.__hx_type_id(),
+            0x6002daa5u32
+        ))
+    );
+    println!(
+        "{}",
+        hxrt::dynamic::from(crate::__hx_is_subtype_type_id(
+            a.__hx_type_id(),
+            0xef2923e2u32
+        ))
+    );
     let dyn_dog: hxrt::dynamic::Dynamic =
         hxrt::dynamic::from_ref_with_type_id(crate::dog::Dog::new(), 0x6002daa5u32);
     println!(
@@ -83,6 +101,55 @@ fn main() {
             match __dyn.type_id() {
                 Some(__actual_type_id) => {
                     crate::__hx_is_subtype_type_id(__actual_type_id, 0x6002daa5u32)
+                }
+                None => false,
+            }
+        })
+    );
+    println!(
+        "{}",
+        hxrt::dynamic::from({
+            let __dyn = dyn_dog.clone();
+            match __dyn.type_id() {
+                Some(__actual_type_id) => {
+                    crate::__hx_is_subtype_type_id(__actual_type_id, 0xef2923e2u32)
+                }
+                None => false,
+            }
+        })
+    );
+    let as_pet: crate::HxRc<dyn crate::pet::Pet + Send + Sync> = {
+        let __tmp = crate::dog::Dog::new();
+        let __up: crate::HxRc<dyn crate::pet::Pet + Send + Sync> = match __tmp.as_arc_opt() {
+            Some(__rc) => __rc.clone(),
+            None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
+        };
+        __up
+    };
+    let dyn_pet: hxrt::dynamic::Dynamic = {
+        let __hx_box = as_pet;
+        let __hx_box_type_id = __hx_box.__hx_type_id();
+        hxrt::dynamic::from_ref_with_type_id(__hx_box, __hx_box_type_id)
+    };
+    println!(
+        "{}",
+        hxrt::dynamic::from({
+            let __dyn = dyn_pet.clone();
+            match __dyn.type_id() {
+                Some(__actual_type_id) => {
+                    crate::__hx_is_subtype_type_id(__actual_type_id, 0xef2923e2u32)
+                }
+                None => false,
+            }
+        })
+    );
+    println!(
+        "{}",
+        hxrt::dynamic::from({
+            let __dyn = dyn_pet.clone();
+            match __dyn.type_id() {
+                Some(__actual_type_id) => {
+                    crate::__hx_is_subtype_type_id(__actual_type_id, 0x111fa3c1u32)
                 }
                 None => false,
             }

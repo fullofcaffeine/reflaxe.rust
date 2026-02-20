@@ -167,4 +167,7 @@ impl crate::sys_db_result_set::ResultSet for crate::HxRefCell<SqliteResultSet> {
     fn get_fields_names(&self) -> hxrt::array::Array<hxrt::string::HxString> {
         SqliteResultSet::get_fields_names(self)
     }
+    fn __hx_type_id(&self) -> u32 {
+        crate::sys_db_sqlite_sqlite_result_set::__HX_TYPE_ID
+    }
 }

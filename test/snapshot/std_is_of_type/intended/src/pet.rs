@@ -2,7 +2,6 @@
 
 // Haxe interface -> Rust trait
 
-pub trait IGet<T: Clone + Send + Sync>: Send + Sync {
-    fn get(&self) -> T;
+pub trait Pet: Send + Sync {
     fn __hx_type_id(&self) -> u32;
 }

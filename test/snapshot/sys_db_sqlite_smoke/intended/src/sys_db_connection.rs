@@ -20,4 +20,5 @@ pub trait Connection: Send + Sync {
     fn start_transaction(&self) -> ();
     fn commit(&self) -> ();
     fn rollback(&self) -> ();
+    fn __hx_type_id(&self) -> u32;
 }

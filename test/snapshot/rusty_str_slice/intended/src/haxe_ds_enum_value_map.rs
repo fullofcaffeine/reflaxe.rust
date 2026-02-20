@@ -180,4 +180,7 @@ impl<
     fn clear(&self) -> () {
         EnumValueMap::<K, V>::clear(self)
     }
+    fn __hx_type_id(&self) -> u32 {
+        crate::haxe_ds_enum_value_map::__HX_TYPE_ID
+    }
 }

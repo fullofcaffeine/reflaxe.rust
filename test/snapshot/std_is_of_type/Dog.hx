@@ -1,6 +1,5 @@
-class Dog extends Animal {
-    public function new() {
-        super();
-    }
+class Dog extends Animal implements Pet {
+	public function new() {
+		super();
+	}
 }
-

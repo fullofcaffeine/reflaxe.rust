@@ -617,6 +617,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				var sig = "\tfn " + rustMethodName(classType, f.field) + "(" + args.join(", ") + ") -> " + ret + ";";
 				traitLines.push(sig);
 			}
+			traitLines.push("\tfn __hx_type_id(&self) -> u32;");
 			traitLines.push("}");
 			items.push(RRaw(traitLines.join("\n")));
 		} else {
@@ -981,6 +982,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					}
 					implLines.push("\t}");
 				}
+				implLines.push("\tfn __hx_type_id(&self) -> u32 {");
+				implLines.push("\t\tcrate::" + rustModuleNameForClass(classType) + "::__HX_TYPE_ID");
+				implLines.push("\t}");
 				implLines.push("}");
 				items.push(RRaw(implLines.join("\n")));
 			}
@@ -2241,6 +2245,21 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		- Emits deterministic `match` arms (class-key sorted input) so snapshots stay stable.
 	**/
 	function emitSubtypeTypeIdRegistryFn():String {
+		function collectInterfaceAncestors(iface:ClassType, seen:Map<String, Bool>, out:Array<ClassType>):Void {
+			if (iface == null)
+				return;
+			var key = classKey(iface);
+			if (seen.exists(key))
+				return;
+			seen.set(key, true);
+			out.push(iface);
+			for (parent in iface.interfaces) {
+				var parentIface = parent.t.get();
+				if (parentIface != null)
+					collectInterfaceAncestors(parentIface, seen, out);
+			}
+		}
+
 		var lines:Array<String> = [];
 		lines.push("/// Runtime subtype check for stable Haxe class type ids.");
 		lines.push("///");
@@ -2255,18 +2274,37 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		for (cls in getEmittedClassesForTypeIdRegistry()) {
 			var ancestors:Array<String> = [];
 			var seenAncestors = new Map<String, Bool>();
+
+			function addAncestorTypeId(id:String):Void {
+				if (!seenAncestors.exists(id)) {
+					seenAncestors.set(id, true);
+					ancestors.push(id);
+				}
+			}
+
 			var cur = cls.superClass != null ? cls.superClass.t.get() : null;
 			while (cur != null) {
-				var ancestorId = typeIdLiteralForClass(cur);
-				if (!seenAncestors.exists(ancestorId)) {
-					seenAncestors.set(ancestorId, true);
-					ancestors.push(ancestorId);
-				}
+				addAncestorTypeId(typeIdLiteralForClass(cur));
 				cur = cur.superClass != null ? cur.superClass.t.get() : null;
 			}
 
+			var ifaceSeen:Map<String, Bool> = [];
+			var ifaceAncestors:Array<ClassType> = [];
+			var curForIfaces:Null<ClassType> = cls;
+			while (curForIfaces != null) {
+				for (iface in curForIfaces.interfaces) {
+					var ifaceType = iface.t.get();
+					if (ifaceType != null)
+						collectInterfaceAncestors(ifaceType, ifaceSeen, ifaceAncestors);
+				}
+				curForIfaces = curForIfaces.superClass != null ? curForIfaces.superClass.t.get() : null;
+			}
+			for (ifaceType in ifaceAncestors)
+				addAncestorTypeId(typeIdLiteralForClass(ifaceType));
+
 			if (ancestors.length == 0)
 				continue;
+			ancestors.sort((a, b) -> a < b ? -1 : (a > b ? 1 : 0));
 
 			var actualId = typeIdLiteralForClass(cls);
 			arms.push("\t\t" + actualId + " => matches!(expected, " + ancestors.join(" | ") + "),");
@@ -6054,10 +6092,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 			Why
 			- Polymorphic class references (`HxRc<dyn BaseTrait>`) can point to subclass instances.
+			- Interface-typed values (`HxRc<dyn IFace>`) also erase the concrete class at the static type level.
 			- Dynamic boxing must preserve the *actual* runtime class id, not just the static base type.
 
 			What
-			- `Some(expr)` for polymorphic class values (calls `__hx_type_id()` on the receiver).
+			- `Some(expr)` for polymorphic-class or interface-typed values (calls `__hx_type_id()` on the receiver).
 			- `null` for non-polymorphic or unsupported value kinds.
 		**/
 		function runtimeDynamicBoundaryTypeIdExpr(value:RustExpr, valueType:Type):Null<RustExpr> {
@@ -6065,7 +6104,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return switch (ft) {
 				case TInst(clsRef, _): {
 						var cls = clsRef.get();
-						if (cls != null && !cls.isExtern && !cls.isInterface && isPolymorphicClassType(valueType))
+						if (cls != null && !cls.isExtern && (cls.isInterface || isPolymorphicClassType(valueType)))
 							ECall(EField(value, "__hx_type_id"), [])
 						else
 							null;
@@ -6859,11 +6898,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									return EBlock({stmts: stmts, tail: ELitBool(false)});
 								}
 
-								// If the value is represented as a trait object, we can do a simple RTTI id equality check.
-								// This is partial (exact-type only), but useful for common `Std.isOfType(a, SubClass)` checks.
-								if (isPolymorphicClassType(valueExpr.t)) {
+								// Trait-object values (`HxRc<dyn BaseTrait>` and `HxRc<dyn IFace>`) only expose runtime ids.
+								// Route class/interface checks through the same subtype helper used by Dynamic boundaries.
+								if (expectedClass != null && (isPolymorphicClassType(valueExpr.t) || isInterfaceType(valueExpr.t))) {
 									var actualId = ECall(EField(compileExpr(valueExpr), "__hx_type_id"), []);
-									return EBinary("==", actualId, compileExpr(typeExpr));
+									return ECall(EPath("crate::__hx_is_subtype_type_id"), [actualId, compileExpr(typeExpr)]);
 								}
 
 								return ELitBool(false);
@@ -8361,10 +8400,63 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function isClassSubtype(actual:ClassType, expected:ClassType):Bool {
 		if (classKey(actual) == classKey(expected))
 			return true;
+		if (expected.isInterface)
+			return classImplementsInterface(actual, expected);
 		var cur = actual.superClass != null ? actual.superClass.t.get() : null;
 		while (cur != null) {
 			if (classKey(cur) == classKey(expected))
 				return true;
+			cur = cur.superClass != null ? cur.superClass.t.get() : null;
+		}
+		return false;
+	}
+
+	/**
+		Returns whether a class (or interface) implements/extends the expected interface.
+
+		Why
+		- `Std.isOfType(x, IFace)` should succeed for classes that implement `IFace`
+		  (including implementations inherited from base classes).
+		- Interface inheritance (`interface B extends A`) must also be honored.
+
+		What
+		- Walks `actual` and its superclasses, scanning implemented interfaces recursively.
+		- Also works when `actual` itself is an interface type.
+
+		How
+		- Compares by stable `classKey(...)`.
+		- Uses cycle guards to avoid infinite recursion on malformed graphs.
+	**/
+	function classImplementsInterface(actual:ClassType, expectedInterface:ClassType):Bool {
+		if (actual == null || expectedInterface == null || !expectedInterface.isInterface)
+			return false;
+
+		var expectedKey = classKey(expectedInterface);
+
+		function interfaceMatches(iface:ClassType, seen:Map<String, Bool>):Bool {
+			if (iface == null)
+				return false;
+			var key = classKey(iface);
+			if (key == expectedKey)
+				return true;
+			if (seen.exists(key))
+				return false;
+			seen.set(key, true);
+			for (parent in iface.interfaces) {
+				var parentIface = parent.t.get();
+				if (parentIface != null && interfaceMatches(parentIface, seen))
+					return true;
+			}
+			return false;
+		}
+
+		var cur:Null<ClassType> = actual;
+		while (cur != null) {
+			for (iface in cur.interfaces) {
+				var ifaceType = iface.t.get();
+				if (ifaceType != null && interfaceMatches(ifaceType, []))
+					return true;
+			}
 			cur = cur.superClass != null ? cur.superClass.t.get() : null;
 		}
 		return false;

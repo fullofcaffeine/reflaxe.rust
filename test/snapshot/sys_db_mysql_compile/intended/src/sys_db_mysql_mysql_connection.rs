@@ -215,4 +215,7 @@ impl crate::sys_db_connection::Connection for crate::HxRefCell<MysqlConnection> 
     fn rollback(&self) -> () {
         MysqlConnection::rollback(self)
     }
+    fn __hx_type_id(&self) -> u32 {
+        crate::sys_db_mysql_mysql_connection::__HX_TYPE_ID
+    }
 }

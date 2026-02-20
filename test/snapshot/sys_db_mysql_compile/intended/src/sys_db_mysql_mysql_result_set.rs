@@ -167,4 +167,7 @@ impl crate::sys_db_result_set::ResultSet for crate::HxRefCell<MysqlResultSet> {
     fn get_fields_names(&self) -> hxrt::array::Array<hxrt::string::HxString> {
         MysqlResultSet::get_fields_names(self)
     }
+    fn __hx_type_id(&self) -> u32 {
+        crate::sys_db_mysql_mysql_result_set::__HX_TYPE_ID
+    }
 }

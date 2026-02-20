@@ -21,4 +21,7 @@ impl crate::i_thing::IThing for crate::HxRefCell<Impl> {
     fn say(&self) -> hxrt::string::HxString {
         Impl::say(self)
     }
+    fn __hx_type_id(&self) -> u32 {
+        crate::impl_::__HX_TYPE_ID
+    }
 }

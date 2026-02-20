@@ -4,4 +4,5 @@
 
 pub trait IThing: Send + Sync {
     fn say(&self) -> hxrt::string::HxString;
+    fn __hx_type_id(&self) -> u32;
 }

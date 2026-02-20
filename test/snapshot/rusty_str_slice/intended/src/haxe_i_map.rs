@@ -13,4 +13,5 @@ pub trait IMap<K: Clone + Send + Sync, V: Clone + Send + Sync>: Send + Sync {
     fn copy(&self) -> crate::HxRc<dyn crate::haxe_i_map::IMap<K, V> + Send + Sync>;
     fn to_string(&self) -> String;
     fn clear(&self) -> ();
+    fn __hx_type_id(&self) -> u32;
 }
