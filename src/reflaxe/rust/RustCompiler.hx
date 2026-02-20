@@ -882,18 +882,49 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				base = base.superClass != null ? base.superClass.t.get() : null;
 			}
 
-			// Implement any Haxe interfaces as Rust traits on `RefCell<Class>`.
+			// Implement any Haxe interfaces (including inherited interface parents)
+			// as Rust traits on `RefCell<Class>`.
+			var ifaceImplTargets:Array<{ifaceType:ClassType, params:Array<Type>}> = [];
+			var seenIfaceImplTargets:Map<String, Bool> = [];
+			function collectInterfaceImplTargets(ifaceType:ClassType, resolvedParams:Array<Type>):Void {
+				if (ifaceType == null)
+					return;
+				var key = classKey(ifaceType);
+				if (seenIfaceImplTargets.exists(key))
+					return;
+				seenIfaceImplTargets.set(key, true);
+				ifaceImplTargets.push({ifaceType: ifaceType, params: resolvedParams});
+
+				for (parent in ifaceType.interfaces) {
+					var parentType = parent.t.get();
+					if (parentType == null)
+						continue;
+					var parentResolvedParams = parent.params != null ? parent.params : [];
+					if (parentResolvedParams.length > 0 && ifaceType.params != null && ifaceType.params.length > 0 && resolvedParams != null
+						&& resolvedParams.length > 0) {
+						parentResolvedParams = [
+							for (p in parentResolvedParams) TypeTools.applyTypeParameters(p, ifaceType.params, resolvedParams)
+						];
+					}
+					collectInterfaceImplTargets(parentType, parentResolvedParams);
+				}
+			}
 			for (iface in classType.interfaces) {
 				var ifaceType = iface.t.get();
 				if (ifaceType == null)
 					continue;
+				collectInterfaceImplTargets(ifaceType, iface.params != null ? iface.params : []);
+			}
+			for (ifaceTarget in ifaceImplTargets) {
+				var ifaceType = ifaceTarget.ifaceType;
 				if (!shouldEmitClass(ifaceType, false))
 					continue;
 
 				var ifaceMod = rustModuleNameForClass(ifaceType);
 				var traitPath = "crate::" + ifaceMod + "::" + rustTypeNameForClass(ifaceType);
-				var ifaceTypeArgs = iface.params != null
-					&& iface.params.length > 0 ? ("<" + [for (p in iface.params) rustTypeToString(toRustType(p, classType.pos))].join(", ") + ">") : "";
+				var ifaceTypeParams = ifaceTarget.params != null ? ifaceTarget.params : [];
+				var ifaceTypeArgs = ifaceTypeParams.length > 0 ? ("<"
+					+ [for (p in ifaceTypeParams) rustTypeToString(toRustType(p, classType.pos))].join(", ") + ">") : "";
 				var implGenerics = classGenericDecls.length > 0 ? "<" + classGenericDecls.join(", ") + ">" : "";
 				var implGenericNames = rustGenericNamesFromDecls(classGenericDecls);
 				var implTurbofish = implGenericNames.length > 0 ? ("::<" + implGenericNames.join(", ") + ">") : "";
@@ -923,11 +954,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					}
 
 					var ifaceSig = followType(ifaceField.type);
-					var ifaceParams:Array<{name:String, t:Type, opt:Bool}> = [];
+					var ifaceMethodParams:Array<{name:String, t:Type, opt:Bool}> = [];
 					var ifaceRet:Type = ifaceField.type;
 					switch (ifaceSig) {
 						case TFun(params, ret):
-							ifaceParams = params;
+							ifaceMethodParams = params;
 							ifaceRet = ret;
 						case _:
 					}
@@ -935,14 +966,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					// Apply the interface type arguments from `implements IFace<...>` to the raw interface
 					// method signature (so `K`/`V` type parameters become concrete types like `i32` / `T`).
 					function applyIfaceParams(t:Type):Type {
-						if (iface.params == null || iface.params.length == 0)
+						if (ifaceTypeParams.length == 0)
 							return t;
 						if (ifaceType.params == null || ifaceType.params.length == 0)
 							return t;
-						return TypeTools.applyTypeParameters(t, ifaceType.params, iface.params);
+						return TypeTools.applyTypeParameters(t, ifaceType.params, ifaceTypeParams);
 					}
 
-					var key = ifaceField.getHaxeName() + "/" + ifaceParams.length;
+					var key = ifaceField.getHaxeName() + "/" + ifaceMethodParams.length;
 					if (!classByKey.exists(key))
 						continue;
 					var f = classByKey.get(key);
@@ -950,8 +981,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var sigArgs:Array<String> = ["&self"];
 					var callArgs:Array<String> = ["self"];
 					var usedArgNames:Map<String, Bool> = [];
-					for (i in 0...ifaceParams.length) {
-						var p = ifaceParams[i];
+					for (i in 0...ifaceMethodParams.length) {
+						var p = ifaceMethodParams[i];
 						var baseName = p.name != null && p.name.length > 0 ? p.name : ("a" + i);
 						var argName = RustNaming.stableUnique(RustNaming.snakeIdent(baseName), usedArgNames);
 						var pt = applyIfaceParams(p.t);
@@ -2178,7 +2209,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 
-		out.sort((a, b) -> Reflect.compare(classKey(a), classKey(b)));
+		out.sort((a, b) -> {
+			var ka = classKey(a);
+			var kb = classKey(b);
+			return ka < kb ? -1 : (ka > kb ? 1 : 0);
+		});
 		return out;
 	}
 

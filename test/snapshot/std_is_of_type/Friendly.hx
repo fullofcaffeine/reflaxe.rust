@@ -1,0 +1,1 @@
+interface Friendly extends Pet {}

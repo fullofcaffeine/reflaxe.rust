@@ -1,4 +1,4 @@
-class Dog extends Animal implements Pet {
+class Dog extends Animal implements Friendly {
 	public function new() {
 		super();
 	}

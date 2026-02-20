@@ -19,6 +19,12 @@ impl crate::animal::AnimalTrait for crate::HxRefCell<Dog> {
     }
 }
 
+impl crate::friendly::Friendly for crate::HxRefCell<Dog> {
+    fn __hx_type_id(&self) -> u32 {
+        crate::dog::__HX_TYPE_ID
+    }
+}
+
 impl crate::pet::Pet for crate::HxRefCell<Dog> {
     fn __hx_type_id(&self) -> u32 {
         crate::dog::__HX_TYPE_ID
