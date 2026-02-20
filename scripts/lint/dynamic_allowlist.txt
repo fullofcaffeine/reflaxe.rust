@@ -16,3 +16,4 @@ std/haxe/BoundaryTypes.cross.hx:36
 std/haxe/BoundaryTypes.cross.hx:37
 test/snapshot/catch_dynamic/Main.hx:6
 test/snapshot/throw_tail_nonvoid/Main.hx:12
+test/snapshot/std_is_of_type/Main.hx # FILE_SCOPE_JUSTIFICATION: Snapshot intentionally validates Std.isOfType across Dynamic boxing/interface/enum boundaries.
