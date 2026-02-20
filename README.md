@@ -38,6 +38,8 @@ The generated project includes the full task plumbing:
 - `cargo hx --action test` (compile Haxe->Rust, then test)
 - `cargo hx --action build --release` (production build)
 - `bash scripts/dev/watch-haxe-rust.sh --hxml compile.hxml` (watch loop)
+- `bash scripts/dev/check-guards.sh` (local-path + security wiring checks; gitleaks scan when installed)
+- `bash scripts/install-git-hooks.sh` (installs pre-commit local-path + staged gitleaks checks)
 
 ## Quick Start (First Successful Run)
 

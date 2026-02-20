@@ -122,3 +122,5 @@ fi
 echo "[new-project] created $target_display"
 echo "[new-project] crate ${crate_name}"
 echo "[new-project] run: cd ${target_display} && cargo hx --action run"
+echo "[new-project] guards: cd ${target_display} && bash scripts/dev/check-guards.sh"
+echo "[new-project] hooks: cd ${target_display} && git init && bash scripts/install-git-hooks.sh"

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+echo "[pre-commit] Running local path guard on staged changes..."
+bash "$ROOT_DIR/scripts/lint/local_path_guard_staged.sh"
+
+echo "[pre-commit] Running gitleaks on staged changes..."
+bash "$ROOT_DIR/scripts/security/run-gitleaks.sh" --staged
+
+echo "[pre-commit] OK"

@@ -84,6 +84,8 @@ Generated projects include this plumbing by default:
 - `cargo hx ...` task driver (compile Haxe+Rust, then run/test/build/check/clippy).
 - task HXML compatibility files (`compile*.hxml`).
 - local watcher script (`scripts/dev/watch-haxe-rust.sh`) for edit-compile-run/test loops.
+- local guard entrypoint (`scripts/dev/check-guards.sh`) for path/security checks (+ full gitleaks when installed).
+- pre-commit hook installer (`scripts/install-git-hooks.sh`) plus generated hook (`scripts/hooks/pre-commit`) for staged checks.
 
 Generated projects also include a local cargo alias:
 

@@ -1,0 +1,4 @@
+title = "reflaxe.rust template gitleaks config"
+
+[allowlist]
+# Keep minimal by default. Add entries only with explicit justification.

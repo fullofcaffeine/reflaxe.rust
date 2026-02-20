@@ -13,6 +13,7 @@ Generator plumbing included out of the box:
 - compile Haxe -> Rust codegen + Cargo build/run/test via `cargo hx ...`
 - optional task HXML compatibility files
 - local watcher script for fast edit-compile-run/test loops
+- security plumbing: gitleaks wrapper, local-path guards, and pre-commit hook installer
 
 ## Setup
 
@@ -41,6 +42,34 @@ cargo hx --action build --release
 ```
 
 This runs Haxe codegen first and then the selected Cargo action.
+
+## Security / Guardrails
+
+Run all local guards:
+
+```bash
+bash scripts/dev/check-guards.sh
+```
+
+Direct scans:
+
+```bash
+# Full repository/history secret scan.
+bash scripts/security/run-gitleaks.sh
+
+# Staged-only secret scan.
+bash scripts/security/run-gitleaks.sh --staged
+
+# Local absolute-path leak scan.
+bash scripts/lint/local_path_guard_repo.sh
+```
+
+Install the project pre-commit hook (runs staged local-path + staged gitleaks scans):
+
+```bash
+git init
+bash scripts/install-git-hooks.sh
+```
 
 ## Watcher (Fast Edit Loop)
 

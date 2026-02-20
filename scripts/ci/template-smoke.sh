@@ -40,6 +40,41 @@ mkdir -p "$tmp_root"
 log "scaffold template project"
 bash scripts/dev/new-project.sh "$app_dir" --force >/dev/null
 
+log "verify generated security plumbing files"
+(
+  cd "$app_dir"
+  required_files=(
+    ".gitleaks.toml"
+    "scripts/security/run-gitleaks.sh"
+    "scripts/lint/local_path_guard_staged.sh"
+    "scripts/lint/local_path_guard_repo.sh"
+    "scripts/lint/security_wiring_guard.sh"
+    "scripts/hooks/pre-commit"
+    "scripts/install-git-hooks.sh"
+    "scripts/dev/check-guards.sh"
+  )
+  for path in "${required_files[@]}"; do
+    if [[ ! -f "$path" ]]; then
+      echo "[template-smoke] missing required template file: $path" >&2
+      exit 1
+    fi
+  done
+)
+
+log "run generated project guard checks"
+(
+  cd "$app_dir"
+  bash scripts/dev/check-guards.sh
+)
+
+log "install generated pre-commit hook"
+(
+  cd "$app_dir"
+  git init -q
+  bash scripts/install-git-hooks.sh
+  test -x .git/hooks/pre-commit
+)
+
 if [[ -z "${CARGO_TARGET_DIR:-}" ]]; then
   export CARGO_TARGET_DIR="$root_dir/.cache/template-smoke-target"
 fi

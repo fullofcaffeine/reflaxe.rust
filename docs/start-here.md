@@ -76,6 +76,8 @@ The scaffold includes plumbing by default:
 - `cargo hx ...` task driver (`run/test/build/release` flows).
 - `scripts/dev/watch-haxe-rust.sh` for watch-mode compile+run/test loops.
 - explicit `compile*.hxml` compatibility tasks.
+- `scripts/dev/check-guards.sh` for local path/security wiring checks (plus gitleaks scan when installed).
+- `scripts/install-git-hooks.sh` + `scripts/hooks/pre-commit` for staged local-path + staged gitleaks checks.
 
 ## Faster local loop while you iterate
 
