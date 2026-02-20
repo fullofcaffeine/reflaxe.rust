@@ -33,6 +33,10 @@ class CargoMetaRegistry {
 	static var deps:Map<String, RustCargoDep> = new Map();
 	static var rawLines:Array<String> = [];
 
+	static inline function compareStrings(a:String, b:String):Int {
+		return a < b ? -1 : (a > b ? 1 : 0);
+	}
+
 	public static function reset():Void {
 		deps = new Map();
 		rawLines = [];
@@ -62,7 +66,7 @@ class CargoMetaRegistry {
 		var lines:Array<String> = [];
 
 		var names = [for (k in deps.keys()) k];
-		names.sort(Reflect.compare);
+		names.sort((a, b) -> compareStrings(a, b));
 		for (name in names) {
 			var dep = deps.get(name);
 			if (dep == null)
@@ -72,7 +76,7 @@ class CargoMetaRegistry {
 
 		if (rawLines.length > 0) {
 			var raw = rawLines.copy();
-			raw.sort(Reflect.compare);
+			raw.sort((a, b) -> compareStrings(a, b));
 			for (line in raw) {
 				var trimmed = StringTools.trim(line);
 				if (trimmed.length == 0)
@@ -258,7 +262,7 @@ class CargoMetaRegistry {
 				seen.set(f, true);
 				unique.push(f);
 			}
-			unique.sort(Reflect.compare);
+			unique.sort((a, b) -> compareStrings(a, b));
 			merged.features = unique;
 		}
 

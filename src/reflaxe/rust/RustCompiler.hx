@@ -220,6 +220,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return ECall(EPath(rustDynamicNullPath()), []);
 	}
 
+	inline function compareStrings(a:String, b:String):Int {
+		return a < b ? -1 : (a > b ? 1 : 0);
+	}
+
 	inline function isRustDynamicPath(path:String):Bool {
 		return path == rustDynamicPath();
 	}
@@ -382,7 +386,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 
-		extraRustSrcFiles.sort((a, b) -> Reflect.compare(a.module, b.module));
+		extraRustSrcFiles.sort((a, b) -> compareStrings(a.module, b.module));
 	}
 
 	override public function onCompileEnd() {
@@ -581,7 +585,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				addMod(modName);
 			}
 
-			modLines.sort(Reflect.compare);
+			modLines.sort((a, b) -> compareStrings(a, b));
 
 			headerLines = headerLines.concat(modLines);
 			headerLines.push("");
@@ -841,7 +845,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var keys:Array<String> = [];
 					for (k in currentNeededSuperThunks.keys())
 						keys.push(k);
-					keys.sort(Reflect.compare);
+					keys.sort((a, b) -> compareStrings(a, b));
 					for (k in keys) {
 						if (emitted.exists(k))
 							continue;
@@ -903,7 +907,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					if (parentResolvedParams.length > 0 && ifaceType.params != null && ifaceType.params.length > 0 && resolvedParams != null
 						&& resolvedParams.length > 0) {
 						parentResolvedParams = [
-							for (p in parentResolvedParams) TypeTools.applyTypeParameters(p, ifaceType.params, resolvedParams)
+							for (p in parentResolvedParams)
+								TypeTools.applyTypeParameters(p, ifaceType.params, resolvedParams)
 						];
 					}
 					collectInterfaceImplTargets(parentType, parentResolvedParams);
@@ -1579,7 +1584,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					case _:
 				}
 			}
-			clsMethodNames.sort(Reflect.compare);
+			clsMethodNames.sort((a, b) -> compareStrings(a, b));
 			for (name in clsMethodNames) {
 				if (methodMap.exists(name))
 					continue;
@@ -1601,7 +1606,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				case _:
 			}
 		}
-		staticMethodNames.sort(Reflect.compare);
+		staticMethodNames.sort((a, b) -> compareStrings(a, b));
 		for (name in staticMethodNames) {
 			if (methodMap.exists(name))
 				continue;
@@ -1851,7 +1856,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		pending.sort((a, b) -> {
 			var ak = classKey(a.classType) + "." + a.field.getHaxeName();
 			var bk = classKey(b.classType) + "." + b.field.getHaxeName();
-			return Reflect.compare(ak, bk);
+			return compareStrings(ak, bk);
 		});
 
 		var used:Map<String, Bool> = [];
@@ -1886,7 +1891,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return null;
 
 		var tests = rustTestSpecs.copy();
-		tests.sort((a, b) -> Reflect.compare(a.wrapperName, b.wrapperName));
+		tests.sort((a, b) -> compareStrings(a.wrapperName, b.wrapperName));
 
 		var hasSerial = false;
 		for (spec in tests) {
@@ -2257,7 +2262,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 
-		out.sort((a, b) -> Reflect.compare(classKey(a), classKey(b)));
+		out.sort((a, b) -> compareStrings(classKey(a), classKey(b)));
 		return out;
 	}
 
@@ -2382,7 +2387,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 
-		out.sort((a, b) -> Reflect.compare(enumKey(a), enumKey(b)));
+		out.sort((a, b) -> compareStrings(enumKey(a), enumKey(b)));
 		return out;
 	}
 
@@ -9375,7 +9380,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		// Stable ordering for snapshots.
-		out.sort((a, b) -> Reflect.compare(a.traitPath, b.traitPath));
+		out.sort((a, b) -> compareStrings(a.traitPath, b.traitPath));
 		return out;
 	}
 
@@ -9701,7 +9706,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			};
 			return cf.getHaxeName() + "/" + argc;
 		}
-		baseTraitMethods.sort((a, b) -> Reflect.compare(baseTraitKey(a), baseTraitKey(b)));
+		baseTraitMethods.sort((a, b) -> compareStrings(baseTraitKey(a), baseTraitKey(b)));
 
 		for (cf in baseTraitMethods) {
 			switch (cf.kind) {
