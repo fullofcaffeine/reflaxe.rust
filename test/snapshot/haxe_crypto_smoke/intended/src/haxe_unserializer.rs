@@ -612,7 +612,10 @@ impl Unserializer {
                         let __b = __hx_this.borrow();
                         __b.cache.clone()
                     })
-                    .push(hxrt::dynamic::from_ref(h.clone()));
+                    .push(hxrt::dynamic::from_ref_with_type_id(
+                        h.clone(),
+                        0xd7e07825u32,
+                    ));
                     let buf: hxrt::string::HxString = hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
@@ -656,7 +659,7 @@ impl Unserializer {
                         self_.borrow_mut().pos = __tmp + 1;
                         __tmp
                     };
-                    return hxrt::dynamic::from_ref(h.clone());
+                    return hxrt::dynamic::from_ref_with_type_id(h.clone(), 0xd7e07825u32);
                 }
                 82 => {
                     let n: i32 = crate::haxe_unserializer::Unserializer::read_digits(&*__hx_this);
@@ -746,7 +749,10 @@ impl Unserializer {
                         let __b = __hx_this.borrow();
                         __b.cache.clone()
                     })
-                    .push(hxrt::dynamic::from_ref(h_2.clone()));
+                    .push(hxrt::dynamic::from_ref_with_type_id(
+                        h_2.clone(),
+                        0x181f937bu32,
+                    ));
                     let buf_3: hxrt::string::HxString = hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
@@ -800,7 +806,7 @@ impl Unserializer {
                         self_.borrow_mut().pos = __tmp + 1;
                         __tmp
                     };
-                    return hxrt::dynamic::from_ref(h_2.clone());
+                    return hxrt::dynamic::from_ref_with_type_id(h_2.clone(), 0x181f937bu32);
                 }
                 99 => {
                     let name_4: hxrt::string::HxString = {
@@ -958,7 +964,10 @@ impl Unserializer {
                         let __b = __hx_this.borrow();
                         __b.cache.clone()
                     })
-                    .push(hxrt::dynamic::from_ref(l.clone()));
+                    .push(hxrt::dynamic::from_ref_with_type_id(
+                        l.clone(),
+                        0xd0de220eu32,
+                    ));
                     let buf_4: hxrt::string::HxString = hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
@@ -987,7 +996,7 @@ impl Unserializer {
                         self_.borrow_mut().pos = __tmp + 1;
                         __tmp
                     };
-                    return hxrt::dynamic::from_ref(l.clone());
+                    return hxrt::dynamic::from_ref_with_type_id(l.clone(), 0xd0de220eu32);
                 }
                 109 => {
                     return hxrt::dynamic::from(f64::NEG_INFINITY);
@@ -1024,7 +1033,10 @@ impl Unserializer {
                         let __b = __hx_this.borrow();
                         __b.cache.clone()
                     })
-                    .push(hxrt::dynamic::from_ref(h_3.clone()));
+                    .push(hxrt::dynamic::from_ref_with_type_id(
+                        h_3.clone(),
+                        0x39e0cd5bu32,
+                    ));
                     let buf_5: hxrt::string::HxString = hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
@@ -1071,7 +1083,7 @@ impl Unserializer {
                             "Invalid IntMap format",
                         )));
                     }
-                    return hxrt::dynamic::from_ref(h_3.clone());
+                    return hxrt::dynamic::from_ref_with_type_id(h_3.clone(), 0x39e0cd5bu32);
                 }
                 114 => {
                     let n_3: i32 = crate::haxe_unserializer::Unserializer::read_digits(&*__hx_this);
@@ -1421,8 +1433,11 @@ impl Unserializer {
                         let __b = __hx_this.borrow();
                         __b.cache.clone()
                     })
-                    .push(hxrt::dynamic::from_ref(d.clone()));
-                    return hxrt::dynamic::from_ref(d.clone());
+                    .push(hxrt::dynamic::from_ref_with_type_id(
+                        d.clone(),
+                        0x0d3c0cadu32,
+                    ));
+                    return hxrt::dynamic::from_ref_with_type_id(d.clone(), 0x0d3c0cadu32);
                 }
                 119 => {
                     let name_6: hxrt::string::HxString = {

@@ -48,12 +48,13 @@ impl Clone for Box<dyn AnyClone> {
 /// How
 /// - `to_haxe_string()` handles common primitives and a few common `Option<T>` / `Array<T>` cases.
 /// - Unknown values fall back to a stable type-name marker (`<Dynamic:...>`), not a pointer address.
-pub struct Dynamic(Option<Box<dyn AnyClone>>, &'static str, usize);
+/// - Optional `type_id` metadata preserves Haxe class/enum RTTI across unavoidable `Dynamic` boundaries.
+pub struct Dynamic(Option<Box<dyn AnyClone>>, &'static str, usize, Option<u32>);
 
 impl Clone for Dynamic {
     #[inline]
     fn clone(&self) -> Self {
-        Dynamic(self.0.clone(), self.1, self.2)
+        Dynamic(self.0.clone(), self.1, self.2, self.3)
     }
 }
 
@@ -67,7 +68,7 @@ impl Default for Dynamic {
 impl Dynamic {
     #[inline]
     pub fn null() -> Dynamic {
-        Dynamic(None, "null", 0)
+        Dynamic(None, "null", 0, None)
     }
 
     #[inline]
@@ -80,7 +81,7 @@ impl Dynamic {
     where
         T: Any + Clone + Send + Sync + 'static,
     {
-        Dynamic(Some(Box::new(value)), std::any::type_name::<T>(), 0)
+        Dynamic(Some(Box::new(value)), std::any::type_name::<T>(), 0, None)
     }
 
     #[inline]
@@ -89,7 +90,58 @@ impl Dynamic {
         T: hxref::HxRefLike + Any + Clone + Send + Sync + 'static,
     {
         let ptr = value.ptr_usize();
-        Dynamic(Some(Box::new(value)), std::any::type_name::<T>(), ptr)
+        Dynamic(Some(Box::new(value)), std::any::type_name::<T>(), ptr, None)
+    }
+
+    /// Box a value into `Dynamic` while attaching a stable target-level type id.
+    ///
+    /// Why
+    /// - `Std.isOfType(value:Dynamic, SomeClass)` needs runtime type checks for class/enum values.
+    /// - A plain Rust `Any` downcast is not enough for subtype checks.
+    ///
+    /// What
+    /// - Stores the same payload as `from(...)`, plus `Some(type_id)`.
+    ///
+    /// How
+    /// - The compiler computes stable ids and passes them at the dynamic boundary.
+    #[inline]
+    pub fn from_with_type_id<T>(value: T, type_id: u32) -> Dynamic
+    where
+        T: Any + Clone + Send + Sync + 'static,
+    {
+        Dynamic(
+            Some(Box::new(value)),
+            std::any::type_name::<T>(),
+            0,
+            Some(type_id),
+        )
+    }
+
+    /// Reference-style `Dynamic` boxing variant with attached stable type id metadata.
+    ///
+    /// Why
+    /// - Class instances are represented as shared references (`HxRef` / `HxRc`) and must retain:
+    ///   - pointer identity (for `Dynamic` equality semantics),
+    ///   - runtime type id (for `Std.isOfType` subtype checks through `Dynamic`).
+    ///
+    /// What
+    /// - Equivalent to `from_ref(...)`, with `Some(type_id)` metadata.
+    ///
+    /// How
+    /// - Stores pointer identity via `HxRefLike::ptr_usize()`.
+    /// - Stores compiler-provided type id metadata in the dynamic header.
+    #[inline]
+    pub fn from_ref_with_type_id<T>(value: T, type_id: u32) -> Dynamic
+    where
+        T: hxref::HxRefLike + Any + Clone + Send + Sync + 'static,
+    {
+        let ptr = value.ptr_usize();
+        Dynamic(
+            Some(Box::new(value)),
+            std::any::type_name::<T>(),
+            ptr,
+            Some(type_id),
+        )
     }
 
     /// Pointer identity for Haxe reference-like values boxed into `Dynamic`.
@@ -100,6 +152,19 @@ impl Dynamic {
     #[inline]
     pub fn ptr_usize(&self) -> usize {
         self.2
+    }
+
+    /// Return optional stable runtime type-id metadata carried across dynamic boundaries.
+    ///
+    /// Why
+    /// - `Std.isOfType` on `Dynamic` class/enum values needs backend-stable ids at runtime.
+    ///
+    /// What
+    /// - `Some(id)` when the compiler boxed the value through `*_with_type_id`.
+    /// - `None` for payloads that do not carry class/enum RTTI metadata.
+    #[inline]
+    pub fn type_id(&self) -> Option<u32> {
+        self.3
     }
 
     pub fn to_haxe_string(&self) -> String {
@@ -185,7 +250,7 @@ impl Dynamic {
                 if let Some(v) = any.downcast_ref::<T>() {
                     Ok(Box::new(v.clone()))
                 } else {
-                    Err(Dynamic(Some(b), self.1, self.2))
+                    Err(Dynamic(Some(b), self.1, self.2, self.3))
                 }
             }
         }
@@ -224,6 +289,22 @@ where
     T: hxref::HxRefLike + Any + Clone + Send + Sync + 'static,
 {
     Dynamic::from_ref(value)
+}
+
+#[inline]
+pub fn from_with_type_id<T>(value: T, type_id: u32) -> Dynamic
+where
+    T: Any + Clone + Send + Sync + 'static,
+{
+    Dynamic::from_with_type_id(value, type_id)
+}
+
+#[inline]
+pub fn from_ref_with_type_id<T>(value: T, type_id: u32) -> Dynamic
+where
+    T: hxref::HxRefLike + Any + Clone + Send + Sync + 'static,
+{
+    Dynamic::from_ref_with_type_id(value, type_id)
 }
 
 /// Runtime-backed "dynamic object" with string keys.
@@ -600,5 +681,21 @@ mod tests {
         );
         assert!(index_get_i32(&d, 999).is_null());
         assert!(index_get_i32(&d, -1).is_null());
+    }
+
+    #[test]
+    fn dynamic_type_id_metadata_roundtrips() {
+        let tagged = Dynamic::from_with_type_id(7i32, 0x1234_abcd);
+        assert_eq!(tagged.type_id(), Some(0x1234_abcd));
+        assert_eq!(tagged.clone().type_id(), Some(0x1234_abcd));
+
+        let plain = Dynamic::from(7i32);
+        assert_eq!(plain.type_id(), None);
+
+        let obj = HxRef::new(super::DynObject::new());
+        let tagged_ref = Dynamic::from_ref_with_type_id(obj.clone(), 0xabcd_9876);
+        assert_eq!(tagged_ref.type_id(), Some(0xabcd_9876));
+        assert!(tagged_ref.ptr_usize() != 0);
+        assert_eq!(tagged_ref.ptr_usize(), Dynamic::from_ref(obj).ptr_usize());
     }
 }

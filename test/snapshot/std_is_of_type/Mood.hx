@@ -1,0 +1,3 @@
+enum Mood {
+	Caffeinated;
+}
