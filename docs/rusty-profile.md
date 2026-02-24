@@ -65,13 +65,16 @@ surfaces when the developer wants Rust semantics.
 Rust-first profiles currently include an async/await preview surface behind:
 
 - `-D reflaxe_rust_profile=rusty|metal`
-- `-D rust_async_preview`
+- `-D rust_async` (legacy alias: `-D rust_async_preview`)
 
 Core types/APIs:
 
 - `rust.async.Future<T>`
 - `rust.async.Async.await(...)` or `@:rustAwait ...`
 - `rust.async.Async.blockOn(...)`
+- `rust.async.Async.spawn(...)`
+- `rust.async.Async.timeout(...)` / `timeoutMs(...)`
+- `rust.async.Tasks.spawn(...)` / `join(...)`
 
 See: [Async/Await preview guide](async-await.md).
 For the low-level typed façade available in metal, see [Metal profile](metal-profile.md).

@@ -1,4 +1,4 @@
-# Async/Await Preview (`-D rust_async_preview`)
+# Async/Await (`-D rust_async`)
 
 This page explains the current async/await support in plain language.
 
@@ -11,14 +11,17 @@ Use this when:
 
 ## Quick start
 
-1. Enable a Rust-first profile + async preview:
+1. Enable a Rust-first profile + async support:
 
 ```bash
 -D reflaxe_rust_profile=rusty
--D rust_async_preview
+-D rust_async
 ```
 
 (`metal` also works: `-D reflaxe_rust_profile=metal`)
+
+Legacy alias:
+- `-D rust_async_preview` (deprecated; still accepted).
 
 2. Use `rust.async.Future<T>` return types for async functions.
 3. Mark async functions with `@:rustAsync` (or `@:async`).
@@ -57,6 +60,12 @@ class Main {
   - Creates an already-resolved future.
 - `rust.async.Async.sleepMs(ms)` / `rust.async.Async.sleep(duration)`
   - Awaitable delay helpers.
+- `rust.async.Async.spawn(future)`
+  - Spawn async work and await output as another `Future<T>`.
+- `rust.async.Async.timeoutMs(future, ms)` / `rust.async.Async.timeout(future, duration)`
+  - Returns `Future<Option<T>>`; `Some(value)` on success, `None` on timeout.
+- `rust.async.Tasks.spawn(...)` / `rust.async.Tasks.join(...)`
+  - Task handle helper surface that bridges futures into `rust.concurrent` tasks.
 
 ## Important rules (preview scope)
 
@@ -80,6 +89,20 @@ class Main {
 ## Current status
 
 This is a preview feature intended for early production trials in Rusty projects. It is fully typed and codegen-backed, but still intentionally constrained so behavior remains predictable.
+
+## Optional tokio adapter
+
+Default behavior uses lightweight runtime dependencies (`pollster` + `futures-timer`).
+
+If you need tokio-backed behavior:
+
+```haxe
+import rust.async.TokioRuntime;
+
+TokioRuntime.enable();
+```
+
+This keeps app code typed while letting Cargo/dependency planning include tokio through metadata and feature inference.
 
 ## Related docs
 

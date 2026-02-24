@@ -43,6 +43,9 @@ class HxrtFeatureAnalyzer {
 			if (StringTools.startsWith(path, "rust.concurrent.") || StringTools.startsWith(path, "hxrt.concurrent."))
 				add("thread");
 
+			if (path == "rust.async.Tasks" || path == "rust.async.Task")
+				add("thread");
+
 			if (StringTools.startsWith(path, "sys.db.") || StringTools.startsWith(path, "hxrt.db."))
 				add("db");
 
@@ -61,6 +64,9 @@ class HxrtFeatureAnalyzer {
 
 			if (StringTools.startsWith(path, "rust.async.") || StringTools.startsWith(path, "hxrt.async_"))
 				add("async");
+
+			if (path == "rust.async.TokioRuntime")
+				add("async_tokio");
 		}
 
 		// Internal dependency edges so selective runtime slices remain compileable.
@@ -72,6 +78,8 @@ class HxrtFeatureAnalyzer {
 			add("io");
 		if (out.contains("process"))
 			add("fs");
+		if (out.contains("async_tokio"))
+			add("async");
 
 		out.sort((a, b) -> a < b ? -1 : (a > b ? 1 : 0));
 		return out;

@@ -41,7 +41,7 @@ Compatibility alias:
 | Slice/`&str` style APIs | Limited | Limited | First-class via `rust.Slice` / `rust.Str` | First-class via `rust.Slice` / `rust.Str` |
 | Explicit `Option`/`Result` surfaces | Optional | Optional | Recommended default | Recommended default |
 | Typed low-level Rust snippets | Not a goal | Not a goal | Limited | Yes (`rust.metal.Code.*`) |
-| Rust async/await preview | No | No | Yes (`-D rust_async_preview`) | Yes (`-D rust_async_preview`) |
+| Rust async/await preview | No | No | Yes (`-D rust_async`, legacy `-D rust_async_preview`) | Yes (`-D rust_async`, legacy `-D rust_async_preview`) |
 | Full lifetime generics parity with handwritten Rust | No | No | No (by design in v1) | No (by design in v1) |
 
 ## Pros / Cons Summary

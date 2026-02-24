@@ -29,9 +29,11 @@ This page is a practical reference for the most relevant compiler defines.
   - Alias for `reflaxe_rust_profile=idiomatic`.
 - `rust_metal`
   - Alias for `reflaxe_rust_profile=metal`.
-- `rust_async_preview`
-  - Enable async/await preview surfaces (`rust.async.Future`, `rust.async.Async.*`).
+- `rust_async`
+  - Enable async/await surfaces (`rust.async.Future`, `rust.async.Async.*`).
   - Requires a Rust-first profile: `reflaxe_rust_profile=rusty|metal`.
+- `rust_async_preview`
+  - Legacy alias for `rust_async` (deprecated).
 - `rust_string_nullable`
   - Force nullable string representation.
 - `rust_string_non_nullable`
