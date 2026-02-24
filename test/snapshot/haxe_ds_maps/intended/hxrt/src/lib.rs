@@ -8,6 +8,8 @@ pub mod async_;
 pub mod bytes;
 #[cfg(feature = "core")]
 pub mod cell;
+#[cfg(feature = "thread")]
+pub mod concurrent;
 #[cfg(feature = "date")]
 pub mod date;
 #[cfg(feature = "db")]

@@ -40,6 +40,9 @@ class HxrtFeatureAnalyzer {
 			if (StringTools.startsWith(path, "sys.thread.") || StringTools.startsWith(path, "hxrt.thread."))
 				add("thread");
 
+			if (StringTools.startsWith(path, "rust.concurrent.") || StringTools.startsWith(path, "hxrt.concurrent."))
+				add("thread");
+
 			if (StringTools.startsWith(path, "sys.db.") || StringTools.startsWith(path, "hxrt.db."))
 				add("db");
 

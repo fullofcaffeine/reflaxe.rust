@@ -6,20 +6,11 @@ Haxe's `sys.thread.*` API implies **true parallel execution** of Haxe code. In m
 (HL, C++, JVM, etc), Haxe values can be shared between threads (directly or indirectly), and the runtime
 is responsible for making that safe.
 
-`reflaxe.rust` currently models Haxe object identity as:
+`reflaxe.rust` now models Haxe object identity with a thread-safe heap:
 
-- `type HxRef<T> = Rc<RefCell<T>>`
+- `HxRef<T>` is backed by `Arc<...>` + locking (`runtime/hxrt/src/cell.rs`).
 
-This is a good, lightweight model for a single-threaded runtime, but it comes with two hard constraints:
-
-1. `Rc<...>` and `RefCell<...>` are **not `Send`/`Sync`**. Rust will not allow them to cross OS-thread
-   boundaries safely.
-2. Haxe function values (closures) are compiled into heap values that usually capture `HxRef` data.
-   Rust requires the closure passed to `std::thread::spawn` to be `Send + 'static`, so any captured
-   non-`Send` data makes spawning impossible.
-
-Because of (1) and (2), **we cannot implement `sys.thread.Thread.create` correctly** without changing
-either the runtime representation of Haxe values or the semantics of cross-thread interaction.
+This keeps Haxe class/reference semantics while allowing values to cross OS-thread boundaries safely.
 
 This document defines the intended production direction for `sys.thread` in `reflaxe.rust`.
 
@@ -38,54 +29,17 @@ For `sys.thread` to be considered correct and production-ready, the target shoul
 4. Keep existing codegen stable: do not introduce deadlocks, UB, or data races.
 5. Keep CI deterministic: add a stable example that spawns threads and synchronizes with `Lock`/`Mutex`.
 
-## How We Plan To Get There (Recommended Direction)
+## Rust-First Concurrency Layer
 
-### Strategy A (Recommended): Thread-Safe Heap (`Arc<...>`)
+`sys.thread.*` remains the portable API. For Rust-first code (`reflaxe_rust_profile=rusty|metal`),
+`std/rust/concurrent/*` adds typed wrappers over Rust-native primitives:
 
-Make Haxe object identity and dynamic values thread-safe by construction, then implement `sys.thread`
-directly on top of Rust OS threads.
+- `rust.concurrent.Channel<T>` + `rust.concurrent.Channels`: typed `create/send/recv/tryRecv`.
+- `rust.concurrent.Task<T>` + `rust.concurrent.Tasks`: typed `spawn/join`.
+- `rust.concurrent.Mutex<T>` + `rust.concurrent.Mutexes`: `create/get/set/replace/update`.
+- `rust.concurrent.RwLock<T>` + `rust.concurrent.RwLocks`: `create/read/write/replace/update`.
 
-High-level changes:
-
-1. Replace `HxRef<T> = Rc<RefCell<T>>` with a thread-safe representation.
-   - Candidate: `Arc<parking_lot::Mutex<T>>` for good performance and ergonomics.
-   - Alternative: `Arc<std::sync::Mutex<T>>` (no extra deps, but heavier).
-2. Update generated code to use short-lived locks rather than `RefCell` borrows:
-   - `.borrow()` and `.borrow_mut()` patterns become `.lock()` patterns.
-   - Maintain existing "evaluate RHS before taking a mutable guard" rule to avoid self-deadlocks.
-3. Ensure dynamic dispatch / trait objects are also thread-safe:
-   - Use `Arc<dyn Trait + Send + Sync>` for polymorphic references (or another safe scheme).
-   - Emit trait bounds (`trait Trait: Send + Sync`) where needed.
-4. Implement `sys.thread.Thread` message queues with `std::sync::mpsc` (or `crossbeam-channel` if we need
-   select/timeouts).
-5. Keep the API surface the same in Haxe; this is a backend/runtime concern.
-
-Pros:
-
-- Closest to "real" parity with existing sys targets.
-- Rust type system enforces safety once the representation is correct.
-- Makes future Rust-native frameworks more realistic (TUI/IO + threads).
-
-Cons:
-
-- Large refactor: touches most emitted code patterns and the runtime.
-- Locking has runtime cost; needs careful lock scoping to avoid deadlocks.
-
-### Strategy B: Isolates (No Shared Heap Across Threads)
-
-Keep the current single-threaded heap model per-thread and enforce message passing via deep-copy /
-serialization.
-
-Pros:
-
-- Avoids making all Haxe values thread-safe.
-- Can be faster for some cases (no locks).
-
-Cons:
-
-- Requires a robust deep-clone / serialization mechanism for `Dynamic` and user objects.
-- Harder to make fully compatible with Haxe semantics.
-- Likely becomes a custom "Rust-only" threading model rather than sys parity.
+These APIs route through `hxrt::concurrent` so application/example code stays injection-free and typed.
 
 ## Current Status
 

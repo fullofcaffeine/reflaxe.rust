@@ -25,6 +25,9 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 
 - Keep the pipeline **AST-first**: Builder → Transformer passes → Printer (avoid string-gen except at the printer).
 - Prefer typed analysis + passes over regex/string heuristics.
+- Architecture policy: when warnings/regressions come from emitted Rust shape (lowering/printer artifacts),
+  fix the compiler pass/lowering logic instead of relying on style-level source workarounds (for example rewriting app code to avoid explicit `return` in lambdas).
+  If a temporary workaround is used to unblock CI, immediately track a follow-up Beads task and add regression coverage for the compiler-level fix.
 - Portable mode first; keep a single runtime abstraction point so backends can evolve (e.g., `HxRef<T>`).
 - Prefer `import` (and small local `typedef` aliases when appropriate) to avoid verbose fully-qualified type paths in compiler code
   (example: avoid `reflaxe.rust.ast.RustAST.RustMatchArm` when `import reflaxe.rust.ast.RustAST.RustMatchArm` lets you use `RustMatchArm`).
