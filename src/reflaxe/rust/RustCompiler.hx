@@ -32,6 +32,7 @@ import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustVisibility;
 import reflaxe.helpers.TypeHelper;
+import reflaxe.rust.analyze.ProfileContractAnalyzer;
 import reflaxe.rust.analyze.TypeUsageAnalyzer;
 import reflaxe.rust.macros.CargoMetaRegistry;
 import reflaxe.rust.macros.RustExtraSrcRegistry;
@@ -277,6 +278,31 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			Context.defined("rust_hxrt_no_feature_infer"));
 	}
 
+	/**
+		Enforces profile-level boundary contracts before project emission.
+
+		Why
+		- Profiles (portable/idiomatic/rusty/metal) should have observable policy boundaries.
+		- Rust-first and metal profiles need actionable diagnostics when reflection/dynamic fallback
+		  compatibility switches are used.
+
+		How
+		- Evaluates module usage and relevant defines through `ProfileContractAnalyzer`.
+		- Emits warnings for soft violations and an aggregated compile error for hard violations.
+	**/
+	function enforceProfileContracts():Void {
+		var diagnostics = ProfileContractAnalyzer.analyze(profile, snapshotUsedModulePaths(), Context.defined("rust_metal_allow_fallback"),
+			Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"));
+		#if eval
+		for (warning in diagnostics.warnings)
+			Context.warning("Rust profile contract: " + warning, Context.currentPos());
+		if (diagnostics.errors.length > 0) {
+			var details = diagnostics.errors.map(msg -> "- " + msg).join("\n");
+			Context.error("Rust profile contract violation(s):\n" + details, Context.currentPos());
+		}
+		#end
+	}
+
 	public function generateOutputIterator():Iterator<DataAndFileInfo<StringOrBytes>> {
 		return new RustOutputIterator(this);
 	}
@@ -432,6 +458,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	override public function onCompileEnd() {
+		enforceProfileContracts();
+
 		if (!didEmitMain) {
 			// No main class emitted; don't generate Cargo.toml.
 			return;

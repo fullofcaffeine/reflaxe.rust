@@ -2,8 +2,6 @@
 set -euo pipefail
 
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-fixture_dir="$root_dir/test/negative/metal_raw_rust"
-log_file="$fixture_dir/.compile.log"
 
 use_rg=0
 if [[ "${REFLAXE_NO_RG:-0}" != "1" ]] && command -v rg >/dev/null 2>&1; then
@@ -20,27 +18,40 @@ match_regex() {
 	fi
 }
 
-rm -rf "$fixture_dir/out"
-rm -f "$log_file"
+run_negative_case() {
+	local fixture_rel="$1"
+	local expected_regex="$2"
+	local failure_label="$3"
+	local fixture_dir="$root_dir/$fixture_rel"
+	local log_file="$fixture_dir/.compile.log"
 
-set +e
-(cd "$fixture_dir" && haxe compile.hxml) >"$log_file" 2>&1
-status=$?
-set -e
+	rm -rf "$fixture_dir/out"
+	rm -f "$log_file"
 
-if [[ "$status" -eq 0 ]]; then
-	echo "[metal-policy] error: expected compile failure for raw __rust__ in app code under metal profile."
-	sed "s|$root_dir|.|g" "$log_file"
-	exit 1
-fi
+	set +e
+	(cd "$fixture_dir" && haxe compile.hxml) >"$log_file" 2>&1
+	local status=$?
+	set -e
 
-if ! match_regex 'Strict mode forbids `__rust__\(\)` code injection in application code' "$log_file"; then
-	echo "[metal-policy] error: compile failed, but strict-boundary diagnostic was not found."
-	sed "s|$root_dir|.|g" "$log_file"
-	exit 1
-fi
+	if [[ "$status" -eq 0 ]]; then
+		echo "[metal-policy] error: expected compile failure for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
 
-rm -f "$log_file"
-rm -rf "$fixture_dir/out"
+	if ! match_regex "$expected_regex" "$log_file"; then
+		echo "[metal-policy] error: compile failed, but expected diagnostic was not found for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	rm -f "$log_file"
+	rm -rf "$fixture_dir/out"
+}
+
+run_negative_case "test/negative/metal_raw_rust" 'Strict mode forbids `__rust__\(\)` code injection in application code' \
+	'raw __rust__ in app code under metal profile'
+run_negative_case "test/negative/metal_reflect" 'metal profile forbids reflection modules' \
+	'Reflect usage under metal profile'
 
 echo "[metal-policy] ok"
