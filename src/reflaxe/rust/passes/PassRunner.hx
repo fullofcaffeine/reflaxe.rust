@@ -18,6 +18,7 @@ import reflaxe.rust.ast.RustAST.RustFile;
 	How
 	- `portable`: normalize + mut inference + clone elision
 	- `metal`: portable set + borrow-scope stage + metal restrictions
+	- `rust_no_hxrt`: appends a no-runtime verification stage (`NoHxrtPass`)
 **/
 class PassRunner {
 	static final NORMALIZE:RustPass = new NormalizePass();
@@ -25,9 +26,10 @@ class PassRunner {
 	static final CLONE_ELISION:RustPass = new CloneElisionPass();
 	static final BORROW_TIGHTEN:RustPass = new BorrowScopeTighteningPass();
 	static final METAL_RESTRICTIONS:RustPass = new MetalRestrictionsPass();
+	static final NO_HXRT:RustPass = new NoHxrtPass();
 
 	public static function run(file:RustFile, context:CompilationContext):RustFile {
-		var passes = selectPasses(context.profile);
+		var passes = selectPasses(context);
 		var out = file;
 		context.executedPasses = [];
 		for (pass in passes) {
@@ -37,12 +39,15 @@ class PassRunner {
 		return out;
 	}
 
-	static function selectPasses(profile:RustProfile):Array<RustPass> {
-		return switch (profile) {
+	static function selectPasses(context:CompilationContext):Array<RustPass> {
+		var passes = switch (context.profile) {
 			case Portable:
 				[NORMALIZE, MUT_INFERENCE, CLONE_ELISION];
 			case Metal:
 				[NORMALIZE, MUT_INFERENCE, CLONE_ELISION, BORROW_TIGHTEN, METAL_RESTRICTIONS];
-		}
+		};
+		if (context.build.noHxrt)
+			passes.push(NO_HXRT);
+		return passes;
 	}
 }

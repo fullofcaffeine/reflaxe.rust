@@ -50,6 +50,19 @@ class CompilerInit {
 		} catch (e:haxe.Exception) {}
 
 		var profile = ProfileResolver.resolve();
+		var wantsNoHxrt = Context.defined("rust_no_hxrt");
+		if (wantsNoHxrt && profile != RustProfile.Metal) {
+			Context.error("`-D rust_no_hxrt` currently requires `-D reflaxe_rust_profile=metal`.", Context.currentPos());
+		}
+		if (wantsNoHxrt) {
+			var explicitHxrtFeatures = Context.definedValue("rust_hxrt_features");
+			if (Context.defined("rust_hxrt_default_features")
+				|| Context.defined("rust_hxrt_no_feature_infer")
+				|| (explicitHxrtFeatures != null && explicitHxrtFeatures.length > 0)) {
+				Context.error("`-D rust_no_hxrt` cannot be combined with hxrt feature defines (`rust_hxrt_default_features`, `rust_hxrt_no_feature_infer`, `rust_hxrt_features`).",
+					Context.currentPos());
+			}
+		}
 
 		// Repository policy: keep examples/snapshots "pure" (no __rust__ escape hatches).
 		BoundaryEnforcer.init();
@@ -80,11 +93,19 @@ class CompilerInit {
 				Compiler.define("rust_string_nullable");
 			}
 		}
+		if (wantsNoHxrt && Context.defined("rust_string_nullable")) {
+			Context.error("`-D rust_no_hxrt` is incompatible with `-D rust_string_nullable` because nullable strings rely on `hxrt::string::HxString`.",
+				Context.currentPos());
+		}
 
 		var wantsAsync = Context.defined("rust_async") || Context.defined("rust_async_preview");
 		if (wantsAsync) {
 			if (!ProfileResolver.isRustFirst(profile)) {
 				Context.error("Async (`-D rust_async`, legacy `-D rust_async_preview`) currently requires `-D reflaxe_rust_profile=metal`.",
+					Context.currentPos());
+			}
+			if (wantsNoHxrt) {
+				Context.error("Async (`-D rust_async`, legacy `-D rust_async_preview`) is incompatible with `-D rust_no_hxrt` because async lowering currently uses `hxrt::async_`.",
 					Context.currentPos());
 			}
 			#if eval

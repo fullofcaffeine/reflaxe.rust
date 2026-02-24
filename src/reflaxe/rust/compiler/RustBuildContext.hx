@@ -28,9 +28,10 @@ class RustBuildContext {
 	public final strictExamples:Bool;
 	public final strictUserBoundaries:Bool;
 	public final metalContractHardError:Bool;
+	public final noHxrt:Bool;
 
 	public function new(crateName:String, profile:RustProfile, asyncEnabled:Bool, nullableStrings:Bool, strictExamples:Bool, strictUserBoundaries:Bool,
-			metalContractHardError:Bool) {
+			metalContractHardError:Bool, noHxrt:Bool) {
 		this.crateName = crateName;
 		this.profile = profile;
 		this.asyncEnabled = asyncEnabled;
@@ -38,5 +39,6 @@ class RustBuildContext {
 		this.strictExamples = strictExamples;
 		this.strictUserBoundaries = strictUserBoundaries;
 		this.metalContractHardError = metalContractHardError;
+		this.noHxrt = noHxrt;
 	}
 }

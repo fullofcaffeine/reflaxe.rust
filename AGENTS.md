@@ -37,6 +37,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   Default to concrete `typedef`/class/abstract/external bindings and leverage Haxe’s type system end-to-end.
 - `Reflect`/`Any` policy (strict): avoid `Reflect.*` APIs and `Any`-typed payloads in first-party compiler/runtime/example code.
   Prefer typed fields/enums/interfaces; if an upstream/runtime boundary forces `Reflect` or `Any`, keep it tightly scoped and convert back to typed data immediately.
+- Compatibility policy (strict, pre-1.0 only): use a hard cutover approach and never implement backward compatibility.
+  Remove this temporary rule for stable full release work under Bead `haxe.rust-vvl.7`.
 - For unavoidable stdlib API boundaries, prefer a descriptive `typedef` alias module (for example `*Types.cross.hx`)
   so raw `Dynamic` is centralized and documented instead of scattered across implementation files.
 - Path privacy policy: never disclose machine-specific absolute local paths (for example `<home>/...`).
@@ -158,6 +160,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - Supported selector values are `-D reflaxe_rust_profile=portable|metal` (no aliases).
   - Metal policy: `reflaxe_rust_profile=metal` auto-enables strict app-boundary mode (`reflaxe_rust_strict`) so raw app-side `__rust__` is rejected by default.
     Typed framework facades in `src/reflaxe/rust/macros` and `std/rust/metal` remain allowed.
+  - Minimal-runtime policy: `-D rust_no_hxrt` is metal-only and must remain a hard contract.
+    In that mode, do not rely on Cargo-link failures as enforcement; keep the typed no-runtime guard pass (`NoHxrtPass`) active so violations fail with actionable module-level diagnostics.
   - Metal diagnostics gotcha: aggregate `ERaw` fallback diagnostics once per compile (with top modules) instead of warning per transformed module; this keeps fallback signals actionable in large std-heavy builds.
   - Optional formatter hook: `-D rustfmt` runs `cargo fmt --manifest-path <out>/Cargo.toml` after output generation (best-effort, warns on failure).
 - TUI testing: prefer ratatui `TestBackend` via `TuiDemo.renderToString(...)` and assert in `cargo test` (see `docs/tui.md` and `examples/tui_todo/native/tui_tests.rs`).

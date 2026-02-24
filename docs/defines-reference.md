@@ -42,6 +42,14 @@ This page is a practical reference for the most relevant compiler defines.
   - Debug define for string type diagnostics.
 - `rust_metal_allow_fallback`
   - In `metal`, downgrades contract violations (including `ERaw` fallback detection) from errors to warnings.
+- `rust_no_hxrt`
+  - Metal-only minimal-runtime mode.
+  - Omits bundled `hxrt` emission and `Cargo.toml` dependency.
+  - Enforces a no-`hxrt` generated output contract (compile error on runtime references).
+  - Incompatible with:
+    - `rust_string_nullable`
+    - `rust_async` / `rust_async_preview`
+    - `rust_hxrt_default_features`, `rust_hxrt_no_feature_infer`, `rust_hxrt_features`
 
 ## Cargo command controls
 

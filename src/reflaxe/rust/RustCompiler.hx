@@ -141,6 +141,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return true;
 	}
 
+	/**
+		Returns whether the compile opts into the minimal runtime path (`-D rust_no_hxrt`).
+
+		Why
+		- `rust_no_hxrt` is a profile-level contract: project emission, prelude aliases, and pass
+		  policy checks must branch consistently on one typed predicate.
+		- Re-parsing the define at each callsite risks drift (for example, omitting Cargo dependency
+		  emission but still copying the runtime crate).
+
+		How
+		- Keep the define lookup centralized here and route no-hxrt branches through this helper.
+	**/
+	inline function noHxrtEnabled():Bool {
+		return Context.defined("rust_no_hxrt");
+	}
+
 	inline function rcBasePath():String {
 		return wantsPreludeAliases() ? "crate::HxRc" : "std::rc::Rc";
 	}
@@ -151,6 +167,39 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	inline function refCellBasePath():String {
 		return wantsPreludeAliases() ? "crate::HxRefCell" : "std::cell::RefCell";
+	}
+
+	/**
+		Returns crate-level prelude aliases for shared ownership / interior mutability handles.
+
+		Why
+		- Generated code references `crate::HxRc` / `crate::HxRefCell` / `crate::HxRef` uniformly.
+		  This lets runtime representation evolve without touching every lowering callsite.
+		- `-D rust_no_hxrt` must compile without any `hxrt` dependency, so aliases need a std-only
+		  mapping in that mode.
+
+		How
+		- Default mode maps aliases to `hxrt::cell::*`.
+		- no-hxrt mode maps aliases to `std::rc::Rc` + `std::cell::RefCell` equivalents so generated
+		  borrow calls (`borrow` / `borrow_mut`) remain valid for the minimal subset.
+	**/
+	function preludeAliasLines():Array<String> {
+		if (!wantsPreludeAliases())
+			return ["type HxRef<T> = hxrt::cell::HxRef<T>;"];
+		if (noHxrtEnabled()) {
+			return [
+				"type HxRc<T> = std::rc::Rc<T>;",
+				"type HxDynRef<T: ?Sized> = std::rc::Rc<T>;",
+				"type HxRefCell<T> = std::cell::RefCell<T>;",
+				"type HxRef<T> = std::rc::Rc<std::cell::RefCell<T>>;"
+			];
+		}
+		return [
+			"type HxRc<T> = hxrt::cell::HxRc<T>;",
+			"type HxDynRef<T: ?Sized> = hxrt::cell::HxDynRef<T>;",
+			"type HxRefCell<T> = hxrt::cell::HxCell<T>;",
+			"type HxRef<T> = hxrt::cell::HxRef<T>;"
+		];
 	}
 
 	inline function useNullableStringRepresentation():Bool {
@@ -244,7 +293,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	public function createCompilationContext():CompilationContext {
 		var buildContext = new RustBuildContext(crateName, profile, asyncEnabled(), useNullableStringRepresentation(),
-			Context.defined("reflaxe_rust_strict_examples"), Context.defined("reflaxe_rust_strict"), metalContractHardError());
+			Context.defined("reflaxe_rust_strict_examples"), Context.defined("reflaxe_rust_strict"), metalContractHardError(), noHxrtEnabled());
 		var modulePaths = snapshotUsedModulePaths();
 		var features = selectHxrtFeatureSet(modulePaths);
 		return new CompilationContext(buildContext, modulePaths, features);
@@ -269,11 +318,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function selectHxrtFeatureSet(modulePaths:Array<String>):Array<String> {
+		if (noHxrtEnabled())
+			return [];
 		return ProjectEmitter.selectHxrtFeatures(modulePaths, Context.defined("rust_hxrt_default_features"), Context.definedValue("rust_hxrt_features"),
 			Context.defined("rust_hxrt_no_feature_infer"));
 	}
 
 	function renderHxrtDependencyLine():String {
+		if (noHxrtEnabled())
+			return "";
 		var modulePaths = snapshotUsedModulePaths();
 		return ProjectEmitter.renderHxrtDependencyLine(modulePaths, Context.defined("rust_hxrt_default_features"), Context.definedValue("rust_hxrt_features"),
 			Context.defined("rust_hxrt_no_feature_infer"));
@@ -482,7 +535,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			setExtraFile(OutputPath.fromStr("src/" + f.fileName), content);
 		}
 
-		// Emit the bundled runtime crate (hxrt) alongside the generated crate.
+		// Emit the bundled runtime crate (hxrt) alongside the generated crate unless this compile
+		// explicitly opts into the minimal no-runtime path.
 		emitRuntimeCrate();
 
 		// Allow overriding the entire Cargo.toml with `-D rust_cargo_toml=path/to/Cargo.toml`.
@@ -523,8 +577,21 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				depsExtra = depsInline + "\n";
 		}
 
-		var metaDeps = CargoMetaRegistry.renderDependencyLines();
-		var deps = renderHxrtDependencyLine() + "\n" + metaDeps + depsExtra;
+		var depLines:Array<String> = [];
+		function appendDepLine(raw:Null<String>):Void {
+			if (raw == null)
+				return;
+			var normalized = StringTools.trim(raw);
+			if (normalized.length == 0)
+				return;
+			depLines.push(normalized);
+		}
+		if (!noHxrtEnabled()) {
+			appendDepLine(renderHxrtDependencyLine());
+		}
+		appendDepLine(CargoMetaRegistry.renderDependencyLines());
+		appendDepLine(depsExtra);
+		var deps = depLines.join("\n");
 
 		var cargo = [
 			"[package]",
@@ -535,6 +602,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			"[dependencies]",
 			deps
 		].join("\n");
+		if (!StringTools.endsWith(cargo, "\n"))
+			cargo += "\n";
 		setExtraFile(OutputPath.fromStr("Cargo.toml"), cargo);
 	}
 
@@ -577,6 +646,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function emitRuntimeCrate():Void {
+		if (noHxrtEnabled())
+			return;
 		if (frameworkRuntimeDir == null)
 			return;
 
@@ -678,12 +749,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			// so `-D rust_deny_warnings` snapshots remain green.
 			lintLines.push("#![allow(type_alias_bounds)]");
 
-			var preludeLines:Array<String> = wantsPreludeAliases() ? [
-				"type HxRc<T> = hxrt::cell::HxRc<T>;",
-				"type HxDynRef<T: ?Sized> = hxrt::cell::HxDynRef<T>;",
-				"type HxRefCell<T> = hxrt::cell::HxCell<T>;",
-				"type HxRef<T> = hxrt::cell::HxRef<T>;"
-			] : ["type HxRef<T> = hxrt::cell::HxRef<T>;"];
+			var preludeLines:Array<String> = preludeAliasLines();
 
 			headerLines = headerLines.concat(lintLines.concat([""].concat(preludeLines).concat([""])));
 
@@ -1386,7 +1452,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (classType.pack.length == 0 && classType.name == "ArrayTools")
 			return false;
 		var file = Context.getPosInfos(classType.pos).file;
-		return isUserProjectFile(file) || isFrameworkStdFile(file);
+		var frameworkStd = isFrameworkStdFile(file);
+		if (noHxrtEnabled() && frameworkStd)
+			return false;
+		return isUserProjectFile(file) || frameworkStd;
 	}
 
 	function shouldEmitEnum(enumType:EnumType):Bool {
@@ -1400,7 +1469,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				return false;
 		}
 		var file = Context.getPosInfos(enumType.pos).file;
-		return isUserProjectFile(file) || isFrameworkStdFile(file);
+		var frameworkStd = isFrameworkStdFile(file);
+		if (noHxrtEnabled() && frameworkStd)
+			return false;
+		return isUserProjectFile(file) || frameworkStd;
 	}
 
 	function isUserProjectFile(file:String):Bool {
@@ -2077,6 +2149,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (!ProfileResolver.isRustFirst(profile)) {
 			#if eval
 			Context.error("Async currently requires `-D reflaxe_rust_profile=metal`.", pos);
+			#end
+		}
+		if (noHxrtEnabled()) {
+			#if eval
+			Context.error("Async is incompatible with `-D rust_no_hxrt`; async lowering currently depends on `hxrt::async_`.", pos);
 			#end
 		}
 	}

@@ -42,6 +42,29 @@ Use fallback only as a migration tool while removing non-metal-clean boundaries.
 - Default string representation is non-null Rust `String` (unless explicitly overridden).
 - `-D rust_async` / `-D rust_async_preview` are supported in metal.
 
+## Minimal Runtime Mode (`rust_no_hxrt`)
+
+Metal can opt into a stricter runtime contract:
+
+```bash
+-D rust_no_hxrt
+```
+
+What this does:
+
+- omits the bundled `hxrt` crate from generated output,
+- omits `hxrt` from generated `Cargo.toml` dependencies,
+- enforces a no-`hxrt` generated-code boundary (compile error on any `hxrt` reference).
+
+Important constraints:
+
+- requires `-D reflaxe_rust_profile=metal`,
+- cannot be combined with `-D rust_string_nullable`,
+- cannot be combined with `-D rust_async` / `-D rust_async_preview`,
+- cannot be combined with `rust_hxrt_*` feature-selection defines.
+
+Use this mode for Rust-first subsets that intentionally avoid portable runtime semantics.
+
 ## Performance objective
 
 `metal` is the profile where parity vs pure Rust is tracked most aggressively:

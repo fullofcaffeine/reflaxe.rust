@@ -41,6 +41,7 @@ Default behavior:
 - non-null Rust `String` representation unless explicitly overridden.
 - pass pipeline includes portable passes + borrow-scope stage + metal restrictions.
 - profile contract violations hard-error unless `-D rust_metal_allow_fallback` is set.
+- optional minimal-runtime mode via `-D rust_no_hxrt` (enforces no generated `hxrt` references).
 
 ## Async profile gate
 
@@ -49,6 +50,8 @@ Default behavior:
 ```bash
 -D reflaxe_rust_profile=metal
 ```
+
+Async is incompatible with `-D rust_no_hxrt` because async lowering currently targets `hxrt::async_`.
 
 ## Metal clean vs fallback
 
