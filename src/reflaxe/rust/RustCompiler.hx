@@ -14,7 +14,6 @@ import haxe.macro.TypedExprTools;
 import sys.FileSystem;
 import sys.io.File;
 import reflaxe.GenericCompiler;
-import reflaxe.compiler.TypeUsageTracker.TypeOrModuleType;
 import reflaxe.compiler.TargetCodeInjection;
 import reflaxe.data.ClassFuncArg;
 import reflaxe.data.ClassFuncData;
@@ -33,6 +32,7 @@ import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustVisibility;
 import reflaxe.helpers.TypeHelper;
+import reflaxe.rust.analyze.TypeUsageAnalyzer;
 import reflaxe.rust.macros.CargoMetaRegistry;
 import reflaxe.rust.macros.RustExtraSrcRegistry;
 import reflaxe.rust.naming.RustNaming;
@@ -41,6 +41,8 @@ import reflaxe.rust.RustProfile;
 import reflaxe.rust.compiler.RustBuildContext;
 import reflaxe.rust.compiler.RustClassContext;
 import reflaxe.rust.compiler.RustFuncContext;
+import reflaxe.rust.emit.ProjectEmitter;
+import reflaxe.rust.lower.StringLowering;
 
 using reflaxe.helpers.BaseTypeHelper;
 using reflaxe.helpers.ClassFieldHelper;
@@ -160,24 +162,23 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	inline function rustStringTypePath():String {
-		return useNullableStringRepresentation() ? "hxrt::string::HxString" : "String";
+		return StringLowering.rustStringTypePath(useNullableStringRepresentation());
 	}
 
 	inline function stringLiteralExpr(value:String):RustExpr {
-		return useNullableStringRepresentation() ? ECall(EPath("hxrt::string::HxString::from"),
-			[ELitString(value)]) : ECall(EPath("String::from"), [ELitString(value)]);
+		return StringLowering.stringLiteralExpr(useNullableStringRepresentation(), value);
 	}
 
 	inline function stringNullExpr():RustExpr {
-		return useNullableStringRepresentation() ? ECall(EPath("hxrt::string::HxString::null"), []) : ECall(EPath("String::from"), [ELitString("null")]);
+		return StringLowering.stringNullExpr(useNullableStringRepresentation());
 	}
 
 	inline function wrapRustStringExpr(value:RustExpr):RustExpr {
-		return useNullableStringRepresentation() ? ECall(EPath("hxrt::string::HxString::from"), [value]) : value;
+		return StringLowering.wrapRustStringExpr(useNullableStringRepresentation(), value);
 	}
 
 	inline function stringNullDefaultValue():String {
-		return useNullableStringRepresentation() ? "hxrt::string::HxString::null()" : "String::from(\"null\")";
+		return StringLowering.stringNullDefaultValue(useNullableStringRepresentation());
 	}
 
 	/**
@@ -242,7 +243,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	public function createCompilationContext():CompilationContext {
 		var buildContext = new RustBuildContext(crateName, profile, asyncEnabled(), useNullableStringRepresentation(),
 			Context.defined("reflaxe_rust_strict_examples"), Context.defined("reflaxe_rust_strict"), metalContractHardError());
-		return new CompilationContext(buildContext, snapshotUsedModulePaths(), selectHxrtFeatureSet());
+		var modulePaths = snapshotUsedModulePaths();
+		var features = selectHxrtFeatureSet(modulePaths);
+		return new CompilationContext(buildContext, modulePaths, features);
 	}
 
 	inline function metalContractHardError():Bool {
@@ -260,130 +263,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function collectTypeUsageFromCurrentModule():Void {
-		var usage = getTypeUsage();
-		if (usage == null)
-			return;
-		for (entries in usage) {
-			if (entries == null)
-				continue;
-			for (entry in entries) {
-				switch (entry) {
-					case EModuleType(mt):
-						usedModulePaths.set(mt.getPath(), true);
-					case EType(t):
-						var mt = TypeHelper.toModuleType(t);
-						if (mt != null)
-							usedModulePaths.set(mt.getPath(), true);
-				}
-			}
-		}
+		TypeUsageAnalyzer.collectInto(getTypeUsage(), usedModulePaths);
 	}
 
-	function parseManualHxrtFeatures(raw:String):Array<String> {
-		var out:Array<String> = [];
-		if (raw == null)
-			return out;
-		for (part in raw.split(",")) {
-			var trimmed = StringTools.trim(part);
-			if (trimmed.length == 0)
-				continue;
-			if (!out.contains(trimmed))
-				out.push(trimmed);
-		}
-		out.sort((a, b) -> compareStrings(a, b));
-		return out;
-	}
-
-	function inferHxrtFeaturesFromUsedModules():Array<String> {
-		var out:Array<String> = [];
-
-		inline function add(feature:String):Void {
-			if (!out.contains(feature))
-				out.push(feature);
-		}
-
-		for (path in usedModulePaths.keys()) {
-			if (path == "Date" || StringTools.startsWith(path, "DateTools") || StringTools.startsWith(path, "hxrt.date"))
-				add("date");
-
-			if (path == "haxe.Json" || StringTools.startsWith(path, "haxe.json.") || StringTools.startsWith(path, "hxrt.json"))
-				add("json");
-
-			if (StringTools.startsWith(path, "sys.net.") || StringTools.startsWith(path, "hxrt.net."))
-				add("net");
-
-			if (StringTools.startsWith(path, "sys.ssl.") || StringTools.startsWith(path, "hxrt.ssl."))
-				add("ssl");
-
-			if (StringTools.startsWith(path, "sys.thread.") || StringTools.startsWith(path, "hxrt.thread."))
-				add("thread");
-
-			if (StringTools.startsWith(path, "sys.db.") || StringTools.startsWith(path, "hxrt.db."))
-				add("db");
-
-			if (path == "sys.FileSystem"
-				|| path == "sys.io.File"
-				|| path == "sys.io.FileInput"
-				|| path == "sys.io.FileOutput"
-				|| StringTools.startsWith(path, "hxrt.fs."))
-				add("fs");
-
-			if (path == "sys.io.Process" || StringTools.startsWith(path, "hxrt.process."))
-				add("process");
-
-			if (path == "haxe.io.Error" || StringTools.startsWith(path, "haxe.io.Input") || StringTools.startsWith(path, "haxe.io.Output"))
-				add("io");
-
-			if (StringTools.startsWith(path, "rust.async.") || StringTools.startsWith(path, "hxrt.async_"))
-				add("async");
-		}
-
-		// Internal dependency graph so feature slices remain compileable.
-		if (out.contains("net")) {
-			add("io");
-			add("ssl");
-		}
-		if (out.contains("ssl")) {
-			add("io");
-		}
-		if (out.contains("process")) {
-			add("fs");
-		}
-
-		out.sort((a, b) -> compareStrings(a, b));
-		return out;
-	}
-
-	function selectHxrtFeatureSet():Array<String> {
-		if (Context.defined("rust_hxrt_default_features"))
-			return [];
-
-		var manual = parseManualHxrtFeatures(Context.definedValue("rust_hxrt_features"));
-		if (manual.length > 0) {
-			if (!manual.contains("core"))
-				manual.unshift("core");
-			manual.sort((a, b) -> compareStrings(a, b));
-			return manual;
-		}
-
-		if (Context.defined("rust_hxrt_no_feature_infer"))
-			return ["core"];
-
-		var inferred = inferHxrtFeaturesFromUsedModules();
-		if (!inferred.contains("core"))
-			inferred.unshift("core");
-		inferred.sort((a, b) -> compareStrings(a, b));
-		return inferred;
+	function selectHxrtFeatureSet(modulePaths:Array<String>):Array<String> {
+		return ProjectEmitter.selectHxrtFeatures(modulePaths, Context.defined("rust_hxrt_default_features"), Context.definedValue("rust_hxrt_features"),
+			Context.defined("rust_hxrt_no_feature_infer"));
 	}
 
 	function renderHxrtDependencyLine():String {
-		var features = selectHxrtFeatureSet();
-		if (Context.defined("rust_hxrt_default_features"))
-			return 'hxrt = { path = "./hxrt" }';
-		if (features.length == 0)
-			return 'hxrt = { path = "./hxrt", default-features = false }';
-		var quoted = [for (f in features) '"' + f + '"'].join(", ");
-		return 'hxrt = { path = "./hxrt", default-features = false, features = [' + quoted + '] }';
+		var modulePaths = snapshotUsedModulePaths();
+		return ProjectEmitter.renderHxrtDependencyLine(modulePaths, Context.defined("rust_hxrt_default_features"), Context.definedValue("rust_hxrt_features"),
+			Context.defined("rust_hxrt_no_feature_infer"));
 	}
 
 	public function generateOutputIterator():Iterator<DataAndFileInfo<StringOrBytes>> {
