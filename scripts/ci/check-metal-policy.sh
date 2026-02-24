@@ -325,6 +325,8 @@ run_hxrt_plan_report_case() {
 	local expected_mode="$4"
 	local failure_label="$5"
 	local extra_define="${6:-}"
+	local expected_reason_regex="${7:-}"
+	local expected_reason_regex_2="${8:-}"
 	local fixture_dir="$root_dir/$fixture_rel"
 	local out_a="$fixture_dir/out_hxrt_plan_a"
 	local out_b="$fixture_dir/out_hxrt_plan_b"
@@ -392,6 +394,21 @@ run_hxrt_plan_report_case() {
 	fi
 	if ! match_regex '"selectedFeatures":[[:space:]]*\[' "$json_a"; then
 		echo "[metal-policy] error: hxrt_plan.json missing selectedFeatures for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '"reasons":[[:space:]]*\[' "$json_a"; then
+		echo "[metal-policy] error: hxrt_plan.json missing reasons array for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if [[ -n "$expected_reason_regex" ]] && ! match_regex "$expected_reason_regex" "$json_a"; then
+		echo "[metal-policy] error: hxrt_plan.json missing expected reason pattern for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if [[ -n "$expected_reason_regex_2" ]] && ! match_regex "$expected_reason_regex_2" "$json_a"; then
+		echo "[metal-policy] error: hxrt_plan.json missing second expected reason pattern for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
@@ -517,6 +534,16 @@ run_profile_contract_report_case "examples/hello" "compile.metal.hxml" "metal" \
 	'metal profile contract report artifacts'
 run_hxrt_plan_report_case "examples/hello" "compile.hxml" "portable" "selective" \
 	'portable hxrt plan report artifacts'
+run_hxrt_plan_report_case "examples/hello" "compile.hxml" "portable" "selective" \
+	'portable hxrt plan report define provenance artifacts' \
+	'rust_hxrt_features=thread' \
+	'"sourceKind":[[:space:]]*"define"' \
+	'"source":[[:space:]]*"rust_hxrt_features"'
+run_hxrt_plan_report_case "examples/sys_net_loopback" "compile.hxml" "portable" "selective" \
+	'portable hxrt plan report module+dependency provenance artifacts' \
+	"" \
+	'"sourceKind":[[:space:]]*"module"' \
+	'"sourceKind":[[:space:]]*"dependency_edge"'
 run_hxrt_plan_report_case "examples/hello" "compile.metal.hxml" "metal" "default_features" \
 	'metal default-features hxrt plan report artifacts' \
 	'rust_hxrt_default_features'

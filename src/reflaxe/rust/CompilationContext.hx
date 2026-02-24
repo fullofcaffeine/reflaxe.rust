@@ -2,6 +2,7 @@ package reflaxe.rust;
 
 import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot;
 import reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics;
+import reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason;
 import reflaxe.rust.compiler.RustBuildContext;
 
 /**
@@ -18,6 +19,8 @@ import reflaxe.rust.compiler.RustBuildContext;
  * - `build`: immutable build-level settings.
  * - `usedModulePaths`: module/type-usage summary captured during lowering.
  * - `inferredHxrtFeatures`: final runtime feature set selected by compiler logic.
+ * - `manualHxrtFeatures`: raw manual features selected by `rust_hxrt_features` (if any).
+ * - `hxrtFeatureReasons`: typed provenance entries for selected `hxrt` features.
  * - `executedPasses`: ordered pass names applied in `RustASTTransformer`.
  *
  * How
@@ -28,6 +31,10 @@ class CompilationContext {
 	public final build:RustBuildContext;
 	public final usedModulePaths:Array<String>;
 	public final inferredHxrtFeatures:Array<String>;
+	public final manualHxrtFeatures:Array<String>;
+	public final hxrtUseDefaultFeatures:Bool;
+	public final hxrtInferenceDisabled:Bool;
+	public final hxrtFeatureReasons:Array<HxrtFeatureReason>;
 	public var executedPasses:Array<String>;
 	public var currentModuleLabel:Null<String>;
 
@@ -40,10 +47,15 @@ class CompilationContext {
 	public var crateName(get, never):String;
 	public var profile(get, never):RustProfile;
 
-	public function new(build:RustBuildContext, usedModulePaths:Array<String>, inferredHxrtFeatures:Array<String>) {
+	public function new(build:RustBuildContext, usedModulePaths:Array<String>, inferredHxrtFeatures:Array<String>, manualHxrtFeatures:Array<String>,
+			hxrtUseDefaultFeatures:Bool, hxrtInferenceDisabled:Bool, hxrtFeatureReasons:Array<HxrtFeatureReason>) {
 		this.build = build;
 		this.usedModulePaths = usedModulePaths;
 		this.inferredHxrtFeatures = inferredHxrtFeatures;
+		this.manualHxrtFeatures = manualHxrtFeatures;
+		this.hxrtUseDefaultFeatures = hxrtUseDefaultFeatures;
+		this.hxrtInferenceDisabled = hxrtInferenceDisabled;
+		this.hxrtFeatureReasons = hxrtFeatureReasons;
 		this.executedPasses = [];
 		this.currentModuleLabel = null;
 		this.metalRawExprByModule = [];

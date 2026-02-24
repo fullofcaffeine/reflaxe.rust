@@ -58,7 +58,8 @@ This page is a practical reference for the most relevant compiler defines.
   - Emit deterministic runtime-plan artifacts in the generated crate root:
     - `hxrt_plan.json` (machine-readable)
     - `hxrt_plan.md` (human-readable)
-  - Records effective `hxrt` mode (`no_hxrt|default_features|selective`) and selected feature set.
+  - Records effective `hxrt` mode (`no_hxrt|default_features|selective`), selected feature set,
+    and typed provenance entries (`module`, `define`, `dependency_edge`).
 - `rust_no_hxrt`
   - Metal-only minimal-runtime mode.
   - Omits bundled `hxrt` emission and `Cargo.toml` dependency.

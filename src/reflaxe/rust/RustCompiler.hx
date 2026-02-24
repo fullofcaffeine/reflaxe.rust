@@ -42,6 +42,7 @@ import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker;
 import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot;
 import reflaxe.rust.analyze.ProfileContractAnalyzer;
 import reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics;
+import reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason;
 import reflaxe.rust.analyze.SendSyncAnalyzer;
 import reflaxe.rust.analyze.TypeUsageAnalyzer;
 import reflaxe.rust.macros.CargoMetaRegistry;
@@ -53,6 +54,7 @@ import reflaxe.rust.compiler.RustBuildContext;
 import reflaxe.rust.compiler.RustClassContext;
 import reflaxe.rust.compiler.RustFuncContext;
 import reflaxe.rust.emit.ProjectEmitter;
+import reflaxe.rust.emit.ProjectEmitter.HxrtFeatureSelection;
 import reflaxe.rust.lower.StringLowering;
 
 using reflaxe.helpers.BaseTypeHelper;
@@ -103,6 +105,7 @@ private typedef HxrtPlanReportSnapshot = {
 	var inferenceDisabled:Bool;
 	var manualFeatures:Array<String>;
 	var selectedFeatures:Array<String>;
+	var reasons:Array<HxrtFeatureReason>;
 	var usedModuleCount:Int;
 	var hxrtDependencyLine:String;
 };
@@ -335,8 +338,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			Context.defined("reflaxe_rust_strict_examples"), Context.defined("reflaxe_rust_strict"), metalContractHardError(), noHxrtEnabled(),
 			metalIslandSnapshot.modules);
 		var modulePaths = snapshotUsedModulePaths();
-		var features = selectHxrtFeatureSet(modulePaths);
-		return new CompilationContext(buildContext, modulePaths, features);
+		var selection = selectHxrtFeatureSelection(modulePaths);
+		return new CompilationContext(buildContext, modulePaths, selection.features, selection.manualFeatures, selection.useDefaultFeatures,
+			selection.disableInference, selection.reasons);
 	}
 
 	inline function metalContractHardError():Bool {
@@ -361,11 +365,19 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		TypeUsageAnalyzer.collectInto(getTypeUsage(), usedModulePaths);
 	}
 
-	function selectHxrtFeatureSet(modulePaths:Array<String>):Array<String> {
-		if (noHxrtEnabled())
-			return [];
-		return ProjectEmitter.selectHxrtFeatures(modulePaths, Context.defined("rust_hxrt_default_features"), Context.definedValue("rust_hxrt_features"),
-			Context.defined("rust_hxrt_no_feature_infer"));
+	function selectHxrtFeatureSelection(modulePaths:Array<String>):HxrtFeatureSelection {
+		if (noHxrtEnabled()) {
+			return {
+				mode: "no_hxrt",
+				features: [],
+				manualFeatures: [],
+				useDefaultFeatures: false,
+				disableInference: false,
+				reasons: []
+			};
+		}
+		return ProjectEmitter.selectHxrtFeatureSelection(modulePaths, Context.defined("rust_hxrt_default_features"),
+			Context.definedValue("rust_hxrt_features"), Context.defined("rust_hxrt_no_feature_infer"));
 	}
 
 	function renderHxrtDependencyLine():String {
@@ -1030,14 +1042,33 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function buildHxrtPlanReportSnapshot():HxrtPlanReportSnapshot {
-		var manualFeatures = parseCsvDefine(Context.definedValue("rust_hxrt_features"));
-		manualFeatures.sort(compareStrings);
-
-		var selectedFeatures = currentCompilationContext != null ? currentCompilationContext.inferredHxrtFeatures.copy() : selectHxrtFeatureSet(snapshotUsedModulePaths());
-		selectedFeatures.sort(compareStrings);
-
+		var modulePaths = snapshotUsedModulePaths();
 		var noHxrt = noHxrtEnabled();
-		var useDefaultFeatures = !noHxrt && Context.defined("rust_hxrt_default_features");
+		var selection = currentCompilationContext != null ? {
+			mode: noHxrt ? "no_hxrt" : (currentCompilationContext.hxrtUseDefaultFeatures ? "default_features" : "selective"),
+			features: currentCompilationContext.inferredHxrtFeatures.copy(),
+			manualFeatures: currentCompilationContext.manualHxrtFeatures.copy(),
+			useDefaultFeatures: currentCompilationContext.hxrtUseDefaultFeatures,
+			disableInference: currentCompilationContext.hxrtInferenceDisabled,
+			reasons: currentCompilationContext.hxrtFeatureReasons.copy()
+		} : selectHxrtFeatureSelection(modulePaths);
+
+		var manualFeatures = selection.manualFeatures.copy();
+		manualFeatures.sort(compareStrings);
+		var selectedFeatures = selection.features.copy();
+		selectedFeatures.sort(compareStrings);
+		var reasons = selection.reasons.copy();
+		reasons.sort((a, b) -> {
+			var featureOrder = compareStrings(a.feature, b.feature);
+			if (featureOrder != 0)
+				return featureOrder;
+			var kindOrder = compareStrings(a.sourceKind, b.sourceKind);
+			if (kindOrder != 0)
+				return kindOrder;
+			return compareStrings(a.source, b.source);
+		});
+
+		var useDefaultFeatures = !noHxrt && selection.useDefaultFeatures;
 		var mode = if (noHxrt) {
 			"no_hxrt";
 		} else if (useDefaultFeatures) {
@@ -1052,10 +1083,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			mode: mode,
 			noHxrt: noHxrt,
 			useDefaultFeatures: useDefaultFeatures,
-			inferenceDisabled: !noHxrt && Context.defined("rust_hxrt_no_feature_infer"),
+			inferenceDisabled: !noHxrt && selection.disableInference,
 			manualFeatures: manualFeatures,
 			selectedFeatures: selectedFeatures,
-			usedModuleCount: snapshotUsedModulePaths().length,
+			reasons: reasons,
+			usedModuleCount: modulePaths.length,
 			hxrtDependencyLine: noHxrt ? "" : renderHxrtDependencyLine()
 		};
 	}
@@ -1074,6 +1106,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		lines.push("\t],");
 		lines.push('\t"selectedFeatures": [');
 		appendJsonStringArray(lines, snapshot.selectedFeatures, 2);
+		lines.push("\t],");
+		lines.push('\t"reasons": [');
+		appendJsonHxrtReasons(lines, snapshot.reasons, 2);
 		lines.push("\t],");
 		lines.push('\t"usedModuleCount": ' + snapshot.usedModuleCount + ",");
 		lines.push('\t"hxrtDependencyLine": "' + jsonEscape(snapshot.hxrtDependencyLine) + '"');
@@ -1107,6 +1142,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		} else {
 			for (feature in snapshot.selectedFeatures)
 				lines.push("- `" + feature + "`");
+		}
+		lines.push("");
+		lines.push("## Feature reasons");
+		if (snapshot.reasons.length == 0) {
+			lines.push("- none");
+		} else {
+			for (reason in snapshot.reasons)
+				lines.push("- `" + reason.feature + "` <= `" + reason.sourceKind + "`: `" + reason.source + "`");
 		}
 		lines.push("");
 		lines.push("## Dependency line");
@@ -1262,26 +1305,24 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 	}
 
+	static function appendJsonHxrtReasons(lines:Array<String>, reasons:Array<HxrtFeatureReason>, indentLevel:Int):Void {
+		for (index in 0...reasons.length) {
+			var reason = reasons[index];
+			var comma = index == reasons.length - 1 ? "" : ",";
+			lines.push(indent(indentLevel) + "{");
+			lines.push(indent(indentLevel + 1) + '"feature": "' + jsonEscape(reason.feature) + '",');
+			lines.push(indent(indentLevel + 1) + '"sourceKind": "' + jsonEscape(reason.sourceKind) + '",');
+			lines.push(indent(indentLevel + 1) + '"source": "' + jsonEscape(reason.source) + '"');
+			lines.push(indent(indentLevel) + "}" + comma);
+		}
+	}
+
 	static inline function boolString(value:Bool):String {
 		return value ? "true" : "false";
 	}
 
 	static inline function boolLabel(value:Bool):String {
 		return value ? "yes" : "no";
-	}
-
-	static function parseCsvDefine(raw:Null<String>):Array<String> {
-		var out:Array<String> = [];
-		if (raw == null)
-			return out;
-		for (part in raw.split(",")) {
-			var trimmed = StringTools.trim(part);
-			if (trimmed.length == 0)
-				continue;
-			if (!out.contains(trimmed))
-				out.push(trimmed);
-		}
-		return out;
 	}
 
 	static function jsonEscape(value:String):String {
