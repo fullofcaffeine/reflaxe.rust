@@ -81,6 +81,10 @@ This page is a practical reference for the most relevant compiler defines.
   - Enforce strict no-injection policy for user project code.
 - `reflaxe_rust_strict_examples`
   - Enforce strict policy in repo examples/snapshot paths.
+- `rust_send_sync_strict`
+  - Escalate Send/Sync spawn-boundary diagnostics to compile errors.
+  - Useful in CI to forbid capturing borrow-only (`rust.Ref`, `rust.MutRef`, slices) or `Dynamic`
+    values in `Thread.create(...)` / `Tasks.spawn(...)` closures.
 
 ## Notes on defaults
 

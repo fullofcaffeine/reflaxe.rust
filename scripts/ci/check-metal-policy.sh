@@ -182,6 +182,8 @@ run_negative_case "test/negative/profile_removed_idiomatic" 'Unknown `-D reflaxe
 	'idiomatic profile selector removed'
 run_negative_case "test/negative/profile_removed_rusty" 'Unknown `-D reflaxe_rust_profile=rusty`\. Expected portable\|metal\.' \
 	'rusty profile selector removed'
+run_negative_case "test/negative/send_sync_borrow_capture" 'Rust concurrency contract violation: sys\.thread\.Thread\.create\(job\) captures `borrowed` with borrowed type `rust\.Ref<T>`' \
+	'spawn closure captures borrow-only value under rust_send_sync_strict'
 run_warning_case "test/negative/metal_dynamic_access" "compile.fallback.hxml" 'Rust profile contract: metal profile forbids haxe\.DynamicAccess runtime map semantics' \
 	'1' 'haxe.DynamicAccess warning in explicit metal fallback mode'
 run_warning_case "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \

@@ -41,6 +41,17 @@ For `sys.thread` to be considered correct and production-ready, the target shoul
 
 These APIs route through `hxrt::concurrent` so application/example code stays injection-free and typed.
 
+### Send/Sync boundary diagnostics
+
+The compiler now scans spawn closures at typed AST time and warns when a job captures borrow-only or
+runtime-dynamic values that cannot be proven `Send + Sync` safely at thread boundaries:
+
+- `rust.Ref<T>`, `rust.MutRef<T>`
+- `rust.Slice<T>`, `rust.MutSlice<T>`
+- `Dynamic`
+
+Use `-D rust_send_sync_strict` to turn those diagnostics into hard compile errors in CI or release gates.
+
 ## Current Status
 
 As of 2026-02-09, `reflaxe.rust` has a minimal-but-correct threaded runtime model:

@@ -33,6 +33,7 @@ import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustVisibility;
 import reflaxe.helpers.TypeHelper;
 import reflaxe.rust.analyze.ProfileContractAnalyzer;
+import reflaxe.rust.analyze.SendSyncAnalyzer;
 import reflaxe.rust.analyze.TypeUsageAnalyzer;
 import reflaxe.rust.macros.CargoMetaRegistry;
 import reflaxe.rust.macros.RustExtraSrcRegistry;
@@ -358,6 +359,34 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		#end
 	}
 
+	/**
+		Enforces Send/Sync boundary diagnostics for thread/task spawn closures.
+
+		Why
+		- Rust thread boundaries require captured values to satisfy `Send + Sync` and often `'static`.
+		- Emitting diagnostics at Haxe source positions is more actionable than waiting for generated
+		  Rust trait-bound failures.
+
+		What
+		- Runs `SendSyncAnalyzer` across typed modules.
+		- Emits warnings by default.
+		- Escalates diagnostics to compile errors when `-D rust_send_sync_strict` is set.
+
+		How
+		- Analyzer returns typed warnings/errors with original Haxe positions.
+		- `rust_send_sync_strict` flips analyzer output into hard errors for regression/CI use.
+	**/
+	function enforceSendSyncContracts():Void {
+		var strict = Context.defined("rust_send_sync_strict");
+		var diagnostics = SendSyncAnalyzer.analyze(Context.getAllModuleTypes(), strict);
+		#if eval
+		for (warning in diagnostics.warnings)
+			Context.warning("Rust concurrency contract: " + warning.message, warning.pos);
+		for (error in diagnostics.errors)
+			Context.error("Rust concurrency contract violation: " + error.message, error.pos);
+		#end
+	}
+
 	public function generateOutputIterator():Iterator<DataAndFileInfo<StringOrBytes>> {
 		return new RustOutputIterator(this);
 	}
@@ -515,6 +544,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	override public function onCompileEnd() {
 		enforceProfileContracts();
+		enforceSendSyncContracts();
 
 		if (!didEmitMain) {
 			// No main class emitted; don't generate Cargo.toml.
