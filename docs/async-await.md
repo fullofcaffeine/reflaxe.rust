@@ -60,6 +60,8 @@ class Main {
   - Awaitable delay helpers.
 - `rust.async.Async.spawn(future)`
   - Spawn async work and await output as another `Future<T>`.
+- `rust.async.Async.select(left, right)`
+  - Race two `Future<T>` values and resolve with the first completed output.
 - `rust.async.Async.timeoutMs(future, ms)` / `rust.async.Async.timeout(future, duration)`
   - Returns `Future<Option<T>>`; `Some(value)` on success, `None` on timeout.
 - `rust.async.Tasks.spawn(...)` / `rust.async.Tasks.join(...)`

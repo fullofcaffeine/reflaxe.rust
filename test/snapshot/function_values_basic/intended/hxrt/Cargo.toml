@@ -57,7 +57,7 @@ serde_json = { version = "1", optional = true }
 pollster = { version = "0.4", optional = true }
 futures-timer = { version = "3", optional = true }
 futures = { version = "0.3", default-features = false, features = ["std"], optional = true }
-tokio = { version = "1", default-features = false, features = ["rt", "time"], optional = true }
+tokio = { version = "1", default-features = false, features = ["rt", "time", "macros"], optional = true }
 
 # `sys.ssl.Digest`
 md-5 = { version = "0.10", optional = true }

@@ -74,6 +74,23 @@ extern class Async {
 	public static function spawn<T>(future:Future<T>):Future<T>;
 
 	/**
+	 * Race two futures of the same output type and return the first value that resolves.
+	 *
+	 * Why:
+	 * - Rust-first async code often needs "first responder wins" control-flow without dropping to
+	 *   raw runtime calls.
+	 * - Keeping this typed at the Haxe layer avoids ad-hoc injection and keeps adapter switching
+	 *   (`pollster`/`futures` vs tokio) behind one stable API boundary.
+	 *
+	 * How:
+	 * - Binds to `hxrt::async_::select_first`.
+	 * - In tokio-adapter mode this lowers to `tokio::select!`.
+	 * - In default mode this lowers to `futures::future::select`.
+	 */
+	@:native("select_first")
+	public static function select<T>(left:Future<T>, right:Future<T>):Future<T>;
+
+	/**
 	 * Timeout helper using milliseconds.
 	 *
 	 * Returns:

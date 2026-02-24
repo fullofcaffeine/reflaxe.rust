@@ -10,6 +10,7 @@
 //! - `HxFuture<T>`: boxed + pinned future shape used by generated code.
 //! - `ready`, `block_on`, `sleep`, `sleep_ms`: baseline async helpers.
 //! - `spawn`: async task helper that runs a future on separate execution.
+//! - `select_first`: race two futures and return whichever value resolves first.
 //! - `timeout`, `timeout_ms`: race a future against a timer and return `Option<T>`.
 //! - `enable_tokio_runtime` / `disable_tokio_runtime` / `is_tokio_runtime_enabled`:
 //!   adapter toggles (feature-gated by `async_tokio`).
@@ -166,6 +167,29 @@ where
     })
 }
 
+/// Race two futures of the same output type and return the first completed value.
+pub fn select_first<T>(left: HxFuture<T>, right: HxFuture<T>) -> HxFuture<T>
+where
+    T: Send + 'static,
+{
+    #[cfg(feature = "async_tokio")]
+    if use_tokio_runtime() {
+        return Box::pin(async move {
+            tokio::select! {
+                value = left => value,
+                value = right => value,
+            }
+        });
+    }
+
+    Box::pin(async move {
+        match select(left, right).await {
+            Either::Left((value, _pending_right)) => value,
+            Either::Right((value, _pending_left)) => value,
+        }
+    })
+}
+
 /// Race a future against `duration` and return `Some(value)` on success, `None` on timeout.
 pub fn timeout<T>(future: HxFuture<T>, duration: Duration) -> HxFuture<Option<T>>
 where
@@ -200,12 +224,18 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+	use super::*;
 
-    #[test]
-    fn ready_block_on_roundtrip() {
-        assert_eq!(block_on(ready(42)), 42);
-    }
+	#[cfg(feature = "async_tokio")]
+	use std::sync::Mutex;
+
+	#[cfg(feature = "async_tokio")]
+	static TOKIO_ADAPTER_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+	#[test]
+	fn ready_block_on_roundtrip() {
+		assert_eq!(block_on(ready(42)), 42);
+	}
 
     #[cfg(feature = "thread")]
     #[test]
@@ -215,47 +245,80 @@ mod tests {
         assert_eq!(task_join(&task), 33);
     }
 
-    #[test]
-    fn spawn_roundtrip() {
-        #[cfg(feature = "async_tokio")]
-        disable_tokio_runtime();
+	#[test]
+	fn spawn_roundtrip() {
+		#[cfg(feature = "async_tokio")]
+		let _lock = TOKIO_ADAPTER_TEST_LOCK.lock().unwrap();
+		#[cfg(feature = "async_tokio")]
+		disable_tokio_runtime();
 
-        let future = Box::pin(async move {
-            sleep_ms(5).await;
-            7
+		let future = Box::pin(async move {
+			sleep_ms(5).await;
+			7
+		});
+		assert_eq!(block_on(spawn(future)), 7);
+		#[cfg(feature = "async_tokio")]
+		disable_tokio_runtime();
+	}
+
+	#[test]
+	fn timeout_ms_returns_none() {
+		#[cfg(feature = "async_tokio")]
+		let _lock = TOKIO_ADAPTER_TEST_LOCK.lock().unwrap();
+		#[cfg(feature = "async_tokio")]
+		disable_tokio_runtime();
+
+		let slow = Box::pin(async move {
+			sleep_ms(25).await;
+			99
+		});
+		assert_eq!(block_on(timeout_ms(slow, 1)), None);
+		#[cfg(feature = "async_tokio")]
+		disable_tokio_runtime();
+	}
+
+	#[test]
+	fn timeout_ms_returns_some() {
+		#[cfg(feature = "async_tokio")]
+		let _lock = TOKIO_ADAPTER_TEST_LOCK.lock().unwrap();
+		#[cfg(feature = "async_tokio")]
+		disable_tokio_runtime();
+
+		let fast = Box::pin(async move {
+			sleep_ms(1).await;
+			11
+		});
+		assert_eq!(block_on(timeout_ms(fast, 50)), Some(11));
+		#[cfg(feature = "async_tokio")]
+		disable_tokio_runtime();
+	}
+
+	#[test]
+	fn select_first_returns_first_value() {
+		#[cfg(feature = "async_tokio")]
+		let _lock = TOKIO_ADAPTER_TEST_LOCK.lock().unwrap();
+		#[cfg(feature = "async_tokio")]
+		disable_tokio_runtime();
+
+		let fast = Box::pin(async move {
+			sleep_ms(1).await;
+			21
         });
-        assert_eq!(block_on(spawn(future)), 7);
-    }
-
-    #[test]
-    fn timeout_ms_returns_none() {
-        #[cfg(feature = "async_tokio")]
-        disable_tokio_runtime();
-
         let slow = Box::pin(async move {
-            sleep_ms(25).await;
-            99
-        });
-        assert_eq!(block_on(timeout_ms(slow, 1)), None);
-    }
+			sleep_ms(20).await;
+			99
+		});
+		assert_eq!(block_on(select_first(fast, slow)), 21);
+		#[cfg(feature = "async_tokio")]
+		disable_tokio_runtime();
+	}
 
-    #[test]
-    fn timeout_ms_returns_some() {
-        #[cfg(feature = "async_tokio")]
-        disable_tokio_runtime();
-
-        let fast = Box::pin(async move {
-            sleep_ms(1).await;
-            11
-        });
-        assert_eq!(block_on(timeout_ms(fast, 50)), Some(11));
-    }
-
-    #[cfg(feature = "async_tokio")]
-    #[test]
-    fn tokio_runtime_adapter_roundtrip() {
-        disable_tokio_runtime();
-        assert!(!is_tokio_runtime_enabled());
+	#[cfg(feature = "async_tokio")]
+	#[test]
+	fn tokio_runtime_adapter_roundtrip() {
+		let _lock = TOKIO_ADAPTER_TEST_LOCK.lock().unwrap();
+		disable_tokio_runtime();
+		assert!(!is_tokio_runtime_enabled());
 
         enable_tokio_runtime();
         assert!(is_tokio_runtime_enabled());
@@ -266,7 +329,27 @@ mod tests {
         }));
         assert_eq!(value, 5);
 
-        disable_tokio_runtime();
-        assert!(!is_tokio_runtime_enabled());
-    }
+		disable_tokio_runtime();
+		assert!(!is_tokio_runtime_enabled());
+	}
+
+	#[cfg(feature = "async_tokio")]
+	#[test]
+	fn select_first_works_with_tokio_adapter() {
+		let _lock = TOKIO_ADAPTER_TEST_LOCK.lock().unwrap();
+		enable_tokio_runtime();
+
+        let fast = Box::pin(async move {
+            sleep_ms(1).await;
+            8
+        });
+        let slow = Box::pin(async move {
+            sleep_ms(20).await;
+            9
+        });
+
+		assert_eq!(block_on(select_first(fast, slow)), 8);
+
+		disable_tokio_runtime();
+	}
 }
