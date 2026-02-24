@@ -156,4 +156,276 @@ impl MapStorageTools {
     ) {
         map.borrow_mut().h.clear();
     }
+
+    pub fn object_map_key_id<
+        K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        key: K,
+    ) -> String {
+        return hxrt::hxref::ptr_id(&key);
+    }
+
+    pub fn object_map_set<
+        K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>>,
+        id: String,
+        key: K,
+        value: V,
+    ) {
+        {
+            let mut __s = map.borrow_mut();
+            __s.keys_map.insert(id.clone(), key);
+            __s.values_map.insert(id, value);
+        };
+    }
+
+    pub fn object_map_get_cloned<
+        K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>>,
+        id: String,
+    ) -> Option<V> {
+        return map.borrow().values_map.get(&id).cloned();
+    }
+
+    pub fn object_map_exists<
+        K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>>,
+        id: String,
+    ) -> bool {
+        return map.borrow().values_map.contains_key(&id);
+    }
+
+    pub fn object_map_remove_exists<
+        K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>>,
+        id: String,
+    ) -> bool {
+        return {
+            let mut __s = map.borrow_mut();
+            let __existed = __s.values_map.remove(&id).is_some();
+            __s.keys_map.remove(&id);
+            __existed
+        };
+    }
+
+    pub fn object_map_keys_owned<
+        K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>>,
+    ) -> hxrt::iter::Iter<K> {
+        return hxrt::iter::Iter::from_vec(
+            map.borrow().keys_map.values().cloned().collect::<Vec<_>>(),
+        );
+    }
+
+    pub fn object_map_values_owned<
+        K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>>,
+    ) -> hxrt::iter::Iter<V> {
+        return hxrt::iter::Iter::from_vec(
+            map.borrow()
+                .values_map
+                .values()
+                .cloned()
+                .collect::<Vec<_>>(),
+        );
+    }
+
+    pub fn object_map_key_values_owned<
+        K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>>,
+    ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<K, V>> {
+        return hxrt::iter::Iter::from_vec({
+            let __s = map.borrow();
+            __s.values_map
+                .iter()
+                .map(|(id, v)| hxrt::iter::KeyValue {
+                    key: __s.keys_map.get(id).unwrap().clone(),
+                    value: v.clone(),
+                })
+                .collect::<Vec<_>>()
+        });
+    }
+
+    pub fn object_map_clone_into<
+        K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        dst: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>>,
+        src: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>>,
+    ) {
+        {
+            let __s = src.borrow();
+            let mut __o = dst.borrow_mut();
+            __o.keys_map = __s.keys_map.clone();
+            __o.values_map = __s.values_map.clone();
+        };
+    }
+
+    pub fn object_map_debug_string<
+        K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>>,
+    ) -> String {
+        return format!("{:?}", map.borrow().values_map);
+    }
+
+    pub fn object_map_clear<
+        K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>>,
+    ) {
+        {
+            let mut __s = map.borrow_mut();
+            __s.keys_map.clear();
+            __s.values_map.clear();
+        };
+    }
+
+    pub fn enum_value_map_set<
+        K: Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>>,
+        id: String,
+        key: K,
+        value: V,
+    ) {
+        {
+            let mut __s = map.borrow_mut();
+            __s.keys_map.insert(id.clone(), key);
+            __s.values_map.insert(id, value);
+        };
+    }
+
+    pub fn enum_value_map_get_cloned<
+        K: Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>>,
+        id: String,
+    ) -> Option<V> {
+        return map.borrow().values_map.get(&id).cloned();
+    }
+
+    pub fn enum_value_map_exists<
+        K: Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>>,
+        id: String,
+    ) -> bool {
+        return map.borrow().values_map.contains_key(&id);
+    }
+
+    pub fn enum_value_map_remove_exists<
+        K: Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>>,
+        id: String,
+    ) -> bool {
+        return {
+            let mut __s = map.borrow_mut();
+            let __existed = __s.values_map.remove(&id).is_some();
+            __s.keys_map.remove(&id);
+            __existed
+        };
+    }
+
+    pub fn enum_value_map_keys_owned<
+        K: Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>>,
+    ) -> hxrt::iter::Iter<K> {
+        return hxrt::iter::Iter::from_vec(
+            map.borrow().keys_map.values().cloned().collect::<Vec<_>>(),
+        );
+    }
+
+    pub fn enum_value_map_values_owned<
+        K: Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>>,
+    ) -> hxrt::iter::Iter<V> {
+        return hxrt::iter::Iter::from_vec(
+            map.borrow()
+                .values_map
+                .values()
+                .cloned()
+                .collect::<Vec<_>>(),
+        );
+    }
+
+    pub fn enum_value_map_key_values_owned<
+        K: Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>>,
+    ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<K, V>> {
+        return hxrt::iter::Iter::from_vec({
+            let __s = map.borrow();
+            __s.values_map
+                .iter()
+                .map(|(id, v)| hxrt::iter::KeyValue {
+                    key: __s.keys_map.get(id).unwrap().clone(),
+                    value: v.clone(),
+                })
+                .collect::<Vec<_>>()
+        });
+    }
+
+    pub fn enum_value_map_clone_into<
+        K: Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        dst: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>>,
+        src: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>>,
+    ) {
+        {
+            let __s = src.borrow();
+            let mut __o = dst.borrow_mut();
+            __o.keys_map = __s.keys_map.clone();
+            __o.values_map = __s.values_map.clone();
+        };
+    }
+
+    pub fn enum_value_map_debug_string<
+        K: Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>>,
+    ) -> String {
+        return format!("{:?}", map.borrow().values_map);
+    }
+
+    pub fn enum_value_map_clear<
+        K: Clone + Send + Sync + 'static + std::fmt::Debug,
+        V: Clone + Send + Sync + 'static + std::fmt::Debug,
+    >(
+        map: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>>,
+    ) {
+        {
+            let mut __s = map.borrow_mut();
+            __s.keys_map.clear();
+            __s.values_map.clear();
+        };
+    }
 }

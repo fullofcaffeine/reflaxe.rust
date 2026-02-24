@@ -28,8 +28,21 @@ import haxe.Constraints.IMap;
 	"V: Clone + Send + Sync + 'static + std::fmt::Debug"
 ])
 class ObjectMap<K:{}, V> implements IMap<K, V> {
-	var keysMap:rust.HashMap<String, K>;
-	var valuesMap:rust.HashMap<String, V>;
+	/**
+		Storage backing for Rust target object-keyed map operations.
+
+		Why public
+		- `rust.MapStorageTools` centralizes unavoidable Rust-boundary map storage operations.
+		- Generated helper modules currently require direct field visibility.
+		- Keeping these private would force repeated raw fallback inside each `ObjectMap` method.
+
+		How
+		- Treat these fields as framework-internal storage.
+		- Callers should use the `IMap` API (`set/get/exists/...`) instead of direct storage access.
+	**/
+	public var keysMap:rust.HashMap<String, K>;
+
+	public var valuesMap:rust.HashMap<String, V>;
 
 	public function new():Void {
 		keysMap = new rust.HashMap();
@@ -40,7 +53,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		#if macro
 		return "";
 		#else
-		return untyped __rust__("hxrt::hxref::ptr_id(&{0})", key);
+		return rust.MapStorageTools.objectMapKeyId(key);
 		#end
 	}
 
@@ -48,7 +61,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		var id = keyId(key);
 		#if macro
 		#else
-		untyped __rust__("{ let mut __s = {0}.borrow_mut(); __s.keys_map.insert({1}.clone(), {2}); __s.values_map.insert({1}, {3}); }", this, id, key, value);
+		rust.MapStorageTools.objectMapSet(this, id, key, value);
 		#end
 	}
 
@@ -58,7 +71,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		#if macro
 		return null;
 		#else
-		return untyped __rust__("{0}.borrow().values_map.get(&{1}).cloned()", this, id);
+		return rust.MapStorageTools.objectMapGetCloned(this, id);
 		#end
 	}
 
@@ -67,7 +80,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		#if macro
 		return false;
 		#else
-		return untyped __rust__("{0}.borrow().values_map.contains_key(&{1})", this, id);
+		return rust.MapStorageTools.objectMapExists(this, id);
 		#end
 	}
 
@@ -76,9 +89,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		#if macro
 		return false;
 		#else
-		return
-			untyped __rust__("{ let mut __s = {0}.borrow_mut(); let __existed = __s.values_map.remove(&{1}).is_some(); __s.keys_map.remove(&{1}); __existed }",
-				this, id);
+		return rust.MapStorageTools.objectMapRemoveExists(this, id);
 		#end
 	}
 
@@ -86,7 +97,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		#if macro
 		return [].iterator();
 		#else
-		return untyped __rust__("hxrt::iter::Iter::from_vec({0}.borrow().keys_map.values().cloned().collect::<Vec<_>>())", this);
+		return rust.MapStorageTools.objectMapKeysOwned(this);
 		#end
 	}
 
@@ -94,7 +105,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		#if macro
 		return [].iterator();
 		#else
-		return untyped __rust__("hxrt::iter::Iter::from_vec({0}.borrow().values_map.values().cloned().collect::<Vec<_>>())", this);
+		return rust.MapStorageTools.objectMapValuesOwned(this);
 		#end
 	}
 
@@ -102,9 +113,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		#if macro
 		return [].iterator();
 		#else
-		return
-			untyped __rust__("hxrt::iter::Iter::from_vec({ let __s = {0}.borrow(); __s.values_map.iter().map(|(id, v)| hxrt::iter::KeyValue { key: __s.keys_map.get(id).unwrap().clone(), value: v.clone() }).collect::<Vec<_>>() })",
-			this);
+		return rust.MapStorageTools.objectMapKeyValuesOwned(this);
 		#end
 	}
 
@@ -112,9 +121,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		var out = new ObjectMap<K, V>();
 		#if macro
 		#else
-		untyped __rust__("{ let __s = {1}.borrow(); let mut __o = {0}.borrow_mut(); __o.keys_map = __s.keys_map.clone(); __o.values_map = __s.values_map.clone(); }",
-			out,
-			this);
+		rust.MapStorageTools.objectMapCloneInto(out, this);
 		#end
 		return out;
 	}
@@ -123,14 +130,14 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		#if macro
 		return "{}";
 		#else
-		return untyped __rust__("format!(\"{:?}\", {0}.borrow().values_map)", this);
+		return rust.MapStorageTools.objectMapDebugString(this);
 		#end
 	}
 
 	public function clear():Void {
 		#if macro
 		#else
-		untyped __rust__("{ let mut __s = {0}.borrow_mut(); __s.keys_map.clear(); __s.values_map.clear(); }", this);
+		rust.MapStorageTools.objectMapClear(this);
 		#end
 	}
 }
