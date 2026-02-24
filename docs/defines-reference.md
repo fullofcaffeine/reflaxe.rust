@@ -48,6 +48,12 @@ This page is a practical reference for the most relevant compiler defines.
     - `metal_report.json` (machine-readable)
     - `metal_report.md` (human-readable)
   - Uses the same typed snapshot as warnings, so reports and diagnostics stay in sync.
+- `rust_profile_contract_report`
+  - Emit deterministic profile-contract artifacts in the generated crate root:
+    - `profile_contract.json` (machine-readable)
+    - `profile_contract.md` (human-readable)
+  - Includes effective contract flags (`profile`, strictness, async/no-hxrt/string mode) plus
+    current profile warning/error diagnostics.
 - `rust_no_hxrt`
   - Metal-only minimal-runtime mode.
   - Omits bundled `hxrt` emission and `Cargo.toml` dependency.

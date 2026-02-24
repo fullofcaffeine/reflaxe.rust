@@ -41,6 +41,7 @@ import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability;
 import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker;
 import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot;
 import reflaxe.rust.analyze.ProfileContractAnalyzer;
+import reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics;
 import reflaxe.rust.analyze.SendSyncAnalyzer;
 import reflaxe.rust.analyze.TypeUsageAnalyzer;
 import reflaxe.rust.macros.CargoMetaRegistry;
@@ -76,6 +77,21 @@ private typedef RustTestSpec = {
 	var serial:Bool;
 	var returnKind:RustTestReturnKind;
 	var pos:haxe.macro.Expr.Position;
+};
+
+private typedef ProfileContractReportSnapshot = {
+	var schemaVersion:Int;
+	var profile:String;
+	var strictBoundary:Bool;
+	var strictExamples:Bool;
+	var metalFallbackAllowed:Bool;
+	var metalContractHardError:Bool;
+	var noHxrt:Bool;
+	var asyncEnabled:Bool;
+	var nullableStrings:Bool;
+	var usedModuleCount:Int;
+	var warnings:Array<String>;
+	var errors:Array<String>;
 };
 
 /**
@@ -360,9 +376,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		- Emits warnings for soft violations and an aggregated compile error for hard violations.
 	**/
 	function enforceProfileContracts():Void {
-		var diagnostics = ProfileContractAnalyzer.analyze(profile, snapshotUsedModulePaths(), Context.defined("rust_metal_allow_fallback"),
-			Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"),
-			Context.defined("rust_string_nullable"));
+		var diagnostics = analyzeProfileContracts();
 		#if eval
 		for (warning in diagnostics.warnings)
 			Context.warning("Rust profile contract: " + warning, Context.currentPos());
@@ -371,6 +385,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			Context.error("Rust profile contract violation(s):\n" + details, Context.currentPos());
 		}
 		#end
+	}
+
+	function analyzeProfileContracts():ProfileContractDiagnostics {
+		var diagnostics = ProfileContractAnalyzer.analyze(profile, snapshotUsedModulePaths(), Context.defined("rust_metal_allow_fallback"),
+			Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"),
+			Context.defined("rust_string_nullable"));
+		if (currentCompilationContext != null) {
+			currentCompilationContext.setProfileContractDiagnostics(diagnostics);
+		}
+		return diagnostics;
 	}
 
 	/**
@@ -855,6 +879,117 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		File.saveContent(markdownReportPath, renderMetalViabilityMarkdown(snapshot));
 	}
 
+	/**
+		Emits deterministic profile-contract report artifacts.
+
+		Why
+		- Family-level policy checks need machine-readable artifacts; stderr-only diagnostics are hard
+		  to diff and audit in CI across compilers.
+		- The report must reflect the same typed diagnostics enforced during compilation.
+
+		What
+		- Writes `profile_contract.json` and `profile_contract.md` in the generated crate root.
+		- Emission is opt-in via `-D rust_profile_contract_report`.
+
+		How
+		- Reuses cached `ProfileContractDiagnostics` stored in `CompilationContext` by
+		  `enforceProfileContracts()`.
+		- Falls back to one typed analyzer run if no cached snapshot is present.
+	**/
+	function emitProfileContractReports(outDir:String):Void {
+		if (!Context.defined("rust_profile_contract_report"))
+			return;
+
+		var snapshot = buildProfileContractReportSnapshot();
+		var jsonReportPath = Path.join([outDir, "profile_contract.json"]);
+		var markdownReportPath = Path.join([outDir, "profile_contract.md"]);
+		File.saveContent(jsonReportPath, renderProfileContractJson(snapshot));
+		File.saveContent(markdownReportPath, renderProfileContractMarkdown(snapshot));
+	}
+
+	function buildProfileContractReportSnapshot():ProfileContractReportSnapshot {
+		var diagnostics = currentCompilationContext != null ? currentCompilationContext.getProfileContractDiagnostics() : null;
+		if (diagnostics == null)
+			diagnostics = analyzeProfileContracts();
+
+		var warnings = diagnostics.warnings.copy();
+		warnings.sort(compareStrings);
+		var errors = diagnostics.errors.copy();
+		errors.sort(compareStrings);
+
+		return {
+			schemaVersion: 1,
+			profile: profile == Metal ? "metal" : "portable",
+			strictBoundary: Context.defined("reflaxe_rust_strict"),
+			strictExamples: Context.defined("reflaxe_rust_strict_examples"),
+			metalFallbackAllowed: profile == Metal && Context.defined("rust_metal_allow_fallback"),
+			metalContractHardError: metalContractHardError(),
+			noHxrt: noHxrtEnabled(),
+			asyncEnabled: asyncEnabled(),
+			nullableStrings: useNullableStringRepresentation(),
+			usedModuleCount: snapshotUsedModulePaths().length,
+			warnings: warnings,
+			errors: errors
+		};
+	}
+
+	static function renderProfileContractJson(snapshot:ProfileContractReportSnapshot):String {
+		var lines:Array<String> = [];
+		lines.push("{");
+		lines.push('\t"schemaVersion": ' + snapshot.schemaVersion + ",");
+		lines.push('\t"profile": "' + jsonEscape(snapshot.profile) + '",');
+		lines.push('\t"strictBoundary": ' + boolString(snapshot.strictBoundary) + ",");
+		lines.push('\t"strictExamples": ' + boolString(snapshot.strictExamples) + ",");
+		lines.push('\t"metalFallbackAllowed": ' + boolString(snapshot.metalFallbackAllowed) + ",");
+		lines.push('\t"metalContractHardError": ' + boolString(snapshot.metalContractHardError) + ",");
+		lines.push('\t"noHxrt": ' + boolString(snapshot.noHxrt) + ",");
+		lines.push('\t"asyncEnabled": ' + boolString(snapshot.asyncEnabled) + ",");
+		lines.push('\t"nullableStrings": ' + boolString(snapshot.nullableStrings) + ",");
+		lines.push('\t"usedModuleCount": ' + snapshot.usedModuleCount + ",");
+		lines.push('\t"warnings": [');
+		appendJsonStringArray(lines, snapshot.warnings, 2);
+		lines.push("\t],");
+		lines.push('\t"errors": [');
+		appendJsonStringArray(lines, snapshot.errors, 2);
+		lines.push("\t]");
+		lines.push("}");
+		return lines.join("\n") + "\n";
+	}
+
+	static function renderProfileContractMarkdown(snapshot:ProfileContractReportSnapshot):String {
+		var lines:Array<String> = [];
+		lines.push("# Profile Contract Report");
+		lines.push("");
+		lines.push("- schema version: `" + snapshot.schemaVersion + "`");
+		lines.push("- profile: `" + snapshot.profile + "`");
+		lines.push("- strict boundary: `" + boolLabel(snapshot.strictBoundary) + "`");
+		lines.push("- strict examples: `" + boolLabel(snapshot.strictExamples) + "`");
+		lines.push("- metal fallback allowed: `" + boolLabel(snapshot.metalFallbackAllowed) + "`");
+		lines.push("- metal contract hard error: `" + boolLabel(snapshot.metalContractHardError) + "`");
+		lines.push("- no hxrt: `" + boolLabel(snapshot.noHxrt) + "`");
+		lines.push("- async enabled: `" + boolLabel(snapshot.asyncEnabled) + "`");
+		lines.push("- nullable strings: `" + boolLabel(snapshot.nullableStrings) + "`");
+		lines.push("- used module count: `" + snapshot.usedModuleCount + "`");
+		lines.push("");
+		lines.push("## Warnings");
+		if (snapshot.warnings.length == 0) {
+			lines.push("- none");
+		} else {
+			for (warning in snapshot.warnings)
+				lines.push("- " + warning);
+		}
+		lines.push("");
+		lines.push("## Errors");
+		if (snapshot.errors.length == 0) {
+			lines.push("- none");
+		} else {
+			for (error in snapshot.errors)
+				lines.push("- " + error);
+		}
+		lines.push("");
+		return lines.join("\n");
+	}
+
 	static function renderMetalViabilityJson(snapshot:MetalViabilitySnapshot):String {
 		var lines:Array<String> = [];
 		lines.push("{");
@@ -987,6 +1122,21 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	static inline function renderMarkdownBlocker(blocker:MetalViabilityBlocker):String {
 		return "- `" + blocker.category + "/" + blocker.id + "` occurrences=`" + blocker.occurrences + "` weight=`" + blocker.weight + "`: "
 			+ blocker.summary + " Fix: " + blocker.fix;
+	}
+
+	static function appendJsonStringArray(lines:Array<String>, values:Array<String>, indentLevel:Int):Void {
+		for (index in 0...values.length) {
+			var comma = index == values.length - 1 ? "" : ",";
+			lines.push(indent(indentLevel) + '"' + jsonEscape(values[index]) + '"' + comma);
+		}
+	}
+
+	static inline function boolString(value:Bool):String {
+		return value ? "true" : "false";
+	}
+
+	static inline function boolLabel(value:Bool):String {
+		return value ? "yes" : "no";
 	}
 
 	static function jsonEscape(value:String):String {
@@ -2983,6 +3133,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		var outDir = output.outputDir;
 		emitMetalViabilityReports(outDir);
+		emitProfileContractReports(outDir);
 		var manifest = Path.join([outDir, "Cargo.toml"]);
 		if (!FileSystem.exists(manifest))
 			return;

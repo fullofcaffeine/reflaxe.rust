@@ -1,6 +1,7 @@
 package reflaxe.rust;
 
 import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot;
+import reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics;
 import reflaxe.rust.compiler.RustBuildContext;
 
 /**
@@ -34,6 +35,7 @@ class CompilationContext {
 	var metalRawExprByModule:Map<String, Int>;
 	var metalRawExprTotal:Int;
 	var metalViabilitySnapshot:Null<MetalViabilitySnapshot>;
+	var profileContractDiagnostics:ProfileContractDiagnostics;
 
 	public var crateName(get, never):String;
 	public var profile(get, never):RustProfile;
@@ -47,6 +49,7 @@ class CompilationContext {
 		this.metalRawExprByModule = [];
 		this.metalRawExprTotal = 0;
 		this.metalViabilitySnapshot = null;
+		this.profileContractDiagnostics = {warnings: [], errors: []};
 	}
 
 	inline function get_crateName():String {
@@ -133,5 +136,24 @@ class CompilationContext {
 
 	public function getMetalViability():Null<MetalViabilitySnapshot> {
 		return metalViabilitySnapshot;
+	}
+
+	/**
+		Stores latest profile-contract diagnostics for deterministic report emission.
+
+		Why
+		- Profile checks currently run before output emission and may produce warnings/errors.
+		- Report writers should consume the exact analyzed snapshot, not recompute policy from scratch.
+
+		How
+		- `RustCompiler` runs `ProfileContractAnalyzer` once and stores diagnostics here.
+		- Output-stage report emitters read this typed snapshot for `profile_contract.*`.
+	**/
+	public function setProfileContractDiagnostics(diagnostics:ProfileContractDiagnostics):Void {
+		profileContractDiagnostics = diagnostics;
+	}
+
+	public function getProfileContractDiagnostics():ProfileContractDiagnostics {
+		return profileContractDiagnostics;
 	}
 }

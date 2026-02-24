@@ -214,6 +214,110 @@ run_report_case() {
 	rm -rf "$out_a" "$out_b"
 }
 
+run_profile_contract_report_case() {
+	local fixture_rel="$1"
+	local hxml_file="$2"
+	local expected_profile="$3"
+	local failure_label="$4"
+	local fixture_dir="$root_dir/$fixture_rel"
+	local out_a="$fixture_dir/out_profile_contract_a"
+	local out_b="$fixture_dir/out_profile_contract_b"
+	local log_a="$fixture_dir/.compile_profile_a.log"
+	local log_b="$fixture_dir/.compile_profile_b.log"
+
+	rm -rf "$out_a" "$out_b"
+	rm -f "$log_a" "$log_b"
+
+	set +e
+	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_profile_contract_report -D rust_output=out_profile_contract_a) >"$log_a" 2>&1
+	local status_a=$?
+	set -e
+	if [[ "$status_a" -ne 0 ]]; then
+		echo "[metal-policy] error: expected compile success for ${failure_label} (run A)."
+		sed "s|$root_dir|.|g" "$log_a"
+		exit 1
+	fi
+
+	set +e
+	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_profile_contract_report -D rust_output=out_profile_contract_b) >"$log_b" 2>&1
+	local status_b=$?
+	set -e
+	if [[ "$status_b" -ne 0 ]]; then
+		echo "[metal-policy] error: expected compile success for ${failure_label} (run B)."
+		sed "s|$root_dir|.|g" "$log_b"
+		exit 1
+	fi
+
+	local json_a="$out_a/profile_contract.json"
+	local md_a="$out_a/profile_contract.md"
+	local json_b="$out_b/profile_contract.json"
+	local md_b="$out_b/profile_contract.md"
+
+	if [[ ! -f "$json_a" || ! -f "$md_a" ]]; then
+		echo "[metal-policy] error: expected profile contract artifacts for ${failure_label} (run A)."
+		exit 1
+	fi
+	if [[ ! -f "$json_b" || ! -f "$md_b" ]]; then
+		echo "[metal-policy] error: expected profile contract artifacts for ${failure_label} (run B)."
+		exit 1
+	fi
+
+	if ! match_regex '"schemaVersion":[[:space:]]*1' "$json_a"; then
+		echo "[metal-policy] error: profile_contract.json missing schemaVersion for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex "\"profile\":[[:space:]]*\"${expected_profile}\"" "$json_a"; then
+		echo "[metal-policy] error: profile_contract.json missing expected profile for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '"strictBoundary":[[:space:]]*(true|false)' "$json_a"; then
+		echo "[metal-policy] error: profile_contract.json missing strictBoundary for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '"warnings":[[:space:]]*\[' "$json_a"; then
+		echo "[metal-policy] error: profile_contract.json missing warnings array for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '"errors":[[:space:]]*\[' "$json_a"; then
+		echo "[metal-policy] error: profile_contract.json missing errors array for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '^# Profile Contract Report' "$md_a"; then
+		echo "[metal-policy] error: profile_contract.md missing title for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if ! match_regex '^## Warnings' "$md_a"; then
+		echo "[metal-policy] error: profile_contract.md missing warnings section for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if ! match_regex '^## Errors' "$md_a"; then
+		echo "[metal-policy] error: profile_contract.md missing errors section for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+
+	if ! cmp -s "$json_a" "$json_b"; then
+		echo "[metal-policy] error: profile_contract.json is non-deterministic across runs for ${failure_label}."
+		diff -u "$json_a" "$json_b" || true
+		exit 1
+	fi
+	if ! cmp -s "$md_a" "$md_b"; then
+		echo "[metal-policy] error: profile_contract.md is non-deterministic across runs for ${failure_label}."
+		diff -u "$md_a" "$md_b" || true
+		exit 1
+	fi
+
+	rm -f "$log_a" "$log_b"
+	rm -rf "$out_a" "$out_b"
+}
+
 run_no_hxrt_success_case() {
 	local fixture_rel="$1"
 	local hxml_file="$2"
@@ -297,6 +401,10 @@ run_warning_case "test/negative/metal_dynamic_access" "compile.viability.hxml" '
 	'1' 'metal viability summary warning output'
 run_report_case "test/negative/metal_dynamic_access" "compile.viability.hxml" \
 	'metal viability deterministic report artifacts'
+run_profile_contract_report_case "examples/hello" "compile.hxml" "portable" \
+	'portable profile contract report artifacts'
+run_profile_contract_report_case "examples/hello" "compile.metal.hxml" "metal" \
+	'metal profile contract report artifacts'
 run_warning_case "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'1' 'single aggregated metal fallback warning'
 run_no_hxrt_success_case "test/positive/metal_no_hxrt_minimal" "compile.hxml" \

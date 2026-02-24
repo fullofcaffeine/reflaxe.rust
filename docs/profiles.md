@@ -98,6 +98,16 @@ Explicit overrides:
 - `-D rust_string_nullable`
 - `-D rust_string_non_nullable`
 
+## Contract report artifact
+
+For deterministic CI/review evidence, emit a profile contract artifact with:
+
+```bash
+-D rust_profile_contract_report
+```
+
+This writes `profile_contract.json` and `profile_contract.md` in the generated crate root.
+
 ## Where profile behavior is validated
 
 - Snapshot matrix under `test/snapshot/*`.
