@@ -30,6 +30,10 @@ In `metal`, strict app boundary mode is enabled by default (`reflaxe_rust_strict
 
 - **Default (metal clean):** contract violations are errors.
 - **Fallback mode:** add `-D rust_metal_allow_fallback` to downgrade contract violations to warnings.
+- Fallback diagnostics are emitted once per compile with an aggregate summary:
+  - total `ERaw` fallback count,
+  - affected module count,
+  - top modules by fallback count.
 
 Use fallback only as a migration tool while removing non-metal-clean boundaries.
 

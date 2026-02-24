@@ -49,6 +49,58 @@ run_negative_case() {
 	rm -rf "$fixture_dir/out"
 }
 
+match_count() {
+	local pattern="$1"
+	local file="$2"
+	if [[ "$use_rg" -eq 1 ]]; then
+		rg -c -- "$pattern" "$file"
+	else
+		grep -Ec -- "$pattern" "$file"
+	fi
+}
+
+run_warning_case() {
+	local fixture_rel="$1"
+	local hxml_file="$2"
+	local expected_regex="$3"
+	local expected_count="$4"
+	local failure_label="$5"
+	local fixture_dir="$root_dir/$fixture_rel"
+	local out_dir="$fixture_dir/out_policy_warning"
+	local log_file="$fixture_dir/.compile.log"
+
+	rm -rf "$out_dir"
+	rm -f "$log_file"
+
+	set +e
+	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_output=out_policy_warning) >"$log_file" 2>&1
+	local status=$?
+	set -e
+
+	if [[ "$status" -ne 0 ]]; then
+		echo "[metal-policy] error: expected compile success for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	if ! match_regex "$expected_regex" "$log_file"; then
+		echo "[metal-policy] error: expected warning was not found for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	local found_count
+	found_count="$(match_count "$expected_regex" "$log_file")"
+	if [[ "$found_count" != "$expected_count" ]]; then
+		echo "[metal-policy] error: expected ${expected_count} warning match(es) for ${failure_label}, found ${found_count}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	rm -f "$log_file"
+	rm -rf "$out_dir"
+}
+
 run_negative_case "test/negative/metal_raw_rust" 'Strict mode forbids `__rust__\(\)` code injection in application code' \
 	'raw __rust__ in app code under metal profile'
 run_negative_case "test/negative/metal_reflect" 'metal profile forbids reflection modules' \
@@ -57,5 +109,7 @@ run_negative_case "test/negative/profile_removed_idiomatic" 'Unknown `-D reflaxe
 	'idiomatic profile selector removed'
 run_negative_case "test/negative/profile_removed_rusty" 'Unknown `-D reflaxe_rust_profile=rusty`\. Expected portable\|metal\.' \
 	'rusty profile selector removed'
+run_warning_case "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'1' 'single aggregated metal fallback warning'
 
 echo "[metal-policy] ok"

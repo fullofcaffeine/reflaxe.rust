@@ -27,6 +27,11 @@ class CompilationContext {
 	public final usedModulePaths:Array<String>;
 	public final inferredHxrtFeatures:Array<String>;
 	public var executedPasses:Array<String>;
+	public var currentModuleLabel:Null<String>;
+
+	// Metal fallback diagnostics (aggregated across transformed modules).
+	var metalRawExprByModule:Map<String, Int>;
+	var metalRawExprTotal:Int;
 
 	public var crateName(get, never):String;
 	public var profile(get, never):RustProfile;
@@ -36,6 +41,9 @@ class CompilationContext {
 		this.usedModulePaths = usedModulePaths;
 		this.inferredHxrtFeatures = inferredHxrtFeatures;
 		this.executedPasses = [];
+		this.currentModuleLabel = null;
+		this.metalRawExprByModule = [];
+		this.metalRawExprTotal = 0;
 	}
 
 	inline function get_crateName():String {
@@ -44,5 +52,50 @@ class CompilationContext {
 
 	inline function get_profile():RustProfile {
 		return build.profile;
+	}
+
+	/**
+		Records raw-expression (`ERaw`) fallback usage for a module.
+
+		Why
+		- `MetalRestrictionsPass` runs per transformed module; warning from each module creates
+		  noisy, repetitive diagnostics.
+		- We still need actionable data (which modules rely on fallback and how much).
+
+		How
+		- Passes call this once per module with the module label + local raw count.
+		- `RustCompiler` emits one end-of-compile summary warning derived from this data.
+	**/
+	public function recordMetalRawExpr(moduleLabel:String, count:Int):Void {
+		if (count <= 0)
+			return;
+		metalRawExprTotal += count;
+		var key = moduleLabel;
+		if (key == null || key.length == 0)
+			key = "<unknown>";
+		metalRawExprByModule.set(key, (metalRawExprByModule.exists(key) ? metalRawExprByModule.get(key) : 0) + count);
+	}
+
+	public inline function metalRawExprTotalCount():Int {
+		return metalRawExprTotal;
+	}
+
+	public inline function metalRawExprModuleCount():Int {
+		var n = 0;
+		for (_ in metalRawExprByModule.keys())
+			n++;
+		return n;
+	}
+
+	public function topMetalRawExprModules(limit:Int):Array<{module:String, count:Int}> {
+		var out:Array<{module:String, count:Int}> = [];
+		for (module => count in metalRawExprByModule)
+			out.push({module: module, count: count});
+		out.sort((a, b) -> {
+			if (a.count != b.count)
+				return a.count > b.count ? -1 : 1;
+			return a.module < b.module ? -1 : (a.module > b.module ? 1 : 0);
+		});
+		return out.slice(0, limit < 0 ? 0 : limit);
 	}
 }

@@ -40,6 +40,8 @@ This page is a practical reference for the most relevant compiler defines.
   - Re-enable unresolved monomorph warnings for framework/upstream std internals.
 - `rust_debug_string_types`
   - Debug define for string type diagnostics.
+- `rust_metal_allow_fallback`
+  - In `metal`, downgrades contract violations (including `ERaw` fallback detection) from errors to warnings.
 
 ## Cargo command controls
 

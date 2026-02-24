@@ -54,6 +54,7 @@ Default behavior:
 
 - **Metal clean (default)**: contract violations are compile errors.
 - **Metal fallback** (`-D rust_metal_allow_fallback`): same violations become warnings.
+- Fallback mode emits one aggregate warning per compile with total `ERaw` fallback count and top modules.
 
 Use fallback only while actively removing remaining non-metal-clean boundaries.
 

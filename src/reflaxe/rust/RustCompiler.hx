@@ -132,6 +132,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var inCodeInjectionArg:Bool = false;
 	var rustTestSpecs:Array<RustTestSpec> = [];
 	var usedModulePaths:Map<String, Bool> = [];
+	var currentCompilationContext:Null<CompilationContext> = null;
 
 	inline function wantsPreludeAliases():Bool {
 		// Always emit stable `crate::HxRc` / `crate::HxRefCell` / `crate::HxRef` aliases so:
@@ -317,6 +318,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		warnedUnresolvedMonomorphPos = [];
 		rustTestSpecs = [];
 		usedModulePaths = [];
+		currentCompilationContext = null;
 
 		// Profile selection and define validation are centralized to keep all feature gates consistent.
 		profile = ProfileResolver.resolve();
@@ -534,6 +536,44 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			deps
 		].join("\n");
 		setExtraFile(OutputPath.fromStr("Cargo.toml"), cargo);
+	}
+
+	/**
+		Emits one actionable metal-fallback summary warning per compile.
+
+		Why
+		- Per-module `ERaw` warnings are noisy for large programs and hide real action items.
+		- Metal users need a concise report showing severity + hotspots.
+
+		How
+		- `MetalRestrictionsPass` records per-module raw-expression counts in `CompilationContext`.
+		- This method aggregates those counts and emits one warning with top fallback modules.
+	**/
+	function emitMetalFallbackSummary():Void {
+		if (profile != Metal)
+			return;
+		var ctx = currentCompilationContext;
+		if (ctx == null)
+			return;
+		if (ctx.build.metalContractHardError)
+			return;
+		var total = ctx.metalRawExprTotalCount();
+		if (total <= 0)
+			return;
+
+		var moduleCount = ctx.metalRawExprModuleCount();
+		var top = ctx.topMetalRawExprModules(5);
+		var topSummary = top.map(entry -> entry.module + ":" + entry.count).join(", ");
+		#if eval
+		Context.warning("Metal fallback active: generated output contains "
+			+ total
+			+ " raw Rust expression node(s) (`ERaw`) across "
+			+ moduleCount
+			+ " module(s). Top fallback modules: "
+			+ topSummary
+			+ ". Add typed lowering for these boundaries or remove `-D rust_metal_allow_fallback` to enforce metal-clean output.",
+			Context.currentPos());
+		#end
 	}
 
 	function emitRuntimeCrate():Void {
@@ -2471,6 +2511,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	override public function onOutputComplete() {
+		emitMetalFallbackSummary();
+
 		if (!didEmitMain)
 			return;
 		if (output == null || output.outputDir == null)
