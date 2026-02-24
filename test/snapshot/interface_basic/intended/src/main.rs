@@ -26,6 +26,7 @@ mod haxe_io_output;
 mod haxe_stack_item;
 mod i_thing;
 mod impl_;
+mod rust_map_storage_tools;
 mod string_buf;
 mod sys;
 mod sys_io_stderr;

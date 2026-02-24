@@ -24,6 +24,7 @@ mod haxe_io_fp_helper;
 mod haxe_io_input;
 mod haxe_io_output;
 mod haxe_stack_item;
+mod rust_map_storage_tools;
 mod rust_option_tools;
 mod rust_result_tools;
 mod string_buf;

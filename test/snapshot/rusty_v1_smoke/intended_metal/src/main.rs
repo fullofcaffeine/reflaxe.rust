@@ -29,6 +29,7 @@ mod rust_borrow;
 mod rust_duration_tools;
 mod rust_hash_map_tools;
 mod rust_instant_tools;
+mod rust_map_storage_tools;
 mod rust_mut_slice_tools;
 mod rust_option_tools;
 mod rust_os_string_tools;

@@ -7,6 +7,13 @@ pub const __HX_TYPE_ID: u32 = 0x6cc99212u32;
 pub struct HashMapTools {}
 
 impl HashMapTools {
+    pub fn get_cloned<K: Eq + std::hash::Hash + Clone, V: Clone>(
+        m: &std::collections::HashMap<K, V>,
+        key: &K,
+    ) -> Option<V> {
+        return m.get(key).cloned();
+    }
+
     pub fn len<K, V>(m: &std::collections::HashMap<K, V>) -> i32 {
         return m.len() as i32;
     }
@@ -24,5 +31,43 @@ impl HashMapTools {
         key: &K,
     ) -> Option<V> {
         return m.remove(key);
+    }
+
+    pub fn remove_exists<K: Eq + std::hash::Hash, V>(
+        m: &mut std::collections::HashMap<K, V>,
+        key: &K,
+    ) -> bool {
+        return m.remove(key).is_some();
+    }
+
+    pub fn keys_owned<K: Eq + std::hash::Hash + Clone, V>(
+        m: &std::collections::HashMap<K, V>,
+    ) -> hxrt::iter::Iter<K> {
+        return hxrt::iter::Iter::from_vec(m.keys().cloned().collect::<Vec<_>>());
+    }
+
+    pub fn values_owned<K: Eq + std::hash::Hash, V: Clone>(
+        m: &std::collections::HashMap<K, V>,
+    ) -> hxrt::iter::Iter<V> {
+        return hxrt::iter::Iter::from_vec(m.values().cloned().collect::<Vec<_>>());
+    }
+
+    pub fn key_values_owned<K: Eq + std::hash::Hash + Clone, V: Clone>(
+        m: &std::collections::HashMap<K, V>,
+    ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<K, V>> {
+        return hxrt::iter::Iter::from_vec(
+            m.iter()
+                .map(|(k, v)| hxrt::iter::KeyValue {
+                    key: k.clone(),
+                    value: v.clone(),
+                })
+                .collect::<Vec<_>>(),
+        );
+    }
+
+    pub fn debug_string<K: Eq + std::hash::Hash + std::fmt::Debug, V: std::fmt::Debug>(
+        m: &std::collections::HashMap<K, V>,
+    ) -> String {
+        return format!("{:?}", m);
     }
 }

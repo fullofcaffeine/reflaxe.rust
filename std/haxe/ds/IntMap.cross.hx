@@ -20,7 +20,19 @@ import haxe.Constraints.IMap;
 **/
 @:rustGeneric("T: Clone + Send + Sync + 'static + std::fmt::Debug")
 class IntMap<T> implements IMap<Int, T> {
-	var h:rust.HashMap<Int, T>;
+	/**
+		Storage backing for Rust target map operations.
+
+		Why public
+		- `rust.MapStorageTools` centralizes typed boundary helpers for map operations in another module.
+		- Generated Rust helper modules currently require direct field visibility.
+		- Keeping this private would re-introduce per-method raw fallback until the compiler can emit
+		  friend-style visibility for this pattern.
+
+		How
+		- Consumers should use the `IMap` API surface.
+	**/
+	public var h:rust.HashMap<Int, T>;
 
 	public function new():Void {
 		h = new rust.HashMap();
@@ -29,7 +41,7 @@ class IntMap<T> implements IMap<Int, T> {
 	public function set(key:Int, value:T):Void {
 		#if macro
 		#else
-		untyped __rust__("{0}.borrow_mut().h.insert({1}, {2});", this, key, value);
+		rust.MapStorageTools.intMapSet(this, key, value);
 		#end
 	}
 
@@ -38,7 +50,7 @@ class IntMap<T> implements IMap<Int, T> {
 		#if macro
 		return null;
 		#else
-		return untyped __rust__("{0}.borrow().h.get(&{1}).cloned()", this, key);
+		return rust.MapStorageTools.intMapGetCloned(this, key);
 		#end
 	}
 
@@ -46,7 +58,7 @@ class IntMap<T> implements IMap<Int, T> {
 		#if macro
 		return false;
 		#else
-		return untyped __rust__("{0}.borrow().h.contains_key(&{1})", this, key);
+		return rust.MapStorageTools.intMapExists(this, key);
 		#end
 	}
 
@@ -54,7 +66,7 @@ class IntMap<T> implements IMap<Int, T> {
 		#if macro
 		return false;
 		#else
-		return untyped __rust__("{0}.borrow_mut().h.remove(&{1}).is_some()", this, key);
+		return rust.MapStorageTools.intMapRemoveExists(this, key);
 		#end
 	}
 
@@ -62,7 +74,7 @@ class IntMap<T> implements IMap<Int, T> {
 		#if macro
 		return [].iterator();
 		#else
-		return untyped __rust__("hxrt::iter::Iter::from_vec({0}.borrow().h.keys().cloned().collect::<Vec<_>>())", this);
+		return rust.MapStorageTools.intMapKeysOwned(this);
 		#end
 	}
 
@@ -70,7 +82,7 @@ class IntMap<T> implements IMap<Int, T> {
 		#if macro
 		return [].iterator();
 		#else
-		return untyped __rust__("hxrt::iter::Iter::from_vec({0}.borrow().h.values().cloned().collect::<Vec<_>>())", this);
+		return rust.MapStorageTools.intMapValuesOwned(this);
 		#end
 	}
 
@@ -78,9 +90,7 @@ class IntMap<T> implements IMap<Int, T> {
 		#if macro
 		return [].iterator();
 		#else
-		return
-			untyped __rust__("hxrt::iter::Iter::from_vec({0}.borrow().h.iter().map(|(k, v)| hxrt::iter::KeyValue { key: k.clone(), value: v.clone() }).collect::<Vec<_>>())",
-			this);
+		return rust.MapStorageTools.intMapKeyValuesOwned(this);
 		#end
 	}
 
@@ -88,7 +98,7 @@ class IntMap<T> implements IMap<Int, T> {
 		var out = new IntMap<T>();
 		#if macro
 		#else
-		untyped __rust__("{0}.borrow_mut().h = {1}.borrow().h.clone();", out, this);
+		rust.MapStorageTools.intMapCloneInto(out, this);
 		#end
 		return out;
 	}
@@ -97,14 +107,14 @@ class IntMap<T> implements IMap<Int, T> {
 		#if macro
 		return "{}";
 		#else
-		return untyped __rust__("format!(\"{:?}\", {0}.borrow().h)", this);
+		return rust.MapStorageTools.intMapDebugString(this);
 		#end
 	}
 
 	public function clear():Void {
 		#if macro
 		#else
-		untyped __rust__("{0}.borrow_mut().h.clear();", this);
+		rust.MapStorageTools.intMapClear(this);
 		#end
 	}
 }

@@ -111,6 +111,55 @@ run_warning_case() {
 	rm -rf "$out_dir"
 }
 
+run_warning_case_absent() {
+	local fixture_rel="$1"
+	local hxml_file="$2"
+	local required_regex="$3"
+	local forbidden_regex="$4"
+	local expected_count="$5"
+	local failure_label="$6"
+	local fixture_dir="$root_dir/$fixture_rel"
+	local out_dir="$fixture_dir/out_policy_warning_absent"
+	local log_file="$fixture_dir/.compile_absent.log"
+
+	rm -rf "$out_dir"
+	rm -f "$log_file"
+
+	set +e
+	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_output=out_policy_warning_absent) >"$log_file" 2>&1
+	local status=$?
+	set -e
+
+	if [[ "$status" -ne 0 ]]; then
+		echo "[metal-policy] error: expected compile success for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	if ! match_regex "$required_regex" "$log_file"; then
+		echo "[metal-policy] error: expected required warning was not found for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	local found_count
+	found_count="$(match_count "$required_regex" "$log_file")"
+	if [[ "$found_count" != "$expected_count" ]]; then
+		echo "[metal-policy] error: expected ${expected_count} required warning match(es) for ${failure_label}, found ${found_count}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	if match_regex "$forbidden_regex" "$log_file"; then
+		echo "[metal-policy] error: forbidden fallback marker found for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	rm -f "$log_file"
+	rm -rf "$out_dir"
+}
+
 run_report_case() {
 	local fixture_rel="$1"
 	local hxml_file="$2"
@@ -701,6 +750,9 @@ run_hxrt_plan_report_case "test/positive/metal_no_hxrt_minimal" "compile.hxml" "
 	'metal no-hxrt plan report artifacts'
 run_warning_case "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'1' 'single aggregated metal fallback warning'
+run_warning_case_absent "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'haxe\.ds\.(IntMap|StringMap)' \
+	'1' 'metal fallback top-modules excludes IntMap/StringMap after typed map helper migration'
 run_no_hxrt_success_case "test/positive/metal_no_hxrt_minimal" "compile.hxml" \
 	'rust_no_hxrt emits runtime-free minimal crate'
 

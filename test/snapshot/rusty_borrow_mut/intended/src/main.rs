@@ -26,6 +26,7 @@ mod haxe_io_output;
 mod haxe_stack_item;
 mod rust_borrow;
 mod rust_hash_map_tools;
+mod rust_map_storage_tools;
 mod rust_option_tools;
 mod string_buf;
 mod sys;

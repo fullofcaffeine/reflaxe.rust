@@ -25,6 +25,7 @@ mod haxe_io_input;
 mod haxe_io_output;
 mod haxe_stack_item;
 mod person;
+mod rust_map_storage_tools;
 mod rust_serde_serde_json;
 mod string_buf;
 mod sys;

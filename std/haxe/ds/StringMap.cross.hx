@@ -27,7 +27,19 @@ import haxe.Constraints.IMap;
 **/
 @:rustGeneric("T: Clone + Send + Sync + 'static + std::fmt::Debug")
 class StringMap<T> implements IMap<String, T> {
-	var h:rust.HashMap<String, T>;
+	/**
+		Storage backing for Rust target map operations.
+
+		Why public
+		- `rust.MapStorageTools` hosts shared typed boundary helpers in a separate module.
+		- Generated helper modules currently require direct field visibility in emitted Rust.
+		- Keeping this private would force repeated raw fallback in each map method until the compiler
+		  supports friend-style visibility for this cross-module pattern.
+
+		How
+		- User code should use map APIs (`set/get/...`) instead of touching storage directly.
+	**/
+	public var h:rust.HashMap<String, T>;
 
 	public function new():Void {
 		h = new rust.HashMap();
@@ -36,7 +48,7 @@ class StringMap<T> implements IMap<String, T> {
 	public function set(key:String, value:T):Void {
 		#if macro
 		#else
-		untyped __rust__("{0}.borrow_mut().h.insert({1}, {2});", this, key, value);
+		rust.MapStorageTools.stringMapSet(this, key, value);
 		#end
 	}
 
@@ -45,7 +57,7 @@ class StringMap<T> implements IMap<String, T> {
 		#if macro
 		return null;
 		#else
-		return untyped __rust__("{0}.borrow().h.get(&{1}).cloned()", this, key);
+		return rust.MapStorageTools.stringMapGetCloned(this, key);
 		#end
 	}
 
@@ -53,7 +65,7 @@ class StringMap<T> implements IMap<String, T> {
 		#if macro
 		return false;
 		#else
-		return untyped __rust__("{0}.borrow().h.contains_key(&{1})", this, key);
+		return rust.MapStorageTools.stringMapExists(this, key);
 		#end
 	}
 
@@ -61,7 +73,7 @@ class StringMap<T> implements IMap<String, T> {
 		#if macro
 		return false;
 		#else
-		return untyped __rust__("{0}.borrow_mut().h.remove(&{1}).is_some()", this, key);
+		return rust.MapStorageTools.stringMapRemoveExists(this, key);
 		#end
 	}
 
@@ -69,7 +81,7 @@ class StringMap<T> implements IMap<String, T> {
 		#if macro
 		return [].iterator();
 		#else
-		return untyped __rust__("hxrt::iter::Iter::from_vec({0}.borrow().h.keys().cloned().collect::<Vec<_>>())", this);
+		return rust.MapStorageTools.stringMapKeysOwned(this);
 		#end
 	}
 
@@ -77,7 +89,7 @@ class StringMap<T> implements IMap<String, T> {
 		#if macro
 		return [].iterator();
 		#else
-		return untyped __rust__("hxrt::iter::Iter::from_vec({0}.borrow().h.values().cloned().collect::<Vec<_>>())", this);
+		return rust.MapStorageTools.stringMapValuesOwned(this);
 		#end
 	}
 
@@ -85,9 +97,7 @@ class StringMap<T> implements IMap<String, T> {
 		#if macro
 		return [].iterator();
 		#else
-		return
-			untyped __rust__("hxrt::iter::Iter::from_vec({0}.borrow().h.iter().map(|(k, v)| hxrt::iter::KeyValue { key: k.clone(), value: v.clone() }).collect::<Vec<_>>())",
-			this);
+		return rust.MapStorageTools.stringMapKeyValuesOwned(this);
 		#end
 	}
 
@@ -95,7 +105,7 @@ class StringMap<T> implements IMap<String, T> {
 		var out = new StringMap<T>();
 		#if macro
 		#else
-		untyped __rust__("{0}.borrow_mut().h = {1}.borrow().h.clone();", out, this);
+		rust.MapStorageTools.stringMapCloneInto(out, this);
 		#end
 		return out;
 	}
@@ -104,14 +114,14 @@ class StringMap<T> implements IMap<String, T> {
 		#if macro
 		return "{}";
 		#else
-		return untyped __rust__("format!(\"{:?}\", {0}.borrow().h)", this);
+		return rust.MapStorageTools.stringMapDebugString(this);
 		#end
 	}
 
 	public function clear():Void {
 		#if macro
 		#else
-		untyped __rust__("{0}.borrow_mut().h.clear();", this);
+		rust.MapStorageTools.stringMapClear(this);
 		#end
 	}
 }

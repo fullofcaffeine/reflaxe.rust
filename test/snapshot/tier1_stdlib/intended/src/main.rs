@@ -26,6 +26,7 @@ mod haxe_io_input;
 mod haxe_io_output;
 mod haxe_stack_item;
 mod my_enum;
+mod rust_map_storage_tools;
 mod string_buf;
 mod sys;
 mod sys_io_stderr;

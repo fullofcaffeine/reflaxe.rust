@@ -12,17 +12,20 @@ package rust;
 @:native("std::collections::HashMap")
 extern class HashMap<K, V> {
 	public function new();
+	public function clone():HashMap<K, V>;
+	@:rustMutating
+	public function clear():Void;
 
 	@:rustMutating
-	public function insert(key: K, value: V): Option<V>;
+	public function insert(key:K, value:V):Option<V>;
 
-	public function get(key: Ref<K>): Option<Ref<V>>;
+	public function get(key:Ref<K>):Option<Ref<V>>;
 
 	@:native("contains_key")
-	public function containsKey(key: Ref<K>): Bool;
+	public function containsKey(key:Ref<K>):Bool;
 
 	@:rustMutating
-	public function remove(key: Ref<K>): Option<V>;
+	public function remove(key:Ref<K>):Option<V>;
 
 	/**
 	 * Iterate borrowed keys (`&K`) without moving the map.
@@ -31,10 +34,10 @@ extern class HashMap<K, V> {
 	 * so `for (k in map.keys())` typechecks. The compiler lowers the for-loop to
 	 * a Rust `for` directly.
 	 */
-	public function keys(): Iterator<Ref<K>>;
+	public function keys():Iterator<Ref<K>>;
 
 	/**
 	 * Iterate borrowed values (`&V`) without moving the map.
 	 */
-	public function values(): Iterator<Ref<V>>;
+	public function values():Iterator<Ref<V>>;
 }

@@ -5,7 +5,7 @@ pub const __HX_TYPE_ID: u32 = 0x39e0cd5bu32;
 #[derive(Debug)]
 
 pub struct IntMap<T: Clone + Send + Sync + 'static + std::fmt::Debug> {
-    h: std::collections::HashMap<i32, T>,
+    pub h: std::collections::HashMap<i32, T>,
 }
 
 impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> IntMap<T> {
@@ -18,35 +18,48 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> IntMap<T> {
 
     pub fn set(self_: &crate::HxRefCell<IntMap<T>>, key: i32, value: T) {
         let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
-        __hx_this.borrow_mut().h.insert(key, value);
+        crate::rust_map_storage_tools::MapStorageTools::int_map_set(
+            __hx_this.clone(),
+            key,
+            value.clone(),
+        );
     }
 
     pub fn get(self_: &crate::HxRefCell<IntMap<T>>, key: i32) -> Option<T> {
         let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
-        return __hx_this.borrow().h.get(&key).cloned();
+        return crate::rust_map_storage_tools::MapStorageTools::int_map_get_cloned(
+            __hx_this.clone(),
+            key,
+        );
     }
 
     pub fn exists(self_: &crate::HxRefCell<IntMap<T>>, key: i32) -> bool {
         let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
-        return __hx_this.borrow().h.contains_key(&key);
+        return crate::rust_map_storage_tools::MapStorageTools::int_map_exists(
+            __hx_this.clone(),
+            key,
+        );
     }
 
     pub fn remove(self_: &crate::HxRefCell<IntMap<T>>, key: i32) -> bool {
         let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
-        return __hx_this.borrow_mut().h.remove(&key).is_some();
+        return crate::rust_map_storage_tools::MapStorageTools::int_map_remove_exists(
+            __hx_this.clone(),
+            key,
+        );
     }
 
     pub fn keys(self_: &crate::HxRefCell<IntMap<T>>) -> hxrt::iter::Iter<i32> {
         let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
-        return hxrt::iter::Iter::from_vec(
-            __hx_this.borrow().h.keys().cloned().collect::<Vec<_>>(),
+        return crate::rust_map_storage_tools::MapStorageTools::int_map_keys_owned(
+            __hx_this.clone(),
         );
     }
 
     pub fn iterator(self_: &crate::HxRefCell<IntMap<T>>) -> hxrt::iter::Iter<T> {
         let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
-        return hxrt::iter::Iter::from_vec(
-            __hx_this.borrow().h.values().cloned().collect::<Vec<_>>(),
+        return crate::rust_map_storage_tools::MapStorageTools::int_map_values_owned(
+            __hx_this.clone(),
         );
     }
 
@@ -54,16 +67,8 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> IntMap<T> {
         self_: &crate::HxRefCell<IntMap<T>>,
     ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<i32, T>> {
         let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
-        return hxrt::iter::Iter::from_vec(
-            __hx_this
-                .borrow()
-                .h
-                .iter()
-                .map(|(k, v)| hxrt::iter::KeyValue {
-                    key: k.clone(),
-                    value: v.clone(),
-                })
-                .collect::<Vec<_>>(),
+        return crate::rust_map_storage_tools::MapStorageTools::int_map_key_values_owned(
+            __hx_this.clone(),
         );
     }
 
@@ -73,18 +78,23 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> IntMap<T> {
         let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
         let out: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> =
             crate::haxe_ds_int_map::IntMap::<T>::new();
-        out.borrow_mut().h = __hx_this.borrow().h.clone();
+        crate::rust_map_storage_tools::MapStorageTools::int_map_clone_into(
+            out.clone(),
+            __hx_this.clone(),
+        );
         return out;
     }
 
     pub fn to_string(self_: &crate::HxRefCell<IntMap<T>>) -> String {
         let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
-        return format!("{:?}", __hx_this.borrow().h);
+        return crate::rust_map_storage_tools::MapStorageTools::int_map_debug_string(
+            __hx_this.clone(),
+        );
     }
 
     pub fn clear(self_: &crate::HxRefCell<IntMap<T>>) {
         let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
-        __hx_this.borrow_mut().h.clear();
+        crate::rust_map_storage_tools::MapStorageTools::int_map_clear(__hx_this.clone());
     }
 }
 
