@@ -52,7 +52,18 @@ This prints one summary warning with:
 - blocker count,
 - top fallback-risk modules and global policy blockers.
 
-The compiler stores this typed snapshot internally for deterministic report emission in milestone 22.2.
+To emit deterministic viability artifacts in the generated crate root, add:
+
+```bash
+-D rust_metal_viability_report
+```
+
+This writes:
+
+- `metal_report.json` (machine-readable snapshot),
+- `metal_report.md` (human-readable summary).
+
+Both reports reuse the same typed snapshot as warning output.
 
 Current contract checks include:
 

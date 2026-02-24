@@ -33,6 +33,9 @@ import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustVisibility;
 import reflaxe.helpers.TypeHelper;
 import reflaxe.rust.analyze.MetalViabilityAnalyzer;
+import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability;
+import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker;
+import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot;
 import reflaxe.rust.analyze.ProfileContractAnalyzer;
 import reflaxe.rust.analyze.SendSyncAnalyzer;
 import reflaxe.rust.analyze.TypeUsageAnalyzer;
@@ -721,6 +724,178 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			+ snapshot.moduleReadyCount + ", blockers=" + snapshot.blockerCount + ". Top modules: " + topModules + ". Global blockers: " + globalBlockers + ".",
 			Context.currentPos());
 		#end
+	}
+
+	/**
+		Emits deterministic metal viability report artifacts.
+
+		Why
+		- Milestone 22.2 requires stable report artifacts (`metal_report.json` + `metal_report.md`)
+		  so CI/tools can diff viability progress without parsing compiler warnings.
+		- The report must come from one typed snapshot source to avoid drift between warning text,
+		  docs, and machine-readable output.
+
+		What
+		- Writes two files in the generated crate root:
+		  - `metal_report.json` (machine-readable, deterministic order),
+		  - `metal_report.md` (human-readable summary with actionable blockers).
+		- Emission is opt-in via `-D rust_metal_viability_report` to keep default output minimal.
+
+		How
+		- Reuses `CompilationContext.getMetalViability()` snapshot created by `analyzeMetalViability()`.
+		- Uses explicit typed serializers (no `Dynamic`/`Reflect`) to keep ordering stable and policy-safe.
+	**/
+	function emitMetalViabilityReports(outDir:String):Void {
+		if (profile != Metal)
+			return;
+		if (!Context.defined("rust_metal_viability_report"))
+			return;
+
+		var ctx = currentCompilationContext;
+		if (ctx == null)
+			return;
+		var snapshot = ctx.getMetalViability();
+		if (snapshot == null)
+			return;
+
+		var jsonReportPath = Path.join([outDir, "metal_report.json"]);
+		var markdownReportPath = Path.join([outDir, "metal_report.md"]);
+		File.saveContent(jsonReportPath, renderMetalViabilityJson(snapshot));
+		File.saveContent(markdownReportPath, renderMetalViabilityMarkdown(snapshot));
+	}
+
+	static function renderMetalViabilityJson(snapshot:MetalViabilitySnapshot):String {
+		var lines:Array<String> = [];
+		lines.push("{");
+		lines.push('\t"schemaVersion": 1,');
+		lines.push('\t"profile": "metal",');
+		lines.push('\t"overallScore": ' + snapshot.overallScore + ",");
+		lines.push('\t"moduleCount": ' + snapshot.moduleCount + ",");
+		lines.push('\t"moduleReadyCount": ' + snapshot.moduleReadyCount + ",");
+		lines.push('\t"blockerCount": ' + snapshot.blockerCount + ",");
+		lines.push('\t"globalBlockers": [');
+		appendJsonBlockers(lines, snapshot.globalBlockers, 2);
+		lines.push("\t],");
+		lines.push('\t"modules": [');
+		appendJsonModules(lines, snapshot.modules, 2);
+		lines.push("\t]");
+		lines.push("}");
+		return lines.join("\n") + "\n";
+	}
+
+	static function appendJsonModules(lines:Array<String>, modules:Array<MetalModuleViability>, indentLevel:Int):Void {
+		for (index in 0...modules.length) {
+			var module = modules[index];
+			var comma = index == modules.length - 1 ? "" : ",";
+			lines.push(indent(indentLevel) + "{");
+			lines.push(indent(indentLevel + 1) + '"module": "' + jsonEscape(module.module) + '",');
+			lines.push(indent(indentLevel + 1) + '"score": ' + module.score + ",");
+			lines.push(indent(indentLevel + 1) + '"metalReady": ' + (module.metalReady ? "true" : "false") + ",");
+			lines.push(indent(indentLevel + 1) + '"blockers": [');
+			appendJsonBlockers(lines, module.blockers, indentLevel + 2);
+			lines.push(indent(indentLevel + 1) + "]");
+			lines.push(indent(indentLevel) + "}" + comma);
+		}
+	}
+
+	static function appendJsonBlockers(lines:Array<String>, blockers:Array<MetalViabilityBlocker>, indentLevel:Int):Void {
+		for (index in 0...blockers.length) {
+			var blocker = blockers[index];
+			var comma = index == blockers.length - 1 ? "" : ",";
+			lines.push(indent(indentLevel) + "{");
+			lines.push(indent(indentLevel + 1) + '"id": "' + jsonEscape(blocker.id) + '",');
+			lines.push(indent(indentLevel + 1) + '"category": "' + jsonEscape(blocker.category) + '",');
+			lines.push(indent(indentLevel + 1) + '"summary": "' + jsonEscape(blocker.summary) + '",');
+			lines.push(indent(indentLevel + 1) + '"fix": "' + jsonEscape(blocker.fix) + '",');
+			lines.push(indent(indentLevel + 1) + '"occurrences": ' + blocker.occurrences + ",");
+			lines.push(indent(indentLevel + 1) + '"weight": ' + blocker.weight);
+			lines.push(indent(indentLevel) + "}" + comma);
+		}
+	}
+
+	static function renderMetalViabilityMarkdown(snapshot:MetalViabilitySnapshot):String {
+		var lines:Array<String> = [];
+		lines.push("# Metal Viability Report");
+		lines.push("");
+		lines.push("- profile: `metal`");
+		lines.push("- overall score: `" + snapshot.overallScore + "/100`");
+		lines.push("- modules: `" + snapshot.moduleCount + "`");
+		lines.push("- metal-ready modules: `" + snapshot.moduleReadyCount + "`");
+		lines.push("- blocker count: `" + snapshot.blockerCount + "`");
+		lines.push("");
+		lines.push("## Global blockers");
+		if (snapshot.globalBlockers.length == 0) {
+			lines.push("- none");
+		} else {
+			for (blocker in snapshot.globalBlockers)
+				lines.push(renderMarkdownBlocker(blocker));
+		}
+		lines.push("");
+		lines.push("## Modules");
+		if (snapshot.modules.length == 0) {
+			lines.push("- none");
+			lines.push("");
+		} else {
+			for (module in snapshot.modules) {
+				lines.push("### `" + module.module + "`");
+				lines.push("- score: `" + module.score + "/100`");
+				lines.push("- metal-ready: `" + (module.metalReady ? "yes" : "no") + "`");
+				if (module.blockers.length == 0) {
+					lines.push("- blockers: none");
+				} else {
+					lines.push("- blockers:");
+					for (blocker in module.blockers)
+						lines.push(renderMarkdownBlocker(blocker));
+				}
+				lines.push("");
+			}
+		}
+		return lines.join("\n");
+	}
+
+	static inline function renderMarkdownBlocker(blocker:MetalViabilityBlocker):String {
+		return "- `" + blocker.category + "/" + blocker.id + "` occurrences=`" + blocker.occurrences + "` weight=`" + blocker.weight + "`: "
+			+ blocker.summary + " Fix: " + blocker.fix;
+	}
+
+	static function jsonEscape(value:String):String {
+		if (value == null)
+			return "";
+		var buf = new StringBuf();
+		for (index in 0...value.length) {
+			var code = value.charCodeAt(index);
+			switch (code) {
+				case 8:
+					buf.add("\\b");
+				case 9:
+					buf.add("\\t");
+				case 10:
+					buf.add("\\n");
+				case 12:
+					buf.add("\\f");
+				case 13:
+					buf.add("\\r");
+				case 34:
+					buf.add("\\\"");
+				case 92:
+					buf.add("\\\\");
+				default:
+					if (code < 32) {
+						buf.add("\\u");
+						buf.add(StringTools.hex(code, 4).toLowerCase());
+					} else {
+						buf.addChar(code);
+					}
+			}
+		}
+		return buf.toString();
+	}
+
+	static inline function indent(level:Int):String {
+		var buf = new StringBuf();
+		for (_ in 0...level)
+			buf.add("\t");
+		return buf.toString();
 	}
 
 	function emitRuntimeCrate():Void {
@@ -2675,6 +2850,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return;
 
 		var outDir = output.outputDir;
+		emitMetalViabilityReports(outDir);
 		var manifest = Path.join([outDir, "Cargo.toml"]);
 		if (!FileSystem.exists(manifest))
 			return;

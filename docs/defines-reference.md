@@ -45,6 +45,11 @@ This page is a practical reference for the most relevant compiler defines.
 - `rust_metal_viability_warn`
   - In `metal`, emit one compile-time viability summary warning (score + blocker counts + top modules).
   - Intended for CI/review loops while reducing fallback hotspots ahead of full report artifacts.
+- `rust_metal_viability_report`
+  - In `metal`, emit deterministic viability artifacts in the generated crate root:
+    - `metal_report.json` (machine-readable)
+    - `metal_report.md` (human-readable)
+  - Uses the same typed snapshot as warnings, so reports and diagnostics stay in sync.
 - `rust_no_hxrt`
   - Metal-only minimal-runtime mode.
   - Omits bundled `hxrt` emission and `Cargo.toml` dependency.
