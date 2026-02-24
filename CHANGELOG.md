@@ -1,3 +1,29 @@
+# [0.59.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.58.0...v0.59.0) (2026-02-24)
+
+
+### Bug Fixes
+
+* allowlist std_is_of_type dynamic snapshot boundary ([1e19c43](https://github.com/fullofcaffeine/reflaxe.rust/commit/1e19c43347fd0a6fb16d22cdc0ee129e66203108))
+* emit inherited interface trait impls ([0560f60](https://github.com/fullofcaffeine/reflaxe.rust/commit/0560f60aa271ece6c494c73e9e8f95bbf95c7dab))
+* make Std.isOfType honor interface subtyping ([1841f94](https://github.com/fullofcaffeine/reflaxe.rust/commit/1841f94d8d8215572f9d4dbeb341ba91d3f0d95b))
+* normalize return-block lowering and harden regression coverage ([9f0100b](https://github.com/fullofcaffeine/reflaxe.rust/commit/9f0100be939a1d89ee53dfdfcfdba26dba13e2fd))
+* preserve dynamic type ids for Std.isOfType ([613d618](https://github.com/fullofcaffeine/reflaxe.rust/commit/613d61873dbc4130796c21f74386f148bbfe03bd))
+* stabilize hxrt perf inproc timing ([880140d](https://github.com/fullofcaffeine/reflaxe.rust/commit/880140d1b6ac22f7764fd2833f6fe82d34e12e0a))
+* unify gitleaks and local path guard wiring ([6c241a2](https://github.com/fullofcaffeine/reflaxe.rust/commit/6c241a2b7b070e52fbb7c0f36b30477dbe1cd26c))
+
+
+### Features
+
+* add pass pipeline and hxrt feature inference ([8f10445](https://github.com/fullofcaffeine/reflaxe.rust/commit/8f10445234340a27b92c9848cdc4c2c980ce7002))
+* add rust.concurrent API layer with hxrt runtime support ([5313d0b](https://github.com/fullofcaffeine/reflaxe.rust/commit/5313d0bf61e92e45068cd1d3378b035940e9dc34))
+* add security plumbing to generated projects ([608e0f6](https://github.com/fullofcaffeine/reflaxe.rust/commit/608e0f69e80f364905bdc3dd763d87e363482f2e))
+* **async:** add task helpers and tokio adapter surface ([b0896aa](https://github.com/fullofcaffeine/reflaxe.rust/commit/b0896aa46ca434d5693607e2bc13052399878a56))
+* enforce profile contracts and add profile snapshot coverage ([6f2d480](https://github.com/fullofcaffeine/reflaxe.rust/commit/6f2d4807e1c5ff9f9e111f0079b30504514505e4))
+* **metal:** aggregate ERaw fallback diagnostics and harden policy checks ([753a83a](https://github.com/fullofcaffeine/reflaxe.rust/commit/753a83a956382593b698794309c1dc30d50529c4))
+* **metal:** enforce rust_no_hxrt minimal-runtime contract ([4c34c95](https://github.com/fullofcaffeine/reflaxe.rust/commit/4c34c9583714c359591b1fdcf7632e978be0a0f5))
+* **perf:** add hxrt overhead ci tracking and profile targets ([7ed6395](https://github.com/fullofcaffeine/reflaxe.rust/commit/7ed63955b04ac92567123999d902dbbaf9a3c7ae))
+* **perf:** track metal no-hxrt parity case ([739aaeb](https://github.com/fullofcaffeine/reflaxe.rust/commit/739aaeb3d836fe9631add2cba7be00be322e2f82))
+
 # [0.58.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.57.0...v0.58.0) (2026-02-19)
 
 
