@@ -219,7 +219,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	inline function asyncEnabled():Bool {
-		return Context.defined("rust_async") || Context.defined("rust_async_preview");
+		return Context.defined("rust_async");
 	}
 
 	inline function rustStringTypePath():String {
@@ -1607,7 +1607,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				var isAsyncMethod = hasAsyncFunctionMeta(f.field.meta);
 				var asyncInnerRet:Null<Type> = null;
 				if (isAsyncMethod) {
-					ensureAsyncPreviewAllowed(f.field.pos);
+					ensureAsyncAllowed(f.field.pos);
 					asyncInnerRet = rustFutureInnerType(f.ret);
 					if (asyncInnerRet == null) {
 						#if eval
@@ -1647,7 +1647,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 			var mainFunc = findStaticMain(funcFields);
 			if (mainFunc != null && hasAsyncFunctionMeta(mainFunc.field.meta)) {
-				ensureAsyncPreviewAllowed(mainFunc.field.pos);
+				ensureAsyncAllowed(mainFunc.field.pos);
 				#if eval
 				Context.error("`main` cannot be marked async in preview mode. Keep `main` sync and call `rust.async.Async.blockOn(...)` at the boundary.",
 					mainFunc.field.pos);
@@ -2523,10 +2523,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return name == ":await" || name == "await" || name == ":rustAwait" || name == "rustAwait";
 	}
 
-	function ensureAsyncPreviewAllowed(pos:haxe.macro.Expr.Position):Void {
+	function ensureAsyncAllowed(pos:haxe.macro.Expr.Position):Void {
 		if (!asyncEnabled()) {
 			#if eval
-			Context.error("Async support requires `-D rust_async` (or legacy alias `-D rust_async_preview`).", pos);
+			Context.error("Async support requires `-D rust_async`.", pos);
 			#end
 			return;
 		}
@@ -3301,7 +3301,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function compileConstructor(classType:ClassType, varFields:Array<ClassVarData>, f:ClassFuncData):reflaxe.rust.ast.RustAST.RustFunction {
 		if (hasAsyncFunctionMeta(f.field.meta)) {
-			ensureAsyncPreviewAllowed(f.field.pos);
+			ensureAsyncAllowed(f.field.pos);
 			#if eval
 			Context.error("Constructors cannot be marked `@:async` / `@:rustAsync` in preview mode.", f.field.pos);
 			#end
@@ -3783,7 +3783,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function compileInstanceMethod(classType:ClassType, f:ClassFuncData, methodOwner:ClassType):reflaxe.rust.ast.RustAST.RustFunction {
 		if (hasAsyncFunctionMeta(f.field.meta)) {
-			ensureAsyncPreviewAllowed(f.field.pos);
+			ensureAsyncAllowed(f.field.pos);
 			#if eval
 			Context.error("`@:async`/`@:rustAsync` is currently supported only on static methods.", f.field.pos);
 			#end
@@ -3850,7 +3850,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var isAsyncMethod = hasAsyncFunctionMeta(f.field.meta);
 		var asyncInnerRet:Null<Type> = null;
 		if (isAsyncMethod) {
-			ensureAsyncPreviewAllowed(f.field.pos);
+			ensureAsyncAllowed(f.field.pos);
 			asyncInnerRet = rustFutureInnerType(f.ret);
 			if (asyncInnerRet == null) {
 				#if eval
@@ -7563,7 +7563,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				var cls = clsRef.get();
 				var field = fieldRef.get();
 				if (isRustAsyncClass(cls)) {
-					ensureAsyncPreviewAllowed(fullExpr.pos);
+					ensureAsyncAllowed(fullExpr.pos);
 					var fieldName = field.getHaxeName();
 					switch (fieldName) {
 						case "await": {

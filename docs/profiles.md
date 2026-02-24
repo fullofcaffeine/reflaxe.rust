@@ -52,7 +52,7 @@ Default behavior:
 
 ## Async profile gate
 
-`-D rust_async` (or legacy `-D rust_async_preview`) requires:
+`-D rust_async` requires:
 
 ```bash
 -D reflaxe_rust_profile=metal

@@ -31,7 +31,7 @@ CI variants:
 | `examples/hello` | Yes | Yes | Minimal sanity check with portable and metal compile targets. |
 | `examples/bytes_ops` | Yes | Yes | Bytes APIs + Haxe-authored Rust tests (`@:rustTest`). |
 | `examples/serde_json` | Yes | Yes | Typed Serde JSON surfaces. |
-| `examples/async_retry_pipeline` | No | Yes | Async preview scenario (`rust_async`). |
+| `examples/async_retry_pipeline` | No | Yes | Async scenario (`rust_async`). |
 | `examples/tui_todo` | Yes | Yes | Large app with deterministic TUI harness tests. |
 | `examples/sys_file_io` | Yes | No | Sys file APIs / stat / rename checks. |
 | `examples/sys_net_loopback` | Yes | No | Focused socket API smoke test. |

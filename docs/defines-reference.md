@@ -28,8 +28,6 @@ This page is a practical reference for the most relevant compiler defines.
 - `rust_async`
   - Enable async/await surfaces (`rust.async.Future`, `rust.async.Async.*`).
   - Requires `reflaxe_rust_profile=metal`.
-- `rust_async_preview`
-  - Legacy alias for `rust_async` (deprecated).
 - `rust_string_nullable`
   - Force nullable string representation.
 - `rust_string_non_nullable`
@@ -56,7 +54,7 @@ This page is a practical reference for the most relevant compiler defines.
   - Enforces a no-`hxrt` generated output contract (compile error on runtime references).
   - Incompatible with:
     - `rust_string_nullable`
-    - `rust_async` / `rust_async_preview`
+    - `rust_async`
     - `rust_hxrt_default_features`, `rust_hxrt_no_feature_infer`, `rust_hxrt_features`
 
 ## Cargo command controls

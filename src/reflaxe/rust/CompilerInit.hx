@@ -98,21 +98,19 @@ class CompilerInit {
 				Context.currentPos());
 		}
 
-		var wantsAsync = Context.defined("rust_async") || Context.defined("rust_async_preview");
+		if (Context.defined("rust_async_preview")) {
+			Context.error("`-D rust_async_preview` was removed. Use `-D rust_async`.", Context.currentPos());
+		}
+
+		var wantsAsync = Context.defined("rust_async");
 		if (wantsAsync) {
 			if (!ProfileResolver.isRustFirst(profile)) {
-				Context.error("Async (`-D rust_async`, legacy `-D rust_async_preview`) currently requires `-D reflaxe_rust_profile=metal`.",
-					Context.currentPos());
+				Context.error("Async (`-D rust_async`) currently requires `-D reflaxe_rust_profile=metal`.", Context.currentPos());
 			}
 			if (wantsNoHxrt) {
-				Context.error("Async (`-D rust_async`, legacy `-D rust_async_preview`) is incompatible with `-D rust_no_hxrt` because async lowering currently uses `hxrt::async_`.",
+				Context.error("Async (`-D rust_async`) is incompatible with `-D rust_no_hxrt` because async lowering currently uses `hxrt::async_`.",
 					Context.currentPos());
 			}
-			#if eval
-			if (Context.defined("rust_async_preview") && !Context.defined("rust_async")) {
-				Context.warning("`-D rust_async_preview` is deprecated; use `-D rust_async`.", Context.currentPos());
-			}
-			#end
 			AsyncSyntaxMacro.init();
 		}
 

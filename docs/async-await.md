@@ -18,8 +18,8 @@ Use this when:
 -D rust_async
 ```
 
-Legacy alias:
-- `-D rust_async_preview` (deprecated; still accepted).
+Removed define:
+- `-D rust_async_preview` is no longer supported; use `-D rust_async`.
 
 2. Use `rust.async.Future<T>` return types for async functions.
 3. Mark async functions with `@:rustAsync` (or `@:async`).

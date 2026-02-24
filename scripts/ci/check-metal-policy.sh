@@ -283,6 +283,8 @@ run_negative_case "test/negative/metal_no_hxrt_requires_metal" '`-D rust_no_hxrt
 	'rust_no_hxrt requires metal profile'
 run_negative_case "test/negative/metal_no_hxrt_runtime_boundary" '`-D rust_no_hxrt` violation in module' \
 	'rust_no_hxrt rejects runtime-dependent output'
+run_negative_case "test/negative/async_preview_removed" '`-D rust_async_preview` was removed\. Use `-D rust_async`\.' \
+	'rust_async_preview define removed'
 run_negative_case "test/negative/profile_removed_idiomatic" 'Unknown `-D reflaxe_rust_profile=idiomatic`\. Expected portable\|metal\.' \
 	'idiomatic profile selector removed'
 run_negative_case "test/negative/profile_removed_rusty" 'Unknown `-D reflaxe_rust_profile=rusty`\. Expected portable\|metal\.' \

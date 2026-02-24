@@ -96,7 +96,7 @@ Current contract checks include:
 ## String and async defaults
 
 - Default string representation is non-null Rust `String` (unless explicitly overridden).
-- `-D rust_async` / `-D rust_async_preview` are supported in metal.
+- `-D rust_async` is supported in metal.
 
 ## Minimal Runtime Mode (`rust_no_hxrt`)
 
@@ -116,7 +116,7 @@ Important constraints:
 
 - requires `-D reflaxe_rust_profile=metal`,
 - cannot be combined with `-D rust_string_nullable`,
-- cannot be combined with `-D rust_async` / `-D rust_async_preview`,
+- cannot be combined with `-D rust_async`,
 - cannot be combined with `rust_hxrt_*` feature-selection defines.
 
 Use this mode for Rust-first subsets that intentionally avoid portable runtime semantics.

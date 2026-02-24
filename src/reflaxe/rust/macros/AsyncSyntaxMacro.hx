@@ -18,7 +18,7 @@ import haxe.macro.ExprTools;
  * - Rewrites `@:await e` / `@:rustAwait e` to `rust.async.Async.await(e)` before typing.
  *
  * How:
- * - Registered as a global `@:build(...)` macro while `-D rust_async_preview` is enabled.
+ * - Registered as a global `@:build(...)` macro while `-D rust_async` is enabled.
  * - Applies to function bodies and field initializers in user/framework code.
  */
 class AsyncSyntaxMacro {
