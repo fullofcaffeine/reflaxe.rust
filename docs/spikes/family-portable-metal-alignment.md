@@ -106,3 +106,15 @@ Created from this matrix:
 - `haxe.rust-14g` - add typed hxrt feature provenance mapping.
 - `haxe.rust-bzq` - add targeted fixture checks for report determinism/shape.
 - `haxe.rust-in3` - publish docs navigation links + explicit deviation notes.
+
+## Deviation Notes (Rust vs Family Contract)
+
+As of 2026-02-24, there are no unresolved Rust-vs-family contract deviations from this spike:
+
+| Area | Expected family state | Rust state | Owner | Status |
+| --- | --- | --- | --- | --- |
+| Profile contract reports | Deterministic `profile_contract.{json,md}` artifacts | Implemented (`haxe.rust-t8e`) | `@fullofcaffeine` | closed |
+| Runtime plan reports | Deterministic `hxrt_plan.{json,md}` artifacts | Implemented (`haxe.rust-xth`) | `@fullofcaffeine` | closed |
+| Feature provenance | Typed per-feature reason mapping | Implemented (`haxe.rust-14g`) | `@fullofcaffeine` | closed |
+| Family fixture checks | Deterministic report-shape CI coverage | Implemented (`haxe.rust-bzq`) | `@fullofcaffeine` | closed |
+| Docs navigation parity | Family spike linked from docs index with explicit status | Implemented (`haxe.rust-in3`) | `@fullofcaffeine` | closed |
