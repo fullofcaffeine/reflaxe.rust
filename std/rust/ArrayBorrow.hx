@@ -6,7 +6,8 @@ package rust;
  * Borrow helpers for Haxe `Array<T>` that map to the underlying Rust storage.
  *
  * Why:
- * - On this target, Haxe `Array<T>` maps to `hxrt::array::Array<T>` (a shared `Rc<RefCell<Vec<T>>>`).
+ * - On this target, Haxe `Array<T>` maps to `hxrt::array::Array<T>` (a shared `HxRef<Vec<T>>`
+ *   backed by `Arc` + interior mutability locks in `hxrt::cell`).
  * - Rust APIs often want slices (`&[T]` / `&mut [T]`) instead of a higher-level container type.
  * - We want **zero-clone** slice access without using `__rust__` directly in app code.
  *
@@ -29,14 +30,15 @@ package rust;
  *
  * Rules / gotchas:
  * - Never return/store the `Slice`/`MutSlice` outside the callback; Haxe cannot express Rust lifetimes.
- * - Avoid re-borrowing the same array mutably while a slice is live (Rust will panic on nested `RefCell` borrows).
+ * - Avoid nested mutable borrows on the same array while a mutable slice is live; the runtime lock
+ *   can block/reject conflicting access depending on call ordering.
  */
 class ArrayBorrow {
-	public static function withSlice<T, R>(array: Array<T>, f: Slice<T>->R): R {
+	public static function withSlice<T, R>(array:Array<T>, f:Slice<T>->R):R {
 		return untyped __rust__("hxrt::array::with_slice({0}, {1})", array, f);
 	}
 
-	public static function withMutSlice<T, R>(array: Array<T>, f: MutSlice<T>->R): R {
+	public static function withMutSlice<T, R>(array:Array<T>, f:MutSlice<T>->R):R {
 		return untyped __rust__("hxrt::array::with_mut_slice({0}, {1})", array, f);
 	}
 }

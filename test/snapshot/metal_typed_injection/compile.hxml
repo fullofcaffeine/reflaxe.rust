@@ -1,4 +1,5 @@
 -cp .
 -lib reflaxe.rust
 -D reflaxe_rust_profile=metal
+-D rust_metal_allow_fallback
 -main Main

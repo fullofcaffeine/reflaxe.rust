@@ -326,6 +326,7 @@ dependencies = [
  "hostname",
  "md-5",
  "mio",
+ "oid-registry",
  "parking_lot",
  "pem-rfc7468",
  "pollster",

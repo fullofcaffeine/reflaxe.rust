@@ -1,7 +1,7 @@
 package reflaxe.rust.ast;
 
 /**
- * Minimal Rust AST for the POC compiler.
+ * Minimal Rust AST for the reflaxe.rust compiler.
  *
  * Keep this deliberately small and extend as codegen needs grow.
  */

@@ -38,9 +38,13 @@ import reflaxe.rust.macros.RustExtraSrcRegistry;
 import reflaxe.rust.naming.RustNaming;
 import reflaxe.rust.ProfileResolver;
 import reflaxe.rust.RustProfile;
+import reflaxe.rust.compiler.RustBuildContext;
+import reflaxe.rust.compiler.RustClassContext;
+import reflaxe.rust.compiler.RustFuncContext;
 
 using reflaxe.helpers.BaseTypeHelper;
 using reflaxe.helpers.ClassFieldHelper;
+using reflaxe.helpers.ModuleTypeHelper;
 
 private typedef RustImplSpec = {
 	var traitPath:String;
@@ -63,9 +67,9 @@ private typedef RustTestSpec = {
 };
 
 /**
- * RustCompiler (POC)
+ * RustCompiler
  *
- * Emits a minimal Rust program for the Haxe main class.
+ * Emits Rust modules/crate files for the Haxe program.
  *
  * Architecture:
  * - Typed Haxe AST -> Rust AST (Builder-ish logic lives here for now)
@@ -82,6 +86,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var currentClassKey:Null<String> = null;
 	var currentClassName:Null<String> = null;
 	var currentClassType:Null<ClassType> = null;
+	var currentClassContext:Null<RustClassContext> = null;
 	// When compiling an inherited method shim (base method body on a subclass), `this` dispatch should
 	// use `currentClassType`, but `super` resolution should use the class that defined the body.
 	var currentMethodOwnerType:Null<ClassType> = null;
@@ -114,6 +119,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var currentEnumParamBinds:Null<Map<String, String>> = null;
 	var currentFunctionReturn:Null<Type> = null;
 	var currentFunctionIsAsync:Bool = false;
+	var currentFunctionContext:Null<RustFuncContext> = null;
 	var warnedUnresolvedMonomorphPos:Map<String, Bool> = [];
 	// Rust identifier to use for Haxe `this` (`TThis`) in the current function body.
 	// - constructors: `"self_"` (a local `HxRef<T>`)
@@ -122,6 +128,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var rustNamesByClass:Map<String, {fields:Map<String, String>, methods:Map<String, String>}> = [];
 	var inCodeInjectionArg:Bool = false;
 	var rustTestSpecs:Array<RustTestSpec> = [];
+	var usedModulePaths:Map<String, Bool> = [];
 
 	inline function wantsPreludeAliases():Bool {
 		// Always emit stable `crate::HxRc` / `crate::HxRefCell` / `crate::HxRef` aliases so:
@@ -148,8 +155,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return Context.defined("rust_string_nullable");
 	}
 
-	inline function asyncPreviewEnabled():Bool {
-		return Context.defined("rust_async_preview");
+	inline function asyncEnabled():Bool {
+		return Context.defined("rust_async") || Context.defined("rust_async_preview");
 	}
 
 	inline function rustStringTypePath():String {
@@ -233,7 +240,150 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	public function createCompilationContext():CompilationContext {
-		return new CompilationContext(crateName);
+		var buildContext = new RustBuildContext(crateName, profile, asyncEnabled(), useNullableStringRepresentation(),
+			Context.defined("reflaxe_rust_strict_examples"), Context.defined("reflaxe_rust_strict"), metalContractHardError());
+		return new CompilationContext(buildContext, snapshotUsedModulePaths(), selectHxrtFeatureSet());
+	}
+
+	inline function metalContractHardError():Bool {
+		if (Context.defined("rust_metal_allow_fallback"))
+			return false;
+		if (Context.defined("rust_metal_contract_hard_error"))
+			return true;
+		return profile == Metal;
+	}
+
+	function snapshotUsedModulePaths():Array<String> {
+		var out = [for (path in usedModulePaths.keys()) path];
+		out.sort((a, b) -> compareStrings(a, b));
+		return out;
+	}
+
+	function collectTypeUsageFromCurrentModule():Void {
+		var usage = getTypeUsage();
+		if (usage == null)
+			return;
+		for (entries in usage) {
+			if (entries == null)
+				continue;
+			for (entry in entries) {
+				switch (entry) {
+					case EModuleType(mt):
+						usedModulePaths.set(mt.getPath(), true);
+					case EType(t):
+						var mt = TypeHelper.toModuleType(t);
+						if (mt != null)
+							usedModulePaths.set(mt.getPath(), true);
+				}
+			}
+		}
+	}
+
+	function parseManualHxrtFeatures(raw:String):Array<String> {
+		var out:Array<String> = [];
+		if (raw == null)
+			return out;
+		for (part in raw.split(",")) {
+			var trimmed = StringTools.trim(part);
+			if (trimmed.length == 0)
+				continue;
+			if (!out.contains(trimmed))
+				out.push(trimmed);
+		}
+		out.sort((a, b) -> compareStrings(a, b));
+		return out;
+	}
+
+	function inferHxrtFeaturesFromUsedModules():Array<String> {
+		var out:Array<String> = [];
+
+		inline function add(feature:String):Void {
+			if (!out.contains(feature))
+				out.push(feature);
+		}
+
+		for (path in usedModulePaths.keys()) {
+			if (path == "Date" || StringTools.startsWith(path, "DateTools") || StringTools.startsWith(path, "hxrt.date"))
+				add("date");
+
+			if (path == "haxe.Json" || StringTools.startsWith(path, "haxe.json.") || StringTools.startsWith(path, "hxrt.json"))
+				add("json");
+
+			if (StringTools.startsWith(path, "sys.net.") || StringTools.startsWith(path, "hxrt.net."))
+				add("net");
+
+			if (StringTools.startsWith(path, "sys.ssl.") || StringTools.startsWith(path, "hxrt.ssl."))
+				add("ssl");
+
+			if (StringTools.startsWith(path, "sys.thread.") || StringTools.startsWith(path, "hxrt.thread."))
+				add("thread");
+
+			if (StringTools.startsWith(path, "sys.db.") || StringTools.startsWith(path, "hxrt.db."))
+				add("db");
+
+			if (path == "sys.FileSystem"
+				|| path == "sys.io.File"
+				|| path == "sys.io.FileInput"
+				|| path == "sys.io.FileOutput"
+				|| StringTools.startsWith(path, "hxrt.fs."))
+				add("fs");
+
+			if (path == "sys.io.Process" || StringTools.startsWith(path, "hxrt.process."))
+				add("process");
+
+			if (path == "haxe.io.Error" || StringTools.startsWith(path, "haxe.io.Input") || StringTools.startsWith(path, "haxe.io.Output"))
+				add("io");
+
+			if (StringTools.startsWith(path, "rust.async.") || StringTools.startsWith(path, "hxrt.async_"))
+				add("async");
+		}
+
+		// Internal dependency graph so feature slices remain compileable.
+		if (out.contains("net")) {
+			add("io");
+			add("ssl");
+		}
+		if (out.contains("ssl")) {
+			add("io");
+		}
+		if (out.contains("process")) {
+			add("fs");
+		}
+
+		out.sort((a, b) -> compareStrings(a, b));
+		return out;
+	}
+
+	function selectHxrtFeatureSet():Array<String> {
+		if (Context.defined("rust_hxrt_default_features"))
+			return [];
+
+		var manual = parseManualHxrtFeatures(Context.definedValue("rust_hxrt_features"));
+		if (manual.length > 0) {
+			if (!manual.contains("core"))
+				manual.unshift("core");
+			manual.sort((a, b) -> compareStrings(a, b));
+			return manual;
+		}
+
+		if (Context.defined("rust_hxrt_no_feature_infer"))
+			return ["core"];
+
+		var inferred = inferHxrtFeaturesFromUsedModules();
+		if (!inferred.contains("core"))
+			inferred.unshift("core");
+		inferred.sort((a, b) -> compareStrings(a, b));
+		return inferred;
+	}
+
+	function renderHxrtDependencyLine():String {
+		var features = selectHxrtFeatureSet();
+		if (Context.defined("rust_hxrt_default_features"))
+			return 'hxrt = { path = "./hxrt" }';
+		if (features.length == 0)
+			return 'hxrt = { path = "./hxrt", default-features = false }';
+		var quoted = [for (f in features) '"' + f + '"'].join(", ");
+		return 'hxrt = { path = "./hxrt", default-features = false, features = [' + quoted + '] }';
 	}
 
 	public function generateOutputIterator():Iterator<DataAndFileInfo<StringOrBytes>> {
@@ -249,6 +399,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		frameworkRuntimeDir = null;
 		warnedUnresolvedMonomorphPos = [];
 		rustTestSpecs = [];
+		usedModulePaths = [];
 
 		// Profile selection and define validation are centralized to keep all feature gates consistent.
 		profile = ProfileResolver.resolve();
@@ -452,7 +603,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		var metaDeps = CargoMetaRegistry.renderDependencyLines();
-		var deps = 'hxrt = { path = "./hxrt" }' + "\n" + metaDeps + depsExtra;
+		var deps = renderHxrtDependencyLine() + "\n" + metaDeps + depsExtra;
 
 		var cargo = [
 			"[package]",
@@ -498,6 +649,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	public function compileClassImpl(classType:ClassType, varFields:Array<ClassVarData>, funcFields:Array<ClassFuncData>):Null<RustFile> {
+		collectTypeUsageFromCurrentModule();
+
 		var isMain = isMainClass(classType);
 		if (!shouldEmitClass(classType, isMain))
 			return null;
@@ -513,9 +666,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			setOutputFileName(rustModuleNameForClass(classType));
 		}
 
-		currentClassKey = classKey(classType);
+		var classKeyValue = classKey(classType);
+		currentClassKey = classKeyValue;
 		currentClassName = classType.name;
 		currentClassType = classType;
+		currentClassContext = new RustClassContext(classKeyValue, rustModuleNameForClass(classType), rustTypeNameForClass(classType));
 		currentNeededSuperThunks = [];
 		var rustSelfType = rustTypeNameForClass(classType);
 		var classGenericDecls = rustGenericDeclsForClass(classType);
@@ -534,7 +689,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			inheritedOwnerById.set(x.f.id, x.owner);
 
 		var items:Array<RustItem> = [];
-		items.push(RRaw("// Generated by reflaxe.rust (POC)"));
+		items.push(RRaw("// Generated by reflaxe.rust"));
 
 		if (isMain) {
 			var headerLines:Array<String> = [];
@@ -1109,12 +1264,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		currentClassKey = null;
 		currentClassName = null;
 		currentClassType = null;
+		currentClassContext = null;
 		currentMethodOwnerType = null;
 		currentNeededSuperThunks = null;
 		return {items: items};
 	}
 
 	public function compileEnumImpl(enumType:EnumType, options:Array<EnumOptionData>):Null<RustFile> {
+		collectTypeUsageFromCurrentModule();
+
 		if (!shouldEmitEnum(enumType))
 			return null;
 
@@ -1122,7 +1280,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		setOutputFileName(rustModuleNameForEnum(enumType));
 
 		var items:Array<RustItem> = [];
-		items.push(RRaw("// Generated by reflaxe.rust (POC)"));
+		items.push(RRaw("// Generated by reflaxe.rust"));
 		items.push(RRaw("pub const __HX_TYPE_ID: u32 = " + typeIdLiteralForEnum(enumType) + ";"));
 
 		var variants:Array<reflaxe.rust.ast.RustAST.RustEnumVariant> = [];
@@ -1164,10 +1322,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	override public function compileTypedefImpl(typedefType:DefType):Null<RustFile> {
+		collectTypeUsageFromCurrentModule();
 		return null;
 	}
 
 	override public function compileAbstractImpl(abstractType:AbstractType):Null<RustFile> {
+		collectTypeUsageFromCurrentModule();
 		return null;
 	}
 
@@ -1949,15 +2109,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function ensureAsyncPreviewAllowed(pos:haxe.macro.Expr.Position):Void {
-		if (!asyncPreviewEnabled()) {
+		if (!asyncEnabled()) {
 			#if eval
-			Context.error("Async preview requires `-D rust_async_preview`.", pos);
+			Context.error("Async support requires `-D rust_async` (or legacy alias `-D rust_async_preview`).", pos);
 			#end
 			return;
 		}
 		if (!ProfileResolver.isRustFirst(profile)) {
 			#if eval
-			Context.error("Async preview currently requires a Rust-first profile: `-D reflaxe_rust_profile=rusty|metal`.", pos);
+			Context.error("Async currently requires a Rust-first profile: `-D reflaxe_rust_profile=rusty|metal`.", pos);
 			#end
 		}
 	}
@@ -4221,6 +4381,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var prevReturn = currentFunctionReturn;
 		var prevMutatedArgs = currentMutatedArgs;
 		var prevIsAsync = currentFunctionIsAsync;
+		var prevFunctionContext = currentFunctionContext;
 
 		currentMutatedLocals = collectMutatedLocals(bodyExpr);
 		currentLocalReadCounts = collectLocalReadCounts(bodyExpr);
@@ -4255,6 +4416,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			currentArgNames.set(n, rust);
 		}
 		currentMutatedArgs = collectMutatedArgRustNames(bodyExpr, argNames);
+		var expectedReturnTypeName = expectedReturn == null ? "()" : rustTypeToString(toRustType(expectedReturn, bodyExpr.pos));
+		var localNameCount = currentLocalNames == null ? 0 : [for (_ in currentLocalNames.keys()) 1].length;
+		var readCountEntries = currentLocalReadCounts == null ? 0 : [for (_ in currentLocalReadCounts.keys()) 1].length;
+		currentFunctionContext = new RustFuncContext("anonymous", isAsync, expectedReturnTypeName, currentMutatedArgs.copy(), localNameCount, readCountEntries);
 
 		var out = fn();
 
@@ -4267,6 +4432,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		currentFunctionReturn = prevReturn;
 		currentMutatedArgs = prevMutatedArgs;
 		currentFunctionIsAsync = prevIsAsync;
+		currentFunctionContext = prevFunctionContext;
 		return out;
 	}
 
@@ -6731,7 +6897,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		// Special-case: super(...) in constructors.
-		// POC: support `super()` as a no-op (base init semantics will be expanded later).
+		// Current behavior: support `super()` as a no-op (base init semantics will be expanded later).
 		switch (callExpr.expr) {
 			case TConst(TSuper):
 				if (args.length > 0)
@@ -10493,7 +10659,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case OpAssignOp(inner): {
 					// Compound assignments (`x += y`, `x %= y`, ...).
 					//
-					// POC: support locals (common in loops/desugarings). More complex lvalues
+					// Current behavior: support locals (common in loops/desugarings). More complex lvalues
 					// (fields/indices) can be added when needed.
 					var opStr:Null<String> = switch (inner) {
 						case OpAdd: "+";
@@ -10545,7 +10711,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								// Compound assignment on an array element: `arr[index] <op>= rhs`.
 								//
 								// Preserve evaluation order (arr -> index -> rhs) and ensure arr/index are evaluated once.
-								// POC: only support Copy element types (mirrors instance-field support).
+								// Current behavior: only support Copy element types (mirrors instance-field support).
 								if (!isCopyType(e1.t)) {
 									return unsupported(fullExpr, "assignop array lvalue (non-copy)");
 								}
@@ -10745,7 +10911,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function compileUnop(op:Unop, postFix:Bool, expr:TypedExpr, fullExpr:TypedExpr):RustExpr {
 		if (op == OpIncrement || op == OpDecrement) {
-			// POC: support ++/-- for locals (needed for Haxe's for-loop lowering).
+			// Current behavior: support ++/-- for locals (needed for Haxe's for-loop lowering).
 			return switch (expr.expr) {
 				case TLocal(v): {
 						var name = rustLocalRefIdent(v);
@@ -11041,7 +11207,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function unsupported(e:TypedExpr, what:String):RustExpr {
 		#if eval
-		Context.error('Unsupported $what for Rust POC: ' + Std.string(e.expr), e.pos);
+		Context.error('Unsupported $what for Rust target: ' + Std.string(e.expr), e.pos);
 		#end
 		return ERaw("todo!()");
 	}
@@ -11386,7 +11552,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 			case _: {
 					#if eval
-					Context.error("Unsupported Rust type in POC: " + Std.string(t), pos);
+					Context.error("Unsupported Rust type in current backend: " + Std.string(t), pos);
 					#end
 					RUnit;
 				}

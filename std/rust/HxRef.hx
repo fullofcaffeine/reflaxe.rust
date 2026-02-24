@@ -3,7 +3,7 @@ package rust;
 /**
  * rust.HxRef<T>
  *
- * A typing-only representation of the runtime `HxRef<T>` (currently `Rc<RefCell<T>>`)
+ * A typing-only representation of the runtime `HxRef<T>` (currently `Arc<HxCell<T>>`)
  * used by reflaxe.rust for Haxe class instances in portable mode.
  *
  * This exists so framework helpers (e.g. serde wrappers) can express `HxRef<T>` in
@@ -11,8 +11,7 @@ package rust;
  */
 @:coreType
 extern abstract HxRef<T> {
-	@:from public static inline function fromValue<T>(v: T): HxRef<T> {
+	@:from public static inline function fromValue<T>(v:T):HxRef<T> {
 		return cast v;
 	}
 }
-

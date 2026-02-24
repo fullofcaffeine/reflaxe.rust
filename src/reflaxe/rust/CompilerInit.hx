@@ -81,10 +81,17 @@ class CompilerInit {
 			}
 		}
 
-		if (Context.defined("rust_async_preview")) {
+		var wantsAsync = Context.defined("rust_async") || Context.defined("rust_async_preview");
+		if (wantsAsync) {
 			if (!ProfileResolver.isRustFirst(profile)) {
-				Context.error("`-D rust_async_preview` currently requires `-D reflaxe_rust_profile=rusty|metal`.", Context.currentPos());
+				Context.error("Async (`-D rust_async`, legacy `-D rust_async_preview`) currently requires `-D reflaxe_rust_profile=rusty|metal`.",
+					Context.currentPos());
 			}
+			#if eval
+			if (Context.defined("rust_async_preview") && !Context.defined("rust_async")) {
+				Context.warning("`-D rust_async_preview` is deprecated; use `-D rust_async`.", Context.currentPos());
+			}
+			#end
 			AsyncSyntaxMacro.init();
 		}
 
