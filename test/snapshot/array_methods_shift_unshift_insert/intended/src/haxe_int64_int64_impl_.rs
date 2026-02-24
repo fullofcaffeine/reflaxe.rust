@@ -30,29 +30,29 @@ impl Int64Impl {
     }
 
     pub fn make(high: i32, low: i32) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
-        return {
+        {
             let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
                 crate::haxe_int64_int64::Int64::new(high, low);
             let this1: crate::HxRef<crate::haxe_int64_int64::Int64>;
             this1 = x;
-            this1
-        };
+            return this1;
+        }
     }
 
     pub fn of_int(x: i32) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
-        return {
+        {
             let x_2: crate::HxRef<crate::haxe_int64_int64::Int64> =
                 crate::haxe_int64_int64::Int64::new(x >> 31, x);
             let this1: crate::HxRef<crate::haxe_int64_int64::Int64>;
             this1 = x_2;
-            this1
-        };
+            return this1;
+        }
     }
 
     pub fn copy(
         this1: crate::HxRef<crate::haxe_int64_int64::Int64>,
     ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
-        return {
+        {
             let high: i32 = {
                 let __b = this1.borrow();
                 __b.high
@@ -61,13 +61,13 @@ impl Int64Impl {
                 let __b = this1.borrow();
                 __b.low
             };
-            {
+            return {
                 let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
                     crate::haxe_int64_int64::Int64::new(high, low);
                 let this1_2: crate::HxRef<crate::haxe_int64_int64::Int64>;
                 this1_2 = x;
                 this1_2
-            }
-        };
+            };
+        }
     }
 }

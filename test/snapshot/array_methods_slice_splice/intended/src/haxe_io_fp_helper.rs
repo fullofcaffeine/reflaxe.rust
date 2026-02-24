@@ -18,13 +18,13 @@ impl FPHelper {
     pub fn double_to_i64(v: f64) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
         let high: i32 = ((v).to_bits() >> 32) as i32;
         let low: i32 = (((v).to_bits() & 0xFFFF_FFFFu64) as u32) as i32;
-        return {
+        {
             let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
                 crate::haxe_int64_int64::Int64::new(high, low);
             let this1: crate::HxRef<crate::haxe_int64_int64::Int64>;
             this1 = x;
-            this1
-        };
+            return this1;
+        }
     }
 
     pub fn i64_to_double(low: i32, high: i32) -> f64 {

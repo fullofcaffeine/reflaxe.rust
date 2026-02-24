@@ -14,18 +14,18 @@ impl MetersImpl {
     }
 
     pub fn from_float(v: f64) -> i32 {
-        return {
+        {
             let this1: i32;
             this1 = v as i32;
-            this1 as i32
-        };
+            return this1 as i32;
+        }
     }
 
     pub fn add(this1: i32, other: i32) -> i32 {
-        return {
+        {
             let this2: i32;
             this2 = this1 + other;
-            this2 as i32
-        };
+            return this2 as i32;
+        }
     }
 }

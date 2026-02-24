@@ -21,7 +21,7 @@ class Main {
 		var workerChannel = channel;
 		var task:rust.HxRef<Task<Int>> = Tasks.spawn(() -> {
 			Channels.send(workerChannel, "ping");
-			2;
+			return 2;
 		});
 
 		var received = Channels.recv(channel);
@@ -30,7 +30,7 @@ class Main {
 		var mutex:rust.HxRef<Mutex<Counter>> = Mutexes.create(new Counter(1));
 		var mutexValue = Mutexes.update(mutex, counter -> {
 			counter.value = counter.value + joined;
-			counter;
+			return counter;
 		});
 
 		var lock:rust.HxRef<RwLock<Counter>> = RwLocks.create(new Counter(5));

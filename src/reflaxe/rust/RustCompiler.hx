@@ -3923,6 +3923,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 	}
 
+	function hasTopLevelDivergingStmt(exprs:Array<TypedExpr>):Bool {
+		for (e in exprs) {
+			if (exprAlwaysDiverges(e))
+				return true;
+		}
+		return false;
+	}
+
 	function compileStmt(e:TypedExpr):RustStmt {
 		return switch (e.expr) {
 			case TBlock(exprs): {
@@ -4244,11 +4252,40 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							retExpr = inner;
 						}
 					}
-					var ex = retExpr != null ? compileExpr(retExpr) : null;
-					if (retExpr != null && ex != null) {
-						ex = coerceExprToExpected(ex, retExpr, currentFunctionReturn);
+
+					if (retExpr == null) {
+						RReturn(null);
+					} else {
+						var unwrappedRet = unwrapMetaParen(retExpr);
+						switch (unwrappedRet.expr) {
+							case TBlock(exprs): {
+									var retBlock = compileBlock(exprs, true, currentFunctionReturn);
+									// Avoid `return { ... return x; }` shapes that trigger Rust
+									// `unreachable_code` warnings. If the returned block already contains
+									// a top-level diverging statement, emit the block directly.
+									if (hasTopLevelDivergingStmt(exprs)) {
+										RExpr(EBlock(retBlock), false);
+									} else if (retBlock.tail != null) {
+										// Normalize `return { s1; ...; tail; }` to `{ s1; ...; return tail; }`.
+										// This keeps explicit-return lambdas warning-free while preserving
+										// Haxe evaluation order and expression semantics.
+										var stmts = retBlock.stmts.copy();
+										stmts.push(RReturn(retBlock.tail));
+										RExpr(EBlock({stmts: stmts, tail: null}), false);
+									} else {
+										// Fallback: unit-like returned block.
+										RReturn(EBlock(retBlock));
+									}
+								}
+							case _: {
+									var ex = compileExpr(retExpr);
+									if (ex != null) {
+										ex = coerceExprToExpected(ex, retExpr, currentFunctionReturn);
+									}
+									RReturn(ex);
+								}
+						}
 					}
-					RReturn(ex);
 				}
 			case TBinop(OpAssignOp(OpAdd), lhs, rhs) if (isStringType(followType(e.t)) || isStringType(followType(lhs.t)) || isStringType(followType(rhs.t))): {
 					// Statement-position `x += y` where the result is unused.

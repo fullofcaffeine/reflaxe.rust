@@ -36,7 +36,7 @@ impl StringIterator {
     pub fn next(self_: &crate::HxRefCell<StringIterator>) -> i32 {
         let __hx_this: crate::HxRef<crate::haxe_iterators_string_iterator::StringIterator> =
             self_.self_ref();
-        return {
+        {
             let s: hxrt::string::HxString = hxrt::string::HxString::from({
                 let __b = __hx_this.borrow();
                 __b.s.clone()
@@ -46,7 +46,10 @@ impl StringIterator {
                 self_.borrow_mut().offset = __tmp + 1;
                 __tmp
             };
-            crate::string_tools::StringTools::fast_code_at(hxrt::string::HxString::from(s), index)
-        };
+            return crate::string_tools::StringTools::fast_code_at(
+                hxrt::string::HxString::from(s),
+                index,
+            );
+        }
     }
 }
