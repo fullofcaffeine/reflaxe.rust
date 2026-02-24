@@ -60,7 +60,7 @@ impl Sys {
     }
 
     pub fn set_time_locale(loc: String) -> bool {
-        let _unused: String = loc;
+        let _ = loc;
         return false;
     }
 

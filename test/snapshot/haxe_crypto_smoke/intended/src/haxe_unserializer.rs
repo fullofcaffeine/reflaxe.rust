@@ -388,9 +388,8 @@ impl Unserializer {
         let args: hxrt::array::Array<hxrt::dynamic::Dynamic> =
             hxrt::array::Array::<hxrt::dynamic::Dynamic>::new();
         while ({
-            let __tmp = nargs;
-            nargs = nargs - 1;
-            __tmp
+            let __next = nargs - 1;
+            std::mem::replace(&mut nargs, __next)
         }) > 0
         {
             args.push(crate::haxe_unserializer::Unserializer::unserialize(
@@ -616,7 +615,7 @@ impl Unserializer {
                         h.clone(),
                         0xd7e07825u32,
                     ));
-                    let buf: hxrt::string::HxString = hxrt::string::HxString::from({
+                    let _ = hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
                     });
@@ -683,7 +682,7 @@ impl Unserializer {
                     );
                 }
                 97 => {
-                    let buf_2: hxrt::string::HxString = hxrt::string::HxString::from({
+                    let _ = hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
                     });
@@ -753,7 +752,7 @@ impl Unserializer {
                         h_2.clone(),
                         0x181f937bu32,
                     ));
-                    let buf_3: hxrt::string::HxString = hxrt::string::HxString::from({
+                    let _ = hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
                     });
@@ -968,7 +967,7 @@ impl Unserializer {
                         l.clone(),
                         0xd0de220eu32,
                     ));
-                    let buf_4: hxrt::string::HxString = hxrt::string::HxString::from({
+                    let _ = hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
                     });
@@ -1037,7 +1036,7 @@ impl Unserializer {
                         h_3.clone(),
                         0x39e0cd5bu32,
                     ));
-                    let buf_5: hxrt::string::HxString = hxrt::string::HxString::from({
+                    let _ = hxrt::string::HxString::from({
                         let __b = __hx_this.borrow();
                         __b.buf.clone()
                     });
@@ -1162,25 +1161,22 @@ impl Unserializer {
                             codes.get_unchecked(crate::string_tools::StringTools::fast_code_at(
                                 hxrt::string::HxString::from(buf_6.clone()),
                                 {
-                                    let __tmp = i_2;
-                                    i_2 = i_2 + 1;
-                                    __tmp
+                                    let __next = i_2 + 1;
+                                    std::mem::replace(&mut i_2, __next)
                                 },
                             ) as usize);
                         let c2: i32 =
                             codes.get_unchecked(crate::string_tools::StringTools::fast_code_at(
                                 hxrt::string::HxString::from(buf_6.clone()),
                                 {
-                                    let __tmp = i_2;
-                                    i_2 = i_2 + 1;
-                                    __tmp
+                                    let __next = i_2 + 1;
+                                    std::mem::replace(&mut i_2, __next)
                                 },
                             ) as usize);
                         bytes.borrow_mut().set(
                             {
-                                let __tmp = bpos;
-                                bpos = bpos + 1;
-                                __tmp
+                                let __next = bpos + 1;
+                                std::mem::replace(&mut bpos, __next)
                             },
                             c1 << 2 | c2 >> 4,
                         );
@@ -1188,16 +1184,14 @@ impl Unserializer {
                             codes.get_unchecked(crate::string_tools::StringTools::fast_code_at(
                                 hxrt::string::HxString::from(buf_6.clone()),
                                 {
-                                    let __tmp = i_2;
-                                    i_2 = i_2 + 1;
-                                    __tmp
+                                    let __next = i_2 + 1;
+                                    std::mem::replace(&mut i_2, __next)
                                 },
                             ) as usize);
                         bytes.borrow_mut().set(
                             {
-                                let __tmp = bpos;
-                                bpos = bpos + 1;
-                                __tmp
+                                let __next = bpos + 1;
+                                std::mem::replace(&mut bpos, __next)
                             },
                             c2 << 4 | c3 >> 2,
                         );
@@ -1205,16 +1199,14 @@ impl Unserializer {
                             codes.get_unchecked(crate::string_tools::StringTools::fast_code_at(
                                 hxrt::string::HxString::from(buf_6.clone()),
                                 {
-                                    let __tmp = i_2;
-                                    i_2 = i_2 + 1;
-                                    __tmp
+                                    let __next = i_2 + 1;
+                                    std::mem::replace(&mut i_2, __next)
                                 },
                             ) as usize);
                         bytes.borrow_mut().set(
                             {
-                                let __tmp = bpos;
-                                bpos = bpos + 1;
-                                __tmp
+                                let __next = bpos + 1;
+                                std::mem::replace(&mut bpos, __next)
                             },
                             c3 << 6 | c4,
                         );
@@ -1224,25 +1216,22 @@ impl Unserializer {
                             codes.get_unchecked(crate::string_tools::StringTools::fast_code_at(
                                 hxrt::string::HxString::from(buf_6.clone()),
                                 {
-                                    let __tmp = i_2;
-                                    i_2 = i_2 + 1;
-                                    __tmp
+                                    let __next = i_2 + 1;
+                                    std::mem::replace(&mut i_2, __next)
                                 },
                             ) as usize);
                         let c2_2: i32 =
                             codes.get_unchecked(crate::string_tools::StringTools::fast_code_at(
                                 hxrt::string::HxString::from(buf_6.clone()),
                                 {
-                                    let __tmp = i_2;
-                                    i_2 = i_2 + 1;
-                                    __tmp
+                                    let __next = i_2 + 1;
+                                    std::mem::replace(&mut i_2, __next)
                                 },
                             ) as usize);
                         bytes.borrow_mut().set(
                             {
-                                let __tmp = bpos;
-                                bpos = bpos + 1;
-                                __tmp
+                                let __next = bpos + 1;
+                                std::mem::replace(&mut bpos, __next)
                             },
                             c1_2 << 2 | c2_2 >> 4,
                         );
@@ -1251,17 +1240,15 @@ impl Unserializer {
                                 crate::string_tools::StringTools::fast_code_at(
                                     hxrt::string::HxString::from(buf_6.clone()),
                                     {
-                                        let __tmp = i_2;
-                                        i_2 = i_2 + 1;
-                                        __tmp
+                                        let __next = i_2 + 1;
+                                        std::mem::replace(&mut i_2, __next)
                                     },
                                 ) as usize,
                             );
                             bytes.borrow_mut().set(
                                 {
-                                    let __tmp = bpos;
-                                    bpos = bpos + 1;
-                                    __tmp
+                                    let __next = bpos + 1;
+                                    std::mem::replace(&mut bpos, __next)
                                 },
                                 c2_2 << 4 | c3_2 >> 2,
                             );
@@ -1284,7 +1271,7 @@ impl Unserializer {
                     return hxrt::dynamic::from(true);
                 }
                 118 => {
-                    let mut d: crate::HxRef<crate::date::Date>;
+                    let d: crate::HxRef<crate::date::Date>;
                     if ({
                         let p_10: i32 = {
                             let __b = __hx_this.borrow();
@@ -1627,9 +1614,8 @@ impl Unserializer {
                 hxrt::string::len(crate::haxe_unserializer::__hx_static_get_base64().as_str());
             while _g < _g1 {
                 let i: i32 = {
-                    let __tmp = _g;
-                    _g = _g + 1;
-                    __tmp
+                    let __next = _g + 1;
+                    std::mem::replace(&mut _g, __next)
                 };
                 {
                     let __tmp = i;

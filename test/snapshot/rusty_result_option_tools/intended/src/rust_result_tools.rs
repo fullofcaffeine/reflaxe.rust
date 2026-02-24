@@ -10,11 +10,11 @@ impl ResultTools {
     pub fn is_ok<T: Clone, E: Clone>(r: Result<T, E>) -> bool {
         return match r.clone() {
             Result::Ok(__p) => {
-                let _g: T = __p;
+                let _ = __p;
                 true
             }
             Result::Err(__p) => {
-                let _g_2: E = __p;
+                let _ = __p;
                 false
             }
         };
@@ -23,11 +23,11 @@ impl ResultTools {
     pub fn is_err<T: Clone, E: Clone>(r: Result<T, E>) -> bool {
         return !(match r.clone() {
             Result::Ok(__p) => {
-                let _g: T = __p;
+                let _ = __p;
                 true
             }
             Result::Err(__p) => {
-                let _g_2: E = __p;
+                let _ = __p;
                 false
             }
         });
@@ -43,7 +43,7 @@ impl ResultTools {
                 }
             }
             Result::Err(__p) => {
-                let _g_2: E = __p;
+                let _ = __p;
                 fallback
             }
         };

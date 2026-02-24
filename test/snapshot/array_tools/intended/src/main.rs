@@ -124,11 +124,7 @@ fn main() {
                 found_2 = x_2;
                 break;
             }
-            {
-                let __tmp = i;
-                i = i + 1;
-                __tmp
-            };
+            i = i + 1;
         }
         found_2
     };

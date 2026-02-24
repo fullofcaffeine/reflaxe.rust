@@ -58,9 +58,8 @@ fn main() {
         let _g1: i32 = n;
         while _g < _g1 {
             let i: i32 = {
-                let __tmp = _g;
-                _g = _g + 1;
-                __tmp
+                let __next = _g + 1;
+                std::mem::replace(&mut _g, __next)
             };
             sum = sum + i;
         }

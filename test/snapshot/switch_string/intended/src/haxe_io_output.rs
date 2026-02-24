@@ -31,16 +31,8 @@ impl Output {
         let mut k: i32 = len;
         while k > 0 {
             crate::haxe_io_output::Output::write_byte(&*__hx_this, s.borrow().get(p));
-            {
-                let __tmp = p;
-                p = p + 1;
-                __tmp
-            };
-            {
-                let __tmp = k;
-                k = k - 1;
-                __tmp
-            };
+            p = p + 1;
+            k = k - 1;
         }
         return len;
     }

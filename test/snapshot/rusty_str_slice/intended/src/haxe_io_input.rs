@@ -31,16 +31,8 @@ impl Input {
             while k > 0 {
                 s.borrow_mut()
                     .set(p, crate::haxe_io_input::Input::read_byte(&*__hx_this));
-                {
-                    let __tmp = p;
-                    p = p + 1;
-                    __tmp
-                };
-                {
-                    let __tmp = k;
-                    k = k - 1;
-                    __tmp
-                };
+                p = p + 1;
+                k = k - 1;
             }
         }) {
             Ok(__hx_ok) => __hx_ok,

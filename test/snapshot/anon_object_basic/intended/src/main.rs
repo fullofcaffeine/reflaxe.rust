@@ -67,17 +67,12 @@ fn main() {
     println!(
         "{}",
         hxrt::dynamic::from({
-            let __tmp = o2_x;
-            o2_x = o2_x + 1;
-            __tmp
+            let __next = o2_x + 1;
+            std::mem::replace(&mut o2_x, __next)
         })
     );
     println!("{}", hxrt::dynamic::from(o2_x));
-    {
-        let __tmp = o2_x;
-        o2_x = o2_x - 1;
-        __tmp
-    };
+    o2_x = o2_x - 1;
     println!("{}", hxrt::dynamic::from(o2_x));
     o2_s = hxrt::string::HxString::from(hxrt::string::HxString::from(format!("{}{}", &o2_s, "!")));
     println!("{}", hxrt::dynamic::from(o2_s.clone()));

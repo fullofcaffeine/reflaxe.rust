@@ -79,7 +79,7 @@ fn main() {
                     "{}",
                     hxrt::dynamic::from(match removed.clone() {
                         Option::Some(__p) => {
-                            let _g: i32 = __p;
+                            let _ = __p;
                             true
                         }
                         Option::None => false,

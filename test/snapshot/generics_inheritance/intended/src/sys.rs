@@ -70,7 +70,7 @@ impl Sys {
     }
 
     pub fn set_time_locale(loc: hxrt::string::HxString) -> bool {
-        let _unused: hxrt::string::HxString = hxrt::string::HxString::from(loc);
+        let _ = hxrt::string::HxString::from(loc);
         return false;
     }
 

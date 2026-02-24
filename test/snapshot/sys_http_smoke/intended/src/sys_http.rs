@@ -776,9 +776,8 @@ impl Http {
             .len() as i32;
             while _g < _g1 {
                 let i: i32 = {
-                    let __tmp = _g;
-                    _g = _g + 1;
-                    __tmp
+                    let __next = _g + 1;
+                    std::mem::replace(&mut _g, __next)
                 };
                 if ({
                     let __b = __hx_this.borrow();
@@ -861,9 +860,8 @@ impl Http {
             .len() as i32;
             while _g < _g1 {
                 let i: i32 = {
-                    let __tmp = _g;
-                    _g = _g + 1;
-                    __tmp
+                    let __next = _g + 1;
+                    std::mem::replace(&mut _g, __next)
                 };
                 if ({
                     let __b = __hx_this.borrow();

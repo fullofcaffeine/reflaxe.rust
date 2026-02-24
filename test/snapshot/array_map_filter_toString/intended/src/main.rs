@@ -104,9 +104,8 @@ fn main() {
         sum = sum
             + it_array.get_unchecked(
                 ({
-                    let __tmp = it_current;
-                    it_current = it_current + 1;
-                    __tmp
+                    let __next = it_current + 1;
+                    std::mem::replace(&mut it_current, __next)
                 }) as usize,
             );
     }

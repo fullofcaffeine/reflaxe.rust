@@ -97,9 +97,8 @@ fn main() {
             while _g_current < (_g_array.len() as i32) {
                 let x: i32 = _g_array.get_unchecked(
                     ({
-                        let __tmp = _g_current;
-                        _g_current = _g_current + 1;
-                        __tmp
+                        let __next = _g_current + 1;
+                        std::mem::replace(&mut _g_current, __next)
                     }) as usize,
                 );
                 first = first + x;
@@ -117,18 +116,13 @@ fn main() {
             _g_current_2 = 0;
             _g_array_2 = a.clone();
             while _g_current_2 < (_g_array_2.len() as i32) {
-                let _unused: i32 = _g_array_2.get_unchecked(
+                let _ = _g_array_2.get_unchecked(
                     ({
-                        let __tmp = _g_current_2;
-                        _g_current_2 = _g_current_2 + 1;
-                        __tmp
+                        let __next = _g_current_2 + 1;
+                        std::mem::replace(&mut _g_current_2, __next)
                     }) as usize,
                 );
-                {
-                    let __tmp = n;
-                    n = n + 1;
-                    __tmp
-                };
+                n = n + 1;
             }
         } else {
             let mut _g_current_3: i32;
@@ -138,17 +132,12 @@ fn main() {
             while _g_current_3 < (_g_array_3.len() as i32) {
                 let x_2: i32 = _g_array_3.get_unchecked(
                     ({
-                        let __tmp = _g_current_3;
-                        _g_current_3 = _g_current_3 + 1;
-                        __tmp
+                        let __next = _g_current_3 + 1;
+                        std::mem::replace(&mut _g_current_3, __next)
                     }) as usize,
                 );
                 if pred(x_2) {
-                    {
-                        let __tmp = n;
-                        n = n + 1;
-                        __tmp
-                    };
+                    n = n + 1;
                 }
             }
         }
@@ -164,9 +153,8 @@ fn main() {
             while _g_current_4 < (_g_array_4.len() as i32) {
                 let x_3: i32 = _g_array_4.get_unchecked(
                     ({
-                        let __tmp = _g_current_4;
-                        _g_current_4 = _g_current_4 + 1;
-                        __tmp
+                        let __next = _g_current_4 + 1;
+                        std::mem::replace(&mut _g_current_4, __next)
                     }) as usize,
                 );
                 if x_3 == 3 {
@@ -187,9 +175,8 @@ fn main() {
             while _g_current_5 < (_g_array_5.len() as i32) {
                 let x_4: i32 = _g_array_5.get_unchecked(
                     ({
-                        let __tmp = _g_current_5;
-                        _g_current_5 = _g_current_5 + 1;
-                        __tmp
+                        let __next = _g_current_5 + 1;
+                        std::mem::replace(&mut _g_current_5, __next)
                     }) as usize,
                 );
                 if x_4 == 4 {

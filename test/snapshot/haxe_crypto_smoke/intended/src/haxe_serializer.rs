@@ -180,9 +180,8 @@ impl Serializer {
             .len() as i32;
             while _g < _g1 {
                 let i: i32 = {
-                    let __tmp = _g;
-                    _g = _g + 1;
-                    __tmp
+                    let __next = _g + 1;
+                    std::mem::replace(&mut _g, __next)
                 };
                 if hxrt::dynamic::eq(
                     &({
@@ -548,16 +547,11 @@ impl Serializer {
                                         let _g1_2: i32 = l;
                                         while _g_4 < _g1_2 {
                                             let i_4: i32 = {
-                                                let __tmp = _g_4;
-                                                _g_4 = _g_4 + 1;
-                                                __tmp
+                                                let __next = _g_4 + 1;
+                                                std::mem::replace(&mut _g_4, __next)
                                             };
                                             if hxrt::dynamic::index_get_i32(&v, i_4).is_null() {
-                                                {
-                                                    let __tmp = ucount;
-                                                    ucount = ucount + 1;
-                                                    __tmp
-                                                };
+                                                ucount = ucount + 1;
                                             } else {
                                                 if ucount > 0 {
                                                     if ucount == 1 {
@@ -966,9 +960,10 @@ impl Serializer {
                                                                     let _g1: i32 = hxrt::string::len(crate::haxe_serializer::__hx_static_get_base64().as_str());
                                                                     while _g_3 < _g1 {
                                                                         let i_2: i32 = {
-                                                                            let __tmp = _g_3;
-                                                                            _g_3 = _g_3 + 1;
-                                                                            __tmp
+                                                                            let __next = _g_3 + 1;
+                                                                            std::mem::replace(
+                                                                                &mut _g_3, __next,
+                                                                            )
                                                                         };
                                                                         {
                                                                             let val: Option<i32> = hxrt::string::char_code_at(crate::haxe_serializer::__hx_static_get_base64().as_str(), i_2);
@@ -992,19 +987,22 @@ impl Serializer {
                                                             }
                                                             while i < max {
                                                                 let b1: i32 = v_4.borrow().get({
-                                                                    let __tmp = i;
-                                                                    i = i + 1;
-                                                                    __tmp
+                                                                    let __next = i + 1;
+                                                                    std::mem::replace(
+                                                                        &mut i, __next,
+                                                                    )
                                                                 });
                                                                 let b2: i32 = v_4.borrow().get({
-                                                                    let __tmp = i;
-                                                                    i = i + 1;
-                                                                    __tmp
+                                                                    let __next = i + 1;
+                                                                    std::mem::replace(
+                                                                        &mut i, __next,
+                                                                    )
                                                                 });
                                                                 let b3: i32 = v_4.borrow().get({
-                                                                    let __tmp = i;
-                                                                    i = i + 1;
-                                                                    __tmp
+                                                                    let __next = i + 1;
+                                                                    std::mem::replace(
+                                                                        &mut i, __next,
+                                                                    )
                                                                 });
                                                                 crate::string_buf::StringBuf::add_char(&*({
                                             let __b = __hx_this.borrow();
@@ -1073,14 +1071,16 @@ impl Serializer {
                                                             }
                                                             if i == max {
                                                                 let b1_2: i32 = v_4.borrow().get({
-                                                                    let __tmp = i;
-                                                                    i = i + 1;
-                                                                    __tmp
+                                                                    let __next = i + 1;
+                                                                    std::mem::replace(
+                                                                        &mut i, __next,
+                                                                    )
                                                                 });
                                                                 let b2_2: i32 = v_4.borrow().get({
-                                                                    let __tmp = i;
-                                                                    i = i + 1;
-                                                                    __tmp
+                                                                    let __next = i + 1;
+                                                                    std::mem::replace(
+                                                                        &mut i, __next,
+                                                                    )
                                                                 });
                                                                 crate::string_buf::StringBuf::add_char(&*({
                                             let __b = __hx_this.borrow();
@@ -1134,9 +1134,10 @@ impl Serializer {
                                                                 if i == max + 1 {
                                                                     let b1_3: i32 =
                                                                         v_4.borrow().get({
-                                                                            let __tmp = i;
-                                                                            i = i + 1;
-                                                                            __tmp
+                                                                            let __next = i + 1;
+                                                                            std::mem::replace(
+                                                                                &mut i, __next,
+                                                                            )
                                                                         });
                                                                     crate::string_buf::StringBuf::add_char(&*({
                                                 let __b = __hx_this.borrow();
@@ -1399,9 +1400,8 @@ impl Serializer {
                                 let _g1_3: i32 = l_2;
                                 while _g_6 < _g1_3 {
                                     let i_5: i32 = {
-                                        let __tmp = _g_6;
-                                        _g_6 = _g_6 + 1;
-                                        __tmp
+                                        let __next = _g_6 + 1;
+                                        std::mem::replace(&mut _g_6, __next)
                                     };
                                     crate::haxe_serializer::Serializer::serialize(
                                         &*__hx_this,

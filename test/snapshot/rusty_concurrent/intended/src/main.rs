@@ -114,7 +114,7 @@ fn main() {
         let _g: Option<String> = hxrt::concurrent::channel_try_recv(&channel);
         match _g.clone() {
             Option::Some(__p) => {
-                let _g_2: String = __p;
+                let _ = __p;
                 false
             }
             Option::None => true,

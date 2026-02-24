@@ -21,11 +21,7 @@ impl BaseCode {
         let len: i32 = base.borrow().length();
         let mut nbits: i32 = 1;
         while len > 1 << nbits {
-            {
-                let __tmp = nbits;
-                nbits = nbits + 1;
-                __tmp
-            };
+            nbits = nbits + 1;
         }
         if nbits > 8 || len != 1 << nbits {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
@@ -85,9 +81,8 @@ impl BaseCode {
                 {
                     buf = buf
                         | b.borrow().get({
-                            let __tmp = pin;
-                            pin = pin + 1;
-                            __tmp
+                            let __next = pin + 1;
+                            std::mem::replace(&mut pin, __next)
                         });
                     buf
                 };
@@ -98,9 +93,8 @@ impl BaseCode {
             };
             out.borrow_mut().set(
                 {
-                    let __tmp = pout;
-                    pout = pout + 1;
-                    __tmp
+                    let __next = pout + 1;
+                    std::mem::replace(&mut pout, __next)
                 },
                 base.borrow().get(buf >> curbits & mask),
             );
@@ -108,9 +102,8 @@ impl BaseCode {
         if curbits > 0 {
             out.borrow_mut().set(
                 {
-                    let __tmp = pout;
-                    pout = pout + 1;
-                    __tmp
+                    let __next = pout + 1;
+                    std::mem::replace(&mut pout, __next)
                 },
                 base.borrow().get(buf << nbits - curbits & mask),
             );

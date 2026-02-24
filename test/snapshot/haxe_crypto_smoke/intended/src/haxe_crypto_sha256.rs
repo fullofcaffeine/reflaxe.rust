@@ -137,9 +137,8 @@ impl Sha256 {
                 let mut _g: i32 = 0;
                 while _g < 64 {
                     let j: i32 = {
-                        let __tmp = _g;
-                        _g = _g + 1;
-                        __tmp
+                        let __next = _g + 1;
+                        std::mem::replace(&mut _g, __next)
                     };
                     if j < 16 {
                         {
@@ -372,9 +371,8 @@ impl Sha256 {
             let _g1: i32 = nblk * 16;
             while _g < _g1 {
                 let i: i32 = {
-                    let __tmp = _g;
-                    _g = _g + 1;
-                    __tmp
+                    let __next = _g + 1;
+                    std::mem::replace(&mut _g, __next)
                 };
                 {
                     let __tmp = 0;
@@ -388,9 +386,8 @@ impl Sha256 {
             let _g1_2: i32 = s_2.borrow().length();
             while _g_2 < _g1_2 {
                 let i_2: i32 = {
-                    let __tmp = _g_2;
-                    _g_2 = _g_2 + 1;
-                    __tmp
+                    let __next = _g_2 + 1;
+                    std::mem::replace(&mut _g_2, __next)
                 };
                 let p: i32 = i_2 >> 2;
                 {

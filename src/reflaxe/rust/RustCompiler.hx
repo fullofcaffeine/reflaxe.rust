@@ -4745,7 +4745,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						initExpr = coerceExprToExpected(initExpr, init, v.t);
 					}
 					var mutable = currentMutatedLocals != null && currentMutatedLocals.exists(v.id);
-					RLet(name, mutable, rustTy, initExpr);
+					var readCount = currentLocalReadCounts != null
+						&& currentLocalReadCounts.exists(v.id) ? currentLocalReadCounts.get(v.id) : 0;
+					if (readCount == 0 && !mutable) {
+						// Keep initializer side effects but avoid `unused_variables` warnings for
+						// compiler-introduced temporaries that are never read.
+						var underscoreTy:Null<RustType> = initExpr == null ? rustTy : null;
+						RLet("_", false, underscoreTy, initExpr);
+					} else {
+						RLet(name, mutable, rustTy, initExpr);
+					}
 				}
 			case TIf(cond, eThen, eElse): {
 					// Statement-position if: force unit branches so we can omit a trailing semicolon.
@@ -4866,6 +4875,21 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									}
 								}
 						}
+					}
+				}
+			case TUnop(op, postFix, inner) if (postFix && (op == OpIncrement || op == OpDecrement)): {
+					// Statement-position postfix local ++/-- does not need the old value.
+					// Emit a direct assignment instead of `std::mem::replace(...)` to avoid
+					// `unused_must_use` warnings from the returned old value.
+					switch (unwrapMetaParen(inner).expr) {
+						case TLocal(v): {
+								var name = rustLocalRefIdent(v);
+								var delta:RustExpr = TypeHelper.isFloat(inner.t) ? ELitFloat(1.0) : ELitInt(1);
+								var binop = (op == OpIncrement) ? "+" : "-";
+								RSemi(EAssign(EPath(name), EBinary(binop, EPath(name), delta)));
+							}
+						case _:
+							RSemi(compileExpr(e));
 					}
 				}
 			case TBinop(OpAssignOp(OpAdd), lhs, rhs) if (isStringType(followType(e.t)) || isStringType(followType(lhs.t)) || isStringType(followType(rhs.t))): {
@@ -5175,7 +5199,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function collectMutatedLocals(root:TypedExpr):Map<Int, Bool> {
 		var mutated:Map<Int, Bool> = [];
 		var declaredWithoutInit:Map<Int, Bool> = [];
-		var assignCounts:Map<Int, Int> = [];
 
 		function unwrapToLocal(e:TypedExpr):Null<TVar> {
 			var cur = unwrapMetaParen(e);
@@ -5279,9 +5302,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								if (declaredWithoutInit.exists(v.id)) {
 									if (loopDepth > 0) {
 										mutated.set(v.id, true);
-									} else {
-										var prev = assignCounts.exists(v.id) ? assignCounts.get(v.id) : 0;
-										assignCounts.set(v.id, prev + 1);
 									}
 								} else {
 									mutated.set(v.id, true);
@@ -5332,9 +5352,103 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		scan(root, 0);
 
-		// If a local was declared without an initializer, only require `mut` when it is assigned more than once.
-		for (id in assignCounts.keys()) {
-			if (assignCounts.get(id) > 1)
+		/**
+			Returns the maximum number of direct writes to `targetId` along any execution path in `e`.
+
+			Why this exists:
+			Summing writes across all branches is overly conservative for `var x; if (...) x = ... else x = ...`
+			and incorrectly forces `let mut x;` (Rust warns with `unused_mut` because each path initializes once).
+
+			How this is used:
+			For uninitialized locals we require `mut` only if some path can write the same local more than once.
+			Writes in loop contexts are treated as potentially repeated and therefore require `mut`.
+		**/
+		function maxWritesOnPath(e:TypedExpr, targetId:Int, loopDepth:Int):Int {
+			function isWriteToTarget(x:TypedExpr):Bool {
+				return switch (x.expr) {
+					case TBinop(OpAssign, lhs, _) | TBinop(OpAssignOp(_), lhs, _):
+						switch (unwrapMetaParen(lhs).expr) {
+							case TLocal(v):
+								v.id == targetId;
+							case _:
+								false;
+						}
+					case TUnop(op, _, inner) if (op == OpIncrement || op == OpDecrement):
+						switch (unwrapMetaParen(inner).expr) {
+							case TLocal(v):
+								v.id == targetId;
+							case _:
+								false;
+						}
+					case _:
+						false;
+				}
+			}
+
+			switch (e.expr) {
+				case TBlock(exprs):
+					{
+						var total = 0;
+						for (x in exprs)
+							total += maxWritesOnPath(x, targetId, loopDepth);
+						return total;
+					}
+				case TIf(cond, eThen, eElse):
+					{
+						var condWrites = maxWritesOnPath(cond, targetId, loopDepth);
+						var thenWrites = maxWritesOnPath(eThen, targetId, loopDepth);
+						var elseWrites = eElse != null ? maxWritesOnPath(eElse, targetId, loopDepth) : 0;
+						return condWrites + Std.int(Math.max(thenWrites, elseWrites));
+					}
+				case TSwitch(scrutinee, cases, def):
+					{
+						var head = maxWritesOnPath(scrutinee, targetId, loopDepth);
+						var branchMax = def != null ? maxWritesOnPath(def, targetId, loopDepth) : 0;
+						for (c in cases) {
+							var w = maxWritesOnPath(c.expr, targetId, loopDepth);
+							if (w > branchMax)
+								branchMax = w;
+						}
+						return head + branchMax;
+					}
+				case TTry(tryExpr, catches):
+					{
+						var base = maxWritesOnPath(tryExpr, targetId, loopDepth);
+						for (c in catches) {
+							var w = maxWritesOnPath(c.expr, targetId, loopDepth);
+							if (w > base)
+								base = w;
+						}
+						return base;
+					}
+				case TWhile(cond, body, _):
+					{
+						var condWrites = maxWritesOnPath(cond, targetId, loopDepth + 1);
+						var bodyWrites = maxWritesOnPath(body, targetId, loopDepth + 1);
+						if (condWrites > 0 || bodyWrites > 0)
+							return 2;
+						return 0;
+					}
+				case TFor(_, it, body):
+					{
+						var itWrites = maxWritesOnPath(it, targetId, loopDepth + 1);
+						var bodyWrites = maxWritesOnPath(body, targetId, loopDepth + 1);
+						if (itWrites > 0 || bodyWrites > 0)
+							return 2;
+						return 0;
+					}
+				case _:
+					{
+						var total = isWriteToTarget(e) ? 1 : 0;
+						TypedExprTools.iter(e, (c) -> total += maxWritesOnPath(c, targetId, loopDepth));
+						return total;
+					}
+			}
+		}
+
+		// If a local was declared without an initializer, require `mut` only when any path writes it more than once.
+		for (id in declaredWithoutInit.keys()) {
+			if (!mutated.exists(id) && maxWritesOnPath(root, id, 0) > 1)
 				mutated.set(id, true);
 		}
 		return mutated;
@@ -11456,11 +11570,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var binop = (op == OpIncrement) ? "+" : "-";
 						if (postFix) {
 							EBlock({
-								stmts: [
-									RLet("__tmp", false, null, EPath(name)),
-									RSemi(EAssign(EPath(name), EBinary(binop, EPath(name), delta)))
-								],
-								tail: EPath("__tmp")
+								stmts: [RLet("__next", false, null, EBinary(binop, EPath(name), delta))],
+								// Use `std::mem::replace` for postfix locals to avoid Rust
+								// `unused_assignments` warnings when the incremented value is not read later.
+								tail: ECall(EPath("std::mem::replace"), [EUnary("&mut ", EPath(name)), EPath("__next")])
 							});
 						} else {
 							EBlock({

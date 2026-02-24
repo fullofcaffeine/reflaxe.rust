@@ -172,7 +172,7 @@ fn main() {
             Result::Err(__p) => {
                 let _g_15: String = __p;
                 {
-                    let _e_3: String = _g_15;
+                    let _ = _g_15;
                     -1
                 }
             }
@@ -219,11 +219,11 @@ fn main() {
         hxrt::dynamic::from(
             !(match r3.clone() {
                 Result::Ok(__p) => {
-                    let _g_19: i32 = __p;
+                    let _ = __p;
                     true
                 }
                 Result::Err(__p) => {
-                    let _g_20: String = __p;
+                    let _ = __p;
                     false
                 }
             })

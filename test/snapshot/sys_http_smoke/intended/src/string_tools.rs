@@ -95,11 +95,7 @@ impl StringTools {
                 r,
             )
         {
-            {
-                let __tmp = r;
-                r = r + 1;
-                __tmp
-            };
+            r = r + 1;
         }
         return hxrt::string::HxString::from(if r > 0 {
             hxrt::string::HxString::from(hxrt::string::substr(s.as_str(), r, Some(l - r)))
@@ -117,11 +113,7 @@ impl StringTools {
                 l - r - 1,
             )
         {
-            {
-                let __tmp = r;
-                r = r + 1;
-                __tmp
-            };
+            r = r + 1;
         }
         return hxrt::string::HxString::from(if r > 0 {
             hxrt::string::HxString::from(hxrt::string::substr(s.as_str(), 0, Some(l - r)))

@@ -80,7 +80,7 @@ fn main() {
             let o: Option<&i32> = crate::rust_vec_tools::VecTools::get_ref(vr_2, 0);
             match o.clone() {
                 Option::Some(__p) => {
-                    let _g: &i32 = __p;
+                    let _ = __p;
                     true
                 }
                 Option::None => false,
@@ -152,7 +152,7 @@ fn main() {
             let o_2: Option<String> = crate::rust_path_buf_tools::PathBufTools::file_name(&p2);
             match o_2.clone() {
                 Option::Some(__p) => {
-                    let _g_2: String = __p;
+                    let _ = __p;
                     true
                 }
                 Option::None => false,
@@ -200,11 +200,11 @@ fn main() {
             };
             match r_2.clone() {
                 Result::Ok(__p) => {
-                    let _g_5: i32 = __p;
+                    let _ = __p;
                     true
                 }
                 Result::Err(__p) => {
-                    let _g_6: String = __p;
+                    let _ = __p;
                     false
                 }
             }
