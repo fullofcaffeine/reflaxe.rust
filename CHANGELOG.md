@@ -1,3 +1,10 @@
+# [0.60.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.59.0...v0.60.0) (2026-02-24)
+
+
+### Features
+
+* **metal:** enforce full subset policy coverage ([68236b0](https://github.com/fullofcaffeine/reflaxe.rust/commit/68236b039f8e63bac407092144a643ea922db7d1))
+
 # [0.59.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.58.0...v0.59.0) (2026-02-24)
 
 
