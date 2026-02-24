@@ -56,3 +56,4 @@ Use this page as the map for `reflaxe.rust` docs.
 
 - [Release](release.md): semantic-release flow and release artifacts.
 - [Haxelib Packaging Notes](haxelib-packaging.md): package layout rules, flattening behavior, and `.cross.hx` rationale.
+- [Spike: Auto Profile Exploration](spikes/auto-profile-exploration.md): decision memo for keeping explicit `portable|metal` contracts and constraints for any future `auto` experiment.
