@@ -346,7 +346,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	**/
 	function enforceProfileContracts():Void {
 		var diagnostics = ProfileContractAnalyzer.analyze(profile, snapshotUsedModulePaths(), Context.defined("rust_metal_allow_fallback"),
-			Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"));
+			Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"),
+			Context.defined("rust_string_nullable"));
 		#if eval
 		for (warning in diagnostics.warnings)
 			Context.warning("Rust profile contract: " + warning, Context.currentPos());

@@ -37,6 +37,13 @@ In `metal`, strict app boundary mode is enabled by default (`reflaxe_rust_strict
 
 Use fallback only as a migration tool while removing non-metal-clean boundaries.
 
+Current contract checks include:
+
+- reflection/runtime-introspection modules (`Reflect`, `Type`, `haxe.rtti.*`),
+- dynamic map semantics via `haxe.DynamicAccess`,
+- dynamic-fallback opt-in defines (`rust_allow_unresolved_monomorph_dynamic`, `rust_allow_unmapped_coretype_dynamic`),
+- nullable-string override (`rust_string_nullable`) in metal-clean mode.
+
 ## String and async defaults
 
 - Default string representation is non-null Rust `String` (unless explicitly overridden).
