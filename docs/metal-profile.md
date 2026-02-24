@@ -82,7 +82,9 @@ This writes:
 - `metal_report.json` (machine-readable snapshot),
 - `metal_report.md` (human-readable summary).
 
-Both reports reuse the same typed snapshot as warning output.
+Both reports reuse the same typed snapshot as warning output and include grouped
+**issue classes** (for example `dynamic_boundary`, `raw_codegen_fallback`) so
+cleanup can be tracked as actionable work buckets.
 
 Current contract checks include:
 

@@ -17,6 +17,7 @@ import haxe.macro.TypedExprTools;
 	- Produces a `MetalViabilitySnapshot` with:
 	  - per-module scores and blocker lists,
 	  - global blockers from compile-time defines/policy toggles,
+	  - grouped issue-class summaries that map blockers into actionable work buckets,
 	  - deterministic aggregate summary fields (`overallScore`, module counts, blocker totals).
 	- Tracks known blocker categories aligned with current metal contracts:
 	  - reflection/runtime-introspection usage,
@@ -137,6 +138,11 @@ class MetalViabilityAnalyzer {
 		var globalPenalty = totalPenalty(sortedGlobal);
 		var overall = clampScore(moduleAverage - globalPenalty);
 		var blockerCount = sortedGlobal.length + moduleBlockerTotal;
+		var issueClassMap:Map<String, IssueClassAccumulator> = [];
+		accumulateIssueClasses(issueClassMap, sortedGlobal, "<global>");
+		for (module in outModules)
+			accumulateIssueClasses(issueClassMap, module.blockers, module.module);
+		var issueClasses = issueClassSummaries(issueClassMap);
 
 		return {
 			overallScore: overall,
@@ -144,7 +150,8 @@ class MetalViabilityAnalyzer {
 			moduleReadyCount: readyCount,
 			blockerCount: blockerCount,
 			modules: outModules,
-			globalBlockers: sortedGlobal
+			globalBlockers: sortedGlobal,
+			issueClasses: issueClasses
 		};
 	}
 
@@ -472,6 +479,104 @@ class MetalViabilityAnalyzer {
 		return pack == null || pack.length == 0 ? name : pack.join(".") + "." + name;
 	}
 
+	static function accumulateIssueClasses(map:Map<String, IssueClassAccumulator>, blockers:Array<MetalViabilityBlocker>, module:String):Void {
+		for (blocker in blockers) {
+			var issueClass = issueClassFromBlocker(blocker);
+			if (!map.exists(issueClass.id)) {
+				map.set(issueClass.id, {
+					id: issueClass.id,
+					title: issueClass.title,
+					recommendedAction: issueClass.recommendedAction,
+					blockerCount: 0,
+					occurrenceCount: 0,
+					totalWeight: 0,
+					modules: [],
+					blockerIds: []
+				});
+			}
+
+			var acc = map.get(issueClass.id);
+			acc.blockerCount += 1;
+			acc.occurrenceCount += blocker.occurrences;
+			acc.totalWeight += blocker.weight;
+			acc.modules.set(module, true);
+			acc.blockerIds.set(blocker.id, true);
+		}
+	}
+
+	static function issueClassSummaries(map:Map<String, IssueClassAccumulator>):Array<MetalIssueClassSummary> {
+		var out:Array<MetalIssueClassSummary> = [];
+		for (_ => acc in map) {
+			var modules = [for (module in acc.modules.keys()) module];
+			modules.sort(compareStrings);
+			var blockerIds = [for (blockerId in acc.blockerIds.keys()) blockerId];
+			blockerIds.sort(compareStrings);
+			out.push({
+				id: acc.id,
+				title: acc.title,
+				recommendedAction: acc.recommendedAction,
+				blockerCount: acc.blockerCount,
+				occurrenceCount: acc.occurrenceCount,
+				moduleCount: modules.length,
+				totalWeight: acc.totalWeight,
+				modules: modules,
+				blockerIds: blockerIds
+			});
+		}
+		out.sort(compareIssueClasses);
+		return out;
+	}
+
+	static function issueClassFromBlocker(blocker:MetalViabilityBlocker):IssueClassDescriptor {
+		if (blocker.category == "reflection") {
+			return {
+				id: "reflection_runtime_api",
+				title: "Reflection Runtime API",
+				recommendedAction: "Replace reflection/introspection with typed fields/enums/interfaces in metal paths."
+			};
+		}
+
+		if (blocker.id == "raw_expr_fallback" || blocker.category == "raw_fallback") {
+			return {
+				id: "raw_codegen_fallback",
+				title: "Raw Codegen Fallback",
+				recommendedAction: "Implement typed AST lowering for fallback boundaries to eliminate ERaw emission."
+			};
+		}
+
+		if (blocker.category == "dynamic_boundary") {
+			return {
+				id: "dynamic_boundary",
+				title: "Dynamic Boundary",
+				recommendedAction: "Decode runtime values into typed schemas immediately after boundary crossing."
+			};
+		}
+
+		if (blocker.category == "policy_toggle") {
+			return {
+				id: "policy_toggle",
+				title: "Policy Toggle",
+				recommendedAction: "Remove fallback compatibility defines to enforce metal-clean guarantees."
+			};
+		}
+
+		return {
+			id: "uncategorized",
+			title: "Uncategorized",
+			recommendedAction: "Add a typed issue-class mapping and resolve this blocker category."
+		};
+	}
+
+	static function compareIssueClasses(a:MetalIssueClassSummary, b:MetalIssueClassSummary):Int {
+		if (a.totalWeight != b.totalWeight)
+			return a.totalWeight > b.totalWeight ? -1 : 1;
+		return compareStrings(a.id, b.id);
+	}
+
+	static inline function compareStrings(a:String, b:String):Int {
+		return a < b ? -1 : (a > b ? 1 : 0);
+	}
+
 	static function unwrapMetaParen(expr:TypedExpr):TypedExpr {
 		var current = expr;
 		while (true) {
@@ -493,6 +598,23 @@ class MetalViabilityAnalyzer {
 private typedef ModuleAccumulator = {
 	var module:String;
 	var blockers:Map<String, MetalViabilityBlocker>;
+};
+
+private typedef IssueClassDescriptor = {
+	var id:String;
+	var title:String;
+	var recommendedAction:String;
+};
+
+private typedef IssueClassAccumulator = {
+	var id:String;
+	var title:String;
+	var recommendedAction:String;
+	var blockerCount:Int;
+	var occurrenceCount:Int;
+	var totalWeight:Int;
+	var modules:Map<String, Bool>;
+	var blockerIds:Map<String, Bool>;
 };
 
 typedef MetalViabilityOptions = {
@@ -525,4 +647,17 @@ typedef MetalViabilitySnapshot = {
 	var blockerCount:Int;
 	var modules:Array<MetalModuleViability>;
 	var globalBlockers:Array<MetalViabilityBlocker>;
+	var issueClasses:Array<MetalIssueClassSummary>;
+};
+
+typedef MetalIssueClassSummary = {
+	var id:String;
+	var title:String;
+	var recommendedAction:String;
+	var blockerCount:Int;
+	var occurrenceCount:Int;
+	var moduleCount:Int;
+	var totalWeight:Int;
+	var modules:Array<String>;
+	var blockerIds:Array<String>;
 };

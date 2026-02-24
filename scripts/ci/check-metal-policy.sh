@@ -168,13 +168,28 @@ run_report_case() {
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
+	if ! match_regex '"issueClasses":[[:space:]]*\[' "$json_a"; then
+		echo "[metal-policy] error: metal_report.json missing issueClasses for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
 	if ! match_regex '"id":[[:space:]]*"dynamic_access"' "$json_a"; then
 		echo "[metal-policy] error: metal_report.json missing expected dynamic_access blocker for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
+	if ! match_regex '"id":[[:space:]]*"dynamic_boundary"' "$json_a"; then
+		echo "[metal-policy] error: metal_report.json missing expected dynamic_boundary issue class for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
 	if ! match_regex '^# Metal Viability Report' "$md_a"; then
 		echo "[metal-policy] error: metal_report.md missing title for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if ! match_regex '^## Issue classes' "$md_a"; then
+		echo "[metal-policy] error: metal_report.md missing issue classes section for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi

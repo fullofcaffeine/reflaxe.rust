@@ -36,6 +36,7 @@ import reflaxe.rust.analyze.MetalIslandAnalyzer;
 import reflaxe.rust.analyze.MetalIslandAnalyzer.MetalIslandDeclaration;
 import reflaxe.rust.analyze.MetalIslandAnalyzer.MetalIslandSnapshot;
 import reflaxe.rust.analyze.MetalViabilityAnalyzer;
+import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalIssueClassSummary;
 import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability;
 import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker;
 import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot;
@@ -866,6 +867,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		lines.push('\t"globalBlockers": [');
 		appendJsonBlockers(lines, snapshot.globalBlockers, 2);
 		lines.push("\t],");
+		lines.push('\t"issueClasses": [');
+		appendJsonIssueClasses(lines, snapshot.issueClasses, 2);
+		lines.push("\t],");
 		lines.push('\t"modules": [');
 		appendJsonModules(lines, snapshot.modules, 2);
 		lines.push("\t]");
@@ -903,6 +907,30 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 	}
 
+	static function appendJsonIssueClasses(lines:Array<String>, issueClasses:Array<MetalIssueClassSummary>, indentLevel:Int):Void {
+		for (index in 0...issueClasses.length) {
+			var issueClass = issueClasses[index];
+			var comma = index == issueClasses.length - 1 ? "" : ",";
+			lines.push(indent(indentLevel) + "{");
+			lines.push(indent(indentLevel + 1) + '"id": "' + jsonEscape(issueClass.id) + '",');
+			lines.push(indent(indentLevel + 1) + '"title": "' + jsonEscape(issueClass.title) + '",');
+			lines.push(indent(indentLevel + 1) + '"recommendedAction": "' + jsonEscape(issueClass.recommendedAction) + '",');
+			lines.push(indent(indentLevel + 1) + '"blockerCount": ' + issueClass.blockerCount + ",");
+			lines.push(indent(indentLevel + 1) + '"occurrenceCount": ' + issueClass.occurrenceCount + ",");
+			lines.push(indent(indentLevel + 1) + '"moduleCount": ' + issueClass.moduleCount + ",");
+			lines.push(indent(indentLevel + 1) + '"totalWeight": ' + issueClass.totalWeight + ",");
+			lines.push(indent(indentLevel + 1)
+				+ '"modules": ['
+				+ issueClass.modules.map(module -> '"' + jsonEscape(module) + '"').join(", ")
+				+ "],");
+			lines.push(indent(indentLevel + 1)
+				+ '"blockerIds": ['
+				+ issueClass.blockerIds.map(id -> '"' + jsonEscape(id) + '"').join(", ")
+				+ "]");
+			lines.push(indent(indentLevel) + "}" + comma);
+		}
+	}
+
 	static function renderMetalViabilityMarkdown(snapshot:MetalViabilitySnapshot):String {
 		var lines:Array<String> = [];
 		lines.push("# Metal Viability Report");
@@ -919,6 +947,19 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		} else {
 			for (blocker in snapshot.globalBlockers)
 				lines.push(renderMarkdownBlocker(blocker));
+		}
+		lines.push("");
+		lines.push("## Issue classes");
+		if (snapshot.issueClasses.length == 0) {
+			lines.push("- none");
+		} else {
+			for (issueClass in snapshot.issueClasses) {
+				lines.push("- `" + issueClass.id + "` (" + issueClass.title + ") blockers=`" + issueClass.blockerCount + "` occurrences=`"
+					+ issueClass.occurrenceCount + "` modules=`" + issueClass.moduleCount + "` weight=`" + issueClass.totalWeight + "` action: "
+					+ issueClass.recommendedAction);
+				lines.push("-   blockers: " + issueClass.blockerIds.map(id -> "`" + id + "`").join(", "));
+				lines.push("-   modules: " + issueClass.modules.map(module -> "`" + module + "`").join(", "));
+			}
 		}
 		lines.push("");
 		lines.push("## Modules");
