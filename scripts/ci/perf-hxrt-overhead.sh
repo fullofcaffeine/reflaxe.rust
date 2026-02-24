@@ -26,6 +26,7 @@ Environment:
   HXRT_PERF_ARRAY_ITERS     Startup loop count for array case (default: 300)
   HXRT_PERF_HOT_LOOP_ITERS  Startup loop count for hot_loop case (default: 300)
   HXRT_PERF_HOT_LOOP_INPROC_RUNS In-process sample count for hot_loop_inproc binaries (default: 20)
+  HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS In-process sample count for hot_loop_no_hxrt binaries (default: 20)
   HXRT_PERF_CHAT_ITERS      Startup loop count for chat headless case (default: 40)
 USAGE
 }
@@ -334,6 +335,7 @@ hello_iters="${HXRT_PERF_HELLO_ITERS:-300}"
 array_iters="${HXRT_PERF_ARRAY_ITERS:-300}"
 hot_loop_iters="${HXRT_PERF_HOT_LOOP_ITERS:-300}"
 hot_loop_inproc_runs="${HXRT_PERF_HOT_LOOP_INPROC_RUNS:-20}"
+hot_loop_no_hxrt_inproc_runs="${HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS:-20}"
 chat_iters="${HXRT_PERF_CHAT_ITERS:-40}"
 
 if [[ -x /usr/bin/time ]]; then
@@ -435,12 +437,22 @@ for profile in "${profiles[@]}"; do
   out_dir="$case_dir/out"
   target_dir="$case_dir/target"
   mkdir -p "$case_dir"
-  "$haxe_bin" -cp "$root_dir/examples/hello" -lib reflaxe.rust \
-    -D reflaxe_rust_strict_examples \
-    -D "reflaxe_rust_profile=$profile" \
-    -D "rust_output=$out_dir" \
-    -D rust_no_build \
-    -main Main >/dev/null
+  if [[ "$profile" == "metal" ]]; then
+    "$haxe_bin" -cp "$root_dir/examples/hello" -lib reflaxe.rust \
+      -D reflaxe_rust_strict_examples \
+      -D "reflaxe_rust_profile=$profile" \
+      -D rust_metal_allow_fallback \
+      -D "rust_output=$out_dir" \
+      -D rust_no_build \
+      -main Main >/dev/null
+  else
+    "$haxe_bin" -cp "$root_dir/examples/hello" -lib reflaxe.rust \
+      -D reflaxe_rust_strict_examples \
+      -D "reflaxe_rust_profile=$profile" \
+      -D "rust_output=$out_dir" \
+      -D rust_no_build \
+      -main Main >/dev/null
+  fi
   CARGO_TARGET_DIR="$target_dir" "$cargo_bin" build --manifest-path "$out_dir/Cargo.toml" --release -q
   package_name="$(extract_package_name "$out_dir/Cargo.toml")"
   [[ -n "$package_name" ]] || fail "unable to parse package name in $(display_path "$out_dir/Cargo.toml")"
@@ -462,11 +474,20 @@ for profile in "${profiles[@]}"; do
   out_dir="$case_dir/out"
   target_dir="$case_dir/target"
   mkdir -p "$case_dir"
-  "$haxe_bin" -cp "$root_dir/test/snapshot/for_array" -lib reflaxe.rust \
-    -D "reflaxe_rust_profile=$profile" \
-    -D "rust_output=$out_dir" \
-    -D rust_no_build \
-    -main Main >/dev/null
+  if [[ "$profile" == "metal" ]]; then
+    "$haxe_bin" -cp "$root_dir/test/snapshot/for_array" -lib reflaxe.rust \
+      -D "reflaxe_rust_profile=$profile" \
+      -D rust_metal_allow_fallback \
+      -D "rust_output=$out_dir" \
+      -D rust_no_build \
+      -main Main >/dev/null
+  else
+    "$haxe_bin" -cp "$root_dir/test/snapshot/for_array" -lib reflaxe.rust \
+      -D "reflaxe_rust_profile=$profile" \
+      -D "rust_output=$out_dir" \
+      -D rust_no_build \
+      -main Main >/dev/null
+  fi
   CARGO_TARGET_DIR="$target_dir" "$cargo_bin" build --manifest-path "$out_dir/Cargo.toml" --release -q
   package_name="$(extract_package_name "$out_dir/Cargo.toml")"
   [[ -n "$package_name" ]] || fail "unable to parse package name in $(display_path "$out_dir/Cargo.toml")"
@@ -488,11 +509,20 @@ for profile in "${profiles[@]}"; do
   out_dir="$case_dir/out"
   target_dir="$case_dir/target"
   mkdir -p "$case_dir"
-  "$haxe_bin" -cp "$root_dir/test/perf/hot_loop" -lib reflaxe.rust \
-    -D "reflaxe_rust_profile=$profile" \
-    -D "rust_output=$out_dir" \
-    -D rust_no_build \
-    -main Main >/dev/null
+  if [[ "$profile" == "metal" ]]; then
+    "$haxe_bin" -cp "$root_dir/test/perf/hot_loop" -lib reflaxe.rust \
+      -D "reflaxe_rust_profile=$profile" \
+      -D rust_metal_allow_fallback \
+      -D "rust_output=$out_dir" \
+      -D rust_no_build \
+      -main Main >/dev/null
+  else
+    "$haxe_bin" -cp "$root_dir/test/perf/hot_loop" -lib reflaxe.rust \
+      -D "reflaxe_rust_profile=$profile" \
+      -D "rust_output=$out_dir" \
+      -D rust_no_build \
+      -main Main >/dev/null
+  fi
   CARGO_TARGET_DIR="$target_dir" "$cargo_bin" build --manifest-path "$out_dir/Cargo.toml" --release -q
   package_name="$(extract_package_name "$out_dir/Cargo.toml")"
   [[ -n "$package_name" ]] || fail "unable to parse package name in $(display_path "$out_dir/Cargo.toml")"
@@ -514,11 +544,20 @@ for profile in "${profiles[@]}"; do
   out_dir="$case_dir/out"
   target_dir="$case_dir/target"
   mkdir -p "$case_dir"
-  "$haxe_bin" -cp "$root_dir/test/perf/hot_loop_inproc" -lib reflaxe.rust \
-    -D "reflaxe_rust_profile=$profile" \
-    -D "rust_output=$out_dir" \
-    -D rust_no_build \
-    -main Main >/dev/null
+  if [[ "$profile" == "metal" ]]; then
+    "$haxe_bin" -cp "$root_dir/test/perf/hot_loop_inproc" -lib reflaxe.rust \
+      -D "reflaxe_rust_profile=$profile" \
+      -D rust_metal_allow_fallback \
+      -D "rust_output=$out_dir" \
+      -D rust_no_build \
+      -main Main >/dev/null
+  else
+    "$haxe_bin" -cp "$root_dir/test/perf/hot_loop_inproc" -lib reflaxe.rust \
+      -D "reflaxe_rust_profile=$profile" \
+      -D "rust_output=$out_dir" \
+      -D rust_no_build \
+      -main Main >/dev/null
+  fi
   CARGO_TARGET_DIR="$target_dir" "$cargo_bin" build --manifest-path "$out_dir/Cargo.toml" --release -q
   package_name="$(extract_package_name "$out_dir/Cargo.toml")"
   [[ -n "$package_name" ]] || fail "unable to parse package name in $(display_path "$out_dir/Cargo.toml")"
@@ -533,6 +572,31 @@ write_pure_hot_loop_inproc_crate "$hot_loop_inproc_pure_dir"
 CARGO_TARGET_DIR="$hot_loop_inproc_pure_target" "$cargo_bin" build --manifest-path "$hot_loop_inproc_pure_dir/Cargo.toml" --release -q
 record_metric_inproc "hot_loop_inproc_pure_rust" "hot_loop_inproc" "pure" "pure_rust" \
   "$hot_loop_inproc_pure_target/release/pure_hot_loop_inproc" "$hot_loop_inproc_runs" "$hot_loop_inproc_pure_dir/inproc.out"
+
+log "hot_loop_no_hxrt case (metal)"
+hot_loop_no_hxrt_case_dir="$work_dir/hot_loop_no_hxrt/metal"
+hot_loop_no_hxrt_out_dir="$hot_loop_no_hxrt_case_dir/out"
+hot_loop_no_hxrt_target_dir="$hot_loop_no_hxrt_case_dir/target"
+mkdir -p "$hot_loop_no_hxrt_case_dir"
+"$haxe_bin" -cp "$root_dir/test/perf/hot_loop_no_hxrt" -lib reflaxe.rust \
+  -D reflaxe_rust_profile=metal \
+  -D rust_no_hxrt \
+  -D "rust_output=$hot_loop_no_hxrt_out_dir" \
+  -D rust_no_build \
+  -main Main >/dev/null
+CARGO_TARGET_DIR="$hot_loop_no_hxrt_target_dir" "$cargo_bin" build --manifest-path "$hot_loop_no_hxrt_out_dir/Cargo.toml" --release -q
+hot_loop_no_hxrt_package_name="$(extract_package_name "$hot_loop_no_hxrt_out_dir/Cargo.toml")"
+[[ -n "$hot_loop_no_hxrt_package_name" ]] || fail "unable to parse package name in $(display_path "$hot_loop_no_hxrt_out_dir/Cargo.toml")"
+record_metric_inproc "hot_loop_no_hxrt_haxe_metal" "hot_loop_no_hxrt" "metal" "haxe_no_hxrt" \
+  "$hot_loop_no_hxrt_target_dir/release/$hot_loop_no_hxrt_package_name" "$hot_loop_no_hxrt_inproc_runs" "$hot_loop_no_hxrt_case_dir/inproc.out"
+
+log "hot_loop_no_hxrt pure rust baseline"
+hot_loop_no_hxrt_pure_dir="$work_dir/hot_loop_no_hxrt/pure"
+hot_loop_no_hxrt_pure_target="$hot_loop_no_hxrt_pure_dir/target"
+write_pure_hot_loop_inproc_crate "$hot_loop_no_hxrt_pure_dir"
+CARGO_TARGET_DIR="$hot_loop_no_hxrt_pure_target" "$cargo_bin" build --manifest-path "$hot_loop_no_hxrt_pure_dir/Cargo.toml" --release -q
+record_metric_inproc "hot_loop_no_hxrt_pure_rust" "hot_loop_no_hxrt" "pure" "pure_rust" \
+  "$hot_loop_no_hxrt_pure_target/release/pure_hot_loop_inproc" "$hot_loop_no_hxrt_inproc_runs" "$hot_loop_no_hxrt_pure_dir/inproc.out"
 
 for profile in "${profiles[@]}"; do
   log "chat case ($profile)"
@@ -570,6 +634,7 @@ HXRT_PERF_HELLO_ITERS="$hello_iters" \
 HXRT_PERF_ARRAY_ITERS="$array_iters" \
 HXRT_PERF_HOT_LOOP_ITERS="$hot_loop_iters" \
 HXRT_PERF_HOT_LOOP_INPROC_RUNS="$hot_loop_inproc_runs" \
+HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS="$hot_loop_no_hxrt_inproc_runs" \
 HXRT_PERF_CHAT_ITERS="$chat_iters" \
 HXRT_PERF_HAXE_VERSION="$haxe_version" \
 HXRT_PERF_RUSTC_VERSION="$rustc_version" \
@@ -591,6 +656,7 @@ const helloIters = Number(process.env.HXRT_PERF_HELLO_ITERS || "300");
 const arrayIters = Number(process.env.HXRT_PERF_ARRAY_ITERS || "300");
 const hotLoopIters = Number(process.env.HXRT_PERF_HOT_LOOP_ITERS || "300");
 const hotLoopInprocRuns = Number(process.env.HXRT_PERF_HOT_LOOP_INPROC_RUNS || "20");
+const hotLoopNoHxrtInprocRuns = Number(process.env.HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS || "20");
 const chatIters = Number(process.env.HXRT_PERF_CHAT_ITERS || "40");
 const haxeVersion = process.env.HXRT_PERF_HAXE_VERSION || "";
 const rustcVersion = process.env.HXRT_PERF_RUSTC_VERSION || "";
@@ -642,10 +708,10 @@ function ratio(current, base) {
   return current / base;
 }
 
-function buildCaseOverhead(caseName) {
+function buildCaseOverhead(caseName, selectedProfiles = profiles) {
   const pure = requireMetric(`${caseName}_pure_rust`);
   const out = {};
-  for (const profile of profiles) {
+  for (const profile of selectedProfiles) {
     const metric = requireMetric(`${caseName}_haxe_${profile}`);
     out[profile] = {
       binaryRatio: ratio(metric.binary_bytes, pure.binary_bytes),
@@ -660,6 +726,7 @@ const helloOverheadRatios = buildCaseOverhead("hello");
 const arrayOverheadRatios = buildCaseOverhead("array");
 const hotLoopOverheadRatios = buildCaseOverhead("hot_loop");
 const hotLoopInprocOverheadRatios = buildCaseOverhead("hot_loop_inproc");
+const hotLoopNoHxrtOverheadRatios = buildCaseOverhead("hot_loop_no_hxrt", ["metal"]);
 
 const chatMetrics = Object.fromEntries(
   profiles.map((profile) => [profile, requireMetric(`chat_haxe_${profile}`)])
@@ -695,6 +762,7 @@ const current = {
     array: arrayIters,
     hot_loop: hotLoopIters,
     hot_loop_inproc: hotLoopInprocRuns,
+    hot_loop_no_hxrt: hotLoopNoHxrtInprocRuns,
     chat: chatIters,
   },
   metrics,
@@ -703,6 +771,7 @@ const current = {
     arrayOverheadRatios,
     hotLoopOverheadRatios,
     hotLoopInprocOverheadRatios,
+    hotLoopNoHxrtOverheadRatios,
     chatRelativeToMin,
   },
 };
@@ -741,7 +810,22 @@ function compareGroup(groupLabel, currentGroup, baselineGroup, opts) {
     specs.push({ key: "runtimeRatio", label: "runtime ratio", warnPct: runtimeWarnPct });
   }
 
-  for (const profile of profiles) {
+  function orderedProfilesForGroup() {
+    const out = [];
+    for (const profile of profiles) {
+      if (currentGroup && currentGroup[profile]) {
+        out.push(profile);
+      }
+    }
+    for (const key of Object.keys(currentGroup || {})) {
+      if (!out.includes(key)) {
+        out.push(key);
+      }
+    }
+    return out;
+  }
+
+  for (const profile of orderedProfilesForGroup()) {
     const currentProfile = currentGroup[profile];
     const baselineProfile = baselineGroup[profile];
     if (!currentProfile || !baselineProfile) {
@@ -786,6 +870,10 @@ if (!updateBaseline) {
       includeRuntime: true,
       runtimeProfiles: ["metal"],
     });
+    compareGroup("hot_loop_no_hxrt_overhead", current.derived.hotLoopNoHxrtOverheadRatios, baselineDerived.hotLoopNoHxrtOverheadRatios, {
+      includeRuntime: true,
+      runtimeProfiles: ["metal"],
+    });
     compareGroup("chat_relative", current.derived.chatRelativeToMin, baselineDerived.chatRelativeToMin, { includeRuntime: true });
   }
 }
@@ -810,11 +898,26 @@ function formatRatio(v) {
 }
 
 function ratioTable(title, ratioGroup) {
+  function orderedProfilesForTable() {
+    const out = [];
+    for (const profile of profiles) {
+      if (ratioGroup[profile]) {
+        out.push(profile);
+      }
+    }
+    for (const profile of Object.keys(ratioGroup)) {
+      if (!out.includes(profile)) {
+        out.push(profile);
+      }
+    }
+    return out;
+  }
+
   const lines = [];
   lines.push(`### ${title}`);
   lines.push("| Profile | Binary x | Stripped x | Runtime x |");
   lines.push("| --- | ---: | ---: | ---: |");
-  for (const profile of profiles) {
+  for (const profile of orderedProfilesForTable()) {
     const row = ratioGroup[profile];
     lines.push(
       `| ${profile} | ${formatRatio(row.binaryRatio)} | ${formatRatio(row.strippedRatio)} | ${formatRatio(row.runtimeRatio)} |`
@@ -830,7 +933,9 @@ summaryLines.push("");
 summaryLines.push(`- Mode: \`${comparison.mode}\``);
 summaryLines.push(`- Size budget: \`+${sizeWarnPct}%\``);
 summaryLines.push(`- Runtime budget: \`+${runtimeWarnPct}%\``);
-summaryLines.push(`- Runtime loops: hello=${helloIters}, array=${arrayIters}, hot_loop=${hotLoopIters}, hot_loop_inproc=${hotLoopInprocRuns}, chat=${chatIters}`);
+summaryLines.push(
+  `- Runtime loops: hello=${helloIters}, array=${arrayIters}, hot_loop=${hotLoopIters}, hot_loop_inproc=${hotLoopInprocRuns}, hot_loop_no_hxrt=${hotLoopNoHxrtInprocRuns}, chat=${chatIters}`
+);
 if (haxeVersion.length > 0 || rustcVersion.length > 0) {
   summaryLines.push(`- Toolchain: ${haxeVersion || "haxe:unknown"} | ${rustcVersion || "rustc:unknown"}`);
 }
@@ -839,16 +944,19 @@ summaryLines.push(ratioTable("Hello Overhead (x vs pure Rust hello; startup-weig
 summaryLines.push(ratioTable("Array Overhead (x vs pure Rust array loop; startup-weighted)", current.derived.arrayOverheadRatios));
 summaryLines.push(ratioTable("Hot Loop Overhead (x vs pure Rust hot loop case; startup-weighted)", current.derived.hotLoopOverheadRatios));
 summaryLines.push(ratioTable("Hot Loop In-Process Overhead (x vs pure Rust hot loop in-process throughput)", current.derived.hotLoopInprocOverheadRatios));
+summaryLines.push(ratioTable("Hot Loop No-HXRT Overhead (x vs pure Rust in-process hot loop throughput; metal + rust_no_hxrt)", current.derived.hotLoopNoHxrtOverheadRatios));
 summaryLines.push(ratioTable("Chat Profile Spread (x vs fastest/smallest chat profile in this run; startup-weighted)", current.derived.chatRelativeToMin));
 
 const metalHotLoopTarget = 1.05;
 const metalHotLoopRatio = Number(current.derived.hotLoopInprocOverheadRatios.metal.runtimeRatio);
+const metalNoHxrtHotLoopRatio = Number(current.derived.hotLoopNoHxrtOverheadRatios.metal.runtimeRatio);
 summaryLines.push("### Target Tracking");
 summaryLines.push(`- metal hot-loop in-process runtime target: <= ${metalHotLoopTarget.toFixed(3)}x pure Rust`);
 summaryLines.push(
   `- metal hot-loop in-process runtime current: ${metalHotLoopRatio.toFixed(3)}x ` +
     `(${metalHotLoopRatio <= metalHotLoopTarget ? "target met" : "target not met"})`
 );
+summaryLines.push(`- metal no-hxrt hot-loop in-process runtime current: ${metalNoHxrtHotLoopRatio.toFixed(3)}x pure Rust`);
 summaryLines.push("");
 
 if (warnings.length > 0) {

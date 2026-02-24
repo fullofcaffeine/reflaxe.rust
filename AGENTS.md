@@ -184,6 +184,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - Regression coverage includes a symlinked working-directory compile pass to catch path-alias mismatches when classifying framework std files.
 - Run HXRT overhead benchmarks locally: `bash scripts/ci/perf-hxrt-overhead.sh`
   - Refresh baseline intentionally: `bash scripts/ci/perf-hxrt-overhead.sh --update-baseline`
+  - Perf harness gotcha: metal benchmark cases use `-D rust_metal_allow_fallback` by design so trend tracking remains available while metal-clean lowering is still in progress.
+    Keep the dedicated `hot_loop_no_hxrt` case strict (`-D rust_no_hxrt` without fallback) as the no-runtime parity signal.
 - Update a snapshot’s golden output (after review): `bash test/run-snapshots.sh --case <name> --update`
 - Run the full CI-style harness locally (snapshots + all examples): `npm run test:all` (alias for `bash scripts/ci/harness.sh`)
   - Change-gate rule: for any non-trivial compiler/runtime/std/example code change, run the full harness (`npm run check:harness`)
@@ -228,7 +230,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - `test/run-snapshots.sh` (runs `cargo fmt` + `cargo build -q` per snapshot)
   - `test/run-upstream-stdlib-sweep.sh` (per-module actionable compile/fmt/check for upstream std modules)
   - `scripts/ci/package-smoke.sh` validates the packaged artifact via isolated local `haxelib` install + Rust build (including symlink-cwd alias regression).
-  - `scripts/ci/perf-hxrt-overhead.sh` benchmarks HXRT overhead (`hello`/`array`/`hot_loop`/`hot_loop_inproc` vs pure Rust baselines + chat profile spread) and emits soft-budget warnings + artifacts.
+  - `scripts/ci/perf-hxrt-overhead.sh` benchmarks HXRT overhead (`hello`/`array`/`hot_loop`/`hot_loop_inproc`/`hot_loop_no_hxrt` vs pure Rust baselines + chat profile spread) and emits soft-budget warnings + artifacts.
   - `scripts/ci/template-smoke.sh` scaffolds `templates/basic` via `scripts/dev/new-project.sh` and executes the full task-HXML matrix (`compile.build`, `compile`, `compile.run`, `compile.release`, `compile.release.run`).
   - CI shell-tooling compatibility: scripts must not hard-require `rg`; always keep a `grep`/`find` fallback.
     - Fallback test knob: set `REFLAXE_NO_RG=1` to force non-`rg` paths during local validation.

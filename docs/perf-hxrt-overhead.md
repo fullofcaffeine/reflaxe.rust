@@ -17,7 +17,7 @@ This benchmark keeps that cost visible over time so regressions are noticed earl
 
 ## Cases and measurements
 
-The script benchmarks five cases:
+The script benchmarks six cases:
 
 1. `hello`:
    - `examples/hello` across `portable`, `metal`
@@ -33,7 +33,11 @@ The script benchmarks five cases:
    - `test/perf/hot_loop_inproc` across `portable`, `metal`
    - hand-written pure Rust in-process hot-loop baseline
    - used as the primary steady-state runtime comparison target
-5. `chat`:
+5. `hot_loop_no_hxrt`:
+   - `test/perf/hot_loop_no_hxrt` in `metal` with `-D rust_no_hxrt`
+   - hand-written pure Rust in-process hot-loop baseline
+   - verifies the no-runtime metal path stays close to pure Rust
+6. `chat`:
    - `examples/chat_loopback` via `compile.<profile>.ci.hxml` (headless deterministic mode)
    - cross-profile spread only (no pure Rust chat baseline)
 
@@ -64,6 +68,8 @@ Noise policy:
 - `hot_loop_inproc`: warning checks use **size + runtime ratios**.
   This is the primary steady-state performance signal.
   - Runtime warning gate is currently focused on `metal` (the near-pure-Rust target profile); all profile runtime ratios are still reported.
+- `hot_loop_no_hxrt`: warning checks use **size + runtime ratios**.
+  - Runtime warning gate is focused on `metal` (no-hxrt mode only).
 - `chat`: warning checks use profile-spread ratios (size + runtime), not pure-Rust parity.
 
 This model keeps runtime warnings actionable while avoiding startup-noise churn.
@@ -78,6 +84,9 @@ When reading ratios (`x vs pure`):
 - `metal`
   - Rust-first performance profile.
   - Primary target profile for near-pure-Rust performance.
+- `metal + rust_no_hxrt`
+  - No-runtime constrained subset used as the lower-bound parity signal.
+  - Tracks how close generated Rust can get when portable runtime semantics are intentionally excluded.
 
 ## What the current baseline shows
 
@@ -86,12 +95,14 @@ The committed baseline (`scripts/ci/perf/hxrt-baseline.json`) currently shows:
 - Binary footprint is dominated by shared runtime payload across profiles in micro cases (roughly the same multiplier for `portable`/`metal`).
 - Startup-only microcases (`hello`, `array`) fluctuate and are tracked mainly for size/regression visibility.
 - Steady-state `hot_loop_inproc` runtime ratios are the main signal for parity work.
+- `hot_loop_no_hxrt` provides a no-runtime lower-bound signal for metal parity.
 
 Interpretation:
 
 - The runtime crate (`hxrt`) is still the largest fixed overhead source.
 - Profile-level runtime differences mostly come from emitted API style and boundary/abstraction usage, not from fundamentally different runtime payloads.
 - Closing the `metal` hot-loop gap is an explicit optimization objective, not an accidental drift.
+- `metal + rust_no_hxrt` is tracked separately so runtime-free improvements are visible and regressions are caught.
 
 ## Performance targets policy
 
@@ -103,6 +114,7 @@ Current policy:
    - Stretch target for steady-state workloads (`hot_loop_inproc` runtime ratio): `<= 1.05x` vs pure Rust.
    - Long-term target: approach `1.00x` where semantics permit.
    - If current measurements are above this target, treat that as active optimization backlog (not a reason to relax the target).
+   - `metal + rust_no_hxrt` should stay at or better than regular `metal` for the same workload.
 2. `portable` accepts a larger tradeoff in exchange for Haxe UX and semantic portability.
    - Runtime/size deltas are explicitly tracked and should not regress without intent.
 3. Any runtime abstraction cost that can be removed without semantic break should be treated as optimization backlog.
