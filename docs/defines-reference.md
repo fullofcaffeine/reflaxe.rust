@@ -42,6 +42,9 @@ This page is a practical reference for the most relevant compiler defines.
   - Debug define for string type diagnostics.
 - `rust_metal_allow_fallback`
   - In `metal`, downgrades contract violations (including `ERaw` fallback detection) from errors to warnings.
+- `rust_metal_viability_warn`
+  - In `metal`, emit one compile-time viability summary warning (score + blocker counts + top modules).
+  - Intended for CI/review loops while reducing fallback hotspots ahead of full report artifacts.
 - `rust_no_hxrt`
   - Metal-only minimal-runtime mode.
   - Omits bundled `hxrt` emission and `Cargo.toml` dependency.

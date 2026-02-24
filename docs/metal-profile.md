@@ -37,6 +37,23 @@ In `metal`, strict app boundary mode is enabled by default (`reflaxe_rust_strict
 
 Use fallback only as a migration tool while removing non-metal-clean boundaries.
 
+### Viability summary (milestone 22.1 baseline)
+
+For migration planning, metal can emit an aggregate viability signal:
+
+```bash
+-D rust_metal_viability_warn
+```
+
+This prints one summary warning with:
+
+- overall viability score (0-100),
+- module count and metal-ready module count,
+- blocker count,
+- top fallback-risk modules and global policy blockers.
+
+The compiler stores this typed snapshot internally for deterministic report emission in milestone 22.2.
+
 Current contract checks include:
 
 - reflection/runtime-introspection modules (`Reflect`, `Type`, `haxe.rtti.*`),

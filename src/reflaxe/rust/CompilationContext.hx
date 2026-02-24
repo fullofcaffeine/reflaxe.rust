@@ -1,5 +1,6 @@
 package reflaxe.rust;
 
+import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot;
 import reflaxe.rust.compiler.RustBuildContext;
 
 /**
@@ -32,6 +33,7 @@ class CompilationContext {
 	// Metal fallback diagnostics (aggregated across transformed modules).
 	var metalRawExprByModule:Map<String, Int>;
 	var metalRawExprTotal:Int;
+	var metalViabilitySnapshot:Null<MetalViabilitySnapshot>;
 
 	public var crateName(get, never):String;
 	public var profile(get, never):RustProfile;
@@ -44,6 +46,7 @@ class CompilationContext {
 		this.currentModuleLabel = null;
 		this.metalRawExprByModule = [];
 		this.metalRawExprTotal = 0;
+		this.metalViabilitySnapshot = null;
 	}
 
 	inline function get_crateName():String {
@@ -87,6 +90,24 @@ class CompilationContext {
 		return n;
 	}
 
+	/**
+		Returns a deterministic snapshot of module-level raw-fallback counts.
+
+		Why
+		- Analyzer/report stages should consume stable data instead of internal mutable maps.
+		- Deterministic ordering is required for reproducible CI artifacts.
+
+		How
+		- Converts `metalRawExprByModule` to an array sorted by module label.
+	**/
+	public function metalRawExprByModuleSnapshot():Array<{module:String, count:Int}> {
+		var out:Array<{module:String, count:Int}> = [];
+		for (module => count in metalRawExprByModule)
+			out.push({module: module, count: count});
+		out.sort((a, b) -> a.module < b.module ? -1 : (a.module > b.module ? 1 : 0));
+		return out;
+	}
+
 	public function topMetalRawExprModules(limit:Int):Array<{module:String, count:Int}> {
 		var out:Array<{module:String, count:Int}> = [];
 		for (module => count in metalRawExprByModule)
@@ -97,5 +118,20 @@ class CompilationContext {
 			return a.module < b.module ? -1 : (a.module > b.module ? 1 : 0);
 		});
 		return out.slice(0, limit < 0 ? 0 : limit);
+	}
+
+	/**
+		Stores the latest metal viability analysis snapshot for this compile.
+
+		Why
+		- Milestone 22.1 computes viability data; milestone 22.2 consumes the same snapshot to emit
+		  deterministic report artifacts.
+	**/
+	public function setMetalViability(snapshot:MetalViabilitySnapshot):Void {
+		metalViabilitySnapshot = snapshot;
+	}
+
+	public function getMetalViability():Null<MetalViabilitySnapshot> {
+		return metalViabilitySnapshot;
 	}
 }

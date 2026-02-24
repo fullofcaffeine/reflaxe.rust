@@ -32,6 +32,7 @@ import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustVisibility;
 import reflaxe.helpers.TypeHelper;
+import reflaxe.rust.analyze.MetalViabilityAnalyzer;
 import reflaxe.rust.analyze.ProfileContractAnalyzer;
 import reflaxe.rust.analyze.SendSyncAnalyzer;
 import reflaxe.rust.analyze.TypeUsageAnalyzer;
@@ -672,6 +673,52 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			+ " module(s). Top fallback modules: "
 			+ topSummary
 			+ ". Add typed lowering for these boundaries or remove `-D rust_metal_allow_fallback` to enforce metal-clean output.",
+			Context.currentPos());
+		#end
+	}
+
+	/**
+		Computes and optionally reports metal viability scores/blockers for the current compile.
+
+		Why
+		- Metal cleanup work needs a deterministic signal that highlights which modules still rely on
+		  fallback/dynamic/reflection boundaries.
+		- The snapshot is reused by milestone 22.2 report emission; computation should happen once.
+
+		How
+		- Uses `MetalViabilityAnalyzer` with typed modules + recorded `ERaw` fallback counts.
+		- Stores snapshot in `CompilationContext`.
+		- Emits one opt-in summary warning when `-D rust_metal_viability_warn` is set.
+	**/
+	function analyzeMetalViability():Void {
+		if (profile != Metal)
+			return;
+		var ctx = currentCompilationContext;
+		if (ctx == null)
+			return;
+
+		var snapshot = MetalViabilityAnalyzer.analyze(Context.getAllModuleTypes(), ctx.metalRawExprByModuleSnapshot(), {
+			allowFallback: Context.defined("rust_metal_allow_fallback"),
+			allowUnresolvedMonomorphDynamic: Context.defined("rust_allow_unresolved_monomorph_dynamic"),
+			allowUnmappedCoreTypeDynamic: Context.defined("rust_allow_unmapped_coretype_dynamic"),
+			nullableStrings: Context.defined("rust_string_nullable")
+		});
+		ctx.setMetalViability(snapshot);
+
+		if (!Context.defined("rust_metal_viability_warn"))
+			return;
+
+		var topModules = snapshot.modules.slice(0, 5).map(module -> module.module + ":" + module.score).join(", ");
+		if (topModules.length == 0)
+			topModules = "<none>";
+
+		var globalBlockers = snapshot.globalBlockers.slice(0, 5).map(blocker -> blocker.id).join(", ");
+		if (globalBlockers.length == 0)
+			globalBlockers = "<none>";
+
+		#if eval
+		Context.warning("Metal viability: overall score " + snapshot.overallScore + "/100, modules=" + snapshot.moduleCount + ", ready="
+			+ snapshot.moduleReadyCount + ", blockers=" + snapshot.blockerCount + ". Top modules: " + topModules + ". Global blockers: " + globalBlockers + ".",
 			Context.currentPos());
 		#end
 	}
@@ -2620,6 +2667,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	override public function onOutputComplete() {
 		emitMetalFallbackSummary();
+		analyzeMetalViability();
 
 		if (!didEmitMain)
 			return;
