@@ -26,6 +26,25 @@ In `metal`, strict app boundary mode is enabled by default (`reflaxe_rust_strict
   - `rust.metal.Code.expr(...)`
   - `rust.metal.Code.stmt(...)`
 
+## Portable Metal Islands (`@:rustMetal`)
+
+You can enforce metal-clean checks in selected modules while keeping project profile `portable`:
+
+```haxe
+@:rustMetal
+class CriticalPath {
+  public static function run(v:Int):Int {
+    return v + 1;
+  }
+}
+```
+
+Behavior in `portable`:
+
+- `@:rustMetal` modules are treated as strict metal islands.
+- Violations are hard errors (dynamic/reflection/raw fallback blockers).
+- This enables incremental migration before a full profile switch to `metal`.
+
 ## Metal clean vs fallback
 
 - **Default (metal clean):** contract violations are errors.

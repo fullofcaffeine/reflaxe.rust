@@ -260,6 +260,8 @@ run_negative_case "test/negative/metal_type_reflection" 'metal profile forbids r
 	'Type runtime introspection under metal profile'
 run_negative_case "test/negative/metal_dynamic_access" 'metal profile forbids haxe\.DynamicAccess runtime map semantics' \
 	'haxe.DynamicAccess usage under metal profile'
+run_negative_case "test/negative/metal_island_dynamic_access" 'Metal island violation in module `Main`.*dynamic_boundary/dynamic_access' \
+	'@:rustMetal module rejects dynamic boundary usage in portable profile'
 run_negative_case "test/negative/metal_nullable_strings" 'metal profile does not allow -D rust_string_nullable in metal-clean mode' \
 	'rust_string_nullable under metal profile'
 run_negative_case "test/negative/metal_no_hxrt_requires_metal" '`-D rust_no_hxrt` currently requires `-D reflaxe_rust_profile=metal`\.' \

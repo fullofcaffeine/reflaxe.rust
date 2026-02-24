@@ -43,6 +43,10 @@ class MetalViabilityAnalyzer {
 			switch (moduleType) {
 				case TClassDecl(classRef):
 					analyzeClass(classRef.get(), modules);
+				case TEnumDecl(enumRef):
+					analyzeEnum(enumRef.get(), modules);
+				case TTypeDecl(typeRef):
+					analyzeTypedef(typeRef.get(), modules);
 				case TAbstract(absRef):
 					analyzeAbstract(absRef.get(), modules);
 				case _:
@@ -177,6 +181,21 @@ class MetalViabilityAnalyzer {
 			scanType(field.type, acc, 0);
 			scanFieldExpr(field, acc);
 		}
+	}
+
+	static function analyzeEnum(enumType:EnumType, modules:Map<String, ModuleAccumulator>):Void {
+		var module = normalizeModuleLabel(moduleNameForEnum(enumType));
+		var acc = ensureModule(modules, module);
+		for (field in enumType.constructs) {
+			if (field != null)
+				scanType(field.type, acc, 0);
+		}
+	}
+
+	static function analyzeTypedef(typedefType:DefType, modules:Map<String, ModuleAccumulator>):Void {
+		var module = normalizeModuleLabel(moduleNameForTypedef(typedefType));
+		var acc = ensureModule(modules, module);
+		scanType(typedefType.type, acc, 0);
 	}
 
 	static function scanFieldExpr(field:ClassField, acc:ModuleAccumulator):Void {
@@ -410,6 +429,18 @@ class MetalViabilityAnalyzer {
 		if (abstractType.module != null && abstractType.module.length > 0)
 			return abstractType.module;
 		return pathFromPack(abstractType.pack, abstractType.name);
+	}
+
+	static inline function moduleNameForEnum(enumType:EnumType):String {
+		if (enumType.module != null && enumType.module.length > 0)
+			return enumType.module;
+		return pathFromPack(enumType.pack, enumType.name);
+	}
+
+	static inline function moduleNameForTypedef(typedefType:DefType):String {
+		if (typedefType.module != null && typedefType.module.length > 0)
+			return typedefType.module;
+		return pathFromPack(typedefType.pack, typedefType.name);
 	}
 
 	static inline function classPath(classType:ClassType):String {

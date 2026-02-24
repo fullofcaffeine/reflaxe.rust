@@ -28,6 +28,13 @@ Default behavior:
 - nullable string representation (`rust_string_nullable`) unless explicitly overridden.
 - pass pipeline includes normalize + mut inference + clone elision.
 
+Metal islands in portable:
+
+- You can mark specific modules/fields with `@:rustMetal` to opt those modules into strict
+  metal-clean checks without switching the whole project to `metal`.
+- Island checks are strict by design (compile errors on dynamic/reflection/raw fallback blockers).
+- Use this for incremental migration of hot paths.
+
 ### `metal`
 
 Use when you want:
@@ -60,6 +67,26 @@ Async is incompatible with `-D rust_no_hxrt` because async lowering currently ta
 - Fallback mode emits one aggregate warning per compile with total `ERaw` fallback count and top modules.
 
 Use fallback only while actively removing remaining non-metal-clean boundaries.
+
+## `@:rustMetal` island metadata
+
+Supported declaration points:
+
+- type level: `class`, `enum`, `typedef`, `abstract`
+- field level: methods/vars inside classes (or abstract impl fields)
+
+Example:
+
+```haxe
+@:rustMetal
+class HotPath {
+  public static function run(v:Int):Int {
+    return v + 1;
+  }
+}
+```
+
+In `portable`, this enforces metal-clean contracts for the `HotPath` module only.
 
 ## String representation defaults
 

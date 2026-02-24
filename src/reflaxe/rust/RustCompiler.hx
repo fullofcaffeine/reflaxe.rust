@@ -32,6 +32,9 @@ import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustVisibility;
 import reflaxe.helpers.TypeHelper;
+import reflaxe.rust.analyze.MetalIslandAnalyzer;
+import reflaxe.rust.analyze.MetalIslandAnalyzer.MetalIslandDeclaration;
+import reflaxe.rust.analyze.MetalIslandAnalyzer.MetalIslandSnapshot;
 import reflaxe.rust.analyze.MetalViabilityAnalyzer;
 import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability;
 import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker;
@@ -138,6 +141,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var rustTestSpecs:Array<RustTestSpec> = [];
 	var usedModulePaths:Map<String, Bool> = [];
 	var currentCompilationContext:Null<CompilationContext> = null;
+	var metalIslandSnapshot:MetalIslandSnapshot = {modules: [], declarations: []};
 
 	inline function wantsPreludeAliases():Bool {
 		// Always emit stable `crate::HxRc` / `crate::HxRefCell` / `crate::HxRef` aliases so:
@@ -298,7 +302,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	public function createCompilationContext():CompilationContext {
 		var buildContext = new RustBuildContext(crateName, profile, asyncEnabled(), useNullableStringRepresentation(),
-			Context.defined("reflaxe_rust_strict_examples"), Context.defined("reflaxe_rust_strict"), metalContractHardError(), noHxrtEnabled());
+			Context.defined("reflaxe_rust_strict_examples"), Context.defined("reflaxe_rust_strict"), metalContractHardError(), noHxrtEnabled(),
+			metalIslandSnapshot.modules);
 		var modulePaths = snapshotUsedModulePaths();
 		var features = selectHxrtFeatureSet(modulePaths);
 		return new CompilationContext(buildContext, modulePaths, features);
@@ -310,6 +315,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (Context.defined("rust_metal_contract_hard_error"))
 			return true;
 		return profile == Metal;
+	}
+
+	inline function hasMetalIslands():Bool {
+		return metalIslandSnapshot != null && metalIslandSnapshot.modules != null && metalIslandSnapshot.modules.length > 0;
 	}
 
 	function snapshotUsedModulePaths():Array<String> {
@@ -406,6 +415,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		rustTestSpecs = [];
 		usedModulePaths = [];
 		currentCompilationContext = null;
+		metalIslandSnapshot = {modules: [], declarations: []};
 
 		// Profile selection and define validation are centralized to keep all feature gates consistent.
 		profile = ProfileResolver.resolve();
@@ -420,6 +430,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		// Collect extra Rust sources declared via metadata (framework code can bring its own modules).
 		RustExtraSrcRegistry.collectFromContext();
+
+		// Collect optional `@:rustMetal` island declarations for strict island checks in portable mode.
+		metalIslandSnapshot = MetalIslandAnalyzer.collect(Context.getAllModuleTypes());
 
 		// Allow overriding crate name with -D rust_crate=<name>
 		var v = Context.definedValue("rust_crate");
@@ -694,20 +707,23 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		- Emits one opt-in summary warning when `-D rust_metal_viability_warn` is set.
 	**/
 	function analyzeMetalViability():Void {
-		if (profile != Metal)
+		if (profile != Metal && !hasMetalIslands())
 			return;
 		var ctx = currentCompilationContext;
 		if (ctx == null)
 			return;
 
+		var analyzeAsMetalProfile = profile == Metal;
 		var snapshot = MetalViabilityAnalyzer.analyze(Context.getAllModuleTypes(), ctx.metalRawExprByModuleSnapshot(), {
-			allowFallback: Context.defined("rust_metal_allow_fallback"),
-			allowUnresolvedMonomorphDynamic: Context.defined("rust_allow_unresolved_monomorph_dynamic"),
-			allowUnmappedCoreTypeDynamic: Context.defined("rust_allow_unmapped_coretype_dynamic"),
-			nullableStrings: Context.defined("rust_string_nullable")
+			allowFallback: analyzeAsMetalProfile && Context.defined("rust_metal_allow_fallback"),
+			allowUnresolvedMonomorphDynamic: analyzeAsMetalProfile && Context.defined("rust_allow_unresolved_monomorph_dynamic"),
+			allowUnmappedCoreTypeDynamic: analyzeAsMetalProfile && Context.defined("rust_allow_unmapped_coretype_dynamic"),
+			nullableStrings: analyzeAsMetalProfile && Context.defined("rust_string_nullable")
 		});
 		ctx.setMetalViability(snapshot);
 
+		if (profile != Metal)
+			return;
 		if (!Context.defined("rust_metal_viability_warn"))
 			return;
 
@@ -723,6 +739,80 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		Context.warning("Metal viability: overall score " + snapshot.overallScore + "/100, modules=" + snapshot.moduleCount + ", ready="
 			+ snapshot.moduleReadyCount + ", blockers=" + snapshot.blockerCount + ". Top modules: " + topModules + ". Global blockers: " + globalBlockers + ".",
 			Context.currentPos());
+		#end
+	}
+
+	/**
+		Enforces strict `@:rustMetal` island contracts in portable profile.
+
+		Why
+		- Islands are an incremental migration path: users can lock specific modules to metal-clean
+		  contracts without switching the entire project profile.
+		- Violations must hard-error at the declaration site to keep island boundaries explicit.
+
+		What
+		- For each module declared via `@:rustMetal`, checks the viability snapshot blockers.
+		- Emits one compile error per violating island module with blocker categories/ids.
+
+		How
+		- Reuses `MetalViabilityAnalyzer` output from `analyzeMetalViability()`.
+		- Maps island declarations to modules and reports at the first declaration position.
+	**/
+	function enforceMetalIslandContracts():Void {
+		if (profile == Metal)
+			return;
+		if (!hasMetalIslands())
+			return;
+
+		var ctx = currentCompilationContext;
+		if (ctx == null)
+			return;
+		var snapshot = ctx.getMetalViability();
+		if (snapshot == null)
+			return;
+
+		var modulesByName:Map<String, MetalModuleViability> = [];
+		for (module in snapshot.modules)
+			modulesByName.set(module.module, module);
+
+		var declarationsByModule:Map<String, Array<MetalIslandDeclaration>> = [];
+		for (declaration in metalIslandSnapshot.declarations) {
+			if (!declarationsByModule.exists(declaration.module))
+				declarationsByModule.set(declaration.module, []);
+			declarationsByModule.get(declaration.module).push(declaration);
+		}
+
+		#if eval
+		for (module in metalIslandSnapshot.modules) {
+			var moduleData = modulesByName.get(module);
+			var declarations = declarationsByModule.exists(module) ? declarationsByModule.get(module) : [];
+			var pos = declarations.length > 0 ? declarations[0].pos : Context.currentPos();
+			var declarationSummary = declarations.length == 0 ? "`@:rustMetal`" : declarations.map(entry -> "`" + entry.source + "`").join(", ");
+
+			if (moduleData == null) {
+				Context.error("Metal island violation in module `"
+					+ module
+					+ "` declared by "
+					+ declarationSummary
+					+ ": viability analyzer could not resolve this module. Keep `@:rustMetal` on emitted class/enum/typedef/abstract modules.",
+					pos);
+				continue;
+			}
+
+			if (moduleData.blockers.length == 0)
+				continue;
+
+			var blockers = moduleData.blockers.map(blocker -> blocker.category + "/" + blocker.id + "(x" + blocker.occurrences + ",w" + blocker.weight + ")")
+				.join("; ");
+			Context.error("Metal island violation in module `"
+				+ module
+				+ "` declared by "
+				+ declarationSummary
+				+ ": "
+				+ blockers
+				+ ". Remove dynamic/reflection/raw fallback boundaries before marking this module as `@:rustMetal`.",
+				pos);
+		}
 		#end
 	}
 
@@ -2843,6 +2933,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	override public function onOutputComplete() {
 		emitMetalFallbackSummary();
 		analyzeMetalViability();
+		enforceMetalIslandContracts();
 
 		if (!didEmitMain)
 			return;

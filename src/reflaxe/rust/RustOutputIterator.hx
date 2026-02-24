@@ -48,16 +48,17 @@ class RustOutputIterator {
 	}
 
 	inline function moduleLabel(astData:DataAndFileInfo<RustFile>):String {
+		var base = astData.baseType;
+		if (base != null) {
+			if (base.module != null && base.module.length > 0)
+				return base.module;
+			if (base.pack != null && base.pack.length > 0)
+				return base.pack.concat([base.name]).join(".");
+			return base.name;
+		}
 		if (astData.overrideFileName != null && astData.overrideFileName.length > 0)
 			return astData.overrideFileName;
-		var base = astData.baseType;
-		if (base == null)
-			return "<unknown>";
-		if (base.module != null && base.module.length > 0)
-			return base.module;
-		if (base.pack != null && base.pack.length > 0)
-			return base.pack.concat([base.name]).join(".");
-		return base.name;
+		return "<unknown>";
 	}
 }
 #end

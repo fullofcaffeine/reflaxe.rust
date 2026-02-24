@@ -16,7 +16,7 @@ import reflaxe.rust.ast.RustAST.RustFile;
 	- Records executed pass names in `CompilationContext`.
 
 	How
-	- `portable`: normalize + mut inference + clone elision
+	- `portable`: normalize + mut inference + clone elision (+ metal restrictions for `@:rustMetal` islands)
 	- `metal`: portable set + borrow-scope stage + metal restrictions
 	- `rust_no_hxrt`: appends a no-runtime verification stage (`NoHxrtPass`)
 **/

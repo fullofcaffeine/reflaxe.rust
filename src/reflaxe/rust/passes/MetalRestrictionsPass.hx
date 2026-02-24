@@ -15,7 +15,7 @@ import reflaxe.rust.ast.RustAST.RustFile;
 	What
 	- Enforces no-opinionated baseline contracts that are safe to apply immediately:
 	  - keeps track of raw `ERaw` expression usage as a policy signal.
-	  - hard-errors in strict metal mode.
+	  - hard-errors in strict metal mode or when a portable module is tagged with `@:rustMetal`.
 
 	How
 	- Walks the file and counts `ERaw(...)` expression nodes.
@@ -30,6 +30,11 @@ class MetalRestrictionsPass implements RustPass {
 	}
 
 	public function run(file:RustFile, context:CompilationContext):RustFile {
+		var moduleLabel = context.currentModuleLabel != null ? context.currentModuleLabel : "<unknown>";
+		var enforceForModule = context.profile == Metal || context.build.isMetalIslandModule(moduleLabel);
+		if (!enforceForModule)
+			return file;
+
 		var rawExprCount = 0;
 		RustPassTools.mapFile(file, s -> s, e -> {
 			switch (e) {
@@ -43,10 +48,9 @@ class MetalRestrictionsPass implements RustPass {
 		if (rawExprCount <= 0)
 			return file;
 
-		var moduleLabel = context.currentModuleLabel != null ? context.currentModuleLabel : "<unknown>";
 		context.recordMetalRawExpr(moduleLabel, rawExprCount);
 
-		if (context.build.metalContractHardError) {
+		if (context.profile == Metal && context.build.metalContractHardError) {
 			#if eval
 			Context.error("Metal contract violation in module `"
 				+ moduleLabel
@@ -54,6 +58,17 @@ class MetalRestrictionsPass implements RustPass {
 				+ rawExprCount
 				+ " raw Rust expression node(s) (`ERaw`). "
 				+ "This usually means a boundary still relies on string-injection fallback and is not metal-clean yet.",
+				Context.currentPos());
+			#end
+		}
+		if (context.profile != Metal) {
+			#if eval
+			Context.error("Metal island violation in module `"
+				+ moduleLabel
+				+ "`: generated output still contains "
+				+ rawExprCount
+				+ " raw Rust expression node(s) (`ERaw`). "
+				+ "Add typed lowering for this module before using `@:rustMetal`.",
 				Context.currentPos());
 			#end
 		}
