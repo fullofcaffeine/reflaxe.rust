@@ -54,6 +54,11 @@ This page is a practical reference for the most relevant compiler defines.
     - `profile_contract.md` (human-readable)
   - Includes effective contract flags (`profile`, strictness, async/no-hxrt/string mode) plus
     current profile warning/error diagnostics.
+- `rust_hxrt_plan_report`
+  - Emit deterministic runtime-plan artifacts in the generated crate root:
+    - `hxrt_plan.json` (machine-readable)
+    - `hxrt_plan.md` (human-readable)
+  - Records effective `hxrt` mode (`no_hxrt|default_features|selective`) and selected feature set.
 - `rust_no_hxrt`
   - Metal-only minimal-runtime mode.
   - Omits bundled `hxrt` emission and `Cargo.toml` dependency.

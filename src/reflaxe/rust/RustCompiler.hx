@@ -94,6 +94,19 @@ private typedef ProfileContractReportSnapshot = {
 	var errors:Array<String>;
 };
 
+private typedef HxrtPlanReportSnapshot = {
+	var schemaVersion:Int;
+	var profile:String;
+	var mode:String;
+	var noHxrt:Bool;
+	var useDefaultFeatures:Bool;
+	var inferenceDisabled:Bool;
+	var manualFeatures:Array<String>;
+	var selectedFeatures:Array<String>;
+	var usedModuleCount:Int;
+	var hxrtDependencyLine:String;
+};
+
 /**
  * RustCompiler
  *
@@ -990,6 +1003,124 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return lines.join("\n");
 	}
 
+	/**
+		Emits deterministic runtime-plan report artifacts for `hxrt` feature selection.
+
+		Why
+		- Selective runtime slicing is policy-critical for family alignment and performance work.
+		- CI/debug workflows need a stable artifact showing effective mode and selected feature set.
+
+		What
+		- Writes `hxrt_plan.json` and `hxrt_plan.md` in the generated crate root.
+		- Emission is opt-in via `-D rust_hxrt_plan_report`.
+
+		How
+		- Reuses the active `CompilationContext` feature snapshot when available.
+		- Encodes effective mode (`no_hxrt`, `default_features`, `selective`) and toggle state.
+	**/
+	function emitHxrtPlanReports(outDir:String):Void {
+		if (!Context.defined("rust_hxrt_plan_report"))
+			return;
+
+		var snapshot = buildHxrtPlanReportSnapshot();
+		var jsonReportPath = Path.join([outDir, "hxrt_plan.json"]);
+		var markdownReportPath = Path.join([outDir, "hxrt_plan.md"]);
+		File.saveContent(jsonReportPath, renderHxrtPlanJson(snapshot));
+		File.saveContent(markdownReportPath, renderHxrtPlanMarkdown(snapshot));
+	}
+
+	function buildHxrtPlanReportSnapshot():HxrtPlanReportSnapshot {
+		var manualFeatures = parseCsvDefine(Context.definedValue("rust_hxrt_features"));
+		manualFeatures.sort(compareStrings);
+
+		var selectedFeatures = currentCompilationContext != null ? currentCompilationContext.inferredHxrtFeatures.copy() : selectHxrtFeatureSet(snapshotUsedModulePaths());
+		selectedFeatures.sort(compareStrings);
+
+		var noHxrt = noHxrtEnabled();
+		var useDefaultFeatures = !noHxrt && Context.defined("rust_hxrt_default_features");
+		var mode = if (noHxrt) {
+			"no_hxrt";
+		} else if (useDefaultFeatures) {
+			"default_features";
+		} else {
+			"selective";
+		}
+
+		return {
+			schemaVersion: 1,
+			profile: profile == Metal ? "metal" : "portable",
+			mode: mode,
+			noHxrt: noHxrt,
+			useDefaultFeatures: useDefaultFeatures,
+			inferenceDisabled: !noHxrt && Context.defined("rust_hxrt_no_feature_infer"),
+			manualFeatures: manualFeatures,
+			selectedFeatures: selectedFeatures,
+			usedModuleCount: snapshotUsedModulePaths().length,
+			hxrtDependencyLine: noHxrt ? "" : renderHxrtDependencyLine()
+		};
+	}
+
+	static function renderHxrtPlanJson(snapshot:HxrtPlanReportSnapshot):String {
+		var lines:Array<String> = [];
+		lines.push("{");
+		lines.push('\t"schemaVersion": ' + snapshot.schemaVersion + ",");
+		lines.push('\t"profile": "' + jsonEscape(snapshot.profile) + '",');
+		lines.push('\t"mode": "' + jsonEscape(snapshot.mode) + '",');
+		lines.push('\t"noHxrt": ' + boolString(snapshot.noHxrt) + ",");
+		lines.push('\t"useDefaultFeatures": ' + boolString(snapshot.useDefaultFeatures) + ",");
+		lines.push('\t"inferenceDisabled": ' + boolString(snapshot.inferenceDisabled) + ",");
+		lines.push('\t"manualFeatures": [');
+		appendJsonStringArray(lines, snapshot.manualFeatures, 2);
+		lines.push("\t],");
+		lines.push('\t"selectedFeatures": [');
+		appendJsonStringArray(lines, snapshot.selectedFeatures, 2);
+		lines.push("\t],");
+		lines.push('\t"usedModuleCount": ' + snapshot.usedModuleCount + ",");
+		lines.push('\t"hxrtDependencyLine": "' + jsonEscape(snapshot.hxrtDependencyLine) + '"');
+		lines.push("}");
+		return lines.join("\n") + "\n";
+	}
+
+	static function renderHxrtPlanMarkdown(snapshot:HxrtPlanReportSnapshot):String {
+		var lines:Array<String> = [];
+		lines.push("# HXRT Runtime Plan");
+		lines.push("");
+		lines.push("- schema version: `" + snapshot.schemaVersion + "`");
+		lines.push("- profile: `" + snapshot.profile + "`");
+		lines.push("- mode: `" + snapshot.mode + "`");
+		lines.push("- no hxrt: `" + boolLabel(snapshot.noHxrt) + "`");
+		lines.push("- default features: `" + boolLabel(snapshot.useDefaultFeatures) + "`");
+		lines.push("- inference disabled: `" + boolLabel(snapshot.inferenceDisabled) + "`");
+		lines.push("- used module count: `" + snapshot.usedModuleCount + "`");
+		lines.push("");
+		lines.push("## Manual features");
+		if (snapshot.manualFeatures.length == 0) {
+			lines.push("- none");
+		} else {
+			for (feature in snapshot.manualFeatures)
+				lines.push("- `" + feature + "`");
+		}
+		lines.push("");
+		lines.push("## Selected features");
+		if (snapshot.selectedFeatures.length == 0) {
+			lines.push("- none");
+		} else {
+			for (feature in snapshot.selectedFeatures)
+				lines.push("- `" + feature + "`");
+		}
+		lines.push("");
+		lines.push("## Dependency line");
+		if (snapshot.hxrtDependencyLine.length == 0) {
+			lines.push("- none (`rust_no_hxrt` mode)");
+		} else {
+			lines.push("```toml");
+			lines.push(snapshot.hxrtDependencyLine);
+			lines.push("```");
+		}
+		lines.push("");
+		return lines.join("\n");
+	}
+
 	static function renderMetalViabilityJson(snapshot:MetalViabilitySnapshot):String {
 		var lines:Array<String> = [];
 		lines.push("{");
@@ -1137,6 +1268,20 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	static inline function boolLabel(value:Bool):String {
 		return value ? "yes" : "no";
+	}
+
+	static function parseCsvDefine(raw:Null<String>):Array<String> {
+		var out:Array<String> = [];
+		if (raw == null)
+			return out;
+		for (part in raw.split(",")) {
+			var trimmed = StringTools.trim(part);
+			if (trimmed.length == 0)
+				continue;
+			if (!out.contains(trimmed))
+				out.push(trimmed);
+		}
+		return out;
 	}
 
 	static function jsonEscape(value:String):String {
@@ -3134,6 +3279,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var outDir = output.outputDir;
 		emitMetalViabilityReports(outDir);
 		emitProfileContractReports(outDir);
+		emitHxrtPlanReports(outDir);
 		var manifest = Path.join([outDir, "Cargo.toml"]);
 		if (!FileSystem.exists(manifest))
 			return;

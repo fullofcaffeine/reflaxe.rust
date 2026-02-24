@@ -100,13 +100,17 @@ Explicit overrides:
 
 ## Contract report artifact
 
-For deterministic CI/review evidence, emit a profile contract artifact with:
+For deterministic CI/review evidence, emit profile and runtime-plan artifacts with:
 
 ```bash
 -D rust_profile_contract_report
+-D rust_hxrt_plan_report
 ```
 
-This writes `profile_contract.json` and `profile_contract.md` in the generated crate root.
+This writes:
+
+- `profile_contract.json` / `profile_contract.md`
+- `hxrt_plan.json` / `hxrt_plan.md`
 
 ## Where profile behavior is validated
 
