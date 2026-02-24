@@ -10,7 +10,7 @@ Usage:
   bash scripts/dev/cargo-hx.sh [options]
 
 Options:
-  --profile <name>          Optional. Prefer compile.<profile>.hxml variants when present.
+  --profile <name>          Optional. Prefer compile.<profile>.hxml variants when present (portable|metal).
   --ci                      Prefer compile*.ci.hxml variants when present.
   --action <name>           Cargo action: build|run|test|check|clippy. Default: run.
   --release                 Run cargo action with --release and pass -D rust_release to Haxe.
@@ -179,4 +179,3 @@ fi
 
 echo "[hx-cargo] cargo ${cargo_args[*]} ($rust_output_rel)"
 (cd "$rust_output_abs" && "$cargo_bin" "${cargo_args[@]}")
-

@@ -1,5 +1,9 @@
 package reflaxe.rust.analyze;
 
+#if macro
+import haxe.macro.Context;
+#end
+
 /**
 	HxrtFeatureAnalyzer
 
@@ -69,6 +73,9 @@ class HxrtFeatureAnalyzer {
 				add("async_tokio");
 		}
 
+		if (hasDefine("async_tokio_adapter"))
+			add("async_tokio");
+
 		// Internal dependency edges so selective runtime slices remain compileable.
 		if (out.contains("net")) {
 			add("io");
@@ -83,5 +90,13 @@ class HxrtFeatureAnalyzer {
 
 		out.sort((a, b) -> a < b ? -1 : (a > b ? 1 : 0));
 		return out;
+	}
+
+	static inline function hasDefine(name:String):Bool {
+		#if macro
+		return Context.defined(name);
+		#else
+		return false;
+		#end
 	}
 }

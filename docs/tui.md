@@ -66,10 +66,10 @@ This keeps tests:
 - `cd examples/tui_todo && haxe compile.hxml`
 - `cd examples/tui_todo/out && cargo run -q`
 
-Rusty profile variant:
+Metal profile variant:
 
-- `cd examples/tui_todo && haxe compile.rusty.hxml`
-- `cd examples/tui_todo/out_rusty && cargo run -q`
+- `cd examples/tui_todo && haxe compile.metal.hxml`
+- `cd examples/tui_todo/out_metal && cargo run -q`
 
 **Headless / CI-friendly**:
 

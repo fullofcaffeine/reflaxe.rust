@@ -16,10 +16,13 @@ package rust.async;
 	- Maps to `hxrt::async_::*`.
 	- Declares tokio dependency metadata via `@:rustCargo(...)` so generated Cargo manifests include
 	  tokio when this adapter surface is used.
-	- `hxrt` tokio behavior is feature-gated (`async_tokio`) and inferred from typed module usage.
+	- `hxrt` tokio behavior is feature-gated (`async_tokio`) and inferred from typed module usage
+	  (or `-D async_tokio_adapter` for compile-time-only guard paths).
 
 	Boundary note
 	- Keep adapter control in typed code. Do not use raw target injection for runtime switching.
+	- `enable()` intentionally exists only when `hxrt` is compiled with `async_tokio`; this makes
+	  missing feature wiring fail at compile time instead of panicking later at runtime.
 **/
 @:rustCargo({name: "tokio", version: "1", features: ["rt", "time"]})
 @:native("hxrt::async_")

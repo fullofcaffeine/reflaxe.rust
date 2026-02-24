@@ -16,10 +16,8 @@ import reflaxe.rust.ast.RustAST.RustFile;
 	- Records executed pass names in `CompilationContext`.
 
 	How
-	- `portable`: normalize
-	- `idiomatic`: normalize + mut inference + clone elision
-	- `rusty`: idiomatic set + borrow-scope stage
-	- `metal`: rusty set + metal restrictions
+	- `portable`: normalize + mut inference + clone elision
+	- `metal`: portable set + borrow-scope stage + metal restrictions
 **/
 class PassRunner {
 	static final NORMALIZE:RustPass = new NormalizePass();
@@ -42,11 +40,7 @@ class PassRunner {
 	static function selectPasses(profile:RustProfile):Array<RustPass> {
 		return switch (profile) {
 			case Portable:
-				[NORMALIZE];
-			case Idiomatic:
 				[NORMALIZE, MUT_INFERENCE, CLONE_ELISION];
-			case Rusty:
-				[NORMALIZE, MUT_INFERENCE, CLONE_ELISION, BORROW_TIGHTEN];
 			case Metal:
 				[NORMALIZE, MUT_INFERENCE, CLONE_ELISION, BORROW_TIGHTEN, METAL_RESTRICTIONS];
 		}

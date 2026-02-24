@@ -17,9 +17,9 @@ Use this page as the map for `reflaxe.rust` docs.
 
 ## Core product docs
 
-- [Profiles](profiles.md): portable vs idiomatic vs rusty vs metal, and when to choose each.
+- [Profiles](profiles.md): portable vs metal profile contracts and when to choose each.
 - [Examples matrix](examples-matrix.md): scenario coverage and profile-by-profile example entrypoints.
-- [Metal profile](metal-profile.md): experimental Rust-first+ profile with typed low-level interop façade.
+- [Metal profile](metal-profile.md): Rust-first performance profile and boundary policy.
 - [Lifetime encoding design](lifetime-encoding.md): what lifetime-like guarantees are possible in Haxe and where extern Rust is still required.
 - [Async/Await preview](async-await.md): Rust-first async workflow and current constraints.
 - [Defines reference](defines-reference.md): practical `-D` reference for build/profile/CI knobs.
@@ -36,8 +36,8 @@ Use this page as the map for `reflaxe.rust` docs.
 ## Rust interop and runtime
 
 - [Interop](interop.md): externs, metadata-driven Cargo deps, extra Rust modules, and escape hatch policy.
-- [Rusty profile](rusty-profile.md): Rust-first authoring model details.
-- [Metal profile](metal-profile.md): Rust-first+ authoring model and boundary policy.
+- [Rusty profile](rusty-profile.md): migration mapping from removed `idiomatic`/`rusty` selectors.
+- [Metal profile](metal-profile.md): Rust-first authoring and boundary policy.
 - [Lifetime encoding design](lifetime-encoding.md): borrow/lifetime modeling constraints and roadmap.
 - [Threading](threading.md): threading model and runtime guarantees.
 - [TUI](tui.md): deterministic TUI testing approach.

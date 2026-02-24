@@ -11,16 +11,12 @@ package profile;
  *
  * How
  * - Each example `.hxml` sets exactly one of:
- *   `chat_profile_portable`, `chat_profile_idiomatic`, `chat_profile_rusty`, `chat_profile_metal`.
+ *   `chat_profile_portable`, `chat_profile_metal`.
  */
 class RuntimeFactory {
 	public static function create():ChatRuntime {
 		#if chat_profile_portable
 		return new PortableRuntime();
-		#elseif chat_profile_idiomatic
-		return new IdiomaticRuntime();
-		#elseif chat_profile_rusty
-		return new RustyRuntime();
 		#elseif chat_profile_metal
 		return new MetalRuntime();
 		#else

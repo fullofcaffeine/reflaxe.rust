@@ -8,7 +8,7 @@ package rust.async;
  * - We need a concrete, user-visible Haxe type so async APIs can be typed clearly.
  *
  * What:
- * - `Future<T>` is the Rusty-profile async value type.
+ * - `Future<T>` is the Rust-first async value type.
  * - It is intentionally opaque at the Haxe level: you typically `await` it or pass it to `blockOn`.
  *
  * How:

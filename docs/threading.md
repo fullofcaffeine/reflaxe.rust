@@ -31,7 +31,7 @@ For `sys.thread` to be considered correct and production-ready, the target shoul
 
 ## Rust-First Concurrency Layer
 
-`sys.thread.*` remains the portable API. For Rust-first code (`reflaxe_rust_profile=rusty|metal`),
+`sys.thread.*` remains the portable API. For Rust-first code (`reflaxe_rust_profile=metal`),
 `std/rust/concurrent/*` adds typed wrappers over Rust-native primitives:
 
 - `rust.concurrent.Channel<T>` + `rust.concurrent.Channels`: typed `create/send/recv/tryRecv`.

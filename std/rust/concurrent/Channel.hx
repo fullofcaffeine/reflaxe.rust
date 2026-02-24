@@ -4,7 +4,7 @@ package rust.concurrent;
 	rust.concurrent.Channel<T>
 
 	Why
-	- Rusty-profile channel APIs need a concrete handle type that maps directly to runtime storage.
+	- Rust-first channel APIs need a concrete handle type that maps directly to runtime storage.
 
 	What
 	- Typedef alias to `hxrt.concurrent.ChannelHandle<T>`.

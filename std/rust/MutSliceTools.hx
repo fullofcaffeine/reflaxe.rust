@@ -39,7 +39,7 @@ class MutSliceTools {
 	 * ```
 	 *
 	 * IMPORTANT:
-	 * - This is Rusty/profile-oriented; keep the borrow inside the callback.
+	 * - This is metal/profile-oriented; keep the borrow inside the callback.
 	 * - Avoid returning or storing the `MutSlice<T>` outside the callback.
 	 *
 	 * Implementation notes:
@@ -55,7 +55,7 @@ class MutSliceTools {
 	 * - Keep the slice inside the callback; never store/return it.
 	 * - Avoid nested borrows of the same array; `RefCell` will panic on invalid re-borrows.
 	 */
-	public static macro function with(value: Expr, fn: Expr): Expr {
+	public static macro function with(value:Expr, fn:Expr):Expr {
 		#if macro
 		var f = switch (fn.expr) {
 			case EFunction(_, f): f;
@@ -70,19 +70,19 @@ class MutSliceTools {
 
 		var typedValue = Context.typeExpr(value);
 		var valueIsArray = false;
-		var elemT: Null<Type> = switch (TypeTools.follow(typedValue.t)) {
+		var elemT:Null<Type> = switch (TypeTools.follow(typedValue.t)) {
 			case TInst(clsRef, params): {
-				var cls = clsRef.get();
-				// Array<T>
-				if (cls != null && cls.pack.length == 0 && cls.module == "Array" && cls.name == "Array" && params.length == 1) {
-					valueIsArray = true;
-					params[0];
-				} else if (cls != null && cls.isExtern && cls.pack.join(".") == "rust" && cls.name == "Vec" && params.length == 1) {
-					params[0];
-				} else {
-					null;
+					var cls = clsRef.get();
+					// Array<T>
+					if (cls != null && cls.pack.length == 0 && cls.module == "Array" && cls.name == "Array" && params.length == 1) {
+						valueIsArray = true;
+						params[0];
+					} else if (cls != null && cls.isExtern && cls.pack.join(".") == "rust" && cls.name == "Vec" && params.length == 1) {
+						params[0];
+					} else {
+						null;
+					}
 				}
-			}
 			case _:
 				null;
 		}
@@ -96,16 +96,18 @@ class MutSliceTools {
 
 		// Expand to:
 		// `rust.Borrow.withMut(value, r -> { var s: rust.MutSlice<T> = cast r; body; })`
-		var decl: Expr = {
-			expr: EVars([{
-				name: argName,
-				type: TPath({
-					pack: ["rust"],
-					name: "MutSlice",
-					params: [TPType(elemCt)]
-				}),
-				expr: { expr: ECast({ expr: EConst(CIdent("__hx_ref")), pos: fn.pos }, null), pos: fn.pos }
-			}]),
+		var decl:Expr = {
+			expr: EVars([
+				{
+					name: argName,
+					type: TPath({
+						pack: ["rust"],
+						name: "MutSlice",
+						params: [TPType(elemCt)]
+					}),
+					expr: {expr: ECast({expr: EConst(CIdent("__hx_ref")), pos: fn.pos}, null), pos: fn.pos}
+				}
+			]),
 			pos: fn.pos
 		};
 
@@ -113,16 +115,18 @@ class MutSliceTools {
 			// For `Array<T>`, borrow the underlying Vec as a mutable slice without cloning.
 			// This delegates to `rust.ArrayBorrow`, which calls into `hxrt::array::with_mut_slice(...)`.
 			var sliceParam = "__hx_slice";
-			var arrayDecl: Expr = {
-				expr: EVars([{
-					name: argName,
-					type: TPath({
-						pack: ["rust"],
-						name: "MutSlice",
-						params: [TPType(elemCt)]
-					}),
-					expr: { expr: ECast({ expr: EConst(CIdent(sliceParam)), pos: fn.pos }, null), pos: fn.pos }
-				}]),
+			var arrayDecl:Expr = {
+				expr: EVars([
+					{
+						name: argName,
+						type: TPath({
+							pack: ["rust"],
+							name: "MutSlice",
+							params: [TPType(elemCt)]
+						}),
+						expr: {expr: ECast({expr: EConst(CIdent(sliceParam)), pos: fn.pos}, null), pos: fn.pos}
+					}
+				]),
 				pos: fn.pos
 			};
 
@@ -142,21 +146,25 @@ class MutSliceTools {
 	}
 
 	#if !macro
-	public static function len<T>(s: MutSlice<T>): Int {
+	public static function len<T>(s:MutSlice<T>):Int {
 		return untyped __rust__("{0}.len() as i32", s);
 	}
 
-	public static function get<T>(s: MutSlice<T>, index: Int): Option<Ref<T>> {
+	public static function get<T>(s:MutSlice<T>, index:Int):Option<Ref<T>> {
 		return untyped __rust__("{0}.get({1} as usize)", s, index);
 	}
 
-	public static function set<T>(s: MutSlice<T>, index: Int, value: T): Void {
+	public static function set<T>(s:MutSlice<T>, index:Int, value:T):Void {
 		untyped __rust__("{0}[{1} as usize] = {2};", s, index, value);
 	}
 	#else
 	// Macro compilation stubs: these are only used in Rust output, never during macro typing/execution.
-	public static function len<T>(s: MutSlice<T>): Int return 0;
-	public static function get<T>(s: MutSlice<T>, index: Int): Option<Ref<T>> return None;
-	public static function set<T>(s: MutSlice<T>, index: Int, value: T): Void {}
+	public static function len<T>(s:MutSlice<T>):Int
+		return 0;
+
+	public static function get<T>(s:MutSlice<T>, index:Int):Option<Ref<T>>
+		return None;
+
+	public static function set<T>(s:MutSlice<T>, index:Int, value:T):Void {}
 	#end
 }

@@ -7,19 +7,20 @@ import rust.Vec;
 class Main {
 	static function main() {
 		// Option/Result helper paths should compile without warnings.
-		var o: Option<Int> = Some(1);
+		var o:Option<Int> = Some(1);
 		var v = o.unwrapOr(0);
 		trace(v);
 
 		// `Null<T>` locals initialized to null and then assigned should not trigger `unused_assignments`
 		// or `unused_mut` warnings in the generated crate.
-		var x: Null<Int> = null;
+		var x:Null<Int> = null;
 		x = 3;
 		trace(x != null);
 
 		// Statement-position `if`/`switch` should emit clean Rust control-flow.
 		var n = 0;
-		if (x != null) n = n + 1;
+		if (x != null)
+			n = n + 1;
 		switch (n) {
 			case 1:
 				n = n + 1;
@@ -28,7 +29,7 @@ class Main {
 		}
 		trace(n);
 
-		// Rusty surfaces should not introduce warnings when used from idiomatic output.
+		// Rust-first surfaces should not introduce warnings when used from portable output.
 		var vec = new Vec<Int>();
 		vec.push(1);
 		vec.push(2);
@@ -38,7 +39,8 @@ class Main {
 		});
 
 		var sum = 0;
-		for (i in vec) sum = sum + i;
+		for (i in vec)
+			sum = sum + i;
 		trace(sum);
 	}
 }

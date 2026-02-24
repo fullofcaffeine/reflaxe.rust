@@ -5,7 +5,7 @@ This document defines the **v1** generics story for reflaxe.rust: how Haxe type 
 ## Goals
 
 - Keep generic **type-checking** and **codegen** predictable and Rust-idiomatic.
-- Preserve Haxe’s “values are generally reusable” expectations in the default (portable/idiomatic) runtime model.
+- Preserve Haxe’s “values are generally reusable” expectations in the default portable runtime model.
 - Support generic **interfaces** (traits) and generic **base-class polymorphism** (trait objects).
 - Avoid forcing application code to use raw `untyped __rust__()` for basic generic patterns.
 
@@ -82,6 +82,5 @@ This keeps generic classes usable without introducing unsafe initialization.
 
 ## Current limitations (v1)
 
-- Some patterns that depend on Rust lifetimes (borrowing across scopes) must be expressed using `rust.Ref<T>` / `rust.MutRef<T>` and scope-based helpers (see `docs/rusty-profile.md`).
+- Some patterns that depend on Rust lifetimes (borrowing across scopes) must be expressed using `rust.Ref<T>` / `rust.MutRef<T>` and scope-based helpers (see `docs/metal-profile.md`).
 - “Inherited method without override” for base-class trait dispatch is still conservative: subclasses should override methods they want reachable via a base-typed value.
-

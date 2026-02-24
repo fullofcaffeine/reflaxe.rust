@@ -5,7 +5,7 @@ package rust;
  *
  * Why:
  * - Many Rust APIs accept `&mut [T]` to mutate a contiguous region without moving ownership.
- * - In the Rusty profile we want to express that intent directly from Haxe without forcing clones.
+ * - In the metal profile we want to express that intent directly from Haxe without forcing clones.
  *
  * What:
  * - `MutSlice<T>` represents a mutable borrowed slice (`&mut [T]`) in emitted Rust.
@@ -24,12 +24,11 @@ package rust;
  */
 @:coreType
 extern abstract MutSlice<T> {
-	@:from public static inline function fromMutRefVec<T>(r: MutRef<Vec<T>>): MutSlice<T> {
+	@:from public static inline function fromMutRefVec<T>(r:MutRef<Vec<T>>):MutSlice<T> {
 		return cast r;
 	}
 
-	@:from public static inline function fromMutRefArray<T>(r: MutRef<Array<T>>): MutSlice<T> {
+	@:from public static inline function fromMutRefArray<T>(r:MutRef<Array<T>>):MutSlice<T> {
 		return cast r;
 	}
 }
-

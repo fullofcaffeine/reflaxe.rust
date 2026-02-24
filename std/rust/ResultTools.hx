@@ -10,7 +10,7 @@ import haxe.macro.Expr;
  *
  * Pure-Haxe helpers for `rust.Result<T,E>` (maps to Rust `Result<T,E>`).
  *
- * The goal is ergonomic composition in the `rusty` profile without requiring
+ * The goal is ergonomic composition in the `metal` profile without requiring
  * application code to call `__rust__` directly.
  */
 class ResultTools {

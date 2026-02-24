@@ -13,7 +13,7 @@ Usage:
 Options:
   --project <path>          Optional. Project directory containing compile*.hxml.
                             Default: current working directory.
-  --profile <name>          Optional. Profile suffix (portable/idiomatic/rusty/metal).
+  --profile <name>          Optional. Profile suffix (portable/metal).
   --hxml <path>             Optional. Explicit hxml file (relative to --project by default).
   --ci                      Prefer compile*.ci.hxml variants.
   --action <name>           Cargo action: build|run|test|check|clippy. Default: run.

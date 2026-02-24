@@ -154,8 +154,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - Storage-backed accessors (`default,get` / `default,set`) commonly use `return x = v;` in Haxe; codegen must treat `x` inside `get_x`/`set_x` as direct backing-field access to avoid recursive calls.
   - In inherited method shims, the typed AST may type `this` as the base class; for property/field lowering, treat `this` as `currentClassType` (the concrete class being compiled) to avoid calling base methods with `&RefCell<Sub>` receivers.
 - Profiles:
-  - Default is portable output; enable more idiomatic output with `-D rust_idiomatic` or `-D reflaxe_rust_profile=idiomatic|rusty|metal`.
-  - `-D rust_metal` is an alias for `-D reflaxe_rust_profile=metal`.
+  - Default is portable output.
+  - Supported selector values are `-D reflaxe_rust_profile=portable|metal` (no aliases).
   - Metal policy: `reflaxe_rust_profile=metal` auto-enables strict app-boundary mode (`reflaxe_rust_strict`) so raw app-side `__rust__` is rejected by default.
     Typed framework facades in `src/reflaxe/rust/macros` and `std/rust/metal` remain allowed.
   - Optional formatter hook: `-D rustfmt` runs `cargo fmt --manifest-path <out>/Cargo.toml` after output generation (best-effort, warns on failure).
@@ -211,7 +211,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   If you hit `No space left on device`, run `npm run clean:artifacts:all` before re-running, then regenerate snapshots.
 - Prefer DRY snapshot cases: use multiple `compile.<variant>.hxml` files in the same `test/snapshot/<case>/`
   directory (and `#if <define>` shims when needed) rather than duplicating snapshot directories for each profile.
-  - Convention: `compile.hxml` → `out/` + `intended/`; `compile.rusty.hxml` → `out_rusty/` + `intended_rusty/`.
+  - Convention: `compile.hxml` → `out/` + `intended/`; `compile.metal.hxml` → `out_metal/` + `intended_metal/`.
 - Pre-push directive: keep `main` green by running the closest local equivalent of CI before `git push`:
   - `npm ci --ignore-scripts --no-audit --no-fund`
   - `bash test/run-snapshots.sh --clippy` (runs curated clippy checks on a small subset of snapshot crates)

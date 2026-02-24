@@ -4,8 +4,8 @@ import rust.test.Assert;
 	Haxe-authored Rust tests for `examples/profile_storyboard`.
 
 	Why
-	- This example is the canonical small reference for profile-style differences (`portable`,
-	  `idiomatic`, `rusty`, `metal`) on one shared domain model.
+	- This example is the canonical small reference for profile-style differences (`portable`, `metal`)
+	  on one shared domain model.
 	- Tests intentionally stay in typed Haxe to model how backend users should author app tests.
 
 	What
@@ -54,6 +54,6 @@ class StoryboardTests {
 	@:rustTest
 	public static function profileDefineIsSupported():Bool {
 		var profile = Harness.profileName();
-		return profile == "portable" || profile == "idiomatic" || profile == "rusty" || profile == "metal";
+		return profile == "portable" || profile == "metal";
 	}
 }

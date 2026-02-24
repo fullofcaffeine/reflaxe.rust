@@ -282,9 +282,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		Enforces profile-level boundary contracts before project emission.
 
 		Why
-		- Profiles (portable/idiomatic/rusty/metal) should have observable policy boundaries.
-		- Rust-first and metal profiles need actionable diagnostics when reflection/dynamic fallback
-		  compatibility switches are used.
+		- Profiles (portable/metal) should have observable policy boundaries.
+		- Metal needs actionable diagnostics when reflection/dynamic fallback compatibility
+		  switches are used.
 
 		How
 		- Evaluates module usage and relevant defines through `ProfileContractAnalyzer`.
@@ -2036,7 +2036,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 		if (!ProfileResolver.isRustFirst(profile)) {
 			#if eval
-			Context.error("Async currently requires a Rust-first profile: `-D reflaxe_rust_profile=rusty|metal`.", pos);
+			Context.error("Async currently requires `-D reflaxe_rust_profile=metal`.", pos);
 			#end
 		}
 	}
@@ -3826,7 +3826,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					}
 				case TVar(v, init) if (init != null && i + 1 < exprs.length):
 					{
-						// Idiomatic move optimization (conservative, straight-line only):
+						// Conservative move optimization (straight-line only):
 						// If we immediately overwrite a local `x` on the next statement, then `var y = x; x = ...;`
 						// does not need to clone `x` into `y`. Moving `x` is safe because the old value dies before
 						// any subsequent read of `x`.
@@ -3937,7 +3937,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					// Haxe desugars `for (x in iterable)` into:
 					// `{ var it = iterable.iterator(); while (it.hasNext()) { var x = it.next(); body } }`
 					//
-					// For Rusty surfaces (Vec/Slice), lower this back to a Rust `for` loop and avoid
+					// For Rust-first surfaces (Vec/Slice), lower this back to a Rust `for` loop and avoid
 					// having to represent Haxe's `Iterator<T>` type in the backend.
 					function iterClonedExpr(x:TypedExpr):RustExpr {
 						var base = ECall(EField(compileExpr(x), "iter"), []);
@@ -3975,7 +3975,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 												var objU = unwrapMetaParenCast(obj);
 
 												// The while-loop shape already proved this "iterator" variable is used
-												// with `.hasNext()` / `.next()`. For Rusty surfaces, recover an idiomatic
+												// with `.hasNext()` / `.next()`. For Rust-first surfaces, recover an idiomatic
 												// Rust iterable to feed into a `for` loop.
 												if (isRustVecType(objU.t) || isRustSliceType(objU.t)) {
 													return iterClonedExpr(objU);
@@ -4219,7 +4219,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 					var it:RustExpr = switch (unwrapMetaParen(iterable).expr) {
 						// Many custom iterables typecheck by providing `iterator()`. We lower specific
-						// rusty surfaces to Rust iterators to avoid moving values (Haxe values are reusable).
+						// Rust-first surfaces to Rust iterators to avoid moving values (Haxe values are reusable).
 						case TCall(call, []): switch (unwrapMetaParen(call).expr) {
 								case TField(obj, FInstance(_, _, cfRef)):
 									var cf = cfRef.get();
@@ -5988,7 +5988,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// `Dynamic` already carries its own null sentinel (`Dynamic::null()`).
 		if (isRustDynamicPath(innerRust))
 			return null;
-		// Portable/idiomatic `String` uses `HxString` with an internal null sentinel.
+		// Portable `String` uses `HxString` with an internal null sentinel.
 		if (innerRust == "hxrt::string::HxString")
 			return null;
 
@@ -8102,7 +8102,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		var nullableFnInner = nullInnerType(callExpr.t);
 		var fnTypeForParams:Type = (nullableFnInner != null ? nullableFnInner : callExpr.t);
-		// Prefer the declared field type when available so we don't lose Rusty ref-wrapper types
+		// Prefer the declared field type when available so we don't lose Rust-first ref-wrapper types
 		// (e.g. `rust.Ref<T>`) via aggressive type following.
 		//
 		// This is especially important for stdlib helpers like `rust.VecTools.len(get)` which take
@@ -8540,7 +8540,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					// Casts are often used for implicit `@:from` conversions to `Ref/MutRef`, where we still
 					// want to emit `&`/`&mut`.
 					//
-					// However, for Rusty “ref-to-ref” coercions (e.g. `MutRef<Vec<T>> -> MutSlice<T>`),
+					// However, for Rust-first “ref-to-ref” coercions (e.g. `MutRef<Vec<T>> -> MutSlice<T>`),
 					// the cast is type-level only and the value is already a Rust reference.
 					//
 					// Distinguish the two by checking whether both sides are already Rust ref kinds.
@@ -11195,7 +11195,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						if (isRustDynamicPath(innerStr)) {
 							return inner;
 						}
-						// Portable/idiomatic `String` uses `HxString`, which already models null.
+						// Portable `String` uses `HxString`, which already models null.
 						if (innerStr == "hxrt::string::HxString") {
 							return inner;
 						}

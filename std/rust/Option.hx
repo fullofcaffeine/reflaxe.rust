@@ -5,7 +5,7 @@ package rust;
  *
  * Why:
  * - Portable Haxe optionality is typically modeled with `Null<T>`.
- * - In Rusty-profile code we often want *explicit* Rust semantics: `Option<T>` for “maybe a value”.
+ * - In Rust-first code we often want *explicit* Rust semantics: `Option<T>` for “maybe a value”.
  *
  * What:
  * - A Rust-facing `Option<T>` surface in Haxe syntax.
@@ -25,6 +25,6 @@ package rust;
  * - `rust.Result<T,E>` for fallible operations.
  */
 enum Option<T> {
-	Some(value: T);
+	Some(value:T);
 	None;
 }

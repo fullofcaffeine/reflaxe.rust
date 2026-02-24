@@ -15,11 +15,12 @@ import reflaxe.rust.ast.RustAST.RustFile;
 	What
 	- Enforces no-opinionated baseline contracts that are safe to apply immediately:
 	  - keeps track of raw `ERaw` expression usage as a policy signal.
-	  - optionally hard-errors when `-D rust_metal_contract_hard_error` is enabled.
+	  - emits an explicit warning in fallback mode, or hard-errors in strict metal mode.
 
 	How
 	- Walks the file and counts `ERaw(...)` expression nodes.
-	- Records a warning by default; escalates to compile error when the hard-error define is set.
+	- Emits an explicit fallback warning by default when raw nodes remain.
+	- Escalates to compile error when the metal contract hard-error policy is enabled.
 **/
 class MetalRestrictionsPass implements RustPass {
 	public function new() {}
@@ -43,6 +44,14 @@ class MetalRestrictionsPass implements RustPass {
 			#if eval
 			Context.error("Metal contract violation: generated output still contains raw Rust expression nodes (`ERaw`). "
 				+ "This usually means a boundary still relies on string-injection fallback and is not metal-clean yet.",
+				Context.currentPos());
+			#end
+		} else if (rawExprCount > 0) {
+			#if eval
+			Context.warning("Metal fallback active: generated output still contains "
+				+ rawExprCount
+				+ " raw Rust expression node(s) (`ERaw`). "
+				+ "Add typed lowering for these boundaries or remove `-D rust_metal_allow_fallback` to enforce metal-clean output.",
 				Context.currentPos());
 			#end
 		}

@@ -6,7 +6,7 @@ This page explains the current async/await support in plain language.
 
 Use this when:
 
-- you are using a Rust-first profile (`-D reflaxe_rust_profile=rusty|metal`), and
+- you are using a Rust-first profile (`-D reflaxe_rust_profile=metal`), and
 - you want Haxe code that compiles into idiomatic Rust async (`async` / `.await`).
 
 ## Quick start
@@ -14,11 +14,9 @@ Use this when:
 1. Enable a Rust-first profile + async support:
 
 ```bash
--D reflaxe_rust_profile=rusty
+-D reflaxe_rust_profile=metal
 -D rust_async
 ```
-
-(`metal` also works: `-D reflaxe_rust_profile=metal`)
 
 Legacy alias:
 - `-D rust_async_preview` (deprecated; still accepted).
@@ -88,7 +86,7 @@ class Main {
 
 ## Current status
 
-This is a preview feature intended for early production trials in Rusty projects. It is fully typed and codegen-backed, but still intentionally constrained so behavior remains predictable.
+This is a preview feature intended for early production trials in metal-profile projects. It is fully typed and codegen-backed, but still intentionally constrained so behavior remains predictable.
 
 ## Optional tokio adapter
 

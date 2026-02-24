@@ -20,17 +20,17 @@ This benchmark keeps that cost visible over time so regressions are noticed earl
 The script benchmarks five cases:
 
 1. `hello`:
-   - `examples/hello` across `portable`, `idiomatic`, `rusty`, `metal`
+   - `examples/hello` across `portable`, `metal`
    - hand-written pure Rust `println!` baseline
 2. `array`:
-   - `test/snapshot/for_array` across `portable`, `idiomatic`, `rusty`, `metal`
+   - `test/snapshot/for_array` across `portable`, `metal`
    - hand-written pure Rust array-loop baseline
 3. `hot_loop`:
-   - `test/perf/hot_loop` across `portable`, `idiomatic`, `rusty`, `metal`
+   - `test/perf/hot_loop` across `portable`, `metal`
    - hand-written pure Rust hot-loop baseline
    - startup-weighted runtime signal for a heavy workload
 4. `hot_loop_inproc`:
-   - `test/perf/hot_loop_inproc` across `portable`, `idiomatic`, `rusty`, `metal`
+   - `test/perf/hot_loop_inproc` across `portable`, `metal`
    - hand-written pure Rust in-process hot-loop baseline
    - used as the primary steady-state runtime comparison target
 5. `chat`:
@@ -75,21 +75,15 @@ When reading ratios (`x vs pure`):
 - `portable`
   - Highest semantic compatibility / UX ergonomics.
   - Expected to carry the largest intentional runtime abstraction cost.
-- `idiomatic`
-  - Same semantics as portable, cleaner emitted Rust.
-  - Performance envelope should stay close to portable.
-- `rusty`
-  - Rust-first APIs reduce semantic impedance.
-  - Expected to trend closer to pure Rust in hot-path workloads.
-- `metal` (experimental)
-  - Lowest-level typed Rust interop profile.
+- `metal`
+  - Rust-first performance profile.
   - Primary target profile for near-pure-Rust performance.
 
 ## What the current baseline shows
 
 The committed baseline (`scripts/ci/perf/hxrt-baseline.json`) currently shows:
 
-- Binary footprint is dominated by shared runtime payload across profiles in micro cases (roughly the same multiplier for `portable`/`idiomatic`/`rusty`/`metal`).
+- Binary footprint is dominated by shared runtime payload across profiles in micro cases (roughly the same multiplier for `portable`/`metal`).
 - Startup-only microcases (`hello`, `array`) fluctuate and are tracked mainly for size/regression visibility.
 - Steady-state `hot_loop_inproc` runtime ratios are the main signal for parity work.
 

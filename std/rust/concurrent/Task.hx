@@ -4,7 +4,7 @@ package rust.concurrent;
 	rust.concurrent.Task<T>
 
 	Why
-	- Rusty-profile task APIs need a concrete typed handle for spawned work.
+	- Rust-first task APIs need a concrete typed handle for spawned work.
 
 	What
 	- Typedef alias to `hxrt.concurrent.TaskHandle<T>`.

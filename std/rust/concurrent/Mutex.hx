@@ -4,7 +4,7 @@ package rust.concurrent;
 	rust.concurrent.Mutex<T>
 
 	Why
-	- Rusty-profile mutex APIs need a concrete typed handle without exposing runtime internals.
+	- Rust-first mutex APIs need a concrete typed handle without exposing runtime internals.
 
 	What
 	- Typedef alias to `hxrt.concurrent.MutexHandle<T>`.

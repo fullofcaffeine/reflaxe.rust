@@ -5,7 +5,7 @@ package rust;
  *
  * Why:
  * - Rust APIs heavily prefer `&str` for inputs (borrowed string slices) to avoid allocations.
- * - In the Rusty profile we want to express that intent directly from Haxe without moving/cloning.
+ * - In the metal profile we want to express that intent directly from Haxe without moving/cloning.
  *
  * What:
  * - `Str` represents a borrowed string slice (`&str`) in emitted Rust.
@@ -24,7 +24,7 @@ package rust;
  */
 @:coreType
 extern abstract Str {
-	@:from public static inline function fromRefString(r: Ref<String>): Str {
+	@:from public static inline function fromRefString(r:Ref<String>):Str {
 		return cast r;
 	}
 }

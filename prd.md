@@ -863,7 +863,7 @@ Milestone 10 — Performance + “best of both worlds” optimizations
 
 Deliverables
 
-Optional -D rust_native / -D rust_idiomatic mode:
+Optional profile-focused optimization mode (portable defaults + metal):
 
 arrays to Vec<T> when semantics allow (no length writes, no sparse behavior)
 

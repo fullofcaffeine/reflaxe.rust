@@ -22,7 +22,7 @@ typedef MetalValidatedSend = {
  *   control through framework-provided typed interop facades.
  *
  * What
- * - Uses the same `Result`/`Option` control style as `RustyRuntime`.
+ * - Uses explicit `Result`/`Option` control style for Rust-first data flow.
  * - Computes message fingerprints via `rust.metal.Code` typed injection hooks.
  *
  * How

@@ -89,21 +89,19 @@ More usage options: [Dev Watcher guide](docs/dev-watcher.md).
 
 ## Pick Your Profile
 
-Use `-D reflaxe_rust_profile=portable|idiomatic|rusty|metal`.
+Use `-D reflaxe_rust_profile=portable|metal`.
 
 | Profile | Best for | What you get |
 | --- | --- | --- |
-| `portable` (default) | Haxe-first teams | Stable Haxe semantics and portability-first behavior (largest intentional UX/semantic tradeoff envelope vs pure Rust) |
-| `idiomatic` | Teams that want cleaner Rust output without semantic shifts | Same behavior as portable, cleaner emitted Rust |
-| `rusty` | Rust-aware teams | Rust-first APIs and borrow/ownership-oriented surface |
-| `metal` (experimental) | Rust-heavy teams that need typed low-level interop | Rusty+ profile with typed metal injection façade, stricter app-side injection boundaries, and the primary near-pure-Rust hot-path performance objective |
+| `portable` (default) | Haxe-first teams | Stable Haxe semantics and portability-first behavior |
+| `metal` | Rust-aware teams and performance-critical paths | Rust-first APIs, stricter app-side injection boundaries, and primary near-pure-Rust hot-path performance objective |
 
-Read more: [Profiles guide](docs/profiles.md), [Rusty profile details](docs/rusty-profile.md),
+Read more: [Profiles guide](docs/profiles.md), [Rusty migration guide](docs/rusty-profile.md),
 [Metal profile details](docs/metal-profile.md), [HXRT overhead benchmarks](docs/perf-hxrt-overhead.md), and [Lifetime encoding design](docs/lifetime-encoding.md).
 
 ## Examples
 
-- [chat_loopback](examples/chat_loopback) (cross-profile flagship: portable/idiomatic/rusty/metal)
+- [chat_loopback](examples/chat_loopback) (cross-profile flagship: portable/metal)
 - [profile_storyboard](examples/profile_storyboard) (cross-profile micro-app focused on profile-specific coding style + `@:rustTest`)
 - [hello](examples/hello)
 - [async_retry_pipeline](examples/async_retry_pipeline)
@@ -147,9 +145,7 @@ Coverage map: [docs/examples-matrix.md](docs/examples-matrix.md).
 - `-D rust_no_build` / `-D rust_codegen_only` - codegen only, skip Cargo build
 - `-D rust_build_release` / `-D rust_release` - release build mode
 - `-D rust_target=<triple>` - pass target triple to Cargo
-- `-D rust_idiomatic` - alias for `-D reflaxe_rust_profile=idiomatic`
-- `-D rust_metal` - alias for `-D reflaxe_rust_profile=metal`
-- `-D reflaxe_rust_profile=rusty|metal` - enable Rust-first profile surfaces
+- `-D reflaxe_rust_profile=portable|metal` - select profile contract
 - `-D rust_async_preview` - enable Rust-first async/await preview (`docs/async-await.md`)
 - `-D rustfmt` - run `cargo fmt` on generated output (best effort)
 

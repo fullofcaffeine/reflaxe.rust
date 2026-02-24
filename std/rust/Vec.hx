@@ -3,7 +3,7 @@ package rust;
 /**
  * rust.Vec<T>
  *
- * Rust-facing Vec type intended for the `rusty` profile.
+ * Rust-facing Vec type intended for the `metal` profile.
  *
  * Notes:
  * - This is an extern binding to Rust's `Vec<T>` (prelude type).
@@ -15,11 +15,11 @@ extern class Vec<T> {
 	public function new();
 
 	@:rustMutating
-	public function push(value: T): Void;
+	public function push(value:T):Void;
 
 	@:rustMutating
-	public function pop(): Option<T>;
-	public function clone(): Vec<T>;
+	public function pop():Option<T>;
+	public function clone():Vec<T>;
 
 	/**
 	 * `iterator()` exists to make `for (x in vec)` typecheck in Haxe.
@@ -28,5 +28,5 @@ extern class Vec<T> {
 	 * `vec.iter().cloned()` in Rust output (to avoid moving the vec).
 	 */
 	@:native("iter")
-	public function iterator(): Iterator<T>;
+	public function iterator():Iterator<T>;
 }

@@ -3,7 +3,7 @@ package rust;
 /**
  * rust.PathBuf
  *
- * Rust-facing owned path buffer (`std::path::PathBuf`) intended for the `rusty` profile.
+ * Rust-facing owned path buffer (`std::path::PathBuf`) intended for the `metal` profile.
  *
  * Notes:
  * - Prefer using `PathBufTools` for common constructors and conversions.
@@ -12,6 +12,5 @@ package rust;
 @:native("std::path::PathBuf")
 extern class PathBuf {
 	public function new();
-	public function clone(): PathBuf;
+	public function clone():PathBuf;
 }
-

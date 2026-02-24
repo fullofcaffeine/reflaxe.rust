@@ -7,7 +7,7 @@ import domain.ChatEvent;
  * ChatRuntime
  *
  * Why
- * - The flagship example needs one domain flow that can run under all profiles while each
+ * - The flagship example needs one domain flow that can run under both supported profiles while each
  *   profile keeps its own idioms.
  *
  * What

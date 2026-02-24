@@ -3,10 +3,9 @@ package rust;
 /**
  * rust.Instant
  *
- * Rust-facing monotonic clock instant (`std::time::Instant`) intended for the `rusty` profile.
+ * Rust-facing monotonic clock instant (`std::time::Instant`) intended for the `metal` profile.
  */
 @:native("std::time::Instant")
 extern class Instant {
-	public function clone(): Instant;
+	public function clone():Instant;
 }
-

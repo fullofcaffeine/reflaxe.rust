@@ -62,17 +62,9 @@ fn tokio_block_on<T>(future: HxFuture<T>) -> T {
 }
 
 /// Enable tokio runtime adapter for subsequent async helper calls.
+#[cfg(feature = "async_tokio")]
 pub fn enable_tokio_runtime() {
-    #[cfg(feature = "async_tokio")]
-    {
-        TOKIO_RUNTIME_ENABLED.store(true, Ordering::Relaxed);
-        return;
-    }
-
-    #[cfg(not(feature = "async_tokio"))]
-    {
-        panic!("tokio adapter requested but hxrt was compiled without `async_tokio` feature");
-    }
+    TOKIO_RUNTIME_ENABLED.store(true, Ordering::Relaxed);
 }
 
 /// Disable tokio runtime adapter and return to default async helpers.

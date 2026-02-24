@@ -23,15 +23,11 @@ This page is a practical reference for the most relevant compiler defines.
 
 ## Profiles and semantics
 
-- `reflaxe_rust_profile=portable|idiomatic|rusty|metal`
+- `reflaxe_rust_profile=portable|metal`
   - Main profile switch.
-- `rust_idiomatic`
-  - Alias for `reflaxe_rust_profile=idiomatic`.
-- `rust_metal`
-  - Alias for `reflaxe_rust_profile=metal`.
 - `rust_async`
   - Enable async/await surfaces (`rust.async.Future`, `rust.async.Async.*`).
-  - Requires a Rust-first profile: `reflaxe_rust_profile=rusty|metal`.
+  - Requires `reflaxe_rust_profile=metal`.
 - `rust_async_preview`
   - Legacy alias for `rust_async` (deprecated).
 - `rust_string_nullable`
@@ -79,8 +75,8 @@ This page is a practical reference for the most relevant compiler defines.
 ## Notes on defaults
 
 - If no string mode define is provided:
-  - portable and idiomatic default to `rust_string_nullable`.
-  - rusty and metal default to non-null string mode.
+  - portable defaults to `rust_string_nullable`.
+  - metal defaults to non-null string mode.
 - `target.name` is read internally by compiler macros; users typically do not set it directly.
 
 ## Related docs

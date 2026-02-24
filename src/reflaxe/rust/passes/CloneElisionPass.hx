@@ -8,7 +8,7 @@ import reflaxe.rust.ast.RustAST.RustFile;
 	CloneElisionPass
 
 	Why
-	- Idiomatic/rust-first profiles should avoid obviously redundant `.clone()` calls.
+	- Portable/metal profiles should avoid obviously redundant `.clone()` calls.
 	- We need conservative elision rules that do not change ownership behavior.
 
 	What

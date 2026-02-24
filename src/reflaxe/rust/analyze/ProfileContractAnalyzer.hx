@@ -50,9 +50,7 @@ class ProfileContractAnalyzer {
 						addWarning(msg + " (allowed because -D rust_metal_allow_fallback is set)")
 					else
 						addError(msg);
-				case Rusty:
-					addWarning("rusty profile discourages reflection modules; found: " + joined + ". Prefer typed APIs.");
-				case Portable | Idiomatic:
+				case Portable:
 			}
 		}
 
@@ -64,9 +62,7 @@ class ProfileContractAnalyzer {
 						addWarning(msg + " (allowed because -D rust_metal_allow_fallback is set)")
 					else
 						addError(msg);
-				case Rusty:
-					addWarning("rusty profile warning: -D rust_allow_unresolved_monomorph_dynamic weakens rust-first guarantees.");
-				case Portable | Idiomatic:
+				case Portable:
 			}
 		}
 
@@ -78,9 +74,7 @@ class ProfileContractAnalyzer {
 						addWarning(msg + " (allowed because -D rust_metal_allow_fallback is set)")
 					else
 						addError(msg);
-				case Rusty:
-					addWarning("rusty profile warning: -D rust_allow_unmapped_coretype_dynamic weakens rust-first guarantees.");
-				case Portable | Idiomatic:
+				case Portable:
 			}
 		}
 

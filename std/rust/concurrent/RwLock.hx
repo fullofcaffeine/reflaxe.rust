@@ -4,7 +4,7 @@ package rust.concurrent;
 	rust.concurrent.RwLock<T>
 
 	Why
-	- Rusty-profile read/write lock APIs need a concrete typed handle without exposing runtime internals.
+	- Rust-first read/write lock APIs need a concrete typed handle without exposing runtime internals.
 
 	What
 	- Typedef alias to `hxrt.concurrent.RwLockHandle<T>`.

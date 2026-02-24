@@ -37,12 +37,12 @@ Status: aligned
 
 ### 2) Product should support both portable and Rust-first usage
 
-Status: aligned, with one important clarification
+Status: aligned
 
 - User-facing model: portable-first and Rust-first workflows.
-- Implementation model: four profiles (`portable`, `idiomatic`, `rusty`, `metal`).
-- `idiomatic` is intentionally a bridge profile, not a separate philosophy.
-- `metal` is an additive experimental Rust-first+ option, not a replacement for `rusty`.
+- Implementation model: two explicit profiles (`portable`, `metal`).
+- `portable` carries Haxe-portable semantics with production codegen hygiene.
+- `metal` is the Rust-first performance profile with strict boundary defaults.
 
 ### 3) Users should not need raw Rust in app code
 

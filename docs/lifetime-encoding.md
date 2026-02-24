@@ -125,7 +125,7 @@ Cons:
 For near-term compiler evolution:
 
 1. Keep callback-scoped borrow APIs as the main user model.
-2. Add stronger static non-escape checks in Rusty profile (warnings -> errors over time).
+2. Add stronger static non-escape checks in metal profile (warnings -> errors over time).
 3. Introduce phantom-region typing only where it clearly improves correctness without harming ergonomics.
 4. Keep lifetime-heavy generic patterns in extern Rust modules behind typed Haxe APIs.
 
@@ -133,8 +133,8 @@ This gives meaningful lifetime safety gains without pretending to fully replace 
 
 ## Profile Relation
 
-- `portable` / `idiomatic`: prefer owned/high-level APIs; lifetimes stay mostly an implementation detail.
-- `rusty`: opt into borrow-aware APIs and scoped lifetime-like patterns deliberately.
+- `portable`: prefer owned/high-level APIs; lifetimes stay mostly an implementation detail.
+- `metal`: opt into borrow-aware APIs and scoped lifetime-like patterns deliberately.
 
 See also:
 

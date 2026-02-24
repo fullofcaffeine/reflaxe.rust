@@ -1,10 +1,10 @@
 # chat_loopback
 
-Flagship cross-profile chat example (`portable`, `idiomatic`, `rusty`, `metal`).
+Flagship cross-profile chat example (`portable`, `metal`).
 
 ## What It Demonstrates
 
-- One app scenario implemented across all compiler profiles.
+- One app scenario implemented across both supported compiler profiles.
 - Typed runtime boundary (`ChatRuntime`) with local and network-backed flows.
 - Interactive TUI UX plus deterministic headless CI test mode.
 - In-frame diagnostics (`diag stream`) so transport/activity signals stay inside the TUI.
@@ -32,14 +32,14 @@ Terminal 1:
 
 ```bash
 cd examples/chat_loopback
-npx haxe compile.portable.hxml
-(cd out_portable && cargo run -q)
+npx haxe compile.hxml
+(cd out && cargo run -q)
 ```
 
 Terminal 2:
 
 ```bash
-cd examples/chat_loopback/out_portable
+cd examples/chat_loopback/out
 cargo run -q
 ```
 
@@ -50,13 +50,14 @@ Each instance gets an auto-generated funny name. Presence updates are automatic;
 Use the repo cargo alias with flags instead of adding many task HXML files:
 
 ```bash
+cargo hx --action run
 cargo hx --profile portable --action run
-cargo hx --profile idiomatic --action run
+cargo hx --profile metal --action run
 cargo hx --profile portable --ci --action test
 cargo hx --profile metal --action build --release
 
 # or from repo root:
-# cargo hx --project examples/chat_loopback --profile portable --action run
+# cargo hx --project examples/chat_loopback --action run
 ```
 
 This keeps profile selection in existing `compile.<profile>.hxml` files while build/run/test behavior is selected via cargo flags.

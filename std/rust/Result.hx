@@ -5,7 +5,7 @@ package rust;
  *
  * Why:
  * - Portable Haxe error handling commonly uses exceptions (`throw` / `try/catch`).
- * - In Rusty-profile code we often want *explicit* Rust semantics: `Result<T,E>` for fallible APIs.
+ * - In Rust-first code we often want *explicit* Rust semantics: `Result<T,E>` for fallible APIs.
  *
  * What:
  * - A Rust-facing `Result<T, E>` surface in Haxe syntax.
@@ -19,13 +19,13 @@ package rust;
  *
  * Notes:
  * - Use `rust.ResultTools` for ergonomic composition (`mapOk`, `mapErr`, `andThen`, `context`, etc.).
- * - The default error type is `String` to make quick Rusty APIs easy to write, but prefer a richer
+ * - The default error type is `String` to make quick Rust-first APIs easy to write, but prefer a richer
  *   error enum once your API stabilizes.
  *
  * Related:
  * - `rust.Option<T>` for “maybe a value”.
  */
 enum Result<T, E = String> {
-	Ok(value: T);
-	Err(error: E);
+	Ok(value:T);
+	Err(error:E);
 }

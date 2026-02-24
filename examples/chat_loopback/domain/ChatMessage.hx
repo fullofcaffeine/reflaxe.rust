@@ -12,8 +12,8 @@ package domain;
  *   channel, and profile origin marker.
  *
  * How
- * - Constructed by profile runtime implementations (`PortableRuntime`, `IdiomaticRuntime`,
- *   `RustyRuntime`, `MetalRuntime`) and serialized by `protocol.Codec`.
+ * - Constructed by profile runtime implementations (`PortableRuntime`, `MetalRuntime`) and
+ *   serialized by `protocol.Codec`.
  */
 class ChatMessage {
 	public var id(default, null):Int;

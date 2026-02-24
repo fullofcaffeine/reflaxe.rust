@@ -374,7 +374,7 @@ printf "id\tcase\tprofile\tkind\tbinary_bytes\tstripped_bytes\truntime_mode\trun
 
 log "collecting metrics (results: $(display_path "$results_dir"))"
 
-declare -a profiles=(portable idiomatic rusty metal)
+declare -a profiles=(portable metal)
 
 record_metric_row() {
   local id="$1"
@@ -595,7 +595,7 @@ const chatIters = Number(process.env.HXRT_PERF_CHAT_ITERS || "40");
 const haxeVersion = process.env.HXRT_PERF_HAXE_VERSION || "";
 const rustcVersion = process.env.HXRT_PERF_RUSTC_VERSION || "";
 
-const profiles = ["portable", "idiomatic", "rusty", "metal"];
+const profiles = ["portable", "metal"];
 
 function parseMetrics(tsvPath) {
   const raw = fs.readFileSync(tsvPath, "utf8").trim();

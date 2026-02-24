@@ -3,7 +3,7 @@ package rust;
 /**
  * rust.OsString
  *
- * Rust-facing owned OS string (`std::ffi::OsString`) intended for the `rusty` profile.
+ * Rust-facing owned OS string (`std::ffi::OsString`) intended for the `metal` profile.
  *
  * Notes:
  * - Prefer `OsStringTools` for constructors and conversions.
@@ -11,6 +11,5 @@ package rust;
 @:native("std::ffi::OsString")
 extern class OsString {
 	public function new();
-	public function clone(): OsString;
+	public function clone():OsString;
 }
-

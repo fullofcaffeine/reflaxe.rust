@@ -45,9 +45,9 @@ Some methods impose Rust trait bounds on `T`:
 - `resize` requires `T: Default` (for `Array<Null<T>>` this maps nicely to `None`)
 - `join` requires `T: ToString`
 
-## Borrowing as slices (Rusty profile)
+## Borrowing as slices (metal profile)
 
-For Rust-idiomatic integrations, the Rusty profile provides slice-borrow helpers that work on
+For Rust-first integrations, the metal profile provides slice-borrow helpers that work on
 `Array<T>` without cloning:
 
 - `rust.SliceTools.with(array, s -> ...)` borrows as `&[T]`
@@ -65,7 +65,7 @@ This fixes the core semantic mismatch: **assignment and passing alias**, and clo
 (`Rc::clone`, not a deep clone).
 
 Remaining work is mostly about API coverage + ergonomics (more Array methods, better iteration patterns,
-explicit bridging with `rust.Vec<T>` in the Rusty profile).
+explicit bridging with `rust.Vec<T>` in the metal profile).
 
 ## Note on `.clone()` noise
 
@@ -118,12 +118,12 @@ Goals of the runtime type:
 
 - preserve Haxe aliasing semantics by default
 - make “clone to preserve reuse” cheap (`Rc` clone)
-- provide borrow helpers for Rusty/profile code when performance matters
+- provide borrow helpers for metal/profile code when performance matters
 
 ### Relationship to profiles
 
-- `Portable` / `Idiomatic`: `Array<T>` means **Haxe array semantics** (shared, mutable, reusable).
-- `Rusty`: users should prefer `rust.Vec<T>` when they explicitly want Rust ownership semantics.
+- `Portable`: `Array<T>` means **Haxe array semantics** (shared, mutable, reusable).
+- `Metal`: users should prefer `rust.Vec<T>` when they explicitly want Rust ownership semantics.
   Conversions between `Array<T>` and `rust.Vec<T>` must be explicit and documented.
 
 ## Follow-up tasks (implementation plan)

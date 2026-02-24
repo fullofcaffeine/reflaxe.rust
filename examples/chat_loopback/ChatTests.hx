@@ -33,7 +33,7 @@ class ChatTests {
 	@:rustTest({name: "chat_profile_is_supported"})
 	public static function profileIsSupportedVariant():Bool {
 		var profile = Harness.profileName();
-		return profile == "portable" || profile == "idiomatic" || profile == "rusty" || profile == "metal";
+		return profile == "portable" || profile == "metal";
 	}
 
 	@:rustTest

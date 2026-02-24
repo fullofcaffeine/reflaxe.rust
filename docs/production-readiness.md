@@ -15,7 +15,7 @@ For this project, production-ready means:
 
 ### Stage 1: Pilot (single service or internal tool)
 
-- Choose profile: `portable` or `idiomatic` unless Rust-first APIs are required.
+- Choose profile: `portable` by default; use `metal` only for Rust-first/performance-critical paths.
 - Keep interop typed (`extern` + metadata) and avoid app-level `__rust__`.
 - Run `npm run test:all` on each change set.
 
@@ -28,7 +28,7 @@ For this project, production-ready means:
 ### Stage 3: Broad production rollout
 
 - Confirm the release-readiness checklist is fully closed.
-- Document team profile policy (who can use `rusty`, when).
+- Document team profile policy (when metal is required vs portable).
 - Add periodic regression runs against representative workloads.
 
 ## Operational checklist
@@ -36,7 +36,7 @@ For this project, production-ready means:
 1. Build reproducibility
    - Pin dependencies and use locked Cargo mode in CI.
 2. Profile policy
-   - Decide default profile (`portable`/`idiomatic`) and explicit exception process for `rusty`.
+   - Decide default profile (`portable`) and explicit exception process for `metal`.
 3. Boundary hygiene
    - Keep low-level Rust behind typed wrappers.
 4. Failure behavior
@@ -48,7 +48,7 @@ For this project, production-ready means:
 
 For teams new to this compiler:
 
-- Profile: `portable` (or `idiomatic` if you care about output cleanliness).
+- Profile: `portable`.
 - Build: default Cargo build + `rust_cargo_locked` in CI.
 - Interop: typed externs and metadata first.
 - Escape hatch: framework-only.

@@ -53,5 +53,9 @@ run_negative_case "test/negative/metal_raw_rust" 'Strict mode forbids `__rust__\
 	'raw __rust__ in app code under metal profile'
 run_negative_case "test/negative/metal_reflect" 'metal profile forbids reflection modules' \
 	'Reflect usage under metal profile'
+run_negative_case "test/negative/profile_removed_idiomatic" 'Unknown `-D reflaxe_rust_profile=idiomatic`\. Expected portable\|metal\.' \
+	'idiomatic profile selector removed'
+run_negative_case "test/negative/profile_removed_rusty" 'Unknown `-D reflaxe_rust_profile=rusty`\. Expected portable\|metal\.' \
+	'rusty profile selector removed'
 
 echo "[metal-policy] ok"

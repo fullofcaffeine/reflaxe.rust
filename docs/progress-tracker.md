@@ -26,7 +26,7 @@ These conditions were used to determine whether 1.0 was defensible for productio
 1. The release readiness gate is closed.
 2. No P0 or P1 production blockers remain.
 3. CI-equivalent checks pass (`npm run test:all`, plus workflow checks in CI).
-4. Portable and rusty example paths continue to compile and run.
+4. Portable and metal example paths continue to compile and run.
 5. Docs remain aligned with current implementation and policy.
 
 Current state: all five conditions are satisfied.

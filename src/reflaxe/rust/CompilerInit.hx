@@ -68,8 +68,8 @@ class CompilerInit {
 		Compiler.define("target.threaded");
 
 		// String representation policy:
-		// - portable/idiomatic default to nullable HxString
-		// - rusty/metal keep legacy non-null String unless explicitly overridden
+		// - portable defaults to nullable HxString
+		// - metal keeps legacy non-null String unless explicitly overridden
 		var hasNullableStrings = Context.defined("rust_string_nullable");
 		var hasNonNullableStrings = Context.defined("rust_string_non_nullable");
 		if (hasNullableStrings && hasNonNullableStrings) {
@@ -84,7 +84,7 @@ class CompilerInit {
 		var wantsAsync = Context.defined("rust_async") || Context.defined("rust_async_preview");
 		if (wantsAsync) {
 			if (!ProfileResolver.isRustFirst(profile)) {
-				Context.error("Async (`-D rust_async`, legacy `-D rust_async_preview`) currently requires `-D reflaxe_rust_profile=rusty|metal`.",
+				Context.error("Async (`-D rust_async`, legacy `-D rust_async_preview`) currently requires `-D reflaxe_rust_profile=metal`.",
 					Context.currentPos());
 			}
 			#if eval
