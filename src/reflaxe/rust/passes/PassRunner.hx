@@ -42,7 +42,9 @@ class PassRunner {
 	static function selectPasses(context:CompilationContext):Array<RustPass> {
 		var passes = switch (context.profile) {
 			case Portable:
-				[NORMALIZE, MUT_INFERENCE, CLONE_ELISION];
+				// Keep metal restrictions active in portable compilations so `@:rustMetal`
+				// islands are enforced by the same pass contract as full metal profile.
+				[NORMALIZE, MUT_INFERENCE, CLONE_ELISION, METAL_RESTRICTIONS];
 			case Metal:
 				[NORMALIZE, MUT_INFERENCE, CLONE_ELISION, BORROW_TIGHTEN, METAL_RESTRICTIONS];
 		};
