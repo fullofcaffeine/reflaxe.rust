@@ -379,11 +379,11 @@ impl Unserializer {
         }
         let mut nargs: i32 = crate::haxe_unserializer::Unserializer::read_digits(&*__hx_this);
         if nargs == 0 {
-            return {
+            {
                 let _ = edecl;
                 let _ = tag;
                 todo!()
-            };
+            }
         }
         let args: hxrt::array::Array<hxrt::dynamic::Dynamic> =
             hxrt::array::Array::<hxrt::dynamic::Dynamic>::new();
@@ -397,12 +397,12 @@ impl Unserializer {
                 &*__hx_this,
             ));
         }
-        return {
+        {
             let _ = edecl;
             let _ = tag;
             let _ = args;
             todo!()
-        };
+        }
     }
 
     pub fn unserialize(self_: &crate::HxRefCell<Unserializer>) -> hxrt::dynamic::Dynamic {

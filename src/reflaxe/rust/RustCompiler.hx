@@ -4437,6 +4437,75 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return false;
 	}
 
+	/**
+		Returns true when a Rust statement is statically diverging (`!`) and never produces a value.
+
+		Why this exists:
+		Rust warns on `return <expr>` when `<expr>` already diverges (for example `todo!()`,
+		`panic!()`, `hxrt::exception::throw(...)`). The `return` itself becomes unreachable.
+
+		How it is used:
+		`TReturn` lowering checks this via `rustExprAlwaysDiverges(...)` and emits the diverging
+		expression directly, preserving behavior while keeping generated code warning-free.
+	**/
+	function rustStmtAlwaysDiverges(s:RustStmt):Bool {
+		return switch (s) {
+			case RReturn(_):
+				true;
+			case RSemi(e):
+				rustExprAlwaysDiverges(e);
+			case RExpr(e, _):
+				rustExprAlwaysDiverges(e);
+			case _:
+				false;
+		}
+	}
+
+	/**
+		Conservative divergence detector for generated Rust expressions.
+
+		This only answers "true" when we are confident the expression has `!` semantics.
+		False negatives are acceptable (they only miss an optimization), while false positives
+		would change control flow. Keep checks intentionally strict.
+	**/
+	function rustExprAlwaysDiverges(e:RustExpr):Bool {
+		return switch (e) {
+			case ERaw(s): var raw = StringTools.trim(s); raw == "todo!()" || raw == "unreachable!()" || StringTools.startsWith(raw, "panic!(");
+			case EMacroCall(name, _): name == "todo" || name == "unreachable" || name == "panic";
+			case ECall(func, _):
+				switch (func) {
+					case EPath(path):
+						path == "hxrt::exception::throw";
+					case _:
+						false;
+				}
+			case EBlock(b):
+				if (b.tail != null) {
+					rustExprAlwaysDiverges(b.tail);
+				} else if (b.stmts.length > 0) {
+					rustStmtAlwaysDiverges(b.stmts[b.stmts.length - 1]);
+				} else {
+					false;
+				}
+			case EIf(_, thenExpr, elseExpr): elseExpr != null && rustExprAlwaysDiverges(thenExpr) && rustExprAlwaysDiverges(elseExpr);
+			case EMatch(_, arms):
+				if (arms.length == 0) {
+					false;
+				} else {
+					var allDiverge = true;
+					for (arm in arms) {
+						if (!rustExprAlwaysDiverges(arm.expr)) {
+							allDiverge = false;
+							break;
+						}
+					}
+					allDiverge;
+				}
+			case _:
+				false;
+		}
+	}
+
 	function compileStmt(e:TypedExpr):RustStmt {
 		return switch (e.expr) {
 			case TBlock(exprs): {
@@ -4768,8 +4837,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									var retBlock = compileBlock(exprs, true, currentFunctionReturn);
 									// Avoid `return { ... return x; }` shapes that trigger Rust
 									// `unreachable_code` warnings. If the returned block already contains
-									// a top-level diverging statement, emit the block directly.
-									if (hasTopLevelDivergingStmt(exprs)) {
+									// a top-level diverging statement (or the block tail itself diverges),
+									// emit the block directly.
+									if (hasTopLevelDivergingStmt(exprs)
+										|| (retBlock.tail != null && rustExprAlwaysDiverges(retBlock.tail))) {
 										RExpr(EBlock(retBlock), false);
 									} else if (retBlock.tail != null) {
 										// Normalize `return { s1; ...; tail; }` to `{ s1; ...; return tail; }`.
@@ -4788,7 +4859,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									if (ex != null) {
 										ex = coerceExprToExpected(ex, retExpr, currentFunctionReturn);
 									}
-									RReturn(ex);
+									if (ex != null && rustExprAlwaysDiverges(ex)) {
+										RExpr(ex, false);
+									} else {
+										RReturn(ex);
+									}
 								}
 						}
 					}
