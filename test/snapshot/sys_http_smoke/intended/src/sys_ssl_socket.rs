@@ -63,7 +63,7 @@ impl Socket {
             self_.borrow_mut().custom = __tmp.clone();
             __tmp
         };
-        let h: crate::HxRef<hxrt::net::SocketHandle> = hxrt::net::socket_new_tcp();
+        let h: crate::HxRef<hxrt::net::SocketHandle> = crate::socket_native::new_tcp();
         {
             let __tmp = h.clone();
             self_.borrow_mut().handle = __tmp.clone();
@@ -294,12 +294,12 @@ impl Socket {
 
     pub fn close(self_: &crate::HxRefCell<Socket>) {
         let __hx_this: crate::HxRef<crate::sys_ssl_socket::Socket> = self_.self_ref();
-        {
-            let __b = __hx_this.borrow();
-            __b.handle.clone()
-        }
-        .borrow_mut()
-        .close();
+        crate::socket_native::close(
+            &({
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }),
+        );
     }
 
     pub fn read(self_: &crate::HxRefCell<Socket>) -> hxrt::string::HxString {
@@ -326,22 +326,25 @@ impl Socket {
 
     pub fn listen(self_: &crate::HxRefCell<Socket>, connections: i32) {
         let __hx_this: crate::HxRef<crate::sys_ssl_socket::Socket> = self_.self_ref();
-        {
-            let __b = __hx_this.borrow();
-            __b.handle.clone()
-        }
-        .borrow_mut()
-        .listen(connections as i32);
+        crate::socket_native::listen(
+            &({
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }),
+            connections,
+        );
     }
 
     pub fn shutdown(self_: &crate::HxRefCell<Socket>, read: bool, write: bool) {
         let __hx_this: crate::HxRef<crate::sys_ssl_socket::Socket> = self_.self_ref();
-        {
-            let __b = __hx_this.borrow();
-            __b.handle.clone()
-        }
-        .borrow_mut()
-        .shutdown(read as bool, write as bool);
+        crate::socket_native::shutdown(
+            &({
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }),
+            read,
+            write,
+        );
     }
 
     pub fn bind(
@@ -350,36 +353,31 @@ impl Socket {
         port: i32,
     ) {
         let __hx_this: crate::HxRef<crate::sys_ssl_socket::Socket> = self_.self_ref();
-        {
-            let __b = __hx_this.borrow();
-            __b.handle.clone()
-        }
-        .borrow_mut()
-        .bind(
+        crate::socket_native::bind(
+            &({
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }),
             {
                 let __b = host.borrow();
                 __b.ip
-            } as i32,
-            port as i32,
+            },
+            port,
         );
     }
 
     pub fn peer(self_: &crate::HxRefCell<Socket>) -> crate::HxRef<hxrt::anon::Anon> {
         let __hx_this: crate::HxRef<crate::sys_ssl_socket::Socket> = self_.self_ref();
-        let info: hxrt::array::Array<i32> = {
-            let (ip, port) = {
-                let __b = __hx_this.borrow();
-                __b.handle.clone()
-            }
-            .borrow()
-            .peer();
-            hxrt::array::Array::<i32>::from_vec(vec![ip, port])
-        };
         let host: crate::HxRef<crate::sys_net_host::Host> = crate::sys_net_host::Host::new(
             hxrt::string::HxString::from(hxrt::string::HxString::from("127.0.0.1")),
         );
         {
-            let __tmp = info.get_unchecked(0 as usize);
+            let __tmp = crate::socket_native::peer_ip(
+                &({
+                    let __b = __hx_this.borrow();
+                    __b.handle.clone()
+                }),
+            );
             host.borrow_mut().ip = __tmp;
             __tmp
         };
@@ -388,7 +386,15 @@ impl Socket {
             {
                 let mut __b = __o.borrow_mut();
                 __b.set("host", host.clone());
-                __b.set("port", info.get_unchecked(1 as usize));
+                __b.set(
+                    "port",
+                    crate::socket_native::peer_port(
+                        &({
+                            let __b = __hx_this.borrow();
+                            __b.handle.clone()
+                        }),
+                    ),
+                );
             };
             __o
         };
@@ -396,20 +402,16 @@ impl Socket {
 
     pub fn host(self_: &crate::HxRefCell<Socket>) -> crate::HxRef<hxrt::anon::Anon> {
         let __hx_this: crate::HxRef<crate::sys_ssl_socket::Socket> = self_.self_ref();
-        let info: hxrt::array::Array<i32> = {
-            let (ip, port) = {
-                let __b = __hx_this.borrow();
-                __b.handle.clone()
-            }
-            .borrow()
-            .host();
-            hxrt::array::Array::<i32>::from_vec(vec![ip, port])
-        };
         let host: crate::HxRef<crate::sys_net_host::Host> = crate::sys_net_host::Host::new(
             hxrt::string::HxString::from(hxrt::string::HxString::from("127.0.0.1")),
         );
         {
-            let __tmp = info.get_unchecked(0 as usize);
+            let __tmp = crate::socket_native::host_ip(
+                &({
+                    let __b = __hx_this.borrow();
+                    __b.handle.clone()
+                }),
+            );
             host.borrow_mut().ip = __tmp;
             __tmp
         };
@@ -418,7 +420,15 @@ impl Socket {
             {
                 let mut __b = __o.borrow_mut();
                 __b.set("host", host.clone());
-                __b.set("port", info.get_unchecked(1 as usize));
+                __b.set(
+                    "port",
+                    crate::socket_native::host_port(
+                        &({
+                            let __b = __hx_this.borrow();
+                            __b.handle.clone()
+                        }),
+                    ),
+                );
             };
             __o
         };
@@ -426,48 +436,45 @@ impl Socket {
 
     pub fn set_timeout(self_: &crate::HxRefCell<Socket>, timeout: f64) {
         let __hx_this: crate::HxRef<crate::sys_ssl_socket::Socket> = self_.self_ref();
-        {
-            let __b = __hx_this.borrow();
-            __b.handle.clone()
-        }
-        .borrow_mut()
-        .set_timeout(timeout as f64);
+        crate::socket_native::set_timeout(
+            &({
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }),
+            timeout,
+        );
     }
 
     pub fn wait_for_read(self_: &crate::HxRefCell<Socket>) {
         let __hx_this: crate::HxRef<crate::sys_ssl_socket::Socket> = self_.self_ref();
-        {
-            let _ = hxrt::net::socket_select(
-                vec![{
-                    let __b = __hx_this.borrow();
-                    __b.handle.clone()
-                }
-                .clone()],
-                vec![],
-                vec![],
-                Some(-1.0),
-            );
-        };
+        crate::socket_native::wait_for_read(
+            &({
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }),
+        );
     }
 
     pub fn set_blocking(self_: &crate::HxRefCell<Socket>, b: bool) {
         let __hx_this: crate::HxRef<crate::sys_ssl_socket::Socket> = self_.self_ref();
-        {
-            let __b = __hx_this.borrow();
-            __b.handle.clone()
-        }
-        .borrow_mut()
-        .set_blocking(b as bool);
+        crate::socket_native::set_blocking(
+            &({
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }),
+            b,
+        );
     }
 
     pub fn set_fast_send(self_: &crate::HxRefCell<Socket>, b: bool) {
         let __hx_this: crate::HxRef<crate::sys_ssl_socket::Socket> = self_.self_ref();
-        {
-            let __b = __hx_this.borrow();
-            __b.handle.clone()
-        }
-        .borrow_mut()
-        .set_fast_send(b as bool);
+        crate::socket_native::set_fast_send(
+            &({
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }),
+            b,
+        );
     }
 
     fn __hx_super_sys_net_socket_connect(
@@ -476,17 +483,16 @@ impl Socket {
         port: i32,
     ) {
         let __hx_this: crate::HxRef<crate::sys_ssl_socket::Socket> = self_.self_ref();
-        {
-            let __b = __hx_this.borrow();
-            __b.handle.clone()
-        }
-        .borrow_mut()
-        .connect(
+        crate::socket_native::connect(
+            &({
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }),
             {
                 let __b = host.borrow();
                 __b.ip
-            } as i32,
-            port as i32,
+            },
+            port,
         );
     }
 }

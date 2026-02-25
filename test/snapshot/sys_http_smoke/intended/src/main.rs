@@ -31,6 +31,7 @@ mod haxe_iterators_string_iterator;
 mod haxe_iterators_string_key_value_iterator;
 mod haxe_stack_item;
 mod map_storage_tools_nullable;
+mod socket_native;
 mod string_buf;
 mod string_tools;
 mod sys;

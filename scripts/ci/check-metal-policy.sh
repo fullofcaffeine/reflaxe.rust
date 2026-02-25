@@ -780,6 +780,9 @@ run_warning_case_absent "test/snapshot/rusty_array_slice_views" "compile.hxml" '
 run_warning_case_absent "test/snapshot/rusty_v1_smoke" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'haxe\.io\.FPHelper' \
 	'1' 'metal fallback top-modules excludes haxe.io.FPHelper after typed fp helper migration'
+run_warning_case_absent "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'sys\.net\.Socket' \
+	'1' 'metal fallback top-modules excludes sys.net.Socket after typed socket boundary migration'
 run_warning_case_absent "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'Sys:' \
 	'1' 'metal fallback top-modules excludes Sys after typed runtime wrapper migration'
