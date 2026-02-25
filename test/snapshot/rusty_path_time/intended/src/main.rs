@@ -25,10 +25,10 @@ mod haxe_io_input;
 mod haxe_io_output;
 mod haxe_stack_item;
 mod map_storage_tools;
+mod path_buf_tools;
 mod rust_duration_tools;
 mod rust_instant_tools;
 mod rust_os_string_tools;
-mod rust_path_buf_tools;
 mod string_buf;
 mod sys;
 mod sys_io_stderr;
@@ -57,13 +57,13 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 
 fn main() {
     let base: std::path::PathBuf =
-        crate::rust_path_buf_tools::PathBufTools::from_string(String::from("tmp"));
+        crate::path_buf_tools::PathBufTools::fromString(String::from("tmp"));
     let child: std::path::PathBuf =
-        crate::rust_path_buf_tools::PathBufTools::join(&base, String::from("example.txt"));
+        crate::path_buf_tools::PathBufTools::join(&base, String::from("example.txt"));
     let pushed: std::path::PathBuf =
-        crate::rust_path_buf_tools::PathBufTools::push(&base, String::from("nested"));
-    let child_str: String = crate::rust_path_buf_tools::PathBufTools::to_string_lossy(&child);
-    let pushed_name: Option<String> = crate::rust_path_buf_tools::PathBufTools::file_name(&pushed);
+        crate::path_buf_tools::PathBufTools::push(&base, String::from("nested"));
+    let child_str: String = crate::path_buf_tools::PathBufTools::toStringLossy(&child);
+    let pushed_name: Option<String> = crate::path_buf_tools::PathBufTools::fileName(&pushed);
     let os: std::ffi::OsString = crate::rust_os_string_tools::OsStringTools::from_string(child_str);
     let os_lossy: String = crate::rust_os_string_tools::OsStringTools::to_string_lossy(&os);
     let started: std::time::Instant = crate::rust_instant_tools::InstantTools::now();

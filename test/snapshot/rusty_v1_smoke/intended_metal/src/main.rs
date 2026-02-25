@@ -26,6 +26,7 @@ mod haxe_io_input;
 mod haxe_io_output;
 mod haxe_stack_item;
 mod map_storage_tools;
+mod path_buf_tools;
 mod rust_array_borrow;
 mod rust_borrow;
 mod rust_duration_tools;
@@ -33,7 +34,6 @@ mod rust_instant_tools;
 mod rust_mut_slice_tools;
 mod rust_option_tools;
 mod rust_os_string_tools;
-mod rust_path_buf_tools;
 mod rust_result_tools;
 mod rust_slice_tools;
 mod rust_str_tools;
@@ -140,17 +140,17 @@ fn main() {
         )
     );
     let p: std::path::PathBuf =
-        crate::rust_path_buf_tools::PathBufTools::from_string(String::from("foo"));
+        crate::path_buf_tools::PathBufTools::fromString(String::from("foo"));
     let p2: std::path::PathBuf =
-        crate::rust_path_buf_tools::PathBufTools::join(&p, String::from("bar.txt"));
+        crate::path_buf_tools::PathBufTools::join(&p, String::from("bar.txt"));
     println!(
         "{}",
-        hxrt::dynamic::from(crate::rust_path_buf_tools::PathBufTools::to_string_lossy(&p2).clone())
+        hxrt::dynamic::from(crate::path_buf_tools::PathBufTools::toStringLossy(&p2).clone())
     );
     println!(
         "{}",
         hxrt::dynamic::from({
-            let o_2: Option<String> = crate::rust_path_buf_tools::PathBufTools::file_name(&p2);
+            let o_2: Option<String> = crate::path_buf_tools::PathBufTools::fileName(&p2);
             match o_2.clone() {
                 Option::Some(__p) => {
                     let _ = __p;

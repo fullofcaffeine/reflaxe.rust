@@ -1,41 +1,36 @@
 package rust;
 
 /**
- * PathBufTools
+ * `rust.PathBufTools`
  *
- * Framework helpers for `rust.PathBuf`.
+ * Why
+ * - `rust.PathBuf` helpers are used in metal-focused path/time snapshots and examples.
+ * - The previous implementation relied on inline `untyped __rust__` for every operation,
+ *   which surfaced as `ERaw` fallback noise in metal diagnostics.
  *
- * IMPORTANT: Keep these as regular (non-inline) functions so `__rust__` stays inside
- * framework code and does not get inlined into application code.
+ * What
+ * - A typed extern facade backed by hand-written Rust helper modules.
+ * - The API remains the same (`fromString`, `join`, `push`, `toStringLossy`, `fileName`)
+ *   while the native implementation lives under `std/rust/native/`.
+ *
+ * How
+ * - `@:native(...)` + `@:rustExtraSrc(...)` binds this class to crate-local Rust modules.
+ * - We keep profile-aware modules so `String` maps correctly in both modes:
+ *   - `path_buf_tools.rs` for non-nullable Rust `String` mode.
+ *   - `path_buf_tools_nullable.rs` for `hxrt::string::HxString` mode.
+ * - Callers cross the native boundary via typed signatures and immediately return to typed code.
  */
-class PathBufTools {
-	public static function fromString(s: String): PathBuf {
-		return untyped __rust__("std::path::PathBuf::from({0})", s);
-	}
-
-	public static function join(p: Ref<PathBuf>, child: String): PathBuf {
-		return untyped __rust__("({0}).join({1}.as_str())", p, child);
-	}
-
-	public static function push(p: Ref<PathBuf>, child: String): PathBuf {
-		return untyped __rust__(
-			"{ let mut __p = ({0}).clone(); __p.push({1}.as_str()); __p }",
-			p,
-			child
-		);
-	}
-
-	public static function toStringLossy(p: Ref<PathBuf>): String {
-		return untyped __rust__(
-			"({0}).as_path().to_string_lossy().to_string()",
-			p
-		);
-	}
-
-	public static function fileName(p: Ref<PathBuf>): Option<String> {
-		return untyped __rust__(
-			"({0}).file_name().map(|s| s.to_string_lossy().to_string())",
-			p
-		);
-	}
+#if rust_string_nullable
+@:native("crate::path_buf_tools_nullable::PathBufTools")
+@:rustExtraSrc("rust/native/path_buf_tools_nullable.rs")
+#else
+@:native("crate::path_buf_tools::PathBufTools")
+@:rustExtraSrc("rust/native/path_buf_tools.rs")
+#end
+extern class PathBufTools {
+	public static function fromString(s:String):PathBuf;
+	public static function join(p:Ref<PathBuf>, child:String):PathBuf;
+	public static function push(p:Ref<PathBuf>, child:String):PathBuf;
+	public static function toStringLossy(p:Ref<PathBuf>):String;
+	public static function fileName(p:Ref<PathBuf>):Option<String>;
 }
