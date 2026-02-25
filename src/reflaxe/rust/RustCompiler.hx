@@ -6023,7 +6023,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							}
 
 							var tyStr = rustTypeToString(toRustType(expected, e.pos));
-							return ERaw("__hx_dyn.downcast_ref::<" + tyStr + ">().unwrap().clone()");
+							return dynamicDowncastCloneExpr("__hx_dyn", tyStr);
 						}
 
 						function coerceDynToExpected(dynExpr:RustExpr):RustExpr {
@@ -6360,8 +6360,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var tyStr = rustTypeToString(toRustType(target, pos));
 						return EBlock({
 							stmts: [RLet("__hx_dyn", false, null, dynExpr)],
-							tail: EIf(ECall(EField(EPath("__hx_dyn"), "is_null"), []), nullAccessThrow(),
-								ERaw("__hx_dyn.downcast_ref::<" + tyStr + ">().unwrap().clone()"))
+							tail: EIf(ECall(EField(EPath("__hx_dyn"), "is_null"), []), nullAccessThrow(), dynamicDowncastCloneExpr("__hx_dyn", tyStr))
 						});
 					}
 
@@ -6571,7 +6570,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		var rustTy = toRustType(c.v.t, c.expr.pos);
-		var downcast = ECall(ERaw(exVarName + ".downcast::<" + rustTypeToString(rustTy) + ">"), []);
+		var downcast = ECall(EField(EPath(exVarName), "downcast::<" + rustTypeToString(rustTy) + ">"), []);
 
 		var okBody = compileExprToBlock(c.expr, expectedReturn);
 		var okStmts = okBody.stmts.copy();
@@ -6590,6 +6589,24 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			{pat: PTupleStruct("Ok", [boxedPat]), expr: okExpr},
 			{pat: PTupleStruct("Err", [PBind(exVarName)]), expr: errExpr}
 		]);
+	}
+
+	/**
+		Builds a typed AST call-chain for `dyn.downcast_ref::<T>().unwrap().clone()`.
+
+		Why
+		- This path is used by `Dynamic -> T` coercions and catch-branch dispatch.
+		- Emitting it as `ERaw("...")` inflated metal fallback diagnostics despite being a stable,
+		  type-directed lowering path.
+
+		How
+		- Uses structured `EField`/`ECall` nodes so the compiler keeps this expression in AST form.
+		  That preserves the same runtime behavior while removing avoidable raw-expression fallback.
+	**/
+	function dynamicDowncastCloneExpr(dynamicVarName:String, typePath:String):RustExpr {
+		var downcastRef = ECall(EField(EPath(dynamicVarName), "downcast_ref::<" + typePath + ">"), []);
+		var unwrapCall = ECall(EField(downcastRef, "unwrap"), []);
+		return ECall(EField(unwrapCall, "clone"), []);
 	}
 
 	function compileGenericSwitch(switchExpr:TypedExpr, cases:Array<{values:Array<TypedExpr>, expr:TypedExpr}>, edef:Null<TypedExpr>,
@@ -7409,7 +7426,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var tyStr = rustTypeToString(toRustType(expected, valueExpr.pos));
 			return EBlock({
 				stmts: [RLet("__hx_dyn", false, null, compiled)],
-				tail: EIf(ECall(EField(EPath("__hx_dyn"), "is_null"), []), nullAccessThrow(), ERaw("__hx_dyn.downcast_ref::<" + tyStr + ">().unwrap().clone()"))
+				tail: EIf(ECall(EField(EPath("__hx_dyn"), "is_null"), []), nullAccessThrow(), dynamicDowncastCloneExpr("__hx_dyn", tyStr))
 			});
 		}
 

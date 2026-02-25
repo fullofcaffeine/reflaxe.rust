@@ -96,6 +96,17 @@ where
     }
 }
 
+pub fn environment_pairs<S>() -> Array<Array<S>>
+where
+    S: From<String>,
+{
+    let mut pairs: Vec<Array<S>> = Vec::new();
+    for (key, value) in std::env::vars() {
+        pairs.push(Array::from_vec(vec![S::from(key), S::from(value)]));
+    }
+    Array::from_vec(pairs)
+}
+
 pub fn sleep(seconds: f64) {
     let millis = (seconds.max(0.0) * 1000.0) as u64;
     std::thread::sleep(Duration::from_millis(millis));

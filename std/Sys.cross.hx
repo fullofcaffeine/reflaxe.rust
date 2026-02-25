@@ -58,26 +58,17 @@ class Sys {
 	 * - Returns a `Map<String, String>` with the environment variables at call time.
 	 *
 	 * How:
-	 * - Uses `std::env::vars` and builds a `haxe.ds.StringMap`.
+	 * - Reads typed key/value pairs from `hxrt::sys::environment_pairs` via `NativeSys`.
+	 * - Builds the `haxe.ds.StringMap` in typed Haxe code.
 	 */
 	public static function environment():Map<String, String> {
-		#if rust_string_nullable
-		return untyped __rust__("{
-				let m = crate::haxe_ds_string_map::StringMap::<hxrt::string::HxString>::new();
-				for (k, v) in std::env::vars() {
-					crate::haxe_ds_string_map::StringMap::set(&m, hxrt::string::HxString::from(k), hxrt::string::HxString::from(v));
-				}
-				m
-			}");
-		#else
-		return untyped __rust__("{
-				let m = crate::haxe_ds_string_map::StringMap::<String>::new();
-				for (k, v) in std::env::vars() {
-					crate::haxe_ds_string_map::StringMap::set(&m, k, v);
-				}
-				m
-			}");
-		#end
+		var out = new haxe.ds.StringMap<String>();
+		for (entry in NativeSys.environmentPairs()) {
+			if (entry.length < 2)
+				continue;
+			out.set(entry[0], entry[1]);
+		}
+		return out;
 	}
 
 	/** Suspend execution for the given duration in seconds. */

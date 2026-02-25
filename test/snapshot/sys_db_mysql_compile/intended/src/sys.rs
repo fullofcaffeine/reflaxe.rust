@@ -32,17 +32,30 @@ impl Sys {
 
     pub fn environment(
     ) -> crate::HxRef<crate::haxe_ds_string_map::StringMap<hxrt::string::HxString>> {
-        return {
-            let m = crate::haxe_ds_string_map::StringMap::<hxrt::string::HxString>::new();
-            for (k, v) in std::env::vars() {
+        let out: crate::HxRef<crate::haxe_ds_string_map::StringMap<hxrt::string::HxString>> =
+            crate::haxe_ds_string_map::StringMap::<hxrt::string::HxString>::new();
+        {
+            let mut _g: i32 = 0;
+            let _g1: hxrt::array::Array<hxrt::array::Array<hxrt::string::HxString>> =
+                hxrt::sys::environment_pairs();
+            while _g < (_g1.len() as i32) {
+                let entry: hxrt::array::Array<hxrt::string::HxString> =
+                    _g1.get_unchecked(_g as usize);
+                {
+                    _g = _g + 1;
+                    _g
+                };
+                if (entry.len() as i32) < 2 {
+                    continue;
+                }
                 crate::haxe_ds_string_map::StringMap::set(
-                    &m,
-                    hxrt::string::HxString::from(k),
-                    hxrt::string::HxString::from(v),
+                    &*out,
+                    hxrt::string::HxString::from(entry.get_unchecked(0 as usize)),
+                    hxrt::string::HxString::from(entry.get_unchecked(1 as usize)),
                 );
             }
-            m
-        };
+        }
+        return out;
     }
 
     pub fn sleep(seconds: f64) {

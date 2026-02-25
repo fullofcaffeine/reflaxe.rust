@@ -28,13 +28,29 @@ impl Sys {
     }
 
     pub fn environment() -> crate::HxRef<crate::haxe_ds_string_map::StringMap<String>> {
-        return {
-            let m = crate::haxe_ds_string_map::StringMap::<String>::new();
-            for (k, v) in std::env::vars() {
-                crate::haxe_ds_string_map::StringMap::set(&m, k, v);
+        let out: crate::HxRef<crate::haxe_ds_string_map::StringMap<String>> =
+            crate::haxe_ds_string_map::StringMap::<String>::new();
+        {
+            let mut _g: i32 = 0;
+            let _g1: hxrt::array::Array<hxrt::array::Array<String>> =
+                hxrt::sys::environment_pairs();
+            while _g < (_g1.len() as i32) {
+                let entry: hxrt::array::Array<String> = _g1.get_unchecked(_g as usize);
+                {
+                    _g = _g + 1;
+                    _g
+                };
+                if (entry.len() as i32) < 2 {
+                    continue;
+                }
+                crate::haxe_ds_string_map::StringMap::set(
+                    &*out,
+                    entry.get_unchecked(0 as usize),
+                    entry.get_unchecked(1 as usize),
+                );
             }
-            m
-        };
+        }
+        return out;
     }
 
     pub fn sleep(seconds: f64) {

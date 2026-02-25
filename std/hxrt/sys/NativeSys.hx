@@ -34,6 +34,20 @@ extern class NativeSys {
 	@:native("put_env")
 	public static function putEnv(s:String, v:Null<String>):Void;
 
+	/**
+		Return environment key/value pairs as a fully typed nested array.
+
+		Why
+		- `std/Sys.cross.hx::environment()` must avoid inline `untyped __rust__` in first-party std code.
+		- Returning typed pairs keeps the dynamic/native boundary centralized in `hxrt::sys`.
+
+		How
+		- Binds to `hxrt::sys::environment_pairs`.
+		- Each inner array has exactly two entries: `[key, value]`.
+	**/
+	@:native("environment_pairs")
+	public static function environmentPairs():Array<Array<String>>;
+
 	@:native("sleep")
 	public static function sleep(seconds:Float):Void;
 
