@@ -19,7 +19,7 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> StringMap<T> {
 
     pub fn set(self_: &crate::HxRefCell<StringMap<T>>, key: String, value: T) {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
-        crate::rust_map_storage_tools::MapStorageTools::string_map_set(
+        crate::map_storage_tools::MapStorageTools::stringMapSet(
             __hx_this.clone(),
             key,
             value.clone(),
@@ -28,7 +28,7 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> StringMap<T> {
 
     pub fn get(self_: &crate::HxRefCell<StringMap<T>>, key: String) -> Option<T> {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
-        return crate::rust_map_storage_tools::MapStorageTools::string_map_get_cloned(
+        return crate::map_storage_tools::MapStorageTools::stringMapGetCloned(
             __hx_this.clone(),
             key,
         );
@@ -36,15 +36,12 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> StringMap<T> {
 
     pub fn exists(self_: &crate::HxRefCell<StringMap<T>>, key: String) -> bool {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
-        return crate::rust_map_storage_tools::MapStorageTools::string_map_exists(
-            __hx_this.clone(),
-            key,
-        );
+        return crate::map_storage_tools::MapStorageTools::stringMapExists(__hx_this.clone(), key);
     }
 
     pub fn remove(self_: &crate::HxRefCell<StringMap<T>>, key: String) -> bool {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
-        return crate::rust_map_storage_tools::MapStorageTools::string_map_remove_exists(
+        return crate::map_storage_tools::MapStorageTools::stringMapRemoveExists(
             __hx_this.clone(),
             key,
         );
@@ -52,23 +49,19 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> StringMap<T> {
 
     pub fn keys(self_: &crate::HxRefCell<StringMap<T>>) -> hxrt::iter::Iter<String> {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
-        return crate::rust_map_storage_tools::MapStorageTools::string_map_keys_owned(
-            __hx_this.clone(),
-        );
+        return crate::map_storage_tools::MapStorageTools::stringMapKeysOwned(__hx_this.clone());
     }
 
     pub fn iterator(self_: &crate::HxRefCell<StringMap<T>>) -> hxrt::iter::Iter<T> {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
-        return crate::rust_map_storage_tools::MapStorageTools::string_map_values_owned(
-            __hx_this.clone(),
-        );
+        return crate::map_storage_tools::MapStorageTools::stringMapValuesOwned(__hx_this.clone());
     }
 
     pub fn key_value_iterator(
         self_: &crate::HxRefCell<StringMap<T>>,
     ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<String, T>> {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
-        return crate::rust_map_storage_tools::MapStorageTools::string_map_key_values_owned(
+        return crate::map_storage_tools::MapStorageTools::stringMapKeyValuesOwned(
             __hx_this.clone(),
         );
     }
@@ -79,7 +72,7 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> StringMap<T> {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
         let out: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> =
             crate::haxe_ds_string_map::StringMap::<T>::new();
-        crate::rust_map_storage_tools::MapStorageTools::string_map_clone_into(
+        crate::map_storage_tools::MapStorageTools::stringMapCloneInto(
             out.clone(),
             __hx_this.clone(),
         );
@@ -88,14 +81,12 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> StringMap<T> {
 
     pub fn to_string(self_: &crate::HxRefCell<StringMap<T>>) -> String {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
-        return crate::rust_map_storage_tools::MapStorageTools::string_map_debug_string(
-            __hx_this.clone(),
-        );
+        return crate::map_storage_tools::MapStorageTools::stringMapDebugString(__hx_this.clone());
     }
 
     pub fn clear(self_: &crate::HxRefCell<StringMap<T>>) {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
-        crate::rust_map_storage_tools::MapStorageTools::string_map_clear(__hx_this.clone());
+        crate::map_storage_tools::MapStorageTools::stringMapClear(__hx_this.clone());
     }
 }
 

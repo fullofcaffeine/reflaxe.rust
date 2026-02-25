@@ -2,33 +2,33 @@
   "schemaVersion": 1,
   "cases": {
     "hello_metal": {
-      "rawNodes": 71,
-      "moduleCount": 18,
+      "rawNodes": 30,
+      "moduleCount": 17,
       "topModules": {
-        "rust.MapStorageTools": 41,
         "haxe.io.FPHelper": 5,
         "haxe.io.Input": 3,
-        "sys.io.Stdin": 3
+        "sys.io.Stdin": 3,
+        "haxe.CallStack": 2
       }
     },
     "rusty_concurrent_snapshot": {
-      "rawNodes": 72,
-      "moduleCount": 19,
+      "rawNodes": 31,
+      "moduleCount": 18,
       "topModules": {
-        "rust.MapStorageTools": 41,
         "haxe.io.FPHelper": 5,
         "haxe.io.Input": 3,
-        "sys.io.Stdin": 3
+        "sys.io.Stdin": 3,
+        "haxe.CallStack": 2
       }
     },
     "chat_loopback_metal": {
-      "rawNodes": 257,
-      "moduleCount": 35,
+      "rawNodes": 216,
+      "moduleCount": 34,
       "topModules": {
-        "rust.MapStorageTools": 41,
         "app.ChatUiApp": 38,
         "profile.RemoteRuntime": 21,
-        "sys.net.Socket": 19
+        "sys.net.Socket": 19,
+        "Main": 18
       }
     }
   }

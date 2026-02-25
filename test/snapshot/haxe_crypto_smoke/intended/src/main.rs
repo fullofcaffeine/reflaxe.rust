@@ -36,7 +36,7 @@ mod haxe_serializer;
 mod haxe_stack_item;
 mod haxe_unserializer;
 mod haxe_unserializer_default_resolver;
-mod rust_map_storage_tools;
+mod map_storage_tools_nullable;
 mod string_buf;
 mod string_tools;
 mod sys;

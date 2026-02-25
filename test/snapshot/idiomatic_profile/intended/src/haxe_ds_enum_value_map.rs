@@ -31,7 +31,7 @@ impl<
             self_.self_ref();
         let id: hxrt::string::HxString =
             hxrt::string::HxString::from(hxrt::string::HxString::from(format!("{:?}", key)));
-        crate::rust_map_storage_tools::MapStorageTools::enum_value_map_set(
+        crate::map_storage_tools_nullable::MapStorageTools::enumValueMapSet(
             __hx_this.clone(),
             hxrt::string::HxString::from(id),
             key.clone(),
@@ -44,7 +44,7 @@ impl<
             self_.self_ref();
         let id: hxrt::string::HxString =
             hxrt::string::HxString::from(hxrt::string::HxString::from(format!("{:?}", key)));
-        return crate::rust_map_storage_tools::MapStorageTools::enum_value_map_get_cloned(
+        return crate::map_storage_tools_nullable::MapStorageTools::enumValueMapGetCloned(
             __hx_this.clone(),
             hxrt::string::HxString::from(id),
         );
@@ -55,7 +55,7 @@ impl<
             self_.self_ref();
         let id: hxrt::string::HxString =
             hxrt::string::HxString::from(hxrt::string::HxString::from(format!("{:?}", key)));
-        return crate::rust_map_storage_tools::MapStorageTools::enum_value_map_exists(
+        return crate::map_storage_tools_nullable::MapStorageTools::enumValueMapExists(
             __hx_this.clone(),
             hxrt::string::HxString::from(id),
         );
@@ -66,7 +66,7 @@ impl<
             self_.self_ref();
         let id: hxrt::string::HxString =
             hxrt::string::HxString::from(hxrt::string::HxString::from(format!("{:?}", key)));
-        return crate::rust_map_storage_tools::MapStorageTools::enum_value_map_remove_exists(
+        return crate::map_storage_tools_nullable::MapStorageTools::enumValueMapRemoveExists(
             __hx_this.clone(),
             hxrt::string::HxString::from(id),
         );
@@ -75,7 +75,7 @@ impl<
     pub fn keys(self_: &crate::HxRefCell<EnumValueMap<K, V>>) -> hxrt::iter::Iter<K> {
         let __hx_this: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> =
             self_.self_ref();
-        return crate::rust_map_storage_tools::MapStorageTools::enum_value_map_keys_owned(
+        return crate::map_storage_tools_nullable::MapStorageTools::enumValueMapKeysOwned(
             __hx_this.clone(),
         );
     }
@@ -83,7 +83,7 @@ impl<
     pub fn iterator(self_: &crate::HxRefCell<EnumValueMap<K, V>>) -> hxrt::iter::Iter<V> {
         let __hx_this: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> =
             self_.self_ref();
-        return crate::rust_map_storage_tools::MapStorageTools::enum_value_map_values_owned(
+        return crate::map_storage_tools_nullable::MapStorageTools::enumValueMapValuesOwned(
             __hx_this.clone(),
         );
     }
@@ -93,7 +93,7 @@ impl<
     ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<K, V>> {
         let __hx_this: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> =
             self_.self_ref();
-        return crate::rust_map_storage_tools::MapStorageTools::enum_value_map_key_values_owned(
+        return crate::map_storage_tools_nullable::MapStorageTools::enumValueMapKeyValuesOwned(
             __hx_this.clone(),
         );
     }
@@ -105,7 +105,7 @@ impl<
             self_.self_ref();
         let out: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> =
             crate::haxe_ds_enum_value_map::EnumValueMap::<K, V>::new();
-        crate::rust_map_storage_tools::MapStorageTools::enum_value_map_clone_into(
+        crate::map_storage_tools_nullable::MapStorageTools::enumValueMapCloneInto(
             out.clone(),
             __hx_this.clone(),
         );
@@ -116,7 +116,7 @@ impl<
         let __hx_this: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> =
             self_.self_ref();
         return hxrt::string::HxString::from(
-            crate::rust_map_storage_tools::MapStorageTools::enum_value_map_debug_string(
+            crate::map_storage_tools_nullable::MapStorageTools::enumValueMapDebugString(
                 __hx_this.clone(),
             ),
         );
@@ -125,7 +125,7 @@ impl<
     pub fn clear(self_: &crate::HxRefCell<EnumValueMap<K, V>>) {
         let __hx_this: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> =
             self_.self_ref();
-        crate::rust_map_storage_tools::MapStorageTools::enum_value_map_clear(__hx_this.clone());
+        crate::map_storage_tools_nullable::MapStorageTools::enumValueMapClear(__hx_this.clone());
     }
 }
 

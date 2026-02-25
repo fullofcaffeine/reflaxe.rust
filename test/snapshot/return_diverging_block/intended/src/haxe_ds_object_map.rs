@@ -27,14 +27,13 @@ impl<
     }
 
     fn key_id(_self_: &crate::HxRefCell<ObjectMap<K, V>>, key: K) -> String {
-        return crate::rust_map_storage_tools::MapStorageTools::object_map_key_id(key.clone());
+        return crate::map_storage_tools::MapStorageTools::objectMapKeyId(key.clone());
     }
 
     pub fn set(self_: &crate::HxRefCell<ObjectMap<K, V>>, key: K, value: V) {
         let __hx_this: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> = self_.self_ref();
-        let id: String =
-            crate::rust_map_storage_tools::MapStorageTools::object_map_key_id(key.clone());
-        crate::rust_map_storage_tools::MapStorageTools::object_map_set(
+        let id: String = crate::map_storage_tools::MapStorageTools::objectMapKeyId(key.clone());
+        crate::map_storage_tools::MapStorageTools::objectMapSet(
             __hx_this.clone(),
             id,
             key.clone(),
@@ -44,9 +43,8 @@ impl<
 
     pub fn get(self_: &crate::HxRefCell<ObjectMap<K, V>>, key: K) -> Option<V> {
         let __hx_this: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> = self_.self_ref();
-        let id: String =
-            crate::rust_map_storage_tools::MapStorageTools::object_map_key_id(key.clone());
-        return crate::rust_map_storage_tools::MapStorageTools::object_map_get_cloned(
+        let id: String = crate::map_storage_tools::MapStorageTools::objectMapKeyId(key.clone());
+        return crate::map_storage_tools::MapStorageTools::objectMapGetCloned(
             __hx_this.clone(),
             id,
         );
@@ -54,19 +52,14 @@ impl<
 
     pub fn exists(self_: &crate::HxRefCell<ObjectMap<K, V>>, key: K) -> bool {
         let __hx_this: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> = self_.self_ref();
-        let id: String =
-            crate::rust_map_storage_tools::MapStorageTools::object_map_key_id(key.clone());
-        return crate::rust_map_storage_tools::MapStorageTools::object_map_exists(
-            __hx_this.clone(),
-            id,
-        );
+        let id: String = crate::map_storage_tools::MapStorageTools::objectMapKeyId(key.clone());
+        return crate::map_storage_tools::MapStorageTools::objectMapExists(__hx_this.clone(), id);
     }
 
     pub fn remove(self_: &crate::HxRefCell<ObjectMap<K, V>>, key: K) -> bool {
         let __hx_this: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> = self_.self_ref();
-        let id: String =
-            crate::rust_map_storage_tools::MapStorageTools::object_map_key_id(key.clone());
-        return crate::rust_map_storage_tools::MapStorageTools::object_map_remove_exists(
+        let id: String = crate::map_storage_tools::MapStorageTools::objectMapKeyId(key.clone());
+        return crate::map_storage_tools::MapStorageTools::objectMapRemoveExists(
             __hx_this.clone(),
             id,
         );
@@ -74,23 +67,19 @@ impl<
 
     pub fn keys(self_: &crate::HxRefCell<ObjectMap<K, V>>) -> hxrt::iter::Iter<K> {
         let __hx_this: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> = self_.self_ref();
-        return crate::rust_map_storage_tools::MapStorageTools::object_map_keys_owned(
-            __hx_this.clone(),
-        );
+        return crate::map_storage_tools::MapStorageTools::objectMapKeysOwned(__hx_this.clone());
     }
 
     pub fn iterator(self_: &crate::HxRefCell<ObjectMap<K, V>>) -> hxrt::iter::Iter<V> {
         let __hx_this: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> = self_.self_ref();
-        return crate::rust_map_storage_tools::MapStorageTools::object_map_values_owned(
-            __hx_this.clone(),
-        );
+        return crate::map_storage_tools::MapStorageTools::objectMapValuesOwned(__hx_this.clone());
     }
 
     pub fn key_value_iterator(
         self_: &crate::HxRefCell<ObjectMap<K, V>>,
     ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<K, V>> {
         let __hx_this: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> = self_.self_ref();
-        return crate::rust_map_storage_tools::MapStorageTools::object_map_key_values_owned(
+        return crate::map_storage_tools::MapStorageTools::objectMapKeyValuesOwned(
             __hx_this.clone(),
         );
     }
@@ -101,7 +90,7 @@ impl<
         let __hx_this: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> = self_.self_ref();
         let out: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> =
             crate::haxe_ds_object_map::ObjectMap::<K, V>::new();
-        crate::rust_map_storage_tools::MapStorageTools::object_map_clone_into(
+        crate::map_storage_tools::MapStorageTools::objectMapCloneInto(
             out.clone(),
             __hx_this.clone(),
         );
@@ -110,14 +99,12 @@ impl<
 
     pub fn to_string(self_: &crate::HxRefCell<ObjectMap<K, V>>) -> String {
         let __hx_this: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> = self_.self_ref();
-        return crate::rust_map_storage_tools::MapStorageTools::object_map_debug_string(
-            __hx_this.clone(),
-        );
+        return crate::map_storage_tools::MapStorageTools::objectMapDebugString(__hx_this.clone());
     }
 
     pub fn clear(self_: &crate::HxRefCell<ObjectMap<K, V>>) {
         let __hx_this: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> = self_.self_ref();
-        crate::rust_map_storage_tools::MapStorageTools::object_map_clear(__hx_this.clone());
+        crate::map_storage_tools::MapStorageTools::objectMapClear(__hx_this.clone());
     }
 }
 

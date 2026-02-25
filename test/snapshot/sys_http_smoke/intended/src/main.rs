@@ -29,7 +29,7 @@ mod haxe_io_output;
 mod haxe_iterators_string_iterator;
 mod haxe_iterators_string_key_value_iterator;
 mod haxe_stack_item;
-mod rust_map_storage_tools;
+mod map_storage_tools_nullable;
 mod string_buf;
 mod string_tools;
 mod sys;
