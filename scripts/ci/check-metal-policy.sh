@@ -263,10 +263,10 @@ run_report_case() {
 	rm -rf "$out_a" "$out_b"
 }
 
-run_profile_contract_report_case() {
+run_contract_report_case() {
 	local fixture_rel="$1"
 	local hxml_file="$2"
-	local expected_profile="$3"
+	local expected_contract="$3"
 	local failure_label="$4"
 	local expected_strict_boundary="${5:-}"
 	local expected_strict_examples="${6:-}"
@@ -276,8 +276,8 @@ run_profile_contract_report_case() {
 	local expected_async_enabled="${10:-}"
 	local expected_nullable_strings="${11:-}"
 	local fixture_dir="$root_dir/$fixture_rel"
-	local out_a="$fixture_dir/out_profile_contract_a"
-	local out_b="$fixture_dir/out_profile_contract_b"
+	local out_a="$fixture_dir/out_contract_report_a"
+	local out_b="$fixture_dir/out_contract_report_b"
 	local log_a="$fixture_dir/.compile_profile_a.log"
 	local log_b="$fixture_dir/.compile_profile_b.log"
 
@@ -285,7 +285,7 @@ run_profile_contract_report_case() {
 	rm -f "$log_a" "$log_b"
 
 	set +e
-	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_profile_contract_report -D rust_output=out_profile_contract_a) >"$log_a" 2>&1
+	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_contract_report -D rust_output=out_contract_report_a) >"$log_a" 2>&1
 	local status_a=$?
 	set -e
 	if [[ "$status_a" -ne 0 ]]; then
@@ -295,7 +295,7 @@ run_profile_contract_report_case() {
 	fi
 
 	set +e
-	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_profile_contract_report -D rust_output=out_profile_contract_b) >"$log_b" 2>&1
+	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_contract_report -D rust_output=out_contract_report_b) >"$log_b" 2>&1
 	local status_b=$?
 	set -e
 	if [[ "$status_b" -ne 0 ]]; then
@@ -304,145 +304,160 @@ run_profile_contract_report_case() {
 		exit 1
 	fi
 
-	local json_a="$out_a/profile_contract.json"
-	local md_a="$out_a/profile_contract.md"
-	local json_b="$out_b/profile_contract.json"
-	local md_b="$out_b/profile_contract.md"
+	local json_a="$out_a/contract_report.json"
+	local md_a="$out_a/contract_report.md"
+	local json_b="$out_b/contract_report.json"
+	local md_b="$out_b/contract_report.md"
 
 	if [[ ! -f "$json_a" || ! -f "$md_a" ]]; then
-		echo "[metal-policy] error: expected profile contract artifacts for ${failure_label} (run A)."
+		echo "[metal-policy] error: expected contract report artifacts for ${failure_label} (run A)."
 		exit 1
 	fi
 	if [[ ! -f "$json_b" || ! -f "$md_b" ]]; then
-		echo "[metal-policy] error: expected profile contract artifacts for ${failure_label} (run B)."
+		echo "[metal-policy] error: expected contract report artifacts for ${failure_label} (run B)."
 		exit 1
 	fi
 
-	if ! match_regex '"schemaVersion":[[:space:]]*1' "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json missing schemaVersion for ${failure_label}."
+	if ! match_regex '"schemaVersion":[[:space:]]*2' "$json_a"; then
+		echo "[metal-policy] error: contract_report.json missing schemaVersion for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
-	if ! match_regex "\"profile\":[[:space:]]*\"${expected_profile}\"" "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json missing expected profile for ${failure_label}."
+	if ! match_regex '"backendId":[[:space:]]*"reflaxe\.rust"' "$json_a"; then
+		echo "[metal-policy] error: contract_report.json missing backendId for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex "\"contract\":[[:space:]]*\"${expected_contract}\"" "$json_a"; then
+		echo "[metal-policy] error: contract_report.json missing expected contract for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if ! match_regex '"strictBoundary":[[:space:]]*(true|false)' "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json missing strictBoundary for ${failure_label}."
+		echo "[metal-policy] error: contract_report.json missing strictBoundary for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if ! match_regex '"strictExamples":[[:space:]]*(true|false)' "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json missing strictExamples for ${failure_label}."
+		echo "[metal-policy] error: contract_report.json missing strictExamples for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if ! match_regex '"metalFallbackAllowed":[[:space:]]*(true|false)' "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json missing metalFallbackAllowed for ${failure_label}."
+		echo "[metal-policy] error: contract_report.json missing metalFallbackAllowed for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if ! match_regex '"metalContractHardError":[[:space:]]*(true|false)' "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json missing metalContractHardError for ${failure_label}."
+		echo "[metal-policy] error: contract_report.json missing metalContractHardError for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if ! match_regex '"noHxrt":[[:space:]]*(true|false)' "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json missing noHxrt for ${failure_label}."
+		echo "[metal-policy] error: contract_report.json missing noHxrt for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if ! match_regex '"asyncEnabled":[[:space:]]*(true|false)' "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json missing asyncEnabled for ${failure_label}."
+		echo "[metal-policy] error: contract_report.json missing asyncEnabled for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if ! match_regex '"nullableStrings":[[:space:]]*(true|false)' "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json missing nullableStrings for ${failure_label}."
+		echo "[metal-policy] error: contract_report.json missing nullableStrings for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if ! match_regex '"warnings":[[:space:]]*\[' "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json missing warnings array for ${failure_label}."
+		echo "[metal-policy] error: contract_report.json missing warnings array for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if ! match_regex '"errors":[[:space:]]*\[' "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json missing errors array for ${failure_label}."
+		echo "[metal-policy] error: contract_report.json missing errors array for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
-	if ! match_regex '^# Profile Contract Report' "$md_a"; then
-		echo "[metal-policy] error: profile_contract.md missing title for ${failure_label}."
+	if ! match_regex '^# Contract Report' "$md_a"; then
+		echo "[metal-policy] error: contract_report.md missing title for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if ! match_regex "^- backend id: \`reflaxe\.rust\`" "$md_a"; then
+		echo "[metal-policy] error: contract_report.md missing backend id summary for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if ! match_regex "^- contract: \`${expected_contract}\`" "$md_a"; then
+		echo "[metal-policy] error: contract_report.md missing contract summary for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi
 	if ! match_regex '^## Warnings' "$md_a"; then
-		echo "[metal-policy] error: profile_contract.md missing warnings section for ${failure_label}."
+		echo "[metal-policy] error: contract_report.md missing warnings section for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi
 	if ! match_regex '^## Errors' "$md_a"; then
-		echo "[metal-policy] error: profile_contract.md missing errors section for ${failure_label}."
+		echo "[metal-policy] error: contract_report.md missing errors section for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi
 	if ! match_regex "^- strict boundary: \`(yes|no)\`" "$md_a"; then
-		echo "[metal-policy] error: profile_contract.md missing strict-boundary summary for ${failure_label}."
+		echo "[metal-policy] error: contract_report.md missing strict-boundary summary for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi
 	if ! match_regex "^- no hxrt: \`(yes|no)\`" "$md_a"; then
-		echo "[metal-policy] error: profile_contract.md missing no-hxrt summary for ${failure_label}."
+		echo "[metal-policy] error: contract_report.md missing no-hxrt summary for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi
 
 	if [[ -n "$expected_strict_boundary" ]] && ! match_regex "\"strictBoundary\":[[:space:]]*${expected_strict_boundary}" "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json strictBoundary mismatch for ${failure_label}."
+		echo "[metal-policy] error: contract_report.json strictBoundary mismatch for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if [[ -n "$expected_strict_examples" ]] && ! match_regex "\"strictExamples\":[[:space:]]*${expected_strict_examples}" "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json strictExamples mismatch for ${failure_label}."
+		echo "[metal-policy] error: contract_report.json strictExamples mismatch for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if [[ -n "$expected_metal_fallback_allowed" ]] && ! match_regex "\"metalFallbackAllowed\":[[:space:]]*${expected_metal_fallback_allowed}" "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json metalFallbackAllowed mismatch for ${failure_label}."
+		echo "[metal-policy] error: contract_report.json metalFallbackAllowed mismatch for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if [[ -n "$expected_metal_contract_hard_error" ]] \
 		&& ! match_regex "\"metalContractHardError\":[[:space:]]*${expected_metal_contract_hard_error}" "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json metalContractHardError mismatch for ${failure_label}."
+		echo "[metal-policy] error: contract_report.json metalContractHardError mismatch for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if [[ -n "$expected_no_hxrt" ]] && ! match_regex "\"noHxrt\":[[:space:]]*${expected_no_hxrt}" "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json noHxrt mismatch for ${failure_label}."
+		echo "[metal-policy] error: contract_report.json noHxrt mismatch for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if [[ -n "$expected_async_enabled" ]] && ! match_regex "\"asyncEnabled\":[[:space:]]*${expected_async_enabled}" "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json asyncEnabled mismatch for ${failure_label}."
+		echo "[metal-policy] error: contract_report.json asyncEnabled mismatch for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if [[ -n "$expected_nullable_strings" ]] && ! match_regex "\"nullableStrings\":[[:space:]]*${expected_nullable_strings}" "$json_a"; then
-		echo "[metal-policy] error: profile_contract.json nullableStrings mismatch for ${failure_label}."
+		echo "[metal-policy] error: contract_report.json nullableStrings mismatch for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 
 	if ! cmp -s "$json_a" "$json_b"; then
-		echo "[metal-policy] error: profile_contract.json is non-deterministic across runs for ${failure_label}."
+		echo "[metal-policy] error: contract_report.json is non-deterministic across runs for ${failure_label}."
 		diff -u "$json_a" "$json_b" || true
 		exit 1
 	fi
 	if ! cmp -s "$md_a" "$md_b"; then
-		echo "[metal-policy] error: profile_contract.md is non-deterministic across runs for ${failure_label}."
+		echo "[metal-policy] error: contract_report.md is non-deterministic across runs for ${failure_label}."
 		diff -u "$md_a" "$md_b" || true
 		exit 1
 	fi
@@ -451,26 +466,26 @@ run_profile_contract_report_case() {
 	rm -rf "$out_a" "$out_b"
 }
 
-run_hxrt_plan_report_case() {
+run_runtime_plan_report_case() {
 	local fixture_rel="$1"
 	local hxml_file="$2"
-	local expected_profile="$3"
+	local expected_contract="$3"
 	local expected_mode="$4"
 	local failure_label="$5"
 	local extra_define="${6:-}"
 	local expected_reason_regex="${7:-}"
 	local expected_reason_regex_2="${8:-}"
 	local fixture_dir="$root_dir/$fixture_rel"
-	local out_a="$fixture_dir/out_hxrt_plan_a"
-	local out_b="$fixture_dir/out_hxrt_plan_b"
-	local log_a="$fixture_dir/.compile_hxrt_plan_a.log"
-	local log_b="$fixture_dir/.compile_hxrt_plan_b.log"
+	local out_a="$fixture_dir/out_runtime_plan_a"
+	local out_b="$fixture_dir/out_runtime_plan_b"
+	local log_a="$fixture_dir/.compile_runtime_plan_a.log"
+	local log_b="$fixture_dir/.compile_runtime_plan_b.log"
 
 	rm -rf "$out_a" "$out_b"
 	rm -f "$log_a" "$log_b"
 
-	local cmd_a=(haxe "$hxml_file" -D rust_no_build -D rust_hxrt_plan_report -D rust_output=out_hxrt_plan_a)
-	local cmd_b=(haxe "$hxml_file" -D rust_no_build -D rust_hxrt_plan_report -D rust_output=out_hxrt_plan_b)
+	local cmd_a=(haxe "$hxml_file" -D rust_no_build -D rust_runtime_plan_report -D rust_output=out_runtime_plan_a)
+	local cmd_b=(haxe "$hxml_file" -D rust_no_build -D rust_runtime_plan_report -D rust_output=out_runtime_plan_b)
 	if [[ -n "$extra_define" ]]; then
 		cmd_a+=(-D "$extra_define")
 		cmd_b+=(-D "$extra_define")
@@ -496,139 +511,164 @@ run_hxrt_plan_report_case() {
 		exit 1
 	fi
 
-	local json_a="$out_a/hxrt_plan.json"
-	local md_a="$out_a/hxrt_plan.md"
-	local json_b="$out_b/hxrt_plan.json"
-	local md_b="$out_b/hxrt_plan.md"
+	local json_a="$out_a/runtime_plan.json"
+	local md_a="$out_a/runtime_plan.md"
+	local json_b="$out_b/runtime_plan.json"
+	local md_b="$out_b/runtime_plan.md"
 
 	if [[ ! -f "$json_a" || ! -f "$md_a" ]]; then
-		echo "[metal-policy] error: expected hxrt plan artifacts for ${failure_label} (run A)."
+		echo "[metal-policy] error: expected runtime plan artifacts for ${failure_label} (run A)."
 		exit 1
 	fi
 	if [[ ! -f "$json_b" || ! -f "$md_b" ]]; then
-		echo "[metal-policy] error: expected hxrt plan artifacts for ${failure_label} (run B)."
+		echo "[metal-policy] error: expected runtime plan artifacts for ${failure_label} (run B)."
 		exit 1
 	fi
 
-	if ! match_regex '"schemaVersion":[[:space:]]*1' "$json_a"; then
-		echo "[metal-policy] error: hxrt_plan.json missing schemaVersion for ${failure_label}."
+	if ! match_regex '"schemaVersion":[[:space:]]*2' "$json_a"; then
+		echo "[metal-policy] error: runtime_plan.json missing schemaVersion for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
-	if ! match_regex "\"profile\":[[:space:]]*\"${expected_profile}\"" "$json_a"; then
-		echo "[metal-policy] error: hxrt_plan.json missing expected profile for ${failure_label}."
+	if ! match_regex '"backendId":[[:space:]]*"reflaxe\.rust"' "$json_a"; then
+		echo "[metal-policy] error: runtime_plan.json missing backendId for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '"runtimeId":[[:space:]]*"hxrt"' "$json_a"; then
+		echo "[metal-policy] error: runtime_plan.json missing runtimeId for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex "\"contract\":[[:space:]]*\"${expected_contract}\"" "$json_a"; then
+		echo "[metal-policy] error: runtime_plan.json missing expected contract for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if ! match_regex "\"mode\":[[:space:]]*\"${expected_mode}\"" "$json_a"; then
-		echo "[metal-policy] error: hxrt_plan.json missing expected mode for ${failure_label}."
+		echo "[metal-policy] error: runtime_plan.json missing expected mode for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if ! match_regex '"selectedFeatures":[[:space:]]*\[' "$json_a"; then
-		echo "[metal-policy] error: hxrt_plan.json missing selectedFeatures for ${failure_label}."
+		echo "[metal-policy] error: runtime_plan.json missing selectedFeatures for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if ! match_regex '"manualFeatures":[[:space:]]*\[' "$json_a"; then
-		echo "[metal-policy] error: hxrt_plan.json missing manualFeatures for ${failure_label}."
+		echo "[metal-policy] error: runtime_plan.json missing manualFeatures for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if ! match_regex '"noHxrt":[[:space:]]*(true|false)' "$json_a"; then
-		echo "[metal-policy] error: hxrt_plan.json missing noHxrt for ${failure_label}."
+		echo "[metal-policy] error: runtime_plan.json missing noHxrt for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if ! match_regex '"useDefaultFeatures":[[:space:]]*(true|false)' "$json_a"; then
-		echo "[metal-policy] error: hxrt_plan.json missing useDefaultFeatures for ${failure_label}."
+		echo "[metal-policy] error: runtime_plan.json missing useDefaultFeatures for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if ! match_regex '"inferenceDisabled":[[:space:]]*(true|false)' "$json_a"; then
-		echo "[metal-policy] error: hxrt_plan.json missing inferenceDisabled for ${failure_label}."
+		echo "[metal-policy] error: runtime_plan.json missing inferenceDisabled for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if ! match_regex '"reasons":[[:space:]]*\[' "$json_a"; then
-		echo "[metal-policy] error: hxrt_plan.json missing reasons array for ${failure_label}."
+		echo "[metal-policy] error: runtime_plan.json missing reasons array for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if [[ -n "$expected_reason_regex" ]] && ! match_regex "$expected_reason_regex" "$json_a"; then
-		echo "[metal-policy] error: hxrt_plan.json missing expected reason pattern for ${failure_label}."
+		echo "[metal-policy] error: runtime_plan.json missing expected reason pattern for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if [[ -n "$expected_reason_regex_2" ]] && ! match_regex "$expected_reason_regex_2" "$json_a"; then
-		echo "[metal-policy] error: hxrt_plan.json missing second expected reason pattern for ${failure_label}."
+		echo "[metal-policy] error: runtime_plan.json missing second expected reason pattern for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 	if [[ "$expected_mode" == "no_hxrt" ]]; then
 		if ! match_regex '"noHxrt":[[:space:]]*true' "$json_a"; then
-			echo "[metal-policy] error: hxrt_plan.json expected noHxrt=true for no_hxrt mode (${failure_label})."
+			echo "[metal-policy] error: runtime_plan.json expected noHxrt=true for no_hxrt mode (${failure_label})."
 			sed "s|$root_dir|.|g" "$json_a"
 			exit 1
 		fi
 		if ! match_regex '"hxrtDependencyLine":[[:space:]]*""' "$json_a"; then
-			echo "[metal-policy] error: hxrt_plan.json expected empty dependency line for no_hxrt mode (${failure_label})."
+			echo "[metal-policy] error: runtime_plan.json expected empty dependency line for no_hxrt mode (${failure_label})."
 			sed "s|$root_dir|.|g" "$json_a"
 			exit 1
 		fi
 	else
 		if ! match_regex '"noHxrt":[[:space:]]*false' "$json_a"; then
-			echo "[metal-policy] error: hxrt_plan.json expected noHxrt=false for ${expected_mode} mode (${failure_label})."
+			echo "[metal-policy] error: runtime_plan.json expected noHxrt=false for ${expected_mode} mode (${failure_label})."
 			sed "s|$root_dir|.|g" "$json_a"
 			exit 1
 		fi
 	fi
 	if [[ "$expected_mode" == "default_features" ]]; then
 		if ! match_regex '"useDefaultFeatures":[[:space:]]*true' "$json_a"; then
-			echo "[metal-policy] error: hxrt_plan.json expected useDefaultFeatures=true for default_features mode (${failure_label})."
+			echo "[metal-policy] error: runtime_plan.json expected useDefaultFeatures=true for default_features mode (${failure_label})."
 			sed "s|$root_dir|.|g" "$json_a"
 			exit 1
 		fi
 	else
 		if ! match_regex '"useDefaultFeatures":[[:space:]]*false' "$json_a"; then
-			echo "[metal-policy] error: hxrt_plan.json expected useDefaultFeatures=false for ${expected_mode} mode (${failure_label})."
+			echo "[metal-policy] error: runtime_plan.json expected useDefaultFeatures=false for ${expected_mode} mode (${failure_label})."
 			sed "s|$root_dir|.|g" "$json_a"
 			exit 1
 		fi
 	fi
-	if ! match_regex '^# HXRT Runtime Plan' "$md_a"; then
-		echo "[metal-policy] error: hxrt_plan.md missing title for ${failure_label}."
+	if ! match_regex '^# Runtime Plan' "$md_a"; then
+		echo "[metal-policy] error: runtime_plan.md missing title for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if ! match_regex "^- backend id: \`reflaxe\.rust\`" "$md_a"; then
+		echo "[metal-policy] error: runtime_plan.md missing backend id summary for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if ! match_regex "^- runtime id: \`hxrt\`" "$md_a"; then
+		echo "[metal-policy] error: runtime_plan.md missing runtime id summary for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if ! match_regex "^- contract: \`${expected_contract}\`" "$md_a"; then
+		echo "[metal-policy] error: runtime_plan.md missing contract summary for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi
 	if ! match_regex '^## Selected features' "$md_a"; then
-		echo "[metal-policy] error: hxrt_plan.md missing selected features section for ${failure_label}."
+		echo "[metal-policy] error: runtime_plan.md missing selected features section for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi
 	if ! match_regex '^## Manual features' "$md_a"; then
-		echo "[metal-policy] error: hxrt_plan.md missing manual features section for ${failure_label}."
+		echo "[metal-policy] error: runtime_plan.md missing manual features section for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi
 	if ! match_regex '^## Feature reasons' "$md_a"; then
-		echo "[metal-policy] error: hxrt_plan.md missing feature reasons section for ${failure_label}."
+		echo "[metal-policy] error: runtime_plan.md missing feature reasons section for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi
 	if ! match_regex '^## Dependency line' "$md_a"; then
-		echo "[metal-policy] error: hxrt_plan.md missing dependency line section for ${failure_label}."
+		echo "[metal-policy] error: runtime_plan.md missing dependency line section for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi
 
 	if ! cmp -s "$json_a" "$json_b"; then
-		echo "[metal-policy] error: hxrt_plan.json is non-deterministic across runs for ${failure_label}."
+		echo "[metal-policy] error: runtime_plan.json is non-deterministic across runs for ${failure_label}."
 		diff -u "$json_a" "$json_b" || true
 		exit 1
 	fi
 	if ! cmp -s "$md_a" "$md_b"; then
-		echo "[metal-policy] error: hxrt_plan.md is non-deterministic across runs for ${failure_label}."
+		echo "[metal-policy] error: runtime_plan.md is non-deterministic across runs for ${failure_label}."
 		diff -u "$md_a" "$md_b" || true
 		exit 1
 	fi
@@ -699,9 +739,11 @@ run_negative_case "test/negative/metal_type_reflection" 'metal profile forbids r
 run_negative_case "test/negative/metal_dynamic_access" 'metal profile forbids haxe\.DynamicAccess runtime map semantics' \
 	'haxe.DynamicAccess usage under metal profile'
 run_negative_case "test/negative/metal_island_dynamic_access" 'Metal island violation in module `Main`.*dynamic_boundary/dynamic_access' \
-	'@:rustMetal module rejects dynamic boundary usage in portable profile'
+	'@:haxeMetal module rejects dynamic boundary usage in portable profile'
 run_negative_case "test/negative/metal_island_raw_fallback" 'Metal island violation in module `Main`.*raw Rust expression node\(s\) \(`ERaw`\)' \
-	'@:rustMetal module rejects raw fallback codegen in portable profile'
+	'@:haxeMetal module rejects raw fallback codegen in portable profile'
+run_negative_case "test/negative/metal_island_rust_alias_dynamic_access" 'Metal island violation in module `Main`.*dynamic_boundary/dynamic_access' \
+	'@:rustMetal alias still enforces metal island contract in portable profile'
 run_negative_case "test/negative/metal_nullable_strings" 'metal profile does not allow -D rust_string_nullable in metal-clean mode' \
 	'rust_string_nullable under metal profile'
 run_negative_case "test/negative/metal_no_hxrt_requires_metal" '`-D rust_no_hxrt` currently requires `-D reflaxe_rust_profile=metal`\.' \
@@ -722,40 +764,40 @@ run_warning_case "test/negative/metal_dynamic_access" "compile.viability.hxml" '
 	'1' 'metal viability summary warning output'
 run_report_case "test/negative/metal_dynamic_access" "compile.viability.hxml" \
 	'metal viability deterministic report artifacts'
-run_profile_contract_report_case "examples/hello" "compile.hxml" "portable" \
-	'portable profile contract report artifacts' \
+run_contract_report_case "examples/hello" "compile.hxml" "portable" \
+	'portable contract report artifacts' \
 	'false' 'true' 'false' 'false' 'false' 'false' 'true'
-run_profile_contract_report_case "examples/hello" "compile.metal.hxml" "metal" \
-	'metal profile contract report artifacts' \
+run_contract_report_case "examples/hello" "compile.metal.hxml" "metal" \
+	'metal contract report artifacts' \
 	'true' 'true' 'true' 'false' 'false' 'false' 'false'
-run_profile_contract_report_case "test/positive/metal_no_hxrt_minimal" "compile.hxml" "metal" \
-	'metal no-hxrt profile contract report artifacts' \
+run_contract_report_case "test/positive/metal_no_hxrt_minimal" "compile.hxml" "metal" \
+	'metal no-hxrt contract report artifacts' \
 	'true' 'false' 'false' 'true' 'true' 'false' 'false'
-run_hxrt_plan_report_case "examples/hello" "compile.hxml" "portable" "selective" \
-	'portable hxrt plan report artifacts'
-run_hxrt_plan_report_case "examples/hello" "compile.hxml" "portable" "selective" \
-	'portable hxrt plan report define provenance artifacts' \
+run_runtime_plan_report_case "examples/hello" "compile.hxml" "portable" "selective" \
+	'portable runtime plan artifacts'
+run_runtime_plan_report_case "examples/hello" "compile.hxml" "portable" "selective" \
+	'portable runtime plan define provenance artifacts' \
 	'rust_hxrt_features=thread' \
 	'"sourceKind":[[:space:]]*"define"' \
 	'"source":[[:space:]]*"rust_hxrt_features"'
-run_hxrt_plan_report_case "examples/sys_net_loopback" "compile.hxml" "portable" "selective" \
-	'portable hxrt plan report module+dependency provenance artifacts' \
+run_runtime_plan_report_case "examples/sys_net_loopback" "compile.hxml" "portable" "selective" \
+	'portable runtime plan module+dependency provenance artifacts' \
 	"" \
 	'"sourceKind":[[:space:]]*"module"' \
 	'"sourceKind":[[:space:]]*"dependency_edge"'
-run_hxrt_plan_report_case "examples/hello" "compile.metal.hxml" "metal" "default_features" \
-	'metal default-features hxrt plan report artifacts' \
+run_runtime_plan_report_case "examples/hello" "compile.metal.hxml" "metal" "default_features" \
+	'metal default-features runtime plan artifacts' \
 	'rust_hxrt_default_features'
-run_hxrt_plan_report_case "test/positive/metal_no_hxrt_minimal" "compile.hxml" "metal" "no_hxrt" \
-	'metal no-hxrt plan report artifacts'
+run_runtime_plan_report_case "test/positive/metal_no_hxrt_minimal" "compile.hxml" "metal" "no_hxrt" \
+	'metal no-hxrt runtime plan artifacts'
 run_warning_case "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'1' 'single aggregated metal fallback warning'
 run_warning_case_absent "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
-	'haxe\.ds\.(IntMap|StringMap)' \
-	'1' 'metal fallback top-modules excludes IntMap/StringMap after typed map helper migration'
+	'haxe\.ds\.(IntMap|StringMap):(2[0-9]|[3-9][0-9]|[1-9][0-9]{2,})' \
+	'1' 'metal fallback top-modules keeps IntMap/StringMap fallback below 2 after typed map helper migration'
 run_warning_case_absent "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
-	'haxe\.ds\.(ObjectMap|EnumValueMap)' \
-	'1' 'metal fallback top-modules excludes ObjectMap/EnumValueMap after typed map helper migration'
+	'haxe\.ds\.(ObjectMap|EnumValueMap):(2[0-9]|[3-9][0-9]|[1-9][0-9]{2,})' \
+	'1' 'metal fallback top-modules keeps ObjectMap/EnumValueMap fallback below 2 after typed map helper migration'
 run_warning_case_absent "test/snapshot/rusty_hashmap" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'rust\.HashMapTools' \
 	'1' 'metal fallback top-modules excludes rust.HashMapTools after typed hash map helper migration'
@@ -787,8 +829,8 @@ run_warning_case_absent "examples/chat_loopback" "compile.metal.hxml" 'Metal fal
 	'rust\.test\.Assert' \
 	'1' 'metal fallback top-modules excludes rust.test.Assert after typed assert native boundary migration'
 run_warning_case_absent "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
-	'app\.ChatUiApp:(3[3-9]|[4-9][0-9]|[1-9][0-9]{2,})' \
-	'1' 'metal fallback top-modules keeps app.ChatUiApp raw fallback below 33 after typed Option parsing boundary migration'
+	'app\.ChatUiApp:(3[0-9]|[4-9][0-9]|[1-9][0-9]{2,})' \
+	'1' 'metal fallback top-modules keeps app.ChatUiApp raw fallback below 30 after typed generic static-call lowering migration'
 run_warning_case_absent "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'profile\.RemoteRuntime:(2[1-9]|[3-9][0-9]|[1-9][0-9]{2,})' \
 	'1' 'metal fallback top-modules keeps profile.RemoteRuntime raw fallback below 21 after typed catch/downcast lowering'

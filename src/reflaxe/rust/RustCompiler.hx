@@ -83,7 +83,8 @@ private typedef RustTestSpec = {
 
 private typedef ProfileContractReportSnapshot = {
 	var schemaVersion:Int;
-	var profile:String;
+	var backendId:String;
+	var contract:String;
 	var strictBoundary:Bool;
 	var strictExamples:Bool;
 	var metalFallbackAllowed:Bool;
@@ -98,7 +99,9 @@ private typedef ProfileContractReportSnapshot = {
 
 private typedef HxrtPlanReportSnapshot = {
 	var schemaVersion:Int;
-	var profile:String;
+	var backendId:String;
+	var runtimeId:String;
+	var contract:String;
 	var mode:String;
 	var noHxrt:Bool;
 	var useDefaultFeatures:Bool;
@@ -481,7 +484,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// Collect extra Rust sources declared via metadata (framework code can bring its own modules).
 		RustExtraSrcRegistry.collectFromContext();
 
-		// Collect optional `@:rustMetal` island declarations for strict island checks in portable mode.
+		// Collect optional metal-lane declarations (`@:haxeMetal` canonical, `@:rustMetal` alias)
+		// for strict island checks in portable mode.
 		metalIslandSnapshot = MetalIslandAnalyzer.collect(Context.getAllModuleTypes());
 
 		// Allow overriding crate name with -D rust_crate=<name>
@@ -793,7 +797,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
-		Enforces strict `@:rustMetal` island contracts in portable profile.
+		Enforces strict `@:haxeMetal` island contracts in portable profile.
 
 		Why
 		- Islands are an incremental migration path: users can lock specific modules to metal-clean
@@ -801,7 +805,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		- Violations must hard-error at the declaration site to keep island boundaries explicit.
 
 		What
-		- For each module declared via `@:rustMetal`, checks the viability snapshot blockers.
+		- For each module declared via `@:haxeMetal` (or `@:rustMetal` alias), checks viability blockers.
 		- Emits one compile error per violating island module with blocker categories/ids.
 
 		How
@@ -837,14 +841,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var moduleData = modulesByName.get(module);
 			var declarations = declarationsByModule.exists(module) ? declarationsByModule.get(module) : [];
 			var pos = declarations.length > 0 ? declarations[0].pos : Context.currentPos();
-			var declarationSummary = declarations.length == 0 ? "`@:rustMetal`" : declarations.map(entry -> "`" + entry.source + "`").join(", ");
+			var declarationSummary = declarations.length == 0 ? "`@:haxeMetal`" : declarations.map(entry -> "`" + entry.source + "`").join(", ");
 
 			if (moduleData == null) {
 				Context.error("Metal island violation in module `"
 					+ module
 					+ "` declared by "
 					+ declarationSummary
-					+ ": viability analyzer could not resolve this module. Keep `@:rustMetal` on emitted class/enum/typedef/abstract modules.",
+					+ ": viability analyzer could not resolve this module. Keep `@:haxeMetal` on emitted class/enum/typedef/abstract modules.",
 					pos);
 				continue;
 			}
@@ -860,7 +864,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				+ declarationSummary
 				+ ": "
 				+ blockers
-				+ ". Remove dynamic/reflection/raw fallback boundaries before marking this module as `@:rustMetal`.",
+				+ ". Remove dynamic/reflection/raw fallback boundaries before marking this module as `@:haxeMetal`.",
 				pos);
 		}
 		#end
@@ -905,7 +909,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
-		Emits deterministic profile-contract report artifacts.
+		Emits deterministic contract-report artifacts.
 
 		Why
 		- Family-level policy checks need machine-readable artifacts; stderr-only diagnostics are hard
@@ -913,8 +917,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		- The report must reflect the same typed diagnostics enforced during compilation.
 
 		What
-		- Writes `profile_contract.json` and `profile_contract.md` in the generated crate root.
-		- Emission is opt-in via `-D rust_profile_contract_report`.
+		- Writes `contract_report.json` and `contract_report.md` in the generated crate root.
+		- Emission is opt-in via `-D rust_contract_report`.
 
 		How
 		- Reuses cached `ProfileContractDiagnostics` stored in `CompilationContext` by
@@ -922,12 +926,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		- Falls back to one typed analyzer run if no cached snapshot is present.
 	**/
 	function emitProfileContractReports(outDir:String):Void {
-		if (!Context.defined("rust_profile_contract_report"))
+		if (!Context.defined("rust_contract_report"))
 			return;
 
 		var snapshot = buildProfileContractReportSnapshot();
-		var jsonReportPath = Path.join([outDir, "profile_contract.json"]);
-		var markdownReportPath = Path.join([outDir, "profile_contract.md"]);
+		var jsonReportPath = Path.join([outDir, "contract_report.json"]);
+		var markdownReportPath = Path.join([outDir, "contract_report.md"]);
 		File.saveContent(jsonReportPath, renderProfileContractJson(snapshot));
 		File.saveContent(markdownReportPath, renderProfileContractMarkdown(snapshot));
 	}
@@ -943,8 +947,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		errors.sort(compareStrings);
 
 		return {
-			schemaVersion: 1,
-			profile: profile == Metal ? "metal" : "portable",
+			schemaVersion: 2,
+			backendId: "reflaxe.rust",
+			contract: profile == Metal ? "metal" : "portable",
 			strictBoundary: Context.defined("reflaxe_rust_strict"),
 			strictExamples: Context.defined("reflaxe_rust_strict_examples"),
 			metalFallbackAllowed: profile == Metal && Context.defined("rust_metal_allow_fallback"),
@@ -962,7 +967,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var lines:Array<String> = [];
 		lines.push("{");
 		lines.push('\t"schemaVersion": ' + snapshot.schemaVersion + ",");
-		lines.push('\t"profile": "' + jsonEscape(snapshot.profile) + '",');
+		lines.push('\t"backendId": "' + jsonEscape(snapshot.backendId) + '",');
+		lines.push('\t"contract": "' + jsonEscape(snapshot.contract) + '",');
 		lines.push('\t"strictBoundary": ' + boolString(snapshot.strictBoundary) + ",");
 		lines.push('\t"strictExamples": ' + boolString(snapshot.strictExamples) + ",");
 		lines.push('\t"metalFallbackAllowed": ' + boolString(snapshot.metalFallbackAllowed) + ",");
@@ -983,10 +989,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	static function renderProfileContractMarkdown(snapshot:ProfileContractReportSnapshot):String {
 		var lines:Array<String> = [];
-		lines.push("# Profile Contract Report");
+		lines.push("# Contract Report");
 		lines.push("");
 		lines.push("- schema version: `" + snapshot.schemaVersion + "`");
-		lines.push("- profile: `" + snapshot.profile + "`");
+		lines.push("- backend id: `" + snapshot.backendId + "`");
+		lines.push("- contract: `" + snapshot.contract + "`");
 		lines.push("- strict boundary: `" + boolLabel(snapshot.strictBoundary) + "`");
 		lines.push("- strict examples: `" + boolLabel(snapshot.strictExamples) + "`");
 		lines.push("- metal fallback allowed: `" + boolLabel(snapshot.metalFallbackAllowed) + "`");
@@ -1023,20 +1030,20 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		- CI/debug workflows need a stable artifact showing effective mode and selected feature set.
 
 		What
-		- Writes `hxrt_plan.json` and `hxrt_plan.md` in the generated crate root.
-		- Emission is opt-in via `-D rust_hxrt_plan_report`.
+		- Writes `runtime_plan.json` and `runtime_plan.md` in the generated crate root.
+		- Emission is opt-in via `-D rust_runtime_plan_report`.
 
 		How
 		- Reuses the active `CompilationContext` feature snapshot when available.
 		- Encodes effective mode (`no_hxrt`, `default_features`, `selective`) and toggle state.
 	**/
 	function emitHxrtPlanReports(outDir:String):Void {
-		if (!Context.defined("rust_hxrt_plan_report"))
+		if (!Context.defined("rust_runtime_plan_report"))
 			return;
 
 		var snapshot = buildHxrtPlanReportSnapshot();
-		var jsonReportPath = Path.join([outDir, "hxrt_plan.json"]);
-		var markdownReportPath = Path.join([outDir, "hxrt_plan.md"]);
+		var jsonReportPath = Path.join([outDir, "runtime_plan.json"]);
+		var markdownReportPath = Path.join([outDir, "runtime_plan.md"]);
 		File.saveContent(jsonReportPath, renderHxrtPlanJson(snapshot));
 		File.saveContent(markdownReportPath, renderHxrtPlanMarkdown(snapshot));
 	}
@@ -1078,8 +1085,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		return {
-			schemaVersion: 1,
-			profile: profile == Metal ? "metal" : "portable",
+			schemaVersion: 2,
+			backendId: "reflaxe.rust",
+			runtimeId: "hxrt",
+			contract: profile == Metal ? "metal" : "portable",
 			mode: mode,
 			noHxrt: noHxrt,
 			useDefaultFeatures: useDefaultFeatures,
@@ -1096,7 +1105,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var lines:Array<String> = [];
 		lines.push("{");
 		lines.push('\t"schemaVersion": ' + snapshot.schemaVersion + ",");
-		lines.push('\t"profile": "' + jsonEscape(snapshot.profile) + '",');
+		lines.push('\t"backendId": "' + jsonEscape(snapshot.backendId) + '",');
+		lines.push('\t"runtimeId": "' + jsonEscape(snapshot.runtimeId) + '",');
+		lines.push('\t"contract": "' + jsonEscape(snapshot.contract) + '",');
 		lines.push('\t"mode": "' + jsonEscape(snapshot.mode) + '",');
 		lines.push('\t"noHxrt": ' + boolString(snapshot.noHxrt) + ",");
 		lines.push('\t"useDefaultFeatures": ' + boolString(snapshot.useDefaultFeatures) + ",");
@@ -1118,10 +1129,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	static function renderHxrtPlanMarkdown(snapshot:HxrtPlanReportSnapshot):String {
 		var lines:Array<String> = [];
-		lines.push("# HXRT Runtime Plan");
+		lines.push("# Runtime Plan");
 		lines.push("");
 		lines.push("- schema version: `" + snapshot.schemaVersion + "`");
-		lines.push("- profile: `" + snapshot.profile + "`");
+		lines.push("- backend id: `" + snapshot.backendId + "`");
+		lines.push("- runtime id: `" + snapshot.runtimeId + "`");
+		lines.push("- contract: `" + snapshot.contract + "`");
 		lines.push("- mode: `" + snapshot.mode + "`");
 		lines.push("- no hxrt: `" + boolLabel(snapshot.noHxrt) + "`");
 		lines.push("- default features: `" + boolLabel(snapshot.useDefaultFeatures) + "`");
@@ -3619,22 +3632,24 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (isStringType(t))
 			return stringNullExpr();
 		if (isDynamicType(t))
-			return ERaw(rustDynamicNullRaw());
+			return rustDynamicNullExpr();
 
 		if (isArrayType(t)) {
 			var elem = arrayElementType(t);
 			var elemRust = toRustType(elem, pos);
-			return ERaw("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::null()");
+			return ECall(EPath("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::null"), []);
 		}
 
 		// Concrete class/Bytes/anon-object values are represented as `HxRef<_>` and can be null.
 		if (isBytesType(t) || isHxRefValueType(t) || isRustHxRefType(t) || isAnonObjectType(t)) {
-			return ERaw("crate::HxRef::null()");
+			return ECall(EPath("crate::HxRef::null"), []);
 		}
 
 		// For types that don't have a null representation today (enums, trait objects, etc.),
 		// fall back to throwing when/if an out-of-bounds write requires a fill value.
-		return ERaw('hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))');
+		return ECall(EPath("hxrt::exception::throw"), [
+			ECall(EPath("hxrt::dynamic::from"), [ECall(EPath("String::from"), [ELitString("Null Access")])])
+		]);
 	}
 
 	function compileConstructor(classType:ClassType, varFields:Array<ClassVarData>, f:ClassFuncData):reflaxe.rust.ast.RustAST.RustFunction {
@@ -5924,16 +5939,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							switch (rt) {
 								case RPath(p) if (StringTools.startsWith(p, "crate::HxRef<")): {
 										var inner = p.substr("crate::HxRef<".length, p.length - "crate::HxRef<".length - 1);
-										ECall(ERaw("crate::HxRef::<" + inner + ">::null"), []);
+										ECall(EPath("crate::HxRef::<" + inner + ">::null"), []);
 									}
 								case RPath(p) if (StringTools.startsWith(p, "hxrt::array::Array<")): {
 										var inner = p.substr("hxrt::array::Array<".length, p.length - "hxrt::array::Array<".length - 1);
-										ECall(ERaw("hxrt::array::Array::<" + inner + ">::null"), []);
+										ECall(EPath("hxrt::array::Array::<" + inner + ">::null"), []);
 									}
 								case RPath(p) if (StringTools.startsWith(p, dynRefBasePath() + "<")): {
 										var prefix = dynRefBasePath() + "<";
 										var inner = p.substr(prefix.length, p.length - prefix.length - 1);
-										ECall(ERaw(dynRefBasePath() + "::<" + inner + ">::null"), []);
+										ECall(EPath(dynRefBasePath() + "::<" + inner + ">::null"), []);
 									}
 								case RString:
 									stringNullExpr();
@@ -5950,12 +5965,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					if (values.length == 0) {
 						var elem = arrayElementType(e.t);
 						var elemRust = toRustType(elem, e.pos);
-						ECall(ERaw("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new"), []);
+						ECall(EPath("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new"), []);
 					} else {
 						var elem = arrayElementType(e.t);
 						var elemRust = toRustType(elem, e.pos);
 						var vecExpr = EMacroCall("vec", [for (v in values) maybeCloneForReuseValue(compileExpr(v), v)]);
-						ECall(ERaw("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::from_vec"), [vecExpr]);
+						ECall(EPath("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::from_vec"), [vecExpr]);
 					}
 				}
 
@@ -5990,18 +6005,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								case RPath(p) if (StringTools.startsWith(p, "crate::HxRef<")):
 									{
 										var inner = p.substr("crate::HxRef<".length, p.length - "crate::HxRef<".length - 1);
-										return ECall(ERaw("crate::HxRef::<" + inner + ">::null"), []);
+										return ECall(EPath("crate::HxRef::<" + inner + ">::null"), []);
 									}
 								case RPath(p) if (StringTools.startsWith(p, "hxrt::array::Array<")):
 									{
 										var inner = p.substr("hxrt::array::Array<".length, p.length - "hxrt::array::Array<".length - 1);
-										return ECall(ERaw("hxrt::array::Array::<" + inner + ">::null"), []);
+										return ECall(EPath("hxrt::array::Array::<" + inner + ">::null"), []);
 									}
 								case RPath(p) if (StringTools.startsWith(p, dynRefBasePath() + "<")):
 									{
 										var prefix = dynRefBasePath() + "<";
 										var inner = p.substr(prefix.length, p.length - prefix.length - 1);
-										return ECall(ERaw(dynRefBasePath() + "::<" + inner + ">::null"), []);
+										return ECall(EPath(dynRefBasePath() + "::<" + inner + ">::null"), []);
 									}
 								case _:
 									return ECall(EPath("Default::default"), []);
@@ -6173,7 +6188,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					if (isArrayType(e.t) && (args == null || args.length == 0)) {
 						var elem = arrayElementType(e.t);
 						var elemRust = toRustType(elem, e.pos);
-						return ECall(ERaw("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new"), []);
+						return ECall(EPath("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new"), []);
 					}
 					var cls = clsRef.get();
 					if (cls != null && !cls.isExtern && isMainClass(cls)) {
@@ -6470,13 +6485,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					// Important: many of these are `extern` and are intentionally NOT emitted as Rust modules.
 					// Use a literal stable id instead of a `crate::<mod>::__HX_TYPE_ID` path so we can refer to
 					// extern/core types without requiring module emission.
-					ERaw(typeIdLiteralForClass(cls));
+					typeIdExprForClass(cls);
 				}
 			case TEnumDecl(enRef): {
 					var en = enRef.get();
 					if (en == null)
 						return unsupported(fullExpr, "type expr (missing enum)");
-					ERaw(typeIdLiteralForEnum(en));
+					typeIdExprForEnum(en);
 				}
 			case _: unsupported(fullExpr, "type expr");
 		}
@@ -7292,11 +7307,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						if (cls == null || cls.isExtern || cls.isInterface || isPolymorphicClassType(valueType))
 							null
 						else
-							ERaw(typeIdLiteralForClass(cls));
+							typeIdExprForClass(cls);
 					}
 				case TEnum(enumRef, _): {
 						var en = enumRef.get();
-						en != null ? ERaw(typeIdLiteralForEnum(en)) : null;
+						en != null ? typeIdExprForEnum(en) : null;
 					}
 				case _:
 					null;
@@ -8344,7 +8359,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								var isHxString = dynIs("hxrt::string::HxString");
 								var isAnyString = EBinary("||", isString, isHxString);
 
-								var stringClassId = ERaw(typeIdLiteralForKey(".String"));
+								var stringClassId = typeIdExprForKey(".String");
 
 								var out:RustExpr = EIf(isNull, EPath("crate::value_type::ValueType::TNull"),
 									EIf(isInt, EPath("crate::value_type::ValueType::TInt"),
@@ -10974,6 +10989,33 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function typeIdLiteralForEnum(en:EnumType):String {
 		return typeIdLiteralForKey(enumKey(en));
+	}
+
+	/**
+		Builds a typed Rust AST expression for a stable `u32` type-id value.
+
+		Why
+		- Several runtime-typing paths (`Type`/`Std.isOfType`/dynamic boxing metadata) need compile-time
+		  class/enum ids as expression nodes.
+		- Emitting those ids via `ERaw("0x...u32")` introduced avoidable metal fallback counts in otherwise
+		  typed modules.
+
+		How
+		- Reuses the existing FNV-1a key hash and emits the canonical Rust literal form
+		  (`0x????????u32`) as an expression node.
+		- This preserves the exact `u32` bit pattern for both positive and negative Haxe `Int`
+		  hash values without relying on `ERaw` fallback nodes.
+	**/
+	function typeIdExprForClass(cls:ClassType):RustExpr {
+		return typeIdExprForKey(classKey(cls));
+	}
+
+	function typeIdExprForEnum(en:EnumType):RustExpr {
+		return typeIdExprForKey(enumKey(en));
+	}
+
+	function typeIdExprForKey(key:String):RustExpr {
+		return EPath(typeIdLiteralForKey(key));
 	}
 
 	function typeIdLiteralForKey(key:String):String {

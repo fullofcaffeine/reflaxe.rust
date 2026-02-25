@@ -1,84 +1,55 @@
-# Profiles (`-D reflaxe_rust_profile=...`)
+# Contracts, Capabilities, and Lanes
 
-This target exposes two profile contracts only:
+`reflaxe.rust` uses an explicit **contract** selector plus opt-in **capabilities** and **lanes**.
+This keeps semantics reviewable in CI while still allowing incremental optimization work.
 
-- `portable` (default): Haxe-portable semantics first.
-- `metal`: Rust-first performance profile with strict typed boundaries.
-
-## Profile selector
+## Contract selector
 
 ```bash
 -D reflaxe_rust_profile=portable|metal
 ```
 
+- `portable` (default): portability-first Haxe semantics.
+- `metal`: Rust-first contract with strict boundary defaults.
+
 No profile aliases are supported.
 
-## Choosing a Profile
+## Contract: `portable`
 
-### `portable`
+Use `portable` when you want:
 
-Use when you want:
-
-- predictable Haxe semantics,
-- the lowest migration friction from existing Haxe code,
-- portability-first behavior with production-grade codegen hygiene.
+- predictable Haxe behavior and compatibility,
+- low migration friction for existing Haxe projects,
+- production-ready output hygiene without Rust-first restrictions.
 
 Default behavior:
 
 - nullable string representation (`rust_string_nullable`) unless explicitly overridden.
 - pass pipeline includes normalize + mut inference + clone elision.
 
-Metal islands in portable:
+## Contract: `metal`
 
-- You can mark specific modules/fields with `@:rustMetal` to opt those modules into strict
-  metal-clean checks without switching the whole project to `metal`.
-- Island checks are strict by design (compile errors on dynamic/reflection/raw fallback blockers).
-- Use this for incremental migration of hot paths.
+Use `metal` when you want:
 
-### `metal`
-
-Use when you want:
-
-- Rust-first authoring and performance focus,
+- Rust-first authoring/performance direction,
 - strict app-boundary policy by default (`reflaxe_rust_strict` auto-enabled),
-- explicit control over fallback behavior.
+- explicit fallback control (`rust_metal_allow_fallback`).
 
 Default behavior:
 
 - non-null Rust `String` representation unless explicitly overridden.
 - pass pipeline includes portable passes + borrow-scope stage + metal restrictions.
-- profile contract violations hard-error unless `-D rust_metal_allow_fallback` is set.
-- optional minimal-runtime mode via `-D rust_no_hxrt` (enforces no generated `hxrt` references).
+- contract violations hard-error unless fallback mode is explicitly enabled.
+- optional minimal runtime via `-D rust_no_hxrt`.
 
-## Async profile gate
+## Lanes: Metal Islands in Portable Builds
 
-`-D rust_async` requires:
+You can enforce metal-clean checks on selected modules while the project contract remains `portable`.
 
-```bash
--D reflaxe_rust_profile=metal
-```
-
-Async is incompatible with `-D rust_no_hxrt` because async lowering currently targets `hxrt::async_`.
-
-## Metal clean vs fallback
-
-- **Metal clean (default)**: contract violations are compile errors.
-- **Metal fallback** (`-D rust_metal_allow_fallback`): same violations become warnings.
-- Fallback mode emits one aggregate warning per compile with total `ERaw` fallback count and top modules.
-
-Use fallback only while actively removing remaining non-metal-clean boundaries.
-
-## `@:rustMetal` island metadata
-
-Supported declaration points:
-
-- type level: `class`, `enum`, `typedef`, `abstract`
-- field level: methods/vars inside classes (or abstract impl fields)
-
-Example:
+Canonical metadata:
 
 ```haxe
-@:rustMetal
+@:haxeMetal
 class HotPath {
   public static function run(v:Int):Int {
     return v + 1;
@@ -86,38 +57,52 @@ class HotPath {
 }
 ```
 
-In `portable`, this enforces metal-clean contracts for the `HotPath` module only.
+Compatibility alias:
 
-## String representation defaults
+- `@:rustMetal` is still accepted.
+- New code should use `@:haxeMetal`.
 
-- `portable` defaults to `rust_string_nullable`.
-- `metal` defaults to non-null string mode.
+Both metadata names enforce the same strict island checks in `portable`.
 
-Explicit overrides:
+## Capabilities and gates
 
-- `-D rust_string_nullable`
-- `-D rust_string_non_nullable`
+- `-D rust_async` requires `-D reflaxe_rust_profile=metal`.
+- `-D rust_no_hxrt` requires `metal` and cannot be combined with `rust_async`.
 
-## Contract report artifact
+## Contract and runtime plan reports
 
-For deterministic CI/review evidence, emit profile and runtime-plan artifacts with:
+Opt-in deterministic report artifacts:
 
 ```bash
--D rust_profile_contract_report
--D rust_hxrt_plan_report
+-D rust_contract_report
+-D rust_runtime_plan_report
 ```
 
-This writes:
+Generated artifacts:
 
-- `profile_contract.json` / `profile_contract.md`
-- `hxrt_plan.json` / `hxrt_plan.md`
+- `contract_report.json` / `contract_report.md`
+- `runtime_plan.json` / `runtime_plan.md`
 
-## Where profile behavior is validated
+The report schemas include explicit identity fields:
 
-- Snapshot matrix under `test/snapshot/*`.
-- Profile delta case: `test/snapshot/profile_differentiation`.
-- Full CI-style local validation: `npm run test:all`.
+- `backendId` (for both reports)
+- `runtimeId` (runtime plan report)
+- `contract` (`portable` or `metal`)
 
-## Migration note
+## Migration notes
 
-`idiomatic` and `rusty` profile selectors were removed. See `docs/rusty-profile.md` for migration mapping.
+Removed report define names:
+
+- `rust_profile_contract_report` -> `rust_contract_report`
+- `rust_hxrt_plan_report` -> `rust_runtime_plan_report`
+
+Removed report artifact names:
+
+- `profile_contract.*` -> `contract_report.*`
+- `hxrt_plan.*` -> `runtime_plan.*`
+
+## Validation
+
+- Profile/lane policy checks: `scripts/ci/check-metal-policy.sh`
+- Snapshot matrix: `test/snapshot/*`
+- Full local CI-style run: `npm run test:all`

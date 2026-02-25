@@ -48,18 +48,18 @@ This page is a practical reference for the most relevant compiler defines.
     - `metal_report.json` (machine-readable)
     - `metal_report.md` (human-readable)
   - Uses the same typed snapshot as warnings, so reports and diagnostics stay in sync.
-- `rust_profile_contract_report`
-  - Emit deterministic profile-contract artifacts in the generated crate root:
-    - `profile_contract.json` (machine-readable)
-    - `profile_contract.md` (human-readable)
-  - Includes effective contract flags (`profile`, strictness, async/no-hxrt/string mode) plus
-    current profile warning/error diagnostics.
-- `rust_hxrt_plan_report`
+- `rust_contract_report`
+  - Emit deterministic contract artifacts in the generated crate root:
+    - `contract_report.json` (machine-readable)
+    - `contract_report.md` (human-readable)
+  - Includes effective contract flags (`contract`, strictness, async/no-hxrt/string mode),
+    backend identity (`backendId`), and current warning/error diagnostics.
+- `rust_runtime_plan_report`
   - Emit deterministic runtime-plan artifacts in the generated crate root:
-    - `hxrt_plan.json` (machine-readable)
-    - `hxrt_plan.md` (human-readable)
-  - Records effective `hxrt` mode (`no_hxrt|default_features|selective`), selected feature set,
-    and typed provenance entries (`module`, `define`, `dependency_edge`).
+    - `runtime_plan.json` (machine-readable)
+    - `runtime_plan.md` (human-readable)
+  - Records runtime identity (`runtimeId`), effective mode (`no_hxrt|default_features|selective`),
+    selected feature set, and typed provenance entries (`module`, `define`, `dependency_edge`).
 - `rust_no_hxrt`
   - Metal-only minimal-runtime mode.
   - Omits bundled `hxrt` emission and `Cargo.toml` dependency.
@@ -103,6 +103,13 @@ This page is a practical reference for the most relevant compiler defines.
   - Escalate Send/Sync spawn-boundary diagnostics to compile errors.
   - Useful in CI to forbid capturing borrow-only (`rust.Ref`, `rust.MutRef`, slices) or `Dynamic`
     values in `Thread.create(...)` / `Tasks.spawn(...)` closures.
+
+## Lane metadata
+
+- `@:haxeMetal`
+  - Canonical portable-lane metadata for strict metal island enforcement.
+- `@:rustMetal`
+  - Compatibility alias; supported for migration, but new code should use `@:haxeMetal`.
 
 ## Notes on defaults
 

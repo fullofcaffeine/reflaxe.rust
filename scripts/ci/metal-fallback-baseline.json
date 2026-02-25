@@ -2,33 +2,33 @@
   "schemaVersion": 1,
   "cases": {
     "hello_metal": {
-      "rawNodes": 30,
-      "moduleCount": 17,
+      "rawNodes": 12,
+      "moduleCount": 12,
       "topModules": {
-        "haxe.io.FPHelper": 5,
-        "haxe.io.Input": 3,
-        "sys.io.Stdin": 3,
-        "haxe.CallStack": 2
+        "StringBuf": 1,
+        "haxe.Exception": 1,
+        "haxe.Int64": 1,
+        "haxe.ds.EnumValueMap": 1
       }
     },
     "rusty_concurrent_snapshot": {
-      "rawNodes": 31,
-      "moduleCount": 18,
+      "rawNodes": 13,
+      "moduleCount": 13,
       "topModules": {
-        "haxe.io.FPHelper": 5,
-        "haxe.io.Input": 3,
-        "sys.io.Stdin": 3,
-        "haxe.CallStack": 2
+        "Main": 1,
+        "StringBuf": 1,
+        "haxe.Exception": 1,
+        "haxe.Int64": 1
       }
     },
     "chat_loopback_metal": {
-      "rawNodes": 167,
-      "moduleCount": 32,
+      "rawNodes": 69,
+      "moduleCount": 26,
       "topModules": {
-        "app.ChatUiApp": 32,
-        "profile.RemoteRuntime": 21,
-        "Main": 18,
-        "scenario.ChatServer": 11
+        "Main": 12,
+        "sys.thread.EventLoop": 10,
+        "StringTools": 9,
+        "sys.thread.Thread": 7
       }
     }
   }

@@ -12,12 +12,14 @@ import haxe.macro.Type;
 	- Island collection must be deterministic so CI diagnostics and viability reports stay stable.
 
 	What
-	- Collects `@:rustMetal` declarations from typed modules and returns:
+	- Collects metal-lane declarations from typed modules and returns:
 	  - a sorted, deduplicated module list (`modules`),
 	  - declaration records with source labels + positions (`declarations`) for actionable errors.
 	- Supports metadata on:
 	  - module types (`class`, `enum`, `typedef`, `abstract`),
 	  - class/abstract-impl fields (methods/vars).
+	- Canonical lane metadata is `@:haxeMetal`; `@:rustMetal` is also accepted as an alias
+	  for compatibility while migrations are in progress.
 
 	How
 	- Walks `Context.getAllModuleTypes()` input.
@@ -76,7 +78,7 @@ class MetalIslandAnalyzer {
 		for (field in fields) {
 			if (field == null || field.meta == null)
 				continue;
-			if (!metaHasRustMetal(field.meta))
+			if (!metaHasMetalLane(field.meta))
 				continue;
 			addDeclaration(moduleSet, declarations, module, prefix + owner + "." + field.name, field.pos);
 		}
@@ -86,7 +88,7 @@ class MetalIslandAnalyzer {
 			meta:MetaAccess, pos:haxe.macro.Expr.Position):Void {
 		if (meta == null)
 			return;
-		if (!metaHasRustMetal(meta))
+		if (!metaHasMetalLane(meta))
 			return;
 		addDeclaration(moduleSet, declarations, module, source, pos);
 	}
@@ -102,9 +104,9 @@ class MetalIslandAnalyzer {
 		});
 	}
 
-	static function metaHasRustMetal(meta:MetaAccess):Bool {
+	static function metaHasMetalLane(meta:MetaAccess):Bool {
 		for (entry in meta.get()) {
-			if (entry.name == ":rustMetal" || entry.name == "rustMetal")
+			if (entry.name == ":haxeMetal" || entry.name == "haxeMetal" || entry.name == ":rustMetal" || entry.name == "rustMetal")
 				return true;
 		}
 		return false;

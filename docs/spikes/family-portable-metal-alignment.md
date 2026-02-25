@@ -40,17 +40,18 @@ Rust already matches the family direction on the core contract:
 
 ### 1) Profile Contract Report
 
-Proposed opt-in define: `-D rust_profile_contract_report`
+Proposed opt-in define: `-D rust_contract_report`
 
 Output files in generated crate root:
 
-- `profile_contract.json`
-- `profile_contract.md`
+- `contract_report.json`
+- `contract_report.md`
 
 Minimum JSON fields:
 
 - `schemaVersion`
-- `profile` (`portable|metal`)
+- `backendId`
+- `contract` (`portable|metal`)
 - `strictBoundary` (bool)
 - `metalFallbackAllowed` (bool)
 - `noHxrt` (bool)
@@ -63,16 +64,19 @@ Goal: make policy drift visible in CI without scraping compiler stderr.
 
 ### 2) Runtime Plan Report
 
-Proposed opt-in define: `-D rust_hxrt_plan_report`
+Proposed opt-in define: `-D rust_runtime_plan_report`
 
 Output files in generated crate root:
 
-- `hxrt_plan.json`
-- `hxrt_plan.md`
+- `runtime_plan.json`
+- `runtime_plan.md`
 
 Minimum JSON fields:
 
 - `schemaVersion`
+- `backendId`
+- `runtimeId` (`hxrt`)
+- `contract` (`portable|metal`)
 - `mode` (`no_hxrt|default_features|selective`)
 - `selectedFeatures[]`
 - `manualFeatures[]`
@@ -86,7 +90,7 @@ Goal: deterministic and reviewable runtime feature planning.
 
 1. Add typed planning output model for profile contract and runtime plan (shared serializer helpers, deterministic ordering).
 2. Extend `ProjectEmitter.selectHxrtFeatures(...)` / analyzer pipeline to return feature provenance metadata (not only names).
-3. Emit opt-in `profile_contract.*` and `hxrt_plan.*` artifacts in generated crate root.
+3. Emit opt-in `contract_report.*` and `runtime_plan.*` artifacts in generated crate root.
 4. Add dedicated harness checks for deterministic artifact content and key-field presence.
 5. Link this spike from docs navigation and call out current known deviations explicitly.
 
@@ -101,8 +105,8 @@ Goal: deterministic and reviewable runtime feature planning.
 
 Created from this matrix:
 
-- `haxe.rust-t8e` - emit `profile_contract.json|md` artifacts.
-- `haxe.rust-xth` - emit `hxrt_plan.json|md` runtime-plan artifacts.
+- `haxe.rust-t8e` - emit `contract_report.json|md` artifacts.
+- `haxe.rust-xth` - emit `runtime_plan.json|md` runtime-plan artifacts.
 - `haxe.rust-14g` - add typed hxrt feature provenance mapping.
 - `haxe.rust-bzq` - add targeted fixture checks for report determinism/shape.
 - `haxe.rust-in3` - publish docs navigation links + explicit deviation notes.
@@ -113,8 +117,8 @@ As of 2026-02-24, there are no unresolved Rust-vs-family contract deviations fro
 
 | Area | Expected family state | Rust state | Owner | Status |
 | --- | --- | --- | --- | --- |
-| Profile contract reports | Deterministic `profile_contract.{json,md}` artifacts | Implemented (`haxe.rust-t8e`) | `@fullofcaffeine` | closed |
-| Runtime plan reports | Deterministic `hxrt_plan.{json,md}` artifacts | Implemented (`haxe.rust-xth`) | `@fullofcaffeine` | closed |
+| Profile contract reports | Deterministic `contract_report.{json,md}` artifacts | Implemented (`haxe.rust-t8e`) | `@fullofcaffeine` | closed |
+| Runtime plan reports | Deterministic `runtime_plan.{json,md}` artifacts | Implemented (`haxe.rust-xth`) | `@fullofcaffeine` | closed |
 | Feature provenance | Typed per-feature reason mapping | Implemented (`haxe.rust-14g`) | `@fullofcaffeine` | closed |
 | Family fixture checks | Deterministic report-shape CI coverage | Implemented (`haxe.rust-bzq`) | `@fullofcaffeine` | closed |
 | Docs navigation parity | Family spike linked from docs index with explicit status | Implemented (`haxe.rust-in3`) | `@fullofcaffeine` | closed |

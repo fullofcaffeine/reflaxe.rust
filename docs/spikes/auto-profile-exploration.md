@@ -26,7 +26,8 @@ This is a semantic boundary problem, not only an optimization toggle:
 - Metal contract analysis is explicit in `src/reflaxe/rust/analyze/ProfileContractAnalyzer.hx`.
 - Runtime feature inference is additive and typed in `src/reflaxe/rust/analyze/HxrtFeatureAnalyzer.hx`.
 - Runtime plan selection and deterministic feature ordering are in `src/reflaxe/rust/emit/ProjectEmitter.hx`.
-- `@:rustMetal` islands are enforced in portable pass flow via `src/reflaxe/rust/passes/PassRunner.hx` plus `MetalRestrictionsPass`.
+- `@:haxeMetal` islands (with `@:rustMetal` compatibility alias) are enforced in portable pass flow via
+  `src/reflaxe/rust/passes/PassRunner.hx` plus `MetalRestrictionsPass`.
 
 ## External Decision Context
 

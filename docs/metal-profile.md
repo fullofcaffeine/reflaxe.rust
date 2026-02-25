@@ -1,14 +1,14 @@
-# Metal Profile Specification (`-D reflaxe_rust_profile=metal`)
+# Metal Contract (`-D reflaxe_rust_profile=metal`)
 
-`metal` is the Rust-first profile for performance-sensitive code.
+`metal` is the Rust-first contract for performance-sensitive code paths.
 
 ## Goals
 
-- Keep Rust-first API design (`Ref`, `MutRef`, `Slice`, `Option`, `Result`, etc.).
-- Keep strict typed boundaries in app code by default.
-- Make performance parity work measurable and enforceable.
+- Keep Rust-first APIs and typed native surfaces.
+- Enforce strict app-boundary rules by default.
+- Make fallback usage explicit and measurable.
 
-## Selection
+## Select metal contract
 
 ```bash
 -D reflaxe_rust_profile=metal
@@ -18,20 +18,22 @@ No profile aliases are supported.
 
 ## Boundary policy
 
-In `metal`, strict app boundary mode is enabled by default (`reflaxe_rust_strict`).
+In `metal`, strict app boundary mode is enabled by default (`reflaxe_rust_strict`):
 
-- Raw app-side `untyped __rust__(...)` is rejected.
-- Framework-owned typed façades remain allowed.
-- Low-level typed façade for controlled escapes:
+- raw app-side `untyped __rust__(...)` is rejected,
+- typed framework-owned facades remain allowed,
+- controlled typed escapes are available via:
   - `rust.metal.Code.expr(...)`
   - `rust.metal.Code.stmt(...)`
 
-## Portable Metal Islands (`@:rustMetal`)
+## Metal lanes in portable projects
 
-You can enforce metal-clean checks in selected modules while keeping project profile `portable`:
+Portable projects can still lock specific modules to metal-clean rules with lane metadata.
+
+Canonical lane metadata:
 
 ```haxe
-@:rustMetal
+@:haxeMetal
 class CriticalPath {
   public static function run(v:Int):Int {
     return v + 1;
@@ -39,93 +41,77 @@ class CriticalPath {
 }
 ```
 
-Behavior in `portable`:
+Compatibility alias:
 
-- `@:rustMetal` modules are treated as strict metal islands.
-- Violations are hard errors (dynamic/reflection/raw fallback blockers).
-- This enables incremental migration before a full profile switch to `metal`.
+- `@:rustMetal` is accepted as an alias.
+- Prefer `@:haxeMetal` in new code.
+
+Behavior in portable:
+
+- tagged modules are treated as strict metal islands,
+- dynamic/reflection/raw-fallback blockers error immediately.
 
 ## Metal clean vs fallback
 
-- **Default (metal clean):** contract violations are errors.
-- **Fallback mode:** add `-D rust_metal_allow_fallback` to downgrade contract violations to warnings.
-- Fallback diagnostics are emitted once per compile with an aggregate summary:
-  - total `ERaw` fallback count,
-  - affected module count,
-  - top modules by fallback count.
+- default (`metal` clean): violations are compile errors.
+- fallback mode: `-D rust_metal_allow_fallback` downgrades violations to warnings.
 
-Use fallback only as a migration tool while removing non-metal-clean boundaries.
+Fallback diagnostics are aggregated once per compile with:
 
-### Viability summary (milestone 22.1 baseline)
+- total `ERaw` fallback count,
+- affected module count,
+- top modules by fallback count.
 
-For migration planning, metal can emit an aggregate viability signal:
+## Viability summary and artifacts
+
+Warning summary:
 
 ```bash
 -D rust_metal_viability_warn
 ```
 
-This prints one summary warning with:
-
-- overall viability score (0-100),
-- module count and metal-ready module count,
-- blocker count,
-- top fallback-risk modules and global policy blockers.
-
-To emit deterministic viability artifacts in the generated crate root, add:
+Deterministic viability artifacts:
 
 ```bash
 -D rust_metal_viability_report
 ```
 
-This writes:
+Outputs:
 
-- `metal_report.json` (machine-readable snapshot),
-- `metal_report.md` (human-readable summary).
+- `metal_report.json`
+- `metal_report.md`
 
-Both reports reuse the same typed snapshot as warning output and include grouped
-**issue classes** (for example `dynamic_boundary`, `raw_codegen_fallback`) so
-cleanup can be tracked as actionable work buckets.
+## Contract/runtime reports (family tooling)
 
-Current contract checks include:
+To emit deterministic contract/runtime planning artifacts:
 
-- reflection/runtime-introspection modules (`Reflect`, `Type`, `haxe.rtti.*`),
-- dynamic map semantics via `haxe.DynamicAccess`,
-- dynamic-fallback opt-in defines (`rust_allow_unresolved_monomorph_dynamic`, `rust_allow_unmapped_coretype_dynamic`),
-- nullable-string override (`rust_string_nullable`) in metal-clean mode.
+```bash
+-D rust_contract_report
+-D rust_runtime_plan_report
+```
 
-## String and async defaults
+Outputs:
 
-- Default string representation is non-null Rust `String` (unless explicitly overridden).
-- `-D rust_async` is supported in metal.
+- `contract_report.json`, `contract_report.md`
+- `runtime_plan.json`, `runtime_plan.md`
 
-## Minimal Runtime Mode (`rust_no_hxrt`)
+## Minimal runtime mode (`rust_no_hxrt`)
 
-Metal can opt into a stricter runtime contract:
+`metal` can opt into a no-runtime contract:
 
 ```bash
 -D rust_no_hxrt
 ```
 
-What this does:
+Effects:
 
-- omits the bundled `hxrt` crate from generated output,
-- omits `hxrt` from generated `Cargo.toml` dependencies,
-- enforces a no-`hxrt` generated-code boundary (compile error on any `hxrt` reference).
+- skips bundled `hxrt` crate emission,
+- omits `hxrt` dependency in generated `Cargo.toml`,
+- enforces no `hxrt` references in generated code.
 
-Important constraints:
+Constraints:
 
-- requires `-D reflaxe_rust_profile=metal`,
-- cannot be combined with `-D rust_string_nullable`,
-- cannot be combined with `-D rust_async`,
-- cannot be combined with `rust_hxrt_*` feature-selection defines.
-
-Use this mode for Rust-first subsets that intentionally avoid portable runtime semantics.
-
-## Performance objective
-
-`metal` is the profile where parity vs pure Rust is tracked most aggressively:
-
-- directional steady-state target around `<= 1.05x` where feasible,
-- ongoing effort to shrink runtime overhead and unnecessary fallback usage.
-
-See [HXRT overhead benchmarks](perf-hxrt-overhead.md).
+- requires `metal`,
+- incompatible with `rust_string_nullable`,
+- incompatible with `rust_async`,
+- incompatible with `rust_hxrt_*` feature-selection defines.

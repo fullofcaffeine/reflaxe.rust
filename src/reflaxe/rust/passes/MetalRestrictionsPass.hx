@@ -15,7 +15,7 @@ import reflaxe.rust.ast.RustAST.RustFile;
 	What
 	- Enforces no-opinionated baseline contracts that are safe to apply immediately:
 	  - keeps track of raw `ERaw` expression usage as a policy signal.
-	  - hard-errors in strict metal mode or when a portable module is tagged with `@:rustMetal`.
+	  - hard-errors in strict metal mode or when a portable module is tagged with `@:haxeMetal`.
 
 	How
 	- Walks the file and counts `ERaw(...)` expression nodes.
@@ -68,7 +68,7 @@ class MetalRestrictionsPass implements RustPass {
 				+ "`: generated output still contains "
 				+ rawExprCount
 				+ " raw Rust expression node(s) (`ERaw`). "
-				+ "Add typed lowering for this module before using `@:rustMetal`.",
+				+ "Add typed lowering for this module before using `@:haxeMetal`.",
 				Context.currentPos());
 			#end
 		}

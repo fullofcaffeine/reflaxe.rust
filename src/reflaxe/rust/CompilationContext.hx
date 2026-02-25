@@ -159,7 +159,7 @@ class CompilationContext {
 
 		How
 		- `RustCompiler` runs `ProfileContractAnalyzer` once and stores diagnostics here.
-		- Output-stage report emitters read this typed snapshot for `profile_contract.*`.
+		- Output-stage report emitters read this typed snapshot for `contract_report.*`.
 	**/
 	public function setProfileContractDiagnostics(diagnostics:ProfileContractDiagnostics):Void {
 		profileContractDiagnostics = diagnostics;
