@@ -4730,13 +4730,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				case _:
 			}
 
+			var emittedStmt:Null<RustStmt> = null;
 			if (!handled) {
-				stmts.push(compileStmt(e));
+				emittedStmt = compileStmt(e);
+				stmts.push(emittedStmt);
 			}
 
 			// Avoid emitting Rust code that is statically unreachable (and triggers `unreachable_code` warnings).
-			// Haxe may type-check expressions after `throw`/`return` even when they can never run.
-			if (exprAlwaysDiverges(e))
+			//
+			// Why both checks:
+			// - `exprAlwaysDiverges(e)` catches typed Haxe diverging forms (`throw/return/break/continue`).
+			// - `rustStmtAlwaysDiverges(...)` catches divergence that only becomes obvious after lowering
+			//   (for example `if/else` where both branches lower to `hxrt::exception::throw(...)`).
+			//
+			// This keeps explicit-return lambdas/functions warning-free without requiring source-style
+			// workarounds (implicit returns).
+			if ((emittedStmt != null && rustStmtAlwaysDiverges(emittedStmt)) || exprAlwaysDiverges(e))
 				break;
 		}
 
@@ -4765,14 +4774,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case TContinue: true;
 			case _: false;
 		}
-	}
-
-	function hasTopLevelDivergingStmt(exprs:Array<TypedExpr>):Bool {
-		for (e in exprs) {
-			if (exprAlwaysDiverges(e))
-				return true;
-		}
-		return false;
 	}
 
 	/**
@@ -5184,13 +5185,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						switch (unwrappedRet.expr) {
 							case TBlock(exprs): {
 									var retBlock = compileBlock(exprs, true, currentFunctionReturn);
+									var retBlockExpr = EBlock(retBlock);
 									// Avoid `return { ... return x; }` shapes that trigger Rust
-									// `unreachable_code` warnings. If the returned block already contains
-									// a top-level diverging statement (or the block tail itself diverges),
-									// emit the block directly.
-									if (hasTopLevelDivergingStmt(exprs)
-										|| (retBlock.tail != null && rustExprAlwaysDiverges(retBlock.tail))) {
-										RExpr(EBlock(retBlock), false);
+									// `unreachable_code` warnings.
+									//
+									// If the lowered return block already diverges (`!`), emit it directly
+									// instead of wrapping it in `return ...`.
+									if (rustExprAlwaysDiverges(retBlockExpr)) {
+										RExpr(retBlockExpr, false);
 									} else if (retBlock.tail != null) {
 										// Normalize `return { s1; ...; tail; }` to `{ s1; ...; return tail; }`.
 										// This keeps explicit-return lambdas warning-free while preserving
@@ -5200,7 +5202,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 										RExpr(EBlock({stmts: stmts, tail: null}), false);
 									} else {
 										// Fallback: unit-like returned block.
-										RReturn(EBlock(retBlock));
+										RReturn(retBlockExpr);
 									}
 								}
 							case _: {

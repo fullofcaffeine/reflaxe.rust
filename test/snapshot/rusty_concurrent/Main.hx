@@ -37,7 +37,7 @@ class Main {
 		var before = RwLocks.read(lock);
 		var after = RwLocks.update(lock, counter -> {
 			counter.value = counter.value + 4;
-			counter;
+			return counter;
 		});
 		var finalValue = RwLocks.read(lock);
 

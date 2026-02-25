@@ -23,6 +23,8 @@
     "test:package-smoke": "bash scripts/ci/package-smoke.sh",
     "test:template-smoke": "bash scripts/ci/template-smoke.sh",
     "test:windows-smoke": "bash scripts/ci/windows-smoke.sh",
+    "test:metal-fallback": "bash scripts/ci/check-metal-fallback-counts.sh",
+    "test:metal-fallback:update-baseline": "bash scripts/ci/check-metal-fallback-counts.sh --update-baseline",
     "test:perf:hxrt": "bash scripts/ci/perf-hxrt-overhead.sh",
     "test:perf:hxrt:update-baseline": "bash scripts/ci/perf-hxrt-overhead.sh --update-baseline",
     "test:all": "bash scripts/ci/harness.sh",

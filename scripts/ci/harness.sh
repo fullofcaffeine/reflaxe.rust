@@ -116,6 +116,10 @@ echo "[harness] metal boundary policy"
 bash scripts/ci/check-metal-policy.sh
 intermediate_cleanup "metal-policy"
 
+echo "[harness] metal fallback count guard"
+bash scripts/ci/check-metal-fallback-counts.sh
+intermediate_cleanup "metal-fallback-count-guard"
+
 echo "[harness] upstream stdlib sweep"
 bash test/run-upstream-stdlib-sweep.sh
 intermediate_cleanup "upstream-stdlib-sweep"

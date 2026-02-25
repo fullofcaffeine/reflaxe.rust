@@ -190,6 +190,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - Refresh baseline intentionally: `bash scripts/ci/perf-hxrt-overhead.sh --update-baseline`
   - Perf harness gotcha: metal benchmark cases use `-D rust_metal_allow_fallback` by design so trend tracking remains available while metal-clean lowering is still in progress.
     Keep the dedicated `hot_loop_no_hxrt` case strict (`-D rust_no_hxrt` without fallback) as the no-runtime parity signal.
+- Run metal fallback-count guard locally: `bash scripts/ci/check-metal-fallback-counts.sh`
+  - Refresh fallback baseline intentionally: `bash scripts/ci/check-metal-fallback-counts.sh --update-baseline`
 - Update a snapshot’s golden output (after review): `bash test/run-snapshots.sh --case <name> --update`
 - Run the full CI-style harness locally (snapshots + all examples): `npm run test:all` (alias for `bash scripts/ci/harness.sh`)
   - Change-gate rule: for any non-trivial compiler/runtime/std/example code change, run the full harness (`npm run check:harness`)
