@@ -22,13 +22,13 @@
       }
     },
     "chat_loopback_metal": {
-      "rawNodes": 196,
-      "moduleCount": 34,
+      "rawNodes": 167,
+      "moduleCount": 32,
       "topModules": {
-        "app.ChatUiApp": 38,
+        "app.ChatUiApp": 32,
         "profile.RemoteRuntime": 21,
-        "sys.net.Socket": 19,
-        "Main": 18
+        "Main": 18,
+        "scenario.ChatServer": 11
       }
     }
   }

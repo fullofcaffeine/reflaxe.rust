@@ -786,6 +786,9 @@ run_warning_case_absent "examples/chat_loopback" "compile.metal.hxml" 'Metal fal
 run_warning_case_absent "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'rust\.test\.Assert' \
 	'1' 'metal fallback top-modules excludes rust.test.Assert after typed assert native boundary migration'
+run_warning_case_absent "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'app\.ChatUiApp:(3[3-9]|[4-9][0-9]|[1-9][0-9]{2,})' \
+	'1' 'metal fallback top-modules keeps app.ChatUiApp raw fallback below 33 after typed Option parsing boundary migration'
 run_warning_case_absent "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'Sys:' \
 	'1' 'metal fallback top-modules excludes Sys after typed runtime wrapper migration'

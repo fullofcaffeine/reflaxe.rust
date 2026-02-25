@@ -5,6 +5,7 @@ import domain.ChatEvent;
 import haxe.ds.IntMap;
 import haxe.ds.StringMap;
 import profile.ChatRuntime;
+import rust.Option;
 import rust.tui.Constraint;
 import rust.tui.Event;
 import rust.tui.FxKind;
@@ -14,14 +15,62 @@ import rust.tui.LayoutDir;
 import rust.tui.StyleToken;
 import rust.tui.UiNode;
 
-private typedef ParsedHistoryEntry = {
-	var id:Int;
-	var user:String;
-	var channel:String;
-	var body:String;
-	var fingerprint:Int;
-	var origin:String;
-};
+/**
+	ParsedHistoryEntry
+
+	Why
+	- History parsing is a hot path in the chat UI and should stay strongly typed in both portable and
+	  metal profiles.
+	- Anonymous-structure + `Null` helpers tend to introduce dynamic/fallback lowering noise.
+
+	What
+	- Concrete typed payload for one parsed timeline entry.
+
+	How
+	- Callers obtain this through `Option<ParsedHistoryEntry>` from `parseHistoryEntry(...)`.
+**/
+private class ParsedHistoryEntry {
+	public final id:Int;
+	public final user:String;
+	public final channel:String;
+	public final body:String;
+	public final fingerprint:Int;
+	public final origin:String;
+
+	public function new(id:Int, user:String, channel:String, body:String, fingerprint:Int, origin:String) {
+		this.id = id;
+		this.user = user;
+		this.channel = channel;
+		this.body = body;
+		this.fingerprint = fingerprint;
+		this.origin = origin;
+	}
+}
+
+/**
+	ParsedHistoryTail
+
+	Why
+	- `parseHistoryTail(...)` needs to return multiple typed values without crossing an untyped
+	  anonymous-object boundary.
+
+	What
+	- Typed triple (`body`, `fingerprint`, `origin`) extracted from the tail segment of one history line.
+
+	How
+	- Returned as `Option<ParsedHistoryTail>` to keep failure states explicit (`None`) and typed.
+**/
+private class ParsedHistoryTail {
+	public final body:String;
+	public final fingerprint:Int;
+	public final origin:String;
+
+	public function new(body:String, fingerprint:Int, origin:String) {
+		this.body = body;
+		this.fingerprint = fingerprint;
+		this.origin = origin;
+	}
+}
 
 /**
 	ChatUiApp
@@ -609,69 +658,67 @@ class ChatUiApp {
 				continue;
 			}
 
-			var parsed = parseHistoryEntry(entry);
-			if (parsed != null) {
-				ensureOperator(parsed.user);
-				markUserOnline(parsed.user);
-				if (!seenMessageIds.exists(parsed.id)) {
-					seenMessageIds.set(parsed.id, true);
-					incrementCommandCount(parsed.channel, 1);
-					imported = imported + 1;
-					addTimeline(chatLead() + " " + parsed.id + " [" + parsed.channel + "] " + parsed.user + " ▸ " + parsed.body + "  [" + parsed.origin
-						+ ":" + parsed.fingerprint + "]",
-						parsed.channel);
-				}
-			} else {
-				var userFromHistory = historyEntryUser(entry);
-				if (userFromHistory != null) {
-					ensureOperator(userFromHistory);
-				}
+			switch (parseHistoryEntry(entry)) {
+				case Some(entryData):
+					ensureOperator(entryData.user);
+					markUserOnline(entryData.user);
+					if (!seenMessageIds.exists(entryData.id)) {
+						seenMessageIds.set(entryData.id, true);
+						incrementCommandCount(entryData.channel, 1);
+						imported = imported + 1;
+						addTimeline(chatLead() + " " + entryData.id + " [" + entryData.channel + "] " + entryData.user + " ▸ " + entryData.body + "  ["
+							+ entryData.origin + ":" + entryData.fingerprint + "]",
+							entryData.channel);
+					}
+				case None:
+					switch (historyEntryUser(entry)) {
+						case Some(userFromHistory):
+							ensureOperator(userFromHistory);
+						case None:
+					}
 			}
 		}
 		syncPresenceRoster(presenceUsers);
 		return imported;
 	}
 
-	function parseHistoryEntry(entry:String):Null<ParsedHistoryEntry> {
+	function parseHistoryEntry(entry:String):Option<ParsedHistoryEntry> {
 		var firstSep = entry.indexOf(":");
 		if (firstSep <= 0) {
-			return null;
+			return None;
 		}
 		var secondSep = entry.indexOf(":", firstSep + 1);
 		if (secondSep == -1) {
-			return null;
+			return None;
 		}
 		var thirdSep = entry.indexOf(":", secondSep + 1);
 		if (thirdSep == -1) {
-			return null;
+			return None;
 		}
 
-		var id = parseIntToken(entry.substr(0, firstSep));
-		if (id == null) {
-			return null;
-		}
-		var idValue:Int = id;
+		var idValue = switch (parseIntToken(entry.substr(0, firstSep))) {
+			case Some(parsedId):
+				parsedId;
+			case None:
+				return None;
+		};
 		var user = StringTools.trim(entry.substr(firstSep + 1, secondSep - firstSep - 1));
 		if (user == "") {
-			return null;
+			return None;
 		}
 		var channel = StringTools.trim(entry.substr(secondSep + 1, thirdSep - secondSep - 1));
 		if (channel == "") {
-			return null;
+			return None;
 		}
 
-		var tail = parseHistoryTail(entry, thirdSep + 1);
-		if (tail == null) {
-			return null;
-		}
-		return {
-			id: idValue,
-			user: user,
-			channel: channel,
-			body: tail.body,
-			fingerprint: tail.fingerprint,
-			origin: tail.origin
+		var tail = switch (parseHistoryTail(entry, thirdSep + 1)) {
+			case Some(parsedTail):
+				parsedTail;
+			case None:
+				return None;
 		};
+
+		return Some(new ParsedHistoryEntry(idValue, user, channel, tail.body, tail.fingerprint, tail.origin));
 	}
 
 	function channelIndex(channel:String):Int {
@@ -702,7 +749,7 @@ class ChatUiApp {
 		return commandDensityPercent();
 	}
 
-	function parseHistoryTail(entry:String, bodyStart:Int):Null<{body:String, fingerprint:Int, origin:String}> {
+	function parseHistoryTail(entry:String, bodyStart:Int):Option<ParsedHistoryTail> {
 		var cursor = entry.length - 1;
 		while (cursor > bodyStart) {
 			var fpEnd = lastIndexOfCode(entry, 58, cursor);
@@ -715,20 +762,17 @@ class ChatUiApp {
 				continue;
 			}
 
-			var fingerprintToken = parseIntToken(entry.substr(fpStart + 1, fpEnd - fpStart - 1));
-			if (fingerprintToken == null) {
-				cursor = fpEnd - 1;
-				continue;
-			}
-			var fingerprint:Int = fingerprintToken;
-
-			return {
-				body: entry.substr(bodyStart, fpStart - bodyStart),
-				fingerprint: fingerprint,
-				origin: entry.substr(fpEnd + 1)
+			var fingerprint = switch (parseIntToken(entry.substr(fpStart + 1, fpEnd - fpStart - 1))) {
+				case Some(token):
+					token;
+				case None:
+					cursor = fpEnd - 1;
+					continue;
 			};
+
+			return Some(new ParsedHistoryTail(entry.substr(bodyStart, fpStart - bodyStart), fingerprint, entry.substr(fpEnd + 1)));
 		}
-		return null;
+		return None;
 	}
 
 	function lastIndexOfCode(value:String, code:Int, startIndex:Int):Int {
@@ -745,10 +789,10 @@ class ChatUiApp {
 		return -1;
 	}
 
-	function parseIntToken(value:String):Null<Int> {
+	function parseIntToken(value:String):Option<Int> {
 		var token = StringTools.trim(value);
 		if (token.length == 0) {
-			return null;
+			return None;
 		}
 
 		var sign = 1;
@@ -758,19 +802,19 @@ class ChatUiApp {
 			index = 1;
 		}
 		if (index >= token.length) {
-			return null;
+			return None;
 		}
 
 		var out = 0;
 		while (index < token.length) {
 			var code = StringTools.fastCodeAt(token, index);
 			if (code < 48 || code > 57) {
-				return null;
+				return None;
 			}
 			out = out * 10 + (code - 48);
 			index = index + 1;
 		}
-		return sign * out;
+		return Some(sign * out);
 	}
 
 	function ensureOperator(user:String):Void {
@@ -857,19 +901,19 @@ class ChatUiApp {
 		return DISCOVERY_MOODS[hash % DISCOVERY_MOODS.length];
 	}
 
-	function historyEntryUser(entry:String):Null<String> {
+	function historyEntryUser(entry:String):Option<String> {
 		var firstSep = entry.indexOf(":");
 		if (firstSep <= 0) {
-			return null;
+			return None;
 		}
 		var secondSep = entry.indexOf(":", firstSep + 1);
 		if (secondSep == -1) {
-			return null;
+			return None;
 		}
 		var user = StringTools.trim(entry.substr(firstSep + 1, secondSep - firstSep - 1));
 		if (user == "") {
-			return null;
+			return None;
 		}
-		return user;
+		return Some(user);
 	}
 }
