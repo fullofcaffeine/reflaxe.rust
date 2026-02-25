@@ -13,8 +13,8 @@
 //! How
 //! - Input parameters use trait-based typing where portable (`HxString`) and metal (`String`)
 //!   call sites differ.
-//! - Return values use concrete, non-ambiguous forms (for example `String`) where generated
-//!   wrappers already perform profile-specific conversion.
+//! - Return values keep nullable boundaries explicit where required by Haxe contracts
+//!   (for example `get_env -> Option<String>` for `Sys.getEnv : Null<String>`).
 //! - `stdin_read_bytes` and std-stream byte writes operate directly on `hxrt::bytes::Bytes`
 //!   via typed runtime buffers.
 
@@ -47,13 +47,11 @@ where
     Array::from_vec(std::env::args().skip(1).map(S::from).collect())
 }
 
-pub fn get_env<N>(name: N) -> String
+pub fn get_env<N>(name: N) -> Option<String>
 where
     N: AsRef<str>,
 {
-    std::env::var(name.as_ref())
-        .ok()
-        .unwrap_or_else(String::new)
+    std::env::var(name.as_ref()).ok()
 }
 
 pub trait IntoEnvValue {

@@ -92,6 +92,9 @@ private typedef ProfileContractReportSnapshot = {
 	var noHxrt:Bool;
 	var asyncEnabled:Bool;
 	var nullableStrings:Bool;
+	var portableNativeImportStrict:Bool;
+	var portableNativeImportsDetected:Bool;
+	var nativeImportHits:Array<String>;
 	var usedModuleCount:Int;
 	var warnings:Array<String>;
 	var errors:Array<String>;
@@ -416,13 +419,102 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function analyzeProfileContracts():ProfileContractDiagnostics {
+		var nativeImportHits = collectPortableNativeImportHits();
 		var diagnostics = ProfileContractAnalyzer.analyze(profile, snapshotUsedModulePaths(), Context.defined("rust_metal_allow_fallback"),
 			Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"),
-			Context.defined("rust_string_nullable"));
+			Context.defined("rust_string_nullable"), nativeImportHits, Context.defined("rust_portable_native_import_strict"));
 		if (currentCompilationContext != null) {
 			currentCompilationContext.setProfileContractDiagnostics(diagnostics);
 		}
 		return diagnostics;
+	}
+
+	/**
+		Collects user-authored native target imports used by portable-contract diagnostics.
+
+		Why
+		- Portable policy should warn/error when application code explicitly imports target-specific
+		  module surfaces (for example `import rust.*` or `import cpp.*`).
+		- Backend/framework internals can legitimately reference native modules; those must not trigger
+		  user-facing portability warnings.
+
+		How
+		- Scans non-framework source files discovered in `Context.getAllModuleTypes()`.
+		- Parses only explicit `import` / `using` statements.
+		- Returns deterministic module-path hits (sorted + unique).
+	**/
+	function collectPortableNativeImportHits():Array<String> {
+		var out:Array<String> = [];
+		var seen:Map<String, Bool> = [];
+		var scannedFiles:Map<String, Bool> = [];
+		for (mt in Context.getAllModuleTypes()) {
+			var file = moduleSourceFile(mt);
+			if (file == null || file.length == 0)
+				continue;
+			if (scannedFiles.exists(file))
+				continue;
+			scannedFiles.set(file, true);
+			if (isFrameworkStdFile(file))
+				continue;
+			if (!FileSystem.exists(file))
+				continue;
+			var source = File.getContent(file);
+			for (modulePath in collectNativeImportsFromSource(source)) {
+				if (!seen.exists(modulePath)) {
+					seen.set(modulePath, true);
+					out.push(modulePath);
+				}
+			}
+		}
+		out.sort(compareStrings);
+		return out;
+	}
+
+	function collectNativeImportsFromSource(source:String):Array<String> {
+		var out:Array<String> = [];
+		if (source == null || source.length == 0)
+			return out;
+		var lines = source.split("\n");
+		var importPattern = ~/^\s*(import|using)\s+([A-Za-z0-9_.]+)\s*;/;
+		for (line in lines) {
+			if (!importPattern.match(line))
+				continue;
+			var modulePath = importPattern.matched(2);
+			if (modulePath == null || modulePath.length == 0)
+				continue;
+			if (!isNativeTargetImportPath(modulePath))
+				continue;
+			if (!out.contains(modulePath))
+				out.push(modulePath);
+		}
+		out.sort(compareStrings);
+		return out;
+	}
+
+	inline function isNativeTargetImportPath(modulePath:String):Bool {
+		return StringTools.startsWith(modulePath, "rust.")
+			|| StringTools.startsWith(modulePath, "cpp.")
+			|| StringTools.startsWith(modulePath, "cs.")
+			|| StringTools.startsWith(modulePath, "java.")
+			|| StringTools.startsWith(modulePath, "jvm.")
+			|| StringTools.startsWith(modulePath, "python.")
+			|| StringTools.startsWith(modulePath, "php.")
+			|| StringTools.startsWith(modulePath, "lua.")
+			|| StringTools.startsWith(modulePath, "js.")
+			|| StringTools.startsWith(modulePath, "flash.")
+			|| StringTools.startsWith(modulePath, "hl.")
+			|| StringTools.startsWith(modulePath, "neko.");
+	}
+
+	function moduleSourceFile(mt:ModuleType):String {
+		var pos = switch (mt) {
+			case TClassDecl(c): c.get().pos;
+			case TEnumDecl(e): e.get().pos;
+			case TTypeDecl(t): t.get().pos;
+			case TAbstract(a): a.get().pos;
+		}
+		var info = Context.getPosInfos(pos);
+		return info != null && info.file != null ? info.file : "";
 	}
 
 	/**
@@ -945,9 +1037,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		warnings.sort(compareStrings);
 		var errors = diagnostics.errors.copy();
 		errors.sort(compareStrings);
+		var nativeImportHits = diagnostics.nativeImportHits.copy();
+		nativeImportHits.sort(compareStrings);
 
 		return {
-			schemaVersion: 2,
+			schemaVersion: 3,
 			backendId: "reflaxe.rust",
 			contract: profile == Metal ? "metal" : "portable",
 			strictBoundary: Context.defined("reflaxe_rust_strict"),
@@ -957,6 +1051,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			noHxrt: noHxrtEnabled(),
 			asyncEnabled: asyncEnabled(),
 			nullableStrings: useNullableStringRepresentation(),
+			portableNativeImportStrict: Context.defined("rust_portable_native_import_strict"),
+			portableNativeImportsDetected: nativeImportHits.length > 0,
+			nativeImportHits: nativeImportHits,
 			usedModuleCount: snapshotUsedModulePaths().length,
 			warnings: warnings,
 			errors: errors
@@ -976,6 +1073,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		lines.push('\t"noHxrt": ' + boolString(snapshot.noHxrt) + ",");
 		lines.push('\t"asyncEnabled": ' + boolString(snapshot.asyncEnabled) + ",");
 		lines.push('\t"nullableStrings": ' + boolString(snapshot.nullableStrings) + ",");
+		lines.push('\t"portableNativeImportStrict": ' + boolString(snapshot.portableNativeImportStrict) + ",");
+		lines.push('\t"portableNativeImportsDetected": ' + boolString(snapshot.portableNativeImportsDetected) + ",");
+		lines.push('\t"nativeImportHits": [');
+		appendJsonStringArray(lines, snapshot.nativeImportHits, 2);
+		lines.push("\t],");
 		lines.push('\t"usedModuleCount": ' + snapshot.usedModuleCount + ",");
 		lines.push('\t"warnings": [');
 		appendJsonStringArray(lines, snapshot.warnings, 2);
@@ -1001,7 +1103,17 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		lines.push("- no hxrt: `" + boolLabel(snapshot.noHxrt) + "`");
 		lines.push("- async enabled: `" + boolLabel(snapshot.asyncEnabled) + "`");
 		lines.push("- nullable strings: `" + boolLabel(snapshot.nullableStrings) + "`");
+		lines.push("- portable native import strict: `" + boolLabel(snapshot.portableNativeImportStrict) + "`");
+		lines.push("- portable native imports detected: `" + boolLabel(snapshot.portableNativeImportsDetected) + "`");
 		lines.push("- used module count: `" + snapshot.usedModuleCount + "`");
+		lines.push("");
+		lines.push("## Native Import Hits");
+		if (snapshot.nativeImportHits.length == 0) {
+			lines.push("- none");
+		} else {
+			for (hit in snapshot.nativeImportHits)
+				lines.push("- " + hit);
+		}
 		lines.push("");
 		lines.push("## Warnings");
 		if (snapshot.warnings.length == 0) {

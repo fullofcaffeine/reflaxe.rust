@@ -24,20 +24,17 @@ class Sys {
 	 * Return the value of an environment variable.
 	 *
 	 * Why:
-	 * - Many CLI apps use environment variables for configuration.
+	 * - Upstream Haxe contract for `Sys.getEnv` is nullable (`Null<String>`): missing keys must
+	 *   round-trip as `null`, not empty strings.
 	 *
 	 * What:
-	 * - Returns the variable value when present.
+	 * - Returns the variable value when present, otherwise `null`.
 	 *
 	 * How:
-	 * - Uses Rust `std::env::var`.
-	 *
-	 * Current limitation:
-	 * - Haxe `Sys.getEnv` can return `null` when the variable is missing.
-	 *   This backend currently represents Haxe `String` as a non-null Rust `String`,
-	 *   so we return `""` (empty string) when the variable is missing.
+	 * - Delegates to typed runtime binding `hxrt::sys::get_env`, which returns `Option<String>`
+	 *   at the native boundary and maps back to Haxe nullability.
 	 */
-	public static function getEnv(s:String):String {
+	public static function getEnv(s:String):Null<String> {
 		return NativeSys.getEnv(s);
 	}
 

@@ -18,19 +18,24 @@ import reflaxe.rust.RustProfile;
 	  - Dynamic container boundary usage (`haxe.DynamicAccess`).
 	  - Dynamic-fallback opt-ins that weaken rust-first/metal guarantees.
 	  - Nullable-string override in metal (`rust_string_nullable`).
+	  - Native target-surface imports in portable contract (warning by default, error in strict mode).
 
 	How
 	- Accepts:
 	  - active profile
 	  - used module paths (from type-usage analysis)
+	  - user-authored native import hits
 	  - policy toggles (`metalAllowFallback`, dynamic fallback defines, nullable-string override)
-	- Returns a typed diagnostic bundle (`warnings`, `errors`) so callers decide presentation.
+	- Returns a typed diagnostic bundle (`warnings`, `errors`, native import summary) so callers
+	  decide presentation and deterministic report emission.
 **/
 class ProfileContractAnalyzer {
 	public static function analyze(profile:RustProfile, modulePaths:Array<String>, metalAllowFallback:Bool, allowUnresolvedMonomorphDynamic:Bool,
-			allowUnmappedCoreTypeDynamic:Bool, nullableStrings:Bool):ProfileContractDiagnostics {
+			allowUnmappedCoreTypeDynamic:Bool, nullableStrings:Bool, nativeImportHits:Array<String>,
+			portableNativeImportStrict:Bool):ProfileContractDiagnostics {
 		var warnings:Array<String> = [];
 		var errors:Array<String> = [];
+		var normalizedNativeImportHits = normalizeSortedUnique(nativeImportHits);
 
 		inline function addWarning(msg:String):Void {
 			if (!warnings.contains(msg))
@@ -108,7 +113,34 @@ class ProfileContractAnalyzer {
 			}
 		}
 
-		return {warnings: warnings, errors: errors};
+		if (profile == Portable && normalizedNativeImportHits.length > 0) {
+			var msg = "portable contract imported native target modules: " + normalizedNativeImportHits.join(", ")
+				+ ". This build is non-portable across targets.";
+			if (portableNativeImportStrict)
+				addError(msg + " (strict mode enabled via -D rust_portable_native_import_strict)")
+			else
+				addWarning(msg + " (set -D rust_portable_native_import_strict to enforce as an error)");
+		}
+
+		return {
+			warnings: warnings,
+			errors: errors,
+			nativeImportHits: normalizedNativeImportHits
+		};
+	}
+
+	static function normalizeSortedUnique(values:Array<String>):Array<String> {
+		var out:Array<String> = [];
+		if (values == null)
+			return out;
+		for (value in values) {
+			if (value == null || value.length == 0)
+				continue;
+			if (!out.contains(value))
+				out.push(value);
+		}
+		out.sort((a, b) -> a < b ? -1 : (a > b ? 1 : 0));
+		return out;
 	}
 
 	static function collectReflectionModules(modulePaths:Array<String>):Array<String> {
@@ -143,4 +175,5 @@ class ProfileContractAnalyzer {
 typedef ProfileContractDiagnostics = {
 	var warnings:Array<String>;
 	var errors:Array<String>;
+	var nativeImportHits:Array<String>;
 };

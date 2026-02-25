@@ -129,6 +129,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Haxe desugaring/inlining introduces `_g*` temporaries; for `Array<T>` (mapped to `Vec<T>`), avoid accidental moves by cloning `_g* = <local array>` initializers/assignments.
 - Use `Context.getAllModuleTypes()` (not `Context.getTypes()`) to enumerate generated module types for dependency closure / RTTI maps.
 - Stdlib emission model (important for “full stdlib parity” work):
+  - Parity scope rule: “100% stdlib parity” refers to upstream cross-target std APIs (`Std`, `haxe.*`, `sys.*`, etc.).
+    Target-specific namespaces (`cpp.*`, `js.*`, `lua.*`, `php.*`, `python.*`, `hl.*`, `neko.*`, and backend-native `rust.*`) are out of parity scope.
   - The compiler only emits Rust modules for **user project files** and this repo’s `std/` overrides (`isFrameworkStdFile`).
   - Upstream Haxe std files (the default `.../haxe/versions/<ver>/std/`) are *typed* but **not emitted** by default.
   - Consequence: any std API type that appears in emitted signatures (e.g. `sys.io.FileSeek`) must exist under `std/`
@@ -141,6 +143,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
     symlink aliases (for example `/var/...` vs `/private/var/...`) can make packaged std overrides look like non-framework files and skip emission.
   - Validation gotcha: `.cross.hx` std override behavior must be validated through a real `-lib reflaxe.rust` install path (`haxelib newrepo` + `haxelib install <zip>`).
     A raw `-cp <pkg>/src` compile is not an equivalent packaging test and can resolve upstream std modules instead.
+  - Governance rule: keep `docs/stdlib-provenance-ledger.json` in sync with tracked `std/**/*.cross.hx` files and run boundary guards:
+    `npm run guard:upstream-stdlib-boundary` + `npm run guard:stdlib-ledger`.
 - `Std.isOfType` is implemented as a compiler intrinsic (exact-type check via `__hx_type_id`, plus compile-time subtype short-circuit).
 - String move semantics: many generated Rust functions take `String` by value; to preserve Haxe’s “strings are re-usable after calls” behavior, callsites currently clone String arguments based on the callee’s parameter types.
 - Nullable-string migration gotcha: a full switch to `hxrt::string::HxString` as the emitted Rust `String` representation touches broad stdlib/runtime surfaces (notably map key types, `toString` trait bridges, and hardcoded `String` paths).
@@ -162,6 +166,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Profiles:
   - Default is portable output.
   - Supported selector values are `-D reflaxe_rust_profile=portable|metal` (no aliases).
+  - Portable native-import policy: importing native target modules from portable app code emits warnings by default and is recorded in `contract_report.*`.
+    Use `-D rust_portable_native_import_strict` to escalate those warnings to errors.
   - Metal policy: `reflaxe_rust_profile=metal` auto-enables strict app-boundary mode (`reflaxe_rust_strict`) so raw app-side `__rust__` is rejected by default.
     Typed framework facades in `src/reflaxe/rust/macros` and `std/rust/metal` remain allowed.
   - Minimal-runtime policy: `-D rust_no_hxrt` is metal-only and must remain a hard contract.
@@ -183,6 +189,9 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 
 - Run snapshots locally: `bash test/run-snapshots.sh`
 - Run upstream stdlib sweep locally: `bash test/run-upstream-stdlib-sweep.sh` (or single-module: `--module haxe.Json`).
+- Run stdlib boundary/provenance guards locally:
+  - `npm run guard:upstream-stdlib-boundary`
+  - `npm run guard:stdlib-ledger`
 - Run Windows-safe smoke subset locally: `bash scripts/ci/windows-smoke.sh` (same subset used by the Windows CI job).
 - Run packaged-install smoke locally: `bash scripts/ci/package-smoke.sh` (build zip, install into local haxelib repo, compile, cargo build).
   - Regression coverage includes a symlinked working-directory compile pass to catch path-alias mismatches when classifying framework std files.

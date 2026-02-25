@@ -42,7 +42,7 @@ class CompilationContext {
 	var metalRawExprByModule:Map<String, Int>;
 	var metalRawExprTotal:Int;
 	var metalViabilitySnapshot:Null<MetalViabilitySnapshot>;
-	var profileContractDiagnostics:ProfileContractDiagnostics;
+	var profileContractDiagnostics:Null<ProfileContractDiagnostics>;
 
 	public var crateName(get, never):String;
 	public var profile(get, never):RustProfile;
@@ -61,7 +61,7 @@ class CompilationContext {
 		this.metalRawExprByModule = [];
 		this.metalRawExprTotal = 0;
 		this.metalViabilitySnapshot = null;
-		this.profileContractDiagnostics = {warnings: [], errors: []};
+		this.profileContractDiagnostics = null;
 	}
 
 	inline function get_crateName():String {
@@ -165,7 +165,7 @@ class CompilationContext {
 		profileContractDiagnostics = diagnostics;
 	}
 
-	public function getProfileContractDiagnostics():ProfileContractDiagnostics {
+	public function getProfileContractDiagnostics():Null<ProfileContractDiagnostics> {
 		return profileContractDiagnostics;
 	}
 }

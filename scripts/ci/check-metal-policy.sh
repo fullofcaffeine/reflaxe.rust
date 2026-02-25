@@ -318,7 +318,7 @@ run_contract_report_case() {
 		exit 1
 	fi
 
-	if ! match_regex '"schemaVersion":[[:space:]]*2' "$json_a"; then
+	if ! match_regex '"schemaVersion":[[:space:]]*3' "$json_a"; then
 		echo "[metal-policy] error: contract_report.json missing schemaVersion for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
@@ -368,6 +368,21 @@ run_contract_report_case() {
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
+	if ! match_regex '"portableNativeImportStrict":[[:space:]]*(true|false)' "$json_a"; then
+		echo "[metal-policy] error: contract_report.json missing portableNativeImportStrict for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '"portableNativeImportsDetected":[[:space:]]*(true|false)' "$json_a"; then
+		echo "[metal-policy] error: contract_report.json missing portableNativeImportsDetected for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '"nativeImportHits":[[:space:]]*\[' "$json_a"; then
+		echo "[metal-policy] error: contract_report.json missing nativeImportHits array for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
 	if ! match_regex '"warnings":[[:space:]]*\[' "$json_a"; then
 		echo "[metal-policy] error: contract_report.json missing warnings array for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
@@ -410,6 +425,21 @@ run_contract_report_case() {
 	fi
 	if ! match_regex "^- no hxrt: \`(yes|no)\`" "$md_a"; then
 		echo "[metal-policy] error: contract_report.md missing no-hxrt summary for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if ! match_regex "^- portable native import strict: \`(yes|no)\`" "$md_a"; then
+		echo "[metal-policy] error: contract_report.md missing portable-native-import-strict summary for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if ! match_regex "^- portable native imports detected: \`(yes|no)\`" "$md_a"; then
+		echo "[metal-policy] error: contract_report.md missing portable-native-imports-detected summary for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if ! match_regex '^## Native Import Hits' "$md_a"; then
+		echo "[metal-policy] error: contract_report.md missing native-import-hits section for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi
@@ -756,10 +786,14 @@ run_negative_case "test/negative/profile_removed_idiomatic" 'Unknown `-D reflaxe
 	'idiomatic profile selector removed'
 run_negative_case "test/negative/profile_removed_rusty" 'Unknown `-D reflaxe_rust_profile=rusty`\. Expected portable\|metal\.' \
 	'rusty profile selector removed'
+run_negative_case "test/negative/portable_native_import_strict" 'portable contract imported native target modules: rust\.Option' \
+	'portable native-target import strict mode rejects rust.* imports'
 run_negative_case "test/negative/send_sync_borrow_capture" 'Rust concurrency contract violation: sys\.thread\.Thread\.create\(job\) captures `borrowed` with borrowed type `rust\.Ref<T>`' \
 	'spawn closure captures borrow-only value under rust_send_sync_strict'
 run_warning_case "test/negative/metal_dynamic_access" "compile.fallback.hxml" 'Rust profile contract: metal profile forbids haxe\.DynamicAccess runtime map semantics' \
 	'1' 'haxe.DynamicAccess warning in explicit metal fallback mode'
+run_warning_case "test/negative/portable_native_import_strict" "compile.warn.hxml" 'Rust profile contract: portable contract imported native target modules: rust\.Option' \
+	'1' 'portable profile warns when app code imports target-specific module surface'
 run_warning_case "test/negative/metal_dynamic_access" "compile.viability.hxml" 'Metal viability: overall score [0-9]+/100, modules=[0-9]+, ready=[0-9]+, blockers=[0-9]+\.' \
 	'1' 'metal viability summary warning output'
 run_report_case "test/negative/metal_dynamic_access" "compile.viability.hxml" \

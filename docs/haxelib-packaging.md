@@ -37,6 +37,16 @@ Use `bash scripts/ci/package-smoke.sh` to validate the shipped artifact end-to-e
 Important: validate packaged behavior through `haxelib install` + `-lib reflaxe.rust`, not raw `-cp <pkg>/src`.
 Raw classpath-only tests are not equivalent for `.cross.hx` std override selection.
 
+## Stdlib provenance guards
+
+Packaging checks are complemented by stdlib governance guards:
+
+- `node scripts/ci/upstream-stdlib-boundary-check.js`
+  - enforces `vendor/haxe/**` remains untracked,
+  - restricts tracked std override file types under `std/`.
+- `node scripts/ci/stdlib-provenance-ledger-check.js`
+  - enforces `docs/stdlib-provenance-ledger.json` coverage for tracked `std/**/*.cross.hx` files.
+
 ## Backend-specific requirement
 
 The compiler resolves runtime assets relative to library root (`runtime/hxrt`) and bootstrap classpaths

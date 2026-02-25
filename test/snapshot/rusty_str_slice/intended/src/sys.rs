@@ -19,7 +19,7 @@ impl Sys {
         return hxrt::sys::args();
     }
 
-    pub fn get_env(s: String) -> String {
+    pub fn get_env(s: String) -> Option<String> {
         return hxrt::sys::get_env(s);
     }
 

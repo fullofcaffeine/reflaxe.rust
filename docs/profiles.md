@@ -68,6 +68,9 @@ Both metadata names enforce the same strict island checks in `portable`.
 
 - `-D rust_async` requires `-D reflaxe_rust_profile=metal`.
 - `-D rust_no_hxrt` requires `metal` and cannot be combined with `rust_async`.
+- Portable contract tracks native-target imports (`rust.*`, `cpp.*`, etc.) as portability signals:
+  - default: warning + contract-report marker (`nativeImportHits`),
+  - strict: `-D rust_portable_native_import_strict` turns those warnings into errors.
 
 ## Contract and runtime plan reports
 

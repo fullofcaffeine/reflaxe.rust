@@ -21,7 +21,7 @@ This page is a practical reference for the most relevant compiler defines.
 - `rust_deny_warnings`
   - Emit crate-level deny warnings for generated Rust.
 
-## Profiles and semantics
+## Contracts and semantics
 
 - `reflaxe_rust_profile=portable|metal`
   - Main profile switch.
@@ -40,6 +40,9 @@ This page is a practical reference for the most relevant compiler defines.
   - Debug define for string type diagnostics.
 - `rust_metal_allow_fallback`
   - In `metal`, downgrades contract violations (including `ERaw` fallback detection) from errors to warnings.
+- `rust_portable_native_import_strict`
+  - In `portable`, escalates native target-module import diagnostics from warnings to errors.
+  - Native-target imports are always reported in `contract_report.*` artifacts.
 - `rust_metal_viability_warn`
   - In `metal`, emit one compile-time viability summary warning (score + blocker counts + top modules).
   - Intended for CI/review loops while reducing fallback hotspots ahead of full report artifacts.
@@ -53,7 +56,7 @@ This page is a practical reference for the most relevant compiler defines.
     - `contract_report.json` (machine-readable)
     - `contract_report.md` (human-readable)
   - Includes effective contract flags (`contract`, strictness, async/no-hxrt/string mode),
-    backend identity (`backendId`), and current warning/error diagnostics.
+    backend identity (`backendId`), native-import portability markers, and current warning/error diagnostics.
 - `rust_runtime_plan_report`
   - Emit deterministic runtime-plan artifacts in the generated crate root:
     - `runtime_plan.json` (machine-readable)

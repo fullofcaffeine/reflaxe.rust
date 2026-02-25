@@ -28,8 +28,18 @@ extern class NativeSys {
 	@:native("args")
 	public static function args():Array<String>;
 
+	/**
+		Get environment variable value by name.
+
+		Why
+		- Upstream `Sys.getEnv` is nullable (`Null<String>`).
+		- Missing variables must remain `null` to preserve portable semantics.
+
+		How
+		- Binds to `hxrt::sys::get_env`, which returns `Option<String>` on the Rust side.
+	**/
 	@:native("get_env")
-	public static function getEnv(s:String):String;
+	public static function getEnv(s:String):Null<String>;
 
 	@:native("put_env")
 	public static function putEnv(s:String, v:Null<String>):Void;

@@ -1,0 +1,401 @@
+{
+  "schemaVersion": 1,
+  "upstreamStdVersion": "4.3.7",
+  "description": "Provenance ledger for tracked Rust-target stdlib override files (.cross.hx).",
+  "entries": [
+    {
+      "path": "std/Date.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/Date.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/Lambda.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/Lambda.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/StringBuf.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/StringBuf.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/StringTools.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/StringTools.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/Sys.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/Sys.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/SysTypes.cross.hx",
+      "provenanceKind": "repo_authored_override",
+      "notes": "Target-owned boundary type alias; no direct upstream std counterpart."
+    },
+    {
+      "path": "std/haxe/BoundaryTypes.cross.hx",
+      "provenanceKind": "repo_authored_override",
+      "notes": "Target-owned boundary type alias; no direct upstream std counterpart."
+    },
+    {
+      "path": "std/haxe/CallStack.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/CallStack.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/Constraints.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/Constraints.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/Exception.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/Exception.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/Int64.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/Int64.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/Json.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/Json.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/ds/EnumValueMap.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/ds/EnumValueMap.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/ds/IntMap.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/ds/IntMap.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/ds/List.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/ds/List.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/ds/ObjectMap.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/ds/ObjectMap.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/ds/StringMap.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/ds/StringMap.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/http/HttpBase.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/http/HttpBase.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/io/Bytes.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/io/Bytes.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/io/BytesBuffer.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/io/BytesBuffer.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/io/BytesOutput.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/io/BytesOutput.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/io/Encoding.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/io/Encoding.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/io/Eof.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/io/Eof.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/io/FPHelper.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/io/FPHelper.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/io/Input.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/io/Input.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/io/Output.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/io/Output.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/iterators/MapKeyValueIterator.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/iterators/MapKeyValueIterator.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/iterators/StringIterator.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/iterators/StringIterator.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/haxe/iterators/StringKeyValueIterator.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/iterators/StringKeyValueIterator.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/FileStat.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/FileStat.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/FileSystem.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/FileSystem.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/Http.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/Http.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/db/Connection.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/db/Connection.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/db/Mysql.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/db/Mysql.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/db/ResultSet.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/db/ResultSet.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/db/Sqlite.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/db/Sqlite.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/db/Types.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/db/Types.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/io/File.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/io/File.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/io/FileInput.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/io/FileInput.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/io/FileOutput.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/io/FileOutput.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/io/FileSeek.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/io/FileSeek.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/io/Process.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/io/Process.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/net/Address.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/net/Address.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/net/Host.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/net/Host.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/net/Socket.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/net/Socket.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/net/Types.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/net/Types.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/net/UdpSocket.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/net/UdpSocket.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/ssl/Certificate.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/ssl/Certificate.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/ssl/Digest.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/ssl/Digest.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/ssl/DigestAlgorithm.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/ssl/DigestAlgorithm.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/ssl/Key.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/ssl/Key.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/ssl/Socket.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/ssl/Socket.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/thread/Condition.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/thread/Condition.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/thread/Deque.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/thread/Deque.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/thread/ElasticThreadPool.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/thread/ElasticThreadPool.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/thread/EventLoop.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/thread/EventLoop.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/thread/FixedThreadPool.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/thread/FixedThreadPool.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/thread/IThreadPool.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/thread/IThreadPool.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/thread/Lock.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/thread/Lock.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/thread/Mutex.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/thread/Mutex.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/thread/NoEventLoopException.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/thread/NoEventLoopException.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/thread/Semaphore.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/thread/Semaphore.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/thread/Thread.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/thread/Thread.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/thread/ThreadPoolException.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/thread/ThreadPoolException.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/thread/Tls.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/thread/Tls.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/sys/thread/Types.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/sys/thread/Types.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    }
+  ]
+}
