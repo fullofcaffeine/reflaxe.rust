@@ -8,6 +8,7 @@ type HxDynRef<T: ?Sized> = hxrt::cell::HxDynRef<T>;
 type HxRefCell<T> = hxrt::cell::HxCell<T>;
 type HxRef<T> = hxrt::cell::HxRef<T>;
 
+mod hash_map_tools;
 mod haxe_call_stack_call_stack_impl_;
 mod haxe_ds_enum_value_map;
 mod haxe_ds_int_map;
@@ -26,7 +27,6 @@ mod haxe_io_output;
 mod haxe_stack_item;
 mod map_storage_tools;
 mod rust_borrow;
-mod rust_hash_map_tools;
 mod rust_option_tools;
 mod string_buf;
 mod sys;
@@ -60,13 +60,13 @@ fn main() {
     {
         let mm: &mut std::collections::HashMap<String, i32> = &mut m;
         {
-            crate::rust_hash_map_tools::HashMapTools::insert(mm, String::from("a"), 1);
-            crate::rust_hash_map_tools::HashMapTools::insert(mm, String::from("b"), 2);
+            crate::hash_map_tools::HashMapTools::insert(mm, String::from("a"), 1);
+            crate::hash_map_tools::HashMapTools::insert(mm, String::from("b"), 2);
         }
     }
     println!(
         "{}",
-        hxrt::dynamic::from(crate::rust_hash_map_tools::HashMapTools::len(&m))
+        hxrt::dynamic::from(crate::hash_map_tools::HashMapTools::len(&m))
     );
     let key_a: String = String::from("a");
     {
@@ -74,8 +74,7 @@ fn main() {
         {
             let mm_2: &mut std::collections::HashMap<String, i32> = &mut m;
             {
-                let removed: Option<i32> =
-                    crate::rust_hash_map_tools::HashMapTools::remove(mm_2, k_a);
+                let removed: Option<i32> = crate::hash_map_tools::HashMapTools::remove(mm_2, k_a);
                 println!(
                     "{}",
                     hxrt::dynamic::from(match removed.clone() {
@@ -91,6 +90,6 @@ fn main() {
     }
     println!(
         "{}",
-        hxrt::dynamic::from(crate::rust_hash_map_tools::HashMapTools::len(&m))
+        hxrt::dynamic::from(crate::hash_map_tools::HashMapTools::len(&m))
     );
 }

@@ -8,6 +8,7 @@ type HxDynRef<T: ?Sized> = hxrt::cell::HxDynRef<T>;
 type HxRefCell<T> = hxrt::cell::HxCell<T>;
 type HxRef<T> = hxrt::cell::HxRef<T>;
 
+mod hash_map_tools;
 mod haxe_call_stack_call_stack_impl_;
 mod haxe_ds_enum_value_map;
 mod haxe_ds_int_map;
@@ -26,7 +27,6 @@ mod haxe_io_output;
 mod haxe_stack_item;
 mod map_storage_tools;
 mod rust_borrow;
-mod rust_hash_map_tools;
 mod string_buf;
 mod sys;
 mod sys_io_stderr;
@@ -60,7 +60,7 @@ fn main() {
     m.insert(String::from("b"), 2);
     {
         let mm: &mut std::collections::HashMap<String, i32> = &mut m;
-        crate::rust_hash_map_tools::HashMapTools::remove(mm, &String::from("a"));
+        crate::hash_map_tools::HashMapTools::remove(mm, &String::from("a"));
     }
     let key: String = String::from("b");
     {
@@ -88,6 +88,6 @@ fn main() {
     println!("{}", hxrt::dynamic::from(key_count));
     println!(
         "{}",
-        hxrt::dynamic::from(crate::rust_hash_map_tools::HashMapTools::len(&m))
+        hxrt::dynamic::from(crate::hash_map_tools::HashMapTools::len(&m))
     );
 }
