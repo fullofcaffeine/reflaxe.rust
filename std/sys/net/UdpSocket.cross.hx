@@ -2,6 +2,7 @@ package sys.net;
 
 import haxe.io.Bytes;
 import haxe.io.Error;
+import hxrt.net.NativeSocket;
 import sys.net._SocketIO.SocketInput;
 import sys.net._SocketIO.SocketOutput;
 
@@ -21,12 +22,12 @@ import sys.net._SocketIO.SocketOutput;
 
 	How
 	- Reuses the base `sys.net.Socket` handle, but initializes it as UDP in `init()`.
-	- UDP send/recv operations are implemented by calling into `hxrt::net`.
+	- UDP send/recv operations are implemented through typed helpers in `hxrt.net.NativeSocket`.
 **/
 class UdpSocket extends Socket {
 	public function new() {
 		super();
-		var h = untyped __rust__("hxrt::net::socket_new_udp()");
+		var h = NativeSocket.newUdp();
 		handle = h;
 		input = new SocketInput(h);
 		output = new SocketOutput(h);
@@ -37,7 +38,7 @@ class UdpSocket extends Socket {
 	}
 
 	public function setBroadcast(b:Bool):Void {
-		untyped __rust__("{0}.borrow_mut().udp_set_broadcast({1} as bool)", handle, b);
+		NativeSocket.udpSetBroadcast(handle, b);
 	}
 
 	public function sendTo(buf:Bytes, pos:Int, len:Int, addr:Address):Int {
@@ -46,13 +47,7 @@ class UdpSocket extends Socket {
 		if (len == 0)
 			return 0;
 
-		return untyped __rust__("{
-				let b = {0}.borrow();
-				let data = b.as_slice();
-				let start = {1} as usize;
-				let end = ({1} + {2}) as usize;
-				{3}.borrow_mut().udp_send_to(&data[start..end], {4}.borrow().host as i32, {4}.borrow().port as i32) as i32
-			}", buf, pos, len, handle, addr);
+		return NativeSocket.udpSendTo(handle, buf, pos, len, addr.host, addr.port);
 	}
 
 	public function readFrom(buf:Bytes, pos:Int, len:Int, addr:Address):Int {
@@ -61,18 +56,12 @@ class UdpSocket extends Socket {
 		if (len == 0)
 			return 0;
 
-		var out:Int = untyped __rust__("{
-				let mut tmp = vec![0u8; {2} as usize];
-				let (n, ip, port) = {0}.borrow_mut().udp_read_from(tmp.as_mut_slice());
-				if n == -1i32 {
-					0i32
-				} else {
-					hxrt::bytes::write_from_slice(&{1}, {3}, &tmp[0..(n as usize)]);
-					{4}.borrow_mut().host = ip;
-					{4}.borrow_mut().port = port;
-					n
-				}
-			}", handle, buf, len, pos, addr);
+		var readInfo:Array<Int> = NativeSocket.udpReadFrom(handle, buf, pos, len);
+		var out:Int = readInfo[0];
+		if (out > 0) {
+			addr.host = readInfo[1];
+			addr.port = readInfo[2];
+		}
 
 		if (out == 0)
 			throw new haxe.io.Eof();

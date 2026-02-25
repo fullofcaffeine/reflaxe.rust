@@ -13,33 +13,28 @@ impl Host {
     pub fn new(name: hxrt::string::HxString) -> crate::HxRef<crate::sys_net_host::Host> {
         let self_: crate::HxRef<crate::sys_net_host::Host> = crate::HxRef::new(Host {
             host: name.clone(),
-            ip: 0,
+            ip: crate::socket_native::host_resolve(&name.clone()),
         });
-        {
-            let __tmp = hxrt::net::host_resolve(name.as_str());
-            self_.borrow_mut().ip = __tmp;
-            __tmp
-        };
         return self_;
     }
 
     pub fn to_string(self_: &crate::HxRefCell<Host>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_net_host::Host> = self_.self_ref();
-        return hxrt::string::HxString::from(hxrt::net::host_to_string({
+        return hxrt::string::HxString::from(crate::socket_native::host_to_string({
             let __b = __hx_this.borrow();
             __b.ip
-        } as i32));
+        }));
     }
 
     pub fn reverse(self_: &crate::HxRefCell<Host>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_net_host::Host> = self_.self_ref();
-        return hxrt::string::HxString::from(hxrt::net::host_reverse({
+        return hxrt::string::HxString::from(crate::socket_native::host_reverse({
             let __b = __hx_this.borrow();
             __b.ip
-        } as i32));
+        }));
     }
 
     pub fn localhost() -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::net::host_local());
+        return hxrt::string::HxString::from(crate::socket_native::host_local());
     }
 }

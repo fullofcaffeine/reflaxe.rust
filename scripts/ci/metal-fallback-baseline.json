@@ -22,7 +22,7 @@
       }
     },
     "chat_loopback_metal": {
-      "rawNodes": 216,
+      "rawNodes": 196,
       "moduleCount": 34,
       "topModules": {
         "app.ChatUiApp": 38,

@@ -27,6 +27,21 @@ extern class NativeSocket {
 	@:native("new_tcp")
 	public static function newTcp():HxRef<SocketHandle>;
 
+	@:native("new_udp")
+	public static function newUdp():HxRef<SocketHandle>;
+
+	@:native("host_resolve")
+	public static function hostResolve(name:Ref<String>):Int;
+
+	@:native("host_to_string")
+	public static function hostToString(ip:Int):String;
+
+	@:native("host_reverse")
+	public static function hostReverse(ip:Int):String;
+
+	@:native("host_local")
+	public static function hostLocal():String;
+
 	@:native("close")
 	public static function closeHandle(handle:Ref<HxRef<SocketHandle>>):Void;
 
@@ -59,6 +74,21 @@ extern class NativeSocket {
 
 	@:native("set_fast_send")
 	public static function setFastSend(handle:Ref<HxRef<SocketHandle>>, fastSend:Bool):Void;
+
+	@:native("write_bytes")
+	public static function writeBytes(handle:Ref<HxRef<SocketHandle>>, bytes:Ref<haxe.io.Bytes>, pos:Int, len:Int):Int;
+
+	@:native("read_bytes")
+	public static function readBytes(handle:Ref<HxRef<SocketHandle>>, bytes:Ref<haxe.io.Bytes>, pos:Int, len:Int):Int;
+
+	@:native("udp_set_broadcast")
+	public static function udpSetBroadcast(handle:Ref<HxRef<SocketHandle>>, enabled:Bool):Void;
+
+	@:native("udp_send_to")
+	public static function udpSendTo(handle:Ref<HxRef<SocketHandle>>, bytes:Ref<haxe.io.Bytes>, pos:Int, len:Int, host:Int, port:Int):Int;
+
+	@:native("udp_read_from")
+	public static function udpReadFrom(handle:Ref<HxRef<SocketHandle>>, bytes:Ref<haxe.io.Bytes>, pos:Int, len:Int):Array<Int>;
 
 	@:native("select_groups")
 	public static function selectGroups(read:Ref<Array<HxRef<SocketHandle>>>, write:Ref<Array<HxRef<SocketHandle>>>, others:Ref<Array<HxRef<SocketHandle>>>,

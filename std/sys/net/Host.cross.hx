@@ -1,5 +1,7 @@
 package sys.net;
 
+import hxrt.net.NativeSocket;
+
 /**
 	`sys.net.Host` (Rust target implementation)
 
@@ -16,6 +18,8 @@ package sys.net;
 	How
 	- Resolution is performed by the Rust runtime (`hxrt::net`) using the platform DNS resolver.
 	- The `ip` integer is stored in network byte order (big-endian), like C `inet_addr`.
+	- Calls cross a typed native boundary (`hxrt.net.NativeSocket`) instead of inline
+	  `untyped __rust__` snippets.
 **/
 class Host {
 	/**
@@ -30,14 +34,14 @@ class Host {
 
 	public function new(name:String):Void {
 		host = name;
-		ip = untyped __rust__("hxrt::net::host_resolve({0}.as_str())", name);
+		ip = NativeSocket.hostResolve(name);
 	}
 
 	/**
 		Returns the dotted-quad IP representation of this host.
 	**/
 	public function toString():String {
-		return untyped __rust__("hxrt::net::host_to_string({0} as i32)", ip);
+		return NativeSocket.hostToString(ip);
 	}
 
 	/**
@@ -46,13 +50,13 @@ class Host {
 		Note: this is best-effort; on failure it falls back to `toString()`.
 	**/
 	public function reverse():String {
-		return untyped __rust__("hxrt::net::host_reverse({0} as i32)", ip);
+		return NativeSocket.hostReverse(ip);
 	}
 
 	/**
 		Returns the local computer host name (best-effort).
 	**/
 	public static function localhost():String {
-		return untyped __rust__("hxrt::net::host_local()");
+		return NativeSocket.hostLocal();
 	}
 }

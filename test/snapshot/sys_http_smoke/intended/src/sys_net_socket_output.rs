@@ -42,29 +42,26 @@ impl SocketOutput {
         if len == 0 {
             return 0;
         }
-        return {
-            let b = s.borrow();
-            let data = b.as_slice();
-            let start = pos as usize;
-            let end = (pos + len) as usize;
-            {
+        return crate::socket_native::write_bytes(
+            &({
                 let __b = __hx_this.borrow();
                 __b.handle.clone()
-            }
-            .borrow_mut()
-            .write_stream(&data[start..end]) as i32
-        };
+            }),
+            &s,
+            pos,
+            len,
+        );
     }
 
     pub fn close(self_: &crate::HxRefCell<SocketOutput>) {
         let __hx_this: crate::HxRef<crate::sys_net_socket_output::SocketOutput> = self_.self_ref();
         crate::sys_net_socket_output::SocketOutput::__hx_super_haxe_io_output_close(&*self_);
-        {
-            let __b = __hx_this.borrow();
-            __b.handle.clone()
-        }
-        .borrow_mut()
-        .close();
+        crate::socket_native::close(
+            &({
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }),
+        );
     }
 
     pub fn flush(_self_: &crate::HxRefCell<SocketOutput>) {}

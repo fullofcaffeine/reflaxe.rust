@@ -46,21 +46,15 @@ impl SocketInput {
         if len == 0 {
             return 0;
         }
-        let out: i32 = {
-            let mut buf = vec![0u8; len as usize];
-            let n: i32 = {
+        let out: i32 = crate::socket_native::read_bytes(
+            &({
                 let __b = __hx_this.borrow();
                 __b.handle.clone()
-            }
-            .borrow_mut()
-            .read_stream(buf.as_mut_slice());
-            if n == -1i32 {
-                0i32
-            } else {
-                hxrt::bytes::write_from_slice(&s, pos, &buf[0..(n as usize)]);
-                n
-            }
-        };
+            }),
+            &s,
+            pos,
+            len,
+        );
         if out == 0 {
             hxrt::exception::throw(hxrt::dynamic::from(crate::haxe_io_eof::Eof::new()));
         }
@@ -70,12 +64,12 @@ impl SocketInput {
     pub fn close(self_: &crate::HxRefCell<SocketInput>) {
         let __hx_this: crate::HxRef<crate::sys_net_socket_input::SocketInput> = self_.self_ref();
         crate::sys_net_socket_input::SocketInput::__hx_super_haxe_io_input_close(&*self_);
-        {
-            let __b = __hx_this.borrow();
-            __b.handle.clone()
-        }
-        .borrow_mut()
-        .close();
+        crate::socket_native::close(
+            &({
+                let __b = __hx_this.borrow();
+                __b.handle.clone()
+            }),
+        );
     }
 
     pub fn set_big_endian(self_: &crate::HxRefCell<SocketInput>, b: bool) -> bool {

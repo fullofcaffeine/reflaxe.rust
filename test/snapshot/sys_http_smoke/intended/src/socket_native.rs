@@ -1,9 +1,30 @@
 use hxrt::array::Array;
+use hxrt::bytes::{self, Bytes};
 use hxrt::cell::HxRef;
 use hxrt::net::SocketHandle;
 
 pub fn new_tcp() -> HxRef<SocketHandle> {
     hxrt::net::socket_new_tcp()
+}
+
+pub fn new_udp() -> HxRef<SocketHandle> {
+    hxrt::net::socket_new_udp()
+}
+
+pub fn host_resolve(name: &str) -> i32 {
+    hxrt::net::host_resolve(name)
+}
+
+pub fn host_to_string(ip: i32) -> String {
+    hxrt::net::host_to_string(ip)
+}
+
+pub fn host_reverse(ip: i32) -> String {
+    hxrt::net::host_reverse(ip)
+}
+
+pub fn host_local() -> String {
+    hxrt::net::host_local()
 }
 
 pub fn close(handle: &HxRef<SocketHandle>) {
@@ -64,6 +85,72 @@ pub fn set_blocking(handle: &HxRef<SocketHandle>, blocking: bool) {
 
 pub fn set_fast_send(handle: &HxRef<SocketHandle>, fast_send: bool) {
     handle.borrow_mut().set_fast_send(fast_send);
+}
+
+pub fn write_bytes(
+    handle: &HxRef<SocketHandle>,
+    bytes_ref: &HxRef<Bytes>,
+    pos: i32,
+    len: i32,
+) -> i32 {
+    let bytes_binding = bytes_ref.borrow();
+    let data = bytes_binding.as_slice();
+    let start = pos as usize;
+    let end = (pos + len) as usize;
+    handle.borrow_mut().write_stream(&data[start..end]) as i32
+}
+
+pub fn read_bytes(
+    handle: &HxRef<SocketHandle>,
+    bytes_ref: &HxRef<Bytes>,
+    pos: i32,
+    len: i32,
+) -> i32 {
+    let mut tmp = vec![0u8; len as usize];
+    let n = handle.borrow_mut().read_stream(tmp.as_mut_slice());
+    if n == -1 {
+        return 0;
+    }
+
+    bytes::write_from_slice(bytes_ref, pos, &tmp[0..(n as usize)]);
+    n
+}
+
+pub fn udp_set_broadcast(handle: &HxRef<SocketHandle>, enabled: bool) {
+    handle.borrow_mut().udp_set_broadcast(enabled);
+}
+
+pub fn udp_send_to(
+    handle: &HxRef<SocketHandle>,
+    bytes_ref: &HxRef<Bytes>,
+    pos: i32,
+    len: i32,
+    host: i32,
+    port: i32,
+) -> i32 {
+    let bytes_binding = bytes_ref.borrow();
+    let data = bytes_binding.as_slice();
+    let start = pos as usize;
+    let end = (pos + len) as usize;
+    handle
+        .borrow_mut()
+        .udp_send_to(&data[start..end], host, port)
+}
+
+pub fn udp_read_from(
+    handle: &HxRef<SocketHandle>,
+    bytes_ref: &HxRef<Bytes>,
+    pos: i32,
+    len: i32,
+) -> Array<i32> {
+    let mut tmp = vec![0u8; len as usize];
+    let (n, ip, port) = handle.borrow_mut().udp_read_from(tmp.as_mut_slice());
+    if n == -1 {
+        return Array::<i32>::from_vec(vec![0i32, 0i32, 0i32]);
+    }
+
+    bytes::write_from_slice(bytes_ref, pos, &tmp[0..(n as usize)]);
+    Array::<i32>::from_vec(vec![n, ip, port])
 }
 
 pub fn select_groups(
