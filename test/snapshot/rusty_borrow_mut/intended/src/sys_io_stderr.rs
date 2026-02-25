@@ -16,10 +16,7 @@ impl Stderr {
     }
 
     pub fn write_byte(_self_: &crate::HxRefCell<Stderr>, c: i32) {
-        {
-            use std::io::Write;
-            std::io::stderr().write_all(&[(c & 0xFF) as u8]).unwrap();
-        };
+        hxrt::sys::stderr_write_byte(c);
     }
 
     pub fn write_bytes(
@@ -34,22 +31,11 @@ impl Stderr {
         if len == 0 {
             return 0;
         }
-        return {
-            use std::io::Write;
-            let b = s.borrow();
-            let data = b.as_slice();
-            let start = pos as usize;
-            let end = (pos + len) as usize;
-            std::io::stderr().write_all(&data[start..end]).unwrap();
-            len as i32
-        };
+        return hxrt::sys::stderr_write_bytes(s.clone(), pos, len);
     }
 
     pub fn flush(_self_: &crate::HxRefCell<Stderr>) {
-        {
-            use std::io::Write;
-            std::io::stderr().flush().ok();
-        };
+        hxrt::sys::stderr_flush();
     }
 
     pub fn close(_self_: &crate::HxRefCell<Stderr>) {}

@@ -6,11 +6,11 @@ import SysTypes.SysPrintValue;
 	`hxrt.sys.NativeSys` (Rust runtime binding)
 
 	Why
-	- `Sys`/`sys.io.Stdin` previously relied on many inline `untyped __rust__` calls.
+	- `Sys`/`sys.io.Std*` previously relied on many inline `untyped __rust__` calls.
 	- Those calls inflate metal fallback diagnostics and scatter native-boundary logic across std code.
 
 	What
-	- Typed extern binding to `hxrt::sys` helpers for process/env/time/stdin operations.
+	- Typed extern binding to `hxrt::sys` helpers for process/env/time/std stream operations.
 
 	How
 	- `@:native("hxrt::sys")` maps this class to the runtime module.
@@ -63,4 +63,22 @@ extern class NativeSys {
 
 	@:native("stdin_read_bytes")
 	public static function stdinReadBytes(s:haxe.io.Bytes, pos:Int, len:Int):Int;
+
+	@:native("stdout_write_byte")
+	public static function stdoutWriteByte(value:Int):Void;
+
+	@:native("stdout_write_bytes")
+	public static function stdoutWriteBytes(s:haxe.io.Bytes, pos:Int, len:Int):Int;
+
+	@:native("stdout_flush")
+	public static function stdoutFlush():Void;
+
+	@:native("stderr_write_byte")
+	public static function stderrWriteByte(value:Int):Void;
+
+	@:native("stderr_write_bytes")
+	public static function stderrWriteBytes(s:haxe.io.Bytes, pos:Int, len:Int):Int;
+
+	@:native("stderr_flush")
+	public static function stderrFlush():Void;
 }

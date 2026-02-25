@@ -1,27 +1,28 @@
 //! `hxrt::sys`
 //!
-//! Runtime-backed helpers for `std/Sys.cross.hx` and `sys.io.Stdin`.
+//! Runtime-backed helpers for `std/Sys.cross.hx` and `sys.io.Std*`.
 //!
 //! Why
-//! - `Sys` and `Stdin` previously used many inline `untyped __rust__` expressions.
+//! - `Sys` and `sys.io.Std*` previously used many inline `untyped __rust__` expressions.
 //! - Those expressions become `ERaw` fallback nodes in metal diagnostics and hide boundaries
 //!   across many call sites.
 //!
 //! What
-//! - A typed runtime API for common process/environment/time/stdin operations.
+//! - A typed runtime API for common process/environment/time/std stream operations.
 //!
 //! How
 //! - Input parameters use trait-based typing where portable (`HxString`) and metal (`String`)
 //!   call sites differ.
 //! - Return values use concrete, non-ambiguous forms (for example `String`) where generated
 //!   wrappers already perform profile-specific conversion.
-//! - `stdin_read_bytes` writes directly into `hxrt::bytes::Bytes` via `write_from_slice`.
+//! - `stdin_read_bytes` and std-stream byte writes operate directly on `hxrt::bytes::Bytes`
+//!   via typed runtime buffers.
 
 use crate::array::Array;
 use crate::bytes::{self, Bytes};
 use crate::cell::HxRef;
 use crate::string::HxString;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::process::Command;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -204,4 +205,48 @@ pub fn stdin_read_bytes(dst: HxRef<Bytes>, pos: i32, len: i32) -> i32 {
         }
         Err(_) => 0,
     }
+}
+
+pub fn stdout_write_byte(value: i32) {
+    std::io::stdout()
+        .write_all(&[((value & 0xFF) as u8)])
+        .unwrap();
+}
+
+pub fn stdout_write_bytes(src: HxRef<Bytes>, pos: i32, len: i32) -> i32 {
+    if len <= 0 {
+        return 0;
+    }
+    let b = src.borrow();
+    let data = b.as_slice();
+    let start = pos as usize;
+    let end = (pos + len) as usize;
+    std::io::stdout().write_all(&data[start..end]).unwrap();
+    len
+}
+
+pub fn stdout_flush() {
+    std::io::stdout().flush().ok();
+}
+
+pub fn stderr_write_byte(value: i32) {
+    std::io::stderr()
+        .write_all(&[((value & 0xFF) as u8)])
+        .unwrap();
+}
+
+pub fn stderr_write_bytes(src: HxRef<Bytes>, pos: i32, len: i32) -> i32 {
+    if len <= 0 {
+        return 0;
+    }
+    let b = src.borrow();
+    let data = b.as_slice();
+    let start = pos as usize;
+    let end = (pos + len) as usize;
+    std::io::stderr().write_all(&data[start..end]).unwrap();
+    len
+}
+
+pub fn stderr_flush() {
+    std::io::stderr().flush().ok();
 }

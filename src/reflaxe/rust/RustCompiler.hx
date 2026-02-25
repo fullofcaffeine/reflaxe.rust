@@ -3604,7 +3604,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							return ERaw(dynRefBasePath() + "::<" + innerPath + ">::null()");
 						}
 
-						return ERaw("None");
+						return EPath("None");
 					}
 				}
 			case _:
@@ -5906,7 +5906,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					case TBool(b): ELitBool(b);
 					case TNull:
 						if (isNullOptionType(e.t, e.pos)) {
-							ERaw("None");
+							EPath("None");
 						} else if (isStringType(e.t)) {
 							stringNullExpr();
 						} else if (mapsToRustDynamic(e.t, e.pos)) {
@@ -6040,7 +6040,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								var innerIsDyn = mapsToRustDynamic(inner, e.pos);
 								return EBlock({
 									stmts: [RLet("__hx_dyn", false, null, dynExpr)],
-									tail: EIf(ECall(EField(EPath("__hx_dyn"), "is_null"), []), ERaw("None"),
+									tail: EIf(ECall(EField(EPath("__hx_dyn"), "is_null"), []), EPath("None"),
 										ECall(EPath("Some"), [innerIsDyn ? EPath("__hx_dyn") : dynDowncastNonNull(inner)]))
 								});
 							}
@@ -6121,7 +6121,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								stmts: [RLet("__hx_opt", false, null, getCall)],
 								tail: EMatch(EPath("__hx_opt"), [
 									{pat: PTupleStruct("Some", [PBind("__v")]), expr: EPath("__v")},
-									{pat: PPath("None"), expr: ERaw("None")}
+									{pat: PPath("None"), expr: EPath("None")}
 								])
 							});
 						}
@@ -6352,7 +6352,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							var downInner = ECall(EField(EPath("__hx_dyn"), "downcast_ref::<" + innerRust + ">"), []);
 							var innerRef = ECall(EField(downInner, "unwrap"), []);
 							var elseExpr = ECall(EPath("Some"), [ECall(EField(innerRef, "clone"), [])]);
-							return EBlock({stmts: stmts, tail: EIf(isNull, ERaw("None"), EIf(hasOpt, thenExpr, elseExpr))});
+							return EBlock({stmts: stmts, tail: EIf(isNull, EPath("None"), EIf(hasOpt, thenExpr, elseExpr))});
 						}
 
 						var tyStr = rustTypeToString(toRustType(target, pos));
@@ -6422,9 +6422,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					function typedNoneForNull(t:Type, pos:haxe.macro.Expr.Position):RustExpr {
 						var inner = nullOptionInnerType(t, pos);
 						if (inner == null)
-							return ERaw("None");
+							return EPath("None");
 						var innerRust = rustTypeToString(toRustType(inner, pos));
-						return ERaw("Option::<" + innerRust + ">::None");
+						return EPath("Option::<" + innerRust + ">::None");
 					}
 
 					var stmts:Array<RustStmt> = [];
@@ -10204,7 +10204,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var borrowed = ECall(EField(EPath("self_"), "borrow_mut"), []);
 			var access = EField(borrowed, rustFieldName(currentClassType != null ? currentClassType : owner, cf));
 			var rhsVal:RustExpr = isCopyType(rhs.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
-			var assigned = fieldIsOptionWrapped ? (rhsIsNullish ? ERaw("None") : ECall(EPath("Some"),
+			var assigned = fieldIsOptionWrapped ? (rhsIsNullish ? EPath("None") : ECall(EPath("Some"),
 				[rhsVal])) : ((fieldIsNullOpt && !rhsIsNullish) ? ECall(EPath("Some"), [rhsVal]) : rhsVal);
 			stmts.push(RSemi(EAssign(access, assigned)));
 
@@ -10258,7 +10258,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 			rhsVal = coerceExprToExpected(rhsVal, rhs, coerceExpected);
 		}
-		var assigned = fieldIsOptionWrapped ? (rhsIsNullish ? ERaw("None") : ECall(EPath("Some"),
+		var assigned = fieldIsOptionWrapped ? (rhsIsNullish ? EPath("None") : ECall(EPath("Some"),
 			[rhsVal])) : ((fieldIsNullOpt && !rhsIsNullish) ? ECall(EPath("Some"), [rhsVal]) : rhsVal);
 		stmts.push(RSemi(EAssign(access, assigned)));
 
@@ -11167,9 +11167,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							function typedNoneForNull(t:Type, pos:haxe.macro.Expr.Position):RustExpr {
 								var inner = nullOptionInnerType(t, pos);
 								if (inner == null)
-									return ERaw("None");
+									return EPath("None");
 								var innerRust = rustTypeToString(toRustType(inner, pos));
-								return ERaw("Option::<" + innerRust + ">::None");
+								return EPath("Option::<" + innerRust + ">::None");
 							}
 
 							var stmts:Array<RustStmt> = [];
