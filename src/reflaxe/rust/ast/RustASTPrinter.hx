@@ -211,6 +211,10 @@ class RustASTPrinter {
 				"loop " + printBlock(body, indent);
 			case RFor(name, iter, body):
 				"for " + name + " in " + printExpr(iter, indent) + " " + printBlock(body, indent);
+			case RBreak:
+				"break;";
+			case RContinue:
+				"continue;";
 		}
 	}
 

@@ -83,6 +83,10 @@ class RustPassTools {
 				RLoop(mapBlock(body, mapStmt, mapExpr));
 			case RFor(name, iter, body):
 				RFor(name, mapExprDeep(iter, mapExpr), mapBlock(body, mapStmt, mapExpr));
+			case RBreak:
+				RBreak;
+			case RContinue:
+				RContinue;
 		};
 		return mapStmt(deep);
 	}

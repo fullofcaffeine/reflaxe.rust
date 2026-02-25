@@ -16,15 +16,7 @@ impl Stdin {
     }
 
     pub fn read_byte(_self_: &crate::HxRefCell<Stdin>) -> i32 {
-        let c: i32 = {
-            use std::io::Read;
-            let mut buf = [0u8; 1];
-            match std::io::stdin().read(&mut buf) {
-                Ok(0) => -1i32,
-                Ok(_) => buf[0] as i32,
-                Err(_) => -1i32,
-            }
-        };
+        let c: i32 = hxrt::sys::stdin_read_byte();
         if c < 0 {
             hxrt::exception::throw(hxrt::dynamic::from(crate::haxe_io_eof::Eof::new()));
         }
@@ -43,26 +35,7 @@ impl Stdin {
         if len == 0 {
             return 0;
         }
-        return {
-            use std::io::Read;
-            let mut buf = vec![0u8; len as usize];
-            match std::io::stdin().read(&mut buf) {
-                Ok(n) => {
-                    if n == 0 {
-                        return 0i32;
-                    }
-                    let mut b = s.borrow_mut();
-                    let base = pos as i32;
-                    let mut i: usize = 0;
-                    while i < n {
-                        b.set(base + i as i32, buf[i] as i32);
-                        i += 1;
-                    }
-                    n as i32
-                }
-                Err(_) => 0i32,
-            }
-        };
+        return hxrt::sys::stdin_read_bytes(s.clone(), pos, len);
     }
 
     pub fn close(_self_: &crate::HxRefCell<Stdin>) {}

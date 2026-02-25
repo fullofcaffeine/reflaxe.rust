@@ -756,6 +756,9 @@ run_warning_case_absent "examples/hello" "compile.metal.hxml" 'Metal fallback ac
 run_warning_case_absent "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'haxe\.ds\.(ObjectMap|EnumValueMap)' \
 	'1' 'metal fallback top-modules excludes ObjectMap/EnumValueMap after typed map helper migration'
+run_warning_case_absent "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'(Sys:|sys\.io\.Stdin)' \
+	'1' 'metal fallback top-modules excludes Sys/Stdin after typed runtime wrapper migration'
 run_no_hxrt_success_case "test/positive/metal_no_hxrt_minimal" "compile.hxml" \
 	'rust_no_hxrt emits runtime-free minimal crate'
 

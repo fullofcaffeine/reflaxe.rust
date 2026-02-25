@@ -4794,6 +4794,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				rustExprAlwaysDiverges(e);
 			case RExpr(e, _):
 				rustExprAlwaysDiverges(e);
+			case RBreak | RContinue:
+				true;
 			case _:
 				false;
 		}
@@ -5125,7 +5127,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var stmts = b.stmts.copy();
 						if (b.tail != null)
 							stmts.push(RSemi(b.tail));
-						stmts.push(RSemi(EIf(EUnary("!", condExpr), EBlock({stmts: [RSemi(ERaw("break"))], tail: null}), null)));
+						stmts.push(RSemi(EIf(EUnary("!", condExpr), EBlock({stmts: [RBreak], tail: null}), null)));
 						RLoop({stmts: stmts, tail: null});
 					}
 				}
@@ -5163,9 +5165,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					RFor(rustLocalDeclIdent(v), it, compileVoidBody(body));
 				}
 			case TBreak:
-				RSemi(ERaw("break"));
+				RBreak;
 			case TContinue:
-				RSemi(ERaw("continue"));
+				RContinue;
 			case TReturn(ret): {
 					var retExpr = ret;
 					if (currentFunctionIsAsync && ret != null) {
@@ -6242,10 +6244,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				EBlock({stmts: [compileStmt(e)], tail: null});
 
 			case TBreak:
-				ERaw("break");
+				EBlock({stmts: [RBreak], tail: null});
 
 			case TContinue:
-				ERaw("continue");
+				EBlock({stmts: [RContinue], tail: null});
 
 			case TSwitch(switchExpr, cases, edef):
 				compileSwitch(switchExpr, cases, edef, e.t);

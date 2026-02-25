@@ -5,23 +5,19 @@
  */
 
 import SysTypes.SysPrintValue;
+import hxrt.sys.NativeSys;
 
 class Sys {
 	public static function print(v:SysPrintValue):Void {
-		untyped __rust__("{ print!(\"{}\", {0}); }", v);
+		NativeSys.print(v);
 	}
 
 	public static function println(v:SysPrintValue):Void {
-		untyped __rust__("{ println!(\"{}\", {0}); }", v);
+		NativeSys.println(v);
 	}
 
 	public static function args():Array<String> {
-		#if rust_string_nullable
-		return
-			untyped __rust__("hxrt::array::Array::<hxrt::string::HxString>::from_vec(std::env::args().skip(1).map(hxrt::string::HxString::from).collect::<Vec<hxrt::string::HxString>>())");
-		#else
-		return untyped __rust__("hxrt::array::Array::<String>::from_vec(std::env::args().skip(1).collect::<Vec<String>>())");
-		#end
+		return NativeSys.args();
 	}
 
 	/**
@@ -42,11 +38,7 @@ class Sys {
 	 *   so we return `""` (empty string) when the variable is missing.
 	 */
 	public static function getEnv(s:String):String {
-		#if rust_string_nullable
-		return untyped __rust__("hxrt::string::HxString::from(std::env::var({0}.as_str()).ok().unwrap_or_else(|| String::new()))", s);
-		#else
-		return untyped __rust__("std::env::var({0}.as_str()).ok().unwrap_or_else(|| String::new())", s);
-		#end
+		return NativeSys.getEnv(s);
 	}
 
 	/**
@@ -56,17 +48,7 @@ class Sys {
 	 * - `v == null` removes the variable, otherwise sets it.
 	 */
 	public static function putEnv(s:String, v:Null<String>):Void {
-		if (v == null) {
-			untyped __rust__("{ std::env::remove_var({0}.as_str()); }", s);
-		} else {
-			#if rust_string_nullable
-			untyped __rust__("{ std::env::set_var({0}.as_str(), {1}.as_str()); }", s, v);
-			#else
-			// `v` is typed as `Null<String>` which lowers to `Option<String>` in Rust.
-			// We already checked for `null` above, so unwrap here in Rust to get the inner `String`.
-			untyped __rust__("{ std::env::set_var({0}.as_str(), {1}.as_ref().unwrap().as_str()); }", s, v);
-			#end
-		}
+		NativeSys.putEnv(s, v);
 	}
 
 	/**
@@ -100,7 +82,7 @@ class Sys {
 
 	/** Suspend execution for the given duration in seconds. */
 	public static function sleep(seconds:Float):Void {
-		untyped __rust__("{ std::thread::sleep(std::time::Duration::from_millis(({0} * 1000.0) as u64)); }", seconds);
+		NativeSys.sleep(seconds);
 	}
 
 	/** Not implemented yet for the Rust target (returns `false`). */
@@ -110,69 +92,27 @@ class Sys {
 	}
 
 	public static function getCwd():String {
-		#if rust_string_nullable
-		return untyped __rust__("hxrt::string::HxString::from(std::env::current_dir().unwrap().to_string_lossy().to_string())");
-		#else
-		return untyped __rust__("std::env::current_dir().unwrap().to_string_lossy().to_string()");
-		#end
+		return NativeSys.getCwd();
 	}
 
 	public static function setCwd(path:String):Void {
-		untyped __rust__("{ std::env::set_current_dir({0}.as_str()).unwrap(); }", path);
+		NativeSys.setCwd(path);
 	}
 
 	public static function systemName():String {
-		#if rust_string_nullable
-		return untyped __rust__("hxrt::string::HxString::from(match std::env::consts::OS {
-				\"windows\" => String::from(\"Windows\"),
-				\"linux\" => String::from(\"Linux\"),
-				\"macos\" => String::from(\"Mac\"),
-				\"freebsd\" => String::from(\"BSD\"),
-				\"netbsd\" => String::from(\"BSD\"),
-				\"openbsd\" => String::from(\"BSD\"),
-				_ => String::from(std::env::consts::OS),
-			})");
-		#else
-		return untyped __rust__("match std::env::consts::OS {
-				\"windows\" => String::from(\"Windows\"),
-				\"linux\" => String::from(\"Linux\"),
-				\"macos\" => String::from(\"Mac\"),
-				\"freebsd\" => String::from(\"BSD\"),
-				\"netbsd\" => String::from(\"BSD\"),
-				\"openbsd\" => String::from(\"BSD\"),
-				_ => String::from(std::env::consts::OS),
-			}");
-		#end
+		return NativeSys.systemName();
 	}
 
 	public static function command(cmd:String, ?args:Array<String>):Int {
-		if (args == null) {
-			// Best-effort: run through `sh -c` so shell builtins work (matches Haxe docs).
-			return untyped __rust__("std::process::Command::new(\"sh\").arg(\"-c\").arg({0}.as_str()).status().unwrap().code().unwrap_or(1) as i32", cmd);
-		}
-		return untyped __rust__("{
-				let mut c = std::process::Command::new({0}.as_str());
-				let args_ = {1};
-					let mut i: i32 = 0;
-					while i < args_.len() as i32 {
-						let a = args_.get_unchecked(i as usize);
-						c.arg(a.as_str());
-						i = i + 1;
-					}
-					c.status().unwrap().code().unwrap_or(1) as i32
-			}", cmd, args);
+		return NativeSys.command(cmd, args);
 	}
 
 	public static function exit(code:Int):Void {
-		untyped __rust__("std::process::exit({0})", code);
+		NativeSys.exit(code);
 	}
 
 	public static function time():Float {
-		return untyped __rust__("{
-				use std::time::{SystemTime, UNIX_EPOCH};
-				let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-				(now.as_secs_f64()) as f64
-			}");
+		return NativeSys.time();
 	}
 
 	/** POC: use wall-clock time for now (not CPU time). */
@@ -185,11 +125,7 @@ class Sys {
 	}
 
 	public static function programPath():String {
-		#if rust_string_nullable
-		return untyped __rust__("hxrt::string::HxString::from(std::env::current_exe().unwrap().to_string_lossy().to_string())");
-		#else
-		return untyped __rust__("std::env::current_exe().unwrap().to_string_lossy().to_string()");
-		#end
+		return NativeSys.programPath();
 	}
 
 	public static function getChar(echo:Bool):Int {

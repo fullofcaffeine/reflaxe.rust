@@ -118,6 +118,7 @@ class NoHxrtPass implements RustPass {
 				case RFor(_, iter, body):
 					scanExpr(iter);
 					scanBlock(body);
+				case RBreak | RContinue:
 			}
 		};
 

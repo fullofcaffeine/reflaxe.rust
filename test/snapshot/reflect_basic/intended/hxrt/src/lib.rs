@@ -36,6 +36,8 @@ pub mod process;
 pub mod ssl;
 #[cfg(feature = "core")]
 pub mod string;
+#[cfg(feature = "core")]
+pub mod sys;
 #[cfg(feature = "thread")]
 pub mod thread;
 

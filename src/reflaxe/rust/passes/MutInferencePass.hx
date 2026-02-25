@@ -118,6 +118,7 @@ class MutInferencePass implements RustPass {
 				case RFor(_, iter, body):
 					visitExpr(iter);
 					visitBlock(body);
+				case RBreak | RContinue:
 			}
 		}
 

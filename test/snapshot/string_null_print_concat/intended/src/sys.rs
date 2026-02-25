@@ -8,44 +8,26 @@ pub struct Sys {}
 
 impl Sys {
     pub fn print(v: hxrt::dynamic::Dynamic) {
-        {
-            print!("{}", v);
-        };
+        hxrt::sys::print(v.clone());
     }
 
     pub fn println(v: hxrt::dynamic::Dynamic) {
-        {
-            println!("{}", v);
-        };
+        hxrt::sys::println(v.clone());
     }
 
     pub fn args() -> hxrt::array::Array<hxrt::string::HxString> {
-        return hxrt::array::Array::<hxrt::string::HxString>::from_vec(
-            std::env::args()
-                .skip(1)
-                .map(hxrt::string::HxString::from)
-                .collect::<Vec<hxrt::string::HxString>>(),
-        );
+        return hxrt::sys::args();
     }
 
     pub fn get_env(s: hxrt::string::HxString) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(
-            std::env::var(s.as_str())
-                .ok()
-                .unwrap_or_else(|| String::new()),
-        ));
+        return hxrt::string::HxString::from(hxrt::sys::get_env(hxrt::string::HxString::from(s)));
     }
 
     pub fn put_env(s: hxrt::string::HxString, v: hxrt::string::HxString) {
-        if v.is_null() {
-            {
-                std::env::remove_var(s.as_str());
-            };
-        } else {
-            {
-                std::env::set_var(s.as_str(), v.as_str());
-            };
-        }
+        hxrt::sys::put_env(
+            hxrt::string::HxString::from(s),
+            hxrt::string::HxString::from(v),
+        );
     }
 
     pub fn environment(
@@ -64,9 +46,7 @@ impl Sys {
     }
 
     pub fn sleep(seconds: f64) {
-        {
-            std::thread::sleep(std::time::Duration::from_millis((seconds * 1000.0) as u64));
-        };
+        hxrt::sys::sleep(seconds);
     }
 
     pub fn set_time_locale(loc: hxrt::string::HxString) -> bool {
@@ -75,70 +55,30 @@ impl Sys {
     }
 
     pub fn get_cwd() -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(
-            std::env::current_dir()
-                .unwrap()
-                .to_string_lossy()
-                .to_string(),
-        ));
+        return hxrt::string::HxString::from(hxrt::sys::get_cwd());
     }
 
     pub fn set_cwd(path: hxrt::string::HxString) {
-        {
-            std::env::set_current_dir(path.as_str()).unwrap();
-        };
+        hxrt::sys::set_cwd(hxrt::string::HxString::from(path));
     }
 
     pub fn system_name() -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(
-            match std::env::consts::OS {
-                "windows" => String::from("Windows"),
-                "linux" => String::from("Linux"),
-                "macos" => String::from("Mac"),
-                "freebsd" => String::from("BSD"),
-                "netbsd" => String::from("BSD"),
-                "openbsd" => String::from("BSD"),
-                _ => String::from(std::env::consts::OS),
-            },
-        ));
+        return hxrt::string::HxString::from(hxrt::sys::system_name());
     }
 
     pub fn command(
         cmd: hxrt::string::HxString,
         args: hxrt::array::Array<hxrt::string::HxString>,
     ) -> i32 {
-        if args.is_null() {
-            return std::process::Command::new("sh")
-                .arg("-c")
-                .arg(cmd.as_str())
-                .status()
-                .unwrap()
-                .code()
-                .unwrap_or(1) as i32;
-        }
-        return {
-            let mut c = std::process::Command::new(cmd.as_str());
-            let args_ = args;
-            let mut i: i32 = 0;
-            while i < args_.len() as i32 {
-                let a = args_.get_unchecked(i as usize);
-                c.arg(a.as_str());
-                i = i + 1;
-            }
-            c.status().unwrap().code().unwrap_or(1) as i32
-        };
+        return hxrt::sys::command(hxrt::string::HxString::from(cmd), args.clone());
     }
 
     pub fn exit(code: i32) {
-        std::process::exit(code);
+        hxrt::sys::exit(code);
     }
 
     pub fn time() -> f64 {
-        return {
-            use std::time::{SystemTime, UNIX_EPOCH};
-            let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-            (now.as_secs_f64()) as f64
-        };
+        return hxrt::sys::time();
     }
 
     pub fn cpu_time() -> f64 {
@@ -150,12 +90,7 @@ impl Sys {
     }
 
     pub fn program_path() -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(
-            std::env::current_exe()
-                .unwrap()
-                .to_string_lossy()
-                .to_string(),
-        ));
+        return hxrt::string::HxString::from(hxrt::sys::program_path());
     }
 
     pub fn get_char(echo: bool) -> i32 {

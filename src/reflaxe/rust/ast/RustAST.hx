@@ -122,6 +122,8 @@ enum RustStmt {
 	RWhile(cond:RustExpr, body:RustBlock);
 	RLoop(body:RustBlock);
 	RFor(name:String, iter:RustExpr, body:RustBlock);
+	RBreak;
+	RContinue;
 }
 
 enum RustExpr {
