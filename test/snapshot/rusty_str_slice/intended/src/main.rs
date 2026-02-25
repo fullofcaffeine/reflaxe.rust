@@ -29,12 +29,12 @@ mod rust_borrow;
 mod rust_slice_tools;
 mod rust_str_tools;
 mod rust_string_tools;
-mod rust_vec_tools;
 mod string_buf;
 mod sys;
 mod sys_io_stderr;
 mod sys_io_stdin;
 mod sys_io_stdout;
+mod vec_tools;
 
 /// Runtime subtype check for stable Haxe class type ids.
 ///
@@ -79,7 +79,7 @@ fn main() {
     let mut sum: i32 = 0;
     {
         let mut _g: i32 = 0;
-        let _g1: hxrt::array::Array<i32> = crate::rust_vec_tools::VecTools::to_array(v.clone());
+        let _g1: hxrt::array::Array<i32> = crate::vec_tools::VecTools::toArray(v.clone());
         while _g < (_g1.len() as i32) {
             let x: i32 = _g1.get_unchecked(_g as usize);
             {
@@ -92,7 +92,7 @@ fn main() {
     println!("{}", hxrt::dynamic::from(sum));
     println!(
         "{}",
-        hxrt::dynamic::from(crate::rust_vec_tools::VecTools::len(&v))
+        hxrt::dynamic::from(crate::vec_tools::VecTools::len(&v))
     );
     {
         let vr: &Vec<i32> = &v;

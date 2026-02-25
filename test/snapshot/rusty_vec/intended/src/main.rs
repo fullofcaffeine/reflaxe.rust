@@ -28,12 +28,12 @@ mod map_storage_tools;
 mod rust_borrow;
 mod rust_iter_tools;
 mod rust_option_tools;
-mod rust_vec_tools;
 mod string_buf;
 mod sys;
 mod sys_io_stderr;
 mod sys_io_stdin;
 mod sys_io_stdout;
+mod vec_tools;
 
 /// Runtime subtype check for stable Haxe class type ids.
 ///
@@ -73,7 +73,7 @@ fn main() {
     v.push(2);
     println!(
         "{}",
-        hxrt::dynamic::from(crate::rust_vec_tools::VecTools::len(&v))
+        hxrt::dynamic::from(crate::vec_tools::VecTools::len(&v))
     );
     let last: Option<i32> = v.pop();
     match last.clone() {
@@ -118,7 +118,7 @@ fn main() {
     {
         let vr: &Vec<i32> = &v2;
         {
-            let first: Option<&i32> = crate::rust_vec_tools::VecTools::get_ref(vr, 0);
+            let first: Option<&i32> = crate::vec_tools::VecTools::getRef(vr, 0);
             println!(
                 "{}",
                 hxrt::dynamic::from(match first.clone() {

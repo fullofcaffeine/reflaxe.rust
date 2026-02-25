@@ -1,37 +1,39 @@
 package rust;
 
 /**
- * VecTools
+ * `rust.VecTools`
  *
- * Non-inline helpers for `rust.Vec<T>` that need casts (usize/i32) or small shims.
+ * Why
+ * - `rust.Vec<T>` helpers are widely used in Rust-first snapshots/examples.
+ * - The previous implementation used inline `untyped __rust__` bodies for routine
+ *   vec operations (`len`, `get`, `set`, conversion helpers).
+ * - Those inline bodies contributed directly to `ERaw` fallback noise in metal diagnostics.
  *
- * IMPORTANT: Keep these as regular (non-inline) functions so `__rust__` stays inside
- * framework code and does not get inlined into application code.
+ * What
+ * - A typed extern facade backed by a hand-written Rust helper module.
+ * - This preserves the existing Haxe API while removing raw injection from this boundary.
  *
- * Borrow-first note:
- * - Some helpers (like `len`/`get`) take a borrowed `rust.Ref<Vec<T>>` so they do not move the
- *   underlying `Vec<T>` in Rust output.
- * - In most cases you can pass a `Vec<T>` directly and the compiler will emit `&vec` at the call site.
+ * How
+ * - `@:native("crate::vec_tools::VecTools")` binds to the generated Rust module from
+ *   `@:rustExtraSrc("rust/native/vec_tools.rs")`.
+ * - Borrow-sensitive APIs (`getRef`, `getMut`) remain typed (`Option<Ref<T>>`,
+ *   `Option<MutRef<T>>`) so callers keep Rust lifetime constraints visible at compile time.
+ * - Callers cross the native boundary through typed signatures only; no `Dynamic` or `Reflect`
+ *   fallback is required here.
  */
-class VecTools {
+@:native("crate::vec_tools::VecTools")
+@:rustExtraSrc("rust/native/vec_tools.rs")
+extern class VecTools {
 	@:rustGeneric("T: Clone")
-	public static function fromArray<T>(a:Array<T>):Vec<T> {
-		return untyped __rust__("{0}.to_vec()", a);
-	}
+	public static function fromArray<T>(a:Array<T>):Vec<T>;
 
 	@:rustGeneric("T: Clone")
-	public static function toArray<T>(v:Vec<T>):Array<T> {
-		return untyped __rust__("hxrt::array::Array::<T>::from_vec({0})", v);
-	}
+	public static function toArray<T>(v:Vec<T>):Array<T>;
 
-	public static function len<T>(v:Ref<Vec<T>>):Int {
-		return untyped __rust__("{0}.len() as i32", v);
-	}
+	public static function len<T>(v:Ref<Vec<T>>):Int;
 
 	@:rustGeneric("T: Clone")
-	public static function get<T>(v:Ref<Vec<T>>, index:Int):Option<T> {
-		return untyped __rust__("{0}.get({1} as usize).cloned()", v, index);
-	}
+	public static function get<T>(v:Ref<Vec<T>>, index:Int):Option<T>;
 
 	/**
 	 * Borrow-first element access.
@@ -43,9 +45,7 @@ class VecTools {
 	 * How:
 	 * - Requires a borrowed `Ref<Vec<T>>` so the returned `Ref<T>` cannot outlive the borrow scope.
 	 */
-	public static function getRef<T>(v:Ref<Vec<T>>, index:Int):Option<Ref<T>> {
-		return untyped __rust__("{0}.get({1} as usize)", v, index);
-	}
+	public static function getRef<T>(v:Ref<Vec<T>>, index:Int):Option<Ref<T>>;
 
 	/**
 	 * Mutable element access (`Option<&mut T>`).
@@ -54,11 +54,7 @@ class VecTools {
 	 * - Requires `MutRef<Vec<T>>` (so the vec binding is borrowed mutably).
 	 * - Prefer using this inside `Borrow.withMut(...)` or `MutSliceTools.with(...)`.
 	 */
-	public static function getMut<T>(v:MutRef<Vec<T>>, index:Int):Option<MutRef<T>> {
-		return untyped __rust__("{0}.get_mut({1} as usize)", v, index);
-	}
+	public static function getMut<T>(v:MutRef<Vec<T>>, index:Int):Option<MutRef<T>>;
 
-	public static function set<T>(v:Vec<T>, index:Int, value:T):Vec<T> {
-		return untyped __rust__("{ let mut __v = {0}; __v[{1} as usize] = {2}; __v }", v, index, value);
-	}
+	public static function set<T>(v:Vec<T>, index:Int, value:T):Vec<T>;
 }

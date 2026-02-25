@@ -8,7 +8,8 @@ package rust;
  * Notes:
  * - This is an extern binding to Rust's `Vec<T>` (prelude type).
  * - Helper operations that need casts (usize/i32) live in `VecTools`.
- * - `__rust__` injection is used in `VecTools` (framework code), not in apps.
+ * - `VecTools` crosses into native Rust through a typed extern boundary (`std/rust/native/vec_tools.rs`),
+ *   so app code stays free of raw injection.
  */
 @:native("Vec")
 extern class Vec<T> {

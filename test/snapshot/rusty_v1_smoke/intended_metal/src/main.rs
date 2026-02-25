@@ -38,12 +38,12 @@ mod rust_result_tools;
 mod rust_slice_tools;
 mod rust_str_tools;
 mod rust_string_tools;
-mod rust_vec_tools;
 mod string_buf;
 mod sys;
 mod sys_io_stderr;
 mod sys_io_stdin;
 mod sys_io_stdout;
+mod vec_tools;
 
 /// Runtime subtype check for stable Haxe class type ids.
 ///
@@ -72,13 +72,13 @@ fn main() {
     v.push(3);
     let v_len: i32 = {
         let vr: &Vec<i32> = &v;
-        crate::rust_vec_tools::VecTools::len(vr)
+        crate::vec_tools::VecTools::len(vr)
     };
     println!("{}", hxrt::dynamic::from(v_len));
     let has_first: bool = {
         let vr_2: &Vec<i32> = &v;
         {
-            let o: Option<&i32> = crate::rust_vec_tools::VecTools::get_ref(vr_2, 0);
+            let o: Option<&i32> = crate::vec_tools::VecTools::getRef(vr_2, 0);
             match o.clone() {
                 Option::Some(__p) => {
                     let _ = __p;

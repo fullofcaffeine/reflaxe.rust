@@ -759,6 +759,9 @@ run_warning_case_absent "examples/hello" "compile.metal.hxml" 'Metal fallback ac
 run_warning_case_absent "test/snapshot/rusty_hashmap" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'rust\.HashMapTools' \
 	'1' 'metal fallback top-modules excludes rust.HashMapTools after typed hash map helper migration'
+run_warning_case_absent "test/snapshot/rusty_vec" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'rust\.VecTools' \
+	'1' 'metal fallback top-modules excludes rust.VecTools after typed vec helper migration'
 run_warning_case_absent "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'Sys:' \
 	'1' 'metal fallback top-modules excludes Sys after typed runtime wrapper migration'

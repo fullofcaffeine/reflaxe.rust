@@ -25,12 +25,12 @@ mod haxe_io_input;
 mod haxe_io_output;
 mod haxe_stack_item;
 mod map_storage_tools;
-mod rust_vec_tools;
 mod string_buf;
 mod sys;
 mod sys_io_stderr;
 mod sys_io_stdin;
 mod sys_io_stdout;
+mod vec_tools;
 
 /// Runtime subtype check for stable Haxe class type ids.
 ///
@@ -54,9 +54,9 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 
 fn main() {
     let a: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::from_vec(vec![1, 2]);
-    let mut v: Vec<i32> = crate::rust_vec_tools::VecTools::from_array(a.clone());
+    let mut v: Vec<i32> = crate::vec_tools::VecTools::fromArray(a.clone());
     v.push(3);
-    let a2: hxrt::array::Array<i32> = crate::rust_vec_tools::VecTools::to_array(v);
+    let a2: hxrt::array::Array<i32> = crate::vec_tools::VecTools::toArray(v);
     crate::sys::Sys::println(hxrt::dynamic::from(a.len() as i32));
     crate::sys::Sys::println(hxrt::dynamic::from(a2.len() as i32));
     let b: hxrt::array::Array<i32> = a.clone();
