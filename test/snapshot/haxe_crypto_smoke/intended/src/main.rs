@@ -9,6 +9,7 @@ type HxRefCell<T> = hxrt::cell::HxCell<T>;
 type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod date;
+mod fp_helper;
 mod haxe_call_stack_call_stack_impl_;
 mod haxe_crypto_base64;
 mod haxe_crypto_base_code;

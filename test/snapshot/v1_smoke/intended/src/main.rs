@@ -10,6 +10,7 @@ type HxRef<T> = hxrt::cell::HxRef<T>;
 
 mod counter;
 mod e;
+mod fp_helper;
 mod haxe_call_stack_call_stack_impl_;
 mod haxe_ds_enum_value_map;
 mod haxe_ds_int_map;

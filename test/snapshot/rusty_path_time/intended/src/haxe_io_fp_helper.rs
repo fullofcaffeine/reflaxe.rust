@@ -8,16 +8,16 @@ pub struct FPHelper {}
 
 impl FPHelper {
     pub fn float_to_i32(v: f64) -> i32 {
-        return (v as f32).to_bits() as i32;
+        return crate::fp_helper::FPHelper::floatToI32(v);
     }
 
     pub fn i32_to_float(v: i32) -> f64 {
-        return f32::from_bits(v as u32) as f64;
+        return crate::fp_helper::FPHelper::i32ToFloat(v);
     }
 
     pub fn double_to_i64(v: f64) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
-        let high: i32 = ((v).to_bits() >> 32) as i32;
-        let low: i32 = (((v).to_bits() & 0xFFFF_FFFFu64) as u32) as i32;
+        let high: i32 = crate::fp_helper::FPHelper::doubleToI64High(v);
+        let low: i32 = crate::fp_helper::FPHelper::doubleToI64Low(v);
         {
             let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
                 crate::haxe_int64_int64::Int64::new(high, low);
@@ -28,6 +28,6 @@ impl FPHelper {
     }
 
     pub fn i64_to_double(low: i32, high: i32) -> f64 {
-        return f64::from_bits(((high as u64) << 32) | ((low as u32) as u64));
+        return crate::fp_helper::FPHelper::i64ToDouble(low, high);
     }
 }

@@ -13,10 +13,14 @@ import haxe.Int64;
  * - Minimal float/double bit conversion helpers used by our std overrides.
  *
  * How:
- * - Implemented using `__rust__` as a *framework-only* escape hatch because Haxe does not provide a
- *   portable way to reinterpret floating-point bits.
- * - This keeps all injection usage inside `std/` and preserves the project rule that applications
- *   should not call `__rust__` directly.
+ * - For Rust output, this now routes through a typed native extern boundary (`FPHelperNative`) backed
+ *   by `haxe/io/native/fp_helper.rs`.
+ * - For non-Rust compile modes (macro/eval), we keep pure-Haxe fallbacks so stdlib typing remains stable.
+ *
+ * Boundary note:
+ * - Reinterpreting IEEE-754 bits is inherently target-specific; Haxe has no portable intrinsic for this.
+ * - We therefore cross into a Rust-native helper at a single typed boundary and immediately return to
+ *   typed Haxe values.
  */
 class FPHelper {
 	// NOTE: When compiling a Rust target build we use `__rust__` for true bit-casts. For any other
@@ -91,7 +95,7 @@ class FPHelper {
 	**/
 	public static function floatToI32(v:Float):Int {
 		#if rust_output
-		return untyped __rust__("({0} as f32).to_bits() as i32", v);
+		return FPHelperNative.floatToI32(v);
 		#else
 		return _floatToI32(v);
 		#end
@@ -102,7 +106,7 @@ class FPHelper {
 	**/
 	public static function i32ToFloat(v:Int):Float {
 		#if rust_output
-		return untyped __rust__("f32::from_bits({0} as u32) as f64", v);
+		return FPHelperNative.i32ToFloat(v);
 		#else
 		return _i32ToFloat(v);
 		#end
@@ -113,8 +117,8 @@ class FPHelper {
 	**/
 	public static function doubleToI64(v:Float):Int64 {
 		#if rust_output
-		var high = untyped __rust__("(({0}).to_bits() >> 32) as i32", v);
-		var low = untyped __rust__("((({0}).to_bits() & 0xFFFF_FFFFu64) as u32) as i32", v);
+		var high = FPHelperNative.doubleToI64High(v);
+		var low = FPHelperNative.doubleToI64Low(v);
 		return Int64.make(high, low);
 		#else
 		return _doubleToI64(v);
@@ -129,9 +133,29 @@ class FPHelper {
 	**/
 	public static function i64ToDouble(low:Int, high:Int):Float {
 		#if rust_output
-		return untyped __rust__("f64::from_bits((({1} as u64) << 32) | (({0} as u32) as u64))", low, high);
+		return FPHelperNative.i64ToDouble(low, high);
 		#else
 		return _i64ToDouble(low, high);
 		#end
 	}
+}
+
+/**
+ * Typed Rust boundary for `haxe.io.FPHelper`.
+ *
+ * Why
+ * - IEEE-754 bit reinterpretation is target-native behavior and cannot be expressed portably in Haxe.
+ * - Keeping these operations in a dedicated Rust module removes raw fallback from this std module.
+ *
+ * How
+ * - Bound to crate module `fp_helper` shipped via `@:rustExtraSrc`.
+ */
+@:native("crate::fp_helper::FPHelper")
+@:rustExtraSrc("haxe/io/native/fp_helper.rs")
+private extern class FPHelperNative {
+	public static function floatToI32(v:Float):Int;
+	public static function i32ToFloat(v:Int):Float;
+	public static function doubleToI64High(v:Float):Int;
+	public static function doubleToI64Low(v:Float):Int;
+	public static function i64ToDouble(low:Int, high:Int):Float;
 }
