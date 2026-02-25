@@ -8,6 +8,7 @@ type HxDynRef<T: ?Sized> = hxrt::cell::HxDynRef<T>;
 type HxRefCell<T> = hxrt::cell::HxCell<T>;
 type HxRef<T> = hxrt::cell::HxRef<T>;
 
+mod duration_tools;
 mod haxe_call_stack_call_stack_impl_;
 mod haxe_ds_enum_value_map;
 mod haxe_ds_int_map;
@@ -24,10 +25,9 @@ mod haxe_io_fp_helper;
 mod haxe_io_input;
 mod haxe_io_output;
 mod haxe_stack_item;
+mod instant_tools;
 mod map_storage_tools;
 mod path_buf_tools;
-mod rust_duration_tools;
-mod rust_instant_tools;
 mod rust_os_string_tools;
 mod string_buf;
 mod sys;
@@ -66,10 +66,10 @@ fn main() {
     let pushed_name: Option<String> = crate::path_buf_tools::PathBufTools::fileName(&pushed);
     let os: std::ffi::OsString = crate::rust_os_string_tools::OsStringTools::from_string(child_str);
     let os_lossy: String = crate::rust_os_string_tools::OsStringTools::to_string_lossy(&os);
-    let started: std::time::Instant = crate::rust_instant_tools::InstantTools::now();
-    let d: std::time::Duration = crate::rust_duration_tools::DurationTools::from_millis(25);
-    crate::rust_duration_tools::DurationTools::sleep(d);
-    let elapsed_ms: f64 = crate::rust_instant_tools::InstantTools::elapsed_millis(&started);
+    let started: std::time::Instant = crate::instant_tools::InstantTools::now();
+    let d: std::time::Duration = crate::duration_tools::DurationTools::fromMillis(25);
+    crate::duration_tools::DurationTools::sleep(d);
+    let elapsed_ms: f64 = crate::instant_tools::InstantTools::elapsedMillis(&started);
     if os_lossy != String::from("") && elapsed_ms >= 0.0 {
         match pushed_name.clone() {
             Option::Some(__p) => {

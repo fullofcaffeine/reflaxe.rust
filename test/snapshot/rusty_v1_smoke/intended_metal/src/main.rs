@@ -8,6 +8,7 @@ type HxDynRef<T: ?Sized> = hxrt::cell::HxDynRef<T>;
 type HxRefCell<T> = hxrt::cell::HxCell<T>;
 type HxRef<T> = hxrt::cell::HxRef<T>;
 
+mod duration_tools;
 mod hash_map_tools;
 mod haxe_call_stack_call_stack_impl_;
 mod haxe_ds_enum_value_map;
@@ -25,12 +26,11 @@ mod haxe_io_fp_helper;
 mod haxe_io_input;
 mod haxe_io_output;
 mod haxe_stack_item;
+mod instant_tools;
 mod map_storage_tools;
 mod path_buf_tools;
 mod rust_array_borrow;
 mod rust_borrow;
-mod rust_duration_tools;
-mod rust_instant_tools;
 mod rust_mut_slice_tools;
 mod rust_option_tools;
 mod rust_os_string_tools;
@@ -160,13 +160,11 @@ fn main() {
             }
         })
     );
-    let start: std::time::Instant = crate::rust_instant_tools::InstantTools::now();
-    let elapsed: std::time::Duration = crate::rust_instant_tools::InstantTools::elapsed(&start);
+    let start: std::time::Instant = crate::instant_tools::InstantTools::now();
+    let elapsed: std::time::Duration = crate::instant_tools::InstantTools::elapsed(&start);
     println!(
         "{}",
-        hxrt::dynamic::from(crate::rust_duration_tools::DurationTools::as_millis(
-            elapsed
-        ))
+        hxrt::dynamic::from(crate::duration_tools::DurationTools::asMillis(elapsed))
     );
     let contains: bool = {
         let hs: &String = &String::from("bootstrap reflaxe.rust");
