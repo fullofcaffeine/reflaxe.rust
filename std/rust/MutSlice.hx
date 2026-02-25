@@ -21,6 +21,8 @@ package rust;
  * Notes:
  * - Prefer using `MutSlice<T>` as a parameter/temporary value, not storing it long-term.
  * - Haxe cannot express Rust lifetimes, so APIs should keep borrows short-lived (closure-scoped).
+ * - Mutable operations are exposed via typed helpers in `MutSliceTools`
+ *   (`std/rust/native/mut_slice_tools.rs`).
  */
 @:coreType
 extern abstract MutSlice<T> {

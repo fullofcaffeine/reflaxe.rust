@@ -26,6 +26,7 @@ mod haxe_io_input;
 mod haxe_io_output;
 mod haxe_stack_item;
 mod map_storage_tools_nullable;
+mod mut_slice_tools;
 mod rust_borrow;
 mod rust_mut_slice_tools;
 mod rust_option_tools;

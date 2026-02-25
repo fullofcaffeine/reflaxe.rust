@@ -8,14 +8,14 @@ pub struct MutSliceTools {}
 
 impl MutSliceTools {
     pub fn len<T>(s: &mut [T]) -> i32 {
-        return s.len() as i32;
+        return crate::mut_slice_tools::MutSliceTools::len(s);
     }
 
     pub fn get<T>(s: &mut [T], index: i32) -> Option<&T> {
-        return s.get(index as usize);
+        return crate::mut_slice_tools::MutSliceTools::get(s, index);
     }
 
     pub fn set<T>(s: &mut [T], index: i32, value: T) {
-        s[index as usize] = value;
+        crate::mut_slice_tools::MutSliceTools::set(s, index, value);
     }
 }

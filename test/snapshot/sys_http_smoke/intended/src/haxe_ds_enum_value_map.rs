@@ -34,8 +34,8 @@ impl<
         crate::map_storage_tools_nullable::MapStorageTools::enumValueMapSet(
             __hx_this.clone(),
             hxrt::string::HxString::from(id),
-            key.clone(),
-            value.clone(),
+            key,
+            value,
         );
     }
 

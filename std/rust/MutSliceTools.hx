@@ -8,7 +8,7 @@ import haxe.macro.TypeTools;
 #end
 
 /**
- * MutSliceTools
+ * `rust.MutSliceTools`
  *
  * Borrow-first helpers for `rust.MutSlice<T>` (mutable `&mut [T]`).
  *
@@ -22,7 +22,8 @@ import haxe.macro.TypeTools;
  *
  * How:
  * - The `with(...)` macro expands to `rust.Borrow.withMut(...)` and casts the borrow to `MutSlice<T>`.
- * - Non-trivial Rust operations live behind `untyped __rust__` in non-inline functions (framework code).
+ * - Borrow helpers stay in Haxe (`with` macro expansion).
+ * - Runtime methods (`len`, `get`, `set`) now route through a typed native extern boundary.
  */
 class MutSliceTools {
 	/**
@@ -147,15 +148,15 @@ class MutSliceTools {
 
 	#if !macro
 	public static function len<T>(s:MutSlice<T>):Int {
-		return untyped __rust__("{0}.len() as i32", s);
+		return MutSliceToolsNative.len(s);
 	}
 
 	public static function get<T>(s:MutSlice<T>, index:Int):Option<Ref<T>> {
-		return untyped __rust__("{0}.get({1} as usize)", s, index);
+		return MutSliceToolsNative.get(s, index);
 	}
 
 	public static function set<T>(s:MutSlice<T>, index:Int, value:T):Void {
-		untyped __rust__("{0}[{1} as usize] = {2};", s, index, value);
+		MutSliceToolsNative.set(s, index, value);
 	}
 	#else
 	// Macro compilation stubs: these are only used in Rust output, never during macro typing/execution.
@@ -167,4 +168,22 @@ class MutSliceTools {
 
 	public static function set<T>(s:MutSlice<T>, index:Int, value:T):Void {}
 	#end
+}
+
+/**
+ * Typed native boundary for `rust.MutSliceTools`.
+ *
+ * Why
+ * - Mutable slice operations rely on Rust-specific indexing/borrowing behavior.
+ * - Centralizing those details in a Rust module removes raw fallback from first-party Haxe code.
+ *
+ * How
+ * - Bound to crate-local `mut_slice_tools.rs` with typed signatures.
+ */
+@:native("crate::mut_slice_tools::MutSliceTools")
+@:rustExtraSrc("rust/native/mut_slice_tools.rs")
+extern class MutSliceToolsNative {
+	public static function len<T>(s:MutSlice<T>):Int;
+	public static function get<T>(s:MutSlice<T>, index:Int):Option<Ref<T>>;
+	public static function set<T>(s:MutSlice<T>, index:Int, value:T):Void;
 }

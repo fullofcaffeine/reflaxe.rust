@@ -771,6 +771,12 @@ run_warning_case_absent "test/snapshot/rusty_path_time" "compile.hxml" 'Metal fa
 run_warning_case_absent "test/snapshot/rusty_path_time" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'rust\.InstantTools' \
 	'1' 'metal fallback top-modules excludes rust.InstantTools after typed instant helper migration'
+run_warning_case_absent "test/snapshot/rusty_array_slice_views" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'rust\.SliceTools' \
+	'1' 'metal fallback top-modules excludes rust.SliceTools after typed slice helper migration'
+run_warning_case_absent "test/snapshot/rusty_array_slice_views" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'rust\.MutSliceTools' \
+	'1' 'metal fallback top-modules excludes rust.MutSliceTools after typed mut-slice helper migration'
 run_warning_case_absent "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'Sys:' \
 	'1' 'metal fallback top-modules excludes Sys after typed runtime wrapper migration'

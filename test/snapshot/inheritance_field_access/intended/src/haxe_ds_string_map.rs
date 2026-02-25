@@ -22,7 +22,7 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> StringMap<T> {
         crate::map_storage_tools_nullable::MapStorageTools::stringMapSet(
             __hx_this.clone(),
             hxrt::string::HxString::from(key),
-            value.clone(),
+            value,
         );
     }
 

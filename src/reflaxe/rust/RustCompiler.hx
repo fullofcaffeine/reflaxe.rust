@@ -12729,6 +12729,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var cls = clsRef.get();
 					if (cls == null)
 						return false;
+					// Generic type parameters are Rust type variables (`T`), not framework class
+					// instances. Treating them as ref-backed forces `.clone()` at call sites and
+					// incorrectly requires `T: Clone` for plain by-value generics.
+					switch (cls.kind) {
+						case KTypeParameter(_):
+							return false;
+						case _:
+					}
 					// Arrays are represented as `hxrt::array::Array<T>`, not `HxRef<_>`.
 					if (cls.pack.length == 0 && cls.module == "Array" && cls.name == "Array")
 						return false;

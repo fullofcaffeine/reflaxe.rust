@@ -92,7 +92,14 @@ extern class MapStorageTools {
 	public static function intMapClear<V>(map:haxe.ds.IntMap<V>):Void;
 
 	@:rustGeneric("K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug")
-	public static function objectMapKeyId<K:{}>(key:K):String;
+	/**
+	 * Computes the stable object-key id from a borrowed key reference.
+	 *
+	 * Why
+	 * - `ObjectMap.set` needs the same key value for id computation and storage insert.
+	 * - Borrowing here avoids consuming/moving the key before it is inserted.
+	 */
+	public static function objectMapKeyId<K:{}>(key:Ref<K>):String;
 
 	@:rustGeneric([
 		"K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug",

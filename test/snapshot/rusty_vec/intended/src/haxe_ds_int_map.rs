@@ -18,7 +18,7 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> IntMap<T> {
 
     pub fn set(self_: &crate::HxRefCell<IntMap<T>>, key: i32, value: T) {
         let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
-        crate::map_storage_tools::MapStorageTools::intMapSet(__hx_this.clone(), key, value.clone());
+        crate::map_storage_tools::MapStorageTools::intMapSet(__hx_this.clone(), key, value);
     }
 
     pub fn get(self_: &crate::HxRefCell<IntMap<T>>, key: i32) -> Option<T> {

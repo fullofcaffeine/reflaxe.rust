@@ -102,7 +102,7 @@ impl ResultTools {
                 let _g: T = __p;
                 {
                     let v: T = _g;
-                    Result::Ok(v.clone())
+                    Result::Ok(v)
                 }
             }
             Result::Err(__p) => {

@@ -160,9 +160,9 @@ impl MapStorageTools {
     pub fn objectMapKeyId<
         K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug,
     >(
-        key: K,
+        key: &K,
     ) -> String {
-        hxrt::hxref::ptr_id(&key)
+        hxrt::hxref::ptr_id(key)
     }
 
     pub fn objectMapSet<

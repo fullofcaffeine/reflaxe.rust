@@ -12,14 +12,14 @@ impl SliceTools {
     }
 
     pub fn len<T>(s: &[T]) -> i32 {
-        return s.len() as i32;
+        return crate::slice_tools::SliceTools::len(s);
     }
 
     pub fn get<T>(s: &[T], index: i32) -> Option<&T> {
-        return s.get(index as usize);
+        return crate::slice_tools::SliceTools::get(s, index);
     }
 
     pub fn to_array<T: Clone>(s: &[T]) -> hxrt::array::Array<T> {
-        return hxrt::array::Array::<T>::from_vec(s.to_vec());
+        return crate::slice_tools::SliceTools::toArray(s);
     }
 }

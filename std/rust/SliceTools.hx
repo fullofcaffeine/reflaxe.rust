@@ -8,11 +8,22 @@ import haxe.macro.TypeTools;
 #end
 
 /**
- * SliceTools
+ * `rust.SliceTools`
  *
  * Helpers for working with `rust.Slice<T>` without `__rust__` in apps.
  *
- * IMPORTANT: keep these as non-inline so injections stay in framework code.
+ * Why
+ * - `rust.Slice<T>` helpers are used across Rust-first examples/snapshots.
+ * - Inline `untyped __rust__` in these helpers inflated metal fallback diagnostics.
+ *
+ * What
+ * - Borrow helpers remain in Haxe (`fromVec`, `with` macro expansion).
+ * - Runtime methods (`len`, `get`, `toArray`) cross a typed extern boundary.
+ *
+ * How
+ * - `SliceToolsNative` binds to `crate::slice_tools::SliceTools` via `@:native` +
+ *   `@:rustExtraSrc("rust/native/slice_tools.rs")`.
+ * - Callers stay typed end-to-end; the unavoidable Rust-specific details live in the native module.
  */
 class SliceTools {
 	/**
@@ -25,7 +36,7 @@ class SliceTools {
 	 * How:
 	 * - In Rust output, this is a no-op expression and relies on Rust's deref coercions.
 	 */
-	public static inline function fromVec<T>(v: Ref<Vec<T>>): Slice<T> {
+	public static inline function fromVec<T>(v:Ref<Vec<T>>):Slice<T> {
 		return cast v;
 	}
 
@@ -48,7 +59,7 @@ class SliceTools {
 	 * - Keep the slice inside the callback; never store/return it.
 	 * - Avoid nested borrows of the same array (the runtime uses `RefCell` and will panic on invalid re-borrows).
 	 */
-	public static macro function with(value: Expr, fn: Expr): Expr {
+	public static macro function with(value:Expr, fn:Expr):Expr {
 		#if macro
 		var f = switch (fn.expr) {
 			case EFunction(_, f): f;
@@ -63,19 +74,19 @@ class SliceTools {
 
 		var typedValue = Context.typeExpr(value);
 		var valueIsArray = false;
-		var elemT: Null<Type> = switch (TypeTools.follow(typedValue.t)) {
+		var elemT:Null<Type> = switch (TypeTools.follow(typedValue.t)) {
 			case TInst(clsRef, params): {
-				var cls = clsRef.get();
-				// Array<T>
-				if (cls != null && cls.pack.length == 0 && cls.module == "Array" && cls.name == "Array" && params.length == 1) {
-					valueIsArray = true;
-					params[0];
-				} else if (cls != null && cls.isExtern && cls.pack.join(".") == "rust" && cls.name == "Vec" && params.length == 1) {
-					params[0];
-				} else {
-					null;
+					var cls = clsRef.get();
+					// Array<T>
+					if (cls != null && cls.pack.length == 0 && cls.module == "Array" && cls.name == "Array" && params.length == 1) {
+						valueIsArray = true;
+						params[0];
+					} else if (cls != null && cls.isExtern && cls.pack.join(".") == "rust" && cls.name == "Vec" && params.length == 1) {
+						params[0];
+					} else {
+						null;
+					}
 				}
-			}
 			case _:
 				null;
 		}
@@ -87,16 +98,18 @@ class SliceTools {
 		var elemCt = TypeTools.toComplexType(elemT);
 		var argName = f.args[0].name;
 
-		var decl: Expr = {
-			expr: EVars([{
-				name: argName,
-				type: TPath({
-					pack: ["rust"],
-					name: "Slice",
-					params: [TPType(elemCt)]
-				}),
-				expr: { expr: ECast({ expr: EConst(CIdent("__hx_ref")), pos: fn.pos }, null), pos: fn.pos }
-			}]),
+		var decl:Expr = {
+			expr: EVars([
+				{
+					name: argName,
+					type: TPath({
+						pack: ["rust"],
+						name: "Slice",
+						params: [TPType(elemCt)]
+					}),
+					expr: {expr: ECast({expr: EConst(CIdent("__hx_ref")), pos: fn.pos}, null), pos: fn.pos}
+				}
+			]),
 			pos: fn.pos
 		};
 
@@ -106,16 +119,18 @@ class SliceTools {
 			// For `Array<T>`, borrow the underlying Vec as a slice without cloning.
 			// This delegates to `rust.ArrayBorrow`, which calls into `hxrt::array::with_slice(...)`.
 			var sliceParam = "__hx_slice";
-			var arrayDecl: Expr = {
-				expr: EVars([{
-					name: argName,
-					type: TPath({
-						pack: ["rust"],
-						name: "Slice",
-						params: [TPType(elemCt)]
-					}),
-					expr: { expr: ECast({ expr: EConst(CIdent(sliceParam)), pos: fn.pos }, null), pos: fn.pos }
-				}]),
+			var arrayDecl:Expr = {
+				expr: EVars([
+					{
+						name: argName,
+						type: TPath({
+							pack: ["rust"],
+							name: "Slice",
+							params: [TPType(elemCt)]
+						}),
+						expr: {expr: ECast({expr: EConst(CIdent(sliceParam)), pos: fn.pos}, null), pos: fn.pos}
+					}
+				]),
 				pos: fn.pos
 			};
 
@@ -135,22 +150,47 @@ class SliceTools {
 	}
 
 	#if !macro
-	public static function len<T>(s: Slice<T>): Int {
-		return untyped __rust__("{0}.len() as i32", s);
+	public static function len<T>(s:Slice<T>):Int {
+		return SliceToolsNative.len(s);
 	}
 
-	public static function get<T>(s: Slice<T>, index: Int): Option<Ref<T>> {
-		return untyped __rust__("{0}.get({1} as usize)", s, index);
+	public static function get<T>(s:Slice<T>, index:Int):Option<Ref<T>> {
+		return SliceToolsNative.get(s, index);
 	}
 
 	@:rustGeneric("T: Clone")
-	public static function toArray<T>(s: Slice<T>): Array<T> {
-		return untyped __rust__("hxrt::array::Array::<T>::from_vec({0}.to_vec())", s);
+	public static function toArray<T>(s:Slice<T>):Array<T> {
+		return SliceToolsNative.toArray(s);
 	}
 	#else
 	// Macro compilation stubs: these are only used in Rust output, never during macro typing/execution.
-	public static function len<T>(s: Slice<T>): Int return 0;
-	public static function get<T>(s: Slice<T>, index: Int): Option<Ref<T>> return None;
-	public static function toArray<T>(s: Slice<T>): Array<T> return [];
+	public static function len<T>(s:Slice<T>):Int
+		return 0;
+
+	public static function get<T>(s:Slice<T>, index:Int):Option<Ref<T>>
+		return None;
+
+	public static function toArray<T>(s:Slice<T>):Array<T>
+		return [];
 	#end
+}
+
+/**
+ * Typed native boundary for `rust.SliceTools`.
+ *
+ * Why
+ * - Some slice operations map directly to Rust-specific APIs and casting rules.
+ * - We centralize those details in a Rust module so first-party Haxe code avoids raw injection.
+ *
+ * How
+ * - Bound to crate-local `slice_tools.rs`; method signatures remain fully typed.
+ */
+@:native("crate::slice_tools::SliceTools")
+@:rustExtraSrc("rust/native/slice_tools.rs")
+extern class SliceToolsNative {
+	public static function len<T>(s:Slice<T>):Int;
+	public static function get<T>(s:Slice<T>, index:Int):Option<Ref<T>>;
+
+	@:rustGeneric("T: Clone")
+	public static function toArray<T>(s:Slice<T>):Array<T>;
 }

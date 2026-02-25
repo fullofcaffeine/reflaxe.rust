@@ -21,7 +21,7 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> IntMap<T> {
         crate::map_storage_tools_nullable::MapStorageTools::intMapSet(
             __hx_this.clone(),
             key,
-            value.clone(),
+            value,
         );
     }
 

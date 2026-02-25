@@ -19,11 +19,7 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> StringMap<T> {
 
     pub fn set(self_: &crate::HxRefCell<StringMap<T>>, key: String, value: T) {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
-        crate::map_storage_tools::MapStorageTools::stringMapSet(
-            __hx_this.clone(),
-            key,
-            value.clone(),
-        );
+        crate::map_storage_tools::MapStorageTools::stringMapSet(__hx_this.clone(), key, value);
     }
 
     pub fn get(self_: &crate::HxRefCell<StringMap<T>>, key: String) -> Option<T> {

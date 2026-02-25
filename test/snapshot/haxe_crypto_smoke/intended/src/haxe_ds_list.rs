@@ -24,7 +24,7 @@ impl<T: Clone + Send + Sync> List<T> {
             let __b = __hx_this.borrow();
             __b.items.clone()
         })
-        .push(x.clone());
+        .push(x);
         {
             let __tmp = ({
                 let __b = __hx_this.borrow();

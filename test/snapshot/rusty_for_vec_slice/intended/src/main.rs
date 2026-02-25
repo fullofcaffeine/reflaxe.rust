@@ -27,6 +27,7 @@ mod haxe_stack_item;
 mod map_storage_tools;
 mod rust_borrow;
 mod rust_slice_tools;
+mod slice_tools;
 mod string_buf;
 mod sys;
 mod sys_io_stderr;

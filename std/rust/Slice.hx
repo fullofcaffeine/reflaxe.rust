@@ -8,6 +8,7 @@ package rust;
  * IMPORTANT:
  * - Like `Ref<T>`, this is a borrowed view; avoid storing long-lived slices.
  * - Prefer constructing via `SliceTools.fromVec` or `SliceTools.with(...)` (borrow-scoped).
+ * - Common operations route through typed helpers in `SliceTools` (`std/rust/native/slice_tools.rs`).
  */
 @:coreType
 extern abstract Slice<T> {
@@ -16,14 +17,14 @@ extern abstract Slice<T> {
 	 *
 	 * Rust has an implicit coercion from `&Vec<T>` to `&[T]`, so codegen treats this as a no-op.
 	 */
-	@:from public static inline function fromRefVec<T>(r: Ref<Vec<T>>): Slice<T> {
+	@:from public static inline function fromRefVec<T>(r:Ref<Vec<T>>):Slice<T> {
 		return cast r;
 	}
 
 	/**
 	 * Allow passing a borrowed `&Array<T>` (portable `Vec<T>`) anywhere a `rust.Slice<T>` is expected.
 	 */
-	@:from public static inline function fromRefArray<T>(r: Ref<Array<T>>): Slice<T> {
+	@:from public static inline function fromRefArray<T>(r:Ref<Array<T>>):Slice<T> {
 		return cast r;
 	}
 
@@ -34,5 +35,5 @@ extern abstract Slice<T> {
 	 * `slice.iter().cloned()` in Rust output.
 	 */
 	@:native("iter")
-	public function iterator(): Iterator<T>;
+	public function iterator():Iterator<T>;
 }

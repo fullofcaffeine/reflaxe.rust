@@ -29,6 +29,7 @@ mod rust_borrow;
 mod rust_slice_tools;
 mod rust_str_tools;
 mod rust_string_tools;
+mod slice_tools;
 mod string_buf;
 mod sys;
 mod sys_io_stderr;
