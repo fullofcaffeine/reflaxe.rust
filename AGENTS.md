@@ -262,6 +262,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - Keep `scripts/ci/check-metal-policy.sh` regex expectations in sync with emitted contract diagnostics and wire every `test/negative/metal_*` fixture into that script so metal subset enforcement cannot silently drift.
   - `test/run-upstream-stdlib-sweep.sh` (Tier1 per-module actionable compile/fmt/check for upstream std modules)
   - `test/run-upstream-stdlib-sweep.sh --tier tier2` (weekly evidence broader parity sweep)
+  - `guard:stdlib-candidates` (weekly evidence parity-gap check + candidate artifact upload)
   - `scripts/ci/package-smoke.sh` validates the packaged artifact via isolated local `haxelib` install + Rust build (including symlink-cwd alias regression).
   - `scripts/ci/perf-hxrt-overhead.sh` benchmarks HXRT overhead (`hello`/`array`/`hot_loop`/`hot_loop_inproc`/`hot_loop_no_hxrt` vs pure Rust baselines + chat profile spread) and emits soft-budget warnings + artifacts.
   - `scripts/ci/template-smoke.sh` scaffolds `templates/basic` via `scripts/dev/new-project.sh` and executes the full task-HXML matrix (`compile.build`, `compile`, `compile.run`, `compile.release`, `compile.release.run`).

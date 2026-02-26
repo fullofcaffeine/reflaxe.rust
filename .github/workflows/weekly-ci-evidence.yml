@@ -88,6 +88,21 @@ jobs:
           set -euo pipefail
           bash test/run-upstream-stdlib-sweep.sh --tier tier2
 
+      - name: Verify portable stdlib candidate coverage
+        run: |
+          set -euo pipefail
+          npm run guard:stdlib-candidates
+          mkdir -p .cache/weekly-evidence
+          node scripts/ci/audit-upstream-stdlib-candidates.js --json > .cache/weekly-evidence/portable-stdlib-candidates.json
+
+      - name: Upload portable stdlib candidate artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-stdlib-candidates
+          path: .cache/weekly-evidence/portable-stdlib-candidates.json
+          if-no-files-found: warn
+
       - name: Publish Linux evidence summary
         if: always()
         env:
@@ -104,6 +119,7 @@ jobs:
             echo "  - \`npm run docs:sync:progress\`"
             echo "  - \`HXRT_PERF_GATE_MODE=nightly HXRT_PERF_HOT_LOOP_INPROC_RUNS=60 HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS=60 bash scripts/ci/local.sh\`"
             echo "  - \`bash test/run-upstream-stdlib-sweep.sh --tier tier2\`"
+            echo "  - \`npm run guard:stdlib-candidates\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   windows-smoke:
