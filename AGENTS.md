@@ -195,7 +195,9 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 ## Testing + CI
 
 - Run snapshots locally: `bash test/run-snapshots.sh`
-- Run upstream stdlib sweep locally: `bash test/run-upstream-stdlib-sweep.sh` (or single-module: `--module haxe.Json`).
+- Run upstream stdlib sweep locally:
+  - Tier1 (default): `bash test/run-upstream-stdlib-sweep.sh` (or single-module: `--module haxe.Json`)
+  - Tier2 (broader): `bash test/run-upstream-stdlib-sweep.sh --tier tier2`
 - Run stdlib boundary/provenance guards locally:
   - `npm run stdlib:sync:allowlist`
   - `npm run guard:upstream-stdlib-boundary`
@@ -246,7 +248,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Pre-push directive: keep `main` green by running the closest local equivalent of CI before `git push`:
   - `npm ci --ignore-scripts --no-audit --no-fund`
   - `bash test/run-snapshots.sh --clippy` (runs curated clippy checks on a small subset of snapshot crates)
-  - `bash test/run-upstream-stdlib-sweep.sh` (curated upstream std imports under `-D rust_emit_upstream_std`)
+  - `bash test/run-upstream-stdlib-sweep.sh` (Tier1 curated upstream std imports under `-D rust_emit_upstream_std`)
   - `bash scripts/ci/perf-hxrt-overhead.sh` (soft-budget warnings + artifact report)
   - `cargo fmt && cargo clippy -- -D warnings`
   - Smoke-run any examples you touched (e.g. `(cd examples/tui_todo && haxe compile.hxml && (cd out && cargo run -q))`)

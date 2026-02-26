@@ -3,7 +3,8 @@
 const fs = require('fs')
 
 const allowlistPath = 'docs/portable-stdlib-allowlist.json'
-const sweepListPath = 'test/upstream_std_modules.txt'
+const sweepTier1Path = 'test/upstream_std_modules.txt'
+const sweepTier2Path = 'test/upstream_std_modules_tier2.txt'
 
 function fail(msg) {
   console.error(`[ci:guards] ERROR: ${msg}`)
@@ -88,7 +89,8 @@ const excludedPrefixes = Array.isArray(allowlist.excludedTargetNamespacePrefixes
 const tier1Modules = Array.isArray(allowlist.tier1UpstreamSweepModules)
   ? allowlist.tier1UpstreamSweepModules
   : []
-const sweepModules = parseModuleList(sweepListPath)
+const sweepTier1Modules = parseModuleList(sweepTier1Path)
+const sweepTier2Modules = parseModuleList(sweepTier2Path)
 
 if (duplicates(excludedPrefixes).length > 0) {
   fail(
@@ -100,42 +102,42 @@ if (!isSorted(excludedPrefixes)) {
   fail(`${allowlistPath} excludedTargetNamespacePrefixes must be lexicographically sorted`)
 }
 
-if (duplicates(tier1Modules).length > 0) {
-  fail(
-    `${allowlistPath} tier1UpstreamSweepModules has duplicate modules:\n${summarize(
-      duplicates(tier1Modules),
-      20
-    )}`
-  )
-}
-
-if (!isSorted(tier1Modules)) {
-  fail(`${allowlistPath} tier1UpstreamSweepModules must be lexicographically sorted`)
-}
-
-for (const module of tier1Modules) {
-  if (typeof module !== 'string' || module.trim().length === 0) {
-    fail(`${allowlistPath} tier1UpstreamSweepModules contains an invalid module entry`)
-    continue
+function validateModuleSet(modules, label) {
+  const dupes = duplicates(modules)
+  if (dupes.length > 0) {
+    fail(`${label} has duplicate modules:\n${summarize(dupes, 20)}`)
   }
-  for (const prefix of excludedPrefixes) {
-    if (module.startsWith(prefix)) {
-      fail(
-        `${allowlistPath} tier1 module ${module} uses excluded target namespace prefix ${prefix}`
-      )
-      break
+  if (!isSorted(modules)) {
+    fail(`${label} must be lexicographically sorted`)
+  }
+  for (const module of modules) {
+    if (typeof module !== 'string' || module.trim().length === 0) {
+      fail(`${label} contains an invalid module entry`)
+      continue
+    }
+    for (const prefix of excludedPrefixes) {
+      if (module.startsWith(prefix)) {
+        fail(`${label} module ${module} uses excluded target namespace prefix ${prefix}`)
+        break
+      }
     }
   }
 }
 
+validateModuleSet(tier1Modules, `${allowlistPath} tier1UpstreamSweepModules`)
+validateModuleSet(sweepTier1Modules, sweepTier1Path)
+validateModuleSet(sweepTier2Modules, sweepTier2Path)
+
 const tier1Set = new Set(tier1Modules)
-const sweepSet = new Set(sweepModules)
-const missingInSweep = tier1Modules.filter((module) => !sweepSet.has(module))
-const extraInSweep = sweepModules.filter((module) => !tier1Set.has(module))
+const sweepTier1Set = new Set(sweepTier1Modules)
+const sweepTier2Set = new Set(sweepTier2Modules)
+const missingInSweep = tier1Modules.filter((module) => !sweepTier1Set.has(module))
+const extraInSweep = sweepTier1Modules.filter((module) => !tier1Set.has(module))
+const tier1MissingInTier2 = tier1Modules.filter((module) => !sweepTier2Set.has(module))
 
 if (missingInSweep.length > 0) {
   fail(
-    `Tier1 modules present in ${allowlistPath} but missing in ${sweepListPath}:\n${summarize(
+    `Tier1 modules present in ${allowlistPath} but missing in ${sweepTier1Path}:\n${summarize(
       missingInSweep,
       20
     )}`
@@ -144,22 +146,31 @@ if (missingInSweep.length > 0) {
 
 if (extraInSweep.length > 0) {
   fail(
-    `Sweep modules present in ${sweepListPath} but missing in ${allowlistPath}:\n${summarize(
+    `Sweep modules present in ${sweepTier1Path} but missing in ${allowlistPath}:\n${summarize(
       extraInSweep,
       20
     )}`
   )
 }
 
-if (tier1Modules.length !== sweepModules.length) {
+if (tier1MissingInTier2.length > 0) {
   fail(
-    `Tier1 module count mismatch between ${allowlistPath} (${tier1Modules.length}) and ${sweepListPath} (${sweepModules.length})`
+    `Tier1 modules missing from ${sweepTier2Path}:\n${summarize(
+      tier1MissingInTier2,
+      20
+    )}`
   )
 }
 
-if (tier1Modules.join('\n') !== sweepModules.join('\n')) {
+if (tier1Modules.length !== sweepTier1Modules.length) {
   fail(
-    `${sweepListPath} order differs from ${allowlistPath} tier1UpstreamSweepModules. Keep order deterministic and aligned.`
+    `Tier1 module count mismatch between ${allowlistPath} (${tier1Modules.length}) and ${sweepTier1Path} (${sweepTier1Modules.length})`
+  )
+}
+
+if (tier1Modules.join('\n') !== sweepTier1Modules.join('\n')) {
+  fail(
+    `${sweepTier1Path} order differs from ${allowlistPath} tier1UpstreamSweepModules. Keep order deterministic and aligned.`
   )
 }
 
@@ -168,5 +179,5 @@ if (process.exitCode) {
 }
 
 console.log(
-  `[ci:guards] OK: portable stdlib allowlist validated (${tier1Modules.length} tier1 modules, ${excludedPrefixes.length} excluded prefixes)`
+  `[ci:guards] OK: portable stdlib allowlist validated (${tier1Modules.length} tier1 modules, ${sweepTier2Modules.length} tier2 modules, ${excludedPrefixes.length} excluded prefixes)`
 )

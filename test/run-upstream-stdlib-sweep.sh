@@ -2,8 +2,10 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-MODULE_LIST="${MODULE_LIST:-$ROOT_DIR/test/upstream_std_modules.txt}"
+MODULE_LIST="${MODULE_LIST:-}"
 only_module=""
+sweep_tier="tier1"
+module_list_override=0
 
 HAXE_BIN="${HAXE_BIN:-}"
 if [[ -z "$HAXE_BIN" ]]; then
@@ -17,6 +19,7 @@ fi
 usage() {
   cat <<'EOF'
 Usage: test/run-upstream-stdlib-sweep.sh [--module MODULE] [--list PATH]
+       test/run-upstream-stdlib-sweep.sh [--tier tier1|tier2] [--module MODULE]
 
 Compiles a curated set of upstream Haxe std modules with:
   -D rust_emit_upstream_std
@@ -24,8 +27,9 @@ and validates each generated crate with:
   cargo fmt + cargo check
 
 Options:
+  --tier TIER      Tier module set to run (tier1|tier2, default: tier1).
   --module MODULE  Run only one module from the list.
-  --list PATH      Module list file (default: test/upstream_std_modules.txt).
+  --list PATH      Module list file override (default follows --tier).
 EOF
 }
 
@@ -35,8 +39,13 @@ while [[ $# -gt 0 ]]; do
       only_module="${2:-}"
       shift 2
       ;;
+    --tier)
+      sweep_tier="${2:-}"
+      shift 2
+      ;;
     --list)
       MODULE_LIST="${2:-}"
+      module_list_override=1
       shift 2
       ;;
     -h|--help)
@@ -50,6 +59,19 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ "$sweep_tier" != "tier1" && "$sweep_tier" != "tier2" ]]; then
+  echo "error: invalid tier '$sweep_tier' (expected tier1|tier2)" >&2
+  exit 2
+fi
+
+if [[ "$module_list_override" -eq 0 && -z "$MODULE_LIST" ]]; then
+  if [[ "$sweep_tier" == "tier2" ]]; then
+    MODULE_LIST="$ROOT_DIR/test/upstream_std_modules_tier2.txt"
+  else
+    MODULE_LIST="$ROOT_DIR/test/upstream_std_modules.txt"
+  fi
+fi
 
 if [[ "$HAXE_BIN" == */* ]]; then
   if [[ ! -x "$HAXE_BIN" ]]; then

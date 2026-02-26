@@ -29,6 +29,10 @@ Tracked artifacts:
   - Canonical portable-stdlib scope artifact:
     - excluded target-specific namespace prefixes
     - deterministic Tier1 upstream sweep module list
+- `test/upstream_std_modules.txt`
+  - Tier1 upstream sweep module list (PR/harness default).
+- `test/upstream_std_modules_tier2.txt`
+  - Tier2 upstream sweep module list for broader parity checks outside PR-critical loops.
 - `docs/stdlib-provenance-ledger.json`
   - Ledger for all tracked `std/**/*.cross.hx` files.
   - Records whether each file is an upstream sync or a repo-authored override.
@@ -45,6 +49,7 @@ CI/guard scripts:
     - sorted/unique exclude prefixes and Tier1 module list
     - Tier1 modules do not use excluded target prefixes
     - Tier1 list stays in sync with `test/upstream_std_modules.txt` (content + order)
+    - Tier2 list is sorted/unique, stays within portable namespace scope, and contains Tier1 as a subset
 
 ## Portable contract and native imports
 
@@ -83,4 +88,5 @@ These mappings are reflected in deterministic runtime planning artifacts:
 - `npm run guard:stdlib-ledger`
 - `npm run guard:portable-stdlib-allowlist`
 - `bash test/run-upstream-stdlib-sweep.sh`
+- `bash test/run-upstream-stdlib-sweep.sh --tier tier2`
 - `npm run check:harness`

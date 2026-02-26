@@ -27,6 +27,13 @@ Run the full local CI harness (snapshots + upstream stdlib sweep + examples):
 npm run test:all
 ```
 
+Run upstream stdlib sweeps directly:
+
+```sh
+bash test/run-upstream-stdlib-sweep.sh
+bash test/run-upstream-stdlib-sweep.sh --tier tier2
+```
+
 By default, `test:all` removes generated `out*` folders and `.cache/*target*` at the end of the run to control disk growth.
 
 - Keep artifacts for debugging:
