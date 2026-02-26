@@ -21,6 +21,10 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Requirements + architecture: `prd.md`
 - Target: **Haxe 4.3.7 → Rust** via Reflaxe
 
+## Strategic Goal
+
+- Primary long-term goal: make `reflaxe.rust` the best way to write production Rust outside of writing raw Rust directly, by combining Haxe ergonomics with Rust-level performance, safety, and readability, while preserving an explicit portable path through Haxe when users want cross-target portability.
+
 ## Core Guardrails (compiler)
 
 - Keep the pipeline **AST-first**: Builder → Transformer passes → Printer (avoid string-gen except at the printer).

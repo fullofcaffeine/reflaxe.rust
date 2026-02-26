@@ -67,6 +67,12 @@ This page is a practical reference for the most relevant compiler defines.
     - `runtime_plan.md` (human-readable)
   - Records runtime identity (`runtimeId`), effective mode (`no_hxrt|default_features|selective`),
     selected feature set, and typed provenance entries (`module`, `define`, `dependency_edge`).
+- `rust_optimizer_plan_report`
+  - Emit deterministic optimizer-plan artifacts in the generated crate root:
+    - `optimizer_plan.json` (machine-readable)
+    - `optimizer_plan.md` (human-readable)
+  - Records executed pass order, applied optimization counts, skipped-reason counts,
+    and aggregate convergence metrics (`cloneElisions`, `loopOptimizations`).
 - `rust_no_hxrt`
   - Metal-only minimal-runtime mode.
   - Omits bundled `hxrt` emission and `Cargo.toml` dependency.

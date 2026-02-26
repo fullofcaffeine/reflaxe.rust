@@ -71,5 +71,5 @@ fn main() {
             hxrt::string::HxString::from(hxrt::string::HxString::from("toggle"))
         }
     });
-    println!("{}", hxrt::dynamic::from(s.clone()));
+    println!("{}", hxrt::dynamic::from(s));
 }

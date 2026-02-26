@@ -262,7 +262,7 @@ fn main() {
             let _g_22: String = __p;
             {
                 let e_4: String = _g_22;
-                println!("{}", hxrt::dynamic::from(e_4.clone()));
+                println!("{}", hxrt::dynamic::from(e_4));
             }
         }
     }

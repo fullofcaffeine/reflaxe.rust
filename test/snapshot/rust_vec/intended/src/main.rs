@@ -103,7 +103,7 @@ fn main() {
                 let _g_4: String = __p;
                 {
                     let e: String = _g_4;
-                    println!("{}", hxrt::dynamic::from(e.clone()));
+                    println!("{}", hxrt::dynamic::from(e));
                 }
             }
         }

@@ -93,7 +93,7 @@ fn main() {
             Ok(__hx_box) => {
                 let e: hxrt::io::Error = *__hx_box;
                 crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(
-                    hxrt::dynamic::from(e.clone()).to_haxe_string(),
+                    hxrt::dynamic::from(e).to_haxe_string(),
                 )));
             }
             Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),

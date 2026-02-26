@@ -176,7 +176,7 @@ fn main() {
             let _g_4: hxrt::string::HxString = hxrt::string::HxString::from(__p);
             {
                 let e: hxrt::string::HxString = hxrt::string::HxString::from(_g_4);
-                println!("{}", hxrt::dynamic::from(e.clone()));
+                println!("{}", hxrt::dynamic::from(e));
             }
         }
     }
@@ -195,7 +195,7 @@ fn main() {
             let _g_6: hxrt::string::HxString = hxrt::string::HxString::from(__p);
             {
                 let e_2: hxrt::string::HxString = hxrt::string::HxString::from(_g_6);
-                println!("{}", hxrt::dynamic::from(e_2.clone()));
+                println!("{}", hxrt::dynamic::from(e_2));
             }
         }
     }

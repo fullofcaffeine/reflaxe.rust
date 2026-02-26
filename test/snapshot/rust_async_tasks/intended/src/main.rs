@@ -90,5 +90,5 @@ fn flow() -> hxrt::async_::HxFuture<String> {
 
 fn main() {
     let out: String = hxrt::async_::block_on(flow());
-    println!("{}", hxrt::dynamic::from(out.clone()));
+    println!("{}", hxrt::dynamic::from(out));
 }

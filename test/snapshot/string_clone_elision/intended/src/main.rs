@@ -57,6 +57,6 @@ fn main() {
         hxrt::string::HxString::from(hxrt::string::HxString::from("x"));
     let t: hxrt::string::HxString = s;
     s = hxrt::string::HxString::from(hxrt::string::HxString::from("y"));
-    println!("{}", hxrt::dynamic::from(t.clone()));
-    println!("{}", hxrt::dynamic::from(s.clone()));
+    println!("{}", hxrt::dynamic::from(t));
+    println!("{}", hxrt::dynamic::from(s));
 }

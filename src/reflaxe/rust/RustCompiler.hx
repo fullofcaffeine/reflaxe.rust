@@ -117,6 +117,25 @@ private typedef HxrtPlanReportSnapshot = {
 	var hxrtDependencyLine:String;
 };
 
+private typedef OptimizerMetricSnapshot = {
+	var id:String;
+	var count:Int;
+};
+
+private typedef OptimizerPlanReportSnapshot = {
+	var schemaVersion:Int;
+	var backendId:String;
+	var contract:String;
+	var executedPasses:Array<String>;
+	var applied:Array<OptimizerMetricSnapshot>;
+	var skipped:Array<OptimizerMetricSnapshot>;
+	var appliedTotal:Int;
+	var skippedTotal:Int;
+	var cloneElisions:Int;
+	var loopOptimizations:Int;
+	var usedModuleCount:Int;
+};
+
 /**
  * RustCompiler
  *
@@ -1285,6 +1304,151 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			lines.push("```toml");
 			lines.push(snapshot.hxrtDependencyLine);
 			lines.push("```");
+		}
+		lines.push("");
+		return lines.join("\n");
+	}
+
+	/**
+		Emits deterministic optimizer-plan report artifacts.
+
+		Why
+		- Performance convergence work needs reproducible visibility into which optimization rewrites
+		  ran and why candidates were skipped.
+		- CI should diff typed artifacts, not parse warnings from stderr.
+
+		What
+		- Writes `optimizer_plan.json` and `optimizer_plan.md` in the generated crate root.
+		- Emission is opt-in via `-D rust_optimizer_plan_report`.
+
+		How
+		- Reuses `CompilationContext` pass execution order + optimizer telemetry counters recorded
+		  by AST passes (`CloneElisionPass`, `BorrowScopeTighteningPass`, etc).
+	**/
+	function emitOptimizerPlanReports(outDir:String):Void {
+		if (!Context.defined("rust_optimizer_plan_report"))
+			return;
+
+		var snapshot = buildOptimizerPlanReportSnapshot();
+		var jsonReportPath = Path.join([outDir, "optimizer_plan.json"]);
+		var markdownReportPath = Path.join([outDir, "optimizer_plan.md"]);
+		File.saveContent(jsonReportPath, renderOptimizerPlanJson(snapshot));
+		File.saveContent(markdownReportPath, renderOptimizerPlanMarkdown(snapshot));
+	}
+
+	function buildOptimizerPlanReportSnapshot():OptimizerPlanReportSnapshot {
+		var modulePaths = snapshotUsedModulePaths();
+		var executedPasses:Array<String> = [];
+		var applied:Array<OptimizerMetricSnapshot> = [];
+		var skipped:Array<OptimizerMetricSnapshot> = [];
+
+		if (currentCompilationContext != null) {
+			executedPasses = currentCompilationContext.executedPasses.copy();
+			applied = currentCompilationContext.optimizerAppliedSnapshot();
+			skipped = currentCompilationContext.optimizerSkippedSnapshot();
+		}
+
+		return {
+			schemaVersion: 1,
+			backendId: "reflaxe.rust",
+			contract: profile == Metal ? "metal" : "portable",
+			executedPasses: executedPasses,
+			applied: applied,
+			skipped: skipped,
+			appliedTotal: sumOptimizerMetrics(applied),
+			skippedTotal: sumOptimizerMetrics(skipped),
+			cloneElisions: sumOptimizerMetricsByPrefix(applied, "clone_elision.applied."),
+			loopOptimizations: sumOptimizerMetricsByPrefix(applied, "loop_optimizations.applied."),
+			usedModuleCount: modulePaths.length
+		};
+	}
+
+	static function sumOptimizerMetrics(metrics:Array<OptimizerMetricSnapshot>):Int {
+		var total = 0;
+		for (metric in metrics)
+			total += metric.count;
+		return total;
+	}
+
+	static function sumOptimizerMetricsByPrefix(metrics:Array<OptimizerMetricSnapshot>, prefix:String):Int {
+		var total = 0;
+		for (metric in metrics) {
+			if (StringTools.startsWith(metric.id, prefix))
+				total += metric.count;
+		}
+		return total;
+	}
+
+	static function renderOptimizerPlanJson(snapshot:OptimizerPlanReportSnapshot):String {
+		var lines:Array<String> = [];
+		lines.push("{");
+		lines.push('\t"schemaVersion": ' + snapshot.schemaVersion + ",");
+		lines.push('\t"backendId": "' + jsonEscape(snapshot.backendId) + '",');
+		lines.push('\t"contract": "' + jsonEscape(snapshot.contract) + '",');
+		lines.push('\t"executedPasses": [');
+		appendJsonStringArray(lines, snapshot.executedPasses, 2);
+		lines.push("\t],");
+		lines.push('\t"applied": [');
+		appendJsonOptimizerMetrics(lines, snapshot.applied, 2);
+		lines.push("\t],");
+		lines.push('\t"skipped": [');
+		appendJsonOptimizerMetrics(lines, snapshot.skipped, 2);
+		lines.push("\t],");
+		lines.push('\t"appliedTotal": ' + snapshot.appliedTotal + ",");
+		lines.push('\t"skippedTotal": ' + snapshot.skippedTotal + ",");
+		lines.push('\t"cloneElisions": ' + snapshot.cloneElisions + ",");
+		lines.push('\t"loopOptimizations": ' + snapshot.loopOptimizations + ",");
+		lines.push('\t"usedModuleCount": ' + snapshot.usedModuleCount);
+		lines.push("}");
+		return lines.join("\n") + "\n";
+	}
+
+	static function appendJsonOptimizerMetrics(lines:Array<String>, metrics:Array<OptimizerMetricSnapshot>, indentLevel:Int):Void {
+		for (index in 0...metrics.length) {
+			var metric = metrics[index];
+			var comma = index == metrics.length - 1 ? "" : ",";
+			lines.push(indent(indentLevel) + "{");
+			lines.push(indent(indentLevel + 1) + '"id": "' + jsonEscape(metric.id) + '",');
+			lines.push(indent(indentLevel + 1) + '"count": ' + metric.count);
+			lines.push(indent(indentLevel) + "}" + comma);
+		}
+	}
+
+	static function renderOptimizerPlanMarkdown(snapshot:OptimizerPlanReportSnapshot):String {
+		var lines:Array<String> = [];
+		lines.push("# Optimizer Plan");
+		lines.push("");
+		lines.push("- schema version: `" + snapshot.schemaVersion + "`");
+		lines.push("- backend id: `" + snapshot.backendId + "`");
+		lines.push("- contract: `" + snapshot.contract + "`");
+		lines.push("- used module count: `" + snapshot.usedModuleCount + "`");
+		lines.push("- applied total: `" + snapshot.appliedTotal + "`");
+		lines.push("- skipped total: `" + snapshot.skippedTotal + "`");
+		lines.push("- clone elisions: `" + snapshot.cloneElisions + "`");
+		lines.push("- loop optimizations: `" + snapshot.loopOptimizations + "`");
+		lines.push("");
+		lines.push("## Executed passes");
+		if (snapshot.executedPasses.length == 0) {
+			lines.push("- none");
+		} else {
+			for (passName in snapshot.executedPasses)
+				lines.push("- `" + passName + "`");
+		}
+		lines.push("");
+		lines.push("## Applied optimizations");
+		if (snapshot.applied.length == 0) {
+			lines.push("- none");
+		} else {
+			for (metric in snapshot.applied)
+				lines.push("- `" + metric.id + "`: `" + metric.count + "`");
+		}
+		lines.push("");
+		lines.push("## Skipped optimizations");
+		if (snapshot.skipped.length == 0) {
+			lines.push("- none");
+		} else {
+			for (metric in snapshot.skipped)
+				lines.push("- `" + metric.id + "`: `" + metric.count + "`");
 		}
 		lines.push("");
 		return lines.join("\n");
@@ -3445,6 +3609,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		emitMetalViabilityReports(outDir);
 		emitProfileContractReports(outDir);
 		emitHxrtPlanReports(outDir);
+		emitOptimizerPlanReports(outDir);
 		var manifest = Path.join([outDir, "Cargo.toml"]);
 		if (!FileSystem.exists(manifest))
 			return;

@@ -43,6 +43,8 @@ class CompilationContext {
 	var metalRawExprTotal:Int;
 	var metalViabilitySnapshot:Null<MetalViabilitySnapshot>;
 	var profileContractDiagnostics:Null<ProfileContractDiagnostics>;
+	var optimizerAppliedById:Map<String, Int>;
+	var optimizerSkippedById:Map<String, Int>;
 
 	public var crateName(get, never):String;
 	public var profile(get, never):RustProfile;
@@ -62,6 +64,8 @@ class CompilationContext {
 		this.metalRawExprTotal = 0;
 		this.metalViabilitySnapshot = null;
 		this.profileContractDiagnostics = null;
+		this.optimizerAppliedById = [];
+		this.optimizerSkippedById = [];
 	}
 
 	inline function get_crateName():String {
@@ -167,5 +171,62 @@ class CompilationContext {
 
 	public function getProfileContractDiagnostics():Null<ProfileContractDiagnostics> {
 		return profileContractDiagnostics;
+	}
+
+	/**
+		Records applied optimizer decisions keyed by deterministic metric id.
+
+		Why
+		- Optimizer report artifacts (`optimizer_plan.*`) need stable counters sourced from passes,
+		  not ad-hoc log parsing.
+		- Centralized accumulation keeps pass implementations focused on local rewrite safety while
+		  preserving one typed reporting boundary.
+
+		How
+		- Passes call this for each successful optimization rewrite family.
+		- Metrics are accumulated in a map and exported through sorted snapshots.
+	**/
+	public function recordOptimizerApplied(metricId:String, count:Int = 1):Void {
+		if (metricId == null || metricId.length == 0)
+			return;
+		if (count <= 0)
+			return;
+		optimizerAppliedById.set(metricId, (optimizerAppliedById.exists(metricId) ? optimizerAppliedById.get(metricId) : 0) + count);
+	}
+
+	/**
+		Records skipped optimizer decisions keyed by deterministic reason id.
+
+		Why
+		- Convergence work needs actionable "why not optimized" data (for example closure context,
+		  later uses, boundary safety guards) in CI artifacts.
+		- Explicit skip reasons prevent silent behavioral drift when pass guards change.
+
+		How
+		- Passes record a reason id whenever a candidate optimization is rejected.
+		- Snapshots are sorted by id to remain byte-stable across repeated runs.
+	**/
+	public function recordOptimizerSkipped(reasonId:String, count:Int = 1):Void {
+		if (reasonId == null || reasonId.length == 0)
+			return;
+		if (count <= 0)
+			return;
+		optimizerSkippedById.set(reasonId, (optimizerSkippedById.exists(reasonId) ? optimizerSkippedById.get(reasonId) : 0) + count);
+	}
+
+	public function optimizerAppliedSnapshot():Array<{id:String, count:Int}> {
+		return optimizerMetricSnapshot(optimizerAppliedById);
+	}
+
+	public function optimizerSkippedSnapshot():Array<{id:String, count:Int}> {
+		return optimizerMetricSnapshot(optimizerSkippedById);
+	}
+
+	function optimizerMetricSnapshot(source:Map<String, Int>):Array<{id:String, count:Int}> {
+		var out:Array<{id:String, count:Int}> = [];
+		for (id => count in source)
+			out.push({id: id, count: count});
+		out.sort((a, b) -> a.id < b.id ? -1 : (a.id > b.id ? 1 : 0));
+		return out;
 	}
 }

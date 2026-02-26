@@ -16,7 +16,8 @@ import reflaxe.rust.ast.RustAST.RustFile;
 	- Records executed pass names in `CompilationContext`.
 
 	How
-	- `portable`: normalize + mut inference + clone elision (+ metal restrictions for `@:haxeMetal` islands)
+	- `portable`: normalize + mut inference + clone elision + borrow tightening
+	  (+ metal restrictions for `@:haxeMetal` islands)
 	- `metal`: portable set + borrow-scope stage + metal restrictions
 	- `rust_no_hxrt`: appends a no-runtime verification stage (`NoHxrtPass`)
 **/
@@ -44,7 +45,7 @@ class PassRunner {
 			case Portable:
 				// Keep metal restrictions active in portable compilations so `@:haxeMetal`
 				// islands are enforced by the same pass contract as full metal profile.
-				[NORMALIZE, MUT_INFERENCE, CLONE_ELISION, METAL_RESTRICTIONS];
+				[NORMALIZE, MUT_INFERENCE, CLONE_ELISION, BORROW_TIGHTEN, METAL_RESTRICTIONS];
 			case Metal:
 				[NORMALIZE, MUT_INFERENCE, CLONE_ELISION, BORROW_TIGHTEN, METAL_RESTRICTIONS];
 		};

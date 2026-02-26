@@ -59,5 +59,5 @@ fn main() {
         2 | 3 => hxrt::string::HxString::from(hxrt::string::HxString::from("two_or_three")),
         _ => hxrt::string::HxString::from(hxrt::string::HxString::from("other")),
     });
-    println!("{}", hxrt::dynamic::from(s.clone()));
+    println!("{}", hxrt::dynamic::from(s));
 }

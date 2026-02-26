@@ -85,12 +85,14 @@ Opt-in deterministic report artifacts:
 ```bash
 -D rust_contract_report
 -D rust_runtime_plan_report
+-D rust_optimizer_plan_report
 ```
 
 Generated artifacts:
 
 - `contract_report.json` / `contract_report.md`
 - `runtime_plan.json` / `runtime_plan.md`
+- `optimizer_plan.json` / `optimizer_plan.md`
 
 The report schemas include explicit identity fields:
 

@@ -76,7 +76,7 @@ fn main() {
         Err(__hx_ex) => match __hx_ex.downcast::<hxrt::io::Error>() {
             Ok(__hx_box) => {
                 let e: hxrt::io::Error = *__hx_box;
-                println!("{}", hxrt::dynamic::from(e.clone()));
+                println!("{}", hxrt::dynamic::from(e));
             }
             Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
         },
@@ -88,7 +88,7 @@ fn main() {
         Err(__hx_ex) => match __hx_ex.downcast::<hxrt::io::Error>() {
             Ok(__hx_box) => {
                 let e_2: hxrt::io::Error = *__hx_box;
-                println!("{}", hxrt::dynamic::from(e_2.clone()));
+                println!("{}", hxrt::dynamic::from(e_2));
             }
             Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
         },

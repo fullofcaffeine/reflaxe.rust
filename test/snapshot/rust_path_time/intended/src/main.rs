@@ -77,7 +77,7 @@ fn main() {
                 let _g: String = __p;
                 {
                     let name: String = _g;
-                    println!("{}", hxrt::dynamic::from(name.clone()));
+                    println!("{}", hxrt::dynamic::from(name));
                 }
             }
             Option::None => {

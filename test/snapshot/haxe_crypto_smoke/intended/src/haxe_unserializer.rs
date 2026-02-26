@@ -1570,7 +1570,7 @@ impl Unserializer {
                         __b.scache.clone()
                     })
                     .push(hxrt::string::HxString::from(s_4.clone()));
-                    return hxrt::dynamic::from(s_4.clone());
+                    return hxrt::dynamic::from(s_4);
                 }
                 122 => {
                     return hxrt::dynamic::from(0);

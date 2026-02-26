@@ -122,7 +122,7 @@ fn main() {
             Option::None => true,
         }
     };
-    println!("{}", hxrt::dynamic::from(received.clone()));
+    println!("{}", hxrt::dynamic::from(received));
     println!("{}", hxrt::dynamic::from(joined));
     println!(
         "{}",

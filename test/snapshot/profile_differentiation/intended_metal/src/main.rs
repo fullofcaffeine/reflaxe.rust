@@ -65,7 +65,7 @@ fn main() {
             total
         };
     }
-    println!("{}", hxrt::dynamic::from(banner.clone()));
+    println!("{}", hxrt::dynamic::from(banner));
     println!("{}", hxrt::dynamic::from(frozen));
     println!("{}", hxrt::dynamic::from(total));
 }
