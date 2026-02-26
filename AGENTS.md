@@ -249,13 +249,15 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - `npm ci --ignore-scripts --no-audit --no-fund`
   - `bash test/run-snapshots.sh --clippy` (runs curated clippy checks on a small subset of snapshot crates)
   - `bash test/run-upstream-stdlib-sweep.sh` (Tier1 curated upstream std imports under `-D rust_emit_upstream_std`)
+  - Periodic broader parity check (for non-PR loops): `bash test/run-upstream-stdlib-sweep.sh --tier tier2`
   - `bash scripts/ci/perf-hxrt-overhead.sh` (soft-budget warnings + artifact report)
   - `cargo fmt && cargo clippy -- -D warnings`
   - Smoke-run any examples you touched (e.g. `(cd examples/tui_todo && haxe compile.hxml && (cd out && cargo run -q))`)
 - CI runs:
   - `test/run-snapshots.sh` (runs `cargo fmt` + `cargo build -q` per snapshot)
   - Keep `scripts/ci/check-metal-policy.sh` regex expectations in sync with emitted contract diagnostics and wire every `test/negative/metal_*` fixture into that script so metal subset enforcement cannot silently drift.
-  - `test/run-upstream-stdlib-sweep.sh` (per-module actionable compile/fmt/check for upstream std modules)
+  - `test/run-upstream-stdlib-sweep.sh` (Tier1 per-module actionable compile/fmt/check for upstream std modules)
+  - `test/run-upstream-stdlib-sweep.sh --tier tier2` (weekly evidence broader parity sweep)
   - `scripts/ci/package-smoke.sh` validates the packaged artifact via isolated local `haxelib` install + Rust build (including symlink-cwd alias regression).
   - `scripts/ci/perf-hxrt-overhead.sh` benchmarks HXRT overhead (`hello`/`array`/`hot_loop`/`hot_loop_inproc`/`hot_loop_no_hxrt` vs pure Rust baselines + chat profile spread) and emits soft-budget warnings + artifacts.
   - `scripts/ci/template-smoke.sh` scaffolds `templates/basic` via `scripts/dev/new-project.sh` and executes the full task-HXML matrix (`compile.build`, `compile`, `compile.run`, `compile.release`, `compile.release.run`).
