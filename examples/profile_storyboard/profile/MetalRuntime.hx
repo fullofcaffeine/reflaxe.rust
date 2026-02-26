@@ -3,7 +3,6 @@ package profile;
 import domain.StoryCard;
 import rust.Option;
 import rust.Result;
-import rust.metal.Code;
 
 typedef MetalCardInput = {
 	title:String,
@@ -128,11 +127,9 @@ class MetalRuntime implements StoryboardRuntime {
 	}
 
 	function score(title:String, lane:String):Int {
-		Code.stmt("let _ = (&{0}, &{1});", title, lane);
-		var titleLen:Int = Code.expr("{0}.len() as i32", title);
-		var laneLen:Int = Code.expr("{0}.len() as i32", lane);
-		var mixed:Int = Code.expr("((({0} as i64) * 73 + ({1} as i64) * 17 + ({2} as i64)) % 1000003) as i32", titleLen, laneLen, nextId);
-		return mixed;
+		var titleLen = title.length;
+		var laneLen = lane.length;
+		return (titleLen * 73 + laneLen * 17 + nextId) % 1000003;
 	}
 
 	function renderCard(card:StoryCard):String {

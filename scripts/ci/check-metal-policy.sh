@@ -963,6 +963,9 @@ run_optional_fallback_case "examples/chat_loopback" "compile.metal.hxml" 'Metal 
 run_optional_fallback_case "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'profile\.RemoteRuntime:(2[1-9]|[3-9][0-9]|[1-9][0-9]{2,})' \
 	'metal fallback top-modules keeps profile.RemoteRuntime raw fallback below 21 after typed catch/downcast lowering'
+run_optional_fallback_case "examples/profile_storyboard" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'profile\.MetalRuntime:' \
+	'metal fallback top-modules excludes profile.MetalRuntime after typed score lowering'
 run_optional_fallback_case "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'Sys:' \
 	'metal fallback top-modules excludes Sys after typed runtime wrapper migration'
