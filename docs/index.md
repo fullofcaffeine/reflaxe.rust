@@ -36,7 +36,7 @@ Use this page as the map for `reflaxe.rust` docs.
 ## Rust interop and runtime
 
 - [Interop](interop.md): externs, metadata-driven Cargo deps, extra Rust modules, and escape hatch policy.
-- [Rusty profile](rusty-profile.md): migration mapping from removed `idiomatic`/`rusty` selectors.
+- [Profile migration guide](rusty-profile.md): migration mapping from removed `idiomatic`/`rusty` selectors.
 - [Metal profile](metal-profile.md): Rust-first authoring and boundary policy.
 - [Lifetime encoding design](lifetime-encoding.md): borrow/lifetime modeling constraints and roadmap.
 - [Threading](threading.md): threading model and runtime guarantees.

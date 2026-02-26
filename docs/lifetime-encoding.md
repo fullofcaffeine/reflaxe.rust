@@ -21,7 +21,7 @@ So a direct 1:1 language mapping is not available.
 
 ## What We Already Have
 
-Today, Rusty profile already encodes useful lifetime-like intent through:
+Today, the metal contract and Rust-first APIs already encode useful lifetime-like intent through:
 
 - borrow token types: `rust.Ref<T>`, `rust.MutRef<T>`, `rust.Slice<T>`, `rust.Str`
 - scoped helpers: `rust.Borrow.withRef/withMut`, `rust.SliceTools.with`, `rust.MutSliceTools.with`
@@ -88,7 +88,7 @@ Cons:
 
 ### 3) Borrow Checker Pass In Compiler (Higher risk, high payoff)
 
-Add a Rusty-only semantic pass over typed AST:
+Add a metal-focused semantic pass over typed AST:
 
 - track borrow creation/usage sites
 - detect obvious aliasing/escape violations early
@@ -139,4 +139,5 @@ This gives meaningful lifetime safety gains without pretending to fully replace 
 See also:
 
 - [Profiles](profiles.md)
-- [Rusty profile](rusty-profile.md)
+- [Metal profile](metal-profile.md)
+- [Profile migration guide](rusty-profile.md)

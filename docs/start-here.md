@@ -84,6 +84,6 @@ cargo hx --project examples/chat_loopback --profile metal --action run
 - [Profiles](profiles.md)
 - [Examples matrix](examples-matrix.md)
 - [Metal profile](metal-profile.md)
-- [Rusty migration guide](rusty-profile.md)
+- [Profile migration guide](rusty-profile.md)
 - [Async/Await preview](async-await.md)
 - [Defines reference](defines-reference.md)

@@ -10,7 +10,7 @@ typedef MetalCardInput = {
 };
 
 /**
-	Metal profile implementation: Rusty-style typed flow plus typed low-level snippets via `Code`.
+	Metal profile implementation: Rust-first typed flow plus typed low-level snippets via `Code`.
 **/
 class MetalRuntime implements StoryboardRuntime {
 	var nextId:Int = 1;

@@ -106,8 +106,8 @@ This keeps app code typed while letting Cargo/dependency planning include tokio 
 
 ## Related docs
 
-- [Rusty profile](rusty-profile.md)
 - [Metal profile](metal-profile.md)
+- [Profile migration guide](rusty-profile.md)
 - [Defines reference](defines-reference.md)
 - [Workflow](workflow.md)
 - [Example: async_retry_pipeline](../examples/async_retry_pipeline)

@@ -13,7 +13,7 @@ Why:
 
 ## Performance notes
 
-- Most helpers allocate eagerly (typically returning `Array<T>`). For large data flows, prefer iterator-style Rusty APIs (`rust.Iter<T>`, `rust.Slice<T>`, etc.) where applicable.
+- Most helpers allocate eagerly (typically returning `Array<T>`). For large data flows, prefer iterator-style Rust-first APIs (`rust.Iter<T>`, `rust.Slice<T>`, etc.) where applicable.
 
 ## Current limitation
 

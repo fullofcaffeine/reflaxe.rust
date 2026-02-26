@@ -31,7 +31,7 @@ Options:
                This intentionally does NOT enforce full clippy style cleanliness for generated code.
                Selection:
                  - If `--case` is set: runs for that case.
-                 - Else if `SNAP_CLIPPY_CASES` is set: comma/space-separated list (e.g. "v1_smoke,idiomatic_profile").
+                 - Else if `SNAP_CLIPPY_CASES` is set: comma/space-separated list (e.g. "v1_smoke,portable_profile_smoke").
                  - Else: default curated list (see script).
   --no-diff     Skip intended*/ diffs and stdout snapshot checks.
                Useful for host smoke runs where we only care about compile/build health.
@@ -147,7 +147,7 @@ should_run_clippy_for_case() {
   fi
 
   # Default curated list: keep this short so CI stays fast.
-  [[ "$case_name" == "v1_smoke" || "$case_name" == "idiomatic_profile" || "$case_name" == "metal_v1_smoke" ]]
+  [[ "$case_name" == "v1_smoke" || "$case_name" == "portable_profile_smoke" || "$case_name" == "metal_v1_smoke" ]]
 }
 
 for case_dir in "$SNAP_DIR"/*; do

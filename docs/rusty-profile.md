@@ -1,4 +1,4 @@
-# Rusty Profile Migration Guide
+# Profile Migration Guide (Removed Rusty/Idiomatic Selectors)
 
 The `rusty` profile selector was removed.
 
