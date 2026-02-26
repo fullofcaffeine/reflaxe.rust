@@ -25,10 +25,14 @@
   ],
   "tier1UpstreamSweepModules": [
     "Sys",
+    "haxe.Http",
     "haxe.Json",
+    "haxe.MainLoop",
     "haxe.Serializer",
+    "haxe.Timer",
     "haxe.Unserializer",
     "haxe.crypto.Base64",
+    "haxe.crypto.Crc32",
     "haxe.crypto.Md5",
     "haxe.crypto.Sha1",
     "haxe.crypto.Sha224",
@@ -51,10 +55,21 @@
     "haxe.xml.Parser",
     "haxe.xml.Printer",
     "haxe.zip.Compress",
+    "haxe.zip.Reader",
     "haxe.zip.Uncompress",
+    "haxe.zip.Writer",
     "sys.FileSystem",
     "sys.io.File",
+    "sys.io.FileInput",
+    "sys.io.FileOutput",
+    "sys.io.FileSeek",
     "sys.io.Process",
-    "sys.net.Socket"
+    "sys.net.Host",
+    "sys.net.Socket",
+    "sys.ssl.Certificate",
+    "sys.ssl.Socket",
+    "sys.thread.Lock",
+    "sys.thread.Mutex",
+    "sys.thread.Thread"
   ]
 }
