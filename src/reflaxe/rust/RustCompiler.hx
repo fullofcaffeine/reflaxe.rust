@@ -4880,7 +4880,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function isStmtOnlyExpr(e:TypedExpr):Bool {
-		return switch (e.expr) {
+		// Statement-ness should ignore wrapper nodes so `@:meta return ...` and `(return ...)`
+		// are treated consistently with plain `return ...` in tail-position checks.
+		var cur = unwrapMetaParen(e);
+		return switch (cur.expr) {
 			case TVar(_, _): true;
 			case TReturn(_): true;
 			case TThrow(_): true;
@@ -6377,6 +6380,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 			case TContinue:
 				EBlock({stmts: [RContinue], tail: null});
+
+			case TReturn(_):
+				// `return` can surface in expression position (for example lambda bodies encoded as
+				// expression trees). Lower it through statement lowering to preserve return semantics
+				// and avoid unsupported-expression fallback.
+				EBlock({stmts: [compileStmt(e)], tail: null});
 
 			case TSwitch(switchExpr, cases, edef):
 				compileSwitch(switchExpr, cases, edef, e.t);
