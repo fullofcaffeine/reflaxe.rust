@@ -1,5 +1,6 @@
 # Curated upstream Haxe std modules for Rust parity sweep.
 # Keep this list focused/high-signal so CI remains fast.
+Sys
 haxe.Json
 haxe.Serializer
 haxe.Unserializer
@@ -27,3 +28,7 @@ haxe.xml.Parser
 haxe.xml.Printer
 haxe.zip.Compress
 haxe.zip.Uncompress
+sys.FileSystem
+sys.io.File
+sys.io.Process
+sys.net.Socket

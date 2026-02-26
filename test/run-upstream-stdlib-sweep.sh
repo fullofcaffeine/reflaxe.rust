@@ -125,10 +125,12 @@ for module in "${modules[@]}"; do
   out_dir="$WORK_DIR/out/$slug"
   target_dir="$SWEEP_TARGET_BASE/$slug"
   macro_cmd="include('$module')"
-  if [[ "$module" == "haxe.Json" ]]; then
+  if [[ "$module" == "haxe.Json" || "$module" == "Sys" ]]; then
     # On case-insensitive filesystems, include('haxe.Json') can collide with
     # std/haxe/json/* and trigger a false haxe.Json.Value vs haxe.json.Value error.
-    # Resolve this one module by exact type lookup.
+    # `include('Sys')` can also trigger a commandline-class mismatch (`Sys.ssl.Certificate`)
+    # in some environments.
+    # Resolve these modules by exact type lookup.
     macro_cmd="haxe.macro.Context.getType('$module')"
   fi
   mkdir -p "$out_dir"
