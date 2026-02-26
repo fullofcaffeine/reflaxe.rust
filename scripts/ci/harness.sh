@@ -158,4 +158,7 @@ while IFS= read -r example_dir; do
   fi
 done < <(find examples -mindepth 1 -maxdepth 1 -type d | sort)
 
+echo "[harness] profile_storyboard native parity"
+bash examples/profile_storyboard/scripts/compare-native.sh
+
 echo "[harness] ok"
