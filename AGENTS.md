@@ -97,9 +97,9 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
     - Std warning audit switch: `-D rust_warn_unmapped_coretype_std`.
   - JSON boundary gotcha: do not `cast Json.parse(...)` directly to a typed anonymous structure in app/runtime code. The Rust runtime may return a `DynObject` representation that fails anon downcasts; decode through `Reflect.field` + typed validators at the boundary, then stay strongly typed.
 - The generated crate always includes the bundled runtime crate at `./hxrt` and adds `hxrt = { path = "./hxrt" }` to `Cargo.toml`.
-- For class instance semantics, the current POC uses `type HxRef<T> = Rc<RefCell<T>>` and:
-  - concrete calls use `Class::method(&obj, ...)` where methods take `&RefCell<Class>`
-  - polymorphic base/interface calls use trait objects (`Rc<dyn ...>`) and `obj.method(...)` dispatch
+- For class instance semantics, the runtime uses a thread-safe heap (`HxRef<T> = Arc<HxCell<T>>` with `RwLock` interior mutability):
+  - concrete calls use `Class::method(&obj, ...)` where methods take `&HxCell<Class>`
+  - polymorphic base/interface calls use trait objects (`HxDynRef<dyn ...>`) and `obj.method(...)` dispatch
 - For field assignment on `HxRef` (`obj.field = rhs`), evaluate `rhs` first, then take `borrow_mut()` (otherwise `RefCell` will panic at runtime when `rhs` reads other fields).
 - For void Haxe functions, don’t emit a tail expression just because the last expression has a non-void type (e.g. `OpAssign` is typed as the RHS); pass the expected return type into block compilation to decide whether a tail is allowed.
 - Escape hatch policy: **apps/examples should not use `__rust__` directly**. Put injections behind Haxe APIs in `std/` and keep examples “pure”.
