@@ -27,7 +27,7 @@ CI variants:
 | Scenario / Example | portable | metal | Notes |
 | --- | --- | --- | --- |
 | `examples/chat_loopback` | Yes | Yes | Flagship comparison app (interactive TUI + network loopback + Haxe-authored Rust tests). |
-| `examples/profile_storyboard` | Yes | Yes | Compact profile-style reference app with typed runtime variants. |
+| `examples/profile_storyboard` | Yes | Yes | Compact portable-vs-metal reference app (best starting point for metal-first source-style comparison). |
 | `examples/hello` | Yes | Yes | Minimal sanity check with portable and metal compile targets. |
 | `examples/bytes_ops` | Yes | Yes | Bytes APIs + Haxe-authored Rust tests (`@:rustTest`). |
 | `examples/serde_json` | Yes | Yes | Typed Serde JSON surfaces. |
@@ -47,6 +47,32 @@ CI variants:
 - Metal Rust-first style:
   - `examples/profile_storyboard/profile/MetalRuntime.hx`
   - `examples/chat_loopback/profile/MetalRuntime.hx`
+
+## Metal-First Reference Flow
+
+Use `examples/profile_storyboard` for the fastest side-by-side authoring/codegen comparison:
+
+```bash
+cd examples/profile_storyboard
+cargo hx --profile portable --action run
+cargo hx --profile metal --action run
+```
+
+Inspect generated Rust:
+
+- `examples/profile_storyboard/out/src/main.rs`
+- `examples/profile_storyboard/out_metal/src/main.rs`
+
+Performance parity workflow (portable vs metal vs pure-rust baselines):
+
+```bash
+bash scripts/ci/perf-hxrt-overhead.sh --gate-mode soft
+```
+
+Artifacts:
+
+- `.cache/perf-hxrt/results/comparison.json`
+- `.cache/perf-hxrt/results/summary.md`
 
 ## Test authoring
 
