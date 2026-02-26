@@ -77,7 +77,11 @@ jobs:
       - name: Run full local CI equivalent
         run: |
           set -euo pipefail
-          HARNESS_CLEAN_OUTPUTS=1 HARNESS_CLEAN_CACHE=1 bash scripts/ci/local.sh
+          HARNESS_CLEAN_OUTPUTS=1 HARNESS_CLEAN_CACHE=1 \
+          HXRT_PERF_GATE_MODE=nightly \
+          HXRT_PERF_HOT_LOOP_INPROC_RUNS=60 \
+          HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS=60 \
+          bash scripts/ci/local.sh
 
       - name: Publish Linux evidence summary
         if: always()
@@ -93,7 +97,7 @@ jobs:
             echo "- Run: ${run_url}"
             echo "- Commands:"
             echo "  - \`npm run docs:sync:progress\`"
-            echo "  - \`bash scripts/ci/local.sh\`"
+            echo "  - \`HXRT_PERF_GATE_MODE=nightly HXRT_PERF_HOT_LOOP_INPROC_RUNS=60 HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS=60 bash scripts/ci/local.sh\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   windows-smoke:

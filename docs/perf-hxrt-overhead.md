@@ -4,8 +4,10 @@ This benchmark tracks the overhead added by the Haxe runtime layer (`hxrt`) in g
 
 It is intentionally lightweight and CI-friendly:
 
-- It does not fail CI on perf changes.
-- It emits soft warnings when configured budgets are exceeded.
+- It supports gate modes: `soft`, `pr`, `nightly`.
+- `soft` emits warnings only.
+- `pr` enforces coarse hard-fail thresholds for major regressions.
+- `nightly` enforces tighter hard-fail thresholds.
 - It always publishes machine-readable artifacts.
 
 ## Why this exists
@@ -46,6 +48,47 @@ For each binary:
 - release binary size (`bytes`)
 - stripped size (`bytes`)
 - runtime average (`ms`) from either repeated process launches (`startup` mode) or in-process measurement (`inproc` mode)
+
+## Gate modes and hard thresholds
+
+Use explicit gate mode:
+
+```bash
+bash scripts/ci/perf-hxrt-overhead.sh --gate-mode <soft|pr|nightly>
+```
+
+Modes:
+
+- `soft` (default): warnings only.
+- `pr`: coarse hard-fail thresholds (noise-tolerant major-regression guard).
+- `nightly`: tighter hard-fail thresholds.
+
+Default hard-fail thresholds:
+
+- `pr`
+  - size regression vs baseline: `+20%`
+  - runtime regression vs baseline: `+25%`
+  - portable/metal convergence caps:
+    - `array` runtime `<= 1.20x`
+    - `hot_loop_inproc` runtime `<= 1.10x`
+- `nightly`
+  - size regression vs baseline: `+8%`
+  - runtime regression vs baseline: `+15%`
+  - portable/metal convergence caps:
+    - `array` runtime `<= 1.08x`
+    - `hot_loop_inproc` runtime `<= 1.08x`
+
+Environment overrides:
+
+- `HXRT_PERF_GATE_MODE`
+- `HXRT_PERF_PR_SIZE_FAIL_PCT`
+- `HXRT_PERF_PR_RUNTIME_FAIL_PCT`
+- `HXRT_PERF_PR_PORTABLE_METAL_ARRAY_MAX`
+- `HXRT_PERF_PR_PORTABLE_METAL_HOT_LOOP_INPROC_MAX`
+- `HXRT_PERF_NIGHTLY_SIZE_FAIL_PCT`
+- `HXRT_PERF_NIGHTLY_RUNTIME_FAIL_PCT`
+- `HXRT_PERF_NIGHTLY_PORTABLE_METAL_ARRAY_MAX`
+- `HXRT_PERF_NIGHTLY_PORTABLE_METAL_HOT_LOOP_INPROC_MAX`
 
 ## How warnings are computed
 
@@ -130,7 +173,7 @@ Current policy:
    - Runtime/size deltas are explicitly tracked and should not regress without intent.
 3. Any runtime abstraction cost that can be removed without semantic break should be treated as optimization backlog.
 
-These are guiding targets, not hard CI fail gates yet.
+These are strategic targets; CI gate mode determines whether a given run enforces hard failures (`pr`/`nightly`) or warnings-only (`soft`).
 
 ## Commands
 
@@ -138,6 +181,13 @@ Run benchmark (compare mode):
 
 ```bash
 npm run test:perf:hxrt
+```
+
+Run benchmark with explicit hard-gate modes:
+
+```bash
+bash scripts/ci/perf-hxrt-overhead.sh --gate-mode pr
+bash scripts/ci/perf-hxrt-overhead.sh --gate-mode nightly
 ```
 
 Regenerate baseline file:
@@ -155,9 +205,19 @@ Optional convergence budget overrides:
 - `HXRT_PERF_PORTABLE_METAL_ARRAY_MAX` (default `1.08`)
 - `HXRT_PERF_PORTABLE_METAL_HOT_LOOP_INPROC_MAX` (default `1.05`)
 
+Hard-gate override families:
+
+- PR gate: `HXRT_PERF_PR_*`
+- nightly gate: `HXRT_PERF_NIGHTLY_*`
+
 ## CI integration
 
-CI runs `scripts/ci/perf-hxrt-overhead.sh` on PRs and `main`.
+Current workflow wiring:
+
+- PR/main CI (`.github/workflows/ci.yml`):
+  - `bash scripts/ci/perf-hxrt-overhead.sh --gate-mode pr`
+- Weekly evidence (`.github/workflows/weekly-ci-evidence.yml`):
+  - `HXRT_PERF_GATE_MODE=nightly HXRT_PERF_HOT_LOOP_INPROC_RUNS=60 HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS=60 bash scripts/ci/local.sh`
 
 Outputs are emitted in all three places:
 
@@ -168,9 +228,10 @@ Outputs are emitted in all three places:
 Primary files:
 
 - `current.json` (full current run)
-- `comparison.json` (warning decisions)
+- `comparison.json` (warning + hard-fail gate decisions)
 - `raw_metrics.tsv` (flat metrics table)
 - `summary.md` (human-readable report, including metal target tracking status for `hot_loop_inproc`)
+- `failures.txt` (hard-fail gate violations, if any)
 
 ## Updating the baseline safely
 

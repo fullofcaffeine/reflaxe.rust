@@ -16,7 +16,8 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 echo "[ci] harness (snapshots + examples)"
 bash scripts/ci/harness.sh
 
-echo "[ci] hxrt overhead benchmarks (soft-budget warnings)"
-bash scripts/ci/perf-hxrt-overhead.sh
+gate_mode="${HXRT_PERF_GATE_MODE:-soft}"
+echo "[ci] hxrt overhead benchmarks (gate mode: ${gate_mode})"
+bash scripts/ci/perf-hxrt-overhead.sh --gate-mode "${gate_mode}"
 
 echo "[ci] ok"

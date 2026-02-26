@@ -223,10 +223,10 @@ jobs:
           set -euo pipefail
           HARNESS_CLEAN_OUTPUTS=1 HARNESS_CLEAN_CACHE=1 bash scripts/ci/harness.sh
 
-      - name: Run HXRT overhead benchmarks (soft-budget warnings)
+      - name: Run HXRT overhead benchmarks (PR coarse gate)
         run: |
           set -euo pipefail
-          bash scripts/ci/perf-hxrt-overhead.sh
+          bash scripts/ci/perf-hxrt-overhead.sh --gate-mode pr
 
       - name: Upload HXRT overhead benchmark artifacts
         if: always()

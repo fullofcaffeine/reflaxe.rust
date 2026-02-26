@@ -12,6 +12,7 @@ Usage:
 
 Options:
   --update-baseline         Regenerate scripts/ci/perf/hxrt-baseline.json from current metrics.
+  --gate-mode <mode>        Gate mode: soft|pr|nightly (default: soft, or $HXRT_PERF_GATE_MODE).
   --keep-work               Keep build work directory under .cache/perf-hxrt/work.
   -h, --help                Show this help.
 
@@ -32,6 +33,23 @@ Environment:
                             Runtime ratio budget for portable-vs-metal array convergence (default: 1.08)
   HXRT_PERF_PORTABLE_METAL_HOT_LOOP_INPROC_MAX
                             Runtime ratio budget for portable-vs-metal hot_loop_inproc convergence (default: 1.05)
+  HXRT_PERF_GATE_MODE       Gate mode: soft|pr|nightly (default: soft).
+  HXRT_PERF_PR_SIZE_FAIL_PCT
+                            PR hard-fail size regression threshold vs baseline (default: 20)
+  HXRT_PERF_PR_RUNTIME_FAIL_PCT
+                            PR hard-fail runtime regression threshold vs baseline (default: 25)
+  HXRT_PERF_PR_PORTABLE_METAL_ARRAY_MAX
+                            PR hard-fail portable/metal array runtime convergence max ratio (default: 1.20)
+  HXRT_PERF_PR_PORTABLE_METAL_HOT_LOOP_INPROC_MAX
+                            PR hard-fail portable/metal hot_loop_inproc runtime convergence max ratio (default: 1.10)
+  HXRT_PERF_NIGHTLY_SIZE_FAIL_PCT
+                            Nightly hard-fail size regression threshold vs baseline (default: 8)
+  HXRT_PERF_NIGHTLY_RUNTIME_FAIL_PCT
+                            Nightly hard-fail runtime regression threshold vs baseline (default: 15)
+  HXRT_PERF_NIGHTLY_PORTABLE_METAL_ARRAY_MAX
+                            Nightly hard-fail portable/metal array runtime convergence max ratio (default: 1.08)
+  HXRT_PERF_NIGHTLY_PORTABLE_METAL_HOT_LOOP_INPROC_MAX
+                            Nightly hard-fail portable/metal hot_loop_inproc runtime convergence max ratio (default: 1.08)
 USAGE
 }
 
@@ -307,6 +325,7 @@ EOF
 }
 update_baseline=0
 keep_work=0
+gate_mode="${HXRT_PERF_GATE_MODE:-soft}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -318,6 +337,13 @@ while [[ $# -gt 0 ]]; do
       keep_work=1
       shift
       ;;
+    --gate-mode)
+      if [[ $# -lt 2 ]]; then
+        fail "--gate-mode requires one argument: soft|pr|nightly"
+      fi
+      gate_mode="$2"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -327,6 +353,14 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+case "$gate_mode" in
+  soft|pr|nightly)
+    ;;
+  *)
+    fail "invalid gate mode: $gate_mode (expected soft|pr|nightly)"
+    ;;
+esac
 
 haxe_bin="${HAXE_BIN:-haxe}"
 cargo_bin="${CARGO_BIN:-cargo}"
@@ -341,6 +375,14 @@ hot_loop_iters="${HXRT_PERF_HOT_LOOP_ITERS:-300}"
 hot_loop_inproc_runs="${HXRT_PERF_HOT_LOOP_INPROC_RUNS:-20}"
 hot_loop_no_hxrt_inproc_runs="${HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS:-20}"
 chat_iters="${HXRT_PERF_CHAT_ITERS:-40}"
+pr_size_fail_pct="${HXRT_PERF_PR_SIZE_FAIL_PCT:-20}"
+pr_runtime_fail_pct="${HXRT_PERF_PR_RUNTIME_FAIL_PCT:-25}"
+pr_portable_metal_array_max="${HXRT_PERF_PR_PORTABLE_METAL_ARRAY_MAX:-1.20}"
+pr_portable_metal_hot_loop_inproc_max="${HXRT_PERF_PR_PORTABLE_METAL_HOT_LOOP_INPROC_MAX:-1.10}"
+nightly_size_fail_pct="${HXRT_PERF_NIGHTLY_SIZE_FAIL_PCT:-8}"
+nightly_runtime_fail_pct="${HXRT_PERF_NIGHTLY_RUNTIME_FAIL_PCT:-15}"
+nightly_portable_metal_array_max="${HXRT_PERF_NIGHTLY_PORTABLE_METAL_ARRAY_MAX:-1.08}"
+nightly_portable_metal_hot_loop_inproc_max="${HXRT_PERF_NIGHTLY_PORTABLE_METAL_HOT_LOOP_INPROC_MAX:-1.08}"
 
 if [[ -x /usr/bin/time ]]; then
   time_bin="/usr/bin/time"
@@ -359,6 +401,7 @@ current_json="$results_dir/current.json"
 comparison_json="$results_dir/comparison.json"
 summary_md="$results_dir/summary.md"
 warnings_txt="$results_dir/warnings.txt"
+failures_txt="$results_dir/failures.txt"
 
 cleanup() {
   local original_exit="${1:-0}"
@@ -629,11 +672,21 @@ HXRT_PERF_CURRENT_JSON="$current_json" \
 HXRT_PERF_COMPARISON_JSON="$comparison_json" \
 HXRT_PERF_SUMMARY_MD="$summary_md" \
 HXRT_PERF_WARNINGS_TXT="$warnings_txt" \
+HXRT_PERF_FAILURES_TXT="$failures_txt" \
 HXRT_PERF_BASELINE_FILE="$baseline_file" \
 HXRT_PERF_BASELINE_DISPLAY="$baseline_display" \
 HXRT_PERF_UPDATE_BASELINE="$update_baseline" \
+HXRT_PERF_GATE_MODE="$gate_mode" \
 HXRT_PERF_SIZE_WARN_PCT="$size_warn_pct" \
 HXRT_PERF_RUNTIME_WARN_PCT="$runtime_warn_pct" \
+HXRT_PERF_PR_SIZE_FAIL_PCT="$pr_size_fail_pct" \
+HXRT_PERF_PR_RUNTIME_FAIL_PCT="$pr_runtime_fail_pct" \
+HXRT_PERF_PR_PORTABLE_METAL_ARRAY_MAX="$pr_portable_metal_array_max" \
+HXRT_PERF_PR_PORTABLE_METAL_HOT_LOOP_INPROC_MAX="$pr_portable_metal_hot_loop_inproc_max" \
+HXRT_PERF_NIGHTLY_SIZE_FAIL_PCT="$nightly_size_fail_pct" \
+HXRT_PERF_NIGHTLY_RUNTIME_FAIL_PCT="$nightly_runtime_fail_pct" \
+HXRT_PERF_NIGHTLY_PORTABLE_METAL_ARRAY_MAX="$nightly_portable_metal_array_max" \
+HXRT_PERF_NIGHTLY_PORTABLE_METAL_HOT_LOOP_INPROC_MAX="$nightly_portable_metal_hot_loop_inproc_max" \
 HXRT_PERF_HELLO_ITERS="$hello_iters" \
 HXRT_PERF_ARRAY_ITERS="$array_iters" \
 HXRT_PERF_HOT_LOOP_ITERS="$hot_loop_iters" \
@@ -651,11 +704,21 @@ const currentJsonPath = process.env.HXRT_PERF_CURRENT_JSON;
 const comparisonJsonPath = process.env.HXRT_PERF_COMPARISON_JSON;
 const summaryPath = process.env.HXRT_PERF_SUMMARY_MD;
 const warningsPath = process.env.HXRT_PERF_WARNINGS_TXT;
+const failuresPath = process.env.HXRT_PERF_FAILURES_TXT;
 const baselinePath = process.env.HXRT_PERF_BASELINE_FILE;
 const baselineDisplay = process.env.HXRT_PERF_BASELINE_DISPLAY || baselinePath;
 const updateBaseline = process.env.HXRT_PERF_UPDATE_BASELINE === "1";
+const gateMode = process.env.HXRT_PERF_GATE_MODE || "soft";
 const sizeWarnPct = Number(process.env.HXRT_PERF_SIZE_WARN_PCT || "5");
 const runtimeWarnPct = Number(process.env.HXRT_PERF_RUNTIME_WARN_PCT || "10");
+const prSizeFailPct = Number(process.env.HXRT_PERF_PR_SIZE_FAIL_PCT || "20");
+const prRuntimeFailPct = Number(process.env.HXRT_PERF_PR_RUNTIME_FAIL_PCT || "25");
+const prPortableMetalArrayMax = Number(process.env.HXRT_PERF_PR_PORTABLE_METAL_ARRAY_MAX || "1.12");
+const prPortableMetalHotLoopInprocMax = Number(process.env.HXRT_PERF_PR_PORTABLE_METAL_HOT_LOOP_INPROC_MAX || "1.10");
+const nightlySizeFailPct = Number(process.env.HXRT_PERF_NIGHTLY_SIZE_FAIL_PCT || "8");
+const nightlyRuntimeFailPct = Number(process.env.HXRT_PERF_NIGHTLY_RUNTIME_FAIL_PCT || "10");
+const nightlyPortableMetalArrayMax = Number(process.env.HXRT_PERF_NIGHTLY_PORTABLE_METAL_ARRAY_MAX || "1.08");
+const nightlyPortableMetalHotLoopInprocMax = Number(process.env.HXRT_PERF_NIGHTLY_PORTABLE_METAL_HOT_LOOP_INPROC_MAX || "1.05");
 const helloIters = Number(process.env.HXRT_PERF_HELLO_ITERS || "300");
 const arrayIters = Number(process.env.HXRT_PERF_ARRAY_ITERS || "300");
 const hotLoopIters = Number(process.env.HXRT_PERF_HOT_LOOP_ITERS || "300");
@@ -666,6 +729,10 @@ const portableMetalArrayMax = Number(process.env.HXRT_PERF_PORTABLE_METAL_ARRAY_
 const portableMetalHotLoopInprocMax = Number(process.env.HXRT_PERF_PORTABLE_METAL_HOT_LOOP_INPROC_MAX || "1.05");
 const haxeVersion = process.env.HXRT_PERF_HAXE_VERSION || "";
 const rustcVersion = process.env.HXRT_PERF_RUSTC_VERSION || "";
+
+if (!["soft", "pr", "nightly"].includes(gateMode)) {
+  throw new Error(`Invalid HXRT_PERF_GATE_MODE: ${gateMode}`);
+}
 
 const profiles = ["portable", "metal"];
 
@@ -819,21 +886,42 @@ if (updateBaseline) {
 }
 
 const warnings = [];
+const hardFailures = [];
+const activeGate = gateMode === "pr"
+  ? {
+      label: "pr",
+      sizeFailPct: prSizeFailPct,
+      runtimeFailPct: prRuntimeFailPct,
+      portableMetalArrayMax: prPortableMetalArrayMax,
+      portableMetalHotLoopInprocMax: prPortableMetalHotLoopInprocMax,
+    }
+  : gateMode === "nightly"
+  ? {
+      label: "nightly",
+      sizeFailPct: nightlySizeFailPct,
+      runtimeFailPct: nightlyRuntimeFailPct,
+      portableMetalArrayMax: nightlyPortableMetalArrayMax,
+      portableMetalHotLoopInprocMax: nightlyPortableMetalHotLoopInprocMax,
+    }
+  : null;
 
 function compareGroup(groupLabel, currentGroup, baselineGroup, opts) {
+  const sink = opts?.sink ?? warnings;
+  const sizePct = Number.isFinite(opts?.sizePct) ? Number(opts.sizePct) : sizeWarnPct;
+  const runtimePct = Number.isFinite(opts?.runtimePct) ? Number(opts.runtimePct) : runtimeWarnPct;
   if (!baselineGroup) {
-    warnings.push(`${groupLabel}: missing baseline group`);
+    sink.push(`${groupLabel}: missing baseline group`);
     return;
   }
 
   const includeRuntime = opts?.includeRuntime ?? true;
   const runtimeProfiles = Array.isArray(opts?.runtimeProfiles) ? new Set(opts.runtimeProfiles) : null;
   const specs = [
-    { key: "binaryRatio", label: "binary ratio", warnPct: sizeWarnPct },
-    { key: "strippedRatio", label: "stripped ratio", warnPct: sizeWarnPct },
+    { key: "binaryRatio", label: "binary ratio", warnPct: sizePct },
+    { key: "strippedRatio", label: "stripped ratio", warnPct: sizePct },
   ];
   if (includeRuntime) {
-    specs.push({ key: "runtimeRatio", label: "runtime ratio", warnPct: runtimeWarnPct });
+    specs.push({ key: "runtimeRatio", label: "runtime ratio", warnPct: runtimePct });
   }
 
   function orderedProfilesForGroup() {
@@ -855,7 +943,7 @@ function compareGroup(groupLabel, currentGroup, baselineGroup, opts) {
     const currentProfile = currentGroup[profile];
     const baselineProfile = baselineGroup[profile];
     if (!currentProfile || !baselineProfile) {
-      warnings.push(`${groupLabel}.${profile}: missing data in current/baseline`);
+      sink.push(`${groupLabel}.${profile}: missing data in current/baseline`);
       continue;
     }
 
@@ -871,7 +959,7 @@ function compareGroup(groupLabel, currentGroup, baselineGroup, opts) {
       const maxAllowed = baselineValue * (1 + spec.warnPct / 100);
       if (currentValue > maxAllowed) {
         const increasePct = ((currentValue / baselineValue) - 1) * 100;
-        warnings.push(
+        sink.push(
           `${groupLabel}.${profile}.${spec.label} +${increasePct.toFixed(2)}% ` +
             `(current=${currentValue.toFixed(6)}, baseline=${baselineValue.toFixed(6)}, budget=+${spec.warnPct.toFixed(2)}%)`
         );
@@ -884,6 +972,9 @@ let baselineLoaded = null;
 if (!updateBaseline) {
   if (!fs.existsSync(baselinePath)) {
     warnings.push(`baseline file not found: ${baselineDisplay}`);
+    if (activeGate != null) {
+      hardFailures.push(`${activeGate.label}.baseline_missing: ${baselineDisplay}`);
+    }
   } else {
     baselineLoaded = JSON.parse(fs.readFileSync(baselinePath, "utf8"));
     const baselineDerived = baselineLoaded.derivedBaseline || {};
@@ -901,6 +992,47 @@ if (!updateBaseline) {
       runtimeProfiles: ["metal"],
     });
     compareGroup("chat_relative", current.derived.chatRelativeToMin, baselineDerived.chatRelativeToMin, { includeRuntime: true });
+
+    if (activeGate != null) {
+      compareGroup("hello_overhead", current.derived.helloOverheadRatios, baselineDerived.helloOverheadRatios, {
+        includeRuntime: false,
+        sizePct: activeGate.sizeFailPct,
+        runtimePct: activeGate.runtimeFailPct,
+        sink: hardFailures,
+      });
+      compareGroup("array_overhead", current.derived.arrayOverheadRatios, baselineDerived.arrayOverheadRatios, {
+        includeRuntime: false,
+        sizePct: activeGate.sizeFailPct,
+        runtimePct: activeGate.runtimeFailPct,
+        sink: hardFailures,
+      });
+      compareGroup("hot_loop_overhead", current.derived.hotLoopOverheadRatios, baselineDerived.hotLoopOverheadRatios, {
+        includeRuntime: false,
+        sizePct: activeGate.sizeFailPct,
+        runtimePct: activeGate.runtimeFailPct,
+        sink: hardFailures,
+      });
+      compareGroup("hot_loop_inproc_overhead", current.derived.hotLoopInprocOverheadRatios, baselineDerived.hotLoopInprocOverheadRatios, {
+        includeRuntime: true,
+        runtimeProfiles: ["metal"],
+        sizePct: activeGate.sizeFailPct,
+        runtimePct: activeGate.runtimeFailPct,
+        sink: hardFailures,
+      });
+      compareGroup("hot_loop_no_hxrt_overhead", current.derived.hotLoopNoHxrtOverheadRatios, baselineDerived.hotLoopNoHxrtOverheadRatios, {
+        includeRuntime: true,
+        runtimeProfiles: ["metal"],
+        sizePct: activeGate.sizeFailPct,
+        runtimePct: activeGate.runtimeFailPct,
+        sink: hardFailures,
+      });
+      compareGroup("chat_relative", current.derived.chatRelativeToMin, baselineDerived.chatRelativeToMin, {
+        includeRuntime: true,
+        sizePct: activeGate.sizeFailPct,
+        runtimePct: activeGate.runtimeFailPct,
+        sink: hardFailures,
+      });
+    }
   }
 }
 
@@ -924,13 +1056,48 @@ for (const [key, check] of Object.entries(convergenceChecks)) {
   }
 }
 
+const gateConvergenceChecks = activeGate == null ? {} : {
+  arrayRuntimePortableVsMetal: {
+    ratio: Number(current.derived.portableVsMetalConvergence.array.runtimeRatio),
+    max: activeGate.portableMetalArrayMax,
+  },
+  hotLoopInprocRuntimePortableVsMetal: {
+    ratio: Number(current.derived.portableVsMetalConvergence.hotLoopInproc.runtimeRatio),
+    max: activeGate.portableMetalHotLoopInprocMax,
+  },
+};
+
+for (const [key, check] of Object.entries(gateConvergenceChecks)) {
+  check.pass = Number.isFinite(check.ratio) && Number.isFinite(check.max) && check.ratio <= check.max;
+  if (!updateBaseline && !check.pass) {
+    hardFailures.push(
+      `${activeGate.label}.portable_vs_metal.${key} ratio=${check.ratio.toFixed(6)} exceeds target=${check.max.toFixed(6)}`
+    );
+  }
+}
+
+const gateThresholds = activeGate == null
+  ? null
+  : {
+      sizeFailPct: activeGate.sizeFailPct,
+      runtimeFailPct: activeGate.runtimeFailPct,
+      portableMetalArrayMax: activeGate.portableMetalArrayMax,
+      portableMetalHotLoopInprocMax: activeGate.portableMetalHotLoopInprocMax,
+    };
+
 const comparison = {
   schemaVersion: 1,
   generatedAt: current.generatedAt,
   mode: updateBaseline ? "update-baseline" : "compare",
+  gateMode,
+  gateEnabled: !updateBaseline && activeGate != null,
+  gateThresholds,
   baselinePath: baselineDisplay,
   baselineAvailable: baselineLoaded != null || updateBaseline,
   convergenceChecks,
+  gateConvergenceChecks,
+  failureCount: hardFailures.length,
+  failures: hardFailures,
   warningCount: warnings.length,
   warnings,
 };
@@ -938,6 +1105,10 @@ fs.writeFileSync(comparisonJsonPath, `${JSON.stringify(comparison, null, 2)}\n`)
 fs.writeFileSync(
   warningsPath,
   warnings.length > 0 ? `${warnings.join("\n")}\n` : ""
+);
+fs.writeFileSync(
+  failuresPath,
+  hardFailures.length > 0 ? `${hardFailures.join("\n")}\n` : ""
 );
 
 function formatRatio(v) {
@@ -978,8 +1149,19 @@ const summaryLines = [];
 summaryLines.push("## HXRT Overhead Benchmarks");
 summaryLines.push("");
 summaryLines.push(`- Mode: \`${comparison.mode}\``);
+summaryLines.push(`- Gate mode: \`${gateMode}\``);
+summaryLines.push(`- Gate enabled: \`${comparison.gateEnabled ? "yes" : "no"}\``);
 summaryLines.push(`- Size budget: \`+${sizeWarnPct}%\``);
 summaryLines.push(`- Runtime budget: \`+${runtimeWarnPct}%\``);
+if (gateThresholds != null) {
+  summaryLines.push(
+    `- Gate fail budget: size=+${gateThresholds.sizeFailPct}% runtime=+${gateThresholds.runtimeFailPct}%`
+  );
+  summaryLines.push(
+    `- Gate portable/metal convergence caps: array<=${gateThresholds.portableMetalArrayMax.toFixed(3)}x, ` +
+      `hot_loop_inproc<=${gateThresholds.portableMetalHotLoopInprocMax.toFixed(3)}x`
+  );
+}
 summaryLines.push(
   `- Runtime loops: hello=${helloIters}, array=${arrayIters}, hot_loop=${hotLoopIters}, hot_loop_inproc=${hotLoopInprocRuns}, hot_loop_no_hxrt=${hotLoopNoHxrtInprocRuns}, chat=${chatIters}`
 );
@@ -1006,6 +1188,18 @@ summaryLines.push(
     `(target <= ${portableMetalHotLoopInprocMax.toFixed(3)}x, ` +
     `${convergenceChecks.hotLoopInprocRuntimePortableVsMetal.pass ? "target met" : "target not met"})`
 );
+if (activeGate != null) {
+  summaryLines.push(
+    `- [gate] array runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.array.runtimeRatio)}x ` +
+      `(target <= ${activeGate.portableMetalArrayMax.toFixed(3)}x, ` +
+      `${gateConvergenceChecks.arrayRuntimePortableVsMetal?.pass ? "target met" : "target not met"})`
+  );
+  summaryLines.push(
+    `- [gate] hot_loop_inproc runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.hotLoopInproc.runtimeRatio)}x ` +
+      `(target <= ${activeGate.portableMetalHotLoopInprocMax.toFixed(3)}x, ` +
+      `${gateConvergenceChecks.hotLoopInprocRuntimePortableVsMetal?.pass ? "target met" : "target not met"})`
+  );
+}
 summaryLines.push("");
 
 const metalHotLoopTarget = 1.05;
@@ -1031,9 +1225,20 @@ if (warnings.length > 0) {
 }
 summaryLines.push("");
 
+if (hardFailures.length > 0) {
+  summaryLines.push("### Hard Gate Failures");
+  for (const failure of hardFailures) {
+    summaryLines.push(`- ${failure}`);
+  }
+} else {
+  summaryLines.push("### Hard Gate Failures");
+  summaryLines.push("- none");
+}
+summaryLines.push("");
+
 fs.writeFileSync(summaryPath, `${summaryLines.join("\n")}\n`);
 
-console.log(`[hxrt-perf] mode=${comparison.mode} warnings=${warnings.length}`);
+console.log(`[hxrt-perf] mode=${comparison.mode} gate=${gateMode} warnings=${warnings.length} failures=${hardFailures.length}`);
 NODE
 
 warning_count=0
@@ -1043,6 +1248,15 @@ if [[ -s "$warnings_txt" ]]; then
     warning_count=$((warning_count + 1))
     echo "::warning::[hxrt-perf] $warning"
   done < "$warnings_txt"
+fi
+
+failure_count=0
+if [[ -s "$failures_txt" ]]; then
+  while IFS= read -r failure; do
+    [[ -n "$failure" ]] || continue
+    failure_count=$((failure_count + 1))
+    echo "::error::[hxrt-perf] $failure"
+  done < "$failures_txt"
 fi
 
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" && -f "$summary_md" ]]; then
@@ -1061,3 +1275,7 @@ log "done (warnings=$warning_count)"
 log "metrics: $(display_path "$current_json")"
 log "comparison: $(display_path "$comparison_json")"
 log "summary: $(display_path "$summary_md")"
+
+if [[ "$failure_count" -gt 0 ]]; then
+  fail "hard performance gate failed (${failure_count} violation(s)); see $(display_path "$comparison_json")"
+fi
