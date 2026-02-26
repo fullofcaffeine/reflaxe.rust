@@ -26,6 +26,54 @@ In `metal`, strict app boundary mode is enabled by default (`reflaxe_rust_strict
   - `rust.metal.Code.expr(...)`
   - `rust.metal.Code.stmt(...)`
 
+## Beginner-friendly rule of thumb
+
+If you are new to `metal`, use this decision tree:
+
+1. Need a Rust API/crate from Haxe?
+   - Prefer typed `extern` classes/functions (`@:native(...)`) and metadata (`@:rustCargo`).
+2. Need a small Rust-only expression/statement in framework code?
+   - Use `rust.metal.Code.expr(...)` / `rust.metal.Code.stmt(...)` behind a typed Haxe API.
+3. Need to drop raw `untyped __rust__(...)` in app code?
+   - Don’t. `metal` rejects this by default because it bypasses compiler diagnostics and policy checks.
+
+This keeps generated code analyzable (fallback counts, contract reports, metal-island checks) while still giving Rust-level control through typed boundaries.
+
+## Beginner examples
+
+### Good: typed wrapper around a tiny Rust-only expression
+
+Keep raw snippets inside framework/library APIs, then call those APIs from app code.
+
+```haxe
+class FastMath {
+  public static inline function saturatingAdd(a:Int, b:Int):Int {
+    return rust.metal.Code.expr("{0}.saturating_add({1})", a, b);
+  }
+}
+```
+
+App code stays fully typed:
+
+```haxe
+final total = FastMath.saturatingAdd(x, y);
+```
+
+### Avoid: raw app-side injection
+
+```haxe
+// Rejected by default in metal strict mode.
+untyped __rust__("{0}.saturating_add({1})", x, y);
+```
+
+Why this is rejected:
+
+- bypasses compiler-owned policy checks,
+- makes fallback diagnostics noisy and harder to act on,
+- scatters target-specific code across app modules.
+
+If you need larger Rust blocks, prefer typed `extern` APIs and/or `@:rustExtraSrc` modules.
+
 ## Metal lanes in portable projects
 
 Portable projects can still lock specific modules to metal-clean rules with lane metadata.

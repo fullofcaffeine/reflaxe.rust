@@ -1,5 +1,6 @@
 import haxe.iterators.StringIterator;
 import haxe.iterators.StringKeyValueIterator;
+import hxrt.string.NativeString;
 
 /**
 	`StringTools` (Rust target override)
@@ -17,8 +18,8 @@ import haxe.iterators.StringKeyValueIterator;
 
 	How
 	- Most helpers are implemented in portable Haxe.
-	- A few operations use Rust intrinsics via `__rust__` on the target (non-macro) side to avoid
-	  pulling in additional std modules that we don't emit yet.
+	- Runtime behavior stays in typed Haxe code so metal policy analysis can enforce compiler
+	  contracts without raw expression fallback noise.
 
 	Notes
 	- This file intentionally avoids depending on other std modules which are not yet overridden and
@@ -32,26 +33,22 @@ class StringTools {
 		(space becomes `%20`).
 	**/
 	public static function urlEncode(s:String):String {
-		#if macro
-		// Macro-time: rely on the host platform std (Eval) behavior by falling back to `String` ops.
-		// This is "good enough" for macros and avoids target-specific behavior.
-		//
-		// NOTE: We purposely do not attempt full standards compliance here.
-		return replace(s, " ", "%20");
-		#else
-		return untyped __rust__("{
-				let bytes = {0}.as_bytes();
-				let mut out = String::new();
-				for &b in bytes {
-					match b {
-						b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => out.push(b as char),
-						b' ' => out.push_str(\"%20\"),
-						_ => out.push_str(&format!(\"%{:02X}\", b)),
-					}
-				}
-				out
-			}", s);
-		#end
+		var bytes = haxe.io.Bytes.ofString(s);
+		var out = new StringBuf();
+		for (i in 0...bytes.length) {
+			var b = bytes.get(i);
+			var isUnreserved = (b >= 0x41 && b <= 0x5A) || (b >= 0x61 && b <= 0x7A) || (b >= 0x30 && b <= 0x39) || b == 0x2D || b == 0x5F || b == 0x2E
+				|| b == 0x7E;
+			if (isUnreserved) {
+				out.addChar(b);
+			} else if (b == 0x20) {
+				out.add("%20");
+			} else {
+				out.add("%");
+				out.add(hex(b, 2));
+			}
+		}
+		return out.toString();
 	}
 
 	/**
@@ -63,43 +60,31 @@ class StringTools {
 		- interprets the resulting bytes as UTF-8 (lossy on invalid sequences)
 	**/
 	public static function urlDecode(s:String):String {
-		#if macro
-		// Macro-time: keep this minimal but compatible with the common `%20`/`+` cases used by
-		// serializer/unserializer and basic tooling.
-		return replace(replace(s, "+", " "), "%20", " ");
-		#else
-		return untyped __rust__("{
-				fn hex_val(b: u8) -> Option<u8> {
-					match b {
-						b'0'..=b'9' => Some(b - b'0'),
-						b'a'..=b'f' => Some(b - b'a' + 10),
-						b'A'..=b'F' => Some(b - b'A' + 10),
-						_ => None,
-					}
+		var input = replace(s, "+", " ");
+		var bytes:Array<Int> = [];
+		var i = 0;
+		while (i < input.length) {
+			var c = input.substr(i, 1);
+			if (c == "%" && i + 2 < input.length) {
+				var hi:Int = hexDigitValue(input.substr(i + 1, 1));
+				var lo:Int = hexDigitValue(input.substr(i + 2, 1));
+				if (hi >= 0 && lo >= 0) {
+					bytes.push((hi << 4) | lo);
+					i += 3;
+					continue;
 				}
+			}
 
-				let input = {0}.replace(\"+\", \" \");
-				let bytes = input.as_bytes();
-				let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
+			var chunk = haxe.io.Bytes.ofString(input.charAt(i));
+			for (j in 0...chunk.length)
+				bytes.push(chunk.get(j));
+			i++;
+		}
 
-				let mut i: usize = 0;
-				while i < bytes.len() {
-					if bytes[i] == b'%' && i + 2 < bytes.len() {
-						let h1 = hex_val(bytes[i + 1]);
-						let h2 = hex_val(bytes[i + 2]);
-						if let (Some(a), Some(b)) = (h1, h2) {
-							out.push((a << 4) | b);
-							i += 3;
-							continue;
-						}
-					}
-					out.push(bytes[i]);
-					i += 1;
-				}
-
-				String::from_utf8(out.clone()).unwrap_or_else(|_| String::from_utf8_lossy(&out).to_string())
-			}", s);
-		#end
+		var out = haxe.io.Bytes.alloc(bytes.length);
+		for (index in 0...bytes.length)
+			out.set(index, bytes[index]);
+		return out.toString();
 	}
 
 	/**
@@ -111,34 +96,18 @@ class StringTools {
 
 	/**
 		Tells if `s` starts with `start`.
-
-		Notes
-		- Intentionally not `inline`: the Rust-target implementation uses `__rust__` injection and
-		  inlining would leak that injection into callers (breaking the “examples are pure” rule).
 	**/
 	public static function startsWith(s:String, start:String):Bool {
-		#if macro
 		return (s.length >= start.length && s.indexOf(start, 0) == 0);
-		#else
-		return untyped __rust__("{0}.starts_with({1}.as_str())", s, start);
-		#end
 	}
 
 	/**
 		Tells if `s` ends with `end`.
-
-		Notes
-		- Intentionally not `inline`: the Rust-target implementation uses `__rust__` injection and
-		  inlining would leak that injection into callers (breaking the “examples are pure” rule).
 	**/
 	public static function endsWith(s:String, end:String):Bool {
-		#if macro
 		var elen = end.length;
 		var slen = s.length;
 		return (slen >= elen && s.indexOf(end, (slen - elen)) == (slen - elen));
-		#else
-		return untyped __rust__("{0}.ends_with({1}.as_str())", s, end);
-		#end
 	}
 
 	/**
@@ -191,22 +160,10 @@ class StringTools {
 		var padLen = l - s.length;
 		if (padLen <= 0)
 			return s;
-		#if macro
 		var buf = "";
 		while (buf.length < padLen)
 			buf += c;
 		return buf + s;
-		#else
-		return untyped __rust__("{
-				let mut buf = String::new();
-				let mut cur: i32 = 0;
-				while cur < {2} {
-					buf.push_str({1}.as_str());
-					cur = hxrt::string::len(buf.as_str());
-				}
-				format!(\"{}{}\", buf, {0})
-			}", s, c, padLen);
-		#end
 	}
 
 	/**
@@ -217,34 +174,17 @@ class StringTools {
 			return s;
 		if (l <= s.length)
 			return s;
-		#if macro
 		var out = s;
 		while (out.length < l)
 			out += c;
 		return out;
-		#else
-		var padLen = l - s.length;
-		return untyped __rust__("{
-				let mut buf = String::new();
-				let mut cur: i32 = 0;
-				while cur < {2} {
-					buf.push_str({1}.as_str());
-					cur = hxrt::string::len(buf.as_str());
-				}
-				format!(\"{}{}\", {0}, buf)
-			}", s, c, padLen);
-		#end
 	}
 
 	/**
 		Replace all occurrences of `sub` in `s` by `by`.
 	**/
 	public static function replace(s:String, sub:String, by:String):String {
-		#if macro
 		return s.split(sub).join(by);
-		#else
-		return untyped __rust__("{0}.replace({1}.as_str(), {2}.as_str())", s, sub, by);
-		#end
 	}
 
 	/**
@@ -252,14 +192,7 @@ class StringTools {
 	**/
 	public static function hex(n:Int, ?digits:Int):String {
 		#if !macro
-		return untyped __rust__("{
-				let mut s = format!(\"{:X}\", {0} as u32);
-				let d: i32 = {1}.unwrap_or(0);
-				while d != 0 && (hxrt::string::len(s.as_str()) < d) {
-					s = format!(\"0{}\", s);
-				}
-				s
-			}", n, digits);
+		return NativeString.hexUpper(n, digits);
 		#end
 
 		var s = "";
@@ -284,11 +217,20 @@ class StringTools {
 	**/
 	public static function fastCodeAt(s:String, index:Int):Int {
 		#if macro
-		return (index < s.length) ? s.charCodeAt(index) : -1;
+		if (index < 0 || index >= s.length)
+			return -1;
+		var code:Null<Int> = s.charCodeAt(index);
+		return code == null ? -1 : code;
 		#else
-		// Rust target: interpret index as a Unicode scalar index (consistent with other string intrinsics here).
-		return untyped __rust__("{0}.chars().nth({1} as usize).map(|c| c as i32).unwrap_or(-1)", s, index);
+		return NativeString.fastCodeAtOrEof(s, index);
 		#end
+	}
+
+	static inline function hexDigitValue(ch:String):Int {
+		return if (ch == "0") 0; else if (ch == "1") 1; else if (ch == "2") 2; else if (ch == "3") 3; else if (ch == "4") 4; else if (ch == "5") 5; else
+			if (ch == "6") 6; else if (ch == "7") 7; else if (ch == "8") 8; else if (ch == "9") 9; else if (ch == "a"
+			|| ch == "A") 10; else if (ch == "b" || ch == "B") 11; else if (ch == "c" || ch == "C") 12; else if (ch == "d" || ch == "D") 13; else if (ch == "e"
+			|| ch == "E") 14; else if (ch == "f" || ch == "F") 15; else -1;
 	}
 
 	/**

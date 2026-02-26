@@ -6,7 +6,6 @@ import domain.ChatMessage;
 import haxe.ds.StringMap;
 import rust.Option;
 import rust.Result;
-import rust.metal.Code;
 
 typedef MetalValidatedSend = {
 	user:String,
@@ -23,13 +22,12 @@ typedef MetalValidatedSend = {
  *
  * What
  * - Uses explicit `Result`/`Option` control style for Rust-first data flow.
- * - Computes message fingerprints via `rust.metal.Code` typed injection hooks.
+ * - Computes message fingerprints through typed Haxe arithmetic (no raw injection path).
  *
  * How
- * - `Code.stmt(...)` and `Code.expr(...)` keep low-level Rust snippets behind a typed API and
- *   stay compatible with strict boundary enforcement (`reflaxe_rust_strict_examples`).
- * - Command/event surfaces remain fully typed; only the fingerprint helper crosses the low-level
- *   boundary.
+ * - Command/event surfaces stay fully typed end-to-end.
+ * - Fingerprint math uses plain Haxe integer operations so metal diagnostics remain focused on
+ *   real compiler fallback boundaries.
  */
 class MetalRuntime implements ChatRuntime {
 	static inline final PRESENCE_TTL_SECONDS:Float = 1.2;
@@ -128,11 +126,8 @@ class MetalRuntime implements ChatRuntime {
 	}
 
 	function computeFingerprint(body:String, id:Int):Int {
-		// Keep a statement-path example in addition to expression injection.
-		Code.stmt("let _ = &{0};", body);
-
-		var bodyLength:Int = Code.expr("{0}.len() as i32", body);
-		var mixed:Int = Code.expr("((({0} as i64) * 97 + ({1} as i64)) % 1000003) as i32", bodyLength, id);
+		var bodyLength = body.length;
+		var mixed = (bodyLength * 97 + id) % 1000003;
 		return mixed;
 	}
 

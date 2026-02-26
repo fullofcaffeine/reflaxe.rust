@@ -32,7 +32,7 @@ impl Thread {
                 let __b = __hx_this.borrow();
                 __b._id
             },
-            msg,
+            msg.clone(),
         );
     }
 

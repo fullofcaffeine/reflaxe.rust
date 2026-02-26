@@ -35,6 +35,12 @@ Use `metal` when you want:
 - strict app-boundary policy by default (`reflaxe_rust_strict` auto-enabled),
 - explicit fallback control (`rust_metal_allow_fallback`).
 
+Interop note (beginner-friendly):
+
+- Use typed `extern`/`@:native` APIs and framework facades for Rust interop.
+- Use `rust.metal.Code` only behind typed framework/library APIs.
+- Avoid direct app-side `untyped __rust__(...)`; metal treats that as a contract violation by default.
+
 Default behavior:
 
 - non-null Rust `String` representation unless explicitly overridden.

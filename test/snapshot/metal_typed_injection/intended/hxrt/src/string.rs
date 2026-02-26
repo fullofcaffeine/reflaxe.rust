@@ -267,3 +267,30 @@ pub fn from_char_code(code: i32) -> String {
         None => String::new(),
     }
 }
+
+/// `StringTools.fastCodeAt` helper that mirrors Haxe EOF behavior.
+///
+/// Why
+/// - Haxe `String.charCodeAt` returns nullable values (`Null<Int>`), which is awkward at some
+///   typed backend boundaries where callers need a concrete sentinel value.
+/// - `StringTools.fastCodeAt` expects `-1` for out-of-bounds.
+/// - Different contracts can pass either owned Rust `String` (metal) or `HxString` (portable);
+///   this boundary accepts any `AsRef<str>` so both compile without callsite hacks.
+#[inline]
+pub fn fast_code_at_or_eof<S: AsRef<str>>(s: S, index: i32) -> i32 {
+    char_code_at(s.as_ref(), index).unwrap_or(-1)
+}
+
+/// `StringTools.hex` helper.
+///
+/// Why
+/// - Keeps optional-digit formatting logic in runtime Rust and exposes a typed boundary to Haxe
+///   without relying on code-injection snippets.
+pub fn hex_upper(n: i32, digits: Option<i32>) -> String {
+    let mut s = format!("{:X}", n as u32);
+    let d = digits.unwrap_or(0);
+    while d != 0 && len(s.as_str()) < d {
+        s = format!("0{}", s);
+    }
+    s
+}

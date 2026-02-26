@@ -17,6 +17,9 @@ import haxe.macro.Expr;
  * - `expr(code, ...args)` emits a Rust expression and returns it as a typed Haxe expression.
  * - `stmt(code, ...args)` emits Rust statement/block code in a `Void` context.
  * - Placeholder interpolation follows Reflaxe injection rules: `{0}`, `{1}`, ...
+ * - Intended usage pattern:
+ *   1. framework/library helper uses `rust.metal.Code.*`,
+ *   2. app code calls that helper and remains fully typed.
  *
  * How
  * - This macro delegates to the framework-owned `RustInjection.__rust__` shim.

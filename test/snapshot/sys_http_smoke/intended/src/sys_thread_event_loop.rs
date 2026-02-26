@@ -11,12 +11,9 @@ pub struct EventLoop {
 impl EventLoop {
     pub fn new() -> crate::HxRef<crate::sys_thread_event_loop::EventLoop> {
         let self_: crate::HxRef<crate::sys_thread_event_loop::EventLoop> =
-            crate::HxRef::new(EventLoop { _thread_id: 0 });
-        {
-            let __tmp = hxrt::thread::thread_current_id();
-            self_.borrow_mut()._thread_id = __tmp;
-            __tmp
-        };
+            crate::HxRef::new(EventLoop {
+                _thread_id: hxrt::thread::thread_current_id(),
+            });
         return self_;
     }
 

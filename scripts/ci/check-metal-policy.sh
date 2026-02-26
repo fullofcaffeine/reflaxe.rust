@@ -860,8 +860,20 @@ run_warning_case_absent "examples/chat_loopback" "compile.metal.hxml" 'Metal fal
 	'sys\.net\.Socket' \
 	'1' 'metal fallback top-modules excludes sys.net.Socket after typed socket boundary migration'
 run_warning_case_absent "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'sys\.thread\.EventLoop:' \
+	'1' 'metal fallback top-modules excludes sys.thread.EventLoop after typed thread runtime wrappers'
+run_warning_case_absent "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'sys\.thread\.Thread:' \
+	'1' 'metal fallback top-modules excludes sys.thread.Thread after typed thread runtime wrappers'
+run_warning_case_absent "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'StringTools:' \
+	'1' 'metal fallback top-modules excludes StringTools after removing raw std injection paths'
+run_warning_case_absent "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'rust\.test\.Assert' \
 	'1' 'metal fallback top-modules excludes rust.test.Assert after typed assert native boundary migration'
+run_warning_case_absent "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'profile\.MetalRuntime:(4[0-9]*|[5-9][0-9]|[1-9][0-9]{2,})' \
+	'1' 'metal fallback top-modules keeps profile.MetalRuntime raw fallback below 4 after typed fingerprint migration'
 run_warning_case_absent "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'app\.ChatUiApp:(3[0-9]|[4-9][0-9]|[1-9][0-9]{2,})' \
 	'1' 'metal fallback top-modules keeps app.ChatUiApp raw fallback below 30 after typed generic static-call lowering migration'

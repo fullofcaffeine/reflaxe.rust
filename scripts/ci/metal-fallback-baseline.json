@@ -22,13 +22,13 @@
       }
     },
     "chat_loopback_metal": {
-      "rawNodes": 69,
-      "moduleCount": 26,
+      "rawNodes": 42,
+      "moduleCount": 25,
       "topModules": {
         "Main": 12,
-        "sys.thread.EventLoop": 10,
-        "StringTools": 9,
-        "sys.thread.Thread": 7
+        "app.ChatUiApp": 3,
+        "profile.RemoteRuntime": 3,
+        "scenario.LoopbackScenario": 2
       }
     }
   }

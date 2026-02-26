@@ -1,5 +1,7 @@
 package sys.thread;
 
+import hxrt.thread.NativeThread;
+
 /**
 	When an event loop has an available event to execute.
 **/
@@ -35,6 +37,8 @@ enum NextEventTime {
 	How
 	- This is backed by the Rust runtime (`hxrt::thread`) per-thread state.
 	- The Haxe class is a thin wrapper that preserves the standard API shape.
+	- Runtime calls are routed through `hxrt.thread.NativeThread`, keeping this file typed and
+	  approachable for new contributors.
 **/
 @:coreApi
 @:allow(sys.thread.Thread)
@@ -42,7 +46,7 @@ class EventLoop {
 	var __threadId:Int;
 
 	public function new():Void {
-		__threadId = untyped __rust__("hxrt::thread::thread_current_id()");
+		__threadId = NativeThread.currentId();
 	}
 
 	/**
@@ -58,29 +62,29 @@ class EventLoop {
 	}
 
 	public function repeat(event:() -> Void, intervalMs:Int):EventHandler {
-		var id:Int = untyped __rust__("hxrt::thread::event_loop_repeat({0}, {1}, {2})", __threadId, event, intervalMs);
+		var id:Int = NativeThread.eventLoopRepeat(__threadId, event, intervalMs);
 		return cast id;
 	}
 
 	public function cancel(eventHandler:EventHandler):Void {
 		var id:Int = cast eventHandler;
-		untyped __rust__("hxrt::thread::event_loop_cancel({0}, {1})", __threadId, id);
+		NativeThread.eventLoopCancel(__threadId, id);
 	}
 
 	public function promise():Void {
-		untyped __rust__("hxrt::thread::event_loop_promise({0})", __threadId);
+		NativeThread.eventLoopPromise(__threadId);
 	}
 
 	public function run(event:() -> Void):Void {
-		untyped __rust__("hxrt::thread::event_loop_run({0}, {1})", __threadId, event);
+		NativeThread.eventLoopRun(__threadId, event);
 	}
 
 	public function runPromised(event:() -> Void):Void {
-		untyped __rust__("hxrt::thread::event_loop_run_promised({0}, {1})", __threadId, event);
+		NativeThread.eventLoopRunPromised(__threadId, event);
 	}
 
 	public function progress():NextEventTime {
-		var nextAt:Float = untyped __rust__("hxrt::thread::event_loop_progress({0})", __threadId);
+		var nextAt:Float = NativeThread.eventLoopProgress(__threadId);
 		return if (nextAt == -2.0) {
 			Now;
 		} else if (nextAt == -1.0) {
@@ -93,11 +97,11 @@ class EventLoop {
 	}
 
 	public function wait(?timeout:Float):Bool {
-		return untyped __rust__("hxrt::thread::event_loop_wait({0}, {1})", __threadId, timeout);
+		return NativeThread.eventLoopWait(__threadId, timeout);
 	}
 
 	public function loop():Void {
-		untyped __rust__("hxrt::thread::event_loop_loop({0})", __threadId);
+		NativeThread.eventLoopLoop(__threadId);
 	}
 }
 

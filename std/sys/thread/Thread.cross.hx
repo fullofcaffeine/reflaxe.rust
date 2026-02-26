@@ -21,6 +21,8 @@ import sys.thread.Types.ThreadMessage;
 	- Each thread has a small integer id stored in Rust thread-local storage.
 	- `sys.thread.EventLoop` is backed by runtime queues and timers, so it can be used without
 	  relying on Haxe static-field codegen (keeps the POC smaller).
+	- All runtime calls go through `hxrt.thread.NativeThread` extern bindings, so this class stays
+	  beginner-friendly Haxe code (no raw `__rust__` snippets in method bodies).
 **/
 class Thread {
 	final __id:Int;
@@ -43,27 +45,27 @@ class Thread {
 	}
 
 	public function sendMessage(msg:ThreadMessage):Void {
-		untyped __rust__("hxrt::thread::thread_send_message({0}, {1})", __id, msg);
+		NativeThread.sendMessage(__id, msg);
 	}
 
 	public static function current():Thread {
-		var id:Int = untyped __rust__("hxrt::thread::thread_current_id()");
+		var id:Int = NativeThread.currentId();
 		return new Thread(id);
 	}
 
 	public static function create(job:() -> Void):Thread {
-		var id:Int = untyped __rust__("hxrt::thread::thread_spawn({0})", job);
+		var id:Int = NativeThread.spawn(job);
 		return new Thread(id);
 	}
 
 	public static function runWithEventLoop(job:() -> Void):Void {
 		job();
-		var id:Int = untyped __rust__("hxrt::thread::thread_current_id()");
-		untyped __rust__("hxrt::thread::event_loop_loop({0})", id);
+		var id:Int = NativeThread.currentId();
+		NativeThread.eventLoopLoop(id);
 	}
 
 	public static function createWithEventLoop(job:() -> Void):Thread {
-		var id:Int = untyped __rust__("hxrt::thread::thread_spawn_with_event_loop({0})", job);
+		var id:Int = NativeThread.spawnWithEventLoop(job);
 		return new Thread(id);
 	}
 
