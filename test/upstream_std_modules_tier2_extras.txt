@@ -2,10 +2,12 @@
 # Tier2 is generated as: sort(unique(Tier1 + this extras file)).
 Any
 Class
+Date
 DateTools
 Enum
 EnumValue
 Int
+Lambda
 Map
 Null
 Single

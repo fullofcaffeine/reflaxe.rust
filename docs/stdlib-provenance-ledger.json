@@ -36,11 +36,13 @@
     {
       "path": "std/SysTypes.cross.hx",
       "provenanceKind": "repo_authored_override",
+      "tier2SweepExcludeReason": "Boundary alias module; not an upstream stdlib import target.",
       "notes": "Target-owned boundary type alias; no direct upstream std counterpart."
     },
     {
       "path": "std/haxe/BoundaryTypes.cross.hx",
       "provenanceKind": "repo_authored_override",
+      "tier2SweepExcludeReason": "Boundary alias module; not an upstream stdlib import target.",
       "notes": "Target-owned boundary type alias; no direct upstream std counterpart."
     },
     {

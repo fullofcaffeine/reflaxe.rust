@@ -25,6 +25,29 @@ function summarize(paths, limit) {
 
 const ledgerPath = 'docs/stdlib-provenance-ledger.json'
 const stdRoot = 'std/'
+const tier2ModulesPath = 'test/upstream_std_modules_tier2.txt'
+
+function parseModuleList(path) {
+  if (!fs.existsSync(path)) {
+    fail(`missing module list: ${path}`)
+    return []
+  }
+  return fs
+    .readFileSync(path, 'utf8')
+    .split(/\r?\n/)
+    .map((line) => line.replace(/[ \t]*#.*$/, '').trim())
+    .filter((line) => line.length > 0)
+}
+
+function ledgerPathToModule(path) {
+  if (!path.startsWith(stdRoot) || !path.endsWith('.cross.hx')) {
+    return null
+  }
+  const moduleName = path
+    .slice(stdRoot.length, -'.cross.hx'.length)
+    .replace(/\//g, '.')
+  return moduleName.length > 0 ? moduleName : null
+}
 
 if (!fs.existsSync(ledgerPath)) {
   fail(`missing stdlib provenance ledger: ${ledgerPath}`)
@@ -51,8 +74,12 @@ const trackedStdCrossFiles = gitTrackedUnder('std').filter(
   (path) => path.startsWith(stdRoot) && path.endsWith('.cross.hx')
 )
 const trackedSet = new Set(trackedStdCrossFiles)
+const tier2Modules = parseModuleList(tier2ModulesPath)
+const tier2Set = new Set(tier2Modules)
 
 const ledgerPaths = []
+const expectedTier2Modules = []
+const tier2Excluded = []
 for (const entry of ledger.entries) {
   if (entry == null || typeof entry !== 'object') {
     fail(`${ledgerPath} contains a non-object entry`)
@@ -62,6 +89,7 @@ for (const entry of ledger.entries) {
   const path = entry.path
   const provenanceKind = entry.provenanceKind
   const upstreamOraclePath = entry.upstreamOraclePath
+  const tier2SweepExcludeReason = entry.tier2SweepExcludeReason
 
   if (typeof path !== 'string' || path.length === 0) {
     fail(`${ledgerPath} entry is missing path`)
@@ -99,11 +127,39 @@ for (const entry of ledger.entries) {
       )
     }
   }
+
+  if (
+    tier2SweepExcludeReason != null &&
+    (typeof tier2SweepExcludeReason !== 'string' || tier2SweepExcludeReason.trim().length === 0)
+  ) {
+    fail(`${ledgerPath} tier2SweepExcludeReason must be a non-empty string for ${path}`)
+  }
+
+  const moduleName = ledgerPathToModule(path)
+  if (moduleName == null) {
+    if (tier2SweepExcludeReason == null) {
+      fail(
+        `${ledgerPath} entry cannot derive a Tier2 module from ${path}; add tier2SweepExcludeReason`
+      )
+    } else {
+      tier2Excluded.push(`${path} (${tier2SweepExcludeReason})`)
+    }
+    continue
+  }
+
+  if (tier2SweepExcludeReason != null) {
+    tier2Excluded.push(`${moduleName} (${tier2SweepExcludeReason})`)
+    continue
+  }
+
+  expectedTier2Modules.push(moduleName)
 }
 
 const ledgerSet = new Set(ledgerPaths)
 const missingCoverage = trackedStdCrossFiles.filter((path) => !ledgerSet.has(path))
 const staleCoverage = ledgerPaths.filter((path) => !trackedSet.has(path))
+const uniqueExpectedTier2Modules = Array.from(new Set(expectedTier2Modules)).sort()
+const missingTier2Coverage = uniqueExpectedTier2Modules.filter((moduleName) => !tier2Set.has(moduleName))
 
 if (missingCoverage.length > 0) {
   fail(
@@ -117,7 +173,16 @@ if (staleCoverage.length > 0) {
   )
 }
 
+if (missingTier2Coverage.length > 0) {
+  fail(
+    `Tier2 upstream sweep is missing modules derived from ${ledgerPath} entries:\n${summarize(
+      missingTier2Coverage,
+      20
+    )}`
+  )
+}
+
 if (process.exitCode) process.exit(process.exitCode)
 console.log(
-  `[ci:guards] OK: stdlib provenance ledger covers ${trackedStdCrossFiles.length} tracked .cross.hx files`
+  `[ci:guards] OK: stdlib provenance ledger covers ${trackedStdCrossFiles.length} tracked .cross.hx files and ${uniqueExpectedTier2Modules.length} ledger-derived Tier2 modules (${tier2Excluded.length} explicit Tier2 exclusions)`
 )

@@ -204,6 +204,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - `npm run guard:upstream-stdlib-boundary`
   - `npm run guard:stdlib-ledger`
   - `npm run guard:portable-stdlib-allowlist`
+  - `guard:stdlib-ledger` also enforces that every provenance-ledger importable module is represented in Tier2; intentional non-importable boundary modules must carry `tier2SweepExcludeReason` in `docs/stdlib-provenance-ledger.json`.
 - Run Windows-safe smoke subset locally: `bash scripts/ci/windows-smoke.sh` (same subset used by the Windows CI job).
 - Run packaged-install smoke locally: `bash scripts/ci/package-smoke.sh` (build zip, install into local haxelib repo, compile, cargo build).
   - Regression coverage includes a symlinked working-directory compile pass to catch path-alias mismatches when classifying framework std files.

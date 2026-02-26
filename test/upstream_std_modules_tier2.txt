@@ -2,10 +2,12 @@
 # Tier2 is intended for broader validation outside PR-critical fast loops.
 Any
 Class
+Date
 DateTools
 Enum
 EnumValue
 Int
+Lambda
 Map
 Null
 Single

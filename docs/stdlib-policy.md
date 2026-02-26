@@ -46,6 +46,9 @@ CI/guard scripts:
   - Restricts checked-in std override file types under `std/`.
 - `scripts/ci/stdlib-provenance-ledger-check.js`
   - Enforces ledger coverage and stale-entry detection for tracked `.cross.hx` files.
+  - Enforces Tier2 upstream sweep coverage for every ledger-derived import module.
+  - Requires explicit `tier2SweepExcludeReason` on ledger entries that intentionally do not
+    map to importable upstream modules (for example boundary alias modules).
 - `scripts/ci/portable-stdlib-allowlist-check.js`
   - Enforces allowlist invariants:
     - sorted/unique exclude prefixes and Tier1 module list
