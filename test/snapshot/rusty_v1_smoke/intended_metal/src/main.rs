@@ -8,6 +8,7 @@ type HxDynRef<T: ?Sized> = hxrt::cell::HxDynRef<T>;
 type HxRefCell<T> = hxrt::cell::HxCell<T>;
 type HxRef<T> = hxrt::cell::HxRef<T>;
 
+mod array_borrow_tools;
 mod duration_tools;
 mod fp_helper;
 mod hash_map_tools;
@@ -30,18 +31,18 @@ mod haxe_stack_item;
 mod instant_tools;
 mod map_storage_tools;
 mod mut_slice_tools;
+mod os_string_tools;
 mod path_buf_tools;
 mod rust_array_borrow;
 mod rust_borrow;
 mod rust_mut_slice_tools;
 mod rust_option_tools;
-mod rust_os_string_tools;
 mod rust_result_tools;
 mod rust_slice_tools;
 mod rust_str_tools;
-mod rust_string_tools;
 mod slice_tools;
 mod string_buf;
+mod string_tools;
 mod sys;
 mod sys_io_stderr;
 mod sys_io_stdin;
@@ -135,12 +136,10 @@ fn main() {
     };
     println!("{}", hxrt::dynamic::from(map_len));
     let os: std::ffi::OsString =
-        crate::rust_os_string_tools::OsStringTools::from_string(String::from("hello"));
+        crate::os_string_tools::OsStringTools::fromString(String::from("hello"));
     println!(
         "{}",
-        hxrt::dynamic::from(
-            crate::rust_os_string_tools::OsStringTools::to_string_lossy(&os).clone()
-        )
+        hxrt::dynamic::from(crate::os_string_tools::OsStringTools::toStringLossy(&os).clone())
     );
     let p: std::path::PathBuf =
         crate::path_buf_tools::PathBufTools::fromString(String::from("foo"));
@@ -175,7 +174,7 @@ fn main() {
             let _hx_ref_2: &String = &String::from("reflaxe");
             {
                 let needle: &str = _hx_ref_2;
-                crate::rust_string_tools::StringTools::contains(hs, needle)
+                crate::string_tools::StringTools::contains(hs, needle)
             }
         }
     };

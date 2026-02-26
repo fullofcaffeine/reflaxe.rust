@@ -28,8 +28,8 @@ mod haxe_stack_item;
 mod map_storage_tools;
 mod rust_borrow;
 mod rust_str_tools;
-mod rust_string_tools;
 mod string_buf;
+mod string_tools;
 mod sys;
 mod sys_io_stderr;
 mod sys_io_stdin;
@@ -63,7 +63,7 @@ fn main() {
             let _hx_ref: &String = &String::from("world");
             {
                 let needle: &str = _hx_ref;
-                crate::rust_string_tools::StringTools::contains(haystack, needle)
+                crate::string_tools::StringTools::contains(haystack, needle)
             }
         }
     };

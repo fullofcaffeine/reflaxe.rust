@@ -25,9 +25,9 @@ mod haxe_io_fp_helper;
 mod haxe_io_input;
 mod haxe_io_output;
 mod haxe_stack_item;
+mod iter_tools;
 mod map_storage_tools;
 mod rust_borrow;
-mod rust_iter_tools;
 mod rust_option_tools;
 mod string_buf;
 mod sys;
@@ -112,7 +112,7 @@ fn main() {
     v2.push(10);
     v2.push(20);
     let mut sum: i32 = 0;
-    for x_3 in crate::rust_iter_tools::IterTools::from_vec(v2.clone()).into_iter() {
+    for x_3 in crate::iter_tools::IterTools::fromVec(v2.clone()).into_iter() {
         sum = sum + x_3;
     }
     println!("{}", hxrt::dynamic::from(sum));

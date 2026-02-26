@@ -16,9 +16,10 @@ package rust;
  * - `withMutSlice`: temporarily borrows an `Array<T>` as `rust.MutSlice<T>` (`&mut [T]`) inside a callback.
  *
  * How:
- * - These functions call into the runtime crate (`hxrt::array::with_slice` / `with_mut_slice`).
- * - The runtime creates a `RefCell` borrow guard and passes the slice to the callback.
- * - The borrow guard is dropped when the call returns, so the slice cannot escape.
+ * - `ArrayBorrowNative` is a typed extern bound to `std/rust/native/array_borrow_tools.rs`.
+ * - That native module delegates to runtime helpers (`hxrt::array::with_slice`,
+ *   `hxrt::array::with_mut_slice`) and keeps the borrow guard scoped to the callback.
+ * - Callers stay in typed Haxe code without raw `__rust__` expressions.
  *
  * Rust closure note (important):
  * - For `Array<T>`, these helpers must pass a real Rust closure into the runtime.
@@ -35,10 +36,28 @@ package rust;
  */
 class ArrayBorrow {
 	public static function withSlice<T, R>(array:Array<T>, f:Slice<T>->R):R {
-		return untyped __rust__("hxrt::array::with_slice({0}, {1})", array, f);
+		return ArrayBorrowNative.withSlice(array, f);
 	}
 
 	public static function withMutSlice<T, R>(array:Array<T>, f:MutSlice<T>->R):R {
-		return untyped __rust__("hxrt::array::with_mut_slice({0}, {1})", array, f);
+		return ArrayBorrowNative.withMutSlice(array, f);
 	}
+}
+
+/**
+ * Typed native boundary for `rust.ArrayBorrow`.
+ *
+ * Why
+ * - Slice callback plumbing depends on Rust-specific callback aliases
+ *   (`hxrt::array::SliceCallback` / `MutSliceCallback`).
+ * - Centralizing that bridge in a native helper avoids raw fallback in first-party Haxe code.
+ *
+ * How
+ * - Bound to crate-local `array_borrow_tools.rs` through `@:native` + `@:rustExtraSrc`.
+ */
+@:native("crate::array_borrow_tools::ArrayBorrowTools")
+@:rustExtraSrc("rust/native/array_borrow_tools.rs")
+extern class ArrayBorrowNative {
+	public static function withSlice<T, R>(array:Ref<Array<T>>, f:Slice<T>->R):R;
+	public static function withMutSlice<T, R>(array:Ref<Array<T>>, f:MutSlice<T>->R):R;
 }

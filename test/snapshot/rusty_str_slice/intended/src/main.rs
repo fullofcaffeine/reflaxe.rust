@@ -29,9 +29,9 @@ mod map_storage_tools;
 mod rust_borrow;
 mod rust_slice_tools;
 mod rust_str_tools;
-mod rust_string_tools;
 mod slice_tools;
 mod string_buf;
+mod string_tools;
 mod sys;
 mod sys_io_stderr;
 mod sys_io_stdin;
@@ -69,7 +69,7 @@ fn main() {
                 let n: &str = _hx_ref;
                 println!(
                     "{}",
-                    hxrt::dynamic::from(crate::rust_string_tools::StringTools::contains(h, n))
+                    hxrt::dynamic::from(crate::string_tools::StringTools::contains(h, n))
                 );
             }
         }
