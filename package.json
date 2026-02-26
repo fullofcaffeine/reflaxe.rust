@@ -20,6 +20,7 @@
     "test:update": "bash test/run-snapshots.sh --update",
     "test:watcher": "bash test/scripts/watch-haxe-rust.sh",
     "test:upstream-stdlib": "bash test/run-upstream-stdlib-sweep.sh",
+    "stdlib:sync:allowlist": "node scripts/ci/sync-portable-stdlib-allowlist.js",
     "test:package-smoke": "bash scripts/ci/package-smoke.sh",
     "test:template-smoke": "bash scripts/ci/template-smoke.sh",
     "test:windows-smoke": "bash scripts/ci/windows-smoke.sh",

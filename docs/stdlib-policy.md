@@ -78,6 +78,7 @@ These mappings are reflected in deterministic runtime planning artifacts:
 
 ## Validation workflow
 
+- `npm run stdlib:sync:allowlist`
 - `npm run guard:upstream-stdlib-boundary`
 - `npm run guard:stdlib-ledger`
 - `npm run guard:portable-stdlib-allowlist`
