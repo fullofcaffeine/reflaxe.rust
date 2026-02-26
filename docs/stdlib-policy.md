@@ -72,6 +72,12 @@ CI/guard scripts:
     `docs/portable-stdlib-candidates.json`'s `upstreamImportableModules` and still verifies
     deterministic artifacts + Tier2 coverage. If allowlist scope/version drift is detected, it
     fails and requires a full `--write` regeneration with std source access.
+- `scripts/ci/check-portable-stdlib-candidate-gap.js`
+  - Enforces a hard parity-gap budget against `missingFromTier2` in
+    `docs/portable-stdlib-candidates.json`.
+  - Default budget is `0` (no uncovered candidates).
+  - Optional override for planned transitions:
+    `PORTABLE_STDLIB_CANDIDATE_GAP_MAX=<n>`.
 
 ## Portable contract and native imports
 
@@ -112,6 +118,7 @@ These mappings are reflected in deterministic runtime planning artifacts:
 - `npm run guard:stdlib-ledger`
 - `npm run guard:portable-stdlib-allowlist`
 - `npm run guard:stdlib-candidates`
+- `npm run guard:stdlib-candidate-gap`
 - `bash test/run-upstream-stdlib-sweep.sh`
 - `bash test/run-upstream-stdlib-sweep.sh --tier tier2`
 - `npm run check:harness`

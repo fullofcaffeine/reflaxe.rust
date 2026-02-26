@@ -206,6 +206,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - `npm run guard:stdlib-ledger`
   - `npm run guard:portable-stdlib-allowlist`
   - `npm run guard:stdlib-candidates`
+  - `npm run guard:stdlib-candidate-gap` (defaults to strict zero-gap; override only intentionally via `PORTABLE_STDLIB_CANDIDATE_GAP_MAX`)
   - `guard:stdlib-ledger` also enforces that every provenance-ledger importable module is represented in Tier2; intentional non-importable boundary modules must carry `tier2SweepExcludeReason` in `docs/stdlib-provenance-ledger.json`.
 - Run Windows-safe smoke subset locally: `bash scripts/ci/windows-smoke.sh` (same subset used by the Windows CI job).
 - Run packaged-install smoke locally: `bash scripts/ci/package-smoke.sh` (build zip, install into local haxelib repo, compile, cargo build).
@@ -263,6 +264,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - `test/run-upstream-stdlib-sweep.sh` (Tier1 per-module actionable compile/fmt/check for upstream std modules)
   - `test/run-upstream-stdlib-sweep.sh --tier tier2` (weekly evidence broader parity sweep)
   - `guard:stdlib-candidates` (weekly evidence parity-gap check + candidate artifact upload)
+  - `guard:stdlib-candidate-gap` (weekly hard budget check; keep default budget at 0 unless an approved transition explicitly sets an override)
   - `scripts/ci/package-smoke.sh` validates the packaged artifact via isolated local `haxelib` install + Rust build (including symlink-cwd alias regression).
   - `scripts/ci/perf-hxrt-overhead.sh` benchmarks HXRT overhead (`hello`/`array`/`hot_loop`/`hot_loop_inproc`/`hot_loop_no_hxrt` vs pure Rust baselines + chat profile spread) and emits soft-budget warnings + artifacts.
   - `scripts/ci/template-smoke.sh` scaffolds `templates/basic` via `scripts/dev/new-project.sh` and executes the full task-HXML matrix (`compile.build`, `compile`, `compile.run`, `compile.release`, `compile.release.run`).

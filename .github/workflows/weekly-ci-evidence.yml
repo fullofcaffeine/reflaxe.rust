@@ -92,6 +92,7 @@ jobs:
         run: |
           set -euo pipefail
           npm run guard:stdlib-candidates
+          npm run guard:stdlib-candidate-gap
           mkdir -p .cache/weekly-evidence
           node scripts/ci/audit-upstream-stdlib-candidates.js --json > .cache/weekly-evidence/portable-stdlib-candidates.json
 
@@ -120,6 +121,7 @@ jobs:
             echo "  - \`HXRT_PERF_GATE_MODE=nightly HXRT_PERF_HOT_LOOP_INPROC_RUNS=60 HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS=60 bash scripts/ci/local.sh\`"
             echo "  - \`bash test/run-upstream-stdlib-sweep.sh --tier tier2\`"
             echo "  - \`npm run guard:stdlib-candidates\`"
+            echo "  - \`npm run guard:stdlib-candidate-gap\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   windows-smoke:

@@ -35,6 +35,7 @@ npm run stdlib:audit:candidates
 npm run stdlib:sync:tier2
 bash test/run-upstream-stdlib-sweep.sh --tier tier2
 npm run guard:stdlib-candidates
+npm run guard:stdlib-candidate-gap
 ```
 
 By default, `test:all` removes generated `out*` folders and `.cache/*target*` at the end of the run to control disk growth.
