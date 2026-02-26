@@ -81,6 +81,7 @@ fi
 removed_async_allowlist=(
   "AGENTS.md"
   "docs/async-await.md"
+  "scripts/lint/deprecated_define_guard.sh"
   "scripts/ci/check-metal-policy.sh"
   "src/reflaxe/rust/CompilerInit.hx"
   "test/negative/async_preview_removed/compile.hxml"
@@ -89,10 +90,30 @@ if ! check_rule "removed async define (rust_async_preview)" '(^|[^[:alnum:]_])ru
   fail=1
 fi
 
+removed_report_allowlist=(
+  "AGENTS.md"
+  "docs/profiles.md"
+  "scripts/lint/deprecated_define_guard.sh"
+)
+if ! check_rule "removed report define names (rust_profile_contract_report/rust_hxrt_plan_report)" '(^|[^[:alnum:]_])(rust_profile_contract_report|rust_hxrt_plan_report)([^[:alnum:]_]|$)' "${removed_report_allowlist[@]}"; then
+  fail=1
+fi
+
+if ! check_rule "removed report artifact names (profile_contract.*/hxrt_plan.*)" '(^|[^[:alnum:]_])(profile_contract\\.(json|md)|hxrt_plan\\.(json|md)|profile_contract\\.\\*|hxrt_plan\\.\\*)([^[:alnum:]_]|$)' "${removed_report_allowlist[@]}"; then
+  fail=1
+fi
+
 stale_case_hits="$(git ls-files | grep -E '(^|/)test/snapshot/(idiomatic_profile|async_preview_retry)(/|$)' || true)"
 if [[ -n "$stale_case_hits" ]]; then
   echo "[guard:deprecated-defines] ERROR: stale snapshot case names detected (rename to current portable/metal naming):" >&2
   echo "$stale_case_hits" | sed 's/^/[guard:deprecated-defines] /' >&2
+  fail=1
+fi
+
+stale_report_hits="$(git ls-files | grep -E '(^|/)(profile_contract\\.(json|md)|hxrt_plan\\.(json|md))$' || true)"
+if [[ -n "$stale_report_hits" ]]; then
+  echo "[guard:deprecated-defines] ERROR: stale report artifact names detected (rename to contract_report.* / runtime_plan.*):" >&2
+  echo "$stale_report_hits" | sed 's/^/[guard:deprecated-defines] /' >&2
   fail=1
 fi
 
