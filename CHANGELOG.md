@@ -1,3 +1,33 @@
+# [0.61.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.60.0...v0.61.0) (2026-02-26)
+
+
+### Bug Fixes
+
+* **async:** hard-remove rust_async_preview define ([73efb9d](https://github.com/fullofcaffeine/reflaxe.rust/commit/73efb9d305cf8434e4305283802881baeeed7924))
+* **codegen:** avoid return-wrapping diverging Rust expressions ([32244c7](https://github.com/fullofcaffeine/reflaxe.rust/commit/32244c7689c65092c4f0a44de89c9dd20b3cf85e))
+* **codegen:** tighten local mutability and postfix increment lowering ([70643cd](https://github.com/fullofcaffeine/reflaxe.rust/commit/70643cd5cce658ea6598a3cca5bfb5f5c00b763e))
+* **metal:** enforce island raw-fallback checks in portable pass pipeline ([00a8395](https://github.com/fullofcaffeine/reflaxe.rust/commit/00a8395382a1f32e4db9a0ec7b896a5abeb23b6b))
+
+
+### Features
+
+* align contract reports and stdlib governance ([4496493](https://github.com/fullofcaffeine/reflaxe.rust/commit/4496493c2701924ed5c38f5d15fd813c1a75564e))
+* **async:** add select helper and tokio adapter coverage ([a66470a](https://github.com/fullofcaffeine/reflaxe.rust/commit/a66470a4be62a879c350439692d766927a3e4955))
+* **concurrency:** add send/sync spawn-boundary analyzer ([507c730](https://github.com/fullofcaffeine/reflaxe.rust/commit/507c7303b65d469bbcf4d46ed8bccd37e6bbcbbf))
+* **metal:** add viability analyzer baseline ([5462c0e](https://github.com/fullofcaffeine/reflaxe.rust/commit/5462c0e69c4ee28198738305c8602ba0f8b389dd))
+* **metal:** emit deterministic viability report artifacts ([07b964a](https://github.com/fullofcaffeine/reflaxe.rust/commit/07b964afe2bd0cd2baeefa9ca3c66523a7186d03))
+* **metal:** enforce @:rustMetal portable islands ([1ed4269](https://github.com/fullofcaffeine/reflaxe.rust/commit/1ed426925d751f4b3565736c7a221d8fd87317f6))
+* **metal:** map viability blockers into issue classes ([97a955f](https://github.com/fullofcaffeine/reflaxe.rust/commit/97a955f374e2321f740b2345beef27fe550ae2d2))
+* **reports:** add deterministic hxrt runtime plan artifacts ([70a5c18](https://github.com/fullofcaffeine/reflaxe.rust/commit/70a5c184b70a73cbe273f5a2482a280960c0aee1))
+* **reports:** emit deterministic profile contract artifacts ([90e1ecd](https://github.com/fullofcaffeine/reflaxe.rust/commit/90e1ecd99a8432b60c11a71c5b15aae2d464226f))
+* **runtime:** add typed hxrt feature provenance mapping ([2f76bfc](https://github.com/fullofcaffeine/reflaxe.rust/commit/2f76bfccac70ff92dcd92c94d0e2dc922b219276))
+
+
+### Performance Improvements
+
+* add portable-vs-metal convergence checks ([97f670f](https://github.com/fullofcaffeine/reflaxe.rust/commit/97f670f4ef00a392b5a4c376571b15d989680aa0))
+* codify median/MAD protocol and stabilize PR gate sampling ([6ff3eee](https://github.com/fullofcaffeine/reflaxe.rust/commit/6ff3eeec81df5495c100f2afc4307706287ba6df))
+
 # [0.60.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.59.0...v0.60.0) (2026-02-24)
 
 
