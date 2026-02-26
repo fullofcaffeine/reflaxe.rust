@@ -14,7 +14,7 @@ class Main {
 		}
 
 		var sum2 = 0;
-		SliceTools.with(v, function(s: Slice<Int>) {
+		SliceTools.with(v, function(s:Slice<Int>) {
 			for (y in s) {
 				sum2 = sum2 + y;
 			}

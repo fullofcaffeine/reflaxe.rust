@@ -7,6 +7,5 @@
 @:native("crate::native_math")
 extern class NativeMath {
 	@:native("gcd")
-	public static function gcd(a: Int, b: Int): Int;
+	public static function gcd(a:Int, b:Int):Int;
 }
-

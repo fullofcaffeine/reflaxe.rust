@@ -2,7 +2,7 @@ import rust.MutSliceTools;
 import rust.Vec;
 
 class Main {
-	static function main(): Void {
+	static function main():Void {
 		var v = new Vec<Int>();
 		v.push(1);
 		v.push(2);
@@ -13,8 +13,8 @@ class Main {
 		});
 
 		var sum = 0;
-		for (x in v) sum = sum + x;
+		for (x in v)
+			sum = sum + x;
 		trace(sum);
 	}
 }
-

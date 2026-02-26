@@ -6,7 +6,7 @@ import rust.OptionTools;
 using rust.OptionTools;
 
 class Main {
-	static function main(): Void {
+	static function main():Void {
 		var m = new HashMap<String, Int>();
 
 		Borrow.withMut(m, mm -> {
@@ -27,4 +27,3 @@ class Main {
 		trace(HashMapTools.len(m));
 	}
 }
-

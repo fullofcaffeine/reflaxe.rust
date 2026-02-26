@@ -22,4 +22,3 @@ class Main {
 		Sys.println(a2.length); // 3 (independent)
 	}
 }
-

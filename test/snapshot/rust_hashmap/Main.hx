@@ -4,7 +4,7 @@ import rust.HashMapTools;
 import rust.Option;
 
 class Main {
-	static function main(): Void {
+	static function main():Void {
 		var m = new HashMap<String, Int>();
 		m.insert("a", 1);
 		m.insert("b", 2);

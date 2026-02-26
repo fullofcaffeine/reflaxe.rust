@@ -2,7 +2,7 @@ import rust.MutSliceTools;
 import rust.SliceTools;
 
 class Main {
-	static function main(): Void {
+	static function main():Void {
 		var xs = [1, 2, 3];
 
 		SliceTools.with(xs, s -> {

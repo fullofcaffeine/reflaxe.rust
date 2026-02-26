@@ -8,11 +8,11 @@ import rust.Result;
 import rust.Borrow;
 
 class Main {
-	static function isEven(n: Int): Bool {
+	static function isEven(n:Int):Bool {
 		return (n / 2) * 2 == n;
 	}
 
-	static function parseEven(n: Int): Result<Int, String> {
+	static function parseEven(n:Int):Result<Int, String> {
 		return isEven(n) ? Ok(n) : Err("odd");
 	}
 
@@ -23,7 +23,7 @@ class Main {
 
 		trace(VecTools.len(v));
 
-		var last: Option<Int> = v.pop();
+		var last:Option<Int> = v.pop();
 		switch (last) {
 			case Some(x):
 				trace(x);
@@ -43,7 +43,8 @@ class Main {
 		v2.push(20);
 
 		var sum = 0;
-		for (x in IterTools.fromVec(v2.clone())) sum = sum + x;
+		for (x in IterTools.fromVec(v2.clone()))
+			sum = sum + x;
 		trace(sum);
 
 		// Borrow-first element access helpers.

@@ -48,7 +48,7 @@ fi
 # Case format: id|relative_dir|hxml|out_dir
 cases=(
 	"hello_metal|examples/hello|compile.metal.hxml|out_fallback_guard_hello"
-	"rusty_concurrent_snapshot|test/snapshot/rusty_concurrent|compile.hxml|out_fallback_guard_rusty_concurrent"
+	"rust_concurrent_snapshot|test/snapshot/rust_concurrent|compile.hxml|out_fallback_guard_rust_concurrent"
 	"chat_loopback_metal|examples/chat_loopback|compile.metal.hxml|out_fallback_guard_chat"
 )
 
