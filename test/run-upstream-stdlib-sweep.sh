@@ -147,13 +147,15 @@ for module in "${modules[@]}"; do
   out_dir="$WORK_DIR/out/$slug"
   target_dir="$SWEEP_TARGET_BASE/$slug"
   macro_cmd="include('$module')"
-  if [[ "$module" == "haxe.Json" || "$module" == "haxe.Http" || "$module" == "Sys" ]]; then
+  if [[ "$module" == "haxe.Json" || "$module" == "haxe.Http" || "$module" == "Sys" || "$module" == "Std" ]]; then
     # On case-insensitive filesystems, include('haxe.Json') can collide with
     # std/haxe/json/* and trigger a false haxe.Json.Value vs haxe.json.Value error.
     # `include('haxe.Http')` can resolve nested commandline classes with the wrong module
     # casing (`haxe.Http.HttpNodeJs` vs `haxe.http.HttpNodeJs`) in some environments.
     # `include('Sys')` can also trigger a commandline-class mismatch (`Sys.ssl.Certificate`)
     # in some environments.
+    # `include('Std')` can trigger a nested commandline-class mismatch
+    # (`Std.hxrt.ssl.CertificateHandle` vs `hxrt.ssl.CertificateHandle`) in some environments.
     # Resolve these modules by exact type lookup.
     macro_cmd="haxe.macro.Context.getType('$module')"
   fi

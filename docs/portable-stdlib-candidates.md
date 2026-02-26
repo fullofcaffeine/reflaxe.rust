@@ -4,27 +4,14 @@ Deterministic scan of upstream stdlib modules that match the portable contract s
 
 - upstreamStdVersion: `4.3.7`
 - upstreamImportableModules: `184`
-- tier2CoveredModules: `101`
-- missingFromTier2: `83`
+- tier2CoveredModules: `141`
+- missingFromTier2: `43`
 
 ## Missing From Tier2
 
-- `Math`
-- `Std`
-- `haxe.EntryPoint`
-- `haxe.EnumFlags`
-- `haxe.Int32`
-- `haxe.Int64Helper`
-- `haxe.NativeStackTrace`
-- `haxe.SysTools`
-- `haxe.Template`
-- `haxe.Ucs2`
-- `haxe.Utf8`
-- `haxe.ValueException`
 - `haxe.atomic.AtomicBool`
 - `haxe.atomic.AtomicInt`
 - `haxe.atomic.AtomicObject`
-- `haxe.crypto.BaseCode`
 - `haxe.display.Diagnostic`
 - `haxe.display.Display`
 - `haxe.display.FsPath`
@@ -32,41 +19,18 @@ Deterministic scan of upstream stdlib modules that match the portable contract s
 - `haxe.display.Position`
 - `haxe.display.Protocol`
 - `haxe.display.Server`
-- `haxe.ds.Either`
-- `haxe.ds.HashMap`
-- `haxe.ds.ListSort`
-- `haxe.ds.Map`
-- `haxe.ds.WeakMap`
-- `haxe.exceptions.ArgumentException`
-- `haxe.exceptions.NotImplementedException`
-- `haxe.exceptions.PosException`
 - `haxe.extern.AsVar`
 - `haxe.extern.EitherType`
 - `haxe.extern.Rest`
-- `haxe.format.JsonParser`
-- `haxe.format.JsonPrinter`
 - `haxe.http.HttpJs`
-- `haxe.http.HttpMethod`
 - `haxe.http.HttpNodeJs`
-- `haxe.http.HttpStatus`
-- `haxe.io.BufferInput`
 - `haxe.io.Float32Array`
 - `haxe.io.Float64Array`
 - `haxe.io.Int32Array`
-- `haxe.io.Mime`
-- `haxe.io.Scheme`
-- `haxe.io.StringInput`
 - `haxe.io.UInt16Array`
 - `haxe.io.UInt32Array`
 - `haxe.iterators.ArrayIterator`
 - `haxe.iterators.ArrayKeyValueIterator`
-- `haxe.iterators.DynamicAccessIterator`
-- `haxe.iterators.DynamicAccessKeyValueIterator`
-- `haxe.iterators.HashMapKeyValueIterator`
-- `haxe.iterators.RestIterator`
-- `haxe.iterators.RestKeyValueIterator`
-- `haxe.iterators.StringIteratorUnicode`
-- `haxe.iterators.StringKeyValueIteratorUnicode`
 - `haxe.macro.CompilationServer`
 - `haxe.macro.Compiler`
 - `haxe.macro.ComplexTypeTools`
@@ -85,10 +49,6 @@ Deterministic scan of upstream stdlib modules that match the portable contract s
 - `haxe.macro.Type`
 - `haxe.macro.TypeTools`
 - `haxe.macro.TypedExprTools`
-- `haxe.rtti.Rtti`
-- `haxe.rtti.XmlParser`
-- `haxe.xml.Fast`
-- `haxe.zip.FlushMode`
 - `haxe.zip.Huffman`
 - `haxe.zip.InflateImpl`
 - `haxe.zip.Tools`
