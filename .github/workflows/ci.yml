@@ -203,6 +203,12 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Capture portable stdlib candidate report
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/ci-evidence
+          node scripts/ci/audit-upstream-stdlib-candidates.js --json > .cache/ci-evidence/portable-stdlib-candidates.json
+
       - name: Package smoke (haxelib zip install)
         run: |
           set -euo pipefail
@@ -236,4 +242,12 @@ jobs:
         with:
           name: hxrt-overhead-benchmarks
           path: .cache/perf-hxrt/results
+          if-no-files-found: warn
+
+      - name: Upload portable stdlib candidate artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-stdlib-candidates
+          path: .cache/ci-evidence/portable-stdlib-candidates.json
           if-no-files-found: warn
