@@ -25,6 +25,10 @@ Out of scope for parity accounting (target-specific namespaces):
 
 Tracked artifacts:
 
+- `docs/portable-stdlib-allowlist.json`
+  - Canonical portable-stdlib scope artifact:
+    - excluded target-specific namespace prefixes
+    - deterministic Tier1 upstream sweep module list
 - `docs/stdlib-provenance-ledger.json`
   - Ledger for all tracked `std/**/*.cross.hx` files.
   - Records whether each file is an upstream sync or a repo-authored override.
@@ -36,6 +40,11 @@ CI/guard scripts:
   - Restricts checked-in std override file types under `std/`.
 - `scripts/ci/stdlib-provenance-ledger-check.js`
   - Enforces ledger coverage and stale-entry detection for tracked `.cross.hx` files.
+- `scripts/ci/portable-stdlib-allowlist-check.js`
+  - Enforces allowlist invariants:
+    - sorted/unique exclude prefixes and Tier1 module list
+    - Tier1 modules do not use excluded target prefixes
+    - Tier1 list stays in sync with `test/upstream_std_modules.txt` (content + order)
 
 ## Portable contract and native imports
 
@@ -71,5 +80,6 @@ These mappings are reflected in deterministic runtime planning artifacts:
 
 - `npm run guard:upstream-stdlib-boundary`
 - `npm run guard:stdlib-ledger`
+- `npm run guard:portable-stdlib-allowlist`
 - `bash test/run-upstream-stdlib-sweep.sh`
 - `npm run check:harness`

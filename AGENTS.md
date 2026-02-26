@@ -147,8 +147,9 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
     symlink aliases (for example `/var/...` vs `/private/var/...`) can make packaged std overrides look like non-framework files and skip emission.
   - Validation gotcha: `.cross.hx` std override behavior must be validated through a real `-lib reflaxe.rust` install path (`haxelib newrepo` + `haxelib install <zip>`).
     A raw `-cp <pkg>/src` compile is not an equivalent packaging test and can resolve upstream std modules instead.
-  - Governance rule: keep `docs/stdlib-provenance-ledger.json` in sync with tracked `std/**/*.cross.hx` files and run boundary guards:
-    `npm run guard:upstream-stdlib-boundary` + `npm run guard:stdlib-ledger`.
+  - Governance rule: keep `docs/stdlib-provenance-ledger.json` in sync with tracked `std/**/*.cross.hx` files, keep
+    `docs/portable-stdlib-allowlist.json` aligned with `test/upstream_std_modules.txt`, and run boundary guards:
+    `npm run guard:upstream-stdlib-boundary` + `npm run guard:stdlib-ledger` + `npm run guard:portable-stdlib-allowlist`.
 - `Std.isOfType` is implemented as a compiler intrinsic (exact-type check via `__hx_type_id`, plus compile-time subtype short-circuit).
 - String move semantics: many generated Rust functions take `String` by value; to preserve Haxe’s “strings are re-usable after calls” behavior, callsites currently clone String arguments based on the callee’s parameter types.
 - Nullable-string migration gotcha: a full switch to `hxrt::string::HxString` as the emitted Rust `String` representation touches broad stdlib/runtime surfaces (notably map key types, `toString` trait bridges, and hardcoded `String` paths).
@@ -196,6 +197,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 - Run stdlib boundary/provenance guards locally:
   - `npm run guard:upstream-stdlib-boundary`
   - `npm run guard:stdlib-ledger`
+  - `npm run guard:portable-stdlib-allowlist`
 - Run Windows-safe smoke subset locally: `bash scripts/ci/windows-smoke.sh` (same subset used by the Windows CI job).
 - Run packaged-install smoke locally: `bash scripts/ci/package-smoke.sh` (build zip, install into local haxelib repo, compile, cargo build).
   - Regression coverage includes a symlinked working-directory compile pass to catch path-alias mismatches when classifying framework std files.
