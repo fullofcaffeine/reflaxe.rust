@@ -328,17 +328,11 @@ impl Http {
             let kv: hxrt::array::Array<hxrt::string::HxString> =
                 hxrt::array::Array::<hxrt::string::HxString>::new();
             {
-                let mut _g: i32 = 0;
                 let _g1: hxrt::array::Array<crate::HxRef<hxrt::anon::Anon>> = {
                     let __b = __hx_this.borrow();
                     __b.params.clone()
                 };
-                while _g < (_g1.len() as i32) {
-                    let p: crate::HxRef<hxrt::anon::Anon> = _g1.get_unchecked(_g as usize);
-                    {
-                        _g = _g + 1;
-                        _g
-                    };
+                for p in _g1.iter_borrowed() {
                     kv.push(hxrt::string::HxString::from(hxrt::string::HxString::from(
                         format!(
                             "{}{}{}",
@@ -412,17 +406,11 @@ impl Http {
             None,
         );
         {
-            let mut _g_2: i32 = 0;
             let _g1_2: hxrt::array::Array<crate::HxRef<hxrt::anon::Anon>> = {
                 let __b = __hx_this.borrow();
                 __b.headers.clone()
             };
-            while _g_2 < (_g1_2.len() as i32) {
-                let h: crate::HxRef<hxrt::anon::Anon> = _g1_2.get_unchecked(_g_2 as usize);
-                {
-                    _g_2 = _g_2 + 1;
-                    _g_2
-                };
+            for h in _g1_2.iter_borrowed() {
                 crate::haxe_io_bytes_output::BytesOutput::write_string(
                     &*b,
                     hxrt::string::HxString::from(h.borrow().get::<hxrt::string::HxString>("name")),

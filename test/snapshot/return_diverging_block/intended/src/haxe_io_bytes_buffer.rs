@@ -195,17 +195,11 @@ impl BytesBuffer {
         ));
         let mut offset: i32 = 0;
         {
-            let mut _g: i32 = 0;
             let _g1: hxrt::array::Array<crate::HxRef<hxrt::bytes::Bytes>> = {
                 let __b = __hx_this.borrow();
                 __b.chunks.clone()
             };
-            while _g < (_g1.len() as i32) {
-                let chunk: crate::HxRef<hxrt::bytes::Bytes> = _g1.get_unchecked(_g as usize);
-                {
-                    _g = _g + 1;
-                    _g
-                };
+            for chunk in _g1.iter_borrowed() {
                 let n: i32 = chunk.borrow().length();
                 hxrt::bytes::blit(&out, offset, &chunk, 0, n);
                 offset = offset + n;

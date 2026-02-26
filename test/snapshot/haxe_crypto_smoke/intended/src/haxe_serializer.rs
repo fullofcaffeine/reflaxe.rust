@@ -220,19 +220,12 @@ impl Serializer {
     fn serialize_fields(self_: &crate::HxRefCell<Serializer>, v: crate::HxRef<hxrt::anon::Anon>) {
         let __hx_this: crate::HxRef<crate::haxe_serializer::Serializer> = self_.self_ref();
         {
-            let mut _g: i32 = 0;
             let _g1: hxrt::array::Array<hxrt::string::HxString> = {
                 let __obj = v.clone();
                 let __dyn = hxrt::dynamic::from(__obj);
                 hxrt::dynamic::field_names(&__dyn)
             };
-            while _g < (_g1.len() as i32) {
-                let f: hxrt::string::HxString =
-                    hxrt::string::HxString::from(_g1.get_unchecked(_g as usize));
-                {
-                    _g = _g + 1;
-                    _g
-                };
+            for f in _g1.iter_borrowed() {
                 crate::haxe_serializer::Serializer::serialize_string(
                     &*__hx_this,
                     hxrt::string::HxString::from(f.clone()),

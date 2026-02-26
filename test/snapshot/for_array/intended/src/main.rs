@@ -55,16 +55,8 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 fn main() {
     let xs: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::from_vec(vec![1, 2, 3]);
     let mut sum: i32 = 0;
-    {
-        let mut _g: i32 = 0;
-        while _g < (xs.len() as i32) {
-            let x: i32 = xs.get_unchecked(_g as usize);
-            {
-                _g = _g + 1;
-                _g
-            };
-            sum = sum + x;
-        }
+    for x in xs.iter_borrowed() {
+        sum = sum + x;
     }
     println!("{}", hxrt::dynamic::from(sum));
 }

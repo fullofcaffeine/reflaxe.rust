@@ -4971,6 +4971,87 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function compileStmt(e:TypedExpr):RustStmt {
+		function unwrapMetaParenCast(expr:TypedExpr):TypedExpr {
+			var u = unwrapMetaParen(expr);
+			return switch (u.expr) {
+				case TCast(e1, _): unwrapMetaParenCast(e1);
+				case _: u;
+			}
+		}
+
+		function matchesFieldName(fa:FieldAccess, expected:String):Bool {
+			return switch (fa) {
+				case FInstance(_, _, cfRef): var cf = cfRef.get(); cf != null && cf.getHaxeName() == expected;
+				case FAnon(cfRef): var cf = cfRef.get(); cf != null && cf.getHaxeName() == expected;
+				case FClosure(_, cfRef): var cf = cfRef.get(); cf != null && cf.getHaxeName() == expected;
+				case FDynamic(name):
+					name == expected;
+				case _:
+					false;
+			}
+		}
+
+		function localFromExpr(expr:TypedExpr):Null<TVar> {
+			return switch (unwrapMetaParenCast(expr).expr) {
+				case TLocal(v): v;
+				case _: null;
+			}
+		}
+
+		function exprReferencesAnyLocalIds(root:TypedExpr, localIds:Map<Int, Bool>):Bool {
+			var found = false;
+			function scan(node:TypedExpr):Void {
+				if (found)
+					return;
+				switch (unwrapMetaParenCast(node).expr) {
+					case TLocal(v):
+						if (localIds.exists(v.id)) {
+							found = true;
+							return;
+						}
+					case _:
+				}
+				TypedExprTools.iter(node, scan);
+			}
+			scan(root);
+			return found;
+		}
+
+		function exprListReferencesAnyLocalIds(exprs:Array<TypedExpr>, localIds:Map<Int, Bool>):Bool {
+			for (expr in exprs) {
+				if (exprReferencesAnyLocalIds(expr, localIds))
+					return true;
+			}
+			return false;
+		}
+
+		function asExprList(expr:TypedExpr):Array<TypedExpr> {
+			return switch (unwrapMetaParen(expr).expr) {
+				case TBlock(es): {
+						var out:Array<TypedExpr> = [];
+						for (x in es) {
+							switch (unwrapMetaParen(x).expr) {
+								case TConst(TNull):
+								case _:
+									out.push(x);
+							}
+						}
+						out;
+					}
+				case _:
+					[expr];
+			}
+		}
+
+		function canUseBorrowedArrayIteration(iterable:TypedExpr, loopBodyExprs:Array<TypedExpr>):Bool {
+			var iterableLocal = localFromExpr(iterable);
+			if (iterableLocal == null)
+				return false;
+			var aliases:Map<Int, Bool> = [];
+			aliases.set(iterableLocal.id, true);
+			return !exprListReferencesAnyLocalIds(loopBodyExprs, aliases);
+		}
+
 		return switch (e.expr) {
 			case TBlock(exprs): {
 					// Haxe desugars `for (x in iterable)` into:
@@ -4983,27 +5064,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						return ECall(EField(base, iterBorrowMethod(x.t)), []);
 					}
 
-					function matchesFieldName(fa:FieldAccess, expected:String):Bool {
-						return switch (fa) {
-							case FInstance(_, _, cfRef): var cf = cfRef.get(); cf != null && cf.getHaxeName() == expected;
-							case FAnon(cfRef): var cf = cfRef.get(); cf != null && cf.getHaxeName() == expected;
-							case FClosure(_, cfRef): var cf = cfRef.get(); cf != null && cf.getHaxeName() == expected;
-							case FDynamic(name):
-								name == expected;
-							case _:
-								false;
-						}
-					}
-
 					function extractRustForIterable(init:TypedExpr):Null<RustExpr> {
-						function unwrapMetaParenCast(e:TypedExpr):TypedExpr {
-							var u = unwrapMetaParen(e);
-							return switch (u.expr) {
-								case TCast(e1, _): unwrapMetaParenCast(e1);
-								case _: u;
-							}
-						}
-
 						var u = unwrapMetaParenCast(init);
 						return switch (u.expr) {
 							case TCall(callExpr, callArgs): {
@@ -5073,6 +5134,179 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						}
 
 						var es = stripNulls(exprs);
+
+						function extractArraySourceFromCond(cond:TypedExpr, idxVar:TVar):Null<TypedExpr> {
+							var condU = unwrapMetaParenCast(cond);
+							return switch (condU.expr) {
+								case TBinop(OpLt, lhs, rhs): {
+										var lhsLocal = localFromExpr(lhs);
+										if (lhsLocal == null || lhsLocal.id != idxVar.id) {
+											null;
+										} else {
+											switch (unwrapMetaParenCast(rhs).expr) {
+												case TField(obj, fa) if (matchesFieldName(fa, "length")):
+													obj;
+												case _:
+													null;
+											}
+										}
+									}
+								case _:
+									null;
+							}
+						}
+
+						function matchesArrayReadHead(init:TypedExpr, idxVarId:Int, arrayLocalId:Int):Bool {
+							return switch (unwrapMetaParenCast(init).expr) {
+								case TArray(arr, idx): {
+										var arrLocal = localFromExpr(arr);
+										if (arrLocal == null || arrLocal.id != arrayLocalId) {
+											false;
+										} else {
+											var idxAliases:Map<Int, Bool> = [];
+											idxAliases.set(idxVarId, true);
+											exprReferencesAnyLocalIds(idx, idxAliases);
+										}
+									}
+								case _:
+									false;
+							}
+						}
+
+						function isIndexAdvanceExpr(expr:TypedExpr, idxVarId:Int):Bool {
+							var idxAliases:Map<Int, Bool> = [];
+							idxAliases.set(idxVarId, true);
+							return switch (unwrapMetaParenCast(expr).expr) {
+								case TBinop(OpAssign, lhs, rhs) | TBinop(OpAssignOp(_), lhs, rhs): {
+										var lhsLocal = localFromExpr(lhs);
+										lhsLocal != null && lhsLocal.id == idxVarId && exprReferencesAnyLocalIds(rhs, idxAliases)
+										;
+									}
+								case TUnop(op, _, inner) if (op == OpIncrement || op == OpDecrement): {
+										var innerLocal = localFromExpr(inner);
+										innerLocal != null && innerLocal.id == idxVarId
+										;
+									}
+								case TBlock(inner):
+									{
+										var cleaned = stripNulls(inner);
+										if (cleaned.length == 0) {
+											false;
+										} else {
+											var firstIsAdvance = isIndexAdvanceExpr(cleaned[0], idxVarId);
+											var tailIsIdxOnly = true;
+											for (i in 1...cleaned.length) {
+												if (!exprReferencesAnyLocalIds(cleaned[i], idxAliases)) {
+													tailIsIdxOnly = false;
+													break;
+												}
+											}
+											firstIsAdvance && tailIsIdxOnly
+											;
+										}
+									}
+								case _:
+									false;
+							}
+						}
+
+						function tryLowerDesugaredArrayFor(es:Array<TypedExpr>):Null<RustStmt> {
+							if (es.length != 2 && es.length != 3)
+								return null;
+
+							var idxVar:Null<TVar> = null;
+							switch (unwrapMetaParen(es[0]).expr) {
+								case TVar(v, _):
+									idxVar = v;
+								case _:
+									return null;
+							}
+							if (idxVar == null)
+								return null;
+
+							var whileExpr = unwrapMetaParen(es[es.length - 1]);
+							var whileCond:Null<TypedExpr> = null;
+							var whileBody:Null<TypedExpr> = null;
+							switch (whileExpr.expr) {
+								case TWhile(cond, body, normalWhile) if (normalWhile):
+									whileCond = cond;
+									whileBody = body;
+								case _:
+									return null;
+							}
+							if (whileCond == null || whileBody == null)
+								return null;
+
+							var arraySource = extractArraySourceFromCond(whileCond, idxVar);
+							if (arraySource == null)
+								return null;
+							if (!isArrayType(arraySource.t))
+								return null;
+
+							var arraySourceLocal = localFromExpr(arraySource);
+							if (arraySourceLocal == null)
+								return null;
+
+							var aliasIds:Map<Int, Bool> = [];
+							aliasIds.set(arraySourceLocal.id, true);
+							var preludeStmt:Null<RustStmt> = null;
+
+							if (es.length == 3) {
+								switch (unwrapMetaParen(es[1]).expr) {
+									case TVar(arrVar, init) if (init != null && isArrayType(arrVar.t)):
+										{
+											aliasIds.set(arrVar.id, true);
+											var sourceLocal = localFromExpr(init);
+											if (sourceLocal != null)
+												aliasIds.set(sourceLocal.id, true);
+											preludeStmt = compileStmt(es[1]);
+										}
+									case _:
+										return null;
+								}
+							}
+
+							var bodyExprs = switch (unwrapMetaParen(whileBody).expr) {
+								case TBlock(inner): stripNulls(inner);
+								case _:
+									return null;
+							}
+							if (bodyExprs.length == 0)
+								return null;
+
+							var loopVar:Null<TVar> = null;
+							switch (unwrapMetaParen(bodyExprs[0]).expr) {
+								case TVar(v, init) if (init != null && matchesArrayReadHead(init, idxVar.id, arraySourceLocal.id)):
+									loopVar = v;
+								case _:
+									return null;
+							}
+							if (loopVar == null)
+								return null;
+
+							var userBodyExprs = bodyExprs.slice(1);
+							if (userBodyExprs.length > 0 && isIndexAdvanceExpr(userBodyExprs[0], idxVar.id))
+								userBodyExprs = userBodyExprs.slice(1);
+
+							// Conservative safety gate: if user loop body touches the iterated array
+							// binding (or its immediate source local), keep canonical index/while lowering.
+							if (exprListReferencesAnyLocalIds(userBodyExprs, aliasIds))
+								return null;
+
+							var iterExpr = ECall(EField(compileExpr(arraySource), "iter_borrowed"), []);
+							var bodyBlock = compileBlock(userBodyExprs, false);
+							var loweredFor = RFor(rustLocalDeclIdent(loopVar), iterExpr, bodyBlock);
+							return if (preludeStmt == null) {
+								loweredFor;
+							} else {
+								RExpr(EBlock({stmts: [preludeStmt, loweredFor], tail: null}), false);
+							}
+						}
+
+						var loweredArray = tryLowerDesugaredArrayFor(es);
+						if (loweredArray != null)
+							return loweredArray;
+
 						if (es.length != 2)
 							return null;
 
@@ -5257,9 +5491,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 			case TFor(v, iterable, body): {
 					function iterCloned(x:TypedExpr):RustExpr {
-						// `hxrt::array::Array<T>::iter()` returns an owned iterator; do not append `.cloned()`.
+						// For `Array<T>`, prefer borrowed iteration only when the loop body does not
+						// reference the iterable binding. Any reference keeps canonical clone-snapshot
+						// lowering to avoid semantic drift.
 						if (isArrayType(x.t)) {
-							return ECall(EField(compileExpr(x), "iter"), []);
+							var arrayMethod = canUseBorrowedArrayIteration(x, asExprList(body)) ? "iter_borrowed" : "iter";
+							return ECall(EField(compileExpr(x), arrayMethod), []);
 						}
 						var base = ECall(EField(compileExpr(x), "iter"), []);
 						return ECall(EField(base, iterBorrowMethod(x.t)), []);

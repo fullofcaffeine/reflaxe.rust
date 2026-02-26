@@ -59,19 +59,11 @@ fn main() {
     let mut total: i32 = 0;
     let numbers: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::from_vec(vec![1, 2, 3]);
     numbers.push(4);
-    {
-        let mut _g: i32 = 0;
-        while _g < (numbers.len() as i32) {
-            let n: i32 = numbers.get_unchecked(_g as usize);
-            {
-                _g = _g + 1;
-                _g
-            };
-            {
-                total = total + n;
-                total
-            };
-        }
+    for n in numbers.iter_borrowed() {
+        {
+            total = total + n;
+            total
+        };
     }
     println!("{}", hxrt::dynamic::from(banner.clone()));
     println!("{}", hxrt::dynamic::from(frozen));

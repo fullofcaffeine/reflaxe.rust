@@ -58,14 +58,8 @@ fn main() {
     let mapped: hxrt::array::Array<i32> = {
         let _g: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::new();
         {
-            let mut _g1: i32 = 0;
             let _g2: hxrt::array::Array<i32> = a.clone();
-            while _g1 < (_g2.len() as i32) {
-                let v: i32 = _g2.get_unchecked(_g1 as usize);
-                {
-                    _g1 = _g1 + 1;
-                    _g1
-                };
+            for v in _g2.iter_borrowed() {
                 _g.push(v * 2);
             }
         }
@@ -74,14 +68,8 @@ fn main() {
     let filtered: hxrt::array::Array<i32> = {
         let _g_2: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::new();
         {
-            let mut _g1_2: i32 = 0;
             let _g2_2: hxrt::array::Array<i32> = a.clone();
-            while _g1_2 < (_g2_2.len() as i32) {
-                let v_2: i32 = _g2_2.get_unchecked(_g1_2 as usize);
-                {
-                    _g1_2 = _g1_2 + 1;
-                    _g1_2
-                };
+            for v_2 in _g2_2.iter_borrowed() {
                 if v_2 == 2 || v_2 == 4 {
                     _g_2.push(v_2);
                 }

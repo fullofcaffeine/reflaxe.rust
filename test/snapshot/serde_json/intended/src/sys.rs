@@ -35,16 +35,9 @@ impl Sys {
         let out: crate::HxRef<crate::haxe_ds_string_map::StringMap<hxrt::string::HxString>> =
             crate::haxe_ds_string_map::StringMap::<hxrt::string::HxString>::new();
         {
-            let mut _g: i32 = 0;
             let _g1: hxrt::array::Array<hxrt::array::Array<hxrt::string::HxString>> =
                 hxrt::sys::environment_pairs();
-            while _g < (_g1.len() as i32) {
-                let entry: hxrt::array::Array<hxrt::string::HxString> =
-                    _g1.get_unchecked(_g as usize);
-                {
-                    _g = _g + 1;
-                    _g
-                };
+            for entry in _g1.iter_borrowed() {
                 if (entry.len() as i32) < 2 {
                     continue;
                 }

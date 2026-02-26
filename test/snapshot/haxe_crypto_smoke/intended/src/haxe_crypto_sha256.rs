@@ -328,18 +328,10 @@ impl Sha256 {
     ) -> hxrt::string::HxString {
         let mut str: hxrt::string::HxString =
             hxrt::string::HxString::from(hxrt::string::HxString::from(""));
-        {
-            let mut _g: i32 = 0;
-            while _g < (a.len() as i32) {
-                let num: i32 = a.get_unchecked(_g as usize);
-                {
-                    _g = _g + 1;
-                    _g
-                };
-                {
-                    let __tmp = crate::string_tools::StringTools::hex(num, Some(8));
-                    str = hxrt::string::HxString::from(format!("{}{}", str, __tmp));
-                }
+        for num in a.iter_borrowed() {
+            {
+                let __tmp = crate::string_tools::StringTools::hex(num, Some(8));
+                str = hxrt::string::HxString::from(format!("{}{}", str, __tmp));
             }
         }
         return hxrt::string::HxString::from(hxrt::string::HxString::from(

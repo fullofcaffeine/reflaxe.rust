@@ -332,51 +332,24 @@ impl Socket {
         let rh: hxrt::array::Array<crate::HxRef<hxrt::net::SocketHandle>> = {
             let _g: hxrt::array::Array<crate::HxRef<hxrt::net::SocketHandle>> =
                 hxrt::array::Array::<crate::HxRef<hxrt::net::SocketHandle>>::new();
-            {
-                let mut _g1: i32 = 0;
-                while _g1 < (read.len() as i32) {
-                    let s: crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync> =
-                        read.get_unchecked(_g1 as usize);
-                    {
-                        _g1 = _g1 + 1;
-                        _g1
-                    };
-                    _g.push(s.__hx_get_handle());
-                }
+            for s in read.iter_borrowed() {
+                _g.push(s.__hx_get_handle());
             }
             _g
         };
         let wh: hxrt::array::Array<crate::HxRef<hxrt::net::SocketHandle>> = {
             let _g_2: hxrt::array::Array<crate::HxRef<hxrt::net::SocketHandle>> =
                 hxrt::array::Array::<crate::HxRef<hxrt::net::SocketHandle>>::new();
-            {
-                let mut _g1_2: i32 = 0;
-                while _g1_2 < (write.len() as i32) {
-                    let s_2: crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync> =
-                        write.get_unchecked(_g1_2 as usize);
-                    {
-                        _g1_2 = _g1_2 + 1;
-                        _g1_2
-                    };
-                    _g_2.push(s_2.__hx_get_handle());
-                }
+            for s_2 in write.iter_borrowed() {
+                _g_2.push(s_2.__hx_get_handle());
             }
             _g_2
         };
         let oh: hxrt::array::Array<crate::HxRef<hxrt::net::SocketHandle>> = {
             let _g_3: hxrt::array::Array<crate::HxRef<hxrt::net::SocketHandle>> =
                 hxrt::array::Array::<crate::HxRef<hxrt::net::SocketHandle>>::new();
-            {
-                let mut _g1_3: i32 = 0;
-                while _g1_3 < (others.len() as i32) {
-                    let s_3: crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync> =
-                        others.get_unchecked(_g1_3 as usize);
-                    {
-                        _g1_3 = _g1_3 + 1;
-                        _g1_3
-                    };
-                    _g_3.push(s_3.__hx_get_handle());
-                }
+            for s_3 in others.iter_borrowed() {
+                _g_3.push(s_3.__hx_get_handle());
             }
             _g_3
         };
@@ -413,16 +386,8 @@ impl Socket {
                     > = hxrt::array::Array::<
                         crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync>,
                     >::new();
-                    {
-                        let mut _g: i32 = 0;
-                        while _g < (idx.len() as i32) {
-                            let i: i32 = idx.get_unchecked(_g as usize);
-                            {
-                                _g = _g + 1;
-                                _g
-                            };
-                            out.push(src.get_unchecked(i as usize));
-                        }
+                    for i in idx.iter_borrowed() {
+                        out.push(src.get_unchecked(i as usize));
                     }
                     return out;
                 },

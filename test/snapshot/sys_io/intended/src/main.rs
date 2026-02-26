@@ -203,27 +203,18 @@ fn main() {
     let mut found_b: bool = false;
     let mut found_dot: bool = false;
     let mut found_dot_dot: bool = false;
-    {
-        let mut _g: i32 = 0;
-        while _g < (entries.len() as i32) {
-            let e: hxrt::string::HxString =
-                hxrt::string::HxString::from(entries.get_unchecked(_g as usize));
-            {
-                _g = _g + 1;
-                _g
-            };
-            if e == hxrt::string::HxString::from("a.txt") {
-                found_a = true;
-            }
-            if e == hxrt::string::HxString::from("b.txt") {
-                found_b = true;
-            }
-            if e == hxrt::string::HxString::from(".") {
-                found_dot = true;
-            }
-            if e == hxrt::string::HxString::from("..") {
-                found_dot_dot = true;
-            }
+    for e in entries.iter_borrowed() {
+        if e == hxrt::string::HxString::from("a.txt") {
+            found_a = true;
+        }
+        if e == hxrt::string::HxString::from("b.txt") {
+            found_b = true;
+        }
+        if e == hxrt::string::HxString::from(".") {
+            found_dot = true;
+        }
+        if e == hxrt::string::HxString::from("..") {
+            found_dot_dot = true;
         }
     }
     println!("{}", hxrt::dynamic::from(found_a));

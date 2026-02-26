@@ -79,22 +79,13 @@ impl Json {
                         hxrt::json::value_object_keys(value.clone());
                     let values: hxrt::array::Array<crate::haxe_json_value::Value> =
                         hxrt::array::Array::<crate::haxe_json_value::Value>::new();
-                    {
-                        let mut _g_2: i32 = 0;
-                        while _g_2 < (keys.len() as i32) {
-                            let name: hxrt::string::HxString =
-                                hxrt::string::HxString::from(keys.get_unchecked(_g_2 as usize));
-                            {
-                                _g_2 = _g_2 + 1;
-                                _g_2
-                            };
-                            values.push(crate::haxe_json::Json::dynamic_to_value(
-                                hxrt::json::value_object_field(
-                                    value.clone(),
-                                    hxrt::string::HxString::from(name.clone()),
-                                ),
-                            ));
-                        }
+                    for name in keys.iter_borrowed() {
+                        values.push(crate::haxe_json::Json::dynamic_to_value(
+                            hxrt::json::value_object_field(
+                                value.clone(),
+                                hxrt::string::HxString::from(name.clone()),
+                            ),
+                        ));
                     }
                     return crate::haxe_json_value::Value::JObject(keys.clone(), values.clone());
                 }
