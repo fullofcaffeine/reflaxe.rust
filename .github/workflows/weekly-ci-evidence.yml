@@ -83,6 +83,11 @@ jobs:
           HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS=60 \
           bash scripts/ci/local.sh
 
+      - name: Run upstream stdlib Tier2 sweep
+        run: |
+          set -euo pipefail
+          bash test/run-upstream-stdlib-sweep.sh --tier tier2
+
       - name: Publish Linux evidence summary
         if: always()
         env:
@@ -98,6 +103,7 @@ jobs:
             echo "- Commands:"
             echo "  - \`npm run docs:sync:progress\`"
             echo "  - \`HXRT_PERF_GATE_MODE=nightly HXRT_PERF_HOT_LOOP_INPROC_RUNS=60 HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS=60 bash scripts/ci/local.sh\`"
+            echo "  - \`bash test/run-upstream-stdlib-sweep.sh --tier tier2\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   windows-smoke:
