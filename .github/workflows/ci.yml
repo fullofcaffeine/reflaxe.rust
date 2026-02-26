@@ -226,6 +226,8 @@ jobs:
       - name: Run HXRT overhead benchmarks (PR coarse gate)
         run: |
           set -euo pipefail
+          HXRT_PERF_HOT_LOOP_INPROC_RUNS=60 \
+          HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS=60 \
           bash scripts/ci/perf-hxrt-overhead.sh --gate-mode pr
 
       - name: Upload HXRT overhead benchmark artifacts

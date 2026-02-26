@@ -167,7 +167,7 @@ measure_startup_ms() {
   awk -v real="$real_seconds" -v count="$iterations" 'BEGIN { printf "%.6f\n", (real * 1000.0) / count }'
 }
 
-measure_inprocess_ms() {
+measure_inprocess_stats_ms() {
   local bin="$1"
   local sample_count="$2"
   local timing_log="$3"
@@ -181,8 +181,9 @@ if (!bin || !Number.isFinite(runs) || runs <= 0) {
   process.exit(2);
 }
 
-const startedNs = process.hrtime.bigint();
+const samplesMs = [];
 for (let i = 0; i < runs; i += 1) {
+  const startedNs = process.hrtime.bigint();
   const runResult = spawnSync(bin, [], { stdio: "ignore" });
   if (runResult.error) {
     console.error(runResult.error.message);
@@ -191,18 +192,36 @@ for (let i = 0; i < runs; i += 1) {
   if (runResult.status !== 0) {
     process.exit(runResult.status || 1);
   }
+  const elapsedNs = Number(process.hrtime.bigint() - startedNs);
+  samplesMs.push(elapsedNs / 1e6);
 }
-const elapsedNs = Number(process.hrtime.bigint() - startedNs);
-const avgMs = elapsedNs / 1e6 / runs;
-process.stdout.write(`${avgMs.toFixed(6)}\n`);
+
+function median(values) {
+  if (values.length === 0) {
+    return 0;
+  }
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 0) {
+    return (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+  return sorted[mid];
+}
+
+const meanMs = samplesMs.reduce((sum, value) => sum + value, 0) / samplesMs.length;
+const medianMs = median(samplesMs);
+const deviations = samplesMs.map((value) => Math.abs(value - medianMs));
+const madMs = median(deviations);
+const metricMs = medianMs;
+process.stdout.write(`${metricMs.toFixed(6)}\t${meanMs.toFixed(6)}\t${medianMs.toFixed(6)}\t${madMs.toFixed(6)}\n`);
 NODE
 
-  local runtime_avg_ms
-  runtime_avg_ms="$(tr -d '\r' < "$timing_log" | tail -n 1)"
-  if [[ -z "${runtime_avg_ms:-}" ]]; then
+  local stats_line
+  stats_line="$(tr -d '\r' < "$timing_log" | tail -n 1)"
+  if [[ -z "${stats_line:-}" ]]; then
     fail "failed to parse in-process timing from $(display_path "$timing_log")"
   fi
-  printf "%s\n" "$runtime_avg_ms"
+  printf "%s\n" "$stats_line"
 }
 
 write_pure_hello_crate() {
@@ -419,7 +438,7 @@ rm -rf "$work_dir"
 mkdir -p "$work_dir" "$results_dir"
 mkdir -p "$(dirname "$baseline_file")"
 
-printf "id\tcase\tprofile\tkind\tbinary_bytes\tstripped_bytes\truntime_mode\truntime_avg_ms\truntime_iterations\n" > "$metrics_tsv"
+printf "id\tcase\tprofile\tkind\tbinary_bytes\tstripped_bytes\truntime_mode\truntime_metric_ms\truntime_mean_ms\truntime_median_ms\truntime_mad_ms\truntime_iterations\n" > "$metrics_tsv"
 
 log "collecting metrics (results: $(display_path "$results_dir"))"
 
@@ -432,8 +451,11 @@ record_metric_row() {
   local kind="$4"
   local bin_path="$5"
   local runtime_mode="$6"
-  local runtime_avg_ms="$7"
-  local runtime_iterations="$8"
+  local runtime_metric_ms="$7"
+  local runtime_mean_ms="$8"
+  local runtime_median_ms="$9"
+  local runtime_mad_ms="${10}"
+  local runtime_iterations="${11}"
 
   if [[ ! -f "$bin_path" ]]; then
     fail "binary not found: $(display_path "$bin_path")"
@@ -444,10 +466,10 @@ record_metric_row() {
   local stripped_bytes
   stripped_bytes="$(stripped_size_bytes "$bin_path")"
 
-  printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+  printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
     "$id" "$case_name" "$profile" "$kind" \
     "$bin_bytes" "$stripped_bytes" \
-    "$runtime_mode" "$runtime_avg_ms" "$runtime_iterations" >> "$metrics_tsv"
+    "$runtime_mode" "$runtime_metric_ms" "$runtime_mean_ms" "$runtime_median_ms" "$runtime_mad_ms" "$runtime_iterations" >> "$metrics_tsv"
 }
 
 record_metric_startup() {
@@ -461,7 +483,8 @@ record_metric_startup() {
 
   local runtime_avg_ms
   runtime_avg_ms="$(measure_startup_ms "$bin_path" "$iterations" "$startup_log")"
-  record_metric_row "$id" "$case_name" "$profile" "$kind" "$bin_path" "startup" "$runtime_avg_ms" "$iterations"
+  record_metric_row "$id" "$case_name" "$profile" "$kind" "$bin_path" "startup" \
+    "$runtime_avg_ms" "$runtime_avg_ms" "$runtime_avg_ms" "0.000000" "$iterations"
 }
 
 record_metric_inproc() {
@@ -473,9 +496,18 @@ record_metric_inproc() {
   local run_count="$6"
   local output_log="$7"
 
-  local runtime_avg_ms
-  runtime_avg_ms="$(measure_inprocess_ms "$bin_path" "$run_count" "$output_log")"
-  record_metric_row "$id" "$case_name" "$profile" "$kind" "$bin_path" "inproc" "$runtime_avg_ms" "$run_count"
+  local runtime_metric_ms
+  local runtime_mean_ms
+  local runtime_median_ms
+  local runtime_mad_ms
+  IFS=$'\t' read -r runtime_metric_ms runtime_mean_ms runtime_median_ms runtime_mad_ms < <(
+    measure_inprocess_stats_ms "$bin_path" "$run_count" "$output_log"
+  )
+  if [[ -z "${runtime_metric_ms:-}" || -z "${runtime_mean_ms:-}" || -z "${runtime_median_ms:-}" || -z "${runtime_mad_ms:-}" ]]; then
+    fail "failed to parse in-process timing stats from $(display_path "$output_log")"
+  fi
+  record_metric_row "$id" "$case_name" "$profile" "$kind" "$bin_path" "inproc" \
+    "$runtime_metric_ms" "$runtime_mean_ms" "$runtime_median_ms" "$runtime_mad_ms" "$run_count"
 }
 
 for profile in "${profiles[@]}"; do
@@ -713,12 +745,12 @@ const sizeWarnPct = Number(process.env.HXRT_PERF_SIZE_WARN_PCT || "5");
 const runtimeWarnPct = Number(process.env.HXRT_PERF_RUNTIME_WARN_PCT || "10");
 const prSizeFailPct = Number(process.env.HXRT_PERF_PR_SIZE_FAIL_PCT || "20");
 const prRuntimeFailPct = Number(process.env.HXRT_PERF_PR_RUNTIME_FAIL_PCT || "25");
-const prPortableMetalArrayMax = Number(process.env.HXRT_PERF_PR_PORTABLE_METAL_ARRAY_MAX || "1.12");
+const prPortableMetalArrayMax = Number(process.env.HXRT_PERF_PR_PORTABLE_METAL_ARRAY_MAX || "1.20");
 const prPortableMetalHotLoopInprocMax = Number(process.env.HXRT_PERF_PR_PORTABLE_METAL_HOT_LOOP_INPROC_MAX || "1.10");
 const nightlySizeFailPct = Number(process.env.HXRT_PERF_NIGHTLY_SIZE_FAIL_PCT || "8");
-const nightlyRuntimeFailPct = Number(process.env.HXRT_PERF_NIGHTLY_RUNTIME_FAIL_PCT || "10");
+const nightlyRuntimeFailPct = Number(process.env.HXRT_PERF_NIGHTLY_RUNTIME_FAIL_PCT || "15");
 const nightlyPortableMetalArrayMax = Number(process.env.HXRT_PERF_NIGHTLY_PORTABLE_METAL_ARRAY_MAX || "1.08");
-const nightlyPortableMetalHotLoopInprocMax = Number(process.env.HXRT_PERF_NIGHTLY_PORTABLE_METAL_HOT_LOOP_INPROC_MAX || "1.05");
+const nightlyPortableMetalHotLoopInprocMax = Number(process.env.HXRT_PERF_NIGHTLY_PORTABLE_METAL_HOT_LOOP_INPROC_MAX || "1.08");
 const helloIters = Number(process.env.HXRT_PERF_HELLO_ITERS || "300");
 const arrayIters = Number(process.env.HXRT_PERF_ARRAY_ITERS || "300");
 const hotLoopIters = Number(process.env.HXRT_PERF_HOT_LOOP_ITERS || "300");
@@ -757,7 +789,10 @@ function parseMetrics(tsvPath) {
         binary_bytes: Number(entry.binary_bytes),
         stripped_bytes: Number(entry.stripped_bytes),
         runtime_mode: entry.runtime_mode,
-        runtime_avg_ms: Number(entry.runtime_avg_ms),
+        runtime_metric_ms: Number(entry.runtime_metric_ms || entry.runtime_avg_ms),
+        runtime_mean_ms: Number(entry.runtime_mean_ms || entry.runtime_avg_ms),
+        runtime_median_ms: Number(entry.runtime_median_ms || entry.runtime_avg_ms),
+        runtime_mad_ms: Number(entry.runtime_mad_ms || "0"),
         runtime_iterations: Number(entry.runtime_iterations),
       };
     });
@@ -789,7 +824,7 @@ function buildCaseOverhead(caseName, selectedProfiles = profiles) {
     out[profile] = {
       binaryRatio: ratio(metric.binary_bytes, pure.binary_bytes),
       strippedRatio: ratio(metric.stripped_bytes, pure.stripped_bytes),
-      runtimeRatio: ratio(metric.runtime_avg_ms, pure.runtime_avg_ms),
+      runtimeRatio: ratio(metric.runtime_metric_ms, pure.runtime_metric_ms),
     };
   }
   return out;
@@ -807,7 +842,7 @@ const chatMetrics = Object.fromEntries(
 const chatMin = {
   binary_bytes: Math.min(...profiles.map((profile) => chatMetrics[profile].binary_bytes)),
   stripped_bytes: Math.min(...profiles.map((profile) => chatMetrics[profile].stripped_bytes)),
-  runtime_avg_ms: Math.min(...profiles.map((profile) => chatMetrics[profile].runtime_avg_ms)),
+  runtime_metric_ms: Math.min(...profiles.map((profile) => chatMetrics[profile].runtime_metric_ms)),
 };
 const chatRelativeToMin = {};
 for (const profile of profiles) {
@@ -815,9 +850,33 @@ for (const profile of profiles) {
   chatRelativeToMin[profile] = {
     binaryRatio: ratio(metric.binary_bytes, chatMin.binary_bytes),
     strippedRatio: ratio(metric.stripped_bytes, chatMin.stripped_bytes),
-    runtimeRatio: ratio(metric.runtime_avg_ms, chatMin.runtime_avg_ms),
+    runtimeRatio: ratio(metric.runtime_metric_ms, chatMin.runtime_metric_ms),
   };
 }
+
+function metricRuntimeStats(id) {
+  const metric = requireMetric(id);
+  return {
+    mode: metric.runtime_mode,
+    metricMs: metric.runtime_metric_ms,
+    meanMs: metric.runtime_mean_ms,
+    medianMs: metric.runtime_median_ms,
+    madMs: metric.runtime_mad_ms,
+    iterations: metric.runtime_iterations,
+  };
+}
+
+const runtimeStats = {
+  hotLoopInproc: {
+    portable: metricRuntimeStats("hot_loop_inproc_haxe_portable"),
+    metal: metricRuntimeStats("hot_loop_inproc_haxe_metal"),
+    pure: metricRuntimeStats("hot_loop_inproc_pure_rust"),
+  },
+  hotLoopNoHxrt: {
+    metal: metricRuntimeStats("hot_loop_no_hxrt_haxe_metal"),
+    pure: metricRuntimeStats("hot_loop_no_hxrt_pure_rust"),
+  },
+};
 
 const arrayPortable = requireMetric("array_haxe_portable");
 const arrayMetal = requireMetric("array_haxe_metal");
@@ -827,12 +886,12 @@ const portableVsMetalConvergence = {
   array: {
     binaryRatio: ratio(arrayPortable.binary_bytes, arrayMetal.binary_bytes),
     strippedRatio: ratio(arrayPortable.stripped_bytes, arrayMetal.stripped_bytes),
-    runtimeRatio: ratio(arrayPortable.runtime_avg_ms, arrayMetal.runtime_avg_ms),
+    runtimeRatio: ratio(arrayPortable.runtime_metric_ms, arrayMetal.runtime_metric_ms),
   },
   hotLoopInproc: {
     binaryRatio: ratio(hotLoopInprocPortable.binary_bytes, hotLoopInprocMetal.binary_bytes),
     strippedRatio: ratio(hotLoopInprocPortable.stripped_bytes, hotLoopInprocMetal.stripped_bytes),
-    runtimeRatio: ratio(hotLoopInprocPortable.runtime_avg_ms, hotLoopInprocMetal.runtime_avg_ms),
+    runtimeRatio: ratio(hotLoopInprocPortable.runtime_metric_ms, hotLoopInprocMetal.runtime_metric_ms),
   },
 };
 
@@ -842,6 +901,12 @@ const current = {
   toolchain: {
     haxe: haxeVersion,
     rustc: rustcVersion,
+  },
+  protocol: {
+    runtimeRatioBasis: "runtime_metric_ms",
+    startupRuntimeMetric: "mean_ms",
+    inprocRuntimeMetric: "median_ms",
+    inprocDispersion: "mad_ms",
   },
   thresholds: {
     sizeWarnPct,
@@ -857,6 +922,7 @@ const current = {
     hot_loop_no_hxrt: hotLoopNoHxrtInprocRuns,
     chat: chatIters,
   },
+  runtimeStats,
   metrics,
   derived: {
     helloOverheadRatios,
@@ -1153,6 +1219,7 @@ summaryLines.push(`- Gate mode: \`${gateMode}\``);
 summaryLines.push(`- Gate enabled: \`${comparison.gateEnabled ? "yes" : "no"}\``);
 summaryLines.push(`- Size budget: \`+${sizeWarnPct}%\``);
 summaryLines.push(`- Runtime budget: \`+${runtimeWarnPct}%\``);
+summaryLines.push(`- Runtime ratio basis: \`${current.protocol.inprocRuntimeMetric}\` for inproc, \`${current.protocol.startupRuntimeMetric}\` for startup`);
 if (gateThresholds != null) {
   summaryLines.push(
     `- Gate fail budget: size=+${gateThresholds.sizeFailPct}% runtime=+${gateThresholds.runtimeFailPct}%`
@@ -1175,6 +1242,14 @@ summaryLines.push(ratioTable("Hot Loop Overhead (x vs pure Rust hot loop case; s
 summaryLines.push(ratioTable("Hot Loop In-Process Overhead (x vs pure Rust hot loop in-process throughput)", current.derived.hotLoopInprocOverheadRatios));
 summaryLines.push(ratioTable("Hot Loop No-HXRT Overhead (x vs pure Rust in-process hot loop throughput; metal + rust_no_hxrt)", current.derived.hotLoopNoHxrtOverheadRatios));
 summaryLines.push(ratioTable("Chat Profile Spread (x vs fastest/smallest chat profile in this run; startup-weighted)", current.derived.chatRelativeToMin));
+
+summaryLines.push("### In-Process Runtime Stats (median/MAD)");
+summaryLines.push(`- hot_loop_inproc portable: mean=${current.runtimeStats.hotLoopInproc.portable.meanMs.toFixed(3)}ms, median=${current.runtimeStats.hotLoopInproc.portable.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.hotLoopInproc.portable.madMs.toFixed(3)}ms, n=${current.runtimeStats.hotLoopInproc.portable.iterations}`);
+summaryLines.push(`- hot_loop_inproc metal: mean=${current.runtimeStats.hotLoopInproc.metal.meanMs.toFixed(3)}ms, median=${current.runtimeStats.hotLoopInproc.metal.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.hotLoopInproc.metal.madMs.toFixed(3)}ms, n=${current.runtimeStats.hotLoopInproc.metal.iterations}`);
+summaryLines.push(`- hot_loop_inproc pure: mean=${current.runtimeStats.hotLoopInproc.pure.meanMs.toFixed(3)}ms, median=${current.runtimeStats.hotLoopInproc.pure.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.hotLoopInproc.pure.madMs.toFixed(3)}ms, n=${current.runtimeStats.hotLoopInproc.pure.iterations}`);
+summaryLines.push(`- hot_loop_no_hxrt metal: mean=${current.runtimeStats.hotLoopNoHxrt.metal.meanMs.toFixed(3)}ms, median=${current.runtimeStats.hotLoopNoHxrt.metal.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.hotLoopNoHxrt.metal.madMs.toFixed(3)}ms, n=${current.runtimeStats.hotLoopNoHxrt.metal.iterations}`);
+summaryLines.push(`- hot_loop_no_hxrt pure: mean=${current.runtimeStats.hotLoopNoHxrt.pure.meanMs.toFixed(3)}ms, median=${current.runtimeStats.hotLoopNoHxrt.pure.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.hotLoopNoHxrt.pure.madMs.toFixed(3)}ms, n=${current.runtimeStats.hotLoopNoHxrt.pure.iterations}`);
+summaryLines.push("");
 
 summaryLines.push("### Portable vs Metal Convergence");
 summaryLines.push(

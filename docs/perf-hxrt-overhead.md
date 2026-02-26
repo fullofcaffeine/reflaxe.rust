@@ -47,7 +47,34 @@ For each binary:
 
 - release binary size (`bytes`)
 - stripped size (`bytes`)
-- runtime average (`ms`) from either repeated process launches (`startup` mode) or in-process measurement (`inproc` mode)
+- runtime metric (`ms`) by mode:
+  - `startup`: arithmetic mean over repeated process launches
+  - `inproc`: median over per-run samples, plus dispersion via MAD (median absolute deviation)
+
+## Benchmark protocol
+
+Runtime measurement protocol is fixed so pass/fail decisions are explainable and repeatable:
+
+- `startup` mode (`hello`, `array`, `hot_loop`, `chat`)
+  - process is launched repeatedly with `/usr/bin/time`
+  - reported runtime metric is `mean_ms`
+- `inproc` mode (`hot_loop_inproc`, `hot_loop_no_hxrt`)
+  - each run is timed independently
+  - reported runtime metric is `median_ms`
+  - dispersion is reported as `mad_ms`
+- run counts are explicit and configurable:
+  - `HXRT_PERF_HELLO_ITERS`
+  - `HXRT_PERF_ARRAY_ITERS`
+  - `HXRT_PERF_HOT_LOOP_ITERS`
+  - `HXRT_PERF_HOT_LOOP_INPROC_RUNS`
+  - `HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS`
+  - `HXRT_PERF_CHAT_ITERS`
+
+Artifacts include protocol + runtime stats used in decisions:
+
+- `current.json` includes `protocol` and `runtimeStats`
+- `summary.md` includes an in-process runtime stats section (mean/median/MAD + sample count)
+- `comparison.json` includes warning/hard-gate decisions
 
 ## Gate modes and hard thresholds
 
@@ -186,8 +213,8 @@ npm run test:perf:hxrt
 Run benchmark with explicit hard-gate modes:
 
 ```bash
-bash scripts/ci/perf-hxrt-overhead.sh --gate-mode pr
-bash scripts/ci/perf-hxrt-overhead.sh --gate-mode nightly
+HXRT_PERF_HOT_LOOP_INPROC_RUNS=60 HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS=60 bash scripts/ci/perf-hxrt-overhead.sh --gate-mode pr
+HXRT_PERF_HOT_LOOP_INPROC_RUNS=60 HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS=60 bash scripts/ci/perf-hxrt-overhead.sh --gate-mode nightly
 ```
 
 Regenerate baseline file:
@@ -215,7 +242,7 @@ Hard-gate override families:
 Current workflow wiring:
 
 - PR/main CI (`.github/workflows/ci.yml`):
-  - `bash scripts/ci/perf-hxrt-overhead.sh --gate-mode pr`
+  - `HXRT_PERF_HOT_LOOP_INPROC_RUNS=60 HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS=60 bash scripts/ci/perf-hxrt-overhead.sh --gate-mode pr`
 - Weekly evidence (`.github/workflows/weekly-ci-evidence.yml`):
   - `HXRT_PERF_GATE_MODE=nightly HXRT_PERF_HOT_LOOP_INPROC_RUNS=60 HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS=60 bash scripts/ci/local.sh`
 
