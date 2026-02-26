@@ -67,6 +67,11 @@ CI/guard scripts:
   - Emits deterministic candidate artifacts and validates them via `--check`.
   - Candidate scan is broad by design (including compile-time/tooling modules) and serves as the
     authoritative source for parity-gap detection (`missingFromTier2`).
+  - `--check` fallback behavior: if upstream std source discovery is unavailable (for example no
+    vendored std and no Haxe binary on PATH), the guard reuses
+    `docs/portable-stdlib-candidates.json`'s `upstreamImportableModules` and still verifies
+    deterministic artifacts + Tier2 coverage. If allowlist scope/version drift is detected, it
+    fails and requires a full `--write` regeneration with std source access.
 
 ## Portable contract and native imports
 

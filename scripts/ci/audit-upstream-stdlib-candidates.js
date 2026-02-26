@@ -78,8 +78,7 @@ function removeDirRecursive(dirPath) {
 function resolveUpstreamStdRootFromHaxe() {
   const haxeBin = process.env.HAXE_BIN || 'haxe'
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reflaxe-rust-stdlib-audit-'))
-  const mainPath = path.join(tmpDir, 'Main.hx')
-  fs.writeFileSync(mainPath, 'class Main { static function main() {} }\n')
+  fs.writeFileSync(path.join(tmpDir, 'Main.hx'), 'class Main { static function main() {} }\n')
   try {
     const out = cp.execFileSync(haxeBin, ['-cp', tmpDir, '-main', 'Main', '--no-output', '-v'], {
       encoding: 'utf8',
@@ -87,14 +86,21 @@ function resolveUpstreamStdRootFromHaxe() {
     })
     const match = out.match(/Parsed (.+[\\/]+std[\\/]+StdTypes\.hx)/)
     if (match == null || typeof match[1] !== 'string') {
-      fail(`could not resolve std path from \`${haxeBin} -v\` output`)
+      return {
+        resolved: false,
+        reason: `could not resolve std path from \`${haxeBin} -v\` output`
+      }
     }
     return {
+      resolved: true,
       sourceKind: 'haxe-install',
       path: path.dirname(match[1])
     }
   } catch (error) {
-    fail(`failed to resolve std path from Haxe: ${error}`)
+    return {
+      resolved: false,
+      reason: `failed to resolve std path from Haxe: ${error}`
+    }
   } finally {
     removeDirRecursive(tmpDir)
   }
@@ -104,9 +110,13 @@ function resolveUpstreamStdRoot() {
   const envRoot = process.env.UPSTREAM_HAXE_STD_PATH
   if (typeof envRoot === 'string' && envRoot.trim().length > 0) {
     if (!fs.existsSync(envRoot)) {
-      fail(`UPSTREAM_HAXE_STD_PATH does not exist`)
+      return {
+        resolved: false,
+        reason: 'UPSTREAM_HAXE_STD_PATH does not exist'
+      }
     }
     return {
+      resolved: true,
       sourceKind: 'env',
       path: envRoot
     }
@@ -114,6 +124,7 @@ function resolveUpstreamStdRoot() {
 
   if (fs.existsSync(vendoredUpstreamStdRoot)) {
     return {
+      resolved: true,
       sourceKind: 'vendor',
       path: vendoredUpstreamStdRoot
     }
@@ -225,13 +236,57 @@ const excludedPrefixes = allowlist.excludedTargetNamespacePrefixes
 const tier2Modules = uniqueSorted(parseModuleList(tier2Path))
 const tier2Set = new Set(tier2Modules)
 
-const upstreamImportableModules = uniqueSorted(
-  listHxFiles(upstreamStdRoot.path)
-    .map((filePath) => moduleFromUpstreamPath(upstreamStdRoot.path, filePath))
-    .filter((moduleName) => moduleName != null)
-    .filter((moduleName) => isInScope(moduleName, inScopeRoots))
-    .filter((moduleName) => !isExcluded(moduleName, excludedPrefixes))
-)
+let upstreamImportableModules = []
+let resolvedSourceKind = 'unknown'
+
+if (upstreamStdRoot.resolved) {
+  resolvedSourceKind = upstreamStdRoot.sourceKind
+  upstreamImportableModules = uniqueSorted(
+    listHxFiles(upstreamStdRoot.path)
+      .map((filePath) => moduleFromUpstreamPath(upstreamStdRoot.path, filePath))
+      .filter((moduleName) => moduleName != null)
+      .filter((moduleName) => isInScope(moduleName, inScopeRoots))
+      .filter((moduleName) => !isExcluded(moduleName, excludedPrefixes))
+  )
+} else {
+  if (!args.check) {
+    fail(
+      `${upstreamStdRoot.reason}. Provide UPSTREAM_HAXE_STD_PATH or install Haxe to regenerate candidate artifacts.`
+    )
+  }
+  const priorReport = parseJson(outJsonPath)
+  if (!Array.isArray(priorReport.upstreamImportableModules)) {
+    fail(`${outJsonPath} must include upstreamImportableModules array for fallback --check mode`)
+  }
+  if (!Array.isArray(priorReport.inScopeRoots) || !Array.isArray(priorReport.excludedTargetNamespacePrefixes)) {
+    fail(`${outJsonPath} is missing inScopeRoots/excludedTargetNamespacePrefixes required for fallback --check mode`)
+  }
+  const priorVersion = String(priorReport.upstreamStdVersion || 'unknown')
+  const expectedVersion = String(allowlist.upstreamStdVersion || 'unknown')
+  if (priorVersion !== expectedVersion) {
+    fail(
+      `${outJsonPath} upstreamStdVersion (${priorVersion}) differs from ${allowlistPath} (${expectedVersion}); regenerate with std source access`
+    )
+  }
+  if (JSON.stringify(priorReport.inScopeRoots) !== JSON.stringify(inScopeRoots)) {
+    fail(
+      `${outJsonPath} inScopeRoots differs from ${allowlistPath}; regenerate with std source access`
+    )
+  }
+  if (JSON.stringify(priorReport.excludedTargetNamespacePrefixes) !== JSON.stringify(excludedPrefixes)) {
+    fail(
+      `${outJsonPath} excludedTargetNamespacePrefixes differs from ${allowlistPath}; regenerate with std source access`
+    )
+  }
+  resolvedSourceKind =
+    typeof priorReport.source?.upstreamStdSourceKind === 'string'
+      ? priorReport.source.upstreamStdSourceKind
+      : 'artifact-fallback'
+  upstreamImportableModules = uniqueSorted(priorReport.upstreamImportableModules)
+  console.log(
+    `[stdlib-candidates] WARN: ${upstreamStdRoot.reason}; using ${outJsonPath} upstreamImportableModules for --check fallback`
+  )
+}
 
 const missingFromTier2 = upstreamImportableModules.filter((moduleName) => !tier2Set.has(moduleName))
 const coveredInTier2 = upstreamImportableModules.filter((moduleName) => tier2Set.has(moduleName))
@@ -242,7 +297,7 @@ const report = {
   source: {
     allowlistPath,
     tier2Path,
-    upstreamStdSourceKind: upstreamStdRoot.sourceKind
+    upstreamStdSourceKind: resolvedSourceKind
   },
   upstreamStdVersion: String(allowlist.upstreamStdVersion || 'unknown'),
   inScopeRoots,
