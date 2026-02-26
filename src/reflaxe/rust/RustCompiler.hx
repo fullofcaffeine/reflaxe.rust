@@ -311,7 +311,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		- This is intentionally reused by both Haxe-type lookups and Rust dynamic-path helpers.
 	**/
 	inline function dynamicBoundaryTypeName():String {
-		return "Dynamic";
+		return DynamicBoundary.typeName();
 	}
 
 	/**
@@ -325,7 +325,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		- Keep one canonical path string here and route all dynamic-path checks/constructors through it.
 	**/
 	inline function rustDynamicPath():String {
-		return "hxrt::dynamic::" + dynamicBoundaryTypeName();
+		return DynamicBoundary.runtimeNamespace();
 	}
 
 	/**

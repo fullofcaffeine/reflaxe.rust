@@ -3,6 +3,7 @@ package reflaxe.rust.analyze;
 import haxe.macro.Type;
 import haxe.macro.TypeTools;
 import haxe.macro.TypedExprTools;
+import reflaxe.rust.DynamicBoundary;
 
 /**
 	MetalViabilityAnalyzer
@@ -81,7 +82,7 @@ class MetalViabilityAnalyzer {
 			addGlobalBlocker(globalBlockers, {
 				id: "allow_unresolved_monomorph_dynamic",
 				category: "policy_toggle",
-				summary: "Dynamic monomorph fallback define is enabled.",
+				summary: "Runtime monomorph fallback define is enabled.",
 				fix: "Remove `-D rust_allow_unresolved_monomorph_dynamic` and keep monomorph boundaries typed.",
 				occurrences: 1,
 				weight: 20
@@ -91,7 +92,7 @@ class MetalViabilityAnalyzer {
 			addGlobalBlocker(globalBlockers, {
 				id: "allow_unmapped_coretype_dynamic",
 				category: "policy_toggle",
-				summary: "Unmapped core-type dynamic fallback define is enabled.",
+				summary: "Unmapped core-type runtime fallback define is enabled.",
 				fix: "Remove `-D rust_allow_unmapped_coretype_dynamic` and map core types explicitly.",
 				occurrences: 1,
 				weight: 20
@@ -294,7 +295,7 @@ class MetalViabilityAnalyzer {
 			addModuleBlocker(acc, dynamicAccessBlocker());
 			return;
 		}
-		if (path == "Dynamic") {
+		if (path == DynamicBoundary.typeName()) {
 			addModuleBlocker(acc, dynamicTypeBlocker());
 		}
 	}
@@ -325,7 +326,7 @@ class MetalViabilityAnalyzer {
 		return {
 			id: "dynamic_type",
 			category: "dynamic_boundary",
-			summary: "Uses `Dynamic`-typed values (not statically metal-safe).",
+			summary: "Uses `" + DynamicBoundary.typeName() + "`-typed values (not statically metal-safe).",
 			fix: "Convert runtime payloads to typed structures immediately after boundary crossing.",
 			occurrences: 1,
 			weight: 18
@@ -547,7 +548,7 @@ class MetalViabilityAnalyzer {
 		if (blocker.category == "dynamic_boundary") {
 			return {
 				id: "dynamic_boundary",
-				title: "Dynamic Boundary",
+				title: "Runtime Boundary",
 				recommendedAction: "Decode runtime values into typed schemas immediately after boundary crossing."
 			};
 		}

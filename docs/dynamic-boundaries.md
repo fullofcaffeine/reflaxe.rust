@@ -11,20 +11,20 @@ This document is the source of truth for intentional `Dynamic` usage in `reflaxe
 
 ## Current Allowlist
 
-### `src/reflaxe/rust/RustCompiler.hx` (line-scoped)
+### `src/reflaxe/rust/DynamicBoundary.hx` (line-scoped)
 
-- Why: compiler internals still contain multiple dynamic lowering/boxing bridges required to preserve
-  upstream Haxe semantics while targeting Rust runtime `hxrt::dynamic::Dynamic`.
+- Why: this module is the intentional single source of truth for the unavoidable `Dynamic` type-name
+  literal used by compiler/analyzer boundary logic.
 - Current narrowing:
-  - repeated runtime path/null constructors are centralized via
-    `rustDynamicPath()` / `rustDynamicNullExpr()` helpers.
-  - Haxe type-name checks/lookups route through `dynamicBoundaryTypeName()` so the raw `Dynamic`
-    literal is centralized to one code line.
+  - compiler lowering and analyzers route dynamic-boundary naming/path decisions through
+    `DynamicBoundary.typeName()` and `DynamicBoundary.runtimeNamespace()`.
+  - avoids scattered diagnostics/comparison literals across files, keeping allowlist churn minimal.
 - Guardrail: unresolved monomorph and unmapped `@:coreType` fallback now errors in user/project code
   by default (fallback remains only for framework/upstream std compatibility).
 - Status: line-scoped entries are generated from non-comment `Dynamic` usage lines
   (comment-only/doc-text mentions are ignored by the guard).
-- Exit criteria: remove line entries as bridge points are typed or refactored away.
+- Exit criteria: remove this entry only if upstream/runtime contracts no longer require a dynamic
+  carrier type name literal.
 
 ### File-scoped entries
 

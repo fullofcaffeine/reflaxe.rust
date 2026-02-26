@@ -77,18 +77,24 @@ fn main() {
         f(true);
     }) {
         Ok(__hx_ok) => __hx_ok,
-        Err(__hx_ex) => {
-            let e: hxrt::dynamic::Dynamic = __hx_ex;
-            println!("{}", e);
-        }
+        Err(__hx_ex) => match __hx_ex.downcast::<String>() {
+            Ok(__hx_box) => {
+                let e: String = *__hx_box;
+                println!("{}", hxrt::dynamic::from(e));
+            }
+            Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
+        },
     };
     match hxrt::exception::catch_unwind(|| {
         diverge(false);
     }) {
         Ok(__hx_ok) => __hx_ok,
-        Err(__hx_ex) => {
-            let e_2: hxrt::dynamic::Dynamic = __hx_ex;
-            println!("{}", e_2);
-        }
+        Err(__hx_ex) => match __hx_ex.downcast::<String>() {
+            Ok(__hx_box) => {
+                let e_2: String = *__hx_box;
+                println!("{}", hxrt::dynamic::from(e_2));
+            }
+            Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
+        },
     };
 }

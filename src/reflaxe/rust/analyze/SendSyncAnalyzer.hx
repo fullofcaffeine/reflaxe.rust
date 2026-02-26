@@ -3,6 +3,7 @@ package reflaxe.rust.analyze;
 import haxe.macro.Type;
 import haxe.macro.TypeTools;
 import haxe.macro.TypedExprTools;
+import reflaxe.rust.DynamicBoundary;
 
 /**
 	SendSyncAnalyzer
@@ -291,13 +292,13 @@ class SendSyncAnalyzer {
 						"borrowed type `rust.MutSlice<T>`";
 					case "Null":
 						if (params != null && params.length == 1) classifyNonSendReasonRecursive(params[0], depth + 1) else null;
-					case "Dynamic":
-						"dynamic type `Dynamic` (cannot be statically proven Send/Sync)";
+					case dynamicPath if (dynamicPath == DynamicBoundary.typeName()):
+						"dynamic type `" + DynamicBoundary.typeName() + "` (cannot be statically proven Send/Sync)";
 					case _:
 						null;
 				}
 			case TDynamic(_):
-				"dynamic type `Dynamic` (cannot be statically proven Send/Sync)";
+				"dynamic type `" + DynamicBoundary.typeName() + "` (cannot be statically proven Send/Sync)";
 			case _:
 				null;
 		}

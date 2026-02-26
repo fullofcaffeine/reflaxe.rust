@@ -18,13 +18,13 @@ class Main {
 
 		try {
 			f(true);
-		} catch (e:Dynamic) {
+		} catch (e:String) {
 			trace(e);
 		}
 
 		try {
 			diverge(false);
-		} catch (e:Dynamic) {
+		} catch (e:String) {
 			trace(e);
 		}
 	}
