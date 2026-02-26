@@ -42,6 +42,20 @@ After each build:
 
 This is useful for readability/idiomatic-shape reviews when tuning codegen.
 
+## Native Baseline Parity Check
+
+A hand-written Rust baseline for the same scenario lives under:
+
+- `examples/profile_storyboard/native/`
+
+Run a one-command output parity check:
+
+```bash
+bash examples/profile_storyboard/scripts/compare-native.sh
+```
+
+The script compiles/runs the generated metal crate and the native baseline crate and fails if their outputs differ.
+
 ## Parity Workflow
 
 For performance parity tracking against pure Rust baselines (including no-runtime metal lower-bound):
@@ -54,4 +68,3 @@ Then inspect:
 
 - `.cache/perf-hxrt/results/comparison.json`
 - `.cache/perf-hxrt/results/summary.md`
-

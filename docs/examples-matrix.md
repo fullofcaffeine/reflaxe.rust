@@ -63,6 +63,14 @@ Inspect generated Rust:
 - `examples/profile_storyboard/out/src/main.rs`
 - `examples/profile_storyboard/out_metal/src/main.rs`
 
+Native baseline parity check:
+
+```bash
+bash examples/profile_storyboard/scripts/compare-native.sh
+```
+
+Baseline crate location: `examples/profile_storyboard/native/`.
+
 Performance parity workflow (portable vs metal vs pure-rust baselines):
 
 ```bash
