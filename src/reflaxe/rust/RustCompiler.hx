@@ -2087,10 +2087,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					}
 					if (isAsyncMethod) {
 						var innerBody = compileFunctionBody(f.expr, asyncInnerRet);
-						var innerBlockExpr = EBlock(innerBody);
-						var innerBlockSrc = reflaxe.rust.ast.RustASTPrinter.printExprForInjection(innerBlockExpr);
 						body = {
-							stmts: [RReturn(ERaw("Box::pin(async move " + innerBlockSrc + ")"))],
+							stmts: [RReturn(EPinAsyncMove(innerBody))],
 							tail: null
 						};
 					} else {
@@ -4332,10 +4330,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 			if (isAsyncMethod) {
 				var innerBody = compileFunctionBody(f.expr, asyncInnerRet);
-				var innerBlockExpr = EBlock(innerBody);
-				var innerBlockSrc = reflaxe.rust.ast.RustASTPrinter.printExprForInjection(innerBlockExpr);
 				body = {
-					stmts: [RReturn(ERaw("Box::pin(async move " + innerBlockSrc + ")"))],
+					stmts: [RReturn(EPinAsyncMove(innerBody))],
 					tail: null
 				};
 			} else {

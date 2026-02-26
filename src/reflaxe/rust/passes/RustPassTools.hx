@@ -123,6 +123,8 @@ class RustPassTools {
 				EAssign(mapExprDeep(lhs, mapExpr), mapExprDeep(rhs, mapExpr));
 			case EField(recv, field):
 				EField(mapExprDeep(recv, mapExpr), field);
+			case EPinAsyncMove(body):
+				EPinAsyncMove(mapBlock(body, s -> s, mapExpr));
 			case EAwait(expr):
 				EAwait(mapExprDeep(expr, mapExpr));
 		};

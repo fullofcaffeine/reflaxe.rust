@@ -174,6 +174,8 @@ class NoHxrtPass implements RustPass {
 					scanExpr(rhs);
 				case EField(recv, _):
 					scanExpr(recv);
+				case EPinAsyncMove(body):
+					scanBlock(body);
 				case EAwait(value):
 					scanExpr(value);
 				case ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):

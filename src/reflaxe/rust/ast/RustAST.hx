@@ -147,5 +147,18 @@ enum RustExpr {
 	EMatch(scrutinee:RustExpr, arms:Array<RustMatchArm>);
 	EAssign(lhs:RustExpr, rhs:RustExpr);
 	EField(recv:RustExpr, field:String);
+	// Typed async wrapper used for `@:rustAsync` lowering.
+	//
+	// Why
+	// - The compiler historically emitted this shape as `ERaw("Box::pin(async move { ... })")`,
+	//   which inflated metal fallback diagnostics even though the structure is compiler-owned and
+	//   deterministic.
+	//
+	// What
+	// - Represents `Box::pin(async move { <body> })` with a typed `RustBlock` payload.
+	//
+	// How
+	// - Printer renders this constructor directly; traversal passes recurse into `body`.
+	EPinAsyncMove(body:RustBlock);
 	EAwait(expr:RustExpr);
 }

@@ -236,6 +236,10 @@ class RustASTPrinter {
 			case ELitBool(v): v ? "true" : "false";
 			case ELitString(v): '"' + escapeStringLiteral(v) + '"';
 			case EPath(path): path;
+			case EPinAsyncMove(body): {
+					var out = "Box::pin(async move " + printBlock(body, indent) + ")";
+					wrapIfNeeded(out, PREC_PRIMARY, ctxPrec);
+				}
 			case EAwait(expr): {
 					var inner = printExprPrec(expr, indent, PREC_POSTFIX);
 					var out = inner + ".await";

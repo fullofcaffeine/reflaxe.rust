@@ -94,6 +94,8 @@ class MutInferencePass implements RustPass {
 						visitExpr(arm.expr);
 				case EField(recv, _):
 					visitExpr(recv);
+				case EPinAsyncMove(body):
+					visitBlock(body);
 				case EAwait(inner):
 					visitExpr(inner);
 				case ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):

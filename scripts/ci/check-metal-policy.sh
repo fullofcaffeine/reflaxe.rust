@@ -921,6 +921,21 @@ run_optional_fallback_case "test/snapshot/rusty_borrow_ref" "compile.hxml" 'Meta
 run_optional_fallback_case "test/snapshot/rusty_str_slice" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'rust\.StringTools' \
 	'metal fallback top-modules excludes rust.StringTools in str-slice snapshot after typed string helper migration'
+run_optional_fallback_case "test/snapshot/async_preview_retry" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'Main:' \
+	'metal fallback top-modules excludes Main in async_preview_retry after typed async lowering migration'
+run_optional_fallback_case "test/snapshot/async_select" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'Main:' \
+	'metal fallback top-modules excludes Main in async_select snapshot after typed async lowering migration'
+run_optional_fallback_case "test/snapshot/async_select" "compile.tokio.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'Main:' \
+	'metal fallback top-modules excludes Main in async_select tokio snapshot after typed async lowering migration'
+run_optional_fallback_case "test/snapshot/rusty_async_tasks" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'Main:' \
+	'metal fallback top-modules excludes Main in rusty_async_tasks snapshot after typed async lowering migration'
+run_optional_fallback_case "test/snapshot/rusty_async_tasks" "compile.tokio.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'Main:' \
+	'metal fallback top-modules excludes Main in rusty_async_tasks tokio snapshot after typed async lowering migration'
 run_optional_fallback_case "test/snapshot/rusty_v1_smoke" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'haxe\.io\.FPHelper' \
 	'metal fallback top-modules excludes haxe.io.FPHelper after typed fp helper migration'
