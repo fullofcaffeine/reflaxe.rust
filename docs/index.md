@@ -18,7 +18,7 @@ Use this page as the map for `reflaxe.rust` docs.
 ## Core product docs
 
 - [Contracts](profiles.md): portable vs metal contract semantics and lane/capability controls.
-- [Examples matrix](examples-matrix.md): scenario coverage and profile-by-profile example entrypoints.
+- [Examples matrix](examples-matrix.md): scenario coverage, profile entrypoints, and native-parity quick check (`profile_storyboard`).
 - [Metal profile](metal-profile.md): Rust-first performance profile and boundary policy.
 - [Lifetime encoding design](lifetime-encoding.md): what lifetime-like guarantees are possible in Haxe and where extern Rust is still required.
 - [Async/Await preview](async-await.md): Rust-first async workflow and current constraints.

@@ -79,6 +79,14 @@ cargo hx --project examples/chat_loopback --profile portable --action run
 cargo hx --project examples/chat_loopback --profile metal --action run
 ```
 
+## Quick metal parity check against native Rust
+
+```bash
+bash examples/profile_storyboard/scripts/compare-native.sh
+```
+
+This compares generated `metal` output with a hand-written Rust baseline for the same scenario and fails on drift.
+
 ## Read next
 
 - [Profiles](profiles.md)
