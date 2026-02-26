@@ -34,8 +34,7 @@ Tracked artifacts:
 - `docs/portable-stdlib-candidates.md`
   - Human-readable summary of `portable-stdlib-candidates.json` for parity planning.
 - `docs/portable-stdlib-parity-backlog.md`
-  - Triaged backlog splitting candidate gaps into runtime-oriented tranche work and long-term buckets
-    (macro/display, target-adapter required).
+  - Audit-cycle tracker and closure notes for candidate-gap promotion work.
 - `test/upstream_std_modules.txt`
   - Tier1 upstream sweep module list (PR/harness default).
 - `test/upstream_std_modules_tier2.txt`
@@ -66,8 +65,8 @@ CI/guard scripts:
 - `scripts/ci/audit-upstream-stdlib-candidates.js`
   - Scans `vendor/haxe/std` to compute upstream importable portable-scope modules.
   - Emits deterministic candidate artifacts and validates them via `--check`.
-  - Candidate scan is broad by design and includes compile-time/tooling modules; use
-    `docs/portable-stdlib-parity-backlog.md` to interpret which buckets are runtime parity work.
+  - Candidate scan is broad by design (including compile-time/tooling modules) and serves as the
+    authoritative source for parity-gap detection (`missingFromTier2`).
 
 ## Portable contract and native imports
 
