@@ -240,6 +240,9 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
     `RustCompiler.dynamicBoundaryTypeName()` and route lookups/comparisons through it to prevent scattered allowlist churn.
   - Allowlist strictness: file-scoped entries must include an inline `# FILE_SCOPE_JUSTIFICATION: ...` comment in
     `scripts/lint/dynamic_allowlist.txt`; otherwise the guard fails during parsing.
+- Deprecated-define guard: `scripts/lint/deprecated_define_guard.sh` is part of hooks/CI and fails if removed selectors/defines
+  (`reflaxe_rust_profile=idiomatic|rusty`, `rust_async_preview`) reappear outside explicit migration/negative-test allowlisted files.
+  It also fails on stale snapshot case names (`idiomatic_profile`, `async_preview_retry`) to enforce hard-cutover naming.
 - Runtime gotcha: snapshots embed `runtime/hxrt/**` into `test/snapshot/**/intended/hxrt/`, so any change under `runtime/hxrt/` requires `bash test/run-snapshots.sh --update` to keep goldens in sync.
 - Snapshot runner gotcha: many snapshot crates share the same crate name (`hx_app`), so `test/run-snapshots.sh` must isolate `CARGO_TARGET_DIR` per case/variant
   (using a shared base cache) to avoid binary collisions and incorrect `stdout.txt` comparisons.
