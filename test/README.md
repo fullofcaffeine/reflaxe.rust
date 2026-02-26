@@ -31,6 +31,7 @@ Run upstream stdlib sweeps directly:
 
 ```sh
 bash test/run-upstream-stdlib-sweep.sh
+npm run stdlib:sync:tier2
 bash test/run-upstream-stdlib-sweep.sh --tier tier2
 ```
 

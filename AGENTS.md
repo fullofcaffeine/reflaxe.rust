@@ -151,7 +151,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
     `docs/portable-stdlib-allowlist.json` aligned with `test/upstream_std_modules.txt`, and run boundary guards:
     `npm run guard:upstream-stdlib-boundary` + `npm run guard:stdlib-ledger` + `npm run guard:portable-stdlib-allowlist`.
     - Preferred update flow for Tier1 list changes: edit `test/upstream_std_modules.txt`, run
-      `npm run stdlib:sync:allowlist`, then run stdlib guards.
+      `npm run stdlib:sync:tier2`, then `npm run stdlib:sync:allowlist`, then run stdlib guards.
 - `Std.isOfType` is implemented as a compiler intrinsic (exact-type check via `__hx_type_id`, plus compile-time subtype short-circuit).
 - String move semantics: many generated Rust functions take `String` by value; to preserve Haxe’s “strings are re-usable after calls” behavior, callsites currently clone String arguments based on the callee’s parameter types.
 - Nullable-string migration gotcha: a full switch to `hxrt::string::HxString` as the emitted Rust `String` representation touches broad stdlib/runtime surfaces (notably map key types, `toString` trait bridges, and hardcoded `String` paths).
@@ -199,6 +199,7 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - Tier1 (default): `bash test/run-upstream-stdlib-sweep.sh` (or single-module: `--module haxe.Json`)
   - Tier2 (broader): `bash test/run-upstream-stdlib-sweep.sh --tier tier2`
 - Run stdlib boundary/provenance guards locally:
+  - `npm run stdlib:sync:tier2`
   - `npm run stdlib:sync:allowlist`
   - `npm run guard:upstream-stdlib-boundary`
   - `npm run guard:stdlib-ledger`

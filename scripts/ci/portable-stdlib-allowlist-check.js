@@ -5,6 +5,7 @@ const fs = require('fs')
 const allowlistPath = 'docs/portable-stdlib-allowlist.json'
 const sweepTier1Path = 'test/upstream_std_modules.txt'
 const sweepTier2Path = 'test/upstream_std_modules_tier2.txt'
+const sweepTier2ExtrasPath = 'test/upstream_std_modules_tier2_extras.txt'
 
 function fail(msg) {
   console.error(`[ci:guards] ERROR: ${msg}`)
@@ -91,6 +92,7 @@ const tier1Modules = Array.isArray(allowlist.tier1UpstreamSweepModules)
   : []
 const sweepTier1Modules = parseModuleList(sweepTier1Path)
 const sweepTier2Modules = parseModuleList(sweepTier2Path)
+const sweepTier2ExtrasModules = parseModuleList(sweepTier2ExtrasPath)
 
 if (duplicates(excludedPrefixes).length > 0) {
   fail(
@@ -127,13 +129,21 @@ function validateModuleSet(modules, label) {
 validateModuleSet(tier1Modules, `${allowlistPath} tier1UpstreamSweepModules`)
 validateModuleSet(sweepTier1Modules, sweepTier1Path)
 validateModuleSet(sweepTier2Modules, sweepTier2Path)
+validateModuleSet(sweepTier2ExtrasModules, sweepTier2ExtrasPath)
 
 const tier1Set = new Set(tier1Modules)
 const sweepTier1Set = new Set(sweepTier1Modules)
 const sweepTier2Set = new Set(sweepTier2Modules)
+const sweepTier2ExtrasSet = new Set(sweepTier2ExtrasModules)
 const missingInSweep = tier1Modules.filter((module) => !sweepTier1Set.has(module))
 const extraInSweep = sweepTier1Modules.filter((module) => !tier1Set.has(module))
 const tier1MissingInTier2 = tier1Modules.filter((module) => !sweepTier2Set.has(module))
+const extrasOverlappingTier1 = sweepTier2ExtrasModules.filter((module) => tier1Set.has(module))
+const expectedTier2Modules = Array.from(new Set([...tier1Modules, ...sweepTier2ExtrasModules])).sort()
+const tier2MissingFromExtrasMerge = expectedTier2Modules.filter((module) => !sweepTier2Set.has(module))
+const tier2ExtraOutsideMerge = sweepTier2Modules.filter(
+  (module) => !tier1Set.has(module) && !sweepTier2ExtrasSet.has(module)
+)
 
 if (missingInSweep.length > 0) {
   fail(
@@ -162,6 +172,33 @@ if (tier1MissingInTier2.length > 0) {
   )
 }
 
+if (extrasOverlappingTier1.length > 0) {
+  fail(
+    `${sweepTier2ExtrasPath} contains modules already present in Tier1:\n${summarize(
+      extrasOverlappingTier1,
+      20
+    )}`
+  )
+}
+
+if (tier2MissingFromExtrasMerge.length > 0) {
+  fail(
+    `${sweepTier2Path} is missing modules from Tier1+extras merge:\n${summarize(
+      tier2MissingFromExtrasMerge,
+      20
+    )}`
+  )
+}
+
+if (tier2ExtraOutsideMerge.length > 0) {
+  fail(
+    `${sweepTier2Path} contains modules not declared in Tier1 or ${sweepTier2ExtrasPath}:\n${summarize(
+      tier2ExtraOutsideMerge,
+      20
+    )}`
+  )
+}
+
 if (tier1Modules.length !== sweepTier1Modules.length) {
   fail(
     `Tier1 module count mismatch between ${allowlistPath} (${tier1Modules.length}) and ${sweepTier1Path} (${sweepTier1Modules.length})`
@@ -171,6 +208,18 @@ if (tier1Modules.length !== sweepTier1Modules.length) {
 if (tier1Modules.join('\n') !== sweepTier1Modules.join('\n')) {
   fail(
     `${sweepTier1Path} order differs from ${allowlistPath} tier1UpstreamSweepModules. Keep order deterministic and aligned.`
+  )
+}
+
+if (sweepTier2Modules.length !== expectedTier2Modules.length) {
+  fail(
+    `Tier2 module count mismatch: ${sweepTier2Path} has ${sweepTier2Modules.length}, expected ${expectedTier2Modules.length} from Tier1+extras merge`
+  )
+}
+
+if (sweepTier2Modules.join('\n') !== expectedTier2Modules.join('\n')) {
+  fail(
+    `${sweepTier2Path} order/content differs from deterministic Tier1+extras merge. Run npm run stdlib:sync:tier2.`
   )
 }
 
