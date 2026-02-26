@@ -199,11 +199,13 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   - Tier1 (default): `bash test/run-upstream-stdlib-sweep.sh` (or single-module: `--module haxe.Json`)
   - Tier2 (broader): `bash test/run-upstream-stdlib-sweep.sh --tier tier2`
 - Run stdlib boundary/provenance guards locally:
+  - `npm run stdlib:audit:candidates`
   - `npm run stdlib:sync:tier2`
   - `npm run stdlib:sync:allowlist`
   - `npm run guard:upstream-stdlib-boundary`
   - `npm run guard:stdlib-ledger`
   - `npm run guard:portable-stdlib-allowlist`
+  - `npm run guard:stdlib-candidates`
   - `guard:stdlib-ledger` also enforces that every provenance-ledger importable module is represented in Tier2; intentional non-importable boundary modules must carry `tier2SweepExcludeReason` in `docs/stdlib-provenance-ledger.json`.
 - Run Windows-safe smoke subset locally: `bash scripts/ci/windows-smoke.sh` (same subset used by the Windows CI job).
 - Run packaged-install smoke locally: `bash scripts/ci/package-smoke.sh` (build zip, install into local haxelib repo, compile, cargo build).

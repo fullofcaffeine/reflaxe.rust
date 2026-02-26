@@ -29,6 +29,10 @@ Tracked artifacts:
   - Canonical portable-stdlib scope artifact:
     - excluded target-specific namespace prefixes
     - deterministic Tier1 upstream sweep module list
+- `docs/portable-stdlib-candidates.json`
+  - Deterministic audit report of upstream importable modules in portable scope vs Tier2 coverage.
+- `docs/portable-stdlib-candidates.md`
+  - Human-readable summary of `portable-stdlib-candidates.json` for parity planning.
 - `test/upstream_std_modules.txt`
   - Tier1 upstream sweep module list (PR/harness default).
 - `test/upstream_std_modules_tier2.txt`
@@ -56,6 +60,9 @@ CI/guard scripts:
     - Tier1 list stays in sync with `test/upstream_std_modules.txt` (content + order)
     - Tier2 list is sorted/unique, stays within portable namespace scope, and matches deterministic
       `sort(unique(Tier1 + Tier2 extras))`
+- `scripts/ci/audit-upstream-stdlib-candidates.js`
+  - Scans `vendor/haxe/std` to compute upstream importable portable-scope modules.
+  - Emits deterministic candidate artifacts and validates them via `--check`.
 
 ## Portable contract and native imports
 
@@ -90,10 +97,12 @@ These mappings are reflected in deterministic runtime planning artifacts:
 ## Validation workflow
 
 - `npm run stdlib:sync:allowlist`
+- `npm run stdlib:audit:candidates`
 - `npm run stdlib:sync:tier2`
 - `npm run guard:upstream-stdlib-boundary`
 - `npm run guard:stdlib-ledger`
 - `npm run guard:portable-stdlib-allowlist`
+- `npm run guard:stdlib-candidates`
 - `bash test/run-upstream-stdlib-sweep.sh`
 - `bash test/run-upstream-stdlib-sweep.sh --tier tier2`
 - `npm run check:harness`

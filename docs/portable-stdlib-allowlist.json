@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "contract": "portable",
+  "upstreamStdVersion": "4.3.7",
   "description": "Canonical portable stdlib allowlist and scope policy for reflaxe.rust parity tracking.",
   "inScopeRoots": [
     "Std",
