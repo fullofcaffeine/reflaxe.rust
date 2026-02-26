@@ -62,6 +62,49 @@ impl<T> Eq for Array<T> {}
 pub type SliceCallback<T, R> = HxDynRef<dyn Fn(&[T]) -> R + Send + Sync>;
 pub type MutSliceCallback<T, R> = HxDynRef<dyn Fn(&mut [T]) -> R + Send + Sync>;
 
+/// Borrow-aware array iterator used by portable fast-path loop lowering.
+///
+/// Why
+/// - `Array::iter()` clones the entire backing `Vec<T>` before iteration to preserve snapshot
+///   semantics in every context.
+/// - For compiler-proven safe loops, we want to avoid that eager whole-array clone.
+///
+/// What
+/// - Stores a shared reference to the backing array and clones each element lazily as `next()`
+///   is requested.
+/// - Captures the logical length at construction time so iteration stays bounded to the original
+///   loop extent.
+///
+/// How
+/// - Each `next()` call takes a short-lived read borrow to fetch one element by index.
+/// - No long-lived lock guard is held across loop bodies, avoiding lock-order pitfalls.
+#[derive(Debug)]
+pub struct BorrowedIter<T> {
+    inner: HxRef<Vec<T>>,
+    index: usize,
+    limit: usize,
+}
+
+impl<T> Iterator for BorrowedIter<T>
+where
+    T: Clone,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.limit {
+            return None;
+        }
+
+        let item = {
+            let borrow = self.inner.borrow();
+            borrow.get(self.index).cloned()
+        };
+        self.index += 1;
+        item
+    }
+}
+
 impl<T> HxRefLike for Array<T> {
     fn ptr_usize(&self) -> usize {
         self.inner.ptr_usize()
@@ -178,6 +221,21 @@ impl<T> Array<T> {
         T: Clone,
     {
         self.to_vec().into_iter()
+    }
+
+    /// Iterator helper for compiler fast paths that avoid full-array eager cloning.
+    ///
+    /// This is intended for analyzers/lowerings that can prove loop bodies do not mutate the
+    /// iterated array. Compared to `iter()`, it clones elements lazily one-by-one.
+    pub fn iter_borrowed(&self) -> BorrowedIter<T>
+    where
+        T: Clone,
+    {
+        BorrowedIter {
+            inner: self.inner.clone(),
+            index: 0,
+            limit: self.len(),
+        }
     }
 
     pub fn concat(&self, other: Array<T>) -> Array<T>
@@ -521,4 +579,63 @@ pub fn with_slice<T, R>(array: &Array<T>, f: SliceCallback<T, R>) -> R {
 pub fn with_mut_slice<T, R>(array: &Array<T>, f: MutSliceCallback<T, R>) -> R {
     let mut borrow = array.inner.borrow_mut();
     f(borrow.as_mut_slice())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Array;
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    };
+
+    #[derive(Debug)]
+    struct CloneTracked {
+        value: i32,
+        clone_count: Arc<AtomicUsize>,
+    }
+
+    impl CloneTracked {
+        fn new(value: i32, clone_count: Arc<AtomicUsize>) -> Self {
+            Self { value, clone_count }
+        }
+    }
+
+    impl Clone for CloneTracked {
+        fn clone(&self) -> Self {
+            self.clone_count.fetch_add(1, Ordering::SeqCst);
+            Self {
+                value: self.value,
+                clone_count: Arc::clone(&self.clone_count),
+            }
+        }
+    }
+
+    #[test]
+    fn iter_borrowed_clones_lazily_per_element() {
+        let clone_count = Arc::new(AtomicUsize::new(0));
+        let array = Array::from_vec(vec![
+            CloneTracked::new(1, Arc::clone(&clone_count)),
+            CloneTracked::new(2, Arc::clone(&clone_count)),
+            CloneTracked::new(3, Arc::clone(&clone_count)),
+        ]);
+
+        assert_eq!(clone_count.load(Ordering::SeqCst), 0);
+        let mut iter = array.iter_borrowed();
+        // Contract: constructing the borrowed iterator must not clone the whole array.
+        assert_eq!(clone_count.load(Ordering::SeqCst), 0);
+
+        let first = iter.next().expect("first element");
+        assert_eq!(first.value, 1);
+        assert_eq!(clone_count.load(Ordering::SeqCst), 1);
+
+        let second = iter.next().expect("second element");
+        assert_eq!(second.value, 2);
+        assert_eq!(clone_count.load(Ordering::SeqCst), 2);
+
+        let third = iter.next().expect("third element");
+        assert_eq!(third.value, 3);
+        assert_eq!(clone_count.load(Ordering::SeqCst), 3);
+        assert!(iter.next().is_none());
+    }
 }
