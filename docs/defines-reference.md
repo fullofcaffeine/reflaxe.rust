@@ -38,6 +38,10 @@ This page is a practical reference for the most relevant compiler defines.
   - Re-enable unresolved monomorph warnings for framework/upstream std internals.
 - `rust_debug_string_types`
   - Debug define for string type diagnostics.
+- `rust_debug_metal_raw`
+  - Debug-only hotspot tracer for metal fallback forensics.
+  - When enabled, `MetalRestrictionsPass` prints one warning per encountered raw `ERaw` snippet
+    with module attribution (`metal raw expr [<module>] ...`) to help root-cause remaining fallback paths.
 - `rust_metal_allow_fallback`
   - In `metal`, downgrades contract violations (including `ERaw` fallback detection) from errors to warnings.
 - `rust_portable_native_import_strict`

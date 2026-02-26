@@ -1,6 +1,7 @@
 package reflaxe.rust.passes;
 
 import haxe.macro.Context;
+import StringTools;
 import reflaxe.rust.CompilationContext;
 import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustFile;
@@ -16,6 +17,8 @@ import reflaxe.rust.ast.RustAST.RustFile;
 	- Enforces no-opinionated baseline contracts that are safe to apply immediately:
 	  - keeps track of raw `ERaw` expression usage as a policy signal.
 	  - hard-errors in strict metal mode or when a portable module is tagged with `@:haxeMetal`.
+	  - optional debug trace (`-D rust_debug_metal_raw`) to print raw snippet origins while reducing
+		fallback hotspots.
 
 	How
 	- Walks the file and counts `ERaw(...)` expression nodes.
@@ -38,8 +41,12 @@ class MetalRestrictionsPass implements RustPass {
 		var rawExprCount = 0;
 		RustPassTools.mapFile(file, s -> s, e -> {
 			switch (e) {
-				case ERaw(_):
+				case ERaw(raw):
 					rawExprCount++;
+					#if eval
+					if (Context.defined("rust_debug_metal_raw"))
+						Context.warning("metal raw expr [" + moduleLabel + "] " + debugSnippet(raw), Context.currentPos());
+					#end
 				case _:
 			}
 			return e;
@@ -73,5 +80,17 @@ class MetalRestrictionsPass implements RustPass {
 			#end
 		}
 		return file;
+	}
+
+	static function debugSnippet(raw:String):String {
+		if (raw == null)
+			return "<null>";
+		var out = StringTools.trim(raw);
+		out = out.split("\r").join("\\r");
+		out = out.split("\n").join("\\n");
+		out = out.split("\t").join("\\t");
+		if (out.length > 180)
+			out = out.substr(0, 177) + "...";
+		return out;
 	}
 }

@@ -2,34 +2,19 @@
   "schemaVersion": 1,
   "cases": {
     "hello_metal": {
-      "rawNodes": 12,
-      "moduleCount": 12,
-      "topModules": {
-        "StringBuf": 1,
-        "haxe.Exception": 1,
-        "haxe.Int64": 1,
-        "haxe.ds.EnumValueMap": 1
-      }
+      "rawNodes": 0,
+      "moduleCount": 0,
+      "topModules": {}
     },
     "rusty_concurrent_snapshot": {
-      "rawNodes": 13,
-      "moduleCount": 13,
-      "topModules": {
-        "Main": 1,
-        "StringBuf": 1,
-        "haxe.Exception": 1,
-        "haxe.Int64": 1
-      }
+      "rawNodes": 0,
+      "moduleCount": 0,
+      "topModules": {}
     },
     "chat_loopback_metal": {
-      "rawNodes": 42,
-      "moduleCount": 25,
-      "topModules": {
-        "Main": 12,
-        "app.ChatUiApp": 3,
-        "profile.RemoteRuntime": 3,
-        "scenario.LoopbackScenario": 2
-      }
+      "rawNodes": 0,
+      "moduleCount": 0,
+      "topModules": {}
     }
   }
 }

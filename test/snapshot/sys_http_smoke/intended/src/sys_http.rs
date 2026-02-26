@@ -31,25 +31,10 @@ impl Http {
             post_bytes: crate::HxRef::<hxrt::bytes::Bytes>::null(),
             headers: hxrt::array::Array::<crate::HxRef<hxrt::anon::Anon>>::new(),
             params: hxrt::array::Array::<crate::HxRef<hxrt::anon::Anon>>::new(),
-            on_data: {
-                let __rc: crate::HxRc<dyn Fn(hxrt::string::HxString) + Send + Sync> =
-                    crate::HxRc::new(move |_a0| {});
-                crate::HxDynRef::new(__rc)
-            },
-            on_bytes: {
-                let __rc: crate::HxRc<dyn Fn(crate::HxRef<hxrt::bytes::Bytes>) + Send + Sync> =
-                    crate::HxRc::new(move |_a0| {});
-                crate::HxDynRef::new(__rc)
-            },
-            on_error: {
-                let __rc: crate::HxRc<dyn Fn(hxrt::string::HxString) + Send + Sync> =
-                    crate::HxRc::new(move |_a0| {});
-                crate::HxDynRef::new(__rc)
-            },
-            on_status: {
-                let __rc: crate::HxRc<dyn Fn(i32) + Send + Sync> = crate::HxRc::new(move |_a0| {});
-                crate::HxDynRef::new(__rc)
-            },
+            on_data: crate::HxDynRef::new(crate::HxRc::new(move |_a0| {})),
+            on_bytes: crate::HxDynRef::new(crate::HxRc::new(move |_a0| {})),
+            on_error: crate::HxDynRef::new(crate::HxRc::new(move |_a0| {})),
+            on_status: crate::HxDynRef::new(crate::HxRc::new(move |_a0| {})),
             no_shutdown: false,
             cnx_timeout: 10.0,
             response_headers: crate::haxe_ds_string_map::StringMap::<hxrt::string::HxString>::new(),

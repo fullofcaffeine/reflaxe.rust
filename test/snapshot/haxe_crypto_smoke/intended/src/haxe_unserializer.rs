@@ -457,7 +457,7 @@ impl Unserializer {
                     >>("resolveClass")(
                         hxrt::string::HxString::from(name.clone())
                     );
-                    if cl == 0u32 {
+                    if cl == 0 as u32 {
                         hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             format!("{}{}", "Class not found ", &name),
                         )));
@@ -499,7 +499,7 @@ impl Unserializer {
                     >>("resolveEnum")(
                         hxrt::string::HxString::from(name_2.clone())
                     );
-                    if e == 0u32 {
+                    if e == 0 as u32 {
                         hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             format!("{}{}", "Enum not found ", &name_2),
                         )));
@@ -541,7 +541,7 @@ impl Unserializer {
                     >>("resolveClass")(
                         hxrt::string::HxString::from(name_3.clone())
                     );
-                    if cl_2 == 0u32 {
+                    if cl_2 == 0 as u32 {
                         hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             format!("{}{}", "Class not found ", &name_3),
                         )));
@@ -842,7 +842,7 @@ impl Unserializer {
                     >>("resolveClass")(
                         hxrt::string::HxString::from(name_4.clone())
                     );
-                    if cl_3 == 0u32 {
+                    if cl_3 == 0 as u32 {
                         hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             format!("{}{}", "Class not found ", &name_4),
                         )));
@@ -910,7 +910,7 @@ impl Unserializer {
                     >>("resolveEnum")(
                         hxrt::string::HxString::from(name_5.clone())
                     );
-                    if edecl == 0u32 {
+                    if edecl == 0 as u32 {
                         hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             format!("{}{}", "Enum not found ", &name_5),
                         )));
@@ -1461,7 +1461,7 @@ impl Unserializer {
                     >>("resolveEnum")(
                         hxrt::string::HxString::from(name_6.clone())
                     );
-                    if edecl_2 == 0u32 {
+                    if edecl_2 == 0 as u32 {
                         hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             format!("{}{}", "Enum not found ", &name_6),
                         )));

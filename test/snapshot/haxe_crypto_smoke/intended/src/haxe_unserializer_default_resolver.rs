@@ -19,7 +19,7 @@ impl DefaultResolver {
     ) -> u32 {
         return {
             let _ = name;
-            0u32
+            0 as u32
         };
     }
 
@@ -29,7 +29,7 @@ impl DefaultResolver {
     ) -> u32 {
         return {
             let _ = name;
-            0u32
+            0 as u32
         };
     }
 }
