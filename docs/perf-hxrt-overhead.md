@@ -53,6 +53,9 @@ Budgets (defaults):
 
 - size: `+5%`
 - runtime: `+10%`
+- portable vs metal convergence:
+  - `array` runtime portable/metal must stay `<= 1.08x`
+  - `hot_loop_inproc` runtime portable/metal must stay `<= 1.05x`
 
 Comparison model:
 
@@ -73,6 +76,14 @@ Noise policy:
 - `chat`: warning checks use profile-spread ratios (size + runtime), not pure-Rust parity.
 
 This model keeps runtime warnings actionable while avoiding startup-noise churn.
+
+Additional explicit convergence checks:
+
+- `portable_vs_metal.arrayRuntimePortableVsMetal`
+- `portable_vs_metal.hotLoopInprocRuntimePortableVsMetal`
+
+These checks are emitted in `comparison.json` and `summary.md`, and they warn when
+portable drifts too far from metal on the two primary convergence workloads.
 
 ## Profile vs pure Rust interpretation
 
@@ -138,6 +149,11 @@ npm run test:perf:hxrt:update-baseline
 Baseline file:
 
 - `scripts/ci/perf/hxrt-baseline.json`
+
+Optional convergence budget overrides:
+
+- `HXRT_PERF_PORTABLE_METAL_ARRAY_MAX` (default `1.08`)
+- `HXRT_PERF_PORTABLE_METAL_HOT_LOOP_INPROC_MAX` (default `1.05`)
 
 ## CI integration
 

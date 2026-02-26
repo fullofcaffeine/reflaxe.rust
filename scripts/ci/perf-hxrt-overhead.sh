@@ -28,6 +28,10 @@ Environment:
   HXRT_PERF_HOT_LOOP_INPROC_RUNS In-process sample count for hot_loop_inproc binaries (default: 20)
   HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS In-process sample count for hot_loop_no_hxrt binaries (default: 20)
   HXRT_PERF_CHAT_ITERS      Startup loop count for chat headless case (default: 40)
+  HXRT_PERF_PORTABLE_METAL_ARRAY_MAX
+                            Runtime ratio budget for portable-vs-metal array convergence (default: 1.08)
+  HXRT_PERF_PORTABLE_METAL_HOT_LOOP_INPROC_MAX
+                            Runtime ratio budget for portable-vs-metal hot_loop_inproc convergence (default: 1.05)
 USAGE
 }
 
@@ -658,6 +662,8 @@ const hotLoopIters = Number(process.env.HXRT_PERF_HOT_LOOP_ITERS || "300");
 const hotLoopInprocRuns = Number(process.env.HXRT_PERF_HOT_LOOP_INPROC_RUNS || "20");
 const hotLoopNoHxrtInprocRuns = Number(process.env.HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS || "20");
 const chatIters = Number(process.env.HXRT_PERF_CHAT_ITERS || "40");
+const portableMetalArrayMax = Number(process.env.HXRT_PERF_PORTABLE_METAL_ARRAY_MAX || "1.08");
+const portableMetalHotLoopInprocMax = Number(process.env.HXRT_PERF_PORTABLE_METAL_HOT_LOOP_INPROC_MAX || "1.05");
 const haxeVersion = process.env.HXRT_PERF_HAXE_VERSION || "";
 const rustcVersion = process.env.HXRT_PERF_RUSTC_VERSION || "";
 
@@ -746,6 +752,23 @@ for (const profile of profiles) {
   };
 }
 
+const arrayPortable = requireMetric("array_haxe_portable");
+const arrayMetal = requireMetric("array_haxe_metal");
+const hotLoopInprocPortable = requireMetric("hot_loop_inproc_haxe_portable");
+const hotLoopInprocMetal = requireMetric("hot_loop_inproc_haxe_metal");
+const portableVsMetalConvergence = {
+  array: {
+    binaryRatio: ratio(arrayPortable.binary_bytes, arrayMetal.binary_bytes),
+    strippedRatio: ratio(arrayPortable.stripped_bytes, arrayMetal.stripped_bytes),
+    runtimeRatio: ratio(arrayPortable.runtime_avg_ms, arrayMetal.runtime_avg_ms),
+  },
+  hotLoopInproc: {
+    binaryRatio: ratio(hotLoopInprocPortable.binary_bytes, hotLoopInprocMetal.binary_bytes),
+    strippedRatio: ratio(hotLoopInprocPortable.stripped_bytes, hotLoopInprocMetal.stripped_bytes),
+    runtimeRatio: ratio(hotLoopInprocPortable.runtime_avg_ms, hotLoopInprocMetal.runtime_avg_ms),
+  },
+};
+
 const current = {
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
@@ -756,6 +779,8 @@ const current = {
   thresholds: {
     sizeWarnPct,
     runtimeWarnPct,
+    portableMetalArrayMax,
+    portableMetalHotLoopInprocMax,
   },
   runtimeLoops: {
     hello: helloIters,
@@ -773,6 +798,7 @@ const current = {
     hotLoopInprocOverheadRatios,
     hotLoopNoHxrtOverheadRatios,
     chatRelativeToMin,
+    portableVsMetalConvergence,
   },
 };
 
@@ -878,12 +904,33 @@ if (!updateBaseline) {
   }
 }
 
+const convergenceChecks = {
+  arrayRuntimePortableVsMetal: {
+    ratio: Number(current.derived.portableVsMetalConvergence.array.runtimeRatio),
+    max: portableMetalArrayMax,
+  },
+  hotLoopInprocRuntimePortableVsMetal: {
+    ratio: Number(current.derived.portableVsMetalConvergence.hotLoopInproc.runtimeRatio),
+    max: portableMetalHotLoopInprocMax,
+  },
+};
+
+for (const [key, check] of Object.entries(convergenceChecks)) {
+  check.pass = Number.isFinite(check.ratio) && Number.isFinite(check.max) && check.ratio <= check.max;
+  if (!updateBaseline && !check.pass) {
+    warnings.push(
+      `portable_vs_metal.${key} ratio=${check.ratio.toFixed(6)} exceeds target=${check.max.toFixed(6)}`
+    );
+  }
+}
+
 const comparison = {
   schemaVersion: 1,
   generatedAt: current.generatedAt,
   mode: updateBaseline ? "update-baseline" : "compare",
   baselinePath: baselineDisplay,
   baselineAvailable: baselineLoaded != null || updateBaseline,
+  convergenceChecks,
   warningCount: warnings.length,
   warnings,
 };
@@ -946,6 +993,20 @@ summaryLines.push(ratioTable("Hot Loop Overhead (x vs pure Rust hot loop case; s
 summaryLines.push(ratioTable("Hot Loop In-Process Overhead (x vs pure Rust hot loop in-process throughput)", current.derived.hotLoopInprocOverheadRatios));
 summaryLines.push(ratioTable("Hot Loop No-HXRT Overhead (x vs pure Rust in-process hot loop throughput; metal + rust_no_hxrt)", current.derived.hotLoopNoHxrtOverheadRatios));
 summaryLines.push(ratioTable("Chat Profile Spread (x vs fastest/smallest chat profile in this run; startup-weighted)", current.derived.chatRelativeToMin));
+
+summaryLines.push("### Portable vs Metal Convergence");
+summaryLines.push(
+  `- array runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.array.runtimeRatio)}x ` +
+    `(target <= ${portableMetalArrayMax.toFixed(3)}x, ` +
+    `${convergenceChecks.arrayRuntimePortableVsMetal.pass ? "target met" : "target not met"})`
+);
+summaryLines.push(
+  `- hot_loop_inproc runtime portable/metal: ` +
+    `${formatRatio(current.derived.portableVsMetalConvergence.hotLoopInproc.runtimeRatio)}x ` +
+    `(target <= ${portableMetalHotLoopInprocMax.toFixed(3)}x, ` +
+    `${convergenceChecks.hotLoopInprocRuntimePortableVsMetal.pass ? "target met" : "target not met"})`
+);
+summaryLines.push("");
 
 const metalHotLoopTarget = 1.05;
 const metalHotLoopRatio = Number(current.derived.hotLoopInprocOverheadRatios.metal.runtimeRatio);
