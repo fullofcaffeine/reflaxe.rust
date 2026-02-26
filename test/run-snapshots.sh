@@ -147,7 +147,7 @@ should_run_clippy_for_case() {
   fi
 
   # Default curated list: keep this short so CI stays fast.
-  [[ "$case_name" == "v1_smoke" || "$case_name" == "idiomatic_profile" || "$case_name" == "rusty_v1_smoke" ]]
+  [[ "$case_name" == "v1_smoke" || "$case_name" == "idiomatic_profile" || "$case_name" == "metal_v1_smoke" ]]
 }
 
 for case_dir in "$SNAP_DIR"/*; do

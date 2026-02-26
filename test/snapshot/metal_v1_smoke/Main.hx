@@ -16,7 +16,7 @@ import rust.Vec;
 import rust.VecTools;
 
 class Main {
-	static function main(): Void {
+	static function main():Void {
 		var v = new Vec<Int>();
 		v.push(1);
 		v.push(2);
@@ -65,7 +65,7 @@ class Main {
 		});
 		trace(contains);
 
-		var r: Result<Int, String> = Ok(3);
+		var r:Result<Int, String> = Ok(3);
 		trace(r.mapOk(v -> v + 1).isOk());
 	}
 }
