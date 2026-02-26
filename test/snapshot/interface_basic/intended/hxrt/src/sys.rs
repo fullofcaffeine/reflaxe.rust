@@ -151,7 +151,7 @@ where
             c.arg(arg.as_ref());
             i += 1;
         }
-        return c.status().unwrap().code().unwrap_or(1) as i32;
+        return c.status().unwrap().code().unwrap_or(1);
     }
 
     if cfg!(windows) {
@@ -161,7 +161,7 @@ where
             .status()
             .unwrap()
             .code()
-            .unwrap_or(1) as i32
+            .unwrap_or(1)
     } else {
         Command::new("sh")
             .arg("-c")
@@ -169,7 +169,7 @@ where
             .status()
             .unwrap()
             .code()
-            .unwrap_or(1) as i32
+            .unwrap_or(1)
     }
 }
 
