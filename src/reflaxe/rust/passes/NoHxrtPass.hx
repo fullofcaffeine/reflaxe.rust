@@ -229,6 +229,9 @@ class NoHxrtPass implements RustPass {
 			var moduleLabel = context.currentModuleLabel != null ? context.currentModuleLabel : "<unknown>";
 			var detail = samples.length > 0 ? samples.join("; ") : "<no sample captured>";
 			#if eval
+			var diagPos = context.modulePos(moduleLabel);
+			if (diagPos == null)
+				diagPos = Context.currentPos();
 			Context.error("`-D rust_no_hxrt` violation in module `"
 				+ moduleLabel
 				+ "`: generated Rust still references `hxrt` "
@@ -236,7 +239,7 @@ class NoHxrtPass implements RustPass {
 				+ " time(s). Samples: "
 				+ detail
 				+ ". This module still relies on portable runtime semantics; remove `-D rust_no_hxrt` or refactor to Rust-first typed APIs.",
-				Context.currentPos());
+				diagPos);
 			#end
 		}
 

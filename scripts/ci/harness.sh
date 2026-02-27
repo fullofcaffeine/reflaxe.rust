@@ -116,6 +116,10 @@ echo "[harness] metal boundary policy"
 bash scripts/ci/check-metal-policy.sh
 intermediate_cleanup "metal-policy"
 
+echo "[harness] define docs guard"
+bash scripts/lint/defines_doc_guard.sh
+intermediate_cleanup "defines-doc-guard"
+
 echo "[harness] metal fallback count guard"
 bash scripts/ci/check-metal-fallback-counts.sh
 intermediate_cleanup "metal-fallback-count-guard"

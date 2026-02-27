@@ -109,7 +109,7 @@ class ChatServer {
 	}
 
 	static function handleClient(runtime:ChatRuntime, client:ConnectedClient):Bool {
-		var line:String = null;
+		var line = "";
 		try {
 			line = client.socket.input.readLine();
 		} catch (_:Eof) {

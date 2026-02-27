@@ -1,6 +1,6 @@
 class Main {
 	static function main() {
-		var banner:String = null;
+		var banner:Null<String> = null;
 		var count = 1;
 		var frozen = count + 1;
 		var total = 0;

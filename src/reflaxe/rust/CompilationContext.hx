@@ -4,6 +4,7 @@ import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot;
 import reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics;
 import reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason;
 import reflaxe.rust.compiler.RustBuildContext;
+import haxe.macro.Expr.Position;
 
 /**
  * CompilationContext
@@ -45,6 +46,7 @@ class CompilationContext {
 	var profileContractDiagnostics:Null<ProfileContractDiagnostics>;
 	var optimizerAppliedById:Map<String, Int>;
 	var optimizerSkippedById:Map<String, Int>;
+	var modulePosByLabel:Map<String, Position>;
 
 	public var crateName(get, never):String;
 	public var profile(get, never):RustProfile;
@@ -66,6 +68,7 @@ class CompilationContext {
 		this.profileContractDiagnostics = null;
 		this.optimizerAppliedById = [];
 		this.optimizerSkippedById = [];
+		this.modulePosByLabel = [];
 	}
 
 	inline function get_crateName():String {
@@ -220,6 +223,29 @@ class CompilationContext {
 
 	public function optimizerSkippedSnapshot():Array<{id:String, count:Int}> {
 		return optimizerMetricSnapshot(optimizerSkippedById);
+	}
+
+	/**
+		Binds the currently transformed module label and optional source position.
+
+		Why
+		- Pass diagnostics should report at the module source site when possible, not at macro
+		  orchestration locations.
+		- Output iteration already knows which module is being transformed, so this is the stable place
+		  to register source mappings once.
+	**/
+	public function setCurrentModule(moduleLabel:String, pos:Null<Position>):Void {
+		currentModuleLabel = moduleLabel;
+		if (moduleLabel == null || moduleLabel.length == 0 || pos == null)
+			return;
+		if (!modulePosByLabel.exists(moduleLabel))
+			modulePosByLabel.set(moduleLabel, pos);
+	}
+
+	public function modulePos(moduleLabel:String):Null<Position> {
+		if (moduleLabel == null || moduleLabel.length == 0)
+			return null;
+		return modulePosByLabel.exists(moduleLabel) ? modulePosByLabel.get(moduleLabel) : null;
 	}
 
 	function optimizerMetricSnapshot(source:Map<String, Int>):Array<{id:String, count:Int}> {

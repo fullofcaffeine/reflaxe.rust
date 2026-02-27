@@ -26,6 +26,27 @@ In `metal`, strict app boundary mode is enabled by default (`reflaxe_rust_strict
   - `rust.metal.Code.expr(...)`
   - `rust.metal.Code.stmt(...)`
 
+## String contract in metal
+
+`metal` defaults to non-null Rust `String`.
+
+Practical rule:
+
+- `String` cannot be `null` in metal-clean mode.
+- Use `Null<String>` when a value is genuinely nullable.
+- If you explicitly need portable nullable-string semantics, enable `-D rust_string_nullable`
+  and treat that as an intentional fallback contract choice.
+
+Example:
+
+```haxe
+// Valid metal-clean code:
+var title:Null<String> = null;
+
+// Rejected in metal-clean mode:
+var broken:String = null;
+```
+
 ## Beginner-friendly rule of thumb
 
 If you are new to `metal`, use this decision tree:

@@ -40,7 +40,7 @@ class RustOutputIterator {
 			];
 		}
 		index++;
-		context.currentModuleLabel = moduleLabel(astData);
+		context.setCurrentModule(moduleLabel(astData), modulePos(astData));
 
 		var transformed = RustASTTransformer.transform(astData.data, context);
 		var printed = RustASTPrinter.printFile(transformed);
@@ -59,6 +59,10 @@ class RustOutputIterator {
 		if (astData.overrideFileName != null && astData.overrideFileName.length > 0)
 			return astData.overrideFileName;
 		return "<unknown>";
+	}
+
+	inline function modulePos(astData:DataAndFileInfo<RustFile>):Null<haxe.macro.Expr.Position> {
+		return astData.baseType != null ? astData.baseType.pos : null;
 	}
 }
 #end

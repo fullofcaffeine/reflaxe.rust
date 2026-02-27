@@ -28,22 +28,41 @@ This page is a practical reference for the most relevant compiler defines.
 - `rust_async`
   - Enable async/await surfaces (`rust.async.Future`, `rust.async.Async.*`).
   - Requires `reflaxe_rust_profile=metal`.
+- `rust_async_preview`
+  - Removed legacy define. The compiler errors and instructs to use `rust_async`.
 - `rust_string_nullable`
   - Force nullable string representation.
 - `rust_string_non_nullable`
   - Force legacy non-null Rust `String` representation.
+  - In `metal`, this implies strict non-null string semantics:
+    `String` cannot be `null`; prefer `Null<String>` for nullable values.
 - `rust_emit_upstream_std`
   - Emit upstream Haxe std modules when referenced.
+- `rust_allow_unresolved_monomorph_dynamic`
+  - Escape hatch that allows unresolved monomorph fallbacks to degrade to `Dynamic`.
+  - Not allowed in `metal` clean mode (unless fallback is explicitly enabled).
+- `rust_allow_unmapped_coretype_dynamic`
+  - Escape hatch that allows unmapped `@:coreType` values to degrade to `Dynamic`.
+  - Not allowed in `metal` clean mode (unless fallback is explicitly enabled).
 - `rust_warn_unresolved_monomorph_std`
   - Re-enable unresolved monomorph warnings for framework/upstream std internals.
+- `rust_warn_unmapped_coretype_std`
+  - Re-enable unmapped `@:coreType` fallback warnings for framework/upstream std internals.
 - `rust_debug_string_types`
   - Debug define for string type diagnostics.
+- `rust_idiomatic`
+  - Removed legacy alias define. Use `-D reflaxe_rust_profile=portable`.
+- `rust_metal`
+  - Removed legacy alias define. Use `-D reflaxe_rust_profile=metal`.
 - `rust_debug_metal_raw`
   - Debug-only hotspot tracer for metal fallback forensics.
   - When enabled, `MetalRestrictionsPass` prints one warning per encountered raw `ERaw` snippet
     with module attribution (`metal raw expr [<module>] ...`) to help root-cause remaining fallback paths.
 - `rust_metal_allow_fallback`
   - In `metal`, downgrades contract violations (including `ERaw` fallback detection) from errors to warnings.
+- `rust_metal_contract_hard_error`
+  - Advanced override that forces hard-error metal contract enforcement.
+  - Primarily intended for policy/CI wiring where explicit hard-fail is required.
 - `rust_portable_native_import_strict`
   - In `portable`, escalates native target-module import diagnostics from warnings to errors.
   - Native-target imports are always reported in `contract_report.*` artifacts.

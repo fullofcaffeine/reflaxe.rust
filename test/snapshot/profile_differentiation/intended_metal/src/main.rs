@@ -53,7 +53,7 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 }
 
 fn main() {
-    let banner: String = String::from("null");
+    let banner: Option<String> = None;
     let count: i32 = 1;
     let frozen: i32 = count + 1;
     let mut total: i32 = 0;

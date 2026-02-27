@@ -56,6 +56,11 @@ class MetalRestrictionsPass implements RustPass {
 			return file;
 
 		context.recordMetalRawExpr(moduleLabel, rawExprCount);
+		#if eval
+		var diagPos = context.modulePos(moduleLabel);
+		if (diagPos == null)
+			diagPos = Context.currentPos();
+		#end
 
 		if (context.profile == Metal && context.build.metalContractHardError) {
 			#if eval
@@ -65,7 +70,7 @@ class MetalRestrictionsPass implements RustPass {
 				+ rawExprCount
 				+ " raw Rust expression node(s) (`ERaw`). "
 				+ "This usually means a boundary still relies on string-injection fallback and is not metal-clean yet.",
-				Context.currentPos());
+				diagPos);
 			#end
 		}
 		if (context.profile != Metal) {
@@ -76,7 +81,7 @@ class MetalRestrictionsPass implements RustPass {
 				+ rawExprCount
 				+ " raw Rust expression node(s) (`ERaw`). "
 				+ "Add typed lowering for this module before using `@:haxeMetal`.",
-				Context.currentPos());
+				diagPos);
 			#end
 		}
 		return file;

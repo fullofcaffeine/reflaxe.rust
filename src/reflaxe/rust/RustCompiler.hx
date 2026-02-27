@@ -301,6 +301,40 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
+		Returns whether strict non-null `String` contract checks are active for this build.
+
+		Why
+		- `metal` defaults to Rust-owned non-null `String` representation.
+		- In that contract, silently lowering `null` into a string value is semantically unsafe.
+
+		How
+		- Enabled only when compiling in `metal` with nullable-string mode disabled.
+	**/
+	inline function enforceMetalNonNullStringContract():Bool {
+		return profile == Metal && !useNullableStringRepresentation();
+	}
+
+	/**
+		Errors when source code provides `null` for a non-null `String` contract.
+
+		Why
+		- Prevents conflating `null` (absence) with an in-band string value.
+		- Keeps metal string semantics explicit and analyzable.
+
+		How
+		- Called at typed `null` lowering boundaries where expected type is `String`.
+		- Message includes migration guidance (`Null<String>` or `-D rust_string_nullable`).
+	**/
+	inline function failMetalStringNull(pos:haxe.macro.Expr.Position):Void {
+		if (!enforceMetalNonNullStringContract())
+			return;
+		#if eval
+		Context.error("metal non-null string contract forbids `null` for `String`. Use `Null<String>` for nullable values, or enable `-D rust_string_nullable`.",
+			pos);
+		#end
+	}
+
+	/**
 		Returns the canonical Haxe type name for the dynamic boundary carrier.
 
 		Why
@@ -428,14 +462,77 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	**/
 	function enforceProfileContracts():Void {
 		var diagnostics = analyzeProfileContracts();
+		var modulePosIndex = profileContractModulePosIndex();
 		#if eval
 		for (warning in diagnostics.warnings)
-			Context.warning("Rust profile contract: " + warning, Context.currentPos());
+			Context.warning("Rust profile contract: " + warning, profileContractDiagnosticPos(warning, modulePosIndex));
 		if (diagnostics.errors.length > 0) {
 			var details = diagnostics.errors.map(msg -> "- " + msg).join("\n");
-			Context.error("Rust profile contract violation(s):\n" + details, Context.currentPos());
+			Context.error("Rust profile contract violation(s):\n" + details, profileContractDiagnosticPos(diagnostics.errors[0], modulePosIndex));
 		}
 		#end
+	}
+
+	function profileContractModulePosIndex():Map<String, haxe.macro.Expr.Position> {
+		var out:Map<String, haxe.macro.Expr.Position> = [];
+
+		inline function add(module:String, pos:haxe.macro.Expr.Position):Void {
+			if (module == null || module.length == 0 || pos == null)
+				return;
+			if (!out.exists(module))
+				out.set(module, pos);
+		}
+
+		inline function pathFromPack(pack:Array<String>, name:String):String {
+			return pack == null || pack.length == 0 ? name : pack.join(".") + "." + name;
+		}
+
+		for (moduleType in Context.getAllModuleTypes()) {
+			switch (moduleType) {
+				case TClassDecl(classRef):
+					var classType = classRef.get();
+					var module = classType.module != null
+						&& classType.module.length > 0 ? classType.module : pathFromPack(classType.pack, classType.name);
+					add(module, classType.pos);
+				case TEnumDecl(enumRef):
+					var enumType = enumRef.get();
+					var module = enumType.module != null
+						&& enumType.module.length > 0 ? enumType.module : pathFromPack(enumType.pack, enumType.name);
+					add(module, enumType.pos);
+				case TTypeDecl(typeRef):
+					var typeDecl = typeRef.get();
+					var module = typeDecl.module != null
+						&& typeDecl.module.length > 0 ? typeDecl.module : pathFromPack(typeDecl.pack, typeDecl.name);
+					add(module, typeDecl.pos);
+				case TAbstract(absRef):
+					var abstractType = absRef.get();
+					var module = abstractType.module != null
+						&& abstractType.module.length > 0 ? abstractType.module : pathFromPack(abstractType.pack, abstractType.name);
+					add(module, abstractType.pos);
+			}
+		}
+		return out;
+	}
+
+	function profileContractDiagnosticPos(message:String, modulePosIndex:Map<String, haxe.macro.Expr.Position>):haxe.macro.Expr.Position {
+		#if eval
+		if (message != null && modulePosIndex != null) {
+			var modules = [for (module in modulePosIndex.keys()) module];
+			modules.sort((a, b) -> {
+				if (a.length != b.length)
+					return a.length > b.length ? -1 : 1;
+				return a < b ? -1 : (a > b ? 1 : 0);
+			});
+			for (module in modules) {
+				if (message.indexOf(module) != -1) {
+					var pos = modulePosIndex.get(module);
+					if (pos != null)
+						return pos;
+				}
+			}
+		}
+		#end
+		return Context.currentPos();
 	}
 
 	function analyzeProfileContracts():ProfileContractDiagnostics {
@@ -6435,6 +6532,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						if (isNullOptionType(e.t, e.pos)) {
 							EPath("None");
 						} else if (isStringType(e.t)) {
+							failMetalStringNull(e.pos);
 							stringNullExpr();
 						} else if (mapsToRustDynamic(e.t, e.pos)) {
 							rustDynamicNullExpr();
@@ -6461,6 +6559,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 										ECall(EPath(dynRefBasePath() + "::<" + inner + ">::null"), []);
 									}
 								case RString:
+									failMetalStringNull(e.pos);
 									stringNullExpr();
 								case _:
 									ECall(EPath("Default::default"), []);
@@ -6579,7 +6678,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							return EBlock({
 								stmts: [RLet("__hx_dyn", false, null, dynExpr)],
 								tail: EIf(ECall(EField(EPath("__hx_dyn"), "is_null"), []),
-									isStringType(e.t) ? stringNullExpr() : (isNullableRef ? nullExprForExpected(e.t) : nullAccessThrow()),
+									isStringType(e.t) ? (useNullableStringRepresentation() ? stringNullExpr() : nullAccessThrow()) : (isNullableRef ? nullExprForExpected(e.t) : nullAccessThrow()),
 									dynDowncastNonNull(e.t))
 							});
 						}
@@ -7594,6 +7693,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return nullOptionInnerType(t, pos) != null;
 	}
 
+	inline function isStrictNonNullableStringType(t:Type, pos:haxe.macro.Expr.Position):Bool {
+		return enforceMetalNonNullStringContract() && isStringType(t) && !isNullType(t) && !isNullOptionType(t, pos);
+	}
+
 	function maybeCloneForReuse(expr:RustExpr, valueExpr:TypedExpr):RustExpr {
 		if (inCodeInjectionArg)
 			return expr;
@@ -7785,7 +7888,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				stmts: [RLet("__hx_opt", false, null, optExpr)],
 				tail: EMatch(EUnary("&", EPath("__hx_opt")), [
 					{pat: PTupleStruct("Some", [PBind("__v")]), expr: ECall(EField(EPath("__v"), "clone"), [])},
-					{pat: PPath("None"), expr: isStringType(expected) ? stringNullExpr() : nullAccessThrow()}
+					{pat: PPath("None"),
+						expr: isStringType(expected) ? (useNullableStringRepresentation() ? stringNullExpr() : nullAccessThrow()) : nullAccessThrow()}
 				])
 			});
 		}
@@ -7950,7 +8054,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 				return EBlock({
 					stmts: stmts,
-					tail: EIf(isNull, stringNullExpr(), EIf(hasStr, strExpr, EIf(hasHxStr, hxStrExpr, nullAccessThrow())))
+					tail: EIf(isNull, useNullableStringRepresentation() ? stringNullExpr() : nullAccessThrow(),
+						EIf(hasStr, strExpr, EIf(hasHxStr, hxStrExpr, nullAccessThrow())))
 				});
 			}
 
@@ -12009,6 +12114,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 
 			case OpEq: {
+					if ((isNullConstExpr(e2) && isStrictNonNullableStringType(e1.t, e1.pos))
+						|| (isNullConstExpr(e1) && isStrictNonNullableStringType(e2.t, e2.pos))) {
+						// In strict non-null string contract mode, `String` cannot be null.
+						// Keep comparisons valid and explicit without forcing users to rewrite common guard code.
+						return ELitBool(false);
+					}
 					// `Null<T> == null` should not require `T: PartialEq` (e.g. `Null<Fn>`), and must
 					// respect our two null representations:
 					// - `Option<T>` when `Null<T>` maps to Rust `Option<T>`
@@ -12108,6 +12219,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					}
 				}
 			case OpNotEq: {
+					if ((isNullConstExpr(e2) && isStrictNonNullableStringType(e1.t, e1.pos))
+						|| (isNullConstExpr(e1) && isStrictNonNullableStringType(e2.t, e2.pos))) {
+						// `String != null` is always true under strict non-null string contract.
+						return ELitBool(true);
+					}
 					var e1NullOpt = isNullOptionType(e1.t, e1.pos);
 					var e2NullOpt = isNullOptionType(e2.t, e2.pos);
 

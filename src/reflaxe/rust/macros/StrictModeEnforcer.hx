@@ -21,8 +21,8 @@ import reflaxe.rust.RustProfile;
  *
  * HOW
  * - Enable with `-D reflaxe_rust_strict` in the user's `.hxml`.
- * - Scans project-local sources (under current working directory), excluding this compiler’s
- *   own `src/reflaxe/**` and `std/**` sources when developing the compiler repo.
+ * - Scans project-local sources (under current working directory), excluding framework sources
+ *   via resolved root paths (not substring path checks).
  *
  * Metal profile note
  * - `reflaxe_rust_profile=metal` enables strict mode by default in `CompilerInit`.
@@ -37,37 +37,42 @@ class StrictModeEnforcer {
 			return;
 
 		var projectRoot = normalizePath(Sys.getCwd());
+		var frameworkSourceRoots = detectFrameworkSourceRoots(projectRoot);
+		var frameworkTypedInjectionRoots = detectFrameworkTypedInjectionRoots(projectRoot);
 		var allowFrameworkTypedInjections = ProfileResolver.resolve() == RustProfile.Metal;
-		Context.onAfterTyping(types -> enforce(types, projectRoot, allowFrameworkTypedInjections));
+		Context.onAfterTyping(types -> enforce(types, projectRoot, frameworkSourceRoots, allowFrameworkTypedInjections, frameworkTypedInjectionRoots));
 	}
 
-	static function enforce(types:Array<ModuleType>, projectRoot:String, allowFrameworkTypedInjections:Bool):Void {
+	static function enforce(types:Array<ModuleType>, projectRoot:String, frameworkSourceRoots:Array<String>, allowFrameworkTypedInjections:Bool,
+			frameworkTypedInjectionRoots:Array<String>):Void {
 		for (moduleType in types) {
 			switch (moduleType) {
 				case TClassDecl(classRef):
 					var classType = classRef.get();
-					if (!isStrictProjectSource(classType.pos, projectRoot))
+					if (!isStrictProjectSource(classType.pos, projectRoot, frameworkSourceRoots))
 						continue;
-					enforceNoRustInjectionInClass(classType, projectRoot, allowFrameworkTypedInjections);
+					enforceNoRustInjectionInClass(classType, projectRoot, allowFrameworkTypedInjections, frameworkTypedInjectionRoots);
 				case _:
 			}
 		}
 	}
 
-	static function enforceNoRustInjectionInClass(classType:ClassType, projectRoot:String, allowFrameworkTypedInjections:Bool):Void {
+	static function enforceNoRustInjectionInClass(classType:ClassType, projectRoot:String, allowFrameworkTypedInjections:Bool,
+			frameworkTypedInjectionRoots:Array<String>):Void {
 		var allFields = classType.fields.get().concat(classType.statics.get());
 		for (field in allFields) {
 			var expr = field.expr();
 			if (expr == null)
 				continue;
-			scanForRustInjection(expr, projectRoot, allowFrameworkTypedInjections);
+			scanForRustInjection(expr, projectRoot, allowFrameworkTypedInjections, frameworkTypedInjectionRoots);
 		}
 	}
 
-	static function scanForRustInjection(expr:TypedExpr, projectRoot:String, allowFrameworkTypedInjections:Bool):Void {
+	static function scanForRustInjection(expr:TypedExpr, projectRoot:String, allowFrameworkTypedInjections:Bool,
+			frameworkTypedInjectionRoots:Array<String>):Void {
 		if (isRustInjectionCall(expr)) {
-			if (allowFrameworkTypedInjections && isFrameworkTypedInjectionExpr(expr.pos, projectRoot)) {
-				TypedExprTools.iter(expr, e -> scanForRustInjection(e, projectRoot, allowFrameworkTypedInjections));
+			if (allowFrameworkTypedInjections && isFrameworkTypedInjectionExpr(expr.pos, projectRoot, frameworkTypedInjectionRoots)) {
+				TypedExprTools.iter(expr, e -> scanForRustInjection(e, projectRoot, allowFrameworkTypedInjections, frameworkTypedInjectionRoots));
 				return;
 			}
 
@@ -76,7 +81,7 @@ class StrictModeEnforcer {
 				expr.pos);
 		}
 
-		TypedExprTools.iter(expr, e -> scanForRustInjection(e, projectRoot, allowFrameworkTypedInjections));
+		TypedExprTools.iter(expr, e -> scanForRustInjection(e, projectRoot, allowFrameworkTypedInjections, frameworkTypedInjectionRoots));
 	}
 
 	static function isRustInjectionCall(expr:TypedExpr):Bool {
@@ -104,7 +109,7 @@ class StrictModeEnforcer {
 		}
 	}
 
-	static function isStrictProjectSource(pos:haxe.macro.Expr.Position, projectRoot:String):Bool {
+	static function isStrictProjectSource(pos:haxe.macro.Expr.Position, projectRoot:String, frameworkSourceRoots:Array<String>):Bool {
 		var root = ensureTrailingSlash(projectRoot);
 		var file = normalizePath(Context.getPosInfos(pos).file);
 		if (file == null || file == "")
@@ -118,16 +123,14 @@ class StrictModeEnforcer {
 			return false;
 		}
 
-		// Exclude compiler/framework sources when developing this repository.
-		// In consumer projects, these directories typically don't exist under the app root.
-		if (file.indexOf("/src/reflaxe/") != -1 || file.indexOf("/std/") != -1) {
+		if (isUnderAnyRoot(file, frameworkSourceRoots)) {
 			return false;
 		}
 
 		return true;
 	}
 
-	static function isFrameworkTypedInjectionExpr(pos:haxe.macro.Expr.Position, projectRoot:String):Bool {
+	static function isFrameworkTypedInjectionExpr(pos:haxe.macro.Expr.Position, projectRoot:String, frameworkTypedInjectionRoots:Array<String>):Bool {
 		var root = ensureTrailingSlash(projectRoot);
 		var file = normalizePath(Context.getPosInfos(pos).file);
 		if (file == null || file == "")
@@ -142,8 +145,67 @@ class StrictModeEnforcer {
 			return true;
 		}
 
-		// Allow only known framework facades within this repo.
-		return file.indexOf("/src/reflaxe/rust/macros/") != -1 || file.indexOf("/std/rust/metal/") != -1;
+		return isUnderAnyRoot(file, frameworkTypedInjectionRoots);
+	}
+
+	static function detectFrameworkSourceRoots(projectRoot:String):Array<String> {
+		var roots:Array<String> = [];
+		for (root in frameworkRootCandidates(projectRoot))
+			addUniqueRoot(roots, root);
+		return roots;
+	}
+
+	static function detectFrameworkTypedInjectionRoots(projectRoot:String):Array<String> {
+		var roots:Array<String> = [];
+		for (base in frameworkRootCandidates(projectRoot)) {
+			addUniqueRoot(roots, Path.join([base, "reflaxe/rust/macros"]));
+			addUniqueRoot(roots, Path.join([base, "rust/metal"]));
+		}
+		addUniqueRoot(roots, Path.join([projectRoot, "std/rust/metal"]));
+		return roots;
+	}
+
+	static function frameworkRootCandidates(projectRoot:String):Array<String> {
+		var roots:Array<String> = [];
+		try {
+			var compilerInitPath = normalizePath(Context.resolvePath("reflaxe/rust/CompilerInit.hx"));
+			var rustDir = Path.directory(compilerInitPath);
+			var reflaxeDir = Path.directory(rustDir);
+			var srcDir = Path.directory(reflaxeDir);
+			var libraryRoot = Path.directory(srcDir);
+			roots.push(srcDir);
+			roots.push(Path.join([libraryRoot, "std"]));
+		} catch (_:haxe.Exception) {
+			// Resolve failures can occur in non-standard tool contexts; strict checks then fall back
+			// to project-root-only filtering.
+		}
+		return roots;
+	}
+
+	static function addUniqueRoot(roots:Array<String>, path:String):Void {
+		if (path == null || path == "")
+			return;
+		var normalized = normalizePath(path);
+		if (!Path.isAbsolute(normalized))
+			return;
+		for (existing in roots) {
+			if (existing == normalized)
+				return;
+		}
+		roots.push(normalized);
+	}
+
+	static function isUnderAnyRoot(file:String, roots:Array<String>):Bool {
+		for (root in roots) {
+			if (isUnderRoot(file, root))
+				return true;
+		}
+		return false;
+	}
+
+	static function isUnderRoot(file:String, root:String):Bool {
+		var normalizedRoot = ensureTrailingSlash(root);
+		return StringTools.startsWith(file, normalizedRoot) || file == normalizePath(root);
 	}
 
 	static function ensureTrailingSlash(path:String):String {

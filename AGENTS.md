@@ -180,6 +180,8 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
     Use `-D rust_portable_native_import_strict` to escalate those warnings to errors.
   - Metal policy: `reflaxe_rust_profile=metal` auto-enables strict app-boundary mode (`reflaxe_rust_strict`) so raw app-side `__rust__` is rejected by default.
     Typed framework facades in `src/reflaxe/rust/macros` and `std/rust/metal` remain allowed.
+  - Metal string contract: in default non-null string mode, `String` cannot be assigned `null`.
+    Use `Null<String>` for nullable values; explicit `== null` / `!= null` checks on strict non-null `String` lower to constant `false` / `true`.
   - Minimal-runtime policy: `-D rust_no_hxrt` is metal-only and must remain a hard contract.
     In that mode, do not rely on Cargo-link failures as enforcement; keep the typed no-runtime guard pass (`NoHxrtPass`) active so violations fail with actionable module-level diagnostics.
   - Metal diagnostics gotcha: aggregate `ERaw` fallback diagnostics once per compile (with top modules) instead of warning per transformed module; this keeps fallback signals actionable in large std-heavy builds.

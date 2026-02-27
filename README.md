@@ -11,6 +11,12 @@ Haxe 4.3.7 -> Rust target built on Reflaxe.
 
 This project lets you write Haxe and ship native Rust binaries, with a path for both Haxe-first and Rust-first teams.
 
+## Why reflaxe.rust
+
+- `portable` contract (default): Haxe-first semantics with portability-oriented behavior and predictable stdlib/runtime integration.
+- `metal` contract: Rust-first boundary rules, typed interop surfaces, and performance-focused paths.
+- CI evidence: snapshots, negative policy fixtures, runtime/optimizer plan reports, and HXRT overhead tracking are all part of the default workflow.
+
 ## Start Here
 
 - New here: [Start Here guide](docs/start-here.md)

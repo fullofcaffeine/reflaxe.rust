@@ -25,7 +25,9 @@ Use `portable` when you want:
 Default behavior:
 
 - nullable string representation (`rust_string_nullable`) unless explicitly overridden.
-- pass pipeline includes normalize + mut inference + clone elision.
+- pass pipeline includes normalize + mut inference + clone elision + borrow-scope tightening.
+- metal restrictions pass is still executed so `@:haxeMetal` lanes enforce strict island rules.
+- strict app-boundary mode is not auto-enabled; add `-D reflaxe_rust_strict` to reject raw app-side `untyped __rust__(...)`.
 
 ## Contract: `metal`
 
@@ -44,6 +46,8 @@ Interop note (beginner-friendly):
 Default behavior:
 
 - non-null Rust `String` representation unless explicitly overridden.
+- non-null string contract: `String` cannot be `null` in metal-clean mode.
+  Use `Null<String>` for nullable values, or explicitly enable `-D rust_string_nullable` when portability semantics are required.
 - pass pipeline includes portable passes + borrow-scope stage + metal restrictions.
 - contract violations hard-error unless fallback mode is explicitly enabled.
 - optional minimal runtime via `-D rust_no_hxrt`.

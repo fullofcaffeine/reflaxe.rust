@@ -4,7 +4,7 @@ import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustExpr.*;
 
 /**
-	StringLowering
+		StringLowering
 
 	Why
 	- String representation policy (`String` vs `hxrt::string::HxString`) is a core lowering
@@ -13,11 +13,13 @@ import reflaxe.rust.ast.RustAST.RustExpr.*;
 	  callsites concise.
 
 	What
-	- Typed helpers for string-type paths and null/literal expression constructors.
+		- Typed helpers for string-type paths and literal/default constructors.
 
-	How
-	- Callers pass `nullableStrings` once and receive the correct Rust AST node/path for the active
-	  profile/define policy.
+		How
+		- Callers pass `nullableStrings` once and receive the correct Rust AST node/path for the active
+		  profile/define policy.
+		- In non-null string mode, these helpers never synthesize a fake `"null"` sentinel string.
+		  Null-as-string contract handling is enforced in `RustCompiler` at typed boundary sites.
 **/
 class StringLowering {
 	public static inline function rustStringTypePath(nullableStrings:Bool):String {
@@ -29,7 +31,7 @@ class StringLowering {
 	}
 
 	public static inline function stringNullExpr(nullableStrings:Bool):RustExpr {
-		return nullableStrings ? ECall(EPath("hxrt::string::HxString::null"), []) : ECall(EPath("String::from"), [ELitString("null")]);
+		return nullableStrings ? ECall(EPath("hxrt::string::HxString::null"), []) : ECall(EPath("String::new"), []);
 	}
 
 	public static inline function wrapRustStringExpr(nullableStrings:Bool, value:RustExpr):RustExpr {
@@ -37,6 +39,6 @@ class StringLowering {
 	}
 
 	public static inline function stringNullDefaultValue(nullableStrings:Bool):String {
-		return nullableStrings ? "hxrt::string::HxString::null()" : "String::from(\"null\")";
+		return nullableStrings ? "hxrt::string::HxString::null()" : "String::new()";
 	}
 }

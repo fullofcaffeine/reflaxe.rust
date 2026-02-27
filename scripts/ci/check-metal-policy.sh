@@ -938,6 +938,8 @@ run_no_hxrt_success_case() {
 
 run_negative_case "test/negative/metal_raw_rust" 'Strict mode forbids `__rust__\(\)` code injection in application code' \
 	'raw __rust__ in app code under metal profile'
+run_negative_case "test/negative/metal_raw_rust_under_std" 'Strict mode forbids `__rust__\(\)` code injection in application code' \
+	'raw __rust__ in user code under a /std/ path must still be rejected'
 run_negative_case "test/negative/metal_reflect" 'metal profile forbids reflection/runtime-introspection modules' \
 	'Reflect usage under metal profile'
 run_negative_case "test/negative/metal_type_reflection" 'metal profile forbids reflection/runtime-introspection modules' \
@@ -952,6 +954,8 @@ run_negative_case "test/negative/metal_island_rust_alias_dynamic_access" 'Metal 
 	'@:rustMetal alias still enforces metal island contract in portable profile'
 run_negative_case "test/negative/metal_nullable_strings" 'metal profile does not allow -D rust_string_nullable in metal-clean mode' \
 	'rust_string_nullable under metal profile'
+run_negative_case "test/negative/metal_string_null_forbidden" 'metal non-null string contract forbids `null` for `String`' \
+	'metal non-null contract rejects String = null assignments'
 run_negative_case "test/negative/metal_no_hxrt_requires_metal" '`-D rust_no_hxrt` currently requires `-D reflaxe_rust_profile=metal`\.' \
 	'rust_no_hxrt requires metal profile'
 run_negative_case "test/negative/metal_no_hxrt_runtime_boundary" '`-D rust_no_hxrt` violation in module' \
