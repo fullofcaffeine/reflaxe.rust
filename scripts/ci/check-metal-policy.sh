@@ -764,6 +764,7 @@ run_optimizer_plan_report_case() {
 	local hxml_file="$2"
 	local expected_contract="$3"
 	local failure_label="$4"
+	local expected_json_regex="${5:-}"
 	local fixture_dir="$root_dir/$fixture_rel"
 	local out_a="$fixture_dir/out_optimizer_plan_a"
 	local out_b="$fixture_dir/out_optimizer_plan_b"
@@ -865,6 +866,12 @@ run_optimizer_plan_report_case() {
 	if ! match_regex '^## Skipped optimizations' "$md_a"; then
 		echo "[metal-policy] error: optimizer_plan.md missing skipped section for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if [[ -n "$expected_json_regex" ]] && ! match_regex "$expected_json_regex" "$json_a"; then
+		echo "[metal-policy] error: optimizer_plan.json missing expected metric pattern for ${failure_label}."
+		echo "[metal-policy] pattern: $expected_json_regex"
+		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
 
@@ -1006,6 +1013,9 @@ run_runtime_plan_report_case "test/positive/metal_no_hxrt_minimal" "compile.hxml
 	'metal no-hxrt runtime plan artifacts'
 run_optimizer_plan_report_case "test/snapshot/string_clone_elision" "compile.hxml" "portable" \
 	'portable optimizer plan report artifacts'
+run_optimizer_plan_report_case "test/snapshot/for_array_alias_mutating" "compile.hxml" "portable" \
+	'portable optimizer plan records alias-hazard skip for array iteration lowering' \
+	'"id":[[:space:]]*"loop_optimizations\.skipped\.array_iter_borrowed\.desugared_for\.alias_hazard"'
 run_optional_fallback_case "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'' \
 	'single aggregated metal fallback warning (or clean)'

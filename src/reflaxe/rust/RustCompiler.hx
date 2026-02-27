@@ -203,6 +203,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var rustTestSpecs:Array<RustTestSpec> = [];
 	var usedModulePaths:Map<String, Bool> = [];
 	var currentCompilationContext:Null<CompilationContext> = null;
+	// Optimizer metrics recorded during lowering before `CompilationContext` exists.
+	var pendingOptimizerAppliedById:Map<String, Int> = [];
+	var pendingOptimizerSkippedById:Map<String, Int> = [];
 	var metalIslandSnapshot:MetalIslandSnapshot = {modules: [], declarations: []};
 
 	inline function wantsPreludeAliases():Bool {
@@ -234,6 +237,55 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	inline function dynRefBasePath():String {
 		return wantsPreludeAliases() ? "crate::HxDynRef" : "hxrt::cell::HxDynRef";
+	}
+
+	/**
+		Records a loop optimization metric in the shared compilation context.
+
+		Why
+		- `optimizer_plan.*` artifacts are the canonical CI evidence for optimization behavior.
+		- Loop-lowering decisions in this compiler file (outside transform passes) still need
+		  deterministic telemetry to avoid "silent" behavior changes.
+
+		What
+		- Appends counters under the `loop_optimizations.applied.*` metric namespace.
+
+		How
+		- Uses `CompilationContext.recordOptimizerApplied(...)` when context is available.
+	**/
+	inline function recordLoopOptimizationApplied(metricSuffix:String, count:Int = 1):Void {
+		if (metricSuffix == null || metricSuffix.length == 0 || count <= 0)
+			return;
+		var metricId = "loop_optimizations.applied." + metricSuffix;
+		if (currentCompilationContext != null) {
+			currentCompilationContext.recordOptimizerApplied(metricId, count);
+		} else {
+			pendingOptimizerAppliedById.set(metricId, (pendingOptimizerAppliedById.exists(metricId) ? pendingOptimizerAppliedById.get(metricId) : 0) + count);
+		}
+	}
+
+	/**
+		Records why a loop optimization candidate was skipped.
+
+		Why
+		- Performance convergence work needs explicit "why not optimized" breadcrumbs for review/CI.
+		- Skip counters make conservative safety guards visible instead of implicit.
+
+		What
+		- Appends counters under the `loop_optimizations.skipped.*` reason namespace.
+
+		How
+		- Uses `CompilationContext.recordOptimizerSkipped(...)` when context is available.
+	**/
+	inline function recordLoopOptimizationSkipped(reasonSuffix:String, count:Int = 1):Void {
+		if (reasonSuffix == null || reasonSuffix.length == 0 || count <= 0)
+			return;
+		var reasonId = "loop_optimizations.skipped." + reasonSuffix;
+		if (currentCompilationContext != null) {
+			currentCompilationContext.recordOptimizerSkipped(reasonId, count);
+		} else {
+			pendingOptimizerSkippedById.set(reasonId, (pendingOptimizerSkippedById.exists(reasonId) ? pendingOptimizerSkippedById.get(reasonId) : 0) + count);
+		}
 	}
 
 	inline function refCellBasePath():String {
@@ -402,8 +454,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			metalIslandSnapshot.modules);
 		var modulePaths = snapshotUsedModulePaths();
 		var selection = selectHxrtFeatureSelection(modulePaths);
-		return new CompilationContext(buildContext, modulePaths, selection.features, selection.manualFeatures, selection.useDefaultFeatures,
+		var context = new CompilationContext(buildContext, modulePaths, selection.features, selection.manualFeatures, selection.useDefaultFeatures,
 			selection.disableInference, selection.reasons);
+		for (metricId => count in pendingOptimizerAppliedById)
+			context.recordOptimizerApplied(metricId, count);
+		for (reasonId => count in pendingOptimizerSkippedById)
+			context.recordOptimizerSkipped(reasonId, count);
+		return context;
 	}
 
 	inline function metalContractHardError():Bool {
@@ -680,6 +737,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		rustTestSpecs = [];
 		usedModulePaths = [];
 		currentCompilationContext = null;
+		pendingOptimizerAppliedById = [];
+		pendingOptimizerSkippedById = [];
 		metalIslandSnapshot = {modules: [], declarations: []};
 
 		// Profile selection and define validation are centralized to keep all feature gates consistent.
@@ -5310,10 +5369,17 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		function canUseBorrowedArrayIteration(iterable:TypedExpr, loopBodyExprs:Array<TypedExpr>):Bool {
 			var iterableLocal = localFromExpr(iterable);
-			if (iterableLocal == null)
+			if (iterableLocal == null) {
+				recordLoopOptimizationSkipped("array_iter_borrowed.direct_for.iterable_not_local");
 				return false;
+			}
 			var aliases = arrayAliasIdsForLocal(iterableLocal.id);
-			return !exprListReferencesAnyLocalIds(loopBodyExprs, aliases);
+			if (exprListReferencesAnyLocalIds(loopBodyExprs, aliases)) {
+				recordLoopOptimizationSkipped("array_iter_borrowed.direct_for.alias_hazard");
+				return false;
+			}
+			recordLoopOptimizationApplied("array_iter_borrowed.direct_for");
+			return true;
 		}
 
 		return switch (e.expr) {
@@ -5564,10 +5630,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 							// Conservative safety gate: if user loop body touches the iterated array
 							// binding (or its immediate source local), keep canonical index/while lowering.
-							if (exprListReferencesAnyLocalIds(userBodyExprs, aliasIds))
+							if (exprListReferencesAnyLocalIds(userBodyExprs, aliasIds)) {
+								recordLoopOptimizationSkipped("array_iter_borrowed.desugared_for.alias_hazard");
 								return null;
+							}
 
 							var iterExpr = ECall(EField(compileExpr(arraySource), "iter_borrowed"), []);
+							recordLoopOptimizationApplied("array_iter_borrowed.desugared_for");
 							var bodyBlock = compileBlock(userBodyExprs, false);
 							var loweredFor = RFor(rustLocalDeclIdent(loopVar), iterExpr, bodyBlock);
 							return if (preludeStmt == null) {
