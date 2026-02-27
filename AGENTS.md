@@ -41,9 +41,6 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   Default to concrete `typedef`/class/abstract/external bindings and leverage Haxe’s type system end-to-end.
 - `Reflect`/`Any` policy (strict): avoid `Reflect.*` APIs and `Any`-typed payloads in first-party compiler/runtime/example code.
   Prefer typed fields/enums/interfaces; if an upstream/runtime boundary forces `Reflect` or `Any`, keep it tightly scoped and convert back to typed data immediately.
-- Compatibility policy (pre-1.0): use a hard cutover approach and do not ship backward-compatibility shims by default.
-  If behavior changes, update docs/tests in the same change and require explicit migration notes in Beads/docs.
-  - Removal tracker for stable 1.0: `haxe.rust-cex`.
 - Compatibility policy (stable releases): avoid silent breakage.
   For intentional breaking changes, require explicit migration notes in docs and linked Beads issues.
 - For unavoidable stdlib API boundaries, prefer a descriptive `typedef` alias module (for example `*Types.cross.hx`)
