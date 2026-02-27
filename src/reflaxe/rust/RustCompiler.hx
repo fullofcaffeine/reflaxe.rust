@@ -183,6 +183,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	// This stores the Rust argument idents (already snake_cased/uniqued).
 	var currentMutatedArgs:Null<Array<String>> = null;
 	var currentLocalReadCounts:Null<Map<Int, Int>> = null;
+	// Per-function conservative alias closure for `hxrt::array::Array<T>` locals.
+	// Used by loop lowering to keep borrowed-iteration fast paths semantics-safe.
+	var currentArrayAliasClosures:Null<Map<Int, Map<Int, Bool>>> = null;
 	var currentArgNames:Null<Map<String, String>> = null;
 	var currentLocalNames:Null<Map<Int, String>> = null;
 	var currentLocalUsed:Null<Map<String, Bool>> = null;
@@ -5309,8 +5312,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var iterableLocal = localFromExpr(iterable);
 			if (iterableLocal == null)
 				return false;
-			var aliases:Map<Int, Bool> = [];
-			aliases.set(iterableLocal.id, true);
+			var aliases = arrayAliasIdsForLocal(iterableLocal.id);
 			return !exprListReferencesAnyLocalIds(loopBodyExprs, aliases);
 		}
 
@@ -5526,6 +5528,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									case _:
 										return null;
 								}
+							}
+
+							// Include function-scope aliases of already-known array locals.
+							// This keeps borrowed-loop lowering semantics-safe when aliases are
+							// created outside the loop block (e.g. `var ys = xs;`).
+							var aliasSeed:Array<Int> = [for (id in aliasIds.keys()) id];
+							for (seedId in aliasSeed) {
+								var knownAliases = arrayAliasIdsForLocal(seedId);
+								for (id in knownAliases.keys())
+									aliasIds.set(id, true);
 							}
 
 							var bodyExprs = switch (unwrapMetaParen(whileBody).expr) {
@@ -5902,6 +5914,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var prevArgNames = currentArgNames;
 		var prevLocalNames = currentLocalNames;
 		var prevLocalUsed = currentLocalUsed;
+		var prevArrayAliasClosures = currentArrayAliasClosures;
 		var prevEnumParamBinds = currentEnumParamBinds;
 		var prevReturn = currentFunctionReturn;
 		var prevMutatedArgs = currentMutatedArgs;
@@ -5910,6 +5923,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		currentMutatedLocals = collectMutatedLocals(bodyExpr);
 		currentLocalReadCounts = collectLocalReadCounts(bodyExpr);
+		currentArrayAliasClosures = collectArrayAliasClosures(bodyExpr);
 		currentArgNames = [];
 		currentLocalNames = [];
 		currentLocalUsed = [];
@@ -5953,6 +5967,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		currentArgNames = prevArgNames;
 		currentLocalNames = prevLocalNames;
 		currentLocalUsed = prevLocalUsed;
+		currentArrayAliasClosures = prevArrayAliasClosures;
 		currentEnumParamBinds = prevEnumParamBinds;
 		currentFunctionReturn = prevReturn;
 		currentMutatedArgs = prevMutatedArgs;
@@ -6158,6 +6173,111 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				out.push(rust);
 		}
 		return out;
+	}
+
+	/**
+		Collects a conservative alias-closure map for `hxrt::array::Array<T>` locals in a function body.
+
+		Why
+		- Borrowed array iteration fast paths are only semantics-safe when the loop body does not
+		  access the iterated array through any alias.
+		- Alias creation can happen outside the loop (`var ys = xs;`) and then be used inside it,
+		  so a loop-local check alone is insufficient.
+
+		What
+		- Builds an undirected local-alias graph from array-local assignments:
+		  - declarations (`var b = a`)
+		  - direct rebinds (`b = a`)
+		- Returns transitive closure sets keyed by local id.
+
+		How
+		- The analysis is intentionally conservative and local-id based.
+		- False positives only disable a fast path; false negatives risk semantic drift.
+	**/
+	function collectArrayAliasClosures(root:TypedExpr):Map<Int, Map<Int, Bool>> {
+		var adjacency:Map<Int, Map<Int, Bool>> = [];
+
+		inline function ensureNode(id:Int):Void {
+			if (!adjacency.exists(id))
+				adjacency.set(id, []);
+		}
+
+		inline function connect(a:Int, b:Int):Void {
+			if (a == b) {
+				ensureNode(a);
+				return;
+			}
+			ensureNode(a);
+			ensureNode(b);
+			adjacency.get(a).set(b, true);
+			adjacency.get(b).set(a, true);
+		}
+
+		inline function arrayLocalId(expr:TypedExpr):Null<Int> {
+			return switch (unwrapMetaParen(expr).expr) {
+				case TLocal(v):
+					isArrayType(v.t) ? v.id : null;
+				case _:
+					null;
+			}
+		}
+
+		function scan(node:TypedExpr):Void {
+			switch (unwrapMetaParen(node).expr) {
+				case TVar(v, init):
+					{
+						if (isArrayType(v.t))
+							ensureNode(v.id);
+						if (init != null) {
+							var srcId = arrayLocalId(init);
+							if (srcId != null && isArrayType(v.t))
+								connect(v.id, srcId);
+						}
+					}
+				case TBinop(OpAssign, lhs, rhs):
+					{
+						var lhsId = arrayLocalId(lhs);
+						var rhsId = arrayLocalId(rhs);
+						if (lhsId != null && rhsId != null)
+							connect(lhsId, rhsId);
+					}
+				case _:
+			}
+			TypedExprTools.iter(node, scan);
+		}
+
+		scan(root);
+
+		var closures:Map<Int, Map<Int, Bool>> = [];
+		for (start in adjacency.keys()) {
+			var seen:Map<Int, Bool> = [];
+			var stack:Array<Int> = [start];
+			while (stack.length > 0) {
+				var id = stack.pop();
+				if (seen.exists(id))
+					continue;
+				seen.set(id, true);
+				var neighbors = adjacency.get(id);
+				if (neighbors != null) {
+					for (neighbor in neighbors.keys()) {
+						if (!seen.exists(neighbor))
+							stack.push(neighbor);
+					}
+				}
+			}
+			closures.set(start, seen);
+		}
+		return closures;
+	}
+
+	inline function arrayAliasIdsForLocal(localId:Int):Map<Int, Bool> {
+		var aliases:Map<Int, Bool> = [];
+		aliases.set(localId, true);
+		if (currentArrayAliasClosures != null && currentArrayAliasClosures.exists(localId)) {
+			for (id in currentArrayAliasClosures.get(localId).keys())
+				aliases.set(id, true);
+		}
+		return aliases;
 	}
 
 	function collectMutatedLocals(root:TypedExpr):Map<Int, Bool> {
@@ -7888,8 +8008,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				stmts: [RLet("__hx_opt", false, null, optExpr)],
 				tail: EMatch(EUnary("&", EPath("__hx_opt")), [
 					{pat: PTupleStruct("Some", [PBind("__v")]), expr: ECall(EField(EPath("__v"), "clone"), [])},
-					{pat: PPath("None"),
-						expr: isStringType(expected) ? (useNullableStringRepresentation() ? stringNullExpr() : nullAccessThrow()) : nullAccessThrow()}
+					{
+						pat: PPath("None"),
+						expr: isStringType(expected) ? (useNullableStringRepresentation() ? stringNullExpr() : nullAccessThrow()) : nullAccessThrow()
+					}
 				])
 			});
 		}
