@@ -3,7 +3,7 @@
 
 ### Bug Fixes
 
-* **async:** hard-remove rust_async_preview define ([73efb9d](https://github.com/fullofcaffeine/reflaxe.rust/commit/73efb9d305cf8434e4305283802881baeeed7924))
+* **async:** hard-remove legacy async preview define ([73efb9d](https://github.com/fullofcaffeine/reflaxe.rust/commit/73efb9d305cf8434e4305283802881baeeed7924))
 * **codegen:** avoid return-wrapping diverging Rust expressions ([32244c7](https://github.com/fullofcaffeine/reflaxe.rust/commit/32244c7689c65092c4f0a44de89c9dd20b3cf85e))
 * **codegen:** tighten local mutability and postfix increment lowering ([70643cd](https://github.com/fullofcaffeine/reflaxe.rust/commit/70643cd5cce658ea6598a3cca5bfb5f5c00b763e))
 * **metal:** enforce island raw-fallback checks in portable pass pipeline ([00a8395](https://github.com/fullofcaffeine/reflaxe.rust/commit/00a8395382a1f32e4db9a0ec7b896a5abeb23b6b))

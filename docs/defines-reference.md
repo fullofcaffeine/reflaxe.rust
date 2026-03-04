@@ -29,7 +29,8 @@ This page is a practical reference for the most relevant compiler defines.
   - Enable async/await surfaces (`rust.async.Future`, `rust.async.Async.*`).
   - Requires `reflaxe_rust_profile=metal`.
 - `rust_async_preview`
-  - Removed legacy define. The compiler errors and instructs to use `rust_async`.
+  - Removed legacy define retained only as a migration error trigger.
+  - The compiler reports an explicit error and instructs to use `rust_async`.
 - `rust_string_nullable`
   - Force nullable string representation.
 - `rust_string_non_nullable`

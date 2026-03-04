@@ -79,8 +79,10 @@ if ! check_rule "removed profile selectors (idiomatic/rusty)" 'reflaxe_rust_prof
 fi
 
 removed_async_allowlist=(
+  "CHANGELOG.md"
   "AGENTS.md"
   "docs/async-await.md"
+  "docs/defines-reference.md"
   "scripts/lint/deprecated_define_guard.sh"
   "scripts/ci/check-metal-policy.sh"
   "src/reflaxe/rust/CompilerInit.hx"
