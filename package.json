@@ -21,6 +21,8 @@
     "test:watcher": "bash test/scripts/watch-haxe-rust.sh",
     "test:upstream-stdlib": "bash test/run-upstream-stdlib-sweep.sh",
     "test:upstream-stdlib:tier2": "bash test/run-upstream-stdlib-sweep.sh --tier tier2",
+    "test:semantic-diff": "python3 test/run-semantic-diff.py",
+    "test:semantic-diff:lanes": "python3 test/run-semantic-diff.py --suite lanes",
     "stdlib:sync:tier2": "node scripts/ci/sync-upstream-stdlib-tier2.js",
     "stdlib:sync:allowlist": "node scripts/ci/sync-portable-stdlib-allowlist.js",
     "stdlib:audit:candidates": "node scripts/ci/audit-upstream-stdlib-candidates.js --write",

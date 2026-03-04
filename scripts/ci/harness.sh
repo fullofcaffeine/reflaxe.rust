@@ -112,6 +112,14 @@ echo "[harness] snapshots"
 bash test/run-snapshots.sh --clippy
 intermediate_cleanup "snapshots"
 
+echo "[harness] semantic diff (portable)"
+python3 test/run-semantic-diff.py
+intermediate_cleanup "semantic-diff"
+
+echo "[harness] semantic diff (lanes)"
+python3 test/run-semantic-diff.py --suite lanes
+intermediate_cleanup "semantic-diff-lanes"
+
 echo "[harness] metal boundary policy"
 bash scripts/ci/check-metal-policy.sh
 intermediate_cleanup "metal-policy"

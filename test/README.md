@@ -27,6 +27,15 @@ Run the full local CI harness (snapshots + upstream stdlib sweep + examples):
 npm run test:all
 ```
 
+Run semantic diff suites directly:
+
+```sh
+python3 test/run-semantic-diff.py
+python3 test/run-semantic-diff.py --suite lanes
+npm run test:semantic-diff
+npm run test:semantic-diff:lanes
+```
+
 Run upstream stdlib sweeps directly:
 
 ```sh

@@ -1,0 +1,434 @@
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
+import argparse
+import contextlib
+import dataclasses
+import difflib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import time
+from typing import Iterable
+
+try:
+    import fcntl  # type: ignore[attr-defined]
+except ImportError:
+    fcntl = None
+
+ROOT = Path(__file__).resolve().parent.parent
+SEMANTIC_CORE_ROOT = ROOT / "test" / "semantic_diff"
+SEMANTIC_LANES_ROOT = ROOT / "test" / "semantic_diff_lanes"
+CACHE_ROOT = ROOT / "test" / ".cache"
+
+
+@dataclasses.dataclass(frozen=True)
+class SemanticCase:
+    case_id: str
+    case_path: Path
+    main_hx: Path
+
+
+@dataclasses.dataclass
+class CaseResult:
+    case_id: str
+    ok: bool
+    stage: str
+    message: str
+    duration_s: float
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Run semantic differential tests (Haxe --interp vs reflaxe.rust portable output)"
+    )
+    parser.add_argument(
+        "--suite",
+        choices=["core", "lanes"],
+        default="core",
+        help="Semantic diff suite to run (core or lanes)",
+    )
+    parser.add_argument("--list", action="store_true", help="List discovered semantic diff cases")
+    parser.add_argument("--case", action="append", default=[], help="Run specific case id(s)")
+    parser.add_argument("--pattern", default="", help="Regex filter over case ids")
+    parser.add_argument("--changed", action="store_true", help="Run only semantic diff cases touched by git diff")
+    parser.add_argument("--failed", action="store_true", help="Re-run only previously failing cases")
+    parser.add_argument("--timeout", type=int, default=180, help="Timeout per command in seconds")
+    parser.add_argument("--lock-timeout", type=int, default=30, help="Seconds to wait for harness lock (0 = fail fast)")
+    return parser.parse_args()
+
+
+def run_lock_for_suite(suite: str) -> Path:
+    return CACHE_ROOT / ("run-semantic-diff-" + suite + ".lock")
+
+
+@contextlib.contextmanager
+def acquire_run_lock(timeout_s: int, suite: str):
+    CACHE_ROOT.mkdir(parents=True, exist_ok=True)
+    run_lock = run_lock_for_suite(suite)
+    if fcntl is not None:
+        lock_file = run_lock.open("a+", encoding="utf-8")
+        start = time.monotonic()
+        while True:
+            try:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if timeout_s <= 0 or (time.monotonic() - start) >= timeout_s:
+                    lock_file.close()
+                    raise SystemExit(
+                        f"Another semantic diff run is active for suite '{suite}' (lock: {run_lock}). "
+                        "Wait and retry, or set --lock-timeout to a larger value."
+                    )
+                time.sleep(0.2)
+
+        try:
+            lock_file.seek(0)
+            lock_file.truncate(0)
+            lock_file.write(f"pid={os.getpid()}\n")
+            lock_file.flush()
+            yield
+        finally:
+            try:
+                lock_file.seek(0)
+                lock_file.truncate(0)
+                lock_file.flush()
+            finally:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+                lock_file.close()
+        return
+
+    start = time.monotonic()
+    while True:
+        try:
+            fd = os.open(str(run_lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            break
+        except FileExistsError:
+            if timeout_s <= 0 or (time.monotonic() - start) >= timeout_s:
+                raise SystemExit(
+                    f"Another semantic diff run is active for suite '{suite}' (lock: {run_lock}). "
+                    "Wait and retry, or set --lock-timeout to a larger value."
+                )
+            time.sleep(0.2)
+
+    try:
+        os.write(fd, f"pid={os.getpid()}\n".encode("utf-8"))
+        yield
+    finally:
+        os.close(fd)
+        try:
+            run_lock.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def semantic_root_for_suite(suite: str) -> Path:
+    return SEMANTIC_LANES_ROOT if suite == "lanes" else SEMANTIC_CORE_ROOT
+
+
+def cache_paths_for_suite(suite: str) -> tuple[Path, Path]:
+    if suite == "lanes":
+        return (
+            CACHE_ROOT / "semantic_diff_lanes_last_failed.txt",
+            CACHE_ROOT / "semantic_diff_lanes_last_run.json",
+        )
+    return (
+        CACHE_ROOT / "semantic_diff_last_failed.txt",
+        CACHE_ROOT / "semantic_diff_last_run.json",
+    )
+
+
+def discover_cases(semantic_root: Path) -> list[SemanticCase]:
+    cases: list[SemanticCase] = []
+    if not semantic_root.exists():
+        return cases
+
+    for case_dir in sorted(semantic_root.iterdir()):
+        if not case_dir.is_dir():
+            continue
+        main_hx = case_dir / "Main.hx"
+        if not main_hx.exists():
+            continue
+        cases.append(
+            SemanticCase(
+                case_id=case_dir.name,
+                case_path=case_dir,
+                main_hx=main_hx,
+            )
+        )
+
+    return cases
+
+
+def changed_case_ids(semantic_root: Path) -> set[str]:
+    relative_root = semantic_root.relative_to(ROOT).as_posix()
+    cmd = ["git", "diff", "--name-only", "--", relative_root]
+    try:
+        proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, check=True)
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return set()
+
+    ids: set[str] = set()
+    for line in proc.stdout.splitlines():
+        path = Path(line.strip())
+        parts = path.parts
+        expected_parts = Path(relative_root).parts
+        if len(parts) >= len(expected_parts) + 1 and tuple(parts[: len(expected_parts)]) == expected_parts:
+            ids.add(parts[len(expected_parts)])
+    return ids
+
+
+def read_last_failed(last_failed_file: Path) -> list[str]:
+    if not last_failed_file.exists():
+        return []
+    return [line.strip() for line in last_failed_file.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def apply_filters(
+    cases: Iterable[SemanticCase], args: argparse.Namespace, semantic_root: Path, last_failed_file: Path
+) -> list[SemanticCase]:
+    selected = list(cases)
+
+    if args.failed:
+        failed = set(read_last_failed(last_failed_file))
+        selected = [case for case in selected if case.case_id in failed]
+
+    if args.changed:
+        changed = changed_case_ids(semantic_root)
+        selected = [case for case in selected if case.case_id in changed]
+
+    if args.case:
+        wanted = {item.strip() for item in args.case if item.strip()}
+        selected = [case for case in selected if case.case_id in wanted]
+
+    if args.pattern:
+        import re
+
+        regex = re.compile(args.pattern)
+        selected = [case for case in selected if regex.search(case.case_id)]
+
+    return selected
+
+
+def normalize_stdout(text: str) -> str:
+    return text.replace("\r\n", "\n")
+
+
+def run_command(
+    cmd: list[str], cwd: Path, timeout_s: int, env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
+    merged_env = os.environ.copy()
+    merged_env["HAXE_NO_SERVER"] = "1"
+    if env:
+        merged_env.update(env)
+    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout_s, env=merged_env)
+
+
+def command_output(proc: subprocess.CompletedProcess[str]) -> str:
+    chunks: list[str] = []
+    if proc.stdout:
+        chunks.append(proc.stdout.strip())
+    if proc.stderr:
+        chunks.append(proc.stderr.strip())
+    return "\n".join(chunk for chunk in chunks if chunk)
+
+
+def build_interp_cmd(case: SemanticCase) -> list[str]:
+    return [
+        "haxe",
+        "-cp",
+        str(case.case_path),
+        "-cp",
+        str(ROOT / "src"),
+        "-D",
+        "no-traces",
+        "-D",
+        "no_traces",
+        "-main",
+        "Main",
+        "--interp",
+    ]
+
+
+def read_case_rust_defines(case: SemanticCase) -> list[str]:
+    defines_file = case.case_path / "rust_defines.txt"
+    if not defines_file.exists():
+        return []
+
+    out: list[str] = []
+    for raw_line in defines_file.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        out.append(line)
+    return out
+
+
+def build_rust_cmd(case: SemanticCase) -> list[str]:
+    out_dir = case.case_path / "out"
+    cmd = [
+        "haxe",
+        "-cp",
+        str(case.case_path),
+        "-lib",
+        "reflaxe.rust",
+        "-D",
+        "rust_output=" + str(out_dir),
+        "-D",
+        "reflaxe_rust_profile=portable",
+        "-D",
+        "reflaxe_rust_strict_examples",
+        "-D",
+        "rust_no_build",
+        "-D",
+        "reflaxe.dont_output_metadata_id",
+        "-D",
+        "no-traces",
+        "-D",
+        "no_traces",
+        "-main",
+        "Main",
+    ]
+    for define in read_case_rust_defines(case):
+        cmd.extend(["-D", define])
+    return cmd
+
+
+def ensure_no_out(case: SemanticCase) -> None:
+    out_dir = case.case_path / "out"
+    if out_dir.exists():
+        try:
+            shutil.rmtree(out_dir)
+        except FileNotFoundError:
+            pass
+
+
+def build_stdout_diff(reference: str, actual: str) -> str:
+    ref_lines = reference.splitlines(keepends=True)
+    out_lines = actual.splitlines(keepends=True)
+    diff_lines = list(
+        difflib.unified_diff(
+            ref_lines,
+            out_lines,
+            fromfile="reference(--interp)",
+            tofile="reflaxe.rust(portable)",
+        )
+    )
+    if not diff_lines:
+        return "stdout mismatch (no textual diff available)"
+    preview = "".join(diff_lines[:200]).rstrip("\n")
+    return preview
+
+
+def cargo_target_dir(suite: str, case_id: str) -> Path:
+    return CACHE_ROOT / "semantic-diff-target" / suite / case_id
+
+
+def run_case(case: SemanticCase, args: argparse.Namespace) -> CaseResult:
+    started = time.monotonic()
+    suite = args.suite
+    try:
+        ensure_no_out(case)
+
+        ref_proc = run_command(build_interp_cmd(case), cwd=ROOT, timeout_s=args.timeout)
+        if ref_proc.returncode != 0:
+            return CaseResult(case.case_id, False, "reference", command_output(ref_proc), time.monotonic() - started)
+        reference_stdout = normalize_stdout(ref_proc.stdout)
+
+        rust_compile_proc = run_command(build_rust_cmd(case), cwd=ROOT, timeout_s=args.timeout)
+        if rust_compile_proc.returncode != 0:
+            return CaseResult(case.case_id, False, "compile", command_output(rust_compile_proc), time.monotonic() - started)
+
+        out_dir = case.case_path / "out"
+        cargo_env = {"CARGO_TARGET_DIR": str(cargo_target_dir(suite, case.case_id))}
+
+        cargo_build_proc = run_command(["cargo", "build", "-q"], cwd=out_dir, timeout_s=args.timeout, env=cargo_env)
+        if cargo_build_proc.returncode != 0:
+            return CaseResult(case.case_id, False, "cargo build", command_output(cargo_build_proc), time.monotonic() - started)
+
+        cargo_run_proc = run_command(["cargo", "run", "-q"], cwd=out_dir, timeout_s=args.timeout, env=cargo_env)
+        if cargo_run_proc.returncode != 0:
+            return CaseResult(case.case_id, False, "runtime", command_output(cargo_run_proc), time.monotonic() - started)
+        rust_stdout = normalize_stdout(cargo_run_proc.stdout)
+
+        if reference_stdout != rust_stdout:
+            return CaseResult(
+                case.case_id,
+                False,
+                "diff",
+                build_stdout_diff(reference_stdout, rust_stdout),
+                time.monotonic() - started,
+            )
+
+        return CaseResult(case.case_id, True, "done", "ok", time.monotonic() - started)
+    except subprocess.TimeoutExpired as exc:
+        return CaseResult(
+            case.case_id,
+            False,
+            "timeout",
+            f"command timed out after {args.timeout}s: {exc.cmd}",
+            time.monotonic() - started,
+        )
+
+
+def write_last_failed(results: list[CaseResult], last_failed_file: Path) -> None:
+    CACHE_ROOT.mkdir(parents=True, exist_ok=True)
+    failed = sorted(result.case_id for result in results if not result.ok)
+    last_failed_file.write_text("\n".join(failed) + ("\n" if failed else ""), encoding="utf-8")
+
+
+def write_last_run(results: list[CaseResult], last_run_file: Path) -> None:
+    CACHE_ROOT.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "generated_at_epoch": int(time.time()),
+        "total": len(results),
+        "passed": sum(1 for result in results if result.ok),
+        "failed": sum(1 for result in results if not result.ok),
+        "results": [dataclasses.asdict(result) for result in results],
+    }
+    last_run_file.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def main() -> int:
+    args = parse_args()
+    semantic_root = semantic_root_for_suite(args.suite)
+    last_failed_file, last_run_file = cache_paths_for_suite(args.suite)
+    cases = discover_cases(semantic_root)
+
+    if args.list:
+        for case in cases:
+            print(case.case_id)
+        return 0
+
+    selected = apply_filters(cases, args, semantic_root, last_failed_file)
+    if not selected:
+        print("No semantic diff cases selected")
+        return 0
+
+    results: list[CaseResult] = []
+    with acquire_run_lock(args.lock_timeout, args.suite):
+        for case in selected:
+            print(f"==> {case.case_id}")
+            result = run_case(case, args)
+            results.append(result)
+            status = "PASS" if result.ok else "FAIL"
+            print(f"[{status}] {case.case_id} ({result.stage}, {result.duration_s:.2f}s)")
+            if not result.ok and result.message:
+                print(result.message)
+
+    write_last_failed(results, last_failed_file)
+    write_last_run(results, last_run_file)
+
+    passed = sum(1 for result in results if result.ok)
+    failed = len(results) - passed
+    print(f"\nSummary: {passed} passed, {failed} failed, {len(results)} total")
+    print(f"Last run report: {last_run_file}")
+
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
