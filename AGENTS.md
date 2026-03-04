@@ -92,6 +92,9 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
     - User/project code errors by default; framework/upstream std may fallback to `Dynamic`.
     - Escape hatch: `-D rust_allow_unmapped_coretype_dynamic`.
     - Std warning audit switch: `-D rust_warn_unmapped_coretype_std`.
+  - Contract diagnostic anchoring gotcha: profile-policy warnings/errors must resolve to **user project source positions**
+    whenever possible. Do not anchor contract diagnostics to upstream/framework std module files just because the diagnostic
+    message mentions those module names.
   - JSON boundary gotcha: do not `cast Json.parse(...)` directly to a typed anonymous structure in app/runtime code. The Rust runtime may return a `DynObject` representation that fails anon downcasts; decode through `Reflect.field` + typed validators at the boundary, then stay strongly typed.
 - The generated crate always includes the bundled runtime crate at `./hxrt` and adds `hxrt = { path = "./hxrt" }` to `Cargo.toml`.
 - For class instance semantics, the runtime uses a thread-safe heap (`HxRef<T> = Arc<HxCell<T>>` with `RwLock` interior mutability):

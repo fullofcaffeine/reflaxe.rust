@@ -22,6 +22,7 @@ run_negative_case() {
 	local fixture_rel="$1"
 	local expected_regex="$2"
 	local failure_label="$3"
+	local expected_location_regex="${4:-}"
 	local fixture_dir="$root_dir/$fixture_rel"
 	local log_file="$fixture_dir/.compile.log"
 
@@ -41,6 +42,12 @@ run_negative_case() {
 
 	if ! match_regex "$expected_regex" "$log_file"; then
 		echo "[metal-policy] error: compile failed, but expected diagnostic was not found for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+	if [[ -n "$expected_location_regex" ]] && ! match_regex "$expected_location_regex" "$log_file"; then
+		echo "[metal-policy] error: compile failed, but expected source-position diagnostic was not found for ${failure_label}."
+		echo "[metal-policy] expected location regex: ${expected_location_regex}"
 		sed "s|$root_dir|.|g" "$log_file"
 		exit 1
 	fi
@@ -948,11 +955,13 @@ run_negative_case "test/negative/metal_raw_rust" 'Strict mode forbids `__rust__\
 run_negative_case "test/negative/metal_raw_rust_under_std" 'Strict mode forbids `__rust__\(\)` code injection in application code' \
 	'raw __rust__ in user code under a /std/ path must still be rejected'
 run_negative_case "test/negative/metal_reflect" 'metal profile forbids reflection/runtime-introspection modules' \
-	'Reflect usage under metal profile'
+	'Reflect usage under metal profile' \
+	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust profile contract violation\(s\):'
 run_negative_case "test/negative/metal_type_reflection" 'metal profile forbids reflection/runtime-introspection modules' \
 	'Type runtime introspection under metal profile'
 run_negative_case "test/negative/metal_dynamic_access" 'metal profile forbids haxe\.DynamicAccess runtime map semantics' \
-	'haxe.DynamicAccess usage under metal profile'
+	'haxe.DynamicAccess usage under metal profile' \
+	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust profile contract violation\(s\):'
 run_negative_case "test/negative/metal_island_dynamic_access" 'Metal island violation in module `Main`.*dynamic_boundary/dynamic_access' \
 	'@:haxeMetal module rejects dynamic boundary usage in portable profile'
 run_negative_case "test/negative/metal_island_raw_fallback" 'Metal island violation in module `Main`.*raw Rust expression node\(s\) \(`ERaw`\)' \
@@ -960,7 +969,8 @@ run_negative_case "test/negative/metal_island_raw_fallback" 'Metal island violat
 run_negative_case "test/negative/metal_island_rust_alias_dynamic_access" 'Metal island violation in module `Main`.*dynamic_boundary/dynamic_access' \
 	'@:rustMetal alias still enforces metal island contract in portable profile'
 run_negative_case "test/negative/metal_nullable_strings" 'metal profile does not allow -D rust_string_nullable in metal-clean mode' \
-	'rust_string_nullable under metal profile'
+	'rust_string_nullable under metal profile' \
+	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust profile contract violation\(s\):'
 run_negative_case "test/negative/metal_string_null_forbidden" 'metal non-null string contract forbids `null` for `String`' \
 	'metal non-null contract rejects String = null assignments'
 run_negative_case "test/negative/metal_no_hxrt_requires_metal" '`-D rust_no_hxrt` currently requires `-D reflaxe_rust_profile=metal`\.' \
@@ -974,7 +984,8 @@ run_negative_case "test/negative/profile_removed_idiomatic" 'Unknown `-D reflaxe
 run_negative_case "test/negative/profile_removed_rusty" 'Unknown `-D reflaxe_rust_profile=rusty`\. Expected portable\|metal\.' \
 	'rusty profile selector removed'
 run_negative_case "test/negative/portable_native_import_strict" 'portable contract imported native target modules: rust\.Option' \
-	'portable native-target import strict mode rejects rust.* imports'
+	'portable native-target import strict mode rejects rust.* imports' \
+	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust profile contract violation\(s\):'
 run_negative_case "test/negative/send_sync_borrow_capture" 'Rust concurrency contract violation: sys\.thread\.Thread\.create\(job\) captures `borrowed` with borrowed type `rust\.Ref<T>`' \
 	'spawn closure captures borrow-only value under rust_send_sync_strict'
 run_warning_case "test/negative/metal_dynamic_access" "compile.fallback.hxml" 'Rust profile contract: metal profile forbids haxe\.DynamicAccess runtime map semantics' \

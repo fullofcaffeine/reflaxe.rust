@@ -536,8 +536,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function profileContractModulePosIndex():Map<String, haxe.macro.Expr.Position> {
 		var out:Map<String, haxe.macro.Expr.Position> = [];
 
-		inline function add(module:String, pos:haxe.macro.Expr.Position):Void {
+		inline function add(module:String, pos:haxe.macro.Expr.Position, sourceFile:String):Void {
 			if (module == null || module.length == 0 || pos == null)
+				return;
+			if (sourceFile == null || sourceFile.length == 0)
+				return;
+			// Contract diagnostics should point to user-authored source whenever possible.
+			// Non-project modules (framework std overrides, upstream std, external libs) produce
+			// confusing anchors that hide the real caller site in application code.
+			if (!isUserProjectFile(sourceFile))
 				return;
 			if (!out.exists(module))
 				out.set(module, pos);
@@ -548,27 +555,28 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		for (moduleType in Context.getAllModuleTypes()) {
+			var sourceFile = moduleSourceFile(moduleType);
 			switch (moduleType) {
 				case TClassDecl(classRef):
 					var classType = classRef.get();
 					var module = classType.module != null
 						&& classType.module.length > 0 ? classType.module : pathFromPack(classType.pack, classType.name);
-					add(module, classType.pos);
+					add(module, classType.pos, sourceFile);
 				case TEnumDecl(enumRef):
 					var enumType = enumRef.get();
 					var module = enumType.module != null
 						&& enumType.module.length > 0 ? enumType.module : pathFromPack(enumType.pack, enumType.name);
-					add(module, enumType.pos);
+					add(module, enumType.pos, sourceFile);
 				case TTypeDecl(typeRef):
 					var typeDecl = typeRef.get();
 					var module = typeDecl.module != null
 						&& typeDecl.module.length > 0 ? typeDecl.module : pathFromPack(typeDecl.pack, typeDecl.name);
-					add(module, typeDecl.pos);
+					add(module, typeDecl.pos, sourceFile);
 				case TAbstract(absRef):
 					var abstractType = absRef.get();
 					var module = abstractType.module != null
 						&& abstractType.module.length > 0 ? abstractType.module : pathFromPack(abstractType.pack, abstractType.name);
-					add(module, abstractType.pos);
+					add(module, abstractType.pos, sourceFile);
 			}
 		}
 		return out;
@@ -589,6 +597,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					if (pos != null)
 						return pos;
 				}
+			}
+
+			// Deterministic user-source fallback when diagnostics mention framework/upstream module
+			// paths (for example `Reflect`, `haxe.DynamicAccess`, `rust.Option`) rather than the
+			// importing project module name.
+			modules.sort(compareStrings);
+			for (module in modules) {
+				var fallbackPos = modulePosIndex.get(module);
+				if (fallbackPos != null)
+					return fallbackPos;
 			}
 		}
 		#end
@@ -631,7 +649,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			if (scannedFiles.exists(file))
 				continue;
 			scannedFiles.set(file, true);
-			if (isFrameworkStdFile(file))
+			if (!isUserProjectFile(file))
 				continue;
 			if (!FileSystem.exists(file))
 				continue;
