@@ -37,6 +37,11 @@ class MetalRestrictionsPass implements RustPass {
 		var enforceForModule = context.profile == Metal || context.build.isMetalIslandModule(moduleLabel);
 		if (!enforceForModule)
 			return file;
+		#if eval
+		var diagPos = context.diagnosticPos(moduleLabel);
+		if (diagPos == null)
+			diagPos = Context.currentPos();
+		#end
 
 		var rawExprCount = 0;
 		RustPassTools.mapFile(file, s -> s, e -> {
@@ -45,7 +50,7 @@ class MetalRestrictionsPass implements RustPass {
 					rawExprCount++;
 					#if eval
 					if (Context.defined("rust_debug_metal_raw"))
-						Context.warning("metal raw expr [" + moduleLabel + "] " + debugSnippet(raw), Context.currentPos());
+						Context.warning("metal raw expr [" + moduleLabel + "] " + debugSnippet(raw), diagPos);
 					#end
 				case _:
 			}
@@ -56,11 +61,6 @@ class MetalRestrictionsPass implements RustPass {
 			return file;
 
 		context.recordMetalRawExpr(moduleLabel, rawExprCount);
-		#if eval
-		var diagPos = context.modulePos(moduleLabel);
-		if (diagPos == null)
-			diagPos = Context.currentPos();
-		#end
 
 		if (context.profile == Metal && context.build.metalContractHardError) {
 			#if eval

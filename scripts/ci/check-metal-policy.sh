@@ -82,6 +82,8 @@ run_warning_case() {
 	local expected_regex="$3"
 	local expected_count="$4"
 	local failure_label="$5"
+	local expected_location_regex="${6:-}"
+	local extra_define="${7:-}"
 	local fixture_dir="$root_dir/$fixture_rel"
 	local out_dir="$fixture_dir/out_policy_warning"
 	local log_file="$fixture_dir/.compile.log"
@@ -89,8 +91,12 @@ run_warning_case() {
 	rm -rf "$out_dir"
 	rm -f "$log_file"
 
+	local cmd=(haxe "$hxml_file" -D rust_no_build -D rust_output=out_policy_warning)
+	if [[ -n "$extra_define" ]]; then
+		cmd+=(-D "$extra_define")
+	fi
 	set +e
-	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_output=out_policy_warning) >"$log_file" 2>&1
+	(cd "$fixture_dir" && "${cmd[@]}") >"$log_file" 2>&1
 	local status=$?
 	set -e
 
@@ -110,6 +116,12 @@ run_warning_case() {
 	found_count="$(match_count "$expected_regex" "$log_file")"
 	if [[ "$found_count" != "$expected_count" ]]; then
 		echo "[metal-policy] error: expected ${expected_count} warning match(es) for ${failure_label}, found ${found_count}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+	if [[ -n "$expected_location_regex" ]] && ! match_regex "$expected_location_regex" "$log_file"; then
+		echo "[metal-policy] error: expected warning source-position diagnostic was not found for ${failure_label}."
+		echo "[metal-policy] expected location regex: ${expected_location_regex}"
 		sed "s|$root_dir|.|g" "$log_file"
 		exit 1
 	fi
@@ -990,6 +1002,10 @@ run_negative_case "test/negative/send_sync_borrow_capture" 'Rust concurrency con
 	'spawn closure captures borrow-only value under rust_send_sync_strict'
 run_warning_case "test/negative/metal_dynamic_access" "compile.fallback.hxml" 'Rust profile contract: metal profile forbids haxe\.DynamicAccess runtime map semantics' \
 	'1' 'haxe.DynamicAccess warning in explicit metal fallback mode'
+run_warning_case "test/snapshot/metal_typed_injection" "compile.hxml" 'metal raw expr \[Main\]' \
+	'2' 'metal raw debug warnings include source location' \
+	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Warning : metal raw expr \[Main\]' \
+	'rust_debug_metal_raw'
 run_warning_case "test/negative/portable_native_import_strict" "compile.warn.hxml" 'Rust profile contract: portable contract imported native target modules: rust\.Option' \
 	'1' 'portable profile warns when app code imports target-specific module surface'
 run_warning_case "test/negative/metal_dynamic_access" "compile.viability.hxml" 'Metal viability: overall score [0-9]+/100, modules=[0-9]+, ready=[0-9]+, blockers=[0-9]+\.' \

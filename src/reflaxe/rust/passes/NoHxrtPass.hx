@@ -229,7 +229,7 @@ class NoHxrtPass implements RustPass {
 			var moduleLabel = context.currentModuleLabel != null ? context.currentModuleLabel : "<unknown>";
 			var detail = samples.length > 0 ? samples.join("; ") : "<no sample captured>";
 			#if eval
-			var diagPos = context.modulePos(moduleLabel);
+			var diagPos = context.diagnosticPos(moduleLabel);
 			if (diagPos == null)
 				diagPos = Context.currentPos();
 			Context.error("`-D rust_no_hxrt` violation in module `"

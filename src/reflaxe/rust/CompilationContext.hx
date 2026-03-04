@@ -248,6 +248,43 @@ class CompilationContext {
 		return modulePosByLabel.exists(moduleLabel) ? modulePosByLabel.get(moduleLabel) : null;
 	}
 
+	/**
+		Returns the best available source position for policy/pass diagnostics.
+
+		Why
+		- Passes should emit actionable diagnostics at module source locations.
+		- Some pass callsites only know the module label and cannot reliably recover a typed
+		  expression position after lowering.
+		- Falling back to macro orchestration positions (`Context.currentPos()`) produces
+		  low-signal diagnostics in CI and local runs.
+
+		How
+		- Prefer the explicit module label position when present.
+		- Otherwise fall back to the currently transformed module.
+		- As a deterministic final fallback, return the lexicographically-first registered module
+		  position (stable across repeated runs with the same inputs).
+	**/
+	public function diagnosticPos(moduleLabel:Null<String>):Null<Position> {
+		if (moduleLabel != null) {
+			var direct = modulePos(moduleLabel);
+			if (direct != null)
+				return direct;
+		}
+		if (currentModuleLabel != null) {
+			var current = modulePos(currentModuleLabel);
+			if (current != null)
+				return current;
+		}
+		var labels = [for (label in modulePosByLabel.keys()) label];
+		labels.sort((a, b) -> a < b ? -1 : (a > b ? 1 : 0));
+		for (label in labels) {
+			var fallback = modulePosByLabel.get(label);
+			if (fallback != null)
+				return fallback;
+		}
+		return null;
+	}
+
 	function optimizerMetricSnapshot(source:Map<String, Int>):Array<{id:String, count:Int}> {
 		var out:Array<{id:String, count:Int}> = [];
 		for (id => count in source)
