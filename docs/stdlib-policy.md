@@ -44,6 +44,22 @@ Tracked artifacts:
 - `docs/stdlib-provenance-ledger.json`
   - Ledger for all tracked `std/**/*.cross.hx` files.
   - Records whether each file is an upstream sync or a repo-authored override.
+- `family/family_std_pin.json`
+  - Pin file for the in-repo `reflaxe.family.std` bootstrap snapshot consumed by this repo.
+- `family/reflaxe.family.std/**`
+  - Family-shared portable contract artifacts (allowlist, conformance, semantics spec, mapping contract).
+- `test/portable_allowlist.json`
+  - Canonical tiered portable-contract allowlist synchronized with
+    `family/reflaxe.family.std/allowlists/portable_allowlist.v1.json`.
+- `test/portable_conformance_tier1.json`
+  - Canonical Tier1 module→semantic fixture mapping synchronized with
+    `family/reflaxe.family.std/conformance/tier1/portable_conformance_tier1.v1.json`.
+- `docs/portable-semantics-v1.md`
+  - Canonical portable semantics contract synchronized with
+    `family/reflaxe.family.std/contracts/portable-semantics/v1.md`.
+- `docs/portable-module-mapping-contract.md`
+  - Canonical portable module ownership map synchronized with
+    `family/reflaxe.family.std/docs/module-mapping-contract.v1.md`.
 
 CI/guard scripts:
 
@@ -78,6 +94,9 @@ CI/guard scripts:
   - Default budget is `0` (no uncovered candidates).
   - Optional override for planned transitions:
     `PORTABLE_STDLIB_CANDIDATE_GAP_MAX=<n>`.
+- `tools/family_std_sync.py`
+  - Verifies canonical Rust artifacts remain in sync with the family snapshot.
+  - Generates deterministic dual-run artifacts in `test/.cache/family_std_dual_run_report.{json,md}`.
 
 ## Portable contract and native imports
 

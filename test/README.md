@@ -47,6 +47,13 @@ npm run guard:stdlib-candidates
 npm run guard:stdlib-candidate-gap
 ```
 
+Run family std bootstrap + sync verification:
+
+```sh
+npm run test:family-stdlib-bootstrap
+npm run test:family-stdlib-sync
+```
+
 By default, `test:all` removes generated `out*` folders and `.cache/*target*` at the end of the run to control disk growth.
 
 - Keep artifacts for debugging:

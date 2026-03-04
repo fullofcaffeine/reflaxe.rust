@@ -136,6 +136,10 @@ echo "[harness] upstream stdlib sweep"
 bash test/run-upstream-stdlib-sweep.sh
 intermediate_cleanup "upstream-stdlib-sweep"
 
+echo "[harness] family std sync verify"
+python3 tools/family_std_sync.py --mode verify
+intermediate_cleanup "family-stdlib-sync"
+
 echo "[harness] package smoke"
 PACKAGE_ZIP_REL=".cache/package-smoke/reflaxe.rust-audit.zip" bash scripts/ci/package-smoke.sh
 intermediate_cleanup "package-smoke"

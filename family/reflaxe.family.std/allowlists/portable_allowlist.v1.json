@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "description": "Tiered portable contract allowlist for reflaxe.rust (portable-eligible modules only).",
+  "tiers": {
+    "tier1": [
+      "Std",
+      "Sys"
+    ],
+    "tier2": []
+  }
+}
