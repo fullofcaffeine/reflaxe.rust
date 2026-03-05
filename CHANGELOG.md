@@ -1,3 +1,16 @@
+# [0.62.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.61.0...v0.62.0) (2026-03-05)
+
+
+### Bug Fixes
+
+* **closures:** enforce shared-cell capture semantics ([849bdf4](https://github.com/fullofcaffeine/reflaxe.rust/commit/849bdf4df7d4659bf1aa9e0e5a4021155f475b2b))
+* **dispatch:** hard-error instead of base trait todo stubs ([d0ef821](https://github.com/fullofcaffeine/reflaxe.rust/commit/d0ef82118dfa5e3990c9e6b4bdf4d2c4d2109a42))
+
+
+### Features
+
+* **closures:** support this.method function values ([0236776](https://github.com/fullofcaffeine/reflaxe.rust/commit/0236776231fd4d838908afd18a880586aa16c450))
+
 # [0.61.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.60.0...v0.61.0) (2026-02-26)
 
 
