@@ -11635,7 +11635,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var baseArgs = findSuperParams(subType, baseType);
 		var baseTraitArgs = baseArgs.length > 0 ? ("<" + [for (p in baseArgs) rustTypeToString(toRustType(p, subType.pos))].join(", ") + ">") : "";
 
-		var overrides = new Map<String, ClassFuncData>();
+		var subMethodsByKey = new Map<String, ClassFuncData>();
 		for (f in subFuncFields) {
 			if (f.isStatic)
 				continue;
@@ -11643,7 +11643,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				continue;
 			if (f.expr == null)
 				continue;
-			overrides.set(f.field.getHaxeName() + "/" + f.args.length, f);
+			subMethodsByKey.set(f.field.getHaxeName() + "/" + f.args.length, f);
 		}
 
 		var lines:Array<String> = [];
@@ -11755,45 +11755,46 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 						lines.push("\tfn " + rustMethodName(baseType, cf) + "(" + sigArgs.join(", ") + ") -> " + ret + " {");
 						var key = cf.getHaxeName() + "/" + args.length;
-						if (overrides.exists(key)) {
-							var overrideFunc = overrides.get(key);
-							var call = rustSubType + subTurbofish + "::" + rustMethodName(subType, overrideFunc.field) + "(" + callArgs.join(", ") + ")";
+						var implFunc = subMethodsByKey.get(key);
+						if (implFunc == null) {
+							Context.error("Internal compiler error: missing inherited method shim for base-trait method `"
+								+ cf.getHaxeName()
+								+ "/"
+								+ args.length
+								+ "` while emitting `"
+								+ rustTypeNameForClass(baseType)
+								+ "Trait` for `"
+								+ rustTypeNameForClass(subType)
+								+ "`. This path must never emit runtime `todo!()` stubs.",
+								cf.pos);
+						}
+						var overrideFunc = implFunc;
+						var call = rustSubType + subTurbofish + "::" + rustMethodName(subType, overrideFunc.field) + "(" + callArgs.join(", ") + ")";
 
-							function rustTypeIsHxRef(rt:RustType):Bool {
-								return switch (rt) {
-									case RPath(p): StringTools.startsWith(p, "crate::HxRef<");
-									case _: false;
-								}
+						function rustTypeIsHxRef(rt:RustType):Bool {
+							return switch (rt) {
+								case RPath(p): StringTools.startsWith(p, "crate::HxRef<");
+								case _: false;
 							}
+						}
 
-							var baseRetIsTrait = isInterfaceType(retTy) || isPolymorphicClassType(retTy);
-							var overrideRetRust = toRustType(overrideFunc.ret, overrideFunc.field.pos);
-							var overrideRetIsHxRef = rustTypeIsHxRef(overrideRetRust);
+						var baseRetIsTrait = isInterfaceType(retTy) || isPolymorphicClassType(retTy);
+						var overrideRetRust = toRustType(overrideFunc.ret, overrideFunc.field.pos);
+						var overrideRetIsHxRef = rustTypeIsHxRef(overrideRetRust);
 
-							// Covariant return types: base trait returns `HxRc<dyn BaseTrait>`, override may return
-							// a concrete `HxRef<Sub>`. Upcast via `as_arc_opt()` when needed.
-							if (baseRetIsTrait && overrideRetIsHxRef) {
-								lines.push("\t\t{");
-								lines.push("\t\t\tlet __tmp = " + call + ";");
-								lines.push("\t\t\tlet __up: " + ret + " = match __tmp.as_arc_opt() {");
-								lines.push("\t\t\t\tSome(__rc) => __rc.clone(),");
-								lines.push("\t\t\t\tNone => { hxrt::exception::throw(hxrt::dynamic::from(String::from(\"Null Access\"))) }");
-								lines.push("\t\t\t};");
-								lines.push("\t\t\t__up");
-								lines.push("\t\t}");
-							} else {
-								lines.push("\t\t" + call);
-							}
+						// Covariant return types: base trait returns `HxRc<dyn BaseTrait>`, override may return
+						// a concrete `HxRef<Sub>`. Upcast via `as_arc_opt()` when needed.
+						if (baseRetIsTrait && overrideRetIsHxRef) {
+							lines.push("\t\t{");
+							lines.push("\t\t\tlet __tmp = " + call + ";");
+							lines.push("\t\t\tlet __up: " + ret + " = match __tmp.as_arc_opt() {");
+							lines.push("\t\t\t\tSome(__rc) => __rc.clone(),");
+							lines.push("\t\t\t\tNone => { hxrt::exception::throw(hxrt::dynamic::from(String::from(\"Null Access\"))) }");
+							lines.push("\t\t\t};");
+							lines.push("\t\t\t__up");
+							lines.push("\t\t}");
 						} else {
-							// Stub: keep signatures warning-free under `#![deny(warnings)]`.
-							// `_` patterns avoid `unused_variables` even when the body is `todo!()`.
-							lines.pop();
-							var stubSigArgs:Array<String> = ["&self"];
-							for (a in args) {
-								stubSigArgs.push("_: " + rustTypeToString(toRustType(a.t, cf.pos)));
-							}
-							lines.push("\tfn " + rustMethodName(baseType, cf) + "(" + stubSigArgs.join(", ") + ") -> " + ret + " {");
-							lines.push("\t\ttodo!()");
+							lines.push("\t\t" + call);
 						}
 						lines.push("\t}");
 					}
