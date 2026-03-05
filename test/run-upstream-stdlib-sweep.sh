@@ -96,6 +96,13 @@ if ! command -v cargo >/dev/null 2>&1; then
 fi
 
 SWEEP_TARGET_BASE="${SWEEP_CARGO_TARGET_DIR:-$ROOT_DIR/.cache/upstream-stdlib-target}"
+# Speed policy:
+# - Default to a shared cargo target dir so dependency artifacts are reused across modules.
+# - Opt out with `SWEEP_SHARED_TARGET=0` to force per-module isolation for debugging.
+SWEEP_SHARED_TARGET="${SWEEP_SHARED_TARGET:-1}"
+# Keep output crate paths stable by default so cargo can maximize reuse across iterations.
+# Opt out with `SWEEP_STABLE_OUT_DIR=0` to keep module-scoped output folders.
+SWEEP_STABLE_OUT_DIR="${SWEEP_STABLE_OUT_DIR:-1}"
 TMP_BASE="${TMPDIR:-/tmp}"
 WORK_DIR="$(mktemp -d "$TMP_BASE/reflaxe-rust-upstream-std.XXXXXX")"
 trap 'rm -rf "$WORK_DIR"' EXIT
@@ -144,8 +151,16 @@ index=0
 for module in "${modules[@]}"; do
   index=$((index + 1))
   slug="${module//./_}"
-  out_dir="$WORK_DIR/out/$slug"
-  target_dir="$SWEEP_TARGET_BASE/$slug"
+  if [[ "$SWEEP_STABLE_OUT_DIR" == "1" ]]; then
+    out_dir="$WORK_DIR/out/shared"
+  else
+    out_dir="$WORK_DIR/out/$slug"
+  fi
+  if [[ "$SWEEP_SHARED_TARGET" == "1" ]]; then
+    target_dir="$SWEEP_TARGET_BASE/shared"
+  else
+    target_dir="$SWEEP_TARGET_BASE/$slug"
+  fi
   macro_cmd="include('$module')"
   if [[ "$module" == "haxe.Json" || "$module" == "haxe.Http" || "$module" == "Sys" || "$module" == "Std" ]]; then
     # On case-insensitive filesystems, include('haxe.Json') can collide with
@@ -159,6 +174,7 @@ for module in "${modules[@]}"; do
     # Resolve these modules by exact type lookup.
     macro_cmd="haxe.macro.Context.getType('$module')"
   fi
+  rm -rf "$out_dir"
   mkdir -p "$out_dir"
 
   echo "[upstream-std] [$index/$total] $module"
