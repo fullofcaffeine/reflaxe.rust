@@ -23,6 +23,36 @@ function summarize(paths, limit) {
   return `${slice.join('\n')}${suffix}`
 }
 
+function detectTargetDivergenceMarkers(path) {
+  if (!fs.existsSync(path)) return []
+  const lines = fs.readFileSync(path, 'utf8').split(/\r?\n/)
+  const markers = []
+
+  const throwPattern =
+    /throw\s+["'][^"']*(not implemented|not supported|unsupported)[^"']*(reflaxe\.rust|rust target|on this target)/i
+  const onErrorPattern =
+    /onError\(\s*["'][^"']*(not implemented|not supported|unsupported)[^"']*(reflaxe\.rust|rust target|on this target)/i
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]
+    const trimmed = line.trim()
+    if (
+      trimmed.length === 0 ||
+      trimmed.startsWith('//') ||
+      trimmed.startsWith('/*') ||
+      trimmed.startsWith('*/') ||
+      trimmed.startsWith('*')
+    ) {
+      continue
+    }
+    if (throwPattern.test(line) || onErrorPattern.test(line)) {
+      markers.push(`${path}:${index + 1}:${trimmed}`)
+    }
+  }
+
+  return markers
+}
+
 const ledgerPath = 'docs/stdlib-provenance-ledger.json'
 const stdRoot = 'std/'
 const tier2ModulesPath = 'test/upstream_std_modules_tier2.txt'
@@ -160,6 +190,9 @@ const missingCoverage = trackedStdCrossFiles.filter((path) => !ledgerSet.has(pat
 const staleCoverage = ledgerPaths.filter((path) => !trackedSet.has(path))
 const uniqueExpectedTier2Modules = Array.from(new Set(expectedTier2Modules)).sort()
 const missingTier2Coverage = uniqueExpectedTier2Modules.filter((moduleName) => !tier2Set.has(moduleName))
+const divergenceCovered = []
+const divergenceMissing = []
+const divergenceStale = []
 
 if (missingCoverage.length > 0) {
   fail(
@@ -182,7 +215,65 @@ if (missingTier2Coverage.length > 0) {
   )
 }
 
+for (const entry of ledger.entries) {
+  if (entry == null || typeof entry !== 'object') continue
+  const path = entry.path
+  if (typeof path !== 'string' || !path.endsWith('.cross.hx')) continue
+
+  const knownDivergenceReason = entry.knownDivergenceReason
+  const knownDivergenceTestRefs = entry.knownDivergenceTestRefs
+  const hasReason = typeof knownDivergenceReason === 'string' && knownDivergenceReason.trim().length > 0
+  const hasTests =
+    Array.isArray(knownDivergenceTestRefs) &&
+    knownDivergenceTestRefs.length > 0 &&
+    knownDivergenceTestRefs.every((testRef) => typeof testRef === 'string' && testRef.trim().length > 0)
+
+  if ((knownDivergenceReason != null || knownDivergenceTestRefs != null) && (!hasReason || !hasTests)) {
+    fail(
+      `${ledgerPath} entry ${path} must provide both knownDivergenceReason (non-empty string) and knownDivergenceTestRefs (non-empty array of paths)`
+    )
+  }
+
+  if (Array.isArray(knownDivergenceTestRefs)) {
+    for (const testRef of knownDivergenceTestRefs) {
+      if (typeof testRef !== 'string' || testRef.trim().length === 0) continue
+      if (!fs.existsSync(testRef)) {
+        fail(`${ledgerPath} entry ${path} references missing known divergence test path: ${testRef}`)
+      }
+    }
+  }
+
+  if (entry.provenanceKind !== 'upstream_std_sync') continue
+
+  const markers = detectTargetDivergenceMarkers(path)
+  if (markers.length > 0 && !hasReason) {
+    divergenceMissing.push(...markers)
+  } else if (markers.length > 0) {
+    divergenceCovered.push(path)
+  } else if (hasReason) {
+    divergenceStale.push(path)
+  }
+}
+
+if (divergenceMissing.length > 0) {
+  fail(
+    `upstream_std_sync entries contain target-specific unsupported/not-implemented stubs without declared divergence metadata:\n${summarize(
+      divergenceMissing,
+      20
+    )}`
+  )
+}
+
+if (divergenceStale.length > 0) {
+  fail(
+    `${ledgerPath} has stale known divergence metadata for entries without target-specific stub markers:\n${summarize(
+      divergenceStale,
+      20
+    )}`
+  )
+}
+
 if (process.exitCode) process.exit(process.exitCode)
 console.log(
-  `[ci:guards] OK: stdlib provenance ledger covers ${trackedStdCrossFiles.length} tracked .cross.hx files and ${uniqueExpectedTier2Modules.length} ledger-derived Tier2 modules (${tier2Excluded.length} explicit Tier2 exclusions)`
+  `[ci:guards] OK: stdlib provenance ledger covers ${trackedStdCrossFiles.length} tracked .cross.hx files and ${uniqueExpectedTier2Modules.length} ledger-derived Tier2 modules (${tier2Excluded.length} explicit Tier2 exclusions, ${divergenceCovered.length} declared divergence entries)`
 )

@@ -73,7 +73,12 @@
       "path": "std/haxe/Json.cross.hx",
       "provenanceKind": "upstream_std_sync",
       "upstreamOraclePath": "vendor/haxe/std/haxe/Json.hx",
-      "notes": "Cross-target override aligned to upstream stdlib API surface."
+      "notes": "Cross-target override aligned to upstream stdlib API surface.",
+      "knownDivergenceReason": "replacer callback support is not implemented yet; stringify currently throws when replacer is provided.",
+      "knownDivergenceTestRefs": [
+        "test/snapshot/serde_json/Main.hx",
+        "test/upstream_std_modules.txt"
+      ]
     },
     {
       "path": "std/haxe/ds/EnumValueMap.cross.hx",
@@ -109,7 +114,12 @@
       "path": "std/haxe/http/HttpBase.cross.hx",
       "provenanceKind": "upstream_std_sync",
       "upstreamOraclePath": "vendor/haxe/std/haxe/http/HttpBase.hx",
-      "notes": "Cross-target override aligned to upstream stdlib API surface."
+      "notes": "Cross-target override aligned to upstream stdlib API surface.",
+      "knownDivergenceReason": "base request() is a target-level stub that reports unsupported behavior until concrete target request paths run.",
+      "knownDivergenceTestRefs": [
+        "test/snapshot/sys_http_smoke/Main.hx",
+        "test/upstream_std_modules.txt"
+      ]
     },
     {
       "path": "std/haxe/io/Bytes.cross.hx",
@@ -163,7 +173,12 @@
       "path": "std/haxe/iterators/MapKeyValueIterator.cross.hx",
       "provenanceKind": "upstream_std_sync",
       "upstreamOraclePath": "vendor/haxe/std/haxe/iterators/MapKeyValueIterator.hx",
-      "notes": "Cross-target override aligned to upstream stdlib API surface."
+      "notes": "Cross-target override aligned to upstream stdlib API surface.",
+      "knownDivergenceReason": "manual iterator protocol fallback throws; callers must use map.keyValueIterator() lowered directly by the compiler.",
+      "knownDivergenceTestRefs": [
+        "test/snapshot/haxe_ds_maps/Main.hx",
+        "test/tier1_api_surface_probes.json"
+      ]
     },
     {
       "path": "std/haxe/iterators/StringIterator.cross.hx",
@@ -193,7 +208,12 @@
       "path": "std/sys/Http.cross.hx",
       "provenanceKind": "upstream_std_sync",
       "upstreamOraclePath": "vendor/haxe/std/sys/Http.hx",
-      "notes": "Cross-target override aligned to upstream stdlib API surface."
+      "notes": "Cross-target override aligned to upstream stdlib API surface.",
+      "knownDivergenceReason": "POST bodies and multipart transfers still emit target-level unsupported errors in the current implementation.",
+      "knownDivergenceTestRefs": [
+        "test/snapshot/sys_http_smoke/Main.hx",
+        "test/tier1_api_surface_probes.json"
+      ]
     },
     {
       "path": "std/sys/db/Connection.cross.hx",
@@ -313,7 +333,12 @@
       "path": "std/sys/ssl/Socket.cross.hx",
       "provenanceKind": "upstream_std_sync",
       "upstreamOraclePath": "vendor/haxe/std/sys/ssl/Socket.hx",
-      "notes": "Cross-target override aligned to upstream stdlib API surface."
+      "notes": "Cross-target override aligned to upstream stdlib API surface.",
+      "knownDivergenceReason": "addSNICertificate is declared for API parity but still throws until runtime-side SNI cert switching is implemented.",
+      "knownDivergenceTestRefs": [
+        "test/upstream_std_modules.txt",
+        "test/tier1_api_surface_probes.json"
+      ]
     },
     {
       "path": "std/sys/thread/Condition.cross.hx",
