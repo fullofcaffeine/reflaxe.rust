@@ -23,6 +23,7 @@
     "test:upstream-stdlib:tier2": "bash test/run-upstream-stdlib-sweep.sh --tier tier2",
     "test:semantic-diff": "python3 test/run-semantic-diff.py",
     "test:semantic-diff:lanes": "python3 test/run-semantic-diff.py --suite lanes",
+    "test:tier1-api-surface": "python3 test/run-tier1-api-surface-smoke.py",
     "test:family-stdlib-bootstrap": "python3 family/reflaxe.family.std/tools/verify_family_std.py",
     "test:family-stdlib-sync": "python3 tools/family_std_sync.py --mode verify",
     "family:stdlib:export": "python3 tools/family_std_sync.py --mode export",

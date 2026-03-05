@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "description": "Tier1 API-surface compile probes. Each probe body is emitted into generated Main.hx and compiled under portable profile.",
+  "probes": [
+    {
+      "id": "haxe_Int64",
+      "body": [
+        "var base = haxe.Int64.make(0, 40);",
+        "var copy = base.copy();",
+        "var extra = haxe.Int64.ofInt(2);",
+        "var high = copy.high + extra.high;",
+        "var low = copy.low + extra.low;",
+        "return high + low;"
+      ]
+    },
+    {
+      "id": "haxe_Json",
+      "body": [
+        "var parsed:haxe.BoundaryTypes.JsonValue = haxe.Json.parse('{\"k\":1,\"arr\":[1,2]}');",
+        "var text = haxe.Json.stringify({ k: 1, arr: [1, 2] });",
+        "if (text.length == 0) return 0;",
+        "if (parsed == null) return 0;",
+        "return 1;"
+      ]
+    },
+    {
+      "id": "haxe_io_Bytes",
+      "body": [
+        "var bytes = haxe.io.Bytes.alloc(8);",
+        "bytes.set(0, 65);",
+        "bytes.set(1, 66);",
+        "var one = haxe.io.Bytes.ofString('C');",
+        "bytes.blit(2, one, 0, 1);",
+        "var sub = bytes.sub(0, 3);",
+        "var firstCode = bytes.get(0);",
+        "var text = bytes.getString(0, 3);",
+        "var joined = bytes.toString();",
+        "var hex = bytes.toHex();",
+        "return bytes.length + sub.length + one.length + firstCode + text.length + joined.length + hex.length;"
+      ]
+    },
+    {
+      "id": "haxe_io_BytesBuffer",
+      "body": [
+        "var buffer = new haxe.io.BytesBuffer();",
+        "buffer.addByte(65);",
+        "buffer.addByte(66);",
+        "buffer.addString('xy');",
+        "var out = buffer.getBytes();",
+        "return out.length;"
+      ]
+    },
+    {
+      "id": "haxe_io_BytesOutput",
+      "body": [
+        "var output = new haxe.io.BytesOutput();",
+        "output.writeByte(65);",
+        "output.writeString('tail');",
+        "var bytes = output.getBytes();",
+        "return bytes.length;"
+      ]
+    },
+    {
+      "id": "haxe_iterators_MapKeyValueIterator",
+      "body": [
+        "var map = ['a' => 1, 'b' => 2];",
+        "var total = 0;",
+        "for (kv in map.keyValueIterator()) {",
+        "  total += kv.value;",
+        "}",
+        "return total;"
+      ]
+    },
+    {
+      "id": "sys_Http",
+      "body": [
+        "var http = new sys.Http('http://127.0.0.1:65535/');",
+        "http.setHeader('x-test', '1');",
+        "http.addHeader('x-extra', '2');",
+        "http.setParameter('q', 'ok');",
+        "http.addParameter('page', '1');",
+        "http.setPostData('payload');",
+        "http.setPostBytes(haxe.io.Bytes.ofString('bin'));",
+        "http.request(false);",
+        "var values = http.getResponseHeaderValues('x-missing');",
+        "return values == null ? 0 : values.length;"
+      ]
+    },
+    {
+      "id": "sys_ssl_Socket",
+      "body": [
+        "var socket = new sys.ssl.Socket();",
+        "socket.setCA(null);",
+        "socket.setHostname('example.com');",
+        "var matcher = function(_name:String):Bool { return false; };",
+        "socket.addSNICertificate(matcher, null, null);",
+        "socket.close();",
+        "return 1;"
+      ]
+    }
+  ]
+}

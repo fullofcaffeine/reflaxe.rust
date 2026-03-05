@@ -140,6 +140,10 @@ echo "[harness] family std sync verify"
 python3 tools/family_std_sync.py --mode verify
 intermediate_cleanup "family-stdlib-sync"
 
+echo "[harness] tier1 api surface smoke"
+python3 test/run-tier1-api-surface-smoke.py
+intermediate_cleanup "tier1-api-surface-smoke"
+
 echo "[harness] package smoke"
 PACKAGE_ZIP_REL=".cache/package-smoke/reflaxe.rust-audit.zip" bash scripts/ci/package-smoke.sh
 intermediate_cleanup "package-smoke"

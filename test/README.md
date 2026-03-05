@@ -36,6 +36,13 @@ npm run test:semantic-diff
 npm run test:semantic-diff:lanes
 ```
 
+Run Tier1 API-surface smoke (generated compile probes + cargo check):
+
+```sh
+python3 test/run-tier1-api-surface-smoke.py
+npm run test:tier1-api-surface
+```
+
 Run upstream stdlib sweeps directly:
 
 ```sh
