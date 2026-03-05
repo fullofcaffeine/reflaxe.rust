@@ -11,7 +11,7 @@ _Status snapshot generated from the internal release tracker via `npm run docs:s
 
 | Workstream | What this means | Status |
 | --- | --- | --- |
-| Core compiler/runtime foundation | Core language lowering, runtime primitives, and toolchain flow are in place. | closed |
+| Core compiler/runtime foundation | Core language lowering, runtime primitives, and toolchain flow are in place. | open |
 | Real-application stress harness | Non-trivial app coverage validates behavior under realistic usage. | closed |
 | Production release gate | Final parity + docs + CI evidence checklist is complete. | closed |
 

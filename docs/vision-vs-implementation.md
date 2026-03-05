@@ -18,7 +18,7 @@ _Status snapshot generated from the internal release tracker via `npm run docs:s
 
 | Vision checkpoint | What this means | Status |
 | --- | --- | --- |
-| Foundation complete | Core compiler/runtime architecture is stable. | closed |
+| Foundation complete | Core compiler/runtime architecture is stable. | open |
 | Real-app harness complete | App-scale behavior is validated in CI-style flows. | closed |
 | 1.0 parity gate complete | Final production-readiness criteria are met. | closed |
 
