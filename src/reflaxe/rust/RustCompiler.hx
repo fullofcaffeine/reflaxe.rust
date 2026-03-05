@@ -10743,12 +10743,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function compileInstanceMethodValue(obj:TypedExpr, owner:ClassType, cf:ClassField, fullExpr:TypedExpr):RustExpr {
-		// `this.method` inside a concrete method would capture `&RefCell<Self>`; that reference cannot be
-		// stored in our baseline `'static` function-value representation (`HxDynRef<dyn Fn...>`).
-		//
-		// For now we only support binding non-`this` receivers.
-		if (isThisExpr(obj))
-			return unsupported(fullExpr, "method value (this)");
+		// `this.method` is materialized as an owned `HxRef<T>` receiver (`__hx_this`) in instance methods.
+		// That makes it safe to capture in the generated `'static` function-value wrapper, just like
+		// any other instance receiver expression.
 
 		var sig = switch (TypeTools.follow(cf.type)) {
 			case TFun(params, ret): {params: params, ret: ret};

@@ -36,4 +36,27 @@ impl Counter {
             __tmp
         };
     }
+
+    pub fn bind_add(
+        self_: &crate::HxRefCell<Counter>,
+    ) -> crate::HxDynRef<dyn Fn(i32) -> i32 + Send + Sync> {
+        let __hx_this: crate::HxRef<crate::counter::Counter> = self_.self_ref();
+        return {
+            let __recv = __hx_this.clone();
+            let __rc: crate::HxRc<dyn Fn(i32) -> i32 + Send + Sync> =
+                crate::HxRc::new(move |a0: i32| crate::counter::Counter::add(&*__recv, a0));
+            crate::HxDynRef::new(__rc)
+        };
+    }
+
+    pub fn bind_inc(self_: &crate::HxRefCell<Counter>) -> crate::HxDynRef<dyn Fn() + Send + Sync> {
+        let __hx_this: crate::HxRef<crate::counter::Counter> = self_.self_ref();
+        return {
+            let __recv = __hx_this.clone();
+            let __rc: crate::HxRc<dyn Fn() + Send + Sync> = crate::HxRc::new(move || {
+                crate::counter::Counter::inc(&*__recv);
+            });
+            crate::HxDynRef::new(__rc)
+        };
+    }
 }

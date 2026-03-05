@@ -87,6 +87,26 @@ fn main() {
             __b.n
         })
     );
+    let add_from_this: crate::HxDynRef<dyn Fn(i32) -> i32 + Send + Sync> =
+        crate::counter::Counter::bind_add(&*c);
+    println!("{}", hxrt::dynamic::from(add_from_this(3)));
+    println!(
+        "{}",
+        hxrt::dynamic::from({
+            let __b = c.borrow();
+            __b.n
+        })
+    );
+    let inc_from_this: crate::HxDynRef<dyn Fn() + Send + Sync> =
+        crate::counter::Counter::bind_inc(&*c);
+    inc_from_this();
+    println!(
+        "{}",
+        hxrt::dynamic::from({
+            let __b = c.borrow();
+            __b.n
+        })
+    );
     let b: crate::HxRc<dyn crate::base::BaseTrait + Send + Sync> = {
         let __tmp = crate::sub::Sub::new();
         let __up: crate::HxRc<dyn crate::base::BaseTrait + Send + Sync> = match __tmp.as_arc_opt() {

@@ -31,6 +31,14 @@ class Counter {
 	public function inc():Void {
 		n++;
 	}
+
+	public function bindAdd():Int->Int {
+		return this.add;
+	}
+
+	public function bindInc():Void->Void {
+		return this.inc;
+	}
 }
 
 class Main {
@@ -43,6 +51,14 @@ class Main {
 
 		var inc = c.inc;
 		inc();
+		trace(c.n);
+
+		var addFromThis = c.bindAdd();
+		trace(addFromThis(3));
+		trace(c.n);
+
+		var incFromThis = c.bindInc();
+		incFromThis();
 		trace(c.n);
 
 		var b:Base = new Sub();
