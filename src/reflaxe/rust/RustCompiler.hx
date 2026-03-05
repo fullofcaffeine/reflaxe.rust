@@ -183,6 +183,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	// This stores the Rust argument idents (already snake_cased/uniqued).
 	var currentMutatedArgs:Null<Array<String>> = null;
 	var currentLocalReadCounts:Null<Map<Int, Int>> = null;
+	// Local ids that must be lowered through shared-cell storage (`crate::HxRef<T>`)
+	// because they are mutated and captured by nested function values.
+	var currentCapturedCellLocals:Null<Map<Int, Bool>> = null;
 	// Per-function conservative alias closure for `hxrt::array::Array<T>` locals.
 	// Used by loop lowering to keep borrowed-iteration fast paths semantics-safe.
 	var currentArrayAliasClosures:Null<Map<Int, Map<Int, Bool>>> = null;
@@ -5769,6 +5772,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case TVar(v, init): {
 					var name = rustLocalDeclIdent(v);
 					var rustTy = toRustType(v.t, e.pos);
+					var cellBackedLocal = isCapturedCellLocal(v);
+					var localStorageTy:RustType = cellBackedLocal ? RPath("crate::HxRef<" + rustTypeToString(rustTy) + ">") : rustTy;
 					#if eval
 					if (Context.defined("rust_debug_string_types")
 						&& useNullableStringRepresentation()
@@ -5803,16 +5808,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						// trait upcasts, structural typedef adapters, numeric widening, etc).
 						initExpr = coerceExprToExpected(initExpr, init, v.t);
 					}
-					var mutable = currentMutatedLocals != null && currentMutatedLocals.exists(v.id);
+					if (cellBackedLocal) {
+						// Captured+mutated locals use shared cell storage so closures observe updates from
+						// outer scopes. Keep the local binding immutable and mutate through `borrow_mut()`.
+						var boxedInit = initExpr != null ? initExpr : ERaw(defaultValueForType(v.t, e.pos));
+						initExpr = ECall(EPath("crate::HxRef::new"), [boxedInit]);
+					}
+					var mutable = !cellBackedLocal && currentMutatedLocals != null && currentMutatedLocals.exists(v.id);
 					var readCount = currentLocalReadCounts != null
 						&& currentLocalReadCounts.exists(v.id) ? currentLocalReadCounts.get(v.id) : 0;
 					if (readCount == 0 && !mutable) {
 						// Keep initializer side effects but avoid `unused_variables` warnings for
 						// compiler-introduced temporaries that are never read.
-						var underscoreTy:Null<RustType> = initExpr == null ? rustTy : null;
+						var underscoreTy:Null<RustType> = initExpr == null ? localStorageTy : null;
 						RLet("_", false, underscoreTy, initExpr);
 					} else {
-						RLet(name, mutable, rustTy, initExpr);
+						RLet(name, mutable, localStorageTy, initExpr);
 					}
 				}
 			case TIf(cond, eThen, eElse): {
@@ -5947,9 +5958,23 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					switch (unwrapMetaParen(inner).expr) {
 						case TLocal(v): {
 								var name = rustLocalRefIdent(v);
+								var cellBackedLocal = isCapturedCellLocal(v) || isCapturedCellLocalName(name);
 								var delta:RustExpr = TypeHelper.isFloat(inner.t) ? ELitFloat(1.0) : ELitInt(1);
 								var binop = (op == OpIncrement) ? "+" : "-";
-								RSemi(EAssign(EPath(name), EBinary(binop, EPath(name), delta)));
+								if (cellBackedLocal) {
+									// Captured+mutated locals are represented as `HxRef<T>`. Even statement-position
+									// postfix increments must mutate through the shared cell so closure and outer-scope
+									// reads stay coherent.
+									RExpr(EBlock({
+										stmts: [
+											RLet("__b", true, null, ECall(EField(EPath(name), "borrow_mut"), [])),
+											RSemi(EAssign(EUnary("*", EPath("__b")), EBinary(binop, EUnary("*", EPath("__b")), delta)))
+										],
+										tail: null
+									}), false);
+								} else {
+									RSemi(EAssign(EPath(name), EBinary(binop, EPath(name), delta)));
+								}
 							}
 						case _:
 							RSemi(compileExpr(e));
@@ -5998,6 +6023,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function withFunctionContext<T>(bodyExpr:TypedExpr, argNames:Array<String>, expectedReturn:Null<Type>, fn:() -> T, isAsync:Bool = false):T {
 		var prevMutated = currentMutatedLocals;
 		var prevReadCounts = currentLocalReadCounts;
+		var prevCapturedCellLocals = currentCapturedCellLocals;
 		var prevArgNames = currentArgNames;
 		var prevLocalNames = currentLocalNames;
 		var prevLocalUsed = currentLocalUsed;
@@ -6010,10 +6036,30 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		currentMutatedLocals = collectMutatedLocals(bodyExpr);
 		currentLocalReadCounts = collectLocalReadCounts(bodyExpr);
+		var capturedInThisFn = collectCapturedMutatedLocals(bodyExpr);
+		var mergedCaptured:Map<Int, Bool> = [];
+		if (prevCapturedCellLocals != null) {
+			for (id in prevCapturedCellLocals.keys())
+				mergedCaptured.set(id, true);
+		}
+		for (id in capturedInThisFn.keys())
+			mergedCaptured.set(id, true);
+		currentCapturedCellLocals = mergedCaptured;
 		currentArrayAliasClosures = collectArrayAliasClosures(bodyExpr);
 		currentArgNames = [];
 		currentLocalNames = [];
 		currentLocalUsed = [];
+		// Preserve Rust local identifiers for captured cell-backed locals from outer scopes so
+		// name-based resolution remains stable inside nested function contexts.
+		if (prevLocalNames != null) {
+			for (localId in mergedCaptured.keys()) {
+				if (!prevLocalNames.exists(localId))
+					continue;
+				var rustName = prevLocalNames.get(localId);
+				currentLocalNames.set(localId, rustName);
+				currentLocalUsed.set(rustName, true);
+			}
+		}
 		currentEnumParamBinds = null;
 		currentFunctionReturn = expectedReturn;
 		currentMutatedArgs = [];
@@ -6051,6 +6097,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		currentMutatedLocals = prevMutated;
 		currentLocalReadCounts = prevReadCounts;
+		currentCapturedCellLocals = prevCapturedCellLocals;
 		currentArgNames = prevArgNames;
 		currentLocalNames = prevLocalNames;
 		currentLocalUsed = prevLocalUsed;
@@ -6109,6 +6156,26 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		// Fallback: treat as a local.
 		return rustLocalDeclIdent(v);
+	}
+
+	inline function isCapturedCellLocalId(localId:Int):Bool {
+		return currentCapturedCellLocals != null && currentCapturedCellLocals.exists(localId);
+	}
+
+	inline function isCapturedCellLocal(v:TVar):Bool {
+		return v != null && isCapturedCellLocalId(v.id);
+	}
+
+	function isCapturedCellLocalName(localName:String):Bool {
+		if (localName == null || currentCapturedCellLocals == null || currentLocalNames == null)
+			return false;
+		for (localId in currentCapturedCellLocals.keys()) {
+			if (!currentLocalNames.exists(localId))
+				continue;
+			if (currentLocalNames.get(localId) == localName)
+				return true;
+		}
+		return false;
 	}
 
 	function compileFunctionBodyWithContext(e:TypedExpr, expectedReturn:Null<Type>, argNames:Array<String>):RustBlock {
@@ -6625,6 +6692,227 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return mutated;
 	}
 
+	/**
+		Collects locals that are both:
+		1) mutated in this function body, and
+		2) captured from an outer lexical scope by nested function literals.
+
+		Why
+		- Haxe closures observe later mutations of captured locals.
+		- Rust `move` closures capture by value by default, so plain local lowering would snapshot
+		  values instead of sharing state.
+
+		How
+		- Reuses `collectMutatedLocals(...)` for mutation analysis.
+		- Walks the typed AST with lexical scope tracking and marks locals referenced inside nested
+		  function scopes that resolve to an outer declaration.
+		- Marked locals are lowered through shared-cell storage (`crate::HxRef<T>`) so outer code and
+		  closures see the same value.
+	**/
+	function collectCapturedMutatedLocals(root:TypedExpr):Map<Int, Bool> {
+		var mutated = collectMutatedLocals(root);
+		var captured:Map<Int, Bool> = [];
+		var scopeStack:Array<Map<Int, Bool>> = [[]];
+
+		inline function pushScope():Void {
+			scopeStack.push([]);
+		}
+
+		inline function popScope():Void {
+			if (scopeStack.length > 1)
+				scopeStack.pop();
+		}
+
+		inline function declareLocal(v:TVar):Void {
+			if (v == null)
+				return;
+			scopeStack[scopeStack.length - 1].set(v.id, true);
+		}
+
+		function findDeclScope(localId:Int):Int {
+			var idx = scopeStack.length - 1;
+			while (idx >= 0) {
+				if (scopeStack[idx].exists(localId))
+					return idx;
+				idx--;
+			}
+			return -1;
+		}
+
+		inline function isCapturedFromOuter(localId:Int):Bool {
+			if (scopeStack.length <= 1)
+				return false;
+			var declScope = findDeclScope(localId);
+			return declScope >= 0 && declScope < (scopeStack.length - 1);
+		}
+
+		function scan(e:TypedExpr):Void {
+			var u = unwrapMetaParen(e);
+			switch (u.expr) {
+				case TVar(v, init):
+					{
+						if (init != null)
+							scan(init);
+						declareLocal(v);
+						return;
+					}
+				case TFor(v, iterable, body):
+					{
+						scan(iterable);
+						pushScope();
+						declareLocal(v);
+						scan(body);
+						popScope();
+						return;
+					}
+				case TTry(tryExpr, catches):
+					{
+						scan(tryExpr);
+						if (catches != null) {
+							for (c in catches) {
+								pushScope();
+								if (c != null && c.v != null)
+									declareLocal(c.v);
+								if (c != null && c.expr != null)
+									scan(c.expr);
+								popScope();
+							}
+						}
+						return;
+					}
+				case TFunction(fn):
+					{
+						pushScope();
+						if (fn != null && fn.args != null) {
+							for (a in fn.args) {
+								if (a != null && a.v != null)
+									declareLocal(a.v);
+							}
+						}
+						if (fn != null && fn.expr != null)
+							scan(fn.expr);
+						popScope();
+						return;
+					}
+				case TLocal(v):
+					{
+						if (v != null && mutated.exists(v.id) && isCapturedFromOuter(v.id))
+							captured.set(v.id, true);
+					}
+				case _:
+			}
+			TypedExprTools.iter(u, scan);
+		}
+
+		scan(root);
+		return captured;
+	}
+
+	/**
+		Collects outer-scope locals referenced by a function literal.
+
+		Why
+		- `move` closures take ownership of captured values.
+		- For shared-cell locals (`crate::HxRef<T>`), we clone captured handles before building the
+		  closure so outer code can keep using the same local binding.
+
+		How
+		- Walks the function body with lexical-scope tracking and returns `TLocal` vars that resolve
+		  outside the literal's own declarations/arguments.
+	**/
+	function collectFunctionLiteralCapturedOuterLocals(fn:TFunc):Array<TVar> {
+		var capturedById:Map<Int, TVar> = [];
+		var scopeStack:Array<Map<Int, Bool>> = [[]];
+
+		inline function declareLocal(v:TVar):Void {
+			if (v == null)
+				return;
+			scopeStack[scopeStack.length - 1].set(v.id, true);
+		}
+
+		function isDeclaredInCurrentFn(localId:Int):Bool {
+			var idx = scopeStack.length - 1;
+			while (idx >= 0) {
+				if (scopeStack[idx].exists(localId))
+					return true;
+				idx--;
+			}
+			return false;
+		}
+
+		if (fn != null && fn.args != null) {
+			for (a in fn.args) {
+				if (a != null && a.v != null)
+					declareLocal(a.v);
+			}
+		}
+
+		function scan(e:TypedExpr):Void {
+			var u = unwrapMetaParen(e);
+			switch (u.expr) {
+				case TVar(v, init):
+					{
+						if (init != null)
+							scan(init);
+						declareLocal(v);
+						return;
+					}
+				case TFor(v, iterable, body):
+					{
+						scan(iterable);
+						scopeStack.push([]);
+						declareLocal(v);
+						scan(body);
+						scopeStack.pop();
+						return;
+					}
+				case TTry(tryExpr, catches):
+					{
+						scan(tryExpr);
+						if (catches != null) {
+							for (c in catches) {
+								scopeStack.push([]);
+								if (c != null && c.v != null)
+									declareLocal(c.v);
+								if (c != null && c.expr != null)
+									scan(c.expr);
+								scopeStack.pop();
+							}
+						}
+						return;
+					}
+				case TFunction(inner):
+					{
+						scopeStack.push([]);
+						if (inner != null && inner.args != null) {
+							for (a in inner.args) {
+								if (a != null && a.v != null)
+									declareLocal(a.v);
+							}
+						}
+						if (inner != null && inner.expr != null)
+							scan(inner.expr);
+						scopeStack.pop();
+						return;
+					}
+				case TLocal(v):
+					{
+						if (v != null && !isDeclaredInCurrentFn(v.id))
+							capturedById.set(v.id, v);
+					}
+				case _:
+			}
+			TypedExprTools.iter(u, scan);
+		}
+
+		if (fn != null && fn.expr != null)
+			scan(fn.expr);
+
+		var out:Array<TVar> = [for (v in capturedById) v];
+		out.sort((a, b) -> a.id < b.id ? -1 : (a.id > b.id ? 1 : 0));
+		return out;
+	}
+
 	function collectLocalReadCounts(root:TypedExpr):Map<Int, Int> {
 		var counts:Map<Int, Int> = [];
 
@@ -6968,7 +7256,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				if (inlineLocalSubstitutions != null && inlineLocalSubstitutions.exists(v.name)) {
 					return inlineLocalSubstitutions.get(v.name);
 				}
-				EPath(rustLocalRefIdent(v));
+				var localName = rustLocalRefIdent(v);
+				var cellBackedLocal = isCapturedCellLocal(v) || isCapturedCellLocalName(localName);
+				if (cellBackedLocal) {
+					var borrowed = ECall(EField(EPath(localName), "borrow"), []);
+					return isCopyType(v.t) ? EUnary("*", borrowed) : ECall(EField(borrowed, "clone"), []);
+				}
+				EPath(localName);
 
 			case TBinop(op, e1, e2):
 				compileBinop(op, e1, e2, e);
@@ -7134,6 +7428,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var n = (a.v != null && a.v.name != null && a.v.name.length > 0) ? a.v.name : "a";
 						baseArgNames.push(n);
 					}
+					var capturedOuterLocals = collectFunctionLiteralCapturedOuterLocals(fn);
+					var capturedCellLocalNames:Array<String> = [];
+					for (v in capturedOuterLocals) {
+						if (!isCapturedCellLocal(v))
+							continue;
+						capturedCellLocalNames.push(rustLocalRefIdent(v));
+					}
 
 					var argParts:Array<String> = [];
 					var body:RustBlock = {stmts: [], tail: null};
@@ -7157,8 +7458,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 					var rcTy:RustType = RPath(rcBasePath() + "<" + sig + ">");
 					var rcExpr:RustExpr = ECall(EPath(rcBasePath() + "::new"), [EClosure(argParts, body, true)]);
+					var preStmts:Array<RustStmt> = [];
+					for (localName in capturedCellLocalNames) {
+						preStmts.push(RLet(localName, false, null, ECall(EField(EPath(localName), "clone"), [])));
+					}
+					preStmts.push(RLet("__rc", false, rcTy, rcExpr));
 					EBlock({
-						stmts: [RLet("__rc", false, rcTy, rcExpr)],
+						stmts: preStmts,
 						tail: ECall(EPath(dynRefBasePath() + "::new"), [EPath("__rc")])
 					});
 				}
@@ -12009,28 +12315,119 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function compileBinop(op:Binop, e1:TypedExpr, e2:TypedExpr, fullExpr:TypedExpr):RustExpr {
+		function unwrapAssignLocal(e:TypedExpr):Null<TVar> {
+			var cur = unwrapMetaParen(e);
+			while (true) {
+				switch (cur.expr) {
+					case TCast(inner, _):
+						cur = unwrapMetaParen(inner);
+						continue;
+					case TCall(callExpr, args) if (args.length == 1):
+						{
+							switch (callExpr.expr) {
+								case TField(_, FStatic(typeRef, cfRef)): {
+										var cf = cfRef.get();
+										var full = typeRef.toString();
+										if (cf != null
+											&& cf.name == "fromValue"
+											&& (full.indexOf("rust.Ref") != -1 || full.indexOf("rust.MutRef") != -1)) {
+											cur = unwrapMetaParen(args[0]);
+											continue;
+										}
+									}
+								case _:
+							}
+						}
+					case _:
+				}
+				break;
+			}
+			return switch (cur.expr) {
+				case TLocal(v): v;
+				case _: null;
+			};
+		}
+
+		if (op == OpAssign) {
+			var lhsLocal = unwrapAssignLocal(e1);
+			if (lhsLocal != null) {
+				var localName = rustLocalRefIdent(lhsLocal);
+				var cellBackedLocal = isCapturedCellLocal(lhsLocal) || isCapturedCellLocalName(localName);
+				var writesNullOption = isNullOptionType(lhsLocal.t, e1.pos) && !isNullType(e2.t) && !isNullConstExpr(e2);
+
+				if (writesNullOption) {
+					var stmts:Array<RustStmt> = [];
+					stmts.push(RLet("__tmp", false, null, compileExpr(e2)));
+					var rhsVal:RustExpr = isCopyType(e2.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
+					var wrapped = ECall(EPath("Some"), [rhsVal]);
+					if (cellBackedLocal) {
+						var cellWrite = EUnary("*", ECall(EField(EPath(localName), "borrow_mut"), []));
+						stmts.push(RSemi(EAssign(cellWrite, wrapped)));
+					} else {
+						stmts.push(RSemi(EAssign(EPath(localName), wrapped)));
+					}
+					return EBlock({stmts: stmts, tail: EPath("__tmp")});
+				}
+
+				var rhsExpr = compileExpr(e2);
+				rhsExpr = maybeCloneForReuseValue(rhsExpr, e2);
+				rhsExpr = coerceExprToExpected(rhsExpr, e2, e1.t);
+				if (!cellBackedLocal)
+					return EAssign(EPath(localName), rhsExpr);
+
+				var stmts:Array<RustStmt> = [];
+				stmts.push(RLet("__tmp", false, null, rhsExpr));
+				var writeVal = isCopyType(e2.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
+				var cellWrite = EUnary("*", ECall(EField(EPath(localName), "borrow_mut"), []));
+				stmts.push(RSemi(EAssign(cellWrite, writeVal)));
+				return EBlock({stmts: stmts, tail: EPath("__tmp")});
+			}
+		}
+
 		return switch (op) {
 			case OpAssign:
 				switch (e1.expr) {
+					case TCast(inner, _):
+						// Haxe often wraps lvalues in casts during desugaring (e.g. closure-local `x++` -> `x = x + 1`).
+						// Recurse on the inner lvalue so local-assignment lowering (including captured-cell locals)
+						// still applies.
+						compileBinop(OpAssign, inner, e2, fullExpr);
 					case TLocal(v) if (isNullOptionType(v.t, e1.pos) && !isNullType(e2.t) && !isNullConstExpr(e2)): {
 							// Assignment to `Null<T>` (Option<T>) from a non-null `T`:
 							// `{ let __tmp = rhs; lhs = Some(__tmp.clone()); __tmp }`
+							var localName = rustLocalRefIdent(v);
+							var cellBackedLocal = isCapturedCellLocal(v) || isCapturedCellLocalName(localName);
 							var stmts:Array<RustStmt> = [];
 							stmts.push(RLet("__tmp", false, null, compileExpr(e2)));
 
 							var rhsVal:RustExpr = isCopyType(e2.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
 							var wrapped = ECall(EPath("Some"), [rhsVal]);
-							stmts.push(RSemi(EAssign(compileExpr(e1), wrapped)));
+							if (cellBackedLocal) {
+								var cellWrite = EUnary("*", ECall(EField(EPath(localName), "borrow_mut"), []));
+								stmts.push(RSemi(EAssign(cellWrite, wrapped)));
+							} else {
+								stmts.push(RSemi(EAssign(compileExpr(e1), wrapped)));
+							}
 
 							return EBlock({stmts: stmts, tail: EPath("__tmp")});
 						}
-					case TLocal(_): {
+					case TLocal(v): {
 							// Assignment into a local: coerce the RHS into the local's storage type.
 							// This handles trait upcasts and structural typedef adapters (TypeResolver).
+							var localName = rustLocalRefIdent(v);
+							var cellBackedLocal = isCapturedCellLocal(v) || isCapturedCellLocalName(localName);
 							var rhsExpr = compileExpr(e2);
 							rhsExpr = maybeCloneForReuseValue(rhsExpr, e2);
 							rhsExpr = coerceExprToExpected(rhsExpr, e2, e1.t);
-							return EAssign(compileExpr(e1), rhsExpr);
+							if (!cellBackedLocal)
+								return EAssign(compileExpr(e1), rhsExpr);
+
+							var stmts:Array<RustStmt> = [];
+							stmts.push(RLet("__tmp", false, null, rhsExpr));
+							var writeVal = isCopyType(e2.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
+							var cellWrite = EUnary("*", ECall(EField(EPath(localName), "borrow_mut"), []));
+							stmts.push(RSemi(EAssign(cellWrite, writeVal)));
+							return EBlock({stmts: stmts, tail: EPath("__tmp")});
 						}
 					case TArray(arr, index): {
 							compileArrayIndexAssign(arr, index, e2);
@@ -12569,17 +12966,43 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						return unsupported(fullExpr, "assignop" + Std.string(inner));
 
 					switch (e1.expr) {
-						case TLocal(_): {
+						case TLocal(v): {
+								var localName = rustLocalRefIdent(v);
+								var cellBackedLocal = isCapturedCellLocal(v) || isCapturedCellLocalName(localName);
 								// `{ x = x <op> rhs; x }`
 								//
 								// Special-case Strings: Rust `String` is non-Copy and `x += y` must not move out of `x`
 								// (Haxe strings are reusable). Implement as `x = format!("{}{}", x, rhs); x.clone()`.
-								var lhs = compileExpr(e1);
 								var rhsExpr = maybeCloneForReuseValue(compileExpr(e2), e2);
 								var stringy = inner == OpAdd
 									&& (isStringType(followType(fullExpr.t))
 										|| isStringType(followType(e1.t))
 										|| isStringType(followType(e2.t)));
+								if (cellBackedLocal) {
+									if (stringy) {
+										var rhsStr:RustExpr = isStringType(followType(e2.t)) ? EPath("__tmp") : ECall(EField(ECall(EPath("hxrt::dynamic::from"),
+											[EPath("__tmp")]), "to_haxe_string"), []);
+										return EBlock({
+											stmts: [
+												RLet("__tmp", false, null, rhsExpr),
+												RLet("__b", true, null, ECall(EField(EPath(localName), "borrow_mut"), [])),
+												RSemi(EAssign(EUnary("*", EPath("__b")),
+													wrapRustStringExpr(EMacroCall("format", [ELitString("{}{}"), EUnary("*", EPath("__b")), rhsStr]))))
+											],
+											tail: ECall(EField(EUnary("*", EPath("__b")), "clone"), [])
+										});
+									}
+									var rhs = compileExpr(e2);
+									return EBlock({
+										stmts: [
+											RLet("__rhs", false, null, rhs),
+											RLet("__b", true, null, ECall(EField(EPath(localName), "borrow_mut"), [])),
+											RSemi(EAssign(EUnary("*", EPath("__b")), EBinary(opStr, EUnary("*", EPath("__b")), EPath("__rhs"))))
+										],
+										tail: isCopyType(e1.t) ? EUnary("*", EPath("__b")) : ECall(EField(EUnary("*", EPath("__b")), "clone"), [])
+									});
+								}
+								var lhs = compileExpr(e1);
 								if (stringy) {
 									var rhsStr:RustExpr = isStringType(followType(e2.t)) ? EPath("__tmp") : ECall(EField(ECall(EPath("hxrt::dynamic::from"),
 										[EPath("__tmp")]), "to_haxe_string"), []);
@@ -12808,6 +13231,28 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var name = rustLocalRefIdent(v);
 						var delta:RustExpr = TypeHelper.isFloat(expr.t) ? ELitFloat(1.0) : ELitInt(1);
 						var binop = (op == OpIncrement) ? "+" : "-";
+						var cellBackedLocal = isCapturedCellLocal(v) || isCapturedCellLocalName(name);
+						if (cellBackedLocal) {
+							// Captured+mutated locals are stored in `HxRef<T>`. ++/-- must mutate through the
+							// shared cell so closures and outer scopes observe the same value.
+							if (postFix) {
+								return EBlock({
+									stmts: [
+										RLet("__b", true, null, ECall(EField(EPath(name), "borrow_mut"), [])),
+										RLet("__old", false, null, EUnary("*", EPath("__b"))),
+										RSemi(EAssign(EUnary("*", EPath("__b")), EBinary(binop, EPath("__old"), delta)))
+									],
+									tail: EPath("__old")
+								});
+							}
+							return EBlock({
+								stmts: [
+									RLet("__b", true, null, ECall(EField(EPath(name), "borrow_mut"), [])),
+									RSemi(EAssign(EUnary("*", EPath("__b")), EBinary(binop, EUnary("*", EPath("__b")), delta)))
+								],
+								tail: EUnary("*", EPath("__b"))
+							});
+						}
 						if (postFix) {
 							EBlock({
 								stmts: [RLet("__next", false, null, EBinary(binop, EPath(name), delta))],

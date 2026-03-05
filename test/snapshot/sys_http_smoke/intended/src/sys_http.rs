@@ -436,31 +436,37 @@ impl Http {
             hxrt::string::HxString::from(hxrt::string::HxString::from("\r\n")),
             None,
         );
-        let mut s: crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync> = {
-            let __tmp = crate::sys_net_socket::Socket::new();
-            let __up: crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync> =
-                match __tmp.as_arc_opt() {
-                    Some(__rc) => __rc.clone(),
-                    None => {
-                        hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
-                    }
-                };
-            __up
-        };
+        let s: crate::HxRef<crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync>> =
+            crate::HxRef::new({
+                let __tmp = crate::sys_net_socket::Socket::new();
+                let __up: crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync> =
+                    match __tmp.as_arc_opt() {
+                        Some(__rc) => __rc.clone(),
+                        None => {
+                            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                        }
+                    };
+                __up
+            });
         match hxrt::exception::catch_unwind(|| {
             if parsed.borrow().get::<bool>("secure") {
                 let ss: crate::HxRef<crate::sys_ssl_socket::Socket> =
                     crate::sys_ssl_socket::Socket::new();
-                s = {
-                    let __tmp = ss.clone();
-                    let __up: crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync> =
-                        match __tmp.as_arc_opt() {
+                {
+                    let __tmp = {
+                        let __tmp = ss.clone();
+                        let __up: crate::HxRc<
+                            dyn crate::sys_net_socket::SocketTrait + Send + Sync,
+                        > = match __tmp.as_arc_opt() {
                             Some(__rc) => __rc.clone(),
                             None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
                                 "Null Access",
                             ))),
                         };
-                    __up
+                        __up
+                    };
+                    *s.borrow_mut() = __tmp.clone();
+                    __tmp
                 };
                 crate::sys_ssl_socket::Socket::set_timeout(&*ss, {
                     let __b = __hx_this.borrow();
@@ -477,18 +483,18 @@ impl Http {
                 );
                 crate::sys_ssl_socket::Socket::handshake(&*ss);
             } else {
-                s.set_timeout({
+                s.borrow().clone().set_timeout({
                     let __b = __hx_this.borrow();
                     __b.cnx_timeout
                 });
-                s.connect(
+                s.borrow().clone().connect(
                     crate::sys_net_host::Host::new(hxrt::string::HxString::from(host.clone())),
                     port,
                 );
             }
-            crate::sys_http::Http::write_body(&*__hx_this, b.clone(), s.clone());
-            crate::sys_http::Http::read_http_response(&*__hx_this, api.clone(), s.clone());
-            s.close();
+            crate::sys_http::Http::write_body(&*__hx_this, b.clone(), s.borrow().clone());
+            crate::sys_http::Http::read_http_response(&*__hx_this, api.clone(), s.borrow().clone());
+            s.borrow().clone().close();
         }) {
             Ok(__hx_ok) => __hx_ok,
             Err(__hx_ex) => match __hx_ex
@@ -497,7 +503,7 @@ impl Http {
                 Ok(__hx_box) => {
                     let e: crate::HxRef<crate::haxe_exception::Exception> = *__hx_box;
                     match hxrt::exception::catch_unwind(|| {
-                        s.close();
+                        s.borrow().clone().close();
                     }) {
                         Ok(__hx_ok) => __hx_ok,
                         Err(__hx_ex) => match __hx_ex
