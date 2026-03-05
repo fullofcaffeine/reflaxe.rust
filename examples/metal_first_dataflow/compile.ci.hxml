@@ -2,6 +2,6 @@
 -lib reflaxe.rust
 -D reflaxe_rust_strict_examples
 -D reflaxe_rust_profile=metal
--D rust_metal_allow_fallback
--D rust_output=out_metal
+-D rust_output=out_ci
+-D rust_crate=metal_first_dataflow
 -main Main

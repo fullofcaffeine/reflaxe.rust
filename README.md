@@ -109,7 +109,8 @@ Read more: [Profiles guide](docs/profiles.md), [Rusty migration guide](docs/rust
 
 - [chat_loopback](examples/chat_loopback) (cross-profile flagship: portable/metal)
 - [profile_storyboard](examples/profile_storyboard) (cross-profile micro-app focused on profile-specific coding style + `@:rustTest`)
-- [hello](examples/hello)
+- [metal_first_dataflow](examples/metal_first_dataflow) (dedicated metal-style reference: `Result`/`Option`/`Vec` with strict-boundary-safe app code)
+- [hello](examples/hello) (portable sanity check)
 - [async_retry_pipeline](examples/async_retry_pipeline)
 - [classes](examples/classes)
 - [serde_json](examples/serde_json)

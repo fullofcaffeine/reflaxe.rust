@@ -66,11 +66,6 @@ This keeps tests:
 - `cd examples/tui_todo && haxe compile.hxml`
 - `cd examples/tui_todo/out && cargo run -q`
 
-Metal profile variant:
-
-- `cd examples/tui_todo && haxe compile.metal.hxml`
-- `cd examples/tui_todo/out_metal && cargo run -q`
-
 **Headless / CI-friendly**:
 
 - `cd examples/tui_todo && haxe compile.ci.hxml`
@@ -80,3 +75,4 @@ Notes:
 - In headless mode, use `renderToString(...)` for validation; `render(...)` is intentionally a no-op.
 - The headless mode flag can be set from Haxe (`-D tui_headless` in the example `compile.ci.hxml`) or by calling `Tui.setHeadless(true)` before `enter()`.
 - `examples/tui_todo` includes deterministic FX assertions in `TuiTests.hx` (`@:rustTest`) so animation paths are CI-covered.
+- For cross-profile TUI comparisons, use `examples/chat_loopback` (portable + metal compile files).

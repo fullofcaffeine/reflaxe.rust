@@ -28,11 +28,12 @@ CI variants:
 | --- | --- | --- | --- |
 | `examples/chat_loopback` | Yes | Yes | Flagship comparison app (interactive TUI + network loopback + Haxe-authored Rust tests). |
 | `examples/profile_storyboard` | Yes | Yes | Compact portable-vs-metal reference app (best starting point for metal-first source-style comparison). |
-| `examples/hello` | Yes | Yes | Minimal sanity check with portable and metal compile targets. |
-| `examples/bytes_ops` | Yes | Yes | Bytes APIs + Haxe-authored Rust tests (`@:rustTest`). |
-| `examples/serde_json` | Yes | Yes | Typed Serde JSON surfaces. |
+| `examples/metal_first_dataflow` | No | Yes | Dedicated metal-style reference (`Result`/`Option`/`Vec`, strict-boundary-safe app code). |
+| `examples/hello` | Yes | No | Minimal portable sanity check. |
+| `examples/bytes_ops` | Yes | No | Bytes APIs + Haxe-authored Rust tests (`@:rustTest`). |
+| `examples/serde_json` | Yes | No | Typed Serde JSON surfaces (portable contract). |
 | `examples/async_retry_pipeline` | No | Yes | Async scenario (`rust_async`). |
-| `examples/tui_todo` | Yes | Yes | Large app with deterministic TUI harness tests. |
+| `examples/tui_todo` | Yes | No | Large app with deterministic TUI harness tests. |
 | `examples/sys_file_io` | Yes | No | Sys file APIs / stat / rename checks. |
 | `examples/sys_net_loopback` | Yes | No | Focused socket API smoke test. |
 | `examples/sys_process` | Yes | No | Process spawning + I/O checks. |
@@ -45,6 +46,7 @@ CI variants:
   - `examples/profile_storyboard/profile/PortableRuntime.hx`
   - `examples/chat_loopback/profile/PortableRuntime.hx`
 - Metal Rust-first style:
+  - `examples/metal_first_dataflow/Harness.hx`
   - `examples/profile_storyboard/profile/MetalRuntime.hx`
   - `examples/chat_loopback/profile/MetalRuntime.hx`
 
@@ -71,6 +73,13 @@ bash examples/profile_storyboard/scripts/compare-native.sh
 
 Baseline crate location: `examples/profile_storyboard/native/`.
 
+Use `examples/metal_first_dataflow` for a dedicated metal-only authoring example:
+
+```bash
+cd examples/metal_first_dataflow
+npx haxe compile.hxml && (cd out && cargo run -q)
+```
+
 Performance parity workflow (portable vs metal vs pure-rust baselines):
 
 ```bash
@@ -84,5 +93,6 @@ Artifacts:
 
 ## Test authoring
 
-- `examples/bytes_ops`, `examples/chat_loopback`, `examples/profile_storyboard`, and `examples/tui_todo` use Haxe-authored Rust tests (`@:rustTest`).
+- `examples/bytes_ops`, `examples/chat_loopback`, `examples/metal_first_dataflow`, `examples/profile_storyboard`, and `examples/tui_todo`
+  use Haxe-authored Rust tests (`@:rustTest`).
 - See `docs/haxe-rust-tests.md` for metadata and generated wrapper behavior.

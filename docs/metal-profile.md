@@ -62,6 +62,11 @@ This keeps generated code analyzable (fallback counts, contract reports, metal-i
 
 ## Beginner examples
 
+Repository references:
+
+- `examples/metal_first_dataflow` (dedicated metal-only style example)
+- `examples/profile_storyboard` + `examples/chat_loopback` (portable/metal side-by-side)
+
 ### Good: typed wrapper around a tiny Rust-only expression
 
 Keep raw snippets inside framework/library APIs, then call those APIs from app code.
