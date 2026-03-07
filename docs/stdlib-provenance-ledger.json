@@ -64,21 +64,28 @@
       "notes": "Cross-target override aligned to upstream stdlib API surface."
     },
     {
+      "path": "std/haxe/Int32.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/Int32.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface while routing Rust output through typed wrapping helpers."
+    },
+    {
       "path": "std/haxe/Int64.cross.hx",
       "provenanceKind": "upstream_std_sync",
       "upstreamOraclePath": "vendor/haxe/std/haxe/Int64.hx",
       "notes": "Cross-target override aligned to upstream stdlib API surface."
     },
     {
+      "path": "std/haxe/Int64Helper.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/Int64Helper.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
       "path": "std/haxe/Json.cross.hx",
       "provenanceKind": "upstream_std_sync",
       "upstreamOraclePath": "vendor/haxe/std/haxe/Json.hx",
-      "notes": "Cross-target override aligned to upstream stdlib API surface.",
-      "knownDivergenceTestRefs": [
-        "test/semantic_diff/json_stringify_replacer/Main.hx",
-        "test/snapshot/serde_json/Main.hx",
-        "test/upstream_std_modules.txt"
-      ]
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
     },
     {
       "path": "std/haxe/ds/EnumValueMap.cross.hx",
@@ -173,12 +180,7 @@
       "path": "std/haxe/iterators/MapKeyValueIterator.cross.hx",
       "provenanceKind": "upstream_std_sync",
       "upstreamOraclePath": "vendor/haxe/std/haxe/iterators/MapKeyValueIterator.hx",
-      "notes": "Cross-target override aligned to upstream stdlib API surface.",
-      "knownDivergenceReason": "manual iterator protocol fallback throws; callers must use map.keyValueIterator() lowered directly by the compiler.",
-      "knownDivergenceTestRefs": [
-        "test/snapshot/haxe_ds_maps/Main.hx",
-        "test/tier1_api_surface_probes.json"
-      ]
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
     },
     {
       "path": "std/haxe/iterators/StringIterator.cross.hx",
