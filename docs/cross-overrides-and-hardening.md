@@ -15,6 +15,18 @@ Bootstrap activation is also relatively narrow:
 
 That is an important difference from broader Haxe 4 `Cross` activation patterns.
 
+## Quick matrix
+
+| Question | Answer for this repo |
+| --- | --- |
+| Main override style | `std/**/*.cross.hx` as the main override model |
+| Is `_std` used? | not as the dominant public override layer |
+| Is `.cross.hx` used broadly? | yes |
+| Does this repo own early `src/haxe/*` modules? | no |
+| Bootstrap activation currently keys off raw Haxe 4 `Cross`? | no |
+| Same-compilation sibling-target coexistence safe today? | not guaranteed |
+| Highest-priority hardening item | add mixed-target fail-fast while preserving narrow target activation |
+
 ## What `.cross.hx` means here
 
 In this repo, `.cross.hx` is the normal packaged target-override model.
