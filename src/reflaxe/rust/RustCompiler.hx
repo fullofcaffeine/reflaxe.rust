@@ -222,6 +222,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var pendingOptimizerAppliedById:Map<String, Int> = [];
 	var pendingOptimizerSkippedById:Map<String, Int> = [];
 	var metalIslandSnapshot:MetalIslandSnapshot = {modules: [], declarations: []};
+	var physicalVarFieldCache:Map<String, Bool> = [];
 
 	inline function wantsPreludeAliases():Bool {
 		// Always emit stable `crate::HxRc` / `crate::HxRefCell` / `crate::HxRef` aliases so:
@@ -3990,35 +3991,120 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	/**
 		Why
 		- Haxe property access syntax and Rust struct storage are not the same thing.
+		- Some Haxe "readonly outside, stored inside" patterns use `get,null` together with
+		  internal assignments (for example `sys.thread.FixedThreadPool.threadsCount`).
 		- We need one authoritative rule for "does this `FVar` actually have a backing field?"
 		  so constructor init, field reads, and field writes do not drift apart.
 
 		What
-		- Returns `true` only for instance vars that genuinely need stored Rust fields:
-		  `@:isVar`, `default`, or `ctor` access on either side.
-		- Explicit accessor-only shapes like `get,null`, `null,get`, `get,set`, and `never,get`
-		  do not allocate storage unless `@:isVar` forces it.
+		- Returns `true` only for vars that genuinely need stored Rust fields.
+		- Supports both explicit storage (`@:isVar`, `default`, `ctor`) and implicit internal
+		  storage patterns (`this.x = ...` in class methods, or `get_x()` returning `x`).
 
 		How
-		- Haxe exposes property storage intent through `FVar(read, write)` access modes.
-		- `AccNo` / `null` means access is disallowed, not that a backing field exists.
-		- Keeping this centralized prevents bugs where getter-only properties accidentally
-		  acquire default-initialized Rust fields and trigger unrelated runtime behavior.
+		- First checks explicit accessor/storage metadata.
+		- Then scans the declaring class's method bodies for internal writes to the property or
+		  getter self-reads that imply an internal backing slot.
+		- Results are cached per declaring class + property to keep lowering deterministic and cheap.
 	**/
-	function varFieldHasPhysicalStorage(cf:ClassField):Bool {
+	function varFieldHasPhysicalStorage(classType:ClassType, cf:ClassField):Bool {
+		var haxeName = cf.getHaxeName();
+		if (haxeName == null || haxeName.length == 0)
+			return false;
+		var cacheKey = classKey(classType) + "::" + haxeName;
+		if (physicalVarFieldCache.exists(cacheKey))
+			return physicalVarFieldCache.get(cacheKey);
+
+		function finish(value:Bool):Bool {
+			physicalVarFieldCache.set(cacheKey, value);
+			return value;
+		}
+
 		if (cf.meta != null && cf.meta.has(":isVar"))
-			return true;
-		return switch (cf.kind) {
+			return finish(true);
+
+		switch (cf.kind) {
 			case FVar(read, write):
 				switch ([read, write]) {
 					case [AccNormal | AccCtor, _] | [_, AccNormal | AccCtor]:
-						true;
+						return finish(true);
 					case _:
-						false;
 				}
 			case _:
-				false;
-		};
+				return finish(false);
+		}
+
+		function isDirectSelfPropertyAccess(node:TypedExpr):Bool {
+			var current = unwrapMetaParen(node);
+			return switch (current.expr) {
+				case TField(obj, fa):
+					{
+						if (!isThisExpr(obj) && !isSuperExpr(obj))
+							false;
+						else {
+							switch (fa) {
+								case FInstance(_, _, targetRef): {
+										var target = targetRef.get();
+										target == cf || target.getHaxeName() == haxeName
+										;
+									}
+								case _:
+									false;
+							}
+						}
+					}
+				case _:
+					false;
+			}
+		}
+
+		function methodImpliesBackingStorage(methodField:ClassField, body:TypedExpr):Bool {
+			var methodName = methodField.getHaxeName();
+			var getterName = "get_" + haxeName;
+			var found = false;
+			function scan(node:TypedExpr):Void {
+				if (found)
+					return;
+				var current = unwrapMetaParen(node);
+				switch (current.expr) {
+					case TBinop(OpAssign | OpAssignOp(_), lhs, _):
+						if (isDirectSelfPropertyAccess(lhs)) {
+							found = true;
+							return;
+						}
+					case TUnop(OpIncrement | OpDecrement, _, target):
+						if (isDirectSelfPropertyAccess(target)) {
+							found = true;
+							return;
+						}
+					case _:
+				}
+				if (methodName == getterName && isDirectSelfPropertyAccess(current)) {
+					found = true;
+					return;
+				}
+				TypedExprTools.iter(current, scan);
+			}
+			scan(body);
+			return found;
+		}
+
+		for (methodField in classType.fields.get()) {
+			switch (methodField.kind) {
+				case FMethod(_):
+					{
+						var ex = methodField.expr();
+						if (ex == null)
+							continue;
+						var body = unwrapFieldFunctionBody(ex);
+						if (methodImpliesBackingStorage(methodField, body))
+							return finish(true);
+					}
+				case _:
+			}
+		}
+
+		return finish(false);
 	}
 
 	function defaultValueExprForType(t:Type, pos:haxe.macro.Expr.Position):RustExpr {
@@ -11733,7 +11819,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							return unsupported(fullExpr, "property read (missing name)");
 						// Special-case: inside `get_x()` for a storage-backed property (e.g. `default,get`),
 						// Haxe treats `x` as a direct read of the backing storage to avoid recursion.
-						var skipLower = varFieldHasPhysicalStorage(cf)
+						var skipLower = varFieldHasPhysicalStorage(owner, cf)
 							&& currentMethodField != null
 							&& currentMethodField.getHaxeName() == ("get_" + propName);
 						if (!skipLower) {
@@ -11868,7 +11954,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							return unsupported(rhs, "property write (missing name)");
 						// Special-case: inside `set_x()` for a storage-backed property (e.g. `default,set`),
 						// Haxe treats `x = v` as a direct write to backing storage to avoid recursion.
-						var skipLower = varFieldHasPhysicalStorage(cf)
+						var skipLower = varFieldHasPhysicalStorage(owner, cf)
 							&& currentMethodField != null
 							&& currentMethodField.getHaxeName() == ("set_" + propName);
 						if (!skipLower) {
@@ -12727,7 +12813,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var seen = new Map<String, Bool>();
 
 		function isPhysicalVarField(cls:ClassType, cf:ClassField):Bool {
-			return varFieldHasPhysicalStorage(cf);
+			return varFieldHasPhysicalStorage(cls, cf);
 		}
 
 		// Walk base -> derived so field layout is deterministic.
