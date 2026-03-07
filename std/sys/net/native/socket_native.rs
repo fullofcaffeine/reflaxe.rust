@@ -1,7 +1,8 @@
 use hxrt::array::Array;
 use hxrt::bytes::{self, Bytes};
-use hxrt::cell::HxRef;
+use hxrt::cell::{HxDynRef, HxRc, HxRef};
 use hxrt::net::SocketHandle;
+use hxrt::ssl::{Certificate, Key};
 
 pub fn new_tcp() -> HxRef<SocketHandle> {
     hxrt::net::socket_new_tcp()
@@ -85,6 +86,83 @@ pub fn set_blocking(handle: &HxRef<SocketHandle>, blocking: bool) {
 
 pub fn set_fast_send(handle: &HxRef<SocketHandle>, fast_send: bool) {
     handle.borrow_mut().set_fast_send(fast_send);
+}
+
+pub fn tls_handshake_client<S>(
+    handle: &HxRef<SocketHandle>,
+    hostname: S,
+    verify_cert: bool,
+    ca: HxRef<Certificate>,
+) where
+    S: Into<hxrt::string::HxString>,
+{
+    let ca_opt = if ca.is_null() { None } else { Some(ca) };
+    let hostname = hostname.into();
+    let hostname_opt = hostname.as_deref().map(str::to_string);
+    handle
+        .borrow_mut()
+        .tls_handshake_client(hostname_opt, Some(verify_cert), ca_opt);
+}
+
+pub fn tls_handshake_server(
+    handle: &HxRef<SocketHandle>,
+    cert: &HxRef<Certificate>,
+    key: &HxRef<Key>,
+) {
+    handle
+        .borrow_mut()
+        .tls_handshake_server(cert.clone(), key.clone());
+}
+
+pub fn tls_handshake_server_sni<S>(
+    handle: &HxRef<SocketHandle>,
+    default_cert: &HxRef<Certificate>,
+    default_key: &HxRef<Key>,
+    matchers: Array<crate::HxDynRef<dyn Fn(S) -> bool + Send + Sync>>,
+    certs: Array<HxRef<Certificate>>,
+    keys: Array<HxRef<Key>>,
+) where
+    S: From<String> + Send + Sync + 'static,
+{
+    let matcher_vec = matchers.to_vec();
+    let cert_vec = certs.to_vec();
+    let key_vec = keys.to_vec();
+    let mut entries: Vec<hxrt::net::TlsSniEntry> = Vec::new();
+    let len = matcher_vec.len().min(cert_vec.len()).min(key_vec.len());
+
+    for idx in 0..len {
+        let matcher = matcher_vec[idx].clone();
+        let cert = cert_vec[idx].clone();
+        let key = key_vec[idx].clone();
+        if matcher.is_null() || cert.is_null() || key.is_null() {
+            continue;
+        }
+
+        let adapted_matcher: HxDynRef<dyn Fn(String) -> bool + Send + Sync> = {
+            let matcher = matcher.clone();
+            let rc: HxRc<dyn Fn(String) -> bool + Send + Sync> = HxRc::new(move |server_name: String| {
+                let name_for_haxe: S = S::from(server_name);
+                matcher(name_for_haxe)
+            });
+            HxDynRef::new(rc)
+        };
+
+        entries.push(hxrt::net::TlsSniEntry {
+            matcher: adapted_matcher,
+            cert,
+            key,
+        });
+    }
+
+    handle.borrow_mut().tls_handshake_server_sni(
+        default_cert.clone(),
+        default_key.clone(),
+        entries,
+    );
+}
+
+pub fn tls_peer_certificate(handle: &HxRef<SocketHandle>) -> HxRef<Certificate> {
+    handle.borrow().tls_peer_certificate()
 }
 
 pub fn write_bytes(handle: &HxRef<SocketHandle>, bytes_ref: &HxRef<Bytes>, pos: i32, len: i32) -> i32 {

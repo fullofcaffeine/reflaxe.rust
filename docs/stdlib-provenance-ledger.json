@@ -210,12 +210,7 @@
       "path": "std/sys/Http.cross.hx",
       "provenanceKind": "upstream_std_sync",
       "upstreamOraclePath": "vendor/haxe/std/sys/Http.hx",
-      "notes": "Cross-target override aligned to upstream stdlib API surface.",
-      "knownDivergenceReason": "POST bodies and multipart transfers still emit target-level unsupported errors in the current implementation.",
-      "knownDivergenceTestRefs": [
-        "test/snapshot/sys_http_smoke/Main.hx",
-        "test/tier1_api_surface_probes.json"
-      ]
+      "notes": "Cross-target override aligned to upstream stdlib API surface. POST bodies, duplicate response headers, and multipart transfers are covered by the sys_http_smoke snapshot and Tier1 API probes."
     },
     {
       "path": "std/sys/db/Connection.cross.hx",

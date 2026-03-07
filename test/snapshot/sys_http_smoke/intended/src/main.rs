@@ -8,6 +8,7 @@ type HxDynRef<T: ?Sized> = hxrt::cell::HxDynRef<T>;
 type HxRefCell<T> = hxrt::cell::HxCell<T>;
 type HxRef<T> = hxrt::cell::HxRef<T>;
 
+mod _main_static_bytes_input;
 mod date;
 mod fp_helper;
 mod haxe_call_stack_call_stack_impl_;
@@ -50,6 +51,7 @@ mod sys_ssl_certificate;
 mod sys_ssl_key;
 mod sys_ssl_socket;
 mod sys_thread_event_loop;
+mod sys_thread_lock;
 mod sys_thread_next_event_time;
 mod sys_thread_thread;
 
@@ -62,6 +64,7 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
         return true;
     }
     match actual {
+        0xddb7adacu32 => matches!(expected, 0xd50291cbu32),
         0x0cd85f36u32 => matches!(expected, 0x44f4c432u32),
         0x39e0cd5bu32 => matches!(expected, 0x44f4c432u32),
         0xd7e07825u32 => matches!(expected, 0x44f4c432u32),
@@ -78,7 +81,10 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
     }
 }
 
-fn main() {
+fn run_request(
+    build: crate::HxDynRef<dyn Fn(i32) -> crate::HxRef<hxrt::anon::Anon> + Send + Sync>,
+    response_body: hxrt::string::HxString,
+) -> crate::HxRef<hxrt::anon::Anon> {
     let server: crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync> = {
         let __tmp = crate::sys_net_socket::Socket::new();
         let __up: crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync> =
@@ -96,48 +102,78 @@ fn main() {
     );
     server.listen(1);
     let port: i32 = server.host().borrow().get::<i32>("port");
+    let capture: crate::HxRef<hxrt::anon::Anon> = {
+        let __o = crate::HxRef::new(hxrt::anon::Anon::new());
+        {
+            let mut __b = __o.borrow_mut();
+            __b.set("method", hxrt::string::HxString::from(""));
+            __b.set("contentType", hxrt::string::HxString::null());
+            __b.set("body", hxrt::string::HxString::from(""));
+        };
+        __o
+    };
+    let done: crate::HxRef<crate::sys_thread_lock::Lock> = crate::sys_thread_lock::Lock::new();
+    let capture_for_thread: crate::HxRef<hxrt::anon::Anon> = capture.clone();
+    let done_for_thread: crate::HxRef<crate::sys_thread_lock::Lock> = done.clone();
     crate::sys_thread_thread::Thread::create({
         let __rc: crate::HxRc<dyn Fn() + Send + Sync> = crate::HxRc::new(move || {
             let client: crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync> =
                 server.accept();
-            let req: hxrt::string::HxString = hxrt::string::HxString::from(
-                client.__hx_get_input().read_all(None).borrow().to_string(),
-            );
-            if hxrt::string::index_of(
-                req.as_str(),
-                hxrt::string::HxString::from(hxrt::string::HxString::from("\r\n\r\n")).as_str(),
-                None,
-            ) < 0
+            let request: crate::HxRef<hxrt::anon::Anon> = read_request(client.clone());
             {
-                client.close();
-                server.close();
-                return;
-            }
+                let __obj = capture_for_thread.clone();
+                let __tmp = request.borrow().get::<hxrt::string::HxString>("method");
+                __obj.borrow_mut().set("method", __tmp.clone());
+                __tmp
+            };
+            {
+                let __obj = capture_for_thread.clone();
+                let __tmp = request
+                    .borrow()
+                    .get::<hxrt::string::HxString>("contentType");
+                __obj.borrow_mut().set("contentType", __tmp.clone());
+                __tmp
+            };
+            {
+                let __obj = capture_for_thread.clone();
+                let __tmp = request.borrow().get::<hxrt::string::HxString>("body");
+                __obj.borrow_mut().set("body", __tmp.clone());
+                __tmp
+            };
             client.__hx_get_output().write_string(
-                hxrt::string::HxString::from(hxrt::string::HxString::from(
-                    "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok",
-                )),
+                hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+                    "{}{}{}{}",
+                    "HTTP/1.1 200 OK\r\nContent-Length: ",
+                    hxrt::dynamic::from(hxrt::string::len(response_body.as_str())).to_haxe_string(),
+                    "\r\nSet-Cookie: a=1\r\nSet-Cookie: b=2\r\nConnection: close\r\n\r\n",
+                    &response_body
+                ))),
                 None,
             );
             client.close();
             server.close();
+            crate::sys_thread_lock::Lock::release(&*done_for_thread);
         });
         crate::HxDynRef::new(__rc)
     });
-    let h: crate::HxRef<crate::sys_http::Http> = crate::sys_http::Http::new(
-        hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
-            "{}{}{}",
-            "http://127.0.0.1:",
-            hxrt::dynamic::from(port).to_haxe_string(),
-            "/"
-        ))),
+    let built: crate::HxRef<hxrt::anon::Anon> = build(port);
+    let response_data: crate::HxRef<hxrt::string::HxString> = crate::HxRef::new(
+        hxrt::string::HxString::from(hxrt::string::HxString::from("")),
     );
     {
-        let __hx_obj = h.clone();
+        let __hx_obj = built
+            .borrow()
+            .get::<crate::HxRef<crate::sys_http::Http>>("http")
+            .clone();
         let __tmp = {
+            let response_data = response_data.clone();
             let __rc: crate::HxRc<dyn Fn(hxrt::string::HxString) + Send + Sync> =
-                crate::HxRc::new(move |d: hxrt::string::HxString| {
-                    crate::sys::Sys::println(hxrt::dynamic::from(d));
+                crate::HxRc::new(move |data: hxrt::string::HxString| {
+                    {
+                        let __tmp = hxrt::string::HxString::from(data);
+                        *response_data.borrow_mut() = __tmp.clone();
+                        __tmp
+                    };
                 });
             crate::HxDynRef::new(__rc)
         };
@@ -145,16 +181,466 @@ fn main() {
         __tmp
     };
     {
-        let __hx_obj = h.clone();
+        let __hx_obj = built
+            .borrow()
+            .get::<crate::HxRef<crate::sys_http::Http>>("http")
+            .clone();
         let __tmp = {
             let __rc: crate::HxRc<dyn Fn(hxrt::string::HxString) + Send + Sync> =
-                crate::HxRc::new(move |e: hxrt::string::HxString| {
-                    hxrt::exception::throw(hxrt::dynamic::from(e));
+                crate::HxRc::new(move |msg: hxrt::string::HxString| {
+                    hxrt::exception::throw(hxrt::dynamic::from(msg));
                 });
             crate::HxDynRef::new(__rc)
         };
         __hx_obj.borrow_mut().__hx_dyn_on_error = __tmp.clone();
         __tmp
     };
-    crate::sys_http::Http::request(&*h, Some(false));
+    built
+        .borrow()
+        .get::<crate::HxDynRef<dyn Fn() + Send + Sync>>("run")();
+    crate::sys_thread_lock::Lock::wait(&*done, None);
+    return {
+        let __o = crate::HxRef::new(hxrt::anon::Anon::new());
+        {
+            let mut __b = __o.borrow_mut();
+            __b.set(
+                "http",
+                built
+                    .borrow()
+                    .get::<crate::HxRef<crate::sys_http::Http>>("http"),
+            );
+            __b.set("capture", capture.clone());
+            __b.set("responseData", response_data.borrow().clone());
+        };
+        __o
+    };
+}
+
+fn read_request(
+    client: crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync>,
+) -> crate::HxRef<hxrt::anon::Anon> {
+    let request_line: hxrt::string::HxString =
+        hxrt::string::HxString::from(client.__hx_get_input().read_line());
+    let request_parts: hxrt::array::Array<hxrt::string::HxString> = hxrt::string::split_hx(
+        request_line.as_str(),
+        hxrt::string::HxString::from(hxrt::string::HxString::from(" ")).as_str(),
+    );
+    let method: hxrt::string::HxString =
+        hxrt::string::HxString::from(request_parts.get_unchecked(0 as usize));
+    let mut content_length: i32 = 0;
+    let mut content_type: hxrt::string::HxString =
+        hxrt::string::HxString::from(hxrt::string::HxString::null());
+    loop {
+        let line: hxrt::string::HxString =
+            hxrt::string::HxString::from(client.__hx_get_input().read_line());
+        if line == hxrt::string::HxString::from("") {
+            break;
+        }
+        let sep: i32 = hxrt::string::index_of(
+            line.as_str(),
+            hxrt::string::HxString::from(hxrt::string::HxString::from(":")).as_str(),
+            Some(0),
+        );
+        if sep < 0 {
+            continue;
+        }
+        let name: hxrt::string::HxString = hxrt::string::HxString::from(
+            hxrt::string::HxString::from(hxrt::string::substr(line.as_str(), 0, Some(sep))),
+        );
+        let value: hxrt::string::HxString = hxrt::string::HxString::from({
+            let s: hxrt::string::HxString = hxrt::string::HxString::from(
+                hxrt::string::HxString::from(hxrt::string::substr(line.as_str(), sep + 1, None)),
+            );
+            crate::string_tools::StringTools::ltrim(hxrt::string::HxString::from(
+                crate::string_tools::StringTools::rtrim(hxrt::string::HxString::from(s.clone())),
+            ))
+        });
+        {
+            let _g: hxrt::string::HxString = hxrt::string::HxString::from(
+                hxrt::string::HxString::from(hxrt::string::to_lower_case(name.as_str())),
+            );
+            match _g.as_str() {
+                "content-length" => {
+                    content_length = parse_decimal_int(hxrt::string::HxString::from(value.clone()));
+                }
+                "content-type" => {
+                    content_type = hxrt::string::HxString::from(value.clone());
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut body: hxrt::string::HxString =
+        hxrt::string::HxString::from(hxrt::string::HxString::from(""));
+    if content_length > 0 {
+        let bytes: crate::HxRef<hxrt::bytes::Bytes> =
+            crate::HxRef::new(hxrt::bytes::Bytes::alloc(content_length as usize));
+        client
+            .__hx_get_input()
+            .read_full_bytes(bytes.clone(), 0, content_length);
+        body = hxrt::string::HxString::from(bytes.borrow().to_string());
+    }
+    return {
+        let __o = crate::HxRef::new(hxrt::anon::Anon::new());
+        {
+            let mut __b = __o.borrow_mut();
+            __b.set("method", method);
+            __b.set("contentType", content_type);
+            __b.set("body", body);
+        };
+        __o
+    };
+}
+
+fn join_header_values(
+    values: hxrt::array::Array<hxrt::string::HxString>,
+) -> hxrt::string::HxString {
+    return hxrt::string::HxString::from(if values.is_null() {
+        hxrt::string::HxString::from("null")
+    } else {
+        hxrt::string::HxString::from(values.join(hxrt::string::HxString::from(
+            hxrt::string::HxString::from("|"),
+        )))
+    });
+}
+
+fn stringify_null(value: hxrt::string::HxString) -> hxrt::string::HxString {
+    return hxrt::string::HxString::from(if value.is_null() {
+        hxrt::string::HxString::from("null")
+    } else {
+        value
+    });
+}
+
+fn extract_boundary(content_type: hxrt::string::HxString) -> hxrt::string::HxString {
+    if content_type.is_null() {
+        return hxrt::string::HxString::from(hxrt::string::HxString::null());
+    }
+    let marker: hxrt::string::HxString =
+        hxrt::string::HxString::from(hxrt::string::HxString::from("boundary="));
+    let boundary_index: i32 = hxrt::string::index_of(
+        content_type.as_str(),
+        hxrt::string::HxString::from(marker.clone()).as_str(),
+        Some(0),
+    );
+    if boundary_index < 0 {
+        return hxrt::string::HxString::from(hxrt::string::HxString::null());
+    }
+    return hxrt::string::HxString::from(hxrt::string::HxString::from(hxrt::string::substr(
+        content_type.as_str(),
+        boundary_index + hxrt::string::len(marker.as_str()),
+        None,
+    )));
+}
+
+fn parse_decimal_int(text: hxrt::string::HxString) -> i32 {
+    let mut value: i32 = 0;
+    {
+        let mut _g: i32 = 0;
+        let _g1: i32 = hxrt::string::len(text.as_str());
+        while _g < _g1 {
+            let i: i32 = {
+                let __next = _g + 1;
+                std::mem::replace(&mut _g, __next)
+            };
+            let digit: hxrt::string::HxString = hxrt::string::HxString::from(
+                hxrt::string::HxString::from(hxrt::string::substr(text.as_str(), i, Some(1))),
+            );
+            let numeric: i32 = match digit.as_str() {
+                "0" => 0,
+                "1" => 1,
+                "2" => 2,
+                "3" => 3,
+                "4" => 4,
+                "5" => 5,
+                "6" => 6,
+                "7" => 7,
+                "8" => 8,
+                "9" => 9,
+                _ => {
+                    return 0;
+                }
+            };
+            value = value * 10 + numeric;
+        }
+    }
+    return value;
+}
+
+fn main() {
+    let form: crate::HxRef<hxrt::anon::Anon> = run_request(
+        {
+            let __rc: crate::HxRc<dyn Fn(i32) -> crate::HxRef<hxrt::anon::Anon> + Send + Sync> =
+                crate::HxRc::new(move |port: i32| {
+                    let http: crate::HxRef<crate::sys_http::Http> = crate::sys_http::Http::new(
+                        hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+                            "{}{}{}",
+                            "http://127.0.0.1:",
+                            hxrt::dynamic::from(port).to_haxe_string(),
+                            "/submit"
+                        ))),
+                    );
+                    crate::sys_http::Http::set_parameter(
+                        &*http,
+                        hxrt::string::HxString::from(hxrt::string::HxString::from("q")),
+                        hxrt::string::HxString::from(hxrt::string::HxString::from("ok")),
+                    );
+                    crate::sys_http::Http::add_parameter(
+                        &*http,
+                        hxrt::string::HxString::from(hxrt::string::HxString::from("page")),
+                        hxrt::string::HxString::from(hxrt::string::HxString::from("1")),
+                    );
+                    return {
+                        let __o = crate::HxRef::new(hxrt::anon::Anon::new());
+                        {
+                            let mut __b = __o.borrow_mut();
+                            __b.set("http", http.clone());
+                            __b.set("run", {
+                                let __rc: crate::HxRc<dyn Fn() + Send + Sync> =
+                                    crate::HxRc::new(move || {
+                                        crate::sys_http::Http::request(&*http, Some(true));
+                                    });
+                                crate::HxDynRef::new(__rc)
+                            });
+                        };
+                        __o
+                    };
+                });
+            crate::HxDynRef::new(__rc)
+        },
+        hxrt::string::HxString::from(hxrt::string::HxString::from("form-ok")),
+    );
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
+        "{}{}",
+        "formMethod=",
+        form.borrow()
+            .get::<crate::HxRef<hxrt::anon::Anon>>("capture")
+            .borrow()
+            .get::<hxrt::string::HxString>("method")
+    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
+        "{}{}",
+        "formType=",
+        stringify_null(hxrt::string::HxString::from(
+            form.borrow()
+                .get::<crate::HxRef<hxrt::anon::Anon>>("capture")
+                .borrow()
+                .get::<hxrt::string::HxString>("contentType")
+        ))
+    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
+        "{}{}",
+        "formBody=",
+        form.borrow()
+            .get::<crate::HxRef<hxrt::anon::Anon>>("capture")
+            .borrow()
+            .get::<hxrt::string::HxString>("body")
+    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
+        "{}{}",
+        "cookies=",
+        join_header_values(crate::sys_http::Http::get_response_header_values(
+            &*form
+                .borrow()
+                .get::<crate::HxRef<crate::sys_http::Http>>("http"),
+            hxrt::string::HxString::from(hxrt::string::HxString::from("Set-Cookie"))
+        ))
+    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
+        "{}{}",
+        "missingWasNull=",
+        hxrt::string::HxString::from(
+            crate::sys_http::Http::get_response_header_values(
+                &*form
+                    .borrow()
+                    .get::<crate::HxRef<crate::sys_http::Http>>("http"),
+                hxrt::string::HxString::from(hxrt::string::HxString::from("X-Missing"))
+            )
+            .is_null()
+            .to_string()
+        )
+    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
+        "{}{}",
+        "formResponse=",
+        form.borrow().get::<hxrt::string::HxString>("responseData")
+    ))));
+    let multipart: crate::HxRef<hxrt::anon::Anon> = run_request(
+        {
+            let __rc: crate::HxRc<dyn Fn(i32) -> crate::HxRef<hxrt::anon::Anon> + Send + Sync> =
+                crate::HxRc::new(move |port: i32| {
+                    let http: crate::HxRef<crate::sys_http::Http> = crate::sys_http::Http::new(
+                        hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+                            "{}{}{}",
+                            "http://127.0.0.1:",
+                            hxrt::dynamic::from(port).to_haxe_string(),
+                            "/upload"
+                        ))),
+                    );
+                    crate::sys_http::Http::set_parameter(
+                        &*http,
+                        hxrt::string::HxString::from(hxrt::string::HxString::from("token")),
+                        hxrt::string::HxString::from(hxrt::string::HxString::from("abc")),
+                    );
+                    let file_bytes: crate::HxRef<hxrt::bytes::Bytes> =
+                        crate::HxRef::new(hxrt::bytes::Bytes::of_string(
+                            hxrt::string::HxString::from("file-body").as_str(),
+                        ));
+                    crate::sys_http::Http::file_transfer(
+                        &*http,
+                        hxrt::string::HxString::from(hxrt::string::HxString::from("upload")),
+                        hxrt::string::HxString::from(hxrt::string::HxString::from("note.txt")),
+                        {
+                            let __tmp = crate::_main_static_bytes_input::StaticBytesInput::new(
+                                file_bytes.clone(),
+                            );
+                            let __up: crate::HxRc<
+                                dyn crate::haxe_io_input::InputTrait + Send + Sync,
+                            > = match __tmp.as_arc_opt() {
+                                Some(__rc) => __rc.clone(),
+                                None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                    "Null Access",
+                                ))),
+                            };
+                            __up
+                        },
+                        file_bytes.borrow().length(),
+                        hxrt::string::HxString::from(hxrt::string::HxString::from("text/plain")),
+                    );
+                    return {
+                        let __o = crate::HxRef::new(hxrt::anon::Anon::new());
+                        {
+                            let mut __b = __o.borrow_mut();
+                            __b.set("http", http.clone());
+                            __b.set("run", {
+                                let __rc: crate::HxRc<dyn Fn() + Send + Sync> =
+                                    crate::HxRc::new(move || {
+                                        crate::sys_http::Http::request(&*http, Some(true));
+                                    });
+                                crate::HxDynRef::new(__rc)
+                            });
+                        };
+                        __o
+                    };
+                });
+            crate::HxDynRef::new(__rc)
+        },
+        hxrt::string::HxString::from(hxrt::string::HxString::from("upload-ok")),
+    );
+    let boundary: hxrt::string::HxString =
+        hxrt::string::HxString::from(extract_boundary(hxrt::string::HxString::from(
+            multipart
+                .borrow()
+                .get::<crate::HxRef<hxrt::anon::Anon>>("capture")
+                .borrow()
+                .get::<hxrt::string::HxString>("contentType"),
+        )));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
+        "{}{}",
+        "multipartMethod=",
+        multipart
+            .borrow()
+            .get::<crate::HxRef<hxrt::anon::Anon>>("capture")
+            .borrow()
+            .get::<hxrt::string::HxString>("method")
+    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
+        "{}{}",
+        "multipartType=",
+        stringify_null(hxrt::string::HxString::from(
+            multipart
+                .borrow()
+                .get::<crate::HxRef<hxrt::anon::Anon>>("capture")
+                .borrow()
+                .get::<hxrt::string::HxString>("contentType")
+        ))
+    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
+        "{}{}",
+        "multipartHasToken=",
+        hxrt::string::HxString::from(
+            (hxrt::string::index_of(
+                multipart
+                    .borrow()
+                    .get::<crate::HxRef<hxrt::anon::Anon>>("capture")
+                    .borrow()
+                    .get::<hxrt::string::HxString>("body")
+                    .as_str(),
+                hxrt::string::HxString::from(hxrt::string::HxString::from("name=\"token\""))
+                    .as_str(),
+                None
+            ) >= 0
+                && hxrt::string::index_of(
+                    multipart
+                        .borrow()
+                        .get::<crate::HxRef<hxrt::anon::Anon>>("capture")
+                        .borrow()
+                        .get::<hxrt::string::HxString>("body")
+                        .as_str(),
+                    hxrt::string::HxString::from(hxrt::string::HxString::from("\r\n\r\nabc\r\n"))
+                        .as_str(),
+                    None
+                ) >= 0)
+                .to_string()
+        )
+    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
+        "{}{}",
+        "multipartHasFile=",
+        hxrt::string::HxString::from(
+            (hxrt::string::index_of(
+                multipart
+                    .borrow()
+                    .get::<crate::HxRef<hxrt::anon::Anon>>("capture")
+                    .borrow()
+                    .get::<hxrt::string::HxString>("body")
+                    .as_str(),
+                hxrt::string::HxString::from(hxrt::string::HxString::from(
+                    "name=\"upload\"; filename=\"note.txt\""
+                ))
+                .as_str(),
+                None
+            ) >= 0
+                && hxrt::string::index_of(
+                    multipart
+                        .borrow()
+                        .get::<crate::HxRef<hxrt::anon::Anon>>("capture")
+                        .borrow()
+                        .get::<hxrt::string::HxString>("body")
+                        .as_str(),
+                    hxrt::string::HxString::from(hxrt::string::HxString::from("file-body"))
+                        .as_str(),
+                    None
+                ) >= 0)
+                .to_string()
+        )
+    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
+        "{}{}",
+        "multipartHasClosingBoundary=",
+        hxrt::string::HxString::from(
+            (!boundary.is_null()
+                && crate::string_tools::StringTools::ends_with(
+                    hxrt::string::HxString::from(
+                        multipart
+                            .borrow()
+                            .get::<crate::HxRef<hxrt::anon::Anon>>("capture")
+                            .borrow()
+                            .get::<hxrt::string::HxString>("body")
+                    ),
+                    hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+                        "{}{}{}",
+                        "--", &boundary, "--"
+                    )))
+                ))
+            .to_string()
+        )
+    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
+        "{}{}",
+        "multipartResponse=",
+        multipart
+            .borrow()
+            .get::<hxrt::string::HxString>("responseData")
+    ))));
 }

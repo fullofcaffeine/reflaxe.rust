@@ -5,8 +5,6 @@ pub const __HX_TYPE_ID: u32 = 0x4cca5cccu32;
 #[derive(Debug)]
 
 pub struct MysqlResultSet {
-    pub length: i32,
-    pub nfields: i32,
     res: crate::HxRef<hxrt::db::QueryResult>,
 }
 
@@ -15,11 +13,7 @@ impl MysqlResultSet {
         res: crate::HxRef<hxrt::db::QueryResult>,
     ) -> crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> {
         let self_: crate::HxRef<crate::sys_db_mysql_mysql_result_set::MysqlResultSet> =
-            crate::HxRef::new(MysqlResultSet {
-                length: 0,
-                nfields: 0,
-                res: res,
-            });
+            crate::HxRef::new(MysqlResultSet { res: res });
         return self_;
     }
 

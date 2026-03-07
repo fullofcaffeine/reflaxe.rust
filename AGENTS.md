@@ -76,6 +76,8 @@ Agent policy:
 - Fix/test policy: after each fix, update tests and/or add a regression test (snapshots, runtime tests, or example test harness), unless an existing test update already covers the behavior change.
 - Contract-first TDD policy (strict): for non-trivial compiler/runtime/std behavior changes, start by adding/updating the expected test contract first (snapshot, negative fixture, policy/harness assertion), confirm failure, then implement and re-run targeted checks plus full harness.
   For deterministic report/artifact features, include repeatability assertions (run twice, compare outputs byte-for-byte) in CI guards.
+- Escalation visibility rule: when a task crosses the threshold for extended thinking or Oracle review, say so explicitly in chat before escalating.
+  Do not silently switch into a deeper-thinking or Oracle-needed path; call out why the escalation is warranted and what question it is meant to resolve.
 
 ## Documentation (HaxeDoc)
 

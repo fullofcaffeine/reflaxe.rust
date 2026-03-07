@@ -5,8 +5,6 @@ pub const __HX_TYPE_ID: u32 = 0xedbd9a5cu32;
 #[derive(Debug)]
 
 pub struct SqliteResultSet {
-    pub length: i32,
-    pub nfields: i32,
     res: crate::HxRef<hxrt::db::QueryResult>,
 }
 
@@ -15,11 +13,7 @@ impl SqliteResultSet {
         res: crate::HxRef<hxrt::db::QueryResult>,
     ) -> crate::HxRef<crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet> {
         let self_: crate::HxRef<crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet> =
-            crate::HxRef::new(SqliteResultSet {
-                length: 0,
-                nfields: 0,
-                res: res,
-            });
+            crate::HxRef::new(SqliteResultSet { res: res });
         return self_;
     }
 

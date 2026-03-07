@@ -1,4 +1,4 @@
-use crate::cell::HxRef;
+use crate::cell::{HxDynRef, HxRef};
 use crate::{dynamic, exception, io};
 use mio::{Events, Interest, Poll, Token};
 use socket2::{Domain, Protocol, Socket, Type};
@@ -10,6 +10,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
+use rustls::server::ResolvesServerCert;
+use rustls::sign::{CertifiedKey, SingleCertAndKey};
 use rustls::{ClientConfig, ClientConnection, RootCertStore, ServerConfig, ServerConnection};
 
 /// `hxrt::net`
@@ -77,6 +79,57 @@ enum TlsState {
         conn: Box<ServerConnection>,
         peer_chain_der: Vec<Vec<u8>>,
     },
+}
+
+/// A single SNI matcher entry used by `sys.ssl.Socket.addSNICertificate`.
+///
+/// Why
+/// - Haxe exposes server-side SNI selection as a callback (`String -> Bool`) plus a cert/key pair.
+/// - The actual TLS handshake happens inside `hxrt::net`, so the runtime needs an owned
+///   representation of those pending entries.
+///
+/// What
+/// - `matcher`: Haxe callback evaluated against the incoming client SNI hostname.
+/// - `cert` / `key`: the certificate chain and private key to use when the matcher returns `true`.
+///
+/// How
+/// - The Haxe/native boundary normalizes generated callback values into `HxDynRef<dyn Fn(String)>`.
+/// - Null matcher/cert/key entries are filtered out before the handshake config is built.
+pub struct TlsSniEntry {
+    pub matcher: HxDynRef<dyn Fn(String) -> bool + Send + Sync>,
+    pub cert: HxRef<crate::ssl::Certificate>,
+    pub key: HxRef<crate::ssl::Key>,
+}
+
+struct TlsServerResolverEntry {
+    matcher: HxDynRef<dyn Fn(String) -> bool + Send + Sync>,
+    certified_key: Arc<CertifiedKey>,
+}
+
+struct TlsServerResolver {
+    default_key: Arc<CertifiedKey>,
+    entries: Vec<TlsServerResolverEntry>,
+}
+
+impl std::fmt::Debug for TlsServerResolver {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TlsServerResolver")
+            .field("default_key", &"<certified-key>")
+            .field("entries_len", &self.entries.len())
+            .finish()
+    }
+}
+
+impl ResolvesServerCert for TlsServerResolver {
+    fn resolve(&self, client_hello: rustls::server::ClientHello<'_>) -> Option<Arc<CertifiedKey>> {
+        let server_name = client_hello.server_name().unwrap_or("").to_string();
+        for entry in &self.entries {
+            if entry.matcher.is_some() && (entry.matcher)(server_name.clone()) {
+                return Some(entry.certified_key.clone());
+            }
+        }
+        Some(self.default_key.clone())
+    }
 }
 
 #[derive(Debug, Default)]
@@ -186,6 +239,29 @@ fn tls_roots_default() -> RootCertStore {
     // Fallback: no native store available. Add a minimal set.
     roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
     roots
+}
+
+fn tls_certified_key(
+    cert: &HxRef<crate::ssl::Certificate>,
+    key: &HxRef<crate::ssl::Key>,
+    builder: &rustls::ConfigBuilder<ServerConfig, rustls::server::WantsServerCert>,
+) -> Arc<CertifiedKey> {
+    let certs: Vec<CertificateDer<'static>> = cert
+        .borrow()
+        .chain_der()
+        .iter()
+        .cloned()
+        .map(CertificateDer::from)
+        .collect();
+
+    let key_der: rustls::pki_types::PrivateKeyDer<'static> = key
+        .borrow()
+        .private_key_der()
+        .unwrap_or_else(|| throw_msg("Key is not a private key"));
+
+    let certified = CertifiedKey::from_der(certs, key_der, builder.crypto_provider())
+        .unwrap_or_else(|_| throw_msg("TLS server config failed"));
+    Arc::new(certified)
 }
 
 fn ipv4_to_int(ip: Ipv4Addr) -> i32 {
@@ -490,23 +566,67 @@ impl SocketHandle {
             None => throw_msg("Socket is not connected"),
         };
 
-        let certs: Vec<CertificateDer<'static>> = cert
-            .borrow()
-            .chain_der()
-            .iter()
-            .cloned()
-            .map(CertificateDer::from)
-            .collect();
+        let builder = ServerConfig::builder().with_no_client_auth();
+        let certified = tls_certified_key(&cert, &key, &builder);
+        let config = builder.with_cert_resolver(Arc::new(SingleCertAndKey::from(certified)));
 
-        let key_der: rustls::pki_types::PrivateKeyDer<'static> = key
-            .borrow()
-            .private_key_der()
-            .unwrap_or_else(|| throw_msg("Key is not a private key"));
+        let config = Arc::new(config);
+        let mut conn =
+            ServerConnection::new(config).unwrap_or_else(|_| throw_msg("TLS server setup failed"));
 
-        let config = ServerConfig::builder()
-            .with_no_client_auth()
-            .with_single_cert(certs, key_der)
-            .unwrap_or_else(|_| throw_msg("TLS server config failed"));
+        while conn.is_handshaking() {
+            if let Err(e) = conn.complete_io(stream) {
+                throw_io_err(e);
+            }
+        }
+
+        let peer_chain_der: Vec<Vec<u8>> = conn
+            .peer_certificates()
+            .map(|certs| certs.iter().map(|c| c.as_ref().to_vec()).collect())
+            .unwrap_or_default();
+
+        t.read = None;
+        t.write = None;
+        t.tls = Some(Box::new(TlsState::Server {
+            conn: Box::new(conn),
+            peer_chain_der,
+        }));
+    }
+
+    pub fn tls_handshake_server_sni(
+        &mut self,
+        default_cert: HxRef<crate::ssl::Certificate>,
+        default_key: HxRef<crate::ssl::Key>,
+        sni_entries: Vec<TlsSniEntry>,
+    ) {
+        let t = self.tcp_mut();
+        if t.tls.is_some() {
+            return;
+        }
+
+        let stream = match t.stream.as_mut() {
+            Some(s) => s,
+            None => throw_msg("Socket is not connected"),
+        };
+
+        let builder = ServerConfig::builder().with_no_client_auth();
+        let default_certified = tls_certified_key(&default_cert, &default_key, &builder);
+
+        let mut resolved_entries: Vec<TlsServerResolverEntry> = Vec::new();
+        for entry in sni_entries {
+            if entry.matcher.is_null() || entry.cert.is_null() || entry.key.is_null() {
+                continue;
+            }
+            resolved_entries.push(TlsServerResolverEntry {
+                matcher: entry.matcher,
+                certified_key: tls_certified_key(&entry.cert, &entry.key, &builder),
+            });
+        }
+
+        let config = builder.with_cert_resolver(Arc::new(TlsServerResolver {
+            default_key: default_certified,
+            entries: resolved_entries,
+        }));
 
         let config = Arc::new(config);
         let mut conn =

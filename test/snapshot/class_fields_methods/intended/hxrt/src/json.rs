@@ -1,5 +1,5 @@
-use crate::array::Array;
 use crate::anon::Anon;
+use crate::array::Array;
 use crate::cell::{HxDynRef, HxRef};
 use crate::dynamic::{DynObject, Dynamic};
 use crate::exception;
@@ -269,7 +269,11 @@ fn apply_json_replacer(
     if let Some(obj) = replaced.downcast_ref::<HxRef<Anon>>() {
         let out = HxRef::new(Anon::new());
         for (field, child) in crate::anon::anon_entries(obj) {
-            crate::anon::anon_set(&out, field.as_str(), apply_json_replacer(field.as_str(), child, replacer));
+            crate::anon::anon_set(
+                &out,
+                field.as_str(),
+                apply_json_replacer(field.as_str(), child, replacer),
+            );
         }
         return Dynamic::from(out);
     }
@@ -277,7 +281,11 @@ fn apply_json_replacer(
     if let Some(arr) = replaced.downcast_ref::<Array<Dynamic>>() {
         let out = Array::<Dynamic>::new();
         for (index, child) in arr.to_vec().into_iter().enumerate() {
-            out.push(apply_json_replacer(index.to_string().as_str(), child, replacer));
+            out.push(apply_json_replacer(
+                index.to_string().as_str(),
+                child,
+                replacer,
+            ));
         }
         return Dynamic::from(out);
     }

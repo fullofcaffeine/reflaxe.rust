@@ -2,6 +2,7 @@ package sys;
 
 import haxe.io.Bytes;
 import haxe.io.BytesOutput;
+import haxe.io.Input;
 import sys.net.Host;
 import sys.net.Socket;
 
@@ -17,25 +18,33 @@ private typedef ParsedUrl = {
 	var path:String;
 }
 
+private typedef PendingUpload = {
+	var param:String;
+	var filename:String;
+	var io:Input;
+	var size:Int;
+	var mimeType:String;
+}
+
 /**
-		`sys.Http` (Rust target implementation)
+	`sys.Http` (Rust target implementation)
 
 	Why
-	- `haxe.Http` relies on `sys.Http` on sys targets.
-	- A working `sys.Http` is required for a large part of the ecosystem (REST clients, CLIs, update checks).
+	- `haxe.Http` relies on `sys.Http` on sys targets, so portable parity depends on this class matching upstream request semantics.
+	- Tier1 stdlib parity requires real support for request bodies, duplicate response headers, and multipart file uploads.
 
 	What
-	- Implements a synchronous HTTP/1.1 client with stdlib-compatible surface API:
-	  - `request(?post)` and `customRequest(post, api, ?sock, ?method)`
-	  - request headers/params (inherited from `haxe.http.HttpBase`)
-	  - response status callback (`onStatus`) and response headers (`responseHeaders`)
-	  - optional multipart file upload via `fileTransfer`
+	- Implements the upstream synchronous HTTP/1.1 request contract for the Rust target:
+	  - GET/POST request selection
+	  - `postData` / `postBytes` bodies
+	  - multipart `fileTransfer(...)`
+	  - duplicate response-header collection for `getResponseHeaderValues(...)`
+	  - plain HTTP via `sys.net.Socket` and HTTPS via `sys.ssl.Socket`
 
-		How
-		- Uses `sys.net.Socket` to speak plain HTTP over TCP.
-		- HTTPS (`https://`) uses `sys.ssl.Socket` to upgrade the underlying TCP connection to TLS.
-		- Header parsing is line-based (`Input.readLine()`); bodies are read via `Content-Length`,
-		  `Transfer-Encoding: chunked`, or EOF.
+	How
+	- Request assembly follows upstream `sys.Http` closely so behavior stays portable across Haxe backends.
+	- The type surface stays strongly typed; native/socket boundaries remain localized in this std override.
+	- Response parsing keeps the Rust-friendly line-based body reader already used by this backend while restoring upstream header semantics.
 **/
 class Http extends haxe.http.HttpBase {
 	public var noShutdown:Bool = false;
@@ -43,70 +52,93 @@ class Http extends haxe.http.HttpBase {
 	public var responseHeaders:Map<String, String>;
 
 	var responseHeadersSM:haxe.ds.StringMap<String>;
+	var responseHeadersSameKey:haxe.ds.StringMap<Array<String>>;
+	var file:Null<PendingUpload>;
 
 	public function new(url:String) {
 		super(url);
-		// Keep this non-null to avoid backend Default/Option traps and match typical user expectations.
 		responseHeadersSM = new haxe.ds.StringMap();
+		responseHeadersSameKey = new haxe.ds.StringMap();
 		responseHeaders = responseHeadersSM;
 	}
 
 	public override function request(?post:Bool) {
-		// Current limitation: only GET without body is supported.
-		// `haxe.Http` relies on sys.Http for plain downloads, which are commonly GET.
-		var postFlag = (post == true) || postBytes != null || postData != null;
-		if (postFlag) {
-			onError("POST/request bodies are not implemented on this target yet.");
-			return;
-		}
-		var output = new haxe.io.BytesOutput();
-		try {
-			customRequest(false, output);
+		var output = new BytesOutput();
+		var old = onError;
+		var outputForError = output;
+		var oldOnError = old;
+		var err = false;
+		onError = function(msg) {
+			responseBytes = outputForError.getBytes();
+			err = true;
+			oldOnError(msg);
+		};
+		var postFlag = (post == true) || postBytes != null || postData != null || file != null;
+		customRequest(postFlag, output);
+		if (!err)
 			success(output.getBytes());
-		} catch (e:haxe.Exception) {
-			responseBytes = output.getBytes();
-			onError("" + e);
-		}
 	}
 
 	@:noCompletion
 	@:deprecated("Use fileTransfer instead")
-	inline public function fileTransfert(_argname:String, _filename:String, _file:haxe.io.Input, _size:Int, _mimeType = "application/octet-stream") {
-		fileTransfer(_argname, _filename, _file, _size, _mimeType);
-	}
-
-	public function fileTransfer(_argname:String, _filename:String, _file:haxe.io.Input, _size:Int, _mimeType = "application/octet-stream") {
-		onError("Multipart file uploads are not implemented on this target yet.");
+	inline public function fileTransfert(argname:String, filename:String, file:haxe.io.Input, size:Int, mimeType = "application/octet-stream") {
+		fileTransfer(argname, filename, file, size, mimeType);
 	}
 
 	/**
-		Returns an array of values for a single response header or returns `null` if no such header exists.
+		Stores multipart upload metadata until the next `request(...)` / `customRequest(...)` call.
 
-		This is useful for headers that can appear multiple times (e.g. `Set-Cookie`).
+		Why
+		- Upstream `sys.Http` accumulates form fields first and serializes the multipart body during request emission.
+		- Doing the same here preserves field ordering and avoids prematurely consuming the caller-provided `Input`.
+
+		What
+		- Records one pending file upload payload.
+
+		How
+		- The actual bytes are written in `writeBody(...)` once headers and boundary are finalized.
 	**/
-	public function getResponseHeaderValues(key:String):Null<Array<String>> {
-		// Backend limitation: `Null<T>` narrowing is not fully modeled yet.
-		// Keep this API usable by returning an empty array when absent instead of `null`.
-		var v = responseHeadersSM.get(key);
-		if (v == null)
-			return [];
-		return [cast v];
+	public function fileTransfer(argname:String, filename:String, file:haxe.io.Input, size:Int, mimeType = "application/octet-stream") {
+		this.file = {
+			param: argname,
+			filename: filename,
+			io: file,
+			size: size,
+			mimeType: mimeType
+		};
 	}
 
-	public function customRequest(post:Bool, api:haxe.io.Output, ?_sock:sys.net.Socket, ?_method:String) {
+	/**
+		Returns every response-header value recorded for `key`.
+
+		Why
+		- Some headers such as `Set-Cookie` are legally repeated and cannot be represented faithfully by the single-value `responseHeaders` map.
+
+		What
+		- Returns `null` if the header is absent, `[value]` for a single occurrence, or all values for repeated headers.
+
+		How
+		- `responseHeaders` stores the last-seen value for compatibility.
+		- `responseHeadersSameKey` stores additional occurrences so duplicate headers remain observable.
+	**/
+	public function getResponseHeaderValues(key:String):Null<Array<String>> {
+		var repeated = responseHeadersSameKey.get(key);
+		if (repeated != null)
+			return repeated;
+		var single = responseHeadersSM.get(key);
+		return single == null ? null : [single];
+	}
+
+	public function customRequest(post:Bool, api:haxe.io.Output, ?_sock:sys.net.Socket, ?method:String) {
 		this.responseAsString = null;
 		this.responseBytes = null;
-		// Keep responseHeaders always non-null.
 		this.responseHeadersSM = new haxe.ds.StringMap();
+		this.responseHeadersSameKey = new haxe.ds.StringMap();
 		this.responseHeaders = this.responseHeadersSM;
 
 		var parsed = parseUrl(url);
 		if (parsed.host.length == 0) {
 			onError("Invalid URL");
-			return;
-		}
-		if (post) {
-			onError("POST/request bodies are not implemented on this target yet.");
 			return;
 		}
 
@@ -118,67 +150,79 @@ class Http extends haxe.http.HttpBase {
 		if (request.charAt(0) != "/")
 			request = "/" + request;
 
-		var uri = "";
-		if (params.length > 0) {
-			var kv:Array<String> = [];
-			for (p in params) {
-				kv.push(StringTools.urlEncode(p.name) + "=" + StringTools.urlEncode(p.value));
-			}
-			uri = kv.join("&");
+		var multipart = (file != null);
+		var boundary:Null<String> = null;
+		var uri:Null<String> = if (multipart) {
+			post = true;
+			boundary = createBoundary();
+			buildMultipartPrefix(boundary, file);
+		} else {
+			buildParamsString();
+		};
+
+		var requestBytes = new BytesOutput();
+		if (method != null) {
+			requestBytes.writeString(method);
+			requestBytes.writeString(" ");
+		} else if (post) {
+			requestBytes.writeString("POST ");
+		} else {
+			requestBytes.writeString("GET ");
 		}
 
-		var b = new BytesOutput();
-		// Ignore `method` for now. This keeps the implementation simple and avoids optional-arg
-		// null-narrowing pitfalls in the current backend.
-		b.writeString("GET ");
-
-		b.writeString(request);
-
-		if (uri != "") {
+		requestBytes.writeString(request);
+		if (!post && uri != null) {
 			if (request.indexOf("?", 0) >= 0)
-				b.writeString("&");
+				requestBytes.writeString("&");
 			else
-				b.writeString("?");
-			b.writeString(uri);
+				requestBytes.writeString("?");
+			requestBytes.writeString(uri);
 		}
+		requestBytes.writeString(" HTTP/1.1\r\nHost: " + host + "\r\n");
 
-		b.writeString(" HTTP/1.1\r\nHost: " + host + "\r\n");
-
-		b.writeString("Connection: close\r\n");
-		for (h in headers) {
-			b.writeString(h.name);
-			b.writeString(": ");
-			b.writeString(h.value);
-			b.writeString("\r\n");
+		if (postData != null) {
+			postBytes = Bytes.ofString(postData);
+			postData = null;
 		}
-		b.writeString("\r\n");
-
-		// Ignore the optional `sock` parameter for now.
-		// Keep `s` non-null so backend Option/Null narrowing never blocks compilation.
-		var s:Socket = new Socket();
-
-		try {
-			if (parsed.secure) {
-				var ss = new sys.ssl.Socket();
-				s = ss;
-				ss.setTimeout(cnxTimeout);
-				ss.setHostname(host);
-				ss.connect(new Host(host), port);
-				ss.handshake();
-			} else {
-				s.setTimeout(cnxTimeout);
-				s.connect(new Host(host), port);
+		if (postBytes != null) {
+			requestBytes.writeString("Content-Length: " + postBytes.length + "\r\n");
+		} else if (post && uri != null) {
+			if (multipart || !hasHeader("Content-Type")) {
+				requestBytes.writeString("Content-Type: ");
+				if (multipart) {
+					requestBytes.writeString("multipart/form-data; boundary=");
+					requestBytes.writeString(boundary);
+				} else {
+					requestBytes.writeString("application/x-www-form-urlencoded");
+				}
+				requestBytes.writeString("\r\n");
 			}
-
-			writeBody(b, s);
-			readHttpResponse(api, s);
-			s.close();
-		} catch (e:haxe.Exception) {
-			try
-				s.close()
-			catch (_:haxe.Exception) {};
-			onError("" + e);
+			if (multipart) {
+				requestBytes.writeString("Content-Length: " + (uri.length + file.size + boundary.length + 6) + "\r\n");
+			} else {
+				requestBytes.writeString("Content-Length: " + uri.length + "\r\n");
+			}
 		}
+
+		requestBytes.writeString("Connection: close\r\n");
+		for (h in headers) {
+			requestBytes.writeString(h.name);
+			requestBytes.writeString(": ");
+			requestBytes.writeString(h.value);
+			requestBytes.writeString("\r\n");
+		}
+		requestBytes.writeString("\r\n");
+		if (postBytes != null) {
+			requestBytes.writeFullBytes(postBytes, 0, postBytes.length);
+		} else if (post && uri != null) {
+			requestBytes.writeString(uri);
+		}
+
+		if (_sock != null)
+			performRequest(_sock, host, port, requestBytes, api, multipart, boundary);
+		else
+			performRequest(createSocket(parsed.secure, host), host, port, requestBytes, api, multipart, boundary);
+		file = null;
 	}
 
 	static function parseUrl(url:String):ParsedUrl {
@@ -192,37 +236,32 @@ class Http extends haxe.http.HttpBase {
 			u = u.substr("https://".length);
 		}
 
-		// host[:port][/path...]
 		var slash = u.indexOf("/", 0);
 		var hostPort = slash >= 0 ? u.substr(0, slash) : u.substr(0, u.length);
 		var path = slash >= 0 ? u.substr(slash) : "/";
-
-		if (hostPort.length == 0) {
+		if (hostPort.length == 0)
 			return {
 				secure: secure,
 				host: "",
 				port: 0,
 				path: "/"
 			};
-		}
 
 		var host = hostPort;
 		var port = secure ? 443 : 80;
-
 		var colon = hostPort.indexOf(":", 0);
 		if (colon >= 0) {
 			host = hostPort.substr(0, colon);
-			var p = parseDecInt(hostPort.substr(colon + 1));
-			if (p < 0)
+			var parsedPort = parseDecInt(hostPort.substr(colon + 1));
+			if (parsedPort < 0)
 				return {
 					secure: secure,
 					host: "",
 					port: 0,
 					path: "/"
 				};
-			port = p;
+			port = parsedPort;
 		}
-
 		if (host.length == 0)
 			return {
 				secure: secure,
@@ -230,7 +269,6 @@ class Http extends haxe.http.HttpBase {
 				port: 0,
 				path: "/"
 			};
-
 		return {
 			secure: secure,
 			host: host,
@@ -257,20 +295,131 @@ class Http extends haxe.http.HttpBase {
 		#end
 	}
 
+	function buildParamsString():Null<String> {
+		if (params.length == 0)
+			return null;
+		var encoded = new Array<String>();
+		for (p in params)
+			encoded.push(StringTools.urlEncode(p.name) + "=" + StringTools.urlEncode(p.value));
+		return encoded.join("&");
+	}
+
+	function buildMultipartPrefix(boundary:String, upload:PendingUpload):String {
+		var b = new StringBuf();
+		for (p in params) {
+			b.add("--");
+			b.add(boundary);
+			b.add("\r\n");
+			b.add('Content-Disposition: form-data; name="');
+			b.add(p.name);
+			b.add('"');
+			b.add("\r\n\r\n");
+			b.add(p.value);
+			b.add("\r\n");
+		}
+		b.add("--");
+		b.add(boundary);
+		b.add("\r\n");
+		b.add('Content-Disposition: form-data; name="');
+		b.add(upload.param);
+		b.add('"; filename="');
+		b.add(upload.filename);
+		b.add('"');
+		b.add("\r\n");
+		b.add("Content-Type: ");
+		b.add(upload.mimeType);
+		b.add("\r\n\r\n");
+		return b.toString();
+	}
+
+	function createBoundary():String {
+		return "---------------------------reflaxe-rust-boundary";
+	}
+
+	function hasHeader(name:String):Bool {
+		for (h in headers) {
+			if (h.name == name)
+				return true;
+		}
+		return false;
+	}
+
+	function createSocket(secure:Bool, host:String):Socket {
+		if (secure) {
+			var ssl = new sys.ssl.Socket();
+			ssl.setTimeout(cnxTimeout);
+			ssl.setHostname(host);
+			return ssl;
+		}
+		var sock = new Socket();
+		sock.setTimeout(cnxTimeout);
+		return sock;
+	}
+
+	function performRequest(sock:Socket, host:String, port:Int, requestBytes:BytesOutput, api:haxe.io.Output, multipart:Bool, boundary:Null<String>) {
+		try {
+			sock.connect(new Host(host), port);
+			if (multipart) {
+				writeBody(requestBytes, sock);
+				writeMultipartTail(file.io, file.size, boundary, sock);
+			} else {
+				writeBody(requestBytes, sock);
+			}
+			readHttpResponse(api, sock);
+			sock.close();
+		} catch (e:haxe.Exception) {
+			try
+				sock.close()
+			catch (_:haxe.Exception) {};
+			onError("" + e);
+		}
+	}
+
+	/**
+		Writes the assembled request bytes and optional multipart payload to the socket.
+
+		Why
+		- Multipart uploads cannot be fully buffered in the generic request prefix because the file content arrives through `haxe.io.Input`.
+
+		What
+		- Flushes header/body bytes first, then streams the file payload and closing boundary.
+
+		How
+		- The `BytesOutput` prefix already contains the multipart field prelude and regular request body data.
+		- When `boundary` is non-null, this method streams `fileInput` directly and appends the final `--boundary--` marker.
+	**/
 	function writeBody(body:BytesOutput, sock:Socket) {
 		var bytes = body.getBytes();
 		sock.output.writeFullBytes(bytes, 0, bytes.length);
 	}
 
+	function writeMultipartTail(fileInput:Input, fileSize:Int, boundary:String, sock:Socket) {
+		var remaining = fileSize;
+		var bufsize = 4096;
+		var buf = Bytes.alloc(bufsize);
+		while (remaining > 0) {
+			var want = remaining > bufsize ? bufsize : remaining;
+			var len = 0;
+			try {
+				len = fileInput.readBytes(buf, 0, want);
+			} catch (_:haxe.io.Eof) {
+				break;
+			}
+			sock.output.writeFullBytes(buf, 0, len);
+			remaining -= len;
+		}
+		sock.output.writeString("\r\n");
+		sock.output.writeString("--");
+		sock.output.writeString(boundary);
+		sock.output.writeString("--");
+	}
+
 	function readHttpResponse(api:haxe.io.Output, sock:sys.net.Socket) {
 		sock.setTimeout(cnxTimeout);
-
 		var statusLine = sock.input.readLine();
 		var status = parseStatus(statusLine);
-
 		var size:Int = -1;
 		var chunked = false;
-
 		while (true) {
 			var line = sock.input.readLine();
 			if (line == "")
@@ -280,23 +429,28 @@ class Http extends haxe.http.HttpBase {
 				continue;
 			var hname = line.substr(0, sep);
 			var hval = StringTools.trim(line.substr(sep + 1));
-
-			var hn = hname.toLowerCase();
-			if (hn == "content-length") {
-				size = parseDecInt(hval);
-			} else if (hn == "transfer-encoding") {
-				chunked = (hval.toLowerCase() == "chunked");
+			var previous = responseHeadersSM.get(hname);
+			if (previous != null) {
+				var repeated = responseHeadersSameKey.get(hname);
+				if (repeated == null) {
+					repeated = [previous];
+					responseHeadersSameKey.set(hname, repeated);
+				}
+				repeated.push(hval);
 			}
-
-			// Store last value.
 			responseHeadersSM.set(hname, hval);
+			switch (hname.toLowerCase()) {
+				case "content-length":
+					size = parseDecInt(hval);
+				case "transfer-encoding":
+					chunked = (hval.toLowerCase() == "chunked");
+				default:
+			}
 		}
 
 		onStatus(status);
-
 		var bufsize = 1024;
-		var buf = haxe.io.Bytes.alloc(bufsize);
-
+		var buf = Bytes.alloc(bufsize);
 		if (chunked) {
 			readChunked(api, sock);
 		} else if (size < 0) {
@@ -309,7 +463,7 @@ class Http extends haxe.http.HttpBase {
 						break;
 					api.writeBytes(buf, 0, len);
 				}
-			} catch (e:haxe.io.Eof) {}
+			} catch (_:haxe.io.Eof) {}
 		} else {
 			api.prepare(size);
 			var remaining = size;
@@ -322,18 +476,16 @@ class Http extends haxe.http.HttpBase {
 					api.writeBytes(buf, 0, len);
 					remaining -= len;
 				}
-			} catch (e:haxe.io.Eof) {
+			} catch (_:haxe.io.Eof) {
 				throw "Transfer aborted";
 			}
 		}
-
 		if (status < 200 || status >= 400)
 			throw "Http Error #" + status;
 		api.close();
 	}
 
 	static function parseStatus(line:String):Int {
-		// Expected: HTTP/1.1 200 OK
 		var first = line.indexOf(" ", 0);
 		if (first < 0)
 			throw "Response status error";
@@ -350,7 +502,6 @@ class Http extends haxe.http.HttpBase {
 	function readChunked(api:haxe.io.Output, sock:sys.net.Socket) {
 		while (true) {
 			var sizeLine = sock.input.readLine();
-			// Strip chunk extensions: "<hex>;<ext...>"
 			var semi = sizeLine.indexOf(";", 0);
 			if (semi >= 0)
 				sizeLine = sizeLine.substr(0, semi);
@@ -359,8 +510,6 @@ class Http extends haxe.http.HttpBase {
 			if (size < 0)
 				throw "Invalid chunk";
 			if (size == 0) {
-				// Consume the trailing empty line after final chunk (and optional trailer headers).
-				// Read until a blank line.
 				while (true) {
 					var trailer = sock.input.readLine();
 					if (trailer == "")
@@ -368,17 +517,15 @@ class Http extends haxe.http.HttpBase {
 				}
 				return;
 			}
-
-			var bytes = haxe.io.Bytes.alloc(size);
+			var bytes = Bytes.alloc(size);
 			sock.input.readFullBytes(bytes, 0, size);
 			api.writeBytes(bytes, 0, size);
-			// Consume CRLF after the chunk bytes.
 			sock.input.readLine();
 		}
 	}
 
 	/**
-		Makes a synchronous request to `url` by creating a new `sys.Http` instance and issuing a GET request.
+		Makes a synchronous request to `url` by creating a fresh `sys.Http` instance.
 	**/
 	public static function requestUrl(url:String):String {
 		var h = new Http(url);

@@ -1,5 +1,6 @@
 package sys.ssl;
 
+import hxrt.net.NativeSocket;
 import sys.net.Host;
 
 /**
@@ -15,11 +16,10 @@ import sys.net.Host;
 
 	How
 	- Inherits all plain TCP behavior from `sys.net.Socket` (connect/bind/listen/accept/read/write).
-	- TLS is enabled in the runtime by upgrading the underlying `hxrt::net::SocketHandle` in-place:
-	  `SocketHandle::tls_handshake_client(hostname, verifyCert, ca)`.
-	- Current limitations (v1 era):
-	  - Client certificates (`setCertificate`) and SNI certificate selection (`addSNICertificate`)
-		are accepted for API parity but not yet used by the runtime.
+	- TLS is enabled in the runtime by upgrading the underlying `hxrt::net::SocketHandle` in-place
+	  through the typed `hxrt.net.NativeSocket` boundary.
+	- Server-side SNI selection is modeled as a list of Haxe matcher/cert/key triples which the
+	  runtime resolves against the incoming client SNI hostname during handshake.
 **/
 class Socket extends sys.net.Socket {
 	public static var DEFAULT_VERIFY_CERT:Null<Bool>;
@@ -31,29 +31,42 @@ class Socket extends sys.net.Socket {
 	private var hostname:Null<String> = null;
 	private var serverCert:Null<sys.ssl.Certificate> = null;
 	private var serverKey:Null<sys.ssl.Key> = null;
+	private var sniMatchers:Array<Null<(String) -> Bool>> = [];
+	private var sniCerts:Array<Null<sys.ssl.Certificate>> = [];
+	private var sniKeys:Array<Null<sys.ssl.Key>> = [];
 
 	public function new():Void {
 		super();
 	}
 
+	/**
+		Upgrade the connected socket to TLS.
+
+		Why
+		- `sys.ssl.Socket` keeps the upstream Haxe surface, but the real TLS session is owned by the
+		  Rust runtime.
+
+		What
+		- Client mode uses `hostname`, `verifyCert`, and optional CA roots.
+		- Server mode uses `setCertificate(...)` as the default cert and optional
+		  `addSNICertificate(...)` overrides.
+
+		How
+		- This method stays purely typed Haxe code and delegates to `hxrt.net.NativeSocket`.
+	**/
 	public function handshake():Void {
 		var verify:Bool = (verifyCert != false);
 		if (serverCert != null && serverKey != null) {
-			untyped __rust__("{
-					let cert_handle = {1}.borrow().handle.clone();
-					let key_handle = {2}.borrow().handle.clone();
-					{0}.borrow_mut().tls_handshake_server(cert_handle, key_handle);
-				}", handle, serverCert, serverKey);
+			if (sniMatchers.length > 0) {
+				NativeSocket.tlsHandshakeServerSni(handle, serverCert.handle, serverKey.handle, sniMatchers,
+					[for (cert in sniCerts) cert == null ? null : cert.handle], [for (key in sniKeys) key == null ? null : key.handle]);
+			} else {
+				NativeSocket.tlsHandshakeServer(handle, serverCert.handle, serverKey.handle);
+			}
 			return;
 		}
 
-		untyped __rust__("{
-				let ca_handle = match {3}.as_arc_opt() {
-					None => None,
-					Some(c) => Some(c.borrow().handle.clone()),
-				};
-				{0}.borrow_mut().tls_handshake_client({1}, Some({2} as bool), ca_handle);
-			}", handle, hostname, verify, ca);
+		NativeSocket.tlsHandshakeClient(handle, hostname, verify, ca == null ? null : ca.handle);
 	}
 
 	public function setCA(cert:sys.ssl.Certificate):Void {
@@ -69,13 +82,31 @@ class Socket extends sys.net.Socket {
 		this.serverKey = key;
 	}
 
-	public function addSNICertificate(_cbServernameMatch:String->Bool, _cert:Certificate, _key:Key):Void {
-		throw "sys.ssl.Socket.addSNICertificate is not implemented yet on reflaxe.rust";
+	/**
+		Register an additional server certificate that may be selected via client SNI.
+
+		Why
+		- Upstream Haxe exposes SNI selection as a callback rather than a simple hostname table.
+		- The Rust runtime needs the matcher plus cert/key so it can choose a certificate when the
+		  TLS client hello arrives.
+
+		What
+		- Stores a matcher/cert/key triple for use by the next server-side `handshake()`.
+		- `setCertificate(...)` remains the default/fallback certificate.
+
+		How
+		- Null entries are preserved at the Haxe surface so API-surface smoke tests and parity calls
+		  do not throw eagerly.
+		- The typed runtime boundary filters invalid entries before building the rustls resolver.
+	**/
+	public function addSNICertificate(cbServernameMatch:String->Bool, cert:Certificate, key:Key):Void {
+		sniMatchers.push(cbServernameMatch);
+		sniCerts.push(cert);
+		sniKeys.push(key);
 	}
 
 	public function peerCertificate():sys.ssl.Certificate {
-		var h = untyped __rust__("{0}.borrow().tls_peer_certificate()", handle);
-		return sys.ssl.Certificate.fromHandle(h);
+		return sys.ssl.Certificate.fromHandle(NativeSocket.tlsPeerCertificate(handle));
 	}
 
 	override public function accept():Socket {

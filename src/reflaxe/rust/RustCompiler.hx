@@ -3987,6 +3987,40 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return null;
 	}
 
+	/**
+		Why
+		- Haxe property access syntax and Rust struct storage are not the same thing.
+		- We need one authoritative rule for "does this `FVar` actually have a backing field?"
+		  so constructor init, field reads, and field writes do not drift apart.
+
+		What
+		- Returns `true` only for instance vars that genuinely need stored Rust fields:
+		  `@:isVar`, `default`, or `ctor` access on either side.
+		- Explicit accessor-only shapes like `get,null`, `null,get`, `get,set`, and `never,get`
+		  do not allocate storage unless `@:isVar` forces it.
+
+		How
+		- Haxe exposes property storage intent through `FVar(read, write)` access modes.
+		- `AccNo` / `null` means access is disallowed, not that a backing field exists.
+		- Keeping this centralized prevents bugs where getter-only properties accidentally
+		  acquire default-initialized Rust fields and trigger unrelated runtime behavior.
+	**/
+	function varFieldHasPhysicalStorage(cf:ClassField):Bool {
+		if (cf.meta != null && cf.meta.has(":isVar"))
+			return true;
+		return switch (cf.kind) {
+			case FVar(read, write):
+				switch ([read, write]) {
+					case [AccNormal | AccCtor, _] | [_, AccNormal | AccCtor]:
+						true;
+					case _:
+						false;
+				}
+			case _:
+				false;
+		};
+	}
+
 	function defaultValueExprForType(t:Type, pos:haxe.macro.Expr.Position):RustExpr {
 		// `Null<T>` defaults to `null` in Haxe.
 		//
@@ -11688,24 +11722,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return null;
 		}
 
-		function varHasStorage(prop:ClassField):Bool {
-			// `@:isVar` forces storage even when accessors are `get/set`.
-			for (m in prop.meta.get())
-				if (m.name == ":isVar")
-					return true;
-			return switch (prop.kind) {
-				case FVar(read, write):
-					switch ([read, write]) {
-						case [AccNormal | AccNo | AccCtor, _] | [_, AccNormal | AccNo | AccCtor]:
-							true;
-						case _:
-							false;
-					}
-				case _:
-					false;
-			}
-		}
-
 		// Property reads (`var x(get, ...)`) must call `get_x()` and return its value.
 		switch (cf.kind) {
 			case FVar(read, _):
@@ -11717,7 +11733,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							return unsupported(fullExpr, "property read (missing name)");
 						// Special-case: inside `get_x()` for a storage-backed property (e.g. `default,get`),
 						// Haxe treats `x` as a direct read of the backing storage to avoid recursion.
-						var skipLower = varHasStorage(cf)
+						var skipLower = varFieldHasPhysicalStorage(cf)
 							&& currentMethodField != null
 							&& currentMethodField.getHaxeName() == ("get_" + propName);
 						if (!skipLower) {
@@ -11819,23 +11835,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return null;
 		}
 
-		function varHasStorage(prop:ClassField):Bool {
-			for (m in prop.meta.get())
-				if (m.name == ":isVar")
-					return true;
-			return switch (prop.kind) {
-				case FVar(read, write):
-					switch ([read, write]) {
-						case [AccNormal | AccNo | AccCtor, _] | [_, AccNormal | AccNo | AccCtor]:
-							true;
-						case _:
-							false;
-					}
-				case _:
-					false;
-			}
-		}
-
 		// Haxe `Array.length = n` must resize the array (truncate/extend) and fill new slots with `null`.
 		//
 		// Upstream stdlib relies on this behavior for `haxe.ds.Vector` on "other" targets (our case),
@@ -11869,7 +11868,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							return unsupported(rhs, "property write (missing name)");
 						// Special-case: inside `set_x()` for a storage-backed property (e.g. `default,set`),
 						// Haxe treats `x = v` as a direct write to backing storage to avoid recursion.
-						var skipLower = varHasStorage(cf)
+						var skipLower = varFieldHasPhysicalStorage(cf)
 							&& currentMethodField != null
 							&& currentMethodField.getHaxeName() == ("set_" + propName);
 						if (!skipLower) {
@@ -12728,26 +12727,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var seen = new Map<String, Bool>();
 
 		function isPhysicalVarField(cls:ClassType, cf:ClassField):Bool {
-			// Haxe `var x(get,set)` style properties are not stored fields unless explicitly marked `@:isVar`
-			// or declared with default-like access (e.g. `default`, `null`, `ctor`).
-			if (cf.meta != null && cf.meta.has(":isVar"))
-				return true;
-			return switch (cf.kind) {
-				case FVar(read, write):
-					switch ([read, write]) {
-						// A backing field exists when at least one side uses direct field access (`default`)
-						// or constructor-only init access (`ctor`). `null`/`no` by itself does not imply storage.
-						case [AccNormal | AccCtor, _]: true;
-						case [_, AccNormal | AccCtor]: true;
-						// `var x(get, null)` is a common pattern for "custom getter + stored field" (write access
-						// is restricted, but storage still exists for internal usage).
-						case [AccNo, _]: true;
-						case [_, AccNo]: true;
-						case _: false;
-					}
-				case _:
-					false;
-			};
+			return varFieldHasPhysicalStorage(cf);
 		}
 
 		// Walk base -> derived so field layout is deterministic.
