@@ -89,6 +89,122 @@ impl Bytes {
     }
 }
 
+fn read_exact<const N: usize>(buf: &HxRef<Bytes>, pos: i32, op: &str) -> [u8; N] {
+    let borrowed = buf.borrow();
+    let total = borrowed.length();
+    check_range(op, pos, N as i32, total);
+    let start = pos as usize;
+    let end = start + N;
+    let mut out = [0u8; N];
+    out.copy_from_slice(&borrowed.data[start..end]);
+    out
+}
+
+fn write_exact<const N: usize>(buf: &HxRef<Bytes>, pos: i32, bytes: [u8; N], op: &str) {
+    let mut borrowed = buf.borrow_mut();
+    let total = borrowed.length();
+    check_range(op, pos, N as i32, total);
+    let start = pos as usize;
+    let end = start + N;
+    borrowed.data[start..end].copy_from_slice(&bytes);
+}
+
+/// Fill `len` bytes starting at `pos` with `value & 0xFF`.
+pub fn fill(buf: &HxRef<Bytes>, pos: i32, len: i32, value: i32) {
+    if len == 0 {
+        let borrowed = buf.borrow();
+        check_range("fill", pos, 0, borrowed.length());
+        return;
+    }
+
+    let mut borrowed = buf.borrow_mut();
+    let total = borrowed.length();
+    check_range("fill", pos, len, total);
+    let start = pos as usize;
+    let end = (pos + len) as usize;
+    borrowed.data[start..end].fill(value as u8);
+}
+
+/// Lexicographic byte comparison matching upstream `haxe.io.Bytes.compare`.
+pub fn compare(lhs: &HxRef<Bytes>, rhs: &HxRef<Bytes>) -> i32 {
+    let lhs_b = lhs.borrow();
+    let rhs_b = rhs.borrow();
+    let len = lhs_b.data.len().min(rhs_b.data.len());
+
+    for i in 0..len {
+        let a = lhs_b.data[i] as i32;
+        let b = rhs_b.data[i] as i32;
+        if a != b {
+            return a - b;
+        }
+    }
+
+    lhs_b.length() - rhs_b.length()
+}
+
+/// Lowercase hexadecimal encoding matching upstream `Bytes.toHex()`.
+pub fn to_hex(buf: &HxRef<Bytes>) -> String {
+    let borrowed = buf.borrow();
+    let mut out = String::with_capacity(borrowed.data.len() * 2);
+    for byte in &borrowed.data {
+        use std::fmt::Write;
+        let _ = write!(&mut out, "{:02x}", byte);
+    }
+    out
+}
+
+/// Decode an even-length hexadecimal string using upstream Haxe semantics.
+pub fn of_hex(s: &str) -> Bytes {
+    let len = s.len();
+    if (len & 1) != 0 {
+        exception::throw(crate::dynamic::from(String::from(
+            "Not a hex string (odd number of digits)",
+        )));
+    }
+
+    let bytes = s.as_bytes();
+    let mut out = vec![0u8; len >> 1];
+    for i in 0..out.len() {
+        let high = ((bytes[i * 2] as i32) & 0xF) + ((((bytes[i * 2] as i32) & 0x40) >> 6) * 9);
+        let low =
+            ((bytes[i * 2 + 1] as i32) & 0xF) + ((((bytes[i * 2 + 1] as i32) & 0x40) >> 6) * 9);
+        out[i] = (((high << 4) | low) & 0xFF) as u8;
+    }
+    Bytes::from_vec(out)
+}
+
+pub fn get_u16(buf: &HxRef<Bytes>, pos: i32) -> i32 {
+    u16::from_le_bytes(read_exact::<2>(buf, pos, "getUInt16")) as i32
+}
+
+pub fn set_u16(buf: &HxRef<Bytes>, pos: i32, value: i32) {
+    write_exact(buf, pos, (value as u16).to_le_bytes(), "setUInt16");
+}
+
+pub fn get_i32(buf: &HxRef<Bytes>, pos: i32) -> i32 {
+    i32::from_le_bytes(read_exact::<4>(buf, pos, "getInt32"))
+}
+
+pub fn set_i32(buf: &HxRef<Bytes>, pos: i32, value: i32) {
+    write_exact(buf, pos, value.to_le_bytes(), "setInt32");
+}
+
+pub fn get_float(buf: &HxRef<Bytes>, pos: i32) -> f64 {
+    f32::from_le_bytes(read_exact::<4>(buf, pos, "getFloat")) as f64
+}
+
+pub fn set_float(buf: &HxRef<Bytes>, pos: i32, value: f64) {
+    write_exact(buf, pos, (value as f32).to_le_bytes(), "setFloat");
+}
+
+pub fn get_double(buf: &HxRef<Bytes>, pos: i32) -> f64 {
+    f64::from_le_bytes(read_exact::<8>(buf, pos, "getDouble"))
+}
+
+pub fn set_double(buf: &HxRef<Bytes>, pos: i32, value: f64) {
+    write_exact(buf, pos, value.to_le_bytes(), "setDouble");
+}
+
 /// Copy `len` bytes from `src[srcpos..]` into `dst[pos..]`.
 ///
 /// This is implemented as a helper that operates on Haxe refs (`HxRef<...>`) so we can avoid

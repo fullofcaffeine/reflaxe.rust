@@ -64,6 +64,17 @@ Generated projects include:
 - Choose `portable` for default application development.
 - Choose `metal` for hot paths, Rust-first APIs, and stricter performance intent.
 
+Portable does not automatically mean "wrapper-heavy" on Rust. For abstractions whose semantics
+line up cleanly, the compiler can still lower to the native Rust representation. Example:
+
+- `reflaxe.std.Option<T>` -> Rust `Option<T>`
+- `reflaxe.std.Result<T, E>` -> Rust `Result<T, E>`
+
+That keeps the portable authoring surface while aiming for Rust-native cost on this backend.
+
+`reflaxe.std` is intended to grow into a broader portable idiom layer over time. v1 starts with
+`Option` / `Result` because those are small enough to lock semantics and migration rules first.
+
 ## Compare profiles in one example
 
 ```bash

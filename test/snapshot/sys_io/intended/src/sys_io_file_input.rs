@@ -101,7 +101,7 @@ impl FileInput {
             let __b = __hx_this.borrow();
             __b.handle.clone()
         };
-        match pos.clone() {
+        match pos {
             crate::sys_io_file_seek::FileSeek::SeekBegin => {
                 h.borrow_mut().seek_from_start(p as u64);
             }

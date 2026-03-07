@@ -54,6 +54,16 @@ Conformance fixtures:
 
 - `test/semantic_diff/sys_getenv_null`
 
+### 5) Portable Option/Result idiom semantics
+
+1. Portable Option/Result constructor semantics (`Some`/`None`, `Ok`/`Err`) must remain stable.
+2. Portable combinator-style flows (`map`, `andThen`, `mapErr`, `orElse`, `unwrapOr`) must preserve
+   reference behavior from `--interp` outputs.
+
+Conformance fixtures:
+
+- `test/semantic_diff/portable_option_result_basics`
+
 ## Contract invariance across lanes
 
 If code stays on portable surfaces, semantics must remain equivalent with and without portable metal lanes (`@:haxeMetal`/`@:rustMetal`) for lane-clean modules.

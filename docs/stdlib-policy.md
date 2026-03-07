@@ -15,6 +15,24 @@ Out of scope for parity accounting (target-specific namespaces):
 - `cpp.*`, `cs.*`, `java.*`, `jvm.*`, `js.*`, `lua.*`, `php.*`, `python.*`, `hl.*`, `neko.*`.
 - `rust.*` (Rust-native extension surface in this backend).
 
+## Family governance vs user idiom package
+
+Rust follows a two-layer model:
+
+1. `reflaxe.family.std`
+   - Governance/spec/conformance assets shared across backends.
+2. `reflaxe.std`
+   - User-facing portable idiom package.
+   - V1 starts with `Option` / `Result`.
+   - Future growth should add portable idioms only when semantics stay explicit and testable across
+     backends.
+
+Contract rule:
+
+- portable semantics are owned by family governance assets plus conformance fixtures.
+- native target facades (`rust.*`, `go.*`, `elixir.*`, etc.) stay backend-local and are not
+  silently substituted for portable APIs.
+
 ## Override model
 
 - Upstream-colliding std overrides live under `std/**` and use `.cross.hx` suffixes.

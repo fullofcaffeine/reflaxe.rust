@@ -1,5 +1,6 @@
 package hxrt.json;
 
+import haxe.BoundaryTypes.JsonReplacer;
 import haxe.BoundaryTypes.JsonValue;
 import rust.Ref;
 
@@ -15,6 +16,7 @@ import rust.Ref;
 	What
 	- Typed extern bindings for `hxrt::json` parse helpers and runtime JSON value introspection
 	  used by `haxe.Json.parseValue`.
+	- Typed stringify bindings, including the `Json.stringify` replacer callback path.
 
 	How
 	- `@:native("hxrt::json")` binds this extern class to the Rust runtime module.
@@ -26,6 +28,12 @@ import rust.Ref;
 extern class NativeJson {
 	@:native("parse")
 	public static function parse(text:Ref<String>):JsonValue;
+
+	@:native("stringify")
+	public static function stringify(value:JsonValue, space:Ref<Null<String>>):String;
+
+	@:native("stringify_with_replacer")
+	public static function stringifyWithReplacer(value:JsonValue, replacer:JsonReplacer, space:Ref<Null<String>>):String;
 
 	@:native("value_kind")
 	public static function valueKind(value:JsonValue):Int;

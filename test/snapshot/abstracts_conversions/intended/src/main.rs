@@ -17,6 +17,8 @@ mod haxe_ds_object_map;
 mod haxe_ds_string_map;
 mod haxe_exception;
 mod haxe_i_map;
+mod haxe_int32_int32_impl_;
+mod haxe_int64_helper;
 mod haxe_int64_int64;
 mod haxe_int64_int64_impl_;
 mod haxe_io_bytes_buffer;
@@ -25,9 +27,13 @@ mod haxe_io_eof;
 mod haxe_io_fp_helper;
 mod haxe_io_input;
 mod haxe_io_output;
+mod haxe_iterators_string_iterator;
+mod haxe_iterators_string_key_value_iterator;
 mod haxe_stack_item;
+mod int32_tools;
 mod map_storage_tools_nullable;
 mod string_buf;
+mod string_tools;
 mod sys;
 mod sys_io_stderr;
 mod sys_io_stdin;
@@ -56,13 +62,11 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 fn main() {
     let a: i32 = 5;
     let b: i32 = {
-        let this1: i32;
-        this1 = 2.8 as i32;
+        let this1: i32 = 2.8 as i32;
         this1 as i32
     };
     let c: i32 = {
-        let this1_2: i32;
-        this1_2 = a as i32 + b;
+        let this1_2: i32 = a as i32 + b;
         this1_2 as i32
     };
     let as_int: i32 = c;

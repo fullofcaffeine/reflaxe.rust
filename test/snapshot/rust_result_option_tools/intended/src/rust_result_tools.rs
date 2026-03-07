@@ -8,7 +8,7 @@ pub struct ResultTools {}
 
 impl ResultTools {
     pub fn is_ok<T: Clone, E: Clone>(r: Result<T, E>) -> bool {
-        return match r.clone() {
+        return match r {
             Result::Ok(__p) => {
                 let _ = __p;
                 true
@@ -21,7 +21,7 @@ impl ResultTools {
     }
 
     pub fn is_err<T: Clone, E: Clone>(r: Result<T, E>) -> bool {
-        return !(match r.clone() {
+        return !(match r {
             Result::Ok(__p) => {
                 let _ = __p;
                 true
@@ -34,7 +34,7 @@ impl ResultTools {
     }
 
     pub fn unwrap_or<T: Clone, E: Clone>(r: Result<T, E>, fallback: T) -> T {
-        return match r.clone() {
+        return match r {
             Result::Ok(__p) => {
                 let _g: T = __p;
                 {
@@ -50,7 +50,7 @@ impl ResultTools {
     }
 
     pub fn unwrap<T: Clone, E: Clone + std::fmt::Debug>(r: Result<T, E>) -> T {
-        return match r.clone() {
+        return match r {
             Result::Ok(__p) => {
                 let _g: T = __p;
                 {
@@ -73,7 +73,7 @@ impl ResultTools {
     }
 
     pub fn expect<T: Clone, E: Clone + std::fmt::Debug>(r: Result<T, E>, message: String) -> T {
-        return match r.clone() {
+        return match r {
             Result::Ok(__p) => {
                 let _g: T = __p;
                 {
@@ -97,7 +97,7 @@ impl ResultTools {
     }
 
     pub fn context<T: Clone>(r: Result<T, String>, prefix: String) -> Result<T, String> {
-        return match r.clone() {
+        return match r {
             Result::Ok(__p) => {
                 let _g: T = __p;
                 {

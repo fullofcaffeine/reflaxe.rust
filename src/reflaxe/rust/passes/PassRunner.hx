@@ -23,6 +23,7 @@ import reflaxe.rust.ast.RustAST.RustFile;
 **/
 class PassRunner {
 	static final NORMALIZE:RustPass = new NormalizePass();
+	static final STATEMENT_CLEANUP:RustPass = new StatementCleanupPass();
 	static final MUT_INFERENCE:RustPass = new MutInferencePass();
 	static final CLONE_ELISION:RustPass = new CloneElisionPass();
 	static final BORROW_TIGHTEN:RustPass = new BorrowScopeTighteningPass();
@@ -45,9 +46,23 @@ class PassRunner {
 			case Portable:
 				// Keep metal restrictions active in portable compilations so `@:haxeMetal`
 				// islands are enforced by the same pass contract as full metal profile.
-				[NORMALIZE, MUT_INFERENCE, CLONE_ELISION, BORROW_TIGHTEN, METAL_RESTRICTIONS];
+				[
+					NORMALIZE,
+					STATEMENT_CLEANUP,
+					MUT_INFERENCE,
+					CLONE_ELISION,
+					BORROW_TIGHTEN,
+					METAL_RESTRICTIONS
+				];
 			case Metal:
-				[NORMALIZE, MUT_INFERENCE, CLONE_ELISION, BORROW_TIGHTEN, METAL_RESTRICTIONS];
+				[
+					NORMALIZE,
+					STATEMENT_CLEANUP,
+					MUT_INFERENCE,
+					CLONE_ELISION,
+					BORROW_TIGHTEN,
+					METAL_RESTRICTIONS
+				];
 		};
 		if (context.build.noHxrt)
 			passes.push(NO_HXRT);

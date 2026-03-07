@@ -100,7 +100,7 @@ impl FileOutput {
             let __b = __hx_this.borrow();
             __b.handle.clone()
         };
-        match pos.clone() {
+        match pos {
             crate::sys_io_file_seek::FileSeek::SeekBegin => {
                 h.borrow_mut().seek_from_start(p as u64);
             }
@@ -195,20 +195,20 @@ impl FileOutput {
         } {
             crate::sys_io_file_output::FileOutput::write_int32(&*__hx_this, {
                 let __b = i64.borrow();
-                __b.high
+                __b.high.clone()
             });
             crate::sys_io_file_output::FileOutput::write_int32(&*__hx_this, {
                 let __b = i64.borrow();
-                __b.low
+                __b.low.clone()
             });
         } else {
             crate::sys_io_file_output::FileOutput::write_int32(&*__hx_this, {
                 let __b = i64.borrow();
-                __b.low
+                __b.low.clone()
             });
             crate::sys_io_file_output::FileOutput::write_int32(&*__hx_this, {
                 let __b = i64.borrow();
-                __b.high
+                __b.high.clone()
             });
         }
     }

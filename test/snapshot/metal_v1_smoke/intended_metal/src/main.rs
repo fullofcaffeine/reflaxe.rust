@@ -19,6 +19,8 @@ mod haxe_ds_object_map;
 mod haxe_ds_string_map;
 mod haxe_exception;
 mod haxe_i_map;
+mod haxe_int32_int32_impl_;
+mod haxe_int64_helper;
 mod haxe_int64_int64;
 mod haxe_int64_int64_impl_;
 mod haxe_io_bytes_buffer;
@@ -27,8 +29,11 @@ mod haxe_io_eof;
 mod haxe_io_fp_helper;
 mod haxe_io_input;
 mod haxe_io_output;
+mod haxe_iterators_string_iterator;
+mod haxe_iterators_string_key_value_iterator;
 mod haxe_stack_item;
 mod instant_tools;
+mod int32_tools;
 mod map_storage_tools;
 mod mut_slice_tools;
 mod os_string_tools;
@@ -40,6 +45,7 @@ mod rust_option_tools;
 mod rust_result_tools;
 mod rust_slice_tools;
 mod rust_str_tools;
+mod rust_string_tools;
 mod slice_tools;
 mod string_buf;
 mod string_tools;
@@ -174,7 +180,7 @@ fn main() {
             let _hx_ref_2: &String = &String::from("reflaxe");
             {
                 let needle: &str = _hx_ref_2;
-                crate::string_tools::StringTools::contains(hs, needle)
+                crate::rust_string_tools::StringTools::contains(hs, needle)
             }
         }
     };
@@ -183,7 +189,7 @@ fn main() {
     println!(
         "{}",
         hxrt::dynamic::from({
-            let r_2: Result<i32, String> = match r.clone() {
+            let r_2: Result<i32, String> = match r {
                 Result::Ok(__p) => {
                     let _g_3: i32 = __p;
                     {

@@ -19,4 +19,5 @@ Optional case-local Rust defines:
 Goal:
 
 - catch semantic drift where generated Rust behavior diverges from the Haxe baseline
-- keep a focused set of high-signal fixtures (nullability, exceptions, dispatch, and core sys behavior)
+- keep a focused set of high-signal fixtures (nullability, exceptions, dispatch, core sys behavior,
+  and portable Option/Result contract behavior)

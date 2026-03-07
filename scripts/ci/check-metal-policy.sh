@@ -389,7 +389,7 @@ run_contract_report_case() {
 		exit 1
 	fi
 
-	if ! match_regex '"schemaVersion":[[:space:]]*3' "$json_a"; then
+	if ! match_regex '"schemaVersion":[[:space:]]*4' "$json_a"; then
 		echo "[metal-policy] error: contract_report.json missing schemaVersion for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
@@ -401,6 +401,16 @@ run_contract_report_case() {
 	fi
 	if ! match_regex "\"contract\":[[:space:]]*\"${expected_contract}\"" "$json_a"; then
 		echo "[metal-policy] error: contract_report.json missing expected contract for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '"familyStdPin":[[:space:]]*\{' "$json_a"; then
+		echo "[metal-policy] error: contract_report.json missing familyStdPin object for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '"pinFile":[[:space:]]*"family/family_std_pin\.json"' "$json_a"; then
+		echo "[metal-policy] error: contract_report.json missing familyStdPin.pinFile for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
@@ -476,6 +486,11 @@ run_contract_report_case() {
 	fi
 	if ! match_regex "^- contract: \`${expected_contract}\`" "$md_a"; then
 		echo "[metal-policy] error: contract_report.md missing contract summary for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if ! match_regex "^- family std pin file: \`family/family_std_pin\.json\`" "$md_a"; then
+		echo "[metal-policy] error: contract_report.md missing family std pin summary for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi
@@ -626,7 +641,7 @@ run_runtime_plan_report_case() {
 		exit 1
 	fi
 
-	if ! match_regex '"schemaVersion":[[:space:]]*2' "$json_a"; then
+	if ! match_regex '"schemaVersion":[[:space:]]*3' "$json_a"; then
 		echo "[metal-policy] error: runtime_plan.json missing schemaVersion for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
@@ -643,6 +658,16 @@ run_runtime_plan_report_case() {
 	fi
 	if ! match_regex "\"contract\":[[:space:]]*\"${expected_contract}\"" "$json_a"; then
 		echo "[metal-policy] error: runtime_plan.json missing expected contract for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '"familyStdPin":[[:space:]]*\{' "$json_a"; then
+		echo "[metal-policy] error: runtime_plan.json missing familyStdPin object for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '"pinFile":[[:space:]]*"family/family_std_pin\.json"' "$json_a"; then
+		echo "[metal-policy] error: runtime_plan.json missing familyStdPin.pinFile for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
@@ -742,6 +767,11 @@ run_runtime_plan_report_case() {
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi
+	if ! match_regex "^- family std pin file: \`family/family_std_pin\.json\`" "$md_a"; then
+		echo "[metal-policy] error: runtime_plan.md missing family std pin summary for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
 	if ! match_regex '^## Selected features' "$md_a"; then
 		echo "[metal-policy] error: runtime_plan.md missing selected features section for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
@@ -827,7 +857,7 @@ run_optimizer_plan_report_case() {
 		exit 1
 	fi
 
-	if ! match_regex '"schemaVersion":[[:space:]]*1' "$json_a"; then
+	if ! match_regex '"schemaVersion":[[:space:]]*2' "$json_a"; then
 		echo "[metal-policy] error: optimizer_plan.json missing schemaVersion for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
@@ -839,6 +869,16 @@ run_optimizer_plan_report_case() {
 	fi
 	if ! match_regex "\"contract\":[[:space:]]*\"${expected_contract}\"" "$json_a"; then
 		echo "[metal-policy] error: optimizer_plan.json missing expected contract for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '"familyStdPin":[[:space:]]*\{' "$json_a"; then
+		echo "[metal-policy] error: optimizer_plan.json missing familyStdPin object for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '"pinFile":[[:space:]]*"family/family_std_pin\.json"' "$json_a"; then
+		echo "[metal-policy] error: optimizer_plan.json missing familyStdPin.pinFile for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
@@ -874,6 +914,11 @@ run_optimizer_plan_report_case() {
 	fi
 	if ! match_regex "^- contract: \`${expected_contract}\`" "$md_a"; then
 		echo "[metal-policy] error: optimizer_plan.md missing contract summary for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if ! match_regex "^- family std pin file: \`family/family_std_pin\.json\`" "$md_a"; then
+		echo "[metal-policy] error: optimizer_plan.md missing family std pin summary for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi
@@ -1015,8 +1060,8 @@ run_report_case "test/negative/metal_dynamic_access" "compile.viability.hxml" \
 run_contract_report_case "examples/hello" "compile.hxml" "portable" \
 	'portable contract report artifacts' \
 	'false' 'true' 'false' 'false' 'false' 'false' 'true'
-run_contract_report_case "examples/hello" "compile.metal.hxml" "metal" \
-	'metal contract report artifacts' \
+run_contract_report_case "examples/profile_storyboard" "compile.metal.hxml" "metal" \
+	'metal contract report artifacts (profile_storyboard)' \
 	'true' 'true' 'true' 'false' 'false' 'false' 'false'
 run_contract_report_case "test/positive/metal_no_hxrt_minimal" "compile.hxml" "metal" \
 	'metal no-hxrt contract report artifacts' \
@@ -1033,8 +1078,8 @@ run_runtime_plan_report_case "examples/sys_net_loopback" "compile.hxml" "portabl
 	"" \
 	'"sourceKind":[[:space:]]*"module"' \
 	'"sourceKind":[[:space:]]*"dependency_edge"'
-run_runtime_plan_report_case "examples/hello" "compile.metal.hxml" "metal" "default_features" \
-	'metal default-features runtime plan artifacts' \
+run_runtime_plan_report_case "examples/profile_storyboard" "compile.metal.hxml" "metal" "default_features" \
+	'metal default-features runtime plan artifacts (profile_storyboard)' \
 	'rust_hxrt_default_features'
 run_runtime_plan_report_case "test/positive/metal_no_hxrt_minimal" "compile.hxml" "metal" "no_hxrt" \
 	'metal no-hxrt runtime plan artifacts'
@@ -1043,15 +1088,15 @@ run_optimizer_plan_report_case "test/snapshot/string_clone_elision" "compile.hxm
 run_optimizer_plan_report_case "test/snapshot/for_array_alias_mutating" "compile.hxml" "portable" \
 	'portable optimizer plan records alias-hazard skip for array iteration lowering' \
 	'"id":[[:space:]]*"loop_optimizations\.skipped\.array_iter_borrowed\.desugared_for\.alias_hazard"'
-run_optional_fallback_case "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+run_optional_fallback_case "examples/profile_storyboard" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'' \
-	'single aggregated metal fallback warning (or clean)'
-run_optional_fallback_case "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'single aggregated metal fallback warning (or clean) for profile_storyboard'
+run_optional_fallback_case "examples/profile_storyboard" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'haxe\.ds\.(IntMap|StringMap):(2[0-9]|[3-9][0-9]|[1-9][0-9]{2,})' \
-	'metal fallback top-modules keeps IntMap/StringMap fallback below 2 after typed map helper migration'
-run_optional_fallback_case "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'metal fallback top-modules keeps IntMap/StringMap fallback below 2 after typed map helper migration (profile_storyboard)'
+run_optional_fallback_case "examples/profile_storyboard" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'haxe\.ds\.(ObjectMap|EnumValueMap):(2[0-9]|[3-9][0-9]|[1-9][0-9]{2,})' \
-	'metal fallback top-modules keeps ObjectMap/EnumValueMap fallback below 2 after typed map helper migration'
+	'metal fallback top-modules keeps ObjectMap/EnumValueMap fallback below 2 after typed map helper migration (profile_storyboard)'
 run_optional_fallback_case "test/snapshot/rust_hashmap" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'rust\.HashMapTools' \
 	'metal fallback top-modules excludes rust.HashMapTools after typed hash map helper migration'
@@ -1133,15 +1178,15 @@ run_optional_fallback_case "examples/chat_loopback" "compile.metal.hxml" 'Metal 
 run_optional_fallback_case "examples/profile_storyboard" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'profile\.MetalRuntime:' \
 	'metal fallback top-modules excludes profile.MetalRuntime after typed score lowering'
-run_optional_fallback_case "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+run_optional_fallback_case "examples/profile_storyboard" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'Sys:' \
-	'metal fallback top-modules excludes Sys after typed runtime wrapper migration'
-run_optional_fallback_case "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'metal fallback top-modules excludes Sys after typed runtime wrapper migration (profile_storyboard)'
+run_optional_fallback_case "examples/profile_storyboard" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'sys\.io\.Stdout' \
-	'metal fallback top-modules excludes Stdout after typed runtime wrapper migration'
-run_optional_fallback_case "examples/hello" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'metal fallback top-modules excludes Stdout after typed runtime wrapper migration (profile_storyboard)'
+run_optional_fallback_case "examples/profile_storyboard" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'sys\.io\.Stderr' \
-	'metal fallback top-modules excludes Stderr after typed runtime wrapper migration'
+	'metal fallback top-modules excludes Stderr after typed runtime wrapper migration (profile_storyboard)'
 run_no_hxrt_success_case "test/positive/metal_no_hxrt_minimal" "compile.hxml" \
 	'rust_no_hxrt emits runtime-free minimal crate'
 

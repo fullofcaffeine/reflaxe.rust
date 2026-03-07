@@ -17,6 +17,8 @@ mod haxe_ds_object_map;
 mod haxe_ds_string_map;
 mod haxe_exception;
 mod haxe_i_map;
+mod haxe_int32_int32_impl_;
+mod haxe_int64_helper;
 mod haxe_int64_int64;
 mod haxe_int64_int64_impl_;
 mod haxe_io_bytes_buffer;
@@ -25,10 +27,14 @@ mod haxe_io_eof;
 mod haxe_io_fp_helper;
 mod haxe_io_input;
 mod haxe_io_output;
+mod haxe_iterators_string_iterator;
+mod haxe_iterators_string_key_value_iterator;
 mod haxe_stack_item;
+mod int32_tools;
 mod map_storage_tools_nullable;
 mod my_enum;
 mod string_buf;
+mod string_tools;
 mod sys;
 mod sys_io_stderr;
 mod sys_io_stdin;
@@ -128,7 +134,7 @@ fn main() {
         hxrt::dynamic::from(hxrt::string::HxString::from("--- Option ---"))
     );
     let o: Option<i32> = Option::Some(5);
-    match o.clone() {
+    match o {
         Option::Some(__p) => {
             let _g: i32 = __p;
             {
@@ -144,7 +150,7 @@ fn main() {
         }
     }
     let o2: Option<i32> = Option::None;
-    match o2.clone() {
+    match o2 {
         Option::Some(__p) => {
             let _g_2: i32 = __p;
             {
@@ -164,7 +170,7 @@ fn main() {
         hxrt::dynamic::from(hxrt::string::HxString::from("--- Result ---"))
     );
     let r: Result<i32, hxrt::string::HxString> = Result::Ok(7);
-    match r.clone() {
+    match r {
         Result::Ok(__p) => {
             let _g_3: i32 = __p;
             {
@@ -183,7 +189,7 @@ fn main() {
     let r2: Result<i32, hxrt::string::HxString> = Result::Err(hxrt::string::HxString::from(
         hxrt::string::HxString::from("fail"),
     ));
-    match r2.clone() {
+    match r2 {
         Result::Ok(__p) => {
             let _g_5: i32 = __p;
             {

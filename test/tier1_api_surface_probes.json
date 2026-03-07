@@ -18,7 +18,11 @@
       "body": [
         "var parsed:haxe.BoundaryTypes.JsonValue = haxe.Json.parse('{\"k\":1,\"arr\":[1,2]}');",
         "var text = haxe.Json.stringify({ k: 1, arr: [1, 2] });",
+        "var replaced = haxe.Json.stringify({ title: 'sunset' }, function(key:Dynamic, value:Dynamic):Dynamic {",
+        "  return Std.string(key) == 'title' ? 'SUNSET' : value;",
+        "});",
         "if (text.length == 0) return 0;",
+        "if (replaced.length == 0) return 0;",
         "if (parsed == null) return 0;",
         "return 1;"
       ]
@@ -33,10 +37,21 @@
         "bytes.blit(2, one, 0, 1);",
         "var sub = bytes.sub(0, 3);",
         "var firstCode = bytes.get(0);",
+        "bytes.fill(3, 2, 90);",
+        "var parsed = haxe.io.Bytes.ofHex('0a0b0c0d');",
+        "var cmp = parsed.compare(haxe.io.Bytes.ofHex('0a0b0c0d'));",
+        "bytes.setUInt16(4, 0x1234);",
+        "bytes.setInt32(0, 0x01020304);",
+        "bytes.setFloat(0, 1.5);",
+        "bytes.setDouble(0, 3.25);",
+        "var u16 = bytes.getUInt16(4);",
+        "var i32 = bytes.getInt32(0);",
+        "var f = bytes.getFloat(0);",
+        "var d = bytes.getDouble(0);",
         "var text = bytes.getString(0, 3);",
         "var joined = bytes.toString();",
         "var hex = bytes.toHex();",
-        "return bytes.length + sub.length + one.length + firstCode + text.length + joined.length + hex.length;"
+        "return bytes.length + sub.length + one.length + firstCode + parsed.length + cmp + u16 + i32 + Std.int(f) + Std.int(d) + text.length + joined.length + hex.length;"
       ]
     },
     {
@@ -64,8 +79,10 @@
       "id": "haxe_iterators_MapKeyValueIterator",
       "body": [
         "var map = ['a' => 1, 'b' => 2];",
+        "var manual = new haxe.iterators.MapKeyValueIterator<String, Int>(map);",
         "var total = 0;",
-        "for (kv in map.keyValueIterator()) {",
+        "while (manual.hasNext()) {",
+        "  var kv = manual.next();",
         "  total += kv.value;",
         "}",
         "return total;"

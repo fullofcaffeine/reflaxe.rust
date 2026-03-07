@@ -21,12 +21,17 @@ import hxrt.json.NativeJson;
 	- `stringify(value:JsonValue, ?replacer, ?space):String`
 
 	How
-	- Implemented by calling into the bundled Rust runtime (`hxrt`) via target-code injection.
+	- Implemented by calling into the bundled Rust runtime (`hxrt`) via typed extern bindings
+	  in `hxrt.json.NativeJson`.
 	- `parse` returns:
 	  - JSON objects as runtime `DynObject` boxed into `JsonValue` (works with `Reflect.field`)
 	  - JSON arrays as `Array<JsonValue>` boxed into `JsonValue`
 	- `stringify` supports `space` for pretty printing (indent string per nesting level).
-	  `replacer` is accepted for API compatibility but is not implemented yet on this target.
+	- `stringify` applies `replacer` with upstream Haxe semantics:
+	  - called first with the root key `""`
+	  - object fields use their field name as the key
+	  - array items use their string index (`"0"`, `"1"`, ...)
+	  - the callback runs before descending into child values
 **/
 class Json {
 	static inline var KIND_NULL:Int = 0;
@@ -67,16 +72,17 @@ class Json {
 
 		Notes
 		- `space` enables pretty-printing (indent string per nesting level).
-		- `replacer` is not supported yet on the Rust target.
+		- `replacer` matches upstream Haxe `JsonPrinter` traversal order:
+		  root key `""`, then object-field / array-index keys before descending further.
 	**/
 	public static function stringify(value:JsonValue, ?replacer:JsonReplacer, ?space:String):String {
 		#if macro
 		return haxe.format.JsonPrinter.print(value, replacer, space);
 		#else
 		if (replacer != null) {
-			throw "haxe.Json.stringify: replacer is not supported on the Rust target yet";
+			return NativeJson.stringifyWithReplacer(value, replacer, space);
 		}
-		return (untyped __rust__("hxrt::json::stringify(&{0}, {1}.as_deref())", value, space) : String);
+		return NativeJson.stringify(value, space);
 		#end
 	}
 

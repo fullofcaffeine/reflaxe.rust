@@ -15,6 +15,12 @@ This project lets you write Haxe and ship native Rust binaries, with a path for 
 
 - `portable` contract (default): Haxe-first semantics with portability-oriented behavior and predictable stdlib/runtime integration.
 - `metal` contract: Rust-first boundary rules, typed interop surfaces, and performance-focused paths.
+- Portable abstractions do not have to mean wrapper tax: when semantics line up, shared portable
+  surfaces can lower directly to native Rust representations (for example
+  `reflaxe.std.Option/Result` -> Rust `Option/Result`).
+- `reflaxe.std` is the start of a broader portable idiom layer, not a Rust-only wrapper module.
+  V1 is intentionally narrow (`Option` / `Result`) so semantics and migration stay stable before
+  the portable API surface grows.
 - CI evidence: snapshots, negative policy fixtures, runtime/optimizer plan reports, and HXRT overhead tracking are all part of the default workflow.
 
 ## Start Here

@@ -1,30 +1,50 @@
 package haxe.iterators;
 
+import haxe.Constraints.IMap;
+
 /**
 	MapKeyValueIterator (Rust target override)
 
 	Why
 	- The upstream Haxe stdlib provides `haxe.iterators.MapKeyValueIterator` as a generic helper that
 	  builds `{key, value}` pairs by iterating `map.keys()` and calling `map.get(key)`.
-	- That implementation relies on the "manual iterator protocol" (`hasNext()` / `next()`) which is not
-	  fully supported yet in reflaxe.rust (the compiler prefers lowering `for` loops directly to Rust `for`).
+	- Portable code and upstream std helpers may instantiate this class directly instead of only using
+	  `for (kv in map.keyValueIterator())`.
+	- The earlier Rust override was only a stub. That made Tier1 parity misleading because code could
+	  typecheck while the actual helper returned no entries at runtime.
 
 	What
-	- A minimal stub that exists so codebases (and some stdlib inline helpers) can typecheck.
+	- Implements the upstream helper shape against the existing `haxe.Constraints.IMap` surface.
+	- Supports the normal manual iterator protocol:
+	  - `hasNext()`
+	  - `next()`
 
 	How
-	- Prefer calling `keyValueIterator()` on `haxe.ds.*` maps directly; reflaxe.rust provides those methods
-	  and lowers `for (kv in map.keyValueIterator())` to a Rust `for` loop.
-	- If you end up here at runtime, `next()` throws with an actionable message.
+	- Stores the source map and an iterator over its keys.
+	- `next()` pulls the next key and looks up the corresponding value through `map.get(key)`.
+	- The value lookup is cast back to `V`, matching upstream assumptions that a key produced by
+	  `keys()` refers to an existing entry.
 **/
+@:rustGeneric([
+	"K: Clone + Send + Sync + 'static + std::fmt::Debug",
+	"V: Clone + Send + Sync + 'static + std::fmt::Debug"
+])
 class MapKeyValueIterator<K, V> {
-	public function new(map:Any) {}
+	final map:IMap<K, V>;
+	final keys:Iterator<K>;
 
-	public function hasNext():Bool {
-		return false;
+	public inline function new(map:IMap<K, V>) {
+		this.keys = map.keys();
+		this.map = map;
 	}
 
-	public function next():{key:K, value:V} {
-		throw "`haxe.iterators.MapKeyValueIterator` is not supported yet on reflaxe.rust. Prefer `for (kv in map.keyValueIterator())`.";
+	public inline function hasNext():Bool {
+		return keys.hasNext();
+	}
+
+	public inline function next():{key:K, value:V} {
+		var key = keys.next();
+		var value:V = cast map.get(rust.CloneTools.cloneValue(key));
+		return {key: key, value: value};
 	}
 }

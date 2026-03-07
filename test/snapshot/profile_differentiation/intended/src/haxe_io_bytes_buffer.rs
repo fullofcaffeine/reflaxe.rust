@@ -132,11 +132,11 @@ impl BytesBuffer {
         let __hx_this: crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer> = self_.self_ref();
         crate::haxe_io_bytes_buffer::BytesBuffer::add_int32(&*__hx_this, {
             let __b = v.borrow();
-            __b.low
+            __b.low.clone()
         });
         crate::haxe_io_bytes_buffer::BytesBuffer::add_int32(&*__hx_this, {
             let __b = v.borrow();
-            __b.high
+            __b.high.clone()
         });
     }
 

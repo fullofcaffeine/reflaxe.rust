@@ -80,19 +80,22 @@ This page is a practical reference for the most relevant compiler defines.
     - `contract_report.json` (machine-readable)
     - `contract_report.md` (human-readable)
   - Includes effective contract flags (`contract`, strictness, async/no-hxrt/string mode),
-    backend identity (`backendId`), native-import portability markers, and current warning/error diagnostics.
+    backend identity (`backendId`), family pin metadata (`familyStdPin.*`), native-import portability markers,
+    and current warning/error diagnostics.
 - `rust_runtime_plan_report`
   - Emit deterministic runtime-plan artifacts in the generated crate root:
     - `runtime_plan.json` (machine-readable)
     - `runtime_plan.md` (human-readable)
   - Records runtime identity (`runtimeId`), effective mode (`no_hxrt|default_features|selective`),
-    selected feature set, and typed provenance entries (`module`, `define`, `dependency_edge`).
+    selected feature set, family pin metadata (`familyStdPin.*`), and typed provenance entries
+    (`module`, `define`, `dependency_edge`).
 - `rust_optimizer_plan_report`
   - Emit deterministic optimizer-plan artifacts in the generated crate root:
     - `optimizer_plan.json` (machine-readable)
     - `optimizer_plan.md` (human-readable)
   - Records executed pass order, applied optimization counts, skipped-reason counts,
-    and aggregate convergence metrics (`cloneElisions`, `loopOptimizations`).
+    family pin metadata (`familyStdPin.*`), and aggregate convergence metrics
+    (`cloneElisions`, `loopOptimizations`).
 - `rust_no_hxrt`
   - Metal-only minimal-runtime mode.
   - Omits bundled `hxrt` emission and `Cargo.toml` dependency.

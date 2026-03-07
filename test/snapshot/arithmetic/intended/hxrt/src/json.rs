@@ -1,5 +1,6 @@
 use crate::array::Array;
-use crate::cell::HxRef;
+use crate::anon::Anon;
+use crate::cell::{HxDynRef, HxRef};
 use crate::dynamic::{DynObject, Dynamic};
 use crate::exception;
 use crate::string::HxString;
@@ -35,6 +36,10 @@ fn dynamic_json_string(v: &Dynamic) -> Option<String> {
         return Some(s.as_deref().unwrap_or("").to_string());
     }
     None
+}
+
+fn replacer_key_dynamic(key: &str) -> Dynamic {
+    Dynamic::from(HxString::from(key.to_string()))
 }
 
 fn json_value_to_dynamic(v: Value) -> Dynamic {
@@ -77,6 +82,10 @@ fn json_value_to_dynamic(v: Value) -> Dynamic {
 fn dynamic_to_json_value(v: &Dynamic) -> Value {
     if v.is_null() {
         return Value::Null;
+    }
+
+    if let Some(inner) = v.downcast_ref::<Dynamic>() {
+        return dynamic_to_json_value(inner);
     }
 
     if let Some(v) = v.downcast_ref::<HxString>() {
@@ -234,6 +243,48 @@ fn dynamic_to_json_value(v: &Dynamic) -> Value {
     Value::String(v.to_haxe_string())
 }
 
+fn apply_json_replacer(
+    key: &str,
+    value: Dynamic,
+    replacer: &dyn Fn(Dynamic, Dynamic) -> Dynamic,
+) -> Dynamic {
+    let replaced = replacer(replacer_key_dynamic(key), value);
+
+    if let Some(inner) = replaced.downcast_ref::<Dynamic>() {
+        return apply_json_replacer(key, inner.clone(), replacer);
+    }
+
+    if let Some(obj) = replaced.downcast_ref::<HxRef<DynObject>>() {
+        let out = crate::dynamic::dyn_object_new();
+        for (field, child) in crate::dynamic::dyn_object_entries(obj) {
+            crate::dynamic::dyn_object_set(
+                &out,
+                field.as_str(),
+                apply_json_replacer(field.as_str(), child, replacer),
+            );
+        }
+        return Dynamic::from(out);
+    }
+
+    if let Some(obj) = replaced.downcast_ref::<HxRef<Anon>>() {
+        let out = HxRef::new(Anon::new());
+        for (field, child) in crate::anon::anon_entries(obj) {
+            crate::anon::anon_set(&out, field.as_str(), apply_json_replacer(field.as_str(), child, replacer));
+        }
+        return Dynamic::from(out);
+    }
+
+    if let Some(arr) = replaced.downcast_ref::<Array<Dynamic>>() {
+        let out = Array::<Dynamic>::new();
+        for (index, child) in arr.to_vec().into_iter().enumerate() {
+            out.push(apply_json_replacer(index.to_string().as_str(), child, replacer));
+        }
+        return Dynamic::from(out);
+    }
+
+    replaced
+}
+
 /// Parse a JSON string into Haxe `Dynamic` values.
 ///
 /// Semantics (target baseline):
@@ -251,10 +302,10 @@ pub fn parse(text: &str) -> Dynamic {
 /// Encode a Haxe `Dynamic` value as JSON.
 ///
 /// `space` enables pretty printing (indent string per nesting level).
-pub fn stringify(value: &Dynamic, space: Option<&str>) -> String {
-    let v = dynamic_to_json_value(value);
+pub fn stringify(value: Dynamic, space: &HxString) -> String {
+    let v = dynamic_to_json_value(&value);
 
-    if let Some(indent) = space {
+    if let Some(indent) = space.as_deref() {
         use serde::Serialize;
         use serde_json::ser::{PrettyFormatter, Serializer};
         use serde_json::value::Value as SerValue;
@@ -267,6 +318,24 @@ pub fn stringify(value: &Dynamic, space: Option<&str>) -> String {
     }
 
     serde_json::to_string(&v).unwrap_or_else(|e| throw_json(e.to_string()))
+}
+
+/// Encode a Haxe `Dynamic` value as JSON after applying a Haxe-style replacer callback.
+///
+/// Semantics:
+/// - The replacer is called first with the root key `""`.
+/// - Object members use their field name as the key.
+/// - Array items use their decimal string index (`"0"`, `"1"`, ...).
+/// - The replacer runs before descending into the returned value's children, matching
+///   upstream `haxe.format.JsonPrinter`.
+pub fn stringify_with_replacer(
+    value: Dynamic,
+    replacer: HxDynRef<dyn Fn(Dynamic, Dynamic) -> Dynamic + Send + Sync>,
+    space: &HxString,
+) -> String {
+    let normalized = json_value_to_dynamic(dynamic_to_json_value(&value));
+    let replaced = apply_json_replacer("", normalized, &*replacer);
+    stringify(replaced, space)
 }
 
 /// Return a stable runtime kind tag for JSON-backed dynamic values.

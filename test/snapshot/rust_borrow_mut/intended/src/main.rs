@@ -17,6 +17,8 @@ mod haxe_ds_object_map;
 mod haxe_ds_string_map;
 mod haxe_exception;
 mod haxe_i_map;
+mod haxe_int32_int32_impl_;
+mod haxe_int64_helper;
 mod haxe_int64_int64;
 mod haxe_int64_int64_impl_;
 mod haxe_io_bytes_buffer;
@@ -25,11 +27,15 @@ mod haxe_io_eof;
 mod haxe_io_fp_helper;
 mod haxe_io_input;
 mod haxe_io_output;
+mod haxe_iterators_string_iterator;
+mod haxe_iterators_string_key_value_iterator;
 mod haxe_stack_item;
+mod int32_tools;
 mod map_storage_tools;
 mod rust_borrow;
 mod rust_option_tools;
 mod string_buf;
+mod string_tools;
 mod sys;
 mod sys_io_stderr;
 mod sys_io_stdin;
@@ -78,7 +84,7 @@ fn main() {
                 let removed: Option<i32> = crate::hash_map_tools::HashMapTools::remove(mm_2, k_a);
                 println!(
                     "{}",
-                    hxrt::dynamic::from(match removed.clone() {
+                    hxrt::dynamic::from(match removed {
                         Option::Some(__p) => {
                             let _ = __p;
                             true

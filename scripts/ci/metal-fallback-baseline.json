@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "cases": {
-    "hello_metal": {
+    "profile_storyboard_metal": {
       "rawNodes": 0,
       "moduleCount": 0,
       "topModules": {}

@@ -8,7 +8,7 @@ pub struct OptionTools {}
 
 impl OptionTools {
     pub fn is_some<T: Clone>(o: Option<T>) -> bool {
-        return match o.clone() {
+        return match o {
             Option::Some(__p) => {
                 let _ = __p;
                 true
@@ -18,7 +18,7 @@ impl OptionTools {
     }
 
     pub fn is_none<T: Clone>(o: Option<T>) -> bool {
-        return !(match o.clone() {
+        return !(match o {
             Option::Some(__p) => {
                 let _ = __p;
                 true
@@ -28,7 +28,7 @@ impl OptionTools {
     }
 
     pub fn unwrap_or<T: Clone>(o: Option<T>, fallback: T) -> T {
-        return match o.clone() {
+        return match o {
             Option::Some(__p) => {
                 let _g: T = __p;
                 {
@@ -41,7 +41,7 @@ impl OptionTools {
     }
 
     pub fn unwrap<T: Clone>(o: Option<T>) -> T {
-        return match o.clone() {
+        return match o {
             Option::Some(__p) => {
                 let _g: T = __p;
                 {
@@ -58,7 +58,7 @@ impl OptionTools {
     }
 
     pub fn expect<T: Clone>(o: Option<T>, message: String) -> T {
-        return match o.clone() {
+        return match o {
             Option::Some(__p) => {
                 let _g: T = __p;
                 {
@@ -73,7 +73,7 @@ impl OptionTools {
     }
 
     pub fn ok_or<T: Clone>(o: Option<T>, err: String) -> Result<T, String> {
-        return match o.clone() {
+        return match o {
             Option::Some(__p) => {
                 let _g: T = __p;
                 {

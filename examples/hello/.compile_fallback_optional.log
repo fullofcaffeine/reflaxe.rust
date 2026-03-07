@@ -1,0 +1,1 @@
+CLI arg#0: Cannot read examples/hello/compile.metal.hxml because Error: ENOENT: no such file or directory, open 'examples/hello/compile.metal.hxml'

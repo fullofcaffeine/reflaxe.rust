@@ -16,6 +16,8 @@ mod haxe_ds_object_map;
 mod haxe_ds_string_map;
 mod haxe_exception;
 mod haxe_i_map;
+mod haxe_int32_int32_impl_;
+mod haxe_int64_helper;
 mod haxe_int64_int64;
 mod haxe_int64_int64_impl_;
 mod haxe_io_bytes_buffer;
@@ -24,9 +26,13 @@ mod haxe_io_eof;
 mod haxe_io_fp_helper;
 mod haxe_io_input;
 mod haxe_io_output;
+mod haxe_iterators_string_iterator;
+mod haxe_iterators_string_key_value_iterator;
 mod haxe_stack_item;
+mod int32_tools;
 mod map_storage_tools_nullable;
 mod string_buf;
+mod string_tools;
 mod sys;
 mod sys_io_stderr;
 mod sys_io_stdin;
@@ -85,10 +91,8 @@ fn main() {
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(zs.join(
         hxrt::string::HxString::from(hxrt::string::HxString::from(",")),
     ))));
-    let mut it_current: i32;
-    let it_array: hxrt::array::Array<i32>;
-    it_current = 0;
-    it_array = zs.clone();
+    let mut it_current: i32 = 0;
+    let it_array: hxrt::array::Array<i32> = zs.clone();
     let mut sum: i32 = 0;
     while it_current < (it_array.len() as i32) {
         sum = sum

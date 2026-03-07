@@ -11,21 +11,26 @@ private typedef StringKeyValue = {
 	Shared base class for HTTP requests (`haxe.Http` on sys targets).
 
 	Why
-	- The upstream stdlib models callbacks (`onData`, `onError`, etc.) as `dynamic function`s.
-	- On this Rust target, taking a "method value" (e.g. storing `onData` into a variable) produces a
-	  closure that captures `this` (`FClosure`), which the backend does not currently support.
+	- Upstream Haxe models the callback hooks (`onData`, `onBytes`, `onError`, `onStatus`) as
+	  `dynamic function`s, not plain function-typed fields.
+	- That design matters because callers can both assign callbacks (`http.onData = ...`) and
+	  override the hooks in subclasses.
+	- This Rust target previously rewrote those hooks into function fields as a temporary workaround
+	  for missing `this.method` / instance-method value support. The compiler now supports that
+	  lowering directly, so the workaround would only preserve a broken API contract.
 
 	What
-	- Provides the state and helpers needed by `sys.Http`:
-	  - request URL, headers, parameters, POST payload
-	  - response bytes/string caching
-	  - callback hooks: `onData`, `onBytes`, `onError`, `onStatus`
+	- Restores the upstream callback surface:
+	  - callback hooks are `dynamic function`s
+	  - `hasOnData()` detects whether `onData` was overridden/assigned
+	  - `success(...)` mirrors upstream behavior and only forces string decoding when needed
 
 	How
-	- We implement callbacks as **function-typed fields** instead of `dynamic function`s.
-	  This keeps the public API assignment-friendly (users still do `http.onData = d -> ...`) while
-	  avoiding method-value closures in the compiler.
-	- `success(...)` always calls `onData` and `onBytes`; the default callbacks are no-ops.
+	- `emptyOnData = onData` captures the default method value in the constructor.
+	- `Reflect.compareMethods(...)` is used only inside framework stdlib code to detect whether
+	  the current `onData` differs from the default no-op callback.
+	- The rest of the class stays strongly typed; callers still interact with typed `String` /
+	  `Bytes` callbacks and do not cross any untyped boundary directly.
 **/
 class HttpBase {
 	public var url:String;
@@ -38,21 +43,13 @@ class HttpBase {
 	var postBytes:Null<Bytes>;
 	var headers:Array<StringKeyValue>;
 	var params:Array<StringKeyValue>;
-
-	public var onData:(String) -> Void;
-	public var onBytes:(Bytes) -> Void;
-	public var onError:(String) -> Void;
-	public var onStatus:(Int) -> Void;
+	final emptyOnData:(String) -> Void;
 
 	public function new(url:String) {
 		this.url = url;
 		headers = [];
 		params = [];
-
-		onData = function(_data) {};
-		onBytes = function(_data) {};
-		onError = function(_msg) {};
-		onStatus = function(_status) {};
+		emptyOnData = onData;
 	}
 
 	public function setHeader(name:String, value:String) {
@@ -115,18 +112,33 @@ class HttpBase {
 		onError("HttpBase.request is not implemented on this target");
 	}
 
+	public dynamic function onData(data:String) {}
+
+	public dynamic function onBytes(data:Bytes) {}
+
+	public dynamic function onError(msg:String) {}
+
+	public dynamic function onStatus(status:Int) {}
+
+	function hasOnData():Bool {
+		return !Reflect.compareMethods(onData, emptyOnData);
+	}
+
 	function success(data:Bytes) {
 		responseBytes = data;
-		// Avoid needing `Null<Bytes>` (Option) narrowing during `get_responseData`.
-		var s = data.toString();
-		responseAsString = s;
-		// Keep Rust output type-safe by passing a non-null `String`.
-		onData(s);
-		// Pass the concrete `Bytes` we received instead of `responseBytes` (`Null<Bytes>`).
+		responseAsString = null;
+		if (hasOnData()) {
+			var s = responseData;
+			if (s != null)
+				onData(s);
+		}
 		onBytes(data);
 	}
 
 	function get_responseData() {
+		if (responseAsString == null && responseBytes != null) {
+			responseAsString = responseBytes.getString(0, responseBytes.length, UTF8);
+		}
 		return responseAsString;
 	}
 }

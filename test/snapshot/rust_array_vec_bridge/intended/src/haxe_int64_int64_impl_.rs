@@ -10,43 +10,8 @@ impl Int64Impl {
     fn _new(
         x: crate::HxRef<crate::haxe_int64_int64::Int64>,
     ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
-        let this1: crate::HxRef<crate::haxe_int64_int64::Int64>;
-        this1 = x;
+        let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
         return this1;
-    }
-
-    pub fn get_high(this1: crate::HxRef<crate::haxe_int64_int64::Int64>) -> i32 {
-        return {
-            let __b = this1.borrow();
-            __b.high
-        };
-    }
-
-    pub fn get_low(this1: crate::HxRef<crate::haxe_int64_int64::Int64>) -> i32 {
-        return {
-            let __b = this1.borrow();
-            __b.low
-        };
-    }
-
-    pub fn make(high: i32, low: i32) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
-        {
-            let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
-                crate::haxe_int64_int64::Int64::new(high, low);
-            let this1: crate::HxRef<crate::haxe_int64_int64::Int64>;
-            this1 = x;
-            return this1;
-        }
-    }
-
-    pub fn of_int(x: i32) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
-        {
-            let x_2: crate::HxRef<crate::haxe_int64_int64::Int64> =
-                crate::haxe_int64_int64::Int64::new(x >> 31, x);
-            let this1: crate::HxRef<crate::haxe_int64_int64::Int64>;
-            this1 = x_2;
-            return this1;
-        }
     }
 
     pub fn copy(
@@ -55,19 +20,2553 @@ impl Int64Impl {
         {
             let high: i32 = {
                 let __b = this1.borrow();
-                __b.high
+                __b.high.clone()
             };
             let low: i32 = {
                 let __b = this1.borrow();
-                __b.low
+                __b.low.clone()
+            };
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(high, low);
+            let this1_2: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+            return this1_2;
+        }
+    }
+
+    pub fn make(high: i32, low: i32) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        {
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(high, low);
+            let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+            return this1;
+        }
+    }
+
+    pub fn of_int(x: i32) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        {
+            let x_2: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(x >> 31, x);
+            let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x_2;
+            return this1;
+        }
+    }
+
+    pub fn to_int(x: crate::HxRef<crate::haxe_int64_int64::Int64>) -> i32 {
+        if ({
+            let __b = x.borrow();
+            __b.high.clone()
+        }) != ({
+            let __b = x.borrow();
+            __b.low.clone()
+        }) >> 31
+        {
+            hxrt::exception::throw(hxrt::dynamic::from(String::from("Overflow")));
+        }
+        return {
+            let __b = x.borrow();
+            __b.low.clone()
+        };
+    }
+
+    pub fn is(val: hxrt::dynamic::Dynamic) -> bool {
+        return {
+            let __dyn = val;
+            match __dyn.type_id() {
+                Some(__actual_type_id) => {
+                    crate::__hx_is_subtype_type_id(__actual_type_id, 0xb19488f3u32)
+                }
+                None => false,
+            }
+        };
+    }
+
+    pub fn is_int64(val: hxrt::dynamic::Dynamic) -> bool {
+        return {
+            let __dyn = val;
+            match __dyn.type_id() {
+                Some(__actual_type_id) => {
+                    crate::__hx_is_subtype_type_id(__actual_type_id, 0xb19488f3u32)
+                }
+                None => false,
+            }
+        };
+    }
+
+    pub fn get_high(x: crate::HxRef<crate::haxe_int64_int64::Int64>) -> i32 {
+        return {
+            let __b = x.borrow();
+            __b.high.clone()
+        };
+    }
+
+    pub fn get_low(x: crate::HxRef<crate::haxe_int64_int64::Int64>) -> i32 {
+        return {
+            let __b = x.borrow();
+            __b.low.clone()
+        };
+    }
+
+    pub fn is_neg(x: crate::HxRef<crate::haxe_int64_int64::Int64>) -> bool {
+        return (({
+            let __b = x.borrow();
+            __b.high.clone()
+        }) as i32)
+            < 0;
+    }
+
+    pub fn is_zero(x: crate::HxRef<crate::haxe_int64_int64::Int64>) -> bool {
+        {
+            let b_high: i32 = 0;
+            let b_low: i32 = 0;
+            return ({
+                let __b = x.borrow();
+                __b.high.clone()
+            }) == b_high
+                && ({
+                    let __b = x.borrow();
+                    __b.low.clone()
+                }) == b_low;
+        }
+    }
+
+    pub fn compare(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> i32 {
+        let mut v: i32 = {
+            let a_2: i32 = {
+                let __b = a.borrow();
+                __b.high.clone()
+            };
+            let b_2: i32 = {
+                let __b = b.borrow();
+                __b.high.clone()
+            };
+            crate::int32_tools::Int32Tools::wrapping_sub(a_2, b_2) as i32
+        };
+        v = if v != 0 {
+            v
+        } else {
+            let a_3: i32 = {
+                let __b = a.borrow();
+                __b.low.clone()
+            };
+            let b_3: i32 = {
+                let __b = b.borrow();
+                __b.low.clone()
+            };
+            crate::int32_tools::Int32Tools::ucompare(a_3, b_3)
+        };
+        return if (({
+            let __b = a.borrow();
+            __b.high.clone()
+        }) as i32)
+            < 0
+        {
+            if (({
+                let __b = b.borrow();
+                __b.high.clone()
+            }) as i32)
+                < 0
+            {
+                v
+            } else {
+                -1
+            }
+        } else {
+            if (({
+                let __b = b.borrow();
+                __b.high.clone()
+            }) as i32)
+                >= 0
+            {
+                v
+            } else {
+                1
+            }
+        };
+    }
+
+    pub fn ucompare(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> i32 {
+        let v: i32 = {
+            let a_2: i32 = {
+                let __b = a.borrow();
+                __b.high.clone()
+            };
+            let b_2: i32 = {
+                let __b = b.borrow();
+                __b.high.clone()
+            };
+            crate::int32_tools::Int32Tools::ucompare(a_2, b_2)
+        };
+        return if v != 0 {
+            v
+        } else {
+            let a_3: i32 = {
+                let __b = a.borrow();
+                __b.low.clone()
+            };
+            let b_3: i32 = {
+                let __b = b.borrow();
+                __b.low.clone()
+            };
+            crate::int32_tools::Int32Tools::ucompare(a_3, b_3)
+        };
+    }
+
+    pub fn to_str(x: crate::HxRef<crate::haxe_int64_int64::Int64>) -> String {
+        return crate::haxe_int64_int64_impl_::Int64Impl::to_string(x.clone());
+    }
+
+    pub fn to_string(this1: crate::HxRef<crate::haxe_int64_int64::Int64>) -> String {
+        let mut i: crate::HxRef<crate::haxe_int64_int64::Int64> = this1;
+        if {
+            let b_high: i32 = 0;
+            let b_low: i32 = 0;
+            ({
+                let __b = i.borrow();
+                __b.high.clone()
+            }) == b_high
+                && ({
+                    let __b = i.borrow();
+                    __b.low.clone()
+                }) == b_low
+        } {
+            return String::from("0");
+        }
+        let mut str: String = String::from("");
+        let mut neg: bool = false;
+        if (({
+            let __b = i.borrow();
+            __b.high.clone()
+        }) as i32)
+            < 0
+        {
+            neg = true;
+        }
+        let ten: crate::HxRef<crate::haxe_int64_int64::Int64> = {
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(0, 10);
+            let this1_2: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+            this1_2
+        };
+        while {
+            let b_high_2: i32 = 0;
+            let b_low_2: i32 = 0;
+            ({
+                let __b = i.borrow();
+                __b.high.clone()
+            }) != b_high_2
+                || ({
+                    let __b = i.borrow();
+                    __b.low.clone()
+                }) != b_low_2
+        } {
+            let r: crate::HxRef<hxrt::anon::Anon> =
+                crate::haxe_int64_int64_impl_::Int64Impl::div_mod(i.clone(), ten.clone());
+            if (({
+                let __hx_recv = r
+                    .borrow()
+                    .get::<crate::HxRef<crate::haxe_int64_int64::Int64>>("modulus");
+                let __b = __hx_recv.borrow();
+                __b.high.clone()
+            }) as i32)
+                < 0
+            {
+                str = format!(
+                    "{}{}",
+                    hxrt::dynamic::from({
+                        let x_2: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                            r.borrow()
+                                .get::<crate::HxRef<crate::haxe_int64_int64::Int64>>("modulus");
+                        let mut high: i32 = !({
+                            let __b = x_2.borrow();
+                            __b.high.clone()
+                        });
+                        let low: i32 = {
+                            let a: i32 = {
+                                let __b = x_2.borrow();
+                                __b.low.clone()
+                            };
+                            crate::int32_tools::Int32Tools::wrapping_neg(a) as i32
+                        };
+                        if low == 0 {
+                            high = high + 1;
+                        }
+                        let _: i32 = high;
+                        let this_low: i32 = low;
+                        this_low
+                    })
+                    .to_haxe_string(),
+                    &str
+                );
+                i = {
+                    let x_3: crate::HxRef<crate::haxe_int64_int64::Int64> = r
+                        .borrow()
+                        .get::<crate::HxRef<crate::haxe_int64_int64::Int64>>("quotient");
+                    let mut high_2: i32 = !({
+                        let __b = x_3.borrow();
+                        __b.high.clone()
+                    });
+                    let low_2: i32 = {
+                        let a_2: i32 = {
+                            let __b = x_3.borrow();
+                            __b.low.clone()
+                        };
+                        crate::int32_tools::Int32Tools::wrapping_neg(a_2) as i32
+                    };
+                    if low_2 == 0 {
+                        high_2 = high_2 + 1;
+                    }
+                    let x_4: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                        crate::haxe_int64_int64::Int64::new(high_2, low_2);
+                    let this1_3: crate::HxRef<crate::haxe_int64_int64::Int64> = x_4.clone();
+                    this1_3
+                };
+            } else {
+                str = format!(
+                    "{}{}",
+                    hxrt::dynamic::from({
+                        let __hx_recv = r
+                            .borrow()
+                            .get::<crate::HxRef<crate::haxe_int64_int64::Int64>>("modulus");
+                        let __b = __hx_recv.borrow();
+                        __b.low.clone()
+                    })
+                    .to_haxe_string(),
+                    &str
+                );
+                i = r
+                    .borrow()
+                    .get::<crate::HxRef<crate::haxe_int64_int64::Int64>>("quotient");
+            }
+        }
+        if neg {
+            str = format!("{}{}", "-", &str);
+        }
+        return str;
+    }
+
+    pub fn parse_string(s_param: String) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        return crate::haxe_int64_helper::Int64Helper::parse_string(s_param);
+    }
+
+    pub fn from_float(f: f64) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        return crate::haxe_int64_helper::Int64Helper::from_float(f);
+    }
+
+    pub fn div_mod(
+        dividend: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        divisor: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> crate::HxRef<hxrt::anon::Anon> {
+        let mut divisor = divisor;
+        if ({
+            let __b = divisor.borrow();
+            __b.high.clone()
+        }) == 0
+        {
+            {
+                let _g: i32 = {
+                    let __b = divisor.borrow();
+                    __b.low.clone()
+                };
+                match _g {
+                    0 => {
+                        hxrt::exception::throw(hxrt::dynamic::from(String::from("divide by zero")));
+                    }
+                    1 => {
+                        return {
+                            let __o = crate::HxRef::new(hxrt::anon::Anon::new());
+                            {
+                                let mut __b = __o.borrow_mut();
+                                __b.set("quotient", {
+                                    let high: i32 = {
+                                        let __b = dividend.borrow();
+                                        __b.high.clone()
+                                    };
+                                    let low: i32 = {
+                                        let __b = dividend.borrow();
+                                        __b.low.clone()
+                                    };
+                                    let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                                        crate::haxe_int64_int64::Int64::new(high, low);
+                                    let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+                                    this1
+                                });
+                                __b.set("modulus", {
+                                    let x_2: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                                        crate::haxe_int64_int64::Int64::new(0, 0);
+                                    let this1_2: crate::HxRef<crate::haxe_int64_int64::Int64> = x_2;
+                                    this1_2
+                                });
+                            };
+                            __o
+                        };
+                    }
+                    _ => {}
+                }
+            }
+        }
+        let div_sign: bool = ((({
+            let __b = dividend.borrow();
+            __b.high.clone()
+        }) as i32)
+            < 0)
+            != ((({
+                let __b = divisor.borrow();
+                __b.high.clone()
+            }) as i32)
+                < 0);
+        let mut modulus: crate::HxRef<crate::haxe_int64_int64::Int64> = if (({
+            let __b = dividend.borrow();
+            __b.high.clone()
+        }) as i32)
+            < 0
+        {
+            let mut high_2: i32 = !({
+                let __b = dividend.borrow();
+                __b.high.clone()
+            });
+            let low_2: i32 = {
+                let a: i32 = {
+                    let __b = dividend.borrow();
+                    __b.low.clone()
+                };
+                crate::int32_tools::Int32Tools::wrapping_neg(a) as i32
+            };
+            if low_2 == 0 {
+                high_2 = high_2 + 1;
+            }
+            {
+                let x_3: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                    crate::haxe_int64_int64::Int64::new(high_2, low_2);
+                let this1_3: crate::HxRef<crate::haxe_int64_int64::Int64> = x_3;
+                this1_3
+            }
+        } else {
+            let high_3: i32 = {
+                let __b = dividend.borrow();
+                __b.high.clone()
+            };
+            let low_3: i32 = {
+                let __b = dividend.borrow();
+                __b.low.clone()
+            };
+            let x_4: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(high_3, low_3);
+            let this1_4: crate::HxRef<crate::haxe_int64_int64::Int64> = x_4;
+            this1_4
+        };
+        divisor = if (({
+            let __b = divisor.borrow();
+            __b.high.clone()
+        }) as i32)
+            < 0
+        {
+            let mut high_4: i32 = !({
+                let __b = divisor.borrow();
+                __b.high.clone()
+            });
+            let low_4: i32 = {
+                let a_2: i32 = {
+                    let __b = divisor.borrow();
+                    __b.low.clone()
+                };
+                crate::int32_tools::Int32Tools::wrapping_neg(a_2) as i32
+            };
+            if low_4 == 0 {
+                high_4 = high_4 + 1;
+            }
+            {
+                let x_5: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                    crate::haxe_int64_int64::Int64::new(high_4, low_4);
+                let this1_5: crate::HxRef<crate::haxe_int64_int64::Int64> = x_5;
+                this1_5
+            }
+        } else {
+            divisor
+        };
+        let mut quotient: crate::HxRef<crate::haxe_int64_int64::Int64> = {
+            let x_6: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(0, 0);
+            let this1_6: crate::HxRef<crate::haxe_int64_int64::Int64> = x_6;
+            this1_6
+        };
+        let mut mask: crate::HxRef<crate::haxe_int64_int64::Int64> = {
+            let x_7: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(0, 1);
+            let this1_7: crate::HxRef<crate::haxe_int64_int64::Int64> = x_7;
+            this1_7
+        };
+        while (({
+            let __b = divisor.borrow();
+            __b.high.clone()
+        }) as i32)
+            >= 0
+        {
+            let cmp: i32 = {
+                let v: i32 = {
+                    let a_3: i32 = {
+                        let __b = divisor.borrow();
+                        __b.high.clone()
+                    };
+                    let b: i32 = {
+                        let __b = modulus.borrow();
+                        __b.high.clone()
+                    };
+                    crate::int32_tools::Int32Tools::ucompare(a_3, b)
+                };
+                if v != 0 {
+                    v
+                } else {
+                    let a_4: i32 = {
+                        let __b = divisor.borrow();
+                        __b.low.clone()
+                    };
+                    let b_2: i32 = {
+                        let __b = modulus.borrow();
+                        __b.low.clone()
+                    };
+                    crate::int32_tools::Int32Tools::ucompare(a_4, b_2)
+                }
+            };
+            divisor = {
+                let mut b_3: i32 = 1;
+                {
+                    b_3 = b_3 & 63;
+                    b_3
+                };
+                if b_3 == 0 {
+                    let high_5: i32 = {
+                        let __b = divisor.borrow();
+                        __b.high.clone()
+                    };
+                    let low_5: i32 = {
+                        let __b = divisor.borrow();
+                        __b.low.clone()
+                    };
+                    let x_8: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                        crate::haxe_int64_int64::Int64::new(high_5, low_5);
+                    let this1_8: crate::HxRef<crate::haxe_int64_int64::Int64> = x_8.clone();
+                    this1_8
+                } else {
+                    if b_3 < 32 {
+                        let high_6: i32 = ({
+                            let __b = divisor.borrow();
+                            __b.high.clone()
+                        }) << b_3
+                            | (({
+                                let __b = divisor.borrow();
+                                __b.low.clone()
+                            }) as u32
+                                >> (32 - b_3) as u32) as i32;
+                        let low_6: i32 = ({
+                            let __b = divisor.borrow();
+                            __b.low.clone()
+                        }) << b_3;
+                        let x_9: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                            crate::haxe_int64_int64::Int64::new(high_6, low_6);
+                        let this1_9: crate::HxRef<crate::haxe_int64_int64::Int64> = x_9.clone();
+                        this1_9
+                    } else {
+                        let high_7: i32 = ({
+                            let __b = divisor.borrow();
+                            __b.low.clone()
+                        }) << b_3 - 32;
+                        let x_10: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                            crate::haxe_int64_int64::Int64::new(high_7, 0);
+                        let this1_10: crate::HxRef<crate::haxe_int64_int64::Int64> = x_10.clone();
+                        this1_10
+                    }
+                }
+            };
+            mask = {
+                let mut b_4: i32 = 1;
+                {
+                    b_4 = b_4 & 63;
+                    b_4
+                };
+                if b_4 == 0 {
+                    let high_8: i32 = {
+                        let __b = mask.borrow();
+                        __b.high.clone()
+                    };
+                    let low_7: i32 = {
+                        let __b = mask.borrow();
+                        __b.low.clone()
+                    };
+                    let x_11: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                        crate::haxe_int64_int64::Int64::new(high_8, low_7);
+                    let this1_11: crate::HxRef<crate::haxe_int64_int64::Int64> = x_11.clone();
+                    this1_11
+                } else {
+                    if b_4 < 32 {
+                        let high_9: i32 = ({
+                            let __b = mask.borrow();
+                            __b.high.clone()
+                        }) << b_4
+                            | (({
+                                let __b = mask.borrow();
+                                __b.low.clone()
+                            }) as u32
+                                >> (32 - b_4) as u32) as i32;
+                        let low_8: i32 = ({
+                            let __b = mask.borrow();
+                            __b.low.clone()
+                        }) << b_4;
+                        let x_12: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                            crate::haxe_int64_int64::Int64::new(high_9, low_8);
+                        let this1_12: crate::HxRef<crate::haxe_int64_int64::Int64> = x_12.clone();
+                        this1_12
+                    } else {
+                        let high_10: i32 = ({
+                            let __b = mask.borrow();
+                            __b.low.clone()
+                        }) << b_4 - 32;
+                        let x_13: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                            crate::haxe_int64_int64::Int64::new(high_10, 0);
+                        let this1_13: crate::HxRef<crate::haxe_int64_int64::Int64> = x_13.clone();
+                        this1_13
+                    }
+                }
+            };
+            if cmp >= 0 {
+                break;
+            }
+        }
+        while {
+            let b_high: i32 = 0;
+            let b_low: i32 = 0;
+            ({
+                let __b = mask.borrow();
+                __b.high.clone()
+            }) != b_high
+                || ({
+                    let __b = mask.borrow();
+                    __b.low.clone()
+                }) != b_low
+        } {
+            if ({
+                let v_2: i32 = {
+                    let a_5: i32 = {
+                        let __b = modulus.borrow();
+                        __b.high.clone()
+                    };
+                    let b_5: i32 = {
+                        let __b = divisor.borrow();
+                        __b.high.clone()
+                    };
+                    crate::int32_tools::Int32Tools::ucompare(a_5, b_5)
+                };
+                if v_2 != 0 {
+                    v_2
+                } else {
+                    let a_6: i32 = {
+                        let __b = modulus.borrow();
+                        __b.low.clone()
+                    };
+                    let b_6: i32 = {
+                        let __b = divisor.borrow();
+                        __b.low.clone()
+                    };
+                    crate::int32_tools::Int32Tools::ucompare(a_6, b_6)
+                }
+            }) >= 0
+            {
+                quotient = {
+                    let high_11: i32 = ({
+                        let __b = quotient.borrow();
+                        __b.high.clone()
+                    }) | ({
+                        let __b = mask.borrow();
+                        __b.high.clone()
+                    });
+                    let low_9: i32 = ({
+                        let __b = quotient.borrow();
+                        __b.low.clone()
+                    }) | ({
+                        let __b = mask.borrow();
+                        __b.low.clone()
+                    });
+                    let x_14: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                        crate::haxe_int64_int64::Int64::new(high_11, low_9);
+                    let this1_14: crate::HxRef<crate::haxe_int64_int64::Int64> = x_14.clone();
+                    this1_14
+                };
+                modulus = {
+                    let mut high_12: i32 = {
+                        let a_7: i32 = {
+                            let __b = modulus.borrow();
+                            __b.high.clone()
+                        };
+                        let b_7: i32 = {
+                            let __b = divisor.borrow();
+                            __b.high.clone()
+                        };
+                        crate::int32_tools::Int32Tools::wrapping_sub(a_7, b_7) as i32
+                    };
+                    let low_10: i32 = {
+                        let a_8: i32 = {
+                            let __b = modulus.borrow();
+                            __b.low.clone()
+                        };
+                        let b_8: i32 = {
+                            let __b = divisor.borrow();
+                            __b.low.clone()
+                        };
+                        crate::int32_tools::Int32Tools::wrapping_sub(a_8, b_8) as i32
+                    };
+                    if ({
+                        let a_9: i32 = {
+                            let __b = modulus.borrow();
+                            __b.low.clone()
+                        };
+                        let b_9: i32 = {
+                            let __b = divisor.borrow();
+                            __b.low.clone()
+                        };
+                        crate::int32_tools::Int32Tools::ucompare(a_9, b_9)
+                    }) < 0
+                    {
+                        high_12 = high_12 - 1;
+                    }
+                    let x_15: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                        crate::haxe_int64_int64::Int64::new(high_12, low_10);
+                    let this1_15: crate::HxRef<crate::haxe_int64_int64::Int64> = x_15.clone();
+                    this1_15
+                };
+            }
+            mask = {
+                let mut b_10: i32 = 1;
+                {
+                    b_10 = b_10 & 63;
+                    b_10
+                };
+                if b_10 == 0 {
+                    let high_13: i32 = {
+                        let __b = mask.borrow();
+                        __b.high.clone()
+                    };
+                    let low_11: i32 = {
+                        let __b = mask.borrow();
+                        __b.low.clone()
+                    };
+                    let x_16: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                        crate::haxe_int64_int64::Int64::new(high_13, low_11);
+                    let this1_16: crate::HxRef<crate::haxe_int64_int64::Int64> = x_16.clone();
+                    this1_16
+                } else {
+                    if b_10 < 32 {
+                        let high_14: i32 = (({
+                            let __b = mask.borrow();
+                            __b.high.clone()
+                        }) as u32
+                            >> b_10 as u32) as i32;
+                        let low_12: i32 = ({
+                            let __b = mask.borrow();
+                            __b.high.clone()
+                        }) << 32 - b_10
+                            | (({
+                                let __b = mask.borrow();
+                                __b.low.clone()
+                            }) as u32
+                                >> b_10 as u32) as i32;
+                        let x_17: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                            crate::haxe_int64_int64::Int64::new(high_14, low_12);
+                        let this1_17: crate::HxRef<crate::haxe_int64_int64::Int64> = x_17.clone();
+                        this1_17
+                    } else {
+                        let low_13: i32 = (({
+                            let __b = mask.borrow();
+                            __b.high.clone()
+                        }) as u32
+                            >> (b_10 - 32) as u32) as i32;
+                        let x_18: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                            crate::haxe_int64_int64::Int64::new(0, low_13);
+                        let this1_18: crate::HxRef<crate::haxe_int64_int64::Int64> = x_18.clone();
+                        this1_18
+                    }
+                }
+            };
+            divisor = {
+                let mut b_11: i32 = 1;
+                {
+                    b_11 = b_11 & 63;
+                    b_11
+                };
+                if b_11 == 0 {
+                    let high_15: i32 = {
+                        let __b = divisor.borrow();
+                        __b.high.clone()
+                    };
+                    let low_14: i32 = {
+                        let __b = divisor.borrow();
+                        __b.low.clone()
+                    };
+                    let x_19: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                        crate::haxe_int64_int64::Int64::new(high_15, low_14);
+                    let this1_19: crate::HxRef<crate::haxe_int64_int64::Int64> = x_19.clone();
+                    this1_19
+                } else {
+                    if b_11 < 32 {
+                        let high_16: i32 = (({
+                            let __b = divisor.borrow();
+                            __b.high.clone()
+                        }) as u32
+                            >> b_11 as u32) as i32;
+                        let low_15: i32 = ({
+                            let __b = divisor.borrow();
+                            __b.high.clone()
+                        }) << 32 - b_11
+                            | (({
+                                let __b = divisor.borrow();
+                                __b.low.clone()
+                            }) as u32
+                                >> b_11 as u32) as i32;
+                        let x_20: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                            crate::haxe_int64_int64::Int64::new(high_16, low_15);
+                        let this1_20: crate::HxRef<crate::haxe_int64_int64::Int64> = x_20.clone();
+                        this1_20
+                    } else {
+                        let low_16: i32 = (({
+                            let __b = divisor.borrow();
+                            __b.high.clone()
+                        }) as u32
+                            >> (b_11 - 32) as u32) as i32;
+                        let x_21: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                            crate::haxe_int64_int64::Int64::new(0, low_16);
+                        let this1_21: crate::HxRef<crate::haxe_int64_int64::Int64> = x_21.clone();
+                        this1_21
+                    }
+                }
+            };
+        }
+        if div_sign {
+            quotient = {
+                let mut high_17: i32 = !({
+                    let __b = quotient.borrow();
+                    __b.high.clone()
+                });
+                let low_17: i32 = {
+                    let a_10: i32 = {
+                        let __b = quotient.borrow();
+                        __b.low.clone()
+                    };
+                    crate::int32_tools::Int32Tools::wrapping_neg(a_10) as i32
+                };
+                if low_17 == 0 {
+                    high_17 = high_17 + 1;
+                }
+                let x_22: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                    crate::haxe_int64_int64::Int64::new(high_17, low_17);
+                let this1_22: crate::HxRef<crate::haxe_int64_int64::Int64> = x_22;
+                this1_22
+            };
+        }
+        if (({
+            let __b = dividend.borrow();
+            __b.high.clone()
+        }) as i32)
+            < 0
+        {
+            modulus = {
+                let mut high_18: i32 = !({
+                    let __b = modulus.borrow();
+                    __b.high.clone()
+                });
+                let low_18: i32 = {
+                    let a_11: i32 = {
+                        let __b = modulus.borrow();
+                        __b.low.clone()
+                    };
+                    crate::int32_tools::Int32Tools::wrapping_neg(a_11) as i32
+                };
+                if low_18 == 0 {
+                    high_18 = high_18 + 1;
+                }
+                let x_23: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                    crate::haxe_int64_int64::Int64::new(high_18, low_18);
+                let this1_23: crate::HxRef<crate::haxe_int64_int64::Int64> = x_23;
+                this1_23
+            };
+        }
+        return {
+            let __o = crate::HxRef::new(hxrt::anon::Anon::new());
+            {
+                let mut __b = __o.borrow_mut();
+                __b.set("quotient", quotient.clone());
+                __b.set("modulus", modulus.clone());
+            };
+            __o
+        };
+    }
+
+    pub fn neg(
+        x: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        let mut high: i32 = !({
+            let __b = x.borrow();
+            __b.high.clone()
+        });
+        let low: i32 = {
+            let a: i32 = {
+                let __b = x.borrow();
+                __b.low.clone()
+            };
+            crate::int32_tools::Int32Tools::wrapping_neg(a) as i32
+        };
+        if low == 0 {
+            high = high + 1;
+        }
+        {
+            let x_2: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(high, low);
+            let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x_2;
+            return this1;
+        }
+    }
+
+    fn pre_increment(
+        this1: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        let mut this1 = this1;
+        this1 = {
+            let high: i32 = {
+                let __b = this1.borrow();
+                __b.high.clone()
+            };
+            let low: i32 = {
+                let __b = this1.borrow();
+                __b.low.clone()
+            };
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(high, low);
+            let this1_2: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+            this1_2
+        };
+        {
+            let __hx_obj = this1.clone();
+            let __tmp = __hx_obj.borrow().low;
+            __hx_obj.borrow_mut().low = __tmp + 1;
+            __tmp
+        };
+        if ({
+            let __b = this1.borrow();
+            __b.low.clone()
+        }) == 0
+        {
+            {
+                let __hx_obj = this1.clone();
+                let __tmp = __hx_obj.borrow().high;
+                __hx_obj.borrow_mut().high = __tmp + 1;
+                __tmp
+            };
+        }
+        return this1;
+    }
+
+    fn post_increment(
+        this1: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        let mut this1 = this1;
+        let ret: crate::HxRef<crate::haxe_int64_int64::Int64> = this1.clone();
+        {
+            this1 = {
+                let high: i32 = {
+                    let __b = this1.borrow();
+                    __b.high.clone()
+                };
+                let low: i32 = {
+                    let __b = this1.borrow();
+                    __b.low.clone()
+                };
+                let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                    crate::haxe_int64_int64::Int64::new(high, low);
+                let this1_2: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+                this1_2
+            };
+            {
+                let __hx_obj = this1.clone();
+                let __tmp = __hx_obj.borrow().low;
+                __hx_obj.borrow_mut().low = __tmp + 1;
+                __tmp
+            };
+            if ({
+                let __b = this1.borrow();
+                __b.low.clone()
+            }) == 0
+            {
+                {
+                    let __hx_obj = this1.clone();
+                    let __tmp = __hx_obj.borrow().high;
+                    __hx_obj.borrow_mut().high = __tmp + 1;
+                    __tmp
+                };
+            }
+        }
+        return ret;
+    }
+
+    fn pre_decrement(
+        this1: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        let mut this1 = this1;
+        this1 = {
+            let high: i32 = {
+                let __b = this1.borrow();
+                __b.high.clone()
+            };
+            let low: i32 = {
+                let __b = this1.borrow();
+                __b.low.clone()
+            };
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(high, low);
+            let this1_2: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+            this1_2
+        };
+        if ({
+            let __b = this1.borrow();
+            __b.low.clone()
+        }) == 0
+        {
+            {
+                let __hx_obj = this1.clone();
+                let __tmp = __hx_obj.borrow().high;
+                __hx_obj.borrow_mut().high = __tmp - 1;
+                __tmp
+            };
+        }
+        {
+            let __hx_obj = this1.clone();
+            let __tmp = __hx_obj.borrow().low;
+            __hx_obj.borrow_mut().low = __tmp - 1;
+            __tmp
+        };
+        return this1;
+    }
+
+    fn post_decrement(
+        this1: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        let mut this1 = this1;
+        let ret: crate::HxRef<crate::haxe_int64_int64::Int64> = this1.clone();
+        {
+            this1 = {
+                let high: i32 = {
+                    let __b = this1.borrow();
+                    __b.high.clone()
+                };
+                let low: i32 = {
+                    let __b = this1.borrow();
+                    __b.low.clone()
+                };
+                let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                    crate::haxe_int64_int64::Int64::new(high, low);
+                let this1_2: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+                this1_2
+            };
+            if ({
+                let __b = this1.borrow();
+                __b.low.clone()
+            }) == 0
+            {
+                {
+                    let __hx_obj = this1.clone();
+                    let __tmp = __hx_obj.borrow().high;
+                    __hx_obj.borrow_mut().high = __tmp - 1;
+                    __tmp
+                };
+            }
+            {
+                let __hx_obj = this1.clone();
+                let __tmp = __hx_obj.borrow().low;
+                __hx_obj.borrow_mut().low = __tmp - 1;
+                __tmp
+            };
+        }
+        return ret;
+    }
+
+    pub fn add(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        let mut high: i32 = {
+            let a_2: i32 = {
+                let __b = a.borrow();
+                __b.high.clone()
+            };
+            let b_2: i32 = {
+                let __b = b.borrow();
+                __b.high.clone()
+            };
+            crate::int32_tools::Int32Tools::wrapping_add(a_2, b_2) as i32
+        };
+        let low: i32 = {
+            let a_3: i32 = {
+                let __b = a.borrow();
+                __b.low.clone()
+            };
+            let b_3: i32 = {
+                let __b = b.borrow();
+                __b.low.clone()
+            };
+            crate::int32_tools::Int32Tools::wrapping_add(a_3, b_3) as i32
+        };
+        if ({
+            let b_4: i32 = {
+                let __b = a.borrow();
+                __b.low.clone()
+            };
+            crate::int32_tools::Int32Tools::ucompare(low, b_4)
+        }) < 0
+        {
+            high = high + 1;
+        }
+        {
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(high, low);
+            let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+            return this1;
+        }
+    }
+
+    fn add_int(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: i32,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        {
+            let b_high: i32 = b >> 31;
+            let b_low: i32 = b;
+            let mut high: i32 = {
+                let a_2: i32 = {
+                    let __b = a.borrow();
+                    __b.high.clone()
+                };
+                let b_2: i32 = b_high;
+                crate::int32_tools::Int32Tools::wrapping_add(a_2, b_2) as i32
+            };
+            let low: i32 = {
+                let a_3: i32 = {
+                    let __b = a.borrow();
+                    __b.low.clone()
+                };
+                let b_3: i32 = b_low;
+                crate::int32_tools::Int32Tools::wrapping_add(a_3, b_3) as i32
+            };
+            if ({
+                let b_4: i32 = {
+                    let __b = a.borrow();
+                    __b.low.clone()
+                };
+                crate::int32_tools::Int32Tools::ucompare(low, b_4)
+            }) < 0
+            {
+                high = high + 1;
+            }
+            return {
+                let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                    crate::haxe_int64_int64::Int64::new(high, low);
+                let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+                this1
+            };
+        }
+    }
+
+    pub fn sub(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        let mut high: i32 = {
+            let a_2: i32 = {
+                let __b = a.borrow();
+                __b.high.clone()
+            };
+            let b_2: i32 = {
+                let __b = b.borrow();
+                __b.high.clone()
+            };
+            crate::int32_tools::Int32Tools::wrapping_sub(a_2, b_2) as i32
+        };
+        let low: i32 = {
+            let a_3: i32 = {
+                let __b = a.borrow();
+                __b.low.clone()
+            };
+            let b_3: i32 = {
+                let __b = b.borrow();
+                __b.low.clone()
+            };
+            crate::int32_tools::Int32Tools::wrapping_sub(a_3, b_3) as i32
+        };
+        if ({
+            let a_4: i32 = {
+                let __b = a.borrow();
+                __b.low.clone()
+            };
+            let b_4: i32 = {
+                let __b = b.borrow();
+                __b.low.clone()
+            };
+            crate::int32_tools::Int32Tools::ucompare(a_4, b_4)
+        }) < 0
+        {
+            high = high - 1;
+        }
+        {
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(high, low);
+            let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+            return this1;
+        }
+    }
+
+    fn sub_int(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: i32,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        {
+            let b_high: i32 = b >> 31;
+            let b_low: i32 = b;
+            let mut high: i32 = {
+                let a_2: i32 = {
+                    let __b = a.borrow();
+                    __b.high.clone()
+                };
+                let b_2: i32 = b_high;
+                crate::int32_tools::Int32Tools::wrapping_sub(a_2, b_2) as i32
+            };
+            let low: i32 = {
+                let a_3: i32 = {
+                    let __b = a.borrow();
+                    __b.low.clone()
+                };
+                let b_3: i32 = b_low;
+                crate::int32_tools::Int32Tools::wrapping_sub(a_3, b_3) as i32
+            };
+            if ({
+                let a_4: i32 = {
+                    let __b = a.borrow();
+                    __b.low.clone()
+                };
+                let b_4: i32 = b_low;
+                crate::int32_tools::Int32Tools::ucompare(a_4, b_4)
+            }) < 0
+            {
+                high = high - 1;
+            }
+            return {
+                let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                    crate::haxe_int64_int64::Int64::new(high, low);
+                let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+                this1
+            };
+        }
+    }
+
+    fn int_sub(
+        a: i32,
+        b: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        {
+            let a_high: i32 = a >> 31;
+            let a_low: i32 = a;
+            let mut high: i32 = {
+                let a_2: i32 = a_high;
+                let b_2: i32 = {
+                    let __b = b.borrow();
+                    __b.high.clone()
+                };
+                crate::int32_tools::Int32Tools::wrapping_sub(a_2, b_2) as i32
+            };
+            let low: i32 = {
+                let a_3: i32 = a_low;
+                let b_3: i32 = {
+                    let __b = b.borrow();
+                    __b.low.clone()
+                };
+                crate::int32_tools::Int32Tools::wrapping_sub(a_3, b_3) as i32
+            };
+            if ({
+                let a_4: i32 = a_low;
+                let b_4: i32 = {
+                    let __b = b.borrow();
+                    __b.low.clone()
+                };
+                crate::int32_tools::Int32Tools::ucompare(a_4, b_4)
+            }) < 0
+            {
+                high = high - 1;
+            }
+            return {
+                let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                    crate::haxe_int64_int64::Int64::new(high, low);
+                let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+                this1
+            };
+        }
+    }
+
+    pub fn mul(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        let mask: i32 = 65535;
+        let al: i32 = ({
+            let __b = a.borrow();
+            __b.low.clone()
+        }) & mask;
+        let ah: i32 = (({
+            let __b = a.borrow();
+            __b.low.clone()
+        }) as u32
+            >> 16 as u32) as i32;
+        let bl: i32 = ({
+            let __b = b.borrow();
+            __b.low.clone()
+        }) & mask;
+        let bh: i32 = (({
+            let __b = b.borrow();
+            __b.low.clone()
+        }) as u32
+            >> 16 as u32) as i32;
+        let p00: i32 = al * bl;
+        let mut p10: i32 = ah * bl;
+        let mut p01: i32 = al * bh;
+        let p11: i32 = ah * bh;
+        let mut low: i32 = p00;
+        let mut high: i32 =
+            p11 + (p01 as u32 >> 16 as u32) as i32 + (p10 as u32 >> 16 as u32) as i32;
+        {
+            p01 = p01 << 16;
+            p01
+        };
+        {
+            low = low + p01;
+            low
+        };
+        if crate::int32_tools::Int32Tools::ucompare(low, p01) < 0 {
+            high = high + 1;
+        }
+        {
+            p10 = p10 << 16;
+            p10
+        };
+        {
+            low = low + p10;
+            low
+        };
+        if crate::int32_tools::Int32Tools::ucompare(low, p10) < 0 {
+            high = high + 1;
+        }
+        high = {
+            let b_2: i32 = {
+                let a1: i32 = {
+                    let a_2: i32 = {
+                        let __b = a.borrow();
+                        __b.low.clone()
+                    };
+                    let b_3: i32 = {
+                        let __b = b.borrow();
+                        __b.high.clone()
+                    };
+                    crate::int32_tools::Int32Tools::wrapping_mul(a_2, b_3) as i32
+                };
+                let b_4: i32 = {
+                    let a_3: i32 = {
+                        let __b = a.borrow();
+                        __b.high.clone()
+                    };
+                    let b_5: i32 = {
+                        let __b = b.borrow();
+                        __b.low.clone()
+                    };
+                    crate::int32_tools::Int32Tools::wrapping_mul(a_3, b_5) as i32
+                };
+                crate::int32_tools::Int32Tools::wrapping_add(a1, b_4) as i32
+            };
+            crate::int32_tools::Int32Tools::wrapping_add(high, b_2) as i32
+        };
+        {
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(high, low);
+            let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+            return this1;
+        }
+    }
+
+    fn mul_int(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: i32,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        {
+            let b_high: i32 = b >> 31;
+            let b_low: i32 = b;
+            let mask: i32 = 65535;
+            let al: i32 = ({
+                let __b = a.borrow();
+                __b.low.clone()
+            }) & mask;
+            let ah: i32 = (({
+                let __b = a.borrow();
+                __b.low.clone()
+            }) as u32
+                >> 16 as u32) as i32;
+            let bl: i32 = b_low & mask;
+            let bh: i32 = (b_low as u32 >> 16 as u32) as i32;
+            let p00: i32 = al * bl;
+            let mut p10: i32 = ah * bl;
+            let mut p01: i32 = al * bh;
+            let p11: i32 = ah * bh;
+            let mut low: i32 = p00;
+            let mut high: i32 =
+                p11 + (p01 as u32 >> 16 as u32) as i32 + (p10 as u32 >> 16 as u32) as i32;
+            {
+                p01 = p01 << 16;
+                p01
+            };
+            {
+                low = low + p01;
+                low
+            };
+            if crate::int32_tools::Int32Tools::ucompare(low, p01) < 0 {
+                high = high + 1;
+            }
+            {
+                p10 = p10 << 16;
+                p10
+            };
+            {
+                low = low + p10;
+                low
+            };
+            if crate::int32_tools::Int32Tools::ucompare(low, p10) < 0 {
+                high = high + 1;
+            }
+            high = {
+                let b_2: i32 = {
+                    let a1: i32 = {
+                        let a_2: i32 = {
+                            let __b = a.borrow();
+                            __b.low.clone()
+                        };
+                        let b_3: i32 = b_high;
+                        crate::int32_tools::Int32Tools::wrapping_mul(a_2, b_3) as i32
+                    };
+                    let b_4: i32 = {
+                        let a_3: i32 = {
+                            let __b = a.borrow();
+                            __b.high.clone()
+                        };
+                        let b_5: i32 = b_low;
+                        crate::int32_tools::Int32Tools::wrapping_mul(a_3, b_5) as i32
+                    };
+                    crate::int32_tools::Int32Tools::wrapping_add(a1, b_4) as i32
+                };
+                crate::int32_tools::Int32Tools::wrapping_add(high, b_2) as i32
             };
             return {
                 let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
                     crate::haxe_int64_int64::Int64::new(high, low);
-                let this1_2: crate::HxRef<crate::haxe_int64_int64::Int64>;
-                this1_2 = x;
-                this1_2
+                let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+                this1
             };
         }
+    }
+
+    pub fn div(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        return crate::haxe_int64_int64_impl_::Int64Impl::div_mod(a.clone(), b.clone())
+            .borrow()
+            .get::<crate::HxRef<crate::haxe_int64_int64::Int64>>("quotient");
+    }
+
+    fn div_int(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: i32,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        {
+            let b_2: crate::HxRef<crate::haxe_int64_int64::Int64> = {
+                let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                    crate::haxe_int64_int64::Int64::new(b >> 31, b);
+                let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+                this1
+            };
+            return crate::haxe_int64_int64_impl_::Int64Impl::div_mod(a.clone(), b_2.clone())
+                .borrow()
+                .get::<crate::HxRef<crate::haxe_int64_int64::Int64>>("quotient");
+        }
+    }
+
+    fn int_div(a: i32, b: crate::HxRef<crate::haxe_int64_int64::Int64>) -> i32 {
+        {
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> = {
+                let a_2: crate::HxRef<crate::haxe_int64_int64::Int64> = {
+                    let x_2: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                        crate::haxe_int64_int64::Int64::new(a >> 31, a);
+                    let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x_2;
+                    this1
+                };
+                crate::haxe_int64_int64_impl_::Int64Impl::div_mod(a_2.clone(), b.clone())
+                    .borrow()
+                    .get::<crate::HxRef<crate::haxe_int64_int64::Int64>>("quotient")
+            };
+            if ({
+                let __b = x.borrow();
+                __b.high.clone()
+            }) != ({
+                let __b = x.borrow();
+                __b.low.clone()
+            }) >> 31
+            {
+                hxrt::exception::throw(hxrt::dynamic::from(String::from("Overflow")));
+            }
+            return {
+                let __b = x.borrow();
+                __b.low.clone()
+            };
+        }
+    }
+
+    pub fn mod_(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        return crate::haxe_int64_int64_impl_::Int64Impl::div_mod(a.clone(), b.clone())
+            .borrow()
+            .get::<crate::HxRef<crate::haxe_int64_int64::Int64>>("modulus");
+    }
+
+    fn mod_int(a: crate::HxRef<crate::haxe_int64_int64::Int64>, b: i32) -> i32 {
+        {
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> = {
+                let b_2: crate::HxRef<crate::haxe_int64_int64::Int64> = {
+                    let x_2: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                        crate::haxe_int64_int64::Int64::new(b >> 31, b);
+                    let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x_2;
+                    this1
+                };
+                crate::haxe_int64_int64_impl_::Int64Impl::div_mod(a.clone(), b_2.clone())
+                    .borrow()
+                    .get::<crate::HxRef<crate::haxe_int64_int64::Int64>>("modulus")
+            };
+            if ({
+                let __b = x.borrow();
+                __b.high.clone()
+            }) != ({
+                let __b = x.borrow();
+                __b.low.clone()
+            }) >> 31
+            {
+                hxrt::exception::throw(hxrt::dynamic::from(String::from("Overflow")));
+            }
+            return {
+                let __b = x.borrow();
+                __b.low.clone()
+            };
+        }
+    }
+
+    fn int_mod(a: i32, b: crate::HxRef<crate::haxe_int64_int64::Int64>) -> i32 {
+        {
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> = {
+                let a_2: crate::HxRef<crate::haxe_int64_int64::Int64> = {
+                    let x_2: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                        crate::haxe_int64_int64::Int64::new(a >> 31, a);
+                    let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x_2;
+                    this1
+                };
+                crate::haxe_int64_int64_impl_::Int64Impl::div_mod(a_2.clone(), b.clone())
+                    .borrow()
+                    .get::<crate::HxRef<crate::haxe_int64_int64::Int64>>("modulus")
+            };
+            if ({
+                let __b = x.borrow();
+                __b.high.clone()
+            }) != ({
+                let __b = x.borrow();
+                __b.low.clone()
+            }) >> 31
+            {
+                hxrt::exception::throw(hxrt::dynamic::from(String::from("Overflow")));
+            }
+            return {
+                let __b = x.borrow();
+                __b.low.clone()
+            };
+        }
+    }
+
+    pub fn eq(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> bool {
+        return ({
+            let __b = a.borrow();
+            __b.high.clone()
+        }) == ({
+            let __b = b.borrow();
+            __b.high.clone()
+        }) && ({
+            let __b = a.borrow();
+            __b.low.clone()
+        }) == ({
+            let __b = b.borrow();
+            __b.low.clone()
+        });
+    }
+
+    fn eq_int(a: crate::HxRef<crate::haxe_int64_int64::Int64>, b: i32) -> bool {
+        {
+            let b_high: i32 = b >> 31;
+            let b_low: i32 = b;
+            return ({
+                let __b = a.borrow();
+                __b.high.clone()
+            }) == b_high
+                && ({
+                    let __b = a.borrow();
+                    __b.low.clone()
+                }) == b_low;
+        }
+    }
+
+    pub fn neq(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> bool {
+        return ({
+            let __b = a.borrow();
+            __b.high.clone()
+        }) != ({
+            let __b = b.borrow();
+            __b.high.clone()
+        }) || ({
+            let __b = a.borrow();
+            __b.low.clone()
+        }) != ({
+            let __b = b.borrow();
+            __b.low.clone()
+        });
+    }
+
+    fn neq_int(a: crate::HxRef<crate::haxe_int64_int64::Int64>, b: i32) -> bool {
+        {
+            let b_high: i32 = b >> 31;
+            let b_low: i32 = b;
+            return ({
+                let __b = a.borrow();
+                __b.high.clone()
+            }) != b_high
+                || ({
+                    let __b = a.borrow();
+                    __b.low.clone()
+                }) != b_low;
+        }
+    }
+
+    fn lt(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> bool {
+        return ({
+            let mut v: i32 = {
+                let a_2: i32 = {
+                    let __b = a.borrow();
+                    __b.high.clone()
+                };
+                let b_2: i32 = {
+                    let __b = b.borrow();
+                    __b.high.clone()
+                };
+                crate::int32_tools::Int32Tools::wrapping_sub(a_2, b_2) as i32
+            };
+            v = if v != 0 {
+                v
+            } else {
+                let a_3: i32 = {
+                    let __b = a.borrow();
+                    __b.low.clone()
+                };
+                let b_3: i32 = {
+                    let __b = b.borrow();
+                    __b.low.clone()
+                };
+                crate::int32_tools::Int32Tools::ucompare(a_3, b_3)
+            };
+            if (({
+                let __b = a.borrow();
+                __b.high.clone()
+            }) as i32)
+                < 0
+            {
+                if (({
+                    let __b = b.borrow();
+                    __b.high.clone()
+                }) as i32)
+                    < 0
+                {
+                    v
+                } else {
+                    -1
+                }
+            } else {
+                if (({
+                    let __b = b.borrow();
+                    __b.high.clone()
+                }) as i32)
+                    >= 0
+                {
+                    v
+                } else {
+                    1
+                }
+            }
+        }) < 0;
+    }
+
+    fn lt_int(a: crate::HxRef<crate::haxe_int64_int64::Int64>, b: i32) -> bool {
+        {
+            let b_high: i32 = b >> 31;
+            let b_low: i32 = b;
+            return ({
+                let mut v: i32 = {
+                    let a_2: i32 = {
+                        let __b = a.borrow();
+                        __b.high.clone()
+                    };
+                    let b_2: i32 = b_high;
+                    crate::int32_tools::Int32Tools::wrapping_sub(a_2, b_2) as i32
+                };
+                v = if v != 0 {
+                    v
+                } else {
+                    let a_3: i32 = {
+                        let __b = a.borrow();
+                        __b.low.clone()
+                    };
+                    let b_3: i32 = b_low;
+                    crate::int32_tools::Int32Tools::ucompare(a_3, b_3)
+                };
+                if (({
+                    let __b = a.borrow();
+                    __b.high.clone()
+                }) as i32)
+                    < 0
+                {
+                    if (b_high as i32) < 0 {
+                        v
+                    } else {
+                        -1
+                    }
+                } else {
+                    if (b_high as i32) >= 0 {
+                        v
+                    } else {
+                        1
+                    }
+                }
+            }) < 0;
+        }
+    }
+
+    fn int_lt(a: i32, b: crate::HxRef<crate::haxe_int64_int64::Int64>) -> bool {
+        {
+            let a_high: i32 = a >> 31;
+            let a_low: i32 = a;
+            return ({
+                let mut v: i32 = {
+                    let a_2: i32 = a_high;
+                    let b_2: i32 = {
+                        let __b = b.borrow();
+                        __b.high.clone()
+                    };
+                    crate::int32_tools::Int32Tools::wrapping_sub(a_2, b_2) as i32
+                };
+                v = if v != 0 {
+                    v
+                } else {
+                    let a_3: i32 = a_low;
+                    let b_3: i32 = {
+                        let __b = b.borrow();
+                        __b.low.clone()
+                    };
+                    crate::int32_tools::Int32Tools::ucompare(a_3, b_3)
+                };
+                if (a_high as i32) < 0 {
+                    if (({
+                        let __b = b.borrow();
+                        __b.high.clone()
+                    }) as i32)
+                        < 0
+                    {
+                        v
+                    } else {
+                        -1
+                    }
+                } else {
+                    if (({
+                        let __b = b.borrow();
+                        __b.high.clone()
+                    }) as i32)
+                        >= 0
+                    {
+                        v
+                    } else {
+                        1
+                    }
+                }
+            }) < 0;
+        }
+    }
+
+    fn lte(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> bool {
+        return ({
+            let mut v: i32 = {
+                let a_2: i32 = {
+                    let __b = a.borrow();
+                    __b.high.clone()
+                };
+                let b_2: i32 = {
+                    let __b = b.borrow();
+                    __b.high.clone()
+                };
+                crate::int32_tools::Int32Tools::wrapping_sub(a_2, b_2) as i32
+            };
+            v = if v != 0 {
+                v
+            } else {
+                let a_3: i32 = {
+                    let __b = a.borrow();
+                    __b.low.clone()
+                };
+                let b_3: i32 = {
+                    let __b = b.borrow();
+                    __b.low.clone()
+                };
+                crate::int32_tools::Int32Tools::ucompare(a_3, b_3)
+            };
+            if (({
+                let __b = a.borrow();
+                __b.high.clone()
+            }) as i32)
+                < 0
+            {
+                if (({
+                    let __b = b.borrow();
+                    __b.high.clone()
+                }) as i32)
+                    < 0
+                {
+                    v
+                } else {
+                    -1
+                }
+            } else {
+                if (({
+                    let __b = b.borrow();
+                    __b.high.clone()
+                }) as i32)
+                    >= 0
+                {
+                    v
+                } else {
+                    1
+                }
+            }
+        }) <= 0;
+    }
+
+    fn lte_int(a: crate::HxRef<crate::haxe_int64_int64::Int64>, b: i32) -> bool {
+        {
+            let b_high: i32 = b >> 31;
+            let b_low: i32 = b;
+            return ({
+                let mut v: i32 = {
+                    let a_2: i32 = {
+                        let __b = a.borrow();
+                        __b.high.clone()
+                    };
+                    let b_2: i32 = b_high;
+                    crate::int32_tools::Int32Tools::wrapping_sub(a_2, b_2) as i32
+                };
+                v = if v != 0 {
+                    v
+                } else {
+                    let a_3: i32 = {
+                        let __b = a.borrow();
+                        __b.low.clone()
+                    };
+                    let b_3: i32 = b_low;
+                    crate::int32_tools::Int32Tools::ucompare(a_3, b_3)
+                };
+                if (({
+                    let __b = a.borrow();
+                    __b.high.clone()
+                }) as i32)
+                    < 0
+                {
+                    if (b_high as i32) < 0 {
+                        v
+                    } else {
+                        -1
+                    }
+                } else {
+                    if (b_high as i32) >= 0 {
+                        v
+                    } else {
+                        1
+                    }
+                }
+            }) <= 0;
+        }
+    }
+
+    fn int_lte(a: i32, b: crate::HxRef<crate::haxe_int64_int64::Int64>) -> bool {
+        {
+            let a_high: i32 = a >> 31;
+            let a_low: i32 = a;
+            return ({
+                let mut v: i32 = {
+                    let a_2: i32 = a_high;
+                    let b_2: i32 = {
+                        let __b = b.borrow();
+                        __b.high.clone()
+                    };
+                    crate::int32_tools::Int32Tools::wrapping_sub(a_2, b_2) as i32
+                };
+                v = if v != 0 {
+                    v
+                } else {
+                    let a_3: i32 = a_low;
+                    let b_3: i32 = {
+                        let __b = b.borrow();
+                        __b.low.clone()
+                    };
+                    crate::int32_tools::Int32Tools::ucompare(a_3, b_3)
+                };
+                if (a_high as i32) < 0 {
+                    if (({
+                        let __b = b.borrow();
+                        __b.high.clone()
+                    }) as i32)
+                        < 0
+                    {
+                        v
+                    } else {
+                        -1
+                    }
+                } else {
+                    if (({
+                        let __b = b.borrow();
+                        __b.high.clone()
+                    }) as i32)
+                        >= 0
+                    {
+                        v
+                    } else {
+                        1
+                    }
+                }
+            }) <= 0;
+        }
+    }
+
+    fn gt(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> bool {
+        return ({
+            let mut v: i32 = {
+                let a_2: i32 = {
+                    let __b = a.borrow();
+                    __b.high.clone()
+                };
+                let b_2: i32 = {
+                    let __b = b.borrow();
+                    __b.high.clone()
+                };
+                crate::int32_tools::Int32Tools::wrapping_sub(a_2, b_2) as i32
+            };
+            v = if v != 0 {
+                v
+            } else {
+                let a_3: i32 = {
+                    let __b = a.borrow();
+                    __b.low.clone()
+                };
+                let b_3: i32 = {
+                    let __b = b.borrow();
+                    __b.low.clone()
+                };
+                crate::int32_tools::Int32Tools::ucompare(a_3, b_3)
+            };
+            if (({
+                let __b = a.borrow();
+                __b.high.clone()
+            }) as i32)
+                < 0
+            {
+                if (({
+                    let __b = b.borrow();
+                    __b.high.clone()
+                }) as i32)
+                    < 0
+                {
+                    v
+                } else {
+                    -1
+                }
+            } else {
+                if (({
+                    let __b = b.borrow();
+                    __b.high.clone()
+                }) as i32)
+                    >= 0
+                {
+                    v
+                } else {
+                    1
+                }
+            }
+        }) > 0;
+    }
+
+    fn gt_int(a: crate::HxRef<crate::haxe_int64_int64::Int64>, b: i32) -> bool {
+        {
+            let b_high: i32 = b >> 31;
+            let b_low: i32 = b;
+            return ({
+                let mut v: i32 = {
+                    let a_2: i32 = {
+                        let __b = a.borrow();
+                        __b.high.clone()
+                    };
+                    let b_2: i32 = b_high;
+                    crate::int32_tools::Int32Tools::wrapping_sub(a_2, b_2) as i32
+                };
+                v = if v != 0 {
+                    v
+                } else {
+                    let a_3: i32 = {
+                        let __b = a.borrow();
+                        __b.low.clone()
+                    };
+                    let b_3: i32 = b_low;
+                    crate::int32_tools::Int32Tools::ucompare(a_3, b_3)
+                };
+                if (({
+                    let __b = a.borrow();
+                    __b.high.clone()
+                }) as i32)
+                    < 0
+                {
+                    if (b_high as i32) < 0 {
+                        v
+                    } else {
+                        -1
+                    }
+                } else {
+                    if (b_high as i32) >= 0 {
+                        v
+                    } else {
+                        1
+                    }
+                }
+            }) > 0;
+        }
+    }
+
+    fn int_gt(a: i32, b: crate::HxRef<crate::haxe_int64_int64::Int64>) -> bool {
+        {
+            let a_high: i32 = a >> 31;
+            let a_low: i32 = a;
+            return ({
+                let mut v: i32 = {
+                    let a_2: i32 = a_high;
+                    let b_2: i32 = {
+                        let __b = b.borrow();
+                        __b.high.clone()
+                    };
+                    crate::int32_tools::Int32Tools::wrapping_sub(a_2, b_2) as i32
+                };
+                v = if v != 0 {
+                    v
+                } else {
+                    let a_3: i32 = a_low;
+                    let b_3: i32 = {
+                        let __b = b.borrow();
+                        __b.low.clone()
+                    };
+                    crate::int32_tools::Int32Tools::ucompare(a_3, b_3)
+                };
+                if (a_high as i32) < 0 {
+                    if (({
+                        let __b = b.borrow();
+                        __b.high.clone()
+                    }) as i32)
+                        < 0
+                    {
+                        v
+                    } else {
+                        -1
+                    }
+                } else {
+                    if (({
+                        let __b = b.borrow();
+                        __b.high.clone()
+                    }) as i32)
+                        >= 0
+                    {
+                        v
+                    } else {
+                        1
+                    }
+                }
+            }) > 0;
+        }
+    }
+
+    fn gte(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> bool {
+        return ({
+            let mut v: i32 = {
+                let a_2: i32 = {
+                    let __b = a.borrow();
+                    __b.high.clone()
+                };
+                let b_2: i32 = {
+                    let __b = b.borrow();
+                    __b.high.clone()
+                };
+                crate::int32_tools::Int32Tools::wrapping_sub(a_2, b_2) as i32
+            };
+            v = if v != 0 {
+                v
+            } else {
+                let a_3: i32 = {
+                    let __b = a.borrow();
+                    __b.low.clone()
+                };
+                let b_3: i32 = {
+                    let __b = b.borrow();
+                    __b.low.clone()
+                };
+                crate::int32_tools::Int32Tools::ucompare(a_3, b_3)
+            };
+            if (({
+                let __b = a.borrow();
+                __b.high.clone()
+            }) as i32)
+                < 0
+            {
+                if (({
+                    let __b = b.borrow();
+                    __b.high.clone()
+                }) as i32)
+                    < 0
+                {
+                    v
+                } else {
+                    -1
+                }
+            } else {
+                if (({
+                    let __b = b.borrow();
+                    __b.high.clone()
+                }) as i32)
+                    >= 0
+                {
+                    v
+                } else {
+                    1
+                }
+            }
+        }) >= 0;
+    }
+
+    fn gte_int(a: crate::HxRef<crate::haxe_int64_int64::Int64>, b: i32) -> bool {
+        {
+            let b_high: i32 = b >> 31;
+            let b_low: i32 = b;
+            return ({
+                let mut v: i32 = {
+                    let a_2: i32 = {
+                        let __b = a.borrow();
+                        __b.high.clone()
+                    };
+                    let b_2: i32 = b_high;
+                    crate::int32_tools::Int32Tools::wrapping_sub(a_2, b_2) as i32
+                };
+                v = if v != 0 {
+                    v
+                } else {
+                    let a_3: i32 = {
+                        let __b = a.borrow();
+                        __b.low.clone()
+                    };
+                    let b_3: i32 = b_low;
+                    crate::int32_tools::Int32Tools::ucompare(a_3, b_3)
+                };
+                if (({
+                    let __b = a.borrow();
+                    __b.high.clone()
+                }) as i32)
+                    < 0
+                {
+                    if (b_high as i32) < 0 {
+                        v
+                    } else {
+                        -1
+                    }
+                } else {
+                    if (b_high as i32) >= 0 {
+                        v
+                    } else {
+                        1
+                    }
+                }
+            }) >= 0;
+        }
+    }
+
+    fn int_gte(a: i32, b: crate::HxRef<crate::haxe_int64_int64::Int64>) -> bool {
+        {
+            let a_high: i32 = a >> 31;
+            let a_low: i32 = a;
+            return ({
+                let mut v: i32 = {
+                    let a_2: i32 = a_high;
+                    let b_2: i32 = {
+                        let __b = b.borrow();
+                        __b.high.clone()
+                    };
+                    crate::int32_tools::Int32Tools::wrapping_sub(a_2, b_2) as i32
+                };
+                v = if v != 0 {
+                    v
+                } else {
+                    let a_3: i32 = a_low;
+                    let b_3: i32 = {
+                        let __b = b.borrow();
+                        __b.low.clone()
+                    };
+                    crate::int32_tools::Int32Tools::ucompare(a_3, b_3)
+                };
+                if (a_high as i32) < 0 {
+                    if (({
+                        let __b = b.borrow();
+                        __b.high.clone()
+                    }) as i32)
+                        < 0
+                    {
+                        v
+                    } else {
+                        -1
+                    }
+                } else {
+                    if (({
+                        let __b = b.borrow();
+                        __b.high.clone()
+                    }) as i32)
+                        >= 0
+                    {
+                        v
+                    } else {
+                        1
+                    }
+                }
+            }) >= 0;
+        }
+    }
+
+    fn complement(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        {
+            let high: i32 = !({
+                let __b = a.borrow();
+                __b.high.clone()
+            });
+            let low: i32 = !({
+                let __b = a.borrow();
+                __b.low.clone()
+            });
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(high, low);
+            let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+            return this1;
+        }
+    }
+
+    pub fn and(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        {
+            let high: i32 = ({
+                let __b = a.borrow();
+                __b.high.clone()
+            }) & ({
+                let __b = b.borrow();
+                __b.high.clone()
+            });
+            let low: i32 = ({
+                let __b = a.borrow();
+                __b.low.clone()
+            }) & ({
+                let __b = b.borrow();
+                __b.low.clone()
+            });
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(high, low);
+            let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+            return this1;
+        }
+    }
+
+    pub fn or(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        {
+            let high: i32 = ({
+                let __b = a.borrow();
+                __b.high.clone()
+            }) | ({
+                let __b = b.borrow();
+                __b.high.clone()
+            });
+            let low: i32 = ({
+                let __b = a.borrow();
+                __b.low.clone()
+            }) | ({
+                let __b = b.borrow();
+                __b.low.clone()
+            });
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(high, low);
+            let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+            return this1;
+        }
+    }
+
+    pub fn xor(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: crate::HxRef<crate::haxe_int64_int64::Int64>,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        {
+            let high: i32 = ({
+                let __b = a.borrow();
+                __b.high.clone()
+            }) ^ ({
+                let __b = b.borrow();
+                __b.high.clone()
+            });
+            let low: i32 = ({
+                let __b = a.borrow();
+                __b.low.clone()
+            }) ^ ({
+                let __b = b.borrow();
+                __b.low.clone()
+            });
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(high, low);
+            let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+            return this1;
+        }
+    }
+
+    pub fn shl(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: i32,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        let mut b = b;
+        {
+            b = b & 63;
+            b
+        };
+        return if b == 0 {
+            let high: i32 = {
+                let __b = a.borrow();
+                __b.high.clone()
+            };
+            let low: i32 = {
+                let __b = a.borrow();
+                __b.low.clone()
+            };
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(high, low);
+            let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+            this1
+        } else {
+            if b < 32 {
+                let high_2: i32 = ({
+                    let __b = a.borrow();
+                    __b.high.clone()
+                }) << b
+                    | (({
+                        let __b = a.borrow();
+                        __b.low.clone()
+                    }) as u32
+                        >> (32 - b) as u32) as i32;
+                let low_2: i32 = ({
+                    let __b = a.borrow();
+                    __b.low.clone()
+                }) << b;
+                let x_2: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                    crate::haxe_int64_int64::Int64::new(high_2, low_2);
+                let this1_2: crate::HxRef<crate::haxe_int64_int64::Int64> = x_2;
+                this1_2
+            } else {
+                let high_3: i32 = ({
+                    let __b = a.borrow();
+                    __b.low.clone()
+                }) << b - 32;
+                let x_3: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                    crate::haxe_int64_int64::Int64::new(high_3, 0);
+                let this1_3: crate::HxRef<crate::haxe_int64_int64::Int64> = x_3;
+                this1_3
+            }
+        };
+    }
+
+    pub fn shr(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: i32,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        let mut b = b;
+        {
+            b = b & 63;
+            b
+        };
+        return if b == 0 {
+            let high: i32 = {
+                let __b = a.borrow();
+                __b.high.clone()
+            };
+            let low: i32 = {
+                let __b = a.borrow();
+                __b.low.clone()
+            };
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(high, low);
+            let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+            this1
+        } else {
+            if b < 32 {
+                let high_2: i32 = ({
+                    let __b = a.borrow();
+                    __b.high.clone()
+                }) >> b;
+                let low_2: i32 = ({
+                    let __b = a.borrow();
+                    __b.high.clone()
+                }) << 32 - b
+                    | (({
+                        let __b = a.borrow();
+                        __b.low.clone()
+                    }) as u32
+                        >> b as u32) as i32;
+                let x_2: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                    crate::haxe_int64_int64::Int64::new(high_2, low_2);
+                let this1_2: crate::HxRef<crate::haxe_int64_int64::Int64> = x_2;
+                this1_2
+            } else {
+                let high_3: i32 = ({
+                    let __b = a.borrow();
+                    __b.high.clone()
+                }) >> 31;
+                let low_3: i32 = ({
+                    let __b = a.borrow();
+                    __b.high.clone()
+                }) >> b - 32;
+                let x_3: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                    crate::haxe_int64_int64::Int64::new(high_3, low_3);
+                let this1_3: crate::HxRef<crate::haxe_int64_int64::Int64> = x_3;
+                this1_3
+            }
+        };
+    }
+
+    pub fn ushr(
+        a: crate::HxRef<crate::haxe_int64_int64::Int64>,
+        b: i32,
+    ) -> crate::HxRef<crate::haxe_int64_int64::Int64> {
+        let mut b = b;
+        {
+            b = b & 63;
+            b
+        };
+        return if b == 0 {
+            let high: i32 = {
+                let __b = a.borrow();
+                __b.high.clone()
+            };
+            let low: i32 = {
+                let __b = a.borrow();
+                __b.low.clone()
+            };
+            let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                crate::haxe_int64_int64::Int64::new(high, low);
+            let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
+            this1
+        } else {
+            if b < 32 {
+                let high_2: i32 = (({
+                    let __b = a.borrow();
+                    __b.high.clone()
+                }) as u32
+                    >> b as u32) as i32;
+                let low_2: i32 = ({
+                    let __b = a.borrow();
+                    __b.high.clone()
+                }) << 32 - b
+                    | (({
+                        let __b = a.borrow();
+                        __b.low.clone()
+                    }) as u32
+                        >> b as u32) as i32;
+                let x_2: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                    crate::haxe_int64_int64::Int64::new(high_2, low_2);
+                let this1_2: crate::HxRef<crate::haxe_int64_int64::Int64> = x_2;
+                this1_2
+            } else {
+                let low_3: i32 = (({
+                    let __b = a.borrow();
+                    __b.high.clone()
+                }) as u32
+                    >> (b - 32) as u32) as i32;
+                let x_3: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                    crate::haxe_int64_int64::Int64::new(0, low_3);
+                let this1_3: crate::HxRef<crate::haxe_int64_int64::Int64> = x_3;
+                this1_3
+            }
+        };
+    }
+
+    pub fn get_high_2(this1: crate::HxRef<crate::haxe_int64_int64::Int64>) -> i32 {
+        return {
+            let __b = this1.borrow();
+            __b.high.clone()
+        };
+    }
+
+    pub fn get_low_2(this1: crate::HxRef<crate::haxe_int64_int64::Int64>) -> i32 {
+        return {
+            let __b = this1.borrow();
+            __b.low.clone()
+        };
     }
 }

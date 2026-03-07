@@ -18,6 +18,7 @@ Use this page as the map for `reflaxe.rust` docs.
 ## Core product docs
 
 - [Contracts](profiles.md): portable vs metal contract semantics and lane/capability controls.
+- [Portable idiom adoption contract](reflaxe-std-adoption-contract.md): Rust-side boundary and migration rules for the shared `reflaxe.std` portable idiom layer (v1 starts with `Option`/`Result`).
 - [Examples matrix](examples-matrix.md): scenario coverage, profile entrypoints, and native-parity quick check (`profile_storyboard`).
 - [Metal profile](metal-profile.md): Rust-first performance profile and boundary policy.
 - [Lifetime encoding design](lifetime-encoding.md): what lifetime-like guarantees are possible in Haxe and where extern Rust is still required.
@@ -58,4 +59,5 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Haxelib Packaging Notes](haxelib-packaging.md): package layout rules, flattening behavior, and `.cross.hx` rationale.
 - [Stdlib Parity Policy](stdlib-policy.md): parity scope, provenance ledger, and CI boundary governance.
 - [Spike: Family `portable|metal` Alignment](spikes/family-portable-metal-alignment.md): cross-repo contract alignment notes and implementation gap history.
+- [Spike: `reflaxe.std` Cross-Repo Handoff](spikes/reflaxe-std-cross-repo-handoff.md): ownership split between Rust adoption work and the remaining Go/Elixir/JS/genes rollout tasks.
 - [Spike: Auto Profile Exploration](spikes/auto-profile-exploration.md): decision memo for keeping explicit `portable|metal` contracts and constraints for any future `auto` experiment.

@@ -104,6 +104,7 @@ typedef RustStructLitField = {
 enum RustPattern {
 	PWildcard;
 	PBind(name:String);
+	PAlias(name:String, pattern:RustPattern);
 	PPath(path:String);
 	PLitInt(v:Int);
 	PLitBool(v:Bool);

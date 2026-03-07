@@ -15,16 +15,19 @@ package rust;
  *
  * How
  * - Profile-aware modules preserve string representation contracts:
- *   - `string_tools.rs` for non-nullable Rust `String`.
- *   - `string_tools_nullable.rs` for `hxrt::string::HxString`.
+ *   - `rust_string_tools.rs` for non-nullable Rust `String`.
+ *   - `rust_string_tools_nullable.rs` for `hxrt::string::HxString`.
+ * - The module names intentionally include the `rust_` prefix so this native helper
+ *   cannot collide with the generated std `StringTools` module (`crate::string_tools`)
+ *   emitted from `std/StringTools.cross.hx`.
  * - Callers stay typed (`Ref<String>` + `Str`) with no raw injection fallback.
  */
 #if rust_string_nullable
-@:native("crate::string_tools_nullable::StringTools")
-@:rustExtraSrc("rust/native/string_tools_nullable.rs")
+@:native("crate::rust_string_tools_nullable::StringTools")
+@:rustExtraSrc("rust/native/rust_string_tools_nullable.rs")
 #else
-@:native("crate::string_tools::StringTools")
-@:rustExtraSrc("rust/native/string_tools.rs")
+@:native("crate::rust_string_tools::StringTools")
+@:rustExtraSrc("rust/native/rust_string_tools.rs")
 #end
 extern class StringTools {
 	public static function contains(haystack:Ref<String>, needle:Str):Bool;

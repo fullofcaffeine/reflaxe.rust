@@ -16,6 +16,28 @@ Before committing bead status changes, run `bd sync` and ensure `.beads/issues.j
 
 Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rust-oo3 --compact`).
 
+## Thinking Levels (Bead Labels)
+
+Use a `thinking:*` label on active beads so execution effort matches task risk.
+
+- `thinking:low`
+  - Mechanical edits, simple docs cleanup, straightforward renames, obvious wiring.
+- `thinking:medium`
+  - CI/job plumbing, runner scripts, artifact flow, bounded retry/timeout logic.
+- `thinking:high`
+  - Parity contracts, gate semantics, dependency graph changes, perf-policy changes, compiler/runtime architecture decisions.
+- `thinking:xhigh`
+  - Scope-definition changes, release enforcement, provenance-sensitive implementation strategy, or any task where a wrong decision would create misleading 1.0 evidence.
+
+Agent policy:
+
+- When a bead has a `thinking:*` label, match reasoning depth to that label automatically.
+- If a claimed bead has no `thinking:*` label, infer one immediately and add it before substantial work.
+- `thinking:xhigh` should get a second-pass review before closure.
+  - Preferred: an Oracle checkpoint/review.
+  - Acceptable fallback: an explicit written second-pass design review recorded in the bead comments.
+- Oracle is a review/escalation tool for `thinking:xhigh`; it is not a substitute for implementation, tests, or CI evidence.
+
 ## Product Source of Truth
 
 - Requirements + architecture: `prd.md`
@@ -58,6 +80,9 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
 ## Documentation (HaxeDoc)
 
 - For any **vital** or **complex** type/function (compiler, runtime, `std/` interop surface), write **didactic HaxeDoc** using a clear **Why / What / How** structure.
+- Documentation threshold rule: do not reserve HaxeDoc only for obviously "big" constructs or artifacts.
+  If a type/function/abstract/macro/extern override/metadata pattern is even slightly non-obvious, surprising, or easy to misuse, document it with **Why / What / How** HaxeDoc where it is declared.
+  For non-code artifacts that need explanation (generated report schemas, fixture formats, CI-facing outputs), document them at the closest emission point or owning docs page with the same **Why / What / How** standard.
 - Be intentionally verbose when it prevents misuse (ownership/borrowing, injection rules, Cargo metadata, `@:coreType`/extern semantics, etc.).
 - If you use a **non-trivial Haxe feature** (extern overrides, abstracts, `@:from/@:to`, macros, metadata-driven behavior, `@:native`, `@:coreType`, `@:enum abstract`, typed-ast patterns, etc.), add **comprehensive** HaxeDoc explaining why it exists and how it affects codegen/runtime semantics.
 - This repo is a **reference compiler** for backend authors: every non-obvious compiler/runtime/std design decision should be documented where it lives, with explicit tradeoffs and rationale that other Haxe compiler implementers can follow.

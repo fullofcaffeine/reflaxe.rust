@@ -29,6 +29,16 @@ Default behavior:
 - metal restrictions pass is still executed so `@:haxeMetal` lanes enforce strict island rules.
 - strict app-boundary mode is not auto-enabled; add `-D reflaxe_rust_strict` to reject raw app-side `untyped __rust__(...)`.
 
+Portable idiom guidance:
+
+- Prefer portable shared surfaces (`reflaxe.std`) for cross-target Option/Result style flows.
+- On Rust, `reflaxe.std.Option/Result` are expected to lower to the same native Rust
+  `Option/Result` representations used by `rust.Option` / `rust.Result`.
+  The difference is API contract and portability intent, not a wrapper runtime type.
+- Keep `rust.*` imports as explicit Rust-native lane APIs.
+- portable native-import diagnostics remain reviewable in contract reports (and can be enforced with
+  `-D rust_portable_native_import_strict`).
+
 ## Contract: `metal`
 
 Use `metal` when you want:
@@ -103,6 +113,7 @@ The report schemas include explicit identity fields:
 - `backendId` (for both reports)
 - `runtimeId` (runtime plan report)
 - `contract` (`portable` or `metal`)
+- `familyStdPin` (pin metadata from `family/family_std_pin.json` when visible from the compile root)
 
 ## Migration notes
 
@@ -121,3 +132,7 @@ Removed report artifact names:
 - Profile/lane policy checks: `scripts/ci/check-metal-policy.sh`
 - Snapshot matrix: `test/snapshot/*`
 - Full local CI-style run: `npm run test:all`
+
+## Related contract docs
+
+- `docs/reflaxe-std-adoption-contract.md`

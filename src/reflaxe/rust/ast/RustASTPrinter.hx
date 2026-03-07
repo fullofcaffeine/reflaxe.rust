@@ -22,6 +22,20 @@ class RustASTPrinter {
 	static inline var PREC_POSTFIX = 90; // call/field/index
 	static inline var PREC_PRIMARY = 100;
 
+	static function isComparisonLikeOp(op:String):Bool {
+		return switch (op) {
+			case "<", ">", "<=", ">=", "==", "!=": true;
+			case _: false;
+		}
+	}
+
+	static function isComparisonLikeExpr(expr:RustAST.RustExpr):Bool {
+		return switch (expr) {
+			case EBinary(op, _, _): isComparisonLikeOp(op);
+			case _: false;
+		}
+	}
+
 	public static function printFile(file:RustAST.RustFile):String {
 		var parts:Array<String> = [];
 		for (item in file.items) {
@@ -272,6 +286,8 @@ class RustASTPrinter {
 			case EBinary(op, left, right): {
 					var prec = binaryPrec(op);
 					var leftStr = printExprPrec(left, indent, prec);
+					if (isComparisonLikeOp(op) && isComparisonLikeExpr(left))
+						leftStr = "(" + leftStr + ")";
 					// Rust parsing gotcha: `x as i32 < 0` parses as `x as i32<0>` (generic arguments).
 					// Force parens around casts when used in comparisons.
 					if ((op == "<" || op == ">" || op == "<=" || op == ">=") && switch (left) {
@@ -282,6 +298,8 @@ class RustASTPrinter {
 						}
 					// Preserve grouping: for left-associative ops, parenthesize RHS when it has the same precedence.
 					var rightStr = printExprPrec(right, indent, prec + 1);
+					if (isComparisonLikeOp(op) && isComparisonLikeExpr(right))
+						rightStr = "(" + rightStr + ")";
 					if ((op == "<" || op == ">" || op == "<=" || op == ">=") && switch (right) {
 							case ECast(_, _): true;
 							case _: false;
@@ -381,6 +399,7 @@ class RustASTPrinter {
 		return switch (p) {
 			case PWildcard: "_";
 			case PBind(name): name;
+			case PAlias(name, pattern): name + " @ " + printPattern(pattern);
 			case PPath(path): path;
 			case PLitInt(v): Std.string(v);
 			case PLitBool(v): v ? "true" : "false";

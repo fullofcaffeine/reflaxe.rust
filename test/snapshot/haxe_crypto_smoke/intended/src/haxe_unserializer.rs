@@ -1007,7 +1007,7 @@ impl Unserializer {
                     let o_3: crate::HxRef<hxrt::anon::Anon> = {
                         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                         {
-                            let mut __b = __o.borrow_mut();
+                            let _ = __o.borrow_mut();
                         };
                         __o
                     };
@@ -1271,7 +1271,7 @@ impl Unserializer {
                     return hxrt::dynamic::from(true);
                 }
                 118 => {
-                    let d: crate::HxRef<crate::date::Date>;
+                    let mut d: crate::HxRef<crate::date::Date>;
                     if ({
                         let p_10: i32 = {
                             let __b = __hx_this.borrow();

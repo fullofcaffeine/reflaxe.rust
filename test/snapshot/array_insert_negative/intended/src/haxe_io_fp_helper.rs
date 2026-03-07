@@ -21,8 +21,7 @@ impl FPHelper {
         {
             let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
                 crate::haxe_int64_int64::Int64::new(high, low);
-            let this1: crate::HxRef<crate::haxe_int64_int64::Int64>;
-            this1 = x;
+            let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
             return this1;
         }
     }

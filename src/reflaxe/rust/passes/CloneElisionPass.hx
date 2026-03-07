@@ -22,15 +22,18 @@ import reflaxe.rust.ast.RustAST.RustStructLitField;
 	  - `.clone()` on always-safe literal/value expressions.
 	  - nested `.clone().clone()` collapsed to one `.clone()`.
 	  - last-use local `path.clone()` in direct call arguments (outside loop/closure contexts).
+	  - last-use local `path.clone()` used as a `match` scrutinee (outside loop/closure contexts).
 
 	How
 	- Recursively rewrites Rust AST items/functions/blocks/expressions.
-	- Restricts last-use elision to top-level statement expressions that are direct calls/macros.
+	- Restricts last-use elision to top-level statement expressions where the move site is explicit
+	  and the local is not used later (`call` args, `match` scrutinees).
 	- Disables last-use elision inside loops and closure/async-closure bodies to avoid move-safety drift.
 **/
 class CloneElisionPass implements RustPass {
 	var appliedMetrics:Map<String, Int> = [];
 	var skippedMetrics:Map<String, Int> = [];
+	var currentMovableBindings:Map<String, Bool> = [];
 
 	public function new() {}
 
@@ -41,6 +44,7 @@ class CloneElisionPass implements RustPass {
 	public function run(file:RustFile, context:CompilationContext):RustFile {
 		appliedMetrics = [];
 		skippedMetrics = [];
+		currentMovableBindings = [];
 		var rewritten:RustFile = {
 			items: [for (item in file.items) rewriteItem(item)]
 		};
@@ -64,6 +68,13 @@ class CloneElisionPass implements RustPass {
 	}
 
 	function rewriteFunction(f:RustFunction):RustFunction {
+		var prevMovableBindings = currentMovableBindings;
+		currentMovableBindings = [];
+		for (arg in f.args) {
+			currentMovableBindings.set(arg.name, !looksReferenceType(arg.ty));
+		}
+		var body = rewriteBlock(f.body, false);
+		currentMovableBindings = prevMovableBindings;
 		return {
 			name: f.name,
 			isPub: f.isPub,
@@ -72,7 +83,7 @@ class CloneElisionPass implements RustPass {
 			generics: f.generics,
 			args: f.args,
 			ret: f.ret,
-			body: rewriteBlock(f.body, false)
+			body: body
 		};
 	}
 
@@ -241,11 +252,16 @@ class CloneElisionPass implements RustPass {
 				return "path_used_after_stmt";
 			return null;
 		}
-		return rewriteDynamicFromCloneCall(expr, localName -> localMoveSkipReason(localName, expr));
+		return rewriteLastUseCloneSites(expr, localName -> localMoveSkipReason(localName, expr));
 	}
 
 	function collectMovableLocalsBeforeIndex(stmts:Array<RustStmt>, index:Int):Map<String, Bool> {
 		var out:Map<String, Bool> = [];
+		if (currentMovableBindings != null) {
+			for (name in currentMovableBindings.keys()) {
+				out.set(name, currentMovableBindings.get(name));
+			}
+		}
 		for (i in 0...index + 1) {
 			switch (stmts[i]) {
 				case RLet(name, _, ty, _):
@@ -271,7 +287,28 @@ class CloneElisionPass implements RustPass {
 		};
 	}
 
-	function rewriteDynamicFromCloneCall(expr:RustExpr, localMoveSkipReason:String->Null<String>):RustExpr {
+	/**
+		Rewrites last-use `.clone()` sites that are safe to convert into moves.
+
+		Why
+		- Generic helpers over native Rust `Option<T>` / `Result<T, E>` should not require
+		  artificial `Clone` bounds just because codegen matched on an owned local via
+		  `match value.clone() { ... }`.
+		- The same last-use reasoning already applies to boxed dynamic calls such as
+		  `hxrt::dynamic::from(local.clone())`.
+
+		What
+		- Removes `.clone()` from supported move sites when the local is:
+		  - a simple local path,
+		  - movable (not a reference-typed binding),
+		  - used exactly once in the owning expression,
+		  - not used after the containing statement.
+
+		How
+		- The pass operates on Rust AST after lowering, so it can reason about the actual emitted
+		  move site (`match` scrutinee / call arg) without duplicating typed-AST lowering logic.
+	**/
+	function rewriteLastUseCloneSites(expr:RustExpr, localMoveSkipReason:String->Null<String>):RustExpr {
 		return switch (expr) {
 			case ECall(EPath("hxrt::dynamic::from"), [ECall(EField(EPath(localName), "clone"), [])]):
 				var skipReason = localMoveSkipReason(localName);
@@ -282,83 +319,102 @@ class CloneElisionPass implements RustPass {
 					recordSkipped("clone_elision.skipped.last_use_dynamic_from." + skipReason);
 					expr;
 				}
+			case EMatch(ECall(EField(EPath(localName), "clone"), []), arms):
+				var skipReason = localMoveSkipReason(localName);
+				var rewrittenArms = [
+					for (arm in arms)
+						{
+							pat: arm.pat,
+							expr: rewriteLastUseCloneSites(arm.expr, localMoveSkipReason)
+						}
+				];
+				if (skipReason == null) {
+					recordApplied("clone_elision.applied.last_use_match_scrutinee");
+					EMatch(EPath(localName), rewrittenArms);
+				} else {
+					recordSkipped("clone_elision.skipped.last_use_match_scrutinee." + skipReason);
+					EMatch(ECall(EField(EPath(localName), "clone"), []), rewrittenArms);
+				}
 			case ECall(func, args):
-				ECall(rewriteDynamicFromCloneCall(func, localMoveSkipReason), [for (arg in args) rewriteDynamicFromCloneCall(arg, localMoveSkipReason)]);
+				ECall(rewriteLastUseCloneSites(func, localMoveSkipReason), [for (arg in args) rewriteLastUseCloneSites(arg, localMoveSkipReason)]);
 			case EMacroCall(name, args):
-				EMacroCall(name, [for (arg in args) rewriteDynamicFromCloneCall(arg, localMoveSkipReason)]);
+				EMacroCall(name, [for (arg in args) rewriteLastUseCloneSites(arg, localMoveSkipReason)]);
 			case EBinary(op, left, right):
-				EBinary(op, rewriteDynamicFromCloneCall(left, localMoveSkipReason), rewriteDynamicFromCloneCall(right, localMoveSkipReason));
+				EBinary(op, rewriteLastUseCloneSites(left, localMoveSkipReason), rewriteLastUseCloneSites(right, localMoveSkipReason));
 			case EUnary(op, inner):
-				EUnary(op, rewriteDynamicFromCloneCall(inner, localMoveSkipReason));
+				EUnary(op, rewriteLastUseCloneSites(inner, localMoveSkipReason));
 			case ERange(start, end):
-				ERange(rewriteDynamicFromCloneCall(start, localMoveSkipReason), rewriteDynamicFromCloneCall(end, localMoveSkipReason));
+				ERange(rewriteLastUseCloneSites(start, localMoveSkipReason), rewriteLastUseCloneSites(end, localMoveSkipReason));
 			case ECast(inner, ty):
-				ECast(rewriteDynamicFromCloneCall(inner, localMoveSkipReason), ty);
+				ECast(rewriteLastUseCloneSites(inner, localMoveSkipReason), ty);
 			case EIndex(recv, index):
-				EIndex(rewriteDynamicFromCloneCall(recv, localMoveSkipReason), rewriteDynamicFromCloneCall(index, localMoveSkipReason));
+				EIndex(rewriteLastUseCloneSites(recv, localMoveSkipReason), rewriteLastUseCloneSites(index, localMoveSkipReason));
 			case EStructLit(path, fields):
 				EStructLit(path, [
 					for (field in fields)
 						{
 							name: field.name,
-							expr: rewriteDynamicFromCloneCall(field.expr, localMoveSkipReason)
+							expr: rewriteLastUseCloneSites(field.expr, localMoveSkipReason)
 						}
 				]);
 			case EBlock(block):
 				EBlock({
-					stmts: [for (stmt in block.stmts) rewriteDynamicFromCloneStmt(stmt, localMoveSkipReason)],
-					tail: block.tail == null ? null : rewriteDynamicFromCloneCall(block.tail, localMoveSkipReason)
+					stmts: [for (stmt in block.stmts) rewriteLastUseCloneStmt(stmt, localMoveSkipReason)],
+					tail: block.tail == null ? null : rewriteLastUseCloneSites(block.tail, localMoveSkipReason)
 				});
 			case EIf(cond, thenExpr, elseExpr):
-				EIf(rewriteDynamicFromCloneCall(cond, localMoveSkipReason), rewriteDynamicFromCloneCall(thenExpr, localMoveSkipReason),
-					elseExpr == null ? null : rewriteDynamicFromCloneCall(elseExpr, localMoveSkipReason));
+				EIf(rewriteLastUseCloneSites(cond, localMoveSkipReason), rewriteLastUseCloneSites(thenExpr, localMoveSkipReason),
+					elseExpr == null ? null : rewriteLastUseCloneSites(elseExpr, localMoveSkipReason));
 			case EMatch(scrutinee, arms):
-				EMatch(rewriteDynamicFromCloneCall(scrutinee, localMoveSkipReason), [
+				EMatch(rewriteLastUseCloneSites(scrutinee, localMoveSkipReason), [
 					for (arm in arms)
 						{
 							pat: arm.pat,
-							expr: rewriteDynamicFromCloneCall(arm.expr, localMoveSkipReason)
+							expr: rewriteLastUseCloneSites(arm.expr, localMoveSkipReason)
 						}
 				]);
 			case EAssign(lhs, rhs):
-				EAssign(rewriteDynamicFromCloneCall(lhs, localMoveSkipReason), rewriteDynamicFromCloneCall(rhs, localMoveSkipReason));
+				EAssign(rewriteLastUseCloneSites(lhs, localMoveSkipReason), rewriteLastUseCloneSites(rhs, localMoveSkipReason));
 			case EField(recv, field):
-				EField(rewriteDynamicFromCloneCall(recv, localMoveSkipReason), field);
+				EField(rewriteLastUseCloneSites(recv, localMoveSkipReason), field);
 			case EClosure(_, _, _) | EPinAsyncMove(_) | EAwait(_) | ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 		};
 	}
 
-	function rewriteDynamicFromCloneStmt(stmt:RustStmt, localMoveSkipReason:String->Null<String>):RustStmt {
+	function rewriteLastUseCloneStmt(stmt:RustStmt, localMoveSkipReason:String->Null<String>):RustStmt {
 		return switch (stmt) {
 			case RLet(name, mutable, ty, expr):
-				RLet(name, mutable, ty, expr == null ? null : rewriteDynamicFromCloneCall(expr, localMoveSkipReason));
+				RLet(name, mutable, ty, expr == null ? null : rewriteLastUseCloneSites(expr, localMoveSkipReason));
 			case RSemi(expr):
-				RSemi(rewriteDynamicFromCloneCall(expr, localMoveSkipReason));
+				RSemi(rewriteLastUseCloneSites(expr, localMoveSkipReason));
 			case RExpr(expr, needsSemicolon):
-				RExpr(rewriteDynamicFromCloneCall(expr, localMoveSkipReason), needsSemicolon);
+				RExpr(rewriteLastUseCloneSites(expr, localMoveSkipReason), needsSemicolon);
 			case RReturn(expr):
-				RReturn(expr == null ? null : rewriteDynamicFromCloneCall(expr, localMoveSkipReason));
+				RReturn(expr == null ? null : rewriteLastUseCloneSites(expr, localMoveSkipReason));
 			case RWhile(cond, body):
-				RWhile(rewriteDynamicFromCloneCall(cond, localMoveSkipReason), {
+				RWhile(rewriteLastUseCloneSites(cond, localMoveSkipReason), {
 					stmts: [
-						for (inner in body.stmts) rewriteDynamicFromCloneStmt(inner, localMoveSkipReason)
+						for (inner in body.stmts)
+							rewriteLastUseCloneStmt(inner, localMoveSkipReason)
 					],
-					tail: body.tail == null ? null : rewriteDynamicFromCloneCall(body.tail, localMoveSkipReason)
+					tail: body.tail == null ? null : rewriteLastUseCloneSites(body.tail, localMoveSkipReason)
 				});
 			case RLoop(body):
 				RLoop({
 					stmts: [
-						for (inner in body.stmts) rewriteDynamicFromCloneStmt(inner, localMoveSkipReason)
+						for (inner in body.stmts)
+							rewriteLastUseCloneStmt(inner, localMoveSkipReason)
 					],
-					tail: body.tail == null ? null : rewriteDynamicFromCloneCall(body.tail, localMoveSkipReason)
+					tail: body.tail == null ? null : rewriteLastUseCloneSites(body.tail, localMoveSkipReason)
 				});
 			case RFor(name, iter, body):
-				RFor(name, rewriteDynamicFromCloneCall(iter, localMoveSkipReason), {
+				RFor(name, rewriteLastUseCloneSites(iter, localMoveSkipReason), {
 					stmts: [
-						for (inner in body.stmts) rewriteDynamicFromCloneStmt(inner, localMoveSkipReason)
+						for (inner in body.stmts)
+							rewriteLastUseCloneStmt(inner, localMoveSkipReason)
 					],
-					tail: body.tail == null ? null : rewriteDynamicFromCloneCall(body.tail, localMoveSkipReason)
+					tail: body.tail == null ? null : rewriteLastUseCloneSites(body.tail, localMoveSkipReason)
 				});
 			case RBreak | RContinue:
 				stmt;

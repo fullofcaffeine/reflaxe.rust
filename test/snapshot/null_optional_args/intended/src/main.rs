@@ -17,6 +17,8 @@ mod haxe_ds_object_map;
 mod haxe_ds_string_map;
 mod haxe_exception;
 mod haxe_i_map;
+mod haxe_int32_int32_impl_;
+mod haxe_int64_helper;
 mod haxe_int64_int64;
 mod haxe_int64_int64_impl_;
 mod haxe_io_bytes_buffer;
@@ -25,9 +27,13 @@ mod haxe_io_eof;
 mod haxe_io_fp_helper;
 mod haxe_io_input;
 mod haxe_io_output;
+mod haxe_iterators_string_iterator;
+mod haxe_iterators_string_key_value_iterator;
 mod haxe_stack_item;
+mod int32_tools;
 mod map_storage_tools_nullable;
 mod string_buf;
+mod string_tools;
 mod sys;
 mod sys_io_stderr;
 mod sys_io_stdin;
@@ -113,10 +119,8 @@ fn main() {
             crate::HxDynRef::<dyn Fn(i32) -> bool + Send + Sync>::null();
         let mut n: i32 = 0;
         if pred.is_null() {
-            let mut _g_current: i32;
-            let _g_array: hxrt::array::Array<i32>;
-            _g_current = 0;
-            _g_array = a.clone();
+            let mut _g_current: i32 = 0;
+            let _g_array: hxrt::array::Array<i32> = a.clone();
             while _g_current < (_g_array.len() as i32) {
                 let _ = _g_array.get_unchecked(
                     ({
@@ -127,10 +131,8 @@ fn main() {
                 n = n + 1;
             }
         } else {
-            let mut _g_current_2: i32;
-            let _g_array_2: hxrt::array::Array<i32>;
-            _g_current_2 = 0;
-            _g_array_2 = a.clone();
+            let mut _g_current_2: i32 = 0;
+            let _g_array_2: hxrt::array::Array<i32> = a.clone();
             while _g_current_2 < (_g_array_2.len() as i32) {
                 let x: i32 = _g_array_2.get_unchecked(
                     ({
@@ -148,10 +150,8 @@ fn main() {
     let t3: i32 = {
         let mut n_2: i32 = 0;
         {
-            let mut _g_current_3: i32;
-            let _g_array_3: hxrt::array::Array<i32>;
-            _g_current_3 = 0;
-            _g_array_3 = a.clone();
+            let mut _g_current_3: i32 = 0;
+            let _g_array_3: hxrt::array::Array<i32> = a.clone();
             while _g_current_3 < (_g_array_3.len() as i32) {
                 let x_2: i32 = _g_array_3.get_unchecked(
                     ({
@@ -166,11 +166,9 @@ fn main() {
         }
         n_2
     };
-    let x_3: Option<i32>;
-    {
+    let x_3: Option<i32> = {
         let __tmp = 3;
-        x_3 = Some(__tmp);
-        __tmp
+        Some(__tmp)
     };
     let r0: Option<i32> = ret_null(true);
     let r1: Option<i32> = ret_null(false);

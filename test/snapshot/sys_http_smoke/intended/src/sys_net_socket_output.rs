@@ -146,20 +146,20 @@ impl SocketOutput {
         } {
             crate::sys_net_socket_output::SocketOutput::write_int32(&*__hx_this, {
                 let __b = i64.borrow();
-                __b.high
+                __b.high.clone()
             });
             crate::sys_net_socket_output::SocketOutput::write_int32(&*__hx_this, {
                 let __b = i64.borrow();
-                __b.low
+                __b.low.clone()
             });
         } else {
             crate::sys_net_socket_output::SocketOutput::write_int32(&*__hx_this, {
                 let __b = i64.borrow();
-                __b.low
+                __b.low.clone()
             });
             crate::sys_net_socket_output::SocketOutput::write_int32(&*__hx_this, {
                 let __b = i64.borrow();
-                __b.high
+                __b.high.clone()
             });
         }
     }

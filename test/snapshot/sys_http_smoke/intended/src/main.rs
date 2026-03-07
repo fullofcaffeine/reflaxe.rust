@@ -18,6 +18,8 @@ mod haxe_ds_string_map;
 mod haxe_exception;
 mod haxe_http_http_base;
 mod haxe_i_map;
+mod haxe_int32_int32_impl_;
+mod haxe_int64_helper;
 mod haxe_int64_int64;
 mod haxe_int64_int64_impl_;
 mod haxe_io_bytes_buffer;
@@ -30,6 +32,7 @@ mod haxe_io_output;
 mod haxe_iterators_string_iterator;
 mod haxe_iterators_string_key_value_iterator;
 mod haxe_stack_item;
+mod int32_tools;
 mod map_storage_tools_nullable;
 mod socket_native;
 mod string_buf;
@@ -130,6 +133,7 @@ fn main() {
         ))),
     );
     {
+        let __hx_obj = h.clone();
         let __tmp = {
             let __rc: crate::HxRc<dyn Fn(hxrt::string::HxString) + Send + Sync> =
                 crate::HxRc::new(move |d: hxrt::string::HxString| {
@@ -137,10 +141,11 @@ fn main() {
                 });
             crate::HxDynRef::new(__rc)
         };
-        h.borrow_mut().on_data = __tmp.clone();
+        __hx_obj.borrow_mut().__hx_dyn_on_data = __tmp.clone();
         __tmp
     };
     {
+        let __hx_obj = h.clone();
         let __tmp = {
             let __rc: crate::HxRc<dyn Fn(hxrt::string::HxString) + Send + Sync> =
                 crate::HxRc::new(move |e: hxrt::string::HxString| {
@@ -148,7 +153,7 @@ fn main() {
                 });
             crate::HxDynRef::new(__rc)
         };
-        h.borrow_mut().on_error = __tmp.clone();
+        __hx_obj.borrow_mut().__hx_dyn_on_error = __tmp.clone();
         __tmp
     };
     crate::sys_http::Http::request(&*h, Some(false));

@@ -27,11 +27,13 @@ impl Json {
         space: hxrt::string::HxString,
     ) -> hxrt::string::HxString {
         if !replacer.is_null() {
-            hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
-                "haxe.Json.stringify: replacer is not supported on the Rust target yet",
-            )));
+            return hxrt::string::HxString::from(hxrt::json::stringify_with_replacer(
+                value.clone(),
+                replacer,
+                &space,
+            ));
         }
-        return hxrt::string::HxString::from(hxrt::json::stringify(&value, space.as_deref()));
+        return hxrt::string::HxString::from(hxrt::json::stringify(value.clone(), &space));
     }
 
     fn dynamic_to_value(value: hxrt::dynamic::Dynamic) -> crate::haxe_json_value::Value {

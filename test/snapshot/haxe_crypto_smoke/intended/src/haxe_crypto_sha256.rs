@@ -99,16 +99,6 @@ impl Sha256 {
             w.set_haxe(64 as usize, __tmp, move || 0);
             __tmp
         };
-        let mut a: i32;
-        let mut b: i32;
-        let mut c: i32;
-        let mut d: i32;
-        let mut e: i32;
-        let mut f: i32;
-        let mut g: i32;
-        let mut h: i32;
-        let mut t1: i32;
-        let mut t2: i32;
         let index: i32 = l >> 5;
         {
             let __hx_arr = m.clone();
@@ -124,6 +114,16 @@ impl Sha256 {
             __tmp
         };
         let mut i: i32 = 0;
+        let mut a: i32;
+        let mut b: i32;
+        let mut c: i32;
+        let mut d: i32;
+        let mut e: i32;
+        let mut f: i32;
+        let mut g: i32;
+        let mut h: i32;
+        let mut t1: i32;
+        let mut t2: i32;
         while i < (m.len() as i32) {
             a = hash.get_unchecked(0 as usize);
             b = hash.get_unchecked(1 as usize);

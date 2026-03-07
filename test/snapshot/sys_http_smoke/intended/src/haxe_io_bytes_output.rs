@@ -150,20 +150,20 @@ impl BytesOutput {
         } {
             crate::haxe_io_bytes_output::BytesOutput::write_int32(&*__hx_this, {
                 let __b = i64.borrow();
-                __b.high
+                __b.high.clone()
             });
             crate::haxe_io_bytes_output::BytesOutput::write_int32(&*__hx_this, {
                 let __b = i64.borrow();
-                __b.low
+                __b.low.clone()
             });
         } else {
             crate::haxe_io_bytes_output::BytesOutput::write_int32(&*__hx_this, {
                 let __b = i64.borrow();
-                __b.low
+                __b.low.clone()
             });
             crate::haxe_io_bytes_output::BytesOutput::write_int32(&*__hx_this, {
                 let __b = i64.borrow();
-                __b.high
+                __b.high.clone()
             });
         }
     }

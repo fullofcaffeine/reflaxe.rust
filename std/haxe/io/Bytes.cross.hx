@@ -24,15 +24,18 @@ package haxe.io;
  *   - `alloc`, `ofString` (constructors)
  *   - `get`, `set`, `length`, `toString`
  *   - `blit`, `sub`, `getString`
+ *   - pure-Haxe numeric/utility helpers layered on top of `get`/`set`
+ *     (`fill`, `compare`, `get/setUInt16`, `get/setInt32`, `get/setInt64`,
+ *      `get/setFloat`, `get/setDouble`, `ofHex`, `toHex`)
  * - Those operations are lowered to direct calls/borrows on the runtime type, e.g.:
  *   - `bytes.get(i)` → `bytes.borrow().get(i)`
  *   - `bytes.set(i, v)` → `bytes.borrow_mut().set(i, v)`
  *   - `bytes.toString()` → `bytes.borrow().to_string()`
  *
- * Current limitations (as of the early v1 era):
- * - Only the members listed above are compiler intrinsics today. Other methods are declared for API
- *   compatibility, but will currently fail compilation if used (until the runtime/compiler implement
- *   them).
+ * Current limitations:
+ * - `BytesData`-level escape hatches (`getData`, `ofData`, `fastGet`) are still not backed by a
+ *   first-class Rust-target representation. The portable std overrides in this repo avoid relying on
+ *   them and use `get`/`set`/`blit` instead.
  * - Bounds checks: the current runtime uses Rust indexing and may panic on out-of-bounds access.
  *   This target now throws a catchable Haxe exception payload (via `hxrt::exception`) instead of
  *   panicking, but the exact thrown value is not yet guaranteed to match other targets’ `haxe.io.Error`
@@ -62,8 +65,6 @@ extern class Bytes {
 	// Internal constructor used by some std classes (e.g. BytesBuffer).
 	function new(length:Int, b:BytesData);
 
-	public function getData():BytesData;
-
 	public static function alloc(length:Int):Bytes;
 	public static function ofString(s:String, ?encoding:Encoding):Bytes;
 
@@ -74,8 +75,21 @@ extern class Bytes {
 	public function getString(pos:Int, len:Int, ?encoding:Encoding):String;
 	public function toString():String;
 
+	public function fill(pos:Int, len:Int, value:Int):Void;
+	public function compare(other:Bytes):Int;
+	public function getDouble(pos:Int):Float;
+	public function getFloat(pos:Int):Float;
+	public function setDouble(pos:Int, v:Float):Void;
+	public function setFloat(pos:Int, v:Float):Void;
+	public function getUInt16(pos:Int):Int;
+	public function setUInt16(pos:Int, v:Int):Void;
+	public function getInt32(pos:Int):Int;
+	public function getInt64(pos:Int):haxe.Int64;
+	public function setInt32(pos:Int, v:Int):Void;
+	public function setInt64(pos:Int, v:haxe.Int64):Void;
+
 	/**
-		Returns the hexadecimal representation of this byte buffer (upper-case).
+		Returns the hexadecimal representation of this byte buffer.
 
 		Why
 		- Various sys std implementations use `Bytes.toHex()` for SQL blobs, hashes, debugging, etc.
@@ -83,23 +97,14 @@ extern class Bytes {
 		  rely on the upstream implementation which assumes a target-specific `BytesData`.
 
 		What
-		- A pure-Haxe implementation that iterates the bytes and builds a hex string.
+		- A pure-Haxe implementation that iterates the bytes and builds the same lowercase
+		  hexadecimal string shape as upstream Haxe std.
 
 		How
 		- Uses `get(i)` (compiler intrinsic) and emits ASCII hex digits.
 		- Kept `inline` so it does not require any additional runtime hooks.
 	**/
-	public inline function toHex():String {
-		var sb = new StringBuf();
-		var i = 0;
-		while (i < length) {
-			var v = get(i) & 0xFF;
-			var hi = (v >> 4) & 0xF;
-			var lo = v & 0xF;
-			sb.addChar(hi < 10 ? (48 + hi) : (55 + hi));
-			sb.addChar(lo < 10 ? (48 + lo) : (55 + lo));
-			i++;
-		}
-		return sb.toString();
-	}
+	public function toHex():String;
+
+	public static function ofHex(s:String):Bytes;
 }

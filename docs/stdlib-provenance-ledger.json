@@ -74,8 +74,8 @@
       "provenanceKind": "upstream_std_sync",
       "upstreamOraclePath": "vendor/haxe/std/haxe/Json.hx",
       "notes": "Cross-target override aligned to upstream stdlib API surface.",
-      "knownDivergenceReason": "replacer callback support is not implemented yet; stringify currently throws when replacer is provided.",
       "knownDivergenceTestRefs": [
+        "test/semantic_diff/json_stringify_replacer/Main.hx",
         "test/snapshot/serde_json/Main.hx",
         "test/upstream_std_modules.txt"
       ]

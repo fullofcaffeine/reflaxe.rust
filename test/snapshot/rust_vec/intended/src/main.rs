@@ -16,6 +16,8 @@ mod haxe_ds_object_map;
 mod haxe_ds_string_map;
 mod haxe_exception;
 mod haxe_i_map;
+mod haxe_int32_int32_impl_;
+mod haxe_int64_helper;
 mod haxe_int64_int64;
 mod haxe_int64_int64_impl_;
 mod haxe_io_bytes_buffer;
@@ -24,12 +26,16 @@ mod haxe_io_eof;
 mod haxe_io_fp_helper;
 mod haxe_io_input;
 mod haxe_io_output;
+mod haxe_iterators_string_iterator;
+mod haxe_iterators_string_key_value_iterator;
 mod haxe_stack_item;
+mod int32_tools;
 mod iter_tools;
 mod map_storage_tools;
 mod rust_borrow;
 mod rust_option_tools;
 mod string_buf;
+mod string_tools;
 mod sys;
 mod sys_io_stderr;
 mod sys_io_stdin;
@@ -77,7 +83,7 @@ fn main() {
         hxrt::dynamic::from(crate::vec_tools::VecTools::len(&v))
     );
     let last: Option<i32> = v.pop();
-    match last.clone() {
+    match last {
         Option::Some(__p) => {
             let _g: i32 = __p;
             {
@@ -91,7 +97,7 @@ fn main() {
     }
     {
         let _g_2: Result<i32, String> = parse_even(2);
-        match _g_2.clone() {
+        match _g_2 {
             Result::Ok(__p) => {
                 let _g_3: i32 = __p;
                 {
@@ -122,7 +128,7 @@ fn main() {
             let first: Option<&i32> = crate::vec_tools::VecTools::getRef(vr, 0);
             println!(
                 "{}",
-                hxrt::dynamic::from(match first.clone() {
+                hxrt::dynamic::from(match first {
                     Option::Some(__p) => {
                         let _ = __p;
                         true

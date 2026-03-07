@@ -277,7 +277,7 @@ impl Serializer {
                     }
                 }
             };
-            match _g.clone() {
+            match _g {
                 crate::value_type::ValueType::TNull => {
                     crate::string_buf::StringBuf::add(
                         &*({
@@ -928,8 +928,7 @@ impl Serializer {
                                                                     let length: i32 = hxrt::string::len(crate::haxe_serializer::__hx_static_get_base64().as_str());
                                                                     let this1: hxrt::array::Array<
                                                                         Option<i32>,
-                                                                    >;
-                                                                    this1 = hxrt::array::Array::<
+                                                                    > = hxrt::array::Array::<
                                                                         Option<i32>,
                                                                     >::new(
                                                                     );

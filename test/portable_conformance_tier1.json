@@ -1,8 +1,5 @@
 {
-  "schema_version": 1,
   "description": "Tier1 portable conformance seed mapping from allowlist modules to deterministic semantic-diff cases.",
-  "suite": "core",
-  "tier": "tier1",
   "modules": {
     "Std": [
       "exceptions_typed_dynamic",
@@ -12,5 +9,8 @@
     "Sys": [
       "sys_getenv_null"
     ]
-  }
+  },
+  "schema_version": 1,
+  "suite": "core",
+  "tier": "tier1"
 }

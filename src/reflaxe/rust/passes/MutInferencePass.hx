@@ -1,24 +1,41 @@
 package reflaxe.rust.passes;
 
 import reflaxe.rust.CompilationContext;
+import reflaxe.rust.ast.RustAST.RustBlock;
 import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustFile;
+import reflaxe.rust.ast.RustAST.RustFunction;
+import reflaxe.rust.ast.RustAST.RustItem;
+import reflaxe.rust.ast.RustAST.RustMatchArm;
 import reflaxe.rust.ast.RustAST.RustStmt;
+import reflaxe.rust.ast.RustAST.RustStructLitField;
 
 /**
 	MutInferencePass
 
 	Why
 	- Rust `let` bindings are immutable by default.
-	- Overusing `let mut` creates warning noise (`unused_mut`) and hides real mutation intent.
+	- Lowering and cleanup passes can temporarily over-approximate or under-approximate mutability.
+	- Mutability decisions must respect lexical block boundaries; whole-function name sets are too coarse
+	  once compiler-generated helper names like `__b` or `_g_current` repeat in nested blocks.
 
 	What
-	- Downgrades `let mut name = ...` to `let name = ...` when the binding is never assigned.
+	- Recomputes `let mut` per block from actual mutation evidence.
+	- Rewrites each `RLet` so `mutable` matches the requirements observed in the same rewritten block
+	  tree, while preserving stronger mutability hints that were already proven earlier by typed
+	  lowering.
 
 	How
-	- Two-phase pass:
-	  1) collect assigned identifiers (`name = ...`) and index-assignment roots (`name[..] = ...`)
-	  2) rewrite `RLet(... mutable=true ...)` to immutable when the identifier is absent from the set.
+	- Recursively rewrites nested blocks first (`EBlock`, closures, async move bodies, loop bodies).
+	- After a block is rewritten, collect mutable-binding requirements from that block and its nested
+	  expressions, then normalize only that block's own `RLet` statements.
+	- Existing `mutable = true` flags are preserved because the typed compiler pass knows about source
+	  metadata such as `@:rustMutating`, which is not recoverable from the lowered Rust AST alone.
+	- Real mutation signals are:
+	  - direct assignment (`name = ...`)
+	  - index-root assignment (`name[..] = ...`)
+	  - explicit mutable reference use (`&mut name`)
+	  - bindings initialized from `borrow_mut()` guards
 **/
 class MutInferencePass implements RustPass {
 	public function new() {}
@@ -28,29 +45,138 @@ class MutInferencePass implements RustPass {
 	}
 
 	public function run(file:RustFile, _context:CompilationContext):RustFile {
-		var assigned:Map<String, Bool> = collectAssignedNames(file);
-		return RustPassTools.mapFile(file, s -> rewriteStmt(s, assigned), e -> e);
+		return {
+			items: [for (item in file.items) rewriteItem(item)]
+		};
 	}
 
-	function collectAssignedNames(file:RustFile):Map<String, Bool> {
+	function rewriteItem(item:RustItem):RustItem {
+		return switch (item) {
+			case RFn(f):
+				RFn(rewriteFunction(f));
+			case RImpl(i):
+				RImpl({
+					generics: i.generics,
+					forType: i.forType,
+					functions: [for (f in i.functions) rewriteFunction(f)]
+				});
+			case RStruct(_) | REnum(_) | RRaw(_):
+				item;
+		};
+	}
+
+	function rewriteFunction(f:RustFunction):RustFunction {
+		return {
+			name: f.name,
+			isPub: f.isPub,
+			vis: f.vis,
+			isAsync: f.isAsync,
+			generics: f.generics,
+			args: f.args,
+			ret: f.ret,
+			body: rewriteBlock(f.body)
+		};
+	}
+
+	function rewriteBlock(block:RustBlock):RustBlock {
+		var rewrittenStmts = [for (stmt in block.stmts) rewriteStmt(stmt)];
+		var rewrittenTail = block.tail == null ? null : rewriteExpr(block.tail);
+		var assigned = collectAssignedNames({
+			stmts: rewrittenStmts,
+			tail: rewrittenTail
+		});
+		return {
+			stmts: [for (stmt in rewrittenStmts) applyMutability(stmt, assigned)],
+			tail: rewrittenTail
+		};
+	}
+
+	function rewriteStmt(stmt:RustStmt):RustStmt {
+		return switch (stmt) {
+			case RLet(name, mutable, ty, expr):
+				RLet(name, mutable, ty, expr == null ? null : rewriteExpr(expr));
+			case RSemi(expr):
+				RSemi(rewriteExpr(expr));
+			case RExpr(expr, needsSemicolon):
+				RExpr(rewriteExpr(expr), needsSemicolon);
+			case RReturn(expr):
+				RReturn(expr == null ? null : rewriteExpr(expr));
+			case RWhile(cond, body):
+				RWhile(rewriteExpr(cond), rewriteBlock(body));
+			case RLoop(body):
+				RLoop(rewriteBlock(body));
+			case RFor(name, iter, body):
+				RFor(name, rewriteExpr(iter), rewriteBlock(body));
+			case RBreak | RContinue:
+				stmt;
+		};
+	}
+
+	function rewriteExpr(expr:RustExpr):RustExpr {
+		return switch (expr) {
+			case ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+				expr;
+			case ECall(func, args):
+				ECall(rewriteExpr(func), [for (arg in args) rewriteExpr(arg)]);
+			case EMacroCall(name, args):
+				EMacroCall(name, [for (arg in args) rewriteExpr(arg)]);
+			case EClosure(args, body, isMove):
+				EClosure(args, rewriteBlock(body), isMove);
+			case EBinary(op, left, right):
+				EBinary(op, rewriteExpr(left), rewriteExpr(right));
+			case EUnary(op, inner):
+				EUnary(op, rewriteExpr(inner));
+			case ERange(start, end):
+				ERange(rewriteExpr(start), rewriteExpr(end));
+			case ECast(inner, ty):
+				ECast(rewriteExpr(inner), ty);
+			case EIndex(recv, index):
+				EIndex(rewriteExpr(recv), rewriteExpr(index));
+			case EStructLit(path, fields):
+				EStructLit(path, [for (field in fields) rewriteStructField(field)]);
+			case EBlock(block):
+				EBlock(rewriteBlock(block));
+			case EIf(cond, thenExpr, elseExpr):
+				EIf(rewriteExpr(cond), rewriteExpr(thenExpr), elseExpr == null ? null : rewriteExpr(elseExpr));
+			case EMatch(scrutinee, arms):
+				EMatch(rewriteExpr(scrutinee), [for (arm in arms) rewriteMatchArm(arm)]);
+			case EAssign(lhs, rhs):
+				EAssign(rewriteExpr(lhs), rewriteExpr(rhs));
+			case EField(recv, field):
+				EField(rewriteExpr(recv), field);
+			case EPinAsyncMove(body):
+				EPinAsyncMove(rewriteBlock(body));
+			case EAwait(inner):
+				EAwait(rewriteExpr(inner));
+		};
+	}
+
+	function rewriteStructField(field:RustStructLitField):RustStructLitField {
+		return {
+			name: field.name,
+			expr: rewriteExpr(field.expr)
+		};
+	}
+
+	function rewriteMatchArm(arm:RustMatchArm):RustMatchArm {
+		return {
+			pat: arm.pat,
+			expr: rewriteExpr(arm.expr)
+		};
+	}
+
+	function collectAssignedNames(block:RustBlock):Map<String, Bool> {
 		var out:Map<String, Bool> = [];
 		var visitExpr:RustExpr->Void = null;
 		var visitStmt:RustStmt->Void = null;
-		var visitBlock:reflaxe.rust.ast.RustAST.RustBlock->Void = null;
+		var visitBlock:RustBlock->Void = null;
 
-		visitExpr = function(e:RustExpr):Void {
-			switch (e) {
+		visitExpr = function(expr:RustExpr):Void {
+			switch (expr) {
 				case EAssign(lhs, rhs):
 					markAssignmentTarget(lhs, out);
 					visitExpr(rhs);
 				case ECall(func, args):
-					switch (func) {
-						case EField(EPath(name), _):
-							// Conservative rule: method call on a local binding may require `&mut self`
-							// (for example `Vec::push`). Keep the binding mutable in that case.
-							out.set(name, true);
-						case _:
-					}
 					visitExpr(func);
 					for (arg in args)
 						visitExpr(arg);
@@ -65,7 +191,6 @@ class MutInferencePass implements RustPass {
 				case EUnary(op, inner):
 					switch (inner) {
 						case EPath(name):
-							// Explicit mutable reference usage always requires mutable binding.
 							if (StringTools.startsWith(op, "&mut")) out.set(name, true);
 						case _:
 					}
@@ -81,8 +206,8 @@ class MutInferencePass implements RustPass {
 				case EStructLit(_, fields):
 					for (field in fields)
 						visitExpr(field.expr);
-				case EBlock(block):
-					visitBlock(block);
+				case EBlock(innerBlock):
+					visitBlock(innerBlock);
 				case EIf(cond, thenExpr, elseExpr):
 					visitExpr(cond);
 					visitExpr(thenExpr);
@@ -100,18 +225,21 @@ class MutInferencePass implements RustPass {
 					visitExpr(inner);
 				case ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 			}
-		}
+		};
 
-		visitStmt = function(s:RustStmt):Void {
-			switch (s) {
-				case RLet(_, _, _, expr):
+		visitStmt = function(stmt:RustStmt):Void {
+			switch (stmt) {
+				case RLet(name, _, _, expr):
+					if (expr != null) {
+						if (exprProducesMutableGuard(expr))
+							out.set(name, true);
+						visitExpr(expr);
+					}
+				case RSemi(expr) | RExpr(expr, _):
+					visitExpr(expr);
+				case RReturn(expr):
 					if (expr != null)
 						visitExpr(expr);
-				case RSemi(e) | RExpr(e, _):
-					visitExpr(e);
-				case RReturn(e):
-					if (e != null)
-						visitExpr(e);
 				case RWhile(cond, body):
 					visitExpr(cond);
 					visitBlock(body);
@@ -122,27 +250,26 @@ class MutInferencePass implements RustPass {
 					visitBlock(body);
 				case RBreak | RContinue:
 			}
-		}
+		};
 
-		visitBlock = function(b:reflaxe.rust.ast.RustAST.RustBlock):Void {
-			for (stmt in b.stmts)
+		visitBlock = function(innerBlock:RustBlock):Void {
+			for (stmt in innerBlock.stmts)
 				visitStmt(stmt);
-			if (b.tail != null)
-				visitExpr(b.tail);
-		}
+			if (innerBlock.tail != null)
+				visitExpr(innerBlock.tail);
+		};
 
-		for (item in file.items) {
-			switch (item) {
-				case RFn(f):
-					visitBlock(f.body);
-				case RImpl(i):
-					for (f in i.functions)
-						visitBlock(f.body);
-				case _:
-			}
-		}
-
+		visitBlock(block);
 		return out;
+	}
+
+	function exprProducesMutableGuard(expr:RustExpr):Bool {
+		return switch (expr) {
+			case ECall(EField(_, "borrow_mut"), []):
+				true;
+			case _:
+				false;
+		};
 	}
 
 	function markAssignmentTarget(lhs:RustExpr, out:Map<String, Bool>):Void {
@@ -152,21 +279,17 @@ class MutInferencePass implements RustPass {
 			case EIndex(recv, _):
 				markAssignmentTarget(recv, out);
 			case EField(_, _):
-				// Field assignment does not require mutability on the binding itself.
 			case _:
 		}
 	}
 
-	function rewriteStmt(s:RustStmt, assigned:Map<String, Bool>):RustStmt {
-		return switch (s) {
+	function applyMutability(stmt:RustStmt, assigned:Map<String, Bool>):RustStmt {
+		return switch (stmt) {
 			case RLet(name, mutable, ty, expr):
-				if (mutable && !assigned.exists(name)) {
-					RLet(name, false, ty, expr);
-				} else {
-					s;
-				}
+				var shouldBeMutable = name != "_" && (mutable || assigned.exists(name));
+				if (mutable != shouldBeMutable) RLet(name, shouldBeMutable, ty, expr) else stmt;
 			case _:
-				s;
-		}
+				stmt;
+		};
 	}
 }
