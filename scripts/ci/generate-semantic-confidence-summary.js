@@ -23,6 +23,7 @@
  *   node scripts/ci/generate-semantic-confidence-summary.js --out-dir .cache/ci-evidence
  */
 
+const cp = require('child_process')
 const fs = require('fs')
 const path = require('path')
 
@@ -90,8 +91,51 @@ function parseModuleList(filePath) {
     .filter((line) => line.length > 0)
 }
 
+function listTrackedFiles(rootPath) {
+  const rootRel = relativeRepoPath(rootPath)
+  try {
+    const output = cp.execFileSync('git', ['ls-files', '-z', '--', rootRel], {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    })
+    return output
+      .split('\u0000')
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0)
+  } catch (_error) {
+    return null
+  }
+}
+
 function discoverCaseIds(rootPath, options = {}) {
   const requireMainHx = options.requireMainHx === true
+  const trackedFiles = listTrackedFiles(rootPath)
+
+  if (trackedFiles != null) {
+    const rootRel = `${relativeRepoPath(rootPath)}/`
+    const allCaseIds = new Set()
+    const caseIdsWithMainHx = new Set()
+
+    for (const trackedFile of trackedFiles) {
+      if (!trackedFile.startsWith(rootRel)) {
+        continue
+      }
+      const relative = trackedFile.slice(rootRel.length)
+      const parts = relative.split('/')
+      if (parts.length < 2) {
+        continue
+      }
+      const caseId = parts[0]
+      allCaseIds.add(caseId)
+      if (parts.length === 2 && parts[1] === 'Main.hx') {
+        caseIdsWithMainHx.add(caseId)
+      }
+    }
+
+    return uniqueSorted(requireMainHx ? [...caseIdsWithMainHx] : [...allCaseIds])
+  }
+
   if (!fs.existsSync(rootPath)) {
     return []
   }
