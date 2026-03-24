@@ -186,6 +186,9 @@ Noise policy:
 - `bytes`, `json`, `int64`: warning checks use **size + runtime ratios**.
   - Runtime warning gate is focused on `metal`; portable/metal convergence is tracked explicitly for these stdlib-heavy microbenches.
 - `chat`: warning checks use profile-spread ratios (size + runtime), not pure-Rust parity.
+- PR/nightly hard failures are intentionally narrower than the warning stream:
+  - `int64` stays warning-only because it is a portability-cost tracker, not a near-native KPI.
+  - `chat` stays warning-only because it is a startup-weighted example spread metric and is too sensitive to runner granularity to be a trustworthy release blocker.
 
 This model keeps runtime warnings actionable while avoiding startup-noise churn.
 
@@ -245,6 +248,10 @@ When reading ratios (`x vs pure`):
     Rust `i64`, not a near-native parity lane.
   - Use it as a portability-cost tracker and regression guard for the current `haxe.Int64`
     representation, not as evidence that portable `Int64` should already match handwritten `i64`.
+  - Keep it in artifacts and warnings, but do not use it as a PR hard-fail gate.
+- `chat`
+  - Treat this as example-level profile spread visibility, not as a release-blocking microbench.
+  - Keep it in artifacts and warnings, but do not use its startup-weighted spread as a PR hard-fail gate.
 
 ## Post-M27 performance posture
 

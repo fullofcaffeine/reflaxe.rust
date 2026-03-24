@@ -1495,19 +1495,6 @@ if (!updateBaseline) {
         runtimePct: activeGate.runtimeFailPct,
         sink: hardFailures,
       });
-      compareGroup("int64_overhead", current.derived.int64OverheadRatios, baselineDerived.int64OverheadRatios, {
-        includeRuntime: true,
-        runtimeProfiles: ["metal"],
-        sizePct: activeGate.sizeFailPct,
-        runtimePct: activeGate.runtimeFailPct,
-        sink: hardFailures,
-      });
-      compareGroup("chat_relative", current.derived.chatRelativeToMin, baselineDerived.chatRelativeToMin, {
-        includeRuntime: true,
-        sizePct: activeGate.sizeFailPct,
-        runtimePct: activeGate.runtimeFailPct,
-        sink: hardFailures,
-      });
     }
   }
 }
