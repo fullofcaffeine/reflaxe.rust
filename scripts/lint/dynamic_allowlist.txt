@@ -5,11 +5,11 @@
 
 # Rust compiler dynamic bridge points (line-scoped; see docs/dynamic-boundaries.md)
 src/reflaxe/rust/DynamicBoundary.hx:22
-src/reflaxe/rust/RustCompiler.hx:1275
 src/reflaxe/rust/RustCompiler.hx:1276
-src/reflaxe/rust/RustCompiler.hx:1283
-src/reflaxe/rust/RustCompiler.hx:1286
-src/reflaxe/rust/RustCompiler.hx:1294
+src/reflaxe/rust/RustCompiler.hx:1277
+src/reflaxe/rust/RustCompiler.hx:1284
+src/reflaxe/rust/RustCompiler.hx:1287
+src/reflaxe/rust/RustCompiler.hx:1295
 std/haxe/BoundaryTypes.cross.hx:27
 std/haxe/BoundaryTypes.cross.hx:29
 std/haxe/BoundaryTypes.cross.hx:31
@@ -21,10 +21,22 @@ std/haxe/BoundaryTypes.cross.hx:36
 std/haxe/BoundaryTypes.cross.hx:37
 std/haxe/Int64.cross.hx:59
 std/haxe/Int64.cross.hx:63
-test/snapshot/catch_dynamic/Main.hx:6
-test/semantic_diff/exceptions_typed_dynamic/Main.hx:20
+std/sys/Http.cross.hx:370
+std/sys/Http.cross.hx:373
+test/perf/json/Main.hx # FILE_SCOPE_JUSTIFICATION: Perf fixture intentionally round-trips through haxe.Json.parse Dynamic values to measure JSON runtime overhead.
+test/semantic_diff/exception_dynamic_payload/Main.hx # FILE_SCOPE_JUSTIFICATION: Semantic diff fixture intentionally throws and catches Dynamic payloads to validate exception boundary behavior.
+test/semantic_diff/exceptions_typed_dynamic/Main.hx # FILE_SCOPE_JUSTIFICATION: Semantic diff fixture intentionally exercises typed and Dynamic exception catch paths.
 test/semantic_diff/json_stringify_replacer/Main.hx:2
 test/semantic_diff/json_stringify_replacer/Main.hx:15
 test/semantic_diff/json_stringify_replacer/Main.hx:20
+test/semantic_diff/reflect_dynamic_receivers/Main.hx # FILE_SCOPE_JUSTIFICATION: Semantic diff fixture intentionally exercises Reflect over Dynamic anon/JSON receivers.
+test/semantic_diff/sys_net_failure_paths/Main.hx # FILE_SCOPE_JUSTIFICATION: Semantic diff fixture intentionally uses Dynamic catch-all handling for socket failure boundary coverage.
+test/semantic_diff/sys_process_failure_paths/Main.hx # FILE_SCOPE_JUSTIFICATION: Semantic diff fixture intentionally uses Dynamic catch-all handling for process failure boundary coverage.
+test/semantic_diff/typed_catch_subclass/Main.hx # FILE_SCOPE_JUSTIFICATION: Semantic diff fixture intentionally mixes typed catches with Dynamic fallback at the exception boundary.
+test/snapshot/catch_dynamic/Main.hx # FILE_SCOPE_JUSTIFICATION: Snapshot fixture intentionally validates Dynamic throw/catch and reflection behavior.
+test/snapshot/json_parse_value_boundary/Main.hx # FILE_SCOPE_JUSTIFICATION: Snapshot fixture intentionally validates the JSON parse Dynamic boundary before returning to typed code.
+test/snapshot/reflect_basic/Main.hx # FILE_SCOPE_JUSTIFICATION: Snapshot fixture intentionally validates Reflect behavior over Dynamic JSON values.
 test/snapshot/throw_tail_nonvoid/Main.hx:12
+test/snapshot/sys_db_sqlite_smoke/Main.hx # FILE_SCOPE_JUSTIFICATION: Snapshot smoke intentionally decodes Dynamic DB rows at the upstream ResultSet boundary and returns to typed code immediately.
+test/snapshot/sys_ssl_sni/Main.hx # FILE_SCOPE_JUSTIFICATION: Snapshot smoke intentionally uses Dynamic catch-all handling around TLS handshake failure boundaries.
 test/snapshot/std_is_of_type/Main.hx # FILE_SCOPE_JUSTIFICATION: Snapshot intentionally validates Std.isOfType across Dynamic boxing/interface/enum boundaries.

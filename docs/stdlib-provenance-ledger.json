@@ -88,6 +88,18 @@
       "notes": "Cross-target override aligned to upstream stdlib API surface."
     },
     {
+      "path": "std/haxe/MainLoop.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/MainLoop.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface while supplying an emitted Rust-target scheduler implementation backed by `haxe.EntryPoint`."
+    },
+    {
+      "path": "std/haxe/EntryPoint.cross.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/EntryPoint.hx",
+      "notes": "Cross-target override aligned to upstream stdlib API surface while supplying an emitted Rust-target wakeup loop implementation for `haxe.MainLoop`."
+    },
+    {
       "path": "std/haxe/ds/EnumValueMap.cross.hx",
       "provenanceKind": "upstream_std_sync",
       "upstreamOraclePath": "vendor/haxe/std/haxe/ds/EnumValueMap.hx",
@@ -330,12 +342,7 @@
       "path": "std/sys/ssl/Socket.cross.hx",
       "provenanceKind": "upstream_std_sync",
       "upstreamOraclePath": "vendor/haxe/std/sys/ssl/Socket.hx",
-      "notes": "Cross-target override aligned to upstream stdlib API surface.",
-      "knownDivergenceReason": "addSNICertificate is declared for API parity but still throws until runtime-side SNI cert switching is implemented.",
-      "knownDivergenceTestRefs": [
-        "test/upstream_std_modules.txt",
-        "test/tier1_api_surface_probes.json"
-      ]
+      "notes": "Cross-target override aligned to upstream stdlib API surface."
     },
     {
       "path": "std/sys/thread/Condition.cross.hx",

@@ -749,7 +749,8 @@ mod tests {
         let event_rc: HxRc<dyn Fn() + Send + Sync> = HxRc::new(move || {
             let seen = hits2.fetch_add(1, AtomicOrdering::SeqCst) + 1;
             if seen == 2 {
-                let id = (*event_id2.borrow()).expect("event id must be assigned before callback runs");
+                let id =
+                    (*event_id2.borrow()).expect("event id must be assigned before callback runs");
                 event_loop_cancel(tid, id);
             }
         });

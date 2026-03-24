@@ -42,7 +42,7 @@ socket2 = { version = "0.5", optional = true }
 hostname = { version = "0.4", optional = true }
 dns-lookup = { version = "2", optional = true }
 parking_lot = "0.12"
-rustls = { version = "0.23", optional = true }
+rustls = { version = "0.23", default-features = false, features = ["std", "tls12", "ring"], optional = true }
 rustls-native-certs = { version = "0.7", optional = true }
 rustls-pemfile = { version = "2", optional = true }
 webpki-roots = { version = "0.26", optional = true }
