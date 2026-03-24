@@ -33,7 +33,7 @@ impl StringBuf {
             let __tmp = hxrt::string::HxString::from(format!(
                 "{}{}",
                 &__hx_this.borrow().b,
-                hxrt::string::HxString::from(x.to_haxe_string())
+                x.to_haxe_string()
             ));
             __hx_this.borrow_mut().b = hxrt::string::HxString::from(__tmp.clone());
             __tmp
@@ -46,7 +46,7 @@ impl StringBuf {
             let __tmp = hxrt::string::HxString::from(format!(
                 "{}{}",
                 &__hx_this.borrow().b,
-                hxrt::string::HxString::from(hxrt::string::from_char_code(c))
+                hxrt::string::from_char_code(c)
             ));
             __hx_this.borrow_mut().b = hxrt::string::HxString::from(__tmp.clone());
             __tmp

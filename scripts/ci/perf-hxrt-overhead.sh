@@ -26,13 +26,22 @@ Environment:
   HXRT_PERF_HELLO_ITERS     Startup loop count for hello case (default: 300)
   HXRT_PERF_ARRAY_ITERS     Startup loop count for array case (default: 300)
   HXRT_PERF_HOT_LOOP_ITERS  Startup loop count for hot_loop case (default: 300)
-  HXRT_PERF_HOT_LOOP_INPROC_RUNS In-process sample count for hot_loop_inproc binaries (default: 20)
+  HXRT_PERF_HOT_LOOP_INPROC_RUNS In-process sample count for hot_loop_inproc binaries (default: 80)
   HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS In-process sample count for hot_loop_no_hxrt binaries (default: 20)
+  HXRT_PERF_BYTES_INPROC_RUNS In-process sample count for bytes microbench binaries (default: 60)
+  HXRT_PERF_JSON_INPROC_RUNS In-process sample count for json microbench binaries (default: 60)
+  HXRT_PERF_INT64_INPROC_RUNS In-process sample count for int64 microbench binaries (default: 20)
   HXRT_PERF_CHAT_ITERS      Startup loop count for chat headless case (default: 40)
   HXRT_PERF_PORTABLE_METAL_ARRAY_MAX
                             Runtime ratio budget for portable-vs-metal array convergence (default: 1.08)
   HXRT_PERF_PORTABLE_METAL_HOT_LOOP_INPROC_MAX
                             Runtime ratio budget for portable-vs-metal hot_loop_inproc convergence (default: 1.05)
+  HXRT_PERF_PORTABLE_METAL_BYTES_MAX
+                            Runtime ratio budget for portable-vs-metal bytes convergence (default: 1.08)
+  HXRT_PERF_PORTABLE_METAL_JSON_MAX
+                            Runtime ratio budget for portable-vs-metal json convergence (default: 1.12)
+  HXRT_PERF_PORTABLE_METAL_INT64_MAX
+                            Runtime ratio budget for portable-vs-metal int64 convergence (default: 1.08)
   HXRT_PERF_GATE_MODE       Gate mode: soft|pr|nightly (default: soft).
   HXRT_PERF_PR_SIZE_FAIL_PCT
                             PR hard-fail size regression threshold vs baseline (default: 20)
@@ -42,6 +51,12 @@ Environment:
                             PR hard-fail portable/metal array runtime convergence max ratio (default: 1.20)
   HXRT_PERF_PR_PORTABLE_METAL_HOT_LOOP_INPROC_MAX
                             PR hard-fail portable/metal hot_loop_inproc runtime convergence max ratio (default: 1.10)
+  HXRT_PERF_PR_PORTABLE_METAL_BYTES_MAX
+                            PR hard-fail portable/metal bytes runtime convergence max ratio (default: 1.20)
+  HXRT_PERF_PR_PORTABLE_METAL_JSON_MAX
+                            PR hard-fail portable/metal json runtime convergence max ratio (default: 1.25)
+  HXRT_PERF_PR_PORTABLE_METAL_INT64_MAX
+                            PR hard-fail portable/metal int64 runtime convergence max ratio (default: 1.20)
   HXRT_PERF_NIGHTLY_SIZE_FAIL_PCT
                             Nightly hard-fail size regression threshold vs baseline (default: 8)
   HXRT_PERF_NIGHTLY_RUNTIME_FAIL_PCT
@@ -50,6 +65,12 @@ Environment:
                             Nightly hard-fail portable/metal array runtime convergence max ratio (default: 1.08)
   HXRT_PERF_NIGHTLY_PORTABLE_METAL_HOT_LOOP_INPROC_MAX
                             Nightly hard-fail portable/metal hot_loop_inproc runtime convergence max ratio (default: 1.08)
+  HXRT_PERF_NIGHTLY_PORTABLE_METAL_BYTES_MAX
+                            Nightly hard-fail portable/metal bytes runtime convergence max ratio (default: 1.08)
+  HXRT_PERF_NIGHTLY_PORTABLE_METAL_JSON_MAX
+                            Nightly hard-fail portable/metal json runtime convergence max ratio (default: 1.12)
+  HXRT_PERF_NIGHTLY_PORTABLE_METAL_INT64_MAX
+                            Nightly hard-fail portable/metal int64 runtime convergence max ratio (default: 1.08)
 USAGE
 }
 
@@ -338,7 +359,168 @@ fn main() {
     if acc == -1 {
         println!("unreachable");
     }
+}
+EOF
+}
 
+write_pure_bytes_crate() {
+  local crate_dir="$1"
+  mkdir -p "$crate_dir/src"
+  cat > "$crate_dir/Cargo.toml" <<'EOF'
+[package]
+name = "pure_bytes"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+EOF
+  cat > "$crate_dir/src/main.rs" <<'EOF'
+fn write_i32_le(buf: &mut [u8], pos: usize, value: i32) {
+    let bytes = value.to_le_bytes();
+    buf[pos..pos + 4].copy_from_slice(&bytes);
+}
+
+fn read_i32_le(buf: &[u8], pos: usize) -> i32 {
+    i32::from_le_bytes([buf[pos], buf[pos + 1], buf[pos + 2], buf[pos + 3]])
+}
+
+fn crunch(seed: i32) -> i32 {
+    const BUFFER_LEN: usize = 4096;
+    const OUTER_RUNS: usize = 24;
+    const INNER_RUNS: usize = 32;
+
+    let mut bytes = vec![0u8; BUFFER_LEN];
+    let mut acc = seed;
+
+    for run in 0..OUTER_RUNS {
+        bytes.fill(((acc.wrapping_add(run as i32)) & 0xFF) as u8);
+        for inner in 0..INNER_RUNS {
+            let pos = (inner * 128) % (BUFFER_LEN - 4);
+            let word = acc
+                .wrapping_add((inner as i32).wrapping_mul(1_103_515_245))
+                .wrapping_add((run as i32).wrapping_mul(12_345))
+                & 0x7FFF_FFFF;
+            write_i32_le(&mut bytes, pos, word);
+            acc = (acc ^ read_i32_le(&bytes, pos)) & 0x7FFF_FFFF;
+            let byte_index = pos + 1;
+            bytes[byte_index] = ((acc + inner as i32 + run as i32) & 0xFF) as u8;
+            acc = (acc + bytes[byte_index] as i32 + bytes.len() as i32) & 0x7FFF_FFFF;
+        }
+    }
+
+    acc
+}
+
+fn main() {
+    let millis = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+    let seed = (millis as i32) & 0x7FFF_FFFF;
+    let acc = crunch(seed);
+    if acc == -1 {
+        println!("unreachable");
+    }
+}
+EOF
+}
+
+write_pure_json_crate() {
+  local crate_dir="$1"
+  mkdir -p "$crate_dir/src"
+  cat > "$crate_dir/Cargo.toml" <<'EOF'
+[package]
+name = "pure_json"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde_json = "1"
+EOF
+  cat > "$crate_dir/src/main.rs" <<'EOF'
+use serde_json::{json, Value};
+
+fn crunch() -> i32 {
+    const OUTER_RUNS: i32 = 18;
+    const INNER_RUNS: i32 = 40;
+
+    let mut acc = 0i32;
+    let mut run = 0i32;
+    while run < OUTER_RUNS {
+        let mut inner = 0i32;
+        while inner < INNER_RUNS {
+            let payload = json!({
+                "id": run * INNER_RUNS + inner,
+                "label": format!("json-{}-{}", run, inner),
+                "flags": [inner % 2 == 0, inner % 3 == 0, inner % 5 == 0],
+                "nested": {
+                    "count": acc + inner,
+                    "tag": format!("tag-{}", run & 7),
+                }
+            });
+            let encoded = serde_json::to_string(&payload).expect("encode payload");
+            acc = (acc + encoded.len() as i32) & 0x7FFF_FFFF;
+            let decoded: Value = serde_json::from_str(&encoded).expect("decode payload");
+            let round_trip = serde_json::to_string(&decoded).expect("reencode payload");
+            acc = (acc ^ round_trip.len() as i32) & 0x7FFF_FFFF;
+            inner += 1;
+        }
+        run += 1;
+    }
+    acc
+}
+
+fn main() {
+    let acc = crunch();
+    if acc == -1 {
+        println!("unreachable");
+    }
+}
+EOF
+}
+
+write_pure_int64_crate() {
+  local crate_dir="$1"
+  mkdir -p "$crate_dir/src"
+  cat > "$crate_dir/Cargo.toml" <<'EOF'
+[package]
+name = "pure_int64"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+EOF
+  cat > "$crate_dir/src/main.rs" <<'EOF'
+fn ushr_i64(value: i64, shift: u32) -> i64 {
+    ((value as u64) >> shift) as i64
+}
+
+fn crunch(seed: i64) -> i64 {
+    const INNER_ITERS: i32 = 80_000;
+    const OUTER_RUNS: i32 = 40;
+
+    let mut acc = seed;
+    let mut run = 0i32;
+    while run < OUTER_RUNS {
+        let mut i = 0i32;
+        while i < INNER_ITERS {
+            let step = ((i * 31) ^ ((i as u32 >> 3) as i32) ^ run) as i64;
+            acc = acc.wrapping_add(step) ^ step.wrapping_shl((i & 7) as u32);
+            acc = acc.wrapping_sub(ushr_i64(step, 1));
+            acc = acc.wrapping_add((run + i) as i64);
+            i += 1;
+        }
+        run += 1;
+    }
+    acc
+}
+
+fn main() {
+    let seed = (((0x1357_9BDFu64) << 32) | 0x2468_ACE0u64) as i64;
+    let acc = crunch(seed);
+    if acc == -1 {
+        println!("unreachable");
+    }
 }
 EOF
 }
@@ -391,18 +573,31 @@ runtime_warn_pct="${HXRT_PERF_RUNTIME_WARN_PCT:-10}"
 hello_iters="${HXRT_PERF_HELLO_ITERS:-300}"
 array_iters="${HXRT_PERF_ARRAY_ITERS:-300}"
 hot_loop_iters="${HXRT_PERF_HOT_LOOP_ITERS:-300}"
-hot_loop_inproc_runs="${HXRT_PERF_HOT_LOOP_INPROC_RUNS:-20}"
+hot_loop_inproc_runs="${HXRT_PERF_HOT_LOOP_INPROC_RUNS:-80}"
 hot_loop_no_hxrt_inproc_runs="${HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS:-20}"
+bytes_inproc_runs="${HXRT_PERF_BYTES_INPROC_RUNS:-60}"
+json_inproc_runs="${HXRT_PERF_JSON_INPROC_RUNS:-60}"
+int64_inproc_runs="${HXRT_PERF_INT64_INPROC_RUNS:-20}"
 chat_iters="${HXRT_PERF_CHAT_ITERS:-40}"
 pr_size_fail_pct="${HXRT_PERF_PR_SIZE_FAIL_PCT:-20}"
 pr_runtime_fail_pct="${HXRT_PERF_PR_RUNTIME_FAIL_PCT:-25}"
 pr_portable_metal_array_max="${HXRT_PERF_PR_PORTABLE_METAL_ARRAY_MAX:-1.20}"
 pr_portable_metal_hot_loop_inproc_max="${HXRT_PERF_PR_PORTABLE_METAL_HOT_LOOP_INPROC_MAX:-1.10}"
+pr_portable_metal_bytes_max="${HXRT_PERF_PR_PORTABLE_METAL_BYTES_MAX:-1.20}"
+pr_portable_metal_json_max="${HXRT_PERF_PR_PORTABLE_METAL_JSON_MAX:-1.25}"
+pr_portable_metal_int64_max="${HXRT_PERF_PR_PORTABLE_METAL_INT64_MAX:-1.20}"
 nightly_size_fail_pct="${HXRT_PERF_NIGHTLY_SIZE_FAIL_PCT:-8}"
 nightly_runtime_fail_pct="${HXRT_PERF_NIGHTLY_RUNTIME_FAIL_PCT:-15}"
 nightly_portable_metal_array_max="${HXRT_PERF_NIGHTLY_PORTABLE_METAL_ARRAY_MAX:-1.08}"
 nightly_portable_metal_hot_loop_inproc_max="${HXRT_PERF_NIGHTLY_PORTABLE_METAL_HOT_LOOP_INPROC_MAX:-1.08}"
-
+nightly_portable_metal_bytes_max="${HXRT_PERF_NIGHTLY_PORTABLE_METAL_BYTES_MAX:-1.08}"
+nightly_portable_metal_json_max="${HXRT_PERF_NIGHTLY_PORTABLE_METAL_JSON_MAX:-1.12}"
+nightly_portable_metal_int64_max="${HXRT_PERF_NIGHTLY_PORTABLE_METAL_INT64_MAX:-1.08}"
+portable_metal_array_max="${HXRT_PERF_PORTABLE_METAL_ARRAY_MAX:-1.08}"
+portable_metal_hot_loop_inproc_max="${HXRT_PERF_PORTABLE_METAL_HOT_LOOP_INPROC_MAX:-1.05}"
+portable_metal_bytes_max="${HXRT_PERF_PORTABLE_METAL_BYTES_MAX:-1.08}"
+portable_metal_json_max="${HXRT_PERF_PORTABLE_METAL_JSON_MAX:-1.12}"
+portable_metal_int64_max="${HXRT_PERF_PORTABLE_METAL_INT64_MAX:-1.08}"
 if [[ -x /usr/bin/time ]]; then
   time_bin="/usr/bin/time"
 else
@@ -678,6 +873,111 @@ record_metric_inproc "hot_loop_no_hxrt_pure_rust" "hot_loop_no_hxrt" "pure" "pur
   "$hot_loop_no_hxrt_pure_target/release/pure_hot_loop_inproc" "$hot_loop_no_hxrt_inproc_runs" "$hot_loop_no_hxrt_pure_dir/inproc.out"
 
 for profile in "${profiles[@]}"; do
+  log "bytes case ($profile)"
+  case_dir="$work_dir/bytes/$profile"
+  out_dir="$case_dir/out"
+  target_dir="$case_dir/target"
+  mkdir -p "$case_dir"
+  if [[ "$profile" == "metal" ]]; then
+    "$haxe_bin" -cp "$root_dir/test/perf/bytes" -lib reflaxe.rust \
+      -D "reflaxe_rust_profile=$profile" \
+      -D rust_metal_allow_fallback \
+      -D "rust_output=$out_dir" \
+      -D rust_no_build \
+      -main Main >/dev/null
+  else
+    "$haxe_bin" -cp "$root_dir/test/perf/bytes" -lib reflaxe.rust \
+      -D "reflaxe_rust_profile=$profile" \
+      -D "rust_output=$out_dir" \
+      -D rust_no_build \
+      -main Main >/dev/null
+  fi
+  CARGO_TARGET_DIR="$target_dir" "$cargo_bin" build --manifest-path "$out_dir/Cargo.toml" --release -q
+  package_name="$(extract_package_name "$out_dir/Cargo.toml")"
+  [[ -n "$package_name" ]] || fail "unable to parse package name in $(display_path "$out_dir/Cargo.toml")"
+  record_metric_inproc "bytes_haxe_${profile}" "bytes" "$profile" "haxe" \
+    "$target_dir/release/$package_name" "$bytes_inproc_runs" "$case_dir/inproc.out"
+done
+
+log "bytes pure rust baseline"
+bytes_pure_dir="$work_dir/bytes/pure"
+bytes_pure_target="$bytes_pure_dir/target"
+write_pure_bytes_crate "$bytes_pure_dir"
+CARGO_TARGET_DIR="$bytes_pure_target" "$cargo_bin" build --manifest-path "$bytes_pure_dir/Cargo.toml" --release -q
+record_metric_inproc "bytes_pure_rust" "bytes" "pure" "pure_rust" \
+  "$bytes_pure_target/release/pure_bytes" "$bytes_inproc_runs" "$bytes_pure_dir/inproc.out"
+
+for profile in "${profiles[@]}"; do
+  log "json case ($profile)"
+  case_dir="$work_dir/json/$profile"
+  out_dir="$case_dir/out"
+  target_dir="$case_dir/target"
+  mkdir -p "$case_dir"
+  if [[ "$profile" == "metal" ]]; then
+    "$haxe_bin" -cp "$root_dir/test/perf/json" -lib reflaxe.rust \
+      -D "reflaxe_rust_profile=$profile" \
+      -D rust_metal_allow_fallback \
+      -D "rust_output=$out_dir" \
+      -D rust_no_build \
+      -main Main >/dev/null
+  else
+    "$haxe_bin" -cp "$root_dir/test/perf/json" -lib reflaxe.rust \
+      -D "reflaxe_rust_profile=$profile" \
+      -D "rust_output=$out_dir" \
+      -D rust_no_build \
+      -main Main >/dev/null
+  fi
+  CARGO_TARGET_DIR="$target_dir" "$cargo_bin" build --manifest-path "$out_dir/Cargo.toml" --release -q
+  package_name="$(extract_package_name "$out_dir/Cargo.toml")"
+  [[ -n "$package_name" ]] || fail "unable to parse package name in $(display_path "$out_dir/Cargo.toml")"
+  record_metric_inproc "json_haxe_${profile}" "json" "$profile" "haxe" \
+    "$target_dir/release/$package_name" "$json_inproc_runs" "$case_dir/inproc.out"
+done
+
+log "json pure rust baseline"
+json_pure_dir="$work_dir/json/pure"
+json_pure_target="$json_pure_dir/target"
+write_pure_json_crate "$json_pure_dir"
+CARGO_TARGET_DIR="$json_pure_target" "$cargo_bin" build --manifest-path "$json_pure_dir/Cargo.toml" --release -q
+record_metric_inproc "json_pure_rust" "json" "pure" "pure_rust" \
+  "$json_pure_target/release/pure_json" "$json_inproc_runs" "$json_pure_dir/inproc.out"
+
+for profile in "${profiles[@]}"; do
+  log "int64 case ($profile)"
+  case_dir="$work_dir/int64/$profile"
+  out_dir="$case_dir/out"
+  target_dir="$case_dir/target"
+  mkdir -p "$case_dir"
+  if [[ "$profile" == "metal" ]]; then
+    "$haxe_bin" -cp "$root_dir/test/perf/int64" -lib reflaxe.rust \
+      -D "reflaxe_rust_profile=$profile" \
+      -D rust_metal_allow_fallback \
+      -D "rust_output=$out_dir" \
+      -D rust_no_build \
+      -main Main >/dev/null
+  else
+    "$haxe_bin" -cp "$root_dir/test/perf/int64" -lib reflaxe.rust \
+      -D "reflaxe_rust_profile=$profile" \
+      -D "rust_output=$out_dir" \
+      -D rust_no_build \
+      -main Main >/dev/null
+  fi
+  CARGO_TARGET_DIR="$target_dir" "$cargo_bin" build --manifest-path "$out_dir/Cargo.toml" --release -q
+  package_name="$(extract_package_name "$out_dir/Cargo.toml")"
+  [[ -n "$package_name" ]] || fail "unable to parse package name in $(display_path "$out_dir/Cargo.toml")"
+  record_metric_inproc "int64_haxe_${profile}" "int64" "$profile" "haxe" \
+    "$target_dir/release/$package_name" "$int64_inproc_runs" "$case_dir/inproc.out"
+done
+
+log "int64 pure rust baseline"
+int64_pure_dir="$work_dir/int64/pure"
+int64_pure_target="$int64_pure_dir/target"
+write_pure_int64_crate "$int64_pure_dir"
+CARGO_TARGET_DIR="$int64_pure_target" "$cargo_bin" build --manifest-path "$int64_pure_dir/Cargo.toml" --release -q
+record_metric_inproc "int64_pure_rust" "int64" "pure" "pure_rust" \
+  "$int64_pure_target/release/pure_int64" "$int64_inproc_runs" "$int64_pure_dir/inproc.out"
+
+for profile in "${profiles[@]}"; do
   log "chat case ($profile)"
   case_dir="$work_dir/chat/$profile"
   out_dir="$case_dir/out"
@@ -715,15 +1015,29 @@ HXRT_PERF_PR_SIZE_FAIL_PCT="$pr_size_fail_pct" \
 HXRT_PERF_PR_RUNTIME_FAIL_PCT="$pr_runtime_fail_pct" \
 HXRT_PERF_PR_PORTABLE_METAL_ARRAY_MAX="$pr_portable_metal_array_max" \
 HXRT_PERF_PR_PORTABLE_METAL_HOT_LOOP_INPROC_MAX="$pr_portable_metal_hot_loop_inproc_max" \
+HXRT_PERF_PR_PORTABLE_METAL_BYTES_MAX="$pr_portable_metal_bytes_max" \
+HXRT_PERF_PR_PORTABLE_METAL_JSON_MAX="$pr_portable_metal_json_max" \
+HXRT_PERF_PR_PORTABLE_METAL_INT64_MAX="$pr_portable_metal_int64_max" \
 HXRT_PERF_NIGHTLY_SIZE_FAIL_PCT="$nightly_size_fail_pct" \
 HXRT_PERF_NIGHTLY_RUNTIME_FAIL_PCT="$nightly_runtime_fail_pct" \
 HXRT_PERF_NIGHTLY_PORTABLE_METAL_ARRAY_MAX="$nightly_portable_metal_array_max" \
 HXRT_PERF_NIGHTLY_PORTABLE_METAL_HOT_LOOP_INPROC_MAX="$nightly_portable_metal_hot_loop_inproc_max" \
+HXRT_PERF_NIGHTLY_PORTABLE_METAL_BYTES_MAX="$nightly_portable_metal_bytes_max" \
+HXRT_PERF_NIGHTLY_PORTABLE_METAL_JSON_MAX="$nightly_portable_metal_json_max" \
+HXRT_PERF_NIGHTLY_PORTABLE_METAL_INT64_MAX="$nightly_portable_metal_int64_max" \
+HXRT_PERF_PORTABLE_METAL_ARRAY_MAX="$portable_metal_array_max" \
+HXRT_PERF_PORTABLE_METAL_HOT_LOOP_INPROC_MAX="$portable_metal_hot_loop_inproc_max" \
+HXRT_PERF_PORTABLE_METAL_BYTES_MAX="$portable_metal_bytes_max" \
+HXRT_PERF_PORTABLE_METAL_JSON_MAX="$portable_metal_json_max" \
+HXRT_PERF_PORTABLE_METAL_INT64_MAX="$portable_metal_int64_max" \
 HXRT_PERF_HELLO_ITERS="$hello_iters" \
 HXRT_PERF_ARRAY_ITERS="$array_iters" \
 HXRT_PERF_HOT_LOOP_ITERS="$hot_loop_iters" \
 HXRT_PERF_HOT_LOOP_INPROC_RUNS="$hot_loop_inproc_runs" \
 HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS="$hot_loop_no_hxrt_inproc_runs" \
+HXRT_PERF_BYTES_INPROC_RUNS="$bytes_inproc_runs" \
+HXRT_PERF_JSON_INPROC_RUNS="$json_inproc_runs" \
+HXRT_PERF_INT64_INPROC_RUNS="$int64_inproc_runs" \
 HXRT_PERF_CHAT_ITERS="$chat_iters" \
 HXRT_PERF_HAXE_VERSION="$haxe_version" \
 HXRT_PERF_RUSTC_VERSION="$rustc_version" \
@@ -747,18 +1061,30 @@ const prSizeFailPct = Number(process.env.HXRT_PERF_PR_SIZE_FAIL_PCT || "20");
 const prRuntimeFailPct = Number(process.env.HXRT_PERF_PR_RUNTIME_FAIL_PCT || "25");
 const prPortableMetalArrayMax = Number(process.env.HXRT_PERF_PR_PORTABLE_METAL_ARRAY_MAX || "1.20");
 const prPortableMetalHotLoopInprocMax = Number(process.env.HXRT_PERF_PR_PORTABLE_METAL_HOT_LOOP_INPROC_MAX || "1.10");
+const prPortableMetalBytesMax = Number(process.env.HXRT_PERF_PR_PORTABLE_METAL_BYTES_MAX || "1.20");
+const prPortableMetalJsonMax = Number(process.env.HXRT_PERF_PR_PORTABLE_METAL_JSON_MAX || "1.25");
+const prPortableMetalInt64Max = Number(process.env.HXRT_PERF_PR_PORTABLE_METAL_INT64_MAX || "1.20");
 const nightlySizeFailPct = Number(process.env.HXRT_PERF_NIGHTLY_SIZE_FAIL_PCT || "8");
 const nightlyRuntimeFailPct = Number(process.env.HXRT_PERF_NIGHTLY_RUNTIME_FAIL_PCT || "15");
 const nightlyPortableMetalArrayMax = Number(process.env.HXRT_PERF_NIGHTLY_PORTABLE_METAL_ARRAY_MAX || "1.08");
 const nightlyPortableMetalHotLoopInprocMax = Number(process.env.HXRT_PERF_NIGHTLY_PORTABLE_METAL_HOT_LOOP_INPROC_MAX || "1.08");
+const nightlyPortableMetalBytesMax = Number(process.env.HXRT_PERF_NIGHTLY_PORTABLE_METAL_BYTES_MAX || "1.08");
+const nightlyPortableMetalJsonMax = Number(process.env.HXRT_PERF_NIGHTLY_PORTABLE_METAL_JSON_MAX || "1.12");
+const nightlyPortableMetalInt64Max = Number(process.env.HXRT_PERF_NIGHTLY_PORTABLE_METAL_INT64_MAX || "1.08");
 const helloIters = Number(process.env.HXRT_PERF_HELLO_ITERS || "300");
 const arrayIters = Number(process.env.HXRT_PERF_ARRAY_ITERS || "300");
 const hotLoopIters = Number(process.env.HXRT_PERF_HOT_LOOP_ITERS || "300");
 const hotLoopInprocRuns = Number(process.env.HXRT_PERF_HOT_LOOP_INPROC_RUNS || "20");
 const hotLoopNoHxrtInprocRuns = Number(process.env.HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS || "20");
+const bytesInprocRuns = Number(process.env.HXRT_PERF_BYTES_INPROC_RUNS || "60");
+const jsonInprocRuns = Number(process.env.HXRT_PERF_JSON_INPROC_RUNS || "60");
+const int64InprocRuns = Number(process.env.HXRT_PERF_INT64_INPROC_RUNS || "20");
 const chatIters = Number(process.env.HXRT_PERF_CHAT_ITERS || "40");
 const portableMetalArrayMax = Number(process.env.HXRT_PERF_PORTABLE_METAL_ARRAY_MAX || "1.08");
 const portableMetalHotLoopInprocMax = Number(process.env.HXRT_PERF_PORTABLE_METAL_HOT_LOOP_INPROC_MAX || "1.05");
+const portableMetalBytesMax = Number(process.env.HXRT_PERF_PORTABLE_METAL_BYTES_MAX || "1.08");
+const portableMetalJsonMax = Number(process.env.HXRT_PERF_PORTABLE_METAL_JSON_MAX || "1.12");
+const portableMetalInt64Max = Number(process.env.HXRT_PERF_PORTABLE_METAL_INT64_MAX || "1.08");
 const haxeVersion = process.env.HXRT_PERF_HAXE_VERSION || "";
 const rustcVersion = process.env.HXRT_PERF_RUSTC_VERSION || "";
 
@@ -835,6 +1161,9 @@ const arrayOverheadRatios = buildCaseOverhead("array");
 const hotLoopOverheadRatios = buildCaseOverhead("hot_loop");
 const hotLoopInprocOverheadRatios = buildCaseOverhead("hot_loop_inproc");
 const hotLoopNoHxrtOverheadRatios = buildCaseOverhead("hot_loop_no_hxrt", ["metal"]);
+const bytesOverheadRatios = buildCaseOverhead("bytes");
+const jsonOverheadRatios = buildCaseOverhead("json");
+const int64OverheadRatios = buildCaseOverhead("int64");
 
 const chatMetrics = Object.fromEntries(
   profiles.map((profile) => [profile, requireMetric(`chat_haxe_${profile}`)])
@@ -876,12 +1205,33 @@ const runtimeStats = {
     metal: metricRuntimeStats("hot_loop_no_hxrt_haxe_metal"),
     pure: metricRuntimeStats("hot_loop_no_hxrt_pure_rust"),
   },
+  bytes: {
+    portable: metricRuntimeStats("bytes_haxe_portable"),
+    metal: metricRuntimeStats("bytes_haxe_metal"),
+    pure: metricRuntimeStats("bytes_pure_rust"),
+  },
+  json: {
+    portable: metricRuntimeStats("json_haxe_portable"),
+    metal: metricRuntimeStats("json_haxe_metal"),
+    pure: metricRuntimeStats("json_pure_rust"),
+  },
+  int64: {
+    portable: metricRuntimeStats("int64_haxe_portable"),
+    metal: metricRuntimeStats("int64_haxe_metal"),
+    pure: metricRuntimeStats("int64_pure_rust"),
+  },
 };
 
 const arrayPortable = requireMetric("array_haxe_portable");
 const arrayMetal = requireMetric("array_haxe_metal");
 const hotLoopInprocPortable = requireMetric("hot_loop_inproc_haxe_portable");
 const hotLoopInprocMetal = requireMetric("hot_loop_inproc_haxe_metal");
+const bytesPortable = requireMetric("bytes_haxe_portable");
+const bytesMetal = requireMetric("bytes_haxe_metal");
+const jsonPortable = requireMetric("json_haxe_portable");
+const jsonMetal = requireMetric("json_haxe_metal");
+const int64Portable = requireMetric("int64_haxe_portable");
+const int64Metal = requireMetric("int64_haxe_metal");
 const portableVsMetalConvergence = {
   array: {
     binaryRatio: ratio(arrayPortable.binary_bytes, arrayMetal.binary_bytes),
@@ -892,6 +1242,21 @@ const portableVsMetalConvergence = {
     binaryRatio: ratio(hotLoopInprocPortable.binary_bytes, hotLoopInprocMetal.binary_bytes),
     strippedRatio: ratio(hotLoopInprocPortable.stripped_bytes, hotLoopInprocMetal.stripped_bytes),
     runtimeRatio: ratio(hotLoopInprocPortable.runtime_metric_ms, hotLoopInprocMetal.runtime_metric_ms),
+  },
+  bytes: {
+    binaryRatio: ratio(bytesPortable.binary_bytes, bytesMetal.binary_bytes),
+    strippedRatio: ratio(bytesPortable.stripped_bytes, bytesMetal.stripped_bytes),
+    runtimeRatio: ratio(bytesPortable.runtime_metric_ms, bytesMetal.runtime_metric_ms),
+  },
+  json: {
+    binaryRatio: ratio(jsonPortable.binary_bytes, jsonMetal.binary_bytes),
+    strippedRatio: ratio(jsonPortable.stripped_bytes, jsonMetal.stripped_bytes),
+    runtimeRatio: ratio(jsonPortable.runtime_metric_ms, jsonMetal.runtime_metric_ms),
+  },
+  int64: {
+    binaryRatio: ratio(int64Portable.binary_bytes, int64Metal.binary_bytes),
+    strippedRatio: ratio(int64Portable.stripped_bytes, int64Metal.stripped_bytes),
+    runtimeRatio: ratio(int64Portable.runtime_metric_ms, int64Metal.runtime_metric_ms),
   },
 };
 
@@ -920,6 +1285,9 @@ const current = {
     hot_loop: hotLoopIters,
     hot_loop_inproc: hotLoopInprocRuns,
     hot_loop_no_hxrt: hotLoopNoHxrtInprocRuns,
+    bytes: bytesInprocRuns,
+    json: jsonInprocRuns,
+    int64: int64InprocRuns,
     chat: chatIters,
   },
   runtimeStats,
@@ -930,6 +1298,9 @@ const current = {
     hotLoopOverheadRatios,
     hotLoopInprocOverheadRatios,
     hotLoopNoHxrtOverheadRatios,
+    bytesOverheadRatios,
+    jsonOverheadRatios,
+    int64OverheadRatios,
     chatRelativeToMin,
     portableVsMetalConvergence,
   },
@@ -960,6 +1331,9 @@ const activeGate = gateMode === "pr"
       runtimeFailPct: prRuntimeFailPct,
       portableMetalArrayMax: prPortableMetalArrayMax,
       portableMetalHotLoopInprocMax: prPortableMetalHotLoopInprocMax,
+      portableMetalBytesMax: prPortableMetalBytesMax,
+      portableMetalJsonMax: prPortableMetalJsonMax,
+      portableMetalInt64Max: prPortableMetalInt64Max,
     }
   : gateMode === "nightly"
   ? {
@@ -968,6 +1342,9 @@ const activeGate = gateMode === "pr"
       runtimeFailPct: nightlyRuntimeFailPct,
       portableMetalArrayMax: nightlyPortableMetalArrayMax,
       portableMetalHotLoopInprocMax: nightlyPortableMetalHotLoopInprocMax,
+      portableMetalBytesMax: nightlyPortableMetalBytesMax,
+      portableMetalJsonMax: nightlyPortableMetalJsonMax,
+      portableMetalInt64Max: nightlyPortableMetalInt64Max,
     }
   : null;
 
@@ -1057,6 +1434,18 @@ if (!updateBaseline) {
       includeRuntime: true,
       runtimeProfiles: ["metal"],
     });
+    compareGroup("bytes_overhead", current.derived.bytesOverheadRatios, baselineDerived.bytesOverheadRatios, {
+      includeRuntime: true,
+      runtimeProfiles: ["metal"],
+    });
+    compareGroup("json_overhead", current.derived.jsonOverheadRatios, baselineDerived.jsonOverheadRatios, {
+      includeRuntime: true,
+      runtimeProfiles: ["metal"],
+    });
+    compareGroup("int64_overhead", current.derived.int64OverheadRatios, baselineDerived.int64OverheadRatios, {
+      includeRuntime: true,
+      runtimeProfiles: ["metal"],
+    });
     compareGroup("chat_relative", current.derived.chatRelativeToMin, baselineDerived.chatRelativeToMin, { includeRuntime: true });
 
     if (activeGate != null) {
@@ -1092,6 +1481,27 @@ if (!updateBaseline) {
         runtimePct: activeGate.runtimeFailPct,
         sink: hardFailures,
       });
+      compareGroup("bytes_overhead", current.derived.bytesOverheadRatios, baselineDerived.bytesOverheadRatios, {
+        includeRuntime: true,
+        runtimeProfiles: ["metal"],
+        sizePct: activeGate.sizeFailPct,
+        runtimePct: activeGate.runtimeFailPct,
+        sink: hardFailures,
+      });
+      compareGroup("json_overhead", current.derived.jsonOverheadRatios, baselineDerived.jsonOverheadRatios, {
+        includeRuntime: true,
+        runtimeProfiles: ["metal"],
+        sizePct: activeGate.sizeFailPct,
+        runtimePct: activeGate.runtimeFailPct,
+        sink: hardFailures,
+      });
+      compareGroup("int64_overhead", current.derived.int64OverheadRatios, baselineDerived.int64OverheadRatios, {
+        includeRuntime: true,
+        runtimeProfiles: ["metal"],
+        sizePct: activeGate.sizeFailPct,
+        runtimePct: activeGate.runtimeFailPct,
+        sink: hardFailures,
+      });
       compareGroup("chat_relative", current.derived.chatRelativeToMin, baselineDerived.chatRelativeToMin, {
         includeRuntime: true,
         sizePct: activeGate.sizeFailPct,
@@ -1110,6 +1520,18 @@ const convergenceChecks = {
   hotLoopInprocRuntimePortableVsMetal: {
     ratio: Number(current.derived.portableVsMetalConvergence.hotLoopInproc.runtimeRatio),
     max: portableMetalHotLoopInprocMax,
+  },
+  bytesRuntimePortableVsMetal: {
+    ratio: Number(current.derived.portableVsMetalConvergence.bytes.runtimeRatio),
+    max: portableMetalBytesMax,
+  },
+  jsonRuntimePortableVsMetal: {
+    ratio: Number(current.derived.portableVsMetalConvergence.json.runtimeRatio),
+    max: portableMetalJsonMax,
+  },
+  int64RuntimePortableVsMetal: {
+    ratio: Number(current.derived.portableVsMetalConvergence.int64.runtimeRatio),
+    max: portableMetalInt64Max,
   },
 };
 
@@ -1131,6 +1553,18 @@ const gateConvergenceChecks = activeGate == null ? {} : {
     ratio: Number(current.derived.portableVsMetalConvergence.hotLoopInproc.runtimeRatio),
     max: activeGate.portableMetalHotLoopInprocMax,
   },
+  bytesRuntimePortableVsMetal: {
+    ratio: Number(current.derived.portableVsMetalConvergence.bytes.runtimeRatio),
+    max: activeGate.portableMetalBytesMax,
+  },
+  jsonRuntimePortableVsMetal: {
+    ratio: Number(current.derived.portableVsMetalConvergence.json.runtimeRatio),
+    max: activeGate.portableMetalJsonMax,
+  },
+  int64RuntimePortableVsMetal: {
+    ratio: Number(current.derived.portableVsMetalConvergence.int64.runtimeRatio),
+    max: activeGate.portableMetalInt64Max,
+  },
 };
 
 for (const [key, check] of Object.entries(gateConvergenceChecks)) {
@@ -1149,6 +1583,9 @@ const gateThresholds = activeGate == null
       runtimeFailPct: activeGate.runtimeFailPct,
       portableMetalArrayMax: activeGate.portableMetalArrayMax,
       portableMetalHotLoopInprocMax: activeGate.portableMetalHotLoopInprocMax,
+      portableMetalBytesMax: activeGate.portableMetalBytesMax,
+      portableMetalJsonMax: activeGate.portableMetalJsonMax,
+      portableMetalInt64Max: activeGate.portableMetalInt64Max,
     };
 
 const comparison = {
@@ -1226,11 +1663,14 @@ if (gateThresholds != null) {
   );
   summaryLines.push(
     `- Gate portable/metal convergence caps: array<=${gateThresholds.portableMetalArrayMax.toFixed(3)}x, ` +
-      `hot_loop_inproc<=${gateThresholds.portableMetalHotLoopInprocMax.toFixed(3)}x`
+      `hot_loop_inproc<=${gateThresholds.portableMetalHotLoopInprocMax.toFixed(3)}x, ` +
+      `bytes<=${gateThresholds.portableMetalBytesMax.toFixed(3)}x, ` +
+      `json<=${gateThresholds.portableMetalJsonMax.toFixed(3)}x, ` +
+      `int64<=${gateThresholds.portableMetalInt64Max.toFixed(3)}x`
   );
 }
 summaryLines.push(
-  `- Runtime loops: hello=${helloIters}, array=${arrayIters}, hot_loop=${hotLoopIters}, hot_loop_inproc=${hotLoopInprocRuns}, hot_loop_no_hxrt=${hotLoopNoHxrtInprocRuns}, chat=${chatIters}`
+  `- Runtime loops: hello=${helloIters}, array=${arrayIters}, hot_loop=${hotLoopIters}, hot_loop_inproc=${hotLoopInprocRuns}, hot_loop_no_hxrt=${hotLoopNoHxrtInprocRuns}, bytes=${bytesInprocRuns}, json=${jsonInprocRuns}, int64=${int64InprocRuns}, chat=${chatIters}`
 );
 if (haxeVersion.length > 0 || rustcVersion.length > 0) {
   summaryLines.push(`- Toolchain: ${haxeVersion || "haxe:unknown"} | ${rustcVersion || "rustc:unknown"}`);
@@ -1241,6 +1681,9 @@ summaryLines.push(ratioTable("Array Overhead (x vs pure Rust array loop; startup
 summaryLines.push(ratioTable("Hot Loop Overhead (x vs pure Rust hot loop case; startup-weighted)", current.derived.hotLoopOverheadRatios));
 summaryLines.push(ratioTable("Hot Loop In-Process Overhead (x vs pure Rust hot loop in-process throughput)", current.derived.hotLoopInprocOverheadRatios));
 summaryLines.push(ratioTable("Hot Loop No-HXRT Overhead (x vs pure Rust in-process hot loop throughput; metal + rust_no_hxrt)", current.derived.hotLoopNoHxrtOverheadRatios));
+summaryLines.push(ratioTable("Bytes Overhead (x vs pure Rust bytes microbench throughput)", current.derived.bytesOverheadRatios));
+summaryLines.push(ratioTable("JSON Overhead (x vs pure Rust json microbench throughput)", current.derived.jsonOverheadRatios));
+summaryLines.push(ratioTable("Int64 Overhead (x vs pure Rust int64 microbench throughput)", current.derived.int64OverheadRatios));
 summaryLines.push(ratioTable("Chat Profile Spread (x vs fastest/smallest chat profile in this run; startup-weighted)", current.derived.chatRelativeToMin));
 
 summaryLines.push("### In-Process Runtime Stats (median/MAD)");
@@ -1249,6 +1692,15 @@ summaryLines.push(`- hot_loop_inproc metal: mean=${current.runtimeStats.hotLoopI
 summaryLines.push(`- hot_loop_inproc pure: mean=${current.runtimeStats.hotLoopInproc.pure.meanMs.toFixed(3)}ms, median=${current.runtimeStats.hotLoopInproc.pure.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.hotLoopInproc.pure.madMs.toFixed(3)}ms, n=${current.runtimeStats.hotLoopInproc.pure.iterations}`);
 summaryLines.push(`- hot_loop_no_hxrt metal: mean=${current.runtimeStats.hotLoopNoHxrt.metal.meanMs.toFixed(3)}ms, median=${current.runtimeStats.hotLoopNoHxrt.metal.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.hotLoopNoHxrt.metal.madMs.toFixed(3)}ms, n=${current.runtimeStats.hotLoopNoHxrt.metal.iterations}`);
 summaryLines.push(`- hot_loop_no_hxrt pure: mean=${current.runtimeStats.hotLoopNoHxrt.pure.meanMs.toFixed(3)}ms, median=${current.runtimeStats.hotLoopNoHxrt.pure.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.hotLoopNoHxrt.pure.madMs.toFixed(3)}ms, n=${current.runtimeStats.hotLoopNoHxrt.pure.iterations}`);
+summaryLines.push(`- bytes portable: mean=${current.runtimeStats.bytes.portable.meanMs.toFixed(3)}ms, median=${current.runtimeStats.bytes.portable.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.bytes.portable.madMs.toFixed(3)}ms, n=${current.runtimeStats.bytes.portable.iterations}`);
+summaryLines.push(`- bytes metal: mean=${current.runtimeStats.bytes.metal.meanMs.toFixed(3)}ms, median=${current.runtimeStats.bytes.metal.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.bytes.metal.madMs.toFixed(3)}ms, n=${current.runtimeStats.bytes.metal.iterations}`);
+summaryLines.push(`- bytes pure: mean=${current.runtimeStats.bytes.pure.meanMs.toFixed(3)}ms, median=${current.runtimeStats.bytes.pure.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.bytes.pure.madMs.toFixed(3)}ms, n=${current.runtimeStats.bytes.pure.iterations}`);
+summaryLines.push(`- json portable: mean=${current.runtimeStats.json.portable.meanMs.toFixed(3)}ms, median=${current.runtimeStats.json.portable.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.json.portable.madMs.toFixed(3)}ms, n=${current.runtimeStats.json.portable.iterations}`);
+summaryLines.push(`- json metal: mean=${current.runtimeStats.json.metal.meanMs.toFixed(3)}ms, median=${current.runtimeStats.json.metal.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.json.metal.madMs.toFixed(3)}ms, n=${current.runtimeStats.json.metal.iterations}`);
+summaryLines.push(`- json pure: mean=${current.runtimeStats.json.pure.meanMs.toFixed(3)}ms, median=${current.runtimeStats.json.pure.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.json.pure.madMs.toFixed(3)}ms, n=${current.runtimeStats.json.pure.iterations}`);
+summaryLines.push(`- int64 portable: mean=${current.runtimeStats.int64.portable.meanMs.toFixed(3)}ms, median=${current.runtimeStats.int64.portable.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.int64.portable.madMs.toFixed(3)}ms, n=${current.runtimeStats.int64.portable.iterations}`);
+summaryLines.push(`- int64 metal: mean=${current.runtimeStats.int64.metal.meanMs.toFixed(3)}ms, median=${current.runtimeStats.int64.metal.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.int64.metal.madMs.toFixed(3)}ms, n=${current.runtimeStats.int64.metal.iterations}`);
+summaryLines.push(`- int64 pure: mean=${current.runtimeStats.int64.pure.meanMs.toFixed(3)}ms, median=${current.runtimeStats.int64.pure.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.int64.pure.madMs.toFixed(3)}ms, n=${current.runtimeStats.int64.pure.iterations}`);
 summaryLines.push("");
 
 summaryLines.push("### Portable vs Metal Convergence");
@@ -1263,6 +1715,21 @@ summaryLines.push(
     `(target <= ${portableMetalHotLoopInprocMax.toFixed(3)}x, ` +
     `${convergenceChecks.hotLoopInprocRuntimePortableVsMetal.pass ? "target met" : "target not met"})`
 );
+summaryLines.push(
+  `- bytes runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.bytes.runtimeRatio)}x ` +
+    `(target <= ${portableMetalBytesMax.toFixed(3)}x, ` +
+    `${convergenceChecks.bytesRuntimePortableVsMetal.pass ? "target met" : "target not met"})`
+);
+summaryLines.push(
+  `- json runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.json.runtimeRatio)}x ` +
+    `(target <= ${portableMetalJsonMax.toFixed(3)}x, ` +
+    `${convergenceChecks.jsonRuntimePortableVsMetal.pass ? "target met" : "target not met"})`
+);
+summaryLines.push(
+  `- int64 runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.int64.runtimeRatio)}x ` +
+    `(target <= ${portableMetalInt64Max.toFixed(3)}x, ` +
+    `${convergenceChecks.int64RuntimePortableVsMetal.pass ? "target met" : "target not met"})`
+);
 if (activeGate != null) {
   summaryLines.push(
     `- [gate] array runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.array.runtimeRatio)}x ` +
@@ -1273,6 +1740,21 @@ if (activeGate != null) {
     `- [gate] hot_loop_inproc runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.hotLoopInproc.runtimeRatio)}x ` +
       `(target <= ${activeGate.portableMetalHotLoopInprocMax.toFixed(3)}x, ` +
       `${gateConvergenceChecks.hotLoopInprocRuntimePortableVsMetal?.pass ? "target met" : "target not met"})`
+  );
+  summaryLines.push(
+    `- [gate] bytes runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.bytes.runtimeRatio)}x ` +
+      `(target <= ${activeGate.portableMetalBytesMax.toFixed(3)}x, ` +
+      `${gateConvergenceChecks.bytesRuntimePortableVsMetal?.pass ? "target met" : "target not met"})`
+  );
+  summaryLines.push(
+    `- [gate] json runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.json.runtimeRatio)}x ` +
+      `(target <= ${activeGate.portableMetalJsonMax.toFixed(3)}x, ` +
+      `${gateConvergenceChecks.jsonRuntimePortableVsMetal?.pass ? "target met" : "target not met"})`
+  );
+  summaryLines.push(
+    `- [gate] int64 runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.int64.runtimeRatio)}x ` +
+      `(target <= ${activeGate.portableMetalInt64Max.toFixed(3)}x, ` +
+      `${gateConvergenceChecks.int64RuntimePortableVsMetal?.pass ? "target met" : "target not met"})`
   );
 }
 summaryLines.push("");

@@ -1,0 +1,12 @@
+formMethod=POST
+formType=application/x-www-form-urlencoded
+formBody=q=ok&page=1
+cookies=a=1|b=2
+missingWasNull=true
+formResponse=form-ok
+multipartMethod=POST
+multipartType=multipart/form-data; boundary=---------------------------reflaxe-rust-boundary
+multipartHasToken=true
+multipartHasFile=true
+multipartHasClosingBoundary=true
+multipartResponse=upload-ok

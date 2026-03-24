@@ -367,11 +367,11 @@ class Http extends haxe.http.HttpBase {
 			}
 			readHttpResponse(api, sock);
 			sock.close();
-		} catch (e:haxe.Exception) {
+		} catch (e:Dynamic) {
 			try
 				sock.close()
-			catch (_:haxe.Exception) {};
-			onError("" + e);
+			catch (_:Dynamic) {};
+			onError(Std.string(e));
 		}
 	}
 

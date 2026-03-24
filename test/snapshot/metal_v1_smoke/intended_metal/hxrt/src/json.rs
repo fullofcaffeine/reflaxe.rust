@@ -4,7 +4,10 @@ use crate::cell::{HxDynRef, HxRef};
 use crate::dynamic::{DynObject, Dynamic};
 use crate::exception;
 use crate::string::HxString;
+use serde::de::{Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
+use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
 use serde_json::Value;
+use std::fmt;
 
 fn throw_json(msg: String) -> ! {
     exception::throw(Dynamic::from(msg))
@@ -40,6 +43,322 @@ fn dynamic_json_string(v: &Dynamic) -> Option<String> {
 
 fn replacer_key_dynamic(key: &str) -> Dynamic {
     Dynamic::from(HxString::from(key.to_string()))
+}
+
+/// `DynamicJson` serializes runtime `Dynamic` values directly into JSON.
+///
+/// Why
+/// - The original JSON stringify path rebuilt a full `serde_json::Value` tree before encoding it.
+/// - That was semantically correct, but it paid for two layers of work on the hot path:
+///   1) walking Haxe runtime shapes into `Value`
+///   2) walking the `Value` tree again into bytes
+/// - The JSON perf benchmark spends most of its time in exactly that boundary.
+///
+/// What
+/// - A small `serde::Serialize` adapter over `&Dynamic`.
+/// - Used only for plain stringify paths so we can write JSON bytes directly from runtime shapes.
+///
+/// How
+/// - Preserves the same public JSON contract as `dynamic_to_json_value`.
+/// - Keeps all boundary-specific semantics:
+///   - `HxString(null)` => JSON `null`
+///   - non-finite floats => JSON `null`
+///   - objects/arrays stay reflection-compatible runtime shapes
+///   - unknown values still fall back to `to_haxe_string()` as a JSON string
+/// - Object serialization clones only key/value handles needed per field instead of materializing
+///   an entire `serde_json::Value` subtree first.
+struct DynamicJson<'a>(&'a Dynamic);
+
+impl Serialize for DynamicJson<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let value = self.0;
+
+        if value.is_null() {
+            return serializer.serialize_unit();
+        }
+
+        if let Some(inner) = value.downcast_ref::<Dynamic>() {
+            return DynamicJson(inner).serialize(serializer);
+        }
+
+        if let Some(v) = value.downcast_ref::<HxString>() {
+            return match v.as_deref() {
+                Some(s) => serializer.serialize_str(s),
+                None => serializer.serialize_unit(),
+            };
+        }
+        if let Some(v) = value.downcast_ref::<String>() {
+            return serializer.serialize_str(v);
+        }
+        if let Some(v) = value.downcast_ref::<i32>() {
+            return serializer.serialize_i32(*v);
+        }
+        if let Some(v) = value.downcast_ref::<f64>() {
+            return if v.is_finite() {
+                serializer.serialize_f64(*v)
+            } else {
+                serializer.serialize_unit()
+            };
+        }
+        if let Some(v) = value.downcast_ref::<bool>() {
+            return serializer.serialize_bool(*v);
+        }
+
+        if let Some(v) = value.downcast_ref::<Option<i32>>() {
+            return match v {
+                Some(x) => serializer.serialize_i32(*x),
+                None => serializer.serialize_unit(),
+            };
+        }
+        if let Some(v) = value.downcast_ref::<Option<f64>>() {
+            return match v {
+                Some(x) if x.is_finite() => serializer.serialize_f64(*x),
+                Some(_) | None => serializer.serialize_unit(),
+            };
+        }
+        if let Some(v) = value.downcast_ref::<Option<bool>>() {
+            return match v {
+                Some(x) => serializer.serialize_bool(*x),
+                None => serializer.serialize_unit(),
+            };
+        }
+        if let Some(v) = value.downcast_ref::<Option<String>>() {
+            return match v {
+                Some(x) => serializer.serialize_str(x),
+                None => serializer.serialize_unit(),
+            };
+        }
+        if let Some(v) = value.downcast_ref::<Option<HxString>>() {
+            return match v {
+                Some(x) => match x.as_deref() {
+                    Some(s) => serializer.serialize_str(s),
+                    None => serializer.serialize_unit(),
+                },
+                None => serializer.serialize_unit(),
+            };
+        }
+
+        if let Some(obj) = value.downcast_ref::<HxRef<DynObject>>() {
+            let mut map = serializer.serialize_map(Some(crate::dynamic::dyn_object_len(obj)))?;
+            crate::dynamic::dyn_object_try_for_each_entry(obj, |key, field_value| {
+                map.serialize_entry(key, &DynamicJson(field_value))
+            })?;
+            return map.end();
+        }
+        if let Some(obj) = value.downcast_ref::<HxRef<Anon>>() {
+            let mut map = serializer.serialize_map(Some(crate::anon::anon_len(obj)))?;
+            crate::anon::anon_try_for_each_entry(obj, |key, field_value| {
+                map.serialize_entry(key, &DynamicJson(field_value))
+            })?;
+            return map.end();
+        }
+
+        if let Some(arr) = value.downcast_ref::<Array<Dynamic>>() {
+            let mut seq = serializer.serialize_seq(Some(arr.len()))?;
+            for item in arr.iter_borrowed() {
+                seq.serialize_element(&DynamicJson(&item))?;
+            }
+            return seq.end();
+        }
+        if let Some(arr) = value.downcast_ref::<Array<i32>>() {
+            let mut seq = serializer.serialize_seq(Some(arr.len()))?;
+            for item in arr.iter_borrowed() {
+                seq.serialize_element(&item)?;
+            }
+            return seq.end();
+        }
+        if let Some(arr) = value.downcast_ref::<Array<f64>>() {
+            let mut seq = serializer.serialize_seq(Some(arr.len()))?;
+            for item in arr.iter_borrowed() {
+                if item.is_finite() {
+                    seq.serialize_element(&item)?;
+                } else {
+                    seq.serialize_element(&())?;
+                }
+            }
+            return seq.end();
+        }
+        if let Some(arr) = value.downcast_ref::<Array<bool>>() {
+            let mut seq = serializer.serialize_seq(Some(arr.len()))?;
+            for item in arr.iter_borrowed() {
+                seq.serialize_element(&item)?;
+            }
+            return seq.end();
+        }
+        if let Some(arr) = value.downcast_ref::<Array<String>>() {
+            let mut seq = serializer.serialize_seq(Some(arr.len()))?;
+            for item in arr.iter_borrowed() {
+                seq.serialize_element(&item)?;
+            }
+            return seq.end();
+        }
+        if let Some(arr) = value.downcast_ref::<Array<HxString>>() {
+            let mut seq = serializer.serialize_seq(Some(arr.len()))?;
+            for item in arr.iter_borrowed() {
+                match item.as_deref() {
+                    Some(s) => seq.serialize_element(s)?,
+                    None => seq.serialize_element(&())?,
+                }
+            }
+            return seq.end();
+        }
+        if let Some(arr) = value.downcast_ref::<Array<HxRef<Anon>>>() {
+            let mut seq = serializer.serialize_seq(Some(arr.len()))?;
+            for item in arr.iter_borrowed() {
+                let item_dynamic = Dynamic::from(item);
+                seq.serialize_element(&DynamicJson(&item_dynamic))?;
+            }
+            return seq.end();
+        }
+        if let Some(arr) = value.downcast_ref::<Array<HxRef<DynObject>>>() {
+            let mut seq = serializer.serialize_seq(Some(arr.len()))?;
+            for item in arr.iter_borrowed() {
+                let item_dynamic = Dynamic::from(item);
+                seq.serialize_element(&DynamicJson(&item_dynamic))?;
+            }
+            return seq.end();
+        }
+
+        serializer.serialize_str(&value.to_haxe_string())
+    }
+}
+
+/// `ParsedDynamic` deserializes JSON directly into runtime `Dynamic` shapes.
+///
+/// Why
+/// - The old parse path went through `serde_json::Value` first, then rebuilt that tree into
+///   `Dynamic` / `DynObject` / `Array<Dynamic>`.
+/// - That was a clean bootstrap path, but it doubled the tree-building work on the JSON hot path.
+///
+/// What
+/// - A local deserialization adapter used only by `hxrt::json::parse`.
+/// - Produces the same runtime shapes as `json_value_to_dynamic`.
+///
+/// How
+/// - Numbers still follow the same Haxe-target coercion contract:
+///   `i32` when integral and in range, otherwise `f64`.
+/// - Objects still become `HxRef<DynObject>`.
+/// - Arrays still become `Array<Dynamic>`.
+/// - The implementation stays local to `hxrt::json` so it does not silently redefine
+///   `Dynamic` deserialization semantics elsewhere in the runtime.
+struct ParsedDynamic(Dynamic);
+
+struct ParsedDynamicVisitor;
+
+impl ParsedDynamicVisitor {
+    fn number_from_i64(value: i64) -> Dynamic {
+        if value >= i32::MIN as i64 && value <= i32::MAX as i64 {
+            Dynamic::from(value as i32)
+        } else {
+            Dynamic::from(value as f64)
+        }
+    }
+
+    fn number_from_u64(value: u64) -> Dynamic {
+        if value <= i32::MAX as u64 {
+            Dynamic::from(value as i32)
+        } else {
+            Dynamic::from(value as f64)
+        }
+    }
+}
+
+impl<'de> Visitor<'de> for ParsedDynamicVisitor {
+    type Value = ParsedDynamic;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("a JSON value compatible with hxrt::json runtime shapes")
+    }
+
+    fn visit_unit<E>(self) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ParsedDynamic(Dynamic::null()))
+    }
+
+    fn visit_none<E>(self) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ParsedDynamic(Dynamic::null()))
+    }
+
+    fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ParsedDynamic(Dynamic::from(value)))
+    }
+
+    fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ParsedDynamic(Self::number_from_i64(value)))
+    }
+
+    fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ParsedDynamic(Self::number_from_u64(value)))
+    }
+
+    fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ParsedDynamic(Dynamic::from(value)))
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ParsedDynamic(Dynamic::from(value.to_string())))
+    }
+
+    fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ParsedDynamic(Dynamic::from(value)))
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let out = Array::<Dynamic>::new();
+        while let Some(item) = seq.next_element::<ParsedDynamic>()? {
+            out.push(item.0);
+        }
+        Ok(ParsedDynamic(Dynamic::from(out)))
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let out = crate::dynamic::dyn_object_new();
+        while let Some((key, value)) = map.next_entry::<String, ParsedDynamic>()? {
+            crate::dynamic::dyn_object_set(&out, key.as_str(), value.0);
+        }
+        Ok(ParsedDynamic(Dynamic::from(out)))
+    }
+}
+
+impl<'de> Deserialize<'de> for ParsedDynamic {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(ParsedDynamicVisitor)
+    }
 }
 
 fn json_value_to_dynamic(v: Value) -> Dynamic {
@@ -301,31 +620,36 @@ fn apply_json_replacer(
 /// - numbers => `i32` when integral and in range, otherwise `f64`
 /// - invalid JSON => throws a catchable Haxe exception payload (`String`)
 pub fn parse(text: &str) -> Dynamic {
-    match serde_json::from_str::<Value>(text) {
-        Ok(v) => json_value_to_dynamic(v),
+    match serde_json::from_str::<ParsedDynamic>(text) {
+        Ok(v) => v.0,
         Err(e) => throw_json(format!("Invalid JSON: {e}")),
     }
 }
 
-/// Encode a Haxe `Dynamic` value as JSON.
-///
-/// `space` enables pretty printing (indent string per nesting level).
-pub fn stringify(value: Dynamic, space: &HxString) -> String {
-    let v = dynamic_to_json_value(&value);
-
-    if let Some(indent) = space.as_deref() {
-        use serde::Serialize;
+fn stringify_with_space(value: Dynamic, space: Option<&str>) -> String {
+    if let Some(indent) = space {
         use serde_json::ser::{PrettyFormatter, Serializer};
-        use serde_json::value::Value as SerValue;
 
         let mut buf: Vec<u8> = vec![];
         let formatter = PrettyFormatter::with_indent(indent.as_bytes());
         let mut ser = Serializer::with_formatter(&mut buf, formatter);
-        SerValue::serialize(&v, &mut ser).unwrap_or_else(|e| throw_json(e.to_string()));
+        DynamicJson(&value)
+            .serialize(&mut ser)
+            .unwrap_or_else(|e| throw_json(e.to_string()));
         return String::from_utf8(buf).unwrap_or_else(|e| throw_json(e.to_string()));
     }
 
-    serde_json::to_string(&v).unwrap_or_else(|e| throw_json(e.to_string()))
+    serde_json::to_string(&DynamicJson(&value)).unwrap_or_else(|e| throw_json(e.to_string()))
+}
+
+/// Encode a Haxe `Dynamic` value as compact JSON.
+pub fn stringify(value: Dynamic) -> String {
+    stringify_with_space(value, None)
+}
+
+/// Encode a Haxe `Dynamic` value as pretty-printed JSON using the provided indent string.
+pub fn stringify_pretty<S: AsRef<str>>(value: Dynamic, space: S) -> String {
+    stringify_with_space(value, Some(space.as_ref()))
 }
 
 /// Encode a Haxe `Dynamic` value as JSON after applying a Haxe-style replacer callback.
@@ -339,11 +663,21 @@ pub fn stringify(value: Dynamic, space: &HxString) -> String {
 pub fn stringify_with_replacer(
     value: Dynamic,
     replacer: HxDynRef<dyn Fn(Dynamic, Dynamic) -> Dynamic + Send + Sync>,
-    space: &HxString,
 ) -> String {
     let normalized = json_value_to_dynamic(dynamic_to_json_value(&value));
     let replaced = apply_json_replacer("", normalized, &*replacer);
-    stringify(replaced, space)
+    stringify(replaced)
+}
+
+/// Encode a Haxe `Dynamic` value as pretty-printed JSON after applying a Haxe-style replacer callback.
+pub fn stringify_with_replacer_pretty<S: AsRef<str>>(
+    value: Dynamic,
+    replacer: HxDynRef<dyn Fn(Dynamic, Dynamic) -> Dynamic + Send + Sync>,
+    space: S,
+) -> String {
+    let normalized = json_value_to_dynamic(dynamic_to_json_value(&value));
+    let replaced = apply_json_replacer("", normalized, &*replacer);
+    stringify_pretty(replaced, space)
 }
 
 /// Return a stable runtime kind tag for JSON-backed dynamic values.
@@ -442,4 +776,47 @@ where
         throw_json(String::from("Expected JSON object"));
     };
     crate::dynamic::dyn_object_get(obj, key.as_ref())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{parse, stringify};
+    use crate::anon::Anon;
+    use crate::array::Array;
+    use crate::cell::HxRef;
+    use crate::dynamic::Dynamic;
+    use crate::string::HxString;
+
+    #[test]
+    fn stringify_serializes_anon_payloads_directly() {
+        let flags = Array::<Dynamic>::new();
+        flags.push(Dynamic::from(true));
+        flags.push(Dynamic::from(false));
+
+        let nested = HxRef::new(Anon::new());
+        crate::anon::anon_set(&nested, "count", Dynamic::from(3));
+
+        let payload = HxRef::new(Anon::new());
+        crate::anon::anon_set(&payload, "flags", Dynamic::from(flags));
+        crate::anon::anon_set(&payload, "id", Dynamic::from(7));
+        crate::anon::anon_set(
+            &payload,
+            "label",
+            Dynamic::from(HxString::from(String::from("json-7"))),
+        );
+        crate::anon::anon_set(&payload, "nested", Dynamic::from(nested));
+
+        let json = stringify(Dynamic::from(payload));
+        assert_eq!(
+            json,
+            r#"{"flags":[true,false],"id":7,"label":"json-7","nested":{"count":3}}"#
+        );
+    }
+
+    #[test]
+    fn stringify_round_trips_parsed_dyn_objects() {
+        let json = r#"{"flags":[true,false],"id":7,"label":"json-7","nested":{"count":3}}"#;
+        let parsed = parse(json);
+        assert_eq!(stringify(parsed), json);
+    }
 }

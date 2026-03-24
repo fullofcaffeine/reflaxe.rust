@@ -1,6 +1,25 @@
 #!/usr/bin/env node
 /**
- * Sync internal-tracker-backed status blocks in docs.
+ * Sync tracker-backed status blocks in docs.
+ *
+ * Why:
+ *   The public docs must reflect the real roadmap state, not a hand-maintained
+ *   summary that drifts. The previous implementation treated the umbrella
+ *   roadmap epic as the "foundation complete" signal, which guaranteed a false
+ *   `open` status forever and let status docs contradict the actual milestone
+ *   baseline.
+ *
+ * What:
+ *   This script derives three reviewable signals:
+ *   - closed implementation baseline under the roadmap epic,
+ *   - real-app harness status,
+ *   - the current release-hardening milestone and its child-task checklist.
+ *
+ * How:
+ *   Prefer `bd show --json` when available so in-session tracker state is used.
+ *   Fall back to `.beads/issues.jsonl` when `bd` is unavailable. In both modes,
+ *   the script resolves parent/child relationships so the generated docs track
+ *   milestone reality instead of umbrella-epic liveness.
  *
  * Usage:
  *   npm run docs:sync:progress
@@ -11,9 +30,9 @@ const path = require('path')
 const { execFileSync } = require('child_process')
 
 const ISSUE_IDS = {
-  foundation: 'haxe.rust-oo3',
+  roadmap: 'haxe.rust-oo3',
   harness: 'haxe.rust-cu0',
-  releaseGate: 'haxe.rust-4jb'
+  historicalReleaseGate: 'haxe.rust-4jb'
 }
 
 const PROGRESS_DOC = 'docs/progress-tracker.md'
@@ -105,13 +124,7 @@ function loadIssuesByIdFromJsonl() {
   return issuesById
 }
 
-function runIssueShowFromJsonl(issueId) {
-  const issuesById = loadIssuesByIdFromJsonl()
-  const issue = issuesById.get(issueId)
-  if (!issue) {
-    throw new Error(`Tracker issue not found in ${BEADS_ISSUES_JSONL}: ${issueId}`)
-  }
-
+function buildExpandedIssueFromJsonl(issue, issuesById) {
   const dependencies = Array.isArray(issue.dependencies) ? issue.dependencies : []
   const expandedDependencies = dependencies.map((dep) => {
     const dependsOnId =
@@ -124,23 +137,58 @@ function runIssueShowFromJsonl(issueId) {
       id: dependsOnId,
       title: relatedIssue && relatedIssue.title ? relatedIssue.title : dependsOnId || 'unknown',
       status: relatedIssue && relatedIssue.status ? relatedIssue.status : 'unknown',
+      issue_type: relatedIssue && relatedIssue.issue_type ? relatedIssue.issue_type : 'unknown',
+      created_at: relatedIssue && relatedIssue.created_at ? relatedIssue.created_at : '',
+      labels: relatedIssue && Array.isArray(relatedIssue.labels) ? relatedIssue.labels : [],
       dependency_type: dep.type || 'unknown'
     }
   })
 
+  const dependents = []
+  for (const candidate of issuesById.values()) {
+    const candidateDependencies = Array.isArray(candidate.dependencies) ? candidate.dependencies : []
+    for (const dep of candidateDependencies) {
+      if (dep.depends_on_id === issue.id) {
+        dependents.push({
+          id: candidate.id,
+          title: candidate.title,
+          status: candidate.status || 'unknown',
+          issue_type: candidate.issue_type || 'unknown',
+          created_at: candidate.created_at || '',
+          labels: Array.isArray(candidate.labels) ? candidate.labels : [],
+          dependency_type: dep.type || 'unknown'
+        })
+      }
+    }
+  }
+
+  const parentDependency = expandedDependencies.find((dep) => dep.dependency_type === 'parent-child')
+
   return {
     ...issue,
-    dependencies: expandedDependencies
+    dependencies: expandedDependencies,
+    dependents,
+    parent: parentDependency ? parentDependency.id : null
   }
+}
+
+function runIssueShowFromJsonl(issueId) {
+  const issuesById = loadIssuesByIdFromJsonl()
+  const issue = issuesById.get(issueId)
+  if (!issue) {
+    throw new Error(`Tracker issue not found in ${BEADS_ISSUES_JSONL}: ${issueId}`)
+  }
+
+  return buildExpandedIssueFromJsonl(issue, issuesById)
 }
 
 function resolveIssueReader() {
   try {
-    const foundationIssue = runIssueShowFromBd(ISSUE_IDS.foundation)
+    const roadmapIssue = runIssueShowFromBd(ISSUE_IDS.roadmap)
     return {
       reader: runIssueShowFromBd,
       sourceLabel: 'bd',
-      foundationIssue
+      roadmapIssue
     }
   } catch (error) {
     const details = error && error.message ? error.message : String(error)
@@ -207,41 +255,157 @@ function statusLabel(status) {
   }
 }
 
+function hasLabel(issue, label) {
+  return Array.isArray(issue.labels) && issue.labels.includes(label)
+}
+
+function summarizeIssues(issues) {
+  const counts = {
+    total: issues.length,
+    closed: 0,
+    in_progress: 0,
+    open: 0,
+    blocked: 0,
+    deferred: 0,
+    other: 0
+  }
+
+  for (const issue of issues) {
+    const status = issue.status || 'other'
+    if (Object.prototype.hasOwnProperty.call(counts, status)) {
+      counts[status] += 1
+    } else {
+      counts.other += 1
+    }
+  }
+
+  const remaining = issues
+    .filter((issue) => issue.status !== 'closed')
+    .map((issue) => ({
+      title: issue.title,
+      status: issue.status || 'unknown'
+    }))
+
+  return {
+    counts,
+    remaining
+  }
+}
+
+function summarizeChildIssues(issue) {
+  const dependents = Array.isArray(issue.dependents) ? issue.dependents : []
+  const children = dependents.filter((dep) => dep.dependency_type === 'parent-child')
+  return summarizeIssues(children)
+}
+
+function summarizeProgressIssue(issue) {
+  const childSummary = summarizeChildIssues(issue)
+  if (childSummary.counts.total > 0) {
+    return childSummary
+  }
+
+  return summarizeDependencies(issue)
+}
+
+function milestoneChildren(roadmapIssue) {
+  const dependents = Array.isArray(roadmapIssue.dependents) ? roadmapIssue.dependents : []
+  return dependents.filter(
+    (dep) => dep.dependency_type === 'parent-child' && typeof dep.title === 'string' && dep.title.startsWith('Milestone ')
+  )
+}
+
+function currentReleaseHardeningMilestone(roadmapIssue) {
+  const milestones = milestoneChildren(roadmapIssue)
+  const hardening = milestones
+    .filter((issue) => hasLabel(issue, 'release-hardening'))
+    .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')))
+
+  if (hardening.length === 0) {
+    return null
+  }
+
+  const openOrActive = hardening.find((issue) => issue.status !== 'closed')
+  return openOrActive || hardening[hardening.length - 1]
+}
+
+function isReviewOnlyMilestone(issue) {
+  return hasLabel(issue, 'release-hardening') || hasLabel(issue, 'ga-review')
+}
+
+function buildFoundationBaseline(roadmapIssue, activeHardening) {
+  const milestones = milestoneChildren(roadmapIssue)
+  const baselineMilestones = milestones.filter((issue) => {
+    if (activeHardening && issue.id === activeHardening.id) {
+      return false
+    }
+
+    return !isReviewOnlyMilestone(issue)
+  })
+  const summary = summarizeIssues(baselineMilestones)
+
+  return {
+    title: 'Core compiler/runtime baseline',
+    status: summary.remaining.length === 0 ? 'closed' : 'in_progress',
+    summary
+  }
+}
+
 function toPercent(value, total) {
   if (total <= 0) return 'n/a'
   return `${Math.round((value / total) * 100)}%`
 }
 
+function hardeningWorkstreamMeaning(status) {
+  if (status === 'closed') {
+    return 'Status docs, semantic-confidence evidence, and readiness claims have been hardened against the current proof depth.'
+  }
+  return 'Status docs, semantic-confidence evidence, and readiness claims are being hardened before stronger public release language is used.'
+}
+
+function hardeningVisionTitle(status) {
+  if (status === 'closed') {
+    return 'Release-evidence hardening closed'
+  }
+  return 'Release-evidence hardening active'
+}
+
+function hardeningVisionMeaning(status) {
+  if (status === 'closed') {
+    return 'Public readiness claims, semantic proof depth, and tracker truth were aligned in the latest hardening tranche.'
+  }
+  return 'Public readiness claims, semantic proof depth, and tracker truth are being aligned.'
+}
+
 function buildProgressBlock(data) {
-  const { foundation, harness, releaseGate, depSummary } = data
+  const { foundation, harness, hardening, hardeningSummary } = data
   const lines = []
 
   lines.push(
-    '_Status snapshot generated from the internal release tracker via `npm run docs:sync:progress`._'
+    '_Status snapshot generated from the internal tracker via `npm run docs:sync:progress`._'
   )
   lines.push('')
   lines.push('| Workstream | What this means | Status |')
   lines.push('| --- | --- | --- |')
   lines.push(
-    `| Core compiler/runtime foundation | Core language lowering, runtime primitives, and toolchain flow are in place. | ${statusLabel(foundation.status)} |`
+    `| ${foundation.title} | Core language lowering, runtime primitives, and the validated milestone baseline are in place. | ${statusLabel(foundation.status)} |`
   )
   lines.push(
     `| Real-application stress harness | Non-trivial app coverage validates behavior under realistic usage. | ${statusLabel(harness.status)} |`
   )
   lines.push(
-    `| Production release gate | Final parity + docs + CI evidence checklist is complete. | ${statusLabel(releaseGate.status)} |`
+    `| Release-evidence hardening | ${hardeningWorkstreamMeaning(hardening.status)} | ${statusLabel(hardening.status)} |`
   )
   lines.push('')
   lines.push(
-    `- Release-gate checklist completion: **${depSummary.counts.closed} / ${depSummary.counts.total} closed (${toPercent(depSummary.counts.closed, depSummary.counts.total)})**`
+    `- Hardening checklist completion: **${hardeningSummary.counts.closed} / ${hardeningSummary.counts.total} closed (${toPercent(hardeningSummary.counts.closed, hardeningSummary.counts.total)})**`
   )
-  lines.push(`- Remaining release-gate checks: **${depSummary.remaining.length}**`)
+  lines.push(`- Remaining hardening checks: **${hardeningSummary.remaining.length}**`)
 
-  if (depSummary.remaining.length > 0) {
+  if (hardeningSummary.remaining.length > 0) {
     lines.push('')
     lines.push('| Outstanding check | Status |')
     lines.push('| --- | --- |')
-    for (const dep of depSummary.remaining) {
+    for (const dep of hardeningSummary.remaining) {
       lines.push(`| ${dep.title} | ${statusLabel(dep.status)} |`)
     }
   }
@@ -250,29 +414,29 @@ function buildProgressBlock(data) {
 }
 
 function buildVisionBlock(data) {
-  const { foundation, harness, releaseGate, depSummary } = data
+  const { foundation, harness, hardening, hardeningSummary } = data
   const lines = []
 
   lines.push(
-    '_Status snapshot generated from the internal release tracker via `npm run docs:sync:progress`._'
+    '_Status snapshot generated from the internal tracker via `npm run docs:sync:progress`._'
   )
   lines.push('')
   lines.push('| Vision checkpoint | What this means | Status |')
   lines.push('| --- | --- | --- |')
   lines.push(
-    `| Foundation complete | Core compiler/runtime architecture is stable. | ${statusLabel(foundation.status)} |`
+    `| Baseline milestones complete | Core compiler/runtime architecture is stable across the closed milestone baseline. | ${statusLabel(foundation.status)} |`
   )
   lines.push(
     `| Real-app harness complete | App-scale behavior is validated in CI-style flows. | ${statusLabel(harness.status)} |`
   )
   lines.push(
-    `| 1.0 parity gate complete | Final production-readiness criteria are met. | ${statusLabel(releaseGate.status)} |`
+    `| ${hardeningVisionTitle(hardening.status)} | ${hardeningVisionMeaning(hardening.status)} | ${statusLabel(hardening.status)} |`
   )
   lines.push('')
   lines.push(
-    `- 1.0 parity checks closed: **${depSummary.counts.closed} / ${depSummary.counts.total} (${toPercent(depSummary.counts.closed, depSummary.counts.total)})**`
+    `- Release-evidence hardening checks closed: **${hardeningSummary.counts.closed} / ${hardeningSummary.counts.total} (${toPercent(hardeningSummary.counts.closed, hardeningSummary.counts.total)})**`
   )
-  lines.push(`- 1.0 parity checks still open: **${depSummary.remaining.length}**`)
+  lines.push(`- Release-evidence hardening checks still open: **${hardeningSummary.remaining.length}**`)
 
   return lines.join('\n')
 }
@@ -300,16 +464,20 @@ function replaceGeneratedSection(filePath, startMarker, endMarker, replacement) 
 
 function main() {
   const issueReader = resolveIssueReader()
-  const foundation = issueReader.foundationIssue || issueReader.reader(ISSUE_IDS.foundation)
+  const roadmap = issueReader.roadmapIssue || issueReader.reader(ISSUE_IDS.roadmap)
   const harness = issueReader.reader(ISSUE_IDS.harness)
-  const releaseGate = issueReader.reader(ISSUE_IDS.releaseGate)
-  const depSummary = summarizeDependencies(releaseGate)
+  const hardeningStub = currentReleaseHardeningMilestone(roadmap)
+  const hardening = hardeningStub
+    ? issueReader.reader(hardeningStub.id)
+    : issueReader.reader(ISSUE_IDS.historicalReleaseGate)
+  const foundation = buildFoundationBaseline(roadmap, hardeningStub)
+  const hardeningSummary = summarizeProgressIssue(hardening)
 
   const data = {
     foundation,
     harness,
-    releaseGate,
-    depSummary
+    hardening,
+    hardeningSummary
   }
 
   replaceGeneratedSection(

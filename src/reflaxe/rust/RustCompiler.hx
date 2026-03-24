@@ -2568,7 +2568,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			if (mainFunc != null && hasAsyncFunctionMeta(mainFunc.field.meta)) {
 				ensureAsyncAllowed(mainFunc.field.pos);
 				#if eval
-				Context.error("`main` cannot be marked async in preview mode. Keep `main` sync and call `rust.async.Async.blockOn(...)` at the boundary.",
+				Context.error("`main` must stay synchronous for the Rust async contract. Move async work into a helper returning `rust.async.Future<T>` and call `rust.async.Async.blockOn(...)` from sync `main`.",
 					mainFunc.field.pos);
 				#end
 			}
@@ -2781,7 +2781,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function isUserProjectFile(file:String):Bool {
 		var cwd = normalizePath(Sys.getCwd());
 		var full = resolvePosFileToAbsolute(file, cwd);
-		return StringTools.startsWith(full, ensureTrailingSlash(cwd));
+		return StringTools.startsWith(full, ensureTrailingSlash(cwd)) && !isFrameworkOwnedFile(full);
 	}
 
 	function isFrameworkStdFile(file:String):Bool {
@@ -2797,6 +2797,40 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				if (StringTools.startsWith(full, r))
 					return true;
 			}
+		}
+
+		return false;
+	}
+
+	/**
+		Returns whether an absolute path belongs to framework-owned source in this backend checkout.
+
+		Why
+		- When compiling examples/tests from the repository root, framework code also lives under
+		  the current working directory.
+		- Policy checks that are supposed to report user-authored behavior (for example portable
+		  native imports) must not treat backend internals under `src/`, `std/`, or `runtime/hxrt/`
+		  as application code.
+
+		How
+		- Reuses framework std detection for flattened/local std overrides.
+		- Separately checks `src/` for compiler/framework implementation files and `runtime/hxrt/`
+		  for bundled runtime sources.
+	**/
+	function isFrameworkOwnedFile(full:String):Bool {
+		if (isUnderFrameworkStdRoot(full))
+			return true;
+
+		if (frameworkSrcDir != null) {
+			var srcRoot = ensureTrailingSlash(normalizePath(frameworkSrcDir));
+			if (StringTools.startsWith(full, srcRoot))
+				return true;
+		}
+
+		if (frameworkRuntimeDir != null) {
+			var runtimeRoot = ensureTrailingSlash(normalizePath(frameworkRuntimeDir));
+			if (StringTools.startsWith(full, runtimeRoot))
+				return true;
 		}
 
 		return false;
@@ -4875,11 +4909,17 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function compileInstanceMethod(classType:ClassType, f:ClassFuncData, methodOwner:ClassType):reflaxe.rust.ast.RustAST.RustFunction {
-		if (hasAsyncFunctionMeta(f.field.meta)) {
+		var isAsyncMethod = hasAsyncFunctionMeta(f.field.meta);
+		var asyncInnerRet:Null<Type> = null;
+		if (isAsyncMethod) {
 			ensureAsyncAllowed(f.field.pos);
-			#if eval
-			Context.error("`@:async`/`@:rustAsync` is currently supported only on static methods.", f.field.pos);
-			#end
+			asyncInnerRet = rustFutureInnerType(f.ret);
+			if (asyncInnerRet == null) {
+				#if eval
+				Context.error("`@:async`/`@:rustAsync` instance methods must return `rust.async.Future<T>` (got `" + TypeTools.toString(f.ret) + "`).",
+					f.field.pos);
+				#end
+			}
 		}
 		var args:Array<reflaxe.rust.ast.RustAST.RustFnArg> = [];
 		var generics = rustGenericParamsFromFieldMeta(f.field.meta, [for (p in f.field.params) p.name]);
@@ -4893,7 +4933,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		currentMethodOwnerType = methodOwner;
 		var prevField = currentMethodField;
 		currentMethodField = f.field;
-		withFunctionContext(f.expr, [for (a in f.args) a.getName()], f.ret, () -> {
+		withFunctionContext(f.expr, [for (a in f.args) a.getName()], isAsyncMethod ? asyncInnerRet : f.ret, () -> {
 			var prevThisIdent = currentThisIdent;
 			if (selfName == "self_")
 				currentThisIdent = "__hx_this";
@@ -4903,14 +4943,28 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					ty: toRustType(a.type, f.field.pos)
 				});
 			}
-			body = compileFunctionBody(f.expr, f.ret, true);
-			if (selfName == "self_") {
-				var modName = rustModuleNameForClass(classType);
-				var thisTy = RPath("crate::HxRef<crate::" + modName + "::" + rustClassTypeInst(classType) + ">");
-				body.stmts.unshift(RLet("__hx_this", false, thisTy, ECall(EField(EPath(selfName), "self_ref"), [])));
+			if (isAsyncMethod) {
+				var innerBody = compileFunctionBody(f.expr, asyncInnerRet, true);
+				var prefix:Array<RustStmt> = [];
+				if (selfName == "self_") {
+					var modName = rustModuleNameForClass(classType);
+					var thisTy = RPath("crate::HxRef<crate::" + modName + "::" + rustClassTypeInst(classType) + ">");
+					prefix.push(RLet("__hx_this", false, thisTy, ECall(EField(EPath(selfName), "self_ref"), [])));
+				}
+				body = {
+					stmts: prefix.concat([RReturn(EPinAsyncMove(innerBody))]),
+					tail: null
+				};
+			} else {
+				body = compileFunctionBody(f.expr, f.ret, true);
+				if (selfName == "self_") {
+					var modName = rustModuleNameForClass(classType);
+					var thisTy = RPath("crate::HxRef<crate::" + modName + "::" + rustClassTypeInst(classType) + ">");
+					body.stmts.unshift(RLet("__hx_this", false, thisTy, ECall(EField(EPath(selfName), "self_ref"), [])));
+				}
 			}
 			currentThisIdent = prevThisIdent;
-		});
+		}, isAsyncMethod);
 		currentMethodOwnerType = prevOwner;
 		currentMethodField = prevField;
 
@@ -5466,7 +5520,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			switch (u.expr) {
 				case TVar(v, init) if (init != null && isNullType(v.t) && isNullConstExpr(init)):
 					{
-						if (currentMutatedLocals != null && currentMutatedLocals.exists(v.id) && i + 1 < exprs.length) {
+						if (!isCapturedCellLocal(v) && currentMutatedLocals != null && currentMutatedLocals.exists(v.id) && i + 1 < exprs.length) {
 							function isDirectLocalAssignTo(target:TVar, expr:TypedExpr):Bool {
 								var ue = unwrapMetaParen(expr);
 								return switch (ue.expr) {
@@ -6458,12 +6512,19 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		currentArgNames = [];
 		currentLocalNames = [];
 		currentLocalUsed = [];
-		// Preserve Rust local identifiers for captured cell-backed locals from outer scopes so
-		// name-based resolution remains stable inside nested function contexts.
+		// Preserve outer-scope Rust local identifiers inside nested function contexts.
+		//
+		// Why
+		// - Nested closures can capture locals whose Rust names were already disambiguated in the
+		//   enclosing scope (`done1_2`, `mutex1_3`, etc.).
+		// - If the inner function context re-derives names from the original Haxe symbol, generated
+		//   closure bodies can refer to stale identifiers that do not exist in that concrete scope.
+		//
+		// How
+		// - Carry forward all previously assigned outer-local names so nested references resolve to the
+		//   exact Rust identifier already emitted by the enclosing scope.
 		if (prevLocalNames != null) {
-			for (localId in mergedCaptured.keys()) {
-				if (!prevLocalNames.exists(localId))
-					continue;
+			for (localId in prevLocalNames.keys()) {
 				var rustName = prevLocalNames.get(localId);
 				currentLocalNames.set(localId, rustName);
 				currentLocalUsed.set(rustName, true);
@@ -7222,8 +7283,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		Why
 		- `move` closures take ownership of captured values.
-		- For shared-cell locals (`crate::HxRef<T>`), we clone captured handles before building the
-		  closure so outer code can keep using the same local binding.
+		- Haxe still expects captured reusable values (arrays, strings, ref-backed objects, function
+		  handles, etc.) to remain usable outside the closure even when Rust needs an owned capture.
 
 		How
 		- Walks the function body with lexical-scope tracking and returns `TLocal` vars that resolve
@@ -7830,19 +7891,25 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					// Important: `HxDynRef<T>` does not currently support Rust unsized coercions
 					// (`HxDynRef<{closure}>` -> `HxDynRef<dyn Fn...>`), so we first coerce the inner
 					// `HxRc` to the `dyn Fn...` trait object via an explicitly typed `let`.
-					// NOTE: This is a baseline: we emit a `move` closure and rely on captured values
-					// being owned (cloned) so the closure can be `'static` for storage/passing.
+					// NOTE:
+					// - We emit a `move` closure so the result is storable/passable in Rust-owned APIs.
+					// - Before building the closure, we clone captured reusable Haxe values into fresh Rust
+					//   locals. That preserves Haxe's "capturing this callback/value does not consume the
+					//   original binding" contract even when the same local is captured by multiple closures.
 					var baseArgNames:Array<String> = [];
 					for (a in fn.args) {
 						var n = (a.v != null && a.v.name != null && a.v.name.length > 0) ? a.v.name : "a";
 						baseArgNames.push(n);
 					}
 					var capturedOuterLocals = collectFunctionLiteralCapturedOuterLocals(fn);
-					var capturedCellLocalNames:Array<String> = [];
+					var capturedCloneLocals:Array<{name:String}> = [];
 					for (v in capturedOuterLocals) {
-						if (!isCapturedCellLocal(v))
+						var needsReusableClone = !isCopyType(v.t) && isHaxeReusableValueType(v.t);
+						if (!isCapturedCellLocal(v) && !needsReusableClone)
 							continue;
-						capturedCellLocalNames.push(rustLocalRefIdent(v));
+						capturedCloneLocals.push({
+							name: rustLocalRefIdent(v)
+						});
 					}
 
 					var argParts:Array<String> = [];
@@ -7868,8 +7935,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var rcTy:RustType = RPath(rcBasePath() + "<" + sig + ">");
 					var rcExpr:RustExpr = ECall(EPath(rcBasePath() + "::new"), [EClosure(argParts, body, true)]);
 					var preStmts:Array<RustStmt> = [];
-					for (localName in capturedCellLocalNames) {
-						preStmts.push(RLet(localName, false, null, ECall(EField(EPath(localName), "clone"), [])));
+					for (captured in capturedCloneLocals) {
+						preStmts.push(RLet(captured.name, false, null, ECall(EField(EPath(captured.name), "clone"), [])));
 					}
 					preStmts.push(RLet("__rc", false, rcTy, rcExpr));
 					EBlock({
@@ -8061,8 +8128,76 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function compileThrow(thrown:TypedExpr, pos:haxe.macro.Expr.Position):RustExpr {
-		var payload = ECall(EPath("hxrt::dynamic::from"), [compileExpr(thrown)]);
+		var compiled = compileExpr(thrown);
+		var payload = mapsToRustDynamic(thrown.t, pos) ? compiled : boxThrownDynamicPayload(compiled, thrown.t, pos);
 		return ECall(EPath("hxrt::exception::throw"), [payload]);
+	}
+
+	/**
+		Boxes a thrown value into `hxrt::dynamic::Dynamic` while preserving subtype-dispatch metadata.
+
+		Why
+		- Exact `Dynamic.downcast::<T>()` is not enough for `catch (base:Base)` when the thrown value was
+		  a concrete subclass like `Dog`.
+		- The exception runtime already carries optional type-id metadata. Throw lowering needs to populate
+		  that metadata so catch dispatch can check subclass chains without abandoning typed downcasts.
+
+		What
+		- Values that already map to Rust `Dynamic` bypass this helper.
+		- Class/enum values get boxed with either a static type id or a runtime-provided concrete type id.
+		- Reference-backed values use the `from_ref*` constructors so ownership stays aligned with the
+		  existing dynamic runtime contract.
+
+		How
+		- For polymorphic/interface class values, read `__hx_type_id` from the concrete boxed value at runtime.
+		- For concrete class/enum values, attach the literal emitted type id.
+		- For anything outside the subtype-aware catch path, fall back to plain `hxrt::dynamic::from*`.
+	**/
+	function boxThrownDynamicPayload(value:RustExpr, valueType:Type, pos:haxe.macro.Expr.Position):RustExpr {
+		var byRef = isArrayType(valueType) || isRcBackedType(valueType);
+		var ft = followType(valueType);
+		var runtimeTypeId:Null<RustExpr> = switch (ft) {
+			case TInst(clsRef, _): {
+					var cls = clsRef.get();
+					if (cls != null && !cls.isExtern && (cls.isInterface || isPolymorphicClassType(valueType)))
+						ECall(EField(EPath("__hx_box"), "__hx_type_id"), [])
+					else
+						null;
+				}
+			case _:
+				null;
+		};
+
+		if (runtimeTypeId != null) {
+			var boxFn = byRef ? "hxrt::dynamic::from_ref_with_type_id" : "hxrt::dynamic::from_with_type_id";
+			return EBlock({
+				stmts: [
+					RLet("__hx_box", false, null, value),
+					RLet("__hx_box_type_id", false, null, runtimeTypeId)
+				],
+				tail: ECall(EPath(boxFn), [EPath("__hx_box"), EPath("__hx_box_type_id")])
+			});
+		}
+
+		var staticTypeId:Null<RustExpr> = switch (ft) {
+			case TInst(clsRef, _): {
+					var cls = clsRef.get();
+					(cls != null && !cls.isExtern) ? typeIdExprForClass(cls) : null;
+				}
+			case TEnum(enumRef, _): {
+					var en = enumRef.get();
+					en != null ? typeIdExprForEnum(en) : null;
+				}
+			case _:
+				null;
+		};
+		if (staticTypeId != null) {
+			var typedBoxFn = byRef ? "hxrt::dynamic::from_ref_with_type_id" : "hxrt::dynamic::from_with_type_id";
+			return ECall(EPath(typedBoxFn), [value, staticTypeId]);
+		}
+
+		var plainBoxFn = byRef ? "hxrt::dynamic::from_ref" : "hxrt::dynamic::from";
+		return ECall(EPath(plainBoxFn), [value]);
 	}
 
 	function compileTry(tryExpr:TypedExpr, catches:Array<{v:TVar, expr:TypedExpr}>, fullExpr:TypedExpr):RustExpr {
@@ -8121,6 +8256,196 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return EBlock({stmts: stmts, tail: body.tail});
 		}
 
+		var expectedClass:Null<ClassType> = switch (followType(c.v.t)) {
+			case TInst(clsRef, _): clsRef.get();
+			case _: null;
+		};
+		if (expectedClass != null && !expectedClass.isInterface) {
+			var subtypeAware = compileSubtypeAwareClassCatchDispatch(exVarName, c, rest, expectedReturn, expectedClass);
+			if (subtypeAware != null)
+				return subtypeAware;
+		}
+
+		var rustTy = toRustType(c.v.t, c.expr.pos);
+		var downcast = ECall(EField(EPath(exVarName), "downcast::<" + rustTypeToString(rustTy) + ">"), []);
+
+		var okBody = compileExprToBlock(c.expr, expectedReturn);
+		var okStmts = okBody.stmts.copy();
+		var needsVar = localIdUsedInExpr(c.v.id, c.expr);
+		var boxedPat:RustPattern = needsVar ? PBind("__hx_box") : PWildcard;
+		if (needsVar) {
+			var name = rustLocalDeclIdent(c.v);
+			var mutable = currentMutatedLocals != null && currentMutatedLocals.exists(c.v.id);
+			okStmts.unshift(RLet(name, mutable, rustTy, EUnary("*", EPath("__hx_box"))));
+		}
+		var okExpr:RustExpr = EBlock({stmts: okStmts, tail: okBody.tail});
+
+		var errExpr = compileCatchDispatch(exVarName, rest, expectedReturn);
+
+		return EMatch(downcast, [
+			{pat: PTupleStruct("Ok", [boxedPat]), expr: okExpr},
+			{pat: PTupleStruct("Err", [PBind(exVarName)]), expr: errExpr}
+		]);
+	}
+
+	function rustTypeIsHxRef(rt:RustType):Bool {
+		return switch (rt) {
+			case RPath(p): StringTools.startsWith(p, "crate::HxRef<");
+			case _: false;
+		}
+	}
+
+	/**
+		Upcasts a concrete `HxRef<Sub>` into the base/interface Rust type expected by a typed catch binding.
+
+		Why
+		- Subclass-aware catch dispatch first downcasts the dynamic payload to its concrete emitted class.
+		- The catch variable may still be typed as a base class or interface, so the bound value must match
+		  the original Haxe catch annotation instead of leaking the concrete subtype into generated Rust.
+
+		How
+		- Non-polymorphic concrete catches return the original expression unchanged.
+		- Polymorphic/interface catches reuse the existing `as_arc_opt()` trait-object upcast path so the
+		  generated catch variable behaves like every other base/interface-typed class reference.
+	**/
+	function upcastConcreteClassRefExpr(concreteExpr:RustExpr, expectedType:Type, pos:haxe.macro.Expr.Position):RustExpr {
+		var expectedRustTy = toRustType(expectedType, pos);
+		if (!(isInterfaceType(expectedType) || isPolymorphicClassType(expectedType)))
+			return concreteExpr;
+
+		var opt = ECall(EField(EPath("__tmp"), "as_arc_opt"), []);
+		function nullAccessThrowExpr():RustExpr {
+			return ECall(EPath("hxrt::exception::throw"), [
+				ECall(EPath("hxrt::dynamic::from"), [ECall(EPath("String::from"), [ELitString("Null Access")])])
+			]);
+		}
+		var arms:Array<RustMatchArm> = [
+			{pat: PTupleStruct("Some", [PBind("__rc")]), expr: ECall(EField(EPath("__rc"), "clone"), [])},
+			{pat: PPath("None"), expr: nullAccessThrowExpr()}
+		];
+
+		return EBlock({
+			stmts: [
+				RLet("__tmp", false, null, concreteExpr),
+				RLet("__up", false, expectedRustTy, EMatch(opt, arms))
+			],
+			tail: EPath("__up")
+		});
+	}
+
+	/**
+		Collects emitted concrete subclasses that can satisfy a base-class typed catch.
+
+		Why
+		- The catch dispatcher needs concrete emitted classes so it can perform a typed
+		  `Dynamic.downcast::<HxRef<Concrete>>()` before re-upcasting to the requested catch type.
+		- This intentionally scopes the feature to classes we actually emit and register for runtime type ids.
+
+		How
+		- Walks the emitted type-id registry, filters to subclasses of the requested base class, and skips
+		  generic classes for now because this milestone only closes the non-generic subclass parity slice.
+	**/
+	function emittedCatchSubtypeCandidates(expectedClass:ClassType):Array<ClassType> {
+		var out:Array<ClassType> = [];
+		for (cls in getEmittedClassesForTypeIdRegistry()) {
+			if (!isClassSubtype(cls, expectedClass))
+				continue;
+			if (cls.params != null && cls.params.length > 0)
+				continue;
+			out.push(cls);
+		}
+		out.sort((a, b) -> compareStrings(classKey(a), classKey(b)));
+		return out;
+	}
+
+	/**
+		Builds the subclass-aware catch path for supported class hierarchies.
+
+		Why
+		- Haxe typed catch follows the subclass chain (`catch (animal:Animal)` should match a thrown `Dog`).
+		- The old Rust lowering only performed exact `Dynamic.downcast::<T>()`, which dropped subclass matches
+		  into the later dynamic catch path.
+
+		How
+		- Reads the optional runtime type id from the exception payload.
+		- Verifies the payload is a subtype of the requested catch class.
+		- Tries concrete emitted subclasses in deterministic order, downcasts to the concrete `HxRef<Sub>`,
+		  then upcasts back to the annotated catch type for the bound variable.
+		- Falls back to the exact typed catch path when the payload lacks subtype metadata.
+	**/
+	function compileSubtypeAwareClassCatchDispatch(exVarName:String, c:{v:TVar, expr:TypedExpr}, rest:Array<{v:TVar, expr:TypedExpr}>, expectedReturn:Type,
+			expectedClass:ClassType):Null<RustExpr> {
+		var candidates = emittedCatchSubtypeCandidates(expectedClass);
+		if (candidates.length <= 1)
+			return null;
+
+		if (expectedClass.params != null && expectedClass.params.length > 0)
+			return null;
+
+		var rustTy = toRustType(c.v.t, c.expr.pos);
+		var errExpr = compileCatchDispatch(exVarName, rest, expectedReturn);
+		var exactFallback = compileExactTypedCatchDispatch(exVarName, c, rest, expectedReturn);
+
+		var candidateArms:Array<RustMatchArm> = [];
+		for (cls in candidates) {
+			var concreteRustTy = RPath("crate::HxRef<crate::" + rustModuleNameForClass(cls) + "::" + rustTypeNameForClass(cls) + ">");
+			if (!rustTypeIsHxRef(concreteRustTy))
+				continue;
+
+			var downcast = ECall(EField(EPath(exVarName), "downcast::<" + rustTypeToString(concreteRustTy) + ">"), []);
+			var okBody = compileExprToBlock(c.expr, expectedReturn);
+			var okStmts = okBody.stmts.copy();
+			var needsVar = localIdUsedInExpr(c.v.id, c.expr);
+			if (needsVar) {
+				var name = rustLocalDeclIdent(c.v);
+				var mutable = currentMutatedLocals != null && currentMutatedLocals.exists(c.v.id);
+				var concreteValue = EUnary("*", EPath("__hx_box"));
+				var boundValue = upcastConcreteClassRefExpr(concreteValue, c.v.t, c.expr.pos);
+				okStmts.unshift(RLet(name, mutable, rustTy, boundValue));
+			}
+			var okExpr:RustExpr = EBlock({stmts: okStmts, tail: okBody.tail});
+			var downcastMatch = EMatch(downcast, [
+				{pat: PTupleStruct("Ok", [needsVar ? PBind("__hx_box") : PWildcard]), expr: okExpr},
+				{pat: PTupleStruct("Err", [PBind(exVarName)]), expr: errExpr}
+			]);
+
+			candidateArms.push({
+				pat: PWildcard,
+				expr: EIf(EBinary("==", EPath("__actual_type_id"), typeIdExprForClass(cls)), downcastMatch, null)
+			});
+		}
+
+		if (candidateArms.length == 0)
+			return null;
+
+		var subtypeChain:RustExpr = errExpr;
+		for (idx in 0...candidateArms.length) {
+			var arm = candidateArms[candidateArms.length - 1 - idx];
+			subtypeChain = switch (arm.expr) {
+				case EIf(cond, thenExpr, _): EIf(cond, thenExpr, subtypeChain);
+				case _: subtypeChain;
+			}
+		}
+
+		return EMatch(ECall(EField(EPath(exVarName), "type_id"), []), [
+			{
+				pat: PTupleStruct("Some", [PBind("__actual_type_id")]),
+				expr: EIf(ECall(EPath("crate::__hx_is_subtype_type_id"), [EPath("__actual_type_id"), typeIdExprForClass(expectedClass)]), subtypeChain, errExpr)
+			},
+			{pat: PPath("None"), expr: exactFallback}
+		]);
+	}
+
+	/**
+		Compiles the legacy exact-type typed catch path.
+
+		Why
+		- Subclass-aware dispatch still needs a deterministic fallback when older payloads lack runtime
+		  subtype metadata.
+		- Keeping the exact path factored here avoids re-encoding the same binding logic in multiple
+		  exception branches.
+	**/
+	function compileExactTypedCatchDispatch(exVarName:String, c:{v:TVar, expr:TypedExpr}, rest:Array<{v:TVar, expr:TypedExpr}>, expectedReturn:Type):RustExpr {
 		var rustTy = toRustType(c.v.t, c.expr.pos);
 		var downcast = ECall(EField(EPath(exVarName), "downcast::<" + rustTypeToString(rustTy) + ">"), []);
 
@@ -8775,6 +9100,28 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 	}
 
+	/**
+		Returns whether the Haxe type is a function value.
+
+		Why:
+		- Haxe function values are reusable shared values from the source language point of view.
+		- On Rust they lower to `HxDynRef<dyn Fn(...) -> ...>`, which means plain local assignment or
+		  by-value passing must preserve the original binding instead of moving it away.
+
+		What:
+		- Detects `TFun` after following typedef/abstract wrappers.
+
+		How:
+		- Centralize the policy here so both reusable-value cloning and other ref-backed checks can
+		  treat function values consistently.
+	 */
+	function isFunctionValueType(t:Type):Bool {
+		return switch (followType(t)) {
+			case TFun(_, _): true;
+			case _: false;
+		}
+	}
+
 	function isHaxeReusableValueType(t:Type):Bool {
 		// Types that behave like Haxe reference values (must not be "moved" by Rust assignments).
 		// - `Array<T>` is `hxrt::array::Array<T>` (Rc-backed).
@@ -8782,8 +9129,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// - `String` is immutable and reusable in Haxe (needs clone in Rust when re-used).
 		// - structural `Iterator<T>` maps to `hxrt::iter::Iter<T>` (Rc-backed).
 		// - general anonymous objects map to `crate::HxRef<hxrt::anon::Anon>` (Rc-backed).
+		// - function values lower to shared `HxDynRef<dyn Fn...>` handles and must remain reusable.
 		return isArrayType(t) || isHxRefValueType(t) || isRustHxRefType(t) || isStringType(t) || isIteratorStructType(t) || isAnonObjectType(t)
-			|| isDynamicType(t);
+			|| isDynamicType(t) || isFunctionValueType(t);
 	}
 
 	/**
@@ -10490,6 +10838,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									case _:
 								}
 
+								// Dynamic receivers: route through runtime dynamic field existence.
+								if (isDynamicType(obj.t)) {
+									var stmts:Array<RustStmt> = [];
+									var recvExpr = maybeCloneForReuseValue(compileExpr(obj), obj);
+									stmts.push(RLet("__obj", false, null, recvExpr));
+									var hasCall = ECall(EPath("hxrt::dynamic::field_has"), [EUnary("&", EPath("__obj")), ELitString(fieldName)]);
+									return EBlock({stmts: stmts, tail: hasCall});
+								}
+
 								return unsupported(fullExpr, "Reflect.hasField (unsupported receiver)");
 							}
 
@@ -11316,6 +11673,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						case TLocal(_): true;
 						case TCall(_, _): true;
 						case TField(_, FClosure(_, _)): true;
+						case TField(_, FInstance(_, _, _)) | TField(_, FAnon(_)) | TField(_, FDynamic(_)): true;
 						case TConst(TNull): true;
 						case _: false;
 					};
@@ -11534,6 +11892,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case TConst(TThis): true;
 			case _: false;
 		}
+	}
+
+	function currentThisPathExpr():RustExpr {
+		return EPath((currentFunctionIsAsync && currentThisIdent != null) ? currentThisIdent : "self_");
 	}
 
 	function compileField(obj:TypedExpr, fa:FieldAccess, fullExpr:TypedExpr):RustExpr {
@@ -13211,7 +13573,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 										}
 										var recvCls = if (isThisExpr(obj) && currentClassType != null) currentClassType else owner;
 										var recvName = "__hx_obj";
-										var recvExpr:RustExpr = isThisExpr(obj) ? EPath("self_") : EPath(recvName);
+										var recvExpr:RustExpr = isThisExpr(obj) ? currentThisPathExpr() : EPath(recvName);
 										var fieldName = rustDynamicMethodFieldName(recvCls, cf);
 										var stmts:Array<RustStmt> = [];
 										if (!isThisExpr(obj))
@@ -13285,12 +13647,24 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							return ECall(EField(ECall(EPath("hxrt::dynamic::from"), [v]), "to_haxe_string"), []);
 						}
 
+						function unwrapPortableDisplayExpr(expr:RustExpr):RustExpr {
+							if (!useNullableStringRepresentation()) {
+								return expr;
+							}
+							return switch (expr) {
+								case ECall(EPath("hxrt::string::HxString::from"), [inner]):
+									inner;
+								case _:
+									expr;
+							}
+						}
+
 						var u = unwrapMetaParen(p);
 						switch (u.expr) {
 							case TConst(TString(s)):
 								return ELitString(s);
 							case TLocal(_):
-								return EUnary("&", compileExpr(p));
+								return EUnary("&", unwrapPortableDisplayExpr(compileExpr(p)));
 							case TField(obj, FInstance(clsRef, _, cfRef)):
 								{
 									var owner = clsRef.get();
@@ -13304,7 +13678,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 												// Borrowing those would create references to temporaries, so keep the
 												// portable clone behavior here.
 												if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
-													return compileExpr(p);
+													return unwrapPortableDisplayExpr(compileExpr(p));
 												}
 												// Special-cased property-like fields (Bytes/Array length) are not `String`.
 												// For plain instance `String` fields, borrow directly.
@@ -13318,7 +13692,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							case _:
 						}
 
-						return compileExpr(p);
+						return unwrapPortableDisplayExpr(compileExpr(p));
 					}
 
 					var fmt = "";
@@ -13812,7 +14186,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 											}
 
 											var recvName = "__hx_obj";
-											var recvExpr:RustExpr = isThisExpr(obj) ? EPath("self_") : EPath(recvName);
+											var recvExpr:RustExpr = isThisExpr(obj) ? currentThisPathExpr() : EPath(recvName);
 
 											var fieldName = rustFieldName(owner, cf);
 											var rhsName = "__rhs";
@@ -14044,7 +14418,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 										var recvCls = receiverClassForField(obj, owner);
 										var recvName = "__hx_obj";
-										var recvExpr:RustExpr = isThisExpr(obj) ? EPath("self_") : EPath(recvName);
+										var recvExpr:RustExpr = isThisExpr(obj) ? currentThisPathExpr() : EPath(recvName);
 										var delta:RustExpr = TypeHelper.isFloat(expr.t) ? ELitFloat(1.0) : ELitInt(1);
 										var binop = (op == OpIncrement) ? "+" : "-";
 
@@ -14780,7 +15154,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// Concrete classes / Bytes are `HxRef<T>` (shared ref-backed).
 		// Interfaces and polymorphic base classes are `HxRc<dyn Trait>` (shared ref-backed).
 		// Additionally, `rust.HxRef<T>` is a shared ref used by framework helpers.
-		return isHxRefValueType(t) || isRustHxRefType(t) || isAnonObjectType(t) || isInterfaceType(t) || isPolymorphicClassType(t);
+		// Function values also lower to shared runtime handles (`HxDynRef<dyn Fn...>`).
+		return isHxRefValueType(t) || isRustHxRefType(t) || isAnonObjectType(t) || isInterfaceType(t) || isPolymorphicClassType(t) || isFunctionValueType(t);
 	}
 
 	function isRustIterType(t:Type):Bool {

@@ -1,6 +1,9 @@
 # `reflaxe.std` Adoption Contract (Rust)
 
-Status: planned under `haxe.rust-oo3.18` (Milestone 16)
+Status:
+
+- implemented locally in `haxe.rust`
+- family-host/package extraction still pending outside this repo
 
 This document defines the Rust-side contract for adopting a shared portable idiom package.
 
@@ -54,6 +57,22 @@ Non-goal:
 
 - turning `reflaxe.std` into a dumping ground for backend-specific APIs.
 
+## GA review freeze for this repo
+
+For the current GA review, Rust freezes the local `reflaxe.std` truth at:
+
+- local adoption is real for `Option` / `Result`,
+- direct lowering to native Rust `Option` / `Result` is implemented here,
+- adapters and family-pin/report plumbing are implemented here,
+- standalone package hosting/publishing is not owned here,
+- no broader `reflaxe.std` surface expansion is queued in `haxe.rust` as part of the GA decision.
+
+This freeze exists to keep the boundary explicit:
+
+- portable API growth is a family-governed cross-backend decision,
+- backend-local lowering quality is a Rust implementation detail,
+- native `rust.*` APIs remain explicit native-lane imports rather than becoming hidden portable aliases.
+
 ## Rust boundary rules
 
 Portable lane:
@@ -88,6 +107,12 @@ This means portable Rust output should not pay a wrapper-enum tax for these abst
 target state is "portable API, native Rust representation". When performance differs from
 Rust-first code, that difference should come from conservative codegen details (for example extra
 clones/temporaries), not from using a different underlying Rust type.
+
+Important boundary rule:
+
+- this lowering is an optimization of the Rust backend implementation,
+- it does not change the source-level contract from portable API to native API,
+- it does not authorize portable code to import `rust.*` and treat that as equivalent.
 
 This is the same core rule the broader package should follow in the future: portable APIs should
 lower to the best-performing native representation available on a backend when semantics match,

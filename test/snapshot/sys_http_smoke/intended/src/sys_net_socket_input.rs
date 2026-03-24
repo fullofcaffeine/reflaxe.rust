@@ -28,7 +28,10 @@ impl SocketInput {
         let n: i32 =
             crate::sys_net_socket_input::SocketInput::read_bytes(&*__hx_this, b.clone(), 0, 1);
         if n == 0 {
-            hxrt::exception::throw(hxrt::dynamic::from(crate::haxe_io_eof::Eof::new()));
+            hxrt::exception::throw(hxrt::dynamic::from_ref_with_type_id(
+                crate::haxe_io_eof::Eof::new(),
+                0xaa32ee11u32,
+            ));
         }
         return b.borrow().get(0);
     }
@@ -41,7 +44,10 @@ impl SocketInput {
     ) -> i32 {
         let __hx_this: crate::HxRef<crate::sys_net_socket_input::SocketInput> = self_.self_ref();
         if pos < 0 || len < 0 || pos + len > s.borrow().length() {
-            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::OutsideBounds));
+            hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                hxrt::io::Error::OutsideBounds,
+                0x6666eea1u32,
+            ));
         }
         if len == 0 {
             return 0;
@@ -56,7 +62,10 @@ impl SocketInput {
             len,
         );
         if out == 0 {
-            hxrt::exception::throw(hxrt::dynamic::from(crate::haxe_io_eof::Eof::new()));
+            hxrt::exception::throw(hxrt::dynamic::from_ref_with_type_id(
+                crate::haxe_io_eof::Eof::new(),
+                0xaa32ee11u32,
+            ));
         }
         return out;
     }
@@ -114,7 +123,10 @@ impl SocketInput {
                 bufsize_2,
             );
             if len == 0 {
-                hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+                hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                    hxrt::io::Error::Blocked,
+                    0x6666eea1u32,
+                ));
             }
             crate::haxe_io_bytes_buffer::BytesBuffer::add_bytes(&*total, buf.clone(), 0, len);
         }) {
@@ -140,7 +152,10 @@ impl SocketInput {
             let k: i32 =
                 crate::sys_net_socket_input::SocketInput::read_bytes(&*__hx_this, s.clone(), p, l);
             if k == 0 {
-                hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+                hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                    hxrt::io::Error::Blocked,
+                    0x6666eea1u32,
+                ));
             }
             {
                 p = p + k;
@@ -170,7 +185,10 @@ impl SocketInput {
                 remaining,
             );
             if k == 0 {
-                hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+                hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                    hxrt::io::Error::Blocked,
+                    0x6666eea1u32,
+                ));
             }
             {
                 p = p + k;
@@ -220,7 +238,10 @@ impl SocketInput {
                     let bytes: crate::HxRef<hxrt::bytes::Bytes> =
                         crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&*buf);
                     if bytes.borrow().length() == 0 {
-                        hxrt::exception::throw(hxrt::dynamic::from(e));
+                        hxrt::exception::throw(hxrt::dynamic::from_ref_with_type_id(
+                            e,
+                            0xaa32ee11u32,
+                        ));
                     }
                     return hxrt::string::HxString::from(bytes.borrow().to_string());
                 }

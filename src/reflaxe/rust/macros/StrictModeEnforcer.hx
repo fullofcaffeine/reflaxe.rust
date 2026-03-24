@@ -7,6 +7,7 @@ import haxe.macro.Type;
 import haxe.macro.TypedExprTools;
 import reflaxe.rust.ProfileResolver;
 import reflaxe.rust.RustProfile;
+import reflaxe.rust.analyze.RustRawInjectionAuthorityAnalyzer;
 
 /**
  * StrictModeEnforcer
@@ -23,11 +24,15 @@ import reflaxe.rust.RustProfile;
  * - Enable with `-D reflaxe_rust_strict` in the user's `.hxml`.
  * - Scans project-local sources (under current working directory), excluding framework sources
  *   via resolved root paths (not substring path checks).
+ * - `@:rustAllowRaw` can authorize one tagged module/type as a narrow raw-injection authority
+ *   island under strict mode.
  *
  * Metal profile note
  * - `reflaxe_rust_profile=metal` enables strict mode by default in `CompilerInit`.
  * - In metal mode we still reject raw project-side `__rust__`, but allow framework-origin
  *   typed wrappers (for example macro facades in `src/reflaxe/rust/macros` and `std/rust/metal`).
+ * - `@:rustAllowRaw` does not bypass metal-clean enforcement; raw fallback is still rejected later
+ *   by `MetalRestrictionsPass`.
  */
 class StrictModeEnforcer {
 	public static function init():Void {
@@ -40,39 +45,62 @@ class StrictModeEnforcer {
 		var frameworkSourceRoots = detectFrameworkSourceRoots(projectRoot);
 		var frameworkTypedInjectionRoots = detectFrameworkTypedInjectionRoots(projectRoot);
 		var allowFrameworkTypedInjections = ProfileResolver.resolve() == RustProfile.Metal;
-		Context.onAfterTyping(types -> enforce(types, projectRoot, frameworkSourceRoots, allowFrameworkTypedInjections, frameworkTypedInjectionRoots));
+		Context.onAfterTyping(types -> enforce(types, projectRoot, frameworkSourceRoots, allowFrameworkTypedInjections, frameworkTypedInjectionRoots,
+			allowedRawInjectionModules(types)));
 	}
 
 	static function enforce(types:Array<ModuleType>, projectRoot:String, frameworkSourceRoots:Array<String>, allowFrameworkTypedInjections:Bool,
-			frameworkTypedInjectionRoots:Array<String>):Void {
+			frameworkTypedInjectionRoots:Array<String>, allowedRawModules:Map<String, Bool>):Void {
 		for (moduleType in types) {
 			switch (moduleType) {
 				case TClassDecl(classRef):
 					var classType = classRef.get();
 					if (!isStrictProjectSource(classType.pos, projectRoot, frameworkSourceRoots))
 						continue;
-					enforceNoRustInjectionInClass(classType, projectRoot, allowFrameworkTypedInjections, frameworkTypedInjectionRoots);
+					enforceNoRustInjectionInClass(classType, projectRoot, allowFrameworkTypedInjections, frameworkTypedInjectionRoots,
+						allowedRawModules.exists(RustRawInjectionAuthorityAnalyzer.moduleNameForClass(classType)));
+				case TAbstract(abstractRef):
+					var abstractType = abstractRef.get();
+					if (!isStrictProjectSource(abstractType.pos, projectRoot, frameworkSourceRoots) || abstractType.impl == null)
+						continue;
+					var impl = abstractType.impl.get();
+					if (impl != null) {
+						enforceNoRustInjectionInFields(impl.fields.get().concat(impl.statics.get()), projectRoot, allowFrameworkTypedInjections,
+							frameworkTypedInjectionRoots, allowedRawModules.exists(RustRawInjectionAuthorityAnalyzer.moduleNameForAbstract(abstractType)));
+					}
 				case _:
 			}
 		}
 	}
 
 	static function enforceNoRustInjectionInClass(classType:ClassType, projectRoot:String, allowFrameworkTypedInjections:Bool,
-			frameworkTypedInjectionRoots:Array<String>):Void {
-		var allFields = classType.fields.get().concat(classType.statics.get());
+			frameworkTypedInjectionRoots:Array<String>, allowScopedRawAuthority:Bool):Void {
+		enforceNoRustInjectionInFields(classType.fields.get().concat(classType.statics.get()), projectRoot, allowFrameworkTypedInjections,
+			frameworkTypedInjectionRoots, allowScopedRawAuthority);
+	}
+
+	static function enforceNoRustInjectionInFields(fields:Array<ClassField>, projectRoot:String, allowFrameworkTypedInjections:Bool,
+			frameworkTypedInjectionRoots:Array<String>, allowScopedRawAuthority:Bool):Void {
+		var allFields = fields;
 		for (field in allFields) {
 			var expr = field.expr();
 			if (expr == null)
 				continue;
-			scanForRustInjection(expr, projectRoot, allowFrameworkTypedInjections, frameworkTypedInjectionRoots);
+			scanForRustInjection(expr, projectRoot, allowFrameworkTypedInjections, frameworkTypedInjectionRoots, allowScopedRawAuthority);
 		}
 	}
 
-	static function scanForRustInjection(expr:TypedExpr, projectRoot:String, allowFrameworkTypedInjections:Bool,
-			frameworkTypedInjectionRoots:Array<String>):Void {
+	static function scanForRustInjection(expr:TypedExpr, projectRoot:String, allowFrameworkTypedInjections:Bool, frameworkTypedInjectionRoots:Array<String>,
+			allowScopedRawAuthority:Bool):Void {
 		if (isRustInjectionCall(expr)) {
+			if (allowScopedRawAuthority) {
+				TypedExprTools.iter(expr,
+					e -> scanForRustInjection(e, projectRoot, allowFrameworkTypedInjections, frameworkTypedInjectionRoots, allowScopedRawAuthority));
+				return;
+			}
 			if (allowFrameworkTypedInjections && isFrameworkTypedInjectionExpr(expr.pos, projectRoot, frameworkTypedInjectionRoots)) {
-				TypedExprTools.iter(expr, e -> scanForRustInjection(e, projectRoot, allowFrameworkTypedInjections, frameworkTypedInjectionRoots));
+				TypedExprTools.iter(expr,
+					e -> scanForRustInjection(e, projectRoot, allowFrameworkTypedInjections, frameworkTypedInjectionRoots, allowScopedRawAuthority));
 				return;
 			}
 
@@ -81,7 +109,8 @@ class StrictModeEnforcer {
 				expr.pos);
 		}
 
-		TypedExprTools.iter(expr, e -> scanForRustInjection(e, projectRoot, allowFrameworkTypedInjections, frameworkTypedInjectionRoots));
+		TypedExprTools.iter(expr,
+			e -> scanForRustInjection(e, projectRoot, allowFrameworkTypedInjections, frameworkTypedInjectionRoots, allowScopedRawAuthority));
 	}
 
 	static function isRustInjectionCall(expr:TypedExpr):Bool {
@@ -215,6 +244,14 @@ class StrictModeEnforcer {
 
 	static function normalizePath(path:String):String {
 		return Path.normalize(path).split("\\").join("/");
+	}
+
+	static function allowedRawInjectionModules(types:Array<ModuleType>):Map<String, Bool> {
+		var out:Map<String, Bool> = [];
+		var snapshot = RustRawInjectionAuthorityAnalyzer.collect(types);
+		for (module in snapshot.modules)
+			out.set(module, true);
+		return out;
 	}
 
 	static function isRustBuild():Bool {

@@ -32,6 +32,16 @@ Contract rule:
 - portable semantics are owned by family governance assets plus conformance fixtures.
 - native target facades (`rust.*`, `go.*`, `elixir.*`, etc.) stay backend-local and are not
   silently substituted for portable APIs.
+- backend-local lowering may optimize portable APIs into native representations when semantics
+  match, but that is implementation strategy, not package-boundary blur.
+
+Current Rust-local posture:
+
+- Rust implements the first adoption slice (`Option` / `Result`) and emits family pin/report
+  evidence for it.
+- Rust does not claim to host or publish the standalone `reflaxe.std` package from this repo.
+- Broader portable idiom expansion should wait for family-governed cross-backend rollout, not grow
+  opportunistically inside `haxe.rust`.
 
 ## Override model
 

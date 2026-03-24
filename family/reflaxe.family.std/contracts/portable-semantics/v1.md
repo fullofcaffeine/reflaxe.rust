@@ -32,10 +32,13 @@ Conformance fixtures:
 
 1. `throw` / `try` / `catch` must preserve typed + dynamic catch behavior seen in `--interp`.
 2. Catch ordering must match Haxe semantics.
+3. Throwing a subclass instance and catching its base class must follow the Haxe subclass chain on
+   the supported class-hierarchy slice.
 
 Conformance fixtures:
 
 - `test/semantic_diff/exceptions_typed_dynamic`
+- `test/semantic_diff/typed_catch_subclass`
 
 ### 3) Virtual dispatch semantics
 

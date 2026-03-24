@@ -5,13 +5,13 @@ Use this page as the map for `reflaxe.rust` docs.
 ## Quick start by audience
 
 - New to compiler internals: [Start Here](start-here.md)
+- Portable-first application path: [Profiles](profiles.md), [Portable near-native guidance](portable-near-native-guidance.md), [Examples matrix](examples-matrix.md)
+- Metal-first path: [Metal profile](metal-profile.md), [Portable near-native guidance](portable-near-native-guidance.md), [Examples matrix](examples-matrix.md)
+- Release / operations path: [Production Readiness](production-readiness.md), [Semver and release posture](semver-release-posture.md), [Weekly CI Evidence](weekly-ci-evidence.md)
 - Need a fast local rebuild loop: [Dev Watcher](dev-watcher.md)
-- Building async Rust-first apps: [Async/Await preview](async-await.md)
-- Planning production rollout: [Production Readiness](production-readiness.md)
-- Planning release closeout: [Road to 1.0](road-to-1.0.md)
-- Running post-1.0 weekly operations: [Weekly CI Evidence](weekly-ci-evidence.md)
+- Building async Rust-first apps: [Async/Await guide](async-await.md)
+- Need the exact async contract: [Async Contract](async-contract.md)
 - Tracking cross-platform sys risk: [Sys Regression Watchlist](sys-regression-watchlist.md)
-- Using the release-gate template: [Release Gate Closeout](release-gate-closeout.md)
 - Tracking 1.0 status: [Progress Tracker](progress-tracker.md)
 - Checking vision vs reality: [Vision vs Implementation](vision-vs-implementation.md)
 
@@ -19,17 +19,28 @@ Use this page as the map for `reflaxe.rust` docs.
 
 - [Contracts](profiles.md): portable vs metal contract semantics and lane/capability controls.
 - [Portable idiom adoption contract](reflaxe-std-adoption-contract.md): Rust-side boundary and migration rules for the shared `reflaxe.std` portable idiom layer (v1 starts with `Option`/`Result`).
+- [Semver and release posture](semver-release-posture.md): canonical public `1.x` release posture and packaging decision.
+- [GA decision record](ga-decision-record.md): historical Milestone 28 gate outcome that led to the semver/public-packaging follow-up.
+- [GA caveat classification](ga-caveat-classification.md): historical blocker/defer/non-issue input used by the Milestone 28 gate.
 - [Examples matrix](examples-matrix.md): scenario coverage, profile entrypoints, and native-parity quick check (`profile_storyboard`).
+- [Portable near-native guidance](portable-near-native-guidance.md): when portable can lower to native Rust representations/cost, when `metal` is still the right contract, and where `reflaxe.std` fits.
+- [Portable vs metal authoring](portable-vs-metal-authoring.md): concise source-style guidance for performance-oriented users choosing between portable and metal.
+- [Concurrency posture](concurrency-posture.md): canonical status record for async/threading, including what is stable, what is still narrow by contract, and what remains caveat-heavy.
+- [Async contract](async-contract.md): canonical supported/unsupported contract for `-D rust_async`.
+- [Systems and environment posture](systems-environment-posture.md): canonical status record for `sys.Http`, `sys.ssl.*`, `sys.db.*`, and platform-sensitive proof depth.
 - [Metal profile](metal-profile.md): Rust-first performance profile and boundary policy.
 - [Lifetime encoding design](lifetime-encoding.md): what lifetime-like guarantees are possible in Haxe and where extern Rust is still required.
-- [Async/Await preview](async-await.md): Rust-first async workflow and current constraints.
+- [Async/Await guide](async-await.md): Rust-first async workflow and current constraints.
 - [Defines reference](defines-reference.md): practical `-D` reference for build/profile/CI knobs.
-- [v1 support matrix](v1.md): technical support matrix and parity constraints.
+- [Feature support matrix](feature-support-matrix.md): evidence-backed portable/native/package support map.
+- [Semantic confidence summary](semantic-confidence-summary.md): generated rollup separating compile coverage, targeted parity, and smoke-only buckets.
+- [v1 support matrix](v1.md): release-scope contract and parity constraints.
 - [HXRT overhead benchmarks](perf-hxrt-overhead.md): size/startup tracking, soft perf budgets, and baseline workflow.
+- [JSON boundary contract](json-boundary-contract.md): perf/semantic contract for the current post-`1.0` JSON hotspot tranche.
 - [Workflow](workflow.md): Haxe -> Rust -> Cargo workflow.
 - [Haxe-authored Rust tests](haxe-rust-tests.md): `@:rustTest` metadata and generated Rust test wrappers.
 - [Dynamic boundaries](dynamic-boundaries.md): intentional untyped boundaries and allowlist policy.
-- [Weekly CI Evidence](weekly-ci-evidence.md): post-1.0 validation cadence and evidence protocol.
+- [Weekly CI Evidence](weekly-ci-evidence.md): ongoing validation cadence and evidence protocol.
 - [Sys Regression Watchlist](sys-regression-watchlist.md): active cross-platform sys risk tracking.
 - [Dev Watcher](dev-watcher.md): local edit-compile-run watch loop.
 - [Install via lix](install-via-lix.md): toolchain setup.
@@ -56,9 +67,17 @@ Use this page as the map for `reflaxe.rust` docs.
 ## Release and governance
 
 - [Release](release.md): semantic-release flow and release artifacts.
+- [Semver and release posture](semver-release-posture.md): public `1.x` posture and packaging truth.
+- [Release Gate Closeout](release-gate-closeout.md): closeout template used by the historical release-gate work.
 - [Haxelib Packaging Notes](haxelib-packaging.md): package layout rules, flattening behavior, and `.cross.hx` rationale.
 - [Stdlib Parity Policy](stdlib-policy.md): parity scope, provenance ledger, and CI boundary governance.
 - [Cross overrides and hardening](cross-overrides-and-hardening.md): `.cross.hx` ownership, sibling-target coexistence risk, and hardening notes.
 - [Spike: Family `portable|metal` Alignment](spikes/family-portable-metal-alignment.md): cross-repo contract alignment notes and implementation gap history.
 - [Spike: `reflaxe.std` Cross-Repo Handoff](spikes/reflaxe-std-cross-repo-handoff.md): ownership split between Rust adoption work and the remaining Go/Elixir/JS/genes rollout tasks.
 - [Spike: Auto Profile Exploration](spikes/auto-profile-exploration.md): decision memo for keeping explicit `portable|metal` contracts and constraints for any future `auto` experiment.
+
+## Historical release-gate records
+
+- [Road to 1.0](road-to-1.0.md)
+- [GA decision record](ga-decision-record.md)
+- [GA caveat classification](ga-caveat-classification.md)

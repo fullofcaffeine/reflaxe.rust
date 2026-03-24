@@ -27,7 +27,7 @@ For this project, production-ready means:
 
 ### Stage 3: Broad production rollout
 
-- Confirm the release-readiness checklist is fully closed.
+- Confirm the current public release posture in `docs/semver-release-posture.md` matches the rollout you intend to adopt.
 - Document team profile policy (when metal is required vs portable).
 - Add periodic regression runs against representative workloads.
 
@@ -61,9 +61,20 @@ For teams new to this compiler:
 
 ## Source of truth links
 
-- `docs/progress-tracker.md`
-- `docs/vision-vs-implementation.md`
-- `docs/v1.md`
-- `docs/defines-reference.md`
-- `docs/road-to-1.0.md`
-- `docs/release-gate-closeout.md`
+Current operational sources:
+
+- [Semver and release posture](semver-release-posture.md)
+- [Systems and environment posture](systems-environment-posture.md)
+- [Progress tracker](progress-tracker.md)
+- [Vision vs implementation](vision-vs-implementation.md)
+- [Portable near-native guidance](portable-near-native-guidance.md)
+- [v1 support matrix](v1.md)
+- [Defines reference](defines-reference.md)
+- [Weekly CI Evidence](weekly-ci-evidence.md)
+
+Historical closeout context:
+
+- [GA decision record](ga-decision-record.md)
+- [GA caveat classification](ga-caveat-classification.md)
+- [Road to 1.0](road-to-1.0.md)
+- [Release gate closeout](release-gate-closeout.md)

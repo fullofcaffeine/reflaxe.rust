@@ -60,11 +60,35 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 
 fn main() {
     let x: i32 = match hxrt::exception::catch_unwind(|| {
-        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from("boom")));
+        let payload: hxrt::dynamic::Dynamic = hxrt::dynamic::from_ref({
+            let __o = crate::HxRef::new(hxrt::anon::Anon::new());
+            {
+                let mut __b = __o.borrow_mut();
+                __b.set("kind", hxrt::string::HxString::from("boom"));
+                __b.set("count", 3);
+            };
+            __o
+        });
+        hxrt::exception::throw(payload);
     }) {
         Ok(__hx_ok) => __hx_ok,
         Err(__hx_ex) => {
-            let _ = __hx_ex;
+            let e: hxrt::dynamic::Dynamic = __hx_ex;
+            println!(
+                "{}",
+                hxrt::dynamic::from({
+                    let __obj = e.clone();
+                    hxrt::dynamic::field_has(&__obj, "kind")
+                })
+            );
+            println!("{}", {
+                let __obj = e.clone();
+                hxrt::dynamic::field_get(&__obj, "kind")
+            });
+            println!("{}", {
+                let __obj = e.clone();
+                hxrt::dynamic::field_get(&__obj, "count")
+            });
             2
         }
     };

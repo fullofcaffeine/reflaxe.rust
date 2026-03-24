@@ -14,6 +14,10 @@ This keeps Haxe class/reference semantics while allowing values to cross OS-thre
 
 This document defines the intended production direction for `sys.thread` in `reflaxe.rust`.
 
+Canonical status note:
+
+- for the current stable/preview/caveat classification, read [Concurrency Posture](concurrency-posture.md)
+
 ## What "Production-Ready Threads" Mean Here
 
 For `sys.thread` to be considered correct and production-ready, the target should:
@@ -65,14 +69,23 @@ As of 2026-02-09, `reflaxe.rust` has a minimal-but-correct threaded runtime mode
 
 Known gaps (not yet parity with upstream targets):
 
-1. `haxe.MainLoop` integration is still minimal. The current `EventLoop` is sufficient for basic
-   `haxe.EntryPoint` scheduling (`run` / `promise` / `runPromised` / `loop`), but richer integration
-   should be implemented as we approach 1.0.
-2. Thread pools and related helpers (`sys.thread.Deque`, `FixedThreadPool`, `ElasticThreadPool`, etc)
-   are tracked separately.
+1. `haxe.MainLoop` / `haxe.EntryPoint` integration is still narrower than full parity. Direct
+   `sys.thread.EventLoop` operations (`run` / `promise` / `runPromised` / `progress` / `loop`) now have
+   target-side smoke coverage (`test/snapshot/sys_thread_event_loop`), direct repeating-callback
+   `repeat(...)/cancel(...)` behavior is now locked by
+   `test/snapshot/sys_thread_event_loop_repeat_cancel`, and higher-level scheduler proof now covers both:
+   - the basic `haxe.MainLoop.add(...)` + `haxe.EntryPoint.run()` path
+     (`test/snapshot/haxe_mainloop_entrypoint_basic`, expected output `second,first`)
+   - the thread-bridge path using `haxe.MainLoop.addThread(...)` +
+     `haxe.MainLoop.runInMainThread(...)` with `haxe.EntryPoint.run()` wakeup/exit behavior
+     (`test/snapshot/haxe_mainloop_entrypoint_thread_bridge`)
+   This is still narrower than broad `--interp` scheduler parity, so wider MainLoop semantics remain
+   caveat-heavy until a stronger oracle exists.
 
 Tracking summary:
 
 - Thread-safe heap baseline is complete and validated in CI.
 - Core threading primitives are implemented.
-- Thread pools and deeper EventLoop parity remain active follow-up work.
+- Direct `sys.thread.EventLoop` plus `repeat(...)/cancel(...)` now have target-side proof.
+- `sys.thread.Deque`, `FixedThreadPool`, and `ElasticThreadPool` now have Rust-target smoke proof.
+- Broader `haxe.MainLoop` / `haxe.EntryPoint` scheduler semantics remain the main caveat-heavy follow-up.

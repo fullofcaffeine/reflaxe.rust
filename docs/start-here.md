@@ -2,6 +2,11 @@
 
 This guide is for teams that want native Rust binaries without becoming compiler experts.
 
+Current status:
+
+- the compiler/runtime baseline is closed and production-capable on validated lanes
+- stable `1.x` public posture is recorded in the [Semver and release posture decision](semver-release-posture.md)
+
 ## What this compiler does
 
 `reflaxe.rust` compiles Haxe 4.3.7 code into a Rust crate and runs Cargo by default.
@@ -75,6 +80,11 @@ That keeps the portable authoring surface while aiming for Rust-native cost on t
 `reflaxe.std` is intended to grow into a broader portable idiom layer over time. v1 starts with
 `Option` / `Result` because those are small enough to lock semantics and migration rules first.
 
+That native representation win is still part of the `portable` contract. The backend can optimize
+portable lowering without silently changing the source-level contract to `metal` or native-lane
+Rust APIs. Read [Portable near-native guidance](portable-near-native-guidance.md) for the
+practical rule of thumb on when portable is already enough and when `metal` is the right move.
+
 ## Compare profiles in one example
 
 ```bash
@@ -100,9 +110,27 @@ This compares generated `metal` output with a hand-written Rust baseline for the
 
 ## Read next
 
+Portable-first:
+
 - [Profiles](profiles.md)
+- [Portable near-native guidance](portable-near-native-guidance.md)
 - [Examples matrix](examples-matrix.md)
+
+Metal-first:
+
 - [Metal profile](metal-profile.md)
+- [Examples matrix](examples-matrix.md)
 - [Profile migration guide](rusty-profile.md)
-- [Async/Await preview](async-await.md)
+
+Release / operations:
+
+- [Production Readiness](production-readiness.md)
+- [Semver and release posture](semver-release-posture.md)
 - [Defines reference](defines-reference.md)
+- [Async contract](async-contract.md)
+- [Async/Await guide](async-await.md)
+
+Historical closeout context:
+
+- [GA decision record](ga-decision-record.md)
+- [GA caveat classification](ga-caveat-classification.md)

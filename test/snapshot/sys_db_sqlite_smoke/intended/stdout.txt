@@ -1,0 +1,6 @@
+db=SQLite
+fields=id,name,done
+len0=2 nf=3
+len1=1 row1=1,bootstrap reflaxe.rust,1 get0=1
+len2=0 row2=2,ship sys.db sqlite,0 get1=ship sys.db sqlite
+end=true

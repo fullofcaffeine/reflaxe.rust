@@ -65,6 +65,7 @@ fn main() {
         hxrt::concurrent::channel_new();
     let worker_channel: crate::HxRef<hxrt::concurrent::ChannelHandle<String>> = channel.clone();
     let task: crate::HxRef<hxrt::concurrent::TaskHandle<i32>> = hxrt::concurrent::task_spawn({
+        let worker_channel = worker_channel.clone();
         let __rc: crate::HxRc<dyn Fn() -> i32 + Send + Sync> = crate::HxRc::new(move || {
             hxrt::concurrent::channel_send(&worker_channel, String::from("ping"));
             return 2;

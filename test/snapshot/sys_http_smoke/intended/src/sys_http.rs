@@ -147,11 +147,15 @@ impl Http {
         };
         let output_for_error: crate::HxRef<crate::haxe_io_bytes_output::BytesOutput> =
             output.clone();
-        let old_on_error: crate::HxDynRef<dyn Fn(hxrt::string::HxString) + Send + Sync> = old;
+        let old_on_error: crate::HxDynRef<dyn Fn(hxrt::string::HxString) + Send + Sync> =
+            old.clone();
         let err: crate::HxRef<bool> = crate::HxRef::new(false);
         {
             let __tmp = {
+                let output_for_error = output_for_error.clone();
+                let old_on_error = old_on_error.clone();
                 let err = err.clone();
+                let _gthis = _gthis.clone();
                 let __rc: crate::HxRc<dyn Fn(hxrt::string::HxString) + Send + Sync> =
                     crate::HxRc::new(move |msg: hxrt::string::HxString| {
                         {
@@ -941,33 +945,21 @@ impl Http {
             sock.close();
         }) {
             Ok(__hx_ok) => __hx_ok,
-            Err(__hx_ex) => match __hx_ex
-                .downcast::<crate::HxRef<crate::haxe_exception::Exception>>()
-            {
-                Ok(__hx_box) => {
-                    let e: crate::HxRef<crate::haxe_exception::Exception> = *__hx_box;
-                    match hxrt::exception::catch_unwind(|| {
-                        sock.close();
-                    }) {
-                        Ok(__hx_ok) => __hx_ok,
-                        Err(__hx_ex) => match __hx_ex
-                            .downcast::<crate::HxRef<crate::haxe_exception::Exception>>()
-                        {
-                            Ok(_) => {}
-                            Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
-                        },
-                    };
-                    crate::sys_http::Http::on_error(
-                        &*__hx_this,
-                        hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
-                            "{}{}",
-                            "",
-                            hxrt::string::HxString::from(hxrt::dynamic::from(e).to_haxe_string())
-                        ))),
-                    );
-                }
-                Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
-            },
+            Err(__hx_ex) => {
+                let e: hxrt::dynamic::Dynamic = __hx_ex;
+                match hxrt::exception::catch_unwind(|| {
+                    sock.close();
+                }) {
+                    Ok(__hx_ok) => __hx_ok,
+                    Err(__hx_ex) => {
+                        let _ = __hx_ex;
+                    }
+                };
+                crate::sys_http::Http::on_error(
+                    &*__hx_this,
+                    hxrt::string::HxString::from(hxrt::string::HxString::from(e.to_haxe_string())),
+                );
+            }
         };
     }
 

@@ -1,0 +1,338 @@
+{
+  "schemaVersion": 1,
+  "contract": "semantic-confidence-summary",
+  "description": "Deterministic evidence rollup that separates compile/inventory closure, targeted semantic/runtime parity, and snapshot/smoke-only confidence.",
+  "source": {
+    "tier1Path": "test/upstream_std_modules.txt",
+    "tier2Path": "test/upstream_std_modules_tier2.txt",
+    "candidateAuditPath": "docs/portable-stdlib-candidates.json",
+    "portableSemanticRoot": "test/semantic_diff",
+    "laneSemanticRoot": "test/semantic_diff_lanes",
+    "snapshotRoot": "test/snapshot"
+  },
+  "counts": {
+    "tier1SweepModules": 96,
+    "tier2SweepModules": 224,
+    "portableCandidateImportableModules": 184,
+    "portableCandidateCoveredInTier2": 184,
+    "portableCandidateMissingFromTier2": 0,
+    "portableSemanticDiffCases": 18,
+    "laneSemanticDiffCases": 2,
+    "snapshotCases": 107,
+    "bucketsByClass": {
+      "compile_inventory": 2,
+      "targeted_semantic_parity": 7,
+      "snapshot_or_smoke_only": 6
+    }
+  },
+  "portableScope": {
+    "includedRoots": [
+      "Std",
+      "StringTools",
+      "Math",
+      "Date",
+      "haxe.",
+      "sys."
+    ],
+    "excludedTargetNamespacePrefixes": [
+      "cpp.",
+      "cs.",
+      "hl.",
+      "java.",
+      "js.",
+      "jvm.",
+      "lua.",
+      "neko.",
+      "php.",
+      "python.",
+      "rust."
+    ]
+  },
+  "discoveredCases": {
+    "portableSemanticDiff": [
+      "bytes_extended_api",
+      "closure_capture_mutation",
+      "exception_dynamic_payload",
+      "exceptions_typed_dynamic",
+      "function_value_mutable_callbacks",
+      "int64_parity",
+      "json_stringify_replacer",
+      "map_key_value_iterator_manual",
+      "null_string_concat",
+      "portable_option_result_basics",
+      "reflect_dynamic_receivers",
+      "sys_getenv_null",
+      "sys_http_callback_contract",
+      "sys_net_failure_paths",
+      "sys_process_failure_paths",
+      "this_method_closure",
+      "typed_catch_subclass",
+      "virtual_dispatch"
+    ],
+    "laneSemanticDiff": [
+      "lane_clean_arithmetic",
+      "lane_clean_dispatch"
+    ]
+  },
+  "buckets": [
+    {
+      "id": "portable-stdlib-inventory",
+      "class": "compile_inventory",
+      "label": "Portable stdlib inventory closure",
+      "scope": "Portable upstream std roots (`Std`, `StringTools`, `Math`, `Date`, `haxe.*`, `sys.*`)",
+      "evidence": [
+        "test/upstream_std_modules.txt",
+        "test/upstream_std_modules_tier2.txt",
+        "docs/portable-stdlib-candidates.json",
+        "scripts/ci/audit-upstream-stdlib-candidates.js"
+      ],
+      "commands": [
+        "bash test/run-upstream-stdlib-sweep.sh",
+        "bash test/run-upstream-stdlib-sweep.sh --tier tier2",
+        "npm run guard:stdlib-candidates",
+        "npm run guard:stdlib-candidate-gap"
+      ],
+      "notes": "Strong inventory and compile/fmt/check closure. Not blanket runtime semantic parity."
+    },
+    {
+      "id": "family-stdlib-governance-sync",
+      "class": "compile_inventory",
+      "label": "Family std governance sync",
+      "scope": "Local family bootstrap + pin synchronization",
+      "evidence": [
+        "family/family_std_pin.json",
+        "test/portable_allowlist.json",
+        "test/portable_conformance_tier1.json",
+        "tools/family_std_sync.py",
+        "family/reflaxe.family.std/tools/verify_family_std.py"
+      ],
+      "commands": [
+        "npm run test:family-stdlib-bootstrap",
+        "npm run test:family-stdlib-sync"
+      ],
+      "notes": "Governance and contract sync proof. Not runtime proof by itself."
+    },
+    {
+      "id": "portable-core-contracts",
+      "class": "targeted_semantic_parity",
+      "label": "Portable core contract semantics",
+      "scope": "Null strings, typed/dynamic exceptions, subclass-aware typed catches, virtual dispatch, env vars, function-value parity, portable Option/Result",
+      "evidence": [
+        "test/semantic_diff/null_string_concat",
+        "test/semantic_diff/exceptions_typed_dynamic",
+        "test/semantic_diff/typed_catch_subclass",
+        "test/semantic_diff/virtual_dispatch",
+        "test/semantic_diff/sys_getenv_null",
+        "test/semantic_diff/function_value_mutable_callbacks",
+        "test/semantic_diff/closure_capture_mutation",
+        "test/semantic_diff/this_method_closure",
+        "test/semantic_diff/portable_option_result_basics"
+      ],
+      "commands": [
+        "npm run test:semantic-diff"
+      ],
+      "notes": "These are the current backbone portable semantic fixtures, not a claim about every portable surface."
+    },
+    {
+      "id": "portable-metal-lane-stability",
+      "class": "targeted_semantic_parity",
+      "label": "Portable vs `@:haxeMetal` lane stability",
+      "scope": "Lane-clean programs must keep portable semantics when metal lanes are introduced",
+      "evidence": [
+        "test/semantic_diff_lanes/lane_clean_arithmetic",
+        "test/semantic_diff_lanes/lane_clean_dispatch"
+      ],
+      "commands": [
+        "npm run test:semantic-diff:lanes"
+      ],
+      "notes": "Lane cleanliness is enforced separately; this bucket proves semantic stability for lane-clean programs."
+    },
+    {
+      "id": "dynamic-reflection-exception-boundaries",
+      "class": "targeted_semantic_parity",
+      "label": "Dynamic / reflection / exception boundary behavior",
+      "scope": "High-risk dynamic receiver, reflection, and thrown Dynamic payload paths",
+      "evidence": [
+        "test/semantic_diff/reflect_dynamic_receivers",
+        "test/semantic_diff/exception_dynamic_payload",
+        "test/semantic_diff/typed_catch_subclass",
+        "test/snapshot/reflect_basic",
+        "test/snapshot/catch_dynamic"
+      ],
+      "commands": [
+        "npm run test:semantic-diff",
+        "bash test/run-snapshots.sh --case reflect_basic",
+        "bash test/run-snapshots.sh --case catch_dynamic"
+      ],
+      "notes": "Targeted proof only. Emitted non-generic class hierarchies now have subclass-aware typed catch parity; narrower exact-type limits remain on interface-typed or metadata-free catch paths."
+    },
+    {
+      "id": "portable-stdlib-runtime-parity",
+      "class": "targeted_semantic_parity",
+      "label": "Portable stdlib runtime hotspots",
+      "scope": "Bytes, Json replacer, Int64, and iterator runtime behavior",
+      "evidence": [
+        "test/semantic_diff/bytes_extended_api",
+        "test/semantic_diff/json_stringify_replacer",
+        "test/semantic_diff/int64_parity",
+        "test/semantic_diff/map_key_value_iterator_manual"
+      ],
+      "commands": [
+        "npm run test:semantic-diff"
+      ],
+      "notes": "Focused runtime parity on the stdlib families that recently moved from stubs/workarounds to real support."
+    },
+    {
+      "id": "sys-process-failure-paths",
+      "class": "targeted_semantic_parity",
+      "label": "Process failure / exit behavior",
+      "scope": "stdout/stderr/exit-code and kill handling in portable process flows",
+      "evidence": [
+        "test/semantic_diff/sys_process_failure_paths"
+      ],
+      "commands": [
+        "python3 test/run-semantic-diff.py --case sys_process_failure_paths"
+      ],
+      "notes": "Targeted parity only. This does not imply blanket cross-platform process semantics."
+    },
+    {
+      "id": "sys-net-failure-paths",
+      "class": "targeted_semantic_parity",
+      "label": "Network failure-path behavior",
+      "scope": "TCP select/connect-failure behavior on portable socket flows",
+      "evidence": [
+        "test/semantic_diff/sys_net_failure_paths"
+      ],
+      "commands": [
+        "python3 test/run-semantic-diff.py --case sys_net_failure_paths"
+      ],
+      "notes": "TCP failure-path parity is covered. UDP and broader platform-specific behavior still sit in the smoke bucket."
+    },
+    {
+      "id": "sys-http-callback-contract",
+      "class": "targeted_semantic_parity",
+      "label": "HTTP callback / status / error boundary behavior",
+      "scope": "Local-server callback, status, body, and connection-failure behavior for portable `sys.Http`",
+      "evidence": [
+        "test/semantic_diff/sys_http_callback_contract",
+        "test/snapshot/sys_http_smoke",
+        "test/snapshot/http_base_override_contract"
+      ],
+      "commands": [
+        "python3 test/run-semantic-diff.py --case sys_http_callback_contract",
+        "bash test/run-snapshots.sh --case sys_http_smoke",
+        "bash test/run-snapshots.sh --case http_base_override_contract"
+      ],
+      "notes": "Targeted local-server proof for `onStatus(...)`, `onData(...)`, and connection-failure `onError(...)` routing. Multipart/request-assembly confidence still relies on the snapshot/smoke bucket, and this is not blanket host/network semantic parity."
+    },
+    {
+      "id": "sys-http-snapshot-smoke",
+      "class": "snapshot_or_smoke_only",
+      "label": "HTTP portable smoke coverage",
+      "scope": "Portable HTTP request/response shape and generated Rust behavior",
+      "evidence": [
+        "test/snapshot/sys_http_smoke",
+        "test/snapshot/http_base_override_contract"
+      ],
+      "commands": [
+        "bash test/run-snapshots.sh --case sys_http_smoke",
+        "bash test/run-snapshots.sh --case http_base_override_contract"
+      ],
+      "notes": "Snapshot-backed smoke confidence covering multipart/request assembly, duplicate response headers, nullable missing-header lookup, and the HttpBase callback contract. Combine with the targeted semantic `sys_http_callback_contract` fixture for the current honest proof boundary."
+    },
+    {
+      "id": "sys-ssl-snapshot-smoke",
+      "class": "snapshot_or_smoke_only",
+      "label": "SSL/TLS snapshot smoke coverage",
+      "scope": "SNI certificate selection and generated Rust/runtime shape",
+      "evidence": [
+        "test/snapshot/sys_ssl_sni"
+      ],
+      "commands": [
+        "bash test/run-snapshots.sh --case sys_ssl_sni"
+      ],
+      "notes": "Snapshot-backed smoke confidence for the generated/buildable SNI certificate-selection path. Not blanket TLS parity."
+    },
+    {
+      "id": "rust-async-subset",
+      "class": "snapshot_or_smoke_only",
+      "label": "Rust-first async subset",
+      "scope": "Documented `metal` + `hxrt` async contract (`Async.blockOn`, async helpers, generated-class instance methods)",
+      "evidence": [
+        "test/snapshot/async_entry_boundary",
+        "test/snapshot/async_instance_method",
+        "test/snapshot/async_retry",
+        "test/snapshot/async_select",
+        "test/snapshot/rust_async_tasks",
+        "examples/async_retry_pipeline",
+        "test/negative/async_main_boundary",
+        "test/negative/async_constructor_preview",
+        "test/negative/async_preview_removed"
+      ],
+      "commands": [
+        "bash test/run-snapshots.sh --case async_entry_boundary",
+        "bash test/run-snapshots.sh --case async_instance_method",
+        "bash test/run-snapshots.sh --case rust_async_tasks",
+        "bash scripts/ci/check-metal-policy.sh"
+      ],
+      "notes": "Backed by dedicated entry-boundary and receiver-shape fixtures plus negative contract guards. This is a stable Rust-first subset, not a blanket async claim across profiles/runtime modes."
+    },
+    {
+      "id": "sys-thread-eventloop-and-mainloop",
+      "class": "snapshot_or_smoke_only",
+      "label": "Thread/EventLoop/thread-pool scheduler proof",
+      "scope": "Direct `sys.thread.EventLoop`, thread-pool helpers, and narrower MainLoop proof on the Rust target",
+      "evidence": [
+        "test/snapshot/sys_thread_event_loop",
+        "test/snapshot/sys_thread_event_loop_repeat_cancel",
+        "test/snapshot/sys_thread_deque_basic",
+        "test/snapshot/sys_thread_elastic_thread_pool_smoke",
+        "test/snapshot/haxe_mainloop_entrypoint_basic",
+        "test/snapshot/haxe_mainloop_entrypoint_thread_bridge",
+        "examples/sys_thread_smoke",
+        "examples/thread_pool_smoke"
+      ],
+      "commands": [
+        "bash test/run-snapshots.sh --case sys_thread_event_loop",
+        "bash test/run-snapshots.sh --case sys_thread_event_loop_repeat_cancel",
+        "bash test/run-snapshots.sh --case sys_thread_deque_basic",
+        "bash test/run-snapshots.sh --case sys_thread_elastic_thread_pool_smoke",
+        "bash test/run-snapshots.sh --case haxe_mainloop_entrypoint_basic",
+        "bash test/run-snapshots.sh --case haxe_mainloop_entrypoint_thread_bridge",
+        "bash scripts/ci/windows-smoke.sh",
+        "npm run test:all"
+      ],
+      "notes": "Direct EventLoop ops now include repeating callback `repeat(...)/cancel(...)` proof, and `Deque`, `FixedThreadPool`, and `ElasticThreadPool` have Rust-target smoke proof. Read `docs/concurrency-posture.md` for the canonical stable/preview/caveat classification. Broader `haxe.MainLoop` / `haxe.EntryPoint` semantics are still not claimed as `--interp`-backed semantic parity."
+    },
+    {
+      "id": "sys-db-native-environment",
+      "class": "snapshot_or_smoke_only",
+      "label": "Database/native-environment smoke coverage",
+      "scope": "DB bindings that depend on native libraries and destination environment setup",
+      "evidence": [
+        "test/snapshot/sys_db_mysql_compile",
+        "test/snapshot/sys_db_sqlite_smoke"
+      ],
+      "commands": [
+        "bash test/run-snapshots.sh --case sys_db_mysql_compile",
+        "bash test/run-snapshots.sh --case sys_db_sqlite_smoke"
+      ],
+      "notes": "SQLite currently has runtime smoke proof via the `:memory:` snapshot, while MySQL is compile-only dependency/codegen coverage. Useful environment-sensitive evidence, not broad runtime parity."
+    },
+    {
+      "id": "platform-sensitive-windows-smoke",
+      "class": "snapshot_or_smoke_only",
+      "label": "Platform-sensitive Windows smoke",
+      "scope": "Curated sys IO/net/thread scenarios on Windows",
+      "evidence": [
+        "scripts/ci/windows-smoke.sh",
+        ".github/workflows/ci.yml",
+        ".github/workflows/weekly-ci-evidence.yml"
+      ],
+      "commands": [
+        "bash scripts/ci/windows-smoke.sh"
+      ],
+      "notes": "Important platform confidence signal. Still a curated smoke subset, not blanket Windows parity."
+    }
+  ]
+}

@@ -30,10 +30,30 @@ extern class NativeJson {
 	public static function parse(text:Ref<String>):JsonValue;
 
 	@:native("stringify")
-	public static function stringify(value:JsonValue, space:Ref<Null<String>>):String;
+	public static function stringify(value:JsonValue):String;
+
+	/**
+		Pretty-print JSON using an explicit indent string.
+
+		Why
+		- Borrowed nullable strings (`Ref<Null<String>>`) force awkward codegen in metal because
+		  `null` and borrowed string shapes diverge across profiles.
+		- The runtime has two concrete modes: no pretty-printing, or pretty-printing with a real
+		  indent string. Modeling those as distinct entry points keeps the boundary typed and
+		  avoids backend-specific unwrap glue.
+
+		How
+		- `String` remains profile-dependent on the Haxe side.
+		- `Ref<String>` lowers to the correct borrowed Rust string representation for the active profile.
+	**/
+	@:native("stringify_pretty")
+	public static function stringifyPretty(value:JsonValue, space:Ref<String>):String;
 
 	@:native("stringify_with_replacer")
-	public static function stringifyWithReplacer(value:JsonValue, replacer:JsonReplacer, space:Ref<Null<String>>):String;
+	public static function stringifyWithReplacer(value:JsonValue, replacer:JsonReplacer):String;
+
+	@:native("stringify_with_replacer_pretty")
+	public static function stringifyWithReplacerPretty(value:JsonValue, replacer:JsonReplacer, space:Ref<String>):String;
 
 	@:native("value_kind")
 	public static function valueKind(value:JsonValue):Int;

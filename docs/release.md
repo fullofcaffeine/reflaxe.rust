@@ -1,6 +1,16 @@
-# Releases (GitHub-only)
+# Releases (GitHub-only, Stable 1.x)
 
 This repo uses **semantic-release** to publish GitHub Releases and keep versions/changelog in sync.
+
+## Current public posture
+
+- stable public semver line: `1.x`
+- public distribution path: GitHub Releases plus lix
+- packaged artifact format: haxelib-shaped zip
+- not implied by this repo: haxelib.org publication
+
+That means the public `1.0` decision is about supported/stable release posture, not about changing
+distribution channels.
 
 ## Trigger
 
@@ -10,6 +20,8 @@ This repo uses **semantic-release** to publish GitHub Releases and keep versions
 ## Versioning + changelog
 
 - Version bumps follow **Conventional Commits** (e.g. `feat: ...`, `fix: ...`).
+- The stable line now starts at `1.0.0`; subsequent releases continue from the Git tag history
+  produced by semantic-release.
 - `semantic-release` updates:
   - `CHANGELOG.md`
   - `package.json` / `package-lock.json`
@@ -36,8 +48,8 @@ Those updates are committed back to `main` as `chore(release): <version>`.
 - CI guard: `scripts/ci/package-smoke.sh` validates the built zip by installing it into an isolated
   local haxelib repo and compiling/building a smoke app via `-lib reflaxe.rust`.
 
-Note: even though we package a “haxelib style” zip, the intended distribution path for now is GitHub
-releases + lix (not publishing to haxelib).
+Note: even though we package a “haxelib style” zip, the intended distribution path is GitHub
+Releases plus lix. This stable `1.x` posture does not claim haxelib.org publication.
 
 ## Auth
 

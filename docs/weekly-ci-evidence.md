@@ -1,8 +1,12 @@
-# Weekly CI Evidence (Post-1.0 Operations)
+# Weekly CI Evidence (Ongoing Validation Cadence)
 
-This page defines the weekly quality cadence after 1.0.
+This page defines the recurring validation cadence for `reflaxe.rust`.
 
-Goal: keep production confidence high by re-running full validation on a predictable schedule and reacting quickly to regressions.
+Release-evidence hardening is already closed. This runbook remains useful because the repo still
+needs recurring proof that the validated `1.x` lanes stay green and that compile coverage,
+semantic parity, and smoke-only confidence remain separated honestly.
+
+Goal: keep confidence anchored to repeatable evidence by re-running full validation on a predictable schedule and reacting quickly to regressions.
 
 ## What runs each week
 
@@ -17,7 +21,7 @@ Jobs:
 1. Linux local-equivalent validation:
    - `npm run docs:sync:progress`
    - `npm run docs:check:progress` (inside `scripts/ci/local.sh`)
-   - `bash scripts/ci/local.sh`
+   - `bash scripts/ci/local.sh` (includes Tier2 upstream stdlib sweep)
 2. Windows smoke validation:
    - `bash scripts/ci/windows-smoke.sh`
 
@@ -35,6 +39,15 @@ For each run, evidence is recorded in the workflow run summary (`$GITHUB_STEP_SU
 - pass/fail status for each job
 - run URL
 - command set executed
+- semantic-confidence counts that separate:
+  - compile/inventory closure
+  - targeted semantic/runtime buckets
+  - snapshot/smoke-only buckets
+
+Weekly and PR CI also publish deterministic semantic-confidence artifacts:
+
+- `semantic-confidence-summary.json`
+- `semantic-confidence-summary.md`
 
 This keeps evidence auditable without requiring manual copy/paste into docs every week.
 
@@ -54,6 +67,8 @@ Treat regressions as release-discipline work, even when they do not block an imm
 ```bash
 npm run docs:sync:progress
 npm run docs:check:progress
+npm run docs:sync:evidence
+npm run docs:check:evidence
 bash scripts/ci/local.sh
 bash scripts/ci/windows-smoke.sh
 ```
@@ -63,3 +78,4 @@ bash scripts/ci/windows-smoke.sh
 - `docs/road-to-1.0.md`
 - `docs/progress-tracker.md`
 - `docs/vision-vs-implementation.md`
+- `docs/semantic-confidence-summary.md`

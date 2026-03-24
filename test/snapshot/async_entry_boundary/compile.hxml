@@ -1,0 +1,9 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_strict_examples
+-D reflaxe_rust_profile=metal
+-D rust_metal_allow_fallback
+-D rust_async
+-D reflaxe.dont_output_metadata_id
+-D rust_output=out
+-main Main

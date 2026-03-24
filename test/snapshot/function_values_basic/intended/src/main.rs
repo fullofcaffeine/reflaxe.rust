@@ -79,5 +79,5 @@ fn main() {
             });
         crate::HxDynRef::new(__rc)
     };
-    println!("{}", hxrt::dynamic::from(apply(g, 3)));
+    println!("{}", hxrt::dynamic::from(apply(g.clone(), 3)));
 }

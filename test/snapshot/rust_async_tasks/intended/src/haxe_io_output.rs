@@ -10,9 +10,12 @@ pub struct Output {
 
 impl Output {
     pub fn write_byte(_self_: &crate::HxRefCell<Output>, _c: i32) {
-        hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
-            hxrt::dynamic::from(String::from("Output.writeByte is not implemented")),
-        )));
+        hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+            hxrt::io::Error::Custom(hxrt::dynamic::from(String::from(
+                "Output.writeByte is not implemented",
+            ))),
+            0x6666eea1u32,
+        ));
     }
 
     pub fn write_bytes(
@@ -23,7 +26,10 @@ impl Output {
     ) -> i32 {
         let __hx_this: crate::HxRef<crate::haxe_io_output::Output> = self_.self_ref();
         if pos < 0 || len < 0 || pos + len > s.borrow().length() {
-            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::OutsideBounds));
+            hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                hxrt::io::Error::OutsideBounds,
+                0x6666eea1u32,
+            ));
         }
         let mut p: i32 = pos;
         let mut k: i32 = len;
@@ -56,7 +62,10 @@ impl Output {
         while l > 0 {
             let k: i32 = crate::haxe_io_output::Output::write_bytes(&*__hx_this, s.clone(), p, l);
             if k == 0 {
-                hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+                hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                    hxrt::io::Error::Blocked,
+                    0x6666eea1u32,
+                ));
             }
             {
                 p = p + k;
@@ -130,7 +139,10 @@ impl Output {
     pub fn write_int8(self_: &crate::HxRefCell<Output>, x: i32) {
         let __hx_this: crate::HxRef<crate::haxe_io_output::Output> = self_.self_ref();
         if x < -128 || x >= 128 {
-            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
+            hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                hxrt::io::Error::Overflow,
+                0x6666eea1u32,
+            ));
         }
         crate::haxe_io_output::Output::write_byte(&*__hx_this, x & 255);
     }
@@ -138,7 +150,10 @@ impl Output {
     pub fn write_int16(self_: &crate::HxRefCell<Output>, x: i32) {
         let __hx_this: crate::HxRef<crate::haxe_io_output::Output> = self_.self_ref();
         if x < -32768 || x >= 32768 {
-            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
+            hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                hxrt::io::Error::Overflow,
+                0x6666eea1u32,
+            ));
         }
         crate::haxe_io_output::Output::write_u_int16(&*__hx_this, x & 65535);
     }
@@ -146,7 +161,10 @@ impl Output {
     pub fn write_u_int16(self_: &crate::HxRefCell<Output>, x: i32) {
         let __hx_this: crate::HxRef<crate::haxe_io_output::Output> = self_.self_ref();
         if x < 0 || x >= 65536 {
-            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
+            hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                hxrt::io::Error::Overflow,
+                0x6666eea1u32,
+            ));
         }
         if {
             let __b = __hx_this.borrow();
@@ -163,7 +181,10 @@ impl Output {
     pub fn write_int24(self_: &crate::HxRefCell<Output>, x: i32) {
         let __hx_this: crate::HxRef<crate::haxe_io_output::Output> = self_.self_ref();
         if x < -8388608 || x >= 8388608 {
-            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
+            hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                hxrt::io::Error::Overflow,
+                0x6666eea1u32,
+            ));
         }
         crate::haxe_io_output::Output::write_u_int24(&*__hx_this, x & 16777215);
     }
@@ -171,7 +192,10 @@ impl Output {
     pub fn write_u_int24(self_: &crate::HxRefCell<Output>, x: i32) {
         let __hx_this: crate::HxRef<crate::haxe_io_output::Output> = self_.self_ref();
         if x < 0 || x >= 16777216 {
-            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Overflow));
+            hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                hxrt::io::Error::Overflow,
+                0x6666eea1u32,
+            ));
         }
         if {
             let __b = __hx_this.borrow();
@@ -233,14 +257,20 @@ impl Output {
         match hxrt::exception::catch_unwind(|| loop {
             let mut len: i32 = i.read_bytes(buf.clone(), 0, bufsize_2);
             if len == 0 {
-                hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+                hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                    hxrt::io::Error::Blocked,
+                    0x6666eea1u32,
+                ));
             }
             let mut p: i32 = 0;
             while len > 0 {
                 let k: i32 =
                     crate::haxe_io_output::Output::write_bytes(&*__hx_this, buf.clone(), p, len);
                 if k == 0 {
-                    hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+                    hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                        hxrt::io::Error::Blocked,
+                        0x6666eea1u32,
+                    ));
                 }
                 {
                     p = p + k;

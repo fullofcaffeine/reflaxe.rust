@@ -269,7 +269,7 @@ fn main() {
                 hxrt::string::HxString::from(format!(
                     "{}{}",
                     "k=",
-                    hxrt::string::HxString::from(hxrt::dynamic::from(k_3.clone()).to_haxe_string())
+                    hxrt::dynamic::from(k_3.clone()).to_haxe_string()
                 ))
                 .clone()
             )
@@ -294,9 +294,7 @@ fn main() {
             hxrt::dynamic::from(
                 hxrt::string::HxString::from(format!(
                     "{}{}{}",
-                    hxrt::string::HxString::from(
-                        hxrt::dynamic::from(kv_3.key.clone()).to_haxe_string()
-                    ),
+                    hxrt::dynamic::from(kv_3.key.clone()).to_haxe_string(),
                     "=>",
                     hxrt::dynamic::from(kv_3.value).to_haxe_string()
                 ))
@@ -338,7 +336,7 @@ fn main() {
                 hxrt::string::HxString::from(format!(
                     "{}{}",
                     "k=",
-                    hxrt::string::HxString::from(hxrt::dynamic::from(k_4.clone()).to_haxe_string())
+                    hxrt::dynamic::from(k_4.clone()).to_haxe_string()
                 ))
                 .clone()
             )
@@ -363,9 +361,7 @@ fn main() {
             hxrt::dynamic::from(
                 hxrt::string::HxString::from(format!(
                     "{}{}{}",
-                    hxrt::string::HxString::from(
-                        hxrt::dynamic::from(kv_4.key.clone()).to_haxe_string()
-                    ),
+                    hxrt::dynamic::from(kv_4.key.clone()).to_haxe_string(),
                     "=>",
                     hxrt::dynamic::from(kv_4.value).to_haxe_string()
                 ))

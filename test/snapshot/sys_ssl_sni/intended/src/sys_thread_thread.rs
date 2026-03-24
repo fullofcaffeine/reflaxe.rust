@@ -44,7 +44,7 @@ impl Thread {
     pub fn create(
         job: crate::HxDynRef<dyn Fn() + Send + Sync>,
     ) -> crate::HxRef<crate::sys_thread_thread::Thread> {
-        let id: i32 = hxrt::thread::thread_spawn(job);
+        let id: i32 = hxrt::thread::thread_spawn(job.clone());
         return crate::sys_thread_thread::Thread::new(id);
     }
 
@@ -57,7 +57,7 @@ impl Thread {
     pub fn create_with_event_loop(
         job: crate::HxDynRef<dyn Fn() + Send + Sync>,
     ) -> crate::HxRef<crate::sys_thread_thread::Thread> {
-        let id: i32 = hxrt::thread::thread_spawn_with_event_loop(job);
+        let id: i32 = hxrt::thread::thread_spawn_with_event_loop(job.clone());
         return crate::sys_thread_thread::Thread::new(id);
     }
 

@@ -1507,8 +1507,8 @@ impl Unserializer {
                     return e_3;
                 }
                 120 => {
-                    hxrt::exception::throw(hxrt::dynamic::from(
-                        crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this),
+                    hxrt::exception::throw(crate::haxe_unserializer::Unserializer::unserialize(
+                        &*__hx_this,
                     ));
                 }
                 121 => {

@@ -36,7 +36,10 @@ impl StaticBytesInput {
         .borrow()
         .length()
         {
-            hxrt::exception::throw(hxrt::dynamic::from(crate::haxe_io_eof::Eof::new()));
+            hxrt::exception::throw(hxrt::dynamic::from_ref_with_type_id(
+                crate::haxe_io_eof::Eof::new(),
+                0xaa32ee11u32,
+            ));
         }
         return ({
             let __b = __hx_this.borrow();
@@ -68,7 +71,10 @@ impl StaticBytesInput {
         .borrow()
         .length()
         {
-            hxrt::exception::throw(hxrt::dynamic::from(crate::haxe_io_eof::Eof::new()));
+            hxrt::exception::throw(hxrt::dynamic::from_ref_with_type_id(
+                crate::haxe_io_eof::Eof::new(),
+                0xaa32ee11u32,
+            ));
         }
         let available: i32 = ({
             let __b = __hx_this.borrow();
@@ -149,7 +155,10 @@ impl StaticBytesInput {
                 bufsize_2,
             );
             if len == 0 {
-                hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+                hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                    hxrt::io::Error::Blocked,
+                    0x6666eea1u32,
+                ));
             }
             crate::haxe_io_bytes_buffer::BytesBuffer::add_bytes(&*total, buf.clone(), 0, len);
         }) {
@@ -180,7 +189,10 @@ impl StaticBytesInput {
                 l,
             );
             if k == 0 {
-                hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+                hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                    hxrt::io::Error::Blocked,
+                    0x6666eea1u32,
+                ));
             }
             {
                 p = p + k;
@@ -211,7 +223,10 @@ impl StaticBytesInput {
                 remaining,
             );
             if k == 0 {
-                hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+                hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                    hxrt::io::Error::Blocked,
+                    0x6666eea1u32,
+                ));
             }
             {
                 p = p + k;
@@ -268,7 +283,10 @@ impl StaticBytesInput {
                     let bytes: crate::HxRef<hxrt::bytes::Bytes> =
                         crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&*buf);
                     if bytes.borrow().length() == 0 {
-                        hxrt::exception::throw(hxrt::dynamic::from(e));
+                        hxrt::exception::throw(hxrt::dynamic::from_ref_with_type_id(
+                            e,
+                            0xaa32ee11u32,
+                        ));
                     }
                     return hxrt::string::HxString::from(bytes.borrow().to_string());
                 }

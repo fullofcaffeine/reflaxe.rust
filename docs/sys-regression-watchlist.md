@@ -1,6 +1,6 @@
 # Cross-Platform Sys Regression Watchlist
 
-This page is the post-1.0 watchlist for `sys.*` risk areas.
+This page is the ongoing watchlist for `sys.*` risk areas.
 
 It exists to keep regressions visible, owned, and mitigated quickly across platforms.
 

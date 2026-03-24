@@ -1,0 +1,7 @@
+[package]
+name = "sys_thread_event_loop_repeat_cancel"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+hxrt = { path = "./hxrt", default-features = false, features = ["core", "io", "thread"] }

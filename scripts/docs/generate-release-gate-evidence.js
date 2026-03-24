@@ -1,14 +1,24 @@
 #!/usr/bin/env node
 /**
- * Print a prefilled release closeout evidence block.
+ * Why:
+ * Release closeout evidence should track the current release gate, not a stale historical issue ID.
+ *
+ * What:
+ * Print a prefilled closeout evidence block using the active release-gate bead by default.
+ *
+ * How:
+ * Resolve the gate from RELEASE_GATE_ID when provided, otherwise fall back to the repo's current
+ * release closeout milestone. This keeps docs prep aligned with the active semver/public packaging
+ * decision path.
  *
  * Usage:
  *   npm run docs:prep:closeout
+ *   RELEASE_GATE_ID=haxe.rust-oo3.23 npm run docs:prep:closeout
  */
 
 const { execFileSync } = require('child_process')
 
-const GATE_ID = 'haxe.rust-4jb'
+const GATE_ID = process.env.RELEASE_GATE_ID || 'haxe.rust-oo3.23'
 
 function runIssueShow(issueId) {
   let raw
@@ -43,7 +53,12 @@ function todayIsoDate() {
 
 function main() {
   const gate = runIssueShow(GATE_ID)
-  const deps = Array.isArray(gate.dependencies) ? gate.dependencies : []
+  const childChecklist = Array.isArray(gate.dependents)
+    ? gate.dependents.filter((dep) => dep.dependency_type === 'parent-child')
+    : []
+  const deps = childChecklist.length > 0
+    ? childChecklist
+    : (Array.isArray(gate.dependencies) ? gate.dependencies : [])
   const closedDeps = deps.filter((dep) => dep.status === 'closed')
   const remainingDeps = deps.filter((dep) => dep.status !== 'closed')
 

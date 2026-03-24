@@ -22,6 +22,7 @@ In `metal`, strict app boundary mode is enabled by default (`reflaxe_rust_strict
 
 - raw app-side `untyped __rust__(...)` is rejected,
 - typed framework-owned facades remain allowed,
+- `@:rustAllowRaw` does not bypass metal-clean enforcement,
 - controlled typed escapes are available via:
   - `rust.metal.Code.expr(...)`
   - `rust.metal.Code.stmt(...)`
@@ -57,6 +58,7 @@ If you are new to `metal`, use this decision tree:
    - Use `rust.metal.Code.expr(...)` / `rust.metal.Code.stmt(...)` behind a typed Haxe API.
 3. Need to drop raw `untyped __rust__(...)` in app code?
    - Don’t. `metal` rejects this by default because it bypasses compiler diagnostics and policy checks.
+   - `@:rustAllowRaw` is not a workaround here; metal and `@:haxeMetal` still reject raw fallback.
 
 This keeps generated code analyzable (fallback counts, contract reports, metal-island checks) while still giving Rust-level control through typed boundaries.
 

@@ -123,6 +123,29 @@ Important:
 - Examples/snapshots are guarded by `-D reflaxe_rust_strict_examples` and will fail if `__rust__`
   leaks into user code via inlining.
 
+## Scoped raw authority (`@:rustAllowRaw`)
+
+If a narrow low-level abstraction module genuinely needs raw `__rust__`, you can mark the owning
+type/module with `@:rustAllowRaw`.
+
+Use this sparingly:
+
+- good fit: a small user-owned bridge module that cannot be expressed cleanly as an extern yet
+- bad fit: application business logic, examples, or general "Rust everywhere" authoring
+
+Important limits:
+
+- `@:rustAllowRaw` only relaxes strict boundary enforcement (`reflaxe_rust_strict` and
+  `reflaxe_rust_strict_examples`) for the tagged module.
+- It does **not** bypass `metal` or `@:haxeMetal` raw-fallback restrictions.
+- If the same module is compiled as `metal` or tagged `@:haxeMetal`, raw fallback still errors.
+
+Practical rule:
+
+1. Prefer typed externs and metadata first.
+2. If that still cannot express the boundary, use `@:rustAllowRaw` in one small wrapper module.
+3. Keep the rest of the codebase on typed Haxe APIs.
+
 ## Dynamic boundaries (stdlib compatibility)
 
 Some Haxe std APIs are intentionally dynamic across all targets. For those, this backend keeps

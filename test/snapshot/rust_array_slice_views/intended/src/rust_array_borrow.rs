@@ -11,13 +11,13 @@ impl ArrayBorrow {
         array: hxrt::array::Array<T>,
         f: crate::HxDynRef<dyn Fn(&[T]) -> R + Send + Sync>,
     ) -> R {
-        return crate::array_borrow_tools::ArrayBorrowTools::withSlice(&array, f);
+        return crate::array_borrow_tools::ArrayBorrowTools::withSlice(&array, f.clone());
     }
 
     pub fn with_mut_slice<T, R>(
         array: hxrt::array::Array<T>,
         f: crate::HxDynRef<dyn Fn(&mut [T]) -> R + Send + Sync>,
     ) -> R {
-        return crate::array_borrow_tools::ArrayBorrowTools::withMutSlice(&array, f);
+        return crate::array_borrow_tools::ArrayBorrowTools::withMutSlice(&array, f.clone());
     }
 }

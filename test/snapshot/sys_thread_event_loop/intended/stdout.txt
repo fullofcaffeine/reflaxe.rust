@@ -1,0 +1,7 @@
+initial=never
+after_run=now
+entry_seen=true
+after_promise=any
+after_run_promised=now
+promised_seen=true
+final=never

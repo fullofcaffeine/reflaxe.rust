@@ -375,6 +375,50 @@ where
     map_string_array(obj.borrow().keys())
 }
 
+/// Return the current field count for a dynamic object.
+///
+/// Why
+/// - JSON serialization wants an accurate map-length hint for `serde` without first cloning all
+///   entries into an owned buffer.
+///
+/// What
+/// - A tiny helper that reads the current `BTreeMap` length under a short-lived borrow.
+///
+/// How
+/// - Keeps the borrow scope local so callers can compose it with later borrowed iteration.
+#[inline]
+pub fn dyn_object_len(obj: &HxRef<DynObject>) -> usize {
+    obj.borrow().fields.len()
+}
+
+/// Visit dynamic-object entries under a single read borrow.
+///
+/// Why
+/// - The plain JSON stringify fast path wants to serialize fields directly without cloning a full
+///   `(String, Dynamic)` vector first.
+/// - The older `dyn_object_entries` helper intentionally clones because reflection-style callers
+///   should not keep borrows alive across arbitrary code.
+///
+/// What
+/// - A narrowly-scoped traversal helper for runtime code that can prove the callback is a
+///   serialization-style walk, not an arbitrary mutation boundary.
+///
+/// How
+/// - Holds one read borrow for the duration of the visit and passes borrowed `&str` / `&Dynamic`
+///   views into the callback.
+/// - Returns `Result` so callers like `serde::SerializeMap` can propagate errors directly.
+#[inline]
+pub fn dyn_object_try_for_each_entry<E, F>(obj: &HxRef<DynObject>, mut f: F) -> Result<(), E>
+where
+    F: FnMut(&str, &Dynamic) -> Result<(), E>,
+{
+    let borrow = obj.borrow();
+    for (key, value) in borrow.fields.iter() {
+        f(key.as_str(), value)?;
+    }
+    Ok(())
+}
+
 /// Return a cloned list of `(key, value)` entries for a `DynObject`.
 ///
 /// This is intentionally cloning: `DynObject` is stored behind interior mutability, and callers
@@ -422,6 +466,23 @@ pub fn field_get(obj: &Dynamic, key: &str) -> Dynamic {
         return crate::anon::anon_get(a, key);
     }
     Dynamic::null()
+}
+
+/// Check whether a dynamic field exists on a `Dynamic` receiver.
+///
+/// Semantics:
+/// - If `obj` is a boxed `HxRef<DynObject>`: returns whether the field key exists.
+/// - If `obj` is a boxed `HxRef<anon::Anon>`: returns whether the field key exists.
+/// - Otherwise: returns `false`.
+#[inline]
+pub fn field_has(obj: &Dynamic, key: &str) -> bool {
+    if let Some(o) = obj.downcast_ref::<HxRef<DynObject>>() {
+        return o.borrow().fields.contains_key(key);
+    }
+    if let Some(a) = obj.downcast_ref::<crate::cell::HxRef<crate::anon::Anon>>() {
+        return crate::anon::anon_has(a, key);
+    }
+    false
 }
 
 /// Write a dynamic field into a `Dynamic` receiver.

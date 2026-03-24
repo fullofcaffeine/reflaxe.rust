@@ -69,24 +69,20 @@ fn main() {
     );
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}{}",
-        hxrt::string::HxString::from(
-            ({
-                let __b = http.borrow();
-                __b.seen_data.clone()
-            })
-            .join(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                ","
-            )))
-        ),
+        ({
+            let __b = http.borrow();
+            __b.seen_data.clone()
+        })
+        .join(hxrt::string::HxString::from(hxrt::string::HxString::from(
+            ","
+        ))),
         "|",
-        hxrt::string::HxString::from(
-            ({
-                let __b = http.borrow();
-                __b.seen_bytes.clone()
-            })
-            .join(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                ","
-            )))
-        )
+        ({
+            let __b = http.borrow();
+            __b.seen_bytes.clone()
+        })
+        .join(hxrt::string::HxString::from(hxrt::string::HxString::from(
+            ","
+        )))
     ))));
 }

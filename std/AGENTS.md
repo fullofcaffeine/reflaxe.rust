@@ -3,6 +3,8 @@
 - `std/` is framework-level Haxe code shipped with the target.
 - `__rust__` injection is allowed here, but keep it as a last-resort escape hatch and hide it behind typed Haxe APIs.
 - Do not expose raw `__rust__` calls to application/example code; enforce “apps call Haxe APIs, not injections”.
+- `@:rustAllowRaw` is for narrow low-level authority islands when strict boundary enforcement would otherwise reject a necessary raw bridge.
+  It does not weaken `metal` / `@:haxeMetal`; those paths must still become typed instead of relying on raw fallback.
 - When overriding Haxe stdlib modules (e.g. `haxe.io.Bytes`, `Sys`, `sys.*`), keep their public signatures compatible so other std modules typecheck.
 - Some stdlib APIs are declared as `@:coreApi extern` in the eval stdlib (`std/eval/_std/**`). Target overrides must match these signatures exactly (including property accessor shapes like `var x(get, never)`), otherwise Haxe will error during typing.
 - Prefer stable, typed interop surfaces:

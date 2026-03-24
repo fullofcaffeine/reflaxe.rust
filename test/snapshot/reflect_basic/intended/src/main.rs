@@ -29,6 +29,8 @@ mod haxe_io_input;
 mod haxe_io_output;
 mod haxe_iterators_string_iterator;
 mod haxe_iterators_string_key_value_iterator;
+mod haxe_json;
+mod haxe_json_value;
 mod haxe_stack_item;
 mod int32_tools;
 mod map_storage_tools_nullable;
@@ -98,4 +100,27 @@ fn main() {
         __obj.borrow_mut().set("x", __val);
     };
     println!("{}", hxrt::dynamic::from(o.borrow().get::<i32>("x")));
+    let parsed: hxrt::dynamic::Dynamic = crate::haxe_json::Json::parse(
+        hxrt::string::HxString::from(hxrt::string::HxString::from("{\"label\":\"ok\",\"n\":3}")),
+    );
+    println!(
+        "{}",
+        hxrt::dynamic::from({
+            let __obj = parsed.clone();
+            hxrt::dynamic::field_has(&__obj, "label")
+        })
+    );
+    println!("{}", {
+        let __obj = parsed.clone();
+        hxrt::dynamic::field_get(&__obj, "label")
+    });
+    {
+        let __obj = parsed.clone();
+        let __val = hxrt::dynamic::from(4);
+        hxrt::dynamic::field_set(&__obj, "n", __val);
+    };
+    println!("{}", {
+        let __obj = parsed.clone();
+        hxrt::dynamic::field_get(&__obj, "n")
+    });
 }

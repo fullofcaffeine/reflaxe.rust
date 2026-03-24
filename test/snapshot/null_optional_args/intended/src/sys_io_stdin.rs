@@ -18,7 +18,10 @@ impl Stdin {
     pub fn read_byte(_self_: &crate::HxRefCell<Stdin>) -> i32 {
         let c: i32 = hxrt::sys::stdin_read_byte();
         if c < 0 {
-            hxrt::exception::throw(hxrt::dynamic::from(crate::haxe_io_eof::Eof::new()));
+            hxrt::exception::throw(hxrt::dynamic::from_ref_with_type_id(
+                crate::haxe_io_eof::Eof::new(),
+                0xaa32ee11u32,
+            ));
         }
         return c;
     }
@@ -30,7 +33,10 @@ impl Stdin {
         len: i32,
     ) -> i32 {
         if pos < 0 || len < 0 || pos + len > s.borrow().length() {
-            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::OutsideBounds));
+            hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                hxrt::io::Error::OutsideBounds,
+                0x6666eea1u32,
+            ));
         }
         if len == 0 {
             return 0;
@@ -78,7 +84,10 @@ impl Stdin {
             let len: i32 =
                 crate::sys_io_stdin::Stdin::read_bytes(&*__hx_this, buf.clone(), 0, bufsize_2);
             if len == 0 {
-                hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+                hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                    hxrt::io::Error::Blocked,
+                    0x6666eea1u32,
+                ));
             }
             crate::haxe_io_bytes_buffer::BytesBuffer::add_bytes(&*total, buf.clone(), 0, len);
         }) {
@@ -103,7 +112,10 @@ impl Stdin {
         while l > 0 {
             let k: i32 = crate::sys_io_stdin::Stdin::read_bytes(&*__hx_this, s.clone(), p, l);
             if k == 0 {
-                hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+                hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                    hxrt::io::Error::Blocked,
+                    0x6666eea1u32,
+                ));
             }
             {
                 p = p + k;
@@ -126,7 +138,10 @@ impl Stdin {
             let k: i32 =
                 crate::sys_io_stdin::Stdin::read_bytes(&*__hx_this, s.clone(), p, remaining);
             if k == 0 {
-                hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+                hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                    hxrt::io::Error::Blocked,
+                    0x6666eea1u32,
+                ));
             }
             {
                 p = p + k;
@@ -176,7 +191,10 @@ impl Stdin {
                     let bytes: crate::HxRef<hxrt::bytes::Bytes> =
                         crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&*buf);
                     if bytes.borrow().length() == 0 {
-                        hxrt::exception::throw(hxrt::dynamic::from(e));
+                        hxrt::exception::throw(hxrt::dynamic::from_ref_with_type_id(
+                            e,
+                            0xaa32ee11u32,
+                        ));
                     }
                     return hxrt::string::HxString::from(bytes.borrow().to_string());
                 }

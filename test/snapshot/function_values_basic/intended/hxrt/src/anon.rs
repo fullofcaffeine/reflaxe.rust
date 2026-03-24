@@ -98,6 +98,45 @@ pub fn anon_keys(obj: &HxRef<Anon>) -> Array<String> {
     obj.borrow().keys()
 }
 
+/// Return the current field count for an anonymous-object runtime value.
+///
+/// Why
+/// - JSON serialization wants an accurate map-length hint without first cloning all entries.
+///
+/// What
+/// - Reads the `Anon` field count under a short-lived borrow.
+///
+/// How
+/// - Mirrors `dyn_object_len` so the JSON fast path can treat `Anon` and `DynObject` uniformly.
+#[inline]
+pub fn anon_len(obj: &HxRef<Anon>) -> usize {
+    obj.borrow().fields.len()
+}
+
+/// Visit anonymous-object entries under a single read borrow.
+///
+/// Why
+/// - The JSON fast path should serialize anonymous-object fields directly rather than cloning an
+///   owned `(String, Dynamic)` list first.
+///
+/// What
+/// - A narrow traversal helper for serialization-style runtime walks.
+///
+/// How
+/// - Holds one read borrow while invoking the callback with borrowed key/value views.
+/// - Returns `Result` so serializer callbacks can propagate failures without an intermediate buffer.
+#[inline]
+pub fn anon_try_for_each_entry<E, F>(obj: &HxRef<Anon>, mut f: F) -> Result<(), E>
+where
+    F: FnMut(&str, &Dynamic) -> Result<(), E>,
+{
+    let borrow = obj.borrow();
+    for (key, value) in borrow.fields.iter() {
+        f(key.as_str(), value)?;
+    }
+    Ok(())
+}
+
 /// Return a cloned list of `(key, value)` entries for an `Anon` object.
 ///
 /// This is intentionally cloning: `Anon` is stored behind interior mutability, and callers

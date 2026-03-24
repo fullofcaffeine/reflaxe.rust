@@ -27,9 +27,12 @@ impl BytesBuffer {
             let __b = __hx_this.borrow();
             __b.finalized
         } {
-            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
-                hxrt::dynamic::from(hxrt::string::HxString::from("BytesBuffer is finalized")),
-            )));
+            hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                hxrt::io::Error::Custom(hxrt::dynamic::from(hxrt::string::HxString::from(
+                    "BytesBuffer is finalized",
+                ))),
+                0x6666eea1u32,
+            ));
         }
     }
 
@@ -47,9 +50,12 @@ impl BytesBuffer {
             let __b = __hx_this.borrow();
             __b.finalized
         } {
-            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
-                hxrt::dynamic::from(hxrt::string::HxString::from("BytesBuffer is finalized")),
-            )));
+            hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                hxrt::io::Error::Custom(hxrt::dynamic::from(hxrt::string::HxString::from(
+                    "BytesBuffer is finalized",
+                ))),
+                0x6666eea1u32,
+            ));
         }
         let b: crate::HxRef<hxrt::bytes::Bytes> =
             crate::HxRef::new(hxrt::bytes::Bytes::alloc(1 as usize));
@@ -75,9 +81,12 @@ impl BytesBuffer {
             let __b = __hx_this.borrow();
             __b.finalized
         } {
-            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
-                hxrt::dynamic::from(hxrt::string::HxString::from("BytesBuffer is finalized")),
-            )));
+            hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                hxrt::io::Error::Custom(hxrt::dynamic::from(hxrt::string::HxString::from(
+                    "BytesBuffer is finalized",
+                ))),
+                0x6666eea1u32,
+            ));
         }
         ({
             let __b = __hx_this.borrow();
@@ -104,9 +113,12 @@ impl BytesBuffer {
             let __b = __hx_this.borrow();
             __b.finalized
         } {
-            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
-                hxrt::dynamic::from(hxrt::string::HxString::from("BytesBuffer is finalized")),
-            )));
+            hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                hxrt::io::Error::Custom(hxrt::dynamic::from(hxrt::string::HxString::from(
+                    "BytesBuffer is finalized",
+                ))),
+                0x6666eea1u32,
+            ));
         }
         crate::haxe_io_bytes_buffer::BytesBuffer::add(&*__hx_this, {
             let _ = encoding;
@@ -167,9 +179,12 @@ impl BytesBuffer {
             let __b = __hx_this.borrow();
             __b.finalized
         } {
-            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
-                hxrt::dynamic::from(hxrt::string::HxString::from("BytesBuffer is finalized")),
-            )));
+            hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                hxrt::io::Error::Custom(hxrt::dynamic::from(hxrt::string::HxString::from(
+                    "BytesBuffer is finalized",
+                ))),
+                0x6666eea1u32,
+            ));
         }
         crate::haxe_io_bytes_buffer::BytesBuffer::add(
             &*__hx_this,
@@ -183,9 +198,12 @@ impl BytesBuffer {
             let __b = __hx_this.borrow();
             __b.finalized
         } {
-            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Custom(
-                hxrt::dynamic::from(hxrt::string::HxString::from("BytesBuffer is finalized")),
-            )));
+            hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                hxrt::io::Error::Custom(hxrt::dynamic::from(hxrt::string::HxString::from(
+                    "BytesBuffer is finalized",
+                ))),
+                0x6666eea1u32,
+            ));
         }
         let out: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRef::new(hxrt::bytes::Bytes::alloc(
             ({

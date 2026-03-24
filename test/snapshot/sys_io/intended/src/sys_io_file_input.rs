@@ -50,7 +50,10 @@ impl FileInput {
             .read_byte()
         };
         if v == -1 {
-            hxrt::exception::throw(hxrt::dynamic::from(crate::haxe_io_eof::Eof::new()));
+            hxrt::exception::throw(hxrt::dynamic::from_ref_with_type_id(
+                crate::haxe_io_eof::Eof::new(),
+                0xaa32ee11u32,
+            ));
         }
         return v;
     }
@@ -63,7 +66,10 @@ impl FileInput {
     ) -> i32 {
         let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
         if pos < 0 || len < 0 || pos + len > s.borrow().length() {
-            hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::OutsideBounds));
+            hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                hxrt::io::Error::OutsideBounds,
+                0x6666eea1u32,
+            ));
         }
         if len == 0 {
             return 0;
@@ -86,7 +92,10 @@ impl FileInput {
             }
         };
         if out == -1 {
-            hxrt::exception::throw(hxrt::dynamic::from(crate::haxe_io_eof::Eof::new()));
+            hxrt::exception::throw(hxrt::dynamic::from_ref_with_type_id(
+                crate::haxe_io_eof::Eof::new(),
+                0xaa32ee11u32,
+            ));
         }
         return out;
     }
@@ -176,7 +185,10 @@ impl FileInput {
                 bufsize_2,
             );
             if len == 0 {
-                hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+                hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                    hxrt::io::Error::Blocked,
+                    0x6666eea1u32,
+                ));
             }
             crate::haxe_io_bytes_buffer::BytesBuffer::add_bytes(&*total, buf.clone(), 0, len);
         }) {
@@ -202,7 +214,10 @@ impl FileInput {
             let k: i32 =
                 crate::sys_io_file_input::FileInput::read_bytes(&*__hx_this, s.clone(), p, l);
             if k == 0 {
-                hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+                hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                    hxrt::io::Error::Blocked,
+                    0x6666eea1u32,
+                ));
             }
             {
                 p = p + k;
@@ -232,7 +247,10 @@ impl FileInput {
                 remaining,
             );
             if k == 0 {
-                hxrt::exception::throw(hxrt::dynamic::from(hxrt::io::Error::Blocked));
+                hxrt::exception::throw(hxrt::dynamic::from_with_type_id(
+                    hxrt::io::Error::Blocked,
+                    0x6666eea1u32,
+                ));
             }
             {
                 p = p + k;
@@ -282,7 +300,10 @@ impl FileInput {
                     let bytes: crate::HxRef<hxrt::bytes::Bytes> =
                         crate::haxe_io_bytes_buffer::BytesBuffer::get_bytes(&*buf);
                     if bytes.borrow().length() == 0 {
-                        hxrt::exception::throw(hxrt::dynamic::from(e));
+                        hxrt::exception::throw(hxrt::dynamic::from_ref_with_type_id(
+                            e,
+                            0xaa32ee11u32,
+                        ));
                     }
                     return hxrt::string::HxString::from(bytes.borrow().to_string());
                 }

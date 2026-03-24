@@ -2,6 +2,11 @@
 
 This page explains the current async/await support in plain language.
 
+Canonical status note:
+
+- for the current stable/preview/caveat classification, read [Concurrency Posture](concurrency-posture.md)
+- for the exact supported/unsupported async contract, read [Async Contract](async-contract.md)
+
 ## Who this is for
 
 Use this when:
@@ -45,6 +50,12 @@ class Main {
 }
 ```
 
+This example is also the canonical entry-boundary shape:
+
+- keep `main()` synchronous
+- put async work in a helper returning `Future<T>`
+- call `Async.blockOn(...)` from `main()`
+
 ## API surface
 
 - `rust.async.Future<T>`
@@ -67,12 +78,14 @@ class Main {
 - `rust.async.Tasks.spawn(...)` / `rust.async.Tasks.join(...)`
   - Task handle helper surface that bridges futures into `rust.concurrent` tasks.
 
-## Important rules (preview scope)
+## Important rules
 
-- `@:rustAsync` / `@:async` is currently supported on static methods only.
-- Constructors and `main` cannot be marked async in preview mode.
+- `@:rustAsync` / `@:async` is supported on static methods and generated-class instance methods.
+- Constructors cannot be marked async.
 - Async functions must return `rust.async.Future<T>`.
 - `@:rustAwait` / `Async.await(...)` is only valid inside async functions.
+- Keep `main` synchronous and use `Async.blockOn(...)` at the boundary.
+- The supported entry shape is sync `main()` -> async helper -> `Async.blockOn(...)`.
 - `Async.blockOn(...)` is forbidden inside async functions.
 
 ## Mental model
@@ -88,7 +101,11 @@ class Main {
 
 ## Current status
 
-This is a preview feature intended for early production trials in metal-profile projects. It is fully typed and codegen-backed, but still intentionally constrained so behavior remains predictable.
+This is a supported Rust-first async subset for metal-profile projects. It is fully typed and
+codegen-backed, but still intentionally constrained so behavior remains predictable.
+
+For the canonical current posture and evidence summary, see [Concurrency Posture](concurrency-posture.md).
+For the exact current contract edges, see [Async Contract](async-contract.md).
 
 ## Optional tokio adapter
 
@@ -107,7 +124,9 @@ This keeps app code typed while letting Cargo/dependency planning include tokio 
 ## Related docs
 
 - [Metal profile](metal-profile.md)
+- [Async contract](async-contract.md)
 - [Profile migration guide](rusty-profile.md)
 - [Defines reference](defines-reference.md)
 - [Workflow](workflow.md)
+- [Example: async_entry_boundary](../test/snapshot/async_entry_boundary)
 - [Example: async_retry_pipeline](../examples/async_retry_pipeline)

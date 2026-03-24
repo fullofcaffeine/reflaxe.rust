@@ -28,6 +28,7 @@ This page is a practical reference for the most relevant compiler defines.
 - `rust_async`
   - Enable async/await surfaces (`rust.async.Future`, `rust.async.Async.*`).
   - Requires `reflaxe_rust_profile=metal`.
+  - Current posture is a supported Rust-first async subset: see `docs/async-contract.md`, `docs/async-await.md`, and `docs/concurrency-posture.md`.
 - `rust_async_preview`
   - Removed legacy define retained only as a migration error trigger.
   - The compiler reports an explicit error and instructs to use `rust_async`.
@@ -146,6 +147,13 @@ This page is a practical reference for the most relevant compiler defines.
   - Canonical portable-lane metadata for strict metal island enforcement.
 - `@:rustMetal`
   - Compatibility alias; supported for migration, but new code should use `@:haxeMetal`.
+- `@:rustAllowRaw`
+  - Scoped raw-`__rust__` authority for a tagged module/type.
+  - Intended for narrow low-level abstraction islands that still need raw injection while
+    `reflaxe_rust_strict` or `reflaxe_rust_strict_examples` is enabled.
+  - Does not bypass `metal` or `@:haxeMetal` raw-fallback restrictions; those are enforced later by
+    metal-clean policy passes.
+  - Document the boundary with `Why / What / How` HaxeDoc where the abstraction is declared.
 
 ## Notes on defaults
 

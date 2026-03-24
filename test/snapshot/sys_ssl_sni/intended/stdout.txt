@@ -1,3 +1,0 @@
-peerCN=alt.local
-payload=server-ok
-serverStatus=ok

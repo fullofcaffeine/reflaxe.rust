@@ -67,6 +67,60 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
     }
 }
 
+fn decode_todo(row: hxrt::dynamic::Dynamic) -> crate::HxRef<hxrt::anon::Anon> {
+    let id: hxrt::dynamic::Dynamic = {
+        let __obj = row.clone();
+        hxrt::dynamic::field_get(&__obj, "id")
+    };
+    let name: hxrt::dynamic::Dynamic = {
+        let __obj = row.clone();
+        hxrt::dynamic::field_get(&__obj, "name")
+    };
+    let done: hxrt::dynamic::Dynamic = {
+        let __obj = row.clone();
+        hxrt::dynamic::field_get(&__obj, "done")
+    };
+    if !({
+        let __dyn = id.clone();
+        __dyn.downcast_ref::<i32>().is_some()
+    }) || !({
+        let __dyn = name.clone();
+        __dyn.downcast_ref::<String>().is_some()
+            || __dyn.downcast_ref::<hxrt::string::HxString>().is_some()
+    }) || !({
+        let __dyn = done.clone();
+        __dyn.downcast_ref::<i32>().is_some()
+    }) {
+        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
+            "invalid sqlite todo row",
+        )));
+    }
+    return {
+        let __o = crate::HxRef::new(hxrt::anon::Anon::new());
+        {
+            let mut __b = __o.borrow_mut();
+            __b.set("id", {
+                let __hx_dyn = id;
+                if __hx_dyn.is_null() {
+                    hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                } else {
+                    __hx_dyn.downcast_ref::<i32>().unwrap().clone()
+                }
+            });
+            __b.set("name", hxrt::string::HxString::from(name.to_haxe_string()));
+            __b.set("done", {
+                let __hx_dyn = done;
+                if __hx_dyn.is_null() {
+                    hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                } else {
+                    __hx_dyn.downcast_ref::<i32>().unwrap().clone()
+                }
+            });
+        };
+        __o
+    };
+}
+
 fn main() {
     let cnx: crate::HxRc<dyn crate::sys_db_connection::Connection + Send + Sync> =
         crate::sys_db_sqlite::Sqlite::open(hxrt::string::HxString::from(
@@ -121,17 +175,7 @@ fn main() {
         " nf=",
         hxrt::dynamic::from(rs.get_nfields()).to_haxe_string()
     ))));
-    let r1: crate::HxRef<hxrt::anon::Anon> = {
-        let __hx_dyn = rs.next();
-        if __hx_dyn.is_null() {
-            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
-        } else {
-            __hx_dyn
-                .downcast_ref::<crate::HxRef<hxrt::anon::Anon>>()
-                .unwrap()
-                .clone()
-        }
-    };
+    let r1: crate::HxRef<hxrt::anon::Anon> = decode_todo(rs.next());
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}{}{}{}{}{}{}{}{}",
         "len1=",
@@ -145,17 +189,7 @@ fn main() {
         " get0=",
         hxrt::dynamic::from(rs.get_int_result(0)).to_haxe_string()
     ))));
-    let r2: crate::HxRef<hxrt::anon::Anon> = {
-        let __hx_dyn = rs.next();
-        if __hx_dyn.is_null() {
-            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
-        } else {
-            __hx_dyn
-                .downcast_ref::<crate::HxRef<hxrt::anon::Anon>>()
-                .unwrap()
-                .clone()
-        }
-    };
+    let r2: crate::HxRef<hxrt::anon::Anon> = decode_todo(rs.next());
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}{}{}{}{}{}{}{}{}",
         "len2=",
@@ -169,20 +203,10 @@ fn main() {
         " get1=",
         rs.get_result(1)
     ))));
-    let r3: crate::HxRef<hxrt::anon::Anon> = {
-        let __hx_dyn = rs.next();
-        if __hx_dyn.is_null() {
-            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
-        } else {
-            __hx_dyn
-                .downcast_ref::<crate::HxRef<hxrt::anon::Anon>>()
-                .unwrap()
-                .clone()
-        }
-    };
+    let r3: hxrt::dynamic::Dynamic = rs.next();
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "end=",
-        hxrt::string::HxString::from(r3.is_null().to_string())
+        r3.is_null().to_string()
     ))));
 }

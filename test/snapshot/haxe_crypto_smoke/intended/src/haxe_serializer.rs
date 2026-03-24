@@ -1416,11 +1416,7 @@ impl Serializer {
                 }
                 _ => {
                     hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
-                        format!(
-                            "{}{}",
-                            "Cannot serialize ",
-                            hxrt::string::HxString::from(v.to_haxe_string())
-                        ),
+                        format!("{}{}", "Cannot serialize ", v.to_haxe_string()),
                     )));
                 }
             }

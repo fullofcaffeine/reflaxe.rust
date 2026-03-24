@@ -72,7 +72,9 @@ jobs:
         run: |
           set -euo pipefail
           npm run docs:sync:progress
+          npm run docs:sync:evidence
           git diff --exit-code -- docs/progress-tracker.md docs/vision-vs-implementation.md
+          git diff --exit-code -- docs/semantic-confidence-summary.json docs/semantic-confidence-summary.md
 
       - name: Run full local CI equivalent
         run: |
@@ -83,11 +85,6 @@ jobs:
           HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS=60 \
           bash scripts/ci/local.sh
 
-      - name: Run upstream stdlib Tier2 sweep
-        run: |
-          set -euo pipefail
-          bash test/run-upstream-stdlib-sweep.sh --tier tier2
-
       - name: Verify portable stdlib candidate coverage
         run: |
           set -euo pipefail
@@ -95,6 +92,7 @@ jobs:
           npm run guard:stdlib-candidate-gap
           mkdir -p .cache/weekly-evidence
           node scripts/ci/audit-upstream-stdlib-candidates.js --json > .cache/weekly-evidence/portable-stdlib-candidates.json
+          node scripts/ci/generate-semantic-confidence-summary.js --write --out-dir .cache/weekly-evidence
 
       - name: Upload portable stdlib candidate artifact
         if: always()
@@ -104,6 +102,16 @@ jobs:
           path: .cache/weekly-evidence/portable-stdlib-candidates.json
           if-no-files-found: warn
 
+      - name: Upload semantic confidence summary artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semantic-confidence-summary
+          path: |
+            .cache/weekly-evidence/semantic-confidence-summary.json
+            .cache/weekly-evidence/semantic-confidence-summary.md
+          if-no-files-found: warn
+
       - name: Publish Linux evidence summary
         if: always()
         env:
@@ -111,6 +119,7 @@ jobs:
         run: |
           set -euo pipefail
           run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          semantic_counts="$(node - <<'NODE'\nconst fs = require('fs')\nconst report = JSON.parse(fs.readFileSync('.cache/weekly-evidence/semantic-confidence-summary.json', 'utf8'))\nconsole.log(`- Semantic confidence artifact: \\`semantic-confidence-summary\\``)\nconsole.log(`- Tier2 inventory: \\`${report.counts.tier2SweepModules}\\` modules; portable candidates covered: \\`${report.counts.portableCandidateCoveredInTier2}\\` / \\`${report.counts.portableCandidateImportableModules}\\``)\nconsole.log(`- Targeted semantic buckets: \\`${report.counts.bucketsByClass.targeted_semantic_parity}\\``)\nconsole.log(`- Snapshot/smoke-only buckets: \\`${report.counts.bucketsByClass.snapshot_or_smoke_only}\\``)\nconsole.log(`- Portable semantic-diff cases: \\`${report.counts.portableSemanticDiffCases}\\`; lane cases: \\`${report.counts.laneSemanticDiffCases}\\``)\nNODE\n)"
           {
             echo "## Weekly CI Evidence (Linux local equivalent)"
             echo "- Result: ${JOB_STATUS}"
@@ -119,9 +128,9 @@ jobs:
             echo "- Commands:"
             echo "  - \`npm run docs:sync:progress\`"
             echo "  - \`HXRT_PERF_GATE_MODE=nightly HXRT_PERF_HOT_LOOP_INPROC_RUNS=60 HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS=60 bash scripts/ci/local.sh\`"
-            echo "  - \`bash test/run-upstream-stdlib-sweep.sh --tier tier2\`"
             echo "  - \`npm run guard:stdlib-candidates\`"
             echo "  - \`npm run guard:stdlib-candidate-gap\`"
+            printf '%s\n' "${semantic_counts}"
           } >> "$GITHUB_STEP_SUMMARY"
 
   windows-smoke:

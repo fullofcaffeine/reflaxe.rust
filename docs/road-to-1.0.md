@@ -1,111 +1,149 @@
-# Road to 1.0 (Execution Playbook)
+# Release Hardening Record
 
-This is the practical plan that moved the project from "almost there" to a defensible production 1.0 release.
+Historical note:
 
-It is written for teams that are not compiler specialists.
+- this document records the Milestone 26 hardening work that made public readiness claims honest
+- the current public semver/package posture now lives in `docs/semver-release-posture.md`
 
-## Current baseline (as of February 13, 2026)
+This document records the release-evidence hardening playbook and its closeout state for `reflaxe.rust`.
 
-- Core compiler/runtime foundation work: closed.
-- Advanced real-app stress harness work: closed.
-- 1.0 production release gate: closed.
-- Release-gate checks: 100% closed.
+It replaces the earlier “1.0 closeout” framing with a stricter question:
+is the repo's public readiness language as honest as the current evidence?
 
-Meaning: the 1.0 closeout gate is complete. Remaining work is post-1.0 quality discipline.
+## Why this doc exists
 
-## Exit definition for 1.0
+`reflaxe.rust` has already closed a large amount of real work:
 
-Ship 1.0 only when all conditions below are true at the same time:
+- the compiler/runtime baseline is substantial,
+- the real-app harness exists,
+- CI/evidence automation is real,
+- portable/metal contracts are implemented as actual compiler policy.
 
-1. The release readiness gate is closed.
-2. CI-equivalent checks are green on the release candidate branch.
-3. Cross-platform CI (including Windows smoke) is green.
-4. Docs and implementation are synchronized (profiles, defines, runtime assumptions).
-5. No unresolved P0/P1 production-readiness risks remain open.
+What required hardening in the release story was:
 
-## Execution phases
+- some docs were speaking with more confidence than the current proof depth justified,
+- Tier2 inventory closure could be overread as runtime semantic closure,
+- a few high-risk semantic buckets still need more explicit proof or clearer caveats.
 
-### Phase A: Stabilization window
+So this doc is not a banner saying “1.0 is already done”.
+It is the record of how the repo hardened the readiness story enough to stop overstating what the evidence proves.
 
-Goal: prove there are no hidden regressions under normal development churn.
+## Current posture
 
-Actions:
+As of March 8, 2026:
 
-- Keep running full local CI equivalent on candidate updates:
-  - `bash scripts/ci/local.sh`
-- Keep `docs/progress-tracker.md` and `docs/vision-vs-implementation.md` in sync:
-  - `npm run docs:sync:progress`
-  - `npm run docs:check:progress`
-- Enforce no new undocumented behavior changes in profiles/interop/runtime.
+- core compiler/runtime baseline: closed
+- real-app stress harness: closed
+- release-evidence hardening: closed
+- semver/public packaging posture: unresolved at the time of this hardening snapshot
 
-Success signal:
+Meaning:
 
-- Consecutive green CI cycles with no new release-blocking regressions.
+- architecture confidence is high,
+- validated implementation confidence is high on the exercised lanes,
+- broad public release confidence has been hardened to the current evidence baseline.
 
-Status: completed for 1.0 closeout on February 13, 2026.
+## Hardening milestone
 
-### Phase B: Release gate closeout
+Closed roadmap tranche:
 
-Goal: convert technical readiness into explicit release readiness.
+- `haxe.rust-oo3.20`
+  - `Milestone 26 — Release-evidence hardening + truth-in-claims correction`
 
-Actions:
+Its purpose was to close the remaining gap between:
 
-- Re-validate release-gate evidence in the internal tracker:
-  - acceptance criteria references,
-  - latest green CI links,
-  - documented known limitations.
-- Confirm docs index points users to current guidance:
-  - onboarding,
-  - progress tracker,
-  - defines reference,
-  - production readiness guide.
+1. what the repo can actually prove today, and
+2. what the public docs/readme/status pages imply.
 
-Success signal:
+## Exit criteria for stronger public release claims
 
-- The release gate is explicitly marked closed with evidence.
+Do not strengthen public “1.0” / “post-1.0” language until all of the following are true at the same time:
 
-Status: completed on February 13, 2026.
+1. Tracker-backed status docs are internally consistent.
+2. Public docs no longer overclaim beyond the current evidence.
+3. Compile coverage vs semantic/runtime parity is explicit in docs and CI outputs.
+4. High-risk semantic buckets have either:
+   - targeted contract tests, or
+   - explicit downgraded/qualified documentation.
+5. The main evidence commands remain green:
+   - `npm run docs:sync:progress`
+   - `npm run docs:check:progress`
+   - `npm run test:semantic-diff`
+   - `npm run test:semantic-diff:lanes`
+   - `npm run test:upstream-stdlib:tier2`
+   - `npm run test:family-stdlib-bootstrap`
+   - `npm run test:family-stdlib-sync`
+   - `npm run test:all`
+   - `npm run test:windows-smoke`
 
-### Phase C: Release candidate and tag
+## Execution tracks
 
-Goal: publish 1.0 without documentation or process drift.
+### Track A: Truth-in-claims correction
 
-Actions:
+Goal:
 
-- Freeze non-essential feature work during release candidate validation.
-- Run full pre-push directive checks from `AGENTS.md`.
-- Confirm release automation inputs are aligned (versions, changelog, docs links).
+- make README, status docs, and support docs say only what current evidence supports.
 
-Success signal:
+Examples:
 
-- Mainline release automation can run without manual fixes.
+- remove “post-1.0” framing where the repo is still in hardening,
+- stop treating compile/inventory closure as blanket semantic parity,
+- keep `reflaxe.std` rollout language honest about local-vs-family hosting.
 
-## Weekly operating cadence (recommended)
+### Track B: Tracker integrity
 
-- Once per week, run and review:
-  - `npm run docs:sync:progress`
-  - `npm run docs:check:progress`
-  - `bash scripts/ci/local.sh`
-- Log any new production risks immediately in the internal tracker.
+Goal:
 
-Automation status:
+- ensure generated status docs derive from the right milestone/gate sources.
 
-- The cadence above is automated in `.github/workflows/weekly-ci-evidence.yml`.
-- See `docs/weekly-ci-evidence.md` for evidence format and regression follow-up protocol.
-- Use `docs/sys-regression-watchlist.md` as the live intake board for cross-platform `sys.*` regressions.
+Examples:
 
-## Common failure modes to avoid
+- never use the umbrella roadmap epic as the live readiness signal,
+- derive readiness from explicit milestone/gate issues,
+- keep docs sync/check deterministic even when `bd` is unavailable.
 
-- Assuming dependency closure means release closure.
-- Letting docs drift from implementation details (especially profile behavior and string mode policy).
-- Relying on one green run instead of sustained green confidence.
+### Track C: Semantic hardening
 
-## Closeout checklist (completed on February 13, 2026)
+Goal:
 
-1. CI evidence is fresh and repeatable.
-2. Tracker docs are synchronized.
-3. Profile and define docs reflect current behavior.
-4. Release gate has explicit closeout notes.
+- add proof where current evidence is thinnest.
+
+Priority buckets:
+
+- exceptions / catch / `Dynamic` boundary behavior,
+- reflection subset behavior,
+- process/net failure paths,
+- thread/event-loop/MainLoop caveats.
+
+### Track D: Evidence hardening
+
+Goal:
+
+- make CI/weekly outputs distinguish:
+  - compile coverage,
+  - targeted semantic parity,
+  - smoke/example-only confidence.
+
+Reviewers should not need to reverse-engineer proof depth from a pile of green jobs.
+
+## Weekly cadence after hardening closeout
+
+Keep running and reviewing:
+
+- `npm run docs:sync:progress`
+- `npm run docs:check:progress`
+- `bash scripts/ci/local.sh`
+- `bash scripts/ci/windows-smoke.sh`
+
+Use `docs/weekly-ci-evidence.md` as the runbook for ongoing validation evidence.
+
+## What this doc is not
+
+This doc is not:
+
+- a declaration that broad public 1.0 readiness is already complete,
+- proof that Tier2 closure equals runtime parity,
+- a license to start a new perf-first or feature-first milestone before the truth gap is closed.
 
 ## Related docs
 
@@ -114,7 +152,5 @@ Automation status:
 - `docs/production-readiness.md`
 - `docs/defines-reference.md`
 - `docs/v1.md`
-- `docs/release-gate-closeout.md`
-  - helper command: `npm run docs:prep:closeout`
 - `docs/weekly-ci-evidence.md`
 - `docs/sys-regression-watchlist.md`

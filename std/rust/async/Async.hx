@@ -37,7 +37,20 @@ extern class Async {
 	/**
 	 * Run a future to completion from synchronous code.
 	 *
-	 * Intended for boundary points like sync `main()` wrappers.
+	 * Why:
+	 * - `reflaxe.rust` keeps the async entry contract explicit instead of silently turning the whole
+	 *   program entrypoint into runtime-managed async.
+	 * - That keeps ownership/lifetime behavior predictable and makes the supported boundary easy to
+	 *   document, test, and diagnose.
+	 *
+	 * What:
+	 * - `blockOn(...)` is the canonical sync -> async boundary helper.
+	 * - The supported entry pattern today is: sync `main()`, async helper returns `Future<T>`,
+	 *   `Async.blockOn(...)` bridges the two.
+	 *
+	 * How:
+	 * - Lowered to `hxrt::async_::block_on`.
+	 * - Forbidden inside async functions; use `await` there instead.
 	 */
 	@:native("block_on")
 	public static function blockOn<T>(future:Future<T>):T;

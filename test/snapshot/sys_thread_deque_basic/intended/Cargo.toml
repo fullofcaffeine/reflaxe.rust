@@ -1,0 +1,7 @@
+[package]
+name = "sys_thread_deque_basic"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+hxrt = { path = "./hxrt", default-features = false, features = ["core", "io", "thread"] }

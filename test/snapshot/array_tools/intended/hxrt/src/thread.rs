@@ -23,7 +23,7 @@ use crate::dynamic::Dynamic;
 use crate::{dynamic, exception};
 use parking_lot::{Condvar, Mutex as ParkMutex};
 use std::cell::Cell;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, OnceLock};
@@ -179,6 +179,7 @@ struct EventLoopState {
     one_time: VecDeque<HxRc<dyn Fn() + Send + Sync>>,
     promised: i32,
     regular: Vec<RegularEvent>, // kept sorted by `next_run`
+    cancelled: HashSet<u64>,
 }
 
 fn with_thread_state_or_throw<R>(thread_id: i32, f: impl FnOnce(&Arc<ThreadState>) -> R) -> R {
@@ -264,6 +265,7 @@ pub fn event_loop_cancel(thread_id: i32, event_id: i32) {
     with_thread_state_or_throw(thread_id, |state| {
         let mut st = state.events.lock();
         st.regular.retain(|e| e.id != id);
+        st.cancelled.insert(id);
     });
 }
 
@@ -276,6 +278,7 @@ pub fn event_loop_cancel(thread_id: i32, event_id: i32) {
 /// - `>= 0` => At(time) in seconds since program start
 pub fn event_loop_progress(thread_id: i32) -> f64 {
     let mut to_run: Vec<HxRc<dyn Fn() + Send + Sync>> = Vec::new();
+    let mut due_regular: Vec<RegularEvent> = Vec::new();
     let mut next_at: f64 = -1.0;
     let mut promised: i32 = 0;
     let now = now_seconds();
@@ -288,16 +291,9 @@ pub fn event_loop_progress(thread_id: i32) -> f64 {
             if first.next_run > now {
                 break;
             }
-            let mut ev = st.regular.remove(0);
+            let ev = st.regular.remove(0);
             to_run.push(ev.callback.clone());
-            ev.next_run += ev.interval;
-            // Reinsert.
-            let idx = st
-                .regular
-                .iter()
-                .position(|x| ev.next_run < x.next_run)
-                .unwrap_or(st.regular.len());
-            st.regular.insert(idx, ev);
+            due_regular.push(ev);
         }
 
         // Drain one-time events.
@@ -315,6 +311,30 @@ pub fn event_loop_progress(thread_id: i32) -> f64 {
 
     for ev in to_run.iter() {
         ev();
+    }
+
+    if !due_regular.is_empty() {
+        with_thread_state_or_throw(thread_id, |state| {
+            let mut st = state.events.lock();
+            let reschedule_at = now_seconds();
+            for mut ev in due_regular.drain(..) {
+                if st.cancelled.remove(&ev.id) {
+                    continue;
+                }
+                ev.next_run = reschedule_at + ev.interval;
+                let idx = st
+                    .regular
+                    .iter()
+                    .position(|x| ev.next_run < x.next_run)
+                    .unwrap_or(st.regular.len());
+                st.regular.insert(idx, ev);
+            }
+            if let Some(first) = st.regular.first() {
+                next_at = first.next_run;
+            } else {
+                next_at = -1.0;
+            }
+        });
     }
 
     if !to_run.is_empty() {
@@ -714,6 +734,37 @@ mod tests {
             "expected At(time) (>= 0.0 seconds since start), got {next}"
         );
         assert_eq!(hits.load(AtomicOrdering::SeqCst), 0);
+        remove_thread_state(tid);
+    }
+
+    #[test]
+    fn event_loop_repeat_cancel_from_callback_stops_requeue() {
+        let tid = NEXT_THREAD_ID.fetch_add(1, Ordering::Relaxed);
+        let _ = ensure_thread_state(tid);
+        let hits = HxRc::new(AtomicUsize::new(0));
+        let event_id = HxRef::new(None::<i32>);
+
+        let hits2 = hits.clone();
+        let event_id2 = event_id.clone();
+        let event_rc: HxRc<dyn Fn() + Send + Sync> = HxRc::new(move || {
+            let seen = hits2.fetch_add(1, AtomicOrdering::SeqCst) + 1;
+            if seen == 2 {
+                let id = (*event_id2.borrow()).expect("event id must be assigned before callback runs");
+                event_loop_cancel(tid, id);
+            }
+        });
+
+        let id = event_loop_repeat(tid, HxDynRef::new(event_rc), 1);
+        *event_id.borrow_mut() = Some(id);
+
+        std::thread::sleep(Duration::from_millis(10));
+        assert_eq!(event_loop_progress(tid), -2.0);
+        std::thread::sleep(Duration::from_millis(5));
+        assert_eq!(event_loop_progress(tid), -2.0);
+        std::thread::sleep(Duration::from_millis(5));
+        assert_eq!(event_loop_progress(tid), -1.0);
+        assert_eq!(hits.load(AtomicOrdering::SeqCst), 2);
+
         remove_thread_state(tid);
     }
 

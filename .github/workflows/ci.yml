@@ -209,6 +209,12 @@ jobs:
           mkdir -p .cache/ci-evidence
           node scripts/ci/audit-upstream-stdlib-candidates.js --json > .cache/ci-evidence/portable-stdlib-candidates.json
 
+      - name: Capture semantic confidence summary artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/ci-evidence
+          node scripts/ci/generate-semantic-confidence-summary.js --write --out-dir .cache/ci-evidence
+
       - name: Package smoke (haxelib zip install)
         run: |
           set -euo pipefail
@@ -251,3 +257,75 @@ jobs:
           name: portable-stdlib-candidates
           path: .cache/ci-evidence/portable-stdlib-candidates.json
           if-no-files-found: warn
+
+      - name: Upload semantic confidence summary artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semantic-confidence-summary
+          path: |
+            .cache/ci-evidence/semantic-confidence-summary.json
+            .cache/ci-evidence/semantic-confidence-summary.md
+          if-no-files-found: warn
+
+      - name: Publish semantic confidence summary
+        if: always()
+        run: |
+          set -euo pipefail
+          node - <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          const fs = require('fs')
+          const report = JSON.parse(fs.readFileSync('.cache/ci-evidence/semantic-confidence-summary.json', 'utf8'))
+          console.log('## Semantic Confidence Summary')
+          console.log(`- Tier2 inventory: \`${report.counts.tier2SweepModules}\` modules`)
+          console.log(`- Portable candidates covered in Tier2: \`${report.counts.portableCandidateCoveredInTier2}\` / \`${report.counts.portableCandidateImportableModules}\``)
+          console.log(`- Targeted semantic/runtime buckets: \`${report.counts.bucketsByClass.targeted_semantic_parity}\``)
+          console.log(`- Snapshot/smoke-only buckets: \`${report.counts.bucketsByClass.snapshot_or_smoke_only}\``)
+          console.log(`- Portable semantic-diff cases: \`${report.counts.portableSemanticDiffCases}\`; lane cases: \`${report.counts.laneSemanticDiffCases}\``)
+          console.log('- Artifact: `semantic-confidence-summary`')
+          NODE
+
+  tier2-stdlib-sweep:
+    name: Tier2 upstream stdlib sweep
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install npm dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Cache Haxe toolchain (lix)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/haxe
+          key: ${{ runner.os }}-lix-haxe-${{ env.HAXE_VERSION }}-${{ hashFiles('.haxerc', 'haxe_libraries/*.hxml', 'package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-lix-haxe-${{ env.HAXE_VERSION }}-
+
+      - name: Install Haxe (pinned via lix)
+        run: |
+          set -euo pipefail
+          npx lix download
+          npx lix download haxe "${{ env.HAXE_VERSION }}"
+          npx lix use haxe "${{ env.HAXE_VERSION }}"
+          echo "$(pwd)/node_modules/.bin" >> "$GITHUB_PATH"
+          export PATH="$(pwd)/node_modules/.bin:$PATH"
+          haxe -version
+
+      - name: Setup Rust (stable + rustfmt + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Run Tier2 upstream stdlib sweep
+        run: |
+          set -euo pipefail
+          bash test/run-upstream-stdlib-sweep.sh --tier tier2

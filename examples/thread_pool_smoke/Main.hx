@@ -2,6 +2,25 @@ import sys.thread.FixedThreadPool;
 import sys.thread.Lock;
 import sys.thread.Mutex;
 
+/**
+	Fixed thread-pool smoke for the portable `sys.thread` helpers.
+
+	Why
+	- This example exists to answer a different question than `examples/sys_thread_smoke`.
+	- `sys_thread_smoke` proves raw thread creation/message passing.
+	- This example proves the higher-level `FixedThreadPool` helper can schedule multiple jobs,
+	  coordinate completion, and shut down cleanly on the Rust target.
+
+	What
+	- Queue three tasks onto a fixed pool of size two.
+	- Protect a shared completion counter with `Mutex`.
+	- Use `Lock` as the completion signal and print `ok:3` when all work finished.
+
+	How
+	- The explicit cloned handles keep closure moves obvious in generated Rust.
+	- `doneLock.wait()` turns the example into a deterministic regression signal instead of a
+	  timing-sensitive sleep-based smoke test.
+**/
 class Main {
 	static function main() {
 		final pool = new FixedThreadPool(2);
@@ -31,12 +50,13 @@ class Main {
 		Sys.println("ok:" + doneBox[0]);
 	}
 
-	static function task(doneLock: Lock, mutex: Mutex, doneBox: Array<Int>) {
+	static function task(doneLock:Lock, mutex:Mutex, doneBox:Array<Int>) {
 		mutex.acquire();
 		doneBox[0] = doneBox[0] + 1;
 		final d = doneBox[0];
 		mutex.release();
 
-		if (d == 3) doneLock.release();
+		if (d == 3)
+			doneLock.release();
 	}
 }

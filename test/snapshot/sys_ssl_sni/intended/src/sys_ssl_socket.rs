@@ -306,7 +306,7 @@ impl Socket {
             let __b = __hx_this.borrow();
             __b.sni_matchers.clone()
         })
-        .push(cb_servername_match);
+        .push(cb_servername_match.clone());
         ({
             let __b = __hx_this.borrow();
             __b.sni_certs.clone()

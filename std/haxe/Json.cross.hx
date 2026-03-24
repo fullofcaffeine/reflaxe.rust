@@ -80,9 +80,15 @@ class Json {
 		return haxe.format.JsonPrinter.print(value, replacer, space);
 		#else
 		if (replacer != null) {
-			return NativeJson.stringifyWithReplacer(value, replacer, space);
+			if (space != null) {
+				return NativeJson.stringifyWithReplacerPretty(value, replacer, space);
+			}
+			return NativeJson.stringifyWithReplacer(value, replacer);
 		}
-		return NativeJson.stringify(value, space);
+		if (space != null) {
+			return NativeJson.stringifyPretty(value, space);
+		}
+		return NativeJson.stringify(value);
 		#end
 	}
 

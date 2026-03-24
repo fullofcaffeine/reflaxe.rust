@@ -1023,6 +1023,8 @@ run_negative_case "test/negative/metal_island_dynamic_access" 'Metal island viol
 	'@:haxeMetal module rejects dynamic boundary usage in portable profile'
 run_negative_case "test/negative/metal_island_raw_fallback" 'Metal island violation in module `Main`.*raw Rust expression node\(s\) \(`ERaw`\)' \
 	'@:haxeMetal module rejects raw fallback codegen in portable profile'
+run_negative_case "test/negative/metal_island_allow_raw_fallback" 'Metal island violation in module `Main`.*raw Rust expression node\(s\) \(`ERaw`\)' \
+	'@:rustAllowRaw does not bypass @:haxeMetal raw-fallback restrictions'
 run_negative_case "test/negative/metal_island_rust_alias_dynamic_access" 'Metal island violation in module `Main`.*dynamic_boundary/dynamic_access' \
 	'@:rustMetal alias still enforces metal island contract in portable profile'
 run_negative_case "test/negative/metal_nullable_strings" 'metal profile does not allow -D rust_string_nullable in metal-clean mode' \
@@ -1036,6 +1038,10 @@ run_negative_case "test/negative/metal_no_hxrt_runtime_boundary" '`-D rust_no_hx
 	'rust_no_hxrt rejects runtime-dependent output'
 run_negative_case "test/negative/async_preview_removed" '`-D rust_async_preview` was removed\. Use `-D rust_async`\.' \
 	'rust_async_preview define removed'
+run_negative_case "test/negative/async_main_boundary" '`main` must stay synchronous for the Rust async contract\.' \
+	'async boundary keeps main synchronous'
+run_negative_case "test/negative/async_constructor_preview" 'Constructors cannot be marked `@:async` / `@:rustAsync` in preview mode\.' \
+	'async preview rejects constructors'
 run_negative_case "test/negative/profile_removed_idiomatic" 'Unknown `-D reflaxe_rust_profile=idiomatic`\. Expected portable\|metal\.' \
 	'idiomatic profile selector removed'
 run_negative_case "test/negative/profile_removed_rusty" 'Unknown `-D reflaxe_rust_profile=rusty`\. Expected portable\|metal\.' \

@@ -28,7 +28,7 @@ impl EventLoop {
                 let __b = __hx_this.borrow();
                 __b._thread_id
             },
-            event,
+            event.clone(),
             interval_ms,
         );
         return id as i32;
@@ -64,7 +64,7 @@ impl EventLoop {
                 let __b = __hx_this.borrow();
                 __b._thread_id
             },
-            event,
+            event.clone(),
         );
     }
 
@@ -78,7 +78,7 @@ impl EventLoop {
                 let __b = __hx_this.borrow();
                 __b._thread_id
             },
-            event,
+            event.clone(),
         );
     }
 

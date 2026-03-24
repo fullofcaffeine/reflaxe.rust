@@ -7,6 +7,7 @@ import haxe.macro.Type;
 import haxe.macro.TypedExprTools;
 import reflaxe.rust.ProfileResolver;
 import reflaxe.rust.RustProfile;
+import reflaxe.rust.analyze.RustRawInjectionAuthorityAnalyzer;
 
 /**
  * BoundaryEnforcer
@@ -24,6 +25,9 @@ import reflaxe.rust.RustProfile;
  * - Registers a `Context.onAfterTyping` hook and scans example modules for `__rust__()` calls.
  * - In `metal` profile, allows framework-owned typed facades (`std/rust/metal`, compiler macro shims)
  *   while still rejecting raw app-side injection.
+ * - `@:rustAllowRaw` can authorize a tagged example/snapshot fixture when the test itself is
+ *   validating the scoped-authority policy.
+ * - `@:rustAllowRaw` does not bypass `metal` / `@:haxeMetal` raw-fallback restrictions.
  */
 class BoundaryEnforcer {
 	public static function init():Void {
@@ -33,36 +37,54 @@ class BoundaryEnforcer {
 			return;
 
 		var allowFrameworkTypedInjections = ProfileResolver.resolve() == RustProfile.Metal;
-		Context.onAfterTyping(types -> enforceExampleBoundaries(types, allowFrameworkTypedInjections));
+		Context.onAfterTyping(types -> enforceExampleBoundaries(types, allowFrameworkTypedInjections, allowedRawInjectionModules(types)));
 	}
 
-	static function enforceExampleBoundaries(types:Array<ModuleType>, allowFrameworkTypedInjections:Bool):Void {
+	static function enforceExampleBoundaries(types:Array<ModuleType>, allowFrameworkTypedInjections:Bool, allowedRawModules:Map<String, Bool>):Void {
 		for (moduleType in types) {
 			switch (moduleType) {
 				case TClassDecl(classRef):
 					var classType = classRef.get();
 					if (!isExampleSource(classType.pos))
 						continue;
-					enforceNoRustInjectionInClass(classType, allowFrameworkTypedInjections);
+					enforceNoRustInjectionInClass(classType, allowFrameworkTypedInjections,
+						allowedRawModules.exists(RustRawInjectionAuthorityAnalyzer.moduleNameForClass(classType)));
+				case TAbstract(abstractRef):
+					var abstractType = abstractRef.get();
+					if (!isExampleSource(abstractType.pos) || abstractType.impl == null)
+						continue;
+					var impl = abstractType.impl.get();
+					if (impl != null) {
+						enforceNoRustInjectionInFields(impl.fields.get().concat(impl.statics.get()), allowFrameworkTypedInjections,
+							allowedRawModules.exists(RustRawInjectionAuthorityAnalyzer.moduleNameForAbstract(abstractType)));
+					}
 				case _:
 			}
 		}
 	}
 
-	static function enforceNoRustInjectionInClass(classType:ClassType, allowFrameworkTypedInjections:Bool):Void {
-		var allFields = classType.fields.get().concat(classType.statics.get());
+	static function enforceNoRustInjectionInClass(classType:ClassType, allowFrameworkTypedInjections:Bool, allowScopedRawAuthority:Bool):Void {
+		enforceNoRustInjectionInFields(classType.fields.get().concat(classType.statics.get()), allowFrameworkTypedInjections, allowScopedRawAuthority);
+	}
+
+	static function enforceNoRustInjectionInFields(fields:Array<ClassField>, allowFrameworkTypedInjections:Bool, allowScopedRawAuthority:Bool):Void {
+		var allFields = fields;
 		for (field in allFields) {
 			var expr = field.expr();
 			if (expr == null)
 				continue;
-			scanForRustInjection(expr, allowFrameworkTypedInjections);
+			scanForRustInjection(expr, allowFrameworkTypedInjections, allowScopedRawAuthority);
 		}
 	}
 
-	static function scanForRustInjection(expr:TypedExpr, allowFrameworkTypedInjections:Bool):Void {
+	static function scanForRustInjection(expr:TypedExpr, allowFrameworkTypedInjections:Bool, allowScopedRawAuthority:Bool):Void {
 		if (isRustInjectionCall(expr)) {
+			if (allowScopedRawAuthority) {
+				TypedExprTools.iter(expr, e -> scanForRustInjection(e, allowFrameworkTypedInjections, allowScopedRawAuthority));
+				return;
+			}
 			if (allowFrameworkTypedInjections && isFrameworkTypedInjectionExpr(expr.pos)) {
-				TypedExprTools.iter(expr, e -> scanForRustInjection(e, allowFrameworkTypedInjections));
+				TypedExprTools.iter(expr, e -> scanForRustInjection(e, allowFrameworkTypedInjections, allowScopedRawAuthority));
 				return;
 			}
 
@@ -71,7 +93,7 @@ class BoundaryEnforcer {
 				expr.pos);
 		}
 
-		TypedExprTools.iter(expr, e -> scanForRustInjection(e, allowFrameworkTypedInjections));
+		TypedExprTools.iter(expr, e -> scanForRustInjection(e, allowFrameworkTypedInjections, allowScopedRawAuthority));
 	}
 
 	static function isRustInjectionCall(expr:TypedExpr):Bool {
@@ -129,6 +151,14 @@ class BoundaryEnforcer {
 		}
 
 		return normalized.indexOf("/src/reflaxe/rust/macros/") != -1 || normalized.indexOf("/std/rust/metal/") != -1;
+	}
+
+	static function allowedRawInjectionModules(types:Array<ModuleType>):Map<String, Bool> {
+		var out:Map<String, Bool> = [];
+		var snapshot = RustRawInjectionAuthorityAnalyzer.collect(types);
+		for (module in snapshot.modules)
+			out.set(module, true);
+		return out;
 	}
 
 	static function isRustBuild():Bool {

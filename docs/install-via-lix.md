@@ -1,6 +1,12 @@
-# Install via lix (GitHub-only)
+# Install via lix (GitHub-only, Stable 1.x)
 
-This project is currently distributed via **GitHub releases** and installed via **lix** (no haxelib publish required).
+This project is distributed via **GitHub Releases** and installed via **lix**.
+
+Current public packaging posture:
+
+- stable release line: `1.x`
+- install source: GitHub release tags
+- no haxelib.org publish required
 
 ## Prereqs
 
@@ -44,4 +50,3 @@ Then:
 haxe compile.hxml
 (cd out && cargo run)
 ```
-

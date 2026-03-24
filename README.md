@@ -4,12 +4,18 @@
 
 # reflaxe.rust
 
-[![Version](https://img.shields.io/badge/version-0.62.0-blue)](https://github.com/fullofcaffeine/reflaxe.rust/releases)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/fullofcaffeine/reflaxe.rust/releases)
 [![CI](https://github.com/fullofcaffeine/reflaxe.rust/actions/workflows/ci.yml/badge.svg)](https://github.com/fullofcaffeine/reflaxe.rust/actions/workflows/ci.yml)
 
 Haxe 4.3.7 -> Rust target built on Reflaxe.
 
 This project lets you write Haxe and ship native Rust binaries, with a path for both Haxe-first and Rust-first teams.
+
+Current posture:
+
+- architecture and contract model: strong
+- validated implementation baseline: broad and evidence-backed
+- public release posture: stable `1.x`, with explicit documented caveats and proof-depth limits (`docs/semver-release-posture.md`)
 
 ## Why reflaxe.rust
 
@@ -21,19 +27,18 @@ This project lets you write Haxe and ship native Rust binaries, with a path for 
 - `reflaxe.std` is the start of a broader portable idiom layer, not a Rust-only wrapper module.
   V1 is intentionally narrow (`Option` / `Result`) so semantics and migration stay stable before
   the portable API surface grows.
+- Portable lowering can still target native Rust representations when semantics match, but that is
+  an implementation win inside the `portable` contract, not a silent switch into native-lane code.
+  See [Portable near-native guidance](docs/portable-near-native-guidance.md).
 - CI evidence: snapshots, negative policy fixtures, runtime/optimizer plan reports, and HXRT overhead tracking are all part of the default workflow.
 
 ## Start Here
 
 - New here: [Start Here guide](docs/start-here.md)
-- Building async apps: [Async/Await preview guide](docs/async-await.md)
-- Production rollout: [Production Readiness guide](docs/production-readiness.md)
-- HXRT overhead visibility: [HXRT overhead benchmarks](docs/perf-hxrt-overhead.md)
-- Post-1.0 quality cadence: [Weekly CI Evidence runbook](docs/weekly-ci-evidence.md)
-- Cross-platform sys risk tracking: [Sys Regression Watchlist](docs/sys-regression-watchlist.md)
-- Fast edit-compile-run loop: [Dev Watcher guide](docs/dev-watcher.md)
-- Full docs map: [Documentation Index](docs/index.md)
-- Profile/scenario examples map: [Examples Matrix](docs/examples-matrix.md)
+- Portable-first path: [Profiles](docs/profiles.md), [Portable near-native guidance](docs/portable-near-native-guidance.md), [Examples Matrix](docs/examples-matrix.md)
+- Metal-first path: [Metal profile](docs/metal-profile.md), [Portable near-native guidance](docs/portable-near-native-guidance.md), [profile_storyboard / metal examples](docs/examples-matrix.md)
+- Release / operations path: [Production Readiness guide](docs/production-readiness.md), [Semver and release posture](docs/semver-release-posture.md), [Weekly CI Evidence runbook](docs/weekly-ci-evidence.md)
+- Tooling / workflow: [Dev Watcher guide](docs/dev-watcher.md), [Async/Await guide](docs/async-await.md), [Documentation Index](docs/index.md)
 
 ## Scaffold A New Project (Generator)
 
@@ -143,14 +148,20 @@ Coverage map: [docs/examples-matrix.md](docs/examples-matrix.md).
 - Full local CI equivalent: `bash scripts/ci/local.sh`
 - Clean generated artifacts: `npm run clean:artifacts:all`
 
-## 1.0 Status and Roadmap
+## Status and Readiness
 
-- Live tracker: [Compiler Progress Tracker](docs/progress-tracker.md)
-- Vision vs implementation: [Reality check](docs/vision-vs-implementation.md)
-- Execution playbook: [Road to 1.0](docs/road-to-1.0.md)
-- Weekly post-1.0 operations: [Weekly CI Evidence](docs/weekly-ci-evidence.md)
+- Current release posture: [Semver and release posture](docs/semver-release-posture.md)
+- Production rollout guidance: [Production Readiness](docs/production-readiness.md)
+- Current readiness tracker: [Compiler Progress Tracker](docs/progress-tracker.md)
+- Ongoing validation cadence: [Weekly CI Evidence](docs/weekly-ci-evidence.md)
+- Technical support matrix: [feature support matrix](docs/feature-support-matrix.md)
 - Sys regression intake: [Cross-Platform Watchlist](docs/sys-regression-watchlist.md)
-- Technical support matrix: [v1 scope](docs/v1.md)
+
+Historical closeout records:
+
+- [GA decision record](docs/ga-decision-record.md)
+- [GA caveat classification](docs/ga-caveat-classification.md)
+- [Road to 1.0](docs/road-to-1.0.md)
 
 ## Defines (Common)
 

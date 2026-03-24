@@ -54,11 +54,20 @@ npm run guard:stdlib-candidates
 npm run guard:stdlib-candidate-gap
 ```
 
+`bash test/run-upstream-stdlib-sweep.sh --tier tier2` is a blocking CI gate.
+
 Run family std bootstrap + sync verification:
 
 ```sh
 npm run test:family-stdlib-bootstrap
 npm run test:family-stdlib-sync
+```
+
+Run semantic-confidence artifact sync / determinism guards:
+
+```sh
+npm run docs:sync:evidence
+npm run docs:check:evidence
 ```
 
 By default, `test:all` removes generated `out*` folders and `.cache/*target*` at the end of the run to control disk growth.

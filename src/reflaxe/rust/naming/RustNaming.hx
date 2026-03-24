@@ -9,27 +9,63 @@ package reflaxe.rust.naming;
  */
 class RustNaming {
 	// Rust keywords (2021 edition + reserved).
-	static final KEYWORDS: Map<String, Bool> = [
-		"as" => true, "break" => true, "box" => true, "const" => true, "continue" => true, "crate" => true, "else" => true, "enum" => true, "extern" => true,
-		"false" => true, "fn" => true, "for" => true, "if" => true, "impl" => true, "in" => true, "let" => true, "loop" => true, "match" => true,
-		"mod" => true, "move" => true, "mut" => true, "pub" => true, "ref" => true, "return" => true, "self" => true, "Self" => true, "static" => true,
-		"struct" => true, "super" => true, "trait" => true, "true" => true, "type" => true, "unsafe" => true, "use" => true, "where" => true, "while" => true,
-		"async" => true, "await" => true, "dyn" => true,
+	static final KEYWORDS:Map<String, Bool> = [
+		"as" => true,
+		"break" => true,
+		"box" => true,
+		"const" => true,
+		"continue" => true,
+		"crate" => true,
+		"else" => true,
+		"enum" => true,
+		"extern" => true,
+		"false" => true,
+		"fn" => true,
+		"for" => true,
+		"if" => true,
+		"impl" => true,
+		"in" => true,
+		"let" => true,
+		"loop" => true,
+		"match" => true,
+		"mod" => true,
+		"move" => true,
+		"mut" => true,
+		"pub" => true,
+		"ref" => true,
+		"return" => true,
+		"self" => true,
+		"Self" => true,
+		"static" => true,
+		"struct" => true,
+		"super" => true,
+		"trait" => true,
+		"true" => true,
+		"type" => true,
+		"unsafe" => true,
+		"use" => true,
+		"where" => true,
+		"while" => true,
+		"async" => true,
+		"await" => true,
+		"dyn" => true,
 		// Reserved keywords not currently used in stable syntax, but still reserved.
 		"typeof" => true,
 		// Not keywords, but reserved in this codegen to avoid shadowing common Rust crates.
-		"std" => true, "core" => true, "alloc" => true,
+		"std" => true,
+		"core" => true,
+		"alloc" => true,
 	];
 
-	public static function isKeyword(name: String): Bool {
+	public static function isKeyword(name:String):Bool {
 		return KEYWORDS.exists(name);
 	}
 
-	public static function isValidIdent(name: String): Bool {
+	public static function isValidIdent(name:String):Bool {
 		return ~/^[A-Za-z_][A-Za-z0-9_]*$/.match(name);
 	}
 
-	public static function escapeKeyword(name: String): String {
+	public static function escapeKeyword(name:String):String {
 		return isKeyword(name) ? (name + "_") : name;
 	}
 
@@ -39,8 +75,9 @@ class RustNaming {
 	 * - leading digit -> `_` prefix
 	 * - collapse consecutive `_`
 	 */
-	public static function sanitizeIdent(name: String): String {
-		if (name == null || name.length == 0) return "_";
+	public static function sanitizeIdent(name:String):String {
+		if (name == null || name.length == 0)
+			return "_";
 
 		var out = new StringBuf();
 		var prevUnderscore = false;
@@ -49,7 +86,8 @@ class RustNaming {
 			var ok = (ch >= "a" && ch <= "z") || (ch >= "A" && ch <= "Z") || (ch >= "0" && ch <= "9") || ch == "_";
 			var c = ok ? ch : "_";
 			if (c == "_") {
-				if (prevUnderscore) continue;
+				if (prevUnderscore)
+					continue;
 				prevUnderscore = true;
 				out.add("_");
 			} else {
@@ -59,9 +97,11 @@ class RustNaming {
 		}
 
 		var s = out.toString();
-		if (s.length == 0) s = "_";
+		if (s.length == 0)
+			s = "_";
 		var first = s.charAt(0);
-		if (first >= "0" && first <= "9") s = "_" + s;
+		if (first >= "0" && first <= "9")
+			s = "_" + s;
 		return s;
 	}
 
@@ -69,8 +109,9 @@ class RustNaming {
 	 * Converts `CamelCase` / `mixedCase` / `URLValue` to `snake_case`.
 	 * Keeps existing underscores intact.
 	 */
-	public static function toSnakeCase(name: String): String {
-		if (name == null || name.length == 0) return "";
+	public static function toSnakeCase(name:String):String {
+		if (name == null || name.length == 0)
+			return "";
 
 		var out = new StringBuf();
 		for (i in 0...name.length) {
@@ -87,7 +128,8 @@ class RustNaming {
 					nextIsLower = (next >= "a" && next <= "z");
 				}
 				// "fooBar" -> foo_bar, "URLValue" -> url_value
-				if (prevIsLowerOrDigit || nextIsLower) out.add("_");
+				if (prevIsLowerOrDigit || nextIsLower)
+					out.add("_");
 			}
 
 			out.add(lower);
@@ -96,7 +138,7 @@ class RustNaming {
 		return out.toString();
 	}
 
-	public static function snakeIdent(name: String): String {
+	public static function snakeIdent(name:String):String {
 		return escapeKeyword(sanitizeIdent(toSnakeCase(name)));
 	}
 
@@ -117,31 +159,35 @@ class RustNaming {
 	 * - We do not try to "re-case" already-camel segments (e.g. `URLValue` stays `URLValue`).
 	 * - Empty segments are ignored, so `Foo__Bar_` becomes `FooBar`.
 	 */
-	public static function typeIdent(name: String): String {
+	public static function typeIdent(name:String):String {
 		var sanitized = sanitizeIdent(name);
 		var parts = sanitized.split("_");
 		var out = new StringBuf();
 
 		for (p in parts) {
-			if (p == null || p.length == 0) continue;
+			if (p == null || p.length == 0)
+				continue;
 			out.add(p.charAt(0).toUpperCase());
-			if (p.length > 1) out.add(p.substr(1));
+			if (p.length > 1)
+				out.add(p.substr(1));
 		}
 
 		var s = out.toString();
-		if (s.length == 0) s = "_";
+		if (s.length == 0)
+			s = "_";
 		return escapeKeyword(s);
 	}
 
-	public static function stableUnique(base: String, used: Map<String, Bool>): String {
+	public static function stableUnique(base:String, used:Map<String, Bool>):String {
 		var name = base;
 		if (!used.exists(name)) {
 			used.set(name, true);
 			return name;
 		}
 		var i = 2;
+		var sep = StringTools.endsWith(name, "_") ? "" : "_";
 		while (true) {
-			var candidate = name + "_" + i;
+			var candidate = name + sep + i;
 			if (!used.exists(candidate)) {
 				used.set(candidate, true);
 				return candidate;

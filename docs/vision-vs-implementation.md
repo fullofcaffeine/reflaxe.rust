@@ -2,6 +2,8 @@
 
 This document checks whether the original product vision matches what is implemented today.
 
+It should read as a calibration document, not a victory lap.
+
 ## Vision in one paragraph
 
 `reflaxe.rust` should let teams ship native Rust binaries from Haxe with two practical authoring styles:
@@ -14,16 +16,16 @@ while preserving escape hatches behind typed boundaries.
 ## Live implementation status (auto-generated)
 
 <!-- GENERATED:vision-status:start -->
-_Status snapshot generated from the internal release tracker via `npm run docs:sync:progress`._
+_Status snapshot generated from the internal tracker via `npm run docs:sync:progress`._
 
 | Vision checkpoint | What this means | Status |
 | --- | --- | --- |
-| Foundation complete | Core compiler/runtime architecture is stable. | open |
+| Baseline milestones complete | Core compiler/runtime architecture is stable across the closed milestone baseline. | closed |
 | Real-app harness complete | App-scale behavior is validated in CI-style flows. | closed |
-| 1.0 parity gate complete | Final production-readiness criteria are met. | closed |
+| Release-evidence hardening closed | Public readiness claims, semantic proof depth, and tracker truth were aligned in the latest hardening tranche. | closed |
 
-- 1.0 parity checks closed: **21 / 21 (100%)**
-- 1.0 parity checks still open: **0**
+- Release-evidence hardening checks closed: **5 / 5 (100%)**
+- Release-evidence hardening checks still open: **0**
 <!-- GENERATED:vision-status:end -->
 
 ## Alignment by major promise
@@ -52,13 +54,13 @@ Status: aligned with enforcement options
 - Strict modes exist to prevent direct injection in app-facing code paths.
 - Escape hatch still exists for framework/runtime internals.
 
-### 4) 1.0 should represent production-grade stdlib/sys parity
+### 4) Release claims should match actual stdlib/sys proof depth
 
-Status: aligned
+Status: aligned with explicit caveats
 
-- The release readiness gate is closed.
-- Closeout evidence includes green `scripts/ci/local.sh` and `scripts/ci/windows-smoke.sh` on 2026-02-13.
-- Remaining focus is sustained validation quality as new changes land.
+- The repo has strong compile/inventory closure and real CI evidence.
+- Stable `1.x` public release posture is now recorded separately from the historical gate docs.
+- The release-evidence hardening tranche is closed, and current docs now keep compile coverage, targeted semantic parity, and smoke-only confidence separate instead of blending them into one vague support claim.
 
 ### 5) Product should be battle-tested by a real application harness
 
@@ -67,16 +69,18 @@ Status: aligned
 - The advanced TUI stress harness is complete.
 - Harness coverage remains part of CI-style checks.
 
-## Post-1.0 watchlist
+## Current hardening watchlist
 
 1. CI stability should hold across repeated runs, not only one green pass.
 2. Docs and defines reference must stay synchronized with implementation changes.
 3. Cross-platform sys behavior edge cases should be logged immediately in the internal tracker.
+4. Compile coverage must not be presented as equivalent to runtime semantic parity.
 
 ## Related docs
 
 - `docs/progress-tracker.md`
 - `docs/production-readiness.md`
+- `docs/semver-release-posture.md`
 - `docs/profiles.md`
 - `docs/defines-reference.md`
 - `docs/road-to-1.0.md`

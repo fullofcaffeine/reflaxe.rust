@@ -110,8 +110,8 @@ fn main() {
     let arr_len: i32 = crate::rust_array_borrow::ArrayBorrow::with_slice(arr.clone(), {
         let __rc: crate::HxRc<dyn Fn(&[i32]) -> i32 + Send + Sync> =
             crate::HxRc::new(move |_hx_slice: &[i32]| {
-                let s: &[i32] = _hx_slice;
-                return crate::rust_slice_tools::SliceTools::len(s);
+                let s_2: &[i32] = _hx_slice;
+                return crate::rust_slice_tools::SliceTools::len(s_2);
             });
         crate::HxDynRef::new(__rc)
     });
@@ -119,9 +119,9 @@ fn main() {
     crate::rust_array_borrow::ArrayBorrow::with_mut_slice(arr.clone(), {
         let __rc: crate::HxRc<dyn Fn(&mut [i32]) + Send + Sync> =
             crate::HxRc::new(move |_hx_slice: &mut [i32]| {
-                let s: &mut [i32] = _hx_slice;
+                let s_2: &mut [i32] = _hx_slice;
                 {
-                    crate::rust_mut_slice_tools::MutSliceTools::set(s, 1, 99);
+                    crate::rust_mut_slice_tools::MutSliceTools::set(s_2, 1, 99);
                     return;
                 }
             });

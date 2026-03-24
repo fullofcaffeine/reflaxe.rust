@@ -123,6 +123,7 @@ Agent policy:
     whenever possible. Do not anchor contract diagnostics to upstream/framework std module files just because the diagnostic
     message mentions those module names.
   - JSON boundary gotcha: do not `cast Json.parse(...)` directly to a typed anonymous structure in app/runtime code. The Rust runtime may return a `DynObject` representation that fails anon downcasts; decode through `Reflect.field` + typed validators at the boundary, then stay strongly typed.
+  - Semantic-diff oracle gotcha: `haxe --interp` is not a valid oracle for threaded `sys.thread.EventLoop` / `haxe.EntryPoint` / `haxe.MainLoop` behavior on this target. Use Rust-target snapshot/example smoke for those contracts and downgrade docs accordingly instead of forcing a false semantic-diff parity claim.
 - The generated crate always includes the bundled runtime crate at `./hxrt` and adds `hxrt = { path = "./hxrt" }` to `Cargo.toml`.
 - For class instance semantics, the runtime uses a thread-safe heap (`HxRef<T> = Arc<HxCell<T>>` with `RwLock` interior mutability):
   - concrete calls use `Class::method(&obj, ...)` where methods take `&HxCell<Class>`
@@ -132,6 +133,7 @@ Agent policy:
 - Escape hatch policy: **apps/examples should not use `__rust__` directly**. Put injections behind Haxe APIs in `std/` and keep examples “pure”.
   - Repo enforcement: `-D reflaxe_rust_strict_examples` (used by `examples/**` and `test/snapshot/**`).
   - Opt-in user enforcement: `-D reflaxe_rust_strict`.
+  - Narrow exception: `@:rustAllowRaw` can authorize a single low-level abstraction module under strict boundary enforcement, but it must stay small, documented, and never be used to bypass `metal` / `@:haxeMetal` raw-fallback restrictions.
 - `__rust__` can be called without a prefix as `untyped __rust__("...")` (like Elixir’s `untyped __elixir__`). `reflaxe.rust.macros.RustInjection.__rust__` is an optional macro shim that:
   - keeps a typed callable surface (no `untyped` at callsites)
   - supports Reflaxe `{0}` placeholder interpolation with varargs (`RustInjection.__rust__("foo({0})", arg0)`)
@@ -146,6 +148,8 @@ Agent policy:
 - Exceptions/try-catch: implemented via `hxrt::exception` using a panic-id + thread-local payload.
   - `throw v` → `hxrt::exception::throw(hxrt::dynamic::from(v))`
   - `try { a } catch(e:T) { b }` → `match hxrt::exception::catch_unwind(|| { a }) { Ok(v) => v, Err(ex) => ...downcast chain... }`
+  - Dynamic-throw gotcha: if the thrown expression is already `Dynamic`, do **not** box it again with `hxrt::dynamic::from(...)`.
+    Double-boxing turns a `Dynamic` payload into `Dynamic<Dynamic>` and breaks catch-path reflection/field access.
   - Nested catch-unwind gotcha: panic-output suppression in `hxrt::exception` must be depth-counted (not boolean).
     Inner `catch_unwind` frames can otherwise re-enable panic-hook output too early and leak noisy `Box<dyn Any>` lines
     even when throws are correctly caught by an outer frame (observed with socket `readLine` + server/client wrappers).
@@ -281,6 +285,8 @@ Agent policy:
   Cargo can reuse a binary compiled with the wrong `CARGO_MANIFEST_DIR` and resolve `scripts/dev/cargo-hx.sh` to the template copy.
   Keep wrapper-target dirs isolated for mixed-root/template checks (see `scripts/ci/template-smoke.sh`).
 - Docs tracker gotcha: for progress-doc drift checks, compare docs before/after `npm run docs:sync:progress` (not against git HEAD) so checks work in dirty worktrees too.
+- Docs tracker source-of-truth gotcha: generated tracker docs must derive readiness/baseline status from explicit milestone/gate issues,
+  not from umbrella roadmap epics. Umbrella epics stay open for planning and will make generated status falsely read as `open`.
 - Docs tracker guard policy: `npm run docs:check:progress` must fail on stale tracker-backed docs even when `bd` is unavailable (fallback source is `.beads/issues.jsonl`, so keep tracker status commits synced via `bd sync`).
 - Disk-space gotcha: full snapshot regeneration and full harness runs can consume many GB in `test/snapshot/**/out*`, `examples/**/out*`, Cargo caches/registries, and `.cache/examples-target`.
   If you hit `No space left on device`, run `npm run clean:artifacts:all` before re-running, then regenerate snapshots.
@@ -291,7 +297,7 @@ Agent policy:
   - `npm ci --ignore-scripts --no-audit --no-fund`
   - `bash test/run-snapshots.sh --clippy` (runs curated clippy checks on a small subset of snapshot crates)
   - `bash test/run-upstream-stdlib-sweep.sh` (Tier1 curated upstream std imports under `-D rust_emit_upstream_std`)
-  - Periodic broader parity check (for non-PR loops): `bash test/run-upstream-stdlib-sweep.sh --tier tier2`
+  - `bash test/run-upstream-stdlib-sweep.sh --tier tier2` (blocking CI gate for broader parity coverage)
   - `bash scripts/ci/perf-hxrt-overhead.sh` (soft-budget warnings + artifact report)
   - `cargo fmt && cargo clippy -- -D warnings`
   - Smoke-run any examples you touched (e.g. `(cd examples/tui_todo && haxe compile.hxml && (cd out && cargo run -q))`)
@@ -299,7 +305,7 @@ Agent policy:
   - `test/run-snapshots.sh` (runs `cargo fmt` + `cargo build -q` per snapshot)
   - Keep `scripts/ci/check-metal-policy.sh` regex expectations in sync with emitted contract diagnostics and wire every `test/negative/metal_*` fixture into that script so metal subset enforcement cannot silently drift.
   - `test/run-upstream-stdlib-sweep.sh` (Tier1 per-module actionable compile/fmt/check for upstream std modules)
-  - `test/run-upstream-stdlib-sweep.sh --tier tier2` (weekly evidence broader parity sweep)
+  - `test/run-upstream-stdlib-sweep.sh --tier tier2` (blocking CI gate for broader parity coverage)
   - `guard:stdlib-candidates` (parity-gap check; weekly + main CI upload `portable-stdlib-candidates` artifact)
   - `guard:stdlib-candidate-gap` (weekly hard budget check; keep default budget at 0 unless an approved transition explicitly sets an override)
   - `scripts/ci/package-smoke.sh` validates the packaged artifact via isolated local `haxelib` install + Rust build (including symlink-cwd alias regression).

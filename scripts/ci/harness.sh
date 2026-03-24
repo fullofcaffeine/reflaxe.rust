@@ -185,6 +185,9 @@ intermediate_cleanup "metal-policy"
 run_stage "define docs guard" bash scripts/lint/defines_doc_guard.sh
 intermediate_cleanup "defines-doc-guard"
 
+run_stage "portable native-import diagnostics" bash scripts/ci/check-portable-native-import-diagnostics.sh
+intermediate_cleanup "portable-native-import-diagnostics"
+
 run_stage "metal fallback count guard" bash scripts/ci/check-metal-fallback-counts.sh
 intermediate_cleanup "metal-fallback-count-guard"
 
