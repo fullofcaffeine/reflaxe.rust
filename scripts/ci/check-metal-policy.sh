@@ -2,6 +2,46 @@
 set -euo pipefail
 
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+policy_timings_file="$(mktemp "${TMPDIR:-/tmp}/metal-policy-timings.XXXXXX")"
+
+record_policy_timing() {
+	local label="$1"
+	local elapsed="$2"
+	printf "%s\t%s\n" "$label" "$elapsed" >>"$policy_timings_file"
+}
+
+print_policy_timings() {
+	if [[ ! -s "$policy_timings_file" ]]; then
+		return 0
+	fi
+
+	echo "[metal-policy] case timings (seconds)"
+	local total=0
+	local label
+	local elapsed
+	while IFS=$'\t' read -r label elapsed; do
+		printf "[metal-policy]   %s: %ss\n" "$label" "$elapsed"
+		total=$((total + elapsed))
+	done <"$policy_timings_file"
+	printf "[metal-policy]   total: %ss\n" "$total"
+}
+
+finish_policy_case() {
+	local label="$1"
+	local start="$2"
+	local elapsed=$((SECONDS - start))
+	echo "[metal-policy] done: ${label} (${elapsed}s)"
+	record_policy_timing "$label" "$elapsed"
+}
+
+on_exit() {
+	local status=$?
+	print_policy_timings
+	rm -f "$policy_timings_file"
+	return "$status"
+}
+
+trap on_exit EXIT
 
 use_rg=0
 if [[ "${REFLAXE_NO_RG:-0}" != "1" ]] && command -v rg >/dev/null 2>&1; then
@@ -23,8 +63,10 @@ run_negative_case() {
 	local expected_regex="$2"
 	local failure_label="$3"
 	local expected_location_regex="${4:-}"
+	local case_start="$SECONDS"
 	local fixture_dir="$root_dir/$fixture_rel"
 	local log_file="$fixture_dir/.compile.log"
+	echo "[metal-policy] case: ${failure_label}"
 
 	rm -rf "$fixture_dir/out"
 	rm -f "$log_file"
@@ -54,6 +96,7 @@ run_negative_case() {
 
 	rm -f "$log_file"
 	rm -rf "$fixture_dir/out"
+	finish_policy_case "$failure_label" "$case_start"
 }
 
 match_count() {
@@ -84,9 +127,11 @@ run_warning_case() {
 	local failure_label="$5"
 	local expected_location_regex="${6:-}"
 	local extra_define="${7:-}"
+	local case_start="$SECONDS"
 	local fixture_dir="$root_dir/$fixture_rel"
 	local out_dir="$fixture_dir/out_policy_warning"
 	local log_file="$fixture_dir/.compile.log"
+	echo "[metal-policy] case: ${failure_label}"
 
 	rm -rf "$out_dir"
 	rm -f "$log_file"
@@ -128,6 +173,7 @@ run_warning_case() {
 
 	rm -f "$log_file"
 	rm -rf "$out_dir"
+	finish_policy_case "$failure_label" "$case_start"
 }
 
 run_warning_case_absent() {
@@ -137,9 +183,11 @@ run_warning_case_absent() {
 	local forbidden_regex="$4"
 	local expected_count="$5"
 	local failure_label="$6"
+	local case_start="$SECONDS"
 	local fixture_dir="$root_dir/$fixture_rel"
 	local out_dir="$fixture_dir/out_policy_warning_absent"
 	local log_file="$fixture_dir/.compile_absent.log"
+	echo "[metal-policy] case: ${failure_label}"
 
 	rm -rf "$out_dir"
 	rm -f "$log_file"
@@ -177,6 +225,7 @@ run_warning_case_absent() {
 
 	rm -f "$log_file"
 	rm -rf "$out_dir"
+	finish_policy_case "$failure_label" "$case_start"
 }
 
 run_optional_fallback_case() {
@@ -185,9 +234,11 @@ run_optional_fallback_case() {
 	local warning_regex="$3"
 	local forbidden_regex="${4:-}"
 	local failure_label="$5"
+	local case_start="$SECONDS"
 	local fixture_dir="$root_dir/$fixture_rel"
 	local out_dir="$fixture_dir/out_policy_fallback_optional"
 	local log_file="$fixture_dir/.compile_fallback_optional.log"
+	echo "[metal-policy] case: ${failure_label}"
 
 	rm -rf "$out_dir"
 	rm -f "$log_file"
@@ -212,6 +263,7 @@ run_optional_fallback_case() {
 	if [[ "$found_count" == "0" ]]; then
 		rm -f "$log_file"
 		rm -rf "$out_dir"
+		finish_policy_case "$failure_label" "$case_start"
 		return
 	fi
 
@@ -229,17 +281,20 @@ run_optional_fallback_case() {
 
 	rm -f "$log_file"
 	rm -rf "$out_dir"
+	finish_policy_case "$failure_label" "$case_start"
 }
 
 run_report_case() {
 	local fixture_rel="$1"
 	local hxml_file="$2"
 	local failure_label="$3"
+	local case_start="$SECONDS"
 	local fixture_dir="$root_dir/$fixture_rel"
 	local out_a="$fixture_dir/out_policy_report_a"
 	local out_b="$fixture_dir/out_policy_report_b"
 	local log_a="$fixture_dir/.compile_report_a.log"
 	local log_b="$fixture_dir/.compile_report_b.log"
+	echo "[metal-policy] case: ${failure_label}"
 
 	rm -rf "$out_a" "$out_b"
 	rm -f "$log_a" "$log_b"
@@ -332,6 +387,7 @@ run_report_case() {
 
 	rm -f "$log_a" "$log_b"
 	rm -rf "$out_a" "$out_b"
+	finish_policy_case "$failure_label" "$case_start"
 }
 
 run_contract_report_case() {
@@ -346,11 +402,13 @@ run_contract_report_case() {
 	local expected_no_hxrt="${9:-}"
 	local expected_async_enabled="${10:-}"
 	local expected_nullable_strings="${11:-}"
+	local case_start="$SECONDS"
 	local fixture_dir="$root_dir/$fixture_rel"
 	local out_a="$fixture_dir/out_contract_report_a"
 	local out_b="$fixture_dir/out_contract_report_b"
 	local log_a="$fixture_dir/.compile_profile_a.log"
 	local log_b="$fixture_dir/.compile_profile_b.log"
+	echo "[metal-policy] case: ${failure_label}"
 
 	rm -rf "$out_a" "$out_b"
 	rm -f "$log_a" "$log_b"
@@ -580,6 +638,7 @@ run_contract_report_case() {
 
 	rm -f "$log_a" "$log_b"
 	rm -rf "$out_a" "$out_b"
+	finish_policy_case "$failure_label" "$case_start"
 }
 
 run_runtime_plan_report_case() {
@@ -591,11 +650,13 @@ run_runtime_plan_report_case() {
 	local extra_define="${6:-}"
 	local expected_reason_regex="${7:-}"
 	local expected_reason_regex_2="${8:-}"
+	local case_start="$SECONDS"
 	local fixture_dir="$root_dir/$fixture_rel"
 	local out_a="$fixture_dir/out_runtime_plan_a"
 	local out_b="$fixture_dir/out_runtime_plan_b"
 	local log_a="$fixture_dir/.compile_runtime_plan_a.log"
 	local log_b="$fixture_dir/.compile_runtime_plan_b.log"
+	echo "[metal-policy] case: ${failure_label}"
 
 	rm -rf "$out_a" "$out_b"
 	rm -f "$log_a" "$log_b"
@@ -806,6 +867,7 @@ run_runtime_plan_report_case() {
 
 	rm -f "$log_a" "$log_b"
 	rm -rf "$out_a" "$out_b"
+	finish_policy_case "$failure_label" "$case_start"
 }
 
 run_optimizer_plan_report_case() {
@@ -814,11 +876,13 @@ run_optimizer_plan_report_case() {
 	local expected_contract="$3"
 	local failure_label="$4"
 	local expected_json_regex="${5:-}"
+	local case_start="$SECONDS"
 	local fixture_dir="$root_dir/$fixture_rel"
 	local out_a="$fixture_dir/out_optimizer_plan_a"
 	local out_b="$fixture_dir/out_optimizer_plan_b"
 	local log_a="$fixture_dir/.compile_optimizer_plan_a.log"
 	local log_b="$fixture_dir/.compile_optimizer_plan_b.log"
+	echo "[metal-policy] case: ${failure_label}"
 
 	rm -rf "$out_a" "$out_b"
 	rm -f "$log_a" "$log_b"
@@ -952,15 +1016,18 @@ run_optimizer_plan_report_case() {
 
 	rm -f "$log_a" "$log_b"
 	rm -rf "$out_a" "$out_b"
+	finish_policy_case "$failure_label" "$case_start"
 }
 
 run_no_hxrt_success_case() {
 	local fixture_rel="$1"
 	local hxml_file="$2"
 	local failure_label="$3"
+	local case_start="$SECONDS"
 	local fixture_dir="$root_dir/$fixture_rel"
 	local out_dir="$fixture_dir/out_no_hxrt"
 	local log_file="$fixture_dir/.compile.log"
+	echo "[metal-policy] case: ${failure_label}"
 
 	rm -rf "$out_dir"
 	rm -f "$log_file"
@@ -1005,6 +1072,7 @@ run_no_hxrt_success_case() {
 
 	rm -f "$log_file"
 	rm -rf "$out_dir"
+	finish_policy_case "$failure_label" "$case_start"
 }
 
 run_negative_case "test/negative/metal_raw_rust" 'Strict mode forbids `__rust__\(\)` code injection in application code' \

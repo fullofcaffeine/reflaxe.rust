@@ -253,6 +253,8 @@ Agent policy:
     Keep the dedicated `hot_loop_no_hxrt` case strict (`-D rust_no_hxrt` without fallback) as the no-runtime parity signal.
 - Run metal fallback-count guard locally: `bash scripts/ci/check-metal-fallback-counts.sh`
   - Refresh fallback baseline intentionally: `bash scripts/ci/check-metal-fallback-counts.sh --update-baseline`
+  - Metal policy timing: `scripts/ci/check-metal-policy.sh` prints per-case timings and a summary.
+    If this stage is slow, inspect repeated optional-fallback checks first; prefer consolidating multiple forbidden-regex assertions for the same fixture/HXML before adding parallelism.
 - Update a snapshot’s golden output (after review): `bash test/run-snapshots.sh --case <name> --update`
 - Run the full CI-style harness locally (snapshots + all examples): `npm run test:all` (alias for `bash scripts/ci/harness.sh`)
   - Change-gate rule: for any non-trivial compiler/runtime/std/example code change, run the full harness (`npm run check:harness`)
