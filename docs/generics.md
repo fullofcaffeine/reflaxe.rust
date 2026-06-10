@@ -22,7 +22,9 @@ Rust output shape (conceptual):
 
 Notes:
 - By default, **class-level** type parameters are emitted as Rust generics **with a `Clone` bound**.
-  - This is a pragmatic consequence of the current runtime model (`Rc<RefCell<_>>`) and Haxe’s value reuse semantics: methods often need to return values while borrowing `self`, so codegen typically uses `.clone()` for non-`Copy` data.
+  - This is a pragmatic consequence of the current runtime model (`HxRef<T>` / `HxDynRef<T>`) and
+    Haxe’s value reuse semantics: methods often need to return values while borrowing `self`, so
+    codegen typically uses `.clone()` for non-`Copy` data.
 - You can override bounds with `@:rustGeneric(...)` on the class:
   - `@:rustGeneric(["T: Clone + std::fmt::Debug"]) class Box<T> { ... }`
 
@@ -46,7 +48,7 @@ Haxe:
 
 Rust output shape (conceptual):
 - `pub trait IGet<T: Clone> { fn get(&self) -> T; }`
-- `type IGetObj<T> = Rc<dyn IGet<T>>`
+- `type IGetObj<T> = HxDynRef<dyn IGet<T>>`
 
 Notes:
 - Trait methods use `&self`; returning `T` by value implies cloning/copying. We default `T: Clone` for interface type params to keep the surface usable.
@@ -57,7 +59,25 @@ When a class has subclasses, reflaxe.rust emits a companion trait `<Base>Trait` 
 
 Rust output shape (conceptual):
 - `pub trait BaseTrait<T: Clone> { ... }`
-- `Rc<dyn BaseTrait<T>>` is used where Haxe types a value as `Base<T>`.
+- `HxDynRef<dyn BaseTrait<T>>` is used where Haxe types a value as `Base<T>`.
+
+### Inherited method shims
+
+Rust does not inherit methods the way Haxe classes do. To preserve Haxe dispatch semantics,
+`reflaxe.rust` synthesizes concrete inherited-method shims on subclasses when a base method has a
+body and the subclass does not override it.
+
+That means:
+
+- concrete calls on a subclass can resolve inherited methods,
+- base-trait impls for subclasses delegate to real methods rather than `todo!()` stubs,
+- `super.method(...)` calls compile through per-base super thunks on the current class.
+
+Evidence:
+
+- `test/snapshot/inheritance_inherited_method`
+- `test/snapshot/super_method_call`
+- `test/semantic_diff/virtual_dispatch`
 
 ## Phantom type parameters (`PhantomData`)
 
@@ -83,4 +103,5 @@ This keeps generic classes usable without introducing unsafe initialization.
 ## Current limitations (v1)
 
 - Some patterns that depend on Rust lifetimes (borrowing across scopes) must be expressed using `rust.Ref<T>` / `rust.MutRef<T>` and scope-based helpers (see `docs/metal-profile.md`).
-- “Inherited method without override” for base-class trait dispatch is still conservative: subclasses should override methods they want reachable via a base-typed value.
+- Generic trait-object and lifetime-heavy designs remain conservative when they require Rust lifetime
+  relationships Haxe cannot express directly.

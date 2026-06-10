@@ -3,7 +3,8 @@
 ## Why this matters
 
 Portable Haxe code uses function values everywhere (callbacks, iterators, “Lambda”-style helpers, etc.).
-To reach v1.0 stdlib parity, the Rust target must support *passing*, *storing*, and *calling* functions.
+The stable `1.x` portable contract supports *passing*, *storing*, and *calling* functions without
+requiring application code to model Rust closure traits directly.
 
 ## What we support
 
