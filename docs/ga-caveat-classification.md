@@ -59,11 +59,22 @@ was later resolved by [Semver And Release Posture Decision](semver-release-postu
 
 ## Out-Of-Band Findings For Milestone 28
 
-These are not separate caveat buckets, but they do affect the public-truth pass:
+These were not separate caveat buckets, but they affected the Milestone 28 public-truth pass:
 
-- `README.md` still says release-evidence hardening is still in progress, which now undershoots the actual closed state of Milestones 26 and 27.
-- `docs/road-to-1.0.md`, `docs/progress-tracker.md`, and `docs/vision-vs-implementation.md` already reflect the harder truth more accurately than `README.md`.
-- The support matrix and semantic-confidence summary are directionally honest, but public entrypoint docs still need a single canonical GA-decision source once Milestone 28 closes.
+- At the time of the Milestone 28 audit, `README.md` still said release-evidence hardening was
+  in progress, which undershot the already-closed state of Milestones 26 and 27.
+- `docs/road-to-1.0.md`, `docs/progress-tracker.md`, and `docs/vision-vs-implementation.md`
+  reflected the harder truth more accurately than `README.md` at that point.
+- The support matrix and semantic-confidence summary were directionally honest, but public
+  entrypoint docs still needed a single canonical GA-decision source once Milestone 28 closed.
+
+Current status:
+
+- README and public entrypoint docs now point to the stable `1.x` posture and canonical release
+  docs instead of saying release-evidence hardening is still in progress.
+- The canonical current release posture is [Semver And Release Posture Decision](semver-release-posture.md).
+- The remaining caveats from this document should be read as explicit defers/proof-depth qualifiers,
+  not as unresolved public-entrypoint cleanup work.
 
 ## Current Decision Posture
 
@@ -85,3 +96,6 @@ At the time, that meant Milestone 28 should continue as planned:
 2. freeze the honest post-M27 perf posture,
 3. freeze the Rust-local `reflaxe.std` boundary truth,
 4. then publish one canonical GA decision record.
+
+That follow-through is historical now; use [Semver And Release Posture Decision](semver-release-posture.md)
+and [Production Readiness](production-readiness.md) for current adoption decisions.
