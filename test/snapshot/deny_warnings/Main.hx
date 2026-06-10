@@ -29,6 +29,17 @@ class Main {
 		}
 		trace(n);
 
+		// Deferred locals initialized exactly once in each branch should not emit `let mut`.
+		// Rust accepts `let branchValue; if (...) branchValue = ... else branchValue = ...;`
+		// without mutability, and `#![deny(warnings)]` rejects the unnecessary `mut` form.
+		var branchValue:String;
+		if (n > 1) {
+			branchValue = "wide";
+		} else {
+			branchValue = "narrow";
+		}
+		trace(branchValue);
+
 		// Rust-first surfaces should not introduce warnings when used from portable output.
 		var vec = new Vec<Int>();
 		vec.push(1);

@@ -1271,7 +1271,7 @@ impl Unserializer {
                     return hxrt::dynamic::from(true);
                 }
                 118 => {
-                    let mut d: crate::HxRef<crate::date::Date>;
+                    let d: crate::HxRef<crate::date::Date>;
                     if ({
                         let p_10: i32 = {
                             let __b = __hx_this.borrow();

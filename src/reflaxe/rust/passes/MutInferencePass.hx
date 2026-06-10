@@ -167,9 +167,37 @@ class MutInferencePass implements RustPass {
 
 	function collectAssignedNames(block:RustBlock):Map<String, Bool> {
 		var out:Map<String, Bool> = [];
+		var hardMutable:Map<String, Bool> = [];
+		var declarationOnly:Map<String, Bool> = [];
 		var visitExpr:RustExpr->Void = null;
 		var visitStmt:RustStmt->Void = null;
 		var visitBlock:RustBlock->Void = null;
+
+		/**
+			Why
+			- Rust allows `let x; x = value;` without `mut` when that assignment is the first and only
+			  write along each execution path.
+			- Branch initialization (`if (...) x = a else x = b`) is common in Haxe stdlib code and should
+			  not be reclassified as mutation just because the lowered Rust AST contains assignments.
+
+			What
+			- Track declaration-only locals in the current block before scanning mutation evidence.
+
+			How
+			- After collecting assignment evidence, path-count direct writes for declaration-only locals.
+			  If no path writes more than once and no hard mutability signal (`&mut`, `borrow_mut`) exists,
+			  remove the synthetic mutability requirement.
+		**/
+		function collectDeclarationOnly(stmt:RustStmt):Void {
+			switch (stmt) {
+				case RLet(name, _, _, null) if (name != "_"):
+					declarationOnly.set(name, true);
+				case _:
+			}
+		}
+
+		for (stmt in block.stmts)
+			collectDeclarationOnly(stmt);
 
 		visitExpr = function(expr:RustExpr):Void {
 			switch (expr) {
@@ -191,7 +219,10 @@ class MutInferencePass implements RustPass {
 				case EUnary(op, inner):
 					switch (inner) {
 						case EPath(name):
-							if (StringTools.startsWith(op, "&mut")) out.set(name, true);
+							if (StringTools.startsWith(op, "&mut")) {
+								out.set(name, true);
+								hardMutable.set(name, true);
+							}
 						case _:
 					}
 					visitExpr(inner);
@@ -231,8 +262,10 @@ class MutInferencePass implements RustPass {
 			switch (stmt) {
 				case RLet(name, _, _, expr):
 					if (expr != null) {
-						if (exprProducesMutableGuard(expr))
+						if (exprProducesMutableGuard(expr)) {
 							out.set(name, true);
+							hardMutable.set(name, true);
+						}
 						visitExpr(expr);
 					}
 				case RSemi(expr) | RExpr(expr, _):
@@ -260,7 +293,103 @@ class MutInferencePass implements RustPass {
 		};
 
 		visitBlock(block);
+		for (name in declarationOnly.keys()) {
+			if (out.exists(name) && !hardMutable.exists(name) && maxDirectWritesOnPathInBlock(block, name) <= 1)
+				out.remove(name);
+		}
 		return out;
+	}
+
+	function maxDirectWritesOnPathInBlock(block:RustBlock, target:String):Int {
+		var total = 0;
+		for (stmt in block.stmts)
+			total += maxDirectWritesOnPathInStmt(stmt, target);
+		if (block.tail != null)
+			total += maxDirectWritesOnPathInExpr(block.tail, target);
+		return total;
+	}
+
+	function maxDirectWritesOnPathInStmt(stmt:RustStmt, target:String):Int {
+		return switch (stmt) {
+			case RLet(_, _, _, expr):
+				expr == null ? 0 : maxDirectWritesOnPathInExpr(expr, target);
+			case RSemi(expr) | RExpr(expr, _):
+				maxDirectWritesOnPathInExpr(expr, target);
+			case RReturn(expr):
+				expr == null ? 0 : maxDirectWritesOnPathInExpr(expr, target);
+			case RWhile(cond, body):
+				(maxDirectWritesOnPathInExpr(cond, target) > 0 || maxDirectWritesOnPathInBlock(body, target) > 0) ? 2 : 0;
+			case RLoop(body):
+				maxDirectWritesOnPathInBlock(body, target) > 0 ? 2 : 0;
+			case RFor(_, iter, body):
+				(maxDirectWritesOnPathInExpr(iter, target) > 0 || maxDirectWritesOnPathInBlock(body, target) > 0) ? 2 : 0;
+			case RBreak | RContinue:
+				0;
+		}
+	}
+
+	function maxDirectWritesOnPathInExpr(expr:RustExpr, target:String):Int {
+		return switch (expr) {
+			case EAssign(lhs, rhs):
+				(directAssignsTarget(lhs, target) ? 1 : 0) + maxDirectWritesOnPathInExpr(rhs, target);
+			case ECall(func, args):
+				maxDirectWritesOnPathInExpr(func, target) + sumMaxExprWrites(args, target);
+			case EMacroCall(_, args):
+				sumMaxExprWrites(args, target);
+			case EClosure(_, _, _):
+				0;
+			case EBinary(_, left, right):
+				maxDirectWritesOnPathInExpr(left, target) + maxDirectWritesOnPathInExpr(right, target);
+			case EUnary(_, inner):
+				maxDirectWritesOnPathInExpr(inner, target);
+			case ERange(start, end):
+				maxDirectWritesOnPathInExpr(start, target) + maxDirectWritesOnPathInExpr(end, target);
+			case ECast(inner, _):
+				maxDirectWritesOnPathInExpr(inner, target);
+			case EIndex(recv, index):
+				maxDirectWritesOnPathInExpr(recv, target) + maxDirectWritesOnPathInExpr(index, target);
+			case EStructLit(_, fields):
+				var total = 0;
+				for (field in fields)
+					total += maxDirectWritesOnPathInExpr(field.expr, target);
+				total;
+			case EBlock(innerBlock):
+				maxDirectWritesOnPathInBlock(innerBlock, target);
+			case EIf(cond, thenExpr, elseExpr):
+				var elseWrites = elseExpr == null ? 0 : maxDirectWritesOnPathInExpr(elseExpr, target);
+				maxDirectWritesOnPathInExpr(cond, target) + Std.int(Math.max(maxDirectWritesOnPathInExpr(thenExpr, target), elseWrites));
+			case EMatch(scrutinee, arms):
+				var armMax = 0;
+				for (arm in arms) {
+					var writes = maxDirectWritesOnPathInExpr(arm.expr, target);
+					if (writes > armMax)
+						armMax = writes;
+				}
+				maxDirectWritesOnPathInExpr(scrutinee, target) + armMax;
+			case EField(recv, _):
+				maxDirectWritesOnPathInExpr(recv, target);
+			case EPinAsyncMove(_) | EAwait(_):
+				// Async bodies are rewritten as their own nested blocks before this block is normalized.
+				0;
+			case ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+				0;
+		}
+	}
+
+	function sumMaxExprWrites(exprs:Array<RustExpr>, target:String):Int {
+		var total = 0;
+		for (expr in exprs)
+			total += maxDirectWritesOnPathInExpr(expr, target);
+		return total;
+	}
+
+	function directAssignsTarget(lhs:RustExpr, target:String):Bool {
+		return switch (lhs) {
+			case EPath(name):
+				name == target;
+			case _:
+				false;
+		}
 	}
 
 	function exprProducesMutableGuard(expr:RustExpr):Bool {

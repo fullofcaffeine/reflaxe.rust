@@ -6908,6 +6908,32 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var mutated:Map<Int, Bool> = [];
 		var declaredWithoutInit:Map<Int, Bool> = [];
 
+		/**
+			Why
+			- Haxe typed-tree traversal is not a contract for declaration-before-use ordering inside
+			  every lowered control-flow shape.
+			- Rust distinguishes first assignment to `let x;` from reassignment: the former does not
+			  require `mut`, and emitting `let mut x;` trips `unused_mut` under `#![deny(warnings)]`.
+
+			What
+			- Pre-collect declaration-only locals before write classification so branch-local shapes like
+			  `var x; if (...) x = a else x = b;` are understood as deferred initialization.
+
+			How
+			- The later scan can then treat writes to those locals as initializers unless they happen in
+			  loops or more than once along a single execution path.
+		**/
+		function collectDeclarationOnlyLocals(e:TypedExpr):Void {
+			switch (e.expr) {
+				case TVar(v, null):
+					declaredWithoutInit.set(v.id, true);
+				case _:
+			}
+			TypedExprTools.iter(e, collectDeclarationOnlyLocals);
+		}
+
+		collectDeclarationOnlyLocals(root);
+
 		function unwrapToLocal(e:TypedExpr):Null<TVar> {
 			var cur = unwrapMetaParen(e);
 
@@ -6992,11 +7018,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 				case TVar(v, init):
 					{
-						if (init == null) {
-							// Rust allows `let x; x = value;` without `mut` (the first assignment is initialization).
-							declaredWithoutInit.set(v.id, true);
-						}
-
 						if (init != null && isRustMutRefType(v.t)) {
 							// Taking a `rust.MutRef<T>` from a local requires the source binding to be `mut`.
 							markLocal(init);
@@ -7156,7 +7177,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		// If a local was declared without an initializer, require `mut` only when any path writes it more than once.
 		for (id in declaredWithoutInit.keys()) {
-			if (!mutated.exists(id) && maxWritesOnPath(root, id, 0) > 1)
+			var writes = maxWritesOnPath(root, id, 0);
+			if (!mutated.exists(id) && writes > 1)
 				mutated.set(id, true);
 		}
 		return mutated;
