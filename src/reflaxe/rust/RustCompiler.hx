@@ -4370,7 +4370,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (hasAsyncFunctionMeta(f.field.meta)) {
 			ensureAsyncAllowed(f.field.pos);
 			#if eval
-			Context.error("Constructors cannot be marked `@:async` / `@:rustAsync` in preview mode.", f.field.pos);
+			Context.error("Constructors cannot be marked `@:async` / `@:rustAsync` under the Rust async contract.", f.field.pos);
 			#end
 		}
 		var args:Array<reflaxe.rust.ast.RustAST.RustFnArg> = [];

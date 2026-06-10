@@ -187,7 +187,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
   - `test/snapshot/rust_async_tasks`
   - `examples/async_retry_pipeline`
   - `test/negative/async_main_boundary`
-  - `test/negative/async_constructor_preview`
+  - `test/negative/async_constructor_contract`
   - `test/negative/async_preview_removed`
 - Commands:
   - `bash test/run-snapshots.sh --case async_entry_boundary`

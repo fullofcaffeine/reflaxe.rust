@@ -119,7 +119,7 @@ Primary evidence:
 - `test/snapshot/async_select`
 - `test/snapshot/rust_async_tasks`
 - `test/negative/async_main_boundary`
-- `test/negative/async_constructor_preview`
+- `test/negative/async_constructor_contract`
 - negative define guard: `test/negative/async_preview_removed`
 
 Stable here should be read as:

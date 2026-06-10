@@ -321,7 +321,7 @@ const bucketDefinitions = [
       'test/snapshot/rust_async_tasks',
       'examples/async_retry_pipeline',
       'test/negative/async_main_boundary',
-      'test/negative/async_constructor_preview',
+      'test/negative/async_constructor_contract',
       'test/negative/async_preview_removed'
     ],
     commands: [

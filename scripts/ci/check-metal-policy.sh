@@ -1169,8 +1169,8 @@ run_negative_case "test/negative/async_preview_removed" '`-D rust_async_preview`
 	'rust_async_preview define removed'
 run_negative_case "test/negative/async_main_boundary" '`main` must stay synchronous for the Rust async contract\.' \
 	'async boundary keeps main synchronous'
-run_negative_case "test/negative/async_constructor_preview" 'Constructors cannot be marked `@:async` / `@:rustAsync` in preview mode\.' \
-	'async preview rejects constructors'
+run_negative_case "test/negative/async_constructor_contract" 'Constructors cannot be marked `@:async` / `@:rustAsync` under the Rust async contract\.' \
+	'async contract rejects constructors'
 run_negative_case "test/negative/profile_removed_idiomatic" 'Unknown `-D reflaxe_rust_profile=idiomatic`\. Expected portable\|metal\.' \
 	'idiomatic profile selector removed'
 run_negative_case "test/negative/profile_removed_rusty" 'Unknown `-D reflaxe_rust_profile=rusty`\. Expected portable\|metal\.' \
