@@ -252,6 +252,55 @@ extract_out_dir() {
   printf "%s\n" "$out_dir"
 }
 
+normalize_hxml_for_reuse() {
+  local compile_file="$1"
+  awk '
+    /^[[:space:]]*$/ { next }
+    /^-D[[:space:]]+rust_output=/ { next }
+    {
+      sub(/[[:space:]]+$/, "", $0);
+      print $0;
+    }
+  ' "$compile_file"
+}
+
+hxml_equivalent_except_output() {
+  local left="$1"
+  local right="$2"
+  diff -q <(normalize_hxml_for_reuse "$left") <(normalize_hxml_for_reuse "$right") >/dev/null
+}
+
+find_reusable_compile() {
+  local dir="$1"
+  local requested_hxml="$2"
+  local requested_file="$dir/$requested_hxml"
+
+  # Validate the requested CI HXML before considering reuse so stale or broken
+  # rust_output metadata still fails the harness.
+  extract_out_dir "$requested_file" >/dev/null
+
+  local candidate
+  while IFS= read -r candidate; do
+    local candidate_name
+    candidate_name="$(basename "$candidate")"
+
+    if [[ "$candidate_name" == "$requested_hxml" ]]; then
+      continue
+    fi
+
+    if ! grep -Fxq -- "${dir}/${candidate_name}" "$compiled_hxml_cache_file"; then
+      continue
+    fi
+
+    if hxml_equivalent_except_output "$requested_file" "$candidate"; then
+      printf "%s\n" "$candidate_name"
+      return 0
+    fi
+  done < <(find "$dir" -mindepth 1 -maxdepth 1 -type f -name 'compile*.hxml' | sort)
+
+  printf "%s\n" "$requested_hxml"
+}
+
 compile_example() {
   local dir="$1"
   local hxml="$2"
@@ -267,17 +316,27 @@ compile_example() {
 
 run_example() {
   local dir="$1"
-  local hxml="$2"
+  local requested_hxml="$2"
+  local hxml
+  hxml="$(find_reusable_compile "$dir" "$requested_hxml")"
   local out_dir
   out_dir="$(extract_out_dir "$dir/$hxml")"
 
   local start="$SECONDS"
-  echo "[harness] example: ${dir} (${hxml})"
+  if [[ "$hxml" == "$requested_hxml" ]]; then
+    echo "[harness] example: ${dir} (${hxml})"
+  else
+    echo "[harness] example: ${dir} (${requested_hxml}) [reuse ${hxml}]"
+  fi
   compile_example "$dir" "$hxml"
   run_timed_step "cargo test: ${dir}/${out_dir}" bash -c 'cd "$1" && cargo test -q' _ "$dir/$out_dir"
   run_timed_step "cargo run: ${dir}/${out_dir}" bash -c 'cd "$1" && cargo run -q' _ "$dir/$out_dir"
   local elapsed=$((SECONDS - start))
-  echo "[harness] done: example: ${dir} (${hxml}) (${elapsed}s)"
+  if [[ "$hxml" == "$requested_hxml" ]]; then
+    echo "[harness] done: example: ${dir} (${hxml}) (${elapsed}s)"
+  else
+    echo "[harness] done: example: ${dir} (${requested_hxml}) [reuse ${hxml}] (${elapsed}s)"
+  fi
 }
 
 run_examples_compile_only() {
