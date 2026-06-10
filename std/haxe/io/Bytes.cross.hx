@@ -14,9 +14,9 @@ package haxe.io;
  *
  * What:
  * - This `Bytes` is declared `extern` so it **does not generate** a Haxe implementation.
- * - In emitted Rust, `haxe.io.Bytes` values are represented as `HxRef<hxrt::bytes::Bytes>`
- *   (currently `type HxRef<T> = Rc<RefCell<T>>`) to match Haxe’s “values are reusable”
- *   semantics even when Rust would otherwise move values.
+ * - In emitted Rust, `haxe.io.Bytes` values are represented as `HxRef<hxrt::bytes::Bytes>`.
+ *   The default runtime implements `HxRef<T>` as a shared `Arc<HxCell<T>>` handle, matching
+ *   Haxe’s “values are reusable” semantics even when Rust would otherwise move values.
  *
  * How:
  * - The compiler special-cases a small, high-impact subset of the API so typical stdlib
@@ -47,8 +47,8 @@ package haxe.io;
  * Design notes / gotchas:
  * - The `extern` keyword is intentional: if we let the stock std `Bytes` inline into
  *   index operations, it would assume a representation that doesn’t exist for this target.
- * - Interior mutability (`RefCell`) is used so codegen can safely model Haxe’s mutation-heavy
- *   APIs while still compiling to Rust (the borrow checker cannot model arbitrary Haxe aliasing).
+ * - HXRT interior mutability is used so codegen can safely model Haxe’s mutation-heavy APIs while
+ *   still compiling to Rust (the borrow checker cannot model arbitrary Haxe aliasing).
  * - When adding new `extern` overrides in `std/`, document:
  *   1) the Rust representation,
  *   2) which members are compiler intrinsics/special-cases,

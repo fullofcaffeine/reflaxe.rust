@@ -7,7 +7,8 @@ package rust.fs;
 	- `sys.io.FileInput` / `sys.io.FileOutput` need to keep an OS file handle open across calls.
 	- Storing a Rust file handle inside an untyped runtime box is not viable because that box requires
 	  `Clone`, and `std::fs::File` is not `Clone`.
-	- The Rust target already uses `rust.HxRef<T>` (`Rc<RefCell<T>>`) for shared, cloneable handles.
+	- The Rust target already uses `rust.HxRef<T>` for shared, cloneable handles. In the default
+	  runtime this is `Arc<HxCell<T>>`, where `HxCell<T>` provides lock-backed interior mutability.
 
 	What
 	- A typing-only handle for Rust's `std::fs::File`.

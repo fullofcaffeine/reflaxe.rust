@@ -6247,11 +6247,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var initExpr = init != null ? compileExpr(init) : null;
 					if (initExpr != null) {
 						// Haxe's inliner/desugarer frequently introduces `_g*` temporaries to preserve evaluation
-						// order (e.g. for comprehensions / iterator lowering). For `Array<T>` (mapped to `Vec<T>`),
-						// these temporaries should not *move* the original value.
+						// order (e.g. for comprehensions / iterator lowering). For `Array<T>` (mapped to a
+						// shared HXRT array handle), these temporaries should not *move* the original value.
 						//
-						// NOTE: `Array<T>` now maps to `hxrt::array::Array<T>` (Rc-backed), so cloning is cheap
-						// and handled by `maybeCloneForReuseValue(...)` below when needed.
+						// NOTE: `Array<T>` now maps to `hxrt::array::Array<T>` backed by `HxRef<Vec<T>>`, so
+						// cloning is a shared-handle clone and is handled by `maybeCloneForReuseValue(...)`
+						// below when needed.
 
 						switch (followType(v.t)) {
 							// Function values require coercion into our function representation.
@@ -8060,7 +8061,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						}
 					}
 
-					// General record literal -> `{ let __o = Rc::new(RefCell::new(Anon::new())); { let mut __b = __o.borrow_mut(); __b.set(...); } __o }`
+					// General record literal -> allocate an `HxRef<hxrt::anon::Anon>`, mutate its fields,
+					// then return the shared handle.
 					function typedNoneForNull(t:Type, pos:haxe.macro.Expr.Position):RustExpr {
 						var inner = nullOptionInnerType(t, pos);
 						if (inner == null)
@@ -9146,11 +9148,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function isHaxeReusableValueType(t:Type):Bool {
 		// Types that behave like Haxe reference values (must not be "moved" by Rust assignments).
-		// - `Array<T>` is `hxrt::array::Array<T>` (Rc-backed).
-		// - class instances / Bytes are `HxRef<T>` (Rc-backed).
+		// - `Array<T>` is `hxrt::array::Array<T>` backed by `HxRef<Vec<T>>`.
+		// - class instances / Bytes are shared `HxRef<T>` handles.
 		// - `String` is immutable and reusable in Haxe (needs clone in Rust when re-used).
-		// - structural `Iterator<T>` maps to `hxrt::iter::Iter<T>` (Rc-backed).
-		// - general anonymous objects map to `crate::HxRef<hxrt::anon::Anon>` (Rc-backed).
+		// - structural `Iterator<T>` maps to `hxrt::iter::Iter<T>` with shared runtime storage.
+		// - general anonymous objects map to `crate::HxRef<hxrt::anon::Anon>`.
 		// - function values lower to shared `HxDynRef<dyn Fn...>` handles and must remain reusable.
 		return isArrayType(t) || isHxRefValueType(t) || isRustHxRefType(t) || isStringType(t) || isIteratorStructType(t) || isAnonObjectType(t)
 			|| isDynamicType(t) || isFunctionValueType(t);
@@ -10901,7 +10903,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								// currently treat encodings the same at runtime).
 								if (args.length == 2) {
 									var enc = compileExpr(args[1]);
-									// `{ let _ = enc; Rc::new(RefCell::new(Bytes::of_string(...))) }`
+									// `{ let _ = enc; HxRef::new(Bytes::of_string(...)) }`
 									var asStr = ECall(EField(compileExpr(s), "as_str"), []);
 									var inner = ECall(EPath("hxrt::bytes::Bytes::of_string"), [asStr]);
 									var wrapped = ECall(EPath("crate::HxRef::new"), [inner]);

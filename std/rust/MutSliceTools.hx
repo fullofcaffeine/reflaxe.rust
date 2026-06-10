@@ -54,7 +54,8 @@ class MutSliceTools {
 	 *
 	 * Borrow rules:
 	 * - Keep the slice inside the callback; never store/return it.
-	 * - Avoid nested borrows of the same array; `RefCell` will panic on invalid re-borrows.
+	 * - Avoid nested conflicting borrows of the same array; the HXRT runtime keeps a scoped
+	 *   borrow/lock guard for the callback.
 	 */
 	public static macro function with(value:Expr, fn:Expr):Expr {
 		#if macro

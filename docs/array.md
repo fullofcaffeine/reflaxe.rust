@@ -1,7 +1,7 @@
-# Array Semantics Roadmap (Haxe `Array<T>` → Rust)
+# Array Semantics (Haxe `Array<T>` → Rust)
 
-This document records the long-term plan for how `reflaxe.rust` should represent **Haxe `Array<T>`**
-in Rust output, and why.
+This document records how `reflaxe.rust` represents **Haxe `Array<T>`** in Rust output, why that
+representation exists, and which tests currently guard the contract.
 
 ## Why this matters
 
@@ -19,7 +19,10 @@ we immediately hit:
 
 ## Current state (today)
 
-`Array<T>` now maps to `hxrt::array::Array<T>` (a small runtime wrapper backed by `Rc<RefCell<Vec<T>>>`).
+`Array<T>` now maps to `hxrt::array::Array<T>` (a small runtime wrapper around `HxRef<Vec<T>>`).
+In the default runtime, `HxRef<T>` is implemented as `Arc<HxCell<T>>`, and `HxCell<T>` uses
+lock-backed interior mutability so arrays and other Haxe reference values can cross `sys.thread`
+boundaries safely.
 
 In generated Rust:
 
@@ -41,7 +44,7 @@ Some methods impose Rust trait bounds on `T`:
 - search methods:
   - `contains/remove/indexOf/lastIndexOf` require `T: PartialEq`
   - for object arrays (`Array<Foo>`, interfaces, polymorphic base classes), the compiler routes
-    calls to the `*Ref` variants which use `Rc` pointer identity instead
+    calls to the `*Ref` variants which use runtime-handle identity instead
 - `resize` requires `T: Default` (for `Array<Null<T>>` this maps nicely to `None`)
 - `join` requires `T: ToString`
 
@@ -54,15 +57,16 @@ For Rust-first integrations, the metal profile provides slice-borrow helpers tha
 - `rust.MutSliceTools.with(array, s -> ...)` borrows as `&mut [T]`
 
 These are implemented via runtime helpers (`hxrt::array::with_slice` / `with_mut_slice`) that keep the
-`RefCell` borrow guard scoped to the callback.
+runtime borrow/lock guard scoped to the callback.
 
 Important rules:
 
 - Do not store or return `Slice`/`MutSlice` outside the callback.
-- Avoid nested borrows of the same array; `RefCell` will panic on invalid re-borrows.
+- Avoid nested conflicting borrows of the same array; the runtime lock can block or reject invalid
+  access depending on the exact call path.
 
 This fixes the core semantic mismatch: **assignment and passing alias**, and cloning an array is cheap
-(`Rc::clone`, not a deep clone).
+(shared-handle clone, not a deep clone).
 
 Remaining work is mostly about API coverage + ergonomics (more Array methods, better iteration patterns,
 explicit bridging with `rust.Vec<T>` in the metal profile).
@@ -93,11 +97,12 @@ Cons:
 Pros:
 - correct aliasing semantics (cloning is `Rc::clone`, not deep clone)
 - no “moved” errors for typical Haxe patterns
-- aligns with the existing `HxRef<T> = Rc<RefCell<T>>` approach
+- matched the original single-thread `HxRef<T> = Rc<RefCell<T>>` approach
 
 Cons:
 - extra indirection + runtime borrow checks
 - some Rust APIs become less ergonomic without borrow helpers
+- not suitable once `sys.thread` support requires Haxe reference values to cross OS thread boundaries
 
 ### Option C — custom runtime type `hxrt::array::Array<T>`
 
@@ -112,13 +117,14 @@ Cons:
 
 ## Decision
 
-**We moved to Option C: `hxrt::array::Array<T>` backed by `Rc<RefCell<Vec<T>>>`.**
+**We moved to Option C: `hxrt::array::Array<T>` backed by `HxRef<Vec<T>>`.**
 
 Goals of the runtime type:
 
 - preserve Haxe aliasing semantics by default
-- make “clone to preserve reuse” cheap (`Rc` clone)
+- make “clone to preserve reuse” cheap (shared-handle clone)
 - provide borrow helpers for metal/profile code when performance matters
+- share the same thread-safe reference model used by classes, handles, and other HXRT values
 
 ### Relationship to profiles
 
@@ -126,20 +132,11 @@ Goals of the runtime type:
 - `Metal`: users should prefer `rust.Vec<T>` when they explicitly want Rust ownership semantics.
   Conversions between `Array<T>` and `rust.Vec<T>` must be explicit and documented.
 
-## Follow-up tasks (implementation plan)
+## Evidence
 
-1. Introduce `hxrt::array::Array<T>` runtime type:
-   - internal storage: `Rc<RefCell<Vec<T>>>`
-   - methods: `len`, `get`, `set`, `push`, `pop`, `iterator`/`iter` helpers
-2. Update backend type mapping:
-   - `Array<T>` → `hxrt::array::Array<T>`
-   - array literals `[...]` → `hxrt::array::Array::from_vec(vec![...])` (or equivalent)
-3. Update codegen for common operations:
-   - `arr.length`, `arr[idx]`, `arr[idx] = v`
-   - `for (x in arr)` lowering (borrow-safely)
-4. Add semantic snapshots:
-   - aliasing: `b = a; b.push(1); trace(a.length)`
-   - passing to functions mutates caller
-5. Revisit clone heuristics:
-   - most `Array<T>` clones become `Rc::clone` (cheap)
-   - reduce deep clones, keep Haxe reuse semantics
+The current contract is covered by:
+
+- `test/snapshot/for_array_alias_mutating` for alias-preserving mutation during iteration.
+- `test/snapshot/array_methods_slice_splice` for common `Array<T>` operations.
+- `test/snapshot/rust_array_slice_views` for zero-clone slice-borrow helpers.
+- `runtime/hxrt/src/array.rs` for the concrete `hxrt::array::Array<T>` implementation.

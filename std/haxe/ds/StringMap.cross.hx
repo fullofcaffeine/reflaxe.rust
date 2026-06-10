@@ -12,8 +12,8 @@ import haxe.Constraints.IMap;
 
 	What
 	- Implements the standard Haxe `StringMap<T>` API on the Rust target.
-	- Backed by Rust `std::collections::HashMap<String, T>` stored inside the portable runtime model
-	  (`HxRef<T> = Rc<RefCell<T>>` for class instances).
+	- Backed by Rust `std::collections::HashMap<String, T>` and generated as a normal Haxe class,
+	  which means instances use the same `HxRef` runtime reference model as other portable classes.
 
 	How
 	- `get()` returns `Null<T>` per Haxe API. In Rust output this is lowered to `Option<T>`:

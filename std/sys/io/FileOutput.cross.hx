@@ -18,8 +18,8 @@ import hxrt.fs.FileHandle;
 	- Constructed via `sys.io.File.write/append/update(...)`.
 
 	How
-	- Stores the handle as `HxRef<rust.fs.NativeFile>` (runtime `Rc<RefCell<std::fs::File>>`) so it is
-	  cloneable and can be dropped on `close()`.
+	- Stores the handle as `HxRef<hxrt.fs.FileHandle>` so it is cloneable from Haxe while the runtime
+	  owns the non-cloneable `std::fs::File` and can drop it on `close()`.
 	- IO errors are thrown as catchable Haxe exceptions (currently thrown as a `String` message).
 **/
 class FileOutput extends haxe.io.Output {

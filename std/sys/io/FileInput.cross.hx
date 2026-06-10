@@ -18,7 +18,8 @@ import hxrt.fs.FileHandle;
 	- Constructed via `sys.io.File.read(...)`.
 
 	How
-	- Stores the OS file handle as `HxRef<rust.fs.NativeFile>` (runtime `Rc<RefCell<std::fs::File>>`).
+	- Stores the OS file handle as `HxRef<hxrt.fs.FileHandle>` so it is cloneable from Haxe while
+	  the runtime owns the non-cloneable `std::fs::File`.
 	- IO errors are thrown as catchable Haxe exceptions (we throw a `String` message today).
 	- EOF is represented by throwing `new haxe.io.Eof()`, matching other Haxe targets.
 **/

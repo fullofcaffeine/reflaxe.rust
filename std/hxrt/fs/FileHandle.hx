@@ -13,7 +13,8 @@ package hxrt.fs;
 
 	How
 	- `@:native("hxrt::fs::FileHandle")` maps this extern to the Rust runtime struct.
-	- Haxe code stores it behind `rust.HxRef<T>` (runtime `Rc<RefCell<T>>`), which is cloneable.
+	- Haxe code stores it behind `rust.HxRef<T>`, which is cloneable even though the underlying
+	  runtime file handle is not.
 **/
 @:native("hxrt::fs::FileHandle")
 extern class FileHandle {}

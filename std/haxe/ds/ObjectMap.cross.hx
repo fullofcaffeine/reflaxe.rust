@@ -12,15 +12,16 @@ import haxe.Constraints.IMap;
 	What
 	- A best-effort `ObjectMap<K, V>` implementation for the Rust target.
 	- Intended for **class instance** keys (`K` being a portable Haxe class), which are represented as
-	  `Rc<RefCell<...>>` in Rust output and can be identity-keyed.
+	  `HxRef`/`HxDynRef` handles in Rust output and can be identity-keyed.
 
 	How
-	- We compute an identity string from the key's underlying `Rc` pointer (`format!("{:p}", Rc::as_ptr(...))`).
+	- We compute an identity string from the key's underlying runtime handle pointer.
 	- Two internal hash maps are kept:
 	  - `keysMap`: id -> original key (so `keys()` can yield `K`)
 	  - `valuesMap`: id -> value
 	- Limitations (documented):
-	  - Keys that are not portable Haxe class instances may not compile/work (because the identity function relies on `Rc`).
+	  - Keys that are not portable Haxe class instances may not compile/work because the identity
+		function expects the runtime handle identity interface.
 	  - Value-returning operations clone (`K: Clone`, `V: Clone`) for Haxe-like reuse semantics.
 **/
 @:rustGeneric([
