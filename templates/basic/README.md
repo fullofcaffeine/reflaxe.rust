@@ -15,6 +15,10 @@ Generator plumbing included out of the box:
 - local watcher script for fast edit-compile-run/test loops
 - security plumbing: gitleaks wrapper, local-path guards, and pre-commit hook installer
 
+Distribution note: `reflaxe.rust` is installed from GitHub Releases via `lix`. The release artifact
+is haxelib-shaped for Haxe/Reflaxe tooling compatibility, but this does not require haxelib.org
+publication.
+
 ## Setup
 
 From this folder:
@@ -42,6 +46,21 @@ cargo hx --action build --release
 ```
 
 This runs Haxe codegen first and then the selected Cargo action.
+
+## Production Use
+
+Use `portable` as the default profile. Add `metal` only for measured hot paths or explicit Rust-first
+interop boundaries.
+
+Before shipping this template-derived app, add smoke tests for the runtime edges it uses:
+
+- files and paths
+- process exit/error behavior
+- sockets, HTTP, or TLS
+- DB driver setup
+- thread or event-loop behavior
+
+Keep raw Rust behind typed externs/wrappers rather than placing direct `__rust__` calls in app code.
 
 ## Security / Guardrails
 

@@ -5,6 +5,7 @@ Use this page as the map for `reflaxe.rust` docs.
 ## Quick start by audience
 
 - New to compiler internals: [Start Here](start-here.md)
+- Installing into an app: [Install via lix](install-via-lix.md), [Workflow](workflow.md)
 - Evaluating production use: [Production Readiness](production-readiness.md), [Feature support matrix](feature-support-matrix.md), [Semantic confidence summary](semantic-confidence-summary.md)
 - Portable-first application path: [Profiles](profiles.md), [Portable near-native guidance](portable-near-native-guidance.md), [Examples matrix](examples-matrix.md)
 - Metal-first path: [Metal profile](metal-profile.md), [Portable near-native guidance](portable-near-native-guidance.md), [Examples matrix](examples-matrix.md)
