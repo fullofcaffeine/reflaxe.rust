@@ -269,6 +269,9 @@ Agent policy:
   - Harness package-smoke skip: GitHub CI runs `scripts/ci/package-smoke.sh` as a dedicated step before the full harness, then sets
     `HARNESS_SKIP_PACKAGE_SMOKE=1` for `scripts/ci/harness.sh` to avoid the duplicate package-smoke stage.
     Do not set this flag locally unless package smoke already ran in the same validation flow.
+  - Harness stage selector: `HARNESS_STAGES` accepts `all` (default) or comma/space-separated groups:
+    `snapshots`, `conformance`, `policy`, `packaging`, `examples`, `parity`.
+    Unknown stage names fail fast; keep local `npm run test:all` on the default full suite unless intentionally validating a focused CI shard.
   - Example CI reuse: `scripts/ci/harness.sh` may reuse a previously compiled developer/example HXML for a CI run variant only when the
     normalized HXML contents match exactly after removing `-D rust_output=...`.
     Keep CI-specific semantic flags (`*_headless`, explicit profiles, native-mode defines, etc.) distinct so those variants still compile separately.

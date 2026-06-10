@@ -361,56 +361,130 @@ run_examples_ci_matrix() {
   done < <(find examples -mindepth 1 -maxdepth 1 -type d | sort)
 }
 
-run_stage "snapshots" run_snapshots
-intermediate_cleanup "snapshots"
+normalize_harness_stage_selector() {
+  local raw="${HARNESS_STAGES:-all}"
+  raw="${raw//,/ }"
+  local stages=()
+  local token
 
-run_stage "semantic diff (portable)" python3 test/run-semantic-diff.py
-intermediate_cleanup "semantic-diff"
+  for token in $raw; do
+    case "$token" in
+      all|snapshots|conformance|policy|packaging|examples|parity)
+        stages+=("$token")
+        ;;
+      *)
+        echo "[harness] error: unknown HARNESS_STAGES entry: $token" >&2
+        echo "[harness] valid entries: all, snapshots, conformance, policy, packaging, examples, parity" >&2
+        exit 2
+        ;;
+    esac
+  done
 
-run_stage "semantic diff (lanes)" python3 test/run-semantic-diff.py --suite lanes
-intermediate_cleanup "semantic-diff-lanes"
+  if [[ "${#stages[@]}" -eq 0 ]]; then
+    echo "[harness] error: HARNESS_STAGES did not contain any stages" >&2
+    exit 2
+  fi
 
-run_stage "metal boundary policy" bash scripts/ci/check-metal-policy.sh
-intermediate_cleanup "metal-policy"
+  HARNESS_STAGE_SET=" ${stages[*]} "
+  if [[ "$HARNESS_STAGE_SET" == *" all "* ]]; then
+    HARNESS_STAGE_SET=" all "
+  fi
+  echo "[harness] selected stages:${HARNESS_STAGE_SET}"
+}
 
-run_stage "define docs guard" bash scripts/lint/defines_doc_guard.sh
-intermediate_cleanup "defines-doc-guard"
+harness_stage_selected() {
+  local stage="$1"
+  [[ "$HARNESS_STAGE_SET" == *" all "* || "$HARNESS_STAGE_SET" == *" $stage "* ]]
+}
 
-run_stage "portable native-import diagnostics" bash scripts/ci/check-portable-native-import-diagnostics.sh
-intermediate_cleanup "portable-native-import-diagnostics"
+run_snapshots_group() {
+  run_stage "snapshots" run_snapshots
+  intermediate_cleanup "snapshots"
+}
 
-run_stage "metal fallback count guard" bash scripts/ci/check-metal-fallback-counts.sh
-intermediate_cleanup "metal-fallback-count-guard"
+run_conformance_group() {
+  run_stage "semantic diff (portable)" python3 test/run-semantic-diff.py
+  intermediate_cleanup "semantic-diff"
 
-run_stage "upstream stdlib sweep" bash test/run-upstream-stdlib-sweep.sh
-intermediate_cleanup "upstream-stdlib-sweep"
+  run_stage "semantic diff (lanes)" python3 test/run-semantic-diff.py --suite lanes
+  intermediate_cleanup "semantic-diff-lanes"
 
-run_stage "family std sync verify" python3 tools/family_std_sync.py --mode verify
-intermediate_cleanup "family-stdlib-sync"
+  run_stage "upstream stdlib sweep" bash test/run-upstream-stdlib-sweep.sh
+  intermediate_cleanup "upstream-stdlib-sweep"
 
-run_stage "tier1 api surface smoke" python3 test/run-tier1-api-surface-smoke.py
-intermediate_cleanup "tier1-api-surface-smoke"
+  run_stage "family std sync verify" python3 tools/family_std_sync.py --mode verify
+  intermediate_cleanup "family-stdlib-sync"
 
-if is_truthy "${HARNESS_SKIP_PACKAGE_SMOKE:-0}"; then
-  echo "[harness] package smoke skipped (HARNESS_SKIP_PACKAGE_SMOKE=1)"
-else
-  run_stage "package smoke" env PACKAGE_ZIP_REL=".cache/package-smoke/reflaxe.rust-audit.zip" bash scripts/ci/package-smoke.sh
-  intermediate_cleanup "package-smoke"
+  run_stage "tier1 api surface smoke" python3 test/run-tier1-api-surface-smoke.py
+  intermediate_cleanup "tier1-api-surface-smoke"
+}
+
+run_policy_group() {
+  run_stage "metal boundary policy" bash scripts/ci/check-metal-policy.sh
+  intermediate_cleanup "metal-policy"
+
+  run_stage "define docs guard" bash scripts/lint/defines_doc_guard.sh
+  intermediate_cleanup "defines-doc-guard"
+
+  run_stage "portable native-import diagnostics" bash scripts/ci/check-portable-native-import-diagnostics.sh
+  intermediate_cleanup "portable-native-import-diagnostics"
+
+  run_stage "metal fallback count guard" bash scripts/ci/check-metal-fallback-counts.sh
+  intermediate_cleanup "metal-fallback-count-guard"
+}
+
+run_packaging_group() {
+  if is_truthy "${HARNESS_SKIP_PACKAGE_SMOKE:-0}"; then
+    echo "[harness] package smoke skipped (HARNESS_SKIP_PACKAGE_SMOKE=1)"
+  else
+    run_stage "package smoke" env PACKAGE_ZIP_REL=".cache/package-smoke/reflaxe.rust-audit.zip" bash scripts/ci/package-smoke.sh
+    intermediate_cleanup "package-smoke"
+  fi
+
+  run_stage "template smoke" bash scripts/ci/template-smoke.sh
+  intermediate_cleanup "template-smoke"
+}
+
+run_examples_group() {
+  # Example compiles trigger cargo builds via the Rust backend. Share one target
+  # dir so all example crates reuse artifacts (keeps local/CI runtime reasonable).
+  if [[ -z "${CARGO_TARGET_DIR:-}" ]]; then
+    export CARGO_TARGET_DIR="${EXAMPLES_CARGO_TARGET_DIR:-$root_dir/.cache/examples-target}"
+  fi
+
+  run_stage "examples (compile-only developer variants)" run_examples_compile_only
+
+  run_stage "examples (CI run matrix)" run_examples_ci_matrix
+}
+
+run_parity_group() {
+  run_stage "profile_storyboard native parity" bash examples/profile_storyboard/scripts/compare-native.sh
+}
+
+normalize_harness_stage_selector
+
+if harness_stage_selected "snapshots"; then
+  run_snapshots_group
 fi
 
-run_stage "template smoke" bash scripts/ci/template-smoke.sh
-intermediate_cleanup "template-smoke"
-
-# Example compiles trigger cargo builds via the Rust backend. Share one target dir
-# so all example crates reuse artifacts (keeps local/CI runtime reasonable).
-if [[ -z "${CARGO_TARGET_DIR:-}" ]]; then
-  export CARGO_TARGET_DIR="${EXAMPLES_CARGO_TARGET_DIR:-$root_dir/.cache/examples-target}"
+if harness_stage_selected "conformance"; then
+  run_conformance_group
 fi
 
-run_stage "examples (compile-only developer variants)" run_examples_compile_only
+if harness_stage_selected "policy"; then
+  run_policy_group
+fi
 
-run_stage "examples (CI run matrix)" run_examples_ci_matrix
+if harness_stage_selected "packaging"; then
+  run_packaging_group
+fi
 
-run_stage "profile_storyboard native parity" bash examples/profile_storyboard/scripts/compare-native.sh
+if harness_stage_selected "examples"; then
+  run_examples_group
+fi
+
+if harness_stage_selected "parity"; then
+  run_parity_group
+fi
 
 echo "[harness] ok"
