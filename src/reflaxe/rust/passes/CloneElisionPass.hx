@@ -21,13 +21,13 @@ import reflaxe.rust.ast.RustAST.RustStructLitField;
 	- Applies three safe clone reductions:
 	  - `.clone()` on always-safe literal/value expressions.
 	  - nested `.clone().clone()` collapsed to one `.clone()`.
-	  - last-use local `path.clone()` in direct call arguments (outside loop/closure contexts).
 	  - last-use local `path.clone()` used as a `match` scrutinee (outside loop/closure contexts).
+	  - last-use local `path.clone()` boxed via `hxrt::dynamic::from(...)` (outside loop/closure contexts).
 
 	How
 	- Recursively rewrites Rust AST items/functions/blocks/expressions.
 	- Restricts last-use elision to top-level statement expressions where the move site is explicit
-	  and the local is not used later (`call` args, `match` scrutinees).
+	  and the local is not used later (`match` scrutinees, `hxrt::dynamic::from(...)`).
 	- Disables last-use elision inside loops and closure/async-closure bodies to avoid move-safety drift.
 **/
 class CloneElisionPass implements RustPass {
@@ -226,13 +226,15 @@ class CloneElisionPass implements RustPass {
 
 	function rewriteStmtCallCloneArgs(stmt:RustStmt, index:Int, stmts:Array<RustStmt>, tail:Null<RustExpr>):RustStmt {
 		return switch (stmt) {
+			case RLet(name, mutable, ty, expr):
+				RLet(name, mutable, ty, expr == null ? null : rewriteCallCloneArgs(expr, index, stmts, tail));
 			case RSemi(expr):
 				RSemi(rewriteCallCloneArgs(expr, index, stmts, tail));
 			case RExpr(expr, needsSemicolon):
 				RExpr(rewriteCallCloneArgs(expr, index, stmts, tail), needsSemicolon);
 			case RReturn(expr):
 				RReturn(expr == null ? null : rewriteCallCloneArgs(expr, index, stmts, tail));
-			case RLet(_, _, _, _) | RWhile(_, _) | RLoop(_) | RFor(_, _, _) | RBreak | RContinue:
+			case RWhile(_, _) | RLoop(_) | RFor(_, _, _) | RBreak | RContinue:
 				stmt;
 		};
 	}
@@ -262,7 +264,7 @@ class CloneElisionPass implements RustPass {
 				out.set(name, currentMovableBindings.get(name));
 			}
 		}
-		for (i in 0...index + 1) {
+		for (i in 0...index) {
 			switch (stmts[i]) {
 				case RLet(name, _, ty, _):
 					if (ty == null) {
@@ -294,8 +296,11 @@ class CloneElisionPass implements RustPass {
 		- Generic helpers over native Rust `Option<T>` / `Result<T, E>` should not require
 		  artificial `Clone` bounds just because codegen matched on an owned local via
 		  `match value.clone() { ... }`.
-		- The same last-use reasoning already applies to boxed dynamic calls such as
+		- The same last-use reasoning also applies to boxed dynamic calls such as
 		  `hxrt::dynamic::from(local.clone())`.
+		- Generic nested call-arg elision is intentionally not attempted here because the
+		  enclosing Rust expression tree can still use the same local later in ways that are
+		  easy to misclassify after lowering.
 
 		What
 		- Removes `.clone()` from supported move sites when the local is:
@@ -306,7 +311,8 @@ class CloneElisionPass implements RustPass {
 
 		How
 		- The pass operates on Rust AST after lowering, so it can reason about the actual emitted
-		  move site (`match` scrutinee / call arg) without duplicating typed-AST lowering logic.
+		  move site (`match` scrutinee / `hxrt::dynamic::from(...)`) without duplicating typed-AST
+		  lowering logic.
 	**/
 	function rewriteLastUseCloneSites(expr:RustExpr, localMoveSkipReason:String->Null<String>):RustExpr {
 		return switch (expr) {
@@ -336,7 +342,9 @@ class CloneElisionPass implements RustPass {
 					EMatch(ECall(EField(EPath(localName), "clone"), []), rewrittenArms);
 				}
 			case ECall(func, args):
-				ECall(rewriteLastUseCloneSites(func, localMoveSkipReason), [for (arg in args) rewriteLastUseCloneSites(arg, localMoveSkipReason)]);
+				var rewrittenFunc = rewriteLastUseCloneSites(func, localMoveSkipReason);
+				var rewrittenArgs = [for (arg in args) rewriteLastUseCloneSites(arg, localMoveSkipReason)];
+				ECall(rewrittenFunc, rewrittenArgs);
 			case EMacroCall(name, args):
 				EMacroCall(name, [for (arg in args) rewriteLastUseCloneSites(arg, localMoveSkipReason)]);
 			case EBinary(op, left, right):
@@ -393,29 +401,11 @@ class CloneElisionPass implements RustPass {
 			case RReturn(expr):
 				RReturn(expr == null ? null : rewriteLastUseCloneSites(expr, localMoveSkipReason));
 			case RWhile(cond, body):
-				RWhile(rewriteLastUseCloneSites(cond, localMoveSkipReason), {
-					stmts: [
-						for (inner in body.stmts)
-							rewriteLastUseCloneStmt(inner, localMoveSkipReason)
-					],
-					tail: body.tail == null ? null : rewriteLastUseCloneSites(body.tail, localMoveSkipReason)
-				});
+				RWhile(cond, body);
 			case RLoop(body):
-				RLoop({
-					stmts: [
-						for (inner in body.stmts)
-							rewriteLastUseCloneStmt(inner, localMoveSkipReason)
-					],
-					tail: body.tail == null ? null : rewriteLastUseCloneSites(body.tail, localMoveSkipReason)
-				});
+				RLoop(body);
 			case RFor(name, iter, body):
-				RFor(name, rewriteLastUseCloneSites(iter, localMoveSkipReason), {
-					stmts: [
-						for (inner in body.stmts)
-							rewriteLastUseCloneStmt(inner, localMoveSkipReason)
-					],
-					tail: body.tail == null ? null : rewriteLastUseCloneSites(body.tail, localMoveSkipReason)
-				});
+				RFor(name, iter, body);
 			case RBreak | RContinue:
 				stmt;
 		};

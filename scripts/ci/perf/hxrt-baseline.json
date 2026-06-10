@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-16T16:40:16.095Z",
+  "generatedAt": "2026-03-25T16:26:12.473Z",
   "thresholds": {
     "sizeWarnPct": 5,
     "runtimeWarnPct": 10,
@@ -23,130 +23,130 @@
       "portable": {
         "binaryRatio": 1.1532020739910314,
         "strippedRatio": 1.1426985344583955,
-        "runtimeRatio": 1.04687500732422
+        "runtimeRatio": 0.7698411904761905
       },
       "metal": {
         "binaryRatio": 1.1532020739910314,
         "strippedRatio": 1.1426985344583955,
-        "runtimeRatio": 1.0312501611328377
+        "runtimeRatio": 0.7857142857142856
       }
     },
     "arrayOverheadRatios": {
       "portable": {
         "binaryRatio": 1.1531320067264574,
         "strippedRatio": 1.1426985344583955,
-        "runtimeRatio": 1.0156253149414554
+        "runtimeRatio": 1.0416665625
       },
       "metal": {
         "binaryRatio": 1.1531320067264574,
         "strippedRatio": 1.1426985344583955,
-        "runtimeRatio": 1.0156253149414554
+        "runtimeRatio": 0.8541665625
       }
     },
     "hotLoopOverheadRatios": {
       "portable": {
         "binaryRatio": 1.1889284965401552,
         "strippedRatio": 1.1850141185962082,
-        "runtimeRatio": 0.9863013023081301
+        "runtimeRatio": 1.0880503773584906
       },
       "metal": {
         "binaryRatio": 1.1889284965401552,
         "strippedRatio": 1.1850141185962082,
-        "runtimeRatio": 0.9863013023081301
+        "runtimeRatio": 1.031446603773585
       }
     },
     "hotLoopInprocOverheadRatios": {
       "portable": {
         "binaryRatio": 1.0019306374613872,
         "strippedRatio": 1.0010910192948783,
-        "runtimeRatio": 1.0027850752206984
+        "runtimeRatio": 1.1398768902988567
       },
       "metal": {
         "binaryRatio": 1.0019306374613872,
         "strippedRatio": 1.0010910192948783,
-        "runtimeRatio": 0.9948699349402845
+        "runtimeRatio": 1.0132736552966368
       }
     },
     "hotLoopNoHxrtOverheadRatios": {
       "metal": {
         "binaryRatio": 0.997226902555462,
         "strippedRatio": 0.9988685725830893,
-        "runtimeRatio": 1.011320629028329
+        "runtimeRatio": 0.9708364119724268
       }
     },
     "bytesOverheadRatios": {
       "portable": {
         "binaryRatio": 1.1075465075465076,
         "strippedRatio": 1.0990909090909091,
-        "runtimeRatio": 0.9929173280480202
+        "runtimeRatio": 0.9284110416876098
       },
       "metal": {
         "binaryRatio": 1.1075465075465076,
         "strippedRatio": 1.0990909090909091,
-        "runtimeRatio": 1.0108351786436631
+        "runtimeRatio": 0.8646254610691392
       }
     },
     "jsonOverheadRatios": {
       "portable": {
-        "binaryRatio": 1.336650332200944,
-        "strippedRatio": 1.3071347405392377,
-        "runtimeRatio": 1.4527686184901478
+        "binaryRatio": 1.3366202687670985,
+        "strippedRatio": 1.307100306463276,
+        "runtimeRatio": 1.3504476904642448
       },
       "metal": {
-        "binaryRatio": 1.3353576045455913,
+        "binaryRatio": 1.3353275411117458,
         "strippedRatio": 1.307100306463276,
-        "runtimeRatio": 1.411027122304189
+        "runtimeRatio": 1.5136871390667082
       }
     },
     "int64OverheadRatios": {
       "portable": {
         "binaryRatio": 1.1895319506726458,
         "strippedRatio": 1.1843635189147725,
-        "runtimeRatio": 62.762506282839404
+        "runtimeRatio": 61.32902429396778
       },
       "metal": {
         "binaryRatio": 1.1895319506726458,
         "strippedRatio": 1.1843635189147725,
-        "runtimeRatio": 62.66306535108088
+        "runtimeRatio": 61.48863659525604
       }
     },
     "chatRelativeToMin": {
       "portable": {
-        "binaryRatio": 1.0075927708266497,
-        "strippedRatio": 1.0069354998513822,
-        "runtimeRatio": 1
+        "binaryRatio": 1.0102240504812492,
+        "strippedRatio": 1.009622712539827,
+        "runtimeRatio": 1.0011961722488039
       },
       "metal": {
         "binaryRatio": 1,
         "strippedRatio": 1,
-        "runtimeRatio": 1.0322952710495963
+        "runtimeRatio": 1
       }
     },
     "portableVsMetalConvergence": {
       "array": {
         "binaryRatio": 1,
         "strippedRatio": 1,
-        "runtimeRatio": 1
+        "runtimeRatio": 1.2195122218917345
       },
       "hotLoopInproc": {
         "binaryRatio": 1,
         "strippedRatio": 1,
-        "runtimeRatio": 1.007955954846388
+        "runtimeRatio": 1.1249447613094774
       },
       "bytes": {
         "binaryRatio": 1,
         "strippedRatio": 1,
-        "runtimeRatio": 0.9822742114894685
+        "runtimeRatio": 1.0737724986025714
       },
       "json": {
-        "binaryRatio": 1.000968076005223,
-        "strippedRatio": 1.0000263438664894,
-        "runtimeRatio": 1.029582348578669
+        "binaryRatio": 1.0009680978003916,
+        "strippedRatio": 1,
+        "runtimeRatio": 0.892157735644691
       },
       "int64": {
         "binaryRatio": 1,
         "strippedRatio": 1,
-        "runtimeRatio": 1.0015869145756178
+        "runtimeRatio": 0.9974041983994718
       }
     }
   }

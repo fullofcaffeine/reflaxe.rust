@@ -88,7 +88,7 @@ fn main() {
         __b.n
     }));
     let e: crate::e::E = crate::e::E::B(7);
-    let msg: hxrt::string::HxString = hxrt::string::HxString::from(match e.clone() {
+    let msg: hxrt::string::HxString = hxrt::string::HxString::from(match e {
         crate::e::E::A => hxrt::string::HxString::from(hxrt::string::HxString::from("A")),
         crate::e::E::B(__p) => {
             let _g: i32 = __p;

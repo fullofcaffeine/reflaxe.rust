@@ -132,6 +132,8 @@ The role of `reflaxe.std` is **not**:
 After the JSON boundary convergence tranche:
 
 - JSON remains the only current evidence-backed future hotspot family,
+- the first safe runtime-side JSON pass already cut the measured portable/metal JSON runtime ratios
+  materially without changing the public contract,
 - `hot_loop_inproc` is not reopened without new evidence,
 - `bytes` is not an active standalone convergence milestone,
 - `int64` stays a portability-cost tracker, not a near-native parity KPI.
@@ -142,6 +144,13 @@ That means the next justified optimization work, if any, should be:
 - evidence-backed,
 - semantics-preserving,
 - and attached to a specific hotspot family rather than a broad "optimizer spree."
+
+For JSON specifically, that means:
+
+- keep working at the `hxrt::json` boundary and JSON-specific lowering points,
+- do not use generic post-lowering clone-elision heuristics as a shortcut,
+- and only remove portable overhead when the ownership proof is attached to the emitted JSON path
+  itself.
 
 ## How to decide between `portable` and `metal`
 

@@ -61,7 +61,7 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 
 fn main() {
     let a: crate::action::Action = crate::action::Action::Move(2);
-    let s: hxrt::string::HxString = hxrt::string::HxString::from(match a.clone() {
+    let s: hxrt::string::HxString = hxrt::string::HxString::from(match a {
         crate::action::Action::Move(__p) => {
             let _g: i32 = __p;
             hxrt::string::HxString::from({

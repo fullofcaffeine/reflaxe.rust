@@ -100,7 +100,7 @@ fn main() {
             Option::None => 0,
         }
     };
-    let u1: i32 = match o.clone() {
+    let u1: i32 = match o {
         Option::Some(__p) => {
             let _g_5: i32 = __p;
             {
@@ -115,7 +115,7 @@ fn main() {
     println!("{}", hxrt::dynamic::from(u1));
     let r: Result<i32, String> = Result::Ok(n);
     let r2: Result<i32, String> = {
-        let _g_6: Result<i32, String> = match r.clone() {
+        let _g_6: Result<i32, String> = match r {
             Result::Ok(__p) => {
                 let _g_7: i32 = __p;
                 {
@@ -153,7 +153,7 @@ fn main() {
         }
     };
     let msg: i32 = {
-        let _g_11: Result<i32, String> = match r2.clone() {
+        let _g_11: Result<i32, String> = match r2 {
             Result::Ok(__p) => {
                 let _g_12: i32 = __p;
                 {
@@ -212,7 +212,7 @@ fn main() {
         })
     );
     let o2: Option<i32> = Option::None;
-    let r3: Result<i32, String> = match o2.clone() {
+    let r3: Result<i32, String> = match o2 {
         Option::Some(__p) => {
             let _g_18: i32 = __p;
             {

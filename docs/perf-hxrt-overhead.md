@@ -227,14 +227,21 @@ When reading ratios (`x vs pure`):
   - Current overhead is a real runtime/lowering hotspot, not just benchmark noise.
   - After the earlier JSON boundary fixes, the hot path no longer pays for a full
     `serde_json::Value` rebuild on the plain parse/stringify fast path.
-  - The latest runtime-side JSON pass also removed the extra key/value-buffer cloning on plain
-    `DynObject` / `Anon` stringify walks.
-  - The remaining cost is now mostly runtime-shape walking:
+  - The latest runtime-side JSON pass removed avoidable string-boundary ownership churn in
+    `hxrt::json` by borrowing transient string views for kind checks and only materializing owned
+    `String` values when the runtime boundary actually needs them.
+  - Under the current committed protocol/baseline, that dropped JSON runtime ratios materially:
+    roughly `1.45x -> 1.19x` in portable and `1.41x -> 1.23x` in metal versus the pure-Rust
+    baseline, with portable-vs-metal convergence moving from about `1.03x` to `0.97x`.
+  - The remaining cost is now mostly runtime-shape walking and boundary construction:
     anonymous-object construction, dynamic/object/array traversal, reflection-compatible parsed
-    object creation, and the portable-only string representation churn that still survives at some
+    object creation, and the outer portable string bridge that still survives at generated
     callsites.
-  - That means future optimization work should keep targeting the `hxrt::json` boundary and the
-    generated JSON payload construction path, not the benchmark harness itself.
+  - Broad post-lowering clone heuristics are explicitly not the answer here; a generic AST-wide
+    last-use call-arg rewrite was rejected because it produced unsound moves in serializer-heavy
+    code.
+  - That means future optimization work should keep targeting the `hxrt::json` boundary and
+    JSON-specific lowering paths, not the benchmark harness itself and not generic optimizer sprees.
   - Contract source for this work: `docs/json-boundary-contract.md`
 - `hot_loop_inproc`
   - Treat this as the clean near-native parity signal only after using a large enough sample count.

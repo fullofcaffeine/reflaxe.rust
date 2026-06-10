@@ -65,7 +65,7 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 
 fn main() {
     let o: Option<i32> = Option::Some(1);
-    let v: i32 = match o.clone() {
+    let v: i32 = match o {
         Option::Some(__p) => {
             let _g: i32 = __p;
             {

@@ -50,6 +50,28 @@ The remaining gap is now mostly the cost of walking dynamic/runtime shapes thems
 portable-only string representation churn that still exists where the compiler cannot safely lower
 to cheaper Rust display shapes.
 
+For the current milestone, the first safe optimization slice is intentionally narrower than a
+general JSON rewrite:
+
+1. reduce avoidable runtime-boundary string ownership churn inside `hxrt::json`
+   - borrow string payloads when helpers only need kind checks / transient `&str` access
+   - keep owned-string materialization local to the runtime boundary instead of cloning eagerly in
+     helper paths
+2. defer compiler-side JSON clone cleanup until it can be attached to JSON-specific lowering proof
+   instead of a generic post-lowering AST heuristic
+   - a generic "last use" call-arg elision pass turned out to be too risky because nested Rust
+     expression trees can still use the same local later in serializer-heavy code
+   - future JSON lowering work should prove ownership at the emitted JSON boundary itself instead of
+     guessing from a broad AST walk
+
+The implemented part of this slice is the runtime-side string-boundary cleanup. That change is
+semantics-preserving, measurable in the committed JSON benchmark flow, and does not require
+redefining parsed-object representation, replacer traversal, or reflection behavior.
+
+The outer portable `HxString` / metal `String` bridge remains intentionally unchanged for now.
+Eliminating that bridge directly would require profile-aware native-return inference in generated
+callers, which is a larger compiler contract change than this milestone should take on casually.
+
 ### Current semantic contract
 
 The following coverage is the minimum contract that future JSON optimization work must preserve:

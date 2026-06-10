@@ -91,7 +91,7 @@ fn object_fields(
             crate::haxe_json_value::Value::JObject(__p, _) => __p,
             _ => unreachable!(),
         };
-        let _g1: hxrt::array::Array<crate::haxe_json_value::Value> = match value.clone() {
+        let _g1: hxrt::array::Array<crate::haxe_json_value::Value> = match value {
             crate::haxe_json_value::Value::JObject(_, __p) => __p,
             _ => unreachable!(),
         };

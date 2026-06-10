@@ -31,12 +31,57 @@ fn dynamic_json_number_kind(v: &Dynamic) -> Option<i32> {
     None
 }
 
-fn dynamic_json_string(v: &Dynamic) -> Option<String> {
+/// Borrow a JSON-compatible string payload from a runtime `Dynamic`.
+///
+/// Why
+/// - JSON boundary helpers frequently only need to know whether a dynamic payload is string-like
+///   or need a temporary borrowed `&str`.
+/// - Cloning into an owned `String` just to check kind tags or feed a serializer is wasted work on
+///   the hot path.
+///
+/// What
+/// - A shared borrowed-view helper for runtime JSON string handling.
+///
+/// How
+/// - Accepts both plain Rust `String` and portable `HxString`.
+/// - Preserves the current boundary quirk that `HxString(null)` is treated as the empty string in
+///   value-kind / value-as-string helper paths, because that behavior is already relied on by the
+///   existing JSON boundary tests.
+fn dynamic_json_str(v: &Dynamic) -> Option<&str> {
     if let Some(s) = v.downcast_ref::<String>() {
-        return Some(s.clone());
+        return Some(s.as_str());
     }
     if let Some(s) = v.downcast_ref::<HxString>() {
-        return Some(s.as_deref().unwrap_or("").to_string());
+        return Some(s.as_deref().unwrap_or(""));
+    }
+    None
+}
+
+/// Materialize a JSON-compatible runtime string as `HxString`.
+///
+/// Why
+/// - Portable Haxe `String` lowers to `HxString` on this backend.
+/// - Returning plain Rust `String` from `hxrt::json` forces the generated Haxe layer to wrap the
+///   result immediately, which adds avoidable boundary churn and obscures the true JSON hot path.
+///
+/// What
+/// - A small conversion helper used only when the JSON boundary must hand an owned string back to
+///   generated Haxe code.
+///
+/// How
+/// - Reuses existing `HxString` values by converting them once into owned `String`.
+/// - Keeps the ownership bridge local to `hxrt::json` so helper paths do not clone strings
+///   repeatedly just to answer kind checks or extract a value for `parseValue`.
+/// - Preserves the current `HxString(null) -> ""` helper behavior for the `value_as_string` path.
+fn dynamic_json_owned_string(v: &Dynamic) -> Option<String> {
+    if let Some(s) = v.downcast_ref::<HxString>() {
+        return Some(match s.as_deref() {
+            Some(inner) => inner.to_string(),
+            None => String::new(),
+        });
+    }
+    if let Some(s) = v.downcast_ref::<String>() {
+        return Some(s.clone());
     }
     None
 }
@@ -626,6 +671,20 @@ pub fn parse(text: &str) -> Dynamic {
     }
 }
 
+/// Encode a runtime JSON value into owned JSON text.
+///
+/// Why
+/// - `serde_json` emits owned UTF-8 text.
+/// - The Rust backend still has two public string representations (`String` in metal,
+///   `HxString` in portable), so the profile bridge currently happens at the generated Haxe layer.
+///
+/// What
+/// - Shared compact/pretty stringify core used by the public `hxrt::json` entry points.
+///
+/// How
+/// - Serializes directly from runtime `Dynamic` shapes into JSON bytes.
+/// - Returns owned Rust `String` so the higher-level Haxe bridge can preserve the active profile
+///   string contract without duplicating the serializer path here.
 fn stringify_with_space(value: Dynamic, space: Option<&str>) -> String {
     if let Some(indent) = space {
         use serde_json::ser::{PrettyFormatter, Serializer};
@@ -701,7 +760,7 @@ pub fn value_kind(value: Dynamic) -> i32 {
     if let Some(kind) = dynamic_json_number_kind(value) {
         return kind;
     }
-    if dynamic_json_string(value).is_some() {
+    if dynamic_json_str(value).is_some() {
         return VALUE_KIND_STRING;
     }
     if value.downcast_ref::<Array<Dynamic>>().is_some() {
@@ -739,7 +798,8 @@ pub fn value_as_float(value: Dynamic) -> f64 {
 }
 
 pub fn value_as_string(value: Dynamic) -> String {
-    dynamic_json_string(&value).unwrap_or_else(|| throw_json(String::from("Expected JSON string")))
+    dynamic_json_owned_string(&value)
+        .unwrap_or_else(|| throw_json(String::from("Expected JSON string")))
 }
 
 pub fn value_array_length(value: Dynamic) -> i32 {
