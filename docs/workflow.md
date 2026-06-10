@@ -111,6 +111,11 @@ Before pushing to `main`, run the closest local equivalent of CI:
 - `bash scripts/ci/local.sh`
 - `bash scripts/ci/perf-hxrt-overhead.sh` (already included by `scripts/ci/local.sh`)
 
+The GitHub push/PR workflow shards the expensive harness work into parallel jobs for speed, then
+keeps `Snapshots + Examples` as an aggregate required check. Local runs stay intentionally boring:
+`npm run test:all` is still the full harness, and `HARNESS_STAGES=... bash scripts/ci/harness.sh`
+is only for focused shard debugging.
+
 ## HXRT overhead tracking
 
 To track runtime footprint regressions explicitly:

@@ -25,6 +25,27 @@ Jobs:
 2. Windows smoke validation:
    - `bash scripts/ci/windows-smoke.sh`
 
+## PR CI harness topology
+
+The push/PR workflow keeps the public `Snapshots + Examples` check name as an aggregate gate, but
+the expensive harness work now runs as parallel shards:
+
+- `Harness / snapshots`: snapshot generation/build/run checks.
+- `Harness / conformance + policy`: semantic diff, lane diff, upstream stdlib sweep, family std
+  sync, metal policy, native-import diagnostics, and fallback-count guards.
+- `Harness / packaging + examples`: package/template smoke, examples compile/run matrix, and
+  native-parity checks.
+- `HXRT overhead benchmarks`: runtime overhead benchmark gate and benchmark artifacts.
+
+The aggregate `Snapshots + Examples` job depends on those shards and fails if any shard fails or is
+cancelled. That preserves one simple required check for branch protection while avoiding a single
+long-running monolithic harness job.
+
+Local development intentionally stays simpler:
+
+- `npm run test:all` runs the full harness in one process.
+- `HARNESS_STAGES=... bash scripts/ci/harness.sh` is available for focused shard debugging.
+
 ## Docs sync guard discipline
 
 - `npm run docs:check:progress` is a required guard for CI/local-CI.
@@ -48,6 +69,9 @@ Weekly and PR CI also publish deterministic semantic-confidence artifacts:
 
 - `semantic-confidence-summary.json`
 - `semantic-confidence-summary.md`
+
+PR CI uploads those artifacts from the `Harness / conformance + policy` shard. HXRT performance
+artifacts are uploaded from the `HXRT overhead benchmarks` shard.
 
 This keeps evidence auditable without requiring manual copy/paste into docs every week.
 

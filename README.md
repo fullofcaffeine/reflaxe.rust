@@ -80,11 +80,14 @@ npx haxe compile.hxml
 npm test
 ```
 
-4. Run the CI-style local harness (snapshots + examples):
+4. Run the full CI-style local harness:
 
 ```bash
 npm run test:all
 ```
+
+GitHub Actions shards this same harness into parallel jobs for wall-clock speed, but the local
+command remains the single full-suite entrypoint.
 
 ## Fast Dev Loop (Watcher)
 
