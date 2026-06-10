@@ -156,10 +156,10 @@ jobs:
           set -euo pipefail
           cargo audit
 
-  test:
-    name: Snapshots + Examples
+  harness-snapshots:
+    name: Harness / snapshots
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -203,6 +203,64 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Free runner disk space (before harness)
+        run: |
+          set -euo pipefail
+          echo "[disk] before cleanup"
+          df -h
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/share/dotnet /opt/hostedtoolcache/CodeQL || true
+          docker system prune -af || true
+          echo "[disk] after cleanup"
+          df -h
+
+      - name: Run snapshots harness shard
+        run: |
+          set -euo pipefail
+          HARNESS_STAGES=snapshots HARNESS_SNAPSHOT_JOBS=6 HARNESS_CLEAN_OUTPUTS=1 HARNESS_CLEAN_CACHE=1 bash scripts/ci/harness.sh
+
+  harness-conformance-policy:
+    name: Harness / conformance + policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install npm dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Cache Haxe toolchain (lix)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/haxe
+          key: ${{ runner.os }}-lix-haxe-${{ env.HAXE_VERSION }}-${{ hashFiles('.haxerc', 'haxe_libraries/*.hxml', 'package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-lix-haxe-${{ env.HAXE_VERSION }}-
+
+      - name: Install Haxe (pinned via lix)
+        run: |
+          set -euo pipefail
+          npx lix download
+          npx lix download haxe "${{ env.HAXE_VERSION }}"
+          npx lix use haxe "${{ env.HAXE_VERSION }}"
+          echo "$(pwd)/node_modules/.bin" >> "$GITHUB_PATH"
+          export PATH="$(pwd)/node_modules/.bin:$PATH"
+          haxe -version
+
+      - name: Setup Rust (stable + rustfmt + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
       - name: Capture portable stdlib candidate report
         run: |
           set -euo pipefail
@@ -215,40 +273,10 @@ jobs:
           mkdir -p .cache/ci-evidence
           node scripts/ci/generate-semantic-confidence-summary.js --write --out-dir .cache/ci-evidence
 
-      - name: Package smoke (haxelib zip install)
+      - name: Run conformance + policy harness shard
         run: |
           set -euo pipefail
-          bash scripts/ci/package-smoke.sh
-
-      - name: Free runner disk space (before harness)
-        run: |
-          set -euo pipefail
-          echo "[disk] before cleanup"
-          df -h
-          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/share/dotnet /opt/hostedtoolcache/CodeQL || true
-          docker system prune -af || true
-          echo "[disk] after cleanup"
-          df -h
-
-      - name: Run harness (snapshots + examples)
-        run: |
-          set -euo pipefail
-          HARNESS_SNAPSHOT_JOBS=6 HARNESS_SKIP_PACKAGE_SMOKE=1 HARNESS_CLEAN_OUTPUTS=1 HARNESS_CLEAN_CACHE=1 bash scripts/ci/harness.sh
-
-      - name: Run HXRT overhead benchmarks (PR coarse gate)
-        run: |
-          set -euo pipefail
-          HXRT_PERF_HOT_LOOP_INPROC_RUNS=60 \
-          HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS=60 \
-          bash scripts/ci/perf-hxrt-overhead.sh --gate-mode pr
-
-      - name: Upload HXRT overhead benchmark artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: hxrt-overhead-benchmarks
-          path: .cache/perf-hxrt/results
-          if-no-files-found: warn
+          HARNESS_STAGES="conformance policy" HARNESS_CLEAN_OUTPUTS=1 HARNESS_CLEAN_CACHE=1 bash scripts/ci/harness.sh
 
       - name: Upload portable stdlib candidate artifact
         if: always()
@@ -283,6 +311,164 @@ jobs:
           console.log(`- Portable semantic-diff cases: \`${report.counts.portableSemanticDiffCases}\`; lane cases: \`${report.counts.laneSemanticDiffCases}\``)
           console.log('- Artifact: `semantic-confidence-summary`')
           NODE
+
+  harness-examples:
+    name: Harness / packaging + examples
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install npm dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Cache Haxe toolchain (lix)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/haxe
+          key: ${{ runner.os }}-lix-haxe-${{ env.HAXE_VERSION }}-${{ hashFiles('.haxerc', 'haxe_libraries/*.hxml', 'package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-lix-haxe-${{ env.HAXE_VERSION }}-
+
+      - name: Install Haxe (pinned via lix)
+        run: |
+          set -euo pipefail
+          npx lix download
+          npx lix download haxe "${{ env.HAXE_VERSION }}"
+          npx lix use haxe "${{ env.HAXE_VERSION }}"
+          echo "$(pwd)/node_modules/.bin" >> "$GITHUB_PATH"
+          export PATH="$(pwd)/node_modules/.bin:$PATH"
+          haxe -version
+
+      - name: Setup Rust (stable + rustfmt + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Package smoke (haxelib zip install)
+        run: |
+          set -euo pipefail
+          bash scripts/ci/package-smoke.sh
+
+      - name: Free runner disk space (before harness)
+        run: |
+          set -euo pipefail
+          echo "[disk] before cleanup"
+          df -h
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/share/dotnet /opt/hostedtoolcache/CodeQL || true
+          docker system prune -af || true
+          echo "[disk] after cleanup"
+          df -h
+
+      - name: Run packaging + examples harness shard
+        run: |
+          set -euo pipefail
+          HARNESS_STAGES="packaging examples parity" HARNESS_SKIP_PACKAGE_SMOKE=1 HARNESS_CLEAN_OUTPUTS=1 HARNESS_CLEAN_CACHE=1 bash scripts/ci/harness.sh
+
+  perf-hxrt:
+    name: HXRT overhead benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install npm dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Cache Haxe toolchain (lix)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/haxe
+          key: ${{ runner.os }}-lix-haxe-${{ env.HAXE_VERSION }}-${{ hashFiles('.haxerc', 'haxe_libraries/*.hxml', 'package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-lix-haxe-${{ env.HAXE_VERSION }}-
+
+      - name: Install Haxe (pinned via lix)
+        run: |
+          set -euo pipefail
+          npx lix download
+          npx lix download haxe "${{ env.HAXE_VERSION }}"
+          npx lix use haxe "${{ env.HAXE_VERSION }}"
+          echo "$(pwd)/node_modules/.bin" >> "$GITHUB_PATH"
+          export PATH="$(pwd)/node_modules/.bin:$PATH"
+          haxe -version
+
+      - name: Setup Rust (stable + rustfmt + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Run HXRT overhead benchmarks (PR coarse gate)
+        run: |
+          set -euo pipefail
+          HXRT_PERF_HOT_LOOP_INPROC_RUNS=60 \
+          HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS=60 \
+          bash scripts/ci/perf-hxrt-overhead.sh --gate-mode pr
+
+      - name: Upload HXRT overhead benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hxrt-overhead-benchmarks
+          path: .cache/perf-hxrt/results
+          if-no-files-found: warn
+
+  test:
+    name: Snapshots + Examples
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - harness-snapshots
+      - harness-conformance-policy
+      - harness-examples
+      - perf-hxrt
+    if: always()
+    steps:
+      - name: Check harness shard results
+        if: always()
+        run: |
+          set -euo pipefail
+          failed=0
+          for shard in \
+            "harness-snapshots:${{ needs['harness-snapshots'].result }}" \
+            "harness-conformance-policy:${{ needs['harness-conformance-policy'].result }}" \
+            "harness-examples:${{ needs['harness-examples'].result }}" \
+            "perf-hxrt:${{ needs['perf-hxrt'].result }}"
+          do
+            name="${shard%%:*}"
+            result="${shard#*:}"
+            echo "[harness-aggregate] ${name}: ${result}"
+            if [[ "$result" != "success" ]]; then
+              failed=1
+            fi
+          done
+
+          if [[ "$failed" -ne 0 ]]; then
+            echo "[harness-aggregate] one or more harness shards failed"
+            exit 1
+          fi
+
+          echo "[harness-aggregate] ok"
 
   tier2-stdlib-sweep:
     name: Tier2 upstream stdlib sweep

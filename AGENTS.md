@@ -272,6 +272,8 @@ Agent policy:
   - Harness stage selector: `HARNESS_STAGES` accepts `all` (default) or comma/space-separated groups:
     `snapshots`, `conformance`, `policy`, `packaging`, `examples`, `parity`.
     Unknown stage names fail fast; keep local `npm run test:all` on the default full suite unless intentionally validating a focused CI shard.
+  - CI harness split: GitHub Actions runs harness shards in parallel and keeps `Snapshots + Examples` as the aggregate gate.
+    If adding/removing a harness shard, update both the shard job and the aggregate `needs`/result check so a missing shard cannot silently pass.
   - Example CI reuse: `scripts/ci/harness.sh` may reuse a previously compiled developer/example HXML for a CI run variant only when the
     normalized HXML contents match exactly after removing `-D rust_output=...`.
     Keep CI-specific semantic flags (`*_headless`, explicit profiles, native-mode defines, etc.) distinct so those variants still compile separately.
