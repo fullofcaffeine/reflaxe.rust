@@ -266,6 +266,9 @@ Agent policy:
   - Harness snapshot parallelism: `scripts/ci/harness.sh` runs snapshot cases in bounded parallel batches by default (`HARNESS_SNAPSHOT_JOBS=4`).
     Use `HARNESS_SNAPSHOT_JOBS=1` to force the old serial path; direct `test/run-snapshots.sh` runs remain serial for focused debugging.
     GitHub CI intentionally overrides this to `HARNESS_SNAPSHOT_JOBS=6`; keep the script default more conservative for local machines.
+  - Harness package-smoke skip: GitHub CI runs `scripts/ci/package-smoke.sh` as a dedicated step before the full harness, then sets
+    `HARNESS_SKIP_PACKAGE_SMOKE=1` for `scripts/ci/harness.sh` to avoid the duplicate package-smoke stage.
+    Do not set this flag locally unless package smoke already ran in the same validation flow.
   - Example CI reuse: `scripts/ci/harness.sh` may reuse a previously compiled developer/example HXML for a CI run variant only when the
     normalized HXML contents match exactly after removing `-D rust_output=...`.
     Keep CI-specific semantic flags (`*_headless`, explicit profiles, native-mode defines, etc.) distinct so those variants still compile separately.

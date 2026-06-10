@@ -233,7 +233,7 @@ jobs:
       - name: Run harness (snapshots + examples)
         run: |
           set -euo pipefail
-          HARNESS_SNAPSHOT_JOBS=6 HARNESS_CLEAN_OUTPUTS=1 HARNESS_CLEAN_CACHE=1 bash scripts/ci/harness.sh
+          HARNESS_SNAPSHOT_JOBS=6 HARNESS_SKIP_PACKAGE_SMOKE=1 HARNESS_CLEAN_OUTPUTS=1 HARNESS_CLEAN_CACHE=1 bash scripts/ci/harness.sh
 
       - name: Run HXRT overhead benchmarks (PR coarse gate)
         run: |

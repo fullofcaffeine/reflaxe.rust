@@ -391,8 +391,12 @@ intermediate_cleanup "family-stdlib-sync"
 run_stage "tier1 api surface smoke" python3 test/run-tier1-api-surface-smoke.py
 intermediate_cleanup "tier1-api-surface-smoke"
 
-run_stage "package smoke" env PACKAGE_ZIP_REL=".cache/package-smoke/reflaxe.rust-audit.zip" bash scripts/ci/package-smoke.sh
-intermediate_cleanup "package-smoke"
+if is_truthy "${HARNESS_SKIP_PACKAGE_SMOKE:-0}"; then
+  echo "[harness] package smoke skipped (HARNESS_SKIP_PACKAGE_SMOKE=1)"
+else
+  run_stage "package smoke" env PACKAGE_ZIP_REL=".cache/package-smoke/reflaxe.rust-audit.zip" bash scripts/ci/package-smoke.sh
+  intermediate_cleanup "package-smoke"
+fi
 
 run_stage "template smoke" bash scripts/ci/template-smoke.sh
 intermediate_cleanup "template-smoke"
