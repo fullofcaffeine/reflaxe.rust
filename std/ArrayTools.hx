@@ -27,13 +27,16 @@
 class ArrayTools {
 	public static inline function map<A, B>(a:Array<A>, f:(item:A) -> B):Array<B> {
 		var out:Array<B> = [];
-		for (x in a) out.push(f(x));
+		for (x in a)
+			out.push(f(x));
 		return out;
 	}
 
 	public static inline function filter<A>(a:Array<A>, f:(item:A) -> Bool):Array<A> {
 		var out:Array<A> = [];
-		for (x in a) if (f(x)) out.push(x);
+		for (x in a)
+			if (f(x))
+				out.push(x);
 		return out;
 	}
 
@@ -63,7 +66,8 @@ class ArrayTools {
 	}
 
 	public static inline function fold<A, B>(a:Array<A>, f:(item:A, acc:B) -> B, first:B):B {
-		for (x in a) first = f(x, first);
+		for (x in a)
+			first = f(x, first);
 		return first;
 	}
 }
