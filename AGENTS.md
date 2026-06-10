@@ -265,6 +265,7 @@ Agent policy:
     - Manual cleanup: `npm run clean:artifacts` (outputs only) and `npm run clean:artifacts:all` (outputs + caches).
   - Harness snapshot parallelism: `scripts/ci/harness.sh` runs snapshot cases in bounded parallel batches by default (`HARNESS_SNAPSHOT_JOBS=4`).
     Use `HARNESS_SNAPSHOT_JOBS=1` to force the old serial path; direct `test/run-snapshots.sh` runs remain serial for focused debugging.
+    GitHub CI intentionally overrides this to `HARNESS_SNAPSHOT_JOBS=6`; keep the script default more conservative for local machines.
   - Example CI reuse: `scripts/ci/harness.sh` may reuse a previously compiled developer/example HXML for a CI run variant only when the
     normalized HXML contents match exactly after removing `-D rust_output=...`.
     Keep CI-specific semantic flags (`*_headless`, explicit profiles, native-mode defines, etc.) distinct so those variants still compile separately.
