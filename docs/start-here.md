@@ -133,6 +133,11 @@ This compares generated `metal` output with a hand-written Rust baseline for the
 
 ## Read next
 
+Install / workflow:
+
+- [Install via lix](install-via-lix.md)
+- [Workflow](workflow.md)
+
 Portable-first:
 
 - [Profiles](profiles.md)
@@ -148,6 +153,8 @@ Metal-first:
 Release / operations:
 
 - [Production Readiness](production-readiness.md)
+- [Feature support matrix](feature-support-matrix.md)
+- [Semantic confidence summary](semantic-confidence-summary.md)
 - [Semver and release posture](semver-release-posture.md)
 - [Defines reference](defines-reference.md)
 - [Async contract](async-contract.md)

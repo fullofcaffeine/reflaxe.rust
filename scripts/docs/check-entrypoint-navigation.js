@@ -26,18 +26,24 @@ const entrypointRules = [
     file: 'README.md',
     requiredLinks: [
       'docs/start-here.md',
+      'docs/install-via-lix.md',
       'docs/portable-near-native-guidance.md',
       'docs/examples-matrix.md',
       'docs/production-readiness.md',
+      'docs/feature-support-matrix.md',
     ],
   },
   {
     file: 'docs/start-here.md',
     requiredLinks: [
+      'install-via-lix.md',
+      'workflow.md',
       'profiles.md',
       'portable-near-native-guidance.md',
       'examples-matrix.md',
       'production-readiness.md',
+      'feature-support-matrix.md',
+      'semantic-confidence-summary.md',
       'semver-release-posture.md',
     ],
   },
@@ -45,10 +51,14 @@ const entrypointRules = [
     file: 'docs/index.md',
     requiredLinks: [
       'start-here.md',
+      'install-via-lix.md',
+      'workflow.md',
       'portable-near-native-guidance.md',
       'portable-vs-metal-authoring.md',
       'examples-matrix.md',
       'production-readiness.md',
+      'feature-support-matrix.md',
+      'semantic-confidence-summary.md',
       'semver-release-posture.md',
       'weekly-ci-evidence.md',
     ],
@@ -68,7 +78,16 @@ const entrypointRules = [
     requiredLinks: [
       'semver-release-posture.md',
       'portable-near-native-guidance.md',
+      'feature-support-matrix.md',
+      'semantic-confidence-summary.md',
       'weekly-ci-evidence.md',
+    ],
+  },
+  {
+    file: 'docs/install-via-lix.md',
+    requiredLinks: [
+      'production-readiness.md',
+      'feature-support-matrix.md',
     ],
   },
 ];
