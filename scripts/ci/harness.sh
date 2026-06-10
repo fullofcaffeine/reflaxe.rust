@@ -77,6 +77,16 @@ run_stage() {
   record_stage_timing "$stage" "$elapsed"
 }
 
+run_timed_step() {
+  local label="$1"
+  shift
+  local start="$SECONDS"
+  echo "[harness] ${label}"
+  "$@"
+  local elapsed=$((SECONDS - start))
+  echo "[harness] done: ${label} (${elapsed}s)"
+}
+
 trap 'status=$?; print_stage_timings; cleanup_artifacts "$status"' EXIT
 
 intermediate_cleanup() {
@@ -132,8 +142,7 @@ compile_example() {
     echo "[harness] compile: ${dir} (${hxml}) [cached]"
     return 0
   fi
-  echo "[harness] compile: ${dir} (${hxml})"
-  (cd "$dir" && haxe "$hxml")
+  run_timed_step "compile: ${dir} (${hxml})" bash -c 'cd "$1" && haxe "$2"' _ "$dir" "$hxml"
   printf "%s\n" "$cache_key" >> "$compiled_hxml_cache_file"
 }
 
@@ -143,9 +152,13 @@ run_example() {
   local out_dir
   out_dir="$(extract_out_dir "$dir/$hxml")"
 
+  local start="$SECONDS"
+  echo "[harness] example: ${dir} (${hxml})"
   compile_example "$dir" "$hxml"
-  (cd "$dir/$out_dir" && cargo test -q)
-  (cd "$dir/$out_dir" && cargo run -q)
+  run_timed_step "cargo test: ${dir}/${out_dir}" bash -c 'cd "$1" && cargo test -q' _ "$dir/$out_dir"
+  run_timed_step "cargo run: ${dir}/${out_dir}" bash -c 'cd "$1" && cargo run -q' _ "$dir/$out_dir"
+  local elapsed=$((SECONDS - start))
+  echo "[harness] done: example: ${dir} (${hxml}) (${elapsed}s)"
 }
 
 run_examples_compile_only() {

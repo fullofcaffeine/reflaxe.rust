@@ -128,6 +128,16 @@ is_truthy() {
 
 SNAP_CARGO_QUIET="${SNAP_CARGO_QUIET:-1}"
 
+run_timed_step() {
+  local label="$1"
+  shift
+  local start="$SECONDS"
+  echo "  start: $label" >&2
+  "$@"
+  local elapsed=$((SECONDS - start))
+  echo "  done:  $label (${elapsed}s)" >&2
+}
+
 should_run_clippy_for_case() {
   local case_name="$1"
 
@@ -214,29 +224,39 @@ for case_dir in "$SNAP_DIR"/*; do
 
     rm -rf "$out_dir"
     # Snapshots do their own cargo build step below; keep codegen-only during compilation.
-    echo "  compile: $compile_file -> $out_base"
-    (cd "$case_dir" && "$HAXE_BIN" "$compile_file" -D rust_output="$out_base" -D rust_no_build)
+    if ! run_timed_step "compile: $case_name/$compile_file -> $out_base" \
+      bash -c 'cd "$1" && "$2" "$3" -D rust_output="$4" -D rust_no_build' _ "$case_dir" "$HAXE_BIN" "$compile_file" "$out_base"; then
+      echo "  compile failed: $case_name/$compile_file" >&2
+      fail=1
+      continue
+    fi
 
     if [[ -f "$out_dir/Cargo.toml" ]]; then
-      echo "  cargo fmt: $out_base"
-      if ! (cd "$out_dir" && CARGO_TARGET_DIR="$case_target_dir" cargo fmt >/dev/null); then
+      if ! run_timed_step "cargo fmt: $case_name/$out_base" \
+        bash -c 'cd "$1" && CARGO_TARGET_DIR="$2" cargo fmt >/dev/null' _ "$out_dir" "$case_target_dir"; then
         echo "  cargo fmt failed: $out_dir" >&2
         fail=1
       fi
 
-      cargo_build_cmd=(cargo build)
-      if is_truthy "$SNAP_CARGO_QUIET"; then
-        cargo_build_cmd+=(-q)
-      fi
-
-      echo "  cargo build: $out_base"
-      if ! (cd "$out_dir" && CARGO_TARGET_DIR="$case_target_dir" "${cargo_build_cmd[@]}"); then
+      if ! run_timed_step "cargo build: $case_name/$out_base" \
+        bash -c '
+          cd "$1"
+          case "$3" in
+            1|true|TRUE|yes|YES|on|ON)
+              CARGO_TARGET_DIR="$2" cargo build -q
+              ;;
+            *)
+              CARGO_TARGET_DIR="$2" cargo build
+              ;;
+          esac
+        ' _ "$out_dir" "$case_target_dir" "$SNAP_CARGO_QUIET"; then
         echo "  cargo build failed: $out_dir" >&2
         fail=1
       fi
 
       if should_run_clippy_for_case "$case_name"; then
-        if ! (cd "$out_dir" && CARGO_TARGET_DIR="$case_target_dir" cargo clippy -- -A clippy::all -D clippy::correctness -D clippy::suspicious >/dev/null); then
+        if ! run_timed_step "cargo clippy: $case_name/$out_base" \
+          bash -c 'cd "$1" && CARGO_TARGET_DIR="$2" cargo clippy -q -- -A clippy::all -D clippy::correctness -D clippy::suspicious' _ "$out_dir" "$case_target_dir"; then
           echo "  cargo clippy failed: $out_dir" >&2
           fail=1
         fi
@@ -270,7 +290,8 @@ for case_dir in "$SNAP_DIR"/*; do
       # If intended*/stdout.txt exists (or existed before --update), run the compiled binary and compare stdout.
       if [[ "$expects_stdout" == "1" ]]; then
         actual_stdout="$case_dir/.stdout.actual"
-        if ! (cd "$out_dir" && CARGO_TARGET_DIR="$case_target_dir" cargo run -q) >"$actual_stdout"; then
+        if ! run_timed_step "cargo run stdout: $case_name/$out_base" \
+          bash -c 'cd "$1" && CARGO_TARGET_DIR="$2" cargo run -q > "$3"' _ "$out_dir" "$case_target_dir" "$actual_stdout"; then
           echo "  cargo run failed: $out_dir" >&2
           fail=1
         else
@@ -286,12 +307,13 @@ for case_dir in "$SNAP_DIR"/*; do
     fi
 
     if [[ "$no_diff" != "1" ]]; then
-      if ! diff -ru \
-        -x "_GeneratedFiles.json" \
-        -x "Cargo.lock" \
-        -x "stdout.txt" \
-        -x "target" \
-        "$intended_dir" "$out_dir"; then
+      if ! run_timed_step "diff: $case_name/$out_base" \
+        diff -ru \
+          -x "_GeneratedFiles.json" \
+          -x "Cargo.lock" \
+          -x "stdout.txt" \
+          -x "target" \
+          "$intended_dir" "$out_dir"; then
         fail=1
       fi
     fi
