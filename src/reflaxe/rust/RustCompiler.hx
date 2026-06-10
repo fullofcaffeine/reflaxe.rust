@@ -4005,7 +4005,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var code = Sys.command(cargoCmd, args);
 			if (code != 0) {
 				#if eval
-				Context.warning("`" + cargoCmd + " " + subcommand + "` failed (exit " + code + ") for output: " + manifest, Context.currentPos());
+				Context.error("`" + cargoCmd + " " + subcommand + "` failed (exit " + code + ") for output: " + manifest, Context.currentPos());
 				#end
 			}
 		}

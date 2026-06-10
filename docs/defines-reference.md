@@ -109,6 +109,7 @@ This page is a practical reference for the most relevant compiler defines.
 ## Cargo command controls
 
 - `rust_cargo_subcommand=build|check|test|clippy|run`
+  - Non-zero Cargo exits are propagated as Haxe compilation failures.
 - `rust_cargo_cmd=<binary>`
 - `rust_cargo_target_dir=<path>`
 - `rust_cargo_features=feat1,feat2`

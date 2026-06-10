@@ -441,6 +441,9 @@ run_packaging_group() {
     intermediate_cleanup "package-smoke"
   fi
 
+  run_stage "cargo failure propagation" bash scripts/ci/check-cargo-failure-propagation.sh
+  intermediate_cleanup "cargo-failure-propagation"
+
   run_stage "template smoke" bash scripts/ci/template-smoke.sh
   intermediate_cleanup "template-smoke"
 }

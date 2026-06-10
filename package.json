@@ -33,6 +33,7 @@
     "stdlib:audit:candidates": "node scripts/ci/audit-upstream-stdlib-candidates.js --write",
     "test:package-smoke": "bash scripts/ci/package-smoke.sh",
     "test:template-smoke": "bash scripts/ci/template-smoke.sh",
+    "test:cargo-failure-propagation": "bash scripts/ci/check-cargo-failure-propagation.sh",
     "test:windows-smoke": "bash scripts/ci/windows-smoke.sh",
     "test:metal-fallback": "bash scripts/ci/check-metal-fallback-counts.sh",
     "test:metal-fallback:update-baseline": "bash scripts/ci/check-metal-fallback-counts.sh --update-baseline",

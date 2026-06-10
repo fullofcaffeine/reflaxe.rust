@@ -11,6 +11,9 @@ By default it then runs Cargo (debug build). You can opt out to generate Rust on
 - Release: `-D rust_build_release` (alias: `-D rust_release`)
 - Optional rustfmt: `-D rustfmt` (best-effort `cargo fmt` after output generation)
 
+Configured Cargo build/check/test failures are Haxe compilation failures. Use `-D rust_no_build`
+only when a wrapper script or external task runner will invoke Cargo itself.
+
 ## Fast local loop (watch mode)
 
 Use the watcher when you want fast feedback while editing:
@@ -50,6 +53,8 @@ These map to Cargo arguments/env vars at the end of compilation:
 - `-D rust_cargo_jobs=8` (adds `-j 8`)
 - `-D rust_target=<triple>` (adds `--target <triple>`)
 - `-D rust_cargo_target_dir=path/to/target` (sets `CARGO_TARGET_DIR`)
+
+If the configured Cargo command returns non-zero, the parent `haxe` process also exits non-zero.
 
 ## Cargo-First Project Driver
 
