@@ -116,6 +116,125 @@ intermediate_cleanup() {
   fi
 }
 
+snapshot_case_has_compile() {
+  local case_dir="$1"
+  if [[ -f "$case_dir/compile.hxml" ]]; then
+    return 0
+  fi
+
+  local candidate
+  for candidate in "$case_dir"/compile.*.hxml; do
+    [[ -f "$candidate" ]] && return 0
+  done
+
+  return 1
+}
+
+list_snapshot_cases() {
+  local case_dir
+  while IFS= read -r case_dir; do
+    if snapshot_case_has_compile "$case_dir"; then
+      basename "$case_dir"
+    fi
+  done < <(find test/snapshot -mindepth 1 -maxdepth 1 -type d | sort)
+}
+
+run_snapshot_clippy_subset() {
+  local configured="${SNAP_CLIPPY_CASES:-v1_smoke portable_profile_smoke metal_v1_smoke}"
+  configured="${configured//,/ }"
+
+  local case_name
+  for case_name in $configured; do
+    if [[ ! -d "test/snapshot/$case_name" ]]; then
+      echo "[harness] WARN: snapshot clippy case not found: $case_name"
+      continue
+    fi
+    run_timed_step "snapshot clippy: ${case_name}" bash test/run-snapshots.sh --case "$case_name" --clippy --no-diff
+  done
+}
+
+run_snapshots() {
+  local jobs="${HARNESS_SNAPSHOT_JOBS:-4}"
+
+  if ! [[ "$jobs" =~ ^[0-9]+$ ]]; then
+    echo "[harness] WARN: invalid HARNESS_SNAPSHOT_JOBS=$jobs; falling back to serial snapshots"
+    jobs=1
+  fi
+
+  if [[ "$jobs" -le 1 ]]; then
+    bash test/run-snapshots.sh --clippy
+    return
+  fi
+
+  local log_dir
+  log_dir="$(mktemp -d "${TMPDIR:-/tmp}/harness-snapshots.XXXXXX")"
+
+  local cases=()
+  local case_name
+  while IFS= read -r case_name; do
+    cases+=("$case_name")
+  done < <(list_snapshot_cases)
+
+  echo "[harness] snapshot parallel jobs: $jobs (${#cases[@]} cases)"
+
+  local fail=0
+  local index=0
+  local total="${#cases[@]}"
+
+  while [[ "$index" -lt "$total" ]]; do
+    local pids=()
+    local names=()
+    local logs=()
+    local slot=0
+
+    while [[ "$slot" -lt "$jobs" && "$index" -lt "$total" ]]; do
+      case_name="${cases[$index]}"
+      local log_file="$log_dir/${case_name}.log"
+
+      echo "[harness] snapshot queued: ${case_name}"
+      (
+        bash test/run-snapshots.sh --case "$case_name"
+      ) >"$log_file" 2>&1 &
+
+      pids+=("$!")
+      names+=("$case_name")
+      logs+=("$log_file")
+
+      index=$((index + 1))
+      slot=$((slot + 1))
+    done
+
+    local i
+    for i in "${!pids[@]}"; do
+      local status=0
+      if wait "${pids[$i]}"; then
+        status=0
+      else
+        status=$?
+        fail=1
+      fi
+
+      echo "[harness] snapshot log: ${names[$i]}"
+      cat "${logs[$i]}"
+
+      if [[ "$status" -ne 0 ]]; then
+        echo "[harness] snapshot failed: ${names[$i]} (exit ${status})"
+      fi
+    done
+  done
+
+  rm -rf "$log_dir"
+
+  if [[ "$fail" -ne 0 ]]; then
+    return "$fail"
+  fi
+
+  # Parallel case runs intentionally skip --clippy so single-case selection does
+  # not expand clippy to every snapshot. Preserve the curated clippy contract in
+  # one small serial pass.
+  run_snapshot_clippy_subset
+}
+
 extract_out_dir() {
   local compile_file="$1"
   local out_dir
@@ -183,7 +302,7 @@ run_examples_ci_matrix() {
   done < <(find examples -mindepth 1 -maxdepth 1 -type d | sort)
 }
 
-run_stage "snapshots" bash test/run-snapshots.sh --clippy
+run_stage "snapshots" run_snapshots
 intermediate_cleanup "snapshots"
 
 run_stage "semantic diff (portable)" python3 test/run-semantic-diff.py

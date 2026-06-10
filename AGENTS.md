@@ -261,6 +261,9 @@ Agent policy:
   - Harness cleanup policy: by default, `scripts/ci/harness.sh` and `scripts/ci/windows-smoke.sh` clean generated `out*` folders and `.cache/*target*` on exit.
     - Keep artifacts intentionally for debugging with `KEEP_ARTIFACTS=1`.
     - Manual cleanup: `npm run clean:artifacts` (outputs only) and `npm run clean:artifacts:all` (outputs + caches).
+  - Harness snapshot parallelism: `scripts/ci/harness.sh` runs snapshot cases in bounded parallel batches by default (`HARNESS_SNAPSHOT_JOBS=4`).
+    Use `HARNESS_SNAPSHOT_JOBS=1` to force the old serial path; direct `test/run-snapshots.sh` runs remain serial for focused debugging.
+    The harness runs snapshot clippy as a separate curated serial pass so `--case` does not accidentally clippy every snapshot.
 - Install the repo pre-commit hook (gitleaks + guards + beads flush): run `bd hooks install` then `npm run hooks:install` (requires `gitleaks` installed)
 - Canonical gitleaks entrypoint: use `scripts/security/run-gitleaks.sh` (`npm run security:gitleaks`, `npm run security:gitleaks:staged`).
   Keep pre-commit + CI wired to this shared script to avoid drift in flags/version behavior.
