@@ -284,6 +284,67 @@ run_optional_fallback_case() {
 	finish_policy_case "$failure_label" "$case_start"
 }
 
+run_optional_fallback_group() {
+	local fixture_rel="$1"
+	local hxml_file="$2"
+	local warning_regex="$3"
+	local failure_label="$4"
+	shift 4
+	local case_start="$SECONDS"
+	local fixture_dir="$root_dir/$fixture_rel"
+	local out_dir="$fixture_dir/out_policy_fallback_group"
+	local log_file="$fixture_dir/.compile_fallback_group.log"
+	echo "[metal-policy] case: ${failure_label}"
+
+	rm -rf "$out_dir"
+	rm -f "$log_file"
+
+	set +e
+	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_output=out_policy_fallback_group) >"$log_file" 2>&1
+	local status=$?
+	set -e
+
+	if [[ "$status" -ne 0 ]]; then
+		echo "[metal-policy] error: expected compile success for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	local found_count
+	if match_regex "$warning_regex" "$log_file"; then
+		found_count="$(match_count "$warning_regex" "$log_file")"
+	else
+		found_count="0"
+	fi
+	if [[ "$found_count" == "0" ]]; then
+		rm -f "$log_file"
+		rm -rf "$out_dir"
+		finish_policy_case "$failure_label" "$case_start"
+		return
+	fi
+
+	if [[ "$found_count" != "1" ]]; then
+		echo "[metal-policy] error: expected 0 or 1 fallback warning match(es) for ${failure_label}, found ${found_count}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	while [[ "$#" -gt 0 ]]; do
+		local forbidden_regex="$1"
+		local assertion_label="$2"
+		shift 2
+		if [[ -n "$forbidden_regex" ]] && match_regex "$forbidden_regex" "$log_file"; then
+			echo "[metal-policy] error: forbidden fallback marker found for ${assertion_label}."
+			sed "s|$root_dir|.|g" "$log_file"
+			exit 1
+		fi
+	done
+
+	rm -f "$log_file"
+	rm -rf "$out_dir"
+	finish_policy_case "$failure_label" "$case_start"
+}
+
 run_report_case() {
 	local fixture_rel="$1"
 	local hxml_file="$2"
@@ -1162,43 +1223,45 @@ run_optimizer_plan_report_case "test/snapshot/string_clone_elision" "compile.hxm
 run_optimizer_plan_report_case "test/snapshot/for_array_alias_mutating" "compile.hxml" "portable" \
 	'portable optimizer plan records alias-hazard skip for array iteration lowering' \
 	'"id":[[:space:]]*"loop_optimizations\.skipped\.array_iter_borrowed\.desugared_for\.alias_hazard"'
-run_optional_fallback_case "examples/profile_storyboard" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
-	'' \
-	'single aggregated metal fallback warning (or clean) for profile_storyboard'
-run_optional_fallback_case "examples/profile_storyboard" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+run_optional_fallback_group "examples/profile_storyboard" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'profile_storyboard metal fallback warning/top-module assertions' \
 	'haxe\.ds\.(IntMap|StringMap):(2[0-9]|[3-9][0-9]|[1-9][0-9]{2,})' \
-	'metal fallback top-modules keeps IntMap/StringMap fallback below 2 after typed map helper migration (profile_storyboard)'
-run_optional_fallback_case "examples/profile_storyboard" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'metal fallback top-modules keeps IntMap/StringMap fallback below 2 after typed map helper migration (profile_storyboard)' \
 	'haxe\.ds\.(ObjectMap|EnumValueMap):(2[0-9]|[3-9][0-9]|[1-9][0-9]{2,})' \
-	'metal fallback top-modules keeps ObjectMap/EnumValueMap fallback below 2 after typed map helper migration (profile_storyboard)'
+	'metal fallback top-modules keeps ObjectMap/EnumValueMap fallback below 2 after typed map helper migration (profile_storyboard)' \
+	'profile\.MetalRuntime:' \
+	'metal fallback top-modules excludes profile.MetalRuntime after typed score lowering' \
+	'Sys:' \
+	'metal fallback top-modules excludes Sys after typed runtime wrapper migration (profile_storyboard)' \
+	'sys\.io\.Stdout' \
+	'metal fallback top-modules excludes Stdout after typed runtime wrapper migration (profile_storyboard)' \
+	'sys\.io\.Stderr' \
+	'metal fallback top-modules excludes Stderr after typed runtime wrapper migration (profile_storyboard)'
 run_optional_fallback_case "test/snapshot/rust_hashmap" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'rust\.HashMapTools' \
 	'metal fallback top-modules excludes rust.HashMapTools after typed hash map helper migration'
-run_optional_fallback_case "test/snapshot/rust_vec" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+run_optional_fallback_group "test/snapshot/rust_vec" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'rust_vec metal fallback top-module assertions' \
 	'rust\.VecTools' \
-	'metal fallback top-modules excludes rust.VecTools after typed vec helper migration'
-run_optional_fallback_case "test/snapshot/rust_vec" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'metal fallback top-modules excludes rust.VecTools after typed vec helper migration' \
 	'rust\.IterTools' \
 	'metal fallback top-modules excludes rust.IterTools after typed iter helper migration'
-run_optional_fallback_case "test/snapshot/rust_path_time" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+run_optional_fallback_group "test/snapshot/rust_path_time" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'rust_path_time metal fallback top-module assertions' \
 	'rust\.PathBufTools' \
-	'metal fallback top-modules excludes rust.PathBufTools after typed path helper migration'
-run_optional_fallback_case "test/snapshot/rust_path_time" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'metal fallback top-modules excludes rust.PathBufTools after typed path helper migration' \
 	'rust\.OsStringTools' \
-	'metal fallback top-modules excludes rust.OsStringTools after typed os-string helper migration'
-run_optional_fallback_case "test/snapshot/rust_path_time" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'metal fallback top-modules excludes rust.OsStringTools after typed os-string helper migration' \
 	'rust\.DurationTools' \
-	'metal fallback top-modules excludes rust.DurationTools after typed duration helper migration'
-run_optional_fallback_case "test/snapshot/rust_path_time" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'metal fallback top-modules excludes rust.DurationTools after typed duration helper migration' \
 	'rust\.InstantTools' \
 	'metal fallback top-modules excludes rust.InstantTools after typed instant helper migration'
-run_optional_fallback_case "test/snapshot/rust_array_slice_views" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+run_optional_fallback_group "test/snapshot/rust_array_slice_views" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'rust_array_slice_views metal fallback top-module assertions' \
 	'rust\.SliceTools' \
-	'metal fallback top-modules excludes rust.SliceTools after typed slice helper migration'
-run_optional_fallback_case "test/snapshot/rust_array_slice_views" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'metal fallback top-modules excludes rust.SliceTools after typed slice helper migration' \
 	'rust\.MutSliceTools' \
-	'metal fallback top-modules excludes rust.MutSliceTools after typed mut-slice helper migration'
-run_optional_fallback_case "test/snapshot/rust_array_slice_views" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'metal fallback top-modules excludes rust.MutSliceTools after typed mut-slice helper migration' \
 	'rust\.ArrayBorrow' \
 	'metal fallback top-modules excludes rust.ArrayBorrow after typed array-borrow helper migration'
 run_optional_fallback_case "test/snapshot/rust_borrow_ref" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
@@ -1225,42 +1288,24 @@ run_optional_fallback_case "test/snapshot/rust_async_tasks" "compile.tokio.hxml"
 run_optional_fallback_case "test/snapshot/metal_v1_smoke" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'haxe\.io\.FPHelper' \
 	'metal fallback top-modules excludes haxe.io.FPHelper after typed fp helper migration'
-run_optional_fallback_case "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+run_optional_fallback_group "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'chat_loopback metal fallback top-module assertions' \
 	'sys\.net\.Socket' \
-	'metal fallback top-modules excludes sys.net.Socket after typed socket boundary migration'
-run_optional_fallback_case "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'metal fallback top-modules excludes sys.net.Socket after typed socket boundary migration' \
 	'sys\.thread\.EventLoop:' \
-	'metal fallback top-modules excludes sys.thread.EventLoop after typed thread runtime wrappers'
-run_optional_fallback_case "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'metal fallback top-modules excludes sys.thread.EventLoop after typed thread runtime wrappers' \
 	'sys\.thread\.Thread:' \
-	'metal fallback top-modules excludes sys.thread.Thread after typed thread runtime wrappers'
-run_optional_fallback_case "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'metal fallback top-modules excludes sys.thread.Thread after typed thread runtime wrappers' \
 	'StringTools:' \
-	'metal fallback top-modules excludes StringTools after removing raw std injection paths'
-run_optional_fallback_case "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'metal fallback top-modules excludes StringTools after removing raw std injection paths' \
 	'rust\.test\.Assert' \
-	'metal fallback top-modules excludes rust.test.Assert after typed assert native boundary migration'
-run_optional_fallback_case "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'metal fallback top-modules excludes rust.test.Assert after typed assert native boundary migration' \
 	'profile\.MetalRuntime:(4[0-9]*|[5-9][0-9]|[1-9][0-9]{2,})' \
-	'metal fallback top-modules keeps profile.MetalRuntime raw fallback below 4 after typed fingerprint migration'
-run_optional_fallback_case "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'metal fallback top-modules keeps profile.MetalRuntime raw fallback below 4 after typed fingerprint migration' \
 	'app\.ChatUiApp:(3[0-9]|[4-9][0-9]|[1-9][0-9]{2,})' \
-	'metal fallback top-modules keeps app.ChatUiApp raw fallback below 30 after typed generic static-call lowering migration'
-run_optional_fallback_case "examples/chat_loopback" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'metal fallback top-modules keeps app.ChatUiApp raw fallback below 30 after typed generic static-call lowering migration' \
 	'profile\.RemoteRuntime:(2[1-9]|[3-9][0-9]|[1-9][0-9]{2,})' \
 	'metal fallback top-modules keeps profile.RemoteRuntime raw fallback below 21 after typed catch/downcast lowering'
-run_optional_fallback_case "examples/profile_storyboard" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
-	'profile\.MetalRuntime:' \
-	'metal fallback top-modules excludes profile.MetalRuntime after typed score lowering'
-run_optional_fallback_case "examples/profile_storyboard" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
-	'Sys:' \
-	'metal fallback top-modules excludes Sys after typed runtime wrapper migration (profile_storyboard)'
-run_optional_fallback_case "examples/profile_storyboard" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
-	'sys\.io\.Stdout' \
-	'metal fallback top-modules excludes Stdout after typed runtime wrapper migration (profile_storyboard)'
-run_optional_fallback_case "examples/profile_storyboard" "compile.metal.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
-	'sys\.io\.Stderr' \
-	'metal fallback top-modules excludes Stderr after typed runtime wrapper migration (profile_storyboard)'
 run_no_hxrt_success_case "test/positive/metal_no_hxrt_minimal" "compile.hxml" \
 	'rust_no_hxrt emits runtime-free minimal crate'
 
