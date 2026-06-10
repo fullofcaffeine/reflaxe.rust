@@ -50,6 +50,26 @@ abstract CallStack(Array<StackItem>) from Array<StackItem> {
 		return "";
 	}
 
+	/**
+		Format a `haxe.Exception` for `Exception.toString()`.
+
+		Why
+		- Upstream `haxe.Exception` delegates to `CallStack.exceptionToString(...)`, so this helper is
+		  part of the observable exception-string contract even though it is package-private.
+		- Keeping the argument typed as `Exception` avoids a broad `Dynamic` boundary in core std code
+		  and preserves access to `toString()` plus `stack`.
+
+		What
+		- Produces the deterministic Rust-target exception prefix plus the exception message and stack
+		  string.
+		- `CallStack.toString(...)` is currently empty because native stack integration is not wired
+		  yet, but the call is intentional so future stack support automatically flows through.
+
+		How
+		- Concatenates `"Exception: "`, `e.toString()`, and `CallStack.toString(e.stack)`.
+		- Do not relax this to `Dynamic`; callers that have a dynamic payload should first convert or
+		  wrap it as a `haxe.Exception`.
+	**/
 	static function exceptionToString(e:Exception):String {
 		return "Exception: " + e.toString() + CallStack.toString(e.stack);
 	}
