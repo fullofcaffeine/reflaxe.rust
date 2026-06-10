@@ -5,6 +5,7 @@ Use this page as the map for `reflaxe.rust` docs.
 ## Quick start by audience
 
 - New to compiler internals: [Start Here](start-here.md)
+- Evaluating production use: [Production Readiness](production-readiness.md), [Feature support matrix](feature-support-matrix.md), [Semantic confidence summary](semantic-confidence-summary.md)
 - Portable-first application path: [Profiles](profiles.md), [Portable near-native guidance](portable-near-native-guidance.md), [Examples matrix](examples-matrix.md)
 - Metal-first path: [Metal profile](metal-profile.md), [Portable near-native guidance](portable-near-native-guidance.md), [Examples matrix](examples-matrix.md)
 - Release / operations path: [Production Readiness](production-readiness.md), [Semver and release posture](semver-release-posture.md), [Weekly CI Evidence](weekly-ci-evidence.md)

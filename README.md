@@ -17,6 +17,10 @@ Current posture:
 - validated implementation baseline: broad and evidence-backed
 - public release posture: stable `1.x`, with explicit documented caveats and proof-depth limits (`docs/semver-release-posture.md`)
 
+Production shorthand: use it for controlled production on validated lanes, not as a blanket promise
+that every arbitrary Haxe/std/sys edge behaves identically on every platform. If your app touches
+networking, TLS, DB, processes, or threading, add app-specific smoke tests around those paths.
+
 ## Why reflaxe.rust
 
 - `portable` contract (default): Haxe-first semantics with portability-oriented behavior and predictable stdlib/runtime integration.
@@ -35,6 +39,7 @@ Current posture:
 ## Start Here
 
 - New here: [Start Here guide](docs/start-here.md)
+- Evaluating production use: [Production Readiness guide](docs/production-readiness.md), then [feature support matrix](docs/feature-support-matrix.md)
 - Portable-first path: [Profiles](docs/profiles.md), [Portable near-native guidance](docs/portable-near-native-guidance.md), [Examples Matrix](docs/examples-matrix.md)
 - Metal-first path: [Metal profile](docs/metal-profile.md), [Portable near-native guidance](docs/portable-near-native-guidance.md), [profile_storyboard / metal examples](docs/examples-matrix.md)
 - Release / operations path: [Production Readiness guide](docs/production-readiness.md), [Semver and release posture](docs/semver-release-posture.md), [Weekly CI Evidence runbook](docs/weekly-ci-evidence.md)
@@ -115,6 +120,13 @@ Use `-D reflaxe_rust_profile=portable|metal`.
 | --- | --- | --- |
 | `portable` (default) | Haxe-first teams | Stable Haxe semantics and portability-first behavior |
 | `metal` | Rust-aware teams and performance-critical paths | Rust-first APIs, stricter app-side injection boundaries, and primary near-pure-Rust hot-path performance objective |
+
+Rule of thumb:
+
+- Start in `portable`.
+- Add `metal` only where the app needs Rust-first APIs, stricter boundaries, or measured hot-path work.
+- Use `reflaxe.std` portable idioms when they express the right semantics; on Rust, `Option` and
+  `Result` lower to native Rust representations when the contract lines up.
 
 Read more: [Profiles guide](docs/profiles.md), [Rusty migration guide](docs/rusty-profile.md),
 [Metal profile details](docs/metal-profile.md), [HXRT overhead benchmarks](docs/perf-hxrt-overhead.md), and [Lifetime encoding design](docs/lifetime-encoding.md).

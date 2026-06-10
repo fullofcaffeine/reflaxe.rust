@@ -11,6 +11,22 @@ For this project, production-ready means:
 - profile behavior is documented and predictable,
 - interop boundaries are typed and auditable.
 
+It does not mean every upstream Haxe/std/sys behavior has blanket runtime parity on every host. The
+honest production claim is bounded by the support matrix, semantic-confidence evidence, and the
+runtime paths your application actually uses.
+
+## Quick answer
+
+Use `reflaxe.rust` in production when all of these are true:
+
+- your app fits the documented supported surface,
+- your team can run the local/CI harness for changes that affect compiler/runtime behavior,
+- your app has smoke tests for its own file/process/network/TLS/DB/thread paths,
+- native Rust interop is behind typed wrappers,
+- `metal` is used deliberately instead of as a default escape hatch.
+
+If those are not true yet, treat adoption as a pilot rather than broad rollout.
+
 ## Recommended rollout stages
 
 ### Stage 1: Pilot (single service or internal tool)
@@ -44,6 +60,20 @@ For this project, production-ready means:
 5. Change control
    - Tie release decisions to documented readiness criteria plus green CI evidence.
 
+## App-specific validation checklist
+
+For each production app, add focused tests for the runtime edges it actually relies on:
+
+- File and path behavior: permissions, missing files, relative paths, temp dirs.
+- Process behavior: exit codes, stderr/stdout capture, kill/error paths.
+- Network behavior: connection refused, timeouts, local loopback success/failure.
+- TLS/HTTP behavior: certificate setup, request/response callbacks, error routing.
+- DB behavior: driver availability, connection failure, transaction rollback.
+- Threading behavior: message passing, event-loop scheduling, shutdown/cleanup.
+
+This is intentionally narrower than "prove the whole stdlib." It turns the broad support matrix into
+evidence for your real deployment shape.
+
 ## Choosing conservative defaults
 
 For teams new to this compiler:
@@ -69,6 +99,8 @@ Current operational sources:
 - [Vision vs implementation](vision-vs-implementation.md)
 - [Portable near-native guidance](portable-near-native-guidance.md)
 - [v1 support matrix](v1.md)
+- [Feature support matrix](feature-support-matrix.md)
+- [Semantic confidence summary](semantic-confidence-summary.md)
 - [Defines reference](defines-reference.md)
 - [Weekly CI Evidence](weekly-ci-evidence.md)
 

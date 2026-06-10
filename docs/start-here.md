@@ -6,6 +6,10 @@ Current status:
 
 - the compiler/runtime baseline is closed and production-capable on validated lanes
 - stable `1.x` public posture is recorded in the [Semver and release posture decision](semver-release-posture.md)
+- production use should still follow the proof-depth caveats in the [Production Readiness guide](production-readiness.md)
+
+The shortest honest answer is: yes, use it for controlled production when your app stays inside the
+validated surface and you add smoke tests for the system/runtime paths your app depends on.
 
 ## What this compiler does
 
@@ -27,6 +31,9 @@ Set profile with:
 ```bash
 -D reflaxe_rust_profile=portable|metal
 ```
+
+If you are unsure, start with `portable`. Move code to `metal` only when you have a concrete Rust
+interop or performance reason.
 
 ## Fast path for first success
 
@@ -50,6 +57,10 @@ npx haxe compile.hxml
 npm run test:all
 ```
 
+If this is an application evaluation rather than compiler development, run the example first, then
+scaffold a small project and add one smoke test for each external thing your app touches: files,
+processes, sockets/HTTP, TLS, DB drivers, or threads.
+
 ## Scaffold a new app
 
 ```bash
@@ -68,6 +79,7 @@ Generated projects include:
 
 - Choose `portable` for default application development.
 - Choose `metal` for hot paths, Rust-first APIs, and stricter performance intent.
+- Keep raw Rust escape hatches behind typed wrappers; app code should not need direct `__rust__`.
 
 Portable does not automatically mean "wrapper-heavy" on Rust. For abstractions whose semantics
 line up cleanly, the compiler can still lower to the native Rust representation. Example:
@@ -84,6 +96,17 @@ That native representation win is still part of the `portable` contract. The bac
 portable lowering without silently changing the source-level contract to `metal` or native-lane
 Rust APIs. Read [Portable near-native guidance](portable-near-native-guidance.md) for the
 practical rule of thumb on when portable is already enough and when `metal` is the right move.
+
+## Production evaluation checklist
+
+Before adopting in a production service/tool:
+
+1. Confirm your APIs are covered in the [feature support matrix](feature-support-matrix.md).
+2. Run the generated app through `cargo hx --action test` or an equivalent CI command.
+3. Add smoke tests for platform-sensitive behavior: process exit/error paths, network failures,
+   TLS setup, DB driver setup, and thread/event-loop behavior if used.
+4. Keep `portable` as the default profile and document every `metal` use as an intentional boundary.
+5. Pin the toolchain and use locked Cargo builds in CI.
 
 ## Compare profiles in one example
 
