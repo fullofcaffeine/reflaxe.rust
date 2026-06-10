@@ -9,7 +9,8 @@
  * What:
  *   Validate the main entrypoint docs by checking two things:
  *   1. required cross-links are present in the files that define the newcomer path
- *   2. local markdown links in those files resolve on disk
+ *   2. required status phrases are present where stale release-history wording would mislead users
+ *   3. local markdown links in those files resolve on disk
  *
  * How:
  *   Keep the rules explicit and deterministic. This is not a full markdown linter; it is a narrow
@@ -90,6 +91,38 @@ const entrypointRules = [
       'feature-support-matrix.md',
     ],
   },
+  {
+    file: 'docs/ga-decision-record.md',
+    requiredLinks: [
+      'semver-release-posture.md',
+    ],
+    requiredPhrases: [
+      'historical decision record, not the current release posture',
+      'stable `1.x` posture: adopted',
+      'semver/public-packaging blocker was resolved',
+    ],
+  },
+  {
+    file: 'docs/ga-caveat-classification.md',
+    requiredLinks: [
+      'semver-release-posture.md',
+    ],
+    requiredPhrases: [
+      'Milestone 28 caveat input, not the current public release posture',
+      'semver/public-packaging blocker identified here was resolved',
+      'explicit defers remain documented caveats',
+    ],
+  },
+  {
+    file: 'docs/road-to-1.0.md',
+    requiredLinks: [
+      'semver-release-posture.md',
+    ],
+    requiredPhrases: [
+      'current public semver/package posture now lives',
+      'stable `1.x` public release posture',
+    ],
+  },
 ];
 
 const markdownLinkRegex = /\[[^\]]+\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
@@ -127,17 +160,28 @@ function resolveLocalTarget(sourceFile, target) {
   return path.resolve(path.dirname(sourceFile), normalized);
 }
 
+function normalizePhraseText(text) {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
 const errors = [];
 
 for (const rule of entrypointRules) {
   const absoluteFile = path.resolve(repoRoot, rule.file);
   const content = fs.readFileSync(absoluteFile, 'utf8');
+  const normalizedContent = normalizePhraseText(content);
   const localLinks = collectMarkdownLinks(absoluteFile, content);
   const localLinkSet = new Set(localLinks.map(normalizeLinkTarget));
 
   for (const requiredLink of rule.requiredLinks) {
     if (!localLinkSet.has(requiredLink)) {
       errors.push(`${rule.file}: missing required link '${requiredLink}'`);
+    }
+  }
+
+  for (const requiredPhrase of rule.requiredPhrases || []) {
+    if (!normalizedContent.includes(normalizePhraseText(requiredPhrase))) {
+      errors.push(`${rule.file}: missing required phrase '${requiredPhrase}'`);
     }
   }
 
