@@ -133,5 +133,5 @@ pub fn utc_day(ms: i64) -> i32 {
 pub fn timezone_offset_minutes(ms: i64) -> i32 {
     let dt = to_local(ms);
     let local_minus_utc = dt.offset().local_minus_utc() / 60;
-    -(local_minus_utc as i32)
+    -local_minus_utc
 }
