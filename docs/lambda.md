@@ -15,8 +15,21 @@ Why:
 
 - Most helpers allocate eagerly (typically returning `Array<T>`). For large data flows, prefer iterator-style Rust-first APIs (`rust.Iter<T>`, `rust.Slice<T>`, etc.) where applicable.
 
-## Current limitation
+## `Lambda.count` Optional Predicate
 
-- `Lambda.count(it, pred)` (optional predicate) is not provided yet because optional function arguments need better lowering for this target.
-  - Use `Lambda.count(it)` for total count.
-  - Use `Lambda.filter(it, pred).length` to count with a predicate.
+`Lambda.count(it, pred)` is supported.
+
+- `Lambda.count(it)` counts all items.
+- `Lambda.count(it, pred)` counts only items where `pred(item)` returns `true`.
+
+Why this works:
+
+- The Rust override types the optional predicate as `Null<(item:T) -> Bool>`.
+- The backend lowers the omitted/null predicate to Rust `None`.
+- The provided predicate path lowers to an `Option`-wrapped function value and calls through the
+  non-null branch.
+
+Evidence:
+
+- `test/snapshot/lambda_helpers` covers the no-predicate `count()` path.
+- `test/snapshot/null_optional_args` covers `count(x -> ...)` with an optional function argument.
