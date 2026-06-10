@@ -4,9 +4,26 @@ Historical note:
 
 - this document records the Milestone 28 GA gate outcome
 - the current public semver/package posture now lives in `docs/semver-release-posture.md`
+- the semver/public-packaging blocker recorded here was resolved by `docs/semver-release-posture.md`
 
 Date: 2026-03-15  
 Scope bead: `haxe.rust-oo3.22.5`
+
+## Current Status
+
+This is a historical decision record, not the current release posture.
+
+Milestone 28 ended with one blocker: semver/public-packaging posture while the repo was still on
+`0.x`. That blocker was intentionally narrowed into Milestone 29 and then resolved by
+[Semver And Release Posture Decision](semver-release-posture.md), which adopted the stable `1.x`
+public posture.
+
+Current public truth:
+
+- validated-lane production use: ready
+- stable `1.x` posture: adopted
+- documented caveats: still part of the public contract
+- blanket Haxe/std/sys parity across every host: still not claimed
 
 ## Why
 
@@ -15,16 +32,17 @@ Milestone 28 exists to answer one release-sensitive question cleanly:
 is `reflaxe.rust` ready for an honest broad production / GA / `1.0` closeout right now, or does the
 repo still have a blocker that must be resolved in a narrow follow-up milestone?
 
-This record is the canonical answer.
+This record is the canonical historical answer for Milestone 28. The current release answer lives in
+`docs/semver-release-posture.md`.
 
 ## What
 
-Decision:
+Historical decision at the Milestone 28 gate:
 
 - `reflaxe.rust` is production-capable on its validated lanes.
 - `reflaxe.rust` is **not yet** ready for an honest broad GA / `1.0` closeout.
-- The blocker is narrow and explicit: semver/public-packaging posture is still unresolved while the
-  repo remains on `0.62.0`.
+- The blocker was narrow and explicit: semver/public-packaging posture was still unresolved while the
+  repo remained on `0.62.0`.
 
 That means Milestone 28 closes by creating a blocker-only Milestone 29 rather than by declaring
 broad GA / `1.0` complete.
@@ -47,7 +65,7 @@ This decision is based on three inputs that were completed during Milestone 28:
 
 ## Caveat Classification Outcome
 
-Current classification summary:
+Historical classification summary at the Milestone 28 gate:
 
 - `blocker`
   - semver / public packaging posture while still on `0.x`
@@ -65,8 +83,9 @@ Interpretation:
 
 - most remaining caveats are real but already qualified enough to live as documented defers
 - they do not justify reopening architecture or broad implementation work
-- the release truth still cannot honestly jump from `0.62.0` to broad GA language without an explicit
-  semver/public-packaging decision
+- at that point, the release truth could not honestly jump from `0.62.0` to broad GA language without
+  an explicit semver/public-packaging decision
+- that specific blocker is now resolved by `docs/semver-release-posture.md`
 
 ## Evidence Commands
 
@@ -88,6 +107,10 @@ Recorded command set for this decision:
   - these remain warnings only and match the frozen post-M27 perf posture in `docs/perf-hxrt-overhead.md`
 
 ## 1.0 Closeout Evidence Block
+
+The following block is preserved as the historical Milestone 28 evidence snapshot. Later release
+posture changes are recorded in `docs/semver-release-posture.md`, not retroactively rewritten inside
+this snapshot.
 
 ```text
 1.0 closeout evidence (2026-03-15)
@@ -145,11 +168,12 @@ portable-surface expansion.
 
 ## Final Call
 
-Current final call for Milestone 28:
+Historical final call for Milestone 28:
 
 - architecture: ready
 - validated-lane production use: ready
 - broad GA / `1.0` closeout: not yet
-- reason: explicit semver/public-packaging blocker remains
+- reason: explicit semver/public-packaging blocker remained
 
-Milestone 28 can close now that the full local CI-equivalent run has been recorded as `PASS`.
+Milestone 28 closed after the full local CI-equivalent run was recorded as `PASS`. The follow-up
+semver/public-packaging blocker was resolved by `docs/semver-release-posture.md`.

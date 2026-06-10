@@ -37,6 +37,9 @@ As of March 8, 2026:
 - release-evidence hardening: closed
 - semver/public packaging posture: unresolved at the time of this hardening snapshot
 
+That last item was later resolved by `docs/semver-release-posture.md`, which records the current
+stable `1.x` public release posture.
+
 Meaning:
 
 - architecture confidence is high,
@@ -57,7 +60,8 @@ Its purpose was to close the remaining gap between:
 
 ## Exit criteria for stronger public release claims
 
-Do not strengthen public “1.0” / “post-1.0” language until all of the following are true at the same time:
+At the time of this hardening snapshot, public “1.0” / “post-1.0” language was intentionally blocked
+until all of the following were true at the same time:
 
 1. Tracker-backed status docs are internally consistent.
 2. Public docs no longer overclaim beyond the current evidence.
@@ -141,7 +145,7 @@ Use `docs/weekly-ci-evidence.md` as the runbook for ongoing validation evidence.
 
 This doc is not:
 
-- a declaration that broad public 1.0 readiness is already complete,
+- the current semver/package posture decision,
 - proof that Tier2 closure equals runtime parity,
 - a license to start a new perf-first or feature-first milestone before the truth gap is closed.
 

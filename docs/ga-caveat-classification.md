@@ -40,7 +40,10 @@ Interpretation rule:
 - They are not blanket runtime-semantic proof.
 - Snapshot/smoke-only buckets can still be acceptable for GA, but only when public claims stay explicit about their proof depth.
 
-## Classification Table
+## Historical Classification Table
+
+This table is preserved as the Milestone 28 classification input. The semver/public-packaging row
+was later resolved by `docs/semver-release-posture.md`.
 
 | Bucket | Current evidence | Classification | Why | GA implication |
 | --- | --- | --- | --- | --- |
@@ -51,7 +54,7 @@ Interpretation rule:
 | `sys.db.*` native-environment smoke confidence | `docs/feature-support-matrix.md`, `docs/semantic-confidence-summary.md`, `test/snapshot/sys_db_mysql_compile`, `test/snapshot/sys_db_sqlite_smoke`, Tier2 sweep | `explicit defer` | DB support is real on the Rust target, but current evidence is compile/smoke-oriented and depends on destination native libraries and environment setup. | Preserve support language, but keep environment-sensitive caveats explicit. This is not broad host-independent parity proof. |
 | Windows smoke subset vs blanket platform claims | `.github/workflows/ci.yml`, `.github/workflows/weekly-ci-evidence.yml`, `docs/weekly-ci-evidence.md`, `docs/semantic-confidence-summary.md` | `explicit defer` | Windows confidence is real, but it is a curated smoke subset, not the same as full Windows semantic closure. | Broad production language must say Linux CI + Windows smoke, not imply broad cross-platform parity. |
 | `reflaxe.std` package-hosting truth vs local Rust adoption | `docs/reflaxe-std-adoption-contract.md`, `docs/road-to-1.0.md`, `docs/index.md` | `non-issue` | The repo already documents the important truth: Rust has local adoption and lowering, but standalone family hosting/publishing is not owned here. Some entrypoint wording still needs cleanup, but the substantive boundary is already clear. | Fix stale public wording in Milestone 28 docs work, but this does not block a GA decision on the Rust target itself. |
-| Semver / public packaging posture while still on `0.x` | `package.json`, `docs/production-readiness.md`, `docs/road-to-1.0.md`, `README.md` | `blocker` | The repo can plausibly justify production use on validated lanes today, but an honest broad GA / `1.0` closeout still requires an explicit semver and release decision. Staying on `0.62.0` while speaking like GA is closed would collapse the distinction between “production-capable” and “released as 1.0”. | Milestone 28 must end with an explicit go/no-go decision. If broad GA is accepted, the next step is release closeout. If not, only blocker-only follow-up work should be created. |
+| Semver / public packaging posture while still on `0.x` | `package.json`, `docs/production-readiness.md`, `docs/road-to-1.0.md`, `README.md` as they stood during Milestone 28 | `blocker` | The repo could plausibly justify production use on validated lanes, but an honest broad GA / `1.0` closeout still required an explicit semver and release decision. Staying on `0.62.0` while speaking like GA was closed would have collapsed the distinction between “production-capable” and “released as 1.0”. | Milestone 28 had to end with an explicit go/no-go decision. That follow-up decision is now recorded in `docs/semver-release-posture.md`. |
 
 ## Out-Of-Band Findings For Milestone 28
 
@@ -63,13 +66,18 @@ These are not separate caveat buckets, but they do affect the public-truth pass:
 
 ## Current Decision Posture
 
-Current posture after this classification:
+Historical posture immediately after this classification:
 
 - `reflaxe.rust` is production-capable on its validated lanes.
 - Most remaining caveats are `explicit defer`, not broad architectural blockers.
-- The only current `blocker` to an honest broad GA / `1.0` closeout is that the repo has not yet made the explicit semver/release decision and aligned public entrypoint language around it.
+- The only `blocker` to an honest broad GA / `1.0` closeout at that time was that the repo had not yet made the explicit semver/release decision and aligned public entrypoint language around it.
 
-That means Milestone 28 should continue as planned:
+Current release posture:
+
+- that semver/release blocker is resolved by `docs/semver-release-posture.md`
+- the explicit defers remain documented caveats, not broad release blockers
+
+At the time, that meant Milestone 28 should continue as planned:
 
 1. align entrypoint docs to the audited truth,
 2. freeze the honest post-M27 perf posture,
