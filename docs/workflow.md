@@ -77,6 +77,8 @@ Create a starter project from the built-in template:
 
 ```bash
 npm run dev:new-project -- ./my_haxe_rust_app
+cd my_haxe_rust_app
+cargo hx --action run
 ```
 
 Generated projects include this plumbing by default:
@@ -90,11 +92,18 @@ Generated projects include this plumbing by default:
 Generated projects also include a local cargo alias:
 
 ```bash
-cd my_haxe_rust_app
 cargo hx --action run
 cargo hx --action test
 cargo hx --action build --release
 ```
+
+First-use checklist for app repos:
+
+1. Run `cargo hx --action run` once to prove the Haxe -> Rust -> Cargo path.
+2. Run `cargo hx --action test` once before adding app code.
+3. Keep `portable` as the default profile until a path has a measured Rust-first or interop reason.
+4. Add one app-level smoke test for each production-sensitive boundary you use: file/process,
+   sockets or HTTP, TLS, DB setup, and thread/event-loop behavior.
 
 Generated task files:
 

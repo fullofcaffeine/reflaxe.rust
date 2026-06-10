@@ -37,6 +37,9 @@ interop or performance reason.
 
 ## Fast path for first success
 
+Use this path when you have a local checkout of this repo and want to prove the compiler works
+before deciding anything architectural.
+
 1. Install dependencies:
 
 ```bash
@@ -61,6 +64,12 @@ If this is an application evaluation rather than compiler development, run the e
 scaffold a small project and add one smoke test for each external thing your app touches: files,
 processes, sockets/HTTP, TLS, DB drivers, or threads.
 
+The mental model is deliberately simple:
+
+- `examples/hello` answers "does my toolchain work?"
+- the generated starter answers "what should my app repo look like?"
+- app-specific smoke tests answer "is my production surface covered?"
+
 ## Scaffold a new app
 
 ```bash
@@ -74,6 +83,17 @@ Generated projects include:
 - `cargo hx` task driver (`run/test/build/release` flows),
 - watch helper (`scripts/dev/watch-haxe-rust.sh`),
 - compile task hxmls (`compile.hxml`, `compile.metal.hxml`, CI/release variants).
+
+Recommended first generated-app loop:
+
+```bash
+cargo hx --action run
+cargo hx --action test
+cargo hx --action build --release
+```
+
+Read [Workflow](workflow.md#new-project-scaffold--task-hxmls) when you want the exact generated
+task files and their Cargo behavior.
 
 ## Recommended profile choice
 

@@ -52,6 +52,7 @@ Generate a ready-to-run Haxe.rust project:
 ```bash
 npm run dev:new-project -- ./my_haxe_rust_app
 cd my_haxe_rust_app
+cargo hx --action run
 ```
 
 The generated project includes the full task plumbing:
@@ -62,6 +63,10 @@ The generated project includes the full task plumbing:
 - `bash scripts/dev/watch-haxe-rust.sh --hxml compile.hxml` (watch loop)
 - `bash scripts/dev/check-guards.sh` (local-path + security wiring checks; gitleaks scan when installed)
 - `bash scripts/install-git-hooks.sh` (installs pre-commit local-path + staged gitleaks checks)
+
+Use this scaffold when you want the recommended app layout and local task driver. If you are
+installing into an existing app instead, start from [Install via lix](docs/install-via-lix.md).
+For the full generated-app loop, see [Workflow](docs/workflow.md#new-project-scaffold--task-hxmls).
 
 ## Quick Start (First Successful Run)
 
@@ -93,6 +98,17 @@ npm run test:all
 
 GitHub Actions shards this same harness into parallel jobs for wall-clock speed, but the local
 command remains the single full-suite entrypoint.
+
+After the first successful run, the recommended next step is a generated starter app:
+
+```bash
+npm run dev:new-project -- ./my_haxe_rust_app
+cd my_haxe_rust_app
+cargo hx --action run
+cargo hx --action test
+```
+
+That path exercises the same project-local workflow users should keep in application repos.
 
 ## Fast Dev Loop (Watcher)
 

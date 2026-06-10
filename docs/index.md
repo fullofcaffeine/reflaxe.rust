@@ -5,7 +5,8 @@ Use this page as the map for `reflaxe.rust` docs.
 ## Quick start by audience
 
 - New to compiler internals: [Start Here](start-here.md)
-- Installing into an app: [Install via lix](install-via-lix.md), [Workflow](workflow.md)
+- First generated app from this checkout: [Start Here](start-here.md#scaffold-a-new-app), [Workflow](workflow.md#new-project-scaffold--task-hxmls)
+- Installing into an existing app: [Install via lix](install-via-lix.md), [Workflow](workflow.md)
 - Evaluating production use: [Production Readiness](production-readiness.md), [Feature support matrix](feature-support-matrix.md), [Semantic confidence summary](semantic-confidence-summary.md)
 - Portable-first application path: [Profiles](profiles.md), [Portable near-native guidance](portable-near-native-guidance.md), [Examples matrix](examples-matrix.md)
 - Metal-first path: [Metal profile](metal-profile.md), [Portable near-native guidance](portable-near-native-guidance.md), [Examples matrix](examples-matrix.md)
@@ -40,12 +41,12 @@ Use this page as the map for `reflaxe.rust` docs.
 - [HXRT overhead benchmarks](perf-hxrt-overhead.md): size/startup tracking, soft perf budgets, and baseline workflow.
 - [JSON boundary contract](json-boundary-contract.md): perf/semantic contract for the current post-`1.0` JSON hotspot tranche.
 - [Workflow](workflow.md): Haxe -> Rust -> Cargo workflow.
+- [Install via lix](install-via-lix.md): release-tag install and generated-app setup paths.
 - [Haxe-authored Rust tests](haxe-rust-tests.md): `@:rustTest` metadata and generated Rust test wrappers.
 - [Dynamic boundaries](dynamic-boundaries.md): intentional untyped boundaries and allowlist policy.
 - [Weekly CI Evidence](weekly-ci-evidence.md): ongoing validation cadence and evidence protocol.
 - [Sys Regression Watchlist](sys-regression-watchlist.md): active cross-platform sys risk tracking.
 - [Dev Watcher](dev-watcher.md): local edit-compile-run watch loop.
-- [Install via lix](install-via-lix.md): toolchain setup.
 
 ## Rust interop and runtime
 
