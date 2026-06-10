@@ -47,7 +47,7 @@ class CompilerInit {
 			var libraryRoot = Path.directory(srcDir); // .../
 			var standardLibrary = Path.normalize(Path.join([libraryRoot, "std"]));
 			Compiler.addClassPath(standardLibrary);
-		} catch (e:haxe.Exception) {}
+		} catch (e:Dynamic) {}
 
 		var profile = ProfileResolver.resolve();
 		var wantsNoHxrt = Context.defined("rust_no_hxrt");

@@ -69,6 +69,7 @@ zip_abs="$root_dir/$zip_rel"
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/reflaxe-rust-package-smoke.XXXXXX")"
 pkg_dir="$tmp_root/package"
 app_dir="$tmp_root/app"
+dev_app_dir="$tmp_root/app_dev"
 
 log "build package zip"
 rm -f "$zip_abs"
@@ -79,8 +80,50 @@ if [[ ! -f "$zip_abs" ]]; then
   exit 2
 fi
 
-mkdir -p "$pkg_dir" "$app_dir"
+mkdir -p "$pkg_dir" "$app_dir" "$dev_app_dir"
 unzip -q "$zip_abs" -d "$pkg_dir"
+
+verify_dev_std_mirror() {
+  local rel
+  for rel in \
+    ArrayTools.hx \
+    Date.cross.hx \
+    Lambda.cross.hx \
+    StringBuf.cross.hx \
+    StringTools.cross.hx \
+    Sys.cross.hx \
+    SysTypes.cross.hx \
+    haxe \
+    hxrt \
+    rust \
+    sys
+  do
+    if [[ ! -L "$root_dir/src/$rel" ]]; then
+      echo "error: dev haxelib std mirror is missing symlink: src/$rel" >&2
+      exit 2
+    fi
+    if [[ ! -e "$root_dir/src/$rel" ]]; then
+      echo "error: dev haxelib std mirror symlink is broken: src/$rel" >&2
+      exit 2
+    fi
+  done
+}
+
+write_smoke_main() {
+  local dest_dir="$1"
+  cat > "$dest_dir/Main.hx" <<'HX'
+class Main {
+  static function main() {
+    var list = new haxe.ds.List<Int>();
+    list.add(1);
+    trace(list.length);
+  }
+}
+HX
+}
+
+log "verify dev haxelib std mirror"
+verify_dev_std_mirror
 
 log "verify package layout"
 [[ -f "$pkg_dir/haxelib.json" ]]
@@ -116,26 +159,28 @@ if (data.classPath !== "src") {
 NODE
 
 log "compile via isolated local haxelib repo"
-cat > "$app_dir/Main.hx" <<'HX'
-class Main {
-  static function main() {
-    var list = new haxe.ds.List<Int>();
-    list.add(1);
-    trace(list.length);
-  }
-}
-HX
+write_smoke_main "$app_dir"
 
 assert_emitted_std_modules() {
   local crate_dir="$1"
   local main_rs="$crate_dir/src/main.rs"
+  local call_stack_rs="$crate_dir/src/haxe_call_stack_call_stack_impl_.rs"
   [[ -f "$main_rs" ]]
+  [[ -f "$call_stack_rs" ]]
   if ! match_regex "mod haxe_ds_list;" "$main_rs"; then
     echo "error: generated main.rs is missing haxe_ds_list module import" >&2
     exit 1
   fi
   if ! match_regex "mod haxe_exception;" "$main_rs"; then
     echo "error: generated main.rs is missing haxe_exception module import" >&2
+    exit 1
+  fi
+  if ! match_fixed "e: crate::HxRef<crate::haxe_exception::Exception>" "$call_stack_rs"; then
+    echo "error: generated CallStackImpl.exception_to_string lost the typed haxe.Exception contract" >&2
+    exit 1
+  fi
+  if match_fixed "exception_to_string(e: Exception)" "$call_stack_rs"; then
+    echo "error: generated CallStackImpl.exception_to_string emitted a bare Exception type" >&2
     exit 1
   fi
 }
@@ -152,6 +197,22 @@ assert_emitted_std_modules "$app_dir/out"
 if [[ -z "${CARGO_TARGET_DIR:-}" ]]; then
   export CARGO_TARGET_DIR="$root_dir/.cache/package-smoke-target"
 fi
+
+log "compile via dev haxelib checkout"
+write_smoke_main "$dev_app_dir"
+(
+  cd "$dev_app_dir"
+  haxelib newrepo >/dev/null
+  haxelib dev reflaxe.rust "$root_dir" >/dev/null
+  haxe -cp . -lib reflaxe.rust -main Main -D rust_output=out_dev -D rust_no_build
+)
+
+assert_emitted_std_modules "$dev_app_dir/out_dev"
+(
+  cd "$dev_app_dir/out_dev"
+  cargo build -q
+)
+
 (
   cd "$app_dir/out"
   cargo build -q

@@ -58,6 +58,9 @@ abstract CallStack(Array<StackItem>) from Array<StackItem> {
 		  part of the observable exception-string contract even though it is package-private.
 		- Keeping the argument typed as `Exception` avoids a broad `Dynamic` boundary in core std code
 		  and preserves access to `toString()` plus `stack`.
+		- The typed parameter must lower as `crate::HxRef<crate::haxe_exception::Exception>` for
+		  haxelib consumers; a bare `Exception` Rust type means Haxe resolved the upstream extern
+		  instead of this target's std override.
 
 		What
 		- Produces the deterministic Rust-target exception prefix plus the exception message and stack

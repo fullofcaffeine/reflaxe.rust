@@ -23,11 +23,13 @@ import sys.FileSystem;
  * - If this compilation appears to be a Rust build (`-D rust_output` or custom target),
  *   compute the library root from this file’s resolved path and add:
  *   - `vendor/reflaxe/src` (vendored Reflaxe framework)
- *   - `std/` when present (local repository layout)
+ *   - `std/` when present (local repository fallback/classification path)
  *
  * Packaging note
  * - Release zips flatten `stdPaths` into `classPath` (`src/**`) to mirror Reflaxe build behavior.
- * - In that layout there is no top-level `std/`, so we only add it when the directory exists.
+ * - Dev checkouts mirror those top-level `std/**` entries under `src/**` with tracked symlinks so
+ *   upstream-colliding modules are visible before this macro runs.
+ * - In the packaged layout there is no top-level `std/`, so we only add it when the directory exists.
  */
 class CompilerBootstrap {
 	static var bootstrapped:Bool = false;
@@ -57,7 +59,7 @@ class CompilerBootstrap {
 			var standardLibrary = Path.normalize(Path.join([libraryRoot, "std"]));
 			if (FileSystem.exists(standardLibrary) && FileSystem.isDirectory(standardLibrary))
 				Compiler.addClassPath(standardLibrary);
-		} catch (e:haxe.Exception) {
+		} catch (e:Dynamic) {
 			// If resolvePath fails in certain contexts, skip silently (non-rust targets)
 		}
 	}

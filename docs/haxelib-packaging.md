@@ -16,19 +16,36 @@ This repo packages release zips with `scripts/release/package-haxelib.sh`.
 - Copy release files (`LICENSE`, `README.md`, `extraParams.hxml`, optional `Run.hx`/`run.n`).
 - Copy and sanitize `haxelib.json` (remove `reflaxe` metadata in the shipped artifact).
 
+## Dev haxelib model
+
+Local checkouts use the same effective classpath shape as packaged installs:
+
+- `haxelib.json` keeps `classPath` set to `src`.
+- `src/**` contains the compiler and tracked symlink mirrors for each top-level `std/**` entry.
+- The symlink mirrors make target std overrides visible on Haxe's initial classpath when a project uses
+  `haxelib dev reflaxe.rust <repo>`.
+
+This is important because `extraParams.hxml` macros run too late to guarantee ownership of every
+upstream-colliding std module. For example, a consumer can cause upstream `haxe.Exception` to be parsed
+before `CompilerBootstrap.Start()` has a chance to call `Compiler.addClassPath(std)`. The dev symlinks
+keep local development aligned with the release zip, where `stdPaths` are physically flattened into `src`.
+
 ## Why `.cross.hx` for std overrides
 
 Upstream-colliding std overrides in `std/` are stored as `.cross.hx` to force target-conditional
 selection and avoid accidental use in eval/macro/non-target contexts.
 
-In packaged zips, those files are merged under `src/**` but keep the `.cross.hx` suffix.
+In packaged zips, those files are merged under `src/**` but keep the `.cross.hx` suffix. In dev checkouts,
+tracked symlinks under `src/**` expose the same files without duplicating std sources.
 
 ## Validation workflow
 
 Use `bash scripts/ci/package-smoke.sh` to validate the shipped artifact end-to-end:
 
 - Build the zip with `scripts/release/package-haxelib.sh`.
+- Verify the dev haxelib std mirror symlinks are present and not broken.
 - Verify package layout + metadata invariants (`src/` flattening, sanitized `haxelib.json`, pruned runtime artifacts).
+- Create an isolated local haxelib repo and compile through `haxelib dev reflaxe.rust <repo>`.
 - Create an isolated local haxelib repo (`haxelib newrepo`) and install the zip.
 - Compile a minimal app with `-lib reflaxe.rust` and confirm std override modules are emitted.
 - Compile again from a symlinked working-directory alias to exercise path canonicalization behavior.
