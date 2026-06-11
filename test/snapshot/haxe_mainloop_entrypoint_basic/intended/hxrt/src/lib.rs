@@ -30,6 +30,8 @@ pub mod iter;
 pub mod json;
 #[cfg(feature = "net")]
 pub mod net;
+#[cfg(feature = "core")]
+pub mod path;
 #[cfg(feature = "process")]
 pub mod process;
 #[cfg(feature = "ssl")]

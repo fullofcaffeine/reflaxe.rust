@@ -10419,6 +10419,25 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case _:
 		}
 
+		// Special-case: haxe.io.Path static helpers.
+		switch (callExpr.expr) {
+			case TField(_, FStatic(clsRef, fieldRef)):
+				var cls = clsRef.get();
+				var field = fieldRef.get();
+				if (cls.pack.join(".") == "haxe.io" && cls.name == "Path") {
+					switch (field.name) {
+						case "directory": {
+								if (args.length != 1)
+									return unsupported(fullExpr, "Path.directory args");
+								var asStr = ECall(EField(compileExpr(args[0]), "as_str"), []);
+								return wrapRustStringExpr(ECall(EPath("hxrt::path::directory"), [asStr]));
+							}
+						case _:
+					}
+				}
+			case _:
+		}
+
 		// Special-case: `Math.*` (core numeric helpers).
 		switch (callExpr.expr) {
 			case TField(_, FStatic(clsRef, fieldRef)):

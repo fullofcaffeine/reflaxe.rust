@@ -44,6 +44,4 @@ run_expected_cargo_failure() {
   echo "[upstream-open-gap-repros] ${case_name}: expected ${bead} failure observed"
 }
 
-run_expected_cargo_failure "path_directory" "haxe.rust-lj8" "haxe_io_path|Path::directory|could not find"
-
-echo "[upstream-open-gap-repros] all expected failures observed"
+echo "[upstream-open-gap-repros] no open expected-failure repros"
