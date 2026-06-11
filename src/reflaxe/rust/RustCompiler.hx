@@ -9155,16 +9155,24 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 	}
 
+	function isEnumValueType(t:Type):Bool {
+		return switch (followType(t)) {
+			case TEnum(_, _): true;
+			case _: false;
+		}
+	}
+
 	function isHaxeReusableValueType(t:Type):Bool {
 		// Types that behave like Haxe reference values (must not be "moved" by Rust assignments).
 		// - `Array<T>` is `hxrt::array::Array<T>` backed by `HxRef<Vec<T>>`.
 		// - class instances / Bytes are shared `HxRef<T>` handles.
 		// - `String` is immutable and reusable in Haxe (needs clone in Rust when re-used).
+		// - Haxe enum values are reusable values; generated Rust enums derive `Clone`.
 		// - structural `Iterator<T>` maps to `hxrt::iter::Iter<T>` with shared runtime storage.
 		// - general anonymous objects map to `crate::HxRef<hxrt::anon::Anon>`.
 		// - function values lower to shared `HxDynRef<dyn Fn...>` handles and must remain reusable.
 		return isArrayType(t) || isHxRefValueType(t) || isRustHxRefType(t) || isStringType(t) || isIteratorStructType(t) || isAnonObjectType(t)
-			|| isDynamicType(t) || isFunctionValueType(t);
+			|| isDynamicType(t) || isFunctionValueType(t) || isEnumValueType(t);
 	}
 
 	/**
@@ -11645,6 +11653,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			// Haxe Arrays are reusable and behave like shared values; avoid Rust moves by cloning locals
 			// when we pass them by value.
 			if (!isByRef && isArrayType(argExpr.t) && isLocalExpr(argExpr) && !isObviousTemporaryExpr(argExpr)) {
+				compiled = ECall(EField(compiled, "clone"), []);
+			}
+			if (!isByRef && isEnumValueType(argExpr.t) && isLocalExpr(argExpr) && !isObviousTemporaryExpr(argExpr) && !isCloneExpr(compiled)) {
 				compiled = ECall(EField(compiled, "clone"), []);
 			}
 			if (!isByRef && isRcBackedType(argExpr.t) && isLocalExpr(argExpr) && !isObviousTemporaryExpr(argExpr)) {
