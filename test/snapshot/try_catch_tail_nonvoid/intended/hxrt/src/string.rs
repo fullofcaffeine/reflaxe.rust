@@ -233,6 +233,32 @@ pub fn index_of(s: &str, sub: &str, from_index: Option<i32>) -> i32 {
     len(upto)
 }
 
+pub fn last_index_of(s: &str, sub: &str, start_index: Option<i32>) -> i32 {
+    let total = len(s);
+
+    if sub.is_empty() {
+        return start_index.unwrap_or(total).clamp(0, total);
+    }
+
+    let mut start = start_index.unwrap_or(total);
+    if start < 0 {
+        return -1;
+    }
+    if start > total {
+        start = total;
+    }
+
+    let needle_len = len(sub);
+    let end = (start + needle_len).min(total);
+    let end_b = byte_index_at_char(s, end);
+    let hay = &s[..end_b];
+    let Some(off_b) = hay.rfind(sub) else {
+        return -1;
+    };
+
+    len(&s[..off_b])
+}
+
 pub fn split(s: &str, delim: &str) -> crate::array::Array<String> {
     if delim.is_empty() {
         return crate::array::Array::from_vec(s.chars().map(|c| c.to_string()).collect());
@@ -293,4 +319,25 @@ pub fn hex_upper(n: i32, digits: Option<i32>) -> String {
         s = format!("0{}", s);
     }
     s
+}
+
+#[cfg(test)]
+mod tests {
+    use super::last_index_of;
+
+    #[test]
+    fn last_index_of_matches_haxe_start_index_edges() {
+        let s = "alpha/beta/alpha";
+
+        assert_eq!(last_index_of(s, "alpha", None), 11);
+        assert_eq!(last_index_of(s, "alpha", Some(7)), 0);
+        assert_eq!(last_index_of(s, "/", None), 10);
+        assert_eq!(last_index_of(s, "missing", None), -1);
+        assert_eq!(last_index_of(s, "alpha", Some(-1)), -1);
+        assert_eq!(last_index_of(s, "alpha", Some(999)), 11);
+        assert_eq!(last_index_of(s, "", None), 16);
+        assert_eq!(last_index_of(s, "", Some(-1)), 0);
+        assert_eq!(last_index_of(s, "", Some(3)), 3);
+        assert_eq!(last_index_of(s, "", Some(999)), 16);
+    }
 }

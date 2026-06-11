@@ -8,7 +8,6 @@ upstream compiler/runtime test.
 The current runner records expected failures for open haxe.rust beads:
 
 - `path_directory` -> `haxe.rust-lj8`
-- `string_last_index_of` -> `haxe.rust-7s4`
 
 Run them from the haxe.rust repository root:
 

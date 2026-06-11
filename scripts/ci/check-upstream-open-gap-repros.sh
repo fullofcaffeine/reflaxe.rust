@@ -45,6 +45,5 @@ run_expected_cargo_failure() {
 }
 
 run_expected_cargo_failure "path_directory" "haxe.rust-lj8" "haxe_io_path|Path::directory|could not find"
-run_expected_cargo_failure "string_last_index_of" "haxe.rust-7s4" "lastIndexOf|no method named"
 
 echo "[upstream-open-gap-repros] all expected failures observed"

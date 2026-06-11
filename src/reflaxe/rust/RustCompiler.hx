@@ -10404,6 +10404,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							if (compiledArgs.length != 2)
 								return unsupported(fullExpr, "String.indexOf args");
 							return ECall(EPath("hxrt::string::index_of"), [asStr, argAsStr(0), compiledArgs[1]]);
+						case "lastIndexOf":
+							if (compiledArgs.length != 2)
+								return unsupported(fullExpr, "String.lastIndexOf args");
+							return ECall(EPath("hxrt::string::last_index_of"), [asStr, argAsStr(0), compiledArgs[1]]);
 						case "split":
 							if (compiledArgs.length != 1)
 								return unsupported(fullExpr, "String.split args");
