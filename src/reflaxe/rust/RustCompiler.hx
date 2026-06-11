@@ -2612,15 +2612,17 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		items.push(RRaw("pub const __HX_TYPE_ID: u32 = " + typeIdLiteralForEnum(enumType) + ";"));
 
 		var variants:Array<reflaxe.rust.ast.RustAST.RustEnumVariant> = [];
+		var enumGenericNames = rustGenericNamesForEnum(enumType);
+		var enumTypeName = rustTypeNameForEnum(enumType);
+		var enumTypeInst = enumGenericNames.length > 0 ? enumTypeName + "<" + enumGenericNames.join(", ") + ">" : enumTypeName;
+		var enumTypePathInst = "crate::" + rustModuleNameForEnum(enumType) + "::" + enumTypeInst;
 
 		function boxRecursiveEnumArg(rt:reflaxe.rust.ast.RustAST.RustType):reflaxe.rust.ast.RustAST.RustType {
-			var selfName = enumType.name;
-			var selfPath = "crate::" + rustModuleNameForEnum(enumType) + "::" + selfName;
 			var s = rustTypeToString(rt);
-			if (s == selfName || s == selfPath)
-				return RPath("Box<" + selfName + ">");
-			if (s == "Option<" + selfName + ">" || s == "Option<" + selfPath + ">")
-				return RPath("Option<Box<" + selfName + ">>");
+			if (s == enumTypeName || s == enumTypeInst || s == enumTypePathInst)
+				return RPath("Box<" + enumTypeInst + ">");
+			if (s == "Option<" + enumTypeName + ">" || s == "Option<" + enumTypeInst + ">" || s == "Option<" + enumTypePathInst + ">")
+				return RPath("Option<Box<" + enumTypeInst + ">>");
 			return rt;
 		}
 
@@ -2635,15 +2637,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		var derives = mergeUniqueStrings(["Clone", "Debug", "PartialEq"], rustDerivesFromMeta(enumType.meta));
 		items.push(REnum({
-			name: enumType.name,
+			name: enumTypeName,
 			isPub: true,
+			generics: enumGenericNames,
 			derives: derives,
 			variants: variants
 		}));
 
 		var rustImpls = rustImplsFromMeta(enumType.meta);
 		for (spec in rustImpls) {
-			items.push(RRaw(renderRustImplBlock(spec, [], enumType.name)));
+			items.push(RRaw(renderRustImplBlock(spec, enumGenericNames, enumTypeInst)));
 		}
 
 		return {items: items};
@@ -3058,6 +3061,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function rustTypeNameForEnum(enumType:EnumType):String {
 		return RustNaming.typeIdent(enumType.name);
+	}
+
+	function rustGenericNamesForEnum(enumType:EnumType):Array<String> {
+		if (enumType.params == null || enumType.params.length == 0)
+			return [];
+		return [for (p in enumType.params) p.name];
 	}
 
 	function isValidRustIdent(name:String):Bool {
@@ -14923,7 +14932,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						RPath("hxrt::io::Error");
 					} else {
 						var modName = rustModuleNameForEnum(en);
-						RPath("crate::" + modName + "::" + rustTypeNameForEnum(en));
+						var typeParams = params != null
+							&& params.length > 0 ? ("<" + [for (p in params) rustTypeToString(toRustType(p, pos))].join(", ") + ">") : "";
+						RPath("crate::" + modName + "::" + rustTypeNameForEnum(en) + typeParams);
 					}
 				}
 			case TInst(clsRef, params): {

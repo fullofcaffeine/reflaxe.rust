@@ -45,6 +45,7 @@ typedef RustEnum = {
 	var name:String;
 	var isPub:Bool;
 	@:optional var vis:RustVisibility;
+	@:optional var generics:Array<String>;
 	var derives:Array<String>;
 	var variants:Array<RustEnumVariant>;
 }

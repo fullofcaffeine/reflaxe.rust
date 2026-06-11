@@ -102,6 +102,9 @@ class RustASTPrinter {
 		}
 
 		var head = visibilityPrefix(e.vis, e.isPub) + "enum " + e.name;
+		if (e.generics != null && e.generics.length > 0) {
+			head += "<" + e.generics.join(", ") + ">";
+		}
 		if (e.variants.length == 0) {
 			parts.push(head + " { }");
 			return parts.join("\n");
