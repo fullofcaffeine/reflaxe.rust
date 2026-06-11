@@ -7,7 +7,6 @@ upstream compiler/runtime test.
 
 The current runner records expected failures for open haxe.rust beads:
 
-- `nullable_interface_null` -> `haxe.rust-bm6`
 - `path_directory` -> `haxe.rust-lj8`
 - `string_last_index_of` -> `haxe.rust-7s4`
 

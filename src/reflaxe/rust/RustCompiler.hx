@@ -4171,6 +4171,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var inner = toRustType(innerType, pos);
 						var innerStr = rustTypeToString(inner);
 
+						var dynRefTraitObjectNull = dynRefNullExprForTraitObject(innerType, pos);
+						if (dynRefTraitObjectNull != null) {
+							return dynRefTraitObjectNull;
+						}
+
 						// Some Rust representations already have an explicit null value (no extra `Option<...>` needed).
 						if (isRustDynamicPath(innerStr)) {
 							return rustDynamicNullExpr();
@@ -4312,6 +4317,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 						var inner = toRustType(innerType, pos);
 						var innerStr = rustTypeToString(inner);
+
+						var dynRefTraitObjectNull = dynRefNullExprForTraitObject(innerType, pos);
+						if (dynRefTraitObjectNull != null) {
+							return dynRefTraitObjectNull;
+						}
 
 						// Some Rust representations already have an explicit null value (no extra `Option<...>` needed).
 						if (isRustDynamicPath(innerStr)) {
@@ -9066,6 +9076,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (isCoreClassOrEnumHandleType(innerType))
 			return null;
 
+		// Nullable interface / polymorphic class values lower to `HxDynRef<dyn Trait>`, which carries
+		// its own null sentinel.
+		if (traitObjectRustInnerPath(innerType, pos) != null)
+			return null;
+
 		if (StringTools.startsWith(innerRust, "crate::HxRef<"))
 			return null;
 		if (StringTools.startsWith(innerRust, "hxrt::array::Array<"))
@@ -9660,12 +9675,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 
-		// Upcast concrete class references (`HxRef<T>`) into trait-object references (`HxRc<dyn Trait>`)
-		// when the surrounding context expects an interface / polymorphic base type.
+		// Upcast concrete class references (`HxRef<T>`) into trait-object references when the
+		// surrounding context expects an interface / polymorphic base type. Plain interface/base
+		// values use `HxRc<dyn Trait>`; nullable interface/base values use `HxDynRef<dyn Trait>`.
 		//
 		// This primarily matters for upstream stdlib code where concrete values are returned as
 		// interface types (e.g. `Sys.stdin(): Input` returning `new Stdin()`).
-		if (!isNullConstExpr(valueExpr) && (isInterfaceType(expected) || isPolymorphicClassType(expected))) {
+		var expectedNullableTraitObjectInner = nullableTraitObjectInnerType(expected, valueExpr.pos);
+		var expectedTraitObjectType = expectedNullableTraitObjectInner != null ? expectedNullableTraitObjectInner : expected;
+		if (!isNullConstExpr(valueExpr) && (isInterfaceType(expectedTraitObjectType) || isPolymorphicClassType(expectedTraitObjectType))) {
 			function rustTypeIsHxRef(rt:RustType):Bool {
 				return switch (rt) {
 					case RPath(p): StringTools.startsWith(p, "crate::HxRef<");
@@ -9699,16 +9717,28 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			if (!actualIsHxRef)
 				return compiled;
 
+			var expectedRustTy = toRustType(expected, valueExpr.pos);
+			var expectedRustStr = rustTypeToString(expectedRustTy);
+			var expectedIsDynRef = StringTools.startsWith(expectedRustStr, dynRefBasePath() + "<");
+			var someExpr:RustExpr = expectedIsDynRef ? ECall(EPath(dynRefBasePath() + "::new"),
+				[ECall(EField(EPath("__rc"), "clone"), [])]) : ECall(EField(EPath("__rc"), "clone"), []);
+			var noneExpr:RustExpr = if (expectedIsDynRef) {
+				var nullExpr = dynRefNullExprForTraitObject(expectedTraitObjectType, valueExpr.pos);
+				nullExpr != null ? nullExpr : nullAccessThrow();
+			} else {
+				nullAccessThrow();
+			}
+
 			var opt = ECall(EField(EPath("__tmp"), "as_arc_opt"), []);
 			var arms:Array<RustMatchArm> = [
-				{pat: PTupleStruct("Some", [PBind("__rc")]), expr: ECall(EField(EPath("__rc"), "clone"), [])},
-				{pat: PPath("None"), expr: nullAccessThrow()}
+				{pat: PTupleStruct("Some", [PBind("__rc")]), expr: someExpr},
+				{pat: PPath("None"), expr: noneExpr}
 			];
 
 			return EBlock({
 				stmts: [
 					RLet("__tmp", false, null, compiled),
-					RLet("__up", false, toRustType(expected, valueExpr.pos), EMatch(opt, arms))
+					RLet("__up", false, expectedRustTy, EMatch(opt, arms))
 				],
 				tail: EPath("__up")
 			});
@@ -14684,6 +14714,64 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return ERaw("todo!()");
 	}
 
+	function traitObjectRustInnerPath(t:Type, pos:haxe.macro.Expr.Position):Null<String> {
+		return switch (followType(t)) {
+			case TInst(clsRef, params): {
+					var cls = clsRef.get();
+					if (cls == null || cls.isExtern) {
+						null;
+					} else {
+						var typeParams = params != null
+							&& params.length > 0 ? ("<" + [for (p in params) rustTypeToString(toRustType(p, pos))].join(", ") + ">") : "";
+						if (cls.isInterface) {var modName = rustModuleNameForClass(cls);
+							"dyn crate::"
+							+ modName
+							+ "::"
+							+ rustTypeNameForClass(cls)
+							+ typeParams
+							+ " + Send + Sync";
+						} else if (classHasSubclasses(cls)) {var modName = rustModuleNameForClass(cls);
+							"dyn crate::"
+							+ modName
+							+ "::"
+							+ rustTypeNameForClass(cls)
+							+ "Trait"
+							+ typeParams
+							+ " + Send + Sync";
+						} else {
+							null;
+						}
+					}
+				}
+			case _:
+				null;
+		}
+	}
+
+	function dynRefTraitObjectRustType(t:Type, pos:haxe.macro.Expr.Position):Null<RustType> {
+		var inner = traitObjectRustInnerPath(t, pos);
+		return inner == null ? null : RPath(dynRefBasePath() + "<" + inner + ">");
+	}
+
+	function dynRefNullExprForTraitObject(t:Type, pos:haxe.macro.Expr.Position):Null<RustExpr> {
+		var inner = traitObjectRustInnerPath(t, pos);
+		return inner == null ? null : ECall(EPath(dynRefBasePath() + "::<" + inner + ">::null"), []);
+	}
+
+	function nullableTraitObjectInnerType(t:Type, pos:haxe.macro.Expr.Position):Null<Type> {
+		var inner = nullInnerType(t);
+		if (inner == null)
+			return null;
+		var innerType:Type = inner;
+		while (true) {
+			var n = nullInnerType(innerType);
+			if (n == null)
+				break;
+			innerType = n;
+		}
+		return traitObjectRustInnerPath(innerType, pos) == null ? null : innerType;
+	}
+
 	function toRustType(t:Type, pos:haxe.macro.Expr.Position):reflaxe.rust.ast.RustAST.RustType {
 		// Haxe `Null<T>` in Rust output is represented by `Option<T>` *unless* the chosen Rust
 		// representation already has an explicit null sentinel.
@@ -14705,6 +14793,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						}
 						var inner = toRustType(innerType, pos);
 						var innerStr = rustTypeToString(inner);
+
+						// Interface and polymorphic class trait objects need an explicit null sentinel
+						// when the Haxe type is `Null<T>`. A bare `HxRc<dyn Trait>` cannot represent
+						// null and does not implement `Default`.
+						var dynRefTraitObject = dynRefTraitObjectRustType(innerType, pos);
+						if (dynRefTraitObject != null) {
+							return dynRefTraitObject;
+						}
 
 						// Some Rust representations already have an explicit null value (no extra `Option<...>` needed).
 						// `Dynamic` already carries its own null sentinel (`Dynamic::null()`).
@@ -15015,11 +15111,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var typeParams = params != null
 						&& params.length > 0 ? ("<" + [for (p in params) rustTypeToString(toRustType(p, pos))].join(", ") + ">") : "";
 					if (cls.isInterface) {
-						var modName = rustModuleNameForClass(cls);
-						RPath(rcBasePath() + "<dyn crate::" + modName + "::" + rustTypeNameForClass(cls) + typeParams + " + Send + Sync>");
+						RPath(rcBasePath() + "<" + traitObjectRustInnerPath(t, pos) + ">");
 					} else if (classHasSubclasses(cls)) {
-						var modName = rustModuleNameForClass(cls);
-						RPath(rcBasePath() + "<dyn crate::" + modName + "::" + rustTypeNameForClass(cls) + "Trait" + typeParams + " + Send + Sync>");
+						RPath(rcBasePath() + "<" + traitObjectRustInnerPath(t, pos) + ">");
 					} else {
 						var modName = rustModuleNameForClass(cls);
 						RPath("crate::HxRef<crate::" + modName + "::" + rustTypeNameForClass(cls) + typeParams + ">");

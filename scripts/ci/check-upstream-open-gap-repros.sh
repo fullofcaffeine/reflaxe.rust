@@ -44,7 +44,6 @@ run_expected_cargo_failure() {
   echo "[upstream-open-gap-repros] ${case_name}: expected ${bead} failure observed"
 }
 
-run_expected_cargo_failure "nullable_interface_null" "haxe.rust-bm6" "Default|dyn[[:space:]]+Service|Arc<dyn"
 run_expected_cargo_failure "path_directory" "haxe.rust-lj8" "haxe_io_path|Path::directory|could not find"
 run_expected_cargo_failure "string_last_index_of" "haxe.rust-7s4" "lastIndexOf|no method named"
 
