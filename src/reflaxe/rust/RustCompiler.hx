@@ -14128,7 +14128,50 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						case _: "<";
 					};
 
-					if (TypeHelper.isFloat(ft1) && TypeHelper.isInt(ft2)) {
+					function nullableOrderedComparison(optExpr:TypedExpr, plainExpr:TypedExpr, optionOnLeft:Bool):Null<RustExpr> {
+						var inner = nullOptionInnerType(optExpr.t, optExpr.pos);
+						if (inner == null)
+							return null;
+						var innerFt = followType(inner);
+						var plainFt = followType(plainExpr.t);
+						var innerNumeric = TypeHelper.isInt(innerFt) || TypeHelper.isFloat(innerFt);
+						var plainNumeric = TypeHelper.isInt(plainFt) || TypeHelper.isFloat(plainFt);
+						if (!innerNumeric || !plainNumeric)
+							return null;
+
+						var optValue:RustExpr = EPath("__v");
+						var plainValue:RustExpr = EPath("__hx_plain");
+						if (TypeHelper.isInt(innerFt) && TypeHelper.isFloat(plainFt)) {
+							optValue = ECast(optValue, "f64");
+						} else if (TypeHelper.isFloat(innerFt) && TypeHelper.isInt(plainFt)) {
+							plainValue = ECast(plainValue, "f64");
+						}
+
+						var comparison = optionOnLeft ? EBinary(opStr, optValue, plainValue) : EBinary(opStr, plainValue, optValue);
+						var arms:Array<RustMatchArm> = [
+							{pat: PTupleStruct("Some", [PBind("__v")]), expr: comparison},
+							{pat: PPath("None"), expr: ELitBool(false)}
+						];
+						var stmts:Array<RustStmt> = [];
+						if (optionOnLeft) {
+							stmts.push(RLet("__hx_opt", false, null, compileExpr(optExpr)));
+							stmts.push(RLet("__hx_plain", false, null, compileExpr(plainExpr)));
+						} else {
+							stmts.push(RLet("__hx_plain", false, null, compileExpr(plainExpr)));
+							stmts.push(RLet("__hx_opt", false, null, compileExpr(optExpr)));
+						}
+						return EBlock({stmts: stmts, tail: EMatch(EPath("__hx_opt"), arms)});
+					}
+
+					var nullableCmp:Null<RustExpr> = null;
+					if (isNullOptionType(e1.t, e1.pos) && !isNullOptionType(e2.t, e2.pos) && !isNullType(e2.t) && !isNullConstExpr(e2)) {
+						nullableCmp = nullableOrderedComparison(e1, e2, true);
+					} else if (isNullOptionType(e2.t, e2.pos) && !isNullOptionType(e1.t, e1.pos) && !isNullType(e1.t) && !isNullConstExpr(e1)) {
+						nullableCmp = nullableOrderedComparison(e2, e1, false);
+					}
+					if (nullableCmp != null) {
+						nullableCmp;
+					} else if (TypeHelper.isFloat(ft1) && TypeHelper.isInt(ft2)) {
 						EBinary(opStr, compileExpr(e1), ECast(compileExpr(e2), "f64"));
 					} else if (TypeHelper.isInt(ft1) && TypeHelper.isFloat(ft2)) {
 						EBinary(opStr, ECast(compileExpr(e1), "f64"), compileExpr(e2));
