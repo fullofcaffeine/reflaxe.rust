@@ -113,6 +113,19 @@ What is not justified:
 - treating `reflaxe.std` as a free pass to import native-lane APIs,
 - or assuming metal is required whenever performance matters.
 
+Near-term guidance:
+
+- use `metal` where a module needs Rust-native runtime/tool behavior, strict host-boundary
+  semantics, or production-shaped performance now,
+- keep `portable` for DTOs, codecs, fixtures, schema/protocol validation, config, and pure state
+  when those surfaces are Haxe-semantics-first,
+- and treat portable-to-metal performance convergence as a compiler goal wherever Rust lowering can
+  preserve Haxe semantics.
+
+If a consumer needs `metal` mainly because portable output is currently too slow or awkward, reduce
+the gap to a generic haxe.rust fixture, benchmark, or contract test. Do not add project-specific
+compiler shortcuts to make one downstream codebase look good.
+
 ## Quick decision rule
 
 1. Start portable.

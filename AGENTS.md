@@ -214,6 +214,8 @@ Agent policy:
       Portable output should be idiomatic when Haxe semantics permit; metal output should be idiomatic while honoring its Rust-first contract.
   - Architecture slogan: portable by default, Rust-native by opt-in, metal-like performance whenever the compiler can prove Haxe semantics are preserved.
     The optimizer/planner may lower portable abstractions into native Rust representations, but must not silently change the source contract or hide metal fallback where a user explicitly selected `metal`.
+    Runtime/tool consumers may choose `metal` first when they need Rust-native behavior, strict host boundaries, or production performance now.
+    Treat those cases as pressure to improve generic portable-to-metal convergence where semantics allow, not as permission for project-specific compiler shortcuts.
   - Portable native-import policy: importing native target modules from portable app code emits warnings by default and is recorded in `contract_report.*`.
     Use `-D rust_portable_native_import_strict` to escalate those warnings to errors.
   - Metal policy: `reflaxe_rust_profile=metal` auto-enables strict app-boundary mode (`reflaxe_rust_strict`) so raw app-side `__rust__` is rejected by default.
