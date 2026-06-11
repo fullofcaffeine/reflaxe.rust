@@ -53,6 +53,7 @@ This is the rule that keeps the model honest:
 
 - `portable` remains a portable/Haxe-first contract.
 - `metal` remains the Rust-first contract.
+- "idiomatic" remains an output-quality goal for both contracts, not a third contract.
 - lowering may choose the best native Rust representation when semantics match,
 - but lowering must not silently turn portable code into native-lane code.
 

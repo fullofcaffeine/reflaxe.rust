@@ -14,6 +14,12 @@ This keeps semantics reviewable in CI while still allowing incremental optimizat
 
 No profile aliases are supported.
 
+`idiomatic` is not a profile selector. It is a quality bar for generated Rust in every profile:
+readable modules, predictable ownership, avoidable clone/temp elimination, native Rust
+representations where semantics allow, and warning-clean output. `portable` should be idiomatic
+without changing Haxe-observable behavior; `metal` should be idiomatic while honoring Rust-first
+semantics and stricter boundary policy.
+
 ## Contract: `portable`
 
 Use `portable` when you want:

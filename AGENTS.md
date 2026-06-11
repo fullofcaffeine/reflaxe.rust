@@ -207,6 +207,11 @@ Agent policy:
 - Profiles:
   - Default is portable output.
   - Supported selector values are `-D reflaxe_rust_profile=portable|metal` (no aliases).
+  - Profile names are semantic contracts, not output-quality labels:
+    - `portable` means Haxe-portable semantics first.
+    - `metal` means Rust-first semantics, stricter boundaries, and optional reduced/no-HXRT runtime.
+    - `idiomatic` is **not** a profile selector. Treat idiomatic Rust output as a quality goal for every profile.
+      Portable output should be idiomatic when Haxe semantics permit; metal output should be idiomatic while honoring its Rust-first contract.
   - Portable native-import policy: importing native target modules from portable app code emits warnings by default and is recorded in `contract_report.*`.
     Use `-D rust_portable_native_import_strict` to escalate those warnings to errors.
   - Metal policy: `reflaxe_rust_profile=metal` auto-enables strict app-boundary mode (`reflaxe_rust_strict`) so raw app-side `__rust__` is rejected by default.

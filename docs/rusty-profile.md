@@ -13,6 +13,14 @@ The `rusty` profile selector was removed.
 - old `idiomatic` -> use `portable`
 - old `rusty` -> use `metal`
 
+This mapping is about **semantic contracts**, not about giving up idiomatic Rust output. Idiomatic
+Rust remains an output-quality goal in both supported profiles:
+
+- `portable` should emit clean, efficient, Rust-recognizable code whenever that preserves Haxe
+  semantics.
+- `metal` should emit clean, efficient Rust while honoring its Rust-first source contract and
+  stricter boundary rules.
+
 ## Why
 
 The public profile model was simplified to two explicit contracts:
@@ -21,6 +29,8 @@ The public profile model was simplified to two explicit contracts:
 - `metal`: Rust-first performance profile with strict typed boundaries.
 
 This removes profile ambiguity and keeps optimization policy focused on clear target behaviors.
+In short: profile selectors choose semantics; "idiomatic" describes the desired quality of the
+generated Rust across profiles.
 
 ## Command examples
 
