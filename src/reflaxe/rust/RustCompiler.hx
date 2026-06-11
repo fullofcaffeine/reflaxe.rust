@@ -10346,6 +10346,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								return ECall(EPath("hxrt::string::parse_float"), [asStr]);
 							}
 
+						case "parseInt": {
+								if (args.length != 1)
+									return unsupported(fullExpr, "Std.parseInt args");
+								var s = args[0];
+								var asStr = ECall(EField(compileExpr(s), "as_str"), []);
+								return ECall(EPath("hxrt::string::parse_int"), [asStr]);
+							}
+
 						case _:
 					}
 				}

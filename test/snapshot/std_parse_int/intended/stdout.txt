@@ -1,0 +1,17 @@
+decimal=ok
+leading-space=ok
+trailing-junk=ok
+negative=ok
+positive=ok
+hex=ok
+negative-hex=ok
+upper-hex=ok
+leading-zero=ok
+empty=ok
+invalid=ok
+bare-sign=ok
+whitespace-only=ok
+float-prefix=ok
+negative-float-prefix=ok
+overflow-positive=ok
+overflow-negative=ok
