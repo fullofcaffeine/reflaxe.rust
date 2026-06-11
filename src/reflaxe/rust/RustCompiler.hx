@@ -13933,6 +13933,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								return EBinary("==", ECast(compileExpr(e1), "f64"), compileExpr(e2));
 							}
 
+							// Interface/polymorphic values lower to non-null trait-object `HxRc` handles once
+							// constructed/upcast. A direct comparison against the null literal must not go
+							// through generic pointer equality with an untyped `Default::default()`.
+							if ((isInterfaceType(ft1) || isPolymorphicClassType(ft1)) && isNullConstExpr(e2)) {
+								return EBlock({stmts: [RLet("_", false, null, compileExpr(e1))], tail: ELitBool(false)});
+							} else if ((isInterfaceType(ft2) || isPolymorphicClassType(ft2)) && isNullConstExpr(e1)) {
+								return EBlock({stmts: [RLet("_", false, null, compileExpr(e2))], tail: ELitBool(false)});
+							}
+
 							// Haxe object/array equality is identity-based.
 							if (isArrayType(ft1) && isArrayType(ft2)) {
 								ECall(EField(compileExpr(e1), "ptr_eq"), [EUnary("&", compileExpr(e2))]);
@@ -14026,6 +14035,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								return EBinary("!=", compileExpr(e1), ECast(compileExpr(e2), "f64"));
 							} else if (TypeHelper.isInt(ft1) && TypeHelper.isFloat(ft2)) {
 								return EBinary("!=", ECast(compileExpr(e1), "f64"), compileExpr(e2));
+							}
+
+							if ((isInterfaceType(ft1) || isPolymorphicClassType(ft1)) && isNullConstExpr(e2)) {
+								return EBlock({stmts: [RLet("_", false, null, compileExpr(e1))], tail: ELitBool(true)});
+							} else if ((isInterfaceType(ft2) || isPolymorphicClassType(ft2)) && isNullConstExpr(e1)) {
+								return EBlock({stmts: [RLet("_", false, null, compileExpr(e2))], tail: ELitBool(true)});
 							}
 
 							if (isArrayType(ft1) && isArrayType(ft2)) {
