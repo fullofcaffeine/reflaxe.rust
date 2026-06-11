@@ -5476,8 +5476,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var out:RustBlock = switch (e.expr) {
 			case TBlock(exprs): compileBlock(exprs, allowTail, expectedReturn);
 			case _: {
-					// Single-expression function body
-					{stmts: [compileStmt(e)], tail: null};
+					// Single-expression function body. Non-void expression bodies must remain tails so
+					// value expressions such as `try/catch` lower to the function return value.
+					if (allowTail && canUseAsTailExpr(e, expectedReturn))
+						{stmts: [], tail: coerceExprToExpected(compileExpr(e), e, expectedReturn)} else {stmts: [compileStmt(e)], tail: null};
 				}
 		};
 
@@ -5511,7 +5513,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var e = exprs[i];
 			var isLast = (i == exprs.length - 1);
 
-			if (allowTail && isLast && !TypeHelper.isVoid(e.t) && !isStmtOnlyExpr(e)) {
+			if (allowTail && isLast && canUseAsTailExpr(e, expectedTail)) {
 				tail = coerceExprToExpected(compileExpr(e), e, expectedTail);
 				break;
 			}
@@ -5699,6 +5701,24 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case TFor(_, _, _): true;
 			case TBreak: true;
 			case TContinue: true;
+			case _: false;
+		}
+	}
+
+	function canUseAsTailExpr(e:TypedExpr, expectedTail:Null<Type>):Bool {
+		if (isStmtOnlyExpr(e))
+			return false;
+		if (!TypeHelper.isVoid(e.t))
+			return true;
+		if (expectedTail == null || TypeHelper.isVoid(expectedTail))
+			return false;
+
+		// Haxe types a top-level try/catch as Void when every branch exits via `return`,
+		// but Rust still needs the generated catch_unwind match to be the final expression
+		// of the non-Void function. Emitting it as a semicolon statement changes the body
+		// type to `()`.
+		return switch (unwrapMetaParen(e).expr) {
+			case TTry(_, _): true;
 			case _: false;
 		}
 	}
