@@ -16,6 +16,11 @@ This page answers the practical post-`1.0` question for performance-oriented tea
 - targeted performance baselines,
 - and a small but real `reflaxe.std` portable idiom slice.
 
+The architecture slogan is:
+
+> Portable by default, Rust-native by opt-in, metal-like performance whenever the compiler can prove
+> Haxe semantics are preserved.
+
 What users still need is one clear answer to the strategic question:
 
 > Can I stay in portable mode and still get Rust-native output quality?
@@ -56,6 +61,8 @@ This is the rule that keeps the model honest:
 - "idiomatic" remains an output-quality goal for both contracts, not a third contract.
 - lowering may choose the best native Rust representation when semantics match,
 - but lowering must not silently turn portable code into native-lane code.
+- planner/report artifacts should make the boundary visible: safe portable-to-native lowering wins,
+  portable fallbacks, and metal fallback allowances must remain reviewable in CI.
 
 Examples:
 
@@ -101,6 +108,10 @@ That usually means:
 - or code that is intentionally authored as Rust-flavored Haxe rather than portable Haxe.
 
 `metal` is not "portable with more courage." It is a different public contract.
+
+Likewise, `portable` is not the beginner-only or slow path. It is the default Haxe authoring
+contract, and the compiler should keep making it cheaper whenever proof and tests show that a
+native Rust representation preserves Haxe behavior.
 
 Use it when you want that contract on purpose, not because the backend might optimize better.
 

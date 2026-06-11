@@ -14,6 +14,17 @@ This keeps semantics reviewable in CI while still allowing incremental optimizat
 
 No profile aliases are supported.
 
+The user-facing model is:
+
+> Portable by default, Rust-native by opt-in, metal-like performance whenever the compiler can prove
+> Haxe semantics are preserved.
+
+That means `portable` is the main product path for normal Haxe code, not the "slow" or
+"second-class" lane. The backend should generate readable, performant, Rust-recognizable code by
+default wherever Haxe-observable behavior allows it. `metal` remains valuable because it changes the
+source-level contract: code may intentionally lean into Rust-native APIs, stricter boundary rules,
+and reduced-runtime expectations.
+
 `idiomatic` is not a profile selector. It is a quality bar for generated Rust in every profile:
 readable modules, predictable ownership, avoidable clone/temp elimination, native Rust
 representations where semantics allow, and warning-clean output. `portable` should be idiomatic
@@ -26,7 +37,8 @@ Use `portable` when you want:
 
 - predictable Haxe behavior and compatibility,
 - low migration friction for existing Haxe projects,
-- production-ready output hygiene without Rust-first restrictions.
+- production-ready output hygiene without Rust-first restrictions,
+- Rust-native representations when the compiler can prove they preserve portable semantics.
 
 Default behavior:
 
@@ -58,7 +70,8 @@ Use `metal` when you want:
 
 - Rust-first authoring/performance direction,
 - strict app-boundary policy by default (`reflaxe_rust_strict` auto-enabled),
-- explicit fallback control (`rust_metal_allow_fallback`).
+- explicit fallback control (`rust_metal_allow_fallback`),
+- fast failure or reportable fallback when code cannot be represented cleanly under the Rust-native contract.
 
 Interop note (beginner-friendly):
 
