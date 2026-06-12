@@ -47,6 +47,15 @@ Agent policy:
 
 - Primary long-term goal: make `reflaxe.rust` the best way to write production Rust outside of writing raw Rust directly, by combining Haxe ergonomics with Rust-level performance, safety, and readability, while preserving an explicit portable path through Haxe when users want cross-target portability.
 
+## Typeful Haxe and Rust Output Quality
+
+- Treat well-typed Haxe as the source language contract. Compiler, runtime, std overrides, tests, and examples should use concrete types, `typedef` schemas, abstracts/newtypes, enum abstracts, typed enums, and GADT-style typed enum patterns where Haxe can express them. Avoid strings as domain models when a stronger representation is practical.
+- Keep stringly typed values at real boundaries only: JSON/protocol IO, CLI/env/filesystem inputs, metadata names, target syntax tokens, or upstream API compatibility points. Convert those values into typed structures immediately after the boundary and keep downstream code typed.
+- Use macros when they improve correctness or maintainability: deriving repetitive validators/bridges, centralizing typed target metadata, enforcing profile/runtime contracts, or preventing schema drift. Avoid clever macro machinery whose generated shape is hard to inspect, hard to test, or harder for haxe.rust to lower cleanly.
+- Adapt Rust/Codex-style architecture into Haxe idioms rather than mechanically mirroring Rust. Prefer Haxe abstractions that make invalid states unrepresentable while still giving the backend enough typed information to emit native Rust.
+- Generated Rust quality is a first-class product requirement in every profile. Output should be readable, idiomatic, warning-clean, rustfmt-friendly, and close to hand-written Rust performance and runtime footprint wherever Haxe semantics permit. `hxrt` should remain lightweight and used only where semantics require runtime support.
+- If typeful, idiomatic Haxe produces poor, noisy, clone-heavy, stringly, or runtime-heavy Rust, treat that as a generic compiler/runtime gap. Fix the lowering, planner, runtime API, or printer with generic tests instead of teaching consumers to contort source code around compiler artifacts.
+
 ## Core Guardrails (compiler)
 
 - Keep the pipeline **AST-first**: Builder → Transformer passes → Printer (avoid string-gen except at the printer).
