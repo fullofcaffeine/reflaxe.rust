@@ -8,37 +8,27 @@ pub struct File {}
 
 impl File {
     pub fn get_content(path: hxrt::string::HxString) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(match std::fs::read_to_string(path.as_str()) {
-            Ok(s) => s,
-            Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
-        });
+        return hxrt::string::HxString::from(crate::file_native::FileNative::getContent(
+            hxrt::string::HxString::from(path),
+        ));
     }
 
     pub fn save_content(path: hxrt::string::HxString, content: hxrt::string::HxString) {
-        match std::fs::write(path.as_str(), content.as_str().as_bytes()) {
-            Ok(()) => (),
-            Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
-        };
+        crate::file_native::FileNative::saveContent(
+            hxrt::string::HxString::from(path),
+            hxrt::string::HxString::from(content),
+        );
     }
 
     pub fn get_bytes(path: hxrt::string::HxString) -> crate::HxRef<hxrt::bytes::Bytes> {
-        return {
-            let data = match std::fs::read(path.as_str()) {
-                Ok(b) => b,
-                Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
-            };
-            crate::HxRef::new(hxrt::bytes::Bytes::from_vec(data))
-        };
+        return crate::file_native::FileNative::getBytes(hxrt::string::HxString::from(path));
     }
 
     pub fn save_bytes(path: hxrt::string::HxString, bytes: crate::HxRef<hxrt::bytes::Bytes>) {
-        {
-            let b = bytes.borrow();
-            match std::fs::write(path.as_str(), b.as_slice()) {
-                Ok(()) => (),
-                Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
-            }
-        };
+        crate::file_native::FileNative::saveBytes(
+            hxrt::string::HxString::from(path),
+            bytes.clone(),
+        );
     }
 
     pub fn read(
@@ -46,7 +36,8 @@ impl File {
         binary: bool,
     ) -> crate::HxRef<crate::sys_io_file_input::FileInput> {
         let _ = binary;
-        let fh: crate::HxRef<hxrt::fs::FileHandle> = hxrt::fs::open_read(path.as_str());
+        let fh: crate::HxRef<hxrt::fs::FileHandle> =
+            crate::file_native::FileNative::openRead(hxrt::string::HxString::from(path));
         return crate::sys_io_file_input::FileInput::new(fh.clone());
     }
 
@@ -55,7 +46,8 @@ impl File {
         binary: bool,
     ) -> crate::HxRef<crate::sys_io_file_output::FileOutput> {
         let _ = binary;
-        let fh: crate::HxRef<hxrt::fs::FileHandle> = hxrt::fs::open_write_truncate(path.as_str());
+        let fh: crate::HxRef<hxrt::fs::FileHandle> =
+            crate::file_native::FileNative::openWriteTruncate(hxrt::string::HxString::from(path));
         return crate::sys_io_file_output::FileOutput::new(fh.clone());
     }
 
@@ -64,7 +56,8 @@ impl File {
         binary: bool,
     ) -> crate::HxRef<crate::sys_io_file_output::FileOutput> {
         let _ = binary;
-        let fh: crate::HxRef<hxrt::fs::FileHandle> = hxrt::fs::open_append(path.as_str());
+        let fh: crate::HxRef<hxrt::fs::FileHandle> =
+            crate::file_native::FileNative::openAppend(hxrt::string::HxString::from(path));
         return crate::sys_io_file_output::FileOutput::new(fh.clone());
     }
 
@@ -73,14 +66,15 @@ impl File {
         binary: bool,
     ) -> crate::HxRef<crate::sys_io_file_output::FileOutput> {
         let _ = binary;
-        let fh: crate::HxRef<hxrt::fs::FileHandle> = hxrt::fs::open_update(path.as_str());
+        let fh: crate::HxRef<hxrt::fs::FileHandle> =
+            crate::file_native::FileNative::openUpdate(hxrt::string::HxString::from(path));
         return crate::sys_io_file_output::FileOutput::new(fh.clone());
     }
 
     pub fn copy(src_path: hxrt::string::HxString, dst_path: hxrt::string::HxString) {
-        match std::fs::copy(src_path.as_str(), dst_path.as_str()) {
-            Ok(_) => (),
-            Err(e) => hxrt::exception::throw(hxrt::dynamic::from(format!("{}", e))),
-        };
+        crate::file_native::FileNative::copy(
+            hxrt::string::HxString::from(src_path),
+            hxrt::string::HxString::from(dst_path),
+        );
     }
 }

@@ -45,7 +45,32 @@ class List<T> {
 		#if macro
 		return [].iterator();
 		#else
-		return untyped __rust__("hxrt::iter::Iter::from_vec({0}.borrow().items.to_vec())", this);
+		return ListNative.iterator(items);
 		#end
 	}
+}
+
+/**
+	`haxe.ds.ListNative`
+
+	Why:
+	- `List<T>` is backed by `Array<T>` on this target, but the old iterator implementation used
+	  inline raw Rust to build `hxrt::iter::Iter<T>`.
+	- Strict metal treats that raw expression as an ERaw fallback, which makes any std surface that
+	  mentions `List` fail metal-clean checks.
+
+	What:
+	- Tiny typed extern facade for constructing the Haxe iterator runtime shape from the backing
+	  array.
+
+	How:
+	- Bound to `std/haxe/ds/native/list_native.rs` through `@:rustExtraSrc`.
+	- The Rust helper clones the array into a Vec and returns `hxrt::iter::Iter<T>`, matching the
+	  structural `Iterator<T>` representation used by haxe.rust.
+**/
+@:native("crate::list_native::ListNative")
+@:rustExtraSrc("haxe/ds/native/list_native.rs")
+private extern class ListNative {
+	@:rustGeneric("T: Clone")
+	public static function iterator<T>(items:Array<T>):Iterator<T>;
 }

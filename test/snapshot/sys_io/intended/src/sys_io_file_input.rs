@@ -31,24 +31,18 @@ impl FileInput {
 
     pub fn close(self_: &crate::HxRefCell<FileInput>) {
         let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
-        {
+        crate::file_native::FileNative::close({
             let __b = __hx_this.borrow();
             __b.handle.clone()
-        }
-        .borrow_mut()
-        .close();
+        });
     }
 
     pub fn read_byte(self_: &crate::HxRefCell<FileInput>) -> i32 {
         let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
-        let v: i32 = {
-            {
-                let __b = __hx_this.borrow();
-                __b.handle.clone()
-            }
-            .borrow_mut()
-            .read_byte()
-        };
+        let v: i32 = crate::file_native::FileNative::readByte({
+            let __b = __hx_this.borrow();
+            __b.handle.clone()
+        });
         if v == -1 {
             hxrt::exception::throw(hxrt::dynamic::from_ref_with_type_id(
                 crate::haxe_io_eof::Eof::new(),
@@ -74,23 +68,15 @@ impl FileInput {
         if len == 0 {
             return 0;
         }
-        let out: i32 = {
-            let mut buf = vec![0u8; len as usize];
-            let n: i32 = {
+        let out: i32 = crate::file_native::FileNative::readBytes(
+            {
                 let __b = __hx_this.borrow();
                 __b.handle.clone()
-            }
-            .borrow_mut()
-            .read_into(buf.as_mut_slice());
-            if n == 0 {
-                -1i32
-            } else if n == -1i32 {
-                -1i32
-            } else {
-                hxrt::bytes::write_from_slice(&s, pos, &buf[0..(n as usize)]);
-                n
-            }
-        };
+            },
+            s.clone(),
+            pos,
+            len,
+        );
         if out == -1 {
             hxrt::exception::throw(hxrt::dynamic::from_ref_with_type_id(
                 crate::haxe_io_eof::Eof::new(),
@@ -112,35 +98,31 @@ impl FileInput {
         };
         match pos {
             crate::sys_io_file_seek::FileSeek::SeekBegin => {
-                h.borrow_mut().seek_from_start(p as u64);
+                crate::file_native::FileNative::seekFromStart(h.clone(), p);
             }
             crate::sys_io_file_seek::FileSeek::SeekCur => {
-                h.borrow_mut().seek_from_current(p as i64);
+                crate::file_native::FileNative::seekFromCurrent(h.clone(), p);
             }
             crate::sys_io_file_seek::FileSeek::SeekEnd => {
-                h.borrow_mut().seek_from_end(p as i64);
+                crate::file_native::FileNative::seekFromEnd(h.clone(), p);
             }
         }
     }
 
     pub fn tell(self_: &crate::HxRefCell<FileInput>) -> i32 {
         let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
-        return {
+        return crate::file_native::FileNative::tell({
             let __b = __hx_this.borrow();
             __b.handle.clone()
-        }
-        .borrow_mut()
-        .tell();
+        });
     }
 
     pub fn eof(self_: &crate::HxRefCell<FileInput>) -> bool {
         let __hx_this: crate::HxRef<crate::sys_io_file_input::FileInput> = self_.self_ref();
-        return {
+        return crate::file_native::FileNative::eof({
             let __b = __hx_this.borrow();
             __b.handle.clone()
-        }
-        .borrow_mut()
-        .eof();
+        });
     }
 
     pub fn set_big_endian(self_: &crate::HxRefCell<FileInput>, b: bool) -> bool {

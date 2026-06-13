@@ -20,6 +20,7 @@ import hxrt.fs.FileHandle;
 	How
 	- Stores the OS file handle as `HxRef<hxrt.fs.FileHandle>` so it is cloneable from Haxe while
 	  the runtime owns the non-cloneable `std::fs::File`.
+	- Handle operations call a typed native helper bound through `@:rustExtraSrc`.
 	- IO errors are thrown as catchable Haxe exceptions (we throw a `String` message today).
 	- EOF is represented by throwing `new haxe.io.Eof()`, matching other Haxe targets.
 **/
@@ -35,13 +36,11 @@ class FileInput extends haxe.io.Input {
 	}
 
 	override public function close():Void {
-		untyped __rust__("{0}.borrow_mut().close()", getHandle());
+		FileHandleNative.close(getHandle());
 	}
 
 	override public function readByte():Int {
-		var v:Int = untyped __rust__("{
-				{0}.borrow_mut().read_byte()
-			}", getHandle());
+		var v:Int = FileHandleNative.readByte(getHandle());
 		if (v == -1)
 			throw new haxe.io.Eof();
 		return v;
@@ -53,18 +52,7 @@ class FileInput extends haxe.io.Input {
 		if (len == 0)
 			return 0;
 
-		var out:Int = untyped __rust__("{
-				let mut buf = vec![0u8; {2} as usize];
-				let n: i32 = {0}.borrow_mut().read_into(buf.as_mut_slice());
-				if n == 0 {
-					-1i32
-				} else if n == -1i32 {
-					-1i32
-				} else {
-					hxrt::bytes::write_from_slice(&{1}, {3}, &buf[0..(n as usize)]);
-					n
-				}
-			}", getHandle(), s, len, pos);
+		var out:Int = FileHandleNative.readBytes(getHandle(), s, pos, len);
 
 		if (out == -1)
 			throw new haxe.io.Eof();
@@ -75,19 +63,32 @@ class FileInput extends haxe.io.Input {
 		var h = getHandle();
 		switch pos {
 			case SeekBegin:
-				untyped __rust__("{0}.borrow_mut().seek_from_start({1} as u64)", h, p);
+				FileHandleNative.seekFromStart(h, p);
 			case SeekCur:
-				untyped __rust__("{0}.borrow_mut().seek_from_current({1} as i64)", h, p);
+				FileHandleNative.seekFromCurrent(h, p);
 			case SeekEnd:
-				untyped __rust__("{0}.borrow_mut().seek_from_end({1} as i64)", h, p);
+				FileHandleNative.seekFromEnd(h, p);
 		}
 	}
 
 	public function tell():Int {
-		return untyped __rust__("{0}.borrow_mut().tell()", getHandle());
+		return FileHandleNative.tell(getHandle());
 	}
 
 	public function eof():Bool {
-		return untyped __rust__("{0}.borrow_mut().eof()", getHandle());
+		return FileHandleNative.eof(getHandle());
 	}
+}
+
+@:native("crate::file_native::FileNative")
+@:rustExtraSrc("sys/io/native/file_native.rs")
+private extern class FileHandleNative {
+	public static function close(handle:HxRef<FileHandle>):Void;
+	public static function readByte(handle:HxRef<FileHandle>):Int;
+	public static function readBytes(handle:HxRef<FileHandle>, bytes:Bytes, pos:Int, len:Int):Int;
+	public static function seekFromStart(handle:HxRef<FileHandle>, pos:Int):Void;
+	public static function seekFromCurrent(handle:HxRef<FileHandle>, offset:Int):Void;
+	public static function seekFromEnd(handle:HxRef<FileHandle>, offset:Int):Void;
+	public static function tell(handle:HxRef<FileHandle>):Int;
+	public static function eof(handle:HxRef<FileHandle>):Bool;
 }
