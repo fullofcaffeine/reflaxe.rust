@@ -32,6 +32,7 @@ mod haxe_iterators_string_iterator;
 mod haxe_iterators_string_key_value_iterator;
 mod haxe_stack_item;
 mod int32_tools;
+mod list_native;
 mod map_storage_tools_nullable;
 mod string_buf;
 mod string_tools;
@@ -161,10 +162,10 @@ fn main() {
         "{}{}",
         "fields=",
         if fields.is_null() {
-            hxrt::string::HxString::from("null")
+            hxrt::string::HxString::from(hxrt::string::HxString::from("null"))
         } else {
-            hxrt::string::HxString::from(fields.join(hxrt::string::HxString::from(
-                hxrt::string::HxString::from(","),
+            hxrt::string::HxString::from(hxrt::string::HxString::from(fields.join(
+                hxrt::string::HxString::from(hxrt::string::HxString::from(",")),
             )))
         }
     ))));

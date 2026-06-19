@@ -9419,6 +9419,24 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var expectedIsDyn = mapsToRustDynamic(expected, valueExpr.pos);
 		var actualIsDyn = mapsToRustDynamic(valueExpr.t, valueExpr.pos);
 
+		// Haxe often types a null-checked `Null<Interface>` value as still carrying the nullable
+		// trait-object wrapper (`HxDynRef<dyn Trait>`). When a callee expects the non-null
+		// `HxRc<dyn Trait>` representation, unwrap once at the typed call boundary and keep the
+		// callee body non-null.
+		if (StringTools.startsWith(expectedRust, rcBasePath() + "<dyn ")
+			&& StringTools.startsWith(actualRust, dynRefBasePath() + "<dyn ")) {
+			return EBlock({
+				stmts: [RLet("__hx_dyn_ref", false, null, maybeCloneForReuseValue(compiled, valueExpr))],
+				tail: EMatch(ECall(EField(EPath("__hx_dyn_ref"), "as_arc_opt"), []), [
+					{
+						pat: PTupleStruct("Some", [PBind("__rc")]),
+						expr: ECall(EField(EPath("__rc"), "clone"), [])
+					},
+					{pat: PPath("None"), expr: nullAccessThrow()}
+				])
+			});
+		}
+
 		// `Null<T>` (Option<T>) used where a non-null `T` is expected.
 		//
 		// Haxe allows this implicitly in many places (especially in upstream stdlib for "dynamic-ish"

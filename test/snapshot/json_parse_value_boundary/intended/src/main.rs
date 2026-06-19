@@ -192,7 +192,7 @@ fn render_value(value: crate::haxe_json_value::Value) -> hxrt::string::HxString 
                         let _g_6: hxrt::array::Array<hxrt::string::HxString> =
                             hxrt::array::Array::<hxrt::string::HxString>::new();
                         for item in items.iter_borrowed() {
-                            _g_6.push(hxrt::string::HxString::from(render_value(item)));
+                            _g_6.push(hxrt::string::HxString::from(render_value(item.clone())));
                         }
                         _g_6
                     })
@@ -207,7 +207,7 @@ fn render_value(value: crate::haxe_json_value::Value) -> hxrt::string::HxString 
 
 fn main() {
     let parsed: crate::haxe_json_value::Value = crate::haxe_json::Json::parse_value(hxrt::string::HxString::from(hxrt::string::HxString::from("{\"name\":\"Ada\",\"score\":4.5,\"flags\":[true,false],\"meta\":{\"ok\":true},\"empty\":null}")));
-    let fields: hxrt::array::Array<crate::HxRef<hxrt::anon::Anon>> = object_fields(parsed);
+    let fields: hxrt::array::Array<crate::HxRef<hxrt::anon::Anon>> = object_fields(parsed.clone());
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "name=",

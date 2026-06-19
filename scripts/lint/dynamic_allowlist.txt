@@ -10,6 +10,8 @@ src/reflaxe/rust/RustCompiler.hx:1277
 src/reflaxe/rust/RustCompiler.hx:1284
 src/reflaxe/rust/RustCompiler.hx:1287
 src/reflaxe/rust/RustCompiler.hx:1295
+src/reflaxe/rust/CompilerBootstrap.hx:62
+src/reflaxe/rust/CompilerInit.hx:50
 std/haxe/BoundaryTypes.cross.hx:27
 std/haxe/BoundaryTypes.cross.hx:29
 std/haxe/BoundaryTypes.cross.hx:31
@@ -37,6 +39,7 @@ test/snapshot/catch_dynamic/Main.hx # FILE_SCOPE_JUSTIFICATION: Snapshot fixture
 test/snapshot/json_parse_value_boundary/Main.hx # FILE_SCOPE_JUSTIFICATION: Snapshot fixture intentionally validates the JSON parse Dynamic boundary before returning to typed code.
 test/snapshot/reflect_basic/Main.hx # FILE_SCOPE_JUSTIFICATION: Snapshot fixture intentionally validates Reflect behavior over Dynamic JSON values.
 test/snapshot/throw_tail_nonvoid/Main.hx:12
+test/snapshot/try_catch_tail_nonvoid/Main.hx:7
 test/snapshot/sys_db_sqlite_smoke/Main.hx # FILE_SCOPE_JUSTIFICATION: Snapshot smoke intentionally decodes Dynamic DB rows at the upstream ResultSet boundary and returns to typed code immediately.
 test/snapshot/sys_ssl_sni/Main.hx # FILE_SCOPE_JUSTIFICATION: Snapshot smoke intentionally uses Dynamic catch-all handling around TLS handshake failure boundaries.
 test/snapshot/std_is_of_type/Main.hx # FILE_SCOPE_JUSTIFICATION: Snapshot intentionally validates Std.isOfType across Dynamic boxing/interface/enum boundaries.

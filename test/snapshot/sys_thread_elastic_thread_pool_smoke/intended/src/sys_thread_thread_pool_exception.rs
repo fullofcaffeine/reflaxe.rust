@@ -4,7 +4,7 @@ pub const __HX_TYPE_ID: u32 = 0x06e5ab1du32;
 
 pub struct ThreadPoolException {
     _message: hxrt::string::HxString,
-    _previous: Option<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>>,
+    _previous: crate::HxDynRef<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>,
     _native: hxrt::dynamic::Dynamic,
     _stack: hxrt::array::Array<crate::haxe_stack_item::StackItem>,
 }
@@ -12,20 +12,22 @@ pub struct ThreadPoolException {
 impl ThreadPoolException {
     pub fn new(
         message: hxrt::string::HxString,
-        previous: Option<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>>,
+        previous: crate::HxDynRef<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>,
         native: hxrt::dynamic::Dynamic,
     ) -> crate::HxRef<crate::sys_thread_thread_pool_exception::ThreadPoolException> {
         let self_: crate::HxRef<crate::sys_thread_thread_pool_exception::ThreadPoolException> =
             crate::HxRef::new(ThreadPoolException {
                 _message: hxrt::string::HxString::null(),
-                _previous: None,
+                _previous:
+                    crate::HxDynRef::<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>::null(
+                    ),
                 _native: hxrt::dynamic::Dynamic::null(),
                 _stack: hxrt::array::Array::<crate::haxe_stack_item::StackItem>::new(),
             });
         let __hx_super_0_0: hxrt::string::HxString = hxrt::string::HxString::from(message);
-        let __hx_super_0_1: Option<
-            crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>,
-        > = previous;
+        let __hx_super_0_1: crate::HxDynRef<
+            dyn crate::haxe_exception::ExceptionTrait + Send + Sync,
+        > = previous.clone();
         let __hx_super_0_2: hxrt::dynamic::Dynamic = native.clone();
         {
             let __tmp = __hx_super_0_0.clone();
@@ -72,7 +74,7 @@ impl ThreadPoolException {
 
     pub fn get_previous(
         self_: &crate::HxRefCell<ThreadPoolException>,
-    ) -> Option<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>> {
+    ) -> crate::HxDynRef<dyn crate::haxe_exception::ExceptionTrait + Send + Sync> {
         let __hx_this: crate::HxRef<crate::sys_thread_thread_pool_exception::ThreadPoolException> =
             self_.self_ref();
         return {
@@ -133,12 +135,12 @@ impl crate::haxe_exception::ExceptionTrait for crate::HxRefCell<ThreadPoolExcept
     }
     fn __hx_get_u1_previous(
         &self,
-    ) -> Option<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>> {
+    ) -> crate::HxDynRef<dyn crate::haxe_exception::ExceptionTrait + Send + Sync> {
         self.borrow()._previous.clone()
     }
     fn __hx_set_u1_previous(
         &self,
-        v: Option<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>>,
+        v: crate::HxDynRef<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>,
     ) {
         self.borrow_mut()._previous = v;
     }
@@ -165,7 +167,7 @@ impl crate::haxe_exception::ExceptionTrait for crate::HxRefCell<ThreadPoolExcept
     }
     fn get_previous(
         &self,
-    ) -> Option<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>> {
+    ) -> crate::HxDynRef<dyn crate::haxe_exception::ExceptionTrait + Send + Sync> {
         ThreadPoolException::get_previous(self)
     }
     fn get_stack(&self) -> hxrt::array::Array<crate::haxe_stack_item::StackItem> {

@@ -99,9 +99,9 @@ fn main() {
             let x_2: Option<i32> = a.get(i as usize);
             if {
                 let x_3: i32 = {
-                    let __hx_opt = x_2.clone();
-                    match &__hx_opt {
-                        Some(__v) => __v.clone(),
+                    let __hx_opt = x_2;
+                    match __hx_opt {
+                        Some(__v) => __v,
                         None => {
                             hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
                         }

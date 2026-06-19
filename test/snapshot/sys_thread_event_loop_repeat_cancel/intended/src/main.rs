@@ -72,9 +72,9 @@ fn describe(t: crate::sys_thread_next_event_time::NextEventTime) -> hxrt::string
         crate::sys_thread_next_event_time::NextEventTime::AnyTime(__p) => {
             let _g: Option<f64> = __p;
             hxrt::string::HxString::from(if _g.is_none() {
-                hxrt::string::HxString::from("any")
+                hxrt::string::HxString::from(hxrt::string::HxString::from("any"))
             } else {
-                hxrt::string::HxString::from("any_at")
+                hxrt::string::HxString::from(hxrt::string::HxString::from("any_at"))
             })
         }
         crate::sys_thread_next_event_time::NextEventTime::At(__p) => {
@@ -107,9 +107,9 @@ fn main() {
                     )));
                     if seen.len() as i32 == 2 {
                         crate::sys_thread_event_loop::EventLoop::cancel(&*loop_, {
-                            let __hx_opt = (*h.borrow()).clone();
-                            match &__hx_opt {
-                                Some(__v) => __v.clone(),
+                            let __hx_opt = *h.borrow();
+                            match __hx_opt {
+                                Some(__v) => __v,
                                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
                                     "Null Access",
                                 ))),

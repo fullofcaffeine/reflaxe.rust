@@ -1,5 +1,5 @@
 pub fn directory(path: &str) -> String {
-    match path.rfind(|c| c == '/' || c == '\\') {
+    match path.rfind(['/', '\\']) {
         Some(index) => path[..index].to_string(),
         None => String::new(),
     }

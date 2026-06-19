@@ -133,6 +133,97 @@ pub fn parse_float(s: &str) -> f64 {
     s.parse::<f64>().unwrap_or(f64::NAN)
 }
 
+/// Haxe `Std.parseInt`.
+///
+/// Why
+/// - Rust's `str::parse::<i32>()` requires the whole string to be an integer.
+/// - Haxe parses a leading integer prefix, accepts leading whitespace/signs, supports `0x`/`0X`,
+///   and returns `null` rather than throwing when no prefix or an overflow is encountered.
+///
+/// What
+/// - Returns `Some(i32)` for the parsed prefix and `None` for Haxe `null`.
+/// - Stops at the first non-digit for decimal and the first non-hex digit for hexadecimal.
+///
+/// How
+/// - Accumulates into `i64` and checks the signed `i32` bound while parsing, so overflow is
+///   fail-closed instead of relying on wrapping casts.
+pub fn parse_int(s: &str) -> Option<i32> {
+    let s = s.trim_start();
+    if s.is_empty() {
+        return None;
+    }
+
+    let bytes = s.as_bytes();
+    let mut index = 0usize;
+    let mut negative = false;
+    match bytes[index] {
+        b'-' => {
+            negative = true;
+            index += 1;
+        }
+        b'+' => {
+            index += 1;
+        }
+        _ => {}
+    }
+
+    if index >= bytes.len() {
+        return None;
+    }
+
+    let radix = if index + 1 < bytes.len()
+        && bytes[index] == b'0'
+        && (bytes[index + 1] == b'x' || bytes[index + 1] == b'X')
+    {
+        index += 2;
+        16i64
+    } else {
+        10i64
+    };
+
+    let mut value = 0i64;
+    let mut saw_digit = false;
+    let limit = if negative {
+        i32::MAX as i64 + 1
+    } else {
+        i32::MAX as i64
+    };
+
+    while index < bytes.len() {
+        let digit = match bytes[index] {
+            b'0'..=b'9' => (bytes[index] - b'0') as i64,
+            b'a'..=b'f' if radix == 16 => (bytes[index] - b'a') as i64 + 10,
+            b'A'..=b'F' if radix == 16 => (bytes[index] - b'A') as i64 + 10,
+            _ => break,
+        };
+
+        if digit >= radix {
+            break;
+        }
+
+        saw_digit = true;
+        value = value * radix + digit;
+        if value > limit {
+            return None;
+        }
+        index += 1;
+    }
+
+    if !saw_digit {
+        return None;
+    }
+
+    if negative {
+        if value == i32::MAX as i64 + 1 {
+            Some(i32::MIN)
+        } else {
+            Some(-(value as i32))
+        }
+    } else {
+        Some(value as i32)
+    }
+}
+
 #[inline]
 pub fn len(s: &str) -> i32 {
     s.chars().count() as i32

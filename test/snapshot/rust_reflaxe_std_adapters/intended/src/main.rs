@@ -106,7 +106,7 @@ fn main() {
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "opt.round=",
-        option_label(round_option)
+        option_label(round_option.clone())
     ))));
     let portable_result: Result<i32, hxrt::string::HxString> = Result::Err(
         hxrt::string::HxString::from(hxrt::string::HxString::from("boom")),
@@ -116,6 +116,6 @@ fn main() {
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "res.round=",
-        result_label(round_result)
+        result_label(round_result.clone())
     ))));
 }

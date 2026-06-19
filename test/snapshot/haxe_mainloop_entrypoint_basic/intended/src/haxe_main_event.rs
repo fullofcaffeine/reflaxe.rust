@@ -37,9 +37,9 @@ impl MainEvent {
             } else {
                 crate::sys::Sys::time()
                     + ({
-                        let __hx_opt = t.clone();
-                        match &__hx_opt {
-                            Some(__v) => __v.clone(),
+                        let __hx_opt = t;
+                        match __hx_opt {
+                            Some(__v) => __v,
                             None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
                                 "Null Access",
                             ))),

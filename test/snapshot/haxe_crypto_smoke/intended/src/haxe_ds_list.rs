@@ -37,6 +37,9 @@ impl<T: Clone + Send + Sync> List<T> {
 
     pub fn iterator(self_: &crate::HxRefCell<List<T>>) -> hxrt::iter::Iter<T> {
         let __hx_this: crate::HxRef<crate::haxe_ds_list::List<T>> = self_.self_ref();
-        return hxrt::iter::Iter::from_vec(__hx_this.borrow().items.to_vec());
+        return crate::list_native::ListNative::iterator({
+            let __b = __hx_this.borrow();
+            __b.items.clone()
+        });
     }
 }

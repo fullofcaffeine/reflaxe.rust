@@ -53,6 +53,7 @@ Agent policy:
 - Keep stringly typed values at real boundaries only: JSON/protocol IO, CLI/env/filesystem inputs, metadata names, target syntax tokens, or upstream API compatibility points. Convert those values into typed structures immediately after the boundary and keep downstream code typed.
 - Use macros when they improve correctness or maintainability: deriving repetitive validators/bridges, centralizing typed target metadata, enforcing profile/runtime contracts, or preventing schema drift. Avoid clever macro machinery whose generated shape is hard to inspect, hard to test, or harder for haxe.rust to lower cleanly.
 - Adapt Rust/Codex-style architecture into Haxe idioms rather than mechanically mirroring Rust. Prefer Haxe abstractions that make invalid states unrepresentable while still giving the backend enough typed information to emit native Rust.
+- For any Haxe-to-target compiler or framework layer, target compatibility is the floor, not the Haxe API design ceiling. Target-shaped Haxe APIs are fine when they are intentional and documented for migration, native interop, predictable lowering, performance, ownership, borrowing, or escape-hatch use. Keep 1:1 Rust-shaped facades available where they help users reason about the emitted target, but default canonical APIs to Haxe's strengths: strong types, abstracts, macros, generated references, properties, completion, and compile-time diagnostics. Prefer semantic Haxe wrappers when they improve readability or safety without changing Rust behavior or hiding target costs.
 - Generated Rust quality is a first-class product requirement in every profile. Output should be readable, idiomatic, warning-clean, rustfmt-friendly, and close to hand-written Rust performance and runtime footprint wherever Haxe semantics permit. `hxrt` should remain lightweight and used only where semantics require runtime support.
 - If typeful, idiomatic Haxe produces poor, noisy, clone-heavy, stringly, or runtime-heavy Rust, treat that as a generic compiler/runtime gap. Fix the lowering, planner, runtime API, or printer with generic tests instead of teaching consumers to contort source code around compiler artifacts.
 
@@ -248,6 +249,7 @@ Agent policy:
 
 ## Testing + CI
 
+- CI health is a hard prerequisite for downstream consumer work such as the codex-hxrust sibling checkout. If CI is reported or observed failing, stop downstream feature work, inspect the failing run, fix the compiler/runtime/tests here first, commit and push the fix, and verify CI is passing or record an explicit equivalent green validation before resuming downstream work.
 - Run snapshots locally: `bash test/run-snapshots.sh`
 - Run upstream stdlib sweep locally:
   - Tier1 (default): `bash test/run-upstream-stdlib-sweep.sh` (or single-module: `--module haxe.Json`)

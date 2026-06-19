@@ -62,9 +62,9 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 
 fn verdict(value: bool) -> hxrt::string::HxString {
     return hxrt::string::HxString::from(if value {
-        hxrt::string::HxString::from("yes")
+        hxrt::string::HxString::from(hxrt::string::HxString::from("yes"))
     } else {
-        hxrt::string::HxString::from("no")
+        hxrt::string::HxString::from(hxrt::string::HxString::from("no"))
     });
 }
 

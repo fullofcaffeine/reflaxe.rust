@@ -40,6 +40,7 @@ mod haxe_stack_item;
 mod haxe_unserializer;
 mod haxe_unserializer_default_resolver;
 mod int32_tools;
+mod list_native;
 mod map_storage_tools_nullable;
 mod string_buf;
 mod string_tools;

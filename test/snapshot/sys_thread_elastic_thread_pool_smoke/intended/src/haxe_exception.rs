@@ -4,7 +4,7 @@ pub const __HX_TYPE_ID: u32 = 0xad5d98ceu32;
 
 pub struct Exception {
     _message: hxrt::string::HxString,
-    _previous: Option<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>>,
+    _previous: crate::HxDynRef<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>,
     _native: hxrt::dynamic::Dynamic,
     _stack: hxrt::array::Array<crate::haxe_stack_item::StackItem>,
 }
@@ -12,7 +12,7 @@ pub struct Exception {
 impl Exception {
     pub fn new(
         message: hxrt::string::HxString,
-        previous: Option<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>>,
+        previous: crate::HxDynRef<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>,
         native: hxrt::dynamic::Dynamic,
     ) -> crate::HxRef<crate::haxe_exception::Exception> {
         let self_: crate::HxRef<crate::haxe_exception::Exception> = crate::HxRef::new(Exception {
@@ -44,7 +44,7 @@ impl Exception {
 
     pub fn get_previous(
         self_: &crate::HxRefCell<Exception>,
-    ) -> Option<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>> {
+    ) -> crate::HxDynRef<dyn crate::haxe_exception::ExceptionTrait + Send + Sync> {
         let __hx_this: crate::HxRef<crate::haxe_exception::Exception> = self_.self_ref();
         return {
             let __b = __hx_this.borrow();
@@ -94,7 +94,7 @@ impl Exception {
         return {
             let __tmp = crate::haxe_exception::Exception::new(
                 hxrt::string::HxString::from(hxrt::string::HxString::from("Exception")),
-                None,
+                crate::HxDynRef::<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>::null(),
                 value.clone(),
             );
             let __up: crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync> =
@@ -118,10 +118,10 @@ pub trait ExceptionTrait: Send + Sync {
     fn __hx_set_u1_message(&self, v: hxrt::string::HxString);
     fn __hx_get_u1_previous(
         &self,
-    ) -> Option<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>>;
+    ) -> crate::HxDynRef<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>;
     fn __hx_set_u1_previous(
         &self,
-        v: Option<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>>,
+        v: crate::HxDynRef<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>,
     );
     fn __hx_get_u1_native(&self) -> hxrt::dynamic::Dynamic;
     fn __hx_set_u1_native(&self, v: hxrt::dynamic::Dynamic);
@@ -131,7 +131,7 @@ pub trait ExceptionTrait: Send + Sync {
     fn get_stack(&self) -> hxrt::array::Array<crate::haxe_stack_item::StackItem>;
     fn get_previous(
         &self,
-    ) -> Option<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>>;
+    ) -> crate::HxDynRef<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>;
     fn get_native(&self) -> hxrt::dynamic::Dynamic;
     fn unwrap(&self) -> hxrt::dynamic::Dynamic;
     fn to_string(&self) -> hxrt::string::HxString;
@@ -148,12 +148,12 @@ impl crate::haxe_exception::ExceptionTrait for crate::HxRefCell<Exception> {
     }
     fn __hx_get_u1_previous(
         &self,
-    ) -> Option<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>> {
+    ) -> crate::HxDynRef<dyn crate::haxe_exception::ExceptionTrait + Send + Sync> {
         self.borrow()._previous.clone()
     }
     fn __hx_set_u1_previous(
         &self,
-        v: Option<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>>,
+        v: crate::HxDynRef<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>,
     ) {
         self.borrow_mut()._previous = v;
     }
@@ -177,7 +177,7 @@ impl crate::haxe_exception::ExceptionTrait for crate::HxRefCell<Exception> {
     }
     fn get_previous(
         &self,
-    ) -> Option<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>> {
+    ) -> crate::HxDynRef<dyn crate::haxe_exception::ExceptionTrait + Send + Sync> {
         Exception::get_previous(self)
     }
     fn get_native(&self) -> hxrt::dynamic::Dynamic {

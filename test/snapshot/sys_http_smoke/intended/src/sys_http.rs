@@ -207,7 +207,7 @@ impl Http {
                     };
                 __up
             },
-            None,
+            crate::HxDynRef::<dyn crate::sys_net_socket::SocketTrait + Send + Sync>::null(),
             hxrt::string::HxString::null(),
         );
         if !*err.borrow() {
@@ -304,7 +304,7 @@ impl Http {
         self_: &crate::HxRefCell<Http>,
         post: bool,
         api: crate::HxRc<dyn crate::haxe_io_output::OutputTrait + Send + Sync>,
-        _sock: Option<crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync>>,
+        _sock: crate::HxDynRef<dyn crate::sys_net_socket::SocketTrait + Send + Sync>,
         method: hxrt::string::HxString,
     ) {
         let __hx_this: crate::HxRef<crate::sys_http::Http> = self_.self_ref();
@@ -657,13 +657,13 @@ impl Http {
                 );
             }
         }
-        if _sock.is_some() {
+        if !_sock.is_null() {
             crate::sys_http::Http::perform_request(
                 &*__hx_this,
                 {
-                    let __hx_opt = _sock.clone();
-                    match &__hx_opt {
-                        Some(__v) => __v.clone(),
+                    let __hx_dyn_ref = _sock.clone();
+                    match __hx_dyn_ref.as_arc_opt() {
+                        Some(__rc) => __rc.clone(),
                         None => {
                             hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
                         }
@@ -1613,18 +1613,26 @@ impl Http {
             Some(0),
         );
         let host_port: hxrt::string::HxString = hxrt::string::HxString::from(if slash >= 0 {
-            hxrt::string::HxString::from(hxrt::string::substr(u.as_str(), 0, Some(slash)))
+            hxrt::string::HxString::from(hxrt::string::HxString::from(hxrt::string::substr(
+                u.as_str(),
+                0,
+                Some(slash),
+            )))
         } else {
-            hxrt::string::HxString::from(hxrt::string::substr(
+            hxrt::string::HxString::from(hxrt::string::HxString::from(hxrt::string::substr(
                 u.as_str(),
                 0,
                 Some(hxrt::string::len(u.as_str())),
-            ))
+            )))
         });
         let path: hxrt::string::HxString = hxrt::string::HxString::from(if slash >= 0 {
-            hxrt::string::HxString::from(hxrt::string::substr(u.as_str(), slash, None))
+            hxrt::string::HxString::from(hxrt::string::HxString::from(hxrt::string::substr(
+                u.as_str(),
+                slash,
+                None,
+            )))
         } else {
-            hxrt::string::HxString::from("/")
+            hxrt::string::HxString::from(hxrt::string::HxString::from("/"))
         });
         if hxrt::string::len(host_port.as_str()) == 0 {
             return {
@@ -1771,7 +1779,7 @@ impl Http {
                     };
                 __up
             },
-            None,
+            crate::HxDynRef::<dyn crate::sys_net_socket::SocketTrait + Send + Sync>::null(),
             hxrt::string::HxString::null(),
         );
         return hxrt::string::HxString::from(

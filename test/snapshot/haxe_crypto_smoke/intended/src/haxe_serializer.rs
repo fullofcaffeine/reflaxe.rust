@@ -1007,8 +1007,8 @@ impl Serializer {
                                                     None => None,
                                                 }
                                             };
-                                            match &__hx_opt {
-                                                Some(__v) => __v.clone(),
+                                            match __hx_opt {
+                                                Some(__v) => __v,
                                                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
                                             }
                                         });
@@ -1023,8 +1023,8 @@ impl Serializer {
                                                     None => None,
                                                 }
                                             };
-                                            match &__hx_opt {
-                                                Some(__v) => __v.clone(),
+                                            match __hx_opt {
+                                                Some(__v) => __v,
                                                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
                                             }
                                         });
@@ -1039,8 +1039,8 @@ impl Serializer {
                                                     None => None,
                                                 }
                                             };
-                                            match &__hx_opt {
-                                                Some(__v) => __v.clone(),
+                                            match __hx_opt {
+                                                Some(__v) => __v,
                                                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
                                             }
                                         });
@@ -1055,8 +1055,8 @@ impl Serializer {
                                                     None => None,
                                                 }
                                             };
-                                            match &__hx_opt {
-                                                Some(__v) => __v.clone(),
+                                            match __hx_opt {
+                                                Some(__v) => __v,
                                                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
                                             }
                                         });
@@ -1085,8 +1085,8 @@ impl Serializer {
                                                     None => None,
                                                 }
                                             };
-                                            match &__hx_opt {
-                                                Some(__v) => __v.clone(),
+                                            match __hx_opt {
+                                                Some(__v) => __v,
                                                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
                                             }
                                         });
@@ -1101,8 +1101,8 @@ impl Serializer {
                                                     None => None,
                                                 }
                                             };
-                                            match &__hx_opt {
-                                                Some(__v) => __v.clone(),
+                                            match __hx_opt {
+                                                Some(__v) => __v,
                                                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
                                             }
                                         });
@@ -1117,8 +1117,8 @@ impl Serializer {
                                                     None => None,
                                                 }
                                             };
-                                            match &__hx_opt {
-                                                Some(__v) => __v.clone(),
+                                            match __hx_opt {
+                                                Some(__v) => __v,
                                                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
                                             }
                                         });
@@ -1142,8 +1142,8 @@ impl Serializer {
                                                         None => None,
                                                     }
                                                 };
-                                                match &__hx_opt {
-                                                    Some(__v) => __v.clone(),
+                                                match __hx_opt {
+                                                    Some(__v) => __v,
                                                     None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
                                                 }
                                             });
@@ -1158,8 +1158,8 @@ impl Serializer {
                                                         None => None,
                                                     }
                                                 };
-                                                match &__hx_opt {
-                                                    Some(__v) => __v.clone(),
+                                                match __hx_opt {
+                                                    Some(__v) => __v,
                                                     None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
                                                 }
                                             });

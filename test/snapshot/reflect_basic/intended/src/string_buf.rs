@@ -65,9 +65,13 @@ impl StringBuf {
                 "{}{}",
                 &__hx_this.borrow().b,
                 if len.is_none() {
-                    hxrt::string::HxString::from(hxrt::string::substr(s.as_str(), pos, None))
+                    hxrt::string::HxString::from(hxrt::string::HxString::from(
+                        hxrt::string::substr(s.as_str(), pos, None),
+                    ))
                 } else {
-                    hxrt::string::HxString::from(hxrt::string::substr(s.as_str(), pos, len))
+                    hxrt::string::HxString::from(hxrt::string::HxString::from(
+                        hxrt::string::substr(s.as_str(), pos, len),
+                    ))
                 }
             ));
             __hx_this.borrow_mut().b = hxrt::string::HxString::from(__tmp.clone());

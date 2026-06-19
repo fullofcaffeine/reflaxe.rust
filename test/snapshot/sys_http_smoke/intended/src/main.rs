@@ -300,19 +300,19 @@ fn join_header_values(
     values: hxrt::array::Array<hxrt::string::HxString>,
 ) -> hxrt::string::HxString {
     return hxrt::string::HxString::from(if values.is_null() {
-        hxrt::string::HxString::from("null")
+        hxrt::string::HxString::from(hxrt::string::HxString::from("null"))
     } else {
-        hxrt::string::HxString::from(values.join(hxrt::string::HxString::from(
-            hxrt::string::HxString::from("|"),
+        hxrt::string::HxString::from(hxrt::string::HxString::from(values.join(
+            hxrt::string::HxString::from(hxrt::string::HxString::from("|")),
         )))
     });
 }
 
 fn stringify_null(value: hxrt::string::HxString) -> hxrt::string::HxString {
     return hxrt::string::HxString::from(if value.is_null() {
-        hxrt::string::HxString::from("null")
+        hxrt::string::HxString::from(hxrt::string::HxString::from("null"))
     } else {
-        value
+        hxrt::string::HxString::from(value)
     });
 }
 

@@ -29,16 +29,7 @@ impl ElasticThreadPool {
                 thread_timeout: 0.0,
             });
         if max_threads_count < 1 {
-            hxrt::exception::throw(hxrt::dynamic::from_ref_with_type_id(
-                crate::sys_thread_thread_pool_exception::ThreadPoolException::new(
-                    hxrt::string::HxString::from(hxrt::string::HxString::from(
-                        "ElasticThreadPool needs maxThreadsCount to be at least 1.",
-                    )),
-                    None,
-                    hxrt::dynamic::Dynamic::null(),
-                ),
-                0x06e5ab1du32,
-            ));
+            hxrt::exception::throw(hxrt::dynamic::from_ref_with_type_id(crate::sys_thread_thread_pool_exception::ThreadPoolException::new(hxrt::string::HxString::from(hxrt::string::HxString::from("ElasticThreadPool needs maxThreadsCount to be at least 1.")), crate::HxDynRef::<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>::null(), hxrt::dynamic::Dynamic::null()), 0x06e5ab1du32));
         }
         {
             let __tmp = max_threads_count;
@@ -72,16 +63,7 @@ impl ElasticThreadPool {
             let __b = __hx_this.borrow();
             __b._is_shutdown
         } {
-            hxrt::exception::throw(hxrt::dynamic::from_ref_with_type_id(
-                crate::sys_thread_thread_pool_exception::ThreadPoolException::new(
-                    hxrt::string::HxString::from(hxrt::string::HxString::from(
-                        "Task is rejected. Thread pool is shut down.",
-                    )),
-                    None,
-                    hxrt::dynamic::Dynamic::null(),
-                ),
-                0x06e5ab1du32,
-            ));
+            hxrt::exception::throw(hxrt::dynamic::from_ref_with_type_id(crate::sys_thread_thread_pool_exception::ThreadPoolException::new(hxrt::string::HxString::from(hxrt::string::HxString::from("Task is rejected. Thread pool is shut down.")), crate::HxDynRef::<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>::null(), hxrt::dynamic::Dynamic::null()), 0x06e5ab1du32));
         }
         crate::sys_thread_mutex::Mutex::acquire(
             &*({

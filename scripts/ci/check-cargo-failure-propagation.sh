@@ -30,6 +30,8 @@ log_file="$tmp_root/haxe.log"
 set +e
 (
   cd "$tmp_root"
+  haxelib newrepo >/dev/null
+  haxelib dev reflaxe.rust "$root_dir" >/dev/null
   haxe compile.hxml
 ) >"$log_file" 2>&1
 code=$?

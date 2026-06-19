@@ -76,9 +76,9 @@ impl Input {
             };
         }
         let bufsize_2: i32 = {
-            let __hx_opt = bs.clone();
-            match &__hx_opt {
-                Some(__v) => __v.clone(),
+            let __hx_opt = bs;
+            match __hx_opt {
+                Some(__v) => __v,
                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
             }
         };

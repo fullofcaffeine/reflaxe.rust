@@ -94,6 +94,15 @@ impl<T> Clone for HxRef<T> {
     }
 }
 
+impl<T> PartialEq for HxRef<T> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.ptr_eq(other)
+    }
+}
+
+impl<T> Eq for HxRef<T> {}
+
 impl<T> Default for HxRef<T> {
     #[inline]
     fn default() -> Self {

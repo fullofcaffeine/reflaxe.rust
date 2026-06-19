@@ -72,9 +72,9 @@ fn describe(time: crate::sys_thread_next_event_time::NextEventTime) -> hxrt::str
         crate::sys_thread_next_event_time::NextEventTime::AnyTime(__p) => {
             let _g: Option<f64> = __p;
             hxrt::string::HxString::from(if _g.is_none() {
-                hxrt::string::HxString::from("any")
+                hxrt::string::HxString::from(hxrt::string::HxString::from("any"))
             } else {
-                hxrt::string::HxString::from("any_at")
+                hxrt::string::HxString::from(hxrt::string::HxString::from("any_at"))
             })
         }
         crate::sys_thread_next_event_time::NextEventTime::At(__p) => {

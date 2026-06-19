@@ -103,9 +103,9 @@ fn describe(value: crate::token_value::TokenValue) -> hxrt::string::HxString {
     let first: hxrt::string::HxString = hxrt::string::HxString::from(label(value.clone()));
     let second: hxrt::string::HxString =
         hxrt::string::HxString::from(if is_present(value.clone()) {
-            hxrt::string::HxString::from("present")
+            hxrt::string::HxString::from(hxrt::string::HxString::from("present"))
         } else {
-            hxrt::string::HxString::from("absent")
+            hxrt::string::HxString::from(hxrt::string::HxString::from("absent"))
         });
     return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
         "{}{}{}",
