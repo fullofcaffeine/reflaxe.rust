@@ -26,7 +26,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
 - Portable candidate missing from Tier2: `0`
 - Portable semantic-diff cases: `18`
 - Lane semantic-diff cases: `2`
-- Snapshot cases: `106`
+- Snapshot cases: `118`
 - Compile/inventory buckets: `2`
 - Targeted semantic/runtime buckets: `7`
 - Snapshot/smoke-only buckets: `6`
