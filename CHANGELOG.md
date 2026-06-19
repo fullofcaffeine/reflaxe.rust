@@ -1,3 +1,11 @@
+## [0.62.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.62.0...v0.62.1) (2026-06-19)
+
+
+### Bug Fixes
+
+* preserve diverging throws in value lowering ([09cce6b](https://github.com/fullofcaffeine/reflaxe.rust/commit/09cce6b924d2ce1409a35d9b5f9e35a4d9d0f4bc))
+* restore CI health for trait sockets and package smoke ([88b2867](https://github.com/fullofcaffeine/reflaxe.rust/commit/88b286757ea1d1ea0a3413c6860d8eaecd293af4))
+
 # [0.62.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.61.0...v0.62.0) (2026-03-05)
 
 
