@@ -7816,7 +7816,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var elseExpr = coerceExprToExpected(compileBranchExpr(eElse), eElse, e.t);
 					EIf(condExpr, thenExpr, elseExpr);
 				} else {
-					EIf(condExpr, compileBranchExpr(eThen), compileBranchExpr(eElse));
+					var thenExpr = coerceExprToExpected(compileBranchExpr(eThen), eThen, e.t);
+					var elseExpr = coerceExprToExpected(compileBranchExpr(eElse), eElse, e.t);
+					EIf(condExpr, thenExpr, elseExpr);
 				}
 
 			case TBlock(exprs):
@@ -9337,12 +9339,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var expectedRust = rustTypeToString(toRustType(expected, valueExpr.pos));
 		var actualRust = rustTypeToString(toRustType(valueExpr.t, valueExpr.pos));
 
-		// Numeric widening: Haxe allows `Int` values where `Float` is expected.
-		// Rust requires an explicit cast.
-		if (TypeHelper.isFloat(followType(expected)) && TypeHelper.isInt(followType(valueExpr.t))) {
-			return ECast(compiled, "f64");
-		}
-
 		var expectedIsDyn = mapsToRustDynamic(expected, valueExpr.pos);
 		var actualIsDyn = mapsToRustDynamic(valueExpr.t, valueExpr.pos);
 
@@ -9354,23 +9350,34 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// Semantics: `None` is a "Null Access" error (catchable via hxrt exception machinery).
 		var actualNullInner = nullOptionInnerType(valueExpr.t, valueExpr.pos);
 		if (!expectedIsDyn && actualNullInner != null) {
+			var innerIsCopy = isCopyType(actualNullInner);
 			// Avoid moving a reusable local `Option` by cloning it first.
-			var optExpr = if (isLocalExpr(valueExpr) && !isObviousTemporaryExpr(valueExpr)) {
+			var optExpr = if (!innerIsCopy && isLocalExpr(valueExpr) && !isObviousTemporaryExpr(valueExpr)) {
 				ECall(EField(compiled, "clone"), []);
 			} else {
 				compiled;
 			}
 
-			return EBlock({
+			var unwrapped = EBlock({
 				stmts: [RLet("__hx_opt", false, null, optExpr)],
-				tail: EMatch(EUnary("&", EPath("__hx_opt")), [
-					{pat: PTupleStruct("Some", [PBind("__v")]), expr: ECall(EField(EPath("__v"), "clone"), [])},
+				tail: EMatch(innerIsCopy ? EPath("__hx_opt") : EUnary("&", EPath("__hx_opt")), [
+					{pat: PTupleStruct("Some", [PBind("__v")]), expr: innerIsCopy ? EPath("__v") : ECall(EField(EPath("__v"), "clone"), [])},
 					{
 						pat: PPath("None"),
 						expr: isStringType(expected) ? (useNullableStringRepresentation() ? stringNullExpr() : nullAccessThrow()) : nullAccessThrow()
 					}
 				])
 			});
+			if (TypeHelper.isFloat(followType(expected)) && TypeHelper.isInt(followType(actualNullInner))) {
+				return ECast(unwrapped, "f64");
+			}
+			return unwrapped;
+		}
+
+		// Numeric widening: Haxe allows `Int` values where `Float` is expected.
+		// Rust requires an explicit cast.
+		if (TypeHelper.isFloat(followType(expected)) && TypeHelper.isInt(followType(valueExpr.t))) {
+			return ECast(compiled, "f64");
 		}
 
 		// String representation bridge (`String` <-> `HxString`) for nullable-string mode.
@@ -13538,6 +13545,17 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 
+		function compileNumericOperand(e:TypedExpr):RustExpr {
+			var inner = nullOptionInnerType(e.t, e.pos);
+			if (inner != null) {
+				var ft = followType(inner);
+				if (TypeHelper.isInt(ft) || TypeHelper.isFloat(ft)) {
+					return coerceExprToExpected(compileExpr(e), e, inner);
+				}
+			}
+			return compileExpr(e);
+		}
+
 		return switch (op) {
 			case OpAssign:
 				switch (e1.expr) {
@@ -13837,7 +13855,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var rhs = coerceExprToExpected(compileExpr(e2), e2, floatTy);
 						EBinary("+", lhs, rhs);
 					} else {
-						EBinary("+", compileExpr(e1), compileExpr(e2));
+						EBinary("+", compileNumericOperand(e1), compileNumericOperand(e2));
 					}
 				}
 
@@ -13848,7 +13866,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var rhs = coerceExprToExpected(compileExpr(e2), e2, floatTy);
 						EBinary("-", lhs, rhs);
 					} else {
-						EBinary("-", compileExpr(e1), compileExpr(e2));
+						EBinary("-", compileNumericOperand(e1), compileNumericOperand(e2));
 					}
 				}
 			case OpMult: {
@@ -13858,7 +13876,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var rhs = coerceExprToExpected(compileExpr(e2), e2, floatTy);
 						EBinary("*", lhs, rhs);
 					} else {
-						EBinary("*", compileExpr(e1), compileExpr(e2));
+						EBinary("*", compileNumericOperand(e1), compileNumericOperand(e2));
 					}
 				}
 			case OpDiv: {
@@ -13872,7 +13890,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var rhs = coerceExprToExpected(compileExpr(e2), e2, floatTy);
 						EBinary("/", lhs, rhs);
 					} else {
-						EBinary("/", compileExpr(e1), compileExpr(e2));
+						EBinary("/", compileNumericOperand(e1), compileNumericOperand(e2));
 					}
 				}
 			case OpMod: {
@@ -13882,16 +13900,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var rhs = coerceExprToExpected(compileExpr(e2), e2, floatTy);
 						EBinary("%", lhs, rhs);
 					} else {
-						EBinary("%", compileExpr(e1), compileExpr(e2));
+						EBinary("%", compileNumericOperand(e1), compileNumericOperand(e2));
 					}
 				}
 
 			// Bitwise ops (Int).
-			case OpAnd: EBinary("&", compileExpr(e1), compileExpr(e2));
-			case OpOr: EBinary("|", compileExpr(e1), compileExpr(e2));
-			case OpXor: EBinary("^", compileExpr(e1), compileExpr(e2));
-			case OpShl: EBinary("<<", compileExpr(e1), compileExpr(e2));
-			case OpShr: EBinary(">>", compileExpr(e1), compileExpr(e2));
+			case OpAnd: EBinary("&", compileNumericOperand(e1), compileNumericOperand(e2));
+			case OpOr: EBinary("|", compileNumericOperand(e1), compileNumericOperand(e2));
+			case OpXor: EBinary("^", compileNumericOperand(e1), compileNumericOperand(e2));
+			case OpShl: EBinary("<<", compileNumericOperand(e1), compileNumericOperand(e2));
+			case OpShr: EBinary(">>", compileNumericOperand(e1), compileNumericOperand(e2));
 			case OpUShr: {
 					// Unsigned shift-right (`>>>`) uses `u32` then casts back to `i32`.
 					// This matches Haxe's `Int` semantics for `>>>` (logical shift).

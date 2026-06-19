@@ -35,6 +35,25 @@ class Main {
 		return out + "\"";
 	}
 
+	static function parseHexByte(value:String):Int {
+		final parsed = Std.parseInt("0x" + value);
+		if (parsed == null) {
+			return -1;
+		}
+		return value.length == 2 ? parsed : Std.int(parsed / 257);
+	}
+
+	static function digitValue(value:String):Int {
+		final code = value.charCodeAt(0);
+		if (code == null) {
+			return -1;
+		}
+		if (code >= "0".code && code <= "9".code) {
+			return code - "0".code;
+		}
+		return -1;
+	}
+
 	static function main() {
 		var n:Null<Int> = null;
 		Sys.println(describe(n));
@@ -46,5 +65,9 @@ class Main {
 		Sys.println(notSeven(n));
 		Sys.println("scalar:" + n);
 		Sys.println(quote("a\n\"\\\t"));
+		Sys.println(parseHexByte("ff"));
+		Sys.println(parseHexByte("ffff"));
+		Sys.println(digitValue("7"));
+		Sys.println(digitValue(""));
 	}
 }

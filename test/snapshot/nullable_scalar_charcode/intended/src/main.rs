@@ -135,6 +135,62 @@ fn quote(value: hxrt::string::HxString) -> hxrt::string::HxString {
     return hxrt::string::HxString::from(hxrt::string::HxString::from(format!("{}{}", &out, "\"")));
 }
 
+fn parse_hex_byte(value: hxrt::string::HxString) -> i32 {
+    let parsed: Option<i32> = hxrt::string::parse_int(
+        hxrt::string::HxString::from(format!("{}{}", "0x", &value)).as_str(),
+    );
+    if parsed.is_none() {
+        return -1;
+    }
+    return if hxrt::string::len(value.as_str()) == 2 {
+        let __hx_opt = parsed;
+        match __hx_opt {
+            Some(__v) => __v,
+            None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
+        }
+    } else {
+        (({
+            let __hx_opt = parsed;
+            match __hx_opt {
+                Some(__v) => __v,
+                None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
+            }
+        }) as f64
+            / 257 as f64) as i32
+    };
+}
+
+fn digit_value(value: hxrt::string::HxString) -> i32 {
+    let code: Option<i32> = hxrt::string::char_code_at(value.as_str(), 0);
+    if code.is_none() {
+        return -1;
+    }
+    if ({
+        let __hx_opt = code;
+        let __hx_plain = 48;
+        match __hx_opt {
+            Some(__v) => __v >= __hx_plain,
+            None => false,
+        }
+    }) && ({
+        let __hx_opt = code;
+        let __hx_plain = 57;
+        match __hx_opt {
+            Some(__v) => __v <= __hx_plain,
+            None => false,
+        }
+    }) {
+        return ({
+            let __hx_opt = code;
+            match __hx_opt {
+                Some(__v) => __v,
+                None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
+            }
+        }) - 48;
+    }
+    return -1;
+}
+
 fn main() {
     let mut n: Option<i32> = None;
     crate::sys::Sys::println(hxrt::dynamic::from(describe(n)));
@@ -156,4 +212,16 @@ fn main() {
     crate::sys::Sys::println(hxrt::dynamic::from(quote(hxrt::string::HxString::from(
         hxrt::string::HxString::from("a\n\"\\\t"),
     ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(parse_hex_byte(
+        hxrt::string::HxString::from(hxrt::string::HxString::from("ff")),
+    )));
+    crate::sys::Sys::println(hxrt::dynamic::from(parse_hex_byte(
+        hxrt::string::HxString::from(hxrt::string::HxString::from("ffff")),
+    )));
+    crate::sys::Sys::println(hxrt::dynamic::from(digit_value(
+        hxrt::string::HxString::from(hxrt::string::HxString::from("7")),
+    )));
+    crate::sys::Sys::println(hxrt::dynamic::from(digit_value(
+        hxrt::string::HxString::from(hxrt::string::HxString::from("")),
+    )));
 }
