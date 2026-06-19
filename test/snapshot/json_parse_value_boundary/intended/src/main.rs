@@ -72,7 +72,7 @@ fn find_field(
     hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "missing field: ", &name
-    ))));
+    ))))
 }
 
 fn object_fields(

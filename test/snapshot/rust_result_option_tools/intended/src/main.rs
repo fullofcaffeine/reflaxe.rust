@@ -109,7 +109,7 @@ fn main() {
             }
         }
         Option::None => {
-            hxrt::exception::throw(hxrt::dynamic::from(String::from("expected a value")));
+            hxrt::exception::throw(hxrt::dynamic::from(String::from("expected a value")))
         }
     };
     println!("{}", hxrt::dynamic::from(u1));

@@ -5716,6 +5716,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function canUseAsTailExpr(e:TypedExpr, expectedTail:Null<Type>):Bool {
+		// A throwing expression is valid in any non-Void value position because the generated
+		// Rust call returns `!`. Keeping it as the tail preserves that diverging type; lowering
+		// it as a semicolon statement would turn enclosing blocks into `()`.
+		switch (unwrapMetaParen(e).expr) {
+			case TThrow(_):
+				return expectedTail != null && !TypeHelper.isVoid(expectedTail);
+			case _:
+		}
 		if (isStmtOnlyExpr(e))
 			return false;
 		if (!TypeHelper.isVoid(e.t))
@@ -8011,6 +8019,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 			case TCast(e1, _): {
 					var inner = compileExpr(e1);
+					if (rustExprAlwaysDiverges(inner))
+						return inner;
 					var fromT = followType(e1.t);
 					var toT = followType(e.t);
 					var fromIsDyn = mapsToRustDynamic(fromT, e1.pos);
@@ -8943,7 +8953,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return switch (expr.expr) {
 			case TBlock(_):
 				EBlock(compileFunctionBody(expr, expectedReturn));
-			case TReturn(_) | TBreak | TContinue | TThrow(_):
+			case TThrow(_):
+				compileExpr(expr);
+			case TReturn(_) | TBreak | TContinue:
 				EBlock(compileVoidBody(expr));
 			case _:
 				coerceExprToExpected(compileExpr(expr), expr, expectedReturn);
@@ -9383,6 +9395,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function coerceExprToExpected(compiled:RustExpr, valueExpr:TypedExpr, expected:Null<Type>):RustExpr {
 		if (expected == null)
+			return compiled;
+		if (rustExprAlwaysDiverges(compiled))
 			return compiled;
 
 		function nullAccessThrow():RustExpr {

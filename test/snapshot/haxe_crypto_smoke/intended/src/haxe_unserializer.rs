@@ -1603,7 +1603,7 @@ impl Unserializer {
                 __b.pos
             })
             .to_haxe_string()
-        ))));
+        ))))
     }
 
     fn init_codes() -> hxrt::array::Array<i32> {

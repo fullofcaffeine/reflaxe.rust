@@ -64,18 +64,46 @@ fn decode(v: i32) -> i32 {
     }
     hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
         "bad value",
-    )));
+    )))
+}
+
+fn label(v: i32) -> hxrt::string::HxString {
+    return hxrt::string::HxString::from(if v == 1 {
+        hxrt::string::HxString::from(hxrt::string::HxString::from("one"))
+    } else {
+        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
+            "bad label",
+        )));
+    });
 }
 
 fn main() {
     crate::sys::Sys::println(hxrt::dynamic::from(decode(0)));
+    crate::sys::Sys::println(hxrt::dynamic::from(label(1)));
     match hxrt::exception::catch_unwind(|| {
         crate::sys::Sys::println(hxrt::dynamic::from(decode(1)));
     }) {
         Ok(__hx_ok) => __hx_ok,
-        Err(__hx_ex) => {
-            let _ = __hx_ex;
-            crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from("caught")));
-        }
+        Err(__hx_ex) => match __hx_ex.downcast::<hxrt::string::HxString>() {
+            Ok(_) => {
+                crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(
+                    "caught",
+                )));
+            }
+            Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
+        },
+    };
+    match hxrt::exception::catch_unwind(|| {
+        crate::sys::Sys::println(hxrt::dynamic::from(label(2)));
+    }) {
+        Ok(__hx_ok) => __hx_ok,
+        Err(__hx_ex) => match __hx_ex.downcast::<hxrt::string::HxString>() {
+            Ok(_) => {
+                crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(
+                    "caught label",
+                )));
+            }
+            Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
+        },
     };
 }

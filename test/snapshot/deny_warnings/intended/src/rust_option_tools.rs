@@ -49,11 +49,9 @@ impl OptionTools {
                     v
                 }
             }
-            Option::None => {
-                hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
-                    "called Option.unwrap() on None",
-                )));
-            }
+            Option::None => hxrt::exception::throw(hxrt::dynamic::from(
+                hxrt::string::HxString::from("called Option.unwrap() on None"),
+            )),
         };
     }
 
@@ -66,9 +64,7 @@ impl OptionTools {
                     v
                 }
             }
-            Option::None => {
-                hxrt::exception::throw(hxrt::dynamic::from(message));
-            }
+            Option::None => hxrt::exception::throw(hxrt::dynamic::from(message)),
         };
     }
 
