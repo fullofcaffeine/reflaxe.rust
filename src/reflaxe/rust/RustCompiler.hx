@@ -8592,6 +8592,17 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		var scrutinee = compileMatchScrutinee(switchExpr);
+		function switchScrutineeUsesRustOption():Bool {
+			if (isNullOptionType(switchExpr.t, switchExpr.pos))
+				return true;
+			return switch (unwrapMetaParen(switchExpr).expr) {
+				case TLocal(v):
+					isNullOptionType(v.t, switchExpr.pos);
+				case _:
+					false;
+			}
+		}
+		var scrutineeIsRustOption = switchScrutineeUsesRustOption();
 		var arms:Array<RustMatchArm> = [];
 		var scrutineeLocalId:Null<Int> = switch (unwrapMetaParen(switchExpr).expr) {
 			case TLocal(v): v.id;
@@ -8642,6 +8653,37 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					PAlias(name, erasePatternBindings(inner));
 				case PWildcard | PPath(_) | PLitInt(_) | PLitBool(_) | PLitString(_):
 					pattern;
+			}
+		}
+
+		/**
+			Why
+			- Haxe `Null<T>` lowers to Rust `Option<T>` for types without an inline null sentinel.
+			- The typed AST may still present non-null switch cases as plain inner patterns after it has
+			  separated `case null` into an outer `is_none()` guard.
+			- Without this wrapper, `switch (maybeValue:Null<MyEnum>) case MyCtor(...)` emits a Rust
+			  `match Option<MyEnum> { MyEnum::MyCtor(...) => ... }`, which is a type mismatch.
+
+			What
+			- Wrap non-wildcard case patterns as `Some(<inner>)` when the scrutinee is represented as
+			  Rust `Option<T>`.
+			- Preserve wildcard/default behavior so missing/null values can still flow to the default arm
+			  when Haxe did not handle them earlier.
+
+			How
+			- Distribute over OR-patterns because Rust requires each alternative to have the same outer
+			  shape for an `Option<T>` scrutinee.
+		**/
+		function optionWrapNullableCasePattern(pattern:RustPattern):RustPattern {
+			if (!scrutineeIsRustOption)
+				return pattern;
+			return switch (pattern) {
+				case PWildcard:
+					pattern;
+				case POr(patterns):
+					POr([for (p in patterns) optionWrapNullableCasePattern(p)]);
+				case _:
+					PTupleStruct("Some", [pattern]);
 			}
 		}
 
@@ -8704,7 +8746,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				var p = compilePattern(v);
 				if (p == null)
 					return unsupported(c.expr, "switch pattern");
-				patterns.push(p);
+				patterns.push(optionWrapNullableCasePattern(p));
 			}
 
 			if (patterns.length == 0)
@@ -8733,6 +8775,17 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return unsupported(enumExpr, "enum switch");
 
 		var scrutinee = compileMatchScrutinee(enumExpr);
+		function enumSwitchScrutineeUsesRustOption():Bool {
+			if (isNullOptionType(enumExpr.t, enumExpr.pos))
+				return true;
+			return switch (unwrapMetaParen(enumExpr).expr) {
+				case TLocal(v):
+					isNullOptionType(v.t, enumExpr.pos);
+				case _:
+					false;
+			}
+		}
+		var scrutineeIsRustOption = enumSwitchScrutineeUsesRustOption();
 		var arms:Array<RustMatchArm> = [];
 		var matchedVariants = new Map<String, Bool>();
 		var scrutineeRustPathName:Null<String> = switch (unwrapMetaParen(enumExpr).expr) {
@@ -8783,6 +8836,30 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 
+		/**
+			Why
+			- Haxe enum switches may compile through `TEnumIndex` even when the matched value is a
+			  nullable local represented as Rust `Option<Enum>`.
+			- Rust then requires constructor arms to match `Some(Enum::Variant(...))`, not the bare
+			  `Enum::Variant(...)` pattern.
+
+			What / How
+			- Wrap concrete enum variant patterns with `Some(...)` for nullable scrutinees while leaving
+			  wildcard/default arms alone.
+		**/
+		function optionWrapNullableEnumIndexPattern(pattern:RustPattern):RustPattern {
+			if (!scrutineeIsRustOption)
+				return pattern;
+			return switch (pattern) {
+				case PWildcard:
+					pattern;
+				case POr(patterns):
+					POr([for (p in patterns) optionWrapNullableEnumIndexPattern(p)]);
+				case _:
+					PTupleStruct("Some", [pattern]);
+			}
+		}
+
 		function enumParamBindsForSingleVariant(ef:EnumField):Null<Map<String, String>> {
 			var scrutLocalId:Null<Int> = null;
 			switch (unwrapMetaParen(enumExpr).expr) {
@@ -8821,7 +8898,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					singleEf = ef;
 				matchedVariants.set(ef.name, true);
 				var pat = enumFieldToPattern(en, ef);
-				patterns.push(pat);
+				patterns.push(optionWrapNullableEnumIndexPattern(pat));
 			}
 
 			if (patterns.length == 0)
