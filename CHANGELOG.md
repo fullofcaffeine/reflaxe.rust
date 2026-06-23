@@ -1,3 +1,10 @@
+## [0.63.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.63.0...v0.63.1) (2026-06-23)
+
+
+### Bug Fixes
+
+* preserve file-backed nested modules ([a5eb79a](https://github.com/fullofcaffeine/reflaxe.rust/commit/a5eb79a6562bfc920f045464c2696bbf07f580dc))
+
 # [0.63.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.62.2...v0.63.0) (2026-06-23)
 
 
