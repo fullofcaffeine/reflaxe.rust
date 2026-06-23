@@ -1,3 +1,10 @@
+## [0.62.2](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.62.1...v0.62.2) (2026-06-23)
+
+
+### Bug Fixes
+
+* harden weekly evidence workflow ([b5557c3](https://github.com/fullofcaffeine/reflaxe.rust/commit/b5557c37651da6b95268b95866061e4b19000eae))
+
 ## [0.62.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.62.0...v0.62.1) (2026-06-19)
 
 
