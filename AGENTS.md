@@ -352,6 +352,9 @@ Agent policy:
     - Fallback test knob: set `REFLAXE_NO_RG=1` to force non-`rg` paths during local validation.
   - `scripts/ci/harness.sh` runs snapshots, metal boundary policy, upstream stdlib sweep, package smoke, template smoke, then compiles all non-CI example variants (`compile*.hxml`, excluding `*.ci.hxml`) and runs every CI variant present (`compile*.ci.hxml`, fallback `compile.hxml` when no CI file exists), including `cargo test` + `cargo run`.
   - `scripts/ci/windows-smoke.sh` runs on `windows-latest` and validates a Windows-safe subset (fmt/clippy + `hello_trace`/`sys_io` snapshots + `examples/sys_file_io` + `examples/sys_net_loopback`).
+  - Weekly CI evidence summary steps are `if: always()` and must tolerate missing evidence artifacts when an earlier harness stage fails before generating them.
+    Avoid escaped `\n` heredocs inside shell command substitutions in workflow YAML; use a normal literal-block heredoc or script file so GitHub's generated shell is valid Bash.
+    For long Cargo-heavy weekly jobs, keep Cargo network retries enabled and disable HTTP multiplexing in CI to reduce transient crates.io HTTP2 failures.
 
 ## Build (native)
 

@@ -15,6 +15,8 @@ permissions:
 env:
   NODE_VERSION: "20"
   HAXE_VERSION: "4.3.7"
+  CARGO_NET_RETRY: "5"
+  CARGO_HTTP_MULTIPLEXING: "false"
 
 jobs:
   local-equivalent:
@@ -119,7 +121,21 @@ jobs:
         run: |
           set -euo pipefail
           run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          semantic_counts="$(node - <<'NODE'\nconst fs = require('fs')\nconst report = JSON.parse(fs.readFileSync('.cache/weekly-evidence/semantic-confidence-summary.json', 'utf8'))\nconsole.log(`- Semantic confidence artifact: \\`semantic-confidence-summary\\``)\nconsole.log(`- Tier2 inventory: \\`${report.counts.tier2SweepModules}\\` modules; portable candidates covered: \\`${report.counts.portableCandidateCoveredInTier2}\\` / \\`${report.counts.portableCandidateImportableModules}\\``)\nconsole.log(`- Targeted semantic buckets: \\`${report.counts.bucketsByClass.targeted_semantic_parity}\\``)\nconsole.log(`- Snapshot/smoke-only buckets: \\`${report.counts.bucketsByClass.snapshot_or_smoke_only}\\``)\nconsole.log(`- Portable semantic-diff cases: \\`${report.counts.portableSemanticDiffCases}\\`; lane cases: \\`${report.counts.laneSemanticDiffCases}\\``)\nNODE\n)"
+          semantic_counts="$(node <<'NODE'
+          const fs = require('fs')
+          const summaryPath = '.cache/weekly-evidence/semantic-confidence-summary.json'
+          if (!fs.existsSync(summaryPath)) {
+            console.log('- Semantic confidence artifact: unavailable; evidence generation did not complete.')
+            process.exit(0)
+          }
+          const report = JSON.parse(fs.readFileSync(summaryPath, 'utf8'))
+          console.log('- Semantic confidence artifact: `semantic-confidence-summary`')
+          console.log(`- Tier2 inventory: \`${report.counts.tier2SweepModules}\` modules; portable candidates covered: \`${report.counts.portableCandidateCoveredInTier2}\` / \`${report.counts.portableCandidateImportableModules}\``)
+          console.log(`- Targeted semantic buckets: \`${report.counts.bucketsByClass.targeted_semantic_parity}\``)
+          console.log(`- Snapshot/smoke-only buckets: \`${report.counts.bucketsByClass.snapshot_or_smoke_only}\``)
+          console.log(`- Portable semantic-diff cases: \`${report.counts.portableSemanticDiffCases}\`; lane cases: \`${report.counts.laneSemanticDiffCases}\``)
+          NODE
+          )"
           {
             echo "## Weekly CI Evidence (Linux local equivalent)"
             echo "- Result: ${JOB_STATUS}"
