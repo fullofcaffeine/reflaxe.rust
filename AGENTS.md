@@ -171,6 +171,8 @@ Agent policy:
   - For std overrides that need complex backend-specific setup (for example DB driver connection builders),
     prefer moving Rust-heavy constructors into typed extern modules (`std/hxrt/**` + `@:rustExtraSrc`) rather than inline `untyped __rust__` in Haxe methods.
 - Rust module names must avoid keywords (e.g. class `Impl` becomes module `impl_`).
+- Nested module output migration: `-D rust_nested_modules` emits package-shaped Rust source paths and nested `mod` declarations, while preserving root flat alias modules for existing generated `crate::<flat_module>::...` references.
+  Treat those aliases as a compatibility bridge, not the final idiomatic shape; future path lowering should move generated references to canonical nested `crate::foo::bar::baz::Type` paths with focused snapshots.
 - Rust keyword escaping must include reserved keywords like `box` (Rust 2021); keep `RustNaming.KEYWORDS` / extra-src keyword checks in sync.
 - Generics: Rust rejects unused type params on structs; emit a `PhantomData` field (e.g. `__hx_phantom`) when a class has type params not referenced by any instance fields.
 - Constructors: lift leading `this.field = <arg>` assignments into the struct literal to avoid requiring `T: Default` for generic fields (and to reduce borrow-mut noise).

@@ -20,6 +20,11 @@ This page is a practical reference for the most relevant compiler defines.
   - Run `cargo fmt` after code generation (best effort).
 - `rust_deny_warnings`
   - Emit crate-level deny warnings for generated Rust.
+- `rust_nested_modules`
+  - Emit generated Haxe package/type modules under nested Rust source directories
+    (`foo.bar.Baz` -> `src/foo/bar/baz.rs`) instead of one flat `foo_bar_baz.rs` file.
+  - Root alias modules are also emitted for compatibility with current generated
+    `crate::<flat_module>::...` paths while canonical nested path lowering evolves.
 
 ## Contracts and semantics
 
