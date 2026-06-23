@@ -9,9 +9,7 @@ type HxRefCell<T> = hxrt::cell::HxCell<T>;
 type HxRef<T> = hxrt::cell::HxRef<T>;
 
 pub mod demo {
-    pub mod domain {
-        pub mod widget;
-    }
+    pub mod domain;
 }
 pub mod haxe {
     pub mod _call_stack {
@@ -19,6 +17,9 @@ pub mod haxe {
     }
     pub mod exception;
     pub mod stack_item;
+}
+pub mod demo_domain {
+    pub use crate::demo::domain::*;
 }
 pub mod demo_domain_widget {
     pub use crate::demo::domain::widget::*;
@@ -45,6 +46,7 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 }
 
 fn main() {
+    crate::demo_domain::Domain::touch();
     let widget: crate::HxRef<crate::demo_domain_widget::Widget> =
         crate::demo_domain_widget::Widget::new(41);
     crate::demo_domain_widget::Widget::bump(&*widget);
