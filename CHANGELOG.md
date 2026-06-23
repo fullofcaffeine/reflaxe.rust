@@ -1,3 +1,15 @@
+# [0.63.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.62.2...v0.63.0) (2026-06-23)
+
+
+### Bug Fixes
+
+* keep nested module guards green ([7634ead](https://github.com/fullofcaffeine/reflaxe.rust/commit/7634ead807e479ae96b8976ecb13215e81f2f010))
+
+
+### Features
+
+* add nested module output option ([deeb1a9](https://github.com/fullofcaffeine/reflaxe.rust/commit/deeb1a9192040549fe16cdfabb22c105de3421ca))
+
 ## [0.62.2](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.62.1...v0.62.2) (2026-06-23)
 
 
