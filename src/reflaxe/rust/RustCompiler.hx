@@ -148,12 +148,6 @@ private typedef FamilyStdPinReportSnapshot = {
 	var migrationMode:String;
 };
 
-private class RustModuleDeclTree {
-	public var children:Map<String, RustModuleDeclTree> = [];
-
-	public function new() {}
-}
-
 /**
  * RustCompiler
  *
@@ -15726,5 +15720,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case RPath(path): path;
 		}
 	}
+}
+
+private class RustModuleDeclTree {
+	public var children:Map<String, RustModuleDeclTree> = [];
+
+	public function new() {}
 }
 #end
