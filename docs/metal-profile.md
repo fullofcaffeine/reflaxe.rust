@@ -102,6 +102,27 @@ Why this is rejected:
 
 If you need larger Rust blocks, prefer typed `extern` APIs and/or `@:rustExtraSrc` modules.
 
+### Rust-native wall-clock time
+
+Use Haxe `Date` when you want Haxe stdlib date/calendar semantics. In portable code, `Date`
+remains the compatibility-first API and may use hxrt support to preserve that contract.
+
+Use `rust.SystemTime` and `rust.SystemTimeTools` when you are intentionally writing Rust-native
+metal code that needs `std::time::SystemTime` / `UNIX_EPOCH` behavior:
+
+```haxe
+import rust.SystemTime;
+import rust.SystemTimeTools;
+
+final now = SystemTime.now();
+final millis = SystemTimeTools.unixMillis(now);
+```
+
+`SystemTime` maps directly to Rust stdlib associated items such as
+`std::time::SystemTime::now()` and `std::time::SystemTime::UNIX_EPOCH`. `SystemTimeTools`
+contains small Haxe-side convenience helpers only; it does not require app-side raw `__rust__`,
+hxrt, or a crate-local Rust wrapper.
+
 ## Metal lanes in portable projects
 
 Portable projects can still lock specific modules to metal-clean rules with lane metadata.

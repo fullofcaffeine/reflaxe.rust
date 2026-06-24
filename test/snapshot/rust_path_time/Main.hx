@@ -2,6 +2,8 @@ import rust.DurationTools;
 import rust.InstantTools;
 import rust.OsStringTools;
 import rust.PathBufTools;
+import rust.SystemTime;
+import rust.SystemTimeTools;
 
 class Main {
 	static function main() {
@@ -19,9 +21,13 @@ class Main {
 		var d = DurationTools.fromMillis(25);
 		DurationTools.sleep(d);
 		var elapsedMs = InstantTools.elapsedMillis(started);
+		var wall = SystemTime.now();
+		var unixEpoch = SystemTime.UNIX_EPOCH;
+		var wallMs = SystemTimeTools.unixMillis(wall);
+		var epochMs = SystemTimeTools.unixMillis(unixEpoch);
 
 		// Keep values "used" so rustc doesn't optimize them away and trigger unused warnings.
-		if (osLossy != "" && elapsedMs >= 0.0) {
+		if (osLossy != "" && elapsedMs >= 0.0 && wallMs >= epochMs) {
 			switch (pushedName) {
 				case Some(name):
 					trace(name);

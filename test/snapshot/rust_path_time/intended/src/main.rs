@@ -35,6 +35,7 @@ mod int32_tools;
 mod map_storage_tools;
 mod os_string_tools;
 mod path_buf_tools;
+mod rust_system_time_tools;
 mod string_buf;
 mod string_tools;
 mod sys;
@@ -77,12 +78,54 @@ fn main() {
     let d: std::time::Duration = crate::duration_tools::DurationTools::fromMillis(25);
     crate::duration_tools::DurationTools::sleep(d);
     let elapsed_ms: f64 = crate::instant_tools::InstantTools::elapsedMillis(&started);
-    if os_lossy != String::from("") && elapsed_ms >= 0.0 {
+    let wall: std::time::SystemTime = std::time::SystemTime::now();
+    let unix_epoch: std::time::SystemTime = std::time::SystemTime::UNIX_EPOCH;
+    let wall_ms: f64 = {
+        let duration: std::time::Duration = {
+            let _g: Result<std::time::Duration, std::time::SystemTimeError> =
+                wall.duration_since(std::time::SystemTime::UNIX_EPOCH);
+            match _g {
+                Result::Ok(__p) => {
+                    let _g_2: std::time::Duration = __p;
+                    {
+                        let duration_2: std::time::Duration = _g_2;
+                        duration_2
+                    }
+                }
+                Result::Err(__p) => {
+                    let _ = __p;
+                    crate::duration_tools::DurationTools::fromMillis(0)
+                }
+            }
+        };
+        crate::duration_tools::DurationTools::asMillis(duration)
+    };
+    let epoch_ms: f64 = {
+        let duration_3: std::time::Duration = {
+            let _g_4: Result<std::time::Duration, std::time::SystemTimeError> =
+                unix_epoch.duration_since(std::time::SystemTime::UNIX_EPOCH);
+            match _g_4 {
+                Result::Ok(__p) => {
+                    let _g_5: std::time::Duration = __p;
+                    {
+                        let duration_4: std::time::Duration = _g_5;
+                        duration_4
+                    }
+                }
+                Result::Err(__p) => {
+                    let _ = __p;
+                    crate::duration_tools::DurationTools::fromMillis(0)
+                }
+            }
+        };
+        crate::duration_tools::DurationTools::asMillis(duration_3)
+    };
+    if os_lossy != String::from("") && elapsed_ms >= 0.0 && wall_ms >= epoch_ms {
         match pushed_name {
             Option::Some(__p) => {
-                let _g: String = __p;
+                let _g_7: String = __p;
                 {
-                    let name: String = _g;
+                    let name: String = _g_7;
                     println!("{}", hxrt::dynamic::from(name));
                 }
             }

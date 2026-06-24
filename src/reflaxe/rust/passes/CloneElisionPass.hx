@@ -98,9 +98,14 @@ class CloneElisionPass implements RustPass {
 		} else {
 			elideLastUseCallArgClones(stmts, tail);
 		}
+		var rewrittenTail = if (disableLastUseElision || tail == null) {
+			tail;
+		} else {
+			rewriteTailCloneArgs(tail, rewrittenStmts);
+		}
 		return {
 			stmts: rewrittenStmts,
-			tail: tail
+			tail: rewrittenTail
 		};
 	}
 
@@ -252,6 +257,22 @@ class CloneElisionPass implements RustPass {
 				return "multiple_uses_in_expr";
 			if (hasPathUseAfter(stmts, tail, index, name))
 				return "path_used_after_stmt";
+			return null;
+		}
+		return rewriteLastUseCloneSites(expr, localName -> localMoveSkipReason(localName, expr));
+	}
+
+	function rewriteTailCloneArgs(expr:RustExpr, stmts:Array<RustStmt>):RustExpr {
+		var movableLocals = collectMovableLocalsBeforeIndex(stmts, stmts.length);
+		function localMoveSkipReason(name:String, ownerExpr:RustExpr):Null<String> {
+			if (!movableLocals.exists(name))
+				return "missing_local_binding";
+			if (!movableLocals.get(name))
+				return "non_movable_or_reference_typed";
+			if (!isSimpleLocalPath(name))
+				return "non_simple_local_path";
+			if (countPathUsesInExpr(ownerExpr, name) != 1)
+				return "multiple_uses_in_expr";
 			return null;
 		}
 		return rewriteLastUseCloneSites(expr, localName -> localMoveSkipReason(localName, expr));
