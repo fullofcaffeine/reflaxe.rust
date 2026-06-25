@@ -78,7 +78,7 @@ impl MainLoop {
             };
         }
         {
-            let __tmp = head.clone();
+            let __tmp = head;
             e.borrow_mut().next = __tmp.clone();
             __tmp
         };
@@ -234,7 +234,7 @@ impl MainLoop {
             __tmp
         };
         {
-            let __tmp = list.clone();
+            let __tmp = list;
             crate::haxe_main_loop::__hx_static_set_pending(__tmp.clone());
             __tmp
         };

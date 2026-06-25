@@ -213,7 +213,7 @@ fn run_request(
                     .borrow()
                     .get::<crate::HxRef<crate::sys_http::Http>>("http"),
             );
-            __b.set("capture", capture.clone());
+            __b.set("capture", capture);
             __b.set("responseData", response_data.borrow().clone());
         };
         __o

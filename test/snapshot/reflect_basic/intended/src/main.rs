@@ -120,7 +120,7 @@ fn main() {
         hxrt::dynamic::field_set(&__obj, "n", __val);
     };
     println!("{}", {
-        let __obj = parsed.clone();
+        let __obj = parsed;
         hxrt::dynamic::field_get(&__obj, "n")
     });
 }

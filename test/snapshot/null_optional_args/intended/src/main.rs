@@ -152,7 +152,7 @@ fn main() {
         let mut n_2: i32 = 0;
         {
             let mut _g_current_3: i32 = 0;
-            let _g_array_3: hxrt::array::Array<i32> = a.clone();
+            let _g_array_3: hxrt::array::Array<i32> = a;
             while _g_current_3 < (_g_array_3.len() as i32) {
                 let x_2: i32 = _g_array_3.get_unchecked(
                     ({

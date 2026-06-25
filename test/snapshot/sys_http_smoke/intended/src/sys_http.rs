@@ -296,7 +296,7 @@ impl Http {
         return if single.is_null() {
             hxrt::array::Array::<hxrt::string::HxString>::null()
         } else {
-            hxrt::array::Array::<hxrt::string::HxString>::from_vec(vec![single.clone()])
+            hxrt::array::Array::<hxrt::string::HxString>::from_vec(vec![single])
         };
     }
 
@@ -1315,8 +1315,8 @@ impl Http {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("name", name.clone());
-                __b.set("value", value.clone());
+                __b.set("name", name);
+                __b.set("value", value);
             };
             __o
         });
@@ -1399,8 +1399,8 @@ impl Http {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("name", name.clone());
-                __b.set("value", value.clone());
+                __b.set("name", name);
+                __b.set("value", value);
             };
             __o
         });
@@ -1698,7 +1698,7 @@ impl Http {
             {
                 let mut __b = __o.borrow_mut();
                 __b.set("secure", secure);
-                __b.set("host", host.clone());
+                __b.set("host", host);
                 __b.set("port", port);
                 __b.set("path", path);
             };

@@ -138,7 +138,7 @@ fn main() {
     println!(
         "{}",
         hxrt::dynamic::from({
-            let __dyn = dyn_dog.clone();
+            let __dyn = dyn_dog;
             match __dyn.type_id() {
                 Some(__actual_type_id) => {
                     crate::__hx_is_subtype_type_id(__actual_type_id, 0xccc789a2u32)
@@ -187,7 +187,7 @@ fn main() {
     println!(
         "{}",
         hxrt::dynamic::from({
-            let __dyn = dyn_pet.clone();
+            let __dyn = dyn_pet;
             match __dyn.type_id() {
                 Some(__actual_type_id) => {
                     crate::__hx_is_subtype_type_id(__actual_type_id, 0xccc789a2u32)
@@ -237,7 +237,7 @@ fn main() {
     println!(
         "{}",
         hxrt::dynamic::from({
-            let __dyn = dyn_friendly.clone();
+            let __dyn = dyn_friendly;
             match __dyn.type_id() {
                 Some(__actual_type_id) => {
                     crate::__hx_is_subtype_type_id(__actual_type_id, 0x111fa3c1u32)
@@ -261,7 +261,7 @@ fn main() {
     println!(
         "{}",
         hxrt::dynamic::from({
-            let __dyn = dyn_enum.clone();
+            let __dyn = dyn_enum;
             match __dyn.type_id() {
                 Some(__actual_type_id) => {
                     crate::__hx_is_subtype_type_id(__actual_type_id, 0x111fa3c1u32)

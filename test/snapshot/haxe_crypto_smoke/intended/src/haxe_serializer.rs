@@ -165,7 +165,7 @@ impl Serializer {
                 let __b = __hx_this.borrow();
                 __b.buf.clone()
             }),
-            hxrt::dynamic::from(s.clone()),
+            hxrt::dynamic::from(s),
         );
     }
 

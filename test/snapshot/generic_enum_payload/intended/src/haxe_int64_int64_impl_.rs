@@ -503,7 +503,7 @@ impl Int64Impl {
                 this1_5
             }
         } else {
-            divisor
+            divisor.clone()
         };
         let mut quotient: crate::HxRef<crate::haxe_int64_int64::Int64> = {
             let x_6: crate::HxRef<crate::haxe_int64_int64::Int64> =
@@ -913,8 +913,8 @@ impl Int64Impl {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("quotient", quotient.clone());
-                __b.set("modulus", modulus.clone());
+                __b.set("quotient", quotient);
+                __b.set("modulus", modulus);
             };
             __o
         };

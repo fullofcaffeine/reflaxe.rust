@@ -89,7 +89,7 @@ fn main() {
         let vr_2: &Vec<i32> = &v;
         {
             let o: Option<&i32> = crate::vec_tools::VecTools::getRef(vr_2, 0);
-            match o.clone() {
+            match o {
                 Option::Some(__p) => {
                     let _ = __p;
                     true
@@ -159,7 +159,7 @@ fn main() {
         "{}",
         hxrt::dynamic::from({
             let o_2: Option<String> = crate::path_buf_tools::PathBufTools::fileName(&p2);
-            match o_2.clone() {
+            match o_2 {
                 Option::Some(__p) => {
                     let _ = __p;
                     true
@@ -205,7 +205,7 @@ fn main() {
                     }
                 }
             };
-            match r_2.clone() {
+            match r_2 {
                 Result::Ok(__p) => {
                     let _ = __p;
                     true

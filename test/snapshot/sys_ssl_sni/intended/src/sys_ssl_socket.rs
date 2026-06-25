@@ -486,7 +486,7 @@ impl Socket {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("host", host.clone());
+                __b.set("host", host);
                 __b.set(
                     "port",
                     crate::socket_native::peer_port(
@@ -520,7 +520,7 @@ impl Socket {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("host", host.clone());
+                __b.set("host", host);
                 __b.set(
                     "port",
                     crate::socket_native::host_port(

@@ -121,7 +121,7 @@ fn main() {
     let final_value: crate::HxRef<crate::counter::Counter> = hxrt::concurrent::rw_lock_read(&lock);
     let empty: bool = {
         let _g: Option<String> = hxrt::concurrent::channel_try_recv(&channel);
-        match _g.clone() {
+        match _g {
             Option::Some(__p) => {
                 let _ = __p;
                 false

@@ -66,7 +66,7 @@ fn main() {
     let ys: hxrt::array::Array<i32> = {
         let _g: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::new();
         {
-            let _g2: hxrt::array::Array<i32> = xs.clone();
+            let _g2: hxrt::array::Array<i32> = xs;
             for v in _g2.iter_borrowed() {
                 _g.push(v * 2);
             }
@@ -79,7 +79,7 @@ fn main() {
     let zs: hxrt::array::Array<i32> = {
         let _g_2: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::new();
         {
-            let _g2_2: hxrt::array::Array<i32> = ys.clone();
+            let _g2_2: hxrt::array::Array<i32> = ys;
             for v_2 in _g2_2.iter_borrowed() {
                 if v_2 > 2 {
                     _g_2.push(v_2);
@@ -92,7 +92,7 @@ fn main() {
         hxrt::string::HxString::from(hxrt::string::HxString::from(",")),
     ))));
     let mut it_current: i32 = 0;
-    let it_array: hxrt::array::Array<i32> = zs.clone();
+    let it_array: hxrt::array::Array<i32> = zs;
     let mut sum: i32 = 0;
     while it_current < (it_array.len() as i32) {
         sum = sum

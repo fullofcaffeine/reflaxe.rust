@@ -147,8 +147,8 @@ impl HttpBase {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("name", name.clone());
-                __b.set("value", value.clone());
+                __b.set("name", name);
+                __b.set("value", value);
             };
             __o
         });
@@ -231,8 +231,8 @@ impl HttpBase {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("name", name.clone());
-                __b.set("value", value.clone());
+                __b.set("name", name);
+                __b.set("value", value);
             };
             __o
         });

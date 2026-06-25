@@ -339,7 +339,7 @@ impl StringTools {
         if l <= hxrt::string::len(s.as_str()) {
             return s;
         }
-        let mut out: String = s.clone();
+        let mut out: String = s;
         while hxrt::string::len(out.as_str()) < l {
             {
                 let __tmp = c.clone();

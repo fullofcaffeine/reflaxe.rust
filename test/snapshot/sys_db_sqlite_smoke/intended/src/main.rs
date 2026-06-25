@@ -78,7 +78,7 @@ fn decode_todo(row: hxrt::dynamic::Dynamic) -> crate::HxRef<hxrt::anon::Anon> {
         hxrt::dynamic::field_get(&__obj, "name")
     };
     let done: hxrt::dynamic::Dynamic = {
-        let __obj = row.clone();
+        let __obj = row;
         hxrt::dynamic::field_get(&__obj, "done")
     };
     if !({

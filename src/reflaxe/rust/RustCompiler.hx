@@ -195,6 +195,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	// This stores the Rust argument idents (already snake_cased/uniqued).
 	var currentMutatedArgs:Null<Array<String>> = null;
 	var currentLocalReadCounts:Null<Map<Int, Int>> = null;
+	var currentLocalRemainingReads:Null<Map<Int, Int>> = null;
+	var currentClosureCapturedReusableLocals:Null<Map<Int, Bool>> = null;
 	// Local ids that must be lowered through shared-cell storage (`crate::HxRef<T>`)
 	// because they are mutated and captured by nested function values.
 	var currentCapturedCellLocals:Null<Map<Int, Bool>> = null;
@@ -6510,7 +6512,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				// Statement-position switch: force void arms.
 				RExpr(compileSwitch(switchExpr, cases, edef, Context.getType("Void")), false);
 			case TWhile(cond, body, normalWhile): {
-					if (normalWhile) {
+					var out = if (normalWhile) {
 						// Rust lints `while true { ... }` in favor of `loop { ... }`.
 						// `deny_warnings` snapshot expects generated code to remain warning-free.
 						switch (unwrapMetaParen(cond).expr) {
@@ -6528,7 +6530,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							stmts.push(RSemi(b.tail));
 						stmts.push(RSemi(EIf(EUnary("!", condExpr), EBlock({stmts: [RBreak], tail: null}), null)));
 						RLoop({stmts: stmts, tail: null});
-					}
+					};
+					consumeLocalReadsLikeReadCounter(cond);
+					consumeLocalReadsLikeReadCounter(body);
+					out;
 				}
 			case TFor(v, iterable, body): {
 					function iterCloned(x:TypedExpr):RustExpr {
@@ -6564,7 +6569,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								compileExpr(iterable);
 							}
 					};
-					RFor(rustLocalDeclIdent(v), it, compileVoidBody(body));
+					var out = RFor(rustLocalDeclIdent(v), it, compileVoidBody(body));
+					consumeLocalReadsLikeReadCounter(body);
+					out;
 				}
 			case TBreak:
 				RBreak;
@@ -6692,6 +6699,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function withFunctionContext<T>(bodyExpr:TypedExpr, argNames:Array<String>, expectedReturn:Null<Type>, fn:() -> T, isAsync:Bool = false):T {
 		var prevMutated = currentMutatedLocals;
 		var prevReadCounts = currentLocalReadCounts;
+		var prevRemainingReads = currentLocalRemainingReads;
 		var prevCapturedCellLocals = currentCapturedCellLocals;
 		var prevArgNames = currentArgNames;
 		var prevLocalNames = currentLocalNames;
@@ -6705,6 +6713,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		currentMutatedLocals = collectMutatedLocals(bodyExpr);
 		currentLocalReadCounts = collectLocalReadCounts(bodyExpr);
+		currentLocalRemainingReads = copyIntMap(currentLocalReadCounts);
 		var capturedInThisFn = collectCapturedMutatedLocals(bodyExpr);
 		var mergedCaptured:Map<Int, Bool> = [];
 		if (prevCapturedCellLocals != null) {
@@ -6773,6 +6782,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		currentMutatedLocals = prevMutated;
 		currentLocalReadCounts = prevReadCounts;
+		currentLocalRemainingReads = prevRemainingReads;
 		currentCapturedCellLocals = prevCapturedCellLocals;
 		currentArgNames = prevArgNames;
 		currentLocalNames = prevLocalNames;
@@ -7678,6 +7688,81 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return counts;
 	}
 
+	function copyIntMap(input:Null<Map<Int, Int>>):Map<Int, Int> {
+		var out:Map<Int, Int> = [];
+		if (input != null) {
+			for (key in input.keys()) {
+				out.set(key, input.get(key));
+			}
+		}
+		return out;
+	}
+
+	function consumeLocalRead(v:TVar):Void {
+		if (v == null || currentLocalRemainingReads == null || !currentLocalRemainingReads.exists(v.id))
+			return;
+		var remaining = currentLocalRemainingReads.get(v.id) - 1;
+		currentLocalRemainingReads.set(v.id, remaining < 0 ? 0 : remaining);
+	}
+
+	function consumeLocalReadsLikeReadCounter(root:TypedExpr):Void {
+		function scan(e:TypedExpr):Void {
+			switch (e.expr) {
+				case TWhile(cond, body, _):
+					{
+						scan(cond);
+						scan(cond);
+						scan(body);
+						scan(body);
+						return;
+					}
+				case TFor(_, it, expr):
+					{
+						scan(it);
+						scan(expr);
+						scan(expr);
+						return;
+					}
+				case TBinop(OpAssign, lhs, rhs):
+					{
+						switch (unwrapMetaParen(lhs).expr) {
+							case TLocal(_):
+							case _:
+								scan(lhs);
+						}
+						scan(rhs);
+						return;
+					}
+				case TBinop(OpAssignOp(_), lhs, rhs):
+					{
+						scan(lhs);
+						scan(rhs);
+						return;
+					}
+				case TUnop(op, _, inner) if (op == OpIncrement || op == OpDecrement):
+					{
+						scan(inner);
+						return;
+					}
+				case TLocal(v):
+					consumeLocalRead(v);
+				case _:
+			}
+			TypedExprTools.iter(e, scan);
+		}
+		scan(root);
+	}
+
+	function remainingLocalReads(localId:Int):Null<Int> {
+		if (currentLocalRemainingReads == null || !currentLocalRemainingReads.exists(localId))
+			return null;
+		return currentLocalRemainingReads.get(localId);
+	}
+
+	inline function isClosureCapturedReusableLocalId(localId:Int):Bool {
+		return currentClosureCapturedReusableLocals != null && currentClosureCapturedReusableLocals.exists(localId);
+	}
+
 	function compileExpr(e:TypedExpr):RustExpr {
 		// Target code injection: __rust__("...{0}...", arg0, ...)
 		//
@@ -7951,6 +8036,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 
 			case TLocal(v):
+				consumeLocalRead(v);
 				if (inlineLocalSubstitutions != null && inlineLocalSubstitutions.exists(v.name)) {
 					return inlineLocalSubstitutions.get(v.name);
 				}
@@ -8133,10 +8219,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					}
 					var capturedOuterLocals = collectFunctionLiteralCapturedOuterLocals(fn);
 					var capturedCloneLocals:Array<{name:String}> = [];
+					var capturedReusableLocals:Map<Int, Bool> = [];
 					for (v in capturedOuterLocals) {
 						var needsReusableClone = !isCopyType(v.t) && isHaxeReusableValueType(v.t);
 						if (!isCapturedCellLocal(v) && !needsReusableClone)
 							continue;
+						capturedReusableLocals.set(v.id, true);
 						capturedCloneLocals.push({
 							name: rustLocalRefIdent(v)
 						});
@@ -8152,7 +8240,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							var rustName = rustArgIdent(baseName);
 							argParts.push(rustName + ": " + rustTypeToString(toRustType(a.v.t, e.pos)));
 						}
+						var prevClosureCapturedReusableLocals = currentClosureCapturedReusableLocals;
+						currentClosureCapturedReusableLocals = capturedReusableLocals;
 						body = compileFunctionBody(fn.expr, fn.t, true);
+						currentClosureCapturedReusableLocals = prevClosureCapturedReusableLocals;
 					});
 
 					var argTys = [for (a in fn.args) rustTypeToString(toRustType(a.v.t, e.pos))];
@@ -9537,9 +9628,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 
-		// If the local is used only once in this function body, prefer moving it to avoid redundant clones.
 		var localId = unwrapToLocalId(valueExpr);
-		if (localId != null && currentLocalReadCounts != null && currentLocalReadCounts.exists(localId)) {
+		var remaining = localId == null ? null : remainingLocalReads(localId);
+		if (localId != null && isClosureCapturedReusableLocalId(localId)) {
+			// `Fn` closures can be called repeatedly, so a captured reusable value cannot be
+			// consumed even when this is the last syntactic read in the closure body.
+		} else if (remaining != null) {
+			if (remaining <= 0)
+				return expr;
+		} else if (localId != null && currentLocalReadCounts != null && currentLocalReadCounts.exists(localId)) {
+			// If read-position tracking is unavailable, fall back to the conservative function-level count.
 			var reads = currentLocalReadCounts.get(localId);
 			if (reads <= 1)
 				return expr;
@@ -9547,6 +9645,45 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		if (isLocalExpr(valueExpr) && !isObviousTemporaryExpr(valueExpr) && isHaxeReusableValueType(valueExpr.t)) {
 			return ECall(EField(expr, "clone"), []);
+		}
+		return expr;
+	}
+
+	function maybeCloneForBranchReuseValue(expr:RustExpr, valueExpr:TypedExpr):RustExpr {
+		if (inCodeInjectionArg)
+			return expr;
+		if (isCopyType(valueExpr.t))
+			return expr;
+		if (isStringLiteralExpr(valueExpr) || isArrayLiteralExpr(valueExpr) || isNewExpr(valueExpr))
+			return expr;
+		if (isLocalExpr(valueExpr) && !isObviousTemporaryExpr(valueExpr) && isHaxeReusableValueType(valueExpr.t)) {
+			function unwrapToLocalId(e:TypedExpr):Null<Int> {
+				var cur = unwrapMetaParen(e);
+				while (true) {
+					switch (cur.expr) {
+						case TCast(inner, _):
+							cur = unwrapMetaParen(inner);
+							continue;
+						case _:
+					}
+					break;
+				}
+				return switch (cur.expr) {
+					case TLocal(v): v.id;
+					case _: null;
+				}
+			}
+			var localId = unwrapToLocalId(valueExpr);
+			var remaining = localId == null ? null : remainingLocalReads(localId);
+			if (localId != null && isClosureCapturedReusableLocalId(localId))
+				return ECall(EField(expr, "clone"), []);
+			if (remaining != null && remaining > 0)
+				return ECall(EField(expr, "clone"), []);
+			if (remaining == null && localId != null && currentLocalReadCounts != null && currentLocalReadCounts.exists(localId)) {
+				var reads = currentLocalReadCounts.get(localId);
+				if (reads > 1)
+					return ECall(EField(expr, "clone"), []);
+			}
 		}
 		return expr;
 	}
@@ -10225,7 +10362,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case TReturn(_) | TBreak | TContinue | TThrow(_):
 				EBlock(compileVoidBody(e));
 			case _:
-				compileExpr(e);
+				// Conditional branches can move a reusable Haxe value even though later Haxe code
+				// still expects the original binding to be usable. Reuse-count cloning here mirrors
+				// call/local assignment lowering and prevents branch-only fallback moves.
+				maybeCloneForBranchReuseValue(compileExpr(e), e);
 		}
 	}
 

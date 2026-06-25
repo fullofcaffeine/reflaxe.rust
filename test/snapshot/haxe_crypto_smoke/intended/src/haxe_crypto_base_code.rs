@@ -29,7 +29,7 @@ impl BaseCode {
             )));
         }
         {
-            let __tmp = base.clone();
+            let __tmp = base;
             self_.borrow_mut().base = __tmp.clone();
             __tmp
         };

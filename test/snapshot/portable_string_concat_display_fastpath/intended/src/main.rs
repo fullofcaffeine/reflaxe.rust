@@ -65,6 +65,6 @@ fn main() {
         format!("{}{}{}{}", "json-", run.to_string(), "-", inner.to_string()),
     ));
     if label == hxrt::string::HxString::from("__never__") {
-        crate::sys::Sys::println(hxrt::dynamic::from(label.clone()));
+        crate::sys::Sys::println(hxrt::dynamic::from(label));
     }
 }

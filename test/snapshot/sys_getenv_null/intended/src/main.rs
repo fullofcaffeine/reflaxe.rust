@@ -69,7 +69,7 @@ fn main() {
     crate::sys::Sys::println(if missing.is_null() {
         hxrt::dynamic::from(hxrt::string::HxString::from("<null>"))
     } else {
-        hxrt::dynamic::from(missing.clone())
+        hxrt::dynamic::from(missing)
     });
     crate::sys::Sys::put_env(
         hxrt::string::HxString::from(hxrt::string::HxString::from("__REFLAXE_RUST_PRESENT_ENV__")),
@@ -81,7 +81,7 @@ fn main() {
     crate::sys::Sys::println(if present.is_null() {
         hxrt::dynamic::from(hxrt::string::HxString::from("<null>"))
     } else {
-        hxrt::dynamic::from(present.clone())
+        hxrt::dynamic::from(present)
     });
     crate::sys::Sys::put_env(
         hxrt::string::HxString::from(hxrt::string::HxString::from("__REFLAXE_RUST_PRESENT_ENV__")),

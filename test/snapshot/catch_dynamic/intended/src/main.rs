@@ -86,7 +86,7 @@ fn main() {
                 hxrt::dynamic::field_get(&__obj, "kind")
             });
             println!("{}", {
-                let __obj = e.clone();
+                let __obj = e;
                 hxrt::dynamic::field_get(&__obj, "count")
             });
             2

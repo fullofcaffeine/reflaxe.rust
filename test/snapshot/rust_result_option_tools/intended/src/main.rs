@@ -74,7 +74,7 @@ fn main() {
                 }
                 Option::None => Option::None,
             };
-            match _g.clone() {
+            match _g {
                 Option::Some(__p) => {
                     let _g_3: i32 = __p;
                     {
@@ -89,7 +89,7 @@ fn main() {
                 Option::None => Option::None,
             }
         };
-        match o_2.clone() {
+        match o_2 {
             Option::Some(__p) => {
                 let _g_4: i32 = __p;
                 {
@@ -131,7 +131,7 @@ fn main() {
                 }
             }
         };
-        match _g_6.clone() {
+        match _g_6 {
             Result::Ok(__p) => {
                 let _g_9: i32 = __p;
                 {
@@ -169,7 +169,7 @@ fn main() {
                 }
             }
         };
-        match _g_11.clone() {
+        match _g_11 {
             Result::Ok(__p) => {
                 let _g_14: i32 = __p;
                 {

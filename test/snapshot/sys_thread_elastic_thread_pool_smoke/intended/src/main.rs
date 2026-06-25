@@ -153,7 +153,7 @@ fn main() {
         }
         {
             let done1_4: crate::HxRef<crate::sys_thread_lock::Lock> = done.clone();
-            let mutex1_4: crate::HxRef<crate::sys_thread_mutex::Mutex> = mutex.clone();
+            let mutex1_4: crate::HxRef<crate::sys_thread_mutex::Mutex> = mutex;
             crate::sys_thread_elastic_thread_pool::ElasticThreadPool::run(&*pool, {
                 let done1_4 = done1_4.clone();
                 let mutex1_4 = mutex1_4.clone();

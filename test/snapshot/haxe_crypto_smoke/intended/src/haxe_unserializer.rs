@@ -153,7 +153,7 @@ impl Unserializer {
             };
         }
         {
-            let __tmp = r.clone();
+            let __tmp = r;
             self_.borrow_mut().resolver = __tmp.clone();
             __tmp
         };
@@ -658,7 +658,7 @@ impl Unserializer {
                         self_.borrow_mut().pos = __tmp + 1;
                         __tmp
                     };
-                    return hxrt::dynamic::from_ref_with_type_id(h.clone(), 0xd7e07825u32);
+                    return hxrt::dynamic::from_ref_with_type_id(h, 0xd7e07825u32);
                 }
                 82 => {
                     let n: i32 = crate::haxe_unserializer::Unserializer::read_digits(&*__hx_this);
@@ -738,7 +738,7 @@ impl Unserializer {
                             ));
                         }
                     }
-                    return hxrt::dynamic::from_ref(a.clone());
+                    return hxrt::dynamic::from_ref(a);
                 }
                 98 => {
                     let h_2: crate::HxRef<
@@ -805,7 +805,7 @@ impl Unserializer {
                         self_.borrow_mut().pos = __tmp + 1;
                         __tmp
                     };
-                    return hxrt::dynamic::from_ref_with_type_id(h_2.clone(), 0x181f937bu32);
+                    return hxrt::dynamic::from_ref_with_type_id(h_2, 0x181f937bu32);
                 }
                 99 => {
                     let name_4: hxrt::string::HxString = {
@@ -860,7 +860,7 @@ impl Unserializer {
                         &*__hx_this,
                         o_2.clone(),
                     );
-                    return hxrt::dynamic::from_ref(o_2.clone());
+                    return hxrt::dynamic::from_ref(o_2);
                 }
                 100 => {
                     return hxrt::dynamic::from(
@@ -995,7 +995,7 @@ impl Unserializer {
                         self_.borrow_mut().pos = __tmp + 1;
                         __tmp
                     };
-                    return hxrt::dynamic::from_ref_with_type_id(l.clone(), 0xd0de220eu32);
+                    return hxrt::dynamic::from_ref_with_type_id(l, 0xd0de220eu32);
                 }
                 109 => {
                     return hxrt::dynamic::from(f64::NEG_INFINITY);
@@ -1020,7 +1020,7 @@ impl Unserializer {
                         &*__hx_this,
                         o_3.clone(),
                     );
-                    return hxrt::dynamic::from_ref(o_3.clone());
+                    return hxrt::dynamic::from_ref(o_3);
                 }
                 112 => {
                     return hxrt::dynamic::from(f64::INFINITY);
@@ -1082,7 +1082,7 @@ impl Unserializer {
                             "Invalid IntMap format",
                         )));
                     }
-                    return hxrt::dynamic::from_ref_with_type_id(h_3.clone(), 0x39e0cd5bu32);
+                    return hxrt::dynamic::from_ref_with_type_id(h_3, 0x39e0cd5bu32);
                 }
                 114 => {
                     let n_3: i32 = crate::haxe_unserializer::Unserializer::read_digits(&*__hx_this);
@@ -1265,7 +1265,7 @@ impl Unserializer {
                         __b.cache.clone()
                     })
                     .push(hxrt::dynamic::from_ref(bytes.clone()));
-                    return hxrt::dynamic::from_ref(bytes.clone());
+                    return hxrt::dynamic::from_ref(bytes);
                 }
                 116 => {
                     return hxrt::dynamic::from(true);
@@ -1424,7 +1424,7 @@ impl Unserializer {
                         d.clone(),
                         0x0d3c0cadu32,
                     ));
-                    return hxrt::dynamic::from_ref_with_type_id(d.clone(), 0x0d3c0cadu32);
+                    return hxrt::dynamic::from_ref_with_type_id(d, 0x0d3c0cadu32);
                 }
                 119 => {
                     let name_6: hxrt::string::HxString = {
