@@ -1,3 +1,10 @@
+# [0.64.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.63.1...v0.64.0) (2026-06-25)
+
+
+### Features
+
+* add Rust system time facade ([6d544cf](https://github.com/fullofcaffeine/reflaxe.rust/commit/6d544cf506e668bc56b66c7d2cbe0abf5094667e))
+
 ## [0.63.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.63.0...v0.63.1) (2026-06-23)
 
 
