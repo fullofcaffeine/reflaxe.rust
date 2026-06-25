@@ -40,12 +40,9 @@ impl Http {
             empty_on_data: crate::HxDynRef::new(crate::HxRc::new(move |_a0| {})),
             no_shutdown: false,
             cnx_timeout: 10.0,
-            response_headers: crate::haxe_ds_string_map::StringMap::<hxrt::string::HxString>::new(),
-            response_headers_sm:
-                crate::haxe_ds_string_map::StringMap::<hxrt::string::HxString>::new(),
-            response_headers_same_key: crate::haxe_ds_string_map::StringMap::<
-                hxrt::array::Array<hxrt::string::HxString>,
-            >::new(),
+            response_headers: crate::HxRef::null(),
+            response_headers_sm: crate::HxRef::null(),
+            response_headers_same_key: crate::HxRef::null(),
             file: crate::HxRef::<hxrt::anon::Anon>::null(),
             __hx_dyn_on_data: crate::HxDynRef::new(crate::HxRc::new(move |_a0| {})),
             __hx_dyn_on_bytes: crate::HxDynRef::new(crate::HxRc::new(move |_a0| {})),

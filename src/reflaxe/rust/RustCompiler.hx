@@ -4817,6 +4817,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 
 				var fieldInits:Array<RustStructLitField> = [];
+				var ctorAssignedFields:Map<String, Bool> = collectThisAssignedFields(f.expr);
 				for (cf in getAllInstanceVarFieldsForStruct(classType)) {
 					var haxeName = cf.getHaxeName();
 					if (liftedFieldInit.exists(haxeName)) {
@@ -4825,7 +4826,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							expr: liftedFieldInit.get(haxeName)
 						});
 					} else {
-						var defExpr = shouldOptionWrapStructFieldType(cf.type) ? EPath("None") : defaultValueExprForType(cf.type, cf.pos);
+						var defExpr = if (shouldOptionWrapStructFieldType(cf.type)) {
+							EPath("None");
+						} else if (ctorAssignedFields.exists(haxeName) && canUseNullCtorAssignedFieldPlaceholder(cf.type)) {
+							nullFillExprForType(cf.type, cf.pos);
+						} else {
+							defaultValueExprForType(cf.type, cf.pos);
+						}
 						fieldInits.push({
 							name: rustFieldName(classType, cf),
 							expr: defExpr
@@ -7686,6 +7693,85 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		scan(root);
 		return counts;
+	}
+
+	/**
+		Why
+		- Constructor allocation must build a complete Rust struct before the Haxe constructor body runs.
+		- For fields that the constructor body will assign, eagerly calling nested class constructors as
+		  placeholder defaults can execute invalid field-record defaults and panic before the real value is stored.
+
+		What
+		- Collects direct `this.field = ...` assignments in a constructor body.
+		- The constructor struct literal can then use a null/reference-safe placeholder for emitted class-reference fields.
+
+		How
+		- Walks the typed expression tree and records Haxe field names from `TField(TThis, ...)` assignment LHS nodes.
+		- This is intentionally conservative about the placeholder only; the normal constructor body still performs
+		  the assignment and preserves Haxe evaluation order.
+	**/
+	function collectThisAssignedFields(root:TypedExpr):Map<String, Bool> {
+		var assigned:Map<String, Bool> = [];
+
+		function haxeFieldNameFromAccess(fa:FieldAccess):Null<String> {
+			return switch (fa) {
+				case FInstance(_, _, cfRef):
+					{
+						var cf = cfRef.get();
+						cf == null ? null : cf.getHaxeName();
+					}
+				case FAnon(cfRef):
+					{
+						var cf = cfRef.get();
+						cf == null ? null : cf.getHaxeName();
+					}
+				case FDynamic(name):
+					name;
+				case _:
+					null;
+			}
+		}
+
+		function scan(e:TypedExpr):Void {
+			switch (unwrapMetaParen(e).expr) {
+				case TBinop(OpAssign, lhs, rhs):
+					{
+						switch (unwrapMetaParen(lhs).expr) {
+							case TField(obj, fa):
+								{
+									switch (unwrapMetaParen(obj).expr) {
+										case TConst(TThis):
+											var fieldName = haxeFieldNameFromAccess(fa);
+											if (fieldName != null) assigned.set(fieldName, true);
+										case _:
+									}
+								}
+							case _:
+						}
+						scan(lhs);
+						scan(rhs);
+						return;
+					}
+				case _:
+			}
+			TypedExprTools.iter(e, scan);
+		}
+
+		if (root != null)
+			scan(root);
+		return assigned;
+	}
+
+	function canUseNullCtorAssignedFieldPlaceholder(t:Type):Bool {
+		return switch (followType(t)) {
+			case TInst(clsRef, _): {
+					var cls = clsRef.get();
+					cls != null && !cls.isInterface && !cls.isExtern && shouldEmitClass(cls, false)
+					;
+				}
+			case _:
+				false;
+		}
 	}
 
 	function copyIntMap(input:Null<Map<Int, Int>>):Map<Int, Int> {
