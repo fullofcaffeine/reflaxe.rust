@@ -1,3 +1,12 @@
+## [0.64.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.64.0...v0.64.1) (2026-06-28)
+
+
+### Bug Fixes
+
+* avoid eager defaults for assigned class fields ([104e054](https://github.com/fullofcaffeine/reflaxe.rust/commit/104e05430ce48d8ed0444ebf05235deaba1d1111))
+* preserve reusable branch fallback values ([5fdc545](https://github.com/fullofcaffeine/reflaxe.rust/commit/5fdc545bfc44b9e50a2c5dcf2249ac5f5f95f5db))
+* refresh dynamic boundary guard evidence ([f9fa2b5](https://github.com/fullofcaffeine/reflaxe.rust/commit/f9fa2b5795e01cc91c03febf889eddcfda0fb236))
+
 # [0.64.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.63.1...v0.64.0) (2026-06-25)
 
 
