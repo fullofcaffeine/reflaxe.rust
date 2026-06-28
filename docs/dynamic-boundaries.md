@@ -26,6 +26,21 @@ This document is the source of truth for intentional `Dynamic` usage in `reflaxe
 - Exit criteria: remove this entry only if upstream/runtime contracts no longer require a dynamic
   carrier type name literal.
 
+### `src/reflaxe/rust/RustCompiler.hx` family std pin report parser (line-scoped)
+
+- Why: `buildFamilyStdPinReportSnapshot()` records `family/family_std_pin.json` metadata in compiler
+  report artifacts. Haxe's `haxe.Json.parse` API returns `Dynamic`, so the parser must cross a small
+  JSON boundary before narrowing to `FamilyStdPinReportSnapshot`.
+- Current narrowing:
+  - parse only inside `buildFamilyStdPinReportSnapshot()`;
+  - immediately project the allowed fields (`name`, `version`, `source`, `migration_window.mode`);
+  - store only strings and a boolean in the typed report snapshot;
+  - keep missing or malformed JSON non-fatal and deterministic.
+- Guardrail: app/compiler logic outside this parser must consume the typed `FamilyStdPinReportSnapshot`,
+  not the parsed dynamic object.
+- Exit criteria: replace this boundary with a typed JSON decoder or generated codec that can parse
+  the pin schema without raw `Dynamic`.
+
 ### File-scoped entries
 
 - None currently.
