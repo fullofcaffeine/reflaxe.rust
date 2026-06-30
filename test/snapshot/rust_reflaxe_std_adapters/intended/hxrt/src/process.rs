@@ -1,5 +1,7 @@
+use crate::array::Array;
+use crate::bytes::{self, Bytes};
 use crate::cell::HxRef;
-use crate::{dynamic, exception};
+use crate::{dynamic, exception, io};
 use std::io::{Read, Write};
 use std::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, ExitStatus, Stdio};
 
@@ -18,6 +20,21 @@ fn throw_io(err: std::io::Error) -> ! {
 
 fn throw_msg(msg: &str) -> ! {
     exception::throw(dynamic::from(String::from(msg)))
+}
+
+fn throw_bounds() -> ! {
+    exception::throw(dynamic::from(io::Error::OutsideBounds))
+}
+
+fn check_bytes_range(bytes_ref: &HxRef<Bytes>, pos: i32, len: i32) {
+    if len < 0 {
+        throw_bounds();
+    }
+    let bytes = bytes_ref.borrow();
+    let total = bytes.length();
+    if pos < 0 || pos > total || pos + len > total {
+        throw_bounds();
+    }
 }
 
 impl Process {
@@ -156,4 +173,118 @@ pub fn spawn(cmd: &str, args: Option<Vec<String>>, detached: bool) -> HxRef<Proc
             stderr,
         })
     }
+}
+
+pub fn spawn_haxe<C, A>(
+    cmd: C,
+    args: Array<A>,
+    detached: Option<bool>,
+    args_provided: bool,
+) -> HxRef<Process>
+where
+    C: AsRef<str>,
+    A: AsRef<str> + Clone + Send + Sync + 'static,
+{
+    let cmd_text = cmd.as_ref().to_string();
+    let detached_value = detached.unwrap_or(false);
+    if args_provided {
+        return spawn(
+            cmd_text.as_str(),
+            Some(
+                args.iter_borrowed()
+                    .map(|s| s.as_ref().to_string())
+                    .collect(),
+            ),
+            detached_value,
+        );
+    }
+    if cfg!(windows) {
+        spawn(
+            "cmd",
+            Some(vec![String::from("/C"), cmd_text]),
+            detached_value,
+        )
+    } else {
+        spawn(
+            "sh",
+            Some(vec![String::from("-c"), cmd_text]),
+            detached_value,
+        )
+    }
+}
+
+pub fn pid(handle: &HxRef<Process>) -> i32 {
+    handle.borrow().pid()
+}
+
+pub fn wait_exit_code(handle: &HxRef<Process>) -> i32 {
+    handle.borrow_mut().wait_exit_code()
+}
+
+pub fn try_wait_exit_code(handle: &HxRef<Process>) -> Option<i32> {
+    handle.borrow_mut().try_wait_exit_code()
+}
+
+pub fn close(handle: &HxRef<Process>) {
+    handle.borrow_mut().close();
+}
+
+pub fn kill(handle: &HxRef<Process>) {
+    handle.borrow_mut().kill();
+}
+
+pub fn write_stdin(handle: &HxRef<Process>, bytes_ref: HxRef<Bytes>, pos: i32, len: i32) -> i32 {
+    check_bytes_range(&bytes_ref, pos, len);
+    if len == 0 {
+        return 0;
+    }
+    let bytes_binding = bytes_ref.borrow();
+    let data = bytes_binding.as_slice();
+    let start = pos as usize;
+    let end = (pos + len) as usize;
+    handle.borrow_mut().write_stdin(&data[start..end]);
+    len
+}
+
+pub fn flush_stdin(handle: &HxRef<Process>) {
+    handle.borrow_mut().flush_stdin();
+}
+
+pub fn close_stdin(handle: &HxRef<Process>) {
+    handle.borrow_mut().close_stdin();
+}
+
+pub fn read_stdout(handle: &HxRef<Process>, bytes_ref: HxRef<Bytes>, pos: i32, len: i32) -> i32 {
+    read_pipe(handle, bytes_ref, pos, len, true)
+}
+
+pub fn read_stderr(handle: &HxRef<Process>, bytes_ref: HxRef<Bytes>, pos: i32, len: i32) -> i32 {
+    read_pipe(handle, bytes_ref, pos, len, false)
+}
+
+fn read_pipe(
+    handle: &HxRef<Process>,
+    bytes_ref: HxRef<Bytes>,
+    pos: i32,
+    len: i32,
+    stdout: bool,
+) -> i32 {
+    check_bytes_range(&bytes_ref, pos, len);
+    if len == 0 {
+        return 0;
+    }
+    let mut buf = vec![0u8; len as usize];
+    let n = {
+        let mut process = handle.borrow_mut();
+        if stdout {
+            process.read_stdout(buf.as_mut_slice())
+        } else {
+            process.read_stderr(buf.as_mut_slice())
+        }
+    };
+    if n < 0 {
+        return -1;
+    }
+    bytes::write_from_slice(&bytes_ref, pos, &buf[0..(n as usize)]);
+    n
 }

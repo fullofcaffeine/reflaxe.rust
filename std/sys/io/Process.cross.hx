@@ -1,6 +1,7 @@
 package sys.io;
 
 import haxe.io.Bytes;
+import hxrt.process.NativeProcess;
 import hxrt.process.ProcessHandle;
 import rust.HxRef;
 
@@ -42,29 +43,8 @@ class Process {
 	public var stdin(get, null):haxe.io.Output;
 
 	public function new(cmd:String, ?args:Array<String>, ?detached:Bool) {
-		handle = untyped __rust__("{
-					let det: bool = {2}.unwrap_or(false);
-					if !{1}.is_null() {
-						let args_vec: Vec<String> = {1}.to_vec().into_iter().map(|s| s.as_str().to_string()).collect();
-						hxrt::process::spawn({0}.as_str(), Some(args_vec), det)
-					} else {
-						// When args are not provided, `cmd` may include arguments and/or shell builtins.
-						// Match the upstream docs by running through the platform shell.
-						if cfg!(windows) {
-							hxrt::process::spawn(
-								\"cmd\",
-								Some(vec![String::from(\"/C\"), {0}.as_str().to_string()]),
-								det
-							)
-						} else {
-							hxrt::process::spawn(
-								\"sh\",
-								Some(vec![String::from(\"-c\"), {0}.as_str().to_string()]),
-								det
-							)
-						}
-					}
-				}", cmd, args, detached);
+		var argsProvided = args != null;
+		handle = NativeProcess.spawn(cmd, argsProvided ? args : [], detached, argsProvided);
 	}
 
 	private function get_stdout():haxe.io.Input {
@@ -80,26 +60,19 @@ class Process {
 	}
 
 	public function getPid():Int {
-		return untyped __rust__("{0}.borrow().pid()", handle);
+		return NativeProcess.pid(handle);
 	}
 
 	public function exitCode(block:Bool = true):Null<Int> {
-		if (block) {
-			return untyped __rust__("Some({0}.borrow_mut().wait_exit_code())", handle);
-		} else {
-			return untyped __rust__("{
-						let v = {0}.borrow_mut().try_wait_exit_code();
-					match v { Some(x) => Some(x), None => None }
-				}", handle);
-		}
+		return block ? NativeProcess.waitExitCode(handle) : NativeProcess.tryWaitExitCode(handle);
 	}
 
 	public function close():Void {
-		untyped __rust__("{0}.borrow_mut().close()", handle);
+		NativeProcess.closeHandle(handle);
 	}
 
 	public function kill():Void {
-		untyped __rust__("{0}.borrow_mut().kill()", handle);
+		NativeProcess.kill(handle);
 	}
 }
 
@@ -126,22 +99,15 @@ private class ProcessStdin extends haxe.io.Output {
 			throw haxe.io.Error.OutsideBounds;
 		if (len == 0)
 			return 0;
-		untyped __rust__("{
-				let b = {0}.borrow();
-				let data = b.as_slice();
-				let start = {1} as usize;
-				let end = ({1} + {2}) as usize;
-				{3}.borrow_mut().write_stdin(&data[start..end]);
-			}", s, pos, len, handle);
-		return len;
+		return NativeProcess.writeStdin(handle, s, pos, len);
 	}
 
 	override public function flush():Void {
-		untyped __rust__("{0}.borrow_mut().flush_stdin()", handle);
+		NativeProcess.flushStdin(handle);
 	}
 
 	override public function close():Void {
-		untyped __rust__("{0}.borrow_mut().close_stdin()", handle);
+		NativeProcess.closeStdin(handle);
 	}
 }
 
@@ -171,18 +137,9 @@ private class ProcessStdout extends haxe.io.Input {
 		if (len == 0)
 			return 0;
 
-		var out:Int = untyped __rust__("{
-				let mut buf = vec![0u8; {2} as usize];
-				let n: i32 = {0}.borrow_mut().read_stdout(buf.as_mut_slice());
-				if n == -1i32 {
-					0i32
-				} else {
-					hxrt::bytes::write_from_slice(&{1}, {3}, &buf[0..(n as usize)]);
-					n
-				}
-			}", handle, s, len, pos);
+		var out = NativeProcess.readStdout(handle, s, pos, len);
 
-		if (out == 0)
+		if (out < 0)
 			throw new haxe.io.Eof();
 		return out;
 	}
@@ -214,18 +171,9 @@ private class ProcessStderr extends haxe.io.Input {
 		if (len == 0)
 			return 0;
 
-		var out:Int = untyped __rust__("{
-				let mut buf = vec![0u8; {2} as usize];
-				let n: i32 = {0}.borrow_mut().read_stderr(buf.as_mut_slice());
-				if n == -1i32 {
-					0i32
-				} else {
-					hxrt::bytes::write_from_slice(&{1}, {3}, &buf[0..(n as usize)]);
-					n
-				}
-			}", handle, s, len, pos);
+		var out = NativeProcess.readStderr(handle, s, pos, len);
 
-		if (out == 0)
+		if (out < 0)
 			throw new haxe.io.Eof();
 		return out;
 	}
