@@ -5,6 +5,7 @@ Use this page as the map for `reflaxe.rust` docs.
 ## Quick start by audience
 
 - New to compiler internals: [Start Here](start-here.md)
+- Common first questions: [FAQ](faq.md)
 - First generated app from this checkout: [Start Here](start-here.md#scaffold-a-new-app), [Workflow](workflow.md#new-project-scaffold--task-hxmls)
 - Installing into an existing app: [Install via lix](install-via-lix.md), [Workflow](workflow.md)
 - Evaluating production use: [Production Readiness](production-readiness.md), [Feature support matrix](feature-support-matrix.md), [Semantic confidence summary](semantic-confidence-summary.md)
@@ -21,6 +22,7 @@ Use this page as the map for `reflaxe.rust` docs.
 ## Core product docs
 
 - [Contracts](profiles.md): portable vs metal contract semantics and lane/capability controls.
+- [FAQ](faq.md): first-user answers about GC, memory management, generated Rust quality, runtime overhead, profile choice, and interop.
 - [Portable idiom adoption contract](reflaxe-std-adoption-contract.md): Rust-side boundary and migration rules for the shared `reflaxe.std` portable idiom layer (v1 starts with `Option`/`Result`).
 - [Semver and release posture](semver-release-posture.md): canonical public `1.x` release posture and packaging decision.
 - [GA decision record](ga-decision-record.md): historical Milestone 28 gate outcome that led to the semver/public-packaging follow-up.

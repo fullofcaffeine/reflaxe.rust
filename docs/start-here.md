@@ -11,6 +11,10 @@ Current status:
 The shortest honest answer is: yes, use it for controlled production when your app stays inside the
 validated surface and you add smoke tests for the system/runtime paths your app depends on.
 
+If you are still orienting around the target's basic model, read the [FAQ](faq.md) for short answers
+about garbage collection, memory management, generated Rust quality, runtime overhead, profile
+choice, and Rust interop.
+
 ## What this compiler does
 
 `reflaxe.rust` compiles Haxe 4.3.7 code into a Rust crate and runs Cargo by default.

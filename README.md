@@ -39,6 +39,7 @@ networking, TLS, DB, processes, or threading, add app-specific smoke tests aroun
 ## Start Here
 
 - New here: [Start Here guide](docs/start-here.md)
+- Common first questions: [FAQ](docs/faq.md) for GC, memory management, runtime overhead, generated Rust quality, profile choice, and interop
 - Evaluating production use: [Production Readiness guide](docs/production-readiness.md), then [feature support matrix](docs/feature-support-matrix.md)
 - Portable-first path: [Profiles](docs/profiles.md), [Portable near-native guidance](docs/portable-near-native-guidance.md), [Examples Matrix](docs/examples-matrix.md)
 - Metal-first path: [Metal profile](docs/metal-profile.md), [Portable near-native guidance](docs/portable-near-native-guidance.md), [profile_storyboard / metal examples](docs/examples-matrix.md)
