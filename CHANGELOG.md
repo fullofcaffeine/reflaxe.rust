@@ -1,3 +1,10 @@
+## [0.64.3](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.64.2...v0.64.3) (2026-06-30)
+
+
+### Bug Fixes
+
+* move process stdlib to typed native bridge ([d91a270](https://github.com/fullofcaffeine/reflaxe.rust/commit/d91a2708c383e064661f0260108519dae60adec4))
+
 ## [0.64.2](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.64.1...v0.64.2) (2026-06-30)
 
 
