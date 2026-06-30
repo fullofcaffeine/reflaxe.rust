@@ -84,12 +84,7 @@ impl Socket {
             self_.borrow_mut().input = Some({
                 let __tmp = __tmp.clone();
                 let __up: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync> =
-                    match __tmp.as_arc_opt() {
-                        Some(__rc) => __rc.clone(),
-                        None => {
-                            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
-                        }
-                    };
+                    __tmp.as_arc_opt().unwrap().clone();
                 __up
             });
             __tmp
@@ -99,12 +94,7 @@ impl Socket {
             self_.borrow_mut().output = Some({
                 let __tmp = __tmp.clone();
                 let __up: crate::HxRc<dyn crate::haxe_io_output::OutputTrait + Send + Sync> =
-                    match __tmp.as_arc_opt() {
-                        Some(__rc) => __rc.clone(),
-                        None => {
-                            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
-                        }
-                    };
+                    __tmp.as_arc_opt().unwrap().clone();
                 __up
             });
             __tmp
@@ -352,12 +342,7 @@ impl Socket {
             s.borrow_mut().input = Some({
                 let __tmp = __tmp.clone();
                 let __up: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync> =
-                    match __tmp.as_arc_opt() {
-                        Some(__rc) => __rc.clone(),
-                        None => {
-                            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
-                        }
-                    };
+                    __tmp.as_arc_opt().unwrap().clone();
                 __up
             });
             __tmp
@@ -367,12 +352,7 @@ impl Socket {
             s.borrow_mut().output = Some({
                 let __tmp = __tmp.clone();
                 let __up: crate::HxRc<dyn crate::haxe_io_output::OutputTrait + Send + Sync> =
-                    match __tmp.as_arc_opt() {
-                        Some(__rc) => __rc.clone(),
-                        None => {
-                            hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
-                        }
-                    };
+                    __tmp.as_arc_opt().unwrap().clone();
                 __up
             });
             __tmp

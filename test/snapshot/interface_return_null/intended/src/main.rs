@@ -78,11 +78,8 @@ fn describe(
 fn main() {
     crate::sys::Sys::println(hxrt::dynamic::from(describe({
         let __tmp = crate::impl_::Impl::new();
-        let __up: crate::HxRc<dyn crate::service::Service + Send + Sync> = match __tmp.as_arc_opt()
-        {
-            Some(__rc) => __rc.clone(),
-            None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
-        };
+        let __up: crate::HxRc<dyn crate::service::Service + Send + Sync> =
+            __tmp.as_arc_opt().unwrap().clone();
         __up
     })));
 }

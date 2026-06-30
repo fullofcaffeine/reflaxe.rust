@@ -88,10 +88,7 @@ fn run_request(
     let server: crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync> = {
         let __tmp = crate::sys_net_socket::Socket::new();
         let __up: crate::HxRc<dyn crate::sys_net_socket::SocketTrait + Send + Sync> =
-            match __tmp.as_arc_opt() {
-                Some(__rc) => __rc.clone(),
-                None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
-            };
+            __tmp.as_arc_opt().unwrap().clone();
         __up
     };
     server.bind(
@@ -499,12 +496,7 @@ fn main() {
                             );
                             let __up: crate::HxRc<
                                 dyn crate::haxe_io_input::InputTrait + Send + Sync,
-                            > = match __tmp.as_arc_opt() {
-                                Some(__rc) => __rc.clone(),
-                                None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
-                                    "Null Access",
-                                ))),
-                            };
+                            > = __tmp.as_arc_opt().unwrap().clone();
                             __up
                         },
                         file_bytes.borrow().length(),

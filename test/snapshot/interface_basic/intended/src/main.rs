@@ -64,10 +64,8 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 fn main() {
     let t: crate::HxRc<dyn crate::i_thing::IThing + Send + Sync> = {
         let __tmp = crate::impl_::Impl::new();
-        let __up: crate::HxRc<dyn crate::i_thing::IThing + Send + Sync> = match __tmp.as_arc_opt() {
-            Some(__rc) => __rc.clone(),
-            None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
-        };
+        let __up: crate::HxRc<dyn crate::i_thing::IThing + Send + Sync> =
+            __tmp.as_arc_opt().unwrap().clone();
         __up
     };
     println!("{}", hxrt::dynamic::from(t.say().clone()));

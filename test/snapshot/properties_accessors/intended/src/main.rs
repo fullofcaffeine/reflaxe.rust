@@ -64,10 +64,8 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 fn main() {
     let b: crate::HxRc<dyn crate::base::BaseTrait + Send + Sync> = {
         let __tmp = crate::base::Base::new();
-        let __up: crate::HxRc<dyn crate::base::BaseTrait + Send + Sync> = match __tmp.as_arc_opt() {
-            Some(__rc) => __rc.clone(),
-            None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
-        };
+        let __up: crate::HxRc<dyn crate::base::BaseTrait + Send + Sync> =
+            __tmp.as_arc_opt().unwrap().clone();
         __up
     };
     println!("{}", hxrt::dynamic::from(b.set_x(7)));
@@ -89,10 +87,8 @@ fn main() {
     println!("{}", hxrt::dynamic::from(b.get_y()));
     let p: crate::HxRc<dyn crate::base::BaseTrait + Send + Sync> = {
         let __tmp = crate::derived::Derived::new();
-        let __up: crate::HxRc<dyn crate::base::BaseTrait + Send + Sync> = match __tmp.as_arc_opt() {
-            Some(__rc) => __rc.clone(),
-            None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
-        };
+        let __up: crate::HxRc<dyn crate::base::BaseTrait + Send + Sync> =
+            __tmp.as_arc_opt().unwrap().clone();
         __up
     };
     println!("{}", hxrt::dynamic::from(p.set_y(3)));

@@ -48,12 +48,7 @@ impl SqliteConnection {
         return {
             let __tmp = crate::sys_db_sqlite_sqlite_result_set::SqliteResultSet::new(res.clone());
             let __up: crate::HxRc<dyn crate::sys_db_result_set::ResultSet + Send + Sync> =
-                match __tmp.as_arc_opt() {
-                    Some(__rc) => __rc.clone(),
-                    None => {
-                        hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
-                    }
-                };
+                __tmp.as_arc_opt().unwrap().clone();
             __up
         };
     }

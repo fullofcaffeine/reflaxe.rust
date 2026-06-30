@@ -81,10 +81,7 @@ fn main() {
     crate::sys::Sys::println(hxrt::dynamic::from(describe({
         let __tmp = crate::impl_::Impl::new();
         let __up: crate::HxDynRef<dyn crate::service::Service + Send + Sync> =
-            match __tmp.as_arc_opt() {
-                Some(__rc) => crate::HxDynRef::new(__rc.clone()),
-                None => crate::HxDynRef::<dyn crate::service::Service + Send + Sync>::null(),
-            };
+            crate::HxDynRef::new(__tmp.as_arc_opt().unwrap().clone());
         __up
     })));
 }

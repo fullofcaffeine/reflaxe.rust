@@ -65,10 +65,7 @@ fn main() {
     let a: crate::HxRc<dyn crate::animal::AnimalTrait + Send + Sync> = {
         let __tmp = crate::dog::Dog::new();
         let __up: crate::HxRc<dyn crate::animal::AnimalTrait + Send + Sync> =
-            match __tmp.as_arc_opt() {
-                Some(__rc) => __rc.clone(),
-                None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
-            };
+            __tmp.as_arc_opt().unwrap().clone();
         __up
     };
     {

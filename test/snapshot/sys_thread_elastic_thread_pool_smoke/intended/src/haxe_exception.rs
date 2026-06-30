@@ -98,12 +98,7 @@ impl Exception {
                 value.clone(),
             );
             let __up: crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync> =
-                match __tmp.as_arc_opt() {
-                    Some(__rc) => __rc.clone(),
-                    None => {
-                        hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
-                    }
-                };
+                __tmp.as_arc_opt().unwrap().clone();
             __up
         };
     }

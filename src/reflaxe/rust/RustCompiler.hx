@@ -10224,6 +10224,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			// a polymorphic base class (represented as `HxRc<dyn Trait>`).
 			var actualExpr = unwrapMetaParenCast(valueExpr);
 			var actualRustTy = toRustType(actualExpr.t, actualExpr.pos);
+			var actualIsFreshNew = switch (actualExpr.expr) {
+				case TNew(_, _, _): true;
+				case _: false;
+			}
 			var actualIsHxRef = rustTypeIsHxRef(actualRustTy) || switch (actualExpr.expr) {
 				case TNew(_, _, _): true;
 				case _: false;
@@ -10235,6 +10239,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var expectedRustTy = toRustType(expected, valueExpr.pos);
 			var expectedRustStr = rustTypeToString(expectedRustTy);
 			var expectedIsDynRef = StringTools.startsWith(expectedRustStr, dynRefBasePath() + "<");
+			if (actualIsFreshNew) {
+				// A syntactic `new Concrete()` cannot be null, so do not emit a per-site nullable
+				// match/throw branch for its trait-object upcast. The unwrap documents the compiler
+				// invariant while keeping non-fresh HxRef values on the null-preserving path below.
+				var unwrappedFresh = ECall(EField(ECall(EField(EPath("__tmp"), "as_arc_opt"), []), "unwrap"), []);
+				var freshClone = ECall(EField(unwrappedFresh, "clone"), []);
+				var freshUp:RustExpr = expectedIsDynRef ? ECall(EPath(dynRefBasePath() + "::new"), [freshClone]) : freshClone;
+				return EBlock({
+					stmts: [
+						RLet("__tmp", false, null, compiled),
+						RLet("__up", false, expectedRustTy, freshUp)
+					],
+					tail: EPath("__up")
+				});
+			}
+
 			var someExpr:RustExpr = expectedIsDynRef ? ECall(EPath(dynRefBasePath() + "::new"),
 				[ECall(EField(EPath("__rc"), "clone"), [])]) : ECall(EField(EPath("__rc"), "clone"), []);
 			var noneExpr:RustExpr = if (expectedIsDynRef) {

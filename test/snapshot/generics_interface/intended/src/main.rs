@@ -66,10 +66,7 @@ fn main() {
         let __tmp =
             crate::box_::Box::<hxrt::string::HxString>::new(hxrt::string::HxString::from("hello"));
         let __up: crate::HxRc<dyn crate::i_get::IGet<hxrt::string::HxString> + Send + Sync> =
-            match __tmp.as_arc_opt() {
-                Some(__rc) => __rc.clone(),
-                None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
-            };
+            __tmp.as_arc_opt().unwrap().clone();
         __up
     };
     crate::sys::Sys::println(hxrt::dynamic::from(b.get()));

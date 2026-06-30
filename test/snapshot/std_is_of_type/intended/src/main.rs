@@ -69,10 +69,7 @@ fn main() {
     let a: crate::HxRc<dyn crate::animal::AnimalTrait + Send + Sync> = {
         let __tmp = crate::dog::Dog::new();
         let __up: crate::HxRc<dyn crate::animal::AnimalTrait + Send + Sync> =
-            match __tmp.as_arc_opt() {
-                Some(__rc) => __rc.clone(),
-                None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
-            };
+            __tmp.as_arc_opt().unwrap().clone();
         __up
     };
     println!("{}", hxrt::dynamic::from(true));
@@ -149,10 +146,8 @@ fn main() {
     );
     let as_pet: crate::HxRc<dyn crate::pet::Pet + Send + Sync> = {
         let __tmp = crate::dog::Dog::new();
-        let __up: crate::HxRc<dyn crate::pet::Pet + Send + Sync> = match __tmp.as_arc_opt() {
-            Some(__rc) => __rc.clone(),
-            None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
-        };
+        let __up: crate::HxRc<dyn crate::pet::Pet + Send + Sync> =
+            __tmp.as_arc_opt().unwrap().clone();
         __up
     };
     let dyn_pet: hxrt::dynamic::Dynamic = {
@@ -199,10 +194,7 @@ fn main() {
     let as_friendly: crate::HxRc<dyn crate::friendly::Friendly + Send + Sync> = {
         let __tmp = crate::dog::Dog::new();
         let __up: crate::HxRc<dyn crate::friendly::Friendly + Send + Sync> =
-            match __tmp.as_arc_opt() {
-                Some(__rc) => __rc.clone(),
-                None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
-            };
+            __tmp.as_arc_opt().unwrap().clone();
         __up
     };
     let dyn_friendly: hxrt::dynamic::Dynamic = {

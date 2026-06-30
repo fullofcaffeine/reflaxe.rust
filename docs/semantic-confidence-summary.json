@@ -18,7 +18,7 @@
     "portableCandidateMissingFromTier2": 0,
     "portableSemanticDiffCases": 18,
     "laneSemanticDiffCases": 2,
-    "snapshotCases": 121,
+    "snapshotCases": 122,
     "bucketsByClass": {
       "compile_inventory": 2,
       "targeted_semantic_parity": 7,

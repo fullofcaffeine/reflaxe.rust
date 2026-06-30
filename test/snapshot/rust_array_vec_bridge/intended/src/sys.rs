@@ -103,12 +103,8 @@ impl Sys {
     pub fn stdin() -> crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync> {
         return {
             let __tmp = crate::sys_io_stdin::Stdin::new();
-            let __up: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync> = match __tmp
-                .as_arc_opt()
-            {
-                Some(__rc) => __rc.clone(),
-                None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
-            };
+            let __up: crate::HxRc<dyn crate::haxe_io_input::InputTrait + Send + Sync> =
+                __tmp.as_arc_opt().unwrap().clone();
             __up
         };
     }
@@ -117,12 +113,7 @@ impl Sys {
         return {
             let __tmp = crate::sys_io_stdout::Stdout::new();
             let __up: crate::HxRc<dyn crate::haxe_io_output::OutputTrait + Send + Sync> =
-                match __tmp.as_arc_opt() {
-                    Some(__rc) => __rc.clone(),
-                    None => {
-                        hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
-                    }
-                };
+                __tmp.as_arc_opt().unwrap().clone();
             __up
         };
     }
@@ -131,12 +122,7 @@ impl Sys {
         return {
             let __tmp = crate::sys_io_stderr::Stderr::new();
             let __up: crate::HxRc<dyn crate::haxe_io_output::OutputTrait + Send + Sync> =
-                match __tmp.as_arc_opt() {
-                    Some(__rc) => __rc.clone(),
-                    None => {
-                        hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
-                    }
-                };
+                __tmp.as_arc_opt().unwrap().clone();
             __up
         };
     }
