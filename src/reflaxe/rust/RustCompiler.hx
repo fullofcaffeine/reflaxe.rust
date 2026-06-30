@@ -4412,6 +4412,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var elemRust = toRustType(elem, pos);
 			return ECall(EPath("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new"), []);
 		}
+		if (traitObjectRustInnerPath(t, pos) != null) {
+			// Bare interface / polymorphic class values lower to non-null `HxRc<dyn Trait>`.
+			// When Haxe source supplies `null` in that slot, `Default::default()` is invalid
+			// because Rust trait objects do not implement `Default`; emit a typed diverging
+			// null access instead so the generated function remains well-typed.
+			return ECall(EPath("hxrt::exception::throw"), [
+				ECall(EPath("hxrt::dynamic::from"), [ECall(EPath("String::from"), [ELitString("Null Access")])])
+			]);
+		}
 
 		// For many std types we prefer constructing a real instance over `Default::default()`,
 		// because `crate::HxRef<T>` defaults require `T: Default` (not always true).
@@ -7912,6 +7921,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								case RPath(p) if (StringTools.startsWith(p, "crate::HxRef<")): {
 										var inner = p.substr("crate::HxRef<".length, p.length - "crate::HxRef<".length - 1);
 										ECall(EPath("crate::HxRef::<" + inner + ">::null"), []);
+									}
+								case RPath(p) if (StringTools.startsWith(p, rcBasePath() + "<dyn ")): {
+										// Non-null interface / polymorphic class values lower to Rust trait-object
+										// handles. Trait objects have no default value, so a source `null` at this
+										// boundary must become the same diverging null access used by other
+										// non-nullable Rust representations.
+										ECall(EPath("hxrt::exception::throw"), [
+											ECall(EPath("hxrt::dynamic::from"), [ECall(EPath("String::from"), [ELitString("Null Access")])])
+										]);
 									}
 								case RPath(p) if (StringTools.startsWith(p, "hxrt::array::Array<")): {
 										var inner = p.substr("hxrt::array::Array<".length, p.length - "hxrt::array::Array<".length - 1);
