@@ -1,3 +1,11 @@
+## [0.64.2](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.64.1...v0.64.2) (2026-06-30)
+
+
+### Bug Fixes
+
+* elide fresh interface upcast null guards ([2577c5b](https://github.com/fullofcaffeine/reflaxe.rust/commit/2577c5b7599fbe144844f0ebfb9c42d92d0ddf3c))
+* lower interface null returns as throws ([bf0a2d1](https://github.com/fullofcaffeine/reflaxe.rust/commit/bf0a2d17e067139b104b15e170f5fa9881559237))
+
 ## [0.64.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.64.0...v0.64.1) (2026-06-28)
 
 
