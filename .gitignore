@@ -31,3 +31,8 @@ dump/
 
 # Repomix bundles (local analysis artifacts)
 repomix-output*.xml
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
