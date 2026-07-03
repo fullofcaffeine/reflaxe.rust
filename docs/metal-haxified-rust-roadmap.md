@@ -141,6 +141,8 @@ Bead: `haxe.rust-oo3.74.3`
 - Define the next typed surface for where-clauses, marker traits, trait objects, associated types, and derived impls.
 - Prefer typed metadata over raw impl body strings wherever the Rust shape is common and inspectable.
 - Add regression fixtures that prove generic helper methods propagate required bounds cleanly.
+  The current contract and missing shapes are tracked in
+  [Metal trait, impl, and bound model](metal-trait-impl-bound-model.md).
 
 ### 4. Rust-Native Type Surface Audit
 

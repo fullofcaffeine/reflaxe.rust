@@ -32,6 +32,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Portable vs metal authoring](portable-vs-metal-authoring.md): concise source-style guidance for performance-oriented users choosing between portable and metal.
 - [Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md): compiler/API plan for making `metal` a Rust-native authoring surface through Haxe constructs, typed metadata/macros, and constrained DSLs.
 - [Metal typed DSL authority](metal-typed-dsl-authority.md): rules for admitting typed DSLs and containing `rust.metal.Code`.
+- [Metal trait, impl, and bound model](metal-trait-impl-bound-model.md): current trait-facing surfaces and missing typed Rust trait shapes.
 - [Metal capability fixture plan](metal-capability-fixtures.md): contract-first positive/negative fixture matrix for the haxified Rust milestone.
 - [Metal type surface gap matrix](metal-type-surface-gap-matrix.md): Rust-native type/facade support audit for metal and portable-facade lowering work.
 - [Concurrency posture](concurrency-posture.md): canonical status record for async/threading, including what is stable, what is still narrow by contract, and what remains caveat-heavy.
@@ -61,6 +62,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Metal profile](metal-profile.md): Rust-first authoring and boundary policy.
 - [Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md): long-range metal compiler/API plan and tracker sweep.
 - [Metal typed DSL authority](metal-typed-dsl-authority.md): when a metal DSL is justified and how raw-code authority is contained.
+- [Metal trait, impl, and bound model](metal-trait-impl-bound-model.md): `@:rustImpl`, `@:rustGeneric`, interface trait objects, and future typed trait metadata.
 - [Metal capability fixture plan](metal-capability-fixtures.md): planned metal capability fixtures and owning harnesses.
 - [Metal type surface gap matrix](metal-type-surface-gap-matrix.md): supported/partial/missing Rust-native type surfaces and follow-up owners.
 - [Lifetime encoding design](lifetime-encoding.md): borrow/lifetime modeling constraints and roadmap.

@@ -106,6 +106,9 @@ Limitations:
 - Rust orphan rules still apply. In practice, this is primarily useful for implementing external traits
   for **local types** (types emitted by this compiler). If both the trait and the target type are
   external, Rust will reject the impl.
+- Impl body strings are a narrow metadata escape hatch, not the long-term app authoring model for
+  common Rust trait patterns. See [Metal trait, impl, and bound model](metal-trait-impl-bound-model.md)
+  for the current contract and planned typed surfaces.
 
 ## Escape hatch: `__rust__` injection (framework-only)
 
