@@ -78,6 +78,11 @@ migration paths, and code that should stay Haxe-shaped.
 `metal` is the Rust-semantics-first contract. Use it for hot paths, Rust-native APIs, typed native
 boundaries, explicit ownership/borrow-shaped code, and reduced/no-runtime work.
 
+The long-term metal direction is haxified Rust: Rust-native authority expressed with Haxe
+constructs, typed metadata/macros, constrained DSLs, and small extern facades where Rust's lifetime
+or type-system surface is too rich to encode directly. See
+[Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md).
+
 `idiomatic` is not a profile selector. It is the output-quality bar for both contracts:
 
 - idiomatic portable output when Haxe semantics are preserved;
@@ -147,7 +152,8 @@ hatch for narrow low-level abstraction modules, but app code should normally use
 metadata, or framework facades.
 
 See [Interop](interop.md), [Metal profile](metal-profile.md), and
-[Lifetime encoding design](lifetime-encoding.md).
+[Lifetime encoding design](lifetime-encoding.md). For the broader compiler/API direction, see
+[Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md).
 
 ## Can I use Rust crates from Haxe?
 

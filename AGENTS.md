@@ -7,12 +7,18 @@ This project uses **bd (beads)** for issue tracking.
 - `bd prime` — workflow context
 - `bd ready` — unblocked work
 - `bd show <id>` — details
-- `bd update <id> --status in_progress` — claim
+- `bd update <id> --claim` — claim
 - `bd close <id>` — complete
-- `bd sync` — sync to git (once a remote is configured)
+- `bd export -o .beads/issues.jsonl` — write the git-tracked issue export from the embedded DB
+- `bd dolt push` / `bd dolt pull` — sync the embedded Dolt DB once a remote is configured
 
-Gotcha: `bd` DB state and `.beads/issues.jsonl` can drift depending on bd daemon/auto-flush settings.
-Before committing bead status changes, run `bd sync` and ensure `.beads/issues.jsonl` is included in the commit when modified.
+Gotcha: `bd` DB state and `.beads/issues.jsonl` can drift because the JSONL file is an explicit export of the embedded Dolt database.
+Before committing bead status changes, run `bd export -o .beads/issues.jsonl` and ensure `.beads/issues.jsonl` is included in the commit when modified.
+- Modern Beads migration gotcha: this repo has been migrated to the embedded Dolt backend (`bd context` should report `Backend: dolt`, `mode: embedded`).
+  Do not use legacy direct SQLite-style `bd --db .beads/beads.db ...` commands; they can open an empty legacy database and remove/hide the JSONL export.
+  If recovery is needed, first copy `.beads/issues.jsonl` to a temp path, then run `bd init --from-jsonl --reinit-local --prefix haxe.rust --skip-agents --skip-hooks --non-interactive`
+  and verify `bd status` matches the JSONL counts before mutating issues.
+  The modern backend normalizes the configured prefix to `haxe_rust`; when adding children to the historical `haxe.rust-*` roadmap, use explicit IDs with `bd create --force --id ...`.
 
 Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rust-oo3 --compact`).
 
@@ -35,6 +41,8 @@ Agent policy:
 - If a claimed bead has no `thinking:*` label, infer one immediately and add it before substantial work.
 - `thinking:xhigh` should get a second-pass review before closure.
   - Preferred: an Oracle checkpoint/review.
+    - Default Oracle workflow: prepare a detailed prompt for GPT-5.5 Pro in the web UI, including the review questions, relevant file paths, Beads IDs/commands, and any repo bundles to upload (for example a repomix archive). Give that prompt to the user to paste, wait for the user to paste the reply back, then incorporate the findings.
+    - Do not use a subagent for Oracle-style review unless the user explicitly asks for one.
   - Acceptable fallback: an explicit written second-pass design review recorded in the bead comments.
 - Oracle is a review/escalation tool for `thinking:xhigh`; it is not a substitute for implementation, tests, or CI evidence.
 
@@ -204,9 +212,9 @@ Agent policy:
       `npm run stdlib:sync:tier2`, then `npm run stdlib:sync:allowlist`, then run stdlib guards.
 - `Std.isOfType` is implemented as a compiler intrinsic (exact-type check via `__hx_type_id`, plus compile-time subtype short-circuit).
 - String move semantics: many generated Rust functions take `String` by value; to preserve Haxe’s “strings are re-usable after calls” behavior, callsites currently clone String arguments based on the callee’s parameter types.
-- Nullable-string migration gotcha: a full switch to `hxrt::string::HxString` as the emitted Rust `String` representation touches broad stdlib/runtime surfaces (notably map key types, `toString` trait bridges, and hardcoded `String` paths).
-  Keep `-D rust_string_nullable` disabled on mainline until those compatibility points are fully migrated and covered by snapshots.
-  - Concrete breakage pattern while the migration is incomplete: generated code can expect `HxString` while runtime/native APIs still take raw `String`
+- Nullable-string gotcha: portable now defaults to nullable string mode (`hxrt::string::HxString`) while metal defaults to non-null Rust `String` unless `-D rust_string_nullable` is explicitly enabled.
+  Treat cross-mode string work as compatibility-sensitive: map key types, `toString` trait bridges, hardcoded `String` paths, and runtime/native API signatures must be checked in both contracts.
+  - Concrete breakage pattern: generated code can expect `HxString` while runtime/native APIs still take raw `String`
     (for example `hxrt::array::Array::join`, `sys.io.*.writeString/readLine`, `std::process::Command` args), producing large `E0308` type-mismatch cascades.
   - Interop guardrail: runtime APIs that conceptually accept string separators/paths/labels should prefer flexible signatures (`AsRef<str>`/`&str`) so both `String` and `hxrt::string::HxString` work without callsite churn.
     - Current concrete fix: `hxrt::array::Array::join` is generic over `AsRef<str>` and `HxString` implements `AsRef<str>`.

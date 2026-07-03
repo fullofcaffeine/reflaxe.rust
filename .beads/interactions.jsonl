@@ -1,0 +1,1 @@
+{"id":"int-dd8c6d67","kind":"field_change","created_at":"2026-07-02T23:54:56.977045Z","actor":"Marcelo Serpa","issue_id":"haxe.rust-oo3.74.1","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Completed initial haxified Rust contract docs, linked profile docs, non-goals, capability map, and tracker sweep."}}

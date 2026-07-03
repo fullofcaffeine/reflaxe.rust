@@ -7,6 +7,11 @@
 - Keep Rust-first APIs and typed native surfaces.
 - Enforce strict app-boundary rules by default.
 - Make fallback usage explicit and measurable.
+- Grow `metal` toward haxified Rust: Rust-native capability expressed through Haxe constructs,
+  metadata/macros, typed facades, and constrained DSLs instead of raw app-side Rust snippets.
+
+For the compiler/API roadmap behind that goal, read
+[Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md).
 
 ## Select metal contract
 
@@ -61,6 +66,10 @@ If you are new to `metal`, use this decision tree:
    - `@:rustAllowRaw` is not a workaround here; metal and `@:haxeMetal` still reject raw fallback.
 
 This keeps generated code analyzable (fallback counts, contract reports, metal-island checks) while still giving Rust-level control through typed boundaries.
+
+Longer term, a repeated need for `rust.metal.Code` in app code is a signal to add a typed
+metal surface, metadata contract, macro, or extern facade. The escape hatch should uncover missing
+compiler authority, not become the normal source style.
 
 ## Beginner examples
 

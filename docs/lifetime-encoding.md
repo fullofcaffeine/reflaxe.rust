@@ -9,6 +9,10 @@ Short answer:
 - **Yes, partially**, with scoped patterns and compiler checks.
 - **No, not fully**, in the same way handwritten Rust exposes generic lifetime parameters.
 
+This is one part of the broader `metal` goal: haxified Rust. `metal` should expose Rust-native
+authority through Haxe-friendly constructs, but lifetime syntax is one of the places where Haxe
+cannot simply become Rust. See [Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md).
+
 ## Why This Is Hard
 
 Rust lifetimes are part of Rust's type language. Haxe does not have:
@@ -128,6 +132,8 @@ For near-term compiler evolution:
 2. Add stronger static non-escape checks in metal profile (warnings -> errors over time).
 3. Introduce phantom-region typing only where it clearly improves correctness without harming ergonomics.
 4. Keep lifetime-heavy generic patterns in extern Rust modules behind typed Haxe APIs.
+5. Treat repeated lifetime-related raw snippets in metal code as requests for a typed Haxe surface,
+   metadata contract, scoped macro, or extern-island pattern.
 
 This gives meaningful lifetime safety gains without pretending to fully replace Rust's lifetime language.
 

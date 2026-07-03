@@ -121,6 +121,11 @@ portable lowering without silently changing the source-level contract to `metal`
 Rust APIs. Read [Portable near-native guidance](portable-near-native-guidance.md) for the
 practical rule of thumb on when portable is already enough and when `metal` is the right move.
 
+For Rust-first teams, the `metal` direction is haxified Rust: Rust-native authority through Haxe
+constructs, typed metadata/macros, constrained DSLs, and extern facades where needed. Read
+[Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md) when evaluating that longer-term
+compiler/API plan.
+
 ## Production evaluation checklist
 
 Before adopting in a production service/tool:
@@ -170,7 +175,8 @@ Portable-first:
 
 Metal-first:
 
-- [Metal profile](metal-profile.md)
+- [Metal profile](metal-profile.md): current user-facing contract and boundary policy
+- [Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md): compiler/API improvement plan
 - [Examples matrix](examples-matrix.md)
 - [Profile migration guide](rusty-profile.md)
 

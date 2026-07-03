@@ -20,6 +20,10 @@ mean the two contracts should be authored the same way.
 
 This guide keeps the authoring choice explicit.
 
+The long-term `metal` direction is haxified Rust: use Haxe constructs and typed compiler surfaces to
+author Rust-native code, while generated Rust remains idiomatic and reviewable. See
+[Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md).
+
 ## Portable-first authoring
 
 Write portable-first code when:
@@ -64,6 +68,8 @@ What that looks like:
 - stricter app-boundary policy,
 - typed low-level abstractions instead of raw app-side injection,
 - source that intentionally reads more like Rust-flavored Haxe than portable Haxe.
+- Haxe abstracts, enums, interfaces, metadata, macros, and typed extern facades that model Rust
+  concepts directly instead of scattering raw Rust snippets.
 
 Current example anchors:
 
@@ -142,4 +148,5 @@ compiler shortcuts to make one downstream codebase look good.
 - `docs/portable-near-native-guidance.md`
 - `docs/profiles.md`
 - `docs/metal-profile.md`
+- `docs/metal-haxified-rust-roadmap.md`
 - `docs/examples-matrix.md`

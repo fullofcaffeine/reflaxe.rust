@@ -10,7 +10,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - Installing into an existing app: [Install via lix](install-via-lix.md), [Workflow](workflow.md)
 - Evaluating production use: [Production Readiness](production-readiness.md), [Feature support matrix](feature-support-matrix.md), [Semantic confidence summary](semantic-confidence-summary.md)
 - Portable-first application path: [Profiles](profiles.md), [Portable near-native guidance](portable-near-native-guidance.md), [Examples matrix](examples-matrix.md)
-- Metal-first path: [Metal profile](metal-profile.md), [Portable near-native guidance](portable-near-native-guidance.md), [Examples matrix](examples-matrix.md)
+- Metal-first path: [Metal profile](metal-profile.md) for current contract policy, [Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md) for compiler/API direction, [Portable near-native guidance](portable-near-native-guidance.md), [Examples matrix](examples-matrix.md)
 - Release / operations path: [Production Readiness](production-readiness.md), [Semver and release posture](semver-release-posture.md), [Weekly CI Evidence](weekly-ci-evidence.md)
 - Need a fast local rebuild loop: [Dev Watcher](dev-watcher.md)
 - Building async Rust-first apps: [Async/Await guide](async-await.md)
@@ -30,6 +30,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Examples matrix](examples-matrix.md): scenario coverage, profile entrypoints, and native-parity quick check (`profile_storyboard`).
 - [Portable near-native guidance](portable-near-native-guidance.md): when portable can lower to native Rust representations/cost, when `metal` is still the right contract, and where `reflaxe.std` fits.
 - [Portable vs metal authoring](portable-vs-metal-authoring.md): concise source-style guidance for performance-oriented users choosing between portable and metal.
+- [Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md): compiler/API plan for making `metal` a Rust-native authoring surface through Haxe constructs, typed metadata/macros, and constrained DSLs.
 - [Concurrency posture](concurrency-posture.md): canonical status record for async/threading, including what is stable, what is still narrow by contract, and what remains caveat-heavy.
 - [Async contract](async-contract.md): canonical supported/unsupported contract for `-D rust_async`.
 - [Systems and environment posture](systems-environment-posture.md): canonical status record for `sys.Http`, `sys.ssl.*`, `sys.db.*`, and platform-sensitive proof depth.
@@ -55,6 +56,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Interop](interop.md): externs, metadata-driven Cargo deps, extra Rust modules, and escape hatch policy.
 - [Profile migration guide](rusty-profile.md): migration mapping from removed `idiomatic`/`rusty` selectors.
 - [Metal profile](metal-profile.md): Rust-first authoring and boundary policy.
+- [Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md): long-range metal compiler/API plan and tracker sweep.
 - [Lifetime encoding design](lifetime-encoding.md): borrow/lifetime modeling constraints and roadmap.
 - [Threading](threading.md): threading model and runtime guarantees.
 - [TUI](tui.md): deterministic TUI testing approach.

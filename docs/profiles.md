@@ -25,6 +25,11 @@ default wherever Haxe-observable behavior allows it. `metal` remains valuable be
 source-level contract: code may intentionally lean into Rust-native APIs, stricter boundary rules,
 and reduced-runtime expectations.
 
+The long-term `metal` direction is "haxified Rust": Rust-native authority exposed through Haxe
+constructs where possible, typed metadata/macros where useful, constrained DSLs where Haxe has no
+native shape, and typed extern islands for Rust APIs whose lifetime/type-system surface is too rich
+to encode directly. See [Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md).
+
 `idiomatic` is not a profile selector. It is a quality bar for generated Rust in every profile:
 readable modules, predictable ownership, avoidable clone/temp elimination, native Rust
 representations where semantics allow, and warning-clean output. `portable` should be idiomatic
@@ -69,6 +74,7 @@ Portable idiom guidance:
 Use `metal` when you want:
 
 - Rust-first authoring/performance direction,
+- Haxe-authored Rust-native APIs rather than raw app-side Rust snippets,
 - strict app-boundary policy by default (`reflaxe_rust_strict` auto-enabled),
 - explicit fallback control (`rust_metal_allow_fallback`),
 - fast failure or reportable fallback when code cannot be represented cleanly under the Rust-native contract.
@@ -80,6 +86,8 @@ Interop note (beginner-friendly):
 - Avoid direct app-side `untyped __rust__(...)`; metal treats that as a contract violation by default.
 - `@:rustAllowRaw` does not weaken metal-clean enforcement. It only affects strict boundary checks in
   non-metal-clean code paths.
+- Treat awkward Haxe required only to get good Rust output as a compiler/API gap, not as normal
+  metal authoring style.
 
 Default behavior:
 
