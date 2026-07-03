@@ -50,12 +50,13 @@ typed surfaces a program consumes and lower them according to their declared sem
   source/typed-AST eligibility pass before the final generated-code `NoHxrtPass`.
 
 This means portable source can still become native-shaped Rust when the API contract admits it. The
-backend should specialize at compile time first: native `Option`/`Result`/`Vec`, owned values,
-borrowed views, RAII handles, extern islands, and no/low-runtime paths should be preferred whenever
-they preserve the source contract. If `hxrt` remains necessary, the report/diagnostic should explain
-which source semantics required it: object identity, Haxe reference mutation, `Dynamic`, reflection,
-anonymous runtime objects, exceptions, nullable compatibility, shared closure cells, or a real
-platform abstraction.
+backend should specialize at compile time first: admitted native `Option`/`Result` surfaces, future
+admitted collection facades, owned values, borrowed views, RAII handles, extern islands, and
+no/low-runtime paths should be preferred whenever they preserve the source contract. Ordinary Haxe
+`Array<T>` is not a no-runtime Rust `Vec<T>` facade today. If `hxrt` remains necessary, the
+report/diagnostic should explain which source semantics required it: object identity, Haxe reference
+mutation, `Dynamic`, reflection, anonymous runtime objects, exceptions, nullable compatibility,
+shared closure cells, or a real platform abstraction.
 
 The boundary is therefore resolved from imports, calls, and metadata into explicit compiler-owned
 surface contracts and report entries. `reflaxe.std` stays portable in source; `rust.*` stays

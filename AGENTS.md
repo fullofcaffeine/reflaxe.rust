@@ -190,7 +190,7 @@ Agent policy:
 - Rust keyword escaping must include reserved keywords like `box` (Rust 2021); keep `RustNaming.KEYWORDS` / extra-src keyword checks in sync.
 - Generics: Rust rejects unused type params on structs; emit a `PhantomData` field (e.g. `__hx_phantom`) when a class has type params not referenced by any instance fields.
 - Constructors: lift leading `this.field = <arg>` assignments into the struct literal to avoid requiring `T: Default` for generic fields (and to reduce borrow-mut noise).
-- Haxe desugaring/inlining introduces `_g*` temporaries; for `Array<T>` (mapped to `Vec<T>`), avoid accidental moves by cloning `_g* = <local array>` initializers/assignments.
+- Haxe desugaring/inlining introduces `_g*` temporaries; for `Array<T>` (a shared `hxrt::array::Array<T>` handle backed by Rust `Vec<T>` storage), avoid accidental moves by cloning `_g* = <local array>` initializers/assignments.
 - Use `Context.getAllModuleTypes()` (not `Context.getTypes()`) to enumerate generated module types for dependency closure / RTTI maps.
 - Stdlib emission model (important for “full stdlib parity” work):
   - Parity scope rule: “100% stdlib parity” refers to upstream cross-target std APIs (`Std`, `haxe.*`, `sys.*`, etc.).

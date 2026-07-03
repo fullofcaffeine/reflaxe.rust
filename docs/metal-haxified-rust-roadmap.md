@@ -93,7 +93,9 @@ fallback policy.
 
 5. Treat emitted Rust as a product artifact.
    - Metal output should be rustfmt-clean and warning-clean.
-   - Native representations should be used when semantics match: `Option`, `Result`, `Vec`, references, slices, strings, paths, handles, and RAII-style guards.
+   - Native representations should be used when semantics match: admitted `Option`/`Result`
+     facades, explicit Rust-native `Vec`, future admitted collection facades, references, slices,
+     strings, paths, handles, and RAII-style guards.
    - Avoidable `hxrt`, `Dynamic`, raw `ERaw`, clone noise, and borrow-guard bloat are compiler/API gaps.
 
 ## Capability Map

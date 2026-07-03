@@ -79,6 +79,21 @@ no-runtime eligibility, and fixtures. In particular, a future collection facade 
 ordinary Haxe `Array<T>` has become a Rust `Vec<T>` no-runtime surface unless that exact contract is
 accepted and tested.
 
+## Collection Surface Decision
+
+Collections are intentionally split today:
+
+| Surface | Source contract | Rust representation today | Portable facade status |
+| --- | --- | --- | --- |
+| Haxe `Array<T>` | Haxe-compatible shared mutable array semantics. | `hxrt::array::Array<T>` backed by shared Rust `Vec<T>` storage. | Not a no-runtime `Vec<T>` facade. |
+| `rust.Vec<T>` | Explicit Rust-native ownership semantics. | Rust `Vec<T>`. | Native-lane API, not portable source. |
+| future `reflaxe.std` collection facade | Cross-target portable collection contract still to be designed. | May lower to Rust `Vec<T>` only if the admitted contract permits it. | Deferred until a per-surface contract and fixtures exist. |
+
+Therefore `test/snapshot/portable_facade_native_vec` is intentionally future work. It should only
+land after a concrete portable collection facade is admitted; it must not be used to claim that
+ordinary Haxe `Array<T>` or an unadmitted `reflaxe.std.*` collection lowers to no-runtime Rust
+`Vec<T>`.
+
 ## Rust boundary rules
 
 Portable lane:
