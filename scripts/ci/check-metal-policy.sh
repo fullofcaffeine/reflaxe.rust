@@ -463,6 +463,8 @@ run_contract_report_case() {
 	local expected_no_hxrt="${9:-}"
 	local expected_async_enabled="${10:-}"
 	local expected_nullable_strings="${11:-}"
+	local expected_json_patterns="${12:-}"
+	local expected_markdown_patterns="${13:-}"
 	local case_start="$SECONDS"
 	local fixture_dir="$root_dir/$fixture_rel"
 	local out_a="$fixture_dir/out_contract_report_a"
@@ -508,7 +510,7 @@ run_contract_report_case() {
 		exit 1
 	fi
 
-	if ! match_regex '"schemaVersion":[[:space:]]*4' "$json_a"; then
+	if ! match_regex '"schemaVersion":[[:space:]]*5' "$json_a"; then
 		echo "[metal-policy] error: contract_report.json missing schemaVersion for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
@@ -583,6 +585,16 @@ run_contract_report_case() {
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
+	if ! match_regex '"consumedSurfaces":[[:space:]]*\[' "$json_a"; then
+		echo "[metal-policy] error: contract_report.json missing consumedSurfaces array for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '"nativeRepresentationPlan":[[:space:]]*\[' "$json_a"; then
+		echo "[metal-policy] error: contract_report.json missing nativeRepresentationPlan array for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
 	if ! match_regex '"warnings":[[:space:]]*\[' "$json_a"; then
 		echo "[metal-policy] error: contract_report.json missing warnings array for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
@@ -648,6 +660,16 @@ run_contract_report_case() {
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi
+	if ! match_regex '^## Consumed Surfaces' "$md_a"; then
+		echo "[metal-policy] error: contract_report.md missing consumed-surfaces section for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if ! match_regex '^## Native Representation Plan' "$md_a"; then
+		echo "[metal-policy] error: contract_report.md missing native-representation-plan section for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
 
 	if [[ -n "$expected_strict_boundary" ]] && ! match_regex "\"strictBoundary\":[[:space:]]*${expected_strict_boundary}" "$json_a"; then
 		echo "[metal-policy] error: contract_report.json strictBoundary mismatch for ${failure_label}."
@@ -684,6 +706,26 @@ run_contract_report_case() {
 		echo "[metal-policy] error: contract_report.json nullableStrings mismatch for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
+	fi
+	if [[ -n "$expected_json_patterns" ]]; then
+		while IFS= read -r expected_pattern; do
+			[[ -z "$expected_pattern" ]] && continue
+			if ! match_regex "$expected_pattern" "$json_a"; then
+				echo "[metal-policy] error: contract_report.json missing expected pattern for ${failure_label}: ${expected_pattern}"
+				sed "s|$root_dir|.|g" "$json_a"
+				exit 1
+			fi
+		done <<<"$expected_json_patterns"
+	fi
+	if [[ -n "$expected_markdown_patterns" ]]; then
+		while IFS= read -r expected_pattern; do
+			[[ -z "$expected_pattern" ]] && continue
+			if ! match_regex "$expected_pattern" "$md_a"; then
+				echo "[metal-policy] error: contract_report.md missing expected pattern for ${failure_label}: ${expected_pattern}"
+				sed "s|$root_dir|.|g" "$md_a"
+				exit 1
+			fi
+		done <<<"$expected_markdown_patterns"
 	fi
 
 	if ! cmp -s "$json_a" "$json_b"; then
@@ -1201,6 +1243,11 @@ run_contract_report_case "examples/profile_storyboard" "compile.metal.hxml" "met
 run_contract_report_case "test/positive/metal_no_hxrt_minimal" "compile.hxml" "metal" \
 	'metal no-hxrt contract report artifacts' \
 	'true' 'false' 'false' 'true' 'true' 'false' 'false'
+run_contract_report_case "test/snapshot/reflaxe_std_option_result" "compile.hxml" "portable" \
+	'portable facade contract report records Option/Result surfaces' \
+	'false' 'true' 'false' 'false' 'false' 'false' 'true' \
+	$'"surfaceId":[[:space:]]*"reflaxe\\.std\\.Option"\n"surfaceId":[[:space:]]*"reflaxe\\.std\\.Result"\n"rustRepresentation":[[:space:]]*"core::option::Option<T>"\n"rustRepresentation":[[:space:]]*"core::result::Result<T,E>"\n"reason":[[:space:]]*"admitted_portable_facade"' \
+	$'`reflaxe\\.std\\.Option` \\(`portable_facade` -> `core::option::Option<T>`\n`reflaxe\\.std\\.Result` \\(`portable_facade` -> `core::result::Result<T,E>`\n`reflaxe\\.std\\.Option` -> `core::option::Option<T>` \\(`admitted_portable_facade`\\)\n`reflaxe\\.std\\.Result` -> `core::result::Result<T,E>` \\(`admitted_portable_facade`\\)'
 run_runtime_plan_report_case "examples/hello" "compile.hxml" "portable" "selective" \
 	'portable runtime plan artifacts'
 run_runtime_plan_report_case "examples/hello" "compile.hxml" "portable" "selective" \

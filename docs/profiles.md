@@ -60,6 +60,9 @@ platform abstraction.
 The boundary is therefore resolved from imports, calls, and metadata into explicit compiler-owned
 surface contracts and report entries. `reflaxe.std` stays portable in source; `rust.*` stays
 Rust-native in source; profiles decide how strictly those choices are enforced and reported.
+Unadmitted facade-like modules do not receive native representation privileges from their namespace:
+they remain ordinary Haxe surfaces until a per-module surface contract, docs, and fixture evidence
+admit them.
 
 ## Contract: `portable`
 
@@ -199,6 +202,8 @@ These reports help keep the boundary reviewable:
 - portable lowering wins should appear as implementation/report evidence, not as a silent contract
   change,
 - native-import hits remain explicit in contract reporting,
+- admitted portable facade usage appears in `consumedSurfaces`,
+- selected backend-native representations appear in `nativeRepresentationPlan` with stable reasons,
 - family pin metadata keeps Rust-local adoption distinct from standalone package hosting claims.
 
 The report schemas include explicit identity fields:
@@ -207,6 +212,8 @@ The report schemas include explicit identity fields:
 - `runtimeId` (runtime plan report)
 - `contract` (`portable` or `metal`)
 - `familyStdPin` (pin metadata from `family/family_std_pin.json` when visible from the compile root)
+- `consumedSurfaces` (contract report schema v5; per admitted typed surface)
+- `nativeRepresentationPlan` (contract report schema v5; selected Rust representation and reason)
 
 ## Migration notes
 

@@ -132,7 +132,8 @@ Portable contract should remain reviewably portable.
 
 - Importing native target modules in portable code emits a warning by default.
 - Set `-D rust_portable_native_import_strict` to escalate native-import warnings to errors.
-- Contract reports (`-D rust_contract_report`) include native-import hits and a portability marker.
+- Contract reports (`-D rust_contract_report`) include native-import hits, a portability marker,
+  admitted portable facade surfaces, and selected native representation decisions.
 
 ## Runtime capability taxonomy (Rust -> family)
 

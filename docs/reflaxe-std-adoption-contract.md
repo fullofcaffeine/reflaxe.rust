@@ -109,6 +109,10 @@ Concrete expectation:
 - `reflaxe.std.Option<T>` -> Rust `Option<T>`
 - `reflaxe.std.Result<T, E>` -> Rust `Result<T, E>`
 
+The compiler-side admission is intentionally per module. Future `reflaxe.std.*` surfaces require a
+new surface contract entry, docs, and fixture evidence before they can appear in
+`contract_report.*` as native-lowered portable facades.
+
 This means portable Rust output should not pay a wrapper-enum tax for these abstractions. The
 target state is "portable API, native Rust representation". When performance differs from
 Rust-first code, that difference should come from conservative codegen details (for example extra

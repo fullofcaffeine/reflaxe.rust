@@ -203,6 +203,11 @@ Outputs:
 - `runtime_plan.json`, `runtime_plan.md`
 - `optimizer_plan.json`, `optimizer_plan.md`
 
+`contract_report.*` uses the same profile contract in both `portable` and `metal`. Schema v5 records
+admitted typed surfaces in `consumedSurfaces` and the selected Rust representation decisions in
+`nativeRepresentationPlan`; unadmitted `reflaxe.std.*`-style modules are not treated as native
+facades just because of their namespace.
+
 ## Minimal runtime mode (`rust_no_hxrt`)
 
 `metal` can opt into a no-runtime contract:

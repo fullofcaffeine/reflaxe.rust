@@ -87,7 +87,8 @@ This page is a practical reference for the most relevant compiler defines.
     - `contract_report.md` (human-readable)
   - Includes effective contract flags (`contract`, strictness, async/no-hxrt/string mode),
     backend identity (`backendId`), family pin metadata (`familyStdPin.*`), native-import portability markers,
-    and current warning/error diagnostics.
+    admitted surface contracts (`consumedSurfaces`), selected native representation decisions
+    (`nativeRepresentationPlan`), and current warning/error diagnostics.
 - `rust_runtime_plan_report`
   - Emit deterministic runtime-plan artifacts in the generated crate root:
     - `runtime_plan.json` (machine-readable)

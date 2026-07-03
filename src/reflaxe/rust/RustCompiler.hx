@@ -43,6 +43,9 @@ import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker;
 import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot;
 import reflaxe.rust.analyze.ProfileContractAnalyzer;
 import reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics;
+import reflaxe.rust.analyze.SurfaceContractRegistry;
+import reflaxe.rust.analyze.SurfaceContractRegistry.NativeRepresentationDecision;
+import reflaxe.rust.analyze.SurfaceContractRegistry.SurfaceContract;
 import reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason;
 import reflaxe.rust.analyze.SendSyncAnalyzer;
 import reflaxe.rust.analyze.TypeUsageAnalyzer;
@@ -97,6 +100,8 @@ private typedef ProfileContractReportSnapshot = {
 	var portableNativeImportStrict:Bool;
 	var portableNativeImportsDetected:Bool;
 	var nativeImportHits:Array<String>;
+	var consumedSurfaces:Array<SurfaceContract>;
+	var nativeRepresentationPlan:Array<NativeRepresentationDecision>;
 	var usedModuleCount:Int;
 	var warnings:Array<String>;
 	var errors:Array<String>;
@@ -1226,6 +1231,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		What
 		- Writes `contract_report.json` and `contract_report.md` in the generated crate root.
 		- Emission is opt-in via `-D rust_contract_report`.
+		- Schema v5 includes typed surface contracts (`consumedSurfaces`) and selected Rust
+		  representation decisions (`nativeRepresentationPlan`) so portable facade lowering is
+		  explicit evidence instead of hidden namespace inference.
 
 		How
 		- Reuses cached `ProfileContractDiagnostics` stored in `CompilationContext` by
@@ -1344,6 +1352,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var diagnostics = currentCompilationContext != null ? currentCompilationContext.getProfileContractDiagnostics() : null;
 		if (diagnostics == null)
 			diagnostics = analyzeProfileContracts();
+		var modulePaths = snapshotUsedModulePaths();
 		var familyPin = buildFamilyStdPinReportSnapshot();
 
 		var warnings = diagnostics.warnings.copy();
@@ -1352,9 +1361,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		errors.sort(compareStrings);
 		var nativeImportHits = diagnostics.nativeImportHits.copy();
 		nativeImportHits.sort(compareStrings);
+		var consumedSurfaces = SurfaceContractRegistry.collectConsumed(modulePaths);
+		var nativeRepresentationPlan = SurfaceContractRegistry.buildNativeRepresentationPlan(consumedSurfaces);
 
 		return {
-			schemaVersion: 4,
+			schemaVersion: 5,
 			backendId: "reflaxe.rust",
 			contract: profile == Metal ? "metal" : "portable",
 			familyStdPin: familyPin,
@@ -1368,7 +1379,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			portableNativeImportStrict: Context.defined("rust_portable_native_import_strict"),
 			portableNativeImportsDetected: nativeImportHits.length > 0,
 			nativeImportHits: nativeImportHits,
-			usedModuleCount: snapshotUsedModulePaths().length,
+			consumedSurfaces: consumedSurfaces,
+			nativeRepresentationPlan: nativeRepresentationPlan,
+			usedModuleCount: modulePaths.length,
 			warnings: warnings,
 			errors: errors
 		};
@@ -1392,6 +1405,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		lines.push('\t"portableNativeImportsDetected": ' + boolString(snapshot.portableNativeImportsDetected) + ",");
 		lines.push('\t"nativeImportHits": [');
 		appendJsonStringArray(lines, snapshot.nativeImportHits, 2);
+		lines.push("\t],");
+		lines.push('\t"consumedSurfaces": [');
+		appendSurfaceContractsJson(lines, snapshot.consumedSurfaces, 2);
+		lines.push("\t],");
+		lines.push('\t"nativeRepresentationPlan": [');
+		appendNativeRepresentationPlanJson(lines, snapshot.nativeRepresentationPlan, 2);
 		lines.push("\t],");
 		lines.push('\t"usedModuleCount": ' + snapshot.usedModuleCount + ",");
 		lines.push('\t"warnings": [');
@@ -1429,6 +1448,25 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		} else {
 			for (hit in snapshot.nativeImportHits)
 				lines.push("- " + hit);
+		}
+		lines.push("");
+		lines.push("## Consumed Surfaces");
+		if (snapshot.consumedSurfaces.length == 0) {
+			lines.push("- none");
+		} else {
+			for (surface in snapshot.consumedSurfaces) {
+				lines.push("- `" + surface.surfaceId + "` (`" + surface.sourceContract + "` -> `" + surface.rustRepresentation + "`, no-hxrt eligible: `"
+					+ boolLabel(surface.noHxrtEligible) + "`)");
+			}
+		}
+		lines.push("");
+		lines.push("## Native Representation Plan");
+		if (snapshot.nativeRepresentationPlan.length == 0) {
+			lines.push("- none");
+		} else {
+			for (decision in snapshot.nativeRepresentationPlan) {
+				lines.push("- `" + decision.surfaceId + "` -> `" + decision.selectedRepresentation + "` (`" + decision.reason + "`)");
+			}
 		}
 		lines.push("");
 		lines.push("## Warnings");
@@ -1907,6 +1945,37 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			lines.push(indent(indentLevel + 1) + '"feature": "' + jsonEscape(reason.feature) + '",');
 			lines.push(indent(indentLevel + 1) + '"sourceKind": "' + jsonEscape(reason.sourceKind) + '",');
 			lines.push(indent(indentLevel + 1) + '"source": "' + jsonEscape(reason.source) + '"');
+			lines.push(indent(indentLevel) + "}" + comma);
+		}
+	}
+
+	static function appendSurfaceContractsJson(lines:Array<String>, surfaces:Array<SurfaceContract>, indentLevel:Int):Void {
+		for (index in 0...surfaces.length) {
+			var surface = surfaces[index];
+			var comma = index == surfaces.length - 1 ? "" : ",";
+			lines.push(indent(indentLevel) + "{");
+			lines.push(indent(indentLevel + 1) + '"surfaceId": "' + jsonEscape(surface.surfaceId) + '",');
+			lines.push(indent(indentLevel + 1) + '"modulePath": "' + jsonEscape(surface.modulePath) + '",');
+			lines.push(indent(indentLevel + 1) + '"sourceContract": "' + jsonEscape(surface.sourceContract) + '",');
+			lines.push(indent(indentLevel + 1) + '"facadeVersion": ' + surface.facadeVersion + ",");
+			lines.push(indent(indentLevel + 1) + '"portableSemantics": "' + jsonEscape(surface.portableSemantics) + '",');
+			lines.push(indent(indentLevel + 1) + '"rustRepresentation": "' + jsonEscape(surface.rustRepresentation) + '",');
+			lines.push(indent(indentLevel + 1) + '"backendSpecializationAllowed": ' + boolString(surface.backendSpecializationAllowed) + ",");
+			lines.push(indent(indentLevel + 1) + '"requiresRustImport": ' + boolString(surface.requiresRustImport) + ",");
+			lines.push(indent(indentLevel + 1) + '"noHxrtEligible": ' + boolString(surface.noHxrtEligible) + ",");
+			lines.push(indent(indentLevel + 1) + '"fallbackPolicy": "' + jsonEscape(surface.fallbackPolicy) + '"');
+			lines.push(indent(indentLevel) + "}" + comma);
+		}
+	}
+
+	static function appendNativeRepresentationPlanJson(lines:Array<String>, decisions:Array<NativeRepresentationDecision>, indentLevel:Int):Void {
+		for (index in 0...decisions.length) {
+			var decision = decisions[index];
+			var comma = index == decisions.length - 1 ? "" : ",";
+			lines.push(indent(indentLevel) + "{");
+			lines.push(indent(indentLevel + 1) + '"surfaceId": "' + jsonEscape(decision.surfaceId) + '",');
+			lines.push(indent(indentLevel + 1) + '"selectedRepresentation": "' + jsonEscape(decision.selectedRepresentation) + '",');
+			lines.push(indent(indentLevel + 1) + '"reason": "' + jsonEscape(decision.reason) + '"');
 			lines.push(indent(indentLevel) + "}" + comma);
 		}
 	}
