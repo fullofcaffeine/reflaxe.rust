@@ -133,6 +133,7 @@ Bead: `haxe.rust-oo3.74.4`
 - Cover values, refs, slices, Vec/HashMap, Option/Result, strings, paths, OS strings, time, native handles, RAII guards, iterators, async tasks, and concurrency primitives.
 - Mark each entry as supported, partial, or missing.
 - For every partial/missing row, decide whether the fix belongs in compiler lowering, std facade, hxrt, or handwritten Rust extern support.
+- Current audit: [Metal type surface gap matrix](metal-type-surface-gap-matrix.md).
 
 ### 5. Typed Mini-DSL Authority
 

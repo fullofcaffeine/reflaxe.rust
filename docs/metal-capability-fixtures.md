@@ -5,6 +5,9 @@ This document is the contract-first fixture plan for `haxe.rust-oo3.74` ("Metal 
 It exists so metal compiler work starts from explicit positive and negative contracts rather than
 from ad hoc lowering changes.
 
+Use [Metal type surface gap matrix](metal-type-surface-gap-matrix.md) to decide whether a fixture
+is proving an already-supported surface, closing a partial surface, or defining a missing surface.
+
 ## Rules
 
 - Add or update the fixture before changing compiler/runtime behavior.
