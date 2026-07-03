@@ -73,6 +73,12 @@ This freeze exists to keep the boundary explicit:
 - backend-local lowering quality is a Rust implementation detail,
 - native `rust.*` APIs remain explicit native-lane imports rather than becoming hidden portable aliases.
 
+Future expansion beyond `Option` / `Result` requires a new admitted facade contract before Rust can
+specialize it. That contract must name the portable semantics, Rust representation, adapters,
+no-runtime eligibility, and fixtures. In particular, a future collection facade must not imply that
+ordinary Haxe `Array<T>` has become a Rust `Vec<T>` no-runtime surface unless that exact contract is
+accepted and tested.
+
 ## Rust boundary rules
 
 Portable lane:

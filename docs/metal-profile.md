@@ -223,3 +223,7 @@ Constraints:
 - incompatible with `rust_string_nullable`,
 - incompatible with `rust_async`,
 - incompatible with `rust_hxrt_*` feature-selection defines.
+
+Future portable-facade no-runtime support is tracked separately. It must not be enabled by merely
+relaxing this profile check: the compiler first needs a source/typed-AST eligibility pass and
+deterministic fallback-reason reports that prove no Haxe runtime semantics are required.

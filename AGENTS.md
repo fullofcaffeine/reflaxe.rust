@@ -145,7 +145,8 @@ Agent policy:
     message mentions those module names.
   - JSON boundary gotcha: do not `cast Json.parse(...)` directly to a typed anonymous structure in app/runtime code. The Rust runtime may return a `DynObject` representation that fails anon downcasts; decode through `Reflect.field` + typed validators at the boundary, then stay strongly typed.
   - Semantic-diff oracle gotcha: `haxe --interp` is not a valid oracle for threaded `sys.thread.EventLoop` / `haxe.EntryPoint` / `haxe.MainLoop` behavior on this target. Use Rust-target snapshot/example smoke for those contracts and downgrade docs accordingly instead of forcing a false semantic-diff parity claim.
-- The generated crate always includes the bundled runtime crate at `./hxrt` and adds `hxrt = { path = "./hxrt" }` to `Cargo.toml`.
+- The generated crate normally includes the bundled runtime crate at `./hxrt` and adds `hxrt = { path = "./hxrt" }` to `Cargo.toml`.
+  The exception is proven `-D rust_no_hxrt` output, which must omit the bundled runtime and pass the no-runtime guard.
 - For class instance semantics, the runtime uses a thread-safe heap (`HxRef<T> = Arc<HxCell<T>>` with `RwLock` interior mutability):
   - concrete calls use `Class::method(&obj, ...)` where methods take `&HxCell<Class>`
   - polymorphic base/interface calls use trait objects (`HxDynRef<dyn ...>`) and `obj.method(...)` dispatch
@@ -246,8 +247,9 @@ Agent policy:
     Typed framework facades in `src/reflaxe/rust/macros` and `std/rust/metal` remain allowed.
   - Metal string contract: in default non-null string mode, `String` cannot be assigned `null`.
     Use `Null<String>` for nullable values; explicit `== null` / `!= null` checks on strict non-null `String` lower to constant `false` / `true`.
-  - Minimal-runtime policy: `-D rust_no_hxrt` is metal-only and must remain a hard contract.
+  - Minimal-runtime policy: today, `-D rust_no_hxrt` is metal-only and must remain a hard contract.
     In that mode, do not rely on Cargo-link failures as enforcement; keep the typed no-runtime guard pass (`NoHxrtPass`) active so violations fail with actionable module-level diagnostics.
+    Future capability-driven portable no-hxrt support requires a separate source/typed-AST eligibility pass plus report fixtures before this policy can be widened.
   - Metal diagnostics gotcha: aggregate `ERaw` fallback diagnostics once per compile (with top modules) instead of warning per transformed module; this keeps fallback signals actionable in large std-heavy builds.
   - Optional formatter hook: `-D rustfmt` runs `cargo fmt --manifest-path <out>/Cargo.toml` after output generation (best-effort, warns on failure).
 - TUI testing: prefer ratatui `TestBackend` via `TuiDemo.renderToString(...)` and assert in `cargo test` (see `docs/tui.md` and `examples/tui_todo/native/tui_tests.rs`).

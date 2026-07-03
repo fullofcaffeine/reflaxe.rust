@@ -35,11 +35,12 @@ policy; typed surfaces select semantics.
 The compiler should therefore decide lowering from the API being consumed:
 
 - ordinary Haxe/std APIs keep Haxe-observable semantics,
-- `reflaxe.std.*` APIs can declare portable facade contracts with native Rust representations on
-  this backend,
+- admitted `reflaxe.std` facade surfaces can declare portable contracts with native Rust
+  representations on this backend,
 - `rust.*` / `rust.metal.*` imports mean the source contract is explicitly Rust-native,
 - `@:haxeMetal` applies strict Rust-native checks to a selected island,
-- `rust_no_hxrt` proves the selected subset does not need runtime support.
+- today, `rust_no_hxrt` is metal-only; future portable no-runtime support requires a separate
+  eligibility pass that proves admitted facades do not need runtime support.
 
 That is the intended path for porting JS-first or cross-target Haxe code toward Rust-native speed:
 move reusable abstractions onto typed portable facades, let the Rust target specialize those facades
@@ -88,7 +89,8 @@ Examples:
   - lowering `reflaxe.std.Option/Result` to Rust `Option/Result`
   - lowering a future portable `Vec`-like facade to Rust `Vec<T>` when its contract excludes Haxe
     reference/runtime obligations
-  - compiling a no-runtime portable facade subset under `rust_no_hxrt`
+  - compiling a future no-runtime portable facade subset after no-hxrt eligibility is proven and
+    reported
   - removing avoidable clones/temporaries in portable output
   - using better formatter/lowering paths when they preserve portable semantics
 - Not allowed:
@@ -156,10 +158,15 @@ The role of `reflaxe.std` is:
 - keep portability intent explicit,
 - and avoid forcing users to choose between portability and obvious native representation wins.
 
+Facade admission is intentionally narrow. Current local Rust adoption is `Option` / `Result`; future
+collections, handles, or no-runtime facades need their own admitted contract, fixtures, and report
+schema before users should rely on them.
+
 The role of `reflaxe.std` is **not**:
 
 - to absorb `rust.*`,
 - to blur portable vs native policy,
+- to imply arbitrary Rust library parity through portable syntax,
 - or to grow opportunistically backend-by-backend inside `haxe.rust`.
 
 ## Current post-M30 performance posture

@@ -3,6 +3,28 @@
 This is the paste-ready external Oracle/GPT-5.5 Pro review prompt for
 `haxe.rust-oo3.74.9`.
 
+## Review Result
+
+Oracle verdict: `APPROVE_WITH_CHANGES`.
+
+Accepted direction:
+
+- capability-driven portable facades are coherent,
+- profiles should remain policy presets,
+- typed surfaces/imports/metadata/reports should own semantics,
+- the model must not introduce a hidden third profile or silent semantic inference.
+
+Required changes before closure:
+
+- Keep `haxe.rust-oo3.74.9` open until concrete compiler/report fixtures land.
+- Reconcile current `rust_no_hxrt` metal-only implementation with any future portable no-runtime
+  claim. Today it remains metal-only; future portable support requires source/typed-AST eligibility
+  before the final generated-code `NoHxrtPass`.
+- Define per-surface facade admission, not namespace-wide `reflaxe.std.*` admission.
+- Add reportable surface contracts, native representation decisions, and semantic runtime fallback
+  reasons.
+- Split current `Option` / `Result` facade proof from any future `Vec`/collection facade proof.
+
 ## Uploads
 
 Upload this current repo bundle:
@@ -54,7 +76,10 @@ Ask Oracle to prioritize these files in the uploaded bundle:
 - `std/haxe/functional/Result.hx`
 - `runtime/hxrt/src/dynamic.rs`
 
-## Prompt
+## Original Prompt
+
+The prompt below is the original review request. The review result above supersedes any fixture names
+or wording that Oracle asked us to change.
 
 You are reviewing the Haxe-to-Rust target `reflaxe.rust`.
 

@@ -42,11 +42,12 @@ Profiles are policy presets, not the only source of native Rust output. The comp
 typed surfaces a program consumes and lower them according to their declared semantics:
 
 - ordinary Haxe/std APIs preserve Haxe semantics first,
-- `reflaxe.std.*` APIs are portable facades that may declare native Rust representations for this
-  backend,
+- admitted `reflaxe.std` facade surfaces are portable APIs that may declare native Rust
+  representations for this backend,
 - `rust.*` and `rust.metal.*` APIs are explicit Rust-native source contracts,
 - `@:haxeMetal` marks a strict Rust-native island inside a wider portable build,
-- `rust_no_hxrt` proves that the selected source subset does not need `hxrt`.
+- today, `rust_no_hxrt` is a metal-only minimal-runtime gate; future portable use requires a
+  source/typed-AST eligibility pass before the final generated-code `NoHxrtPass`.
 
 This means portable source can still become native-shaped Rust when the API contract admits it. The
 backend should specialize at compile time first: native `Option`/`Result`/`Vec`, owned values,
@@ -56,9 +57,9 @@ which source semantics required it: object identity, Haxe reference mutation, `D
 anonymous runtime objects, exceptions, nullable compatibility, shared closure cells, or a real
 platform abstraction.
 
-The boundary is therefore partly implicit in what the program imports and calls, but it is not
-hidden. `reflaxe.std` stays portable in source; `rust.*` stays Rust-native in source; profiles decide
-how strictly those choices are enforced and reported.
+The boundary is therefore resolved from imports, calls, and metadata into explicit compiler-owned
+surface contracts and report entries. `reflaxe.std` stays portable in source; `rust.*` stays
+Rust-native in source; profiles decide how strictly those choices are enforced and reported.
 
 ## Contract: `portable`
 
@@ -120,7 +121,7 @@ Default behavior:
   Use `Null<String>` for nullable values, or explicitly enable `-D rust_string_nullable` when portability semantics are required.
 - pass pipeline includes portable passes + borrow-scope stage + metal restrictions.
 - contract violations hard-error unless fallback mode is explicitly enabled.
-- optional minimal runtime via `-D rust_no_hxrt`.
+- optional minimal runtime via `-D rust_no_hxrt` after selecting `metal`.
 
 ## Lanes: Metal Islands in Portable Builds
 
@@ -169,6 +170,10 @@ Rules:
 
 - `-D rust_async` requires `-D reflaxe_rust_profile=metal`.
 - `-D rust_no_hxrt` requires `metal` and cannot be combined with `rust_async`.
+- Capability-driven portable no-hxrt is future work, not current behavior. It requires a
+  source/typed-AST eligibility pass that proves the selected portable facades do not require runtime
+  semantics, plus report fixtures that explain any blockers before the final emitted-code
+  `NoHxrtPass` runs.
 - Portable contract tracks native-target imports (`rust.*`, `cpp.*`, etc.) as portability signals:
   - default: warning + contract-report marker (`nativeImportHits`),
   - strict: `-D rust_portable_native_import_strict` turns those warnings into errors.

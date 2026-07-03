@@ -30,7 +30,7 @@ The profile is the policy preset. The consumed API surface is what tells the com
 semantics must be preserved.
 
 - ordinary Haxe/std APIs keep portable Haxe semantics,
-- `reflaxe.std.*` APIs can be portable facades with Rust-native representations on this backend,
+- admitted `reflaxe.std` facade surfaces can have Rust-native representations on this backend,
 - `rust.*` / `rust.metal.*` APIs are explicit native-lane source choices,
 - `@:haxeMetal` turns a selected module into a strict native-lane island.
 

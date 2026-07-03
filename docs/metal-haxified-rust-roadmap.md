@@ -23,11 +23,11 @@ Haxe APIs whose Rust backend lowers through native Rust representations when the
 permits it.
 
 This is different from silently treating ordinary portable code as `metal`, and it is also different
-from requiring users to draw a hard module boundary by hand. The compiler should infer the lowering
-lane from typed consumption:
+from requiring users to draw a hard module boundary by hand. The compiler should resolve typed
+consumption into explicit, reportable surface contracts:
 
 - ordinary Haxe/std APIs keep the Haxe semantics they already promise,
-- `reflaxe.std.*` APIs can be portable facades with declared native Rust representation contracts,
+- admitted `reflaxe.std` facade surfaces can have declared native Rust representation contracts,
 - `rust.*` / `rust.metal.*` APIs are explicit Rust-native source contracts,
 - `@:haxeMetal` marks strict Rust-native islands inside a portable build.
 
@@ -50,8 +50,16 @@ The implementation rule is compile-time specialization first:
 - If `hxrt` is needed, the compiler/report should explain why: object identity, Haxe reference
   semantics, `Dynamic`, reflection, anonymous runtime objects, exceptions, shared mutable closure
   cells, nullable compatibility, or a platform abstraction that genuinely needs a shared helper.
-- `rust_no_hxrt` should act as a hard check for the no-runtime subset: eligible facade code compiles,
-  while unsupported semantics fail with actionable diagnostics instead of linking `hxrt` implicitly.
+- Today, `rust_no_hxrt` is metal-only. Future portable-facade no-runtime support requires a
+  source/typed-AST eligibility pass before lowering, followed by the existing generated-code
+  `NoHxrtPass` guard. Eligible facade code should compile, while unsupported semantics fail with
+  actionable diagnostics instead of linking `hxrt` implicitly.
+
+The implementation must not treat a namespace as admitted just because it is named `reflaxe.std`.
+Admission is per symbol/module/version and should be represented in a compiler-readable
+`SurfaceContract`-style registry. At minimum, each admitted facade needs a stable `surfaceId`, source
+contract kind, facade version, portable semantics, Rust representation, no-hxrt eligibility, and
+fallback policy.
 
 ## Non-Goals
 
@@ -191,6 +199,32 @@ Bead: `haxe.rust-oo3.74.9`
   eligibility.
 - Require deterministic fallback reports that explain every runtime dependency and make
   `rust_no_hxrt` failures actionable.
+- Do not close this bead on docs alone. Closure requires at least one concrete compiler/report
+  fixture that proves consumed facade surfaces, native representation decisions, or deterministic
+  runtime fallback reasons.
+
+Required implementation artifacts:
+
+- `SurfaceContractRegistry` or equivalent: classifies ordinary Haxe, admitted portable facade,
+  Rust-native, and metal-island surfaces by stable IDs.
+- `NativeRepresentationPlan`: records selected Rust shapes such as `Option<T>`, `Result<T,E>`, or
+  runtime fallback representations with reasons.
+- `RuntimeRequirementLedger`: records semantic runtime requirements before final codegen using
+  stable reason kinds, not free-form strings.
+- `NoHxrtEligibilityPass`: source/typed-AST gate for no-runtime eligibility before lowering.
+- Existing `NoHxrtPass`: final emitted-code validator that rejects generated `hxrt` references.
+- Extended `contract_report.*` / `runtime_plan.*` fixtures that prove deterministic ordering,
+  source/module attribution, consumed surfaces, selected representations, and fallback blockers.
+
+Tracker children created from the Oracle review:
+
+- `haxe.rust-oo3.74.9.2`: surface contract registry and report schema.
+- `haxe.rust-oo3.74.9.3`: semantic runtime requirement ledger.
+- `haxe.rust-oo3.74.9.4`: no-hxrt eligibility pass split from emitted-code guard.
+- `haxe.rust-oo3.74.9.5`: first portable facade report fixtures.
+- `haxe.rust-oo3.74.9.6`: deferred portable Vec facade admission.
+- `haxe.rust-oo3.74.9.7`: typed surface usage reporting beyond textual import scans.
+- `haxe.rust-oo3.74.9.8`: portable facade output-shape gates.
 
 ## Tracker Sweep
 

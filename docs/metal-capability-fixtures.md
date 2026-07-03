@@ -41,7 +41,7 @@ is proving an already-supported surface, closing a partial surface, or defining 
 | Dynamic/reflection boundaries | `test/negative/metal_dynamic_access`, `test/negative/metal_reflect`, `test/negative/metal_type_reflection` | `test/negative/metal_dynamic_dsl_payload`, `test/negative/metal_reflect_trait_boundary` | metal policy |
 | Metal islands in portable builds | `test/negative/metal_island_*`, contract report cases | `test/snapshot/portable_with_metal_trait_island`, `test/negative/metal_island_lifetime_escape` | metal policy + contract report |
 | Idiomatic output shape | fallback baseline, rustfmt/cargo build in snapshots | `test/snapshot/metal_idiom_values`, `test/snapshot/metal_idiom_option_result_vec`, deterministic clone/borrow/hxrt counters | snapshot + fallback baseline |
-| Capability-driven portable facades | `test/snapshot/reflaxe_std_option_result`, `test/snapshot/rust_reflaxe_std_adapters`, `docs/reflaxe-std-adoption-contract.md` | `test/snapshot/portable_facade_native_option_result_vec`, `test/positive/portable_facade_no_hxrt_subset`, `test/negative/portable_facade_no_hxrt_dynamic_fallback`, fallback-reason report fixture | snapshot + no-hxrt + contract report |
+| Capability-driven portable facades | `test/snapshot/reflaxe_std_option_result`, `test/snapshot/rust_reflaxe_std_adapters`, `docs/reflaxe-std-adoption-contract.md` | `test/snapshot/portable_facade_native_option_result`, `test/snapshot/portable_facade_contract_report`, `test/negative/runtime_fallback_reason_dynamic`, future no-hxrt eligibility fixtures | snapshot + report + no-hxrt eligibility |
 
 ## First Wave
 
@@ -67,16 +67,20 @@ Implement these before broad compiler work in the milestone:
    - Proves native `Option`, `Result`, and `Vec` shapes stay readable, rustfmt-clean, and free of avoidable hxrt/Dynamic/raw fallback.
    - Expected owner: `test/run-snapshots.sh` and `scripts/ci/check-metal-fallback-counts.sh`.
 
-Capability-driven portable-facade work should add:
+Capability-driven portable-facade work should add, in order:
 
-- `test/snapshot/portable_facade_native_option_result_vec`
-  - Proves portable-shaped facade source lowers to native Rust `Option`, `Result`, and `Vec` on the Rust target when the consumed facade declares that representation.
-- `test/positive/portable_facade_no_hxrt_subset`
-  - Proves the facade subset can compile with `rust_no_hxrt` when no Haxe runtime semantics are required.
-- `test/negative/portable_facade_no_hxrt_dynamic_fallback`
-  - Proves unsupported portable semantics fail under `rust_no_hxrt` with a diagnostic that names the runtime fallback reason.
-- A deterministic fallback-reason report fixture.
-  - Proves every `hxrt` dependency introduced by facade lowering is explained by source semantics rather than hidden convenience.
+- `test/snapshot/portable_facade_native_option_result`
+  - Proves admitted portable facade source lowers to native Rust `Option` and `Result` on the Rust target.
+- `test/snapshot/portable_facade_contract_report`
+  - Proves `contract_report.*` records consumed facade surfaces, stable surface IDs, selected native representations, and no hidden `rust.*` import requirement.
+- `test/negative/runtime_fallback_reason_dynamic`
+  - Proves `runtime_plan.*` records a stable semantic fallback reason such as `dynamic` before generated code happens to reference `hxrt`.
+- Future `test/positive/portable_facade_no_hxrt_subset`
+  - Proves a portable facade subset can compile with `rust_no_hxrt` only after a source/typed-AST eligibility pass exists. Today `rust_no_hxrt` remains metal-only.
+- Future `test/negative/portable_facade_no_hxrt_dynamic_fallback`
+  - Proves unsupported portable semantics fail under future portable `rust_no_hxrt` with a diagnostic that names the runtime fallback reason.
+- Future `test/snapshot/portable_facade_native_vec`
+  - Proves a portable collection facade lowers to Rust `Vec<T>` only after a concrete `reflaxe.std` collection contract is admitted. Do not use this fixture to imply ordinary Haxe `Array<T>` is a no-runtime `Vec<T>` facade.
 
 ## Failure Policy
 
@@ -97,6 +101,13 @@ Capability-driven portable-facade work should add:
 | `haxe.rust-oo3.74.6` | Idiomatic-output gates and deterministic fail/baseline thresholds. |
 | `haxe.rust-oo3.74.7` | Extern/lifetime-island cookbook fixture and example. |
 | `haxe.rust-oo3.74.9` | Capability-driven portable facade lowering, no-hxrt eligibility, and fallback-reason fixtures. |
+| `haxe.rust-oo3.74.9.2` | Surface contract schema and consumed-surface report fields. |
+| `haxe.rust-oo3.74.9.3` | Semantic runtime fallback reason schema and `runtime_plan.*` ledger fields. |
+| `haxe.rust-oo3.74.9.4` | Source/typed-AST no-hxrt eligibility fixtures before future portable no-runtime support. |
+| `haxe.rust-oo3.74.9.5` | First Option/Result portable facade report fixtures. |
+| `haxe.rust-oo3.74.9.6` | Deferred portable Vec facade admission criteria. |
+| `haxe.rust-oo3.74.9.7` | Typed native/facade surface usage reporting. |
+| `haxe.rust-oo3.74.9.8` | Portable facade output-shape gates. |
 
 ## Closeout Checklist For New Metal Capability Fixtures
 
