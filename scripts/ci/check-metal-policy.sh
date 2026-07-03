@@ -1154,6 +1154,80 @@ run_optimizer_plan_report_case() {
 	finish_policy_case "$failure_label" "$case_start"
 }
 
+run_portable_facade_output_shape_case() {
+	local fixture_rel="$1"
+	local hxml_file="$2"
+	local failure_label="$3"
+	local case_start="$SECONDS"
+	local fixture_dir="$root_dir/$fixture_rel"
+	local out_dir="$fixture_dir/out_output_shape"
+	local log_file="$fixture_dir/.compile_output_shape.log"
+	local main_rs="$out_dir/src/main.rs"
+	echo "[metal-policy] case: ${failure_label}"
+
+	rm -rf "$out_dir"
+	rm -f "$log_file"
+
+	set +e
+	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_output=out_output_shape) >"$log_file" 2>&1
+	local status=$?
+	set -e
+
+	if [[ "$status" -ne 0 ]]; then
+		echo "[metal-policy] error: expected compile success for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	if [[ ! -f "$main_rs" ]]; then
+		echo "[metal-policy] error: missing generated src/main.rs for ${failure_label}."
+		exit 1
+	fi
+
+	local required_patterns=(
+		'fn option_score\(value: Option<i32>\) -> i32'
+		'fn result_score\(value: Result<i32, i32>\) -> i32'
+		'let maybe: Option<i32> = Option::Some\(3\);'
+		'let fallback: Option<i32> = Option::None;'
+		'let done: Result<i32, i32> = Result::Ok\(5\);'
+		'let fail: Result<i32, i32> = Result::Err\(2\);'
+		'Option::Some'
+		'Option::None'
+		'Result::Ok'
+		'Result::Err'
+	)
+	for pattern in "${required_patterns[@]}"; do
+		if ! match_regex "$pattern" "$main_rs"; then
+			echo "[metal-policy] error: generated user module missing native facade output-shape pattern for ${failure_label}: ${pattern}"
+			sed "s|$root_dir|.|g" "$main_rs"
+			exit 1
+		fi
+	done
+
+	local forbidden_patterns=(
+		'hxrt::dynamic'
+		'hxrt::array'
+		'__rust__'
+		'ERaw'
+	)
+	for pattern in "${forbidden_patterns[@]}"; do
+		if match_regex "$pattern" "$main_rs"; then
+			echo "[metal-policy] error: generated user module contains forbidden facade output-shape pattern for ${failure_label}: ${pattern}"
+			sed "s|$root_dir|.|g" "$main_rs"
+			exit 1
+		fi
+	done
+
+	if ! (cd "$out_dir" && cargo build -q); then
+		echo "[metal-policy] error: generated portable facade crate did not cargo-build for ${failure_label}."
+		exit 1
+	fi
+
+	rm -f "$log_file"
+	rm -rf "$out_dir"
+	finish_policy_case "$failure_label" "$case_start"
+}
+
 run_no_hxrt_success_case() {
 	local fixture_rel="$1"
 	local hxml_file="$2"
@@ -1293,6 +1367,8 @@ run_contract_report_case "test/snapshot/portable_facade_contract_report" "compil
 	'false' 'true' 'false' 'false' 'false' 'false' 'true' \
 	$'"portableNativeImportsDetected":[[:space:]]*false\n"surfaceId":[[:space:]]*"reflaxe\\.std\\.Option"\n"surfaceId":[[:space:]]*"reflaxe\\.std\\.Result"\n"requiresRustImport":[[:space:]]*false\n"rustRepresentation":[[:space:]]*"core::option::Option<T>"\n"rustRepresentation":[[:space:]]*"core::result::Result<T,E>"\n"reason":[[:space:]]*"admitted_portable_facade"' \
 	$'## Native Import Hits\n- none\n`reflaxe\\.std\\.Option` \\(`portable_facade` -> `core::option::Option<T>`\n`reflaxe\\.std\\.Result` \\(`portable_facade` -> `core::result::Result<T,E>`'
+run_portable_facade_output_shape_case "test/snapshot/portable_facade_native_option_result" "compile.hxml" \
+	'portable facade Option/Result output uses native Rust shapes'
 run_runtime_plan_report_case "examples/hello" "compile.hxml" "portable" "selective" \
 	'portable runtime plan artifacts' \
 	"" \

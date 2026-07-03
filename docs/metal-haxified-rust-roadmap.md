@@ -220,6 +220,11 @@ Required implementation artifacts:
   The first concrete wave is `test/snapshot/portable_facade_native_option_result`,
   `test/snapshot/portable_facade_contract_report`, and
   `test/negative/runtime_fallback_reason_dynamic`.
+- Output-shape gates for admitted facades. The first concrete gate is in
+  `scripts/ci/check-metal-policy.sh` and asserts that
+  `test/snapshot/portable_facade_native_option_result` emits native Rust `Option<i32>` /
+  `Result<i32, i32>` in the generated user module without routing those values through
+  `hxrt::dynamic`, `hxrt::array`, raw `__rust__`, or raw `ERaw` markers.
 
 Tracker children created from the Oracle review:
 

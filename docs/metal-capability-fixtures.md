@@ -41,7 +41,7 @@ is proving an already-supported surface, closing a partial surface, or defining 
 | Dynamic/reflection boundaries | `test/negative/metal_dynamic_access`, `test/negative/metal_reflect`, `test/negative/metal_type_reflection` | `test/negative/metal_dynamic_dsl_payload`, `test/negative/metal_reflect_trait_boundary` | metal policy |
 | Metal islands in portable builds | `test/negative/metal_island_*`, contract report cases | `test/snapshot/portable_with_metal_trait_island`, `test/negative/metal_island_lifetime_escape` | metal policy + contract report |
 | Idiomatic output shape | fallback baseline, rustfmt/cargo build in snapshots | `test/snapshot/metal_idiom_values`, `test/snapshot/metal_idiom_option_result_vec`, deterministic clone/borrow/hxrt counters | snapshot + fallback baseline |
-| Capability-driven portable facades | `test/snapshot/reflaxe_std_option_result`, `test/snapshot/rust_reflaxe_std_adapters`, `docs/reflaxe-std-adoption-contract.md` | `test/snapshot/portable_facade_native_option_result`, `test/snapshot/portable_facade_contract_report`, `test/negative/runtime_fallback_reason_dynamic`, future no-hxrt eligibility fixtures | snapshot + report + no-hxrt eligibility |
+| Capability-driven portable facades | `test/snapshot/reflaxe_std_option_result`, `test/snapshot/rust_reflaxe_std_adapters`, `docs/reflaxe-std-adoption-contract.md` | `test/snapshot/portable_facade_native_option_result`, `test/snapshot/portable_facade_contract_report`, `test/negative/runtime_fallback_reason_dynamic`, future no-hxrt eligibility fixtures | snapshot + report + output-shape + no-hxrt eligibility |
 
 ## First Wave
 
@@ -77,6 +77,9 @@ fixtures, or runtime fallback reasons before they can be treated as native Rust 
 - `test/snapshot/portable_facade_native_option_result`
   - Proves admitted portable facade source lowers to native Rust `Option` and `Result` on the Rust target.
   - Implemented as a minimal Rust-output snapshot that avoids unrelated `Sys.println` / string output noise.
+  - Also owned by a metal-policy output-shape gate: the generated user module must contain native
+    Rust `Option<i32>` / `Result<i32, i32>` signatures and constructors, and must not route those
+    values through `hxrt::dynamic`, `hxrt::array`, raw `__rust__`, or raw `ERaw` markers.
 - `test/snapshot/portable_facade_contract_report`
   - Proves `contract_report.*` records consumed facade surfaces, stable surface IDs, selected native representations, and no hidden `rust.*` import requirement.
   - Implemented as a deterministic report snapshot plus a metal-policy case that checks surface IDs,
