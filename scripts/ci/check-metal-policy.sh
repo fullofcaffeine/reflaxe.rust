@@ -1298,6 +1298,8 @@ run_negative_case "test/negative/metal_raw_rust" 'Strict mode forbids `__rust__\
 	'raw __rust__ in app code under metal profile'
 run_negative_case "test/negative/metal_raw_rust_under_std" 'Strict mode forbids `__rust__\(\)` code injection in application code' \
 	'raw __rust__ in user code under a /std/ path must still be rejected'
+run_negative_case "test/negative/metal_stringly_dsl_app_api" '`rust\.metal\.Code\.expr` is a controlled raw Rust escape hatch' \
+	'stringly rust.metal.Code app API requires scoped raw authority'
 run_negative_case "test/negative/metal_reflect" 'metal profile forbids reflection/runtime-introspection modules' \
 	'Reflect usage under metal profile' \
 	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust profile contract violation\(s\):'
@@ -1312,6 +1314,8 @@ run_negative_case "test/negative/metal_island_raw_fallback" 'Metal island violat
 	'@:haxeMetal module rejects raw fallback codegen in portable profile'
 run_negative_case "test/negative/metal_island_allow_raw_fallback" 'Metal island violation in module `Main`.*raw Rust expression node\(s\) \(`ERaw`\)' \
 	'@:rustAllowRaw does not bypass @:haxeMetal raw-fallback restrictions'
+run_negative_case "test/negative/metal_dsl_bypasses_policy" 'Metal island violation in module `Main`.*raw Rust expression node\(s\) \(`ERaw`\)' \
+	'rust.metal.Code does not bypass @:haxeMetal raw-fallback restrictions'
 run_negative_case "test/negative/metal_island_rust_alias_dynamic_access" 'Metal island violation in module `Main`.*dynamic_boundary/dynamic_access' \
 	'@:rustMetal alias still enforces metal island contract in portable profile'
 run_negative_case "test/negative/metal_nullable_strings" 'metal profile does not allow -D rust_string_nullable in metal-clean mode' \

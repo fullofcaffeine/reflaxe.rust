@@ -35,7 +35,7 @@ is proving an already-supported surface, closing a partial surface, or defining 
 | --- | --- | --- | --- |
 | Scoped borrows and slices | `test/snapshot/rust_vec`, `test/snapshot/borrow_scope_tightening`, `test/negative/send_sync_borrow_capture` | `test/negative/metal_ref_escape`, `test/negative/metal_mut_ref_alias_escape`, `test/snapshot/metal_slice_view_no_clone` | snapshot + negative policy |
 | Traits, impls, and bounds | generic/interface snapshots and open bounds gaps | `test/snapshot/metal_trait_impl_bounds`, `test/negative/metal_trait_bound_missing`, `test/snapshot/metal_trait_object_boundary` | snapshot + cargo build |
-| Typed mini-DSL authority | `test/snapshot/metal_typed_injection`, raw app-side negative fixtures | `test/snapshot/metal_typed_dsl_contract`, `test/negative/metal_stringly_dsl_app_api`, `test/negative/metal_dsl_bypasses_policy` | snapshot + metal policy |
+| Typed mini-DSL authority | `test/snapshot/metal_typed_injection`, `test/negative/metal_stringly_dsl_app_api`, `test/negative/metal_dsl_bypasses_policy`, raw app-side negative fixtures | `test/snapshot/metal_typed_dsl_contract` | snapshot + metal policy |
 | Extern and lifetime islands | `@:native`, `@:rustCargo`, `@:rustExtraSrc` examples and interop docs | `test/snapshot/metal_extern_lifetime_island`, `test/negative/metal_extern_unsafe_surface`, cookbook example with cargo test | snapshot + example smoke |
 | no-hxrt minimal runtime | `test/positive/metal_no_hxrt_minimal`, `test/negative/metal_no_hxrt_runtime_boundary`, `test/negative/metal_no_hxrt_requires_metal`, `test/negative/metal_no_hxrt_dynamic_boundary`, `test/negative/metal_no_hxrt_reflection_boundary`, `test/negative/metal_no_hxrt_platform_boundary` | `test/snapshot/metal_no_hxrt_option_result_values`, future portable no-hxrt facade subset fixtures | positive/negative + cargo check |
 | Dynamic/reflection boundaries | `test/negative/metal_dynamic_access`, `test/negative/metal_reflect`, `test/negative/metal_type_reflection` | `test/negative/metal_dynamic_dsl_payload`, `test/negative/metal_reflect_trait_boundary` | metal policy |
@@ -57,13 +57,18 @@ Implement these before broad compiler work in the milestone:
 
 3. `test/negative/metal_stringly_dsl_app_api`
    - Proves app-level stringly Rust DSLs do not bypass typed `rust.metal` authority policy.
-   - Expected owner: `scripts/ci/check-metal-policy.sh`.
+   - Implemented as a metal-policy negative case that rejects direct app-side
+     `rust.metal.Code.expr(...)` without `@:rustAllowRaw`.
 
-4. `test/snapshot/metal_extern_lifetime_island`
+4. `test/negative/metal_dsl_bypasses_policy`
+   - Proves scoped raw authority still does not bypass metal-island raw fallback restrictions.
+   - Implemented as a metal-policy negative case with `@:rustAllowRaw` + `@:haxeMetal`.
+
+5. `test/snapshot/metal_extern_lifetime_island`
    - Proves a lifetime-heavy Rust helper can sit in a handwritten Rust module behind a typed Haxe facade.
    - Expected owner: `test/run-snapshots.sh` plus a narrow example/cargo test if runtime behavior matters.
 
-5. `test/snapshot/metal_idiom_option_result_vec`
+6. `test/snapshot/metal_idiom_option_result_vec`
    - Proves native `Option`, `Result`, and `Vec` shapes stay readable, rustfmt-clean, and free of avoidable hxrt/Dynamic/raw fallback.
    - Expected owner: `test/run-snapshots.sh` and `scripts/ci/check-metal-fallback-counts.sh`.
 

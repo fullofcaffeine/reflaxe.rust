@@ -28,9 +28,12 @@ In `metal`, strict app boundary mode is enabled by default (`reflaxe_rust_strict
 - raw app-side `untyped __rust__(...)` is rejected,
 - typed framework-owned facades remain allowed,
 - `@:rustAllowRaw` does not bypass metal-clean enforcement,
-- controlled typed escapes are available via:
+- controlled raw escapes are available only for framework code or scoped authority modules via:
   - `rust.metal.Code.expr(...)`
   - `rust.metal.Code.stmt(...)`
+
+For the DSL admission rules behind that policy, read
+[Metal typed DSL authority](metal-typed-dsl-authority.md).
 
 ## String contract in metal
 
@@ -60,7 +63,8 @@ If you are new to `metal`, use this decision tree:
 1. Need a Rust API/crate from Haxe?
    - Prefer typed `extern` classes/functions (`@:native(...)`) and metadata (`@:rustCargo`).
 2. Need a small Rust-only expression/statement in framework code?
-   - Use `rust.metal.Code.expr(...)` / `rust.metal.Code.stmt(...)` behind a typed Haxe API.
+   - Use `rust.metal.Code.expr(...)` / `rust.metal.Code.stmt(...)` only behind a typed Haxe API
+     in framework code or a narrow owning class tagged with `@:rustAllowRaw`.
 3. Need to drop raw `untyped __rust__(...)` in app code?
    - Don’t. `metal` rejects this by default because it bypasses compiler diagnostics and policy checks.
    - `@:rustAllowRaw` is not a workaround here; metal and `@:haxeMetal` still reject raw fallback.
@@ -83,6 +87,7 @@ Repository references:
 Keep raw snippets inside framework/library APIs, then call those APIs from app code.
 
 ```haxe
+@:rustAllowRaw
 class FastMath {
   public static inline function saturatingAdd(a:Int, b:Int):Int {
     return rust.metal.Code.expr("{0}.saturating_add({1})", a, b);

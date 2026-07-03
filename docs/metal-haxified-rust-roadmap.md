@@ -160,6 +160,7 @@ Bead: `haxe.rust-oo3.74.5`
 - Require typed inputs/outputs, diagnostics, and generated-Rust shape tests.
 - Replace common raw snippets with typed helpers or constrained DSL nodes.
 - Keep `rust.metal.Code` available for narrow low-level bridges, not normal app authoring.
+  The detailed admission rules live in [Metal typed DSL authority](metal-typed-dsl-authority.md).
 
 ### 6. Contract-First Metal Capability Fixtures
 

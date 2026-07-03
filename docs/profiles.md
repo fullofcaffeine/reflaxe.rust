@@ -129,7 +129,8 @@ Use `metal` when you want:
 Interop note (beginner-friendly):
 
 - Use typed `extern`/`@:native` APIs and framework facades for Rust interop.
-- Use `rust.metal.Code` only behind typed framework/library APIs.
+- Use `rust.metal.Code` only behind typed framework/library APIs or a narrow owning class tagged
+  `@:rustAllowRaw`; see [Metal typed DSL authority](metal-typed-dsl-authority.md).
 - Avoid direct app-side `untyped __rust__(...)`; metal treats that as a contract violation by default.
 - `@:rustAllowRaw` does not weaken metal-clean enforcement. It only affects strict boundary checks in
   non-metal-clean code paths.
