@@ -36,6 +36,30 @@ representations where semantics allow, and warning-clean output. `portable` shou
 without changing Haxe-observable behavior; `metal` should be idiomatic while honoring Rust-first
 semantics and stricter boundary policy.
 
+## Capability-driven lowering
+
+Profiles are policy presets, not the only source of native Rust output. The compiler should read the
+typed surfaces a program consumes and lower them according to their declared semantics:
+
+- ordinary Haxe/std APIs preserve Haxe semantics first,
+- `reflaxe.std.*` APIs are portable facades that may declare native Rust representations for this
+  backend,
+- `rust.*` and `rust.metal.*` APIs are explicit Rust-native source contracts,
+- `@:haxeMetal` marks a strict Rust-native island inside a wider portable build,
+- `rust_no_hxrt` proves that the selected source subset does not need `hxrt`.
+
+This means portable source can still become native-shaped Rust when the API contract admits it. The
+backend should specialize at compile time first: native `Option`/`Result`/`Vec`, owned values,
+borrowed views, RAII handles, extern islands, and no/low-runtime paths should be preferred whenever
+they preserve the source contract. If `hxrt` remains necessary, the report/diagnostic should explain
+which source semantics required it: object identity, Haxe reference mutation, `Dynamic`, reflection,
+anonymous runtime objects, exceptions, nullable compatibility, shared closure cells, or a real
+platform abstraction.
+
+The boundary is therefore partly implicit in what the program imports and calls, but it is not
+hidden. `reflaxe.std` stays portable in source; `rust.*` stays Rust-native in source; profiles decide
+how strictly those choices are enforced and reported.
+
 ## Contract: `portable`
 
 Use `portable` when you want:

@@ -16,24 +16,31 @@ Tracker anchor: `haxe.rust-oo3.74` ("Milestone 42 - Metal as haxified Rust").
 
 This is not "portable Haxe plus a few Rust APIs." It is the explicit Rust-native authoring lane.
 
-## Future Portable-On-Metal Layer
+## Capability-Driven Portable Facades
 
-A later layer can sit above `metal` for cross-target development: portable-shaped Haxe APIs that
-compile across targets, but whose Rust backend lowers through metal-native representations and
-contracts when that preserves the source API.
+A later layer can support cross-target development without adding a third profile: portable-shaped
+Haxe APIs whose Rust backend lowers through native Rust representations when the facade contract
+permits it.
 
-This is different from silently treating ordinary portable code as `metal`.
+This is different from silently treating ordinary portable code as `metal`, and it is also different
+from requiring users to draw a hard module boundary by hand. The compiler should infer the lowering
+lane from typed consumption:
 
-- The source API stays cross-target and intentionally portable-shaped.
-- The Rust implementation can use metal internals: native `Option`/`Result`/`Vec`, typed handles,
-  scoped borrows, RAII guards, extern islands, and no/low-`hxrt` paths where semantics allow.
-- Other targets can use their own implementation of the same Haxe-facing API.
-- Existing Haxe apps, including JS-first codebases, can migrate by adopting the facade layer first
-  and then letting the Rust target specialize behind it.
+- ordinary Haxe/std APIs keep the Haxe semantics they already promise,
+- `reflaxe.std.*` APIs can be portable facades with declared native Rust representation contracts,
+- `rust.*` / `rust.metal.*` APIs are explicit Rust-native source contracts,
+- `@:haxeMetal` marks strict Rust-native islands inside a portable build.
 
-The design constraint is explicitness: users should be able to tell whether they are writing
-ordinary portable Haxe, Rust-native `metal`, or a portable API whose Rust implementation is
-metal-backed.
+The source API stays cross-target and intentionally portable-shaped when the user chooses a facade.
+The Rust implementation can still use metal internals: native `Option`/`Result`/`Vec`, typed
+handles, scoped borrows, RAII guards, extern islands, and no/low-`hxrt` paths where semantics allow.
+Other targets can use their own implementation of the same Haxe-facing API. Existing Haxe apps,
+including JS-first codebases, can migrate by adopting the facade layer first and then letting the
+Rust target specialize behind it.
+
+The design constraint is explicitness: users should be able to tell from imports, metadata, and
+report artifacts whether they are writing ordinary portable Haxe, Rust-native source, or a portable
+API whose Rust backend has a native representation.
 
 The implementation rule is compile-time specialization first:
 
@@ -171,12 +178,12 @@ Bead: `haxe.rust-oo3.74.7`
 - Show the pattern: handwritten Rust module, typed Haxe extern/facade, Cargo metadata, tests.
 - Include at least one snapshot/example that exercises a lifetime-heavy helper through a typed facade.
 
-### 9. Portable Facades With Metal-Backed Rust Lowering
+### 9. Capability-Driven Portable Facades
 
 Bead: `haxe.rust-oo3.74.9`
 
-- Design the portable-shaped API layer that can compile across targets while the Rust target lowers
-  through metal-native representations.
+- Design portable-shaped API surfaces that compile across targets while the Rust target lowers
+  through native Rust representations when the facade contract admits it.
 - Define facade admission rules: cross-target source contract, explicit Rust specialization, no
   hidden `rust.*` import requirement, and no silent switch from ordinary portable semantics to
   Rust-native semantics.

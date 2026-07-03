@@ -19,7 +19,8 @@ Rust representation, and fixture evidence are all present.
 - Do not accept `Dynamic`, raw app-side `__rust__`, or stringly mini-DSLs as final metal APIs.
 - Prefer compiler-recognized typed symbols, extern abstracts/classes, metadata, and narrow native helper modules.
 - Treat `hxrt` as a semantic fallback or platform/runtime owner, not as the default implementation path for Rust-native values.
-- For portable facades with Rust specialization, require explicit facade contracts and fallback reasons instead of silently switching ordinary portable code into metal semantics.
+- For portable facades with Rust specialization, require explicit facade contracts and fallback
+  reasons instead of silently switching ordinary portable code into metal semantics.
 
 ## Matrix
 
@@ -34,7 +35,7 @@ Rust representation, and fixture evidence are all present.
 | Native vectors | `rust.Vec<T>`, `rust.VecTools`, `IterTools.fromVec` | `Vec<T>` and Rust iterators | supported, with gaps | `test/snapshot/rust_vec`, `test/snapshot/rust_array_vec_bridge`, `test/snapshot/rust_for_vec_slice` | More no-hxrt/portable-facade fixtures; reduce clone noise in iterator and get/set patterns where ownership allows. |
 | Native hash maps | `rust.HashMap<K,V>`, `rust.HashMapTools` | `std::collections::HashMap<K,V>` | supported, with gaps | `test/snapshot/rust_hashmap`; typed helper modules under `std/rust/native/*hash_map*` | Expand borrowed-entry APIs; no-hxrt coverage; clearer bounds diagnostics for `Eq + Hash + Clone` helper use. |
 | Rust Option/Result | `rust.Option<T>`, `rust.Result<T,E>`, tools | Native `Option<T>` / `Result<T,E>` | supported | `test/snapshot/rust_result_option_tools`, `test/snapshot/rust_vec`, examples using `rust.Option`/`rust.Result` | Ergonomic propagation operators/macros remain future work; richer error enums and Result bridges need trait/bound fixtures. |
-| Portable Option/Result facades | `reflaxe.std.Option<T>`, `reflaxe.std.Result<T,E>` | Native Rust `Option<T>` / `Result<T,E>` on Rust target; portable representation elsewhere | supported for v1 slice | `test/snapshot/reflaxe_std_option_result`, `test/snapshot/rust_reflaxe_std_adapters`, `docs/reflaxe-std-adoption-contract.md` | Generalize into portable-facade metal-backed layer; add no-hxrt eligibility and fallback-reason fixtures. |
+| Portable Option/Result facades | `reflaxe.std.Option<T>`, `reflaxe.std.Result<T,E>` | Native Rust `Option<T>` / `Result<T,E>` on Rust target; portable representation elsewhere | supported for v1 slice | `test/snapshot/reflaxe_std_option_result`, `test/snapshot/rust_reflaxe_std_adapters`, `docs/reflaxe-std-adoption-contract.md` | Generalize into capability-driven portable facades; add no-hxrt eligibility and fallback-reason fixtures. |
 | Rust strings | `String`, `rust.Str`, `rust.StrTools`, `rust.StringTools` | `String`, `&str`, or `hxrt::string::HxString` depending on contract | partial | string snapshots; `std/rust/native/rust_string_tools*.rs`; nullable-string policy docs | Finish clear boundary reports for `String` vs `HxString`; no-hxrt string subset; reduce hardcoded raw `String` assumptions in native/runtime APIs. |
 | Paths | `rust.PathBuf`, `rust.PathBufTools` | `std::path::PathBuf` | supported, narrow | `test/snapshot/rust_path_time`, `test/snapshot/path_directory` | Add borrowed `Path`/`&Path` surface; OS-string/path conversion edge fixtures; no-hxrt path subset. |
 | OS strings | `rust.OsString`, `rust.OsStringTools` | `std::ffi::OsString` | partial | helper modules under `std/rust/native/os_string_tools*.rs`; path/time snapshots cover adjacent flows | Add focused OS string fixture; define borrowed `OsStr` shape; document platform encoding constraints. |
@@ -47,14 +48,14 @@ Rust representation, and fixture evidence are all present.
 | Socket/TLS handles | `hxrt.net.SocketHandle`, `hxrt.ssl.*Handle` | Runtime-owned TCP/UDP/TLS handles | partial | `test/snapshot/sys_ssl_sni`, sys.net/sys.ssl sweeps/examples | Rust-native socket facade is missing; async/blocking split and no-hxrt subset need design; TLS unsafe/native setup remains facade-owned. |
 | Database handles | `hxrt.db.*Handle` and native drivers | Runtime-owned SQLite/MySQL handles | partial | `test/snapshot/sys_db_sqlite_smoke`, `test/snapshot/sys_db_mysql_compile` | Rust-native typed DB facade is missing; row/statement types still runtime-heavy; no-hxrt DB story likely out of initial scope. |
 | RAII guards | Planned lock/file/socket guard facades | Rust guard/drop types (`MutexGuard`, file/socket owners, scoped locks) | missing | Existing runtime handles imply ownership but do not expose guard types | Design guard lifetimes with scoped callbacks or extern islands; add negative fixtures for escaped guards. |
-| Native handles in portable facades | Planned facade layer over `reflaxe.std`/future packages | Target-specific native implementation behind cross-target API | partial concept | `reflaxe.std.Option/Result` adoption docs and fixtures | Define admission rules, metadata/intrinsics, no-hxrt eligibility, and fallback-reason reports (`haxe.rust-oo3.74.9`). |
+| Native handles in portable facades | Planned facade layer over `reflaxe.std`/future packages | Target-specific native implementation behind cross-target API | partial concept | `reflaxe.std.Option/Result` adoption docs and fixtures | Define capability admission rules, metadata/intrinsics, no-hxrt eligibility, and fallback-reason reports (`haxe.rust-oo3.74.9`). |
 | Serde/JSON native interop | `rust.serde.SerdeJson`, `hxrt.json.NativeJson` | `serde_json` plus typed runtime conversion where needed | partial | `test/snapshot/serde_json`, `examples/serde_json`, JSON std snapshots | Typed schema/derive layer is missing; avoid `Dynamic` except real JSON boundary; no-hxrt JSON subset needs explicit limits. |
 | Raw metal code | `rust.metal.Code.expr/stmt` | Controlled target-code injection | partial escape hatch | `test/snapshot/metal_typed_injection`, raw app-side negative fixtures | Replace common raw snippets with typed facades/DSL nodes; keep app-side stringly APIs rejected by policy. |
 
 ## Priority Gaps
 
 1. Borrow/region diagnostics: refs, mutable refs, slices, and guards need non-escape checks before Rust compile.
-2. Portable facades with metal-backed lowering: generalize the `reflaxe.std.Option/Result` pattern without hiding runtime fallback.
+2. Capability-driven portable facades: generalize the `reflaxe.std.Option/Result` pattern without hiding runtime fallback.
 3. RAII guard modeling: lock/file/socket guard lifetimes need typed scoped patterns or extern islands.
 4. No-hxrt eligibility reports: metal/facade code needs deterministic reasons whenever `hxrt` is still required.
 5. Iterator and collection output shape: reduce avoidable clones and borrow-guard bloat under explicit metal/facade contracts.
@@ -69,4 +70,4 @@ Rust representation, and fixture evidence are all present.
 | `haxe.rust-oo3.74.5` | Typed DSL replacement for common raw snippets. |
 | `haxe.rust-oo3.74.6` | Idiomatic-output and no-hxrt/ERaw/Dynamic/clone/borrow guard gates. |
 | `haxe.rust-oo3.74.7` | Extern islands for lifetime-heavy and unsafe/native internals. |
-| `haxe.rust-oo3.74.9` | Portable facade admission rules, native Rust representation contracts, and fallback-reason reports. |
+| `haxe.rust-oo3.74.9` | Capability-driven portable facade admission rules, native Rust representation contracts, and fallback-reason reports. |

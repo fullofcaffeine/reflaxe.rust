@@ -24,6 +24,20 @@ The long-term `metal` direction is haxified Rust: use Haxe constructs and typed 
 author Rust-native code, while generated Rust remains idiomatic and reviewable. See
 [Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md).
 
+## What decides the lowering
+
+The profile is the policy preset. The consumed API surface is what tells the compiler which
+semantics must be preserved.
+
+- ordinary Haxe/std APIs keep portable Haxe semantics,
+- `reflaxe.std.*` APIs can be portable facades with Rust-native representations on this backend,
+- `rust.*` / `rust.metal.*` APIs are explicit native-lane source choices,
+- `@:haxeMetal` turns a selected module into a strict native-lane island.
+
+This means the portable/metal boundary is not only a folder or module split. It is visible in
+imports, metadata, and reports. Portable code can lower to native Rust shapes when its chosen facade
+permits that; it must not receive Rust-native semantics by accident.
+
 ## Portable-first authoring
 
 Write portable-first code when:
@@ -102,6 +116,8 @@ Rule of thumb:
 
 - `reflaxe.std` is for portable source that can still lower efficiently.
 - `rust.*` is for explicit native-lane source.
+- `hxrt` should appear only when source semantics require runtime support, not because the compiler
+  took an easier implementation path.
 
 ## Performance expectations
 

@@ -27,6 +27,24 @@ What users still need is one clear answer to the strategic question:
 
 The answer is "sometimes yes, by design, but not by silently changing contracts."
 
+## Capability-driven, not profile-driven
+
+Native Rust output is not owned exclusively by the `metal` profile. Profiles select enforcement
+policy; typed surfaces select semantics.
+
+The compiler should therefore decide lowering from the API being consumed:
+
+- ordinary Haxe/std APIs keep Haxe-observable semantics,
+- `reflaxe.std.*` APIs can declare portable facade contracts with native Rust representations on
+  this backend,
+- `rust.*` / `rust.metal.*` imports mean the source contract is explicitly Rust-native,
+- `@:haxeMetal` applies strict Rust-native checks to a selected island,
+- `rust_no_hxrt` proves the selected subset does not need runtime support.
+
+That is the intended path for porting JS-first or cross-target Haxe code toward Rust-native speed:
+move reusable abstractions onto typed portable facades, let the Rust target specialize those facades
+at compile time, and leave `hxrt` only for semantics the compiler cannot erase safely.
+
 ## What "near-native" means here
 
 For this backend, "near-native" does **not** mean:
@@ -59,7 +77,7 @@ This is the rule that keeps the model honest:
 - `portable` remains a portable/Haxe-first contract.
 - `metal` remains the Rust-first contract.
 - "idiomatic" remains an output-quality goal for both contracts, not a third contract.
-- lowering may choose the best native Rust representation when semantics match,
+- lowering may choose the best native Rust representation when the consumed typed surface permits it,
 - but lowering must not silently turn portable code into native-lane code.
 - planner/report artifacts should make the boundary visible: safe portable-to-native lowering wins,
   portable fallbacks, and metal fallback allowances must remain reviewable in CI.
@@ -68,12 +86,16 @@ Examples:
 
 - Allowed:
   - lowering `reflaxe.std.Option/Result` to Rust `Option/Result`
+  - lowering a future portable `Vec`-like facade to Rust `Vec<T>` when its contract excludes Haxe
+    reference/runtime obligations
+  - compiling a no-runtime portable facade subset under `rust_no_hxrt`
   - removing avoidable clones/temporaries in portable output
   - using better formatter/lowering paths when they preserve portable semantics
 - Not allowed:
   - silently treating `rust.*` imports as portable
   - widening raw authority because a hot path would be faster
   - changing observable portable semantics just to look more Rust-like
+  - linking `hxrt` for convenience without a fallback reason tied to source semantics
 
 ## When `portable` is already the right answer
 
@@ -129,7 +151,8 @@ Current Rust-local truth:
 The role of `reflaxe.std` is:
 
 - give portable code an idiomatic shared authoring surface,
-- let backends map that surface to the best native representation available,
+- declare which abstractions admit backend-native representations,
+- let backends map those abstractions to the best native representation available,
 - keep portability intent explicit,
 - and avoid forcing users to choose between portability and obvious native representation wins.
 

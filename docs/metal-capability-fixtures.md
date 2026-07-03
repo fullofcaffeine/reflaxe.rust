@@ -41,7 +41,7 @@ is proving an already-supported surface, closing a partial surface, or defining 
 | Dynamic/reflection boundaries | `test/negative/metal_dynamic_access`, `test/negative/metal_reflect`, `test/negative/metal_type_reflection` | `test/negative/metal_dynamic_dsl_payload`, `test/negative/metal_reflect_trait_boundary` | metal policy |
 | Metal islands in portable builds | `test/negative/metal_island_*`, contract report cases | `test/snapshot/portable_with_metal_trait_island`, `test/negative/metal_island_lifetime_escape` | metal policy + contract report |
 | Idiomatic output shape | fallback baseline, rustfmt/cargo build in snapshots | `test/snapshot/metal_idiom_values`, `test/snapshot/metal_idiom_option_result_vec`, deterministic clone/borrow/hxrt counters | snapshot + fallback baseline |
-| Portable facades with metal-backed Rust lowering | `test/snapshot/reflaxe_std_option_result`, `test/snapshot/rust_reflaxe_std_adapters`, `docs/reflaxe-std-adoption-contract.md` | `test/snapshot/portable_facade_native_option_result_vec`, `test/positive/portable_facade_no_hxrt_subset`, `test/negative/portable_facade_no_hxrt_dynamic_fallback`, fallback-reason report fixture | snapshot + no-hxrt + contract report |
+| Capability-driven portable facades | `test/snapshot/reflaxe_std_option_result`, `test/snapshot/rust_reflaxe_std_adapters`, `docs/reflaxe-std-adoption-contract.md` | `test/snapshot/portable_facade_native_option_result_vec`, `test/positive/portable_facade_no_hxrt_subset`, `test/negative/portable_facade_no_hxrt_dynamic_fallback`, fallback-reason report fixture | snapshot + no-hxrt + contract report |
 
 ## First Wave
 
@@ -67,10 +67,10 @@ Implement these before broad compiler work in the milestone:
    - Proves native `Option`, `Result`, and `Vec` shapes stay readable, rustfmt-clean, and free of avoidable hxrt/Dynamic/raw fallback.
    - Expected owner: `test/run-snapshots.sh` and `scripts/ci/check-metal-fallback-counts.sh`.
 
-Later portable-facade work should add:
+Capability-driven portable-facade work should add:
 
 - `test/snapshot/portable_facade_native_option_result_vec`
-  - Proves portable-shaped facade source lowers to native Rust `Option`, `Result`, and `Vec` on the Rust target.
+  - Proves portable-shaped facade source lowers to native Rust `Option`, `Result`, and `Vec` on the Rust target when the consumed facade declares that representation.
 - `test/positive/portable_facade_no_hxrt_subset`
   - Proves the facade subset can compile with `rust_no_hxrt` when no Haxe runtime semantics are required.
 - `test/negative/portable_facade_no_hxrt_dynamic_fallback`
@@ -96,7 +96,7 @@ Later portable-facade work should add:
 | `haxe.rust-oo3.74.5` | Typed DSL positive and negative fixtures. |
 | `haxe.rust-oo3.74.6` | Idiomatic-output gates and deterministic fail/baseline thresholds. |
 | `haxe.rust-oo3.74.7` | Extern/lifetime-island cookbook fixture and example. |
-| `haxe.rust-oo3.74.9` | Portable facade, metal-backed Rust lowering, no-hxrt eligibility, and fallback-reason fixtures. |
+| `haxe.rust-oo3.74.9` | Capability-driven portable facade lowering, no-hxrt eligibility, and fallback-reason fixtures. |
 
 ## Closeout Checklist For New Metal Capability Fixtures
 
