@@ -215,6 +215,9 @@ Required implementation artifacts:
 - Existing `NoHxrtPass`: final emitted-code validator that rejects generated `hxrt` references.
 - Extended `contract_report.*` / `runtime_plan.*` fixtures that prove deterministic ordering,
   source/module attribution, consumed surfaces, selected representations, and fallback blockers.
+  The first concrete wave is `test/snapshot/portable_facade_native_option_result`,
+  `test/snapshot/portable_facade_contract_report`, and
+  `test/negative/runtime_fallback_reason_dynamic`.
 
 Tracker children created from the Oracle review:
 

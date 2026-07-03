@@ -1280,6 +1280,11 @@ run_contract_report_case "test/snapshot/reflaxe_std_option_result" "compile.hxml
 	'false' 'true' 'false' 'false' 'false' 'false' 'true' \
 	$'"surfaceId":[[:space:]]*"reflaxe\\.std\\.Option"\n"surfaceId":[[:space:]]*"reflaxe\\.std\\.Result"\n"rustRepresentation":[[:space:]]*"core::option::Option<T>"\n"rustRepresentation":[[:space:]]*"core::result::Result<T,E>"\n"reason":[[:space:]]*"admitted_portable_facade"' \
 	$'`reflaxe\\.std\\.Option` \\(`portable_facade` -> `core::option::Option<T>`\n`reflaxe\\.std\\.Result` \\(`portable_facade` -> `core::result::Result<T,E>`\n`reflaxe\\.std\\.Option` -> `core::option::Option<T>` \\(`admitted_portable_facade`\\)\n`reflaxe\\.std\\.Result` -> `core::result::Result<T,E>` \\(`admitted_portable_facade`\\)'
+run_contract_report_case "test/snapshot/portable_facade_contract_report" "compile.hxml" "portable" \
+	'portable facade contract-report fixture records admitted surfaces without native imports' \
+	'false' 'true' 'false' 'false' 'false' 'false' 'true' \
+	$'"portableNativeImportsDetected":[[:space:]]*false\n"surfaceId":[[:space:]]*"reflaxe\\.std\\.Option"\n"surfaceId":[[:space:]]*"reflaxe\\.std\\.Result"\n"requiresRustImport":[[:space:]]*false\n"rustRepresentation":[[:space:]]*"core::option::Option<T>"\n"rustRepresentation":[[:space:]]*"core::result::Result<T,E>"\n"reason":[[:space:]]*"admitted_portable_facade"' \
+	$'## Native Import Hits\n- none\n`reflaxe\\.std\\.Option` \\(`portable_facade` -> `core::option::Option<T>`\n`reflaxe\\.std\\.Result` \\(`portable_facade` -> `core::result::Result<T,E>`'
 run_runtime_plan_report_case "examples/hello" "compile.hxml" "portable" "selective" \
 	'portable runtime plan artifacts' \
 	"" \
@@ -1297,6 +1302,13 @@ run_runtime_plan_report_case "examples/sys_net_loopback" "compile.hxml" "portabl
 	"" \
 	'"sourceKind":[[:space:]]*"module"' \
 	'"sourceKind":[[:space:]]*"dependency_edge"'
+run_runtime_plan_report_case "test/negative/runtime_fallback_reason_dynamic" "compile.hxml" "portable" "selective" \
+	'runtime fallback reason fixture records Dynamic semantics' \
+	"" \
+	"" \
+	"" \
+	'"reasonKind":[[:space:]]*"dynamic"' \
+	'"sourceModule":[[:space:]]*"haxe[.]DynamicAccess"'
 run_runtime_plan_report_case "examples/profile_storyboard" "compile.metal.hxml" "metal" "default_features" \
 	'metal default-features runtime plan artifacts (profile_storyboard)' \
 	'rust_hxrt_default_features'

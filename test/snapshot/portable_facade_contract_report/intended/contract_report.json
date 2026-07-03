@@ -1,0 +1,67 @@
+{
+	"schemaVersion": 5,
+	"backendId": "reflaxe.rust",
+	"contract": "portable",
+	"familyStdPin": {
+		"found": true,
+		"pinFile": "family/family_std_pin.json",
+		"name": "reflaxe.family.std",
+		"version": "0.1.0-bootstrap.1",
+		"source": "in-repo-bootstrap",
+		"migrationMode": "dual-run"
+	},
+	"strictBoundary": false,
+	"strictExamples": true,
+	"metalFallbackAllowed": false,
+	"metalContractHardError": false,
+	"noHxrt": false,
+	"asyncEnabled": false,
+	"nullableStrings": true,
+	"portableNativeImportStrict": false,
+	"portableNativeImportsDetected": false,
+	"nativeImportHits": [
+	],
+	"consumedSurfaces": [
+		{
+			"surfaceId": "reflaxe.std.Option",
+			"modulePath": "reflaxe.std.Option",
+			"sourceContract": "portable_facade",
+			"facadeVersion": 1,
+			"portableSemantics": "haxe-compatible-option",
+			"rustRepresentation": "core::option::Option<T>",
+			"backendSpecializationAllowed": true,
+			"requiresRustImport": false,
+			"noHxrtEligible": true,
+			"fallbackPolicy": "error_or_reasoned_runtime_requirement"
+		},
+		{
+			"surfaceId": "reflaxe.std.Result",
+			"modulePath": "reflaxe.std.Result",
+			"sourceContract": "portable_facade",
+			"facadeVersion": 1,
+			"portableSemantics": "haxe-compatible-result",
+			"rustRepresentation": "core::result::Result<T,E>",
+			"backendSpecializationAllowed": true,
+			"requiresRustImport": false,
+			"noHxrtEligible": true,
+			"fallbackPolicy": "error_or_reasoned_runtime_requirement"
+		}
+	],
+	"nativeRepresentationPlan": [
+		{
+			"surfaceId": "reflaxe.std.Option",
+			"selectedRepresentation": "core::option::Option<T>",
+			"reason": "admitted_portable_facade"
+		},
+		{
+			"surfaceId": "reflaxe.std.Result",
+			"selectedRepresentation": "core::result::Result<T,E>",
+			"reason": "admitted_portable_facade"
+		}
+	],
+	"usedModuleCount": 34,
+	"warnings": [
+	],
+	"errors": [
+	]
+}

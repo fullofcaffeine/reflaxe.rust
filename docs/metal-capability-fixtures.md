@@ -69,12 +69,22 @@ Implement these before broad compiler work in the milestone:
 
 Capability-driven portable-facade work should add, in order:
 
+This first wave covers admitted `reflaxe.std` facade surfaces. It is not a blanket claim
+that upstream Haxe stdlib APIs are Rust-native facades: upstream `Std`, `haxe.*`,
+`sys.*`, `Array<T>`, and similar APIs need their own explicit std-lowering contracts,
+fixtures, or runtime fallback reasons before they can be treated as native Rust shapes.
+
 - `test/snapshot/portable_facade_native_option_result`
   - Proves admitted portable facade source lowers to native Rust `Option` and `Result` on the Rust target.
+  - Implemented as a minimal Rust-output snapshot that avoids unrelated `Sys.println` / string output noise.
 - `test/snapshot/portable_facade_contract_report`
   - Proves `contract_report.*` records consumed facade surfaces, stable surface IDs, selected native representations, and no hidden `rust.*` import requirement.
+  - Implemented as a deterministic report snapshot plus a metal-policy case that checks surface IDs,
+    native representation reasons, `requiresRustImport: false`, and no native-import hits.
 - `test/negative/runtime_fallback_reason_dynamic`
   - Proves `runtime_plan.*` records a stable semantic fallback reason such as `dynamic` before generated code happens to reference `hxrt`.
+  - Implemented as a runtime-plan policy fixture that records `reasonKind: dynamic` for
+    `haxe.DynamicAccess`.
 - Future `test/positive/portable_facade_no_hxrt_subset`
   - Proves a portable facade subset can compile with `rust_no_hxrt` only after a source/typed-AST eligibility pass exists. Today `rust_no_hxrt` remains metal-only.
 - Future `test/negative/portable_facade_no_hxrt_dynamic_fallback`
