@@ -31,6 +31,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Portable near-native guidance](portable-near-native-guidance.md): when portable can lower to native Rust representations/cost, when `metal` is still the right contract, and where `reflaxe.std` fits.
 - [Portable vs metal authoring](portable-vs-metal-authoring.md): concise source-style guidance for performance-oriented users choosing between portable and metal.
 - [Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md): compiler/API plan for making `metal` a Rust-native authoring surface through Haxe constructs, typed metadata/macros, and constrained DSLs.
+- [Metal capability fixture plan](metal-capability-fixtures.md): contract-first positive/negative fixture matrix for the haxified Rust milestone.
 - [Concurrency posture](concurrency-posture.md): canonical status record for async/threading, including what is stable, what is still narrow by contract, and what remains caveat-heavy.
 - [Async contract](async-contract.md): canonical supported/unsupported contract for `-D rust_async`.
 - [Systems and environment posture](systems-environment-posture.md): canonical status record for `sys.Http`, `sys.ssl.*`, `sys.db.*`, and platform-sensitive proof depth.
@@ -57,6 +58,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Profile migration guide](rusty-profile.md): migration mapping from removed `idiomatic`/`rusty` selectors.
 - [Metal profile](metal-profile.md): Rust-first authoring and boundary policy.
 - [Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md): long-range metal compiler/API plan and tracker sweep.
+- [Metal capability fixture plan](metal-capability-fixtures.md): planned metal capability fixtures and owning harnesses.
 - [Lifetime encoding design](lifetime-encoding.md): borrow/lifetime modeling constraints and roadmap.
 - [Threading](threading.md): threading model and runtime guarantees.
 - [TUI](tui.md): deterministic TUI testing approach.

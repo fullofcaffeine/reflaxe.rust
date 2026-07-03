@@ -16,6 +16,36 @@ Tracker anchor: `haxe.rust-oo3.74` ("Milestone 42 - Metal as haxified Rust").
 
 This is not "portable Haxe plus a few Rust APIs." It is the explicit Rust-native authoring lane.
 
+## Future Portable-On-Metal Layer
+
+A later layer can sit above `metal` for cross-target development: portable-shaped Haxe APIs that
+compile across targets, but whose Rust backend lowers through metal-native representations and
+contracts when that preserves the source API.
+
+This is different from silently treating ordinary portable code as `metal`.
+
+- The source API stays cross-target and intentionally portable-shaped.
+- The Rust implementation can use metal internals: native `Option`/`Result`/`Vec`, typed handles,
+  scoped borrows, RAII guards, extern islands, and no/low-`hxrt` paths where semantics allow.
+- Other targets can use their own implementation of the same Haxe-facing API.
+- Existing Haxe apps, including JS-first codebases, can migrate by adopting the facade layer first
+  and then letting the Rust target specialize behind it.
+
+The design constraint is explicitness: users should be able to tell whether they are writing
+ordinary portable Haxe, Rust-native `metal`, or a portable API whose Rust implementation is
+metal-backed.
+
+The implementation rule is compile-time specialization first:
+
+- The compiler should recognize typed facade symbols, abstracts, metadata, and macros and lower them
+  directly to native Rust where the facade contract permits it.
+- Runtime support is a narrow semantic fallback, not the default implementation strategy.
+- If `hxrt` is needed, the compiler/report should explain why: object identity, Haxe reference
+  semantics, `Dynamic`, reflection, anonymous runtime objects, exceptions, shared mutable closure
+  cells, nullable compatibility, or a platform abstraction that genuinely needs a shared helper.
+- `rust_no_hxrt` should act as a hard check for the no-runtime subset: eligible facade code compiles,
+  while unsupported semantics fail with actionable diagnostics instead of linking `hxrt` implicitly.
+
 ## Non-Goals
 
 - Do not claim Haxe can expose Rust's full lifetime syntax, HRTB model, const-generic surface, or macro system one-to-one.
@@ -120,6 +150,7 @@ Bead: `haxe.rust-oo3.74.8`
 - Start with failing contracts before implementation.
 - Include positive and negative fixtures for borrows/lifetimes, traits/bounds, typed DSLs, extern islands, no-raw policy, no-hxrt, and idiomatic output.
 - Keep fixture names product-neutral.
+- Use [Metal capability fixture plan](metal-capability-fixtures.md) as the working matrix for fixture names, existing evidence, missing contracts, and owning harnesses.
 
 ### 7. Idiomatic Metal Output Gates
 
@@ -138,6 +169,20 @@ Bead: `haxe.rust-oo3.74.7`
 - Document how to bind Rust APIs that need lifetimes, HRTB, const generics, macro-heavy setup, or unsafe internals.
 - Show the pattern: handwritten Rust module, typed Haxe extern/facade, Cargo metadata, tests.
 - Include at least one snapshot/example that exercises a lifetime-heavy helper through a typed facade.
+
+### 9. Portable Facades With Metal-Backed Rust Lowering
+
+Bead: `haxe.rust-oo3.74.9`
+
+- Design the portable-shaped API layer that can compile across targets while the Rust target lowers
+  through metal-native representations.
+- Define facade admission rules: cross-target source contract, explicit Rust specialization, no
+  hidden `rust.*` import requirement, and no silent switch from ordinary portable semantics to
+  Rust-native semantics.
+- Specify compiler-owned metadata/intrinsics for native Rust representations and no-hxrt
+  eligibility.
+- Require deterministic fallback reports that explain every runtime dependency and make
+  `rust_no_hxrt` failures actionable.
 
 ## Tracker Sweep
 
