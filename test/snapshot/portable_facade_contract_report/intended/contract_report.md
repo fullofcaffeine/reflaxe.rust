@@ -1,6 +1,6 @@
 # Contract Report
 
-- schema version: `5`
+- schema version: `6`
 - backend id: `reflaxe.rust`
 - contract: `portable`
 - family std pin found: `yes`
@@ -21,6 +21,9 @@
 - used module count: `34`
 
 ## Native Import Hits
+- none
+
+## Typed Native Import Hits
 - none
 
 ## Consumed Surfaces

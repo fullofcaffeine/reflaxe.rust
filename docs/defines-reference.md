@@ -72,7 +72,9 @@ This page is a practical reference for the most relevant compiler defines.
   - Primarily intended for policy/CI wiring where explicit hard-fail is required.
 - `rust_portable_native_import_strict`
   - In `portable`, escalates native target-module import diagnostics from warnings to errors.
-  - Native-target imports are always reported in `contract_report.*` artifacts.
+  - Native-target imports are reported in `contract_report.*` artifacts. `nativeImportHits`
+    preserves source-text import diagnostics; `nativeImportHitsTyped` records user-source typed
+    usage such as aliases and fully-qualified `rust.*` references.
 - `rust_metal_viability_warn`
   - In `metal`, emit one compile-time viability summary warning (score + blocker counts + top modules).
   - Intended for CI/review loops while reducing fallback hotspots ahead of full report artifacts.
@@ -87,7 +89,7 @@ This page is a practical reference for the most relevant compiler defines.
     - `contract_report.md` (human-readable)
   - Includes effective contract flags (`contract`, strictness, async/no-hxrt/string mode),
     backend identity (`backendId`), family pin metadata (`familyStdPin.*`), native-import portability markers,
-    admitted surface contracts (`consumedSurfaces`), selected native representation decisions
+    typed native-import hits (`nativeImportHitsTyped`), admitted surface contracts (`consumedSurfaces`), selected native representation decisions
     (`nativeRepresentationPlan`), and current warning/error diagnostics.
 - `rust_runtime_plan_report`
   - Emit deterministic runtime-plan artifacts in the generated crate root:

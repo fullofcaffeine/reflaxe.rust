@@ -83,7 +83,17 @@ fixtures, or runtime fallback reasons before they can be treated as native Rust 
 - `test/snapshot/portable_facade_contract_report`
   - Proves `contract_report.*` records consumed facade surfaces, stable surface IDs, selected native representations, and no hidden `rust.*` import requirement.
   - Implemented as a deterministic report snapshot plus a metal-policy case that checks surface IDs,
-    native representation reasons, `requiresRustImport: false`, and no native-import hits.
+    native representation reasons, `requiresRustImport: false`, and no source-text or typed native-import hits.
+- `test/positive/portable_native_typed_report`
+  - Proves `contract_report.*` records user-source typed `rust.*` usage even when no `import rust.*`
+    line exists.
+  - Implemented as a metal-policy report case that checks `nativeImportHits` is empty while
+    `nativeImportHitsTyped` records the fully-qualified `rust.Option` surface.
+- `test/negative/portable_native_typed_strict`
+  - Proves typed native usage participates in strict portable boundary enforcement, not only report
+    rendering.
+  - Implemented as a metal-policy negative case that rejects fully-qualified `rust.Option` usage
+    under `-D rust_portable_native_import_strict`.
 - `test/negative/runtime_fallback_reason_dynamic`
   - Proves `runtime_plan.*` records a stable semantic fallback reason such as `dynamic` before generated code happens to reference `hxrt`.
   - Implemented as a runtime-plan policy fixture that records `reasonKind: dynamic` for

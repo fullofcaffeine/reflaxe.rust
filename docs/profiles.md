@@ -200,8 +200,11 @@ Rules:
   known semantic blockers before lowering, and `NoHxrtPass` remains the generated Rust AST guard for
   any remaining `hxrt` references.
 - Portable contract tracks native-target imports (`rust.*`, `cpp.*`, etc.) as portability signals:
-  - default: warning + contract-report marker (`nativeImportHits`),
+  - default: warning + contract-report markers (`nativeImportHits` and `nativeImportHitsTyped`),
   - strict: `-D rust_portable_native_import_strict` turns those warnings into errors.
+  `nativeImportHits` preserves the legacy source-text import scan used for diagnostics;
+  `nativeImportHitsTyped` records user-source typed module usage so aliases and fully-qualified
+  references are visible in reports.
 
 ## Contract and runtime plan reports
 
@@ -236,8 +239,9 @@ The report schemas include explicit identity fields:
 - `runtimeId` (runtime plan report)
 - `contract` (`portable` or `metal`)
 - `familyStdPin` (pin metadata from `family/family_std_pin.json` when visible from the compile root)
-- `consumedSurfaces` (contract report schema v5; per admitted typed surface)
-- `nativeRepresentationPlan` (contract report schema v5; selected Rust representation and reason)
+- `nativeImportHitsTyped` (contract report schema v6; user-source typed native usage)
+- `consumedSurfaces` (contract report schema v6; per admitted typed surface)
+- `nativeRepresentationPlan` (contract report schema v6; selected Rust representation and reason)
 - `runtimeRequirements` (runtime plan schema v4; semantic runtime ledger)
 - `fallbackSummary` (runtime plan schema v4; aggregate `hxrt` requirement/no-hxrt blocker state)
 

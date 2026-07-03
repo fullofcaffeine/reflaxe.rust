@@ -203,10 +203,11 @@ Outputs:
 - `runtime_plan.json`, `runtime_plan.md`
 - `optimizer_plan.json`, `optimizer_plan.md`
 
-`contract_report.*` uses the same profile contract in both `portable` and `metal`. Schema v5 records
-admitted typed surfaces in `consumedSurfaces` and the selected Rust representation decisions in
-`nativeRepresentationPlan`; unadmitted `reflaxe.std.*`-style modules are not treated as native
-facades just because of their namespace.
+`contract_report.*` uses the same profile contract in both `portable` and `metal`. Schema v6 records
+legacy source-text native import hits in `nativeImportHits`, user-source typed native usage in
+`nativeImportHitsTyped`, admitted typed surfaces in `consumedSurfaces`, and the selected Rust
+representation decisions in `nativeRepresentationPlan`; unadmitted `reflaxe.std.*`-style modules
+are not treated as native facades just because of their namespace.
 
 `runtime_plan.*` schema v4 separates selected Cargo features from semantic runtime requirements.
 `runtimeRequirements` names stable reason kinds such as `dynamic`, `reflection`,

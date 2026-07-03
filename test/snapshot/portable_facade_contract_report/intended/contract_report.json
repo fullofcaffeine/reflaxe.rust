@@ -1,5 +1,5 @@
 {
-	"schemaVersion": 5,
+	"schemaVersion": 6,
 	"backendId": "reflaxe.rust",
 	"contract": "portable",
 	"familyStdPin": {
@@ -20,6 +20,8 @@
 	"portableNativeImportStrict": false,
 	"portableNativeImportsDetected": false,
 	"nativeImportHits": [
+	],
+	"nativeImportHitsTyped": [
 	],
 	"consumedSurfaces": [
 		{

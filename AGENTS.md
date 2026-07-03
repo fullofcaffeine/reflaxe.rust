@@ -243,6 +243,7 @@ Agent policy:
     Runtime/tool consumers may choose `metal` first when they need Rust-native behavior, strict host boundaries, or production performance now.
     Treat those cases as pressure to improve generic portable-to-metal convergence where semantics allow, not as permission for project-specific compiler shortcuts.
   - Portable native-import policy: importing native target modules from portable app code emits warnings by default and is recorded in `contract_report.*`.
+    `nativeImportHits` preserves the source-text import diagnostic signal; `nativeImportHitsTyped` records user-source typed module usage so aliases and fully-qualified target-native references are visible in deterministic reports.
     Use `-D rust_portable_native_import_strict` to escalate those warnings to errors.
   - Metal policy: `reflaxe_rust_profile=metal` auto-enables strict app-boundary mode (`reflaxe_rust_strict`) so raw app-side `__rust__` is rejected by default.
     Typed framework facades in `src/reflaxe/rust/macros` and `std/rust/metal` remain allowed.

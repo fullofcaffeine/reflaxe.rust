@@ -219,9 +219,10 @@ Required implementation artifacts:
 - Existing `NoHxrtPass`: final emitted-code validator that rejects generated `hxrt` references.
 - Extended `contract_report.*` / `runtime_plan.*` fixtures that prove deterministic ordering,
   source/module attribution, consumed surfaces, selected representations, and fallback blockers.
-  The first concrete wave is `test/snapshot/portable_facade_native_option_result`,
-  `test/snapshot/portable_facade_contract_report`, and
-  `test/negative/runtime_fallback_reason_dynamic`.
+  The first concrete wave includes `test/snapshot/portable_facade_native_option_result`,
+  `test/snapshot/portable_facade_contract_report`,
+  `test/positive/portable_native_typed_report`, `test/negative/portable_native_typed_strict`,
+  and `test/negative/runtime_fallback_reason_dynamic`.
 - Output-shape gates for admitted facades. The first concrete gate is in
   `scripts/ci/check-metal-policy.sh` and asserts that
   `test/snapshot/portable_facade_native_option_result` emits native Rust `Option<i32>` /

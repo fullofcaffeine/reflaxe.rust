@@ -510,7 +510,7 @@ run_contract_report_case() {
 		exit 1
 	fi
 
-	if ! match_regex '"schemaVersion":[[:space:]]*5' "$json_a"; then
+	if ! match_regex '"schemaVersion":[[:space:]]*6' "$json_a"; then
 		echo "[metal-policy] error: contract_report.json missing schemaVersion for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
@@ -582,6 +582,11 @@ run_contract_report_case() {
 	fi
 	if ! match_regex '"nativeImportHits":[[:space:]]*\[' "$json_a"; then
 		echo "[metal-policy] error: contract_report.json missing nativeImportHits array for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '"nativeImportHitsTyped":[[:space:]]*\[' "$json_a"; then
+		echo "[metal-policy] error: contract_report.json missing nativeImportHitsTyped array for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
@@ -657,6 +662,11 @@ run_contract_report_case() {
 	fi
 	if ! match_regex '^## Native Import Hits' "$md_a"; then
 		echo "[metal-policy] error: contract_report.md missing native-import-hits section for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if ! match_regex '^## Typed Native Import Hits' "$md_a"; then
+		echo "[metal-policy] error: contract_report.md missing typed-native-import-hits section for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi
@@ -1334,6 +1344,9 @@ run_negative_case "test/negative/profile_removed_rusty" 'Unknown `-D reflaxe_rus
 run_negative_case "test/negative/portable_native_import_strict" 'portable contract imported native target modules: rust\.Option' \
 	'portable native-target import strict mode rejects rust.* imports' \
 	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust profile contract violation\(s\):'
+run_negative_case "test/negative/portable_native_typed_strict" 'portable contract imported native target modules: rust\.Option' \
+	'portable native-target strict mode rejects fully qualified typed rust.* usage' \
+	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust profile contract violation\(s\):'
 run_negative_case "test/negative/send_sync_borrow_capture" 'Rust concurrency contract violation: sys\.thread\.Thread\.create\(job\) captures `borrowed` with borrowed type `rust\.Ref<T>`' \
 	'spawn closure captures borrow-only value under rust_send_sync_strict'
 run_warning_case "test/negative/metal_dynamic_access" "compile.fallback.hxml" 'Rust profile contract: metal profile forbids haxe\.DynamicAccess runtime map semantics' \
@@ -1365,8 +1378,13 @@ run_contract_report_case "test/snapshot/reflaxe_std_option_result" "compile.hxml
 run_contract_report_case "test/snapshot/portable_facade_contract_report" "compile.hxml" "portable" \
 	'portable facade contract-report fixture records admitted surfaces without native imports' \
 	'false' 'true' 'false' 'false' 'false' 'false' 'true' \
-	$'"portableNativeImportsDetected":[[:space:]]*false\n"surfaceId":[[:space:]]*"reflaxe\\.std\\.Option"\n"surfaceId":[[:space:]]*"reflaxe\\.std\\.Result"\n"requiresRustImport":[[:space:]]*false\n"rustRepresentation":[[:space:]]*"core::option::Option<T>"\n"rustRepresentation":[[:space:]]*"core::result::Result<T,E>"\n"reason":[[:space:]]*"admitted_portable_facade"' \
-	$'## Native Import Hits\n- none\n`reflaxe\\.std\\.Option` \\(`portable_facade` -> `core::option::Option<T>`\n`reflaxe\\.std\\.Result` \\(`portable_facade` -> `core::result::Result<T,E>`'
+	$'"portableNativeImportsDetected":[[:space:]]*false\n"nativeImportHitsTyped":[[:space:]]*\\[\n"surfaceId":[[:space:]]*"reflaxe\\.std\\.Option"\n"surfaceId":[[:space:]]*"reflaxe\\.std\\.Result"\n"requiresRustImport":[[:space:]]*false\n"rustRepresentation":[[:space:]]*"core::option::Option<T>"\n"rustRepresentation":[[:space:]]*"core::result::Result<T,E>"\n"reason":[[:space:]]*"admitted_portable_facade"' \
+	$'## Native Import Hits\n- none\n## Typed Native Import Hits\n- none\n`reflaxe\\.std\\.Option` \\(`portable_facade` -> `core::option::Option<T>`\n`reflaxe\\.std\\.Result` \\(`portable_facade` -> `core::result::Result<T,E>`'
+run_contract_report_case "test/positive/portable_native_typed_report" "compile.hxml" "portable" \
+	'portable contract report records fully qualified rust.* typed usage' \
+	'false' 'true' 'false' 'false' 'false' 'false' 'true' \
+	$'"portableNativeImportsDetected":[[:space:]]*true\n"nativeImportHitsTyped":[[:space:]]*\\[\n"modulePath":[[:space:]]*"rust\\.Option"\n"nativeFamily":[[:space:]]*"rust"\n"surfaceKind":[[:space:]]*"rust_native"\n"sourceKind":[[:space:]]*"typed_module_usage"' \
+	$'## Native Import Hits\n- none\n## Typed Native Import Hits\n- `rust\\.Option` \\(`rust_native`, family: `rust`, source: `typed_module_usage`\\)'
 run_portable_facade_output_shape_case "test/snapshot/portable_facade_native_option_result" "compile.hxml" \
 	'portable facade Option/Result output uses native Rust shapes'
 run_runtime_plan_report_case "examples/hello" "compile.hxml" "portable" "selective" \

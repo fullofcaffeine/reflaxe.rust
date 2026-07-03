@@ -48,6 +48,8 @@ import reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeFallbackSummary;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry;
+import reflaxe.rust.analyze.NativeSurfaceUsageAnalyzer;
+import reflaxe.rust.analyze.NativeSurfaceUsageAnalyzer.TypedNativeImportHit;
 import reflaxe.rust.analyze.SurfaceContractRegistry;
 import reflaxe.rust.analyze.SurfaceContractRegistry.NativeRepresentationDecision;
 import reflaxe.rust.analyze.SurfaceContractRegistry.SurfaceContract;
@@ -105,6 +107,7 @@ private typedef ProfileContractReportSnapshot = {
 	var portableNativeImportStrict:Bool;
 	var portableNativeImportsDetected:Bool;
 	var nativeImportHits:Array<String>;
+	var nativeImportHitsTyped:Array<TypedNativeImportHit>;
 	var consumedSurfaces:Array<SurfaceContract>;
 	var nativeRepresentationPlan:Array<NativeRepresentationDecision>;
 	var usedModuleCount:Int;
@@ -230,7 +233,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var rustNamesByClass:Map<String, {fields:Map<String, String>, methods:Map<String, String>}> = [];
 	var inCodeInjectionArg:Bool = false;
 	var rustTestSpecs:Array<RustTestSpec> = [];
+	// All typed module usage feeds runtime planning and facade consumption. User-only usage feeds
+	// portable native-boundary reports so framework std internals do not look like app imports.
 	var usedModulePaths:Map<String, Bool> = [];
+	var userUsedModulePaths:Map<String, Bool> = [];
 	var currentCompilationContext:Null<CompilationContext> = null;
 	// Optimizer metrics recorded during lowering before `CompilationContext` exists.
 	var pendingOptimizerAppliedById:Map<String, Int> = [];
@@ -511,8 +517,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return out;
 	}
 
-	function collectTypeUsageFromCurrentModule():Void {
+	function snapshotUserUsedModulePaths():Array<String> {
+		var out = [for (path in userUsedModulePaths.keys()) path];
+		out.sort((a, b) -> compareStrings(a, b));
+		return out;
+	}
+
+	function collectTypeUsageFromCurrentModule(?sourceFile:String):Void {
 		TypeUsageAnalyzer.collectInto(getTypeUsage(), usedModulePaths);
+		if (sourceFile != null && sourceFile.length > 0 && isUserProjectFile(sourceFile))
+			TypeUsageAnalyzer.collectInto(getTypeUsage(), userUsedModulePaths);
 	}
 
 	function selectHxrtFeatureSelection(modulePaths:Array<String>):HxrtFeatureSelection {
@@ -720,13 +734,38 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function analyzeProfileContracts():ProfileContractDiagnostics {
 		var nativeImportHits = collectPortableNativeImportHits();
+		var diagnosticNativeImportHits = mergeStringSets(nativeImportHits, collectTypedNativeImportHitPaths());
 		var diagnostics = ProfileContractAnalyzer.analyze(profile, snapshotUsedModulePaths(), Context.defined("rust_metal_allow_fallback"),
 			Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"),
-			Context.defined("rust_string_nullable"), nativeImportHits, Context.defined("rust_portable_native_import_strict"));
+			Context.defined("rust_string_nullable"), diagnosticNativeImportHits, Context.defined("rust_portable_native_import_strict"));
 		if (currentCompilationContext != null) {
 			currentCompilationContext.setProfileContractDiagnostics(diagnostics);
 		}
 		return diagnostics;
+	}
+
+	function collectTypedNativeImportHitPaths():Array<String> {
+		var hits = NativeSurfaceUsageAnalyzer.collectTypedNativeImportHits(snapshotUserUsedModulePaths());
+		return [for (hit in hits) hit.modulePath];
+	}
+
+	function mergeStringSets(a:Array<String>, b:Array<String>):Array<String> {
+		var seen:Map<String, Bool> = [];
+		var out:Array<String> = [];
+		function add(values:Array<String>):Void {
+			if (values == null)
+				return;
+			for (value in values) {
+				if (value == null || value.length == 0 || seen.exists(value))
+					continue;
+				seen.set(value, true);
+				out.push(value);
+			}
+		}
+		add(a);
+		add(b);
+		out.sort(compareStrings);
+		return out;
 	}
 
 	/**
@@ -792,18 +831,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	inline function isNativeTargetImportPath(modulePath:String):Bool {
-		return StringTools.startsWith(modulePath, "rust.")
-			|| StringTools.startsWith(modulePath, "cpp.")
-			|| StringTools.startsWith(modulePath, "cs.")
-			|| StringTools.startsWith(modulePath, "java.")
-			|| StringTools.startsWith(modulePath, "jvm.")
-			|| StringTools.startsWith(modulePath, "python.")
-			|| StringTools.startsWith(modulePath, "php.")
-			|| StringTools.startsWith(modulePath, "lua.")
-			|| StringTools.startsWith(modulePath, "js.")
-			|| StringTools.startsWith(modulePath, "flash.")
-			|| StringTools.startsWith(modulePath, "hl.")
-			|| StringTools.startsWith(modulePath, "neko.");
+		return NativeSurfaceUsageAnalyzer.isNativeTargetModulePath(modulePath);
 	}
 
 	function moduleSourceFile(mt:ModuleType):String {
@@ -813,6 +841,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case TTypeDecl(t): t.get().pos;
 			case TAbstract(a): a.get().pos;
 		}
+		return sourceFileForPosition(pos);
+	}
+
+	function sourceFileForPosition(pos:haxe.macro.Expr.Position):String {
 		var info = Context.getPosInfos(pos);
 		return info != null && info.file != null ? info.file : "";
 	}
@@ -859,6 +891,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		warnedUnresolvedMonomorphPos = [];
 		rustTestSpecs = [];
 		usedModulePaths = [];
+		userUsedModulePaths = [];
 		currentCompilationContext = null;
 		pendingOptimizerAppliedById = [];
 		pendingOptimizerSkippedById = [];
@@ -1442,13 +1475,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		warnings.sort(compareStrings);
 		var errors = diagnostics.errors.copy();
 		errors.sort(compareStrings);
-		var nativeImportHits = diagnostics.nativeImportHits.copy();
+		var nativeImportHits = collectPortableNativeImportHits();
 		nativeImportHits.sort(compareStrings);
+		var nativeImportHitsTyped = NativeSurfaceUsageAnalyzer.collectTypedNativeImportHits(snapshotUserUsedModulePaths());
 		var consumedSurfaces = SurfaceContractRegistry.collectConsumed(modulePaths);
 		var nativeRepresentationPlan = SurfaceContractRegistry.buildNativeRepresentationPlan(consumedSurfaces);
 
 		return {
-			schemaVersion: 5,
+			schemaVersion: 6,
 			backendId: "reflaxe.rust",
 			contract: profile == Metal ? "metal" : "portable",
 			familyStdPin: familyPin,
@@ -1460,8 +1494,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			asyncEnabled: asyncEnabled(),
 			nullableStrings: useNullableStringRepresentation(),
 			portableNativeImportStrict: Context.defined("rust_portable_native_import_strict"),
-			portableNativeImportsDetected: nativeImportHits.length > 0,
+			portableNativeImportsDetected: nativeImportHits.length > 0 || nativeImportHitsTyped.length > 0,
 			nativeImportHits: nativeImportHits,
+			nativeImportHitsTyped: nativeImportHitsTyped,
 			consumedSurfaces: consumedSurfaces,
 			nativeRepresentationPlan: nativeRepresentationPlan,
 			usedModuleCount: modulePaths.length,
@@ -1488,6 +1523,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		lines.push('\t"portableNativeImportsDetected": ' + boolString(snapshot.portableNativeImportsDetected) + ",");
 		lines.push('\t"nativeImportHits": [');
 		appendJsonStringArray(lines, snapshot.nativeImportHits, 2);
+		lines.push("\t],");
+		lines.push('\t"nativeImportHitsTyped": [');
+		appendTypedNativeImportHitsJson(lines, snapshot.nativeImportHitsTyped, 2);
 		lines.push("\t],");
 		lines.push('\t"consumedSurfaces": [');
 		appendSurfaceContractsJson(lines, snapshot.consumedSurfaces, 2);
@@ -1531,6 +1569,23 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		} else {
 			for (hit in snapshot.nativeImportHits)
 				lines.push("- " + hit);
+		}
+		lines.push("");
+		lines.push("## Typed Native Import Hits");
+		if (snapshot.nativeImportHitsTyped.length == 0) {
+			lines.push("- none");
+		} else {
+			for (hit in snapshot.nativeImportHitsTyped) {
+				lines.push("- `"
+					+ hit.modulePath
+					+ "` (`"
+					+ hit.surfaceKind
+					+ "`, family: `"
+					+ hit.nativeFamily
+					+ "`, source: `"
+					+ hit.sourceKind
+					+ "`)");
+			}
 		}
 		lines.push("");
 		lines.push("## Consumed Surfaces");
@@ -2051,6 +2106,19 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 	}
 
+	static function appendTypedNativeImportHitsJson(lines:Array<String>, hits:Array<TypedNativeImportHit>, indentLevel:Int):Void {
+		for (index in 0...hits.length) {
+			var hit = hits[index];
+			var comma = index == hits.length - 1 ? "" : ",";
+			lines.push(indent(indentLevel) + "{");
+			lines.push(indent(indentLevel + 1) + '"modulePath": "' + jsonEscape(hit.modulePath) + '",');
+			lines.push(indent(indentLevel + 1) + '"nativeFamily": "' + jsonEscape(hit.nativeFamily) + '",');
+			lines.push(indent(indentLevel + 1) + '"surfaceKind": "' + jsonEscape(hit.surfaceKind) + '",');
+			lines.push(indent(indentLevel + 1) + '"sourceKind": "' + jsonEscape(hit.sourceKind) + '"');
+			lines.push(indent(indentLevel) + "}" + comma);
+		}
+	}
+
 	static function appendJsonHxrtReasons(lines:Array<String>, reasons:Array<HxrtFeatureReason>, indentLevel:Int):Void {
 		for (index in 0...reasons.length) {
 			var reason = reasons[index];
@@ -2208,7 +2276,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	public function compileClassImpl(classType:ClassType, varFields:Array<ClassVarData>, funcFields:Array<ClassFuncData>):Null<RustFile> {
-		collectTypeUsageFromCurrentModule();
+		collectTypeUsageFromCurrentModule(sourceFileForPosition(classType.pos));
 		enforceNoHxrtEligibility();
 
 		var isMain = isMainClass(classType);
@@ -2847,7 +2915,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	public function compileEnumImpl(enumType:EnumType, options:Array<EnumOptionData>):Null<RustFile> {
-		collectTypeUsageFromCurrentModule();
+		collectTypeUsageFromCurrentModule(sourceFileForPosition(enumType.pos));
 		enforceNoHxrtEligibility();
 
 		if (!shouldEmitEnum(enumType))
@@ -2905,13 +2973,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	override public function compileTypedefImpl(typedefType:DefType):Null<RustFile> {
-		collectTypeUsageFromCurrentModule();
+		collectTypeUsageFromCurrentModule(sourceFileForPosition(typedefType.pos));
 		enforceNoHxrtEligibility();
 		return null;
 	}
 
 	override public function compileAbstractImpl(abstractType:AbstractType):Null<RustFile> {
-		collectTypeUsageFromCurrentModule();
+		collectTypeUsageFromCurrentModule(sourceFileForPosition(abstractType.pos));
 		enforceNoHxrtEligibility();
 		return null;
 	}
