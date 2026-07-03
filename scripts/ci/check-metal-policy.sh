@@ -1237,6 +1237,14 @@ run_negative_case "test/negative/metal_string_null_forbidden" 'metal non-null st
 	'metal non-null contract rejects String = null assignments'
 run_negative_case "test/negative/metal_no_hxrt_requires_metal" '`-D rust_no_hxrt` currently requires `-D reflaxe_rust_profile=metal`\.' \
 	'rust_no_hxrt requires metal profile'
+run_negative_case "test/negative/metal_no_hxrt_dynamic_boundary" 'reasonKind `dynamic`.*typed_ast `Main`' \
+	'rust_no_hxrt semantic eligibility rejects Dynamic before emitted-code guard'
+run_negative_case "test/negative/metal_no_hxrt_dynamic_boundary" 'reasonKind `anonymous_object`.*typed_ast `Main`' \
+	'rust_no_hxrt semantic eligibility rejects anonymous runtime objects before emitted-code guard'
+run_negative_case "test/negative/metal_no_hxrt_reflection_boundary" 'reasonKind `reflection`.*typed_ast `Main`' \
+	'rust_no_hxrt semantic eligibility rejects reflection before emitted-code guard'
+run_negative_case "test/negative/metal_no_hxrt_platform_boundary" 'reasonKind `platform_abstraction`.*typed_ast `Main`' \
+	'rust_no_hxrt semantic eligibility rejects platform runtime abstractions'
 run_negative_case "test/negative/metal_no_hxrt_runtime_boundary" '`-D rust_no_hxrt` violation in module' \
 	'rust_no_hxrt rejects runtime-dependent output'
 run_negative_case "test/negative/async_preview_removed" '`-D rust_async_preview` was removed\. Use `-D rust_async`\.' \

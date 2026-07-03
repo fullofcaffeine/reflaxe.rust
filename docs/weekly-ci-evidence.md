@@ -24,6 +24,17 @@ Jobs:
    - `bash scripts/ci/local.sh` (includes Tier2 upstream stdlib sweep)
 2. Windows smoke validation:
    - `bash scripts/ci/windows-smoke.sh`
+3. Codex Haxe/Rust killer-app QA:
+   - clones `https://github.com/fullofcaffeine/codex-hxrust` beside this repo
+   - `npm run test:codex-hxrust`
+   - regenerates portable and metal Rust from Haxe
+   - verifies generated `Cargo.toml` / `Cargo.lock`
+   - runs `cargo check --locked` and `cargo test --locked` for both generated profiles
+
+The codex-hxrust job is currently a generated-Cargo compile/link/test-harness gate. Its `cargo test`
+step becomes runtime smoke coverage as soon as codex-hxrust owns tests for the generated crates; if
+there are no app tests, the job still proves both profiles compile and link through Cargo, but does
+not claim full interactive runtime coverage.
 
 ## PR CI harness topology
 
@@ -95,7 +106,12 @@ npm run docs:sync:evidence
 npm run docs:check:evidence
 bash scripts/ci/local.sh
 bash scripts/ci/windows-smoke.sh
+npm run test:codex-hxrust
 ```
+
+Use `npm run test:codex-hxrust` locally after important complex compiler/runtime/std/profile
+milestones when the sibling app checkout is available. This keeps the weekly killer-app signal from
+being the first time a broad generated-Rust regression is seen.
 
 ## Related docs
 

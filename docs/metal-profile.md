@@ -225,6 +225,7 @@ Effects:
 
 - skips bundled `hxrt` crate emission,
 - omits `hxrt` dependency in generated `Cargo.toml`,
+- runs a source/typed-AST no-hxrt eligibility gate for known semantic blockers,
 - enforces no `hxrt` references in generated code.
 
 Constraints:
@@ -235,5 +236,8 @@ Constraints:
 - incompatible with `rust_hxrt_*` feature-selection defines.
 
 Future portable-facade no-runtime support is tracked separately. It must not be enabled by merely
-relaxing this profile check: the compiler first needs a source/typed-AST eligibility pass and
-deterministic fallback-reason reports that prove no Haxe runtime semantics are required.
+relaxing this profile check: portable support needs positive facade eligibility fixtures and
+deterministic fallback-reason reports that prove no Haxe runtime semantics are required. The current
+metal implementation already splits the checks: `NoHxrtEligibilityAnalyzer` rejects known semantic
+blockers such as `dynamic`, `reflection`, `anonymous_object`, and `platform_abstraction`; the
+generated-code `NoHxrtPass` then rejects any remaining `hxrt` references.

@@ -195,7 +195,7 @@ class RuntimeRequirementAnalyzer {
 		entries.push(entry);
 	}
 
-	static function sameEntry(a:RuntimeRequirementEntry, b:RuntimeRequirementEntry):Bool {
+	public static function sameEntry(a:RuntimeRequirementEntry, b:RuntimeRequirementEntry):Bool {
 		return a.reasonKind == b.reasonKind && a.sourceKind == b.sourceKind && a.sourceModule == b.sourceModule && a.sourceSpan == b.sourceSpan
 			&& a.surfaceId == b.surfaceId;
 	}
@@ -257,7 +257,7 @@ class RuntimeRequirementAnalyzer {
 		return StringTools.startsWith(path, "hxrt.string");
 	}
 
-	static function compareEntries(a:RuntimeRequirementEntry, b:RuntimeRequirementEntry):Int {
+	public static function compareEntries(a:RuntimeRequirementEntry, b:RuntimeRequirementEntry):Int {
 		var reasonOrder = compareStrings(a.reasonKind, b.reasonKind);
 		if (reasonOrder != 0)
 			return reasonOrder;

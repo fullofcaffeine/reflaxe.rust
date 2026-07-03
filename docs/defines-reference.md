@@ -109,7 +109,9 @@ This page is a practical reference for the most relevant compiler defines.
 - `rust_no_hxrt`
   - Metal-only minimal-runtime mode.
   - Omits bundled `hxrt` emission and `Cargo.toml` dependency.
-  - Enforces a no-`hxrt` generated output contract (compile error on runtime references).
+  - Runs source/typed-AST no-hxrt eligibility before lowering for known semantic blockers such as
+    `dynamic`, `reflection`, runtime anonymous objects, and platform abstractions.
+  - Enforces a no-`hxrt` generated output contract after lowering (compile error on runtime references).
   - Incompatible with:
     - `rust_string_nullable`
     - `rust_async`

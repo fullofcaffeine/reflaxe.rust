@@ -97,6 +97,7 @@ Agent policy:
 - Fix/test policy: after each fix, update tests and/or add a regression test (snapshots, runtime tests, or example test harness), unless an existing test update already covers the behavior change.
 - Contract-first TDD policy (strict): for non-trivial compiler/runtime/std behavior changes, start by adding/updating the expected test contract first (snapshot, negative fixture, policy/harness assertion), confirm failure, then implement and re-run targeted checks plus full harness.
   For deterministic report/artifact features, include repeatability assertions (run twice, compare outputs byte-for-byte) in CI guards.
+- Killer-app QA cadence: after any important complex task or milestone that changes compiler lowering, runtime behavior, std overrides, profile policy, report schemas, generated Rust shape, or metal/portable semantics, run `npm run test:codex-hxrust` when the sibling `codex-hxrust` checkout is available. Treat it as the local app-level pressure test for this compiler, not as a replacement for focused fixtures. If it is skipped, state the reason in the final response or Beads evidence. For small docs-only/mechanical edits, this QA is optional.
 - Escalation visibility rule: when a task crosses the threshold for extended thinking or Oracle review, say so explicitly in chat before escalating.
   Do not silently switch into a deeper-thinking or Oracle-needed path; call out why the escalation is warranted and what question it is meant to resolve.
 
@@ -248,8 +249,8 @@ Agent policy:
   - Metal string contract: in default non-null string mode, `String` cannot be assigned `null`.
     Use `Null<String>` for nullable values; explicit `== null` / `!= null` checks on strict non-null `String` lower to constant `false` / `true`.
   - Minimal-runtime policy: today, `-D rust_no_hxrt` is metal-only and must remain a hard contract.
-    In that mode, do not rely on Cargo-link failures as enforcement; keep the typed no-runtime guard pass (`NoHxrtPass`) active so violations fail with actionable module-level diagnostics.
-    Future capability-driven portable no-hxrt support requires a separate source/typed-AST eligibility pass plus report fixtures before this policy can be widened.
+    In that mode, do not rely on Cargo-link failures as enforcement; run source/typed-AST no-hxrt eligibility first so Dynamic/reflection/anonymous-runtime/platform blockers fail with stable `runtimeRequirements` reason kinds, then keep the emitted-code no-runtime guard pass (`NoHxrtPass`) active so remaining generated `hxrt` references fail with actionable module-level diagnostics.
+    Future capability-driven portable no-hxrt support requires positive portable-facade eligibility fixtures before this policy can be widened.
   - Metal diagnostics gotcha: aggregate `ERaw` fallback diagnostics once per compile (with top modules) instead of warning per transformed module; this keeps fallback signals actionable in large std-heavy builds.
   - Optional formatter hook: `-D rustfmt` runs `cargo fmt --manifest-path <out>/Cargo.toml` after output generation (best-effort, warns on failure).
 - TUI testing: prefer ratatui `TestBackend` via `TuiDemo.renderToString(...)` and assert in `cargo test` (see `docs/tui.md` and `examples/tui_todo/native/tui_tests.rs`).

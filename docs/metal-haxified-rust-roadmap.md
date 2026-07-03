@@ -211,7 +211,9 @@ Required implementation artifacts:
   runtime fallback representations with reasons.
 - `RuntimeRequirementLedger`: records semantic runtime requirements before final codegen using
   stable reason kinds, not free-form strings.
-- `NoHxrtEligibilityPass`: source/typed-AST gate for no-runtime eligibility before lowering.
+- `NoHxrtEligibilityPass`: source/typed-AST gate for no-runtime eligibility before lowering. The
+  first metal-only implementation is `NoHxrtEligibilityAnalyzer`; portable `rust_no_hxrt` remains
+  future work until positive portable-facade fixtures exist.
 - Existing `NoHxrtPass`: final emitted-code validator that rejects generated `hxrt` references.
 - Extended `contract_report.*` / `runtime_plan.*` fixtures that prove deterministic ordering,
   source/module attribution, consumed surfaces, selected representations, and fallback blockers.

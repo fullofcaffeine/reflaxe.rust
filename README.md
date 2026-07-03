@@ -34,6 +34,9 @@ networking, TLS, DB, processes, or threading, add app-specific smoke tests aroun
 - Portable lowering can still target native Rust representations when semantics match, but that is
   an implementation win inside the `portable` contract, not a silent switch into native-lane code.
   See [Portable near-native guidance](docs/portable-near-native-guidance.md).
+- `hxrt` is a semantic fallback, not the compiler's default strategy. The compiler should lower at
+  compile time first and use runtime helpers only for required Haxe semantics such as `Dynamic`,
+  reflection, exceptions, Haxe object identity, nullable compatibility, or platform abstractions.
 - CI evidence: snapshots, negative policy fixtures, runtime/optimizer plan reports, and HXRT overhead tracking are all part of the default workflow.
 
 ## Start Here
@@ -42,7 +45,7 @@ networking, TLS, DB, processes, or threading, add app-specific smoke tests aroun
 - Common first questions: [FAQ](docs/faq.md) for GC, memory management, runtime overhead, generated Rust quality, profile choice, and interop
 - Evaluating production use: [Production Readiness guide](docs/production-readiness.md), then [feature support matrix](docs/feature-support-matrix.md)
 - Portable-first path: [Profiles](docs/profiles.md), [Portable near-native guidance](docs/portable-near-native-guidance.md), [Examples Matrix](docs/examples-matrix.md)
-- Metal-first path: [Metal profile](docs/metal-profile.md), [Portable near-native guidance](docs/portable-near-native-guidance.md), [profile_storyboard / metal examples](docs/examples-matrix.md)
+- Metal-first path: [Metal profile](docs/metal-profile.md), [Portable vs metal authoring](docs/portable-vs-metal-authoring.md), [profile_storyboard / metal examples](docs/examples-matrix.md)
 - Release / operations path: [Production Readiness guide](docs/production-readiness.md), [Semver and release posture](docs/semver-release-posture.md), [Weekly CI Evidence runbook](docs/weekly-ci-evidence.md)
 - Tooling / workflow: [Dev Watcher guide](docs/dev-watcher.md), [Async/Await guide](docs/async-await.md), [Documentation Index](docs/index.md)
 
@@ -144,6 +147,8 @@ Rule of thumb:
 - Add `metal` only where the app needs Rust-first APIs, stricter boundaries, or measured hot-path work.
 - Use `reflaxe.std` portable idioms when they express the right semantics; on Rust, `Option` and
   `Result` lower to native Rust representations when the contract lines up.
+- Use `rust.*`/`rust.metal.*` when the source itself should be Rust-native. Treat awkward source
+  code written only to appease current codegen as a compiler/API gap to report or fixture.
 
 Read more: [Profiles guide](docs/profiles.md), [Rusty migration guide](docs/rusty-profile.md),
 [Metal profile details](docs/metal-profile.md), [HXRT overhead benchmarks](docs/perf-hxrt-overhead.md), and [Lifetime encoding design](docs/lifetime-encoding.md).
@@ -175,6 +180,7 @@ Coverage map: [docs/examples-matrix.md](docs/examples-matrix.md).
 - Snapshot tests: `bash test/run-snapshots.sh`
 - Upstream stdlib sweep: `bash test/run-upstream-stdlib-sweep.sh`
 - Template task-matrix smoke: `bash scripts/ci/template-smoke.sh`
+- Codex Haxe/Rust killer-app QA: `npm run test:codex-hxrust` (requires sibling `codex-hxrust` checkout; skips when absent)
 - Windows-safe smoke subset: `bash scripts/ci/windows-smoke.sh`
 - HXRT overhead benchmark + soft-budget warnings: `bash scripts/ci/perf-hxrt-overhead.sh`
 - Full local CI equivalent: `bash scripts/ci/local.sh`

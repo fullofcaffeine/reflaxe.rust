@@ -37,7 +37,7 @@ is proving an already-supported surface, closing a partial surface, or defining 
 | Traits, impls, and bounds | generic/interface snapshots and open bounds gaps | `test/snapshot/metal_trait_impl_bounds`, `test/negative/metal_trait_bound_missing`, `test/snapshot/metal_trait_object_boundary` | snapshot + cargo build |
 | Typed mini-DSL authority | `test/snapshot/metal_typed_injection`, raw app-side negative fixtures | `test/snapshot/metal_typed_dsl_contract`, `test/negative/metal_stringly_dsl_app_api`, `test/negative/metal_dsl_bypasses_policy` | snapshot + metal policy |
 | Extern and lifetime islands | `@:native`, `@:rustCargo`, `@:rustExtraSrc` examples and interop docs | `test/snapshot/metal_extern_lifetime_island`, `test/negative/metal_extern_unsafe_surface`, cookbook example with cargo test | snapshot + example smoke |
-| no-hxrt minimal runtime | `test/positive/metal_no_hxrt_minimal`, `test/negative/metal_no_hxrt_runtime_boundary`, `test/negative/metal_no_hxrt_requires_metal` | `test/snapshot/metal_no_hxrt_option_result_values`, `test/negative/metal_no_hxrt_dynamic_boundary` | positive/negative + cargo check |
+| no-hxrt minimal runtime | `test/positive/metal_no_hxrt_minimal`, `test/negative/metal_no_hxrt_runtime_boundary`, `test/negative/metal_no_hxrt_requires_metal`, `test/negative/metal_no_hxrt_dynamic_boundary`, `test/negative/metal_no_hxrt_reflection_boundary`, `test/negative/metal_no_hxrt_platform_boundary` | `test/snapshot/metal_no_hxrt_option_result_values`, future portable no-hxrt facade subset fixtures | positive/negative + cargo check |
 | Dynamic/reflection boundaries | `test/negative/metal_dynamic_access`, `test/negative/metal_reflect`, `test/negative/metal_type_reflection` | `test/negative/metal_dynamic_dsl_payload`, `test/negative/metal_reflect_trait_boundary` | metal policy |
 | Metal islands in portable builds | `test/negative/metal_island_*`, contract report cases | `test/snapshot/portable_with_metal_trait_island`, `test/negative/metal_island_lifetime_escape` | metal policy + contract report |
 | Idiomatic output shape | fallback baseline, rustfmt/cargo build in snapshots | `test/snapshot/metal_idiom_values`, `test/snapshot/metal_idiom_option_result_vec`, deterministic clone/borrow/hxrt counters | snapshot + fallback baseline |
@@ -86,7 +86,7 @@ fixtures, or runtime fallback reasons before they can be treated as native Rust 
   - Implemented as a runtime-plan policy fixture that records `reasonKind: dynamic` for
     `haxe.DynamicAccess`.
 - Future `test/positive/portable_facade_no_hxrt_subset`
-  - Proves a portable facade subset can compile with `rust_no_hxrt` only after a source/typed-AST eligibility pass exists. Today `rust_no_hxrt` remains metal-only.
+  - Proves a portable facade subset can compile with `rust_no_hxrt` only after positive eligibility fixtures exist. Today `rust_no_hxrt` remains metal-only.
 - Future `test/negative/portable_facade_no_hxrt_dynamic_fallback`
   - Proves unsupported portable semantics fail under future portable `rust_no_hxrt` with a diagnostic that names the runtime fallback reason.
 - Future `test/snapshot/portable_facade_native_vec`

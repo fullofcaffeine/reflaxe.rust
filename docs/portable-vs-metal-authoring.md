@@ -38,6 +38,19 @@ This means the portable/metal boundary is not only a folder or module split. It 
 imports, metadata, and reports. Portable code can lower to native Rust shapes when its chosen facade
 permits that; it must not receive Rust-native semantics by accident.
 
+## The Layers
+
+| If you consume... | You are saying... | Expected compiler behavior |
+| --- | --- | --- |
+| ordinary Haxe/std APIs | Keep Haxe semantics. | Prefer direct Rust; use `hxrt` only for real semantic gaps. |
+| admitted `reflaxe.std` facades | Keep portable source semantics, but allow backend specialization. | Lower to native Rust shapes such as `Option<T>` / `Result<T,E>` when admitted. |
+| `rust.*` / `rust.metal.*` | This module is Rust-native by source contract. | Enforce native boundaries and emit Rust-shaped code. |
+| `@:haxeMetal` | This portable-project module is a metal island. | Apply metal checks locally and report it as an island. |
+| `Dynamic`, `Reflect`, runtime anonymous objects, exceptions, platform wrappers | Haxe runtime semantics are required. | Use narrow `hxrt` helpers and report stable fallback reasons. |
+
+The goal is not to make users memorize compiler internals. The goal is that the source surface you
+choose predicts the generated Rust lane and the reports show the same decision.
+
 ## Portable-first authoring
 
 Write portable-first code when:

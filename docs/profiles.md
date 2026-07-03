@@ -64,6 +64,24 @@ Unadmitted facade-like modules do not receive native representation privileges f
 they remain ordinary Haxe surfaces until a per-module surface contract, docs, and fixture evidence
 admit them.
 
+## Compiler Mental Model
+
+New code should be read through five layers:
+
+| Layer | Source surface | Compiler contract | Rust output goal |
+| --- | --- | --- | --- |
+| Ordinary portable Haxe | Haxe syntax plus upstream `Std`, `haxe.*`, `sys.*`, `Array<T>`, classes | Preserve Haxe semantics first | Direct Rust when semantics are proven; narrow `hxrt` fallback when required |
+| Portable facades | Admitted `reflaxe.std` / family-style APIs | Portable source semantics with a per-surface backend contract | Native Rust representation when the facade contract permits it |
+| Rust-native APIs | `rust.*`, `rust.metal.*`, typed externs, borrow/slice/RAII surfaces | Explicit Rust-target source contract | Idiomatic Rust shapes with strict native boundaries |
+| Metal islands | `@:haxeMetal` inside portable projects | Rust-native checks for selected modules | Same as metal for that island, while the project remains portable |
+| Runtime fallback | `hxrt` helpers selected by semantic requirements | Preserve Haxe behavior that Rust does not provide directly | Small typed helpers, reported with stable fallback reasons |
+
+Leverage Haxe by using strong types, abstracts, enums, metadata, macros, and typed facades to make
+the source contract obvious. Leverage Rust by choosing admitted native surfaces when the source
+really needs Rust ownership, borrowing, RAII, async, platform handles, or no-runtime constraints.
+The compiler should do optimization and representation selection at compile time wherever it can
+prove the Haxe contract is preserved.
+
 ## Contract: `portable`
 
 Use `portable` when you want:
@@ -177,6 +195,9 @@ Rules:
   source/typed-AST eligibility pass that proves the selected portable facades do not require runtime
   semantics, plus report fixtures that explain any blockers before the final emitted-code
   `NoHxrtPass` runs.
+- Today, metal `rust_no_hxrt` already uses the same split: `NoHxrtEligibilityAnalyzer` rejects
+  known semantic blockers before lowering, and `NoHxrtPass` remains the generated Rust AST guard for
+  any remaining `hxrt` references.
 - Portable contract tracks native-target imports (`rust.*`, `cpp.*`, etc.) as portability signals:
   - default: warning + contract-report marker (`nativeImportHits`),
   - strict: `-D rust_portable_native_import_strict` turns those warnings into errors.

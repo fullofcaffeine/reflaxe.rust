@@ -1,5 +1,11 @@
+@:rustAllowRaw
 class Main {
+	static function runtimeValue():Int {
+		return untyped __rust__("hxrt::dynamic::from(1); 0");
+	}
+
 	static function main() {
-		trace("needs-runtime");
+		var value = runtimeValue();
+		if (value == -1) {}
 	}
 }

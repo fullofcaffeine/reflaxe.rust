@@ -41,6 +41,8 @@ import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalIssueClassSummary;
 import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability;
 import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker;
 import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot;
+import reflaxe.rust.analyze.NoHxrtEligibilityAnalyzer;
+import reflaxe.rust.analyze.NoHxrtEligibilityAnalyzer.NoHxrtEligibilityResult;
 import reflaxe.rust.analyze.ProfileContractAnalyzer;
 import reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer;
@@ -561,6 +563,81 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		#end
 	}
 
+	/**
+		Enforces source/typed-AST no-runtime eligibility before the final generated-code guard.
+
+		Why
+		- `NoHxrtPass` is still required, but it can only say generated Rust referenced `hxrt`.
+		- `rust_no_hxrt` users need semantic blockers such as `dynamic`, `reflection`,
+		  `anonymous_object`, or `platform_abstraction` before lowering gets that far.
+
+		What
+		- Runs `NoHxrtEligibilityAnalyzer` only when `-D rust_no_hxrt` is active.
+		- Emits one deterministic diagnostic list using the same stable reason kinds as
+		  `runtime_plan.*`.
+		- Keeps current behavior conservative: `rust_no_hxrt` is still metal-only, and the existing
+		  `NoHxrtPass` still validates the emitted Rust AST afterwards.
+	**/
+	function enforceNoHxrtEligibility():Void {
+		if (!noHxrtEnabled())
+			return;
+
+		var result = NoHxrtEligibilityAnalyzer.analyze(userProjectModuleTypes(), snapshotUsedModulePaths(), Context.defined("rust_string_nullable"),
+			Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"));
+		if (!result.blocked)
+			return;
+
+		#if eval
+		var details = result.requirements.filter(entry -> entry.noHxrtBlocked).map(formatNoHxrtRequirement).join("\n");
+		var pos = noHxrtEligibilityDiagnosticPos(result);
+		Context.error("Rust no-hxrt eligibility violation(s):\n"
+			+ details
+			+
+			"\n`-D rust_no_hxrt` still requires the source subset to avoid Haxe runtime semantics; remove `-D rust_no_hxrt` or refactor to admitted Rust-native/no-runtime surfaces.",
+			pos);
+		#end
+	}
+
+	static function formatNoHxrtRequirement(entry:RuntimeRequirementEntry):String {
+		var surface = entry.surfaceId == null ? "" : ", surface `" + entry.surfaceId + "`";
+		return "- reasonKind `"
+			+ entry.reasonKind
+			+ "` from "
+			+ entry.sourceKind
+			+ " `"
+			+ entry.sourceModule
+			+ "`"
+			+ surface
+			+ ": "
+			+ entry.message;
+	}
+
+	function noHxrtEligibilityDiagnosticPos(result:NoHxrtEligibilityResult):haxe.macro.Expr.Position {
+		#if eval
+		var modulePosIndex = profileContractModulePosIndex();
+		if (result != null && result.requirements != null) {
+			for (entry in result.requirements) {
+				if (entry.noHxrtBlocked) {
+					var pos = profileContractDiagnosticPos(entry.sourceModule, modulePosIndex);
+					if (pos != null)
+						return pos;
+				}
+			}
+		}
+		#end
+		return Context.currentPos();
+	}
+
+	function userProjectModuleTypes():Array<ModuleType> {
+		var out:Array<ModuleType> = [];
+		for (moduleType in Context.getAllModuleTypes()) {
+			var sourceFile = moduleSourceFile(moduleType);
+			if (sourceFile != null && sourceFile.length > 0 && isUserProjectFile(sourceFile))
+				out.push(moduleType);
+		}
+		return out;
+	}
+
 	function profileContractModulePosIndex():Map<String, haxe.macro.Expr.Position> {
 		var out:Map<String, haxe.macro.Expr.Position> = [];
 
@@ -931,6 +1008,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	override public function onCompileEnd() {
+		enforceNoHxrtEligibility();
 		enforceProfileContracts();
 		enforceSendSyncContracts();
 
@@ -2131,6 +2209,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	public function compileClassImpl(classType:ClassType, varFields:Array<ClassVarData>, funcFields:Array<ClassFuncData>):Null<RustFile> {
 		collectTypeUsageFromCurrentModule();
+		enforceNoHxrtEligibility();
 
 		var isMain = isMainClass(classType);
 		if (!shouldEmitClass(classType, isMain))
@@ -2769,6 +2848,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	public function compileEnumImpl(enumType:EnumType, options:Array<EnumOptionData>):Null<RustFile> {
 		collectTypeUsageFromCurrentModule();
+		enforceNoHxrtEligibility();
 
 		if (!shouldEmitEnum(enumType))
 			return null;
@@ -2826,11 +2906,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	override public function compileTypedefImpl(typedefType:DefType):Null<RustFile> {
 		collectTypeUsageFromCurrentModule();
+		enforceNoHxrtEligibility();
 		return null;
 	}
 
 	override public function compileAbstractImpl(abstractType:AbstractType):Null<RustFile> {
 		collectTypeUsageFromCurrentModule();
+		enforceNoHxrtEligibility();
 		return null;
 	}
 

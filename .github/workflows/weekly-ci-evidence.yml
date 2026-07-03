@@ -205,6 +205,87 @@ jobs:
             echo "- Command: \`bash scripts/ci/windows-smoke.sh\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
+  codex-hxrust-qa:
+    name: Weekly codex-hxrust killer-app QA
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout haxe.rust
+        uses: actions/checkout@v4
+        with:
+          path: haxe.rust
+
+      - name: Clone codex-hxrust
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/fullofcaffeine/codex-hxrust.git codex-hxrust
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: |
+            haxe.rust/package-lock.json
+            codex-hxrust/package-lock.json
+
+      - name: Install npm dependencies
+        run: |
+          set -euo pipefail
+          npm ci --prefix haxe.rust --ignore-scripts --no-audit --no-fund
+          npm ci --prefix codex-hxrust --ignore-scripts --no-audit --no-fund
+
+      - name: Cache Haxe toolchain (lix)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/haxe
+          key: ${{ runner.os }}-lix-haxe-codex-hxrust-${{ env.HAXE_VERSION }}-${{ hashFiles('haxe.rust/.haxerc', 'haxe.rust/haxe_libraries/*.hxml', 'haxe.rust/package-lock.json', 'codex-hxrust/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-lix-haxe-codex-hxrust-${{ env.HAXE_VERSION }}-
+            ${{ runner.os }}-lix-haxe-${{ env.HAXE_VERSION }}-
+
+      - name: Install Haxe (pinned via lix)
+        working-directory: haxe.rust
+        run: |
+          set -euo pipefail
+          npx lix download
+          npx lix download haxe "${{ env.HAXE_VERSION }}"
+          npx lix use haxe "${{ env.HAXE_VERSION }}"
+          echo "$(pwd)/node_modules/.bin" >> "$GITHUB_PATH"
+          echo "$(pwd)/../codex-hxrust/node_modules/.bin" >> "$GITHUB_PATH"
+          export PATH="$(pwd)/node_modules/.bin:$(pwd)/../codex-hxrust/node_modules/.bin:$PATH"
+          haxe -version
+
+      - name: Setup Rust (stable + rustfmt)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Run codex-hxrust generated Cargo QA
+        working-directory: haxe.rust
+        run: |
+          set -euo pipefail
+          npm run test:codex-hxrust
+
+      - name: Publish codex-hxrust evidence summary
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          haxe_rust_sha="$(git -C haxe.rust rev-parse --short HEAD 2>/dev/null || echo unknown)"
+          codex_hxrust_sha="$(git -C codex-hxrust rev-parse --short HEAD 2>/dev/null || echo unknown)"
+          {
+            echo "## Weekly CI Evidence (codex-hxrust)"
+            echo "- Result: ${JOB_STATUS}"
+            echo "- haxe.rust commit: \`${haxe_rust_sha}\`"
+            echo "- codex-hxrust commit: \`${codex_hxrust_sha}\`"
+            echo "- Run: ${run_url}"
+            echo "- Command: \`npm run test:codex-hxrust\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   follow-up-guidance:
     name: Weekly evidence guidance
     runs-on: ubuntu-latest
@@ -212,6 +293,7 @@ jobs:
     needs:
       - local-equivalent
       - windows-smoke
+      - codex-hxrust-qa
     steps:
       - name: Publish follow-up instructions
         run: |
@@ -219,14 +301,16 @@ jobs:
           run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           linux_status="${{ needs.local-equivalent.result }}"
           windows_status="${{ needs.windows-smoke.result }}"
+          codex_status="${{ needs.codex-hxrust-qa.result }}"
 
           {
             echo "## Weekly CI Evidence Rollup"
             echo "- Linux local-equivalent job: **${linux_status}**"
             echo "- Windows smoke job: **${windows_status}**"
+            echo "- codex-hxrust QA job: **${codex_status}**"
             echo "- Run URL: ${run_url}"
             echo ""
-            if [[ "${linux_status}" != "success" || "${windows_status}" != "success" ]]; then
+            if [[ "${linux_status}" != "success" || "${windows_status}" != "success" || "${codex_status}" != "success" ]]; then
               echo "### Action Required"
               echo "Open a regression issue in the tracker the same day, assign an owner, and include:"
               echo "- failing job + failing step"
