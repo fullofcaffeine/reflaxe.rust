@@ -43,6 +43,9 @@ import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker;
 import reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot;
 import reflaxe.rust.analyze.ProfileContractAnalyzer;
 import reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics;
+import reflaxe.rust.analyze.RuntimeRequirementAnalyzer;
+import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeFallbackSummary;
+import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry;
 import reflaxe.rust.analyze.SurfaceContractRegistry;
 import reflaxe.rust.analyze.SurfaceContractRegistry.NativeRepresentationDecision;
 import reflaxe.rust.analyze.SurfaceContractRegistry.SurfaceContract;
@@ -120,6 +123,8 @@ private typedef HxrtPlanReportSnapshot = {
 	var manualFeatures:Array<String>;
 	var selectedFeatures:Array<String>;
 	var reasons:Array<HxrtFeatureReason>;
+	var runtimeRequirements:Array<RuntimeRequirementEntry>;
+	var fallbackSummary:RuntimeFallbackSummary;
 	var usedModuleCount:Int;
 	var hxrtDependencyLine:String;
 };
@@ -1498,6 +1503,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		What
 		- Writes `runtime_plan.json` and `runtime_plan.md` in the generated crate root.
 		- Emission is opt-in via `-D rust_runtime_plan_report`.
+		- Schema v4 separates Cargo feature provenance (`reasons`) from semantic runtime
+		  requirements (`runtimeRequirements` and `fallbackSummary`).
 
 		How
 		- Reuses the active `CompilationContext` feature snapshot when available.
@@ -1550,9 +1557,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		} else {
 			"selective";
 		}
+		var runtimeRequirements = RuntimeRequirementAnalyzer.collect(modulePaths, noHxrt, Context.defined("rust_string_nullable"),
+			Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"));
+		var fallbackSummary = RuntimeRequirementAnalyzer.summarize(runtimeRequirements);
 
 		return {
-			schemaVersion: 3,
+			schemaVersion: 4,
 			backendId: "reflaxe.rust",
 			runtimeId: "hxrt",
 			contract: profile == Metal ? "metal" : "portable",
@@ -1564,6 +1574,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			manualFeatures: manualFeatures,
 			selectedFeatures: selectedFeatures,
 			reasons: reasons,
+			runtimeRequirements: runtimeRequirements,
+			fallbackSummary: fallbackSummary,
 			usedModuleCount: modulePaths.length,
 			hxrtDependencyLine: noHxrt ? "" : renderHxrtDependencyLine()
 		};
@@ -1590,6 +1602,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		lines.push('\t"reasons": [');
 		appendJsonHxrtReasons(lines, snapshot.reasons, 2);
 		lines.push("\t],");
+		lines.push('\t"runtimeRequirements": [');
+		appendJsonRuntimeRequirements(lines, snapshot.runtimeRequirements, 2);
+		lines.push("\t],");
+		appendRuntimeFallbackSummaryJson(lines, snapshot.fallbackSummary, 1, true);
 		lines.push('\t"usedModuleCount": ' + snapshot.usedModuleCount + ",");
 		lines.push('\t"hxrtDependencyLine": "' + jsonEscape(snapshot.hxrtDependencyLine) + '"');
 		lines.push("}");
@@ -1633,6 +1649,26 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		} else {
 			for (reason in snapshot.reasons)
 				lines.push("- `" + reason.feature + "` <= `" + reason.sourceKind + "`: `" + reason.source + "`");
+		}
+		lines.push("");
+		lines.push("## Runtime requirements");
+		if (snapshot.runtimeRequirements.length == 0) {
+			lines.push("- none");
+		} else {
+			for (requirement in snapshot.runtimeRequirements) {
+				var source = requirement.sourceModule.length == 0 ? requirement.sourceKind : requirement.sourceKind + ": " + requirement.sourceModule;
+				lines.push("- `" + requirement.reasonKind + "` <= `" + source + "` (requires hxrt: `" + boolLabel(requirement.requiresHxrt)
+					+ "`, blocks no-hxrt: `" + boolLabel(requirement.noHxrtBlocked) + "`) - " + requirement.message);
+			}
+		}
+		lines.push("");
+		lines.push("## Fallback summary");
+		lines.push("- requires hxrt: `" + boolLabel(snapshot.fallbackSummary.requiresHxrt) + "`");
+		lines.push("- blocked by no-hxrt: `" + boolLabel(snapshot.fallbackSummary.blockedByNoHxrt) + "`");
+		if (snapshot.fallbackSummary.reasonKinds.length == 0) {
+			lines.push("- reason kinds: none");
+		} else {
+			lines.push("- reason kinds: `" + snapshot.fallbackSummary.reasonKinds.join("`, `") + "`");
 		}
 		lines.push("");
 		lines.push("## Dependency line");
@@ -1949,6 +1985,34 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 	}
 
+	static function appendJsonRuntimeRequirements(lines:Array<String>, requirements:Array<RuntimeRequirementEntry>, indentLevel:Int):Void {
+		for (index in 0...requirements.length) {
+			var requirement = requirements[index];
+			var comma = index == requirements.length - 1 ? "" : ",";
+			lines.push(indent(indentLevel) + "{");
+			lines.push(indent(indentLevel + 1) + '"reasonKind": "' + jsonEscape(requirement.reasonKind) + '",');
+			lines.push(indent(indentLevel + 1) + '"sourceKind": "' + jsonEscape(requirement.sourceKind) + '",');
+			lines.push(indent(indentLevel + 1) + '"sourceModule": "' + jsonEscape(requirement.sourceModule) + '",');
+			lines.push(indent(indentLevel + 1) + '"sourceSpan": "' + jsonEscape(requirement.sourceSpan) + '",');
+			lines.push(indent(indentLevel + 1) + '"surfaceId": ' + jsonNullableString(requirement.surfaceId) + ",");
+			lines.push(indent(indentLevel + 1) + '"requiresHxrt": ' + boolString(requirement.requiresHxrt) + ",");
+			lines.push(indent(indentLevel + 1) + '"noHxrtBlocked": ' + boolString(requirement.noHxrtBlocked) + ",");
+			lines.push(indent(indentLevel + 1) + '"message": "' + jsonEscape(requirement.message) + '"');
+			lines.push(indent(indentLevel) + "}" + comma);
+		}
+	}
+
+	static function appendRuntimeFallbackSummaryJson(lines:Array<String>, summary:RuntimeFallbackSummary, indentLevel:Int, trailingComma:Bool):Void {
+		var comma = trailingComma ? "," : "";
+		lines.push(indent(indentLevel) + '"fallbackSummary": {');
+		lines.push(indent(indentLevel + 1) + '"requiresHxrt": ' + boolString(summary.requiresHxrt) + ",");
+		lines.push(indent(indentLevel + 1) + '"blockedByNoHxrt": ' + boolString(summary.blockedByNoHxrt) + ",");
+		lines.push(indent(indentLevel + 1) + '"reasonKinds": [');
+		appendJsonStringArray(lines, summary.reasonKinds, indentLevel + 2);
+		lines.push(indent(indentLevel + 1) + "]");
+		lines.push(indent(indentLevel) + "}" + comma);
+	}
+
 	static function appendSurfaceContractsJson(lines:Array<String>, surfaces:Array<SurfaceContract>, indentLevel:Int):Void {
 		for (index in 0...surfaces.length) {
 			var surface = surfaces[index];
@@ -2019,6 +2083,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 		return buf.toString();
+	}
+
+	static function jsonNullableString(value:Null<String>):String {
+		return value == null ? "null" : '"' + jsonEscape(value) + '"';
 	}
 
 	static inline function indent(level:Int):String {

@@ -204,6 +204,8 @@ These reports help keep the boundary reviewable:
 - native-import hits remain explicit in contract reporting,
 - admitted portable facade usage appears in `consumedSurfaces`,
 - selected backend-native representations appear in `nativeRepresentationPlan` with stable reasons,
+- runtime requirements appear in `runtimeRequirements` with stable semantic reason kinds,
+- `fallbackSummary` states whether the selected program needs `hxrt` and whether no-hxrt is blocked,
 - family pin metadata keeps Rust-local adoption distinct from standalone package hosting claims.
 
 The report schemas include explicit identity fields:
@@ -214,6 +216,15 @@ The report schemas include explicit identity fields:
 - `familyStdPin` (pin metadata from `family/family_std_pin.json` when visible from the compile root)
 - `consumedSurfaces` (contract report schema v5; per admitted typed surface)
 - `nativeRepresentationPlan` (contract report schema v5; selected Rust representation and reason)
+- `runtimeRequirements` (runtime plan schema v4; semantic runtime ledger)
+- `fallbackSummary` (runtime plan schema v4; aggregate `hxrt` requirement/no-hxrt blocker state)
+
+Runtime requirement reason kinds are stable strings. The current ledger schema admits
+`object_identity`, `reference_mutation`, `dynamic`, `reflection`, `anonymous_object`, `exception`,
+`nullable_compat`, `shared_closure_cell`, `platform_abstraction`, `haxe_array_semantics`, and
+`haxe_string_semantics`. The first implementation emits only reasons it can justify from typed
+module usage or explicit defines; later typed-AST passes can add source-span precision without
+changing the schema.
 
 ## Migration notes
 

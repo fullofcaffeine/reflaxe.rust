@@ -96,6 +96,9 @@ This page is a practical reference for the most relevant compiler defines.
   - Records runtime identity (`runtimeId`), effective mode (`no_hxrt|default_features|selective`),
     selected feature set, family pin metadata (`familyStdPin.*`), and typed provenance entries
     (`module`, `define`, `dependency_edge`).
+  - Schema v4 also records semantic runtime requirements (`runtimeRequirements`) and the aggregate
+    fallback state (`fallbackSummary`) so `hxrt` use is tied to source/runtime semantics rather than
+    inferred from generated `hxrt::` paths.
 - `rust_optimizer_plan_report`
   - Emit deterministic optimizer-plan artifacts in the generated crate root:
     - `optimizer_plan.json` (machine-readable)

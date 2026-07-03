@@ -208,6 +208,11 @@ admitted typed surfaces in `consumedSurfaces` and the selected Rust representati
 `nativeRepresentationPlan`; unadmitted `reflaxe.std.*`-style modules are not treated as native
 facades just because of their namespace.
 
+`runtime_plan.*` schema v4 separates selected Cargo features from semantic runtime requirements.
+`runtimeRequirements` names stable reason kinds such as `dynamic`, `reflection`,
+`platform_abstraction`, `nullable_compat`, and `haxe_string_semantics`; `fallbackSummary` states
+whether those requirements need `hxrt` or would block a no-runtime contract.
+
 ## Minimal runtime mode (`rust_no_hxrt`)
 
 `metal` can opt into a no-runtime contract:

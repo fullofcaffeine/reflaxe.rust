@@ -157,6 +157,10 @@ These mappings are reflected in deterministic runtime planning artifacts:
 - `runtime_plan.json`
 - `runtime_plan.md`
 
+`runtime_plan.*` also includes a semantic runtime ledger. Cargo feature reasons explain which runtime
+slice is selected; `runtimeRequirements` explains why source-visible semantics need runtime support,
+and `fallbackSummary` reports whether that blocks no-hxrt eligibility.
+
 ## Validation workflow
 
 - `npm run stdlib:sync:allowlist`

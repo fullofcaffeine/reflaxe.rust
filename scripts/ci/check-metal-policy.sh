@@ -753,6 +753,8 @@ run_runtime_plan_report_case() {
 	local extra_define="${6:-}"
 	local expected_reason_regex="${7:-}"
 	local expected_reason_regex_2="${8:-}"
+	local expected_runtime_regex="${9:-}"
+	local expected_runtime_regex_2="${10:-}"
 	local case_start="$SECONDS"
 	local fixture_dir="$root_dir/$fixture_rel"
 	local out_a="$fixture_dir/out_runtime_plan_a"
@@ -805,7 +807,7 @@ run_runtime_plan_report_case() {
 		exit 1
 	fi
 
-	if ! match_regex '"schemaVersion":[[:space:]]*3' "$json_a"; then
+	if ! match_regex '"schemaVersion":[[:space:]]*4' "$json_a"; then
 		echo "[metal-policy] error: runtime_plan.json missing schemaVersion for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
@@ -867,6 +869,26 @@ run_runtime_plan_report_case() {
 	fi
 	if ! match_regex '"reasons":[[:space:]]*\[' "$json_a"; then
 		echo "[metal-policy] error: runtime_plan.json missing reasons array for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '"runtimeRequirements":[[:space:]]*\[' "$json_a"; then
+		echo "[metal-policy] error: runtime_plan.json missing runtimeRequirements array for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if ! match_regex '"fallbackSummary":[[:space:]]*\{' "$json_a"; then
+		echo "[metal-policy] error: runtime_plan.json missing fallbackSummary object for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if [[ -n "$expected_runtime_regex" ]] && ! match_regex "$expected_runtime_regex" "$json_a"; then
+		echo "[metal-policy] error: runtime_plan.json missing expected runtime requirement pattern for ${failure_label}."
+		sed "s|$root_dir|.|g" "$json_a"
+		exit 1
+	fi
+	if [[ -n "$expected_runtime_regex_2" ]] && ! match_regex "$expected_runtime_regex_2" "$json_a"; then
+		echo "[metal-policy] error: runtime_plan.json missing second expected runtime requirement pattern for ${failure_label}."
 		sed "s|$root_dir|.|g" "$json_a"
 		exit 1
 	fi
@@ -948,6 +970,16 @@ run_runtime_plan_report_case() {
 	fi
 	if ! match_regex '^## Feature reasons' "$md_a"; then
 		echo "[metal-policy] error: runtime_plan.md missing feature reasons section for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if ! match_regex '^## Runtime requirements' "$md_a"; then
+		echo "[metal-policy] error: runtime_plan.md missing runtime requirements section for ${failure_label}."
+		sed "s|$root_dir|.|g" "$md_a"
+		exit 1
+	fi
+	if ! match_regex '^## Fallback summary' "$md_a"; then
+		echo "[metal-policy] error: runtime_plan.md missing fallback summary section for ${failure_label}."
 		sed "s|$root_dir|.|g" "$md_a"
 		exit 1
 	fi
@@ -1249,7 +1281,12 @@ run_contract_report_case "test/snapshot/reflaxe_std_option_result" "compile.hxml
 	$'"surfaceId":[[:space:]]*"reflaxe\\.std\\.Option"\n"surfaceId":[[:space:]]*"reflaxe\\.std\\.Result"\n"rustRepresentation":[[:space:]]*"core::option::Option<T>"\n"rustRepresentation":[[:space:]]*"core::result::Result<T,E>"\n"reason":[[:space:]]*"admitted_portable_facade"' \
 	$'`reflaxe\\.std\\.Option` \\(`portable_facade` -> `core::option::Option<T>`\n`reflaxe\\.std\\.Result` \\(`portable_facade` -> `core::result::Result<T,E>`\n`reflaxe\\.std\\.Option` -> `core::option::Option<T>` \\(`admitted_portable_facade`\\)\n`reflaxe\\.std\\.Result` -> `core::result::Result<T,E>` \\(`admitted_portable_facade`\\)'
 run_runtime_plan_report_case "examples/hello" "compile.hxml" "portable" "selective" \
-	'portable runtime plan artifacts'
+	'portable runtime plan artifacts' \
+	"" \
+	"" \
+	"" \
+	'"reasonKind":[[:space:]]*"haxe_string_semantics"' \
+	'"reasonKind":[[:space:]]*"platform_abstraction"'
 run_runtime_plan_report_case "examples/hello" "compile.hxml" "portable" "selective" \
 	'portable runtime plan define provenance artifacts' \
 	'rust_hxrt_features=thread' \
@@ -1264,7 +1301,12 @@ run_runtime_plan_report_case "examples/profile_storyboard" "compile.metal.hxml" 
 	'metal default-features runtime plan artifacts (profile_storyboard)' \
 	'rust_hxrt_default_features'
 run_runtime_plan_report_case "test/positive/metal_no_hxrt_minimal" "compile.hxml" "metal" "no_hxrt" \
-	'metal no-hxrt runtime plan artifacts'
+	'metal no-hxrt runtime plan artifacts' \
+	"" \
+	"" \
+	"" \
+	'"requiresHxrt":[[:space:]]*false' \
+	'"blockedByNoHxrt":[[:space:]]*false'
 run_optimizer_plan_report_case "test/snapshot/string_clone_elision" "compile.hxml" "portable" \
 	'portable optimizer plan report artifacts'
 run_optimizer_plan_report_case "test/snapshot/for_array_alias_mutating" "compile.hxml" "portable" \
