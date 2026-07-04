@@ -186,9 +186,7 @@ fn main() {
             }
         }
     }
-    let r2: Result<i32, hxrt::string::HxString> = Result::Err(hxrt::string::HxString::from(
-        hxrt::string::HxString::from("fail"),
-    ));
+    let r2: Result<i32, hxrt::string::HxString> = Result::Err(hxrt::string::HxString::from("fail"));
     match r2 {
         Result::Ok(__p) => {
             let _g_5: i32 = __p;

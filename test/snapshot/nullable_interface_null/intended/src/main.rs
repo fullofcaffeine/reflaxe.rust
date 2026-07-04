@@ -65,13 +65,9 @@ fn describe(
     service: crate::HxDynRef<dyn crate::service::Service + Send + Sync>,
 ) -> hxrt::string::HxString {
     if service.is_null() {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from("none"));
+        return hxrt::string::HxString::from("none");
     }
-    return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
-        "{}{}",
-        "service:",
-        service.name()
-    )));
+    return hxrt::string::HxString::from(format!("{}{}", "service:", service.name()));
 }
 
 fn main() {

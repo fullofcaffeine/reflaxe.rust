@@ -44,7 +44,7 @@ adapter_log="$(run_compile native_adapter_portable \
   -D rust_output=$cache_dir/out_adapter \
   -main Main)"
 
-if ! grep -q 'portable contract imported native target modules: rust\.adapters\.ReflaxeStdAdapters' "$adapter_log"; then
+if ! grep -q 'portable contract imported native target modules: .*rust\.adapters\.ReflaxeStdAdapters' "$adapter_log"; then
   cat "$adapter_log"
   echo "[portable-native-import] missing user-authored native import warning for portable adapter import" >&2
   exit 1

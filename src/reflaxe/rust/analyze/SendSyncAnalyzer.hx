@@ -24,6 +24,7 @@ import reflaxe.rust.DynamicBoundary;
 	  non-sendable boundary types:
 	  - `rust.Ref<T>`, `rust.MutRef<T>`
 	  - `rust.Slice<T>`, `rust.MutSlice<T>`
+	  - `rust.Str`
 	  - `Dynamic` / `TDynamic`
 	- Returns typed diagnostics (`warnings`, `errors`) so caller policy can decide strictness.
 
@@ -290,6 +291,8 @@ class SendSyncAnalyzer {
 						"borrowed type `rust.Slice<T>`";
 					case "rust.MutSlice":
 						"borrowed type `rust.MutSlice<T>`";
+					case "rust.Str":
+						"borrowed type `rust.Str`";
 					case "Null":
 						if (params != null && params.length == 1) classifyNonSendReasonRecursive(params[0], depth + 1) else null;
 					case dynamicPath if (dynamicPath == DynamicBoundary.typeName()):

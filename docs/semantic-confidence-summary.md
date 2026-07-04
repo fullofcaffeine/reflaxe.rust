@@ -26,10 +26,10 @@ This summary rolls up the current evidence buckets without pretending that Tier2
 - Portable candidate missing from Tier2: `0`
 - Portable semantic-diff cases: `18`
 - Lane semantic-diff cases: `2`
-- Snapshot cases: `122`
+- Snapshot cases: `138`
 - Compile/inventory buckets: `2`
 - Targeted semantic/runtime buckets: `7`
-- Snapshot/smoke-only buckets: `6`
+- Snapshot/smoke-only buckets: `7`
 
 ## Portable Scope
 
@@ -82,8 +82,10 @@ This summary rolls up the current evidence buckets without pretending that Tier2
   - `test/semantic_diff/closure_capture_mutation`
   - `test/semantic_diff/this_method_closure`
   - `test/semantic_diff/portable_option_result_basics`
+  - `test/snapshot/array_shift_nullable_class_return`
 - Commands:
   - `npm run test:semantic-diff`
+  - `bash test/run-snapshots.sh --case array_shift_nullable_class_return`
 - Notes: These are the current backbone portable semantic fixtures, not a claim about every portable surface.
 
 ### Portable vs `@:haxeMetal` lane stability
@@ -104,24 +106,28 @@ This summary rolls up the current evidence buckets without pretending that Tier2
   - `test/semantic_diff/exception_dynamic_payload`
   - `test/semantic_diff/typed_catch_subclass`
   - `test/snapshot/reflect_basic`
+  - `test/snapshot/reflect_compare_sort`
   - `test/snapshot/catch_dynamic`
 - Commands:
   - `npm run test:semantic-diff`
   - `bash test/run-snapshots.sh --case reflect_basic`
+  - `bash test/run-snapshots.sh --case reflect_compare_sort`
   - `bash test/run-snapshots.sh --case catch_dynamic`
 - Notes: Targeted proof only. Emitted non-generic class hierarchies now have subclass-aware typed catch parity; narrower exact-type limits remain on interface-typed or metadata-free catch paths.
 
 ### Portable stdlib runtime hotspots
 - Class: `targeted_semantic_parity`
-- Scope: Bytes, Json replacer, Int64, and iterator runtime behavior
+- Scope: Bytes, Json replacer, Int64, String substring, and iterator runtime behavior
 - Evidence:
   - `test/semantic_diff/bytes_extended_api`
   - `test/semantic_diff/json_stringify_replacer`
   - `test/semantic_diff/int64_parity`
   - `test/semantic_diff/map_key_value_iterator_manual`
+  - `test/snapshot/string_substring`
 - Commands:
   - `npm run test:semantic-diff`
-- Notes: Focused runtime parity on the stdlib families that recently moved from stubs/workarounds to real support.
+  - `bash test/run-snapshots.sh --case string_substring`
+- Notes: Focused runtime parity on stdlib families that recently moved from stubs/workarounds to real support. String.substring coverage is snapshot-backed generated Rust plus stdout proof for bounded ASCII and start/end swap behavior.
 
 ### Process failure / exit behavior
 - Class: `targeted_semantic_parity`
@@ -155,6 +161,17 @@ This summary rolls up the current evidence buckets without pretending that Tier2
 - Notes: Targeted local-server proof for `onStatus(...)`, `onData(...)`, and connection-failure `onError(...)` routing. Multipart/request-assembly confidence still relies on the snapshot/smoke bucket, and this is not blanket host/network semantic parity.
 
 ## Snapshot / Smoke Only
+
+### Generic helper payload-bound shape
+- Class: `snapshot_or_smoke_only`
+- Scope: Generated Rust signatures for method-level generics that mention bounded generated class payloads
+- Evidence:
+  - `test/snapshot/generic_helper_payload_bounds`
+  - `test/snapshot/generic_function_type_params`
+- Commands:
+  - `bash test/run-snapshots.sh --case generic_helper_payload_bounds`
+  - `bash test/run-snapshots.sh --case generic_function_type_params`
+- Notes: Snapshot-backed generated-shape proof. Helper methods returning or reading generated class payloads propagate required class bounds, while unconstrained Option<T> helpers remain bare.
 
 ### HTTP portable smoke coverage
 - Class: `snapshot_or_smoke_only`

@@ -69,7 +69,7 @@ fn decode(v: i32) -> i32 {
 
 fn label(v: i32) -> hxrt::string::HxString {
     return hxrt::string::HxString::from(if v == 1 {
-        hxrt::string::HxString::from(hxrt::string::HxString::from("one"))
+        hxrt::string::HxString::from("one")
     } else {
         hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
             "bad label",

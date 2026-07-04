@@ -37,6 +37,9 @@ In generated Rust:
     - value semantics (requires `T: PartialEq`): `contains`, `remove`, `indexOf`, `lastIndexOf`
     - object semantics (identity; no `PartialEq` required): `containsRef`, `removeRef`, `indexOfRef`, `lastIndexOfRef`
   - helpers: `sort`, `join`
+- `shift()`/`pop()` return nullable Haxe values. For value-like element types this stays as
+  `Option<T>` in Rust; for reference-like element types such as classes, empty arrays map back to the
+  type's explicit null handle at typed callsites.
 
 Some methods impose Rust trait bounds on `T`:
 
@@ -58,6 +61,9 @@ For Rust-first integrations, the metal profile provides slice-borrow helpers tha
 
 These are implemented via runtime helpers (`hxrt::array::with_slice` / `with_mut_slice`) that keep the
 runtime borrow/lock guard scoped to the callback.
+The metal policy guard compiles `test/snapshot/rust_array_slice_views` and checks that generated Rust
+routes through `ArrayBorrow::with_slice` / `with_mut_slice`, that HXRT uses `borrow().as_slice()` /
+`borrow_mut().as_mut_slice()`, and that those helper bodies do not call `clone()` or `to_vec()`.
 
 Important rules:
 
@@ -138,5 +144,7 @@ The current contract is covered by:
 
 - `test/snapshot/for_array_alias_mutating` for alias-preserving mutation during iteration.
 - `test/snapshot/array_methods_slice_splice` for common `Array<T>` operations.
-- `test/snapshot/rust_array_slice_views` for zero-clone slice-borrow helpers.
+- `test/snapshot/array_shift_nullable_class_return` for `Array<Class>.shift()` returned as `Null<Class>`.
+- `test/snapshot/rust_array_slice_views` plus the metal policy slice-view output-shape gate for
+  zero-clone slice-borrow helpers.
 - `runtime/hxrt/src/array.rs` for the concrete `hxrt::array::Array<T>` implementation.

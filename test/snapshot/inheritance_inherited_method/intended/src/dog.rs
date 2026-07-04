@@ -13,7 +13,7 @@ impl Dog {
     }
 
     pub fn sound(_self_: &crate::HxRefCell<Dog>) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from("dog"));
+        return hxrt::string::HxString::from("dog");
     }
 
     pub fn speak(self_: &crate::HxRefCell<Dog>) -> hxrt::string::HxString {

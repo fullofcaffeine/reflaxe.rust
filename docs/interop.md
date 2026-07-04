@@ -7,6 +7,10 @@ This target supports an escape hatch (`__rust__`) for emitting raw Rust, but **v
 
 This doc describes the recommended, stable pattern for binding to Rust.
 
+For APIs whose Rust shape needs explicit lifetimes, HRTB, const generics, macro-heavy setup, or
+contained `unsafe`, use the [Extern and lifetime-island cookbook](extern-lifetime-island-cookbook.md)
+as the practical template.
+
 ## Preferred pattern: `extern` + `@:native(...)` + extra Rust modules
 
 ### 1) Write the Rust module (hand-written)

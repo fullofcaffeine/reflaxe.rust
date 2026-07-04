@@ -63,6 +63,23 @@ For each binary:
   - `startup`: arithmetic mean over repeated process launches
   - `inproc`: median over per-run samples, plus dispersion via MAD (median absolute deviation)
 
+## Consumer-runtime corpus
+
+Runtime/tool-shaped performance requests should first be mapped to the
+[Consumer runtime benchmark corpus](consumer-runtime-benchmark-corpus.md).
+
+That corpus lists product-neutral candidates for DTO/codecs, JSON/schema validation, process/tool
+boundary shims, state transitions, async/runtime surfaces, and no-runtime lower-bound signals. It
+does not replace this benchmark policy. Instead, candidates reuse the threshold families below unless
+a new `HXRT_PERF_*` override and documented rationale are added in the same change.
+
+The practical rule is:
+
+- generic pressure becomes a generic fixture,
+- source contract is stated as `portable-first`, `metal-first`, or `no-runtime lower-bound`,
+- and timing claims keep using the same artifact flow: `current.json`, `comparison.json`,
+  `summary.md`, repeatable sample counts, and explicit gate modes.
+
 ## Benchmark protocol
 
 Runtime measurement protocol is fixed so pass/fail decisions are explainable and repeatable:

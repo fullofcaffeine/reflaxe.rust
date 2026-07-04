@@ -32,14 +32,10 @@ impl Int64Helper {
         );
         if crate::string_tools::StringTools::starts_with(
             hxrt::string::HxString::from(s.clone()),
-            hxrt::string::HxString::from(hxrt::string::HxString::from("-")),
+            hxrt::string::HxString::from("-"),
         ) {
             s_is_negative = true;
-            s = hxrt::string::HxString::from(hxrt::string::HxString::from(hxrt::string::substr(
-                s.as_str(),
-                1,
-                None,
-            )));
+            s = hxrt::string::HxString::from(hxrt::string::substr(s.as_str(), 1, None));
         }
         let len: i32 = hxrt::string::len(s.as_str());
         {

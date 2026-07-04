@@ -75,9 +75,9 @@ fn decode(raw: hxrt::string::HxString) -> i32 {
 
 fn main() {
     crate::sys::Sys::println(hxrt::dynamic::from(decode(hxrt::string::HxString::from(
-        hxrt::string::HxString::from("rust"),
+        "rust",
     ))));
     crate::sys::Sys::println(hxrt::dynamic::from(decode(hxrt::string::HxString::from(
-        hxrt::string::HxString::from("bad"),
+        "bad",
     ))));
 }

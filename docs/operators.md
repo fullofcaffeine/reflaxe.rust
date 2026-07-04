@@ -17,9 +17,16 @@ This target lowers Haxe numeric operators to Rust operators with a few target-sp
 
 Compound assignments for locals are supported (e.g. `x += y`, `x %= y`, `x <<= 1`).
 
-Current limitation: compound assignment support is conservative for complex lvalues (fields / array indices).
+Class field compound assignments are supported for Copy-like numeric values and for `String` append
+(`field += value`). String field append evaluates the RHS before taking the mutable field borrow,
+formats from an immutable field borrow, writes the new value, and returns the assigned value.
+
+Current limitation: compound assignment support is still conservative for some complex lvalues,
+especially non-Copy array indices and anonymous-object fields.
 
 ## Snapshot coverage
 
-See `test/snapshot/mod_bitwise`.
+See:
 
+- `test/snapshot/mod_bitwise`
+- `test/snapshot/class_string_field_assignop`

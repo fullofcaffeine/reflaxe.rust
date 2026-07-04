@@ -449,9 +449,8 @@ impl Socket {
 
     pub fn peer(self_: &crate::HxRefCell<Socket>) -> crate::HxRef<hxrt::anon::Anon> {
         let __hx_this: crate::HxRef<crate::sys_ssl_socket::Socket> = self_.self_ref();
-        let host: crate::HxRef<crate::sys_net_host::Host> = crate::sys_net_host::Host::new(
-            hxrt::string::HxString::from(hxrt::string::HxString::from("127.0.0.1")),
-        );
+        let host: crate::HxRef<crate::sys_net_host::Host> =
+            crate::sys_net_host::Host::new(hxrt::string::HxString::from("127.0.0.1"));
         {
             let __tmp = crate::socket_native::peer_ip(
                 &({
@@ -483,9 +482,8 @@ impl Socket {
 
     pub fn host(self_: &crate::HxRefCell<Socket>) -> crate::HxRef<hxrt::anon::Anon> {
         let __hx_this: crate::HxRef<crate::sys_ssl_socket::Socket> = self_.self_ref();
-        let host: crate::HxRef<crate::sys_net_host::Host> = crate::sys_net_host::Host::new(
-            hxrt::string::HxString::from(hxrt::string::HxString::from("127.0.0.1")),
-        );
+        let host: crate::HxRef<crate::sys_net_host::Host> =
+            crate::sys_net_host::Host::new(hxrt::string::HxString::from("127.0.0.1"));
         {
             let __tmp = crate::socket_native::host_ip(
                 &({

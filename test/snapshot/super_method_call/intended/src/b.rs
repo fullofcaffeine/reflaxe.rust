@@ -30,11 +30,11 @@ impl B {
     }
 
     pub fn sound(_self_: &crate::HxRefCell<B>) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from("B.sound"));
+        return hxrt::string::HxString::from("B.sound");
     }
 
     pub fn foo(_self_: &crate::HxRefCell<B>) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from("A.foo"));
+        return hxrt::string::HxString::from("A.foo");
     }
 
     fn __hx_super_a_get_x(self_: &crate::HxRefCell<B>) -> i32 {

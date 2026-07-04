@@ -59,7 +59,7 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 }
 
 fn main() {
-    let s: hxrt::string::HxString = hxrt::string::HxString::from(hxrt::string::HxString::null());
+    let s: hxrt::string::HxString = hxrt::string::HxString::null();
     crate::sys::Sys::println(hxrt::dynamic::from(s.clone()));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",

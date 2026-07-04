@@ -71,10 +71,7 @@ fn main() {
     println!(
         "{}",
         hxrt::dynamic::from(
-            hxrt::string::HxString::from(a.join(hxrt::string::HxString::from(
-                hxrt::string::HxString::from(",")
-            )))
-            .clone()
+            hxrt::string::HxString::from(a.join(hxrt::string::HxString::from(","))).clone()
         )
     );
     {
@@ -88,10 +85,7 @@ fn main() {
     println!(
         "{}",
         hxrt::dynamic::from(
-            hxrt::string::HxString::from(a.join(hxrt::string::HxString::from(
-                hxrt::string::HxString::from(",")
-            )))
-            .clone()
+            hxrt::string::HxString::from(a.join(hxrt::string::HxString::from(","))).clone()
         )
     );
     let b: hxrt::array::Array<f64> = hxrt::array::Array::<f64>::from_vec(vec![1.0, 2.0]);
@@ -106,10 +100,7 @@ fn main() {
     println!(
         "{}",
         hxrt::dynamic::from(
-            hxrt::string::HxString::from(b.join(hxrt::string::HxString::from(
-                hxrt::string::HxString::from(",")
-            )))
-            .clone()
+            hxrt::string::HxString::from(b.join(hxrt::string::HxString::from(","))).clone()
         )
     );
 }

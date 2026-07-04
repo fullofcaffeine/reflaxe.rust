@@ -75,88 +75,88 @@ fn assert_parsed(
 
 fn main() {
     assert_parsed(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("decimal")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("123")),
+        hxrt::string::HxString::from("decimal"),
+        hxrt::string::HxString::from("123"),
         Some(123),
     );
     assert_parsed(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("leading-space")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from(" 123")),
+        hxrt::string::HxString::from("leading-space"),
+        hxrt::string::HxString::from(" 123"),
         Some(123),
     );
     assert_parsed(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("trailing-junk")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("123abc")),
+        hxrt::string::HxString::from("trailing-junk"),
+        hxrt::string::HxString::from("123abc"),
         Some(123),
     );
     assert_parsed(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("negative")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("-42")),
+        hxrt::string::HxString::from("negative"),
+        hxrt::string::HxString::from("-42"),
         Some(-42),
     );
     assert_parsed(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("positive")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("+7")),
+        hxrt::string::HxString::from("positive"),
+        hxrt::string::HxString::from("+7"),
         Some(7),
     );
     assert_parsed(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("hex")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("0x10")),
+        hxrt::string::HxString::from("hex"),
+        hxrt::string::HxString::from("0x10"),
         Some(16),
     );
     assert_parsed(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("negative-hex")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("-0x10")),
+        hxrt::string::HxString::from("negative-hex"),
+        hxrt::string::HxString::from("-0x10"),
         Some(-16),
     );
     assert_parsed(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("upper-hex")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("0X10zz")),
+        hxrt::string::HxString::from("upper-hex"),
+        hxrt::string::HxString::from("0X10zz"),
         Some(16),
     );
     assert_parsed(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("leading-zero")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("010")),
+        hxrt::string::HxString::from("leading-zero"),
+        hxrt::string::HxString::from("010"),
         Some(10),
     );
     assert_parsed(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("empty")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("")),
+        hxrt::string::HxString::from("empty"),
+        hxrt::string::HxString::from(""),
         None,
     );
     assert_parsed(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("invalid")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("abc")),
+        hxrt::string::HxString::from("invalid"),
+        hxrt::string::HxString::from("abc"),
         None,
     );
     assert_parsed(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("bare-sign")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("-")),
+        hxrt::string::HxString::from("bare-sign"),
+        hxrt::string::HxString::from("-"),
         None,
     );
     assert_parsed(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("whitespace-only")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("  ")),
+        hxrt::string::HxString::from("whitespace-only"),
+        hxrt::string::HxString::from("  "),
         None,
     );
     assert_parsed(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("float-prefix")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("12.9")),
+        hxrt::string::HxString::from("float-prefix"),
+        hxrt::string::HxString::from("12.9"),
         Some(12),
     );
     assert_parsed(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("negative-float-prefix")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("-12.9")),
+        hxrt::string::HxString::from("negative-float-prefix"),
+        hxrt::string::HxString::from("-12.9"),
         Some(-12),
     );
     assert_parsed(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("overflow-positive")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("2147483648")),
+        hxrt::string::HxString::from("overflow-positive"),
+        hxrt::string::HxString::from("2147483648"),
         None,
     );
     assert_parsed(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("overflow-negative")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("-2147483649")),
+        hxrt::string::HxString::from("overflow-negative"),
+        hxrt::string::HxString::from("-2147483649"),
         None,
     );
 }

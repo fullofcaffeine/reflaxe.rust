@@ -29,8 +29,7 @@ impl<
     pub fn set(self_: &crate::HxRefCell<EnumValueMap<K, V>>, key: K, value: V) {
         let __hx_this: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> =
             self_.self_ref();
-        let id: hxrt::string::HxString =
-            hxrt::string::HxString::from(hxrt::string::HxString::from(format!("{:?}", key)));
+        let id: hxrt::string::HxString = hxrt::string::HxString::from(format!("{:?}", key));
         crate::map_storage_tools_nullable::MapStorageTools::enumValueMapSet(
             __hx_this.clone(),
             hxrt::string::HxString::from(id),
@@ -42,8 +41,7 @@ impl<
     pub fn get(self_: &crate::HxRefCell<EnumValueMap<K, V>>, key: K) -> Option<V> {
         let __hx_this: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> =
             self_.self_ref();
-        let id: hxrt::string::HxString =
-            hxrt::string::HxString::from(hxrt::string::HxString::from(format!("{:?}", key)));
+        let id: hxrt::string::HxString = hxrt::string::HxString::from(format!("{:?}", key));
         return crate::map_storage_tools_nullable::MapStorageTools::enumValueMapGetCloned(
             __hx_this.clone(),
             hxrt::string::HxString::from(id),
@@ -53,8 +51,7 @@ impl<
     pub fn exists(self_: &crate::HxRefCell<EnumValueMap<K, V>>, key: K) -> bool {
         let __hx_this: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> =
             self_.self_ref();
-        let id: hxrt::string::HxString =
-            hxrt::string::HxString::from(hxrt::string::HxString::from(format!("{:?}", key)));
+        let id: hxrt::string::HxString = hxrt::string::HxString::from(format!("{:?}", key));
         return crate::map_storage_tools_nullable::MapStorageTools::enumValueMapExists(
             __hx_this.clone(),
             hxrt::string::HxString::from(id),
@@ -64,8 +61,7 @@ impl<
     pub fn remove(self_: &crate::HxRefCell<EnumValueMap<K, V>>, key: K) -> bool {
         let __hx_this: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>> =
             self_.self_ref();
-        let id: hxrt::string::HxString =
-            hxrt::string::HxString::from(hxrt::string::HxString::from(format!("{:?}", key)));
+        let id: hxrt::string::HxString = hxrt::string::HxString::from(format!("{:?}", key));
         return crate::map_storage_tools_nullable::MapStorageTools::enumValueMapRemoveExists(
             __hx_this.clone(),
             hxrt::string::HxString::from(id),

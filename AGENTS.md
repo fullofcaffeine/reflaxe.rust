@@ -14,6 +14,9 @@ This project uses **bd (beads)** for issue tracking.
 
 Gotcha: `bd` DB state and `.beads/issues.jsonl` can drift because the JSONL file is an explicit export of the embedded Dolt database.
 Before committing bead status changes, run `bd export -o .beads/issues.jsonl` and ensure `.beads/issues.jsonl` is included in the commit when modified.
+- `.beads/interactions.jsonl` is also tracked as the Beads interaction/audit log. `bd export` does not rewrite it,
+  but `bd update` / `bd close` can append to it; if it is modified by the Beads work being committed,
+  include it with the Beads bookkeeping unless you are intentionally leaving local interaction history out.
 - Modern Beads migration gotcha: this repo has been migrated to the embedded Dolt backend (`bd context` should report `Backend: dolt`, `mode: embedded`).
   Do not use legacy direct SQLite-style `bd --db .beads/beads.db ...` commands; they can open an empty legacy database and remove/hide the JSONL export.
   If recovery is needed, first copy `.beads/issues.jsonl` to a temp path, then run `bd init --from-jsonl --reinit-local --prefix haxe.rust --skip-agents --skip-hooks --non-interactive`
@@ -64,6 +67,7 @@ Agent policy:
 - For any Haxe-to-target compiler or framework layer, target compatibility is the floor, not the Haxe API design ceiling. Target-shaped Haxe APIs are fine when they are intentional and documented for migration, native interop, predictable lowering, performance, ownership, borrowing, or escape-hatch use. Keep 1:1 Rust-shaped facades available where they help users reason about the emitted target, but default canonical APIs to Haxe's strengths: strong types, abstracts, macros, generated references, properties, completion, and compile-time diagnostics. Prefer semantic Haxe wrappers when they improve readability or safety without changing Rust behavior or hiding target costs.
 - Generated Rust quality is a first-class product requirement in every profile. Output should be readable, idiomatic, warning-clean, rustfmt-friendly, and close to hand-written Rust performance and runtime footprint wherever Haxe semantics permit. `hxrt` should remain lightweight and used only where semantics require runtime support.
 - Stdlib lowering should prefer direct, idiomatic, efficient Rust or the thinnest typed runtime primitive that preserves the Haxe std contract. Do not route std APIs through broad runtime layers, dynamic handles, or allocation-heavy adapters just because it is easier to bind; use `hxrt` only when it is required for semantics, ownership/non-clone handles, platform abstraction, or shared safety checks. When `hxrt` is required, keep the helper narrow, typed, low-overhead, and shaped like hand-written Rust. If a stdlib API currently needs a heavier runtime path, track or fix that as a generic compiler/runtime improvement rather than normalizing the overhead.
+- Runtime-helper austerity rule (strict): adding or expanding `hxrt` is a last resort, not a convenience path. Before touching `runtime/hxrt/**` or `std/hxrt/**`, add or review a fixture that states the desired emitted-Rust contract and attempt compiler-only lowering whenever the needed information is available from the typed AST, metadata, literals, or existing target primitives. Do **not** add runtime helpers for facts the compiler already knows or can cheaply encode, including optional/required field status, literal defaults, typed structural field reads, static access paths, nullable wrapping at typed callsites, borrow-region syntax, name/path normalization, or generic dispatch shape. An `hxrt` change is allowed only for semantics that genuinely exist at runtime, such as identity/aliasing storage, `Dynamic`/reflection payloads, exceptions/unwind payloads, platform/sys abstractions, cross-thread safety, shared ownership/interior mutability, or non-clone/native handles. If an `hxrt` helper is still required, document why generated code is insufficient in code comments plus Beads evidence, inspect the emitted Rust shape, and add focused coverage for both the runtime helper and generated callsite.
 - Generated Rust quality must be actively inspected for new compiler/runtime boundaries, not merely inferred from successful compilation. When a change introduces a new abstraction, lowering path, native facade, or runtime helper, review the emitted Rust shape and keep it warning-clean, rustfmt-friendly, and close to hand-written Rust in ownership, allocation, trait/object use, and module layout. Avoid adding Haxe-facing artifacts, compatibility wrappers, or runtime helpers unless they carry a real typed contract, remove meaningful duplication, or preserve required Haxe semantics; delete scaffolding once its temporary purpose is gone.
 - Expose low-level Rust authority through typed Haxe surfaces and generic backend primitives. Native handles, RAII guards, ownership/borrow-shaped references, process/socket/terminal/SQLite primitives, and zero/low-copy data flow should be available through documented externs, metal/native facades, `rust.*` primitives, or compiler-supported abstractions rather than through app-side `Dynamic`, stringly escape hatches, raw generated-Rust edits, or project-specific `__rust__` snippets. If a consumer needs a Rust primitive that haxe.rust cannot express cleanly yet, treat it as a generic compiler/runtime feature gap with tests and docs.
 - If typeful, idiomatic Haxe produces poor, noisy, clone-heavy, stringly, or runtime-heavy Rust, treat that as a generic compiler/runtime gap. Fix the lowering, planner, runtime API, or printer with generic tests instead of teaching consumers to contort source code around compiler artifacts.
@@ -72,6 +76,7 @@ Agent policy:
 
 - Keep the pipeline **AST-first**: Builder → Transformer passes → Printer (avoid string-gen except at the printer).
 - Prefer typed analysis + passes over regex/string heuristics.
+- Compile-time-first lowering rule: when typed Haxe information gives a closed answer, encode that answer in Rust AST/lowering instead of making generated code ask `hxrt` at runtime. If an implementation idea starts with a new runtime function, first write down which source/typed information is unavailable to the compiler; without that proof, fix lowering, planner, analysis, or printing instead.
 - Architecture policy: when warnings/regressions come from emitted Rust shape (lowering/printer artifacts),
   fix the compiler pass/lowering logic instead of relying on style-level source workarounds (for example rewriting app code to avoid explicit `return` in lambdas).
 - Workaround policy (strict): do not land temporary workarounds. Fix the root cause in compiler/runtime lowering and add or update regression coverage in the same change.
@@ -94,6 +99,10 @@ Agent policy:
 ## Meta (keep instructions current)
 
 - When a new “gotcha”, policy decision, or workflow trick is discovered, write it down in the **closest scoped `AGENTS.md`** (add one if needed), not just in chat.
+- Documentation sync policy: when behavior, profile contracts, public workflow, user-facing status,
+  or evidence changes, update the closest relevant docs in the same pass. Check whether `README.md`
+  and `docs/faq.md` need a public-facing note; if they do not, record why in the final response or
+  Beads evidence rather than silently letting entrypoint docs drift.
 - Fix/test policy: after each fix, update tests and/or add a regression test (snapshots, runtime tests, or example test harness), unless an existing test update already covers the behavior change.
 - Contract-first TDD policy (strict): for non-trivial compiler/runtime/std behavior changes, start by adding/updating the expected test contract first (snapshot, negative fixture, policy/harness assertion), confirm failure, then implement and re-run targeted checks plus full harness.
   For deterministic report/artifact features, include repeatability assertions (run twice, compare outputs byte-for-byte) in CI guards.
@@ -345,8 +354,14 @@ Agent policy:
 - Docs tracker source-of-truth gotcha: generated tracker docs must derive readiness/baseline status from explicit milestone/gate issues,
   not from umbrella roadmap epics. Umbrella epics stay open for planning and will make generated status falsely read as `open`.
 - Docs tracker guard policy: `npm run docs:check:progress` must fail on stale tracker-backed docs even when `bd` is unavailable (fallback source is `.beads/issues.jsonl`, so keep tracker status commits synced via `bd sync`).
+- Semantic-confidence gotcha: `scripts/ci/generate-semantic-confidence-summary.js` discovers cases with `git ls-files`, so plain `npm run docs:check:evidence`
+  can report stale counts in a dirty worktree where new snapshot directories are still untracked.
+  For intended-stack validation before staging, use a temporary full index (`GIT_INDEX_FILE=... git add -A`) and run `npm run docs:check:evidence` under that index.
 - Disk-space gotcha: full snapshot regeneration and full harness runs can consume many GB in `test/snapshot/**/out*`, `examples/**/out*`, Cargo caches/registries, and `.cache/examples-target`.
   If you hit `No space left on device`, run `npm run clean:artifacts:all` before re-running, then regenerate snapshots.
+  When adding a new harness stage that writes ignored generated outputs or Cargo target/cache roots,
+  update `scripts/ci/clean-artifacts.sh` in the same change so `npm run clean:artifacts:all`
+  actually restores the repo to a no-generated-artifacts state after full validation.
 - Prefer DRY snapshot cases: use multiple `compile.<variant>.hxml` files in the same `test/snapshot/<case>/`
   directory (and `#if <define>` shims when needed) rather than duplicating snapshot directories for each profile.
   - Convention: `compile.hxml` → `out/` + `intended/`; `compile.metal.hxml` → `out_metal/` + `intended_metal/`.
@@ -370,7 +385,9 @@ Agent policy:
   - `scripts/ci/template-smoke.sh` scaffolds `templates/basic` via `scripts/dev/new-project.sh` and executes the full task-HXML matrix (`compile.build`, `compile`, `compile.run`, `compile.release`, `compile.release.run`).
   - CI shell-tooling compatibility: scripts must not hard-require `rg`; always keep a `grep`/`find` fallback.
     - Fallback test knob: set `REFLAXE_NO_RG=1` to force non-`rg` paths during local validation.
-  - `scripts/ci/harness.sh` runs snapshots, metal boundary policy, upstream stdlib sweep, package smoke, template smoke, then compiles all non-CI example variants (`compile*.hxml`, excluding `*.ci.hxml`) and runs every CI variant present (`compile*.ci.hxml`, fallback `compile.hxml` when no CI file exists), including `cargo test` + `cargo run`.
+    - Local zsh wrapper gotcha: do not store command exit codes in a variable named `status`;
+      zsh exposes `$status` as read-only, so use `hook_status`, `exit_code`, or similar instead.
+  - `scripts/ci/harness.sh` runs snapshots, conformance checks, metal boundary policy, fallback/idiom count guards, upstream stdlib sweep, package smoke, template smoke, then compiles all non-CI example variants (`compile*.hxml`, excluding `*.ci.hxml`) and runs every CI variant present (`compile*.ci.hxml`, fallback `compile.hxml` when no CI file exists), including `cargo test` + `cargo run`.
   - `scripts/ci/windows-smoke.sh` runs on `windows-latest` and validates a Windows-safe subset (fmt/clippy + `hello_trace`/`sys_io` snapshots + `examples/sys_file_io` + `examples/sys_net_loopback`).
   - Weekly CI evidence summary steps are `if: always()` and must tolerate missing evidence artifacts when an earlier harness stage fails before generating them.
     Avoid escaped `\n` heredocs inside shell command substitutions in workflow YAML; use a normal literal-block heredoc or script file so GitHub's generated shell is valid Bash.

@@ -126,9 +126,7 @@ fn object_fields(
 
 fn render_value(value: crate::haxe_json_value::Value) -> hxrt::string::HxString {
     return hxrt::string::HxString::from(match value {
-        crate::haxe_json_value::Value::JNull => {
-            hxrt::string::HxString::from(hxrt::string::HxString::from("null"))
-        }
+        crate::haxe_json_value::Value::JNull => hxrt::string::HxString::from("null"),
         crate::haxe_json_value::Value::JBool(__p) => {
             let _g: bool = __p;
             hxrt::string::HxString::from({
@@ -161,22 +159,18 @@ fn render_value(value: crate::haxe_json_value::Value) -> hxrt::string::HxString 
                         hxrt::array::Array::<hxrt::string::HxString>::new();
                     let mut i: i32 = 0;
                     while i < (keys.len() as i32) {
-                        pairs.push(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                            format!(
-                                "{}{}{}",
-                                keys.get_unchecked(i as usize),
-                                "=",
-                                render_value(values.get_unchecked(i as usize))
-                            ),
+                        pairs.push(hxrt::string::HxString::from(format!(
+                            "{}{}{}",
+                            keys.get_unchecked(i as usize),
+                            "=",
+                            render_value(values.get_unchecked(i as usize))
                         )));
                         i = i + 1;
                     }
                     hxrt::string::HxString::from(format!(
                         "{}{}",
                         "object:",
-                        pairs.join(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                            ","
-                        )))
+                        pairs.join(hxrt::string::HxString::from(","))
                     ))
                 }
             })
@@ -196,9 +190,7 @@ fn render_value(value: crate::haxe_json_value::Value) -> hxrt::string::HxString 
                         }
                         _g_6
                     })
-                    .join(hxrt::string::HxString::from(
-                        hxrt::string::HxString::from("|")
-                    ))
+                    .join(hxrt::string::HxString::from("|"))
                 ))
             })
         }
@@ -206,14 +198,14 @@ fn render_value(value: crate::haxe_json_value::Value) -> hxrt::string::HxString 
 }
 
 fn main() {
-    let parsed: crate::haxe_json_value::Value = crate::haxe_json::Json::parse_value(hxrt::string::HxString::from(hxrt::string::HxString::from("{\"name\":\"Ada\",\"score\":4.5,\"flags\":[true,false],\"meta\":{\"ok\":true},\"empty\":null}")));
+    let parsed: crate::haxe_json_value::Value = crate::haxe_json::Json::parse_value(hxrt::string::HxString::from("{\"name\":\"Ada\",\"score\":4.5,\"flags\":[true,false],\"meta\":{\"ok\":true},\"empty\":null}"));
     let fields: hxrt::array::Array<crate::HxRef<hxrt::anon::Anon>> = object_fields(parsed.clone());
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "name=",
         render_value(find_field(
             fields.clone(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from("name"))
+            hxrt::string::HxString::from("name")
         ))
     ))));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
@@ -221,7 +213,7 @@ fn main() {
         "score=",
         render_value(find_field(
             fields.clone(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from("score"))
+            hxrt::string::HxString::from("score")
         ))
     ))));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
@@ -229,7 +221,7 @@ fn main() {
         "flags=",
         render_value(find_field(
             fields.clone(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from("flags"))
+            hxrt::string::HxString::from("flags")
         ))
     ))));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
@@ -237,7 +229,7 @@ fn main() {
         "meta=",
         render_value(find_field(
             fields.clone(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from("meta"))
+            hxrt::string::HxString::from("meta")
         ))
     ))));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
@@ -245,12 +237,11 @@ fn main() {
         "empty=",
         render_value(find_field(
             fields.clone(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from("empty"))
+            hxrt::string::HxString::from("empty")
         ))
     ))));
-    let dyn_: hxrt::dynamic::Dynamic = crate::haxe_json::Json::parse(hxrt::string::HxString::from(
-        hxrt::string::HxString::from("{\"n\":3,\"label\":\"ok\"}"),
-    ));
+    let dyn_: hxrt::dynamic::Dynamic =
+        crate::haxe_json::Json::parse(hxrt::string::HxString::from("{\"n\":3,\"label\":\"ok\"}"));
     {
         let __obj = dyn_.clone();
         let __val = hxrt::dynamic::from(4);
@@ -265,28 +256,22 @@ fn main() {
         let __val = hxrt::dynamic::from(extra);
         hxrt::dynamic::field_set(&__obj, "extra", __val);
     };
-    let pretty: hxrt::string::HxString =
-        hxrt::string::HxString::from(hxrt::string::HxString::from(
-            hxrt::string::split_hx(
-                crate::haxe_json::Json::stringify(
-                    dyn_.clone(),
-                    crate::HxDynRef::<
-                        dyn Fn(
-                                hxrt::dynamic::Dynamic,
-                                hxrt::dynamic::Dynamic,
-                            ) -> hxrt::dynamic::Dynamic
-                            + Send
-                            + Sync,
-                    >::null(),
-                    hxrt::string::HxString::from(hxrt::string::HxString::from("  ")),
-                )
-                .as_str(),
-                hxrt::string::HxString::from(hxrt::string::HxString::from("\n")).as_str(),
+    let pretty: hxrt::string::HxString = hxrt::string::HxString::from(
+        hxrt::string::split_hx(
+            crate::haxe_json::Json::stringify(
+                dyn_.clone(),
+                crate::HxDynRef::<
+                    dyn Fn(hxrt::dynamic::Dynamic, hxrt::dynamic::Dynamic) -> hxrt::dynamic::Dynamic
+                        + Send
+                        + Sync,
+                >::null(),
+                hxrt::string::HxString::from("  "),
             )
-            .join(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                "\\n",
-            ))),
-        ));
+            .as_str(),
+            hxrt::string::HxString::from("\n").as_str(),
+        )
+        .join(hxrt::string::HxString::from("\\n")),
+    );
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "pretty=", &pretty

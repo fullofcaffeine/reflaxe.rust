@@ -71,7 +71,7 @@ fn option_label(value: Option<i32>) -> hxrt::string::HxString {
                 ))
             })
         }
-        Option::None => hxrt::string::HxString::from(hxrt::string::HxString::from("none")),
+        Option::None => hxrt::string::HxString::from("none"),
     });
 }
 
@@ -101,9 +101,8 @@ fn result_label(value: Result<i32, hxrt::string::HxString>) -> hxrt::string::HxS
 fn main() {
     let maybe: Option<i32> = Option::Some(3);
     let done: Result<i32, hxrt::string::HxString> = Result::Ok(5);
-    let fail: Result<i32, hxrt::string::HxString> = Result::Err(hxrt::string::HxString::from(
-        hxrt::string::HxString::from("boom"),
-    ));
+    let fail: Result<i32, hxrt::string::HxString> =
+        Result::Err(hxrt::string::HxString::from("boom"));
     crate::sys::Sys::println(hxrt::dynamic::from(option_label(maybe.clone())));
     crate::sys::Sys::println(hxrt::dynamic::from(result_label(done.clone())));
     crate::sys::Sys::println(hxrt::dynamic::from(result_label(fail.clone())));

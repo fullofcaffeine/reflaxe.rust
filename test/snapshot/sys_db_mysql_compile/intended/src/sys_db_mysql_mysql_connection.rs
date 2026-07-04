@@ -16,10 +16,27 @@ impl MysqlConnection {
             crate::HxRef::new(MysqlConnection {
                 handle: Default::default(),
             });
-        let port: i32 = if params.borrow().get::<Option<i32>>("port").is_none() {
+        let port: i32 = if ({
+            let __b = params.borrow();
+            if __b.has_key("port") {
+                __b.get::<Option<i32>>("port")
+            } else {
+                None
+            }
+        })
+        .is_none()
+        {
             3306
         } else {
-            params.borrow().get::<Option<i32>>("port").unwrap()
+            ({
+                let __b = params.borrow();
+                if __b.has_key("port") {
+                    __b.get::<Option<i32>>("port")
+                } else {
+                    None
+                }
+            })
+            .unwrap()
         };
         let host: hxrt::string::HxString =
             hxrt::string::HxString::from(params.borrow().get::<hxrt::string::HxString>("host"));
@@ -27,10 +44,22 @@ impl MysqlConnection {
             hxrt::string::HxString::from(params.borrow().get::<hxrt::string::HxString>("user"));
         let pass: hxrt::string::HxString =
             hxrt::string::HxString::from(params.borrow().get::<hxrt::string::HxString>("pass"));
-        let socket: hxrt::string::HxString =
-            hxrt::string::HxString::from(params.borrow().get::<hxrt::string::HxString>("socket"));
-        let database: hxrt::string::HxString =
-            hxrt::string::HxString::from(params.borrow().get::<hxrt::string::HxString>("database"));
+        let socket: hxrt::string::HxString = hxrt::string::HxString::from({
+            let __b = params.borrow();
+            if __b.has_key("socket") {
+                __b.get::<hxrt::string::HxString>("socket")
+            } else {
+                hxrt::string::HxString::null()
+            }
+        });
+        let database: hxrt::string::HxString = hxrt::string::HxString::from({
+            let __b = params.borrow();
+            if __b.has_key("database") {
+                __b.get::<hxrt::string::HxString>("database")
+            } else {
+                hxrt::string::HxString::null()
+            }
+        });
         {
             let __tmp = crate::db_mysql_driver::open_handle(
                 hxrt::string::HxString::from(host),
@@ -82,24 +111,17 @@ impl MysqlConnection {
         _self_: &crate::HxRefCell<MysqlConnection>,
         s: hxrt::string::HxString,
     ) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(
+        return hxrt::string::HxString::from(
             hxrt::string::split_hx(
                 hxrt::string::HxString::from(
-                    hxrt::string::split_hx(
-                        s.as_str(),
-                        hxrt::string::HxString::from(hxrt::string::HxString::from("\\")).as_str(),
-                    )
-                    .join(hxrt::string::HxString::from(
-                        hxrt::string::HxString::from("\\\\"),
-                    )),
+                    hxrt::string::split_hx(s.as_str(), hxrt::string::HxString::from("\\").as_str())
+                        .join(hxrt::string::HxString::from("\\\\")),
                 )
                 .as_str(),
-                hxrt::string::HxString::from(hxrt::string::HxString::from("'")).as_str(),
+                hxrt::string::HxString::from("'").as_str(),
             )
-            .join(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                "\\'",
-            ))),
-        ));
+            .join(hxrt::string::HxString::from("\\'")),
+        );
     }
 
     pub fn quote(
@@ -108,7 +130,7 @@ impl MysqlConnection {
     ) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_db_mysql_mysql_connection::MysqlConnection> =
             self_.self_ref();
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+        return hxrt::string::HxString::from(format!(
             "{}{}{}",
             "'",
             crate::sys_db_mysql_mysql_connection::MysqlConnection::escape(
@@ -116,7 +138,7 @@ impl MysqlConnection {
                 hxrt::string::HxString::from(s)
             ),
             "'"
-        )));
+        ));
     }
 
     pub fn add_value(
@@ -135,13 +157,13 @@ impl MysqlConnection {
             self_.self_ref();
         return crate::sys_db_mysql_mysql_connection::MysqlConnection::request(
             &*__hx_this,
-            hxrt::string::HxString::from(hxrt::string::HxString::from("SELECT LAST_INSERT_ID()")),
+            hxrt::string::HxString::from("SELECT LAST_INSERT_ID()"),
         )
         .get_int_result(0);
     }
 
     pub fn db_name(_self_: &crate::HxRefCell<MysqlConnection>) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from("MySQL"));
+        return hxrt::string::HxString::from("MySQL");
     }
 
     pub fn start_transaction(self_: &crate::HxRefCell<MysqlConnection>) {
@@ -149,7 +171,7 @@ impl MysqlConnection {
             self_.self_ref();
         crate::sys_db_mysql_mysql_connection::MysqlConnection::request(
             &*__hx_this,
-            hxrt::string::HxString::from(hxrt::string::HxString::from("START TRANSACTION")),
+            hxrt::string::HxString::from("START TRANSACTION"),
         );
     }
 
@@ -158,7 +180,7 @@ impl MysqlConnection {
             self_.self_ref();
         crate::sys_db_mysql_mysql_connection::MysqlConnection::request(
             &*__hx_this,
-            hxrt::string::HxString::from(hxrt::string::HxString::from("COMMIT")),
+            hxrt::string::HxString::from("COMMIT"),
         );
     }
 
@@ -167,7 +189,7 @@ impl MysqlConnection {
             self_.self_ref();
         crate::sys_db_mysql_mysql_connection::MysqlConnection::request(
             &*__hx_this,
-            hxrt::string::HxString::from(hxrt::string::HxString::from("ROLLBACK")),
+            hxrt::string::HxString::from("ROLLBACK"),
         );
     }
 }

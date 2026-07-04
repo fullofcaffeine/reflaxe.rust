@@ -294,9 +294,7 @@ impl HttpBase {
         let __hx_this: crate::HxRef<crate::haxe_http_http_base::HttpBase> = self_.self_ref();
         crate::haxe_http_http_base::HttpBase::on_error(
             &*__hx_this,
-            hxrt::string::HxString::from(hxrt::string::HxString::from(
-                "HttpBase.request is not implemented on this target",
-            )),
+            hxrt::string::HxString::from("HttpBase.request is not implemented on this target"),
         );
     }
 

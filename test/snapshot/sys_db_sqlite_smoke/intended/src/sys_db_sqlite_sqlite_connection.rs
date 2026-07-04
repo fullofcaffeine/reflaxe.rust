@@ -57,15 +57,10 @@ impl SqliteConnection {
         _self_: &crate::HxRefCell<SqliteConnection>,
         s: hxrt::string::HxString,
     ) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(
-            hxrt::string::split_hx(
-                s.as_str(),
-                hxrt::string::HxString::from(hxrt::string::HxString::from("'")).as_str(),
-            )
-            .join(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                "''",
-            ))),
-        ));
+        return hxrt::string::HxString::from(
+            hxrt::string::split_hx(s.as_str(), hxrt::string::HxString::from("'").as_str())
+                .join(hxrt::string::HxString::from("''")),
+        );
     }
 
     pub fn quote(
@@ -74,7 +69,7 @@ impl SqliteConnection {
     ) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_db_sqlite_sqlite_connection::SqliteConnection> =
             self_.self_ref();
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+        return hxrt::string::HxString::from(format!(
             "{}{}{}",
             "'",
             crate::sys_db_sqlite_sqlite_connection::SqliteConnection::escape(
@@ -82,7 +77,7 @@ impl SqliteConnection {
                 hxrt::string::HxString::from(s)
             ),
             "'"
-        )));
+        ));
     }
 
     pub fn add_value(
@@ -108,7 +103,7 @@ impl SqliteConnection {
     }
 
     pub fn db_name(_self_: &crate::HxRefCell<SqliteConnection>) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from("SQLite"));
+        return hxrt::string::HxString::from("SQLite");
     }
 
     pub fn start_transaction(self_: &crate::HxRefCell<SqliteConnection>) {
@@ -116,7 +111,7 @@ impl SqliteConnection {
             self_.self_ref();
         crate::sys_db_sqlite_sqlite_connection::SqliteConnection::request(
             &*__hx_this,
-            hxrt::string::HxString::from(hxrt::string::HxString::from("BEGIN TRANSACTION")),
+            hxrt::string::HxString::from("BEGIN TRANSACTION"),
         );
     }
 
@@ -125,7 +120,7 @@ impl SqliteConnection {
             self_.self_ref();
         crate::sys_db_sqlite_sqlite_connection::SqliteConnection::request(
             &*__hx_this,
-            hxrt::string::HxString::from(hxrt::string::HxString::from("COMMIT")),
+            hxrt::string::HxString::from("COMMIT"),
         );
     }
 
@@ -134,7 +129,7 @@ impl SqliteConnection {
             self_.self_ref();
         crate::sys_db_sqlite_sqlite_connection::SqliteConnection::request(
             &*__hx_this,
-            hxrt::string::HxString::from(hxrt::string::HxString::from("ROLLBACK")),
+            hxrt::string::HxString::from("ROLLBACK"),
         );
     }
 }

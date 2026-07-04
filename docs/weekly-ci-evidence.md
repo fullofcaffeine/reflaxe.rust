@@ -43,7 +43,7 @@ the expensive harness work now runs as parallel shards:
 
 - `Harness / snapshots`: snapshot generation/build/run checks.
 - `Harness / conformance + policy`: semantic diff, lane diff, upstream stdlib sweep, family std
-  sync, metal policy, native-import diagnostics, and fallback-count guards.
+  sync, metal policy, native-import diagnostics, fallback-count guards, and metal idiom-count guards.
 - `Harness / packaging + examples`: package/template smoke, examples compile/run matrix, and
   native-parity checks.
 - `HXRT overhead benchmarks`: runtime overhead benchmark gate and benchmark artifacts.

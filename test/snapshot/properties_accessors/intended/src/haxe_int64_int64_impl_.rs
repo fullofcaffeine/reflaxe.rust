@@ -241,10 +241,9 @@ impl Int64Impl {
                     __b.low.clone()
                 }) == b_low
         } {
-            return hxrt::string::HxString::from(hxrt::string::HxString::from("0"));
+            return hxrt::string::HxString::from("0");
         }
-        let mut str: hxrt::string::HxString =
-            hxrt::string::HxString::from(hxrt::string::HxString::from(""));
+        let mut str: hxrt::string::HxString = hxrt::string::HxString::from("");
         let mut neg: bool = false;
         if (({
             let __b = i.borrow();
@@ -283,7 +282,7 @@ impl Int64Impl {
             }) as i32)
                 < 0
             {
-                str = hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+                str = hxrt::string::HxString::from(format!(
                     "{}{}",
                     hxrt::dynamic::from({
                         let x_2: crate::HxRef<crate::haxe_int64_int64::Int64> =
@@ -309,7 +308,7 @@ impl Int64Impl {
                     })
                     .to_haxe_string(),
                     &str
-                )));
+                ));
                 i = {
                     let x_3: crate::HxRef<crate::haxe_int64_int64::Int64> = r
                         .borrow()
@@ -334,7 +333,7 @@ impl Int64Impl {
                     this1_3
                 };
             } else {
-                str = hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+                str = hxrt::string::HxString::from(format!(
                     "{}{}",
                     hxrt::dynamic::from({
                         let __hx_recv = r
@@ -345,17 +344,14 @@ impl Int64Impl {
                     })
                     .to_haxe_string(),
                     &str
-                )));
+                ));
                 i = r
                     .borrow()
                     .get::<crate::HxRef<crate::haxe_int64_int64::Int64>>("quotient");
             }
         }
         if neg {
-            str = hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
-                "{}{}",
-                "-", &str
-            )));
+            str = hxrt::string::HxString::from(format!("{}{}", "-", &str));
         }
         return hxrt::string::HxString::from(str);
     }

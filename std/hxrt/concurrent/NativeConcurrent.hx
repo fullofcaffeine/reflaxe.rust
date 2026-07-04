@@ -1,6 +1,7 @@
 package hxrt.concurrent;
 
 import rust.HxRef;
+import rust.MutRef;
 import rust.Option;
 import rust.Ref;
 
@@ -17,8 +18,9 @@ import rust.Ref;
 
 	How
 	- All API boundaries are concrete generic signatures.
-	- Lock APIs use value-copy/update operations so the borrow/guard lifetime stays internal to
-	  runtime Rust code.
+	- Lock APIs either use value-copy/update operations or scoped callback guards. In both cases the
+	  Rust RAII guard lifetime stays inside runtime Rust code; Haxe receives only owned values or
+	  callback-scoped borrow tokens.
 **/
 @:native("hxrt::concurrent")
 extern class NativeConcurrent {
@@ -55,6 +57,12 @@ extern class NativeConcurrent {
 	@:native("mutex_update")
 	public static function mutexUpdate<T>(mutex:Ref<HxRef<MutexHandle<T>>>, callback:(T) -> T):T;
 
+	@:native("mutex_with_ref")
+	public static function mutexWithRef<T, R>(mutex:Ref<HxRef<MutexHandle<T>>>, callback:(Ref<T>) -> R):R;
+
+	@:native("mutex_with_mut")
+	public static function mutexWithMut<T, R>(mutex:Ref<HxRef<MutexHandle<T>>>, callback:(MutRef<T>) -> R):R;
+
 	@:native("rw_lock_new")
 	public static function rwLockNew<T>(value:T):HxRef<RwLockHandle<T>>;
 
@@ -69,4 +77,10 @@ extern class NativeConcurrent {
 
 	@:native("rw_lock_update")
 	public static function rwLockUpdate<T>(lock:Ref<HxRef<RwLockHandle<T>>>, callback:(T) -> T):T;
+
+	@:native("rw_lock_with_read")
+	public static function rwLockWithRead<T, R>(lock:Ref<HxRef<RwLockHandle<T>>>, callback:(Ref<T>) -> R):R;
+
+	@:native("rw_lock_with_write")
+	public static function rwLockWithWrite<T, R>(lock:Ref<HxRef<RwLockHandle<T>>>, callback:(MutRef<T>) -> R):R;
 }

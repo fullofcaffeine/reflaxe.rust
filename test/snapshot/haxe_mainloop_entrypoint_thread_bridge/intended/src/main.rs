@@ -75,9 +75,7 @@ fn main() {
         let seen = seen.clone();
         let gate = gate.clone();
         let __rc: crate::HxRc<dyn Fn() + Send + Sync> = crate::HxRc::new(move || {
-            seen.push(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                "main",
-            )));
+            seen.push(hxrt::string::HxString::from("main"));
             crate::sys_thread_lock::Lock::release(&*gate);
         });
         crate::HxDynRef::new(__rc)
@@ -90,9 +88,7 @@ fn main() {
             crate::haxe_main_loop::MainLoop::run_in_main_thread({
                 let seen = seen.clone();
                 let __rc: crate::HxRc<dyn Fn() + Send + Sync> = crate::HxRc::new(move || {
-                    seen.push(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                        "thread",
-                    )));
+                    seen.push(hxrt::string::HxString::from("thread"));
                 });
                 crate::HxDynRef::new(__rc)
             });
@@ -101,8 +97,6 @@ fn main() {
     });
     crate::haxe_entry_point::EntryPoint::run();
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(
-        seen.join(hxrt::string::HxString::from(hxrt::string::HxString::from(
-            ",",
-        ))),
+        seen.join(hxrt::string::HxString::from(",")),
     )));
 }

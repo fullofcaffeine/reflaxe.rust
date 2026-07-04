@@ -33,6 +33,7 @@ mod haxe_stack_item;
 mod int32_tools;
 mod map_storage_tools_nullable;
 mod parent;
+mod parent_with_default_child;
 mod string_buf;
 mod string_tools;
 mod sys;
@@ -92,5 +93,17 @@ fn main() {
             })
             .clone()
         )
+    );
+    let defaulted: crate::HxRef<crate::parent_with_default_child::ParentWithDefaultChild> =
+        crate::parent_with_default_child::ParentWithDefaultChild::new();
+    println!(
+        "{}",
+        hxrt::dynamic::from(hxrt::hxref::ptr_eq(
+            &({
+                let __b = defaulted.borrow();
+                __b.child.clone()
+            }),
+            &crate::HxRef::<crate::child::Child>::null()
+        ))
     );
 }

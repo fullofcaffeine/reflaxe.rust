@@ -64,22 +64,22 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 fn describe(time: crate::sys_thread_next_event_time::NextEventTime) -> hxrt::string::HxString {
     return hxrt::string::HxString::from(match time {
         crate::sys_thread_next_event_time::NextEventTime::Now => {
-            hxrt::string::HxString::from(hxrt::string::HxString::from("now"))
+            hxrt::string::HxString::from("now")
         }
         crate::sys_thread_next_event_time::NextEventTime::Never => {
-            hxrt::string::HxString::from(hxrt::string::HxString::from("never"))
+            hxrt::string::HxString::from("never")
         }
         crate::sys_thread_next_event_time::NextEventTime::AnyTime(__p) => {
             let _g: Option<f64> = __p;
             hxrt::string::HxString::from(if _g.is_none() {
-                hxrt::string::HxString::from(hxrt::string::HxString::from("any"))
+                hxrt::string::HxString::from("any")
             } else {
-                hxrt::string::HxString::from(hxrt::string::HxString::from("any_at"))
+                hxrt::string::HxString::from("any_at")
             })
         }
         crate::sys_thread_next_event_time::NextEventTime::At(__p) => {
             let _ = __p;
-            hxrt::string::HxString::from(hxrt::string::HxString::from("at"))
+            hxrt::string::HxString::from("at")
         }
     });
 }

@@ -59,7 +59,7 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 }
 
 fn main() {
-    let s: hxrt::string::HxString = hxrt::string::HxString::from(hxrt::string::HxString::from("b"));
+    let s: hxrt::string::HxString = hxrt::string::HxString::from("b");
     let n: i32 = match s.as_str() {
         "a" => 1,
         "b" => 2,

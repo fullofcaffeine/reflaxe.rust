@@ -63,13 +63,13 @@ fn main() {
         crate::haxe_io_bytes_buffer::BytesBuffer::new();
     crate::haxe_io_bytes_buffer::BytesBuffer::add_string(
         &*bb,
-        hxrt::string::HxString::from(hxrt::string::HxString::from("Hi")),
+        hxrt::string::HxString::from("Hi"),
         None,
     );
     crate::haxe_io_bytes_buffer::BytesBuffer::add_byte(&*bb, 32);
     crate::haxe_io_bytes_buffer::BytesBuffer::add_string(
         &*bb,
-        hxrt::string::HxString::from(hxrt::string::HxString::from("Rust")),
+        hxrt::string::HxString::from("Rust"),
         None,
     );
     crate::haxe_io_bytes_buffer::BytesBuffer::add_byte(&*bb, 33);

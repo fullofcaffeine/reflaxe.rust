@@ -1238,6 +1238,132 @@ run_portable_facade_output_shape_case() {
 	finish_policy_case "$failure_label" "$case_start"
 }
 
+run_slice_view_output_shape_case() {
+	local fixture_rel="$1"
+	local hxml_file="$2"
+	local failure_label="$3"
+	local case_start="$SECONDS"
+	local fixture_dir="$root_dir/$fixture_rel"
+	local out_dir="$fixture_dir/out_slice_view_shape"
+	local log_file="$fixture_dir/.compile_slice_view_shape.log"
+	local main_rs="$out_dir/src/main.rs"
+	local bridge_rs="$out_dir/src/array_borrow_tools.rs"
+	local array_rs="$out_dir/hxrt/src/array.rs"
+	local slice_body="$out_dir/.with_slice.body"
+	local mut_slice_body="$out_dir/.with_mut_slice.body"
+	echo "[metal-policy] case: ${failure_label}"
+
+	rm -rf "$out_dir"
+	rm -f "$log_file"
+
+	set +e
+	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_output=out_slice_view_shape) >"$log_file" 2>&1
+	local status=$?
+	set -e
+
+	if [[ "$status" -ne 0 ]]; then
+		echo "[metal-policy] error: expected compile success for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	for required_file in "$main_rs" "$bridge_rs" "$array_rs"; do
+		if [[ ! -f "$required_file" ]]; then
+			echo "[metal-policy] error: missing generated file for ${failure_label}: ${required_file#$root_dir/}"
+			exit 1
+		fi
+	done
+
+	local main_patterns=(
+		'crate::rust_array_borrow::ArrayBorrow::with_slice\(xs\.clone\(\),'
+		'crate::rust_array_borrow::ArrayBorrow::with_mut_slice\(xs\.clone\(\),'
+		'let s: &\[i32\] = _hx_slice;'
+		'let s: &mut \[i32\] = _hx_slice;'
+	)
+	for pattern in "${main_patterns[@]}"; do
+		if ! match_regex "$pattern" "$main_rs"; then
+			echo "[metal-policy] error: generated main missing slice-view call pattern for ${failure_label}: ${pattern}"
+			sed "s|$root_dir|.|g" "$main_rs"
+			exit 1
+		fi
+	done
+
+	local bridge_patterns=(
+		'hxrt::array::with_slice\(array, f\)'
+		'hxrt::array::with_mut_slice\(array, f\)'
+	)
+	for pattern in "${bridge_patterns[@]}"; do
+		if ! match_regex "$pattern" "$bridge_rs"; then
+			echo "[metal-policy] error: generated ArrayBorrow bridge missing no-clone delegation for ${failure_label}: ${pattern}"
+			sed "s|$root_dir|.|g" "$bridge_rs"
+			exit 1
+		fi
+	done
+
+	sed -n '/pub fn with_slice/,/^}/p' "$array_rs" >"$slice_body"
+	sed -n '/pub fn with_mut_slice/,/^}/p' "$array_rs" >"$mut_slice_body"
+	if [[ ! -s "$slice_body" || ! -s "$mut_slice_body" ]]; then
+		echo "[metal-policy] error: could not extract HXRT slice-view helper bodies for ${failure_label}."
+		sed "s|$root_dir|.|g" "$array_rs"
+		exit 1
+	fi
+
+	local slice_patterns=(
+		'let borrow = array\.inner\.borrow\(\);'
+		'f\(borrow\.as_slice\(\)\)'
+	)
+	for pattern in "${slice_patterns[@]}"; do
+		if ! match_regex "$pattern" "$slice_body"; then
+			echo "[metal-policy] error: HXRT immutable slice helper missing borrowed-view pattern for ${failure_label}: ${pattern}"
+			cat "$slice_body"
+			exit 1
+		fi
+	done
+
+	local mut_slice_patterns=(
+		'let mut borrow = array\.inner\.borrow_mut\(\);'
+		'f\(borrow\.as_mut_slice\(\)\)'
+	)
+	for pattern in "${mut_slice_patterns[@]}"; do
+		if ! match_regex "$pattern" "$mut_slice_body"; then
+			echo "[metal-policy] error: HXRT mutable slice helper missing borrowed-view pattern for ${failure_label}: ${pattern}"
+			cat "$mut_slice_body"
+			exit 1
+		fi
+	done
+
+	local forbidden_body_patterns=(
+		'clone\('
+		'to_vec\('
+		'Array::from_vec'
+		'Vec::from'
+		'\.cloned\('
+	)
+	for pattern in "${forbidden_body_patterns[@]}"; do
+		if match_regex "$pattern" "$slice_body" || match_regex "$pattern" "$mut_slice_body"; then
+			echo "[metal-policy] error: HXRT slice-view helper materializes storage for ${failure_label}: ${pattern}"
+			echo "[metal-policy] with_slice body:"
+			cat "$slice_body"
+			echo "[metal-policy] with_mut_slice body:"
+			cat "$mut_slice_body"
+			exit 1
+		fi
+	done
+
+	if ! (cd "$out_dir" && cargo fmt -q); then
+		echo "[metal-policy] error: generated slice-view crate could not be rustfmt-formatted for ${failure_label}."
+		exit 1
+	fi
+	if ! (cd "$out_dir" && cargo build -q); then
+		echo "[metal-policy] error: generated slice-view crate did not cargo-build for ${failure_label}."
+		exit 1
+	fi
+
+	rm -f "$log_file"
+	rm -rf "$out_dir"
+	finish_policy_case "$failure_label" "$case_start"
+}
+
 run_no_hxrt_success_case() {
 	local fixture_rel="$1"
 	local hxml_file="$2"
@@ -1353,6 +1479,71 @@ run_negative_case "test/negative/portable_native_typed_strict" 'portable contrac
 	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust profile contract violation\(s\):'
 run_negative_case "test/negative/send_sync_borrow_capture" 'Rust concurrency contract violation: sys\.thread\.Thread\.create\(job\) captures `borrowed` with borrowed type `rust\.Ref<T>`' \
 	'spawn closure captures borrow-only value under rust_send_sync_strict'
+run_negative_case "test/negative/send_sync_str_capture" 'Rust concurrency contract violation: sys\.thread\.Thread\.create\(job\) captures `borrowed` with borrowed type `rust\.Str`' \
+	'spawn closure captures borrowed Str under rust_send_sync_strict'
+run_negative_case "test/negative/metal_ref_escape" 'Rust borrow region violation: rust\.Borrow\.withRef creates rust\.Ref<T> `borrowed` that must not escape its callback region\.' \
+	'metal borrow region rejects escaped rust.Ref token' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_ref_return_escape" 'Rust borrow region violation: rust\.Borrow\.withRef creates rust\.Ref<T> `borrowed` that must not escape its callback region\.' \
+	'metal borrow region rejects returned rust.Ref token' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_ref_assignment_escape" 'Rust borrow region violation: rust\.Borrow\.withRef creates rust\.Ref<T> `borrowed` that must not escape its callback region\.' \
+	'metal borrow region rejects assigned rust.Ref token' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_ref_literal_escape" 'Rust borrow region violation: rust\.Borrow\.withRef creates rust\.Ref<T> `borrowed` that must not escape its callback region\.' \
+	'metal borrow region rejects literal-contained rust.Ref token' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_ref_closure_escape" 'Rust borrow region violation: rust\.Borrow\.withRef creates rust\.Ref<T> `borrowed` that must not escape its callback region\.' \
+	'metal borrow region rejects closure-captured rust.Ref token' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_ref_alias_tail_escape" 'Rust borrow region violation: returned borrow-only alias `alias` \(rust\.Ref<T>\)\. Return an owned value derived from the borrow instead\.' \
+	'typed borrow region rejects tail-returned rust.Ref alias' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_ref_alias_return_escape" 'Rust borrow region violation: returned borrow-only alias `alias` \(rust\.Ref<T>\)\. Return an owned value derived from the borrow instead\.' \
+	'typed borrow region rejects explicitly returned rust.Ref alias' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_ref_alias_field_storage_escape" 'Rust borrow region violation: stored borrow-only alias `alias` \(rust\.Ref<T>\) in a field/static slot\.' \
+	'typed borrow region rejects rust.Ref alias field/static storage' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_ref_alias_closure_storage_escape" 'Rust borrow region violation: stored closure captures borrow-only alias `alias` \(rust\.Ref<T>\)\.' \
+	'typed borrow region rejects stored closure capture of rust.Ref alias' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_ref_option_wrapper_escape" 'Rust borrow region violation: returned value packages borrow-only alias `alias` \(rust\.Ref<T>\)\. Return an owned value derived from the borrow instead of wrapping the borrow token\.' \
+	'typed borrow region rejects Option-wrapped rust.Ref alias' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_ref_object_wrapper_escape" 'Rust borrow region violation: returned value packages borrow-only alias `alias` \(rust\.Ref<T>\)\. Return an owned value derived from the borrow instead of wrapping the borrow token\.' \
+	'typed borrow region rejects object-wrapped rust.Ref alias' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_ref_helper_wrapper_escape" 'Rust borrow region violation: returned value packages borrow-only alias `alias` \(rust\.Ref<T>\)\. Return an owned value derived from the borrow instead of wrapping the borrow token\.' \
+	'typed borrow region rejects helper-wrapped rust.Ref alias' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_ref_throw_escape" 'Rust borrow region violation: thrown borrow-only alias `alias` \(rust\.Ref<T>\)\. Throw owned error data instead of a scoped borrow token\.' \
+	'typed borrow region rejects thrown rust.Ref alias' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_raii_guard_escape" 'Rust borrow region violation: returned borrow-only alias `guard` \(rust\.Ref<T>\)\. Return an owned value derived from the borrow instead\.' \
+	'typed borrow region rejects escaped scoped RAII guard token' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_mut_ref_escape" 'Rust borrow region violation: rust\.Borrow\.withMut creates rust\.MutRef<T> `borrowed` that must not escape its callback region\.' \
+	'metal borrow region rejects escaped rust.MutRef token' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_mut_ref_nested_overlap" 'Rust borrow region violation: overlapping mutable borrow of `map` through `second` \(rust\.MutRef<T>\) while `first` is still active\.' \
+	'typed borrow region rejects nested overlapping rust.MutRef regions' \
+	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_slice_escape" 'Rust borrow region violation: rust\.SliceTools\.with creates rust\.Slice<T> `slice` that must not escape its callback region\.' \
+	'metal borrow region rejects escaped rust.Slice token' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_slice_alias_return_escape" 'Rust borrow region violation: returned borrow-only alias `alias` \(rust\.Slice<T>\)\. Return an owned value derived from the borrow instead\.' \
+	'typed borrow region rejects returned rust.Slice alias' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_mut_slice_escape" 'Rust borrow region violation: rust\.MutSliceTools\.with creates rust\.MutSlice<T> `slice` that must not escape its callback region\.' \
+	'metal borrow region rejects escaped rust.MutSlice token' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_mut_slice_nested_overlap" 'Rust borrow region violation: overlapping mutable borrow of `values` through `second` \(rust\.MutSlice<T>\) while `first` is still active\.' \
+	'typed borrow region rejects nested overlapping rust.MutSlice regions' \
+	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust borrow region violation:'
+run_negative_case "test/negative/metal_mut_region_sibling_overlap" 'Rust borrow region violation: overlapping mutable borrow of `values` through `slice` \(rust\.MutSlice<T>\) while `outer` is still active\.' \
+	'typed borrow region rejects sibling mutable helper under active mutable borrow' \
+	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust borrow region violation:'
 run_warning_case "test/negative/metal_dynamic_access" "compile.fallback.hxml" 'Rust profile contract: metal profile forbids haxe\.DynamicAccess runtime map semantics' \
 	'1' 'haxe.DynamicAccess warning in explicit metal fallback mode'
 run_warning_case "test/snapshot/metal_typed_injection" "compile.hxml" 'metal raw expr \[Main\]' \
@@ -1471,6 +1662,23 @@ run_optional_fallback_group "test/snapshot/rust_array_slice_views" "compile.hxml
 	'metal fallback top-modules excludes rust.MutSliceTools after typed mut-slice helper migration' \
 	'rust\.ArrayBorrow' \
 	'metal fallback top-modules excludes rust.ArrayBorrow after typed array-borrow helper migration'
+run_slice_view_output_shape_case "test/snapshot/rust_array_slice_views" "compile.hxml" \
+	'metal Array slice-view helpers borrow storage without clone/materialization'
+run_optional_fallback_case "test/positive/borrow_literal_derivation" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'' \
+	'borrow region allows returned literals with owned derivations'
+run_optional_fallback_case "test/positive/borrow_alias_derivation" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'' \
+	'typed borrow region allows local aliases used for owned derivations'
+run_optional_fallback_case "test/positive/borrow_wrapper_derivation" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'' \
+	'typed borrow region allows owned values inside returned wrappers'
+run_optional_fallback_case "test/positive/metal_raii_guard_scoped" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'' \
+	'typed RAII guard scopes allow owned derivations'
+run_optional_fallback_case "test/positive/borrow_mut_disjoint_scopes" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
+	'' \
+	'typed borrow region allows sequential same-source mutable scopes'
 run_optional_fallback_case "test/snapshot/rust_borrow_ref" "compile.hxml" 'Metal fallback active: generated output contains [0-9]+ raw Rust expression node\(s\) \(`ERaw`\) across [0-9]+ module\(s\)\.' \
 	'rust\.StringTools' \
 	'metal fallback top-modules excludes rust.StringTools in borrow-ref snapshot after typed string helper migration'

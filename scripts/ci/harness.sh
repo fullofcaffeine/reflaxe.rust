@@ -431,6 +431,9 @@ run_policy_group() {
 
   run_stage "metal fallback count guard" bash scripts/ci/check-metal-fallback-counts.sh
   intermediate_cleanup "metal-fallback-count-guard"
+
+  run_stage "metal idiom count guard" bash scripts/ci/check-metal-idiom-counts.sh
+  intermediate_cleanup "metal-idiom-count-guard"
 }
 
 run_packaging_group() {

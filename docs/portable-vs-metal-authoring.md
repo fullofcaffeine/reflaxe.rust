@@ -159,7 +159,10 @@ Near-term guidance:
 
 If a consumer needs `metal` mainly because portable output is currently too slow or awkward, reduce
 the gap to a generic haxe.rust fixture, benchmark, or contract test. Do not add project-specific
-compiler shortcuts to make one downstream codebase look good.
+compiler shortcuts to make one downstream codebase look good. The
+[Consumer runtime benchmark corpus](consumer-runtime-benchmark-corpus.md) defines the accepted
+generic fixture families and whether each one starts as portable-first, metal-first, or a no-runtime
+lower-bound signal.
 
 ## Quick decision rule
 
@@ -178,4 +181,5 @@ compiler shortcuts to make one downstream codebase look good.
 - `docs/profiles.md`
 - `docs/metal-profile.md`
 - `docs/metal-haxified-rust-roadmap.md`
+- `docs/consumer-runtime-benchmark-corpus.md`
 - `docs/examples-matrix.md`

@@ -326,17 +326,14 @@ impl Sha256 {
         _self_: &crate::HxRefCell<Sha256>,
         a: hxrt::array::Array<i32>,
     ) -> hxrt::string::HxString {
-        let mut str: hxrt::string::HxString =
-            hxrt::string::HxString::from(hxrt::string::HxString::from(""));
+        let mut str: hxrt::string::HxString = hxrt::string::HxString::from("");
         for num in a.iter_borrowed() {
             {
                 let __tmp = crate::string_tools::StringTools::hex(num, Some(8));
                 str = hxrt::string::HxString::from(format!("{}{}", str, __tmp));
             }
         }
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(
-            hxrt::string::to_lower_case(str.as_str()),
-        ));
+        return hxrt::string::HxString::from(hxrt::string::to_lower_case(str.as_str()));
     }
 
     pub fn encode(s: hxrt::string::HxString) -> hxrt::string::HxString {

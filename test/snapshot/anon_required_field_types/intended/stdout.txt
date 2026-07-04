@@ -1,0 +1,9 @@
+true
+fn-42
+run
+42
+43
+fn-42:run:42
+fn-42:run:42:true
+none:stop:-1:false
+json:run:12:true

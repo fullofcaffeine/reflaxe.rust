@@ -64,27 +64,19 @@ fn main() {
             hxrt::string::HxString::from("b"),
             hxrt::string::HxString::from("c"),
         ]);
-    xs.unshift(hxrt::string::HxString::from(hxrt::string::HxString::from(
-        "a",
+    xs.unshift(hxrt::string::HxString::from("a"));
+    xs.push(hxrt::string::HxString::from("d"));
+    xs.insert(2, hxrt::string::HxString::from("X"));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(
+        xs.join(hxrt::string::HxString::from("")),
     )));
-    xs.push(hxrt::string::HxString::from(hxrt::string::HxString::from(
-        "d",
-    )));
-    xs.insert(
-        2,
-        hxrt::string::HxString::from(hxrt::string::HxString::from("X")),
-    );
-    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(xs.join(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("")),
-    ))));
-    let first: hxrt::string::HxString =
-        hxrt::string::HxString::from(hxrt::string::HxString::from(xs.shift()));
+    let first: hxrt::string::HxString = hxrt::string::HxString::from(xs.shift());
     if first.is_null() {
         crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from("null")));
     } else {
         crate::sys::Sys::println(hxrt::dynamic::from(first));
     }
-    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(xs.join(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("")),
-    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(
+        xs.join(hxrt::string::HxString::from("")),
+    )));
 }

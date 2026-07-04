@@ -70,6 +70,8 @@ Current contract fixtures:
   proves a metal fixture can combine `@:rustImpl`, class-level bounds, and a bounded extern helper.
 - `test/snapshot/metal_trait_object_boundary`
   proves a metal fixture can use Haxe interfaces as Rust trait-object boundaries.
+- `test/snapshot/generic_helper_payload_bounds`
+  proves generic helper methods propagate generated class payload bounds into their Rust signatures.
 
 Every new trait-facing surface should add either a generated Rust shape fixture or a negative policy
 fixture before being documented as admitted.

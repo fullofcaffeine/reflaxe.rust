@@ -70,7 +70,8 @@ npm run docs:sync:evidence
 npm run docs:check:evidence
 ```
 
-By default, `test:all` removes generated `out*` folders and `.cache/*target*` at the end of the run to control disk growth.
+By default, `test:all` removes generated snapshot, semantic-diff, and example `out*` folders,
+plus harness/perf cache roots under `.cache/` and `test/.cache`, at the end of the run to control disk growth.
 
 - Keep artifacts for debugging:
 
@@ -83,6 +84,12 @@ npm run test:all:keep
 ```sh
 npm run clean:artifacts
 npm run clean:artifacts:all
+```
+
+The cleanup contract itself is regression-tested by:
+
+```sh
+npm run test:clean-artifacts
 ```
 
 ## Update intended outputs

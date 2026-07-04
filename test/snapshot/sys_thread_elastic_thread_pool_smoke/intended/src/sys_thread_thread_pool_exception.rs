@@ -113,7 +113,7 @@ impl ThreadPoolException {
     pub fn details(self_: &crate::HxRefCell<ThreadPoolException>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::sys_thread_thread_pool_exception::ThreadPoolException> =
             self_.self_ref();
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+        return hxrt::string::HxString::from(format!(
             "{}{}{}",
             "Exception: ",
             crate::sys_thread_thread_pool_exception::ThreadPoolException::to_string(&*__hx_this),
@@ -122,7 +122,7 @@ impl ThreadPoolException {
                     &*__hx_this
                 )
             )
-        )));
+        ));
     }
 }
 

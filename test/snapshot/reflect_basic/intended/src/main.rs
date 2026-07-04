@@ -100,9 +100,8 @@ fn main() {
         __obj.borrow_mut().set("x", __val);
     };
     println!("{}", hxrt::dynamic::from(o.borrow().get::<i32>("x")));
-    let parsed: hxrt::dynamic::Dynamic = crate::haxe_json::Json::parse(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("{\"label\":\"ok\",\"n\":3}")),
-    );
+    let parsed: hxrt::dynamic::Dynamic =
+        crate::haxe_json::Json::parse(hxrt::string::HxString::from("{\"label\":\"ok\",\"n\":3}"));
     println!(
         "{}",
         hxrt::dynamic::from({

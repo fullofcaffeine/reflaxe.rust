@@ -83,7 +83,7 @@ impl ProbeHttp {
             self_.borrow_mut().__hx_dyn_on_status = crate::HxDynRef::new(__hx_dyn_rc);
         };
         let __hx_super_0_0: hxrt::string::HxString =
-            hxrt::string::HxString::from(hxrt::string::HxString::from("http://example.test/"));
+            hxrt::string::HxString::from("http://example.test/");
         {
             let __tmp = __hx_super_0_0.clone();
             self_.borrow_mut().url = hxrt::string::HxString::from(__tmp.clone());
@@ -355,9 +355,7 @@ impl ProbeHttp {
         let __hx_this: crate::HxRef<crate::probe_http::ProbeHttp> = self_.self_ref();
         crate::probe_http::ProbeHttp::on_error(
             &*__hx_this,
-            hxrt::string::HxString::from(hxrt::string::HxString::from(
-                "HttpBase.request is not implemented on this target",
-            )),
+            hxrt::string::HxString::from("HttpBase.request is not implemented on this target"),
         );
     }
 

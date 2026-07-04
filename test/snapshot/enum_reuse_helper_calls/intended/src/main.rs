@@ -79,9 +79,7 @@ fn label(value: crate::token_value::TokenValue) -> hxrt::string::HxString {
                 ))
             })
         }
-        crate::token_value::TokenValue::Missing => {
-            hxrt::string::HxString::from(hxrt::string::HxString::from("missing"))
-        }
+        crate::token_value::TokenValue::Missing => hxrt::string::HxString::from("missing"),
     });
 }
 
@@ -103,21 +101,16 @@ fn describe(value: crate::token_value::TokenValue) -> hxrt::string::HxString {
     let first: hxrt::string::HxString = hxrt::string::HxString::from(label(value.clone()));
     let second: hxrt::string::HxString =
         hxrt::string::HxString::from(if is_present(value.clone()) {
-            hxrt::string::HxString::from(hxrt::string::HxString::from("present"))
+            hxrt::string::HxString::from("present")
         } else {
-            hxrt::string::HxString::from(hxrt::string::HxString::from("absent"))
+            hxrt::string::HxString::from("absent")
         });
-    return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
-        "{}{}{}",
-        &first, ":", &second
-    )));
+    return hxrt::string::HxString::from(format!("{}{}{}", &first, ":", &second));
 }
 
 fn main() {
     crate::sys::Sys::println(hxrt::dynamic::from(describe(
-        crate::token_value::TokenValue::Text(hxrt::string::HxString::from(
-            hxrt::string::HxString::from("alpha"),
-        )),
+        crate::token_value::TokenValue::Text(hxrt::string::HxString::from("alpha")),
     )));
     crate::sys::Sys::println(hxrt::dynamic::from(describe(
         crate::token_value::TokenValue::Missing,

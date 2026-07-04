@@ -46,9 +46,9 @@ static __HX_STATIC_BASE64: std::sync::OnceLock<hxrt::cell::HxCell<hxrt::string::
     std::sync::OnceLock::new();
 fn __hx_static_cell_base64() -> &'static hxrt::cell::HxCell<hxrt::string::HxString> {
     __HX_STATIC_BASE64.get_or_init(|| {
-        hxrt::cell::HxCell::new(hxrt::string::HxString::from(hxrt::string::HxString::from(
+        hxrt::cell::HxCell::new(hxrt::string::HxString::from(
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%:",
-        )))
+        ))
     })
 }
 pub(crate) fn __hx_static_get_base64() -> hxrt::string::HxString {

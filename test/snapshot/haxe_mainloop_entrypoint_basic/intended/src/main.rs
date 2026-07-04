@@ -82,9 +82,7 @@ fn main() {
                 let seen_first = seen_first.clone();
                 let first = first.clone();
                 let __rc: crate::HxRc<dyn Fn() + Send + Sync> = crate::HxRc::new(move || {
-                    seen_first.push(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                        "first",
-                    )));
+                    seen_first.push(hxrt::string::HxString::from("first"));
                     crate::haxe_main_event::MainEvent::stop(&*first.borrow().clone());
                 });
                 crate::HxDynRef::new(__rc)
@@ -100,9 +98,7 @@ fn main() {
                 let seen_second = seen_second.clone();
                 let second = second.clone();
                 let __rc: crate::HxRc<dyn Fn() + Send + Sync> = crate::HxRc::new(move || {
-                    seen_second.push(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                        "second",
-                    )));
+                    seen_second.push(hxrt::string::HxString::from("second"));
                     crate::haxe_main_event::MainEvent::stop(&*second.borrow().clone());
                 });
                 crate::HxDynRef::new(__rc)
@@ -114,8 +110,6 @@ fn main() {
     };
     crate::haxe_entry_point::EntryPoint::run();
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(
-        seen.join(hxrt::string::HxString::from(hxrt::string::HxString::from(
-            ",",
-        ))),
+        seen.join(hxrt::string::HxString::from(",")),
     )));
 }

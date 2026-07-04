@@ -63,9 +63,7 @@ fn parse(
     value: hxrt::string::HxString,
 ) -> crate::generic_parse::GenericParse<hxrt::string::HxString> {
     if hxrt::string::len(value.as_str()) == 0 {
-        return crate::generic_parse::GenericParse::Missing(hxrt::string::HxString::from(
-            hxrt::string::HxString::from("empty"),
-        ));
+        return crate::generic_parse::GenericParse::Missing(hxrt::string::HxString::from("empty"));
     }
     return crate::generic_parse::GenericParse::Parsed(hxrt::string::HxString::from(value.clone()));
 }
@@ -93,9 +91,9 @@ fn describe(
 
 fn main() {
     crate::sys::Sys::println(hxrt::dynamic::from(describe(parse(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("abc")),
+        hxrt::string::HxString::from("abc"),
     ))));
     crate::sys::Sys::println(hxrt::dynamic::from(describe(parse(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("")),
+        hxrt::string::HxString::from(""),
     ))));
 }

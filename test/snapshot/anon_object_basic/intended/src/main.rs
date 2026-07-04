@@ -60,8 +60,7 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 
 fn main() {
     let mut o2_x: i32 = 1;
-    let mut o2_s: hxrt::string::HxString =
-        hxrt::string::HxString::from(hxrt::string::HxString::from("hi"));
+    let mut o2_s: hxrt::string::HxString = hxrt::string::HxString::from("hi");
     println!("{}", hxrt::dynamic::from(o2_x));
     println!("{}", hxrt::dynamic::from(o2_s.clone()));
     o2_x = 2;
@@ -81,6 +80,6 @@ fn main() {
     println!("{}", hxrt::dynamic::from(o2_x));
     o2_x = o2_x - 1;
     println!("{}", hxrt::dynamic::from(o2_x));
-    o2_s = hxrt::string::HxString::from(hxrt::string::HxString::from(format!("{}{}", &o2_s, "!")));
+    o2_s = hxrt::string::HxString::from(format!("{}{}", &o2_s, "!"));
     println!("{}", hxrt::dynamic::from(o2_s));
 }

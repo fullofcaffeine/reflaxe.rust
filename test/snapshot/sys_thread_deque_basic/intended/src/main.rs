@@ -67,14 +67,8 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 fn main() {
     let q: crate::HxRef<crate::sys_thread_deque::Deque<hxrt::string::HxString>> =
         crate::sys_thread_deque::Deque::<hxrt::string::HxString>::new();
-    crate::sys_thread_deque::Deque::add(
-        &*q,
-        hxrt::string::HxString::from(hxrt::string::HxString::from("a")),
-    );
-    crate::sys_thread_deque::Deque::push(
-        &*q,
-        hxrt::string::HxString::from(hxrt::string::HxString::from("b")),
-    );
+    crate::sys_thread_deque::Deque::add(&*q, hxrt::string::HxString::from("a"));
+    crate::sys_thread_deque::Deque::push(&*q, hxrt::string::HxString::from("b"));
     let first: hxrt::string::HxString =
         hxrt::string::HxString::from(crate::sys_thread_deque::Deque::pop(&*q, false));
     let second: hxrt::string::HxString =
@@ -85,10 +79,7 @@ fn main() {
         let q = q.clone();
         let __rc: crate::HxRc<dyn Fn() + Send + Sync> = crate::HxRc::new(move || {
             crate::sys::Sys::sleep(0.05);
-            crate::sys_thread_deque::Deque::add(
-                &*q,
-                hxrt::string::HxString::from(hxrt::string::HxString::from("later")),
-            );
+            crate::sys_thread_deque::Deque::add(&*q, hxrt::string::HxString::from("later"));
         });
         crate::HxDynRef::new(__rc)
     });
@@ -96,8 +87,6 @@ fn main() {
         hxrt::string::HxString::from(crate::sys_thread_deque::Deque::pop(&*q, true));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(
         hxrt::array::Array::<hxrt::string::HxString>::from_vec(vec![first, second, third, fourth])
-            .join(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                ",",
-            ))),
+            .join(hxrt::string::HxString::from(",")),
     )));
 }

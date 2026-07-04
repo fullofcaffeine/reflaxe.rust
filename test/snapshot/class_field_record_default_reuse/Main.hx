@@ -23,11 +23,20 @@ class Parent {
 	}
 }
 
+class ParentWithDefaultChild {
+	public var child:Child;
+
+	public function new() {}
+}
+
 class Main {
 	static function main():Void {
 		var parent = new Parent({
 			child: new Child({name: "ready"})
 		});
 		trace(parent.child.name);
+
+		var defaulted = new ParentWithDefaultChild();
+		trace(defaulted.child == null);
 	}
 }

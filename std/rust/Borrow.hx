@@ -5,6 +5,7 @@ import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.ExprTools;
 import haxe.macro.TypeTools;
+import reflaxe.rust.macros.BorrowRegionMacroGuard;
 #end
 
 class Borrow {
@@ -30,18 +31,20 @@ class Borrow {
 	 * Important:
 	 * - Because the callback body is inlined, `return` inside it would become `return` from the caller.
 	 *   To prevent surprising control-flow, this macro strips `return` statements from the callback body.
+	 * - Before expansion, the macro rejects obvious borrow escapes such as returning or assigning the
+	 *   callback borrow token itself. More alias-sensitive cases belong to the typed borrow-region pass.
 	 */
-	public static macro function withRef(value: haxe.macro.Expr, fn: haxe.macro.Expr): haxe.macro.Expr {
+	public static macro function withRef(value:haxe.macro.Expr, fn:haxe.macro.Expr):haxe.macro.Expr {
 		return expand(value, fn, false);
 	}
 
 	/** See `withRef`; this variant provides a mutable borrow (`rust.MutRef<T>` / `&mut T`). */
-	public static macro function withMut(value: haxe.macro.Expr, fn: haxe.macro.Expr): haxe.macro.Expr {
+	public static macro function withMut(value:haxe.macro.Expr, fn:haxe.macro.Expr):haxe.macro.Expr {
 		return expand(value, fn, true);
 	}
 
 	#if macro
-	static function expand(value: Expr, fn: Expr, mut: Bool): Expr {
+	static function expand(value:Expr, fn:Expr, mut:Bool):Expr {
 		var f = switch (fn.expr) {
 			case EFunction(_, f): f;
 			case _:
@@ -54,10 +57,12 @@ class Borrow {
 		}
 
 		var argName = f.args[0].name;
+		BorrowRegionMacroGuard.rejectEscapingBorrow(mut ? "rust.Borrow.withMut" : "rust.Borrow.withRef", mut ? "rust.MutRef<T>" : "rust.Ref<T>", argName,
+			f.expr);
 		var typedValue = Context.typeExpr(value);
 		var valueCt = TypeTools.toComplexType(typedValue.t);
 
-		var refType: ComplexType = TPath({
+		var refType:ComplexType = TPath({
 			pack: ["rust"],
 			name: mut ? "MutRef" : "Ref",
 			params: [TPType(valueCt)]
@@ -70,12 +75,14 @@ class Borrow {
 		// `{ var r: rust.MutRef<T> = v; body; }`
 		//
 		// The compiler maps `rust.Ref<T>` / `rust.MutRef<T>` to `&T` / `&mut T`.
-		var varDecl: Expr = {
-			expr: EVars([{
-				name: argName,
-				type: refType,
-				expr: value
-			}]),
+		var varDecl:Expr = {
+			expr: EVars([
+				{
+					name: argName,
+					type: refType,
+					expr: value
+				}
+			]),
 			pos: fn.pos
 		};
 
@@ -85,28 +92,28 @@ class Borrow {
 		//
 		// However, `return` statements inside the callback body would become `return` from the caller
 		// after macro expansion. This is almost never intended, so we strip them.
-		function sanitize(e: Expr): Expr {
+		function sanitize(e:Expr):Expr {
 			return switch (e.expr) {
 				case EFunction(_, _):
 					e;
 				case EReturn(v): {
-					// `return;` / `return expr;` inside an inlined callback would return from the caller.
-					// Rewrite it to just evaluate the returned expression (if any) and continue.
-					if (v == null) {
-						{ expr: EBlock([]), pos: e.pos };
-					} else {
-						sanitize(v);
+						// `return;` / `return expr;` inside an inlined callback would return from the caller.
+						// Rewrite it to just evaluate the returned expression (if any) and continue.
+						if (v == null) {
+							{expr: EBlock([]), pos: e.pos};
+						} else {
+							sanitize(v);
+						}
 					}
-				}
 				case EBlock(exprs):
-					{ expr: EBlock([for (x in exprs) sanitize(x)]), pos: e.pos };
+					{expr: EBlock([for (x in exprs) sanitize(x)]), pos: e.pos};
 				case _:
 					ExprTools.map(e, sanitize);
 			}
 		}
 
 		var bodyExpr = sanitize(f.expr);
-		return macro { $varDecl; $bodyExpr; };
+		return macro {$varDecl; $bodyExpr;};
 	}
 	#end
 }

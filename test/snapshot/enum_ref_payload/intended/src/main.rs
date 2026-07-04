@@ -62,24 +62,22 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 
 fn verdict(value: bool) -> hxrt::string::HxString {
     return hxrt::string::HxString::from(if value {
-        hxrt::string::HxString::from(hxrt::string::HxString::from("yes"))
+        hxrt::string::HxString::from("yes")
     } else {
-        hxrt::string::HxString::from(hxrt::string::HxString::from("no"))
+        hxrt::string::HxString::from("no")
     });
 }
 
 fn main() {
-    let shared: crate::HxRef<crate::payload::Payload> = crate::payload::Payload::new(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("alpha")),
-    );
+    let shared: crate::HxRef<crate::payload::Payload> =
+        crate::payload::Payload::new(hxrt::string::HxString::from("alpha"));
     let same_ref_a: crate::ref_command::RefCommand =
         crate::ref_command::RefCommand::Use(shared.clone());
     let same_ref_b: crate::ref_command::RefCommand =
         crate::ref_command::RefCommand::Use(shared.clone());
-    let same_shape: crate::ref_command::RefCommand =
-        crate::ref_command::RefCommand::Use(crate::payload::Payload::new(
-            hxrt::string::HxString::from(hxrt::string::HxString::from("alpha")),
-        ));
+    let same_shape: crate::ref_command::RefCommand = crate::ref_command::RefCommand::Use(
+        crate::payload::Payload::new(hxrt::string::HxString::from("alpha")),
+    );
     crate::sys::Sys::println(hxrt::dynamic::from(verdict(same_ref_a == same_ref_b)));
     crate::sys::Sys::println(hxrt::dynamic::from(verdict(same_ref_a == same_shape)));
     crate::sys::Sys::println(hxrt::dynamic::from(verdict(true)));

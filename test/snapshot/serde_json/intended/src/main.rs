@@ -61,10 +61,8 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 }
 
 fn main() {
-    let person: crate::HxRef<crate::person::Person> = crate::person::Person::new(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("Alice")),
-        30,
-    );
+    let person: crate::HxRef<crate::person::Person> =
+        crate::person::Person::new(hxrt::string::HxString::from("Alice"), 30);
     let json: hxrt::string::HxString =
         hxrt::string::HxString::from(crate::rust_serde_serde_json::SerdeJson::to_string(person));
     crate::sys::Sys::println(hxrt::dynamic::from(json));

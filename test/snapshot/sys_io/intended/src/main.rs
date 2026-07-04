@@ -81,16 +81,13 @@ fn main() {
         hxrt::dynamic::from(hxrt::string::HxString::from("--- env ---"))
     );
     crate::sys::Sys::put_env(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("HX_TEST_ENV")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("ok")),
+        hxrt::string::HxString::from("HX_TEST_ENV"),
+        hxrt::string::HxString::from("ok"),
     );
     println!(
         "{}",
         hxrt::dynamic::from(
-            crate::sys::Sys::get_env(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                "HX_TEST_ENV"
-            )))
-            .clone()
+            crate::sys::Sys::get_env(hxrt::string::HxString::from("HX_TEST_ENV")).clone()
         )
     );
     let env: crate::HxRef<crate::haxe_ds_string_map::StringMap<hxrt::string::HxString>> =
@@ -99,7 +96,7 @@ fn main() {
         "{}",
         hxrt::dynamic::from(crate::haxe_ds_string_map::StringMap::exists(
             &*env,
-            hxrt::string::HxString::from(hxrt::string::HxString::from("HX_TEST_ENV"))
+            hxrt::string::HxString::from("HX_TEST_ENV")
         ))
     );
     println!(
@@ -107,42 +104,35 @@ fn main() {
         hxrt::dynamic::from(
             crate::haxe_ds_string_map::StringMap::get(
                 &*env,
-                hxrt::string::HxString::from(hxrt::string::HxString::from("HX_TEST_ENV"))
+                hxrt::string::HxString::from("HX_TEST_ENV")
             )
             .clone()
         )
     );
     crate::sys::Sys::put_env(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("HX_TEST_ENV")),
-        hxrt::string::HxString::from(hxrt::string::HxString::null()),
+        hxrt::string::HxString::from("HX_TEST_ENV"),
+        hxrt::string::HxString::null(),
     );
     println!(
         "{}",
         hxrt::dynamic::from(
-            crate::sys::Sys::get_env(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                "HX_TEST_ENV"
-            )))
-            .clone()
+            crate::sys::Sys::get_env(hxrt::string::HxString::from("HX_TEST_ENV")).clone()
         )
     );
     println!(
         "{}",
         hxrt::dynamic::from(hxrt::string::HxString::from("--- stdout ---"))
     );
-    crate::sys::Sys::stdout().write_string(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("hello stdout\n")),
-        None,
-    );
+    crate::sys::Sys::stdout().write_string(hxrt::string::HxString::from("hello stdout\n"), None);
     crate::sys::Sys::stdout().flush();
     println!(
         "{}",
         hxrt::dynamic::from(hxrt::string::HxString::from("--- file content ---"))
     );
-    let path: hxrt::string::HxString =
-        hxrt::string::HxString::from(hxrt::string::HxString::from("tmp_sys_io.txt"));
+    let path: hxrt::string::HxString = hxrt::string::HxString::from("tmp_sys_io.txt");
     crate::sys_io_file::File::save_content(
         hxrt::string::HxString::from(path.clone()),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("hello")),
+        hxrt::string::HxString::from("hello"),
     );
     println!(
         "{}",
@@ -168,8 +158,7 @@ fn main() {
         "{}",
         hxrt::dynamic::from(hxrt::string::HxString::from("--- file bytes ---"))
     );
-    let bin: hxrt::string::HxString =
-        hxrt::string::HxString::from(hxrt::string::HxString::from("tmp_sys_io.bin"));
+    let bin: hxrt::string::HxString = hxrt::string::HxString::from("tmp_sys_io.bin");
     let bytes: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRef::new(hxrt::bytes::Bytes::of_string(
         hxrt::string::HxString::from("ABC").as_str(),
     ));
@@ -185,22 +174,15 @@ fn main() {
         "{}",
         hxrt::dynamic::from(hxrt::string::HxString::from("--- dir listing ---"))
     );
-    let dir: hxrt::string::HxString =
-        hxrt::string::HxString::from(hxrt::string::HxString::from("tmp_sys_dir"));
+    let dir: hxrt::string::HxString = hxrt::string::HxString::from("tmp_sys_dir");
     crate::sys_file_system::FileSystem::create_directory(hxrt::string::HxString::from(dir.clone()));
     crate::sys_io_file::File::save_content(
-        hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
-            "{}{}",
-            &dir, "/a.txt"
-        ))),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("a")),
+        hxrt::string::HxString::from(format!("{}{}", &dir, "/a.txt")),
+        hxrt::string::HxString::from("a"),
     );
     crate::sys_io_file::File::save_content(
-        hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
-            "{}{}",
-            &dir, "/b.txt"
-        ))),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("b")),
+        hxrt::string::HxString::from(format!("{}{}", &dir, "/b.txt")),
+        hxrt::string::HxString::from("b"),
     );
     let entries: hxrt::array::Array<hxrt::string::HxString> =
         crate::sys_file_system::FileSystem::read_directory(hxrt::string::HxString::from(
@@ -228,12 +210,14 @@ fn main() {
     println!("{}", hxrt::dynamic::from(found_b));
     println!("{}", hxrt::dynamic::from(found_dot));
     println!("{}", hxrt::dynamic::from(found_dot_dot));
-    crate::sys_file_system::FileSystem::delete_file(hxrt::string::HxString::from(
-        hxrt::string::HxString::from(format!("{}{}", &dir, "/a.txt")),
-    ));
-    crate::sys_file_system::FileSystem::delete_file(hxrt::string::HxString::from(
-        hxrt::string::HxString::from(format!("{}{}", &dir, "/b.txt")),
-    ));
+    crate::sys_file_system::FileSystem::delete_file(hxrt::string::HxString::from(format!(
+        "{}{}",
+        &dir, "/a.txt"
+    )));
+    crate::sys_file_system::FileSystem::delete_file(hxrt::string::HxString::from(format!(
+        "{}{}",
+        &dir, "/b.txt"
+    )));
     crate::sys_file_system::FileSystem::delete_directory(hxrt::string::HxString::from(dir.clone()));
     println!(
         "{}",

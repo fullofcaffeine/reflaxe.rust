@@ -36,8 +36,21 @@ networking, TLS, DB, processes, or threading, add app-specific smoke tests aroun
   See [Portable near-native guidance](docs/portable-near-native-guidance.md).
 - `hxrt` is a semantic fallback, not the compiler's default strategy. The compiler should lower at
   compile time first and use runtime helpers only for required Haxe semantics such as `Dynamic`,
-  reflection, exceptions, Haxe object identity, nullable compatibility, or platform abstractions.
-- CI evidence: snapshots, negative policy fixtures, runtime/optimizer plan reports, and HXRT overhead tracking are all part of the default workflow.
+  reflection, exceptions, Haxe object identity, anonymous structural records, nullable compatibility,
+  or platform abstractions. Type/metadata facts the compiler already knows, such as optional fields,
+  literal defaults, and static access paths, should stay in lowering instead of becoming runtime APIs.
+- Reflection support is intentionally narrow and typed where possible; for example,
+  `Reflect.compare` over typed `Int`, `Float`, and `String` lowers to direct Rust comparisons.
+- Common String methods lower to Rust-owned string helpers instead of phantom Rust methods; for
+  example, `String.substring(start, end)` preserves Haxe's clamped/swap semantics without emitting
+  a nonexistent `String::substring` call.
+- Generic helper methods propagate generated class payload bounds in their Rust signatures, so a
+  helper returning `Payload<T>` emits the same `T: Clone + Send + Sync` contract required by
+  `Payload<T>` instead of relying on runtime indirection.
+- Typed anonymous records preserve Haxe aliasing while keeping field access typed; required fields and
+  omitted `@:optional` fields are covered by focused generated-Rust fixtures.
+- CI evidence: snapshots, negative policy fixtures, runtime/optimizer plan reports, product-neutral
+  benchmark candidates, and HXRT overhead tracking are all part of the default workflow.
 
 ## Start Here
 
@@ -149,9 +162,18 @@ Rule of thumb:
   `Result` lower to native Rust representations when the contract lines up.
 - Use `rust.*`/`rust.metal.*` when the source itself should be Rust-native. Treat awkward source
   code written only to appease current codegen as a compiler/API gap to report or fixture.
+- Use scoped borrow helpers (`Borrow.withRef/withMut`, slice/str helpers) for Rust-like borrowed
+  views; direct token escapes, first-wave alias escapes, escaped wrappers/throws, and overlapping
+  local mutable scopes are diagnosed before Rust code is emitted.
+- `SliceTools.with(array, ...)` and `MutSliceTools.with(array, ...)` are output-gated to borrow
+  Array storage as scoped `&[T]` / `&mut [T]` views rather than materializing cloned arrays.
 
 Read more: [Profiles guide](docs/profiles.md), [Rusty migration guide](docs/rusty-profile.md),
-[Metal profile details](docs/metal-profile.md), [HXRT overhead benchmarks](docs/perf-hxrt-overhead.md), and [Lifetime encoding design](docs/lifetime-encoding.md).
+[Metal profile details](docs/metal-profile.md), [Extern and lifetime-island cookbook](docs/extern-lifetime-island-cookbook.md),
+[RAII guard and lifetime-island rules](docs/raii-guard-lifetime-islands.md),
+[HXRT overhead benchmarks](docs/perf-hxrt-overhead.md),
+[Consumer runtime benchmark corpus](docs/consumer-runtime-benchmark-corpus.md), and
+[Lifetime encoding design](docs/lifetime-encoding.md).
 
 ## Examples
 
@@ -182,6 +204,7 @@ Coverage map: [docs/examples-matrix.md](docs/examples-matrix.md).
 - Template task-matrix smoke: `bash scripts/ci/template-smoke.sh`
 - Codex Haxe/Rust killer-app QA: `npm run test:codex-hxrust` (requires sibling `codex-hxrust` checkout; skips when absent)
 - Windows-safe smoke subset: `bash scripts/ci/windows-smoke.sh`
+- Metal idiom count guard: `npm run test:metal-idiom`
 - HXRT overhead benchmark + soft-budget warnings: `bash scripts/ci/perf-hxrt-overhead.sh`
 - Full local CI equivalent: `bash scripts/ci/local.sh`
 - Clean generated artifacts: `npm run clean:artifacts:all`

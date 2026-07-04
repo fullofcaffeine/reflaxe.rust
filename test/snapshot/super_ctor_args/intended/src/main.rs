@@ -62,11 +62,8 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 }
 
 fn main() {
-    let s: crate::HxRef<crate::sub::Sub> = crate::sub::Sub::new(
-        1,
-        hxrt::string::HxString::from(hxrt::string::HxString::from("hi")),
-        3,
-    );
+    let s: crate::HxRef<crate::sub::Sub> =
+        crate::sub::Sub::new(1, hxrt::string::HxString::from("hi"), 3);
     println!(
         "{}",
         hxrt::dynamic::from({

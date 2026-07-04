@@ -129,11 +129,11 @@ fn describe_optional_field(
         let _g: Option<crate::haxe_json_value::Value> =
             read_optional_field(fields.clone(), hxrt::string::HxString::from(name));
         return hxrt::string::HxString::from(if _g.is_none() {
-            hxrt::string::HxString::from(hxrt::string::HxString::from("missing"))
+            hxrt::string::HxString::from("missing")
         } else {
             hxrt::string::HxString::from(match _g.clone() {
                 Some(crate::haxe_json_value::Value::JNull) => {
-                    hxrt::string::HxString::from(hxrt::string::HxString::from("json-null"))
+                    hxrt::string::HxString::from("json-null")
                 }
                 Some(crate::haxe_json_value::Value::JBool(__p)) => {
                     let _g_2: bool = __p;
@@ -160,60 +160,46 @@ fn describe_optional_field(
                         hxrt::string::HxString::from(format!("{}{}", "string:", &value_3))
                     })
                 }
-                _ => hxrt::string::HxString::from(hxrt::string::HxString::from("other")),
+                _ => hxrt::string::HxString::from("other"),
             })
         });
     }
 }
 
 fn main() {
-    let fields: hxrt::array::Array<crate::HxRef<hxrt::anon::Anon>> = object_fields(crate::haxe_json::Json::parse_value(hxrt::string::HxString::from(hxrt::string::HxString::from("{\"name\":\"Ada\",\"score\":4.5,\"enabled\":true,\"tags\":[\"haxe\"],\"empty\":null}"))));
+    let fields: hxrt::array::Array<crate::HxRef<hxrt::anon::Anon>> = object_fields(
+        crate::haxe_json::Json::parse_value(hxrt::string::HxString::from(
+            "{\"name\":\"Ada\",\"score\":4.5,\"enabled\":true,\"tags\":[\"haxe\"],\"empty\":null}",
+        )),
+    );
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "name=",
-        describe_optional_field(
-            fields.clone(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from("name"))
-        )
+        describe_optional_field(fields.clone(), hxrt::string::HxString::from("name"))
     ))));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "score=",
-        describe_optional_field(
-            fields.clone(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from("score"))
-        )
+        describe_optional_field(fields.clone(), hxrt::string::HxString::from("score"))
     ))));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "enabled=",
-        describe_optional_field(
-            fields.clone(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from("enabled"))
-        )
+        describe_optional_field(fields.clone(), hxrt::string::HxString::from("enabled"))
     ))));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "tags=",
-        describe_optional_field(
-            fields.clone(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from("tags"))
-        )
+        describe_optional_field(fields.clone(), hxrt::string::HxString::from("tags"))
     ))));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "empty=",
-        describe_optional_field(
-            fields.clone(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from("empty"))
-        )
+        describe_optional_field(fields.clone(), hxrt::string::HxString::from("empty"))
     ))));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "missing=",
-        describe_optional_field(
-            fields.clone(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from("missing"))
-        )
+        describe_optional_field(fields.clone(), hxrt::string::HxString::from("missing"))
     ))));
 }

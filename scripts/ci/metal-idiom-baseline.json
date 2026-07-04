@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "cases": {
+    "rust_vec_native_shapes": {
+      "selectedFiles": [
+        "main.rs",
+        "vec_tools.rs",
+        "iter_tools.rs"
+      ],
+      "requiredMinimums": {
+        "vecShapes": 1,
+        "optionShapes": 1,
+        "resultShapes": 1,
+        "sliceShapes": 0,
+        "borrowTokens": 1
+      },
+      "counts": {
+        "hxrtPathRefs": 14,
+        "semanticHxrtFallbackRefs": 10,
+        "dynamicRefs": 7,
+        "rawERawMarkers": 0,
+        "cloneCalls": 1,
+        "borrowTokens": 10,
+        "vecShapes": 12,
+        "optionShapes": 5,
+        "resultShapes": 2,
+        "sliceShapes": 0
+      }
+    },
+    "array_slice_view_shapes": {
+      "selectedFiles": [
+        "main.rs",
+        "array_borrow_tools.rs"
+      ],
+      "requiredMinimums": {
+        "vecShapes": 0,
+        "optionShapes": 0,
+        "resultShapes": 0,
+        "sliceShapes": 1,
+        "borrowTokens": 1
+      },
+      "counts": {
+        "hxrtPathRefs": 13,
+        "semanticHxrtFallbackRefs": 9,
+        "dynamicRefs": 2,
+        "rawERawMarkers": 0,
+        "cloneCalls": 2,
+        "borrowTokens": 12,
+        "vecShapes": 0,
+        "optionShapes": 0,
+        "resultShapes": 0,
+        "sliceShapes": 10
+      }
+    },
+    "portable_facade_option_result_shapes": {
+      "selectedFiles": [
+        "main.rs"
+      ],
+      "requiredMinimums": {
+        "vecShapes": 0,
+        "optionShapes": 1,
+        "resultShapes": 1,
+        "sliceShapes": 0,
+        "borrowTokens": 0
+      },
+      "counts": {
+        "hxrtPathRefs": 4,
+        "semanticHxrtFallbackRefs": 0,
+        "dynamicRefs": 0,
+        "rawERawMarkers": 0,
+        "cloneCalls": 4,
+        "borrowTokens": 0,
+        "vecShapes": 0,
+        "optionShapes": 3,
+        "resultShapes": 3,
+        "sliceShapes": 0
+      }
+    },
+    "metal_no_hxrt_lower_bound": {
+      "selectedFiles": [
+        "main.rs",
+        "duration_tools.rs"
+      ],
+      "requiredMinimums": {
+        "vecShapes": 0,
+        "optionShapes": 0,
+        "resultShapes": 0,
+        "sliceShapes": 0,
+        "borrowTokens": 0
+      },
+      "counts": {
+        "hxrtPathRefs": 0,
+        "semanticHxrtFallbackRefs": 0,
+        "dynamicRefs": 0,
+        "rawERawMarkers": 0,
+        "cloneCalls": 0,
+        "borrowTokens": 0,
+        "vecShapes": 0,
+        "optionShapes": 0,
+        "resultShapes": 1,
+        "sliceShapes": 0
+      }
+    }
+  }
+}

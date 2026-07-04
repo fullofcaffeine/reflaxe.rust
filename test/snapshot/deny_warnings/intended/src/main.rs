@@ -93,9 +93,9 @@ fn main() {
     println!("{}", hxrt::dynamic::from(n));
     let branch_value: hxrt::string::HxString;
     if n > 1 {
-        branch_value = hxrt::string::HxString::from(hxrt::string::HxString::from("wide"));
+        branch_value = hxrt::string::HxString::from("wide");
     } else {
-        branch_value = hxrt::string::HxString::from(hxrt::string::HxString::from("narrow"));
+        branch_value = hxrt::string::HxString::from("narrow");
     }
     println!("{}", hxrt::dynamic::from(branch_value));
     let mut vec: Vec<i32> = Vec::<i32>::new();

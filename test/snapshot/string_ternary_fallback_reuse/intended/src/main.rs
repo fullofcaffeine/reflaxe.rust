@@ -69,10 +69,7 @@ fn pick(
         hxrt::string::HxString::from(fallback.clone())
     });
     let preserved: hxrt::string::HxString = hxrt::string::HxString::from(fallback);
-    return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
-        "{}{}{}",
-        &selected, ":", &preserved
-    )));
+    return hxrt::string::HxString::from(format!("{}{}{}", &selected, ":", &preserved));
 }
 
 fn main() {
@@ -81,8 +78,8 @@ fn main() {
         hxrt::dynamic::from(
             pick(
                 false,
-                hxrt::string::HxString::from(hxrt::string::HxString::from("live")),
-                hxrt::string::HxString::from(hxrt::string::HxString::from("backup"))
+                hxrt::string::HxString::from("live"),
+                hxrt::string::HxString::from("backup")
             )
             .clone()
         )

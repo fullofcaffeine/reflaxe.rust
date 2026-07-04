@@ -152,8 +152,8 @@ This page is a practical reference for the most relevant compiler defines.
   - Enforce strict policy in repo examples/snapshot paths.
 - `rust_send_sync_strict`
   - Escalate Send/Sync spawn-boundary diagnostics to compile errors.
-  - Useful in CI to forbid capturing borrow-only (`rust.Ref`, `rust.MutRef`, slices) or `Dynamic`
-    values in `Thread.create(...)` / `Tasks.spawn(...)` closures.
+  - Useful in CI to forbid capturing borrow-only (`rust.Ref`, `rust.MutRef`, slices, `rust.Str`)
+    or `Dynamic` values in `Thread.create(...)` / `Tasks.spawn(...)` closures.
 
 ## Lane metadata
 

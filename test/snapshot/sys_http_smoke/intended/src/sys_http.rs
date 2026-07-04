@@ -350,7 +350,7 @@ impl Http {
         {
             crate::sys_http::Http::on_error(
                 &*__hx_this,
-                hxrt::string::HxString::from(hxrt::string::HxString::from("Invalid URL")),
+                hxrt::string::HxString::from("Invalid URL"),
             );
             return;
         }
@@ -360,23 +360,19 @@ impl Http {
         let mut request: hxrt::string::HxString =
             hxrt::string::HxString::from(parsed.borrow().get::<hxrt::string::HxString>("path"));
         if hxrt::string::len(request.as_str()) == 0 {
-            request = hxrt::string::HxString::from(hxrt::string::HxString::from("/"));
+            request = hxrt::string::HxString::from("/");
         }
         if hxrt::string::HxString::from(hxrt::string::char_at(request.as_str(), 0))
             != hxrt::string::HxString::from("/")
         {
-            request = hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
-                "{}{}",
-                "/", &request
-            )));
+            request = hxrt::string::HxString::from(format!("{}{}", "/", &request));
         }
         let multipart: bool = !({
             let __b = __hx_this.borrow();
             __b.file.clone()
         })
         .is_null();
-        let mut boundary: hxrt::string::HxString =
-            hxrt::string::HxString::from(hxrt::string::HxString::null());
+        let mut boundary: hxrt::string::HxString = hxrt::string::HxString::null();
         let uri: hxrt::string::HxString = hxrt::string::HxString::from(if multipart {
             hxrt::string::HxString::from({
                 post = true;
@@ -405,20 +401,20 @@ impl Http {
             );
             crate::haxe_io_bytes_output::BytesOutput::write_string(
                 &*request_bytes,
-                hxrt::string::HxString::from(hxrt::string::HxString::from(" ")),
+                hxrt::string::HxString::from(" "),
                 None,
             );
         } else {
             if post {
                 crate::haxe_io_bytes_output::BytesOutput::write_string(
                     &*request_bytes,
-                    hxrt::string::HxString::from(hxrt::string::HxString::from("POST ")),
+                    hxrt::string::HxString::from("POST "),
                     None,
                 );
             } else {
                 crate::haxe_io_bytes_output::BytesOutput::write_string(
                     &*request_bytes,
-                    hxrt::string::HxString::from(hxrt::string::HxString::from("GET ")),
+                    hxrt::string::HxString::from("GET "),
                     None,
                 );
             }
@@ -431,19 +427,19 @@ impl Http {
         if !post && !uri.is_null() {
             if hxrt::string::index_of(
                 request.as_str(),
-                hxrt::string::HxString::from(hxrt::string::HxString::from("?")).as_str(),
+                hxrt::string::HxString::from("?").as_str(),
                 Some(0),
             ) >= 0
             {
                 crate::haxe_io_bytes_output::BytesOutput::write_string(
                     &*request_bytes,
-                    hxrt::string::HxString::from(hxrt::string::HxString::from("&")),
+                    hxrt::string::HxString::from("&"),
                     None,
                 );
             } else {
                 crate::haxe_io_bytes_output::BytesOutput::write_string(
                     &*request_bytes,
-                    hxrt::string::HxString::from(hxrt::string::HxString::from("?")),
+                    hxrt::string::HxString::from("?"),
                     None,
                 );
             }
@@ -455,10 +451,7 @@ impl Http {
         }
         crate::haxe_io_bytes_output::BytesOutput::write_string(
             &*request_bytes,
-            hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
-                "{}{}{}",
-                " HTTP/1.1\r\nHost: ", &host, "\r\n"
-            ))),
+            hxrt::string::HxString::from(format!("{}{}{}", " HTTP/1.1\r\nHost: ", &host, "\r\n")),
             None,
         );
         if !({
@@ -492,7 +485,7 @@ impl Http {
         {
             crate::haxe_io_bytes_output::BytesOutput::write_string(
                 &*request_bytes,
-                hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+                hxrt::string::HxString::from(format!(
                     "{}{}{}",
                     "Content-Length: ",
                     hxrt::dynamic::from(
@@ -505,7 +498,7 @@ impl Http {
                     )
                     .to_haxe_string(),
                     "\r\n"
-                ))),
+                )),
                 None,
             );
         } else {
@@ -513,22 +506,18 @@ impl Http {
                 if multipart
                     || !crate::sys_http::Http::has_header(
                         &*__hx_this,
-                        hxrt::string::HxString::from(hxrt::string::HxString::from("Content-Type")),
+                        hxrt::string::HxString::from("Content-Type"),
                     )
                 {
                     crate::haxe_io_bytes_output::BytesOutput::write_string(
                         &*request_bytes,
-                        hxrt::string::HxString::from(hxrt::string::HxString::from(
-                            "Content-Type: ",
-                        )),
+                        hxrt::string::HxString::from("Content-Type: "),
                         None,
                     );
                     if multipart {
                         crate::haxe_io_bytes_output::BytesOutput::write_string(
                             &*request_bytes,
-                            hxrt::string::HxString::from(hxrt::string::HxString::from(
-                                "multipart/form-data; boundary=",
-                            )),
+                            hxrt::string::HxString::from("multipart/form-data; boundary="),
                             None,
                         );
                         crate::haxe_io_bytes_output::BytesOutput::write_string(
@@ -539,22 +528,20 @@ impl Http {
                     } else {
                         crate::haxe_io_bytes_output::BytesOutput::write_string(
                             &*request_bytes,
-                            hxrt::string::HxString::from(hxrt::string::HxString::from(
-                                "application/x-www-form-urlencoded",
-                            )),
+                            hxrt::string::HxString::from("application/x-www-form-urlencoded"),
                             None,
                         );
                     }
                     crate::haxe_io_bytes_output::BytesOutput::write_string(
                         &*request_bytes,
-                        hxrt::string::HxString::from(hxrt::string::HxString::from("\r\n")),
+                        hxrt::string::HxString::from("\r\n"),
                         None,
                     );
                 }
                 if multipart {
                     crate::haxe_io_bytes_output::BytesOutput::write_string(
                         &*request_bytes,
-                        hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+                        hxrt::string::HxString::from(format!(
                             "{}{}{}",
                             "Content-Length: ",
                             hxrt::dynamic::from(
@@ -570,18 +557,18 @@ impl Http {
                             )
                             .to_haxe_string(),
                             "\r\n"
-                        ))),
+                        )),
                         None,
                     );
                 } else {
                     crate::haxe_io_bytes_output::BytesOutput::write_string(
                         &*request_bytes,
-                        hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+                        hxrt::string::HxString::from(format!(
                             "{}{}{}",
                             "Content-Length: ",
                             hxrt::dynamic::from(hxrt::string::len(uri.as_str())).to_haxe_string(),
                             "\r\n"
-                        ))),
+                        )),
                         None,
                     );
                 }
@@ -589,7 +576,7 @@ impl Http {
         }
         crate::haxe_io_bytes_output::BytesOutput::write_string(
             &*request_bytes,
-            hxrt::string::HxString::from(hxrt::string::HxString::from("Connection: close\r\n")),
+            hxrt::string::HxString::from("Connection: close\r\n"),
             None,
         );
         {
@@ -605,7 +592,7 @@ impl Http {
                 );
                 crate::haxe_io_bytes_output::BytesOutput::write_string(
                     &*request_bytes,
-                    hxrt::string::HxString::from(hxrt::string::HxString::from(": ")),
+                    hxrt::string::HxString::from(": "),
                     None,
                 );
                 crate::haxe_io_bytes_output::BytesOutput::write_string(
@@ -615,14 +602,14 @@ impl Http {
                 );
                 crate::haxe_io_bytes_output::BytesOutput::write_string(
                     &*request_bytes,
-                    hxrt::string::HxString::from(hxrt::string::HxString::from("\r\n")),
+                    hxrt::string::HxString::from("\r\n"),
                     None,
                 );
             }
         }
         crate::haxe_io_bytes_output::BytesOutput::write_string(
             &*request_bytes,
-            hxrt::string::HxString::from(hxrt::string::HxString::from("\r\n")),
+            hxrt::string::HxString::from("\r\n"),
             None,
         );
         if !({
@@ -705,7 +692,7 @@ impl Http {
         .len() as i32
             == 0
         {
-            return hxrt::string::HxString::from(hxrt::string::HxString::null());
+            return hxrt::string::HxString::null();
         }
         let encoded: hxrt::array::Array<hxrt::string::HxString> =
             hxrt::array::Array::<hxrt::string::HxString>::new();
@@ -715,23 +702,19 @@ impl Http {
                 __b.params.clone()
             };
             for p in _g1.iter_borrowed() {
-                encoded.push(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                    format!(
-                        "{}{}{}",
-                        crate::string_tools::StringTools::url_encode(hxrt::string::HxString::from(
-                            p.borrow().get::<hxrt::string::HxString>("name")
-                        )),
-                        "=",
-                        crate::string_tools::StringTools::url_encode(hxrt::string::HxString::from(
-                            p.borrow().get::<hxrt::string::HxString>("value")
-                        ))
-                    ),
+                encoded.push(hxrt::string::HxString::from(format!(
+                    "{}{}{}",
+                    crate::string_tools::StringTools::url_encode(hxrt::string::HxString::from(
+                        p.borrow().get::<hxrt::string::HxString>("name")
+                    )),
+                    "=",
+                    crate::string_tools::StringTools::url_encode(hxrt::string::HxString::from(
+                        p.borrow().get::<hxrt::string::HxString>("value")
+                    ))
                 )));
             }
         }
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(encoded.join(
-            hxrt::string::HxString::from(hxrt::string::HxString::from("&")),
-        )));
+        return hxrt::string::HxString::from(encoded.join(hxrt::string::HxString::from("&")));
     }
 
     fn build_multipart_prefix(
@@ -835,9 +818,7 @@ impl Http {
     }
 
     fn create_boundary(_self_: &crate::HxRefCell<Http>) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(
-            "---------------------------reflaxe-rust-boundary",
-        ));
+        return hxrt::string::HxString::from("---------------------------reflaxe-rust-boundary");
     }
 
     fn has_header(self_: &crate::HxRefCell<Http>, name: hxrt::string::HxString) -> bool {
@@ -949,7 +930,7 @@ impl Http {
                 };
                 crate::sys_http::Http::on_error(
                     &*__hx_this,
-                    hxrt::string::HxString::from(hxrt::string::HxString::from(e.to_haxe_string())),
+                    hxrt::string::HxString::from(e.to_haxe_string()),
                 );
             }
         };
@@ -1001,20 +982,14 @@ impl Http {
                 remaining
             };
         }
-        sock.__hx_get_output().write_string(
-            hxrt::string::HxString::from(hxrt::string::HxString::from("\r\n")),
-            None,
-        );
-        sock.__hx_get_output().write_string(
-            hxrt::string::HxString::from(hxrt::string::HxString::from("--")),
-            None,
-        );
+        sock.__hx_get_output()
+            .write_string(hxrt::string::HxString::from("\r\n"), None);
+        sock.__hx_get_output()
+            .write_string(hxrt::string::HxString::from("--"), None);
         sock.__hx_get_output()
             .write_string(hxrt::string::HxString::from(boundary), None);
-        sock.__hx_get_output().write_string(
-            hxrt::string::HxString::from(hxrt::string::HxString::from("--")),
-            None,
-        );
+        sock.__hx_get_output()
+            .write_string(hxrt::string::HxString::from("--"), None);
     }
 
     fn read_http_response(
@@ -1041,26 +1016,25 @@ impl Http {
             }
             let sep: i32 = hxrt::string::index_of(
                 line.as_str(),
-                hxrt::string::HxString::from(hxrt::string::HxString::from(":")).as_str(),
+                hxrt::string::HxString::from(":").as_str(),
                 Some(0),
             );
             if sep < 0 {
                 continue;
             }
-            let hname: hxrt::string::HxString = hxrt::string::HxString::from(
-                hxrt::string::HxString::from(hxrt::string::substr(line.as_str(), 0, Some(sep))),
-            );
-            let hval: hxrt::string::HxString = hxrt::string::HxString::from({
-                let s: hxrt::string::HxString =
-                    hxrt::string::HxString::from(hxrt::string::HxString::from(
+            let hname: hxrt::string::HxString =
+                hxrt::string::HxString::from(hxrt::string::substr(line.as_str(), 0, Some(sep)));
+            let hval: hxrt::string::HxString =
+                hxrt::string::HxString::from({
+                    let s: hxrt::string::HxString = hxrt::string::HxString::from(
                         hxrt::string::substr(line.as_str(), sep + 1, None),
-                    ));
-                crate::string_tools::StringTools::ltrim(hxrt::string::HxString::from(
-                    crate::string_tools::StringTools::rtrim(hxrt::string::HxString::from(
-                        s.clone(),
-                    )),
-                ))
-            });
+                    );
+                    crate::string_tools::StringTools::ltrim(hxrt::string::HxString::from(
+                        crate::string_tools::StringTools::rtrim(hxrt::string::HxString::from(
+                            s.clone(),
+                        )),
+                    ))
+                });
             let previous: hxrt::string::HxString =
                 hxrt::string::HxString::from(crate::haxe_ds_string_map::StringMap::get(
                     &*({
@@ -1107,9 +1081,8 @@ impl Http {
                 hxrt::string::HxString::from(hval.clone()),
             );
             {
-                let _g: hxrt::string::HxString = hxrt::string::HxString::from(
-                    hxrt::string::HxString::from(hxrt::string::to_lower_case(hname.as_str())),
-                );
+                let _g: hxrt::string::HxString =
+                    hxrt::string::HxString::from(hxrt::string::to_lower_case(hname.as_str()));
                 match _g.as_str() {
                     "content-length" => {
                         size = crate::sys_http::Http::parse_dec_int(hxrt::string::HxString::from(
@@ -1211,12 +1184,14 @@ impl Http {
                 hxrt::string::HxString::from(sock.__hx_get_input().read_line());
             let semi: i32 = hxrt::string::index_of(
                 size_line.as_str(),
-                hxrt::string::HxString::from(hxrt::string::HxString::from(";")).as_str(),
+                hxrt::string::HxString::from(";").as_str(),
                 Some(0),
             );
             if semi >= 0 {
-                size_line = hxrt::string::HxString::from(hxrt::string::HxString::from(
-                    hxrt::string::substr(size_line.as_str(), 0, Some(semi)),
+                size_line = hxrt::string::HxString::from(hxrt::string::substr(
+                    size_line.as_str(),
+                    0,
+                    Some(semi),
                 ));
             }
             size_line = hxrt::string::HxString::from(crate::string_tools::StringTools::ltrim(
@@ -1573,58 +1548,48 @@ impl Http {
         let mut secure: bool = false;
         if hxrt::string::index_of(
             u.as_str(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from("http://")).as_str(),
+            hxrt::string::HxString::from("http://").as_str(),
             Some(0),
         ) == 0
         {
-            u = hxrt::string::HxString::from(hxrt::string::HxString::from(hxrt::string::substr(
+            u = hxrt::string::HxString::from(hxrt::string::substr(
                 u.as_str(),
                 hxrt::string::len(hxrt::string::HxString::from("http://").as_str()),
                 None,
-            )));
+            ));
         } else {
             if hxrt::string::index_of(
                 u.as_str(),
-                hxrt::string::HxString::from(hxrt::string::HxString::from("https://")).as_str(),
+                hxrt::string::HxString::from("https://").as_str(),
                 Some(0),
             ) == 0
             {
                 secure = true;
-                u = hxrt::string::HxString::from(hxrt::string::HxString::from(
-                    hxrt::string::substr(
-                        u.as_str(),
-                        hxrt::string::len(hxrt::string::HxString::from("https://").as_str()),
-                        None,
-                    ),
+                u = hxrt::string::HxString::from(hxrt::string::substr(
+                    u.as_str(),
+                    hxrt::string::len(hxrt::string::HxString::from("https://").as_str()),
+                    None,
                 ));
             }
         }
         let slash: i32 = hxrt::string::index_of(
             u.as_str(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from("/")).as_str(),
+            hxrt::string::HxString::from("/").as_str(),
             Some(0),
         );
         let host_port: hxrt::string::HxString = hxrt::string::HxString::from(if slash >= 0 {
-            hxrt::string::HxString::from(hxrt::string::HxString::from(hxrt::string::substr(
-                u.as_str(),
-                0,
-                Some(slash),
-            )))
+            hxrt::string::HxString::from(hxrt::string::substr(u.as_str(), 0, Some(slash)))
         } else {
-            hxrt::string::HxString::from(hxrt::string::HxString::from(hxrt::string::substr(
+            hxrt::string::HxString::from(hxrt::string::substr(
                 u.as_str(),
                 0,
                 Some(hxrt::string::len(u.as_str())),
-            )))
+            ))
         });
         let path: hxrt::string::HxString = hxrt::string::HxString::from(if slash >= 0 {
-            hxrt::string::HxString::from(hxrt::string::HxString::from(hxrt::string::substr(
-                u.as_str(),
-                slash,
-                None,
-            )))
+            hxrt::string::HxString::from(hxrt::string::substr(u.as_str(), slash, None))
         } else {
-            hxrt::string::HxString::from(hxrt::string::HxString::from("/"))
+            hxrt::string::HxString::from("/")
         });
         if hxrt::string::len(host_port.as_str()) == 0 {
             return {
@@ -1643,20 +1608,19 @@ impl Http {
         let mut port: i32 = if secure { 443 } else { 80 };
         let colon: i32 = hxrt::string::index_of(
             host_port.as_str(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from(":")).as_str(),
+            hxrt::string::HxString::from(":").as_str(),
             Some(0),
         );
         if colon >= 0 {
-            host = hxrt::string::HxString::from(hxrt::string::HxString::from(
-                hxrt::string::substr(host_port.as_str(), 0, Some(colon)),
+            host = hxrt::string::HxString::from(hxrt::string::substr(
+                host_port.as_str(),
+                0,
+                Some(colon),
             ));
-            let parsed_port: i32 = crate::sys_http::Http::parse_dec_int(
-                hxrt::string::HxString::from(hxrt::string::HxString::from(hxrt::string::substr(
-                    host_port.as_str(),
-                    colon + 1,
-                    None,
-                ))),
-            );
+            let parsed_port: i32 =
+                crate::sys_http::Http::parse_dec_int(hxrt::string::HxString::from(
+                    hxrt::string::substr(host_port.as_str(), colon + 1, None),
+                ));
             if parsed_port < 0 {
                 return {
                     let __o = crate::HxRef::new(hxrt::anon::Anon::new());
@@ -1709,7 +1673,7 @@ impl Http {
     fn parse_status(line: hxrt::string::HxString) -> i32 {
         let first: i32 = hxrt::string::index_of(
             line.as_str(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from(" ")).as_str(),
+            hxrt::string::HxString::from(" ").as_str(),
             Some(0),
         );
         if first < 0 {
@@ -1719,18 +1683,17 @@ impl Http {
         }
         let mut second: i32 = hxrt::string::index_of(
             line.as_str(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from(" ")).as_str(),
+            hxrt::string::HxString::from(" ").as_str(),
             Some(first + 1),
         );
         if second < 0 {
             second = hxrt::string::len(line.as_str());
         }
-        let code_str: hxrt::string::HxString =
-            hxrt::string::HxString::from(hxrt::string::HxString::from(hxrt::string::substr(
-                line.as_str(),
-                first + 1,
-                Some(second - first - 1),
-            )));
+        let code_str: hxrt::string::HxString = hxrt::string::HxString::from(hxrt::string::substr(
+            line.as_str(),
+            first + 1,
+            Some(second - first - 1),
+        ));
         let n: i32 = crate::sys_http::Http::parse_dec_int(hxrt::string::HxString::from(code_str));
         if n < 0 {
             hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(

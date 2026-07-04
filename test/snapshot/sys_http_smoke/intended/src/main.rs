@@ -92,9 +92,7 @@ fn run_request(
         __up
     };
     server.bind(
-        crate::sys_net_host::Host::new(hxrt::string::HxString::from(hxrt::string::HxString::from(
-            "127.0.0.1",
-        ))),
+        crate::sys_net_host::Host::new(hxrt::string::HxString::from("127.0.0.1")),
         0,
     );
     server.listen(1);
@@ -142,13 +140,13 @@ fn run_request(
                 __tmp
             };
             client.__hx_get_output().write_string(
-                hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+                hxrt::string::HxString::from(format!(
                     "{}{}{}{}",
                     "HTTP/1.1 200 OK\r\nContent-Length: ",
                     hxrt::dynamic::from(hxrt::string::len(response_body.as_str())).to_haxe_string(),
                     "\r\nSet-Cookie: a=1\r\nSet-Cookie: b=2\r\nConnection: close\r\n\r\n",
                     &response_body
-                ))),
+                )),
                 None,
             );
             client.close();
@@ -158,9 +156,8 @@ fn run_request(
         crate::HxDynRef::new(__rc)
     });
     let built: crate::HxRef<hxrt::anon::Anon> = build(port);
-    let response_data: crate::HxRef<hxrt::string::HxString> = crate::HxRef::new(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("")),
-    );
+    let response_data: crate::HxRef<hxrt::string::HxString> =
+        crate::HxRef::new(hxrt::string::HxString::from(""));
     {
         let __hx_obj = built
             .borrow()
@@ -224,13 +221,12 @@ fn read_request(
         hxrt::string::HxString::from(client.__hx_get_input().read_line());
     let request_parts: hxrt::array::Array<hxrt::string::HxString> = hxrt::string::split_hx(
         request_line.as_str(),
-        hxrt::string::HxString::from(hxrt::string::HxString::from(" ")).as_str(),
+        hxrt::string::HxString::from(" ").as_str(),
     );
     let method: hxrt::string::HxString =
         hxrt::string::HxString::from(request_parts.get_unchecked(0 as usize));
     let mut content_length: i32 = 0;
-    let mut content_type: hxrt::string::HxString =
-        hxrt::string::HxString::from(hxrt::string::HxString::null());
+    let mut content_type: hxrt::string::HxString = hxrt::string::HxString::null();
     loop {
         let line: hxrt::string::HxString =
             hxrt::string::HxString::from(client.__hx_get_input().read_line());
@@ -239,27 +235,24 @@ fn read_request(
         }
         let sep: i32 = hxrt::string::index_of(
             line.as_str(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from(":")).as_str(),
+            hxrt::string::HxString::from(":").as_str(),
             Some(0),
         );
         if sep < 0 {
             continue;
         }
-        let name: hxrt::string::HxString = hxrt::string::HxString::from(
-            hxrt::string::HxString::from(hxrt::string::substr(line.as_str(), 0, Some(sep))),
-        );
+        let name: hxrt::string::HxString =
+            hxrt::string::HxString::from(hxrt::string::substr(line.as_str(), 0, Some(sep)));
         let value: hxrt::string::HxString = hxrt::string::HxString::from({
-            let s: hxrt::string::HxString = hxrt::string::HxString::from(
-                hxrt::string::HxString::from(hxrt::string::substr(line.as_str(), sep + 1, None)),
-            );
+            let s: hxrt::string::HxString =
+                hxrt::string::HxString::from(hxrt::string::substr(line.as_str(), sep + 1, None));
             crate::string_tools::StringTools::ltrim(hxrt::string::HxString::from(
                 crate::string_tools::StringTools::rtrim(hxrt::string::HxString::from(s.clone())),
             ))
         });
         {
-            let _g: hxrt::string::HxString = hxrt::string::HxString::from(
-                hxrt::string::HxString::from(hxrt::string::to_lower_case(name.as_str())),
-            );
+            let _g: hxrt::string::HxString =
+                hxrt::string::HxString::from(hxrt::string::to_lower_case(name.as_str()));
             match _g.as_str() {
                 "content-length" => {
                     content_length = parse_decimal_int(hxrt::string::HxString::from(value.clone()));
@@ -271,8 +264,7 @@ fn read_request(
             }
         }
     }
-    let mut body: hxrt::string::HxString =
-        hxrt::string::HxString::from(hxrt::string::HxString::from(""));
+    let mut body: hxrt::string::HxString = hxrt::string::HxString::from("");
     if content_length > 0 {
         let bytes: crate::HxRef<hxrt::bytes::Bytes> =
             crate::HxRef::new(hxrt::bytes::Bytes::alloc(content_length as usize));
@@ -297,17 +289,15 @@ fn join_header_values(
     values: hxrt::array::Array<hxrt::string::HxString>,
 ) -> hxrt::string::HxString {
     return hxrt::string::HxString::from(if values.is_null() {
-        hxrt::string::HxString::from(hxrt::string::HxString::from("null"))
+        hxrt::string::HxString::from("null")
     } else {
-        hxrt::string::HxString::from(hxrt::string::HxString::from(values.join(
-            hxrt::string::HxString::from(hxrt::string::HxString::from("|")),
-        )))
+        hxrt::string::HxString::from(values.join(hxrt::string::HxString::from("|")))
     });
 }
 
 fn stringify_null(value: hxrt::string::HxString) -> hxrt::string::HxString {
     return hxrt::string::HxString::from(if value.is_null() {
-        hxrt::string::HxString::from(hxrt::string::HxString::from("null"))
+        hxrt::string::HxString::from("null")
     } else {
         hxrt::string::HxString::from(value)
     });
@@ -315,23 +305,22 @@ fn stringify_null(value: hxrt::string::HxString) -> hxrt::string::HxString {
 
 fn extract_boundary(content_type: hxrt::string::HxString) -> hxrt::string::HxString {
     if content_type.is_null() {
-        return hxrt::string::HxString::from(hxrt::string::HxString::null());
+        return hxrt::string::HxString::null();
     }
-    let marker: hxrt::string::HxString =
-        hxrt::string::HxString::from(hxrt::string::HxString::from("boundary="));
+    let marker: hxrt::string::HxString = hxrt::string::HxString::from("boundary=");
     let boundary_index: i32 = hxrt::string::index_of(
         content_type.as_str(),
         hxrt::string::HxString::from(marker.clone()).as_str(),
         Some(0),
     );
     if boundary_index < 0 {
-        return hxrt::string::HxString::from(hxrt::string::HxString::null());
+        return hxrt::string::HxString::null();
     }
-    return hxrt::string::HxString::from(hxrt::string::HxString::from(hxrt::string::substr(
+    return hxrt::string::HxString::from(hxrt::string::substr(
         content_type.as_str(),
         boundary_index + hxrt::string::len(marker.as_str()),
         None,
-    )));
+    ));
 }
 
 fn parse_decimal_int(text: hxrt::string::HxString) -> i32 {
@@ -344,9 +333,8 @@ fn parse_decimal_int(text: hxrt::string::HxString) -> i32 {
                 let __next = _g + 1;
                 std::mem::replace(&mut _g, __next)
             };
-            let digit: hxrt::string::HxString = hxrt::string::HxString::from(
-                hxrt::string::HxString::from(hxrt::string::substr(text.as_str(), i, Some(1))),
-            );
+            let digit: hxrt::string::HxString =
+                hxrt::string::HxString::from(hxrt::string::substr(text.as_str(), i, Some(1)));
             let numeric: i32 = match digit.as_str() {
                 "0" => 0,
                 "1" => 1,
@@ -373,23 +361,22 @@ fn main() {
         {
             let __rc: crate::HxRc<dyn Fn(i32) -> crate::HxRef<hxrt::anon::Anon> + Send + Sync> =
                 crate::HxRc::new(move |port: i32| {
-                    let http: crate::HxRef<crate::sys_http::Http> = crate::sys_http::Http::new(
-                        hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+                    let http: crate::HxRef<crate::sys_http::Http> =
+                        crate::sys_http::Http::new(hxrt::string::HxString::from(format!(
                             "{}{}{}",
                             "http://127.0.0.1:",
                             hxrt::dynamic::from(port).to_haxe_string(),
                             "/submit"
-                        ))),
-                    );
+                        )));
                     crate::sys_http::Http::set_parameter(
                         &*http,
-                        hxrt::string::HxString::from(hxrt::string::HxString::from("q")),
-                        hxrt::string::HxString::from(hxrt::string::HxString::from("ok")),
+                        hxrt::string::HxString::from("q"),
+                        hxrt::string::HxString::from("ok"),
                     );
                     crate::sys_http::Http::add_parameter(
                         &*http,
-                        hxrt::string::HxString::from(hxrt::string::HxString::from("page")),
-                        hxrt::string::HxString::from(hxrt::string::HxString::from("1")),
+                        hxrt::string::HxString::from("page"),
+                        hxrt::string::HxString::from("1"),
                     );
                     return {
                         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
@@ -410,7 +397,7 @@ fn main() {
                 });
             crate::HxDynRef::new(__rc)
         },
-        hxrt::string::HxString::from(hxrt::string::HxString::from("form-ok")),
+        hxrt::string::HxString::from("form-ok"),
     );
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
@@ -445,7 +432,7 @@ fn main() {
             &*form
                 .borrow()
                 .get::<crate::HxRef<crate::sys_http::Http>>("http"),
-            hxrt::string::HxString::from(hxrt::string::HxString::from("Set-Cookie"))
+            hxrt::string::HxString::from("Set-Cookie")
         ))
     ))));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
@@ -455,7 +442,7 @@ fn main() {
             &*form
                 .borrow()
                 .get::<crate::HxRef<crate::sys_http::Http>>("http"),
-            hxrt::string::HxString::from(hxrt::string::HxString::from("X-Missing"))
+            hxrt::string::HxString::from("X-Missing")
         )
         .is_null()
         .to_string()
@@ -469,18 +456,17 @@ fn main() {
         {
             let __rc: crate::HxRc<dyn Fn(i32) -> crate::HxRef<hxrt::anon::Anon> + Send + Sync> =
                 crate::HxRc::new(move |port: i32| {
-                    let http: crate::HxRef<crate::sys_http::Http> = crate::sys_http::Http::new(
-                        hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+                    let http: crate::HxRef<crate::sys_http::Http> =
+                        crate::sys_http::Http::new(hxrt::string::HxString::from(format!(
                             "{}{}{}",
                             "http://127.0.0.1:",
                             hxrt::dynamic::from(port).to_haxe_string(),
                             "/upload"
-                        ))),
-                    );
+                        )));
                     crate::sys_http::Http::set_parameter(
                         &*http,
-                        hxrt::string::HxString::from(hxrt::string::HxString::from("token")),
-                        hxrt::string::HxString::from(hxrt::string::HxString::from("abc")),
+                        hxrt::string::HxString::from("token"),
+                        hxrt::string::HxString::from("abc"),
                     );
                     let file_bytes: crate::HxRef<hxrt::bytes::Bytes> =
                         crate::HxRef::new(hxrt::bytes::Bytes::of_string(
@@ -488,8 +474,8 @@ fn main() {
                         ));
                     crate::sys_http::Http::file_transfer(
                         &*http,
-                        hxrt::string::HxString::from(hxrt::string::HxString::from("upload")),
-                        hxrt::string::HxString::from(hxrt::string::HxString::from("note.txt")),
+                        hxrt::string::HxString::from("upload"),
+                        hxrt::string::HxString::from("note.txt"),
                         {
                             let __tmp = crate::_main_static_bytes_input::StaticBytesInput::new(
                                 file_bytes.clone(),
@@ -500,7 +486,7 @@ fn main() {
                             __up
                         },
                         file_bytes.borrow().length(),
-                        hxrt::string::HxString::from(hxrt::string::HxString::from("text/plain")),
+                        hxrt::string::HxString::from("text/plain"),
                     );
                     return {
                         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
@@ -521,7 +507,7 @@ fn main() {
                 });
             crate::HxDynRef::new(__rc)
         },
-        hxrt::string::HxString::from(hxrt::string::HxString::from("upload-ok")),
+        hxrt::string::HxString::from("upload-ok"),
     );
     let boundary: hxrt::string::HxString =
         hxrt::string::HxString::from(extract_boundary(hxrt::string::HxString::from(
@@ -561,7 +547,7 @@ fn main() {
                 .borrow()
                 .get::<hxrt::string::HxString>("body")
                 .as_str(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from("name=\"token\"")).as_str(),
+            hxrt::string::HxString::from("name=\"token\"").as_str(),
             None
         ) >= 0
             && hxrt::string::index_of(
@@ -571,8 +557,7 @@ fn main() {
                     .borrow()
                     .get::<hxrt::string::HxString>("body")
                     .as_str(),
-                hxrt::string::HxString::from(hxrt::string::HxString::from("\r\n\r\nabc\r\n"))
-                    .as_str(),
+                hxrt::string::HxString::from("\r\n\r\nabc\r\n").as_str(),
                 None
             ) >= 0)
             .to_string()
@@ -587,10 +572,7 @@ fn main() {
                 .borrow()
                 .get::<hxrt::string::HxString>("body")
                 .as_str(),
-            hxrt::string::HxString::from(hxrt::string::HxString::from(
-                "name=\"upload\"; filename=\"note.txt\""
-            ))
-            .as_str(),
+            hxrt::string::HxString::from("name=\"upload\"; filename=\"note.txt\"").as_str(),
             None
         ) >= 0
             && hxrt::string::index_of(
@@ -600,7 +582,7 @@ fn main() {
                     .borrow()
                     .get::<hxrt::string::HxString>("body")
                     .as_str(),
-                hxrt::string::HxString::from(hxrt::string::HxString::from("file-body")).as_str(),
+                hxrt::string::HxString::from("file-body").as_str(),
                 None
             ) >= 0)
             .to_string()
@@ -617,10 +599,7 @@ fn main() {
                         .borrow()
                         .get::<hxrt::string::HxString>("body")
                 ),
-                hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
-                    "{}{}{}",
-                    "--", &boundary, "--"
-                )))
+                hxrt::string::HxString::from(format!("{}{}{}", "--", &boundary, "--"))
             ))
         .to_string()
     ))));

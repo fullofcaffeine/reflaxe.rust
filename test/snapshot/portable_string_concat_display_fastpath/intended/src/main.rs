@@ -61,8 +61,12 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 fn main() {
     let run: i32 = 3;
     let inner: i32 = 7;
-    let label: hxrt::string::HxString = hxrt::string::HxString::from(hxrt::string::HxString::from(
-        format!("{}{}{}{}", "json-", run.to_string(), "-", inner.to_string()),
+    let label: hxrt::string::HxString = hxrt::string::HxString::from(format!(
+        "{}{}{}{}",
+        "json-",
+        run.to_string(),
+        "-",
+        inner.to_string()
     ));
     if label == hxrt::string::HxString::from("__never__") {
         crate::sys::Sys::println(hxrt::dynamic::from(label));

@@ -69,18 +69,16 @@ fn main() {
             });
         crate::HxDynRef::new(__rc)
     });
-    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(xs.join(
-        hxrt::string::HxString::from(hxrt::string::HxString::from(",")),
-    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(
+        xs.join(hxrt::string::HxString::from(",")),
+    )));
     let removed: hxrt::array::Array<i32> = xs.splice(1, 1);
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(
-        removed.join(hxrt::string::HxString::from(hxrt::string::HxString::from(
-            ",",
-        ))),
+        removed.join(hxrt::string::HxString::from(",")),
     )));
-    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(xs.join(
-        hxrt::string::HxString::from(hxrt::string::HxString::from(",")),
-    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(
+        xs.join(hxrt::string::HxString::from(",")),
+    )));
     let c: crate::HxRef<crate::counter::Counter> = crate::counter::Counter::new(0);
     crate::counter::Counter::inc(&*c);
     crate::sys::Sys::println(hxrt::dynamic::from({
@@ -89,7 +87,7 @@ fn main() {
     }));
     let e: crate::e::E = crate::e::E::B(7);
     let msg: hxrt::string::HxString = hxrt::string::HxString::from(match e {
-        crate::e::E::A => hxrt::string::HxString::from(hxrt::string::HxString::from("A")),
+        crate::e::E::A => hxrt::string::HxString::from("A"),
         crate::e::E::B(__p) => {
             let _g: i32 = __p;
             hxrt::string::HxString::from({

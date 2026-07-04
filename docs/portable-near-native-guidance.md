@@ -218,6 +218,7 @@ Practical signals that `metal` is justified:
 - Contracts and profile semantics: `docs/profiles.md`
 - Rust-side `reflaxe.std` boundary: `docs/reflaxe-std-adoption-contract.md`
 - Performance baselines and posture: `docs/perf-hxrt-overhead.md`
+- Consumer-runtime benchmark intake: `docs/consumer-runtime-benchmark-corpus.md`
 - JSON hotspot contract: `docs/json-boundary-contract.md`
 - Release posture: `docs/semver-release-posture.md`
 - Example entrypoints: `docs/examples-matrix.md`

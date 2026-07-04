@@ -40,10 +40,15 @@ For `sys.thread` to be considered correct and production-ready, the target shoul
 
 - `rust.concurrent.Channel<T>` + `rust.concurrent.Channels`: typed `create/send/recv/tryRecv`.
 - `rust.concurrent.Task<T>` + `rust.concurrent.Tasks`: typed `spawn/join`.
-- `rust.concurrent.Mutex<T>` + `rust.concurrent.Mutexes`: `create/get/set/replace/update`.
-- `rust.concurrent.RwLock<T>` + `rust.concurrent.RwLocks`: `create/read/write/replace/update`.
+- `rust.concurrent.Mutex<T>` + `rust.concurrent.Mutexes`:
+  `create/get/set/replace/update/withRef/withMut`.
+- `rust.concurrent.RwLock<T>` + `rust.concurrent.RwLocks`:
+  `create/read/write/replace/update/withRead/withWrite`.
 
 These APIs route through `hxrt::concurrent` so application/example code stays injection-free and typed.
+The scoped guard helpers keep Rust lock guards inside HXRT and expose only callback-scoped
+`rust.Ref<T>` / `rust.MutRef<T>` tokens; see
+[RAII guard and lifetime-island rules](raii-guard-lifetime-islands.md).
 
 ### Send/Sync boundary diagnostics
 
@@ -52,6 +57,7 @@ runtime-dynamic values that cannot be proven `Send + Sync` safely at thread boun
 
 - `rust.Ref<T>`, `rust.MutRef<T>`
 - `rust.Slice<T>`, `rust.MutSlice<T>`
+- `rust.Str`
 - `Dynamic`
 
 Use `-D rust_send_sync_strict` to turn those diagnostics into hard compile errors in CI or release gates.

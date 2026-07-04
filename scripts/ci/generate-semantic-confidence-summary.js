@@ -210,9 +210,10 @@ const bucketDefinitions = [
       'test/semantic_diff/function_value_mutable_callbacks',
       'test/semantic_diff/closure_capture_mutation',
       'test/semantic_diff/this_method_closure',
-      'test/semantic_diff/portable_option_result_basics'
+      'test/semantic_diff/portable_option_result_basics',
+      'test/snapshot/array_shift_nullable_class_return'
     ],
-    commands: ['npm run test:semantic-diff'],
+    commands: ['npm run test:semantic-diff', 'bash test/run-snapshots.sh --case array_shift_nullable_class_return'],
     notes: 'These are the current backbone portable semantic fixtures, not a claim about every portable surface.'
   },
   {
@@ -234,24 +235,45 @@ const bucketDefinitions = [
       'test/semantic_diff/exception_dynamic_payload',
       'test/semantic_diff/typed_catch_subclass',
       'test/snapshot/reflect_basic',
+      'test/snapshot/reflect_compare_sort',
       'test/snapshot/catch_dynamic'
     ],
-    commands: ['npm run test:semantic-diff', 'bash test/run-snapshots.sh --case reflect_basic', 'bash test/run-snapshots.sh --case catch_dynamic'],
+    commands: [
+      'npm run test:semantic-diff',
+      'bash test/run-snapshots.sh --case reflect_basic',
+      'bash test/run-snapshots.sh --case reflect_compare_sort',
+      'bash test/run-snapshots.sh --case catch_dynamic'
+    ],
     notes: 'Targeted proof only. Emitted non-generic class hierarchies now have subclass-aware typed catch parity; narrower exact-type limits remain on interface-typed or metadata-free catch paths.'
   },
   {
     id: 'portable-stdlib-runtime-parity',
     class: 'targeted_semantic_parity',
     label: 'Portable stdlib runtime hotspots',
-    scope: 'Bytes, Json replacer, Int64, and iterator runtime behavior',
+    scope: 'Bytes, Json replacer, Int64, String substring, and iterator runtime behavior',
     evidence: [
       'test/semantic_diff/bytes_extended_api',
       'test/semantic_diff/json_stringify_replacer',
       'test/semantic_diff/int64_parity',
-      'test/semantic_diff/map_key_value_iterator_manual'
+      'test/semantic_diff/map_key_value_iterator_manual',
+      'test/snapshot/string_substring'
     ],
-    commands: ['npm run test:semantic-diff'],
-    notes: 'Focused runtime parity on the stdlib families that recently moved from stubs/workarounds to real support.'
+    commands: ['npm run test:semantic-diff', 'bash test/run-snapshots.sh --case string_substring'],
+    notes:
+      'Focused runtime parity on stdlib families that recently moved from stubs/workarounds to real support. String.substring coverage is snapshot-backed generated Rust plus stdout proof for bounded ASCII and start/end swap behavior.'
+  },
+  {
+    id: 'generic-helper-bound-shape',
+    class: 'snapshot_or_smoke_only',
+    label: 'Generic helper payload-bound shape',
+    scope: 'Generated Rust signatures for method-level generics that mention bounded generated class payloads',
+    evidence: ['test/snapshot/generic_helper_payload_bounds', 'test/snapshot/generic_function_type_params'],
+    commands: [
+      'bash test/run-snapshots.sh --case generic_helper_payload_bounds',
+      'bash test/run-snapshots.sh --case generic_function_type_params'
+    ],
+    notes:
+      'Snapshot-backed generated-shape proof. Helper methods returning or reading generated class payloads propagate required class bounds, while unconstrained Option<T> helpers remain bare.'
   },
   {
     id: 'sys-process-failure-paths',

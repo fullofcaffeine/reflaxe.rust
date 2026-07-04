@@ -73,9 +73,7 @@ fn main() {
                 ))
             })
         }
-        crate::action::Action::Toggle => {
-            hxrt::string::HxString::from(hxrt::string::HxString::from("toggle"))
-        }
+        crate::action::Action::Toggle => hxrt::string::HxString::from("toggle"),
     });
     println!("{}", hxrt::dynamic::from(s));
 }

@@ -55,21 +55,19 @@ impl StringTools {
         let input: hxrt::string::HxString =
             hxrt::string::HxString::from(crate::string_tools::StringTools::replace(
                 hxrt::string::HxString::from(s),
-                hxrt::string::HxString::from(hxrt::string::HxString::from("+")),
-                hxrt::string::HxString::from(hxrt::string::HxString::from(" ")),
+                hxrt::string::HxString::from("+"),
+                hxrt::string::HxString::from(" "),
             ));
         let bytes: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::new();
         let mut i: i32 = 0;
         while i < hxrt::string::len(input.as_str()) {
-            let c: hxrt::string::HxString = hxrt::string::HxString::from(
-                hxrt::string::HxString::from(hxrt::string::substr(input.as_str(), i, Some(1))),
-            );
+            let c: hxrt::string::HxString =
+                hxrt::string::HxString::from(hxrt::string::substr(input.as_str(), i, Some(1)));
             if c == hxrt::string::HxString::from("%") && i + 2 < hxrt::string::len(input.as_str()) {
                 let hi: i32 = {
-                    let ch: hxrt::string::HxString =
-                        hxrt::string::HxString::from(hxrt::string::HxString::from(
-                            hxrt::string::substr(input.as_str(), i + 1, Some(1)),
-                        ));
+                    let ch: hxrt::string::HxString = hxrt::string::HxString::from(
+                        hxrt::string::substr(input.as_str(), i + 1, Some(1)),
+                    );
                     if ch == hxrt::string::HxString::from("0") {
                         0
                     } else {
@@ -123,10 +121,9 @@ impl StringTools {
                     }
                 };
                 let lo: i32 = {
-                    let ch_2: hxrt::string::HxString =
-                        hxrt::string::HxString::from(hxrt::string::HxString::from(
-                            hxrt::string::substr(input.as_str(), i + 2, Some(1)),
-                        ));
+                    let ch_2: hxrt::string::HxString = hxrt::string::HxString::from(
+                        hxrt::string::substr(input.as_str(), i + 2, Some(1)),
+                    );
                     if ch_2 == hxrt::string::HxString::from("0") {
                         0
                     } else {
@@ -274,11 +271,7 @@ impl StringTools {
             r = r + 1;
         }
         return hxrt::string::HxString::from(if r > 0 {
-            hxrt::string::HxString::from(hxrt::string::HxString::from(hxrt::string::substr(
-                s.as_str(),
-                r,
-                Some(l - r),
-            )))
+            hxrt::string::HxString::from(hxrt::string::substr(s.as_str(), r, Some(l - r)))
         } else {
             hxrt::string::HxString::from(s)
         });
@@ -296,11 +289,7 @@ impl StringTools {
             r = r + 1;
         }
         return hxrt::string::HxString::from(if r > 0 {
-            hxrt::string::HxString::from(hxrt::string::HxString::from(hxrt::string::substr(
-                s.as_str(),
-                0,
-                Some(l - r),
-            )))
+            hxrt::string::HxString::from(hxrt::string::substr(s.as_str(), 0, Some(l - r)))
         } else {
             hxrt::string::HxString::from(s)
         });
@@ -326,18 +315,14 @@ impl StringTools {
         if pad_len <= 0 {
             return hxrt::string::HxString::from(s);
         }
-        let mut buf: hxrt::string::HxString =
-            hxrt::string::HxString::from(hxrt::string::HxString::from(""));
+        let mut buf: hxrt::string::HxString = hxrt::string::HxString::from("");
         while hxrt::string::len(buf.as_str()) < pad_len {
             {
                 let __tmp = c.clone();
                 buf = hxrt::string::HxString::from(format!("{}{}", buf, __tmp));
             }
         }
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
-            "{}{}",
-            &buf, &s
-        )));
+        return hxrt::string::HxString::from(format!("{}{}", &buf, &s));
     }
 
     pub fn rpad(
@@ -366,10 +351,10 @@ impl StringTools {
         sub: hxrt::string::HxString,
         by: hxrt::string::HxString,
     ) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(
+        return hxrt::string::HxString::from(
             hxrt::string::split_hx(s.as_str(), hxrt::string::HxString::from(sub).as_str())
                 .join(hxrt::string::HxString::from(by)),
-        ));
+        );
     }
 
     pub fn hex(n: i32, digits: Option<i32>) -> hxrt::string::HxString {

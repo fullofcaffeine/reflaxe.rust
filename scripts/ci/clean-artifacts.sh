@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+default_root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+root_dir="${CLEAN_ARTIFACTS_ROOT_DIR:-$default_root_dir}"
+root_dir="$(cd "$root_dir" && pwd)"
 
 clean_outputs=0
 clean_cache=0
@@ -24,11 +26,11 @@ usage() {
   cat <<'EOUSAGE'
 Usage: scripts/ci/clean-artifacts.sh [--outputs] [--cache] [--all] [--dry-run]
 
-Removes generated test/example artifacts and optional Cargo cache dirs.
+Removes generated test/example artifacts and optional harness/perf cache dirs.
 
 Options:
-  --outputs   Remove generated `out*` folders under `test/snapshot/*/` and `examples/*/`.
-  --cache     Remove cache folders under `.cache/` used by harness scripts.
+  --outputs   Remove generated `out*` folders under snapshot, semantic-diff, and example cases.
+  --cache     Remove cache folders used by harness/perf scripts under `.cache/` and `test/.cache/`.
   --all       Same as `--outputs --cache`.
   --dry-run   Print what would be removed without deleting anything.
   -h, --help  Show this help text.
@@ -105,13 +107,33 @@ if [[ "$clean_outputs" -eq 1 ]]; then
 
   while IFS= read -r -d '' path; do
     paths+=("$path")
+  done < <(find "$root_dir/test/semantic_diff" -mindepth 2 -maxdepth 2 -type d \( -name 'out' -o -name 'out_*' \) -print0 2>/dev/null || true)
+
+  while IFS= read -r -d '' path; do
+    paths+=("$path")
+  done < <(find "$root_dir/test/semantic_diff_lanes" -mindepth 2 -maxdepth 2 -type d \( -name 'out' -o -name 'out_*' \) -print0 2>/dev/null || true)
+
+  while IFS= read -r -d '' path; do
+    paths+=("$path")
   done < <(find "$root_dir/examples" -mindepth 2 -maxdepth 2 -type d \( -name 'out' -o -name 'out_*' \) -print0 2>/dev/null || true)
 fi
 
 if [[ "$clean_cache" -eq 1 ]]; then
+  if [[ -d "$root_dir/test/.cache" ]]; then
+    paths+=("$root_dir/test/.cache")
+  fi
+
   while IFS= read -r -d '' path; do
     paths+=("$path")
-  done < <(find "$root_dir/.cache" -mindepth 1 -maxdepth 1 -type d \( -name 'examples-target*' -o -name 'snapshots-target*' -o -name 'upstream-stdlib-target*' -o -name 'package-smoke-target*' -o -name 'template-smoke-target*' \) -print0 2>/dev/null || true)
+  done < <(find "$root_dir/.cache" -mindepth 1 -maxdepth 1 -type d \( \
+    -name 'examples-target*' \
+    -o -name 'snapshots-target*' \
+    -o -name 'upstream-stdlib-target*' \
+    -o -name 'package-smoke*' \
+    -o -name 'template-smoke*' \
+    -o -name 'perf-hxrt' \
+    -o -name 'portable-native-import-diagnostics' \
+  \) -print0 2>/dev/null || true)
 fi
 
 if [[ "${#paths[@]}" -eq 0 ]]; then

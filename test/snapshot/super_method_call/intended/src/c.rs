@@ -30,7 +30,7 @@ impl C {
     }
 
     pub fn sound(_self_: &crate::HxRefCell<C>) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from("C.sound"));
+        return hxrt::string::HxString::from("C.sound");
     }
 
     pub fn call_super_sound(self_: &crate::HxRefCell<C>) -> hxrt::string::HxString {
@@ -50,11 +50,11 @@ impl C {
     }
 
     pub fn foo(_self_: &crate::HxRefCell<C>) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from("A.foo"));
+        return hxrt::string::HxString::from("A.foo");
     }
 
     fn __hx_super_a_foo(_self_: &crate::HxRefCell<C>) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from("A.foo"));
+        return hxrt::string::HxString::from("A.foo");
     }
 
     fn __hx_super_b_get_x(self_: &crate::HxRefCell<C>) -> i32 {
@@ -68,7 +68,7 @@ impl C {
     }
 
     fn __hx_super_b_sound(_self_: &crate::HxRefCell<C>) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from("B.sound"));
+        return hxrt::string::HxString::from("B.sound");
     }
 
     fn __hx_super_a_get_x(self_: &crate::HxRefCell<C>) -> i32 {

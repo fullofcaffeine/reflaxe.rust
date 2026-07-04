@@ -40,6 +40,8 @@ The short version:
   it.
 - Haxe class instances and other Haxe reference values use runtime reference handles so assignment,
   aliasing, nullability, mutation, and thread crossing can follow Haxe expectations.
+- Uninitialized Haxe class fields keep Haxe's nullable-reference default: generated Rust stores a
+  null `HxRef<T>` handle instead of eagerly calling nested class constructors.
 - `portable` keeps Haxe semantics first, even when that needs `hxrt`.
 - `metal` is the opt-in Rust-first contract for native handles, scoped borrows, RAII-style guards,
   stricter boundaries, and reduced/no-runtime experiments.
@@ -67,8 +69,13 @@ predictable ownership, and minimal avoidable cloning/allocation. When good Haxe 
 poor Rust, that is treated as a generic compiler/runtime improvement opportunity rather than a reason
 to write awkward Haxe or hide Codex/app-specific hacks in the backend.
 
+Generic helper signatures are part of that output-quality contract. When a helper returns or accepts
+a generated class payload such as `Payload<T>`, the compiler should propagate the payload's Rust
+trait bounds into the helper signature at compile time instead of adding an `hxrt` workaround.
+
 The project tracks this with snapshot tests, generated output review, `rustfmt`, warning controls,
-performance/HXRT overhead benchmarks, and profile contract reports.
+performance/HXRT overhead benchmarks, profile contract reports, and a metal idiom count guard that
+tracks selected clone/borrow/runtime-reference counters for curated output-shape fixtures.
 
 ## What are `portable` and `metal`?
 
@@ -113,9 +120,19 @@ Code that stays in scalar/value-like, typed, non-dynamic paths can get close to 
 lowering. Code that uses Haxe reference semantics, nullable strings, `Dynamic`, reflection-like
 operations, exceptions, arrays, threads, async helpers, or std/sys APIs may use `hxrt`.
 
+The compiler should still answer compile-time questions at compile time. Optional field metadata,
+literal defaults, static access paths, and other typed-AST facts should be lowered into generated Rust
+rather than moved behind runtime helper APIs.
+
+That includes the narrow typed reflection subset. For example, `Reflect.compare` over typed `Int`,
+`Float`, and `String` lowers to direct Rust comparison code instead of an `hxrt` helper.
+
 The project treats runtime overhead as a measured budget. See
 [HXRT overhead benchmarks](perf-hxrt-overhead.md) for the current benchmark protocol and
 [Portable near-native guidance](portable-near-native-guidance.md) for the optimization posture.
+When a runtime/tool-shaped consumer pressure appears, it should be reduced to one of the generic
+fixtures in the [Consumer runtime benchmark corpus](consumer-runtime-benchmark-corpus.md) before it
+becomes a compiler or runtime gate.
 
 ## Can I build without `hxrt`?
 
@@ -136,6 +153,10 @@ primitive has the same behavior. When Haxe semantics require runtime help, the r
 be as thin and optimized as practical. If an stdlib path pays unnecessary wrapper/runtime tax, that
 should become a backend/runtime optimization issue, not a permanent source-level workaround.
 
+For example, `String.substring(start, end)` is lowered by the compiler to Haxe-compatible
+clamp/swap bounds logic plus the existing string slicing helper; it should not generate a phantom
+Rust `substring` method call.
+
 Current support and proof depth are tracked in the [Feature support matrix](feature-support-matrix.md)
 and [Stdlib Parity Policy](stdlib-policy.md).
 
@@ -147,6 +168,10 @@ The `rust.*` API surface exposes Rust-shaped concepts such as references, mutabl
 borrows, vectors, maps, slices, `Option`, and `Result`. These are best used at typed native
 boundaries, in `metal`, or in clearly marked Rust-first modules.
 
+For Haxe `Array<T>` values in metal code, `SliceTools.with(...)` and `MutSliceTools.with(...)` borrow
+the underlying storage as scoped Rust slice views instead of cloning the array into a temporary
+`Vec<T>`.
+
 Prefer typed APIs and helpers over raw Rust injection. Raw `untyped __rust__(...)` remains an escape
 hatch for narrow low-level abstraction modules, but app code should normally use typed externs,
 metadata, or framework facades.
@@ -154,6 +179,38 @@ metadata, or framework facades.
 See [Interop](interop.md), [Metal profile](metal-profile.md), and
 [Lifetime encoding design](lifetime-encoding.md). For the broader compiler/API direction, see
 [Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md).
+
+## Can Haxe express Rust lifetimes?
+
+Partially, through scoped borrow helpers rather than Rust lifetime syntax.
+
+Haxe does not have native lifetime parameters, so `reflaxe.rust` models the useful first slice as
+lexical borrow regions: `Borrow.withRef/withMut`, `SliceTools.with`, `MutSliceTools.with`, and
+`StrTools.with`. The callback token is a borrow-only value and must not be returned, stored, assigned
+outside the region, captured by a returned closure, or escaped through a local alias. Owned values
+derived from the borrow are fine. Overlapping local-source mutable scopes such as nested
+`Borrow.withMut(values, ...)` or `MutSliceTools.with(values, ...)` are rejected before Rust codegen;
+sequential scoped mutable borrows of the same value are accepted.
+
+Thread/task spawn boundaries also reject captured borrow-only values such as `rust.Ref<T>`,
+`rust.MutRef<T>`, `rust.Slice<T>`, `rust.MutSlice<T>`, and `rust.Str` under the Send/Sync policy.
+Wrapper/constructor/helper/object escapes and `throw` payloads are rejected when the escaped value
+still contains a borrow-only type; more complex source-provenance checks remain compiler follow-up
+work.
+
+See [Lifetime encoding design](lifetime-encoding.md).
+
+## How should I model Rust RAII guards?
+
+Use scoped callbacks for simple lexical guards, and extern Rust islands for lifetime-heavy APIs.
+
+`rust.concurrent.Mutexes.withRef/withMut` and `rust.concurrent.RwLocks.withRead/withWrite` keep the
+real Rust guard inside HXRT and pass a scoped `rust.Ref<T>` / `rust.MutRef<T>` token to the callback.
+Returning or storing that token is rejected by the borrow-region analyzer. File, socket, TLS,
+transaction, parser, or `unsafe` guard APIs should usually use a small typed extern facade that
+returns owned values.
+
+See [RAII guard and lifetime-island rules](raii-guard-lifetime-islands.md).
 
 ## Can I use Rust crates from Haxe?
 
@@ -166,6 +223,10 @@ Yes. The preferred path is typed interop:
 
 This keeps Haxe application code reviewable and keeps generated Rust close to normal Rust module
 ownership.
+
+For lifetime-heavy, HRTB, const-generic, macro-heavy, or `unsafe` Rust APIs, use the
+[Extern and lifetime-island cookbook](extern-lifetime-island-cookbook.md) pattern: put the Rust-only
+complexity in a tiny Rust module and expose a typed Haxe facade.
 
 ## Does Haxe `Dynamic` work?
 
@@ -180,6 +241,15 @@ boundaries, then decode into typed structures as soon as practical.
 
 See [Dynamic boundaries](dynamic-boundaries.md).
 
+## Do anonymous records work?
+
+Portable supports typed anonymous structural records by lowering general record literals to a small
+runtime object (`HxRef<hxrt::anon::Anon>`). Required fields are accessed through their declared Haxe
+types, including `Int` fields returned from helpers or decoded from `haxe.json.Value` helpers.
+
+Omitted `@:optional` fields also work: generated Rust checks whether the runtime anonymous object has
+the key and returns the field type's Haxe null representation when it is absent.
+
 ## How does `null` work?
 
 Haxe nullability is preserved where the active contract says it must be.
@@ -190,6 +260,10 @@ nullable value is the real contract.
 
 For Rust-native optional values, prefer typed option shapes such as `reflaxe.std.Option<T>` or
 `rust.Option<T>` depending on the layer you are writing.
+
+Reference-like Haxe values such as classes already have explicit runtime null handles. Generic APIs
+like `Array<Class>.shift()` may use `Option` internally, but typed `Null<Class>` callsites map the
+empty case back to that null handle.
 
 See [Null option](null-option.md).
 
@@ -232,4 +306,5 @@ backend issue.
 - Rust-first path: [Metal profile](metal-profile.md), [Portable vs metal authoring](portable-vs-metal-authoring.md),
   and [Interop](interop.md).
 - Production evaluation: [Production Readiness](production-readiness.md), [Feature support matrix](feature-support-matrix.md),
-  and [HXRT overhead benchmarks](perf-hxrt-overhead.md).
+  [HXRT overhead benchmarks](perf-hxrt-overhead.md), and
+  [Consumer runtime benchmark corpus](consumer-runtime-benchmark-corpus.md).

@@ -78,14 +78,14 @@ impl Exception {
 
     pub fn details(self_: &crate::HxRefCell<Exception>) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::haxe_exception::Exception> = self_.self_ref();
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+        return hxrt::string::HxString::from(format!(
             "{}{}{}",
             "Exception: ",
             crate::haxe_exception::Exception::to_string(&*__hx_this),
             crate::haxe_call_stack_call_stack_impl_::CallStackImpl::to_string(
                 crate::haxe_exception::Exception::get_stack(&*__hx_this)
             )
-        )));
+        ));
     }
 
     fn caught(
@@ -93,7 +93,7 @@ impl Exception {
     ) -> crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync> {
         return {
             let __tmp = crate::haxe_exception::Exception::new(
-                hxrt::string::HxString::from(hxrt::string::HxString::from("Exception")),
+                hxrt::string::HxString::from("Exception"),
                 crate::HxDynRef::<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>::null(),
                 value.clone(),
             );

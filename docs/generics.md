@@ -17,16 +17,18 @@ Haxe:
 - `class Box<T> { var value:T; ... }`
 
 Rust output shape (conceptual):
-- `pub struct Box<T: Clone> { value: T, ... }`
-- `impl<T: Clone> Box<T> { ... }`
+- `pub struct Box<T: Clone + Send + Sync> { value: T, ... }`
+- `impl<T: Clone + Send + Sync> Box<T> { ... }`
 
 Notes:
-- By default, **class-level** type parameters are emitted as Rust generics **with a `Clone` bound**.
+- By default, **class-level** type parameters are emitted as Rust generics **with `Clone + Send + Sync` bounds**.
   - This is a pragmatic consequence of the current runtime model (`HxRef<T>` / `HxDynRef<T>`) and
     Haxe’s value reuse semantics: methods often need to return values while borrowing `self`, so
     codegen typically uses `.clone()` for non-`Copy` data.
+  - `Send + Sync` keeps generated Haxe reference values compatible with the thread-safe runtime
+    handle model.
 - You can override bounds with `@:rustGeneric(...)` on the class:
-  - `@:rustGeneric(["T: Clone + std::fmt::Debug"]) class Box<T> { ... }`
+  - `@:rustGeneric(["T: Clone + Send + Sync + std::fmt::Debug"]) class Box<T> { ... }`
 
 ### Generic methods / functions
 
@@ -38,8 +40,18 @@ Rust output shape (conceptual):
 
 Notes:
 - For **function-level** generics, reflaxe.rust does **not** add default bounds.
+- If a method signature mentions a generated class payload whose type parameter already has bounds,
+  codegen propagates those bounds onto the method generic declaration. For example,
+  `static function make<T>(value:T):Payload<T>` emits `fn make<T: Clone + Send + Sync>(...)`
+  because `Payload<T>` itself requires those bounds.
 - If codegen for a specific function requires bounds, specify them explicitly:
   - `@:rustGeneric("T: Clone") static function f<T>(x:T):T return x;`
+
+Evidence:
+
+- `test/snapshot/generic_function_type_params` keeps unconstrained `Option<T>` helpers bare.
+- `test/snapshot/generic_helper_payload_bounds` proves helper methods returning/reading a generated
+  class payload propagate the payload bounds into the Rust helper signature.
 
 ### Generic interfaces (traits)
 
@@ -47,18 +59,20 @@ Haxe:
 - `interface IGet<T> { function get():T; }`
 
 Rust output shape (conceptual):
-- `pub trait IGet<T: Clone> { fn get(&self) -> T; }`
+- `pub trait IGet<T: Clone + Send + Sync> { fn get(&self) -> T; }`
 - `type IGetObj<T> = HxDynRef<dyn IGet<T>>`
 
 Notes:
-- Trait methods use `&self`; returning `T` by value implies cloning/copying. We default `T: Clone` for interface type params to keep the surface usable.
+- Trait methods use `&self`; returning `T` by value implies cloning/copying. We default
+  `T: Clone + Send + Sync` for interface type params to keep the surface usable with the runtime's
+  shared reference handles.
 
 ### Generic base-class polymorphism (trait objects)
 
 When a class has subclasses, reflaxe.rust emits a companion trait `<Base>Trait` for dynamic dispatch:
 
 Rust output shape (conceptual):
-- `pub trait BaseTrait<T: Clone> { ... }`
+- `pub trait BaseTrait<T: Clone + Send + Sync> { ... }`
 - `HxDynRef<dyn BaseTrait<T>>` is used where Haxe types a value as `Base<T>`.
 
 ### Inherited method shims

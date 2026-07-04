@@ -63,26 +63,19 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 
 fn main() {
     let http: crate::HxRef<crate::probe_http::ProbeHttp> = crate::probe_http::ProbeHttp::new();
-    crate::probe_http::ProbeHttp::emit(
-        &*http,
-        hxrt::string::HxString::from(hxrt::string::HxString::from("ok")),
-    );
+    crate::probe_http::ProbeHttp::emit(&*http, hxrt::string::HxString::from("ok"));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}{}",
         ({
             let __b = http.borrow();
             __b.seen_data.clone()
         })
-        .join(hxrt::string::HxString::from(hxrt::string::HxString::from(
-            ","
-        ))),
+        .join(hxrt::string::HxString::from(",")),
         "|",
         ({
             let __b = http.borrow();
             __b.seen_bytes.clone()
         })
-        .join(hxrt::string::HxString::from(hxrt::string::HxString::from(
-            ","
-        )))
+        .join(hxrt::string::HxString::from(","))
     ))));
 }

@@ -13,7 +13,7 @@ impl Impl {
     }
 
     pub fn name(_self_: &crate::HxRefCell<Impl>) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from("impl"));
+        return hxrt::string::HxString::from("impl");
     }
 }
 

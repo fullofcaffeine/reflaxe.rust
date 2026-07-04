@@ -4,9 +4,9 @@ static __HX_STATIC_CHARS: std::sync::OnceLock<hxrt::cell::HxCell<hxrt::string::H
     std::sync::OnceLock::new();
 fn __hx_static_cell_chars() -> &'static hxrt::cell::HxCell<hxrt::string::HxString> {
     __HX_STATIC_CHARS.get_or_init(|| {
-        hxrt::cell::HxCell::new(hxrt::string::HxString::from(hxrt::string::HxString::from(
+        hxrt::cell::HxCell::new(hxrt::string::HxString::from(
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
-        )))
+        ))
     })
 }
 pub(crate) fn __hx_static_get_chars() -> hxrt::string::HxString {

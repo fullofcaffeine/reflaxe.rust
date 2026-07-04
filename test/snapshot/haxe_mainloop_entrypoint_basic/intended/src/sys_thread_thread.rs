@@ -79,7 +79,7 @@ impl Thread {
     pub fn read_message_string(block: bool) -> hxrt::string::HxString {
         let raw: hxrt::dynamic::Dynamic = crate::sys_thread_thread::Thread::read_message(block);
         if raw.is_null() {
-            return hxrt::string::HxString::from(hxrt::string::HxString::null());
+            return hxrt::string::HxString::null();
         }
         if {
             let __dyn = raw.clone();
@@ -98,7 +98,7 @@ impl Thread {
                 }
             });
         }
-        return hxrt::string::HxString::from(hxrt::string::HxString::null());
+        return hxrt::string::HxString::null();
     }
 
     fn process_events() {

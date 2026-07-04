@@ -66,9 +66,9 @@ fn main() {
     crate::sys::Sys::println(hxrt::dynamic::from(xs.lastIndexOf(1, Some(2))));
     crate::sys::Sys::println(hxrt::dynamic::from(xs.contains(2)));
     crate::sys::Sys::println(hxrt::dynamic::from(xs.remove(1)));
-    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(xs.join(
-        hxrt::string::HxString::from(hxrt::string::HxString::from(",")),
-    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(
+        xs.join(hxrt::string::HxString::from(",")),
+    )));
     xs.sort({
         let __rc: crate::HxRc<dyn Fn(i32, i32) -> i32 + Send + Sync> =
             crate::HxRc::new(move |a: i32, b: i32| {
@@ -76,7 +76,7 @@ fn main() {
             });
         crate::HxDynRef::new(__rc)
     });
-    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(xs.join(
-        hxrt::string::HxString::from(hxrt::string::HxString::from(",")),
-    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(
+        xs.join(hxrt::string::HxString::from(",")),
+    )));
 }

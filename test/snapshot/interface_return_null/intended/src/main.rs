@@ -68,11 +68,7 @@ fn missing() -> crate::HxRc<dyn crate::service::Service + Send + Sync> {
 fn describe(
     service: crate::HxRc<dyn crate::service::Service + Send + Sync>,
 ) -> hxrt::string::HxString {
-    return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
-        "{}{}",
-        "service:",
-        service.name()
-    )));
+    return hxrt::string::HxString::from(format!("{}{}", "service:", service.name()));
 }
 
 fn main() {

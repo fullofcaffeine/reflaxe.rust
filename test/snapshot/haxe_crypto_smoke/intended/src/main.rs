@@ -74,9 +74,7 @@ fn main() {
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "sha256=",
-        crate::haxe_crypto_sha256::Sha256::encode(hxrt::string::HxString::from(
-            hxrt::string::HxString::from("hello")
-        ))
+        crate::haxe_crypto_sha256::Sha256::encode(hxrt::string::HxString::from("hello"))
     ))));
     let b: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRef::new(hxrt::bytes::Bytes::of_string(
         hxrt::string::HxString::from("hi").as_str(),
@@ -103,7 +101,7 @@ fn main() {
                     + Send
                     + Sync,
             >::null(),
-            hxrt::string::HxString::from(hxrt::string::HxString::null()),
+            hxrt::string::HxString::null(),
         ));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",

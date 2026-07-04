@@ -124,34 +124,23 @@ fn decode_todo(row: hxrt::dynamic::Dynamic) -> crate::HxRef<hxrt::anon::Anon> {
 
 fn main() {
     let cnx: crate::HxRc<dyn crate::sys_db_connection::Connection + Send + Sync> =
-        crate::sys_db_sqlite::Sqlite::open(hxrt::string::HxString::from(
-            hxrt::string::HxString::from(":memory:"),
-        ));
-    cnx.request(hxrt::string::HxString::from(hxrt::string::HxString::from("CREATE TABLE todo (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, done INTEGER NOT NULL)")));
-    cnx.request(hxrt::string::HxString::from(hxrt::string::HxString::from(
-        format!(
-            "{}{}{}",
-            "INSERT INTO todo (name, done) VALUES (",
-            cnx.quote(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                "bootstrap reflaxe.rust"
-            ))),
-            ", 1)"
-        ),
+        crate::sys_db_sqlite::Sqlite::open(hxrt::string::HxString::from(":memory:"));
+    cnx.request(hxrt::string::HxString::from("CREATE TABLE todo (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, done INTEGER NOT NULL)"));
+    cnx.request(hxrt::string::HxString::from(format!(
+        "{}{}{}",
+        "INSERT INTO todo (name, done) VALUES (",
+        cnx.quote(hxrt::string::HxString::from("bootstrap reflaxe.rust")),
+        ", 1)"
     )));
-    cnx.request(hxrt::string::HxString::from(hxrt::string::HxString::from(
-        format!(
-            "{}{}{}",
-            "INSERT INTO todo (name, done) VALUES (",
-            cnx.quote(hxrt::string::HxString::from(hxrt::string::HxString::from(
-                "ship sys.db sqlite"
-            ))),
-            ", 0)"
-        ),
+    cnx.request(hxrt::string::HxString::from(format!(
+        "{}{}{}",
+        "INSERT INTO todo (name, done) VALUES (",
+        cnx.quote(hxrt::string::HxString::from("ship sys.db sqlite")),
+        ", 0)"
     )));
-    let rs: crate::HxRc<dyn crate::sys_db_result_set::ResultSet + Send + Sync> =
-        cnx.request(hxrt::string::HxString::from(hxrt::string::HxString::from(
-            "SELECT id, name, done FROM todo ORDER BY id",
-        )));
+    let rs: crate::HxRc<dyn crate::sys_db_result_set::ResultSet + Send + Sync> = cnx.request(
+        hxrt::string::HxString::from("SELECT id, name, done FROM todo ORDER BY id"),
+    );
     let fields: hxrt::array::Array<hxrt::string::HxString> = rs.get_fields_names();
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
@@ -162,11 +151,9 @@ fn main() {
         "{}{}",
         "fields=",
         if fields.is_null() {
-            hxrt::string::HxString::from(hxrt::string::HxString::from("null"))
+            hxrt::string::HxString::from("null")
         } else {
-            hxrt::string::HxString::from(hxrt::string::HxString::from(fields.join(
-                hxrt::string::HxString::from(hxrt::string::HxString::from(",")),
-            )))
+            hxrt::string::HxString::from(fields.join(hxrt::string::HxString::from(",")))
         }
     ))));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(

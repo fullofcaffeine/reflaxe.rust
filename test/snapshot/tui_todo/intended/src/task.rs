@@ -33,27 +33,27 @@ impl Task {
     pub fn line(self_: &crate::HxRefCell<Task>, selected: bool) -> hxrt::string::HxString {
         let __hx_this: crate::HxRef<crate::task::Task> = self_.self_ref();
         let sel: hxrt::string::HxString = hxrt::string::HxString::from(if selected {
-            hxrt::string::HxString::from(hxrt::string::HxString::from(">"))
+            hxrt::string::HxString::from(">")
         } else {
-            hxrt::string::HxString::from(hxrt::string::HxString::from(" "))
+            hxrt::string::HxString::from(" ")
         });
         let mark: hxrt::string::HxString = hxrt::string::HxString::from(
             if {
                 let __b = __hx_this.borrow();
                 __b.done
             } {
-                hxrt::string::HxString::from(hxrt::string::HxString::from("x"))
+                hxrt::string::HxString::from("x")
             } else {
-                hxrt::string::HxString::from(hxrt::string::HxString::from(" "))
+                hxrt::string::HxString::from(" ")
             },
         );
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+        return hxrt::string::HxString::from(format!(
             "{}{}{}{}{}",
             &sel,
             "[",
             &mark,
             "] ",
             &__hx_this.borrow().text
-        )));
+        ));
     }
 }

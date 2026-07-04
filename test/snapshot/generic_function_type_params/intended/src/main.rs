@@ -78,9 +78,9 @@ fn render<T>(value: Option<T>) -> hxrt::string::HxString {
     return hxrt::string::HxString::from(match value {
         Option::Some(__p) => {
             let _ = __p;
-            hxrt::string::HxString::from(hxrt::string::HxString::from("some"))
+            hxrt::string::HxString::from("some")
         }
-        Option::None => hxrt::string::HxString::from(hxrt::string::HxString::from("none")),
+        Option::None => hxrt::string::HxString::from("none"),
     });
 }
 

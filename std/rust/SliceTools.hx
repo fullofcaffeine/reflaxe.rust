@@ -5,6 +5,7 @@ import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.Type;
 import haxe.macro.TypeTools;
+import reflaxe.rust.macros.BorrowRegionMacroGuard;
 #end
 
 /**
@@ -59,6 +60,7 @@ class SliceTools {
 	 * - Keep the slice inside the callback; never store/return it.
 	 * - Avoid nested conflicting borrows of the same array; the HXRT runtime keeps a scoped
 	 *   borrow/lock guard for the callback.
+	 * - The macro rejects direct escapes of the callback slice token before Rust code is emitted.
 	 */
 	public static macro function with(value:Expr, fn:Expr):Expr {
 		#if macro
@@ -98,6 +100,7 @@ class SliceTools {
 
 		var elemCt = TypeTools.toComplexType(elemT);
 		var argName = f.args[0].name;
+		BorrowRegionMacroGuard.rejectEscapingBorrow("rust.SliceTools.with", "rust.Slice<T>", argName, f.expr);
 
 		var decl:Expr = {
 			expr: EVars([

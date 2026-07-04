@@ -10,6 +10,12 @@
 - Prefer stable, typed interop surfaces:
   - declare Cargo deps via `@:rustCargo(...)` on `std/` types that need external crates
   - bind to hand-written Rust modules via `extern` + `@:native("crate::...")` instead of direct `__rust__` at callsites
+- Before adding or expanding `std/hxrt/**` externs or runtime-backed helpers, prove the value cannot
+  be produced by compiler lowering from typed AST/metadata/literals/existing target primitives.
+  Do not add `hxrt` APIs for compile-time-known facts such as optional field status, literal defaults,
+  static access paths, borrow-region syntax, or generic dispatch shape.
+  If runtime support is genuinely required, keep the extern narrow, typed, documented, and covered by
+  both runtime/helper tests and generated-callsite fixtures.
 
 - `__rust__` in `std/`:
   - Avoid `inline` functions that contain `untyped __rust__(...)`. Inlining can leak the injection into unrelated stdlib modules (including macro/eval typing) and break compilation or violate the “apps are pure” boundary rule.

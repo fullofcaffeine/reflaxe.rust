@@ -72,7 +72,7 @@ fn option_label(value: Option<i32>) -> hxrt::string::HxString {
                 ))
             })
         }
-        Option::None => hxrt::string::HxString::from(hxrt::string::HxString::from("none")),
+        Option::None => hxrt::string::HxString::from("none"),
     });
 }
 
@@ -108,9 +108,8 @@ fn main() {
         "opt.round=",
         option_label(round_option.clone())
     ))));
-    let portable_result: Result<i32, hxrt::string::HxString> = Result::Err(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("boom")),
-    );
+    let portable_result: Result<i32, hxrt::string::HxString> =
+        Result::Err(hxrt::string::HxString::from("boom"));
     let rust_result: Result<i32, hxrt::string::HxString> = portable_result;
     let round_result: Result<i32, hxrt::string::HxString> = rust_result;
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(

@@ -24,18 +24,18 @@ impl CallStackImpl {
     pub fn to_string(
         _stack: hxrt::array::Array<crate::haxe_stack_item::StackItem>,
     ) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(""));
+        return hxrt::string::HxString::from("");
     }
 
     pub(crate) fn exception_to_string(
         e: crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>,
     ) -> hxrt::string::HxString {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+        return hxrt::string::HxString::from(format!(
             "{}{}{}",
             "Exception: ",
             e.to_string(),
             crate::haxe_call_stack_call_stack_impl_::CallStackImpl::to_string(e.get_stack())
-        )));
+        ));
     }
 
     pub fn subtract(

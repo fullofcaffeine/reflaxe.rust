@@ -129,9 +129,30 @@ Bead: `haxe.rust-oo3.74.1`
 Bead: `haxe.rust-oo3.74.2`
 
 - Treat `Borrow.withRef`, `Borrow.withMut`, `SliceTools.with`, and `MutSliceTools.with` as the current lexical-region baseline.
-- Add or design static non-escape checks for `Ref`, `MutRef`, `Slice`, and `MutSlice`.
+- Current first-pass enforcement lives in the scoped helper macros. It rejects direct token escapes
+  for `Ref`, `MutRef`, `Slice`, `MutSlice`, and `Str` before Rust code is emitted.
+- Fixture evidence: `test/negative/metal_ref_escape`, `test/negative/metal_mut_ref_escape`,
+  `test/negative/metal_slice_escape`, `test/negative/metal_mut_slice_escape`,
+  `test/negative/metal_ref_return_escape`, `test/negative/metal_ref_assignment_escape`,
+  `test/negative/metal_ref_literal_escape`, `test/negative/metal_ref_closure_escape`, plus
+  `test/negative/send_sync_borrow_capture` and `test/negative/send_sync_str_capture` for spawned
+  borrow captures.
+- Typed-pass evidence (`haxe.rust-oo3.74.12`): `test/positive/borrow_alias_derivation`,
+  `test/negative/metal_ref_alias_tail_escape`, `test/negative/metal_ref_alias_return_escape`,
+  `test/negative/metal_ref_alias_field_storage_escape`,
+  `test/negative/metal_ref_alias_closure_storage_escape`, and
+  `test/negative/metal_slice_alias_return_escape`.
+- Mutable-overlap evidence (`haxe.rust-oo3.74.13`): `test/positive/borrow_mut_disjoint_scopes`,
+  `test/negative/metal_mut_ref_nested_overlap`, `test/negative/metal_mut_slice_nested_overlap`,
+  and `test/negative/metal_mut_region_sibling_overlap`.
+- Wrapper/throw evidence (`haxe.rust-oo3.74.14`): `test/positive/borrow_wrapper_derivation`,
+  `test/negative/metal_ref_option_wrapper_escape`, `test/negative/metal_ref_object_wrapper_escape`,
+  `test/negative/metal_ref_helper_wrapper_escape`, and `test/negative/metal_ref_throw_escape`.
+- Next typed-pass work: track closure variables with unknown lifetime, helper-call side effects,
+  and richer source-provenance checks beyond local same-source mutable scopes.
 - Evaluate phantom region types only where they improve diagnostics without making ordinary use painful.
-- Extend Send/Sync diagnostics so spawned closures reject borrow-only captures before generated Rust fails.
+- Keep Send/Sync diagnostics so spawned closures reject borrow-only captures before generated Rust fails.
+  The detailed contract is tracked in [Lifetime encoding design](lifetime-encoding.md).
 
 ### 3. Traits, Impl Blocks, And Generic Bounds
 
@@ -181,7 +202,19 @@ Bead: `haxe.rust-oo3.74.6`
 - Fail on rustfmt or warning regressions.
 - Fail on unexpected `hxrt`, `Dynamic`, or raw `ERaw` in metal-clean fixtures unless an explicit allowlist entry documents why the runtime/fallback is required.
 - Use deterministic baseline counters for clone noise, borrow-guard scope, and native-representation expectations; increases must fail unless the baseline is intentionally updated with rationale and fixture evidence.
-- Connect this to the existing benchmark-corpus bead `haxe.rust-oo3.73`.
+- Slice-view evidence (`haxe.rust-oo3.74.15`): `scripts/ci/check-metal-policy.sh` compiles
+  `test/snapshot/rust_array_slice_views` and checks that `SliceTools.with(Array<T>)` /
+  `MutSliceTools.with(Array<T>)` route through `ArrayBorrow` into `hxrt::array::with_slice` /
+  `with_mut_slice`, whose helper bodies borrow via `as_slice` / `as_mut_slice` without `clone()` or
+  `to_vec()` materialization.
+- Benchmark-corpus evidence (`haxe.rust-oo3.73`): [Consumer runtime benchmark corpus](consumer-runtime-benchmark-corpus.md)
+  defines the product-neutral DTO/codecs, JSON/schema validation, process/tool shim, state
+  transition, async/runtime, and no-runtime lower-bound candidates that can feed future metal output
+  gates without downstream-specific assumptions.
+- Idiom-count evidence (`haxe.rust-oo3.74.6`): `scripts/ci/check-metal-idiom-counts.sh` compiles
+  curated Option/Result/Vec, slice-view, portable-facade, and no-hxrt fixtures and compares
+  deterministic clone/borrow/hxrt/Dynamic/raw fallback counters against
+  `scripts/ci/metal-idiom-baseline.json`.
 
 ### 8. Extern And Lifetime-Island Cookbook
 
@@ -189,7 +222,12 @@ Bead: `haxe.rust-oo3.74.7`
 
 - Document how to bind Rust APIs that need lifetimes, HRTB, const generics, macro-heavy setup, or unsafe internals.
 - Show the pattern: handwritten Rust module, typed Haxe extern/facade, Cargo metadata, tests.
-- Include at least one snapshot/example that exercises a lifetime-heavy helper through a typed facade.
+- Evidence: `docs/extern-lifetime-island-cookbook.md` and `test/snapshot/metal_extern_lifetime_island`
+  exercise a lifetime-heavy helper through a typed facade.
+- RAII guard evidence (`haxe.rust-oo3.74.16`): `docs/raii-guard-lifetime-islands.md`,
+  `test/positive/metal_raii_guard_scoped`, and `test/negative/metal_raii_guard_escape` define the
+  split between scoped lock guard callbacks and extern islands for file/socket/transaction-style
+  guards.
 
 ### 9. Capability-Driven Portable Facades
 
@@ -204,11 +242,11 @@ Bead: `haxe.rust-oo3.74.9`
   eligibility.
 - Require deterministic fallback reports that explain every runtime dependency and make
   `rust_no_hxrt` failures actionable.
-- Do not close this bead on docs alone. Closure requires at least one concrete compiler/report
-  fixture that proves consumed facade surfaces, native representation decisions, or deterministic
+- Closure was intentionally not docs-only: the bead closed only after concrete compiler/report
+  fixtures proved consumed facade surfaces, native representation decisions, and deterministic
   runtime fallback reasons.
 
-Required implementation artifacts:
+Closure implementation artifacts:
 
 - `SurfaceContractRegistry` or equivalent: classifies ordinary Haxe, admitted portable facade,
   Rust-native, and metal-island surfaces by stable IDs.
@@ -254,10 +292,10 @@ Current recovered inventory before adding this milestone:
 - 13 ready.
 - 1 blocked.
 
-The open pre-existing beads remain relevant. They are concrete compiler/runtime gaps rather than stale planning work:
+The remaining open pre-existing beads stay relevant. They are concrete compiler/runtime gaps rather than stale planning work:
 
-- anonymous structure/runtime correctness: `haxe.rust-i8li`, `haxe.rust-kilb`, `haxe.rust-yrs1`
-- option/null/default lowering: `haxe.rust-362`, `haxe.rust-3oju`
+- anonymous structure/runtime correctness is now covered for required typed fields (`test/snapshot/anon_required_field_types`) and omitted optional fields (`test/snapshot/anon_optional_fields`)
+- option/null/default lowering: `haxe.rust-362`
 - ownership/clone/assign-op lowering: `haxe.rust-fzl`, `haxe.rust-ojj`
 - generic bounds/static path/codegen gaps: `haxe.rust-akfm`, `haxe.rust-3f0g`
 - std/codegen missing lowers: `haxe.rust-7xia`, `haxe.rust-fz20`, `haxe.rust-gn0`

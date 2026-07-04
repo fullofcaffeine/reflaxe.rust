@@ -60,11 +60,11 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 
 fn main() {
     crate::sys::Sys::put_env(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("__REFLAXE_RUST_MISSING_ENV__")),
-        hxrt::string::HxString::from(hxrt::string::HxString::null()),
+        hxrt::string::HxString::from("__REFLAXE_RUST_MISSING_ENV__"),
+        hxrt::string::HxString::null(),
     );
     let missing: hxrt::string::HxString = hxrt::string::HxString::from(crate::sys::Sys::get_env(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("__REFLAXE_RUST_MISSING_ENV__")),
+        hxrt::string::HxString::from("__REFLAXE_RUST_MISSING_ENV__"),
     ));
     crate::sys::Sys::println(if missing.is_null() {
         hxrt::dynamic::from(hxrt::string::HxString::from("<null>"))
@@ -72,11 +72,11 @@ fn main() {
         hxrt::dynamic::from(missing)
     });
     crate::sys::Sys::put_env(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("__REFLAXE_RUST_PRESENT_ENV__")),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("present-value")),
+        hxrt::string::HxString::from("__REFLAXE_RUST_PRESENT_ENV__"),
+        hxrt::string::HxString::from("present-value"),
     );
     let present: hxrt::string::HxString = hxrt::string::HxString::from(crate::sys::Sys::get_env(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("__REFLAXE_RUST_PRESENT_ENV__")),
+        hxrt::string::HxString::from("__REFLAXE_RUST_PRESENT_ENV__"),
     ));
     crate::sys::Sys::println(if present.is_null() {
         hxrt::dynamic::from(hxrt::string::HxString::from("<null>"))
@@ -84,7 +84,7 @@ fn main() {
         hxrt::dynamic::from(present)
     });
     crate::sys::Sys::put_env(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("__REFLAXE_RUST_PRESENT_ENV__")),
-        hxrt::string::HxString::from(hxrt::string::HxString::null()),
+        hxrt::string::HxString::from("__REFLAXE_RUST_PRESENT_ENV__"),
+        hxrt::string::HxString::null(),
     );
 }

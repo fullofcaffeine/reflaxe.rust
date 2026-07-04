@@ -59,26 +59,25 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 }
 
 fn main() {
-    let value: hxrt::string::HxString =
-        hxrt::string::HxString::from(hxrt::string::HxString::from("alpha/beta/alpha"));
+    let value: hxrt::string::HxString = hxrt::string::HxString::from("alpha/beta/alpha");
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::last_index_of(
         value.as_str(),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("alpha")).as_str(),
+        hxrt::string::HxString::from("alpha").as_str(),
         None,
     )));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::last_index_of(
         value.as_str(),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("alpha")).as_str(),
+        hxrt::string::HxString::from("alpha").as_str(),
         Some(7),
     )));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::last_index_of(
         value.as_str(),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("/")).as_str(),
+        hxrt::string::HxString::from("/").as_str(),
         None,
     )));
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::last_index_of(
         value.as_str(),
-        hxrt::string::HxString::from(hxrt::string::HxString::from("missing")).as_str(),
+        hxrt::string::HxString::from("missing").as_str(),
         None,
     )));
 }

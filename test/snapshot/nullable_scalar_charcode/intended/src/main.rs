@@ -60,13 +60,13 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 
 fn describe(value: Option<i32>) -> hxrt::string::HxString {
     if value.is_none() {
-        return hxrt::string::HxString::from(hxrt::string::HxString::from("none"));
+        return hxrt::string::HxString::from("none");
     }
-    return hxrt::string::HxString::from(hxrt::string::HxString::from(format!(
+    return hxrt::string::HxString::from(format!(
         "{}{}",
         "value:",
         hxrt::dynamic::from(value).to_haxe_string()
-    )));
+    ));
 }
 
 fn same_as_seven(value: Option<i32>) -> bool {
@@ -78,8 +78,7 @@ fn not_seven(value: Option<i32>) -> bool {
 }
 
 fn quote(value: hxrt::string::HxString) -> hxrt::string::HxString {
-    let mut out: hxrt::string::HxString =
-        hxrt::string::HxString::from(hxrt::string::HxString::from("\""));
+    let mut out: hxrt::string::HxString = hxrt::string::HxString::from("\"");
     {
         let mut _g: i32 = 0;
         let _g1: i32 = hxrt::string::len(value.as_str());
@@ -132,7 +131,7 @@ fn quote(value: hxrt::string::HxString) -> hxrt::string::HxString {
             }
         }
     }
-    return hxrt::string::HxString::from(hxrt::string::HxString::from(format!("{}{}", &out, "\"")));
+    return hxrt::string::HxString::from(format!("{}{}", &out, "\""));
 }
 
 fn parse_hex_byte(value: hxrt::string::HxString) -> i32 {
@@ -210,18 +209,18 @@ fn main() {
         hxrt::dynamic::from(n).to_haxe_string()
     ))));
     crate::sys::Sys::println(hxrt::dynamic::from(quote(hxrt::string::HxString::from(
-        hxrt::string::HxString::from("a\n\"\\\t"),
+        "a\n\"\\\t",
     ))));
     crate::sys::Sys::println(hxrt::dynamic::from(parse_hex_byte(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("ff")),
+        hxrt::string::HxString::from("ff"),
     )));
     crate::sys::Sys::println(hxrt::dynamic::from(parse_hex_byte(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("ffff")),
+        hxrt::string::HxString::from("ffff"),
     )));
     crate::sys::Sys::println(hxrt::dynamic::from(digit_value(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("7")),
+        hxrt::string::HxString::from("7"),
     )));
     crate::sys::Sys::println(hxrt::dynamic::from(digit_value(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("")),
+        hxrt::string::HxString::from(""),
     )));
 }

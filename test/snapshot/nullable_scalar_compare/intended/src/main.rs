@@ -77,14 +77,10 @@ fn maybe_float(value: bool) -> Option<f64> {
 }
 
 fn main() {
-    let some: Option<i32> = parsed(hxrt::string::HxString::from(hxrt::string::HxString::from(
-        "42",
-    )));
-    let none: Option<i32> = parsed(hxrt::string::HxString::from(hxrt::string::HxString::from(
-        "nope",
-    )));
+    let some: Option<i32> = parsed(hxrt::string::HxString::from("42"));
+    let none: Option<i32> = parsed(hxrt::string::HxString::from("nope"));
     assert_eq(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("some-lte")),
+        hxrt::string::HxString::from("some-lte"),
         {
             let __hx_opt = some;
             let __hx_plain = 42;
@@ -96,7 +92,7 @@ fn main() {
         true,
     );
     assert_eq(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("some-gt")),
+        hxrt::string::HxString::from("some-gt"),
         {
             let __hx_opt = some;
             let __hx_plain = 41;
@@ -108,7 +104,7 @@ fn main() {
         true,
     );
     assert_eq(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("none-lte")),
+        hxrt::string::HxString::from("none-lte"),
         {
             let __hx_opt = none;
             let __hx_plain = 0;
@@ -120,7 +116,7 @@ fn main() {
         false,
     );
     assert_eq(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("plain-lt-some")),
+        hxrt::string::HxString::from("plain-lt-some"),
         {
             let __hx_plain = 41;
             let __hx_opt = some;
@@ -132,7 +128,7 @@ fn main() {
         true,
     );
     assert_eq(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("plain-lt-none")),
+        hxrt::string::HxString::from("plain-lt-none"),
         {
             let __hx_plain = 0;
             let __hx_opt = none;
@@ -144,7 +140,7 @@ fn main() {
         false,
     );
     assert_eq(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("nullable-int-lt-float")),
+        hxrt::string::HxString::from("nullable-int-lt-float"),
         {
             let __hx_opt = some;
             let __hx_plain = 42.5;
@@ -156,7 +152,7 @@ fn main() {
         true,
     );
     assert_eq(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("float-lt-nullable-int")),
+        hxrt::string::HxString::from("float-lt-nullable-int"),
         {
             let __hx_plain = 41.5;
             let __hx_opt = some;
@@ -168,7 +164,7 @@ fn main() {
         true,
     );
     assert_eq(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("nullable-float-gt-int")),
+        hxrt::string::HxString::from("nullable-float-gt-int"),
         {
             let __hx_opt = maybe_float(true);
             let __hx_plain = 1;
@@ -180,7 +176,7 @@ fn main() {
         true,
     );
     assert_eq(
-        hxrt::string::HxString::from(hxrt::string::HxString::from("nullable-float-none")),
+        hxrt::string::HxString::from("nullable-float-none"),
         {
             let __hx_opt = maybe_float(false);
             let __hx_plain = 1;

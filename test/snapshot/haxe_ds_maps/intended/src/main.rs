@@ -67,48 +67,34 @@ fn main() {
     );
     let sm: crate::HxRef<crate::haxe_ds_string_map::StringMap<i32>> =
         crate::haxe_ds_string_map::StringMap::<i32>::new();
-    crate::haxe_ds_string_map::StringMap::set(
-        &*sm,
-        hxrt::string::HxString::from(hxrt::string::HxString::from("a")),
-        1,
-    );
-    crate::haxe_ds_string_map::StringMap::set(
-        &*sm,
-        hxrt::string::HxString::from(hxrt::string::HxString::from("b")),
-        2,
-    );
+    crate::haxe_ds_string_map::StringMap::set(&*sm, hxrt::string::HxString::from("a"), 1);
+    crate::haxe_ds_string_map::StringMap::set(&*sm, hxrt::string::HxString::from("b"), 2);
     println!(
         "{}",
         hxrt::dynamic::from(crate::haxe_ds_string_map::StringMap::exists(
             &*sm,
-            hxrt::string::HxString::from(hxrt::string::HxString::from("a"))
+            hxrt::string::HxString::from("a")
         ))
     );
     println!(
         "{}",
         hxrt::dynamic::from(crate::haxe_ds_string_map::StringMap::exists(
             &*sm,
-            hxrt::string::HxString::from(hxrt::string::HxString::from("z"))
+            hxrt::string::HxString::from("z")
         ))
     );
     println!(
         "{}",
         hxrt::dynamic::from(
-            crate::haxe_ds_string_map::StringMap::get(
-                &*sm,
-                hxrt::string::HxString::from(hxrt::string::HxString::from("a"))
-            )
-            .is_none()
+            crate::haxe_ds_string_map::StringMap::get(&*sm, hxrt::string::HxString::from("a"))
+                .is_none()
         )
     );
     println!(
         "{}",
         hxrt::dynamic::from(
-            crate::haxe_ds_string_map::StringMap::get(
-                &*sm,
-                hxrt::string::HxString::from(hxrt::string::HxString::from("z"))
-            )
-            .is_none()
+            crate::haxe_ds_string_map::StringMap::get(&*sm, hxrt::string::HxString::from("z"))
+                .is_none()
         )
     );
     for k in crate::haxe_ds_string_map::StringMap::keys(&*sm) {
@@ -148,14 +134,14 @@ fn main() {
         "{}",
         hxrt::dynamic::from(crate::haxe_ds_string_map::StringMap::remove(
             &*sm,
-            hxrt::string::HxString::from(hxrt::string::HxString::from("a"))
+            hxrt::string::HxString::from("a")
         ))
     );
     println!(
         "{}",
         hxrt::dynamic::from(crate::haxe_ds_string_map::StringMap::exists(
             &*sm,
-            hxrt::string::HxString::from(hxrt::string::HxString::from("a"))
+            hxrt::string::HxString::from("a")
         ))
     );
     let sm2: crate::HxRef<crate::haxe_ds_string_map::StringMap<i32>> =
@@ -164,7 +150,7 @@ fn main() {
         "{}",
         hxrt::dynamic::from(crate::haxe_ds_string_map::StringMap::exists(
             &*sm2,
-            hxrt::string::HxString::from(hxrt::string::HxString::from("b"))
+            hxrt::string::HxString::from("b")
         ))
     );
     crate::haxe_ds_string_map::StringMap::clear(&*sm);
@@ -172,7 +158,7 @@ fn main() {
         "{}",
         hxrt::dynamic::from(crate::haxe_ds_string_map::StringMap::exists(
             &*sm,
-            hxrt::string::HxString::from(hxrt::string::HxString::from("b"))
+            hxrt::string::HxString::from("b")
         ))
     );
     println!(

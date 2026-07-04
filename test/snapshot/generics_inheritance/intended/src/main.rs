@@ -68,7 +68,7 @@ fn main() {
             __tmp.as_arc_opt().unwrap().clone();
         __up
     };
-    crate::sys::Sys::println(hxrt::dynamic::from(b.id(hxrt::string::HxString::from(
-        hxrt::string::HxString::from("hi"),
-    ))));
+    crate::sys::Sys::println(hxrt::dynamic::from(
+        b.id(hxrt::string::HxString::from("hi")),
+    ));
 }
