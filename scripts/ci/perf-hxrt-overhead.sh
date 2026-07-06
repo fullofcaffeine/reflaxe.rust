@@ -52,7 +52,7 @@ Environment:
   HXRT_PERF_PR_PORTABLE_METAL_HOT_LOOP_INPROC_MAX
                             PR hard-fail portable/metal hot_loop_inproc runtime convergence max ratio (default: 1.10)
   HXRT_PERF_PR_PORTABLE_METAL_BYTES_MAX
-                            PR hard-fail portable/metal bytes runtime convergence max ratio (default: 1.20)
+                            PR warning target for portable/metal bytes runtime convergence ratio (default: 1.20)
   HXRT_PERF_PR_PORTABLE_METAL_JSON_MAX
                             PR hard-fail portable/metal json runtime convergence max ratio (default: 1.25)
   HXRT_PERF_PR_PORTABLE_METAL_INT64_MAX
@@ -66,11 +66,16 @@ Environment:
   HXRT_PERF_NIGHTLY_PORTABLE_METAL_HOT_LOOP_INPROC_MAX
                             Nightly hard-fail portable/metal hot_loop_inproc runtime convergence max ratio (default: 1.08)
   HXRT_PERF_NIGHTLY_PORTABLE_METAL_BYTES_MAX
-                            Nightly hard-fail portable/metal bytes runtime convergence max ratio (default: 1.08)
+                            Nightly warning target for portable/metal bytes runtime convergence ratio (default: 1.08)
   HXRT_PERF_NIGHTLY_PORTABLE_METAL_JSON_MAX
                             Nightly hard-fail portable/metal json runtime convergence max ratio (default: 1.12)
   HXRT_PERF_NIGHTLY_PORTABLE_METAL_INT64_MAX
                             Nightly hard-fail portable/metal int64 runtime convergence max ratio (default: 1.08)
+
+Notes:
+  bytes vs pure-Rust runtime ratios are warning/artifact signals only because this microbench is
+  sensitive to runner scheduler/cache noise. The bytes portable/metal convergence ratio uses the
+  same warning/artifact policy. Hard gates still enforce bytes binary size.
 USAGE
 }
 
@@ -1481,9 +1486,11 @@ if (!updateBaseline) {
         runtimePct: activeGate.runtimeFailPct,
         sink: hardFailures,
       });
+      // bytes tracks a real stdlib-heavy hot path, but its runtime ratios are too
+      // scheduler/cache-sensitive to be release blockers on shared runners. Keep runtime in the
+      // warning stream and artifacts; hard-gate bytes size only.
       compareGroup("bytes_overhead", current.derived.bytesOverheadRatios, baselineDerived.bytesOverheadRatios, {
-        includeRuntime: true,
-        runtimeProfiles: ["metal"],
+        includeRuntime: false,
         sizePct: activeGate.sizeFailPct,
         runtimePct: activeGate.runtimeFailPct,
         sink: hardFailures,
@@ -1543,6 +1550,7 @@ const gateConvergenceChecks = activeGate == null ? {} : {
   bytesRuntimePortableVsMetal: {
     ratio: Number(current.derived.portableVsMetalConvergence.bytes.runtimeRatio),
     max: activeGate.portableMetalBytesMax,
+    hardGate: false,
   },
   jsonRuntimePortableVsMetal: {
     ratio: Number(current.derived.portableVsMetalConvergence.json.runtimeRatio),
@@ -1556,7 +1564,7 @@ const gateConvergenceChecks = activeGate == null ? {} : {
 
 for (const [key, check] of Object.entries(gateConvergenceChecks)) {
   check.pass = Number.isFinite(check.ratio) && Number.isFinite(check.max) && check.ratio <= check.max;
-  if (!updateBaseline && !check.pass) {
+  if (!updateBaseline && !check.pass && check.hardGate !== false) {
     hardFailures.push(
       `${activeGate.label}.portable_vs_metal.${key} ratio=${check.ratio.toFixed(6)} exceeds target=${check.max.toFixed(6)}`
     );
@@ -1729,7 +1737,7 @@ if (activeGate != null) {
       `${gateConvergenceChecks.hotLoopInprocRuntimePortableVsMetal?.pass ? "target met" : "target not met"})`
   );
   summaryLines.push(
-    `- [gate] bytes runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.bytes.runtimeRatio)}x ` +
+    `- [warning-only] bytes runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.bytes.runtimeRatio)}x ` +
       `(target <= ${activeGate.portableMetalBytesMax.toFixed(3)}x, ` +
       `${gateConvergenceChecks.bytesRuntimePortableVsMetal?.pass ? "target met" : "target not met"})`
   );

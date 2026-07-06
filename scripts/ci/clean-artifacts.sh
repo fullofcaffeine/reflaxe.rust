@@ -26,11 +26,12 @@ usage() {
   cat <<'EOUSAGE'
 Usage: scripts/ci/clean-artifacts.sh [--outputs] [--cache] [--all] [--dry-run]
 
-Removes generated test/example artifacts and optional harness/perf cache dirs.
+Removes generated test/example artifacts and optional harness/perf/cache build dirs.
 
 Options:
   --outputs   Remove generated `out*` folders under snapshot, semantic-diff, and example cases.
-  --cache     Remove cache folders used by harness/perf scripts under `.cache/` and `test/.cache/`.
+  --cache     Remove cache folders used by harness/perf scripts under `.cache/` and `test/.cache/`,
+              plus Cargo target dirs produced by repo-level CI/tooling checks.
   --all       Same as `--outputs --cache`.
   --dry-run   Print what would be removed without deleting anything.
   -h, --help  Show this help text.
@@ -134,6 +135,15 @@ if [[ "$clean_cache" -eq 1 ]]; then
     -o -name 'perf-hxrt' \
     -o -name 'portable-native-import-diagnostics' \
   \) -print0 2>/dev/null || true)
+
+  for path in \
+    "$root_dir/target" \
+    "$root_dir/runtime/hxrt/target" \
+    "$root_dir/tools/hx/target"; do
+    if [[ -d "$path" ]]; then
+      paths+=("$path")
+    fi
+  done
 fi
 
 if [[ "${#paths[@]}" -eq 0 ]]; then

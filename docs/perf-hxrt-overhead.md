@@ -140,7 +140,7 @@ Default hard-fail thresholds:
   - portable/metal convergence caps:
     - `array` runtime `<= 1.20x`
     - `hot_loop_inproc` runtime `<= 1.10x`
-    - `bytes` runtime `<= 1.20x`
+    - `bytes` runtime warning target `<= 1.20x`
     - `json` runtime `<= 1.25x`
     - `int64` runtime `<= 1.20x`
 - `nightly`
@@ -149,9 +149,14 @@ Default hard-fail thresholds:
   - portable/metal convergence caps:
     - `array` runtime `<= 1.08x`
     - `hot_loop_inproc` runtime `<= 1.08x`
-    - `bytes` runtime `<= 1.08x`
+    - `bytes` runtime warning target `<= 1.08x`
     - `json` runtime `<= 1.12x`
     - `int64` runtime `<= 1.08x`
+
+The runtime regression budget applies only to runtime metrics that are release-blocking signals.
+`bytes` runtime ratios, including metal-vs-pure and portable-vs-metal convergence, remain
+warning/artifact signals because this microbench is sensitive to scheduler/cache noise on shared
+runners. Bytes size regressions are still hard-gated.
 
 Environment overrides:
 
@@ -204,6 +209,8 @@ Noise policy:
   - Runtime warning gate is focused on `metal`; portable/metal convergence is tracked explicitly for these stdlib-heavy microbenches.
 - `chat`: warning checks use profile-spread ratios (size + runtime), not pure-Rust parity.
 - PR/nightly hard failures are intentionally narrower than the warning stream:
+  - `bytes` runtime ratios stay warning-only because the benchmark is most useful as a trend signal
+    and can overstate scheduler/cache effects; hard gates still enforce bytes size.
   - `int64` stays warning-only because it is a portability-cost tracker, not a near-native KPI.
   - `chat` stays warning-only because it is a startup-weighted example spread metric and is too sensitive to runner granularity to be a trustworthy release blocker.
 
