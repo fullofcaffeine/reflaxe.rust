@@ -1,3 +1,10 @@
+# [0.76.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.75.0...v0.76.0) (2026-07-07)
+
+
+### Features
+
+* add native udp loopback facade ([76b1d17](https://github.com/fullofcaffeine/reflaxe.rust/commit/76b1d17247f6ca96d679ae97dc1db52f3a7ddac4))
+
 # [0.75.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.74.0...v0.75.0) (2026-07-07)
 
 
