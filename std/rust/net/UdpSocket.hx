@@ -15,6 +15,8 @@ import rust.Vec;
 	- A typed owner for the narrow M56 blocking UDP localhost facade.
 	- `localPort()` reports the concrete port assigned by the OS, which makes `port = 0` fixtures
 	  deterministic without hardcoding a port.
+	- `localAddr()` reports the concrete M60 `SocketAddr`, allowing callers to pass the address
+	  directly into `sendUtf8To(...)` or `sendBytesTo(...)`.
 	- `sendUtf8ToLocalhost(...)` sends one UTF-8 datagram to `127.0.0.1:<port>`.
 	- `recvUtf8(...)` receives one datagram into an explicitly sized buffer and decodes it as UTF-8.
 	- `sendBytesToLocalhost(...)` and `recvBytes(...)` expose raw datagram payloads as
@@ -36,12 +38,18 @@ import rust.Vec;
 @:native("crate::native_udp_tools::UdpSocket")
 @:rustExtraSrc("rust/native/native_udp_tools.rs")
 extern class UdpSocket {
+	public function localAddr():Result<SocketAddr, String>;
+	public function localAddrDetailed():Result<SocketAddr, SocketError>;
 	public function localPort():Result<Int, String>;
 	public function localPortDetailed():Result<Int, SocketError>;
+	public function sendUtf8To(payload:String, addr:SocketAddr):Result<Int, String>;
+	public function sendUtf8ToDetailed(payload:String, addr:SocketAddr):Result<Int, SocketError>;
 	public function sendUtf8ToLocalhost(payload:String, port:Int):Result<Int, String>;
 	public function sendUtf8ToLocalhostDetailed(payload:String, port:Int):Result<Int, SocketError>;
 	public function recvUtf8(maxBytes:Int):Result<String, String>;
 	public function recvUtf8Detailed(maxBytes:Int):Result<String, SocketError>;
+	public function sendBytesTo(payload:Vec<Int>, addr:SocketAddr):Result<Int, String>;
+	public function sendBytesToDetailed(payload:Vec<Int>, addr:SocketAddr):Result<Int, SocketError>;
 	public function sendBytesToLocalhost(payload:Vec<Int>, port:Int):Result<Int, String>;
 	public function sendBytesToLocalhostDetailed(payload:Vec<Int>, port:Int):Result<Int, SocketError>;
 	public function recvBytes(maxBytes:Int):Result<Vec<Int>, String>;

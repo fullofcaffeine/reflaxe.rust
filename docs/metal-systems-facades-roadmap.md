@@ -11,7 +11,8 @@ owned-command calls; M52 added the owned `CommandSpec` config record; M53 added 
 `CommandChild` live lifecycle handle; M55 added the first blocking localhost TCP facade; M56 added
 the first blocking localhost UDP datagram facade; M57 added opt-in typed `SocketError` records for
 TCP/UDP invalid-input, IO, and UTF-8 failures; M58 added UDP byte datagrams; M59 added TCP byte
-streams.
+streams; M60 added typed loopback `SocketAddr` values and a public no-hxrt metal networking
+example.
 
 ## Why
 
@@ -36,7 +37,7 @@ exceptions, or platform abstraction. Instead, add typed Rust-native surfaces bes
 | Paths and OS strings | `rust.PathBuf`, `rust.PathBufTools`, `rust.OsString`, and `rust.OsStringTools` exist with typed native helper modules. | Narrow metal paths can stay close to direct Rust. Portable nullable strings may still use `hxrt::string::HxString`. | Add borrowed `Path` / `OsStr` shapes and no-hxrt path fixtures as needed. |
 | File handles | Portable `sys.io.File*` uses `hxrt.fs.FileHandle`; `rust.fs.NativeFile` is an internal typing-only binding; `rust.fs.NativeFiles` is the first app-facing native helper facade. | `hxrt` is required for Haxe `Input` / `Output` handle semantics, but not for the current Rust-first owned/scoped file helper subset. | M43 first slice: expand the typed Rust-native file/path facade and keep its no-hxrt output evidence. |
 | Process handles | Portable `sys.io.Process` uses `hxrt.process.ProcessHandle`; `rust.process.NativeCommands` is the app-facing owned-command facade, `rust.process.CommandOutput` carries owned status/stdout/stderr, `rust.process.CommandEnv` carries typed environment operations, `rust.process.CommandSpec` carries one owned command config, `rust.process.CommandError` carries opt-in typed error categories, and `rust.process.CommandChild` carries the narrow live child lifecycle handle. | `hxrt` is justified for portable process streams and Haxe-style IO wrappers. The current Rust-first command facade stays no-hxrt by using explicit executable/args, explicit cwd/env set-remove-clear/cwd+env operations, one-shot owned stdin input, combined stdin+cwd+env operations, a typed owned config record, owned results, typed IO/stdin/UTF-8/lifecycle error records, and a narrow live child that supports write-and-close stdin, wait, and kill/wait. | Reusable stdin pipes, live stdout/stderr streams, detached handles, async process, shell fallback, and portable `Process` parity remain future work. |
-| Socket and TLS handles | `hxrt.net` / `hxrt.ssl` support portable sys surfaces and smoke fixtures. `rust.net.NativeTcp`, `rust.net.TcpListener`, and `rust.net.TcpStream` provide the first Rust-native blocking localhost TCP slice with UTF-8 and byte-stream payload methods; `rust.net.NativeUdp` and `rust.net.UdpSocket` provide the first Rust-native blocking localhost UDP datagram slice with UTF-8 and byte payload methods; `rust.net.SocketError` provides the first opt-in typed TCP/UDP error categories. | Runtime ownership is justified for portable sockets/TLS and platform-sensitive setup. The current Rust-first TCP and UDP facades stay no-hxrt by wrapping direct `std::net` handles for deterministic loopback proofs, typed byte validation, and typed invalid-input/IO/UTF-8 error records. | Broader host/address APIs, live stream adapters, async networking, TLS setup, richer socket taxonomy beyond the first categories, and portable `sys.net` parity remain future work. |
+| Socket and TLS handles | `hxrt.net` / `hxrt.ssl` support portable sys surfaces and smoke fixtures. `rust.net.NativeTcp`, `rust.net.TcpListener`, and `rust.net.TcpStream` provide the first Rust-native blocking localhost TCP slice with UTF-8 and byte-stream payload methods; `rust.net.NativeUdp` and `rust.net.UdpSocket` provide the first Rust-native blocking localhost UDP datagram slice with UTF-8 and byte payload methods; `rust.net.SocketAddr` carries typed loopback addresses across bind/connect/send APIs; `rust.net.SocketError` provides the first opt-in typed TCP/UDP error categories. | Runtime ownership is justified for portable sockets/TLS and platform-sensitive setup. The current Rust-first TCP and UDP facades stay no-hxrt by wrapping direct `std::net` handles for deterministic loopback proofs, typed loopback address values, typed byte validation, and typed invalid-input/IO/UTF-8 error records. `SocketAddr` is explicitly a `lowering-candidate` native facade helper, not a second runtime. | Broader host/address APIs, DNS, external networking, live stream adapters, async networking, TLS setup, richer socket taxonomy beyond the first categories, and portable `sys.net` parity remain future work. |
 | DB handles | `hxrt.db` supports current SQLite smoke and MySQL compile coverage. | Runtime-heavy today; DB row/statement values are still portable/sys shaped. | Defer until file/process API families broaden beyond the first no-hxrt slices; typed DB facade is not the next slice. |
 | RAII guards | Lock guards have scoped callbacks; docs define extern-island selection for heavier guards. | Simple lexical guards are scoped; complex guard internals stay in Rust islands. | File APIs should prefer owned-result helpers or scoped callbacks, not storable lifetime tokens. |
 
@@ -329,6 +330,41 @@ This is still not portable `haxe.io.Bytes`, portable `sys.net.Socket`, arbitrary
 networking, TLS, async networking, DNS, live stream adapters, reusable stream adapters, or a
 complete socket error hierarchy.
 
+## M60 Typed Socket Address Slice
+
+M60 adds `rust.net.SocketAddr` to the existing localhost TCP/UDP facade. It does not broaden the
+networking contract beyond loopback.
+
+Why this slice follows TCP byte streams:
+
+- M55-M59 proved direct TCP/UDP handle ownership, typed errors, and typed byte payloads without
+  `hxrt`, but call sites still needed port-oriented helpers when moving from an OS-assigned bind to
+  a later connect/send
+- a typed address value lets `localAddr()` flow into `connectDetailed(...)`, `bindDetailed(...)`, and
+  `sendBytesToDetailed(...)` without string parsing, raw Rust snippets, or arbitrary host support
+- loopback-only addresses keep the fixture deterministic in CI and avoid DNS, external networking,
+  `ToSocketAddrs` polymorphism, or a broader portable socket promise
+
+The API family is:
+
+- `SocketAddr.localhost(...)` and `SocketAddr.localhostDetailed(...)` construct a loopback address
+  from a validated port
+- `SocketAddr.port()` exposes the assigned port for diagnostics and handoff
+- `TcpListener.localAddr()` / `localAddrDetailed()` and `UdpSocket.localAddr()` /
+  `localAddrDetailed()` return typed addresses
+- `NativeTcp.bind(...)` / `bindDetailed(...)` and `NativeTcp.connect(...)` /
+  `connectDetailed(...)` accept typed addresses
+- `NativeUdp.bind(...)` / `bindDetailed(...)` and `UdpSocket.sendUtf8To(...)` /
+  `sendBytesTo(...)` plus their `Detailed` variants accept typed addresses
+
+The helper backing `SocketAddr` is classified as `lowering-candidate` under the native facade policy:
+it is allowed for M60 because the current compiler cannot declare the wrapper field and crate-private
+`std::net::SocketAddr` conversions cleanly from Haxe externs, while `localhost(...)` and `port()` are
+simple enough to revisit with compiler-generated native wrappers or direct lowering later.
+
+This is still not portable `sys.net.Socket`, arbitrary host/address networking, DNS, external
+network access, TLS, async networking, live stream adapters, or a complete socket abstraction.
+
 ## Contract Fixtures
 
 The M43 fixture bead added the initial contract before implementation:
@@ -361,6 +397,8 @@ The M43 fixture bead added the initial contract before implementation:
 | `scripts/ci/check-metal-policy.sh` UDP byte output-shape case | Checks for avoidable `hxrt`, `Dynamic`, raw, portable socket/byte-buffer paths, direct `std::net::UdpSocket` send/receive wiring, `Vec<i32>`/`Vec<u8>` conversion, and invalid byte mapping to `SocketError`. |
 | `test/positive/metal_no_hxrt_tcp_bytes` | Proves typed TCP byte-stream send/read plus invalid byte classification without `hxrt` or `haxe.io.Bytes`. |
 | `scripts/ci/check-metal-policy.sh` TCP byte output-shape case | Checks for avoidable `hxrt`, `Dynamic`, raw, portable socket/byte-buffer paths, direct `std::net::TcpStream` `write_all`/`read_to_end` wiring, `Vec<i32>`/`Vec<u8>` conversion, write-half shutdown, and invalid byte mapping to `SocketError`. |
+| `test/positive/metal_no_hxrt_socket_addr` | Proves typed loopback `SocketAddr` values for TCP bind/connect and UDP bind/send without `hxrt`. |
+| `scripts/ci/check-metal-policy.sh` socket-address output-shape case | Checks for avoidable `hxrt`, `Dynamic`, raw, portable socket paths, generated typed call sites, direct `std::net::SocketAddr` storage, crate-private conversions, and direct TCP/UDP helper use of `addr.as_std()`. |
 
 Future expansion can add snapshots once these APIs grow beyond the current no-hxrt compile/run
 contracts, but the evidence shape should stay contract-first.
@@ -472,6 +510,16 @@ can use direct Rust ownership, add the typed facade and prove the emitted shape.
 | `haxe.rust-oo3.91.2` | `TcpStream` byte write/read implementation. |
 | `haxe.rust-oo3.91.3` | TCP byte stream no-hxrt output-shape gate. |
 | `haxe.rust-oo3.91.4` | TCP byte stream docs and evidence refresh. |
+| `haxe.rust-oo3.92` | M60 typed socket address facade plus examples audit. |
+| `haxe.rust-oo3.92.1` | SocketAddr contract fixture. |
+| `haxe.rust-oo3.92.2` | `rust.net.SocketAddr` plus typed TCP/UDP address implementation. |
+| `haxe.rust-oo3.92.3` | SocketAddr no-hxrt output-shape gate. |
+| `haxe.rust-oo3.92.4` | Examples audit and `examples/metal_native_net`. |
+| `haxe.rust-oo3.92.5` | Native facade policy, docs, and evidence refresh. |
+| `haxe.rust-oo3.93` | Follow-up helper manifest and native facade growth guard. |
+| `haxe.rust-oo3.94` | Follow-up compiler-generated native wrapper facility spike. |
+| `haxe.rust-oo3.95` | Follow-up `SocketAddr` lowering-candidate graduation. |
+| `haxe.rust-oo3.96` | Follow-up resource lifecycle native facade review. |
 
 ## Review Notes
 
@@ -596,3 +644,12 @@ proven, TCP byte streams are the next smallest byte-payload surface. Keep the Ha
 and continue using explicit write-half shutdown plus read-to-EOF. This is still not portable
 `haxe.io.Bytes`, arbitrary host/address networking, TLS, async, live stream adapters, or a general
 socket abstraction.
+
+Oracle review note for `haxe.rust-oo3.92`: GPT-5.5 Pro returned `APPROVE_WITH_CHANGES`. The path
+forward is to land `SocketAddr` as a narrow typed native facade, not to block M60 on compiler-generated
+wrapper lowering. `rust_no_hxrt` means no Haxe semantic runtime dependency; it does not forbid small,
+typed Rust-native facade modules. The closure requirements are stricter policy and evidence: classify
+`SocketAddr` as `lowering-candidate`, keep it loopback-only, document why lowering is insufficient
+today, inspect generated call sites, prove no `hxrt` dependency, run rustfmt/cargo/clippy evidence
+where feasible, and track broader native-wrapper codegen plus helper-growth controls as follow-up
+Beads.

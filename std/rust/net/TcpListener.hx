@@ -14,6 +14,8 @@ import rust.Result;
 	- A typed owner for the narrow M55 blocking TCP listener facade.
 	- `localPort()` reports the concrete port assigned by the OS, which makes `port = 0` fixtures
 	  deterministic without hardcoding a port.
+	- `localAddr()` reports the concrete M60 `SocketAddr`, allowing callers to pass the address
+	  directly into `NativeTcp.connect(...)`.
 	- `accept()` waits for one incoming connection and returns a typed `TcpStream`.
 	- The `Detailed` variants keep existing String-error methods source-compatible while returning
 	  `SocketError` for callers that need typed IO category checks.
@@ -28,6 +30,8 @@ import rust.Result;
 @:native("crate::native_tcp_tools::TcpListener")
 @:rustExtraSrc("rust/native/native_tcp_tools.rs")
 extern class TcpListener {
+	public function localAddr():Result<SocketAddr, String>;
+	public function localAddrDetailed():Result<SocketAddr, SocketError>;
 	public function localPort():Result<Int, String>;
 	public function localPortDetailed():Result<Int, SocketError>;
 	public function accept():Result<TcpStream, String>;

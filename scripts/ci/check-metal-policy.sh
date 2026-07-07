@@ -119,6 +119,24 @@ tree_match_regex() {
 	fi
 }
 
+file_code_match_regex() {
+	local pattern="$1"
+	local file="$2"
+	perl -0777 -pe 's#/\*.*?\*/##sg; s#//.*$##mg' "$file" | grep -Eq -- "$pattern"
+}
+
+tree_code_match_regex() {
+	local pattern="$1"
+	local dir="$2"
+	local file
+	while IFS= read -r -d '' file; do
+		if file_code_match_regex "$pattern" "$file"; then
+			return 0
+		fi
+	done < <(find "$dir" -type f \( -name '*.rs' -o -name '*.toml' \) -print0)
+	return 1
+}
+
 run_warning_case() {
 	local fixture_rel="$1"
 	local hxml_file="$2"
@@ -2068,6 +2086,173 @@ run_tcp_bytes_output_shape_case() {
 	finish_policy_case "$failure_label" "$case_start"
 }
 
+run_socket_addr_output_shape_case() {
+	local fixture_rel="$1"
+	local hxml_file="$2"
+	local failure_label="$3"
+	local case_start="$SECONDS"
+	local fixture_dir="$root_dir/$fixture_rel"
+	local out_dir="$fixture_dir/out_socket_addr_shape"
+	local log_file="$fixture_dir/.compile_socket_addr_shape.log"
+	local run_log="$fixture_dir/.run_socket_addr_shape.log"
+	local socket_addr_rs="$out_dir/src/native_socket_addr_tools.rs"
+	local native_tcp_rs="$out_dir/src/native_tcp_tools.rs"
+	local native_udp_rs="$out_dir/src/native_udp_tools.rs"
+	local socket_error_rs="$out_dir/src/native_socket_error_tools.rs"
+	local main_rs="$out_dir/src/main.rs"
+	echo "[metal-policy] case: ${failure_label}"
+
+	rm -rf "$out_dir"
+	rm -f "$log_file" "$run_log"
+
+	set +e
+	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_output=out_socket_addr_shape) >"$log_file" 2>&1
+	local status=$?
+	set -e
+
+	if [[ "$status" -ne 0 ]]; then
+		echo "[metal-policy] error: expected compile success for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	if [[ ! -f "$socket_addr_rs" || ! -f "$native_tcp_rs" || ! -f "$native_udp_rs" || ! -f "$socket_error_rs" ]]; then
+		echo "[metal-policy] error: missing socket address/TCP/UDP/socket error helper modules for ${failure_label}."
+		find "$out_dir/src" -maxdepth 1 -type f -name '*.rs' -print | sed "s|$root_dir|.|g"
+		exit 1
+	fi
+	if match_regex 'hxrt[[:space:]]*=' "$out_dir/Cargo.toml"; then
+		echo "[metal-policy] error: socket-address no-hxrt fixture emitted hxrt dependency for ${failure_label}."
+		sed "s|$root_dir|.|g" "$out_dir/Cargo.toml"
+		exit 1
+	fi
+	if [[ -d "$out_dir/hxrt" ]]; then
+		echo "[metal-policy] error: socket-address no-hxrt fixture copied runtime crate for ${failure_label}."
+		exit 1
+	fi
+	if tree_code_match_regex 'hxrt::|hxrt\.|Dynamic|__rust__|ERaw|SocketHandle|socket_native|sys_net|haxe_io_bytes' "$out_dir/src"; then
+		echo "[metal-policy] error: socket-address fixture used runtime, Dynamic, raw, portable socket, or haxe.io.Bytes paths for ${failure_label}."
+		sed "s|$root_dir|.|g" "$out_dir/src/main.rs"
+		sed "s|$root_dir|.|g" "$socket_addr_rs"
+		exit 1
+	fi
+	if ! match_regex 'crate::native_socket_addr_tools::SocketAddr::localhostDetailed\(70000\)' "$main_rs" || ! match_regex 'crate::native_socket_addr_tools::SocketAddr::localhostDetailed\(-1\)' "$main_rs"; then
+		echo "[metal-policy] error: generated call site should exercise high and negative typed SocketAddr invalid-port checks for ${failure_label}."
+		sed "s|$root_dir|.|g" "$main_rs"
+		exit 1
+	fi
+	if ! match_regex 'crate::native_tcp_tools::NativeTcp::bindDetailed\(bind_addr\)' "$main_rs" || ! match_regex 'crate::native_tcp_tools::NativeTcp::connectDetailed\(addr\)' "$main_rs"; then
+		echo "[metal-policy] error: generated call site should use typed detailed TCP address helpers for ${failure_label}."
+		sed "s|$root_dir|.|g" "$main_rs"
+		exit 1
+	fi
+	if ! match_regex 'crate::native_udp_tools::NativeUdp::bindDetailed\(left_addr\)' "$main_rs" || ! match_regex 'left\.sendBytesToDetailed\(payload, right_addr\)' "$main_rs"; then
+		echo "[metal-policy] error: generated call site should use typed detailed UDP address helpers for ${failure_label}."
+		sed "s|$root_dir|.|g" "$main_rs"
+		exit 1
+	fi
+	if ! match_regex 'use std::net::\{Ipv4Addr, SocketAddr as StdSocketAddr, SocketAddrV4\}' "$socket_addr_rs"; then
+		echo "[metal-policy] error: socket-address fixture missing direct std::net address imports for ${failure_label}."
+		sed "s|$root_dir|.|g" "$socket_addr_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub struct SocketAddr' "$socket_addr_rs" || ! match_regex 'addr: StdSocketAddr' "$socket_addr_rs"; then
+		echo "[metal-policy] error: socket-address fixture missing typed SocketAddr wrapper over std::net::SocketAddr for ${failure_label}."
+		sed "s|$root_dir|.|g" "$socket_addr_rs"
+		exit 1
+	fi
+	if ! match_regex 'SocketAddrV4::new\(Ipv4Addr::LOCALHOST, port\)' "$socket_addr_rs"; then
+		echo "[metal-policy] error: socket-address fixture should construct loopback addresses with SocketAddrV4::new for ${failure_label}."
+		sed "s|$root_dir|.|g" "$socket_addr_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn localhost\(port: i32\) -> Result<SocketAddr, String>' "$socket_addr_rs" || ! match_regex 'pub fn localhostDetailed\(port: i32\) -> Result<SocketAddr, SocketError>' "$socket_addr_rs"; then
+		echo "[metal-policy] error: socket-address fixture missing String-error and detailed constructors for ${failure_label}."
+		sed "s|$root_dir|.|g" "$socket_addr_rs"
+		exit 1
+	fi
+	if ! match_regex 'SocketError::invalid_input' "$socket_addr_rs" || ! match_regex 'pub fn port\(&self\) -> i32' "$socket_addr_rs"; then
+		echo "[metal-policy] error: socket-address fixture should classify invalid ports and expose port() for ${failure_label}."
+		sed "s|$root_dir|.|g" "$socket_addr_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub\(crate\) fn from_std\(addr: StdSocketAddr\) -> SocketAddr' "$socket_addr_rs" || ! match_regex 'pub\(crate\) fn as_std\(&self\) -> StdSocketAddr' "$socket_addr_rs"; then
+		echo "[metal-policy] error: socket-address fixture missing narrow std::net conversion helpers for ${failure_label}."
+		sed "s|$root_dir|.|g" "$socket_addr_rs"
+		exit 1
+	fi
+	if ! match_regex 'use crate::native_socket_addr_tools::SocketAddr' "$native_tcp_rs" || ! match_regex 'use crate::native_socket_addr_tools::SocketAddr' "$native_udp_rs"; then
+		echo "[metal-policy] error: TCP/UDP helpers should consume native_socket_addr_tools::SocketAddr for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		sed "s|$root_dir|.|g" "$native_udp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn bind\(addr: SocketAddr\) -> Result<TcpListener, String>' "$native_tcp_rs" || ! match_regex 'StdTcpListener::bind\(addr\.as_std\(\)\)' "$native_tcp_rs"; then
+		echo "[metal-policy] error: TCP helper missing address-taking bind over std::net::SocketAddr for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn connect\(addr: SocketAddr\) -> Result<TcpStream, String>' "$native_tcp_rs" || ! match_regex 'StdTcpStream::connect\(addr\.as_std\(\)\)' "$native_tcp_rs"; then
+		echo "[metal-policy] error: TCP helper missing address-taking connect over std::net::SocketAddr for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn localAddrDetailed\(&self\) -> Result<SocketAddr, SocketError>' "$native_tcp_rs" || ! match_regex 'map\(SocketAddr::from_std\)' "$native_tcp_rs"; then
+		echo "[metal-policy] error: TCP listener should return typed SocketAddr from local_addr for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn bind\(addr: SocketAddr\) -> Result<UdpSocket, String>' "$native_udp_rs" || ! match_regex 'StdUdpSocket::bind\(addr\.as_std\(\)\)' "$native_udp_rs"; then
+		echo "[metal-policy] error: UDP helper missing address-taking bind over std::net::SocketAddr for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_udp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn localAddrDetailed\(&self\) -> Result<SocketAddr, SocketError>' "$native_udp_rs" || ! match_regex 'map\(SocketAddr::from_std\)' "$native_udp_rs"; then
+		echo "[metal-policy] error: UDP socket should return typed SocketAddr from local_addr for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_udp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn sendBytesToDetailed' "$native_udp_rs" || ! match_regex 'send_to\(&bytes, addr\.as_std\(\)\)' "$native_udp_rs"; then
+		echo "[metal-policy] error: UDP helper missing address-taking byte send over std::net::SocketAddr for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_udp_rs"
+		exit 1
+	fi
+	if ! (cd "$out_dir" && cargo fmt -q); then
+		echo "[metal-policy] error: socket-address no-hxrt fixture did not rustfmt for ${failure_label}."
+		exit 1
+	fi
+	if ! (cd "$out_dir" && cargo fmt --check); then
+		echo "[metal-policy] error: socket-address no-hxrt fixture was not rustfmt-stable after formatting for ${failure_label}."
+		exit 1
+	fi
+	if ! (cd "$out_dir" && cargo build -q); then
+		echo "[metal-policy] error: socket-address no-hxrt fixture did not cargo-build for ${failure_label}."
+		exit 1
+	fi
+	if (cd "$out_dir" && cargo tree -q | grep -Eq '(^|[[:space:]])hxrt([[:space:]]|$)'); then
+		echo "[metal-policy] error: socket-address no-hxrt fixture still contains hxrt in cargo dependency tree for ${failure_label}."
+		exit 1
+	fi
+	if ! (cd "$out_dir" && cargo clippy --all-targets -- -D warnings -A clippy::cmp-owned -A clippy::eq-op -A clippy::needless-return -A clippy::single-match -A clippy::vec-init-then-push); then
+		echo "[metal-policy] error: socket-address no-hxrt fixture did not pass clippy -D warnings with generated-code allowances for ${failure_label}."
+		exit 1
+	fi
+	if ! (cd "$out_dir" && cargo run -q) >"$run_log" 2>&1; then
+		echo "[metal-policy] error: socket-address no-hxrt fixture did not cargo-run for ${failure_label}."
+		sed "s|$root_dir|.|g" "$run_log"
+		exit 1
+	fi
+	if [[ -s "$run_log" ]]; then
+		echo "[metal-policy] error: socket-address fixture produced unexpected stdout/stderr for ${failure_label}."
+		sed "s|$root_dir|.|g" "$run_log"
+		exit 1
+	fi
+
+	rm -f "$log_file" "$run_log"
+	rm -rf "$out_dir"
+	finish_policy_case "$failure_label" "$case_start"
+}
+
 run_native_process_output_shape_case() {
 	local fixture_rel="$1"
 	local hxml_file="$2"
@@ -2856,6 +3041,8 @@ run_udp_bytes_output_shape_case "test/positive/metal_no_hxrt_udp_bytes" "compile
 	'rust.net.UdpSocket byte datagrams emit direct std::net no-hxrt output'
 run_tcp_bytes_output_shape_case "test/positive/metal_no_hxrt_tcp_bytes" "compile.hxml" \
 	'rust.net.TcpStream byte streams emit direct std::net no-hxrt output'
+run_socket_addr_output_shape_case "test/positive/metal_no_hxrt_socket_addr" "compile.hxml" \
+	'rust.net.SocketAddr emits direct std::net no-hxrt output'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_native_process" "compile.hxml" \
 	'rust.process.NativeCommands emits direct std::process no-hxrt output'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_output" "compile.hxml" \

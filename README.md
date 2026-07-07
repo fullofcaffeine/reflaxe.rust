@@ -55,7 +55,9 @@ networking, TLS, DB, processes, or threading, add app-specific smoke tests aroun
   write/wait/kill lifecycle support. `rust.net.NativeTcp` adds a blocking localhost TCP loopback
   proof with typed `TcpListener` / `TcpStream` wrappers for UTF-8 and byte-stream payloads, and
   `rust.net.NativeUdp` adds a blocking localhost datagram proof with a typed `UdpSocket` wrapper
-  for UTF-8 and byte payloads.
+  for UTF-8 and byte payloads. `rust.net.SocketAddr` carries typed loopback addresses across
+  bind/connect/send APIs so metal code can reuse OS-assigned ports without falling back to strings
+  or raw Rust snippets.
   `rust.net.SocketError` is available through opt-in socket `Detailed` methods for invalid-input,
   IO, and UTF-8 recovery without parsing strings. These do not replace portable `sys.io.File`,
   `sys.io.Process`, or `sys.net.Socket`.
@@ -196,6 +198,7 @@ Read more: [Profiles guide](docs/profiles.md), [Rusty migration guide](docs/rust
 - [chat_loopback](examples/chat_loopback) (cross-profile flagship: portable/metal)
 - [profile_storyboard](examples/profile_storyboard) (cross-profile micro-app focused on profile-specific coding style + `@:rustTest`)
 - [metal_first_dataflow](examples/metal_first_dataflow) (dedicated metal-style reference: `Result`/`Option`/`Vec` with strict-boundary-safe app code)
+- [metal_native_net](examples/metal_native_net) (metal/no-hxrt TCP + UDP loopback using typed `SocketAddr`)
 - [hello](examples/hello) (portable sanity check)
 - [async_retry_pipeline](examples/async_retry_pipeline)
 - [classes](examples/classes)

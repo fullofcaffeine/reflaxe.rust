@@ -142,6 +142,7 @@ Use these:
 - deterministic TUI harness: `examples/tui_todo`
 - file APIs: `examples/sys_file_io`
 - sockets: `examples/sys_net_loopback`
+- Rust-native no-hxrt sockets: `examples/metal_native_net`
 - process spawning: `examples/sys_process`
 - threads: `examples/sys_thread_smoke`
 - fixed thread pool: `examples/thread_pool_smoke`
@@ -202,6 +203,7 @@ Metal Rust-first style:
 | `examples/chat_loopback` | Yes | Yes | "What changes when I switch profiles?" | Flagship comparison app with interactive TUI, network loopback, and Haxe-authored Rust tests. |
 | `examples/profile_storyboard` | Yes | Yes | "Show me the clearest portable-vs-metal codegen comparison." | Best compact side-by-side profile reference; includes native comparison script. |
 | `examples/metal_first_dataflow` | No | Yes | "What does metal-first source actually look like?" | Dedicated metal-style reference (`Result`/`Option`/`Vec`, strict-boundary-safe app code). |
+| `examples/metal_native_net` | No | Yes | "How do I use Rust-native TCP/UDP without hxrt?" | Direct loopback TCP and UDP through `rust.net.SocketAddr`, detailed socket errors, typed byte payloads, and no raw Rust in app code. |
 | `examples/hello` | Yes | No | "Can I get a first successful run quickly?" | Minimal portable sanity check. |
 | `examples/bytes_ops` | Yes | No | "How do Haxe-authored Rust tests look?" | Bytes APIs + `@:rustTest`. |
 | `examples/serde_json` | Yes | No | "How do I use typed JSON surfaces?" | Typed Serde JSON surfaces under the portable contract. |

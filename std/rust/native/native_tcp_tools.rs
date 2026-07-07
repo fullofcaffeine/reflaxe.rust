@@ -10,6 +10,7 @@
 use std::io::{Read, Write};
 use std::net::{Shutdown, TcpListener as StdTcpListener, TcpStream as StdTcpStream};
 
+use crate::native_socket_addr_tools::SocketAddr;
 use crate::native_socket_error_tools::SocketError;
 
 #[derive(Debug)]
@@ -55,6 +56,18 @@ fn u8_vec_to_i32_vec(payload: Vec<u8>) -> Vec<i32> {
 
 #[allow(non_snake_case)]
 impl NativeTcp {
+    pub fn bind(addr: SocketAddr) -> Result<TcpListener, String> {
+        StdTcpListener::bind(addr.as_std())
+            .map(|listener| TcpListener { listener })
+            .map_err(|err| err.to_string())
+    }
+
+    pub fn bindDetailed(addr: SocketAddr) -> Result<TcpListener, SocketError> {
+        StdTcpListener::bind(addr.as_std())
+            .map(|listener| TcpListener { listener })
+            .map_err(SocketError::io)
+    }
+
     pub fn bindLocalhost(port: i32) -> Result<TcpListener, String> {
         let port = port_to_u16(port)?;
         StdTcpListener::bind(("127.0.0.1", port))
@@ -66,6 +79,18 @@ impl NativeTcp {
         let port = port_to_u16_detailed(port)?;
         StdTcpListener::bind(("127.0.0.1", port))
             .map(|listener| TcpListener { listener })
+            .map_err(SocketError::io)
+    }
+
+    pub fn connect(addr: SocketAddr) -> Result<TcpStream, String> {
+        StdTcpStream::connect(addr.as_std())
+            .map(|stream| TcpStream { stream })
+            .map_err(|err| err.to_string())
+    }
+
+    pub fn connectDetailed(addr: SocketAddr) -> Result<TcpStream, SocketError> {
+        StdTcpStream::connect(addr.as_std())
+            .map(|stream| TcpStream { stream })
             .map_err(SocketError::io)
     }
 
@@ -86,6 +111,20 @@ impl NativeTcp {
 
 #[allow(non_snake_case)]
 impl TcpListener {
+    pub fn localAddr(&self) -> Result<SocketAddr, String> {
+        self.listener
+            .local_addr()
+            .map(SocketAddr::from_std)
+            .map_err(|err| err.to_string())
+    }
+
+    pub fn localAddrDetailed(&self) -> Result<SocketAddr, SocketError> {
+        self.listener
+            .local_addr()
+            .map(SocketAddr::from_std)
+            .map_err(SocketError::io)
+    }
+
     pub fn localPort(&self) -> Result<i32, String> {
         self.listener
             .local_addr()

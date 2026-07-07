@@ -190,10 +190,12 @@ For networking, `rust.net.NativeTcp` is a narrow blocking localhost TCP proof wi
 datagram proof with a typed `UdpSocket` wrapper. The TCP facade supports UTF-8 streams and
 byte streams as `rust.Vec<Int>` values; the UDP facade supports UTF-8 datagrams and byte datagrams
 with the same typed byte representation. Send bytes are validated before converting to Rust `u8`.
+`rust.net.SocketAddr` carries typed loopback addresses returned by `localAddr()` into later
+bind/connect/send calls, including OS-assigned port `0` flows, without string parsing or raw Rust.
 Use socket `Detailed` methods with `rust.net.SocketError` when recovery needs typed invalid-input,
 IO, or UTF-8 categories instead of String-only diagnostics. These are not portable
-`sys.net.Socket` parity, TLS, async networking, live stream adapters, or arbitrary host/address
-APIs yet.
+`sys.net.Socket` parity, TLS, async networking, live stream adapters, DNS, external networking, or
+arbitrary host/address APIs yet.
 
 Prefer typed APIs and helpers over raw Rust injection. Raw `untyped __rust__(...)` remains an escape
 hatch for narrow low-level abstraction modules, but app code should normally use typed externs,

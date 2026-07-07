@@ -19,10 +19,12 @@ import rust.Result;
 	- `bindLocalhost(port)` binds `127.0.0.1:<port>` and returns a typed `TcpListener`; passing `0`
 	  asks the OS for an ephemeral port.
 	- `connectLocalhost(port)` connects a typed `TcpStream` to `127.0.0.1:<port>`.
+	- `bind(addr)` and `connect(addr)` accept the M60 typed `SocketAddr` value so loopback addresses
+	  can be carried between APIs without stringly host/port plumbing.
 	- The `Detailed` variants keep the same behavior but return `SocketError` so callers can branch
 	  on invalid-input or IO categories without parsing error text.
 	- This is intentionally not portable `sys.net` parity, not TLS, not UDP, not async networking,
-	  and not a general host/address API yet.
+	  not DNS, and not a general external host API yet.
 
 	How
 	- `@:native("crate::native_tcp_tools::NativeTcp")` binds to a small Rust helper module.
@@ -35,8 +37,12 @@ import rust.Result;
 @:native("crate::native_tcp_tools::NativeTcp")
 @:rustExtraSrc("rust/native/native_tcp_tools.rs")
 extern class NativeTcp {
+	public static function bind(addr:SocketAddr):Result<TcpListener, String>;
+	public static function bindDetailed(addr:SocketAddr):Result<TcpListener, SocketError>;
 	public static function bindLocalhost(port:Int):Result<TcpListener, String>;
 	public static function bindLocalhostDetailed(port:Int):Result<TcpListener, SocketError>;
+	public static function connect(addr:SocketAddr):Result<TcpStream, String>;
+	public static function connectDetailed(addr:SocketAddr):Result<TcpStream, SocketError>;
 	public static function connectLocalhost(port:Int):Result<TcpStream, String>;
 	public static function connectLocalhostDetailed(port:Int):Result<TcpStream, SocketError>;
 }

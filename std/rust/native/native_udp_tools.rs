@@ -9,6 +9,7 @@
 /// them into Rust `u8` buffers.
 use std::net::UdpSocket as StdUdpSocket;
 
+use crate::native_socket_addr_tools::SocketAddr;
 use crate::native_socket_error_tools::SocketError;
 
 #[derive(Debug)]
@@ -47,8 +48,7 @@ fn positive_len_to_usize_detailed(value: i32, label: &str) -> Result<usize, Sock
 }
 
 fn byte_count_to_i32(sent: usize) -> Result<i32, std::io::Error> {
-    i32::try_from(sent)
-        .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "UDP byte count overflow"))
+    i32::try_from(sent).map_err(|_| std::io::Error::other("UDP byte count overflow"))
 }
 
 fn bytes_to_u8_vec(payload: Vec<i32>) -> Result<Vec<u8>, String> {
@@ -72,6 +72,18 @@ fn u8_vec_to_i32_vec(payload: Vec<u8>) -> Vec<i32> {
 
 #[allow(non_snake_case)]
 impl NativeUdp {
+    pub fn bind(addr: SocketAddr) -> Result<UdpSocket, String> {
+        StdUdpSocket::bind(addr.as_std())
+            .map(|socket| UdpSocket { socket })
+            .map_err(|err| err.to_string())
+    }
+
+    pub fn bindDetailed(addr: SocketAddr) -> Result<UdpSocket, SocketError> {
+        StdUdpSocket::bind(addr.as_std())
+            .map(|socket| UdpSocket { socket })
+            .map_err(SocketError::io)
+    }
+
     pub fn bindLocalhost(port: i32) -> Result<UdpSocket, String> {
         let port = port_to_u16(port)?;
         StdUdpSocket::bind(("127.0.0.1", port))
@@ -89,6 +101,20 @@ impl NativeUdp {
 
 #[allow(non_snake_case)]
 impl UdpSocket {
+    pub fn localAddr(&self) -> Result<SocketAddr, String> {
+        self.socket
+            .local_addr()
+            .map(SocketAddr::from_std)
+            .map_err(|err| err.to_string())
+    }
+
+    pub fn localAddrDetailed(&self) -> Result<SocketAddr, SocketError> {
+        self.socket
+            .local_addr()
+            .map(SocketAddr::from_std)
+            .map_err(SocketError::io)
+    }
+
     pub fn localPort(&self) -> Result<i32, String> {
         self.socket
             .local_addr()
@@ -100,6 +126,24 @@ impl UdpSocket {
         self.socket
             .local_addr()
             .map(|addr| i32::from(addr.port()))
+            .map_err(SocketError::io)
+    }
+
+    pub fn sendUtf8To(&self, payload: String, addr: SocketAddr) -> Result<i32, String> {
+        self.socket
+            .send_to(payload.as_bytes(), addr.as_std())
+            .and_then(byte_count_to_i32)
+            .map_err(|err| err.to_string())
+    }
+
+    pub fn sendUtf8ToDetailed(
+        &self,
+        payload: String,
+        addr: SocketAddr,
+    ) -> Result<i32, SocketError> {
+        self.socket
+            .send_to(payload.as_bytes(), addr.as_std())
+            .and_then(byte_count_to_i32)
             .map_err(SocketError::io)
     }
 
@@ -140,6 +184,26 @@ impl UdpSocket {
         let (read, _addr) = self.socket.recv_from(&mut buffer).map_err(SocketError::io)?;
         buffer.truncate(read);
         String::from_utf8(buffer).map_err(SocketError::utf8)
+    }
+
+    pub fn sendBytesTo(&self, payload: Vec<i32>, addr: SocketAddr) -> Result<i32, String> {
+        let bytes = bytes_to_u8_vec(payload)?;
+        self.socket
+            .send_to(&bytes, addr.as_std())
+            .and_then(byte_count_to_i32)
+            .map_err(|err| err.to_string())
+    }
+
+    pub fn sendBytesToDetailed(
+        &self,
+        payload: Vec<i32>,
+        addr: SocketAddr,
+    ) -> Result<i32, SocketError> {
+        let bytes = bytes_to_u8_vec_detailed(payload)?;
+        self.socket
+            .send_to(&bytes, addr.as_std())
+            .and_then(byte_count_to_i32)
+            .map_err(SocketError::io)
     }
 
     pub fn sendBytesToLocalhost(&self, payload: Vec<i32>, port: i32) -> Result<i32, String> {
