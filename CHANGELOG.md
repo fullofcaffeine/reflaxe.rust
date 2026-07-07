@@ -1,3 +1,10 @@
+# [0.77.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.76.0...v0.77.0) (2026-07-07)
+
+
+### Features
+
+* add typed native socket errors ([dfd72a2](https://github.com/fullofcaffeine/reflaxe.rust/commit/dfd72a2a3c6a12642f0af0aa5a374d95a847905b))
+
 # [0.76.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.75.0...v0.76.0) (2026-07-07)
 
 
