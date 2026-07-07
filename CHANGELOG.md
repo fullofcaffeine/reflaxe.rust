@@ -1,3 +1,10 @@
+# [0.75.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.74.0...v0.75.0) (2026-07-07)
+
+
+### Features
+
+* add native tcp loopback facade ([6c4f4ab](https://github.com/fullofcaffeine/reflaxe.rust/commit/6c4f4ab07eefb7f9766f8ea2572faa90c1ae3cdb))
+
 # [0.74.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.73.0...v0.74.0) (2026-07-07)
 
 
