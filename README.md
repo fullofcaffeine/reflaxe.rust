@@ -52,8 +52,9 @@ networking, TLS, DB, processes, or threading, add app-specific smoke tests aroun
   narrow owned-command process subset with `rust.process.CommandOutput`, `rust.process.CommandSpec`,
   `rust.process.CommandError`, `rust.process.CommandChild`, and explicit working
   directory/environment set-remove-clear/cwd+env/stdin-input/stdin+cwd+env plus narrow live child
-  write/wait/kill lifecycle support; neither replaces portable
-  `sys.io.File` / `sys.io.Process`.
+  write/wait/kill lifecycle support. `rust.net.NativeTcp` adds the first blocking localhost TCP
+  loopback proof with typed `TcpListener` / `TcpStream` wrappers. These do not replace portable
+  `sys.io.File`, `sys.io.Process`, or `sys.net.Socket`.
 - Typed anonymous records preserve Haxe aliasing while keeping field access typed; required fields and
   omitted `@:optional` fields are covered by focused generated-Rust fixtures.
 - CI evidence: snapshots, negative policy fixtures, runtime/optimizer plan reports, product-neutral
@@ -175,7 +176,8 @@ Rule of thumb:
 - `SliceTools.with(array, ...)` and `MutSliceTools.with(array, ...)` are output-gated to borrow
   Array storage as scoped `&[T]` / `&mut [T]` views rather than materializing cloned arrays.
 - Use typed `rust.*` systems facades for Rust-native handles and command/file-style work. Portable
-  `sys.io.Process` and `sys.io.File` keep Haxe compatibility semantics and may still use `hxrt`.
+  `sys.io.Process`, `sys.io.File`, and `sys.net.Socket` keep Haxe compatibility semantics and may
+  still use `hxrt`.
 
 Read more: [Profiles guide](docs/profiles.md), [Rusty migration guide](docs/rusty-profile.md),
 [Metal profile details](docs/metal-profile.md), [Extern and lifetime-island cookbook](docs/extern-lifetime-island-cookbook.md),

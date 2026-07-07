@@ -175,8 +175,8 @@ Bead: `haxe.rust-oo3.74.4`
 - For every partial/missing row, decide whether the fix belongs in compiler lowering, std facade, hxrt, or handwritten Rust extern support.
 - Current audit: [Metal type surface gap matrix](metal-type-surface-gap-matrix.md).
 - Systems-facade follow-up: [Metal systems facades roadmap](metal-systems-facades-roadmap.md)
-  starts M43 with a Rust-native file/path facade and no-hxrt output proof, leaving process,
-  socket/TLS, and DB facades for later slices.
+  started M43 with a Rust-native file/path facade and now tracks shipped file, process, and first
+  blocking TCP slices plus broader socket/TLS/DB follow-ups.
 
 ### 5. Typed Mini-DSL Authority
 

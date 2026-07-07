@@ -1493,6 +1493,125 @@ run_native_file_output_shape_case() {
 	finish_policy_case "$failure_label" "$case_start"
 }
 
+run_native_tcp_output_shape_case() {
+	local fixture_rel="$1"
+	local hxml_file="$2"
+	local failure_label="$3"
+	local case_start="$SECONDS"
+	local fixture_dir="$root_dir/$fixture_rel"
+	local out_dir="$fixture_dir/out_native_tcp_shape"
+	local log_file="$fixture_dir/.compile_native_tcp_shape.log"
+	local run_log="$fixture_dir/.run_native_tcp_shape.log"
+	local native_tcp_rs="$out_dir/src/native_tcp_tools.rs"
+	echo "[metal-policy] case: ${failure_label}"
+
+	rm -rf "$out_dir"
+	rm -f "$log_file" "$run_log"
+
+	set +e
+	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_output=out_native_tcp_shape) >"$log_file" 2>&1
+	local status=$?
+	set -e
+
+	if [[ "$status" -ne 0 ]]; then
+		echo "[metal-policy] error: expected compile success for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	if [[ ! -f "$native_tcp_rs" ]]; then
+		echo "[metal-policy] error: missing native_tcp_tools.rs for ${failure_label}."
+		exit 1
+	fi
+	if match_regex 'hxrt[[:space:]]*=' "$out_dir/Cargo.toml"; then
+		echo "[metal-policy] error: native TCP no-hxrt fixture emitted hxrt dependency for ${failure_label}."
+		sed "s|$root_dir|.|g" "$out_dir/Cargo.toml"
+		exit 1
+	fi
+	if [[ -d "$out_dir/hxrt" ]]; then
+		echo "[metal-policy] error: native TCP no-hxrt fixture copied runtime crate for ${failure_label}."
+		exit 1
+	fi
+	if tree_match_regex 'hxrt::|hxrt\.|Dynamic|__rust__|ERaw|SocketHandle|socket_native|sys_net' "$out_dir/src"; then
+		echo "[metal-policy] error: native TCP fixture used runtime, Dynamic, raw, or portable sys/socket paths for ${failure_label}."
+		sed "s|$root_dir|.|g" "$out_dir/src/main.rs"
+		exit 1
+	fi
+	if ! match_regex 'use std::net::\{Shutdown, TcpListener as StdTcpListener, TcpStream as StdTcpStream\}' "$native_tcp_rs"; then
+		echo "[metal-policy] error: native TCP fixture missing direct std::net imports for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub struct NativeTcp' "$native_tcp_rs" || ! match_regex 'pub struct TcpListener' "$native_tcp_rs" || ! match_regex 'pub struct TcpStream' "$native_tcp_rs"; then
+		echo "[metal-policy] error: native TCP fixture missing typed native TCP structs for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! match_regex 'listener: StdTcpListener' "$native_tcp_rs" || ! match_regex 'stream: StdTcpStream' "$native_tcp_rs"; then
+		echo "[metal-policy] error: native TCP fixture should wrap owned std::net listener/stream handles for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! match_regex 'StdTcpListener::bind\(\("127\.0\.0\.1", port\)\)' "$native_tcp_rs"; then
+		echo "[metal-policy] error: native TCP fixture missing direct localhost TcpListener::bind for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! match_regex 'StdTcpStream::connect\(\("127\.0\.0\.1", port\)\)' "$native_tcp_rs"; then
+		echo "[metal-policy] error: native TCP fixture missing direct localhost TcpStream::connect for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn localPort\(&self\) -> Result<i32, String>' "$native_tcp_rs" || ! match_regex 'local_addr\(\)' "$native_tcp_rs"; then
+		echo "[metal-policy] error: native TCP fixture missing localPort/local_addr wiring for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn accept\(&self\) -> Result<TcpStream, String>' "$native_tcp_rs" || ! match_regex '\.accept\(\)' "$native_tcp_rs"; then
+		echo "[metal-policy] error: native TCP fixture missing listener accept wiring for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn writeUtf8AndShutdownWrite\(&mut self, payload: String\) -> Result<bool, String>' "$native_tcp_rs"; then
+		echo "[metal-policy] error: native TCP fixture missing mutating write/shutdown helper for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! match_regex 'write_all\(payload\.as_bytes\(\)\)' "$native_tcp_rs" || ! match_regex 'shutdown\(Shutdown::Write\)' "$native_tcp_rs"; then
+		echo "[metal-policy] error: native TCP fixture missing direct write_all plus Shutdown::Write for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn readToString\(&mut self\) -> Result<String, String>' "$native_tcp_rs" || ! match_regex 'read_to_string\(&mut output\)' "$native_tcp_rs"; then
+		echo "[metal-policy] error: native TCP fixture missing mutating read_to_string helper for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! match_regex 'Result<[^>]*String' "$native_tcp_rs"; then
+		echo "[metal-policy] error: native TCP fixture should expose Result<_, String> error boundaries for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! (cd "$out_dir" && cargo build -q); then
+		echo "[metal-policy] error: native TCP no-hxrt fixture did not cargo-build for ${failure_label}."
+		exit 1
+	fi
+	if ! (cd "$out_dir" && cargo run -q) >"$run_log" 2>&1; then
+		echo "[metal-policy] error: native TCP no-hxrt fixture did not cargo-run for ${failure_label}."
+		sed "s|$root_dir|.|g" "$run_log"
+		exit 1
+	fi
+	if [[ -s "$run_log" ]]; then
+		echo "[metal-policy] error: native TCP fixture produced unexpected stdout/stderr for ${failure_label}."
+		sed "s|$root_dir|.|g" "$run_log"
+		exit 1
+	fi
+
+	rm -f "$log_file" "$run_log"
+	rm -rf "$out_dir"
+	finish_policy_case "$failure_label" "$case_start"
+}
+
 run_native_process_output_shape_case() {
 	local fixture_rel="$1"
 	local hxml_file="$2"
@@ -2271,6 +2390,8 @@ run_no_hxrt_success_case "test/positive/metal_no_hxrt_minimal" "compile.hxml" \
 	'rust_no_hxrt emits runtime-free minimal crate'
 run_native_file_output_shape_case "test/positive/metal_no_hxrt_native_file" "compile.hxml" \
 	'rust.fs.NativeFiles emits direct std::fs no-hxrt output'
+run_native_tcp_output_shape_case "test/positive/metal_no_hxrt_native_tcp" "compile.hxml" \
+	'rust.net.NativeTcp emits direct std::net no-hxrt output'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_native_process" "compile.hxml" \
 	'rust.process.NativeCommands emits direct std::process no-hxrt output'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_output" "compile.hxml" \

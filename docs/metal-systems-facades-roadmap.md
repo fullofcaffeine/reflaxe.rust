@@ -8,7 +8,7 @@ overrides; M48 added ordered environment remove/clear operations; M49 added comb
 owned-command calls; M50 added one-shot owned stdin input; M51 added combined stdin+cwd+env
 owned-command calls; M52 added the owned `CommandSpec` config record; M53 added opt-in typed
 `CommandError` records for owned-command IO/stdin/UTF-8 failures; M54 added the narrow
-`CommandChild` live lifecycle handle.
+`CommandChild` live lifecycle handle; M55 added the first blocking localhost TCP facade.
 
 ## Why
 
@@ -33,7 +33,7 @@ exceptions, or platform abstraction. Instead, add typed Rust-native surfaces bes
 | Paths and OS strings | `rust.PathBuf`, `rust.PathBufTools`, `rust.OsString`, and `rust.OsStringTools` exist with typed native helper modules. | Narrow metal paths can stay close to direct Rust. Portable nullable strings may still use `hxrt::string::HxString`. | Add borrowed `Path` / `OsStr` shapes and no-hxrt path fixtures as needed. |
 | File handles | Portable `sys.io.File*` uses `hxrt.fs.FileHandle`; `rust.fs.NativeFile` is an internal typing-only binding; `rust.fs.NativeFiles` is the first app-facing native helper facade. | `hxrt` is required for Haxe `Input` / `Output` handle semantics, but not for the current Rust-first owned/scoped file helper subset. | M43 first slice: expand the typed Rust-native file/path facade and keep its no-hxrt output evidence. |
 | Process handles | Portable `sys.io.Process` uses `hxrt.process.ProcessHandle`; `rust.process.NativeCommands` is the app-facing owned-command facade, `rust.process.CommandOutput` carries owned status/stdout/stderr, `rust.process.CommandEnv` carries typed environment operations, `rust.process.CommandSpec` carries one owned command config, `rust.process.CommandError` carries opt-in typed error categories, and `rust.process.CommandChild` carries the narrow live child lifecycle handle. | `hxrt` is justified for portable process streams and Haxe-style IO wrappers. The current Rust-first command facade stays no-hxrt by using explicit executable/args, explicit cwd/env set-remove-clear/cwd+env operations, one-shot owned stdin input, combined stdin+cwd+env operations, a typed owned config record, owned results, typed IO/stdin/UTF-8/lifecycle error records, and a narrow live child that supports write-and-close stdin, wait, and kill/wait. | Reusable stdin pipes, live stdout/stderr streams, detached handles, async process, shell fallback, and portable `Process` parity remain future work. |
-| Socket and TLS handles | `hxrt.net` / `hxrt.ssl` support portable sys surfaces and smoke fixtures. | Runtime ownership is justified for portable sockets/TLS and platform-sensitive setup. | Later work should separate blocking vs async, TLS setup, and no-hxrt limits. |
+| Socket and TLS handles | `hxrt.net` / `hxrt.ssl` support portable sys surfaces and smoke fixtures. `rust.net.NativeTcp`, `rust.net.TcpListener`, and `rust.net.TcpStream` provide the first Rust-native blocking localhost TCP slice. | Runtime ownership is justified for portable sockets/TLS and platform-sensitive setup. The current Rust-first TCP facade stays no-hxrt by wrapping direct `std::net::TcpListener` / `TcpStream` handles for a deterministic loopback round trip. | Broader host/address APIs, UDP, live stream adapters, async networking, TLS setup, richer error categories, and portable `sys.net` parity remain future work. |
 | DB handles | `hxrt.db` supports current SQLite smoke and MySQL compile coverage. | Runtime-heavy today; DB row/statement values are still portable/sys shaped. | Defer until file/process API families broaden beyond the first no-hxrt slices; typed DB facade is not the next slice. |
 | RAII guards | Lock guards have scoped callbacks; docs define extern-island selection for heavier guards. | Simple lexical guards are scoped; complex guard internals stay in Rust islands. | File APIs should prefer owned-result helpers or scoped callbacks, not storable lifetime tokens. |
 
@@ -168,6 +168,41 @@ blocks until stdin closes, then starts it through `spawnChildFromSpec(...)`. One
 through `killAndWait()`. The fixture uses null stdout/stderr and does not expose live output streams
 or reusable stdin pipes.
 
+## M55 Native TCP Slice
+
+M55 starts socket work with a blocking localhost TCP facade, not portable `sys.net.Socket` parity.
+
+Why this slice follows file/process:
+
+- local TCP loopback is deterministic enough for CI when it binds `127.0.0.1:0` and avoids external
+  hosts, DNS, TLS, and service dependencies
+- portable `sys.net.Socket` already has runtime-shaped stream wrappers and platform behavior, so the
+  Rust-native surface must remain clearly separate
+- a typed `rust.net.*` facade proves direct `std::net` handle ownership without committing to async,
+  UDP, arbitrary host/address APIs, TLS, or a byte-stream abstraction yet
+
+The first API family landed as `rust.net.NativeTcp`, `rust.net.TcpListener`, and
+`rust.net.TcpStream`. The contract is:
+
+- typed Haxe API under `rust.net.*`
+- bind/connect are explicitly localhost-only in this slice
+- `bindLocalhost(0)` asks the OS for an ephemeral port and `localPort()` reports it for deterministic
+  fixtures
+- `accept()` returns one typed stream from the listener backlog
+- `writeUtf8AndShutdownWrite(...)` writes one UTF-8 payload and shuts down only the write half
+- `readToString()` reads UTF-8 text until EOF
+- no portable `sys.net.Socket` compatibility promise
+- no TLS, UDP, async networking, DNS/host resolution, live stream adapter, byte-buffer API, or rich
+  socket-error taxonomy in the current slice
+- generated Rust uses direct `std::net` helpers in `std/rust/native/native_tcp_tools.rs`
+- `-D reflaxe_rust_profile=metal -D rust_no_hxrt` fixture coverage proves no bundled runtime
+  dependency or `hxrt::net` bridge appears for the selected subset
+
+The native TCP fixture binds an ephemeral localhost listener, connects a client, accepts the server
+stream, then exchanges one UTF-8 payload in each direction by pairing
+`writeUtf8AndShutdownWrite(...)` with `readToString()`. It does not require threads, shell commands,
+external network access, or a portable socket wrapper.
+
 ## Contract Fixtures
 
 The M43 fixture bead added the initial contract before implementation:
@@ -190,6 +225,8 @@ The M43 fixture bead added the initial contract before implementation:
 | `test/positive/metal_no_hxrt_command_child` | Proves narrow `CommandChild` live lifecycle operations without `hxrt`. |
 | `test/negative/metal_process_raw_escape` | Rejects app-side raw `std::process::Command` as a substitute for the facade under strict policy. |
 | `scripts/ci/check-metal-policy.sh` native-process output-shape cases | Checks for avoidable `hxrt`, `Dynamic`, raw, portable process paths, direct `std::process::Command` helper use, quiet status execution, owned stdout capture, owned `std::process::Output` conversion, direct `current_dir(cwd)` wiring, direct `command.env(...)` / `env_remove(...)` / `env_clear()` wiring, composed cwd+env helper wiring, direct `Stdio::piped` / `write_all` / `wait_with_output` stdin wiring, composed stdin+cwd+env helper wiring, `CommandSpec` owned config storage plus `command_from_spec` builder wiring, `CommandError` typed category/output-decode wiring, and `CommandChild` direct `std::process::Child` lifecycle wiring. |
+| `test/positive/metal_no_hxrt_native_tcp` | Proves a typed blocking localhost TCP round trip through `rust.net.NativeTcp`, `TcpListener`, and `TcpStream` without `hxrt`. |
+| `scripts/ci/check-metal-policy.sh` native-TCP output-shape case | Checks for avoidable `hxrt`, `Dynamic`, raw, portable socket paths, direct `std::net` wrapper structs, localhost bind/connect wiring, `accept`, `write_all`, `Shutdown::Write`, and `read_to_string`. |
 
 Future expansion can add snapshots once these APIs grow beyond the current no-hxrt compile/run
 contracts, but the evidence shape should stay contract-first.
@@ -204,6 +241,7 @@ This roadmap is not:
 - a DB/TLS/network service matrix
 - an async systems runtime redesign
 - a broad live process/pipe abstraction for metal beyond the narrow `CommandChild` lifecycle proof
+- a broad socket/TLS/async networking abstraction beyond the narrow blocking localhost TCP proof
 
 If a Haxe-compatible API needs runtime handles, keep the runtime path and report why. If a metal API
 can use direct Rust ownership, add the typed facade and prove the emitted shape.
@@ -274,6 +312,11 @@ can use direct Rust ownership, add the typed facade and prove the emitted shape.
 | `haxe.rust-oo3.86.2` | `CommandChild` / `spawnChildFromSpec` lifecycle implementation. |
 | `haxe.rust-oo3.86.3` | CommandChild no-hxrt output-shape gate. |
 | `haxe.rust-oo3.86.4` | CommandChild docs and evidence refresh. |
+| `haxe.rust-oo3.87` | M55 blocking localhost TCP facade. |
+| `haxe.rust-oo3.87.1` | Native TCP contract fixture. |
+| `haxe.rust-oo3.87.2` | `rust.net.NativeTcp`, `TcpListener`, and `TcpStream` implementation. |
+| `haxe.rust-oo3.87.3` | Native TCP no-hxrt output-shape gate. |
+| `haxe.rust-oo3.87.4` | Native TCP docs and evidence refresh. |
 
 ## Review Notes
 
@@ -361,3 +404,11 @@ operation, and exposes `wait()` plus `killAndWait()` so children are reaped. It 
 `CommandSpec.withStdin(...)` at the live-spawn boundary because one-shot stdin belongs to the owned
 status/output helpers. This is still not portable `sys.io.Process`: reusable stdin pipes, live
 stdout/stderr streams, detached handles, shell fallback, and async process APIs remain future work.
+
+Review note for `haxe.rust-oo3.87`: after file and process no-hxrt patterns are proven, a blocking
+localhost TCP loopback facade is the narrowest socket slice with useful production shape and
+deterministic CI evidence. It binds `127.0.0.1:0`, reports the assigned port, connects through
+`std::net::TcpStream`, accepts one `std::net::TcpStream`, and exchanges UTF-8 payloads with explicit
+write-half shutdown. This is still not portable `sys.net.Socket`: arbitrary hosts, DNS, UDP, TLS,
+async networking, byte-buffer streams, live stream adapters, and richer socket error categories
+remain separate design work.

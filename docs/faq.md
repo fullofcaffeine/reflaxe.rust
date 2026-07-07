@@ -185,6 +185,9 @@ optional cwd, env, and stdin settings. Use the `Detailed` command/output methods
 String-only diagnostics. Use `rust.process.CommandChild` only for the narrow no-hxrt lifecycle
 case: spawn from a `CommandSpec`, write and close one stdin payload, wait, or kill and wait.
 It is not a live `sys.io.Process` stream/shell/async replacement.
+For networking, `rust.net.NativeTcp` is currently a narrow blocking localhost TCP proof with typed
+`TcpListener` / `TcpStream` wrappers. It is not portable `sys.net.Socket` parity, TLS, UDP, async
+networking, or an arbitrary host/address API yet.
 
 Prefer typed APIs and helpers over raw Rust injection. Raw `untyped __rust__(...)` remains an escape
 hatch for narrow low-level abstraction modules, but app code should normally use typed externs,
