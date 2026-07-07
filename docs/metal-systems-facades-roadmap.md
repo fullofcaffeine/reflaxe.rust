@@ -8,7 +8,8 @@ overrides; M48 added ordered environment remove/clear operations; M49 added comb
 owned-command calls; M50 added one-shot owned stdin input; M51 added combined stdin+cwd+env
 owned-command calls; M52 added the owned `CommandSpec` config record; M53 added opt-in typed
 `CommandError` records for owned-command IO/stdin/UTF-8 failures; M54 added the narrow
-`CommandChild` live lifecycle handle; M55 added the first blocking localhost TCP facade.
+`CommandChild` live lifecycle handle; M55 added the first blocking localhost TCP facade; M56 added
+the first blocking localhost UDP datagram facade.
 
 ## Why
 
@@ -33,7 +34,7 @@ exceptions, or platform abstraction. Instead, add typed Rust-native surfaces bes
 | Paths and OS strings | `rust.PathBuf`, `rust.PathBufTools`, `rust.OsString`, and `rust.OsStringTools` exist with typed native helper modules. | Narrow metal paths can stay close to direct Rust. Portable nullable strings may still use `hxrt::string::HxString`. | Add borrowed `Path` / `OsStr` shapes and no-hxrt path fixtures as needed. |
 | File handles | Portable `sys.io.File*` uses `hxrt.fs.FileHandle`; `rust.fs.NativeFile` is an internal typing-only binding; `rust.fs.NativeFiles` is the first app-facing native helper facade. | `hxrt` is required for Haxe `Input` / `Output` handle semantics, but not for the current Rust-first owned/scoped file helper subset. | M43 first slice: expand the typed Rust-native file/path facade and keep its no-hxrt output evidence. |
 | Process handles | Portable `sys.io.Process` uses `hxrt.process.ProcessHandle`; `rust.process.NativeCommands` is the app-facing owned-command facade, `rust.process.CommandOutput` carries owned status/stdout/stderr, `rust.process.CommandEnv` carries typed environment operations, `rust.process.CommandSpec` carries one owned command config, `rust.process.CommandError` carries opt-in typed error categories, and `rust.process.CommandChild` carries the narrow live child lifecycle handle. | `hxrt` is justified for portable process streams and Haxe-style IO wrappers. The current Rust-first command facade stays no-hxrt by using explicit executable/args, explicit cwd/env set-remove-clear/cwd+env operations, one-shot owned stdin input, combined stdin+cwd+env operations, a typed owned config record, owned results, typed IO/stdin/UTF-8/lifecycle error records, and a narrow live child that supports write-and-close stdin, wait, and kill/wait. | Reusable stdin pipes, live stdout/stderr streams, detached handles, async process, shell fallback, and portable `Process` parity remain future work. |
-| Socket and TLS handles | `hxrt.net` / `hxrt.ssl` support portable sys surfaces and smoke fixtures. `rust.net.NativeTcp`, `rust.net.TcpListener`, and `rust.net.TcpStream` provide the first Rust-native blocking localhost TCP slice. | Runtime ownership is justified for portable sockets/TLS and platform-sensitive setup. The current Rust-first TCP facade stays no-hxrt by wrapping direct `std::net::TcpListener` / `TcpStream` handles for a deterministic loopback round trip. | Broader host/address APIs, UDP, live stream adapters, async networking, TLS setup, richer error categories, and portable `sys.net` parity remain future work. |
+| Socket and TLS handles | `hxrt.net` / `hxrt.ssl` support portable sys surfaces and smoke fixtures. `rust.net.NativeTcp`, `rust.net.TcpListener`, and `rust.net.TcpStream` provide the first Rust-native blocking localhost TCP slice; `rust.net.NativeUdp` and `rust.net.UdpSocket` provide the first Rust-native blocking localhost UDP datagram slice. | Runtime ownership is justified for portable sockets/TLS and platform-sensitive setup. The current Rust-first TCP and UDP facades stay no-hxrt by wrapping direct `std::net` handles for deterministic loopback proofs. | Broader host/address APIs, live stream adapters, async networking, TLS setup, richer error categories, and portable `sys.net` parity remain future work. |
 | DB handles | `hxrt.db` supports current SQLite smoke and MySQL compile coverage. | Runtime-heavy today; DB row/statement values are still portable/sys shaped. | Defer until file/process API families broaden beyond the first no-hxrt slices; typed DB facade is not the next slice. |
 | RAII guards | Lock guards have scoped callbacks; docs define extern-island selection for heavier guards. | Simple lexical guards are scoped; complex guard internals stay in Rust islands. | File APIs should prefer owned-result helpers or scoped callbacks, not storable lifetime tokens. |
 
@@ -203,6 +204,38 @@ stream, then exchanges one UTF-8 payload in each direction by pairing
 `writeUtf8AndShutdownWrite(...)` with `readToString()`. It does not require threads, shell commands,
 external network access, or a portable socket wrapper.
 
+## M56 Native UDP Slice
+
+M56 adds socket work for blocking localhost UDP datagrams, not portable `sys.net` UDP parity.
+
+Why this slice follows TCP:
+
+- two UDP sockets bound to `127.0.0.1:0` are deterministic enough for CI without external hosts,
+  DNS, TLS, service dependencies, or threads
+- datagram ownership is different enough from TCP streams to deserve its own typed facade and
+  output-shape proof
+- the narrow helper proves direct `std::net::UdpSocket` ownership without committing to arbitrary
+  host/address APIs, byte-buffer datagram abstractions, async networking, or TLS
+
+The first API family landed as `rust.net.NativeUdp` and `rust.net.UdpSocket`. The contract is:
+
+- typed Haxe API under `rust.net.*`
+- bind/send are explicitly localhost-only in this slice
+- `bindLocalhost(0)` asks the OS for an ephemeral port and `localPort()` reports it for
+  deterministic fixtures
+- `sendUtf8ToLocalhost(...)` sends one UTF-8 datagram to `127.0.0.1:<port>`
+- `recvUtf8(...)` receives one datagram into an explicitly sized buffer and decodes it as UTF-8
+- no portable `sys.net.Socket` compatibility promise
+- no TCP stream semantics, TLS, async networking, DNS/host resolution, live stream adapter,
+  byte-buffer datagram API, or rich socket-error taxonomy in the current slice
+- generated Rust uses direct `std::net` helpers in `std/rust/native/native_udp_tools.rs`
+- `-D reflaxe_rust_profile=metal -D rust_no_hxrt` fixture coverage proves no bundled runtime
+  dependency or `hxrt::net` bridge appears for the selected subset
+
+The native UDP fixture binds two ephemeral localhost sockets, reads both assigned ports, then sends
+one UTF-8 datagram in each direction with `sendUtf8ToLocalhost(...)` and `recvUtf8(...)`. It does
+not require threads, shell commands, external network access, or a portable socket wrapper.
+
 ## Contract Fixtures
 
 The M43 fixture bead added the initial contract before implementation:
@@ -227,6 +260,8 @@ The M43 fixture bead added the initial contract before implementation:
 | `scripts/ci/check-metal-policy.sh` native-process output-shape cases | Checks for avoidable `hxrt`, `Dynamic`, raw, portable process paths, direct `std::process::Command` helper use, quiet status execution, owned stdout capture, owned `std::process::Output` conversion, direct `current_dir(cwd)` wiring, direct `command.env(...)` / `env_remove(...)` / `env_clear()` wiring, composed cwd+env helper wiring, direct `Stdio::piped` / `write_all` / `wait_with_output` stdin wiring, composed stdin+cwd+env helper wiring, `CommandSpec` owned config storage plus `command_from_spec` builder wiring, `CommandError` typed category/output-decode wiring, and `CommandChild` direct `std::process::Child` lifecycle wiring. |
 | `test/positive/metal_no_hxrt_native_tcp` | Proves a typed blocking localhost TCP round trip through `rust.net.NativeTcp`, `TcpListener`, and `TcpStream` without `hxrt`. |
 | `scripts/ci/check-metal-policy.sh` native-TCP output-shape case | Checks for avoidable `hxrt`, `Dynamic`, raw, portable socket paths, direct `std::net` wrapper structs, localhost bind/connect wiring, `accept`, `write_all`, `Shutdown::Write`, and `read_to_string`. |
+| `test/positive/metal_no_hxrt_native_udp` | Proves a typed blocking localhost UDP datagram round trip through `rust.net.NativeUdp` and `UdpSocket` without `hxrt`. |
+| `scripts/ci/check-metal-policy.sh` native-UDP output-shape case | Checks for avoidable `hxrt`, `Dynamic`, raw, portable socket paths, direct `std::net::UdpSocket` wrapper structs, localhost bind/send wiring, `recv_from`, and UTF-8 decode. |
 
 Future expansion can add snapshots once these APIs grow beyond the current no-hxrt compile/run
 contracts, but the evidence shape should stay contract-first.
@@ -241,7 +276,8 @@ This roadmap is not:
 - a DB/TLS/network service matrix
 - an async systems runtime redesign
 - a broad live process/pipe abstraction for metal beyond the narrow `CommandChild` lifecycle proof
-- a broad socket/TLS/async networking abstraction beyond the narrow blocking localhost TCP proof
+- a broad socket/TLS/async networking abstraction beyond the narrow blocking localhost TCP and UDP
+  proofs
 
 If a Haxe-compatible API needs runtime handles, keep the runtime path and report why. If a metal API
 can use direct Rust ownership, add the typed facade and prove the emitted shape.
@@ -317,6 +353,11 @@ can use direct Rust ownership, add the typed facade and prove the emitted shape.
 | `haxe.rust-oo3.87.2` | `rust.net.NativeTcp`, `TcpListener`, and `TcpStream` implementation. |
 | `haxe.rust-oo3.87.3` | Native TCP no-hxrt output-shape gate. |
 | `haxe.rust-oo3.87.4` | Native TCP docs and evidence refresh. |
+| `haxe.rust-oo3.88` | M56 blocking localhost UDP datagram facade. |
+| `haxe.rust-oo3.88.1` | Native UDP contract fixture. |
+| `haxe.rust-oo3.88.2` | `rust.net.NativeUdp` and `UdpSocket` implementation. |
+| `haxe.rust-oo3.88.3` | Native UDP no-hxrt output-shape gate. |
+| `haxe.rust-oo3.88.4` | Native UDP docs and evidence refresh. |
 
 ## Review Notes
 
@@ -412,3 +453,10 @@ deterministic CI evidence. It binds `127.0.0.1:0`, reports the assigned port, co
 write-half shutdown. This is still not portable `sys.net.Socket`: arbitrary hosts, DNS, UDP, TLS,
 async networking, byte-buffer streams, live stream adapters, and richer socket error categories
 remain separate design work.
+
+Review note for `haxe.rust-oo3.88`: after the TCP localhost proof, UDP localhost datagrams are the
+next narrow socket slice with deterministic CI value. The facade binds two direct
+`std::net::UdpSocket` wrappers to `127.0.0.1:0`, reports assigned ports, sends one UTF-8 datagram to
+a localhost port, and receives one UTF-8 datagram through an explicit buffer-size contract. This is
+still not portable `sys.net.Socket`: arbitrary hosts, DNS, TLS, async networking, byte-buffer
+datagram APIs, live stream adapters, and richer socket error categories remain separate design work.

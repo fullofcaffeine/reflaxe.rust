@@ -52,8 +52,9 @@ networking, TLS, DB, processes, or threading, add app-specific smoke tests aroun
   narrow owned-command process subset with `rust.process.CommandOutput`, `rust.process.CommandSpec`,
   `rust.process.CommandError`, `rust.process.CommandChild`, and explicit working
   directory/environment set-remove-clear/cwd+env/stdin-input/stdin+cwd+env plus narrow live child
-  write/wait/kill lifecycle support. `rust.net.NativeTcp` adds the first blocking localhost TCP
-  loopback proof with typed `TcpListener` / `TcpStream` wrappers. These do not replace portable
+  write/wait/kill lifecycle support. `rust.net.NativeTcp` adds a blocking localhost TCP loopback
+  proof with typed `TcpListener` / `TcpStream` wrappers, and `rust.net.NativeUdp` adds a blocking
+  localhost datagram proof with a typed `UdpSocket` wrapper. These do not replace portable
   `sys.io.File`, `sys.io.Process`, or `sys.net.Socket`.
 - Typed anonymous records preserve Haxe aliasing while keeping field access typed; required fields and
   omitted `@:optional` fields are covered by focused generated-Rust fixtures.
