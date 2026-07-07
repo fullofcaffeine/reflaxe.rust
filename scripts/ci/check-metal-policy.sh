@@ -1900,6 +1900,48 @@ run_native_process_output_shape_case() {
 			exit 1
 		fi
 	fi
+	if [[ "$fixture_rel" == *"metal_no_hxrt_command_child"* ]]; then
+		if ! match_regex 'pub struct CommandChild' "$native_process_rs" || ! match_regex 'child: std::process::Child' "$native_process_rs"; then
+			echo "[metal-policy] error: command-child fixture missing typed std::process::Child owner for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'pub fn writeStdinAndClose\(&mut self, stdin_utf8: String\) -> Result<bool, CommandError>' "$native_process_rs"; then
+			echo "[metal-policy] error: command-child fixture missing write-and-close stdin lifecycle helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'pub fn wait\(&mut self\) -> Result<i32, CommandError>' "$native_process_rs" || ! match_regex 'pub fn killAndWait\(&mut self\) -> Result<i32, CommandError>' "$native_process_rs"; then
+			echo "[metal-policy] error: command-child fixture missing wait and kill/wait lifecycle helpers for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'CommandErrorKind::Lifecycle' "$native_process_rs" || ! match_regex 'pub fn isLifecycle\(&self\) -> bool' "$native_process_rs"; then
+			echo "[metal-policy] error: command-child fixture should expose typed lifecycle errors for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'pub fn spawnChildFromSpec\(spec: &CommandSpec\) -> Result<CommandChild, CommandError>' "$native_process_rs"; then
+			echo "[metal-policy] error: command-child fixture missing NativeCommands spawnChildFromSpec helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'spec\.stdin_utf8\.is_some\(\)' "$native_process_rs" || ! match_regex 'spawnChildFromSpec requires stdin to be written through CommandChild' "$native_process_rs"; then
+			echo "[metal-policy] error: command-child fixture should reject one-shot stdin specs at live-spawn boundary for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'stdin\(std::process::Stdio::piped\(\)\)' "$native_process_rs" || ! match_regex 'stdout\(std::process::Stdio::null\(\)\)' "$native_process_rs" || ! match_regex 'stderr\(std::process::Stdio::null\(\)\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-child fixture should spawn with piped stdin and null output streams for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex '\.spawn\(\)' "$native_process_rs" || ! match_regex 'map\(\|child\| CommandChild \{ child \}\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-child fixture should wrap direct std::process spawn output in CommandChild for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+	fi
 	if ! (cd "$out_dir" && cargo build -q); then
 		echo "[metal-policy] error: native process no-hxrt fixture did not cargo-build for ${failure_label}."
 		exit 1
@@ -2249,5 +2291,7 @@ run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_spec" 
 	'rust.process.CommandSpec emits direct std::process no-hxrt output'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_error" "compile.hxml" \
 	'rust.process.CommandError emits typed no-hxrt command errors'
+run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_child" "compile.hxml" \
+	'rust.process.CommandChild emits live no-hxrt child lifecycle'
 
 echo "[metal-policy] ok"

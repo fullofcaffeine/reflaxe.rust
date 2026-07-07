@@ -16,6 +16,8 @@ package rust.process;
 	  and output collection failures.
 	- `isUtf8()` covers byte-to-String decode failures from captured stdout/stderr accessors.
 	- `isStdin()` covers helper-owned stdin pipe setup/write failures.
+	- `isLifecycle()` covers helper contract violations around live child lifecycle, such as asking
+	  `spawnChildFromSpec(...)` to use a spec that already contains one-shot stdin input.
 	- `message()` returns Rust's human-readable detail for diagnostics; callers should branch on the
 	  typed predicates first and use the message only for reporting.
 
@@ -33,4 +35,5 @@ extern class CommandError {
 	public function isIo():Bool;
 	public function isUtf8():Bool;
 	public function isStdin():Bool;
+	public function isLifecycle():Bool;
 }

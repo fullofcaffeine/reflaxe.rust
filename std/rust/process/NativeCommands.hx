@@ -4,6 +4,7 @@ import rust.PathBuf;
 import rust.Ref;
 import rust.Result;
 import rust.Vec;
+import rust.process.CommandChild;
 import rust.process.CommandError;
 import rust.process.CommandSpec;
 import rust.process.CommandOutput;
@@ -42,10 +43,13 @@ import rust.process.CommandOutput;
 	- `statusCodeDetailedFromSpec(...)` and `outputUtf8DetailedFromSpec(...)` use the same owned
 	  `CommandSpec` execution path but return `rust.process.CommandError` for callers that need
 	  typed recovery policy.
+	- `spawnChildFromSpec(...)` starts the same explicit `CommandSpec` as a narrow live
+	  `CommandChild` with piped stdin and null stdout/stderr, so callers can write/close stdin and
+	  then wait or kill/wait without adopting portable stream wrappers.
 	- Fallible operations return `rust.Result<..., String>` so callers handle errors explicitly.
 	  The `Detailed` variants are opt-in and keep existing String-error methods source-compatible.
 	- This is not a replacement for `sys.io.Process` and intentionally does not expose live pipes,
-	  detached handles, reusable stdin pipes, or async process APIs yet.
+	  detached handles, reusable output streams, reusable stdin pipes, or async process APIs yet.
 
 	How
 	- `@:native("crate::native_process_tools::NativeCommands")` binds to a small Rust helper module.
@@ -77,4 +81,5 @@ extern class NativeCommands {
 	public static function outputUtf8FromSpec(spec:Ref<CommandSpec>):Result<CommandOutput, String>;
 	public static function statusCodeDetailedFromSpec(spec:Ref<CommandSpec>):Result<Int, CommandError>;
 	public static function outputUtf8DetailedFromSpec(spec:Ref<CommandSpec>):Result<CommandOutput, CommandError>;
+	public static function spawnChildFromSpec(spec:Ref<CommandSpec>):Result<CommandChild, CommandError>;
 }

@@ -182,8 +182,9 @@ combined cwd+env plus one-shot stdin-input and stdin+cwd+env owned-command calls
 `rust.process.CommandSpec` when a command needs one typed owned config value for program/args plus
 optional cwd, env, and stdin settings. Use the `Detailed` command/output methods with
 `rust.process.CommandError` when recovery needs typed IO/stdin/UTF-8 error categories instead of
-String-only diagnostics.
-It is not a live `sys.io.Process` replacement.
+String-only diagnostics. Use `rust.process.CommandChild` only for the narrow no-hxrt lifecycle
+case: spawn from a `CommandSpec`, write and close one stdin payload, wait, or kill and wait.
+It is not a live `sys.io.Process` stream/shell/async replacement.
 
 Prefer typed APIs and helpers over raw Rust injection. Raw `untyped __rust__(...)` remains an escape
 hatch for narrow low-level abstraction modules, but app code should normally use typed externs,

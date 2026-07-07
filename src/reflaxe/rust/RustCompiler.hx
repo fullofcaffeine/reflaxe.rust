@@ -7637,6 +7637,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			mutated.set(rustArgIdent(v.name), true);
 		}
 
+		function isMutatingMethod(cf:ClassField):Bool {
+			for (m in cf.meta.get()) {
+				if (m.name == ":rustMutating" || m.name == "rustMutating")
+					return true;
+			}
+			return false;
+		}
+
 		function scan(e:TypedExpr):Void {
 			var u = unwrapMetaParen(e);
 			switch (u.expr) {
@@ -7651,6 +7659,20 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var v = unwrapToLocal(inner);
 						if (v != null)
 							mark(v);
+					}
+				case TCall(callExpr, _):
+					{
+						switch (callExpr.expr) {
+							case TField(obj, FInstance(_, _, cfRef)): {
+									var cf = cfRef.get();
+									if (cf != null && isMutatingMethod(cf)) {
+										var v = unwrapToLocal(obj);
+										if (v != null)
+											mark(v);
+									}
+								}
+							case _:
+						}
 					}
 				case _:
 			}

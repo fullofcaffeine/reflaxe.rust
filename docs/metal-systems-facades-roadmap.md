@@ -7,7 +7,8 @@ explicit working-directory configuration for owned command runs; M47 added expli
 overrides; M48 added ordered environment remove/clear operations; M49 added combined cwd+env
 owned-command calls; M50 added one-shot owned stdin input; M51 added combined stdin+cwd+env
 owned-command calls; M52 added the owned `CommandSpec` config record; M53 added opt-in typed
-`CommandError` records for owned-command IO/stdin/UTF-8 failures.
+`CommandError` records for owned-command IO/stdin/UTF-8 failures; M54 added the narrow
+`CommandChild` live lifecycle handle.
 
 ## Why
 
@@ -31,7 +32,7 @@ exceptions, or platform abstraction. Instead, add typed Rust-native surfaces bes
 | --- | --- | --- | --- |
 | Paths and OS strings | `rust.PathBuf`, `rust.PathBufTools`, `rust.OsString`, and `rust.OsStringTools` exist with typed native helper modules. | Narrow metal paths can stay close to direct Rust. Portable nullable strings may still use `hxrt::string::HxString`. | Add borrowed `Path` / `OsStr` shapes and no-hxrt path fixtures as needed. |
 | File handles | Portable `sys.io.File*` uses `hxrt.fs.FileHandle`; `rust.fs.NativeFile` is an internal typing-only binding; `rust.fs.NativeFiles` is the first app-facing native helper facade. | `hxrt` is required for Haxe `Input` / `Output` handle semantics, but not for the current Rust-first owned/scoped file helper subset. | M43 first slice: expand the typed Rust-native file/path facade and keep its no-hxrt output evidence. |
-| Process handles | Portable `sys.io.Process` uses `hxrt.process.ProcessHandle`; `rust.process.NativeCommands` is the app-facing owned-command facade, `rust.process.CommandOutput` carries owned status/stdout/stderr, `rust.process.CommandEnv` carries typed environment operations, `rust.process.CommandSpec` carries one owned command config, and `rust.process.CommandError` carries opt-in typed error categories. | `hxrt` is justified for portable process streams and Haxe-style IO wrappers. The current Rust-first command facade stays no-hxrt by using explicit executable/args, explicit cwd/env set-remove-clear/cwd+env operations, one-shot owned stdin input, combined stdin+cwd+env operations, a typed owned config record, owned results, and typed IO/stdin/UTF-8 error records. | Reusable/live stdin pipes, live handles, async process, and kill/close lifecycle semantics remain future work. |
+| Process handles | Portable `sys.io.Process` uses `hxrt.process.ProcessHandle`; `rust.process.NativeCommands` is the app-facing owned-command facade, `rust.process.CommandOutput` carries owned status/stdout/stderr, `rust.process.CommandEnv` carries typed environment operations, `rust.process.CommandSpec` carries one owned command config, `rust.process.CommandError` carries opt-in typed error categories, and `rust.process.CommandChild` carries the narrow live child lifecycle handle. | `hxrt` is justified for portable process streams and Haxe-style IO wrappers. The current Rust-first command facade stays no-hxrt by using explicit executable/args, explicit cwd/env set-remove-clear/cwd+env operations, one-shot owned stdin input, combined stdin+cwd+env operations, a typed owned config record, owned results, typed IO/stdin/UTF-8/lifecycle error records, and a narrow live child that supports write-and-close stdin, wait, and kill/wait. | Reusable stdin pipes, live stdout/stderr streams, detached handles, async process, shell fallback, and portable `Process` parity remain future work. |
 | Socket and TLS handles | `hxrt.net` / `hxrt.ssl` support portable sys surfaces and smoke fixtures. | Runtime ownership is justified for portable sockets/TLS and platform-sensitive setup. | Later work should separate blocking vs async, TLS setup, and no-hxrt limits. |
 | DB handles | `hxrt.db` supports current SQLite smoke and MySQL compile coverage. | Runtime-heavy today; DB row/statement values are still portable/sys shaped. | Defer until file/process API families broaden beyond the first no-hxrt slices; typed DB facade is not the next slice. |
 | RAII guards | Lock guards have scoped callbacks; docs define extern-island selection for heavier guards. | Simple lexical guards are scoped; complex guard internals stay in Rust islands. | File APIs should prefer owned-result helpers or scoped callbacks, not storable lifetime tokens. |
@@ -105,8 +106,11 @@ The first API family landed as `rust.process.NativeCommands`. The contract is:
 - M53 adds `CommandError`, `statusCodeDetailedFromSpec(...)`, `outputUtf8DetailedFromSpec(...)`,
   `stdoutUtf8Detailed()`, and `stderrUtf8Detailed()` so callers can opt into typed IO/stdin/UTF-8
   error categories while the original String-error methods remain source-compatible
-- no detached process, reusable stdin pipe, live stdout/stderr streams, async process, or kill/close
-  API in the current slice
+- M54 adds `CommandChild` and `spawnChildFromSpec(...)` for a narrow live lifecycle handle with
+  piped stdin, null stdout/stderr, one write-and-close stdin operation, `wait()`, and
+  `killAndWait()`
+- no detached process, reusable stdin pipe, live stdout/stderr streams, async process, shell
+  fallback, or portable `sys.io.Process` parity in the current slice
 - generated Rust uses direct `std::process::Command` or a narrow typed helper module such as
   `std/rust/native/native_process_tools.rs`
 - `-D reflaxe_rust_profile=metal -D rust_no_hxrt` fixture coverage proves no bundled runtime
@@ -158,6 +162,12 @@ The command-error fixture proves the opt-in typed error path. It checks a missin
 UTF-8 bytes and checks `stdoutUtf8Detailed()` returns a UTF-8 `CommandError`. The fixture does not
 parse message strings for control flow.
 
+The command-child fixture proves the narrow live lifecycle path. It compiles a tiny Rust probe that
+blocks until stdin closes, then starts it through `spawnChildFromSpec(...)`. One child receives
+`writeStdinAndClose(...)` and exits successfully through `wait()`; another blocked child is reaped
+through `killAndWait()`. The fixture uses null stdout/stderr and does not expose live output streams
+or reusable stdin pipes.
+
 ## Contract Fixtures
 
 The M43 fixture bead added the initial contract before implementation:
@@ -177,8 +187,9 @@ The M43 fixture bead added the initial contract before implementation:
 | `test/positive/metal_no_hxrt_command_stdin_cwd_env` | Proves combined one-shot stdin input, explicit cwd, and ordered `CommandEnv` behavior without `hxrt`. |
 | `test/positive/metal_no_hxrt_command_spec` | Proves typed `CommandSpec` config values can combine program/args, optional cwd, env, and stdin without `hxrt`. |
 | `test/positive/metal_no_hxrt_command_error` | Proves opt-in typed `CommandError` categories for owned-command IO and UTF-8 failures without `hxrt`. |
+| `test/positive/metal_no_hxrt_command_child` | Proves narrow `CommandChild` live lifecycle operations without `hxrt`. |
 | `test/negative/metal_process_raw_escape` | Rejects app-side raw `std::process::Command` as a substitute for the facade under strict policy. |
-| `scripts/ci/check-metal-policy.sh` native-process output-shape cases | Checks for avoidable `hxrt`, `Dynamic`, raw, portable process paths, direct `std::process::Command` helper use, quiet status execution, owned stdout capture, owned `std::process::Output` conversion, direct `current_dir(cwd)` wiring, direct `command.env(...)` / `env_remove(...)` / `env_clear()` wiring, composed cwd+env helper wiring, direct `Stdio::piped` / `write_all` / `wait_with_output` stdin wiring, composed stdin+cwd+env helper wiring, `CommandSpec` owned config storage plus `command_from_spec` builder wiring, and `CommandError` typed category/output-decode wiring. |
+| `scripts/ci/check-metal-policy.sh` native-process output-shape cases | Checks for avoidable `hxrt`, `Dynamic`, raw, portable process paths, direct `std::process::Command` helper use, quiet status execution, owned stdout capture, owned `std::process::Output` conversion, direct `current_dir(cwd)` wiring, direct `command.env(...)` / `env_remove(...)` / `env_clear()` wiring, composed cwd+env helper wiring, direct `Stdio::piped` / `write_all` / `wait_with_output` stdin wiring, composed stdin+cwd+env helper wiring, `CommandSpec` owned config storage plus `command_from_spec` builder wiring, `CommandError` typed category/output-decode wiring, and `CommandChild` direct `std::process::Child` lifecycle wiring. |
 
 Future expansion can add snapshots once these APIs grow beyond the current no-hxrt compile/run
 contracts, but the evidence shape should stay contract-first.
@@ -192,7 +203,7 @@ This roadmap is not:
 - a blanket cross-platform systems parity claim
 - a DB/TLS/network service matrix
 - an async systems runtime redesign
-- a live process/pipe abstraction for metal before stdin and lifecycle semantics are designed
+- a broad live process/pipe abstraction for metal beyond the narrow `CommandChild` lifecycle proof
 
 If a Haxe-compatible API needs runtime handles, keep the runtime path and report why. If a metal API
 can use direct Rust ownership, add the typed facade and prove the emitted shape.
@@ -258,6 +269,11 @@ can use direct Rust ownership, add the typed facade and prove the emitted shape.
 | `haxe.rust-oo3.85.2` | `CommandError` / detailed command and output helper implementation. |
 | `haxe.rust-oo3.85.3` | CommandError no-hxrt output-shape gate. |
 | `haxe.rust-oo3.85.4` | CommandError docs and evidence refresh. |
+| `haxe.rust-oo3.86` | M54 narrow live command-child lifecycle facade. |
+| `haxe.rust-oo3.86.1` | CommandChild contract fixture. |
+| `haxe.rust-oo3.86.2` | `CommandChild` / `spawnChildFromSpec` lifecycle implementation. |
+| `haxe.rust-oo3.86.3` | CommandChild no-hxrt output-shape gate. |
+| `haxe.rust-oo3.86.4` | CommandChild docs and evidence refresh. |
 
 ## Review Notes
 
@@ -274,16 +290,17 @@ only as a narrow owned-command facade. Keep `sys.io.Process` on the portable run
 live pipes, Haxe IO wrappers, omitted-args shell behavior, exceptions, and handle lifecycle semantics
 are genuine runtime concerns. For the metal/no-hxrt proof, start with explicit command + args,
 `rust.Vec<String>`, owned status/stdout results, and direct `std::process::Command` output-shape
-gates. Defer live process handles until the owned-output contract is proven.
+gates. M54 later adds the first narrow live child lifecycle handle after the owned-output contract is
+proven.
 
 Second-pass review for `haxe.rust-oo3.77`: after the first owned-command proof, the smallest useful
-process expansion is a typed `CommandOutput` value, not live handles. It preserves deterministic CI,
-keeps portable `sys.io.Process` on the runtime path, and proves that status/stdout/stderr inspection
-can stay on direct `std::process::Output` with no `hxrt` dependency.
+process expansion is a typed `CommandOutput` value, not broad live handles. It preserves
+deterministic CI, keeps portable `sys.io.Process` on the runtime path, and proves that
+status/stdout/stderr inspection can stay on direct `std::process::Output` with no `hxrt` dependency.
 
 Second-pass review for `haxe.rust-oo3.78`: explicit cwd is the next smallest process configuration
-surface because it is deterministic in CI and still owned-output-only. Stdin and live handles need
-separate API design because they introduce input ownership or lifecycle semantics.
+surface because it is deterministic in CI and still owned-output-only. Stdin and broad live handles
+need separate API design because they introduce input ownership or lifecycle semantics.
 
 Review note for `haxe.rust-oo3.79`: explicit per-command environment overrides are small enough for
 the same owned-output facade because `std::process::Command::env(...)` mutates only the child
@@ -300,36 +317,47 @@ separate follow-up because they combine two already-proven builder dimensions.
 Review note for `haxe.rust-oo3.81`: combining cwd and env stays in the owned-output command subset
 because it only composes `std::process::Command::current_dir(...)` with ordered environment builder
 mutations. The implementation intentionally reuses the existing `command_in_dir(...)` and
-`apply_env(...)` helpers instead of introducing a broader command configuration object. Stdin, live
-handles, async process, and kill/close lifecycle semantics remain
-separate design slices. M52 later adds the typed owned config record after the individual builder
-dimensions are proven.
+`apply_env(...)` helpers instead of introducing a broader command configuration object. Stdin, broad
+live handles, async process, and kill/close lifecycle semantics remained separate design slices at
+M49. M52 later adds the typed owned config record after the individual builder dimensions are proven,
+and M54 adds the narrow child lifecycle proof.
 
 Review note for `haxe.rust-oo3.82`: one-shot stdin input stays in the owned-output command subset
 because the helper owns the child process and pipe lifecycle internally, writes one `String` into
 `Stdio::piped()` stdin, closes that pipe before waiting, and returns only status or
 `CommandOutput`. This is not a live `stdin` stream API. Reusable stdin pipes, stdin combined with
-cwd/env builder dimensions, async process, and kill/close lifecycle semantics remain separate design
-slices. M51 handles stdin+cwd+env composition and M52 handles the typed owned config record.
+cwd/env builder dimensions, async process, and broad child lifecycle semantics remained separate
+design slices at M50. M51 handles stdin+cwd+env composition, M52 handles the typed owned config
+record, and M54 adds the narrow child lifecycle proof.
 
 Review note for `haxe.rust-oo3.83`: stdin+cwd+env combinations remain a composition of already
 proven owned-command builder dimensions. The helper builds a direct `std::process::Command` with
 `current_dir(...)` and ordered `CommandEnv` mutations, then hands that configured command to the
 same one-shot stdin writer used by M50. This still returns only status or owned `CommandOutput`;
-reusable/live stdin pipes, async process, live handles, and kill/close lifecycle semantics remain
-separate design slices. M52 follows by replacing further combination growth with a typed owned config
-record.
+reusable/live stdin pipes, async process, broad live handles, and kill/close lifecycle semantics
+remained separate design slices at M51. M52 follows by replacing further combination growth with a
+typed owned config record, and M54 later adds a narrow child lifecycle handle.
 
 Review note for `haxe.rust-oo3.84`: `CommandSpec` is the right next step after proving the separate
 owned-command builder dimensions. It owns cloned program/args plus optional cwd, `CommandEnv`, and
 stdin data, then builds a fresh `std::process::Command` for each status/output run. This keeps the
-API typed and no-hxrt while avoiding more method-combination growth. It is still not a live process
-handle, reusable pipe, async API, shell wrapper, or typed process-error taxonomy. M53 follows with a
-narrow typed-error taxonomy for owned-command IO/stdin/UTF-8 failures only.
+API typed and no-hxrt while avoiding more method-combination growth. It is still not a broad live
+process handle, reusable pipe, async API, shell wrapper, or typed process-error taxonomy. M53 follows
+with a narrow typed-error taxonomy for owned-command IO/stdin/UTF-8 failures only, and M54 follows
+with the first narrow live child lifecycle handle.
 
 Review note for `haxe.rust-oo3.85`: `CommandError` is the right next step after `CommandSpec`
 because it improves recovery policy without introducing live process ownership. It is opt-in through
 `Detailed` methods so existing `Result<..., String>` callers stay source-compatible. The first
 taxonomy is deliberately small: IO covers spawn/wait/output errors, stdin covers helper-owned pipe
-setup/write failures, and UTF-8 covers captured output decoding. Live handles, reusable pipes, async
-process, shell behavior, and kill/close lifecycle remain separate design work.
+setup/write failures, and UTF-8 covers captured output decoding. M54 follows with the narrow live
+child lifecycle proof; reusable pipes, live output streams, async process, and shell behavior remain
+separate design work.
+
+Review note for `haxe.rust-oo3.86`: `CommandChild` is the smallest justified live process handle
+after the owned-command and typed-error slices. It owns `std::process::Child`, spawns from a
+`CommandSpec` with piped stdin and null stdout/stderr, allows exactly one write-and-close stdin
+operation, and exposes `wait()` plus `killAndWait()` so children are reaped. It deliberately rejects
+`CommandSpec.withStdin(...)` at the live-spawn boundary because one-shot stdin belongs to the owned
+status/output helpers. This is still not portable `sys.io.Process`: reusable stdin pipes, live
+stdout/stderr streams, detached handles, shell fallback, and async process APIs remain future work.

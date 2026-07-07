@@ -32,6 +32,11 @@ pub struct CommandSpec {
 }
 
 #[derive(Debug)]
+pub struct CommandChild {
+    child: std::process::Child,
+}
+
+#[derive(Debug)]
 pub struct CommandError {
     kind: CommandErrorKind,
     message: String,
@@ -42,6 +47,7 @@ enum CommandErrorKind {
     Io,
     Utf8,
     Stdin,
+    Lifecycle,
 }
 
 #[derive(Debug)]
@@ -123,10 +129,14 @@ fn command_from_spec(spec: &CommandSpec) -> std::process::Command {
 
 fn to_command_output(output: std::process::Output) -> CommandOutput {
     CommandOutput {
-        status_code: output.status.code().unwrap_or(1),
+        status_code: status_code(output.status),
         stdout: output.stdout,
         stderr: output.stderr,
     }
+}
+
+fn status_code(status: std::process::ExitStatus) -> i32 {
+    status.code().unwrap_or(1)
 }
 
 fn write_child_stdin_detailed(
@@ -165,7 +175,7 @@ fn status_code_with_stdin_detailed(
 
     child
         .wait()
-        .map(|status| status.code().unwrap_or(1))
+        .map(status_code)
         .map_err(CommandError::io)
 }
 
@@ -188,7 +198,7 @@ fn status_code_with_stdin(
 
     child
         .wait()
-        .map(|status| status.code().unwrap_or(1))
+        .map(status_code)
         .map_err(|err| err.to_string())
 }
 
@@ -261,6 +271,13 @@ impl CommandError {
         }
     }
 
+    fn lifecycle(message: String) -> CommandError {
+        CommandError {
+            kind: CommandErrorKind::Lifecycle,
+            message,
+        }
+    }
+
     pub fn message(&self) -> String {
         self.message.clone()
     }
@@ -275,6 +292,38 @@ impl CommandError {
 
     pub fn isStdin(&self) -> bool {
         matches!(self.kind, CommandErrorKind::Stdin)
+    }
+
+    pub fn isLifecycle(&self) -> bool {
+        matches!(self.kind, CommandErrorKind::Lifecycle)
+    }
+}
+
+#[allow(non_snake_case)]
+impl CommandChild {
+    pub fn writeStdinAndClose(&mut self, stdin_utf8: String) -> Result<bool, CommandError> {
+        let mut stdin = self
+            .child
+            .stdin
+            .take()
+            .ok_or_else(|| CommandError::stdin(String::from("child stdin was already closed")))?;
+        stdin
+            .write_all(stdin_utf8.as_bytes())
+            .map(|_| true)
+            .map_err(CommandError::io)
+    }
+
+    pub fn wait(&mut self) -> Result<i32, CommandError> {
+        self.child.wait().map(status_code).map_err(CommandError::io)
+    }
+
+    pub fn killAndWait(&mut self) -> Result<i32, CommandError> {
+        match self.child.kill() {
+            Ok(()) => {}
+            Err(err) if err.kind() == std::io::ErrorKind::InvalidInput => {}
+            Err(err) => return Err(CommandError::io(err)),
+        }
+        self.wait()
     }
 }
 
@@ -353,7 +402,7 @@ impl NativeCommands {
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .status()
-            .map(|status| status.code().unwrap_or(1))
+            .map(status_code)
             .map_err(|err| err.to_string())
     }
 
@@ -384,7 +433,7 @@ impl NativeCommands {
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .status()
-            .map(|status| status.code().unwrap_or(1))
+            .map(status_code)
             .map_err(|err| err.to_string())
     }
 
@@ -409,7 +458,7 @@ impl NativeCommands {
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .status()
-            .map(|status| status.code().unwrap_or(1))
+            .map(status_code)
             .map_err(|err| err.to_string())
     }
 
@@ -435,7 +484,7 @@ impl NativeCommands {
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .status()
-            .map(|status| status.code().unwrap_or(1))
+            .map(status_code)
             .map_err(|err| err.to_string())
     }
 
@@ -501,7 +550,7 @@ impl NativeCommands {
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
                 .status()
-                .map(|status| status.code().unwrap_or(1))
+                .map(status_code)
                 .map_err(|err| err.to_string()),
         }
     }
@@ -525,7 +574,7 @@ impl NativeCommands {
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
                 .status()
-                .map(|status| status.code().unwrap_or(1))
+                .map(status_code)
                 .map_err(CommandError::io),
         }
     }
@@ -539,5 +588,20 @@ impl NativeCommands {
                 .map(to_command_output)
                 .map_err(CommandError::io),
         }
+    }
+
+    pub fn spawnChildFromSpec(spec: &CommandSpec) -> Result<CommandChild, CommandError> {
+        if spec.stdin_utf8.is_some() {
+            return Err(CommandError::lifecycle(String::from(
+                "spawnChildFromSpec requires stdin to be written through CommandChild",
+            )));
+        }
+        command_from_spec(spec)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .map(|child| CommandChild { child })
+            .map_err(CommandError::io)
     }
 }
