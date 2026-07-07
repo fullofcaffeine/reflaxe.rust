@@ -1,3 +1,10 @@
+# [0.67.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.66.0...v0.67.0) (2026-07-07)
+
+
+### Features
+
+* add command env facade ([6f55df8](https://github.com/fullofcaffeine/reflaxe.rust/commit/6f55df84303ef0ef27f5aa345537c10e097d45e4))
+
 # [0.66.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.65.0...v0.66.0) (2026-07-07)
 
 
