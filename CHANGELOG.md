@@ -1,3 +1,10 @@
+# [0.74.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.73.0...v0.74.0) (2026-07-07)
+
+
+### Features
+
+* add live command child lifecycle ([63b52ab](https://github.com/fullofcaffeine/reflaxe.rust/commit/63b52ab310f0a83f0f640daca71ec72c12a513fd))
+
 # [0.73.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.72.0...v0.73.0) (2026-07-07)
 
 
