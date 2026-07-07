@@ -16,12 +16,16 @@
     metadata, or existing Rust primitives
   - classify the helper as `permanent-native-facade`, `lowering-candidate`, or
     `experimental-scaffold`
+  - update `docs/native-facade-manifest.json` with the helper's owner, runtime contract
+    (`no-hxrt` or explicit `hxrt-bridge`), allowed imports/dependency prefixes, forbidden growth,
+    evidence owner, and code-line review budget
   - document the owning Haxe extern/facade and why lowering is insufficient today
   - keep dependencies/imports narrow and Rust-shaped
-  - forbid `hxrt`, `Dynamic`, `Any`, type-erased handles, broad portable semantics, generic
-    registries, reflection-like dispatch, and allocation-heavy adapters
+  - forbid undeclared `hxrt`, `Dynamic`, `Any`, type-erased handles, broad portable semantics,
+    generic registries, reflection-like dispatch, and allocation-heavy adapters
   - add generated call-site inspection, cargo/rustfmt evidence, and a policy fixture that proves the
     intended no-hxrt output shape
+  - run `npm run guard:native-facade-manifest`
 - Before adding or expanding `std/hxrt/**` externs or runtime-backed helpers, prove the value cannot
   be produced by compiler lowering from typed AST/metadata/literals/existing target primitives.
   Do not add `hxrt` APIs for compile-time-known facts such as optional field status, literal defaults,

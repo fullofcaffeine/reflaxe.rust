@@ -1,0 +1,448 @@
+{
+  "schemaVersion": 1,
+  "description": "Machine-checkable inventory for Rust helper modules shipped from std/rust/native/*.rs. Each entry declares the owning typed facade, classification, runtime contract, allowed code dependencies, forbidden growth, evidence owner, and review line budget.",
+  "classifications": [
+    "permanent-native-facade",
+    "lowering-candidate",
+    "experimental-scaffold"
+  ],
+  "runtimeContracts": [
+    "no-hxrt",
+    "hxrt-bridge"
+  ],
+  "entries": [
+    {
+      "path": "std/rust/native/array_borrow_tools.rs",
+      "ownerFacades": ["rust.ArrayBorrow"],
+      "classification": "permanent-native-facade",
+      "runtimeContract": "hxrt-bridge",
+      "whyNotLoweringToday": "The facade needs generated-crate callback aliases and hxrt array slice helpers that are not yet expressible as a clean Haxe extern-only signature.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": ["crate::HxDynRef", "hxrt::array"],
+      "allowedRuntimeDependencies": ["hxrt"],
+      "forbiddenGrowth": [
+        "generic slice runtime",
+        "raw pointer storage",
+        "portable Array API expansion beyond scoped borrow callbacks"
+      ],
+      "evidenceOwner": "test/snapshot/rust_array_slice_views and scripts/ci/check-metal-policy.sh slice-view output-shape case",
+      "codeLineBudget": 24
+    },
+    {
+      "path": "std/rust/native/clone_tools.rs",
+      "ownerFacades": ["rust.CloneTools"],
+      "classification": "lowering-candidate",
+      "runtimeContract": "no-hxrt",
+      "whyNotLoweringToday": "The helper centralizes a typed Clone bound until generic method lowering can emit this operation directly from the Haxe facade.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": [],
+      "allowedRuntimeDependencies": [],
+      "forbiddenGrowth": [
+        "deep-copy runtime",
+        "type-erased clone registry",
+        "serialization-backed cloning"
+      ],
+      "evidenceOwner": "rust.CloneTools snapshots and native facade manifest guard",
+      "codeLineBudget": 12
+    },
+    {
+      "path": "std/rust/native/duration_tools.rs",
+      "ownerFacades": ["rust.DurationTools", "rust.Duration"],
+      "classification": "lowering-candidate",
+      "runtimeContract": "no-hxrt",
+      "whyNotLoweringToday": "The helper exposes a small typed facade over std::time::Duration construction, inspection, and sleep before these pure calls are represented as compiler intrinsics.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": ["std::thread", "std::time"],
+      "allowedRuntimeDependencies": [],
+      "forbiddenGrowth": [
+        "timer runtime",
+        "async scheduler",
+        "portable date/time emulation"
+      ],
+      "evidenceOwner": "rust.DurationTools snapshots and native facade manifest guard",
+      "codeLineBudget": 24
+    },
+    {
+      "path": "std/rust/native/hash_map_tools.rs",
+      "ownerFacades": ["rust.HashMapTools"],
+      "classification": "lowering-candidate",
+      "runtimeContract": "hxrt-bridge",
+      "whyNotLoweringToday": "The helper exposes typed std::collections::HashMap operations while bridging owned iterator results through the current hxrt iterator representation.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": ["hxrt::iter", "std::collections", "std::fmt", "std::hash"],
+      "allowedRuntimeDependencies": ["hxrt"],
+      "forbiddenGrowth": [
+        "general collection runtime",
+        "type-erased map handles",
+        "clone-heavy adapters beyond explicit owned iterator conversions"
+      ],
+      "evidenceOwner": "test/snapshot/rust_hashmap and native facade manifest guard",
+      "codeLineBudget": 75
+    },
+    {
+      "path": "std/rust/native/hash_map_tools_nullable.rs",
+      "ownerFacades": ["rust.HashMapTools"],
+      "classification": "lowering-candidate",
+      "runtimeContract": "hxrt-bridge",
+      "whyNotLoweringToday": "The nullable-string variant mirrors hash_map_tools.rs while returning hxrt::string::HxString where the portable string contract requires it.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": ["hxrt::iter", "hxrt::string", "std::collections", "std::fmt", "std::hash"],
+      "allowedRuntimeDependencies": ["hxrt"],
+      "forbiddenGrowth": [
+        "general collection runtime",
+        "type-erased map handles",
+        "string compatibility behavior outside the nullable-string contract"
+      ],
+      "evidenceOwner": "test/snapshot/rust_hashmap nullable-string coverage and native facade manifest guard",
+      "codeLineBudget": 75
+    },
+    {
+      "path": "std/rust/native/instant_tools.rs",
+      "ownerFacades": ["rust.InstantTools", "rust.Instant"],
+      "classification": "lowering-candidate",
+      "runtimeContract": "no-hxrt",
+      "whyNotLoweringToday": "The helper keeps std::time::Instant operations behind a typed facade until simple native value method lowering covers this surface.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": ["std::time"],
+      "allowedRuntimeDependencies": [],
+      "forbiddenGrowth": [
+        "timer runtime",
+        "wall-clock abstraction",
+        "portable date/time semantics"
+      ],
+      "evidenceOwner": "rust.InstantTools snapshots and native facade manifest guard",
+      "codeLineBudget": 20
+    },
+    {
+      "path": "std/rust/native/iter_tools.rs",
+      "ownerFacades": ["rust.IterTools"],
+      "classification": "lowering-candidate",
+      "runtimeContract": "no-hxrt",
+      "whyNotLoweringToday": "The helper exposes Vec::into_iter through a typed facade until iterator construction can lower directly.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": ["std::vec"],
+      "allowedRuntimeDependencies": [],
+      "forbiddenGrowth": [
+        "iterator runtime",
+        "boxed dynamic iterator registry",
+        "portable iterator compatibility layer"
+      ],
+      "evidenceOwner": "rust.IterTools snapshots and native facade manifest guard",
+      "codeLineBudget": 12
+    },
+    {
+      "path": "std/rust/native/map_storage_tools.rs",
+      "ownerFacades": ["rust.MapStorageTools", "haxe.ds.StringMap", "haxe.ds.IntMap", "haxe.ds.ObjectMap", "haxe.ds.EnumValueMap"],
+      "classification": "permanent-native-facade",
+      "runtimeContract": "hxrt-bridge",
+      "whyNotLoweringToday": "The helper centralizes generated-crate map storage access for Haxe map overrides, including HxRef borrowing and owned iterator bridge results.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": [
+        "crate::HxRef",
+        "crate::haxe_ds_enum_value_map",
+        "crate::haxe_ds_int_map",
+        "crate::haxe_ds_object_map",
+        "crate::haxe_ds_string_map",
+        "hxrt::hxref",
+        "hxrt::iter",
+        "std::fmt"
+      ],
+      "allowedRuntimeDependencies": ["hxrt"],
+      "forbiddenGrowth": [
+        "generic map runtime",
+        "type-erased collection handles",
+        "reflection-like map dispatch",
+        "portable map semantics outside owned storage operations"
+      ],
+      "evidenceOwner": "map storage snapshots and native facade manifest guard",
+      "codeLineBudget": 410
+    },
+    {
+      "path": "std/rust/native/map_storage_tools_nullable.rs",
+      "ownerFacades": ["rust.MapStorageTools", "haxe.ds.StringMap", "haxe.ds.IntMap", "haxe.ds.ObjectMap", "haxe.ds.EnumValueMap"],
+      "classification": "permanent-native-facade",
+      "runtimeContract": "hxrt-bridge",
+      "whyNotLoweringToday": "The nullable-string variant centralizes generated-crate map storage access when Haxe String lowers to hxrt::string::HxString.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": [
+        "crate::HxRef",
+        "crate::haxe_ds_enum_value_map",
+        "crate::haxe_ds_int_map",
+        "crate::haxe_ds_object_map",
+        "crate::haxe_ds_string_map",
+        "hxrt::hxref",
+        "hxrt::iter",
+        "hxrt::string",
+        "std::fmt"
+      ],
+      "allowedRuntimeDependencies": ["hxrt"],
+      "forbiddenGrowth": [
+        "generic map runtime",
+        "type-erased collection handles",
+        "reflection-like map dispatch",
+        "string compatibility behavior outside the nullable-string contract"
+      ],
+      "evidenceOwner": "map storage nullable-string snapshots and native facade manifest guard",
+      "codeLineBudget": 410
+    },
+    {
+      "path": "std/rust/native/mut_slice_tools.rs",
+      "ownerFacades": ["rust.MutSliceTools", "rust.MutSlice"],
+      "classification": "lowering-candidate",
+      "runtimeContract": "no-hxrt",
+      "whyNotLoweringToday": "The helper exposes a small typed facade over mutable Rust slices until slice operations lower directly from the borrow-region facade.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": [],
+      "allowedRuntimeDependencies": [],
+      "forbiddenGrowth": [
+        "slice storage runtime",
+        "raw pointer aliasing helpers",
+        "unchecked lifetime extension"
+      ],
+      "evidenceOwner": "test/snapshot/rust_array_slice_views, borrow-region negative fixtures, and native facade manifest guard",
+      "codeLineBudget": 18
+    },
+    {
+      "path": "std/rust/native/native_file_tools.rs",
+      "ownerFacades": ["rust.fs.NativeFiles"],
+      "classification": "permanent-native-facade",
+      "runtimeContract": "no-hxrt",
+      "whyNotLoweringToday": "The helper owns direct std::fs file/path operations for the Rust-native metal facade without portable sys.io stream handles.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": ["std::fs", "std::path"],
+      "allowedRuntimeDependencies": [],
+      "forbiddenGrowth": [
+        "portable sys.io.File semantics",
+        "stream runtime",
+        "platform abstraction beyond the facade contract"
+      ],
+      "evidenceOwner": "metal native file fixtures and native facade manifest guard",
+      "codeLineBudget": 30
+    },
+    {
+      "path": "std/rust/native/native_process_tools.rs",
+      "ownerFacades": ["rust.process.NativeCommands", "rust.process.CommandSpec", "rust.process.CommandChild", "rust.process.CommandOutput", "rust.process.CommandError", "rust.process.CommandEnv"],
+      "classification": "permanent-native-facade",
+      "runtimeContract": "no-hxrt",
+      "whyNotLoweringToday": "The helper owns process lifecycle, cwd/env setup, stdin partial-move behavior, child wait/kill semantics, and byte/UTF-8 output validation behind typed process facades.",
+      "allowedUsePrefixes": ["std::io"],
+      "allowedDependencyPrefixes": ["std::io", "std::path", "std::process", "std::string"],
+      "allowedRuntimeDependencies": [],
+      "forbiddenGrowth": [
+        "shell runtime",
+        "portable sys.io.Process compatibility",
+        "generic process registry",
+        "stream runtime unrelated to CommandChild lifecycle"
+      ],
+      "evidenceOwner": "metal native process fixtures and native facade manifest guard",
+      "codeLineBudget": 560
+    },
+    {
+      "path": "std/rust/native/native_socket_addr_tools.rs",
+      "ownerFacades": ["rust.net.SocketAddr"],
+      "classification": "lowering-candidate",
+      "runtimeContract": "no-hxrt",
+      "whyNotLoweringToday": "The current compiler cannot declare the private wrapper field and crate-private std::net conversions used by TCP/UDP helpers without a helper or native-wrapper generation support.",
+      "allowedUsePrefixes": ["std::net", "crate::native_socket_error_tools"],
+      "allowedDependencyPrefixes": ["crate::native_socket_error_tools", "std::net"],
+      "allowedRuntimeDependencies": [],
+      "forbiddenGrowth": [
+        "DNS",
+        "arbitrary host parsing",
+        "generic address registry",
+        "portable sys.net semantics"
+      ],
+      "evidenceOwner": "test/positive/metal_no_hxrt_socket_addr and scripts/ci/check-metal-policy.sh socket-address output-shape case",
+      "codeLineBudget": 50
+    },
+    {
+      "path": "std/rust/native/native_socket_error_tools.rs",
+      "ownerFacades": ["rust.net.SocketError"],
+      "classification": "permanent-native-facade",
+      "runtimeContract": "no-hxrt",
+      "whyNotLoweringToday": "The helper provides typed socket error categories shared by TCP/UDP helpers without exceptions, Dynamic payloads, or a broad error runtime.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": ["std::io", "std::string"],
+      "allowedRuntimeDependencies": [],
+      "forbiddenGrowth": [
+        "broad error hierarchy",
+        "portable exception behavior",
+        "type-erased error payloads"
+      ],
+      "evidenceOwner": "test/positive/metal_no_hxrt_socket_errors, test/positive/metal_no_hxrt_socket_addr, and native facade manifest guard",
+      "codeLineBudget": 55
+    },
+    {
+      "path": "std/rust/native/native_tcp_tools.rs",
+      "ownerFacades": ["rust.net.NativeTcp", "rust.net.TcpListener", "rust.net.TcpStream"],
+      "classification": "permanent-native-facade",
+      "runtimeContract": "no-hxrt",
+      "whyNotLoweringToday": "The helper owns direct std::net::TcpListener/TcpStream handles, blocking read/write/shutdown lifecycle, address binding, and byte validation behind typed TCP facades.",
+      "allowedUsePrefixes": ["std::io", "std::net", "crate::native_socket_addr_tools", "crate::native_socket_error_tools"],
+      "allowedDependencyPrefixes": ["crate::native_socket_addr_tools", "crate::native_socket_error_tools", "std::io", "std::net"],
+      "allowedRuntimeDependencies": [],
+      "forbiddenGrowth": [
+        "TLS",
+        "async runtime",
+        "portable socket compatibility",
+        "broad stream adapters"
+      ],
+      "evidenceOwner": "test/positive/metal_no_hxrt_tcp_* fixtures, test/positive/metal_no_hxrt_socket_addr, and scripts/ci/check-metal-policy.sh TCP output-shape cases",
+      "codeLineBudget": 215
+    },
+    {
+      "path": "std/rust/native/native_udp_tools.rs",
+      "ownerFacades": ["rust.net.NativeUdp", "rust.net.UdpSocket"],
+      "classification": "permanent-native-facade",
+      "runtimeContract": "no-hxrt",
+      "whyNotLoweringToday": "The helper owns direct std::net::UdpSocket handles, address binding, datagram send/receive behavior, and byte validation behind typed UDP facades.",
+      "allowedUsePrefixes": ["std::net", "crate::native_socket_addr_tools", "crate::native_socket_error_tools"],
+      "allowedDependencyPrefixes": ["crate::native_socket_addr_tools", "crate::native_socket_error_tools", "std::io", "std::net"],
+      "allowedRuntimeDependencies": [],
+      "forbiddenGrowth": [
+        "DNS",
+        "async runtime",
+        "portable socket compatibility",
+        "generic datagram registry"
+      ],
+      "evidenceOwner": "test/positive/metal_no_hxrt_udp_* fixtures, test/positive/metal_no_hxrt_socket_addr, and scripts/ci/check-metal-policy.sh UDP output-shape cases",
+      "codeLineBudget": 235
+    },
+    {
+      "path": "std/rust/native/os_string_tools.rs",
+      "ownerFacades": ["rust.OsStringTools", "rust.OsString"],
+      "classification": "lowering-candidate",
+      "runtimeContract": "no-hxrt",
+      "whyNotLoweringToday": "The helper exposes typed std::ffi::OsString conversions until OS-string value conversion lowering is represented directly.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": ["std::ffi"],
+      "allowedRuntimeDependencies": [],
+      "forbiddenGrowth": [
+        "platform encoding runtime",
+        "path abstraction",
+        "portable string compatibility beyond explicit lossy conversion"
+      ],
+      "evidenceOwner": "OS string snapshots and native facade manifest guard",
+      "codeLineBudget": 16
+    },
+    {
+      "path": "std/rust/native/os_string_tools_nullable.rs",
+      "ownerFacades": ["rust.OsStringTools", "rust.OsString"],
+      "classification": "lowering-candidate",
+      "runtimeContract": "hxrt-bridge",
+      "whyNotLoweringToday": "The nullable-string variant mirrors os_string_tools.rs while bridging to hxrt::string::HxString for the portable string contract.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": ["hxrt::string", "std::ffi"],
+      "allowedRuntimeDependencies": ["hxrt"],
+      "forbiddenGrowth": [
+        "platform encoding runtime",
+        "path abstraction",
+        "string compatibility behavior outside explicit lossy conversion"
+      ],
+      "evidenceOwner": "OS string nullable-string snapshots and native facade manifest guard",
+      "codeLineBudget": 16
+    },
+    {
+      "path": "std/rust/native/path_buf_tools.rs",
+      "ownerFacades": ["rust.PathBufTools", "rust.PathBuf"],
+      "classification": "lowering-candidate",
+      "runtimeContract": "no-hxrt",
+      "whyNotLoweringToday": "The helper exposes typed std::path::PathBuf construction, join/push, and lossy display methods until path value lowering covers the facade directly.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": ["std::path"],
+      "allowedRuntimeDependencies": [],
+      "forbiddenGrowth": [
+        "filesystem runtime",
+        "portable sys.FileSystem semantics",
+        "platform abstraction beyond explicit PathBuf methods"
+      ],
+      "evidenceOwner": "path buffer snapshots and native facade manifest guard",
+      "codeLineBudget": 30
+    },
+    {
+      "path": "std/rust/native/path_buf_tools_nullable.rs",
+      "ownerFacades": ["rust.PathBufTools", "rust.PathBuf"],
+      "classification": "lowering-candidate",
+      "runtimeContract": "hxrt-bridge",
+      "whyNotLoweringToday": "The nullable-string variant mirrors path_buf_tools.rs while bridging to hxrt::string::HxString for the portable string contract.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": ["hxrt::string", "std::path"],
+      "allowedRuntimeDependencies": ["hxrt"],
+      "forbiddenGrowth": [
+        "filesystem runtime",
+        "portable sys.FileSystem semantics",
+        "string compatibility behavior outside explicit PathBuf methods"
+      ],
+      "evidenceOwner": "path buffer nullable-string snapshots and native facade manifest guard",
+      "codeLineBudget": 38
+    },
+    {
+      "path": "std/rust/native/rust_string_tools.rs",
+      "ownerFacades": ["rust.StringTools"],
+      "classification": "lowering-candidate",
+      "runtimeContract": "no-hxrt",
+      "whyNotLoweringToday": "The helper keeps a crate-local name-distinct Rust String facade until native String methods lower directly.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": [],
+      "allowedRuntimeDependencies": [],
+      "forbiddenGrowth": [
+        "string runtime",
+        "portable StringTools compatibility",
+        "allocation-heavy adapters beyond explicit facade methods"
+      ],
+      "evidenceOwner": "rust.StringTools snapshots and native facade manifest guard",
+      "codeLineBudget": 12
+    },
+    {
+      "path": "std/rust/native/rust_string_tools_nullable.rs",
+      "ownerFacades": ["rust.StringTools"],
+      "classification": "lowering-candidate",
+      "runtimeContract": "hxrt-bridge",
+      "whyNotLoweringToday": "The nullable-string variant mirrors rust_string_tools.rs while accepting hxrt::string::HxString under the portable string contract.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": ["hxrt::string"],
+      "allowedRuntimeDependencies": ["hxrt"],
+      "forbiddenGrowth": [
+        "string runtime",
+        "portable StringTools compatibility beyond explicit facade methods",
+        "allocation-heavy adapters beyond explicit facade methods"
+      ],
+      "evidenceOwner": "rust.StringTools nullable-string snapshots and native facade manifest guard",
+      "codeLineBudget": 12
+    },
+    {
+      "path": "std/rust/native/slice_tools.rs",
+      "ownerFacades": ["rust.SliceTools", "rust.Slice"],
+      "classification": "lowering-candidate",
+      "runtimeContract": "hxrt-bridge",
+      "whyNotLoweringToday": "The helper exposes borrowed slice operations and the explicit toArray bridge until slice method lowering and owned Array conversion are represented directly.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": ["hxrt::array"],
+      "allowedRuntimeDependencies": ["hxrt"],
+      "forbiddenGrowth": [
+        "slice storage runtime",
+        "unchecked lifetime extension",
+        "implicit clone-heavy conversions"
+      ],
+      "evidenceOwner": "test/snapshot/rust_array_slice_views, borrow-region negative fixtures, and native facade manifest guard",
+      "codeLineBudget": 20
+    },
+    {
+      "path": "std/rust/native/vec_tools.rs",
+      "ownerFacades": ["rust.VecTools", "rust.Vec"],
+      "classification": "lowering-candidate",
+      "runtimeContract": "hxrt-bridge",
+      "whyNotLoweringToday": "The helper exposes typed Vec operations and explicit Array conversion bridges until Vec/Array lowering covers this facade directly.",
+      "allowedUsePrefixes": [],
+      "allowedDependencyPrefixes": ["hxrt::array"],
+      "allowedRuntimeDependencies": ["hxrt"],
+      "forbiddenGrowth": [
+        "general collection runtime",
+        "type-erased vector handles",
+        "implicit clone-heavy adapters"
+      ],
+      "evidenceOwner": "rust.VecTools snapshots, slice-view fixtures, and native facade manifest guard",
+      "codeLineBudget": 35
+    }
+  ]
+}

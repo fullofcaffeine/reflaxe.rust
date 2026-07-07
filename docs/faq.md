@@ -144,6 +144,22 @@ islands, but it is not the default Haxe compatibility path.
 
 See [Defines Reference](defines-reference.md#contracts-and-semantics).
 
+## Are `std/rust/native/*.rs` helpers a second runtime?
+
+No. They are allowed only as narrow typed helper islands behind documented Haxe facades.
+
+Some helpers are `no-hxrt` native facades for Rust-first metal surfaces, such as file/process/TCP/UDP
+helpers. Others are explicit `hxrt-bridge` helpers for existing Haxe runtime representations such as
+arrays, strings, iterators, or map storage. That distinction is now machine-checked in
+[`docs/native-facade-manifest.json`](native-facade-manifest.json).
+
+The rule of thumb is: prefer compiler lowering for pure typed-AST/literal/metadata transformations;
+use a native helper only for real Rust resource/lifecycle/native-shape boundaries; reject helpers
+that introduce dynamic handles, broad registries, portable semantics under `rust.*`, or undeclared
+runtime dependencies.
+
+See [Native facade helper policy](native-facade-policy.md).
+
 ## Does the Haxe stdlib lower to efficient Rust?
 
 That is the goal wherever semantics allow it.

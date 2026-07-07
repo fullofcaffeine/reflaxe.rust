@@ -224,6 +224,7 @@ Coverage map: [docs/examples-matrix.md](docs/examples-matrix.md).
 - Codex Haxe/Rust killer-app QA: `npm run test:codex-hxrust` (requires sibling `codex-hxrust` checkout; skips when absent)
 - Windows-safe smoke subset: `bash scripts/ci/windows-smoke.sh`
 - Metal idiom count guard: `npm run test:metal-idiom`
+- Native facade manifest guard: `npm run guard:native-facade-manifest`
 - HXRT overhead benchmark + soft-budget warnings: `bash scripts/ci/perf-hxrt-overhead.sh`
 - Full local CI equivalent: `bash scripts/ci/local.sh`
 - Clean generated artifacts: `npm run clean:artifacts:all`
@@ -263,6 +264,12 @@ Preferred order:
 2. Typed externs and metadata (`@:native`, `@:rustCargo`, `@:rustExtraSrc`)
 3. Framework wrappers around hand-written Rust modules
 4. Raw `__rust__` only when necessary
+
+Hand-written Rust helpers under `std/rust/native/*.rs` are governed by the
+[Native facade helper policy](docs/native-facade-policy.md) and
+[manifest](docs/native-facade-manifest.json). New or expanded helpers must declare their owner,
+classification, runtime contract, allowed dependencies, forbidden growth, evidence owner, and
+review budget.
 
 Read: [Interop guide](docs/interop.md) and [Workflow guide](docs/workflow.md).
 

@@ -49,10 +49,12 @@ Reject helper growth when it introduces:
 
 ## How
 
-For every new or expanded helper, update the closest docs and evidence:
+For every new or expanded helper, update the closest docs, evidence, and the
+[machine-checkable manifest](native-facade-manifest.json):
 
 - Haxe owner extern/facade
 - helper classification
+- runtime contract (`no-hxrt` or `hxrt-bridge`)
 - why compiler lowering is insufficient today
 - allowed imports/dependencies
 - forbidden growth
@@ -60,26 +62,34 @@ For every new or expanded helper, update the closest docs and evidence:
 - no-hxrt evidence
 - rustfmt/cargo evidence, and clippy where feasible
 - policy or fixture coverage that proves the intended output shape
+- `codeLineBudget` review threshold so helper growth is intentional
 
 Forbidden-token checks must avoid false failures on explanatory comments. Prefer checking Cargo
 dependencies, generated call expressions, helper imports, and emitted Rust code with comments
 stripped or otherwise scoped to semantically relevant locations.
 
+Run `npm run guard:native-facade-manifest` after changing `std/rust/native/*.rs`. The guard fails
+when a tracked helper lacks a manifest entry, when a manifest entry points at a stale file, when real
+code references imports/dependency prefixes outside the declared allowlist, when a `no-hxrt` helper
+references `hxrt`, or when helper code grows beyond its review budget.
+
 ## Current Inventory
 
-| Helper | Haxe owner | Classification | Why not compiler lowering today | Forbidden growth |
-| --- | --- | --- | --- | --- |
-| `native_socket_addr_tools.rs` | `rust.net.SocketAddr` | `lowering-candidate` | The current compiler cannot declare the wrapper field and crate-private conversions used by TCP/UDP helpers without a helper or a new native-wrapper generator. `localhost(...)` and `port()` are simple enough to revisit. | DNS, parsing, arbitrary host strings, generic address registries, portable `sys.net` semantics. |
-| `native_tcp_tools.rs` | `rust.net.NativeTcp`, `TcpListener`, `TcpStream` | `permanent-native-facade` | Owns direct `std::net::TcpListener` / `TcpStream` handles and blocking read/write/shutdown lifecycle. | TLS, async runtime, portable socket compatibility, broad stream adapters. |
-| `native_udp_tools.rs` | `rust.net.NativeUdp`, `UdpSocket` | `permanent-native-facade` | Owns direct `std::net::UdpSocket` handles and datagram send/receive behavior. | DNS, async runtime, portable socket compatibility, generic datagram registry. |
-| `native_socket_error_tools.rs` | `rust.net.SocketError` | `permanent-native-facade` | Provides typed error categories shared by TCP/UDP facade helpers without exceptions or `Dynamic`. | Broad error hierarchy, portable exception behavior, type-erased payloads. |
-| `native_process_tools.rs` | `rust.process.*` | `permanent-native-facade` | Owns process lifecycle, child wait/kill behavior, stdout/stderr ownership, and `stdin.take()` pipe-close semantics. | Shell/runtime process abstraction, portable `sys.io.Process` semantics, reusable stream runtime. |
-| `native_file_tools.rs` | `rust.fs.NativeFiles` | `permanent-native-facade` | Owns direct file/path operations where the metal facade intentionally avoids portable `sys.io` stream semantics. | Portable file handles, Haxe `Input`/`Output` compatibility, platform abstraction beyond the facade contract. |
-| `vec_tools.rs`, `hash_map_tools*.rs`, `slice_tools.rs`, `mut_slice_tools.rs`, `array_borrow_tools.rs`, `iter_tools.rs` | `rust.*` collections and borrow helpers | mixed: mostly `lowering-candidate` plus borrow-facade helpers | Some helper methods expose borrow-shaped or native collection operations before the compiler has a generic wrapper/lowering facility for every pattern. | Broad collection runtime, clone-heavy adapters normalized as API, unrelated helper accumulation. |
-| `path_buf_tools*.rs`, `os_string_tools*.rs`, `duration_tools.rs`, `instant_tools.rs`, `rust_string_tools*.rs`, `clone_tools.rs`, `map_storage_tools*.rs` | `rust.*` value/tool facades and selected std internals | mixed; audit required before broad expansion | These helpers predate the taxonomy. Treat expansion as requiring fresh classification and output-shape evidence. | Catch-all tools growth, generic conversion/runtime layers, portable semantic emulation under `rust.*`. |
+The authoritative inventory now lives in
+[`docs/native-facade-manifest.json`](native-facade-manifest.json). The manifest intentionally covers
+all tracked `std/rust/native/*.rs` helpers, not only the newest no-hxrt metal systems facades.
 
-The inventory is intentionally a starting classification. New work should refine entries when it
-touches a helper, rather than expanding unclassified behavior.
+Two runtime contracts are tracked:
+
+| Runtime contract | Meaning |
+| --- | --- |
+| `no-hxrt` | The helper must not reference `hxrt` and is suitable for no-runtime metal output when its owning facade and fixture also avoid `hxrt`. |
+| `hxrt-bridge` | The helper intentionally bridges to existing Haxe runtime representations such as arrays, strings, iterators, maps, or generated Haxe references. This must remain explicit in the manifest and should not be used for Rust-first metal systems helpers. |
+
+The manifest is deliberately stricter than this prose page: it lists owners, classifications,
+allowed dependency prefixes, allowed imports, forbidden growth notes, evidence owners, and code-line
+review budgets. New work should refine the manifest when it touches a helper, rather than expanding
+unclassified behavior.
 
 ## Follow-Up Beads
 

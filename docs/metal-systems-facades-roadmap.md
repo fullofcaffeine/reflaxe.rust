@@ -516,7 +516,7 @@ can use direct Rust ownership, add the typed facade and prove the emitted shape.
 | `haxe.rust-oo3.92.3` | SocketAddr no-hxrt output-shape gate. |
 | `haxe.rust-oo3.92.4` | Examples audit and `examples/metal_native_net`. |
 | `haxe.rust-oo3.92.5` | Native facade policy, docs, and evidence refresh. |
-| `haxe.rust-oo3.93` | Follow-up helper manifest and native facade growth guard. |
+| `haxe.rust-oo3.93` | Native facade helper manifest and growth guard. |
 | `haxe.rust-oo3.94` | Follow-up compiler-generated native wrapper facility spike. |
 | `haxe.rust-oo3.95` | Follow-up `SocketAddr` lowering-candidate graduation. |
 | `haxe.rust-oo3.96` | Follow-up resource lifecycle native facade review. |
