@@ -172,6 +172,12 @@ For Haxe `Array<T>` values in metal code, `SliceTools.with(...)` and `MutSliceTo
 the underlying storage as scoped Rust slice views instead of cloning the array into a temporary
 `Vec<T>`.
 
+For systems APIs, keep the contract split in mind. Portable `sys.io.File` and `sys.io.Process`
+preserve Haxe semantics and may use `hxrt` for handles, streams, exceptions, and platform behavior.
+Rust-native metal code should use typed `rust.*` facades instead. Today that includes the first
+`rust.fs.NativeFiles` file/path slice and the first `rust.process.NativeCommands` owned-command
+slice. The process facade is not a live `sys.io.Process` replacement.
+
 Prefer typed APIs and helpers over raw Rust injection. Raw `untyped __rust__(...)` remains an escape
 hatch for narrow low-level abstraction modules, but app code should normally use typed externs,
 metadata, or framework facades.

@@ -47,6 +47,9 @@ networking, TLS, DB, processes, or threading, add app-specific smoke tests aroun
 - Generic helper methods propagate generated class payload bounds in their Rust signatures, so a
   helper returning `Payload<T>` emits the same `T: Clone + Send + Sync` contract required by
   `Payload<T>` instead of relying on runtime indirection.
+- Rust-native systems facades are growing beside portable `sys.*` APIs. Current slices include
+  `rust.fs.NativeFiles` for typed no-hxrt file/path work and `rust.process.NativeCommands` for a
+  narrow owned-command process subset; neither replaces portable `sys.io.File` / `sys.io.Process`.
 - Typed anonymous records preserve Haxe aliasing while keeping field access typed; required fields and
   omitted `@:optional` fields are covered by focused generated-Rust fixtures.
 - CI evidence: snapshots, negative policy fixtures, runtime/optimizer plan reports, product-neutral
@@ -167,6 +170,8 @@ Rule of thumb:
   local mutable scopes are diagnosed before Rust code is emitted.
 - `SliceTools.with(array, ...)` and `MutSliceTools.with(array, ...)` are output-gated to borrow
   Array storage as scoped `&[T]` / `&mut [T]` views rather than materializing cloned arrays.
+- Use typed `rust.*` systems facades for Rust-native handles and command/file-style work. Portable
+  `sys.io.Process` and `sys.io.File` keep Haxe compatibility semantics and may still use `hxrt`.
 
 Read more: [Profiles guide](docs/profiles.md), [Rusty migration guide](docs/rusty-profile.md),
 [Metal profile details](docs/metal-profile.md), [Extern and lifetime-island cookbook](docs/extern-lifetime-island-cookbook.md),

@@ -32,7 +32,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Portable vs metal authoring](portable-vs-metal-authoring.md): concise source-style guidance for performance-oriented users choosing between portable and metal.
 - [Consumer runtime benchmark corpus](consumer-runtime-benchmark-corpus.md): product-neutral benchmark candidates for DTO/codecs, JSON/schema validation, process/tool shims, state transitions, async/runtime surfaces, and no-runtime lower-bound signals.
 - [Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md): compiler/API plan for making `metal` a Rust-native authoring surface through Haxe constructs, typed metadata/macros, and constrained DSLs.
-- [Metal systems facades roadmap](metal-systems-facades-roadmap.md): M43 plan for Rust-native file/process/socket/TLS/DB facades and no-hxrt proof.
+- [Metal systems facades roadmap](metal-systems-facades-roadmap.md): active plan for Rust-native file/process/socket/TLS/DB facades and no-hxrt proof.
 - [Metal typed DSL authority](metal-typed-dsl-authority.md): rules for admitting typed DSLs and containing `rust.metal.Code`.
 - [Metal trait, impl, and bound model](metal-trait-impl-bound-model.md): current trait-facing surfaces and missing typed Rust trait shapes.
 - [Extern and lifetime-island cookbook](extern-lifetime-island-cookbook.md): typed facade pattern for Rust APIs with lifetimes, HRTB, const generics, macro setup, or contained unsafe internals.
@@ -67,7 +67,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Profile migration guide](rusty-profile.md): migration mapping from removed `idiomatic`/`rusty` selectors.
 - [Metal profile](metal-profile.md): Rust-first authoring and boundary policy.
 - [Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md): long-range metal compiler/API plan and tracker sweep.
-- [Metal systems facades roadmap](metal-systems-facades-roadmap.md): first-slice plan for Rust-native systems handles distinct from portable `sys.*` semantics.
+- [Metal systems facades roadmap](metal-systems-facades-roadmap.md): shipped file/path and owned-command process slices for Rust-native systems handles distinct from portable `sys.*` semantics.
 - [Metal typed DSL authority](metal-typed-dsl-authority.md): when a metal DSL is justified and how raw-code authority is contained.
 - [Metal trait, impl, and bound model](metal-trait-impl-bound-model.md): `@:rustImpl`, `@:rustGeneric`, interface trait objects, and future typed trait metadata.
 - [Metal capability fixture plan](metal-capability-fixtures.md): planned metal capability fixtures and owning harnesses.

@@ -22,6 +22,10 @@ Before committing bead status changes, run `bd export -o .beads/issues.jsonl` an
   If recovery is needed, first copy `.beads/issues.jsonl` to a temp path, then run `bd init --from-jsonl --reinit-local --prefix haxe.rust --skip-agents --skip-hooks --non-interactive`
   and verify `bd status` matches the JSONL counts before mutating issues.
   The modern backend normalizes the configured prefix to `haxe_rust`; when adding children to the historical `haxe.rust-*` roadmap, use explicit IDs with `bd create --force --id ...`.
+  Do not combine `bd create --force --id ...` with `--parent`; the modern CLI rejects that pair.
+  For explicit historical IDs such as `haxe.rust-oo3.76`, create the issue with the explicit ID,
+  let Beads infer the dotted hierarchy, then add only the sibling blocker dependencies you need and
+  run `bd export -o .beads/issues.jsonl`.
 
 Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rust-oo3 --compact`).
 
@@ -231,6 +235,11 @@ Agent policy:
       `npm run stdlib:sync:tier2`, then `npm run stdlib:sync:allowlist`, then run stdlib guards.
 - `Std.isOfType` is implemented as a compiler intrinsic (exact-type check via `__hx_type_id`, plus compile-time subtype short-circuit).
 - String move semantics: many generated Rust functions take `String` by value; to preserve Haxe’s “strings are re-usable after calls” behavior, callsites currently clone String arguments based on the callee’s parameter types.
+- No-hxrt string-shape gotcha: in `metal + rust_no_hxrt` fixtures, even simple Haxe string helpers
+  can pull in runtime support. Concrete example: `stdout.length` lowered through
+  `hxrt::string::len` in the native-process fixture. For no-hxrt assertions, prefer direct
+  comparisons already proven in generated shape (for example `s == ""`) or add a typed `rust.*`
+  helper plus an output-shape gate before using a string helper.
 - Nullable-string gotcha: portable now defaults to nullable string mode (`hxrt::string::HxString`) while metal defaults to non-null Rust `String` unless `-D rust_string_nullable` is explicitly enabled.
   Treat cross-mode string work as compatibility-sensitive: map key types, `toString` trait bridges, hardcoded `String` paths, and runtime/native API signatures must be checked in both contracts.
   - Concrete breakage pattern: generated code can expect `HxString` while runtime/native APIs still take raw `String`

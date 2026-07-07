@@ -1,7 +1,8 @@
 # Metal Systems Facades Roadmap
 
-This page owns the M43 plan for Rust-native systems surfaces: files, processes, sockets, TLS, DB
-handles, and adjacent native handles.
+This page owns the active plan for Rust-native systems surfaces: files, processes, sockets, TLS, DB
+handles, and adjacent native handles. M43 delivered the first file/path slice; M44 delivered the
+first owned-command process slice.
 
 ## Why
 
@@ -25,14 +26,14 @@ exceptions, or platform abstraction. Instead, add typed Rust-native surfaces bes
 | --- | --- | --- | --- |
 | Paths and OS strings | `rust.PathBuf`, `rust.PathBufTools`, `rust.OsString`, and `rust.OsStringTools` exist with typed native helper modules. | Narrow metal paths can stay close to direct Rust. Portable nullable strings may still use `hxrt::string::HxString`. | Add borrowed `Path` / `OsStr` shapes and no-hxrt path fixtures as needed. |
 | File handles | Portable `sys.io.File*` uses `hxrt.fs.FileHandle`; `rust.fs.NativeFile` is an internal typing-only binding; `rust.fs.NativeFiles` is the first app-facing native helper facade. | `hxrt` is required for Haxe `Input` / `Output` handle semantics, but not for the current Rust-first owned/scoped file helper subset. | M43 first slice: expand the typed Rust-native file/path facade and keep its no-hxrt output evidence. |
-| Process handles | Portable `sys.io.Process` uses `hxrt.process.ProcessHandle`; no app-facing `rust.process` facade exists. | `hxrt` is justified for portable process streams and Haxe-style IO wrappers. A Rust-first `Command` / `Output` facade can be narrower. | Follow after file/path, once command/environment fixture stability is designed. |
-| Socket and TLS handles | `hxrt.net` / `hxrt.ssl` support portable sys surfaces and smoke fixtures. | Runtime ownership is justified for portable sockets/TLS and platform-sensitive setup. | Later M43/M44 work should separate blocking vs async, TLS setup, and no-hxrt limits. |
-| DB handles | `hxrt.db` supports current SQLite smoke and MySQL compile coverage. | Runtime-heavy today; DB row/statement values are still portable/sys shaped. | Defer until file/process no-hxrt patterns are proven; typed DB facade is not the first slice. |
+| Process handles | Portable `sys.io.Process` uses `hxrt.process.ProcessHandle`; `rust.process.NativeCommands` is the first app-facing owned-command facade. | `hxrt` is justified for portable process streams and Haxe-style IO wrappers. The current Rust-first command facade stays no-hxrt by using explicit executable/args and owned results. | Expand process only after the owned-command gate stays stable; live handles, env/cwd mutation, stdin/stderr APIs, and async process remain future work. |
+| Socket and TLS handles | `hxrt.net` / `hxrt.ssl` support portable sys surfaces and smoke fixtures. | Runtime ownership is justified for portable sockets/TLS and platform-sensitive setup. | Later work should separate blocking vs async, TLS setup, and no-hxrt limits. |
+| DB handles | `hxrt.db` supports current SQLite smoke and MySQL compile coverage. | Runtime-heavy today; DB row/statement values are still portable/sys shaped. | Defer until file/process API families broaden beyond the first no-hxrt slices; typed DB facade is not the next slice. |
 | RAII guards | Lock guards have scoped callbacks; docs define extern-island selection for heavier guards. | Simple lexical guards are scoped; complex guard internals stay in Rust islands. | File APIs should prefer owned-result helpers or scoped callbacks, not storable lifetime tokens. |
 
-## First Slice
+## M43 File/Path Slice
 
-M43 should start with a Rust-native file/path facade.
+M43 started with a Rust-native file/path facade.
 
 Why this slice first:
 
@@ -54,6 +55,43 @@ for this slice is:
 - `-D reflaxe_rust_profile=metal -D rust_no_hxrt` fixture coverage where the selected operations
   do not require Haxe runtime semantics
 
+## M44 Process Slice
+
+M44 started with owned command execution, not a live process-handle API.
+
+Why this slice followed file/path:
+
+- portable `sys.io.Process` already needs `hxrt.process.ProcessHandle` for live child ownership,
+  Haxe `Input` / `Output` stream wrappers, shell fallback for omitted args, Haxe exceptions, and
+  close/kill behavior
+- a Rust-first process API can be narrower and more predictable: explicit executable, explicit args,
+  owned status/stdout results, and no Haxe stream compatibility promise
+- command fixtures can be deterministic if they avoid shell syntax and use the existing Rust
+  toolchain executable (`rustc --version`) rather than host-specific utilities
+- args must use Rust-native containers such as `rust.Vec<String>` for no-hxrt proof; ordinary Haxe
+  `Array<String>` would import runtime array semantics into the metal contract
+
+The first API family landed as `rust.process.NativeCommands`. The contract is:
+
+- typed Haxe API under `rust.process.*`
+- executable is a `String` or `rust.PathBuf` value passed directly to `std::process::Command::new`
+  without shell fallback
+- args are `rust.Ref<rust.Vec<String>>`, not `Array<String>`
+- fallible calls return `rust.Result<..., String>` instead of throwing Haxe exceptions
+- first slice proves owned status/stdout behavior with `statusCode(...)` and `stdoutUtf8(...)`; a
+  richer `CommandOutput` record/extern can follow now that the no-hxrt shape is proven
+- no detached process, stdin pipe, live stdout/stderr streams, environment mutation, working
+  directory, async process, or kill/close API in the first slice
+- generated Rust uses direct `std::process::Command` or a narrow typed helper module such as
+  `std/rust/native/native_process_tools.rs`
+- `-D reflaxe_rust_profile=metal -D rust_no_hxrt` fixture coverage proves no bundled runtime
+  dependency or `hxrt::process` bridge appears for the selected subset
+
+The first positive fixture compiles and cargo-runs a direct `rustc --version` command without
+asserting the exact version string. It asserts only stable properties: status `0` and non-empty
+UTF-8 stdout. The first negative fixture rejects app-side raw `std::process::Command` snippets as a
+substitute for the facade under strict metal policy.
+
 ## Contract Fixtures
 
 The M43 fixture bead added the initial contract before implementation:
@@ -63,19 +101,23 @@ The M43 fixture bead added the initial contract before implementation:
 | `test/positive/metal_no_hxrt_native_file` | Proves the current no-hxrt file/path subset compiles and cargo-builds without `hxrt`. |
 | `test/negative/metal_fs_raw_escape` | Rejects app-side raw Rust as a substitute for the facade under strict policy. |
 | `scripts/ci/check-metal-policy.sh` native-file output-shape case | Checks for avoidable `hxrt`, portable `FileHandle` / `sys_io` paths, and expected direct `std::fs` helper use. |
+| `test/positive/metal_no_hxrt_native_process` | Proves the current no-hxrt owned-command subset compiles, cargo-builds, and cargo-runs without `hxrt`. |
+| `test/negative/metal_process_raw_escape` | Rejects app-side raw `std::process::Command` as a substitute for the facade under strict policy. |
+| `scripts/ci/check-metal-policy.sh` native-process output-shape case | Checks for avoidable `hxrt`, `Dynamic`, raw, portable process paths, direct `std::process::Command` helper use, quiet status execution, and owned stdout capture. |
 
-Future expansion can add a snapshot fixture once the API grows beyond the current no-hxrt compile
-contract, but the evidence shape should stay contract-first.
+Future expansion can add snapshots once these APIs grow beyond the current no-hxrt compile/run
+contracts, but the evidence shape should stay contract-first.
 
 ## Non-Goals
 
-M43 is not:
+This roadmap is not:
 
 - a rewrite of portable `sys.io.*`
 - a promise that all file/process/socket/TLS/DB APIs can omit `hxrt`
 - a blanket cross-platform systems parity claim
 - a DB/TLS/network service matrix
 - an async systems runtime redesign
+- a live process/pipe abstraction for metal before the owned-output command contract is proven
 
 If a Haxe-compatible API needs runtime handles, keep the runtime path and report why. If a metal API
 can use direct Rust ownership, add the typed facade and prove the emitted shape.
@@ -90,6 +132,12 @@ can use direct Rust ownership, add the typed facade and prove the emitted shape.
 | `haxe.rust-oo3.75.3` | First typed Rust-native systems facade implementation. |
 | `haxe.rust-oo3.75.4` | No-hxrt/runtime-plan and output-shape gates. |
 | `haxe.rust-oo3.75.5` | Public docs, FAQ/README sync, and app-level evidence refresh. |
+| `haxe.rust-oo3.76` | M44 Rust-native process facade and command-output proof milestone. |
+| `haxe.rust-oo3.76.1` | Process-facade scope audit and deterministic fixture strategy. |
+| `haxe.rust-oo3.76.2` | Contract-first process fixtures. |
+| `haxe.rust-oo3.76.3` | First typed Rust-native process facade implementation. |
+| `haxe.rust-oo3.76.4` | Process no-hxrt/runtime-plan and output-shape gates. |
+| `haxe.rust-oo3.76.5` | Process docs, FAQ/README sync, and app-level evidence refresh. |
 
 ## Review Notes
 
@@ -100,3 +148,10 @@ Second-pass review for `haxe.rust-oo3.75.1`: the first slice should be file/path
 socket/TLS, or DB. File/path has the best ratio of production value to deterministic proof. It also
 keeps the central policy honest: portable sys APIs may keep `hxrt` when Haxe semantics require it,
 while metal gets typed Rust-native surfaces with no-hxrt evidence where semantics allow.
+
+Second-pass review for `haxe.rust-oo3.76.1`: after M43, process is the right next systems slice, but
+only as a narrow owned-command facade. Keep `sys.io.Process` on the portable runtime path because
+live pipes, Haxe IO wrappers, omitted-args shell behavior, exceptions, and handle lifecycle semantics
+are genuine runtime concerns. For the metal/no-hxrt proof, start with explicit command + args,
+`rust.Vec<String>`, owned status/stdout results, and direct `std::process::Command` output-shape
+gates. Defer live process handles until the owned-output contract is proven.
