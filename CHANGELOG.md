@@ -1,3 +1,10 @@
+# [0.69.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.68.0...v0.69.0) (2026-07-07)
+
+
+### Features
+
+* add command cwd env helpers ([81d5398](https://github.com/fullofcaffeine/reflaxe.rust/commit/81d5398211a07433584a42654a2587ad3d254883))
+
 # [0.68.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.67.0...v0.68.0) (2026-07-07)
 
 
