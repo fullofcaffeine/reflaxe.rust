@@ -1,3 +1,10 @@
+# [0.73.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.72.0...v0.73.0) (2026-07-07)
+
+
+### Features
+
+* add typed command errors ([7ec8652](https://github.com/fullofcaffeine/reflaxe.rust/commit/7ec86528f8f94b1ad4e3a7c68cc33faef155f8da))
+
 # [0.72.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.71.0...v0.72.0) (2026-07-07)
 
 
