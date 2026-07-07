@@ -1,3 +1,15 @@
+# [0.80.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.79.0...v0.80.0) (2026-07-07)
+
+
+### Bug Fixes
+
+* keep native facade docs out of std root ([d67ac7c](https://github.com/fullofcaffeine/reflaxe.rust/commit/d67ac7c82e8d1ad6493328f141187ef165d459cb))
+
+
+### Features
+
+* add typed socket address facade ([9ccd765](https://github.com/fullofcaffeine/reflaxe.rust/commit/9ccd76595c770ea811cf6bb43c3f951005bb47c3))
+
 # [0.79.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.78.0...v0.79.0) (2026-07-07)
 
 
