@@ -1,3 +1,10 @@
+# [0.79.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.78.0...v0.79.0) (2026-07-07)
+
+
+### Features
+
+* add tcp byte streams ([2caf499](https://github.com/fullofcaffeine/reflaxe.rust/commit/2caf4995b5993f1968bec123e83ceafb7daa2fd7))
+
 # [0.78.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.77.0...v0.78.0) (2026-07-07)
 
 
