@@ -1626,6 +1626,38 @@ run_native_process_output_shape_case() {
 			exit 1
 		fi
 	fi
+	if [[ "$fixture_rel" == *"metal_no_hxrt_command_env"* ]]; then
+		if ! match_regex 'pub struct CommandEnv' "$native_process_rs"; then
+			echo "[metal-policy] error: command-env fixture missing typed CommandEnv helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'overrides: Vec<\(String, String\)>' "$native_process_rs"; then
+			echo "[metal-policy] error: command-env fixture should store typed String env override pairs for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'command\.env\(key\.as_str\(\), value\.as_str\(\)\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-env fixture missing direct Command::env wiring for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'env: &CommandEnv' "$native_process_rs"; then
+			echo "[metal-policy] error: command-env fixture should pass env overrides by borrowed CommandEnv for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'statusCodeWithEnv' "$native_process_rs"; then
+			echo "[metal-policy] error: command-env fixture missing statusCodeWithEnv helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'outputUtf8WithEnv' "$native_process_rs"; then
+			echo "[metal-policy] error: command-env fixture missing outputUtf8WithEnv helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+	fi
 	if ! (cd "$out_dir" && cargo build -q); then
 		echo "[metal-policy] error: native process no-hxrt fixture did not cargo-build for ${failure_label}."
 		exit 1
@@ -1961,5 +1993,7 @@ run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_output
 	'rust.process.CommandOutput emits direct std::process::Output no-hxrt output'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_cwd" "compile.hxml" \
 	'rust.process.NativeCommands current_dir emits direct std::process no-hxrt output'
+run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_env" "compile.hxml" \
+	'rust.process.NativeCommands env overrides emit direct std::process no-hxrt output'
 
 echo "[metal-policy] ok"

@@ -9,6 +9,11 @@
 pub struct NativeCommands;
 
 #[derive(Debug)]
+pub struct CommandEnv {
+    overrides: Vec<(String, String)>,
+}
+
+#[derive(Debug)]
 pub struct CommandOutput {
     status_code: i32,
     stdout: Vec<u8>,
@@ -33,11 +38,40 @@ fn command_in_dir(
     command
 }
 
+fn apply_env(command: &mut std::process::Command, env: &CommandEnv) {
+    for (key, value) in &env.overrides {
+        command.env(key.as_str(), value.as_str());
+    }
+}
+
+fn command_with_env(
+    program: &std::path::PathBuf,
+    args: &Vec<String>,
+    env: &CommandEnv,
+) -> std::process::Command {
+    let mut command = command(program, args);
+    apply_env(&mut command, env);
+    command
+}
+
 fn to_command_output(output: std::process::Output) -> CommandOutput {
     CommandOutput {
         status_code: output.status.code().unwrap_or(1),
         stdout: output.stdout,
         stderr: output.stderr,
+    }
+}
+
+#[allow(non_snake_case)]
+impl CommandEnv {
+    pub fn new() -> CommandEnv {
+        CommandEnv {
+            overrides: Vec::new(),
+        }
+    }
+
+    pub fn set(&mut self, key: String, value: String) {
+        self.overrides.push((key, value));
     }
 }
 
@@ -105,6 +139,31 @@ impl NativeCommands {
         cwd: &std::path::PathBuf,
     ) -> Result<CommandOutput, String> {
         command_in_dir(program, args, cwd)
+            .output()
+            .map(to_command_output)
+            .map_err(|err| err.to_string())
+    }
+
+    pub fn statusCodeWithEnv(
+        program: &std::path::PathBuf,
+        args: &Vec<String>,
+        env: &CommandEnv,
+    ) -> Result<i32, String> {
+        let mut command = command_with_env(program, args, env);
+        command
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map(|status| status.code().unwrap_or(1))
+            .map_err(|err| err.to_string())
+    }
+
+    pub fn outputUtf8WithEnv(
+        program: &std::path::PathBuf,
+        args: &Vec<String>,
+        env: &CommandEnv,
+    ) -> Result<CommandOutput, String> {
+        command_with_env(program, args, env)
             .output()
             .map(to_command_output)
             .map_err(|err| err.to_string())
