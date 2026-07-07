@@ -1572,6 +1572,38 @@ run_native_process_output_shape_case() {
 		sed "s|$root_dir|.|g" "$native_process_rs"
 		exit 1
 	fi
+	if [[ "$fixture_rel" == *"metal_no_hxrt_command_output"* ]]; then
+		if ! match_regex 'pub struct CommandOutput' "$native_process_rs"; then
+			echo "[metal-policy] error: command-output fixture missing typed CommandOutput helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'std::process::Output' "$native_process_rs"; then
+			echo "[metal-policy] error: command-output fixture should convert owned std::process::Output for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'outputUtf8' "$native_process_rs"; then
+			echo "[metal-policy] error: command-output fixture missing NativeCommands.outputUtf8 helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'stderrUtf8' "$native_process_rs"; then
+			echo "[metal-policy] error: command-output fixture missing stderr UTF-8 accessor for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'stdout: Vec<u8>' "$native_process_rs" || ! match_regex 'stderr: Vec<u8>' "$native_process_rs"; then
+			echo "[metal-policy] error: command-output fixture should store owned stdout/stderr bytes for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'Result<CommandOutput, String>' "$native_process_rs"; then
+			echo "[metal-policy] error: command-output fixture should expose Result<CommandOutput, String> for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+	fi
 	if ! (cd "$out_dir" && cargo build -q); then
 		echo "[metal-policy] error: native process no-hxrt fixture did not cargo-build for ${failure_label}."
 		exit 1
@@ -1903,5 +1935,7 @@ run_native_file_output_shape_case "test/positive/metal_no_hxrt_native_file" "com
 	'rust.fs.NativeFiles emits direct std::fs no-hxrt output'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_native_process" "compile.hxml" \
 	'rust.process.NativeCommands emits direct std::process no-hxrt output'
+run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_output" "compile.hxml" \
+	'rust.process.CommandOutput emits direct std::process::Output no-hxrt output'
 
 echo "[metal-policy] ok"

@@ -2,7 +2,7 @@
 
 This page owns the active plan for Rust-native systems surfaces: files, processes, sockets, TLS, DB
 handles, and adjacent native handles. M43 delivered the first file/path slice; M44 delivered the
-first owned-command process slice.
+first owned-command process slice; M45 added a typed owned `CommandOutput` result.
 
 ## Why
 
@@ -26,7 +26,7 @@ exceptions, or platform abstraction. Instead, add typed Rust-native surfaces bes
 | --- | --- | --- | --- |
 | Paths and OS strings | `rust.PathBuf`, `rust.PathBufTools`, `rust.OsString`, and `rust.OsStringTools` exist with typed native helper modules. | Narrow metal paths can stay close to direct Rust. Portable nullable strings may still use `hxrt::string::HxString`. | Add borrowed `Path` / `OsStr` shapes and no-hxrt path fixtures as needed. |
 | File handles | Portable `sys.io.File*` uses `hxrt.fs.FileHandle`; `rust.fs.NativeFile` is an internal typing-only binding; `rust.fs.NativeFiles` is the first app-facing native helper facade. | `hxrt` is required for Haxe `Input` / `Output` handle semantics, but not for the current Rust-first owned/scoped file helper subset. | M43 first slice: expand the typed Rust-native file/path facade and keep its no-hxrt output evidence. |
-| Process handles | Portable `sys.io.Process` uses `hxrt.process.ProcessHandle`; `rust.process.NativeCommands` is the first app-facing owned-command facade. | `hxrt` is justified for portable process streams and Haxe-style IO wrappers. The current Rust-first command facade stays no-hxrt by using explicit executable/args and owned results. | Expand process only after the owned-command gate stays stable; live handles, env/cwd mutation, stdin/stderr APIs, and async process remain future work. |
+| Process handles | Portable `sys.io.Process` uses `hxrt.process.ProcessHandle`; `rust.process.NativeCommands` is the app-facing owned-command facade and `rust.process.CommandOutput` carries owned status/stdout/stderr. | `hxrt` is justified for portable process streams and Haxe-style IO wrappers. The current Rust-first command facade stays no-hxrt by using explicit executable/args and owned results. | Expand process only after the owned-output gate stays stable; env/cwd mutation, stdin piping, live handles, and async process remain future work. |
 | Socket and TLS handles | `hxrt.net` / `hxrt.ssl` support portable sys surfaces and smoke fixtures. | Runtime ownership is justified for portable sockets/TLS and platform-sensitive setup. | Later work should separate blocking vs async, TLS setup, and no-hxrt limits. |
 | DB handles | `hxrt.db` supports current SQLite smoke and MySQL compile coverage. | Runtime-heavy today; DB row/statement values are still portable/sys shaped. | Defer until file/process API families broaden beyond the first no-hxrt slices; typed DB facade is not the next slice. |
 | RAII guards | Lock guards have scoped callbacks; docs define extern-island selection for heavier guards. | Simple lexical guards are scoped; complex guard internals stay in Rust islands. | File APIs should prefer owned-result helpers or scoped callbacks, not storable lifetime tokens. |
@@ -78,8 +78,9 @@ The first API family landed as `rust.process.NativeCommands`. The contract is:
   without shell fallback
 - args are `rust.Ref<rust.Vec<String>>`, not `Array<String>`
 - fallible calls return `rust.Result<..., String>` instead of throwing Haxe exceptions
-- first slice proves owned status/stdout behavior with `statusCode(...)` and `stdoutUtf8(...)`; a
-  richer `CommandOutput` record/extern can follow now that the no-hxrt shape is proven
+- first slice proves owned status/stdout behavior with `statusCode(...)` and `stdoutUtf8(...)`
+- M45 adds `outputUtf8(...) -> Result<CommandOutput, String>` so callers can inspect status,
+  stdout, and stderr from one owned `std::process::Command::output()` run
 - no detached process, stdin pipe, live stdout/stderr streams, environment mutation, working
   directory, async process, or kill/close API in the first slice
 - generated Rust uses direct `std::process::Command` or a narrow typed helper module such as
@@ -89,8 +90,10 @@ The first API family landed as `rust.process.NativeCommands`. The contract is:
 
 The first positive fixture compiles and cargo-runs a direct `rustc --version` command without
 asserting the exact version string. It asserts only stable properties: status `0` and non-empty
-UTF-8 stdout. The first negative fixture rejects app-side raw `std::process::Command` snippets as a
-substitute for the facade under strict metal policy.
+UTF-8 stdout. The command-output fixture also asserts status `0`, non-empty stdout, and empty stderr
+for `rustc --version` without asserting the exact version string. The first negative fixture rejects
+app-side raw `std::process::Command` snippets as a substitute for the facade under strict metal
+policy.
 
 ## Contract Fixtures
 
@@ -102,8 +105,9 @@ The M43 fixture bead added the initial contract before implementation:
 | `test/negative/metal_fs_raw_escape` | Rejects app-side raw Rust as a substitute for the facade under strict policy. |
 | `scripts/ci/check-metal-policy.sh` native-file output-shape case | Checks for avoidable `hxrt`, portable `FileHandle` / `sys_io` paths, and expected direct `std::fs` helper use. |
 | `test/positive/metal_no_hxrt_native_process` | Proves the current no-hxrt owned-command subset compiles, cargo-builds, and cargo-runs without `hxrt`. |
+| `test/positive/metal_no_hxrt_command_output` | Proves `CommandOutput` status/stdout/stderr inspection from one owned command run without `hxrt`. |
 | `test/negative/metal_process_raw_escape` | Rejects app-side raw `std::process::Command` as a substitute for the facade under strict policy. |
-| `scripts/ci/check-metal-policy.sh` native-process output-shape case | Checks for avoidable `hxrt`, `Dynamic`, raw, portable process paths, direct `std::process::Command` helper use, quiet status execution, and owned stdout capture. |
+| `scripts/ci/check-metal-policy.sh` native-process output-shape cases | Checks for avoidable `hxrt`, `Dynamic`, raw, portable process paths, direct `std::process::Command` helper use, quiet status execution, owned stdout capture, and owned `std::process::Output` conversion. |
 
 Future expansion can add snapshots once these APIs grow beyond the current no-hxrt compile/run
 contracts, but the evidence shape should stay contract-first.
@@ -117,7 +121,7 @@ This roadmap is not:
 - a blanket cross-platform systems parity claim
 - a DB/TLS/network service matrix
 - an async systems runtime redesign
-- a live process/pipe abstraction for metal before the owned-output command contract is proven
+- a live process/pipe abstraction for metal before env/cwd/stdin semantics are designed
 
 If a Haxe-compatible API needs runtime handles, keep the runtime path and report why. If a metal API
 can use direct Rust ownership, add the typed facade and prove the emitted shape.
@@ -138,6 +142,11 @@ can use direct Rust ownership, add the typed facade and prove the emitted shape.
 | `haxe.rust-oo3.76.3` | First typed Rust-native process facade implementation. |
 | `haxe.rust-oo3.76.4` | Process no-hxrt/runtime-plan and output-shape gates. |
 | `haxe.rust-oo3.76.5` | Process docs, FAQ/README sync, and app-level evidence refresh. |
+| `haxe.rust-oo3.77` | M45 typed command-output facade over owned `std::process::Output`. |
+| `haxe.rust-oo3.77.1` | Command-output contract fixture. |
+| `haxe.rust-oo3.77.2` | `rust.process.CommandOutput` extern and helper implementation. |
+| `haxe.rust-oo3.77.3` | Command-output no-hxrt output-shape gate. |
+| `haxe.rust-oo3.77.4` | Command-output docs and evidence refresh. |
 
 ## Review Notes
 
@@ -155,3 +164,8 @@ live pipes, Haxe IO wrappers, omitted-args shell behavior, exceptions, and handl
 are genuine runtime concerns. For the metal/no-hxrt proof, start with explicit command + args,
 `rust.Vec<String>`, owned status/stdout results, and direct `std::process::Command` output-shape
 gates. Defer live process handles until the owned-output contract is proven.
+
+Second-pass review for `haxe.rust-oo3.77`: after the first owned-command proof, the smallest useful
+process expansion is a typed `CommandOutput` value, not live handles. It preserves deterministic CI,
+keeps portable `sys.io.Process` on the runtime path, and proves that status/stdout/stderr inspection
+can stay on direct `std::process::Output` with no `hxrt` dependency.

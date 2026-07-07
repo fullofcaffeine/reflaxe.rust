@@ -4,6 +4,7 @@ import rust.PathBuf;
 import rust.Ref;
 import rust.Result;
 import rust.Vec;
+import rust.process.CommandOutput;
 
 /**
 	`rust.process.NativeCommands`
@@ -21,6 +22,7 @@ import rust.Vec;
 	- First M44 Rust-native process helper surface.
 	- `statusCode(...)` runs a command and returns its process exit code.
 	- `stdoutUtf8(...)` captures stdout and decodes it as UTF-8.
+	- `outputUtf8(...)` captures status, stdout, and stderr in one owned `CommandOutput` value.
 	- Fallible operations return `rust.Result<..., String>` so callers handle errors explicitly.
 	- This is not a replacement for `sys.io.Process` and intentionally does not expose live pipes,
 	  detached handles, environment mutation, working-directory control, or async process APIs yet.
@@ -40,4 +42,5 @@ import rust.Vec;
 extern class NativeCommands {
 	public static function statusCode(program:Ref<PathBuf>, args:Ref<Vec<String>>):Result<Int, String>;
 	public static function stdoutUtf8(program:Ref<PathBuf>, args:Ref<Vec<String>>):Result<String, String>;
+	public static function outputUtf8(program:Ref<PathBuf>, args:Ref<Vec<String>>):Result<CommandOutput, String>;
 }
