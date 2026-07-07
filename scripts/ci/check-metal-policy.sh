@@ -1626,7 +1626,7 @@ run_native_process_output_shape_case() {
 			exit 1
 		fi
 	fi
-	if [[ "$fixture_rel" == *"metal_no_hxrt_command_env"* ]]; then
+	if [[ "$fixture_rel" == *"metal_no_hxrt_command_env"* || "$fixture_rel" == *"metal_no_hxrt_command_cwd_env"* ]]; then
 		if ! match_regex 'pub struct CommandEnv' "$native_process_rs"; then
 			echo "[metal-policy] error: command-env fixture missing typed CommandEnv helper for ${failure_label}."
 			sed "s|$root_dir|.|g" "$native_process_rs"
@@ -1659,6 +1659,33 @@ run_native_process_output_shape_case() {
 		fi
 		if ! match_regex 'outputUtf8WithEnv' "$native_process_rs"; then
 			echo "[metal-policy] error: command-env fixture missing outputUtf8WithEnv helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+	fi
+	if [[ "$fixture_rel" == *"metal_no_hxrt_command_cwd_env"* ]]; then
+		if ! match_regex 'fn command_in_dir_with_env' "$native_process_rs"; then
+			echo "[metal-policy] error: command-cwd-env fixture missing composed command_in_dir_with_env helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'command_in_dir\(program, args, cwd\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-cwd-env fixture should reuse command_in_dir for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'apply_env\(&mut command, env\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-cwd-env fixture should apply CommandEnv to the current_dir command for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'statusCodeInDirWithEnv' "$native_process_rs"; then
+			echo "[metal-policy] error: command-cwd-env fixture missing statusCodeInDirWithEnv helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'outputUtf8InDirWithEnv' "$native_process_rs"; then
+			echo "[metal-policy] error: command-cwd-env fixture missing outputUtf8InDirWithEnv helper for ${failure_label}."
 			sed "s|$root_dir|.|g" "$native_process_rs"
 			exit 1
 		fi
@@ -2029,5 +2056,7 @@ run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_env" "
 	'rust.process.NativeCommands env overrides emit direct std::process no-hxrt output'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_env_ops" "compile.hxml" \
 	'rust.process.CommandEnv remove/clear emit direct std::process no-hxrt output'
+run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_cwd_env" "compile.hxml" \
+	'rust.process.NativeCommands cwd+env emits direct std::process no-hxrt output'
 
 echo "[metal-policy] ok"

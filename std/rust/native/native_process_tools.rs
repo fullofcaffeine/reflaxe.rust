@@ -71,6 +71,17 @@ fn command_with_env(
     command
 }
 
+fn command_in_dir_with_env(
+    program: &std::path::PathBuf,
+    args: &Vec<String>,
+    cwd: &std::path::PathBuf,
+    env: &CommandEnv,
+) -> std::process::Command {
+    let mut command = command_in_dir(program, args, cwd);
+    apply_env(&mut command, env);
+    command
+}
+
 fn to_command_output(output: std::process::Output) -> CommandOutput {
     CommandOutput {
         status_code: output.status.code().unwrap_or(1),
@@ -187,6 +198,33 @@ impl NativeCommands {
         env: &CommandEnv,
     ) -> Result<CommandOutput, String> {
         command_with_env(program, args, env)
+            .output()
+            .map(to_command_output)
+            .map_err(|err| err.to_string())
+    }
+
+    pub fn statusCodeInDirWithEnv(
+        program: &std::path::PathBuf,
+        args: &Vec<String>,
+        cwd: &std::path::PathBuf,
+        env: &CommandEnv,
+    ) -> Result<i32, String> {
+        let mut command = command_in_dir_with_env(program, args, cwd, env);
+        command
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map(|status| status.code().unwrap_or(1))
+            .map_err(|err| err.to_string())
+    }
+
+    pub fn outputUtf8InDirWithEnv(
+        program: &std::path::PathBuf,
+        args: &Vec<String>,
+        cwd: &std::path::PathBuf,
+        env: &CommandEnv,
+    ) -> Result<CommandOutput, String> {
+        command_in_dir_with_env(program, args, cwd, env)
             .output()
             .map(to_command_output)
             .map_err(|err| err.to_string())

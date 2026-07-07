@@ -27,9 +27,11 @@ import rust.process.CommandOutput;
 	  explicit Rust `current_dir(...)`.
 	- `statusCodeWithEnv(...)` and `outputUtf8WithEnv(...)` run the same owned command shape with
 	  explicit `CommandEnv` overrides.
+	- `statusCodeInDirWithEnv(...)` and `outputUtf8InDirWithEnv(...)` combine explicit
+	  `current_dir(...)` and ordered `CommandEnv` mutations for the same owned-output contract.
 	- Fallible operations return `rust.Result<..., String>` so callers handle errors explicitly.
 	- This is not a replacement for `sys.io.Process` and intentionally does not expose live pipes,
-	  detached handles, inherited-environment clearing, stdin piping, or async process APIs yet.
+	  detached handles, stdin piping, or async process APIs yet.
 
 	How
 	- `@:native("crate::native_process_tools::NativeCommands")` binds to a small Rust helper module.
@@ -51,4 +53,6 @@ extern class NativeCommands {
 	public static function outputUtf8InDir(program:Ref<PathBuf>, args:Ref<Vec<String>>, cwd:Ref<PathBuf>):Result<CommandOutput, String>;
 	public static function statusCodeWithEnv(program:Ref<PathBuf>, args:Ref<Vec<String>>, env:Ref<CommandEnv>):Result<Int, String>;
 	public static function outputUtf8WithEnv(program:Ref<PathBuf>, args:Ref<Vec<String>>, env:Ref<CommandEnv>):Result<CommandOutput, String>;
+	public static function statusCodeInDirWithEnv(program:Ref<PathBuf>, args:Ref<Vec<String>>, cwd:Ref<PathBuf>, env:Ref<CommandEnv>):Result<Int, String>;
+	public static function outputUtf8InDirWithEnv(program:Ref<PathBuf>, args:Ref<Vec<String>>, cwd:Ref<PathBuf>, env:Ref<CommandEnv>):Result<CommandOutput, String>;
 }

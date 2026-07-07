@@ -14,8 +14,10 @@ package rust.process;
 	- `set(key, value)` records one `std::process::Command::env(...)` override.
 	- `remove(key)` records one `std::process::Command::env_remove(...)` mutation.
 	- `clear()` records one `std::process::Command::env_clear()` mutation.
-	- This slice intentionally does not expose cwd+env convenience combinations, live process
-	  handles, stdin piping, or async process APIs.
+	- This type owns only environment mutations; cwd+env owned-command combinations live on
+	  `rust.process.NativeCommands`.
+	- This slice intentionally does not expose live process handles, stdin piping, or async process
+	  APIs.
 
 	How
 	- The extern maps to `crate::native_process_tools::CommandEnv`.
