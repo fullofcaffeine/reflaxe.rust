@@ -10,16 +10,25 @@ use std::io::Write;
 #[derive(Debug)]
 pub struct NativeCommands;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CommandEnv {
     ops: Vec<CommandEnvOp>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum CommandEnvOp {
     Set(String, String),
     Remove(String),
     Clear,
+}
+
+#[derive(Debug)]
+pub struct CommandSpec {
+    program: std::path::PathBuf,
+    args: Vec<String>,
+    cwd: Option<std::path::PathBuf>,
+    env: Option<CommandEnv>,
+    stdin_utf8: Option<String>,
 }
 
 #[derive(Debug)]
@@ -84,6 +93,17 @@ fn command_in_dir_with_env(
     command
 }
 
+fn command_from_spec(spec: &CommandSpec) -> std::process::Command {
+    let mut command = command(&spec.program, &spec.args);
+    if let Some(cwd) = &spec.cwd {
+        command.current_dir(cwd);
+    }
+    if let Some(env) = &spec.env {
+        apply_env(&mut command, env);
+    }
+    command
+}
+
 fn to_command_output(output: std::process::Output) -> CommandOutput {
     CommandOutput {
         status_code: output.status.code().unwrap_or(1),
@@ -92,7 +112,7 @@ fn to_command_output(output: std::process::Output) -> CommandOutput {
     }
 }
 
-fn write_child_stdin(child: &mut std::process::Child, stdin_utf8: &String) -> Result<(), String> {
+fn write_child_stdin(child: &mut std::process::Child, stdin_utf8: &str) -> Result<(), String> {
     let mut stdin = child
         .stdin
         .take()
@@ -104,7 +124,7 @@ fn write_child_stdin(child: &mut std::process::Child, stdin_utf8: &String) -> Re
 
 fn status_code_with_stdin(
     mut command: std::process::Command,
-    stdin_utf8: String,
+    stdin_utf8: &str,
 ) -> Result<i32, String> {
     let mut child = command
         .stdin(std::process::Stdio::piped())
@@ -113,7 +133,7 @@ fn status_code_with_stdin(
         .spawn()
         .map_err(|err| err.to_string())?;
 
-    if let Err(err) = write_child_stdin(&mut child, &stdin_utf8) {
+    if let Err(err) = write_child_stdin(&mut child, stdin_utf8) {
         let _ = child.kill();
         let _ = child.wait();
         return Err(err);
@@ -127,7 +147,7 @@ fn status_code_with_stdin(
 
 fn output_with_stdin(
     mut command: std::process::Command,
-    stdin_utf8: String,
+    stdin_utf8: &str,
 ) -> Result<CommandOutput, String> {
     let mut child = command
         .stdin(std::process::Stdio::piped())
@@ -136,7 +156,7 @@ fn output_with_stdin(
         .spawn()
         .map_err(|err| err.to_string())?;
 
-    if let Err(err) = write_child_stdin(&mut child, &stdin_utf8) {
+    if let Err(err) = write_child_stdin(&mut child, stdin_utf8) {
         let _ = child.kill();
         let _ = child.wait();
         return Err(err);
@@ -164,6 +184,31 @@ impl CommandEnv {
 
     pub fn clear(&mut self) {
         self.ops.push(CommandEnvOp::Clear);
+    }
+}
+
+#[allow(non_snake_case)]
+impl CommandSpec {
+    pub fn new(program: &std::path::PathBuf, args: &Vec<String>) -> CommandSpec {
+        CommandSpec {
+            program: program.clone(),
+            args: args.clone(),
+            cwd: None,
+            env: None,
+            stdin_utf8: None,
+        }
+    }
+
+    pub fn inDir(&mut self, cwd: &std::path::PathBuf) {
+        self.cwd = Some(cwd.clone());
+    }
+
+    pub fn withEnv(&mut self, env: &CommandEnv) {
+        self.env = Some(env.clone());
+    }
+
+    pub fn withStdin(&mut self, stdin_utf8: String) {
+        self.stdin_utf8 = Some(stdin_utf8);
     }
 }
 
@@ -293,7 +338,7 @@ impl NativeCommands {
         args: &Vec<String>,
         stdin_utf8: String,
     ) -> Result<i32, String> {
-        status_code_with_stdin(command(program, args), stdin_utf8)
+        status_code_with_stdin(command(program, args), stdin_utf8.as_str())
     }
 
     pub fn outputUtf8WithStdin(
@@ -301,7 +346,7 @@ impl NativeCommands {
         args: &Vec<String>,
         stdin_utf8: String,
     ) -> Result<CommandOutput, String> {
-        output_with_stdin(command(program, args), stdin_utf8)
+        output_with_stdin(command(program, args), stdin_utf8.as_str())
     }
 
     pub fn statusCodeInDirWithEnvAndStdin(
@@ -311,7 +356,10 @@ impl NativeCommands {
         env: &CommandEnv,
         stdin_utf8: String,
     ) -> Result<i32, String> {
-        status_code_with_stdin(command_in_dir_with_env(program, args, cwd, env), stdin_utf8)
+        status_code_with_stdin(
+            command_in_dir_with_env(program, args, cwd, env),
+            stdin_utf8.as_str(),
+        )
     }
 
     pub fn outputUtf8InDirWithEnvAndStdin(
@@ -321,6 +369,33 @@ impl NativeCommands {
         env: &CommandEnv,
         stdin_utf8: String,
     ) -> Result<CommandOutput, String> {
-        output_with_stdin(command_in_dir_with_env(program, args, cwd, env), stdin_utf8)
+        output_with_stdin(
+            command_in_dir_with_env(program, args, cwd, env),
+            stdin_utf8.as_str(),
+        )
+    }
+
+    pub fn statusCodeFromSpec(spec: &CommandSpec) -> Result<i32, String> {
+        let mut command = command_from_spec(spec);
+        match &spec.stdin_utf8 {
+            Some(stdin_utf8) => status_code_with_stdin(command, stdin_utf8.as_str()),
+            None => command
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status()
+                .map(|status| status.code().unwrap_or(1))
+                .map_err(|err| err.to_string()),
+        }
+    }
+
+    pub fn outputUtf8FromSpec(spec: &CommandSpec) -> Result<CommandOutput, String> {
+        let mut command = command_from_spec(spec);
+        match &spec.stdin_utf8 {
+            Some(stdin_utf8) => output_with_stdin(command, stdin_utf8.as_str()),
+            None => command
+                .output()
+                .map(to_command_output)
+                .map_err(|err| err.to_string()),
+        }
     }
 }

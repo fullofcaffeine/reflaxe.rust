@@ -1626,7 +1626,7 @@ run_native_process_output_shape_case() {
 			exit 1
 		fi
 	fi
-	if [[ "$fixture_rel" == *"metal_no_hxrt_command_env"* || "$fixture_rel" == *"metal_no_hxrt_command_cwd_env"* || "$fixture_rel" == *"metal_no_hxrt_command_stdin_cwd_env"* ]]; then
+	if [[ "$fixture_rel" == *"metal_no_hxrt_command_env"* || "$fixture_rel" == *"metal_no_hxrt_command_cwd_env"* || "$fixture_rel" == *"metal_no_hxrt_command_stdin_cwd_env"* || "$fixture_rel" == *"metal_no_hxrt_command_spec"* ]]; then
 		if ! match_regex 'pub struct CommandEnv' "$native_process_rs"; then
 			echo "[metal-policy] error: command-env fixture missing typed CommandEnv helper for ${failure_label}."
 			sed "s|$root_dir|.|g" "$native_process_rs"
@@ -1775,13 +1775,90 @@ run_native_process_output_shape_case() {
 			sed "s|$root_dir|.|g" "$native_process_rs"
 			exit 1
 		fi
-		if ! match_regex 'status_code_with_stdin\(command_in_dir_with_env\(program, args, cwd, env\), stdin_utf8\)' "$native_process_rs"; then
+		if ! match_regex 'status_code_with_stdin\(' "$native_process_rs" || ! match_regex 'command_in_dir_with_env\(program, args, cwd, env\)' "$native_process_rs" || ! match_regex 'stdin_utf8\.as_str\(\)' "$native_process_rs"; then
 			echo "[metal-policy] error: command-stdin-cwd-env status helper should compose command_in_dir_with_env with stdin writing for ${failure_label}."
 			sed "s|$root_dir|.|g" "$native_process_rs"
 			exit 1
 		fi
-		if ! match_regex 'output_with_stdin\(command_in_dir_with_env\(program, args, cwd, env\), stdin_utf8\)' "$native_process_rs"; then
+		if ! match_regex 'output_with_stdin\(' "$native_process_rs" || ! match_regex 'command_in_dir_with_env\(program, args, cwd, env\)' "$native_process_rs" || ! match_regex 'stdin_utf8\.as_str\(\)' "$native_process_rs"; then
 			echo "[metal-policy] error: command-stdin-cwd-env output helper should compose command_in_dir_with_env with stdin output capture for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+	fi
+	if [[ "$fixture_rel" == *"metal_no_hxrt_command_spec"* ]]; then
+		if ! match_regex 'pub struct CommandSpec' "$native_process_rs"; then
+			echo "[metal-policy] error: command-spec fixture missing typed CommandSpec helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'program: std::path::PathBuf' "$native_process_rs" || ! match_regex 'args: Vec<String>' "$native_process_rs"; then
+			echo "[metal-policy] error: command-spec fixture should store owned program and args for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'cwd: Option<std::path::PathBuf>' "$native_process_rs" || ! match_regex 'env: Option<CommandEnv>' "$native_process_rs"; then
+			echo "[metal-policy] error: command-spec fixture should store optional cwd and CommandEnv for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'stdin_utf8: Option<String>' "$native_process_rs"; then
+			echo "[metal-policy] error: command-spec fixture should store optional owned stdin input for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'pub fn new\(program: &std::path::PathBuf, args: &Vec<String>\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-spec fixture missing borrowed constructor inputs for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'pub fn inDir\(&mut self, cwd: &std::path::PathBuf\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-spec fixture missing inDir mutator for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'pub fn withEnv\(&mut self, env: &CommandEnv\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-spec fixture missing withEnv mutator for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'pub fn withStdin\(&mut self, stdin_utf8: String\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-spec fixture missing withStdin mutator for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'fn command_from_spec' "$native_process_rs"; then
+			echo "[metal-policy] error: command-spec fixture missing command_from_spec builder for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'command\(&spec\.program, &spec\.args\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-spec fixture should build from stored program and args for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'if let Some\(cwd\) = &spec\.cwd' "$native_process_rs" || ! match_regex 'command\.current_dir\(cwd\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-spec fixture should apply optional cwd directly for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'if let Some\(env\) = &spec\.env' "$native_process_rs" || ! match_regex 'apply_env\(&mut command, env\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-spec fixture should apply optional CommandEnv directly for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'statusCodeFromSpec' "$native_process_rs" || ! match_regex 'outputUtf8FromSpec' "$native_process_rs"; then
+			echo "[metal-policy] error: command-spec fixture missing NativeCommands spec execution helpers for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'status_code_with_stdin\(command, stdin_utf8\.as_str\(\)\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-spec status helper should compose spec builder with borrowed stdin writing for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'output_with_stdin\(command, stdin_utf8\.as_str\(\)\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-spec output helper should compose spec builder with borrowed stdin output capture for ${failure_label}."
 			sed "s|$root_dir|.|g" "$native_process_rs"
 			exit 1
 		fi
@@ -2131,5 +2208,7 @@ run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_stdin"
 	'rust.process.NativeCommands stdin emits direct std::process no-hxrt output'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_stdin_cwd_env" "compile.hxml" \
 	'rust.process.NativeCommands stdin+cwd+env emits direct std::process no-hxrt output'
+run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_spec" "compile.hxml" \
+	'rust.process.CommandSpec emits direct std::process no-hxrt output'
 
 echo "[metal-policy] ok"

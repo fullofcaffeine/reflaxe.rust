@@ -178,7 +178,9 @@ Rust-native metal code should use typed `rust.*` facades instead. Today that inc
 `rust.fs.NativeFiles` file/path slice and the `rust.process.NativeCommands` owned-command slice.
 `rust.process.CommandOutput` covers status/stdout/stderr from one owned run, and the process facade
 now supports explicit command working directories, typed environment set/remove/clear operations, and
-combined cwd+env plus one-shot stdin-input and stdin+cwd+env owned-command calls.
+combined cwd+env plus one-shot stdin-input and stdin+cwd+env owned-command calls. Use
+`rust.process.CommandSpec` when a command needs one typed owned config value for program/args plus
+optional cwd, env, and stdin settings.
 It is not a live `sys.io.Process` replacement.
 
 Prefer typed APIs and helpers over raw Rust injection. Raw `untyped __rust__(...)` remains an escape
