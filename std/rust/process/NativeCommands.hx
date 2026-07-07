@@ -31,6 +31,9 @@ import rust.process.CommandOutput;
 	  `current_dir(...)` and ordered `CommandEnv` mutations for the same owned-output contract.
 	- `statusCodeWithStdin(...)` and `outputUtf8WithStdin(...)` write one owned UTF-8 string to
 	  child stdin while keeping the child handle and pipe lifecycle inside the helper.
+	- `statusCodeInDirWithEnvAndStdin(...)` and `outputUtf8InDirWithEnvAndStdin(...)` combine
+	  explicit cwd, ordered `CommandEnv` mutations, and one-shot owned stdin input without exposing a
+	  reusable child handle.
 	- Fallible operations return `rust.Result<..., String>` so callers handle errors explicitly.
 	- This is not a replacement for `sys.io.Process` and intentionally does not expose live pipes,
 	  detached handles, reusable stdin pipes, or async process APIs yet.
@@ -59,4 +62,6 @@ extern class NativeCommands {
 	public static function outputUtf8InDirWithEnv(program:Ref<PathBuf>, args:Ref<Vec<String>>, cwd:Ref<PathBuf>, env:Ref<CommandEnv>):Result<CommandOutput, String>;
 	public static function statusCodeWithStdin(program:Ref<PathBuf>, args:Ref<Vec<String>>, stdinUtf8:String):Result<Int, String>;
 	public static function outputUtf8WithStdin(program:Ref<PathBuf>, args:Ref<Vec<String>>, stdinUtf8:String):Result<CommandOutput, String>;
+	public static function statusCodeInDirWithEnvAndStdin(program:Ref<PathBuf>, args:Ref<Vec<String>>, cwd:Ref<PathBuf>, env:Ref<CommandEnv>, stdinUtf8:String):Result<Int, String>;
+	public static function outputUtf8InDirWithEnvAndStdin(program:Ref<PathBuf>, args:Ref<Vec<String>>, cwd:Ref<PathBuf>, env:Ref<CommandEnv>, stdinUtf8:String):Result<CommandOutput, String>;
 }

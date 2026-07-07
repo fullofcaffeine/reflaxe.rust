@@ -14,8 +14,8 @@ package rust.process;
 	- `set(key, value)` records one `std::process::Command::env(...)` override.
 	- `remove(key)` records one `std::process::Command::env_remove(...)` mutation.
 	- `clear()` records one `std::process::Command::env_clear()` mutation.
-	- This type owns only environment mutations; cwd+env owned-command combinations live on
-	  `rust.process.NativeCommands`, and stdin-input owned-command helpers live there as well.
+	- This type owns only environment mutations; cwd+env, stdin-input, and stdin+cwd+env
+	  owned-command helpers live on `rust.process.NativeCommands`.
 	- This type intentionally does not expose live process handles, reusable stdin pipes, or async
 	  process APIs.
 

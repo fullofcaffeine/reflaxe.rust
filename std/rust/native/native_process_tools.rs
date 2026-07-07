@@ -303,4 +303,24 @@ impl NativeCommands {
     ) -> Result<CommandOutput, String> {
         output_with_stdin(command(program, args), stdin_utf8)
     }
+
+    pub fn statusCodeInDirWithEnvAndStdin(
+        program: &std::path::PathBuf,
+        args: &Vec<String>,
+        cwd: &std::path::PathBuf,
+        env: &CommandEnv,
+        stdin_utf8: String,
+    ) -> Result<i32, String> {
+        status_code_with_stdin(command_in_dir_with_env(program, args, cwd, env), stdin_utf8)
+    }
+
+    pub fn outputUtf8InDirWithEnvAndStdin(
+        program: &std::path::PathBuf,
+        args: &Vec<String>,
+        cwd: &std::path::PathBuf,
+        env: &CommandEnv,
+        stdin_utf8: String,
+    ) -> Result<CommandOutput, String> {
+        output_with_stdin(command_in_dir_with_env(program, args, cwd, env), stdin_utf8)
+    }
 }

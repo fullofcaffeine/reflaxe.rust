@@ -1626,7 +1626,7 @@ run_native_process_output_shape_case() {
 			exit 1
 		fi
 	fi
-	if [[ "$fixture_rel" == *"metal_no_hxrt_command_env"* || "$fixture_rel" == *"metal_no_hxrt_command_cwd_env"* ]]; then
+	if [[ "$fixture_rel" == *"metal_no_hxrt_command_env"* || "$fixture_rel" == *"metal_no_hxrt_command_cwd_env"* || "$fixture_rel" == *"metal_no_hxrt_command_stdin_cwd_env"* ]]; then
 		if ! match_regex 'pub struct CommandEnv' "$native_process_rs"; then
 			echo "[metal-policy] error: command-env fixture missing typed CommandEnv helper for ${failure_label}."
 			sed "s|$root_dir|.|g" "$native_process_rs"
@@ -1663,7 +1663,7 @@ run_native_process_output_shape_case() {
 			exit 1
 		fi
 	fi
-	if [[ "$fixture_rel" == *"metal_no_hxrt_command_cwd_env"* ]]; then
+	if [[ "$fixture_rel" == *"metal_no_hxrt_command_cwd_env"* || "$fixture_rel" == *"metal_no_hxrt_command_stdin_cwd_env"* ]]; then
 		if ! match_regex 'fn command_in_dir_with_env' "$native_process_rs"; then
 			echo "[metal-policy] error: command-cwd-env fixture missing composed command_in_dir_with_env helper for ${failure_label}."
 			sed "s|$root_dir|.|g" "$native_process_rs"
@@ -1760,6 +1760,28 @@ run_native_process_output_shape_case() {
 		fi
 		if ! match_regex 'stdin_utf8: String' "$native_process_rs"; then
 			echo "[metal-policy] error: command-stdin fixture should pass stdin input as owned String for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+	fi
+	if [[ "$fixture_rel" == *"metal_no_hxrt_command_stdin_cwd_env"* ]]; then
+		if ! match_regex 'statusCodeInDirWithEnvAndStdin' "$native_process_rs"; then
+			echo "[metal-policy] error: command-stdin-cwd-env fixture missing statusCodeInDirWithEnvAndStdin helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'outputUtf8InDirWithEnvAndStdin' "$native_process_rs"; then
+			echo "[metal-policy] error: command-stdin-cwd-env fixture missing outputUtf8InDirWithEnvAndStdin helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'status_code_with_stdin\(command_in_dir_with_env\(program, args, cwd, env\), stdin_utf8\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-stdin-cwd-env status helper should compose command_in_dir_with_env with stdin writing for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'output_with_stdin\(command_in_dir_with_env\(program, args, cwd, env\), stdin_utf8\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-stdin-cwd-env output helper should compose command_in_dir_with_env with stdin output capture for ${failure_label}."
 			sed "s|$root_dir|.|g" "$native_process_rs"
 			exit 1
 		fi
@@ -2107,5 +2129,7 @@ run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_cwd_en
 	'rust.process.NativeCommands cwd+env emits direct std::process no-hxrt output'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_stdin" "compile.hxml" \
 	'rust.process.NativeCommands stdin emits direct std::process no-hxrt output'
+run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_stdin_cwd_env" "compile.hxml" \
+	'rust.process.NativeCommands stdin+cwd+env emits direct std::process no-hxrt output'
 
 echo "[metal-policy] ok"
