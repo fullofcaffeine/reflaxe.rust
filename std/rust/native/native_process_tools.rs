@@ -10,7 +10,14 @@ pub struct NativeCommands;
 
 #[derive(Debug)]
 pub struct CommandEnv {
-    overrides: Vec<(String, String)>,
+    ops: Vec<CommandEnvOp>,
+}
+
+#[derive(Debug)]
+enum CommandEnvOp {
+    Set(String, String),
+    Remove(String),
+    Clear,
 }
 
 #[derive(Debug)]
@@ -39,8 +46,18 @@ fn command_in_dir(
 }
 
 fn apply_env(command: &mut std::process::Command, env: &CommandEnv) {
-    for (key, value) in &env.overrides {
-        command.env(key.as_str(), value.as_str());
+    for op in &env.ops {
+        match op {
+            CommandEnvOp::Set(key, value) => {
+                command.env(key.as_str(), value.as_str());
+            }
+            CommandEnvOp::Remove(key) => {
+                command.env_remove(key.as_str());
+            }
+            CommandEnvOp::Clear => {
+                command.env_clear();
+            }
+        }
     }
 }
 
@@ -65,13 +82,19 @@ fn to_command_output(output: std::process::Output) -> CommandOutput {
 #[allow(non_snake_case)]
 impl CommandEnv {
     pub fn new() -> CommandEnv {
-        CommandEnv {
-            overrides: Vec::new(),
-        }
+        CommandEnv { ops: Vec::new() }
     }
 
     pub fn set(&mut self, key: String, value: String) {
-        self.overrides.push((key, value));
+        self.ops.push(CommandEnvOp::Set(key, value));
+    }
+
+    pub fn remove(&mut self, key: String) {
+        self.ops.push(CommandEnvOp::Remove(key));
+    }
+
+    pub fn clear(&mut self) {
+        self.ops.push(CommandEnvOp::Clear);
     }
 }
 

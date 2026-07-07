@@ -27,7 +27,7 @@ exceptions, or platform abstraction. Instead, add typed Rust-native surfaces bes
 | --- | --- | --- | --- |
 | Paths and OS strings | `rust.PathBuf`, `rust.PathBufTools`, `rust.OsString`, and `rust.OsStringTools` exist with typed native helper modules. | Narrow metal paths can stay close to direct Rust. Portable nullable strings may still use `hxrt::string::HxString`. | Add borrowed `Path` / `OsStr` shapes and no-hxrt path fixtures as needed. |
 | File handles | Portable `sys.io.File*` uses `hxrt.fs.FileHandle`; `rust.fs.NativeFile` is an internal typing-only binding; `rust.fs.NativeFiles` is the first app-facing native helper facade. | `hxrt` is required for Haxe `Input` / `Output` handle semantics, but not for the current Rust-first owned/scoped file helper subset. | M43 first slice: expand the typed Rust-native file/path facade and keep its no-hxrt output evidence. |
-| Process handles | Portable `sys.io.Process` uses `hxrt.process.ProcessHandle`; `rust.process.NativeCommands` is the app-facing owned-command facade, `rust.process.CommandOutput` carries owned status/stdout/stderr, and `rust.process.CommandEnv` carries typed environment overrides. | `hxrt` is justified for portable process streams and Haxe-style IO wrappers. The current Rust-first command facade stays no-hxrt by using explicit executable/args, explicit cwd/env overrides, and owned results. | Env removal/clearing, cwd+env convenience combinations, stdin piping, live handles, and async process remain future work. |
+| Process handles | Portable `sys.io.Process` uses `hxrt.process.ProcessHandle`; `rust.process.NativeCommands` is the app-facing owned-command facade, `rust.process.CommandOutput` carries owned status/stdout/stderr, and `rust.process.CommandEnv` carries typed environment operations. | `hxrt` is justified for portable process streams and Haxe-style IO wrappers. The current Rust-first command facade stays no-hxrt by using explicit executable/args, explicit cwd/env set-remove-clear operations, and owned results. | Cwd+env convenience combinations, stdin piping, live handles, and async process remain future work. |
 | Socket and TLS handles | `hxrt.net` / `hxrt.ssl` support portable sys surfaces and smoke fixtures. | Runtime ownership is justified for portable sockets/TLS and platform-sensitive setup. | Later work should separate blocking vs async, TLS setup, and no-hxrt limits. |
 | DB handles | `hxrt.db` supports current SQLite smoke and MySQL compile coverage. | Runtime-heavy today; DB row/statement values are still portable/sys shaped. | Defer until file/process API families broaden beyond the first no-hxrt slices; typed DB facade is not the next slice. |
 | RAII guards | Lock guards have scoped callbacks; docs define extern-island selection for heavier guards. | Simple lexical guards are scoped; complex guard internals stay in Rust islands. | File APIs should prefer owned-result helpers or scoped callbacks, not storable lifetime tokens. |
@@ -86,8 +86,10 @@ The first API family landed as `rust.process.NativeCommands`. The contract is:
   `std::process::Command::current_dir(...)` with a borrowed `rust.PathBuf`
 - M47 adds `CommandEnv`, `statusCodeWithEnv(...)`, and `outputUtf8WithEnv(...)` so callers can set
   explicit `std::process::Command::env(...)` overrides through a typed Rust-native value
-- no detached process, stdin pipe, live stdout/stderr streams, inherited-environment clearing/removal,
-  async process, or kill/close API in the current slice
+- M48 extends `CommandEnv` with ordered `remove(...)` and `clear()` operations backed by direct
+  `std::process::Command::env_remove(...)` and `env_clear()` calls
+- no detached process, stdin pipe, live stdout/stderr streams, cwd+env convenience API, async
+  process, or kill/close API in the current slice
 - generated Rust uses direct `std::process::Command` or a narrow typed helper module such as
   `std/rust/native/native_process_tools.rs`
 - `-D reflaxe_rust_profile=metal -D rust_no_hxrt` fixture coverage proves no bundled runtime
@@ -108,6 +110,10 @@ The env fixture compiles a tiny Rust probe with `rustc`, then runs that probe th
 `outputUtf8WithEnv(...)` with `CommandEnv.set(...)`. The probe prints only the overridden variable,
 so the cargo-run assertion traps if `std::process::Command::env(...)` is not applied.
 
+The env-ops fixture reuses the same owned-output path to prove ordered environment mutations. It
+first checks `set(...); remove(...)` prevents a variable from reaching the child process, then checks
+`clear(); set(...)` runs the child with a cleared inherited environment plus one explicit variable.
+
 ## Contract Fixtures
 
 The M43 fixture bead added the initial contract before implementation:
@@ -121,8 +127,9 @@ The M43 fixture bead added the initial contract before implementation:
 | `test/positive/metal_no_hxrt_command_output` | Proves `CommandOutput` status/stdout/stderr inspection from one owned command run without `hxrt`. |
 | `test/positive/metal_no_hxrt_command_cwd` | Proves explicit `Command::current_dir(...)` behavior for owned command status/output without `hxrt`. |
 | `test/positive/metal_no_hxrt_command_env` | Proves explicit `Command::env(...)` overrides through `CommandEnv` without `hxrt`. |
+| `test/positive/metal_no_hxrt_command_env_ops` | Proves ordered `CommandEnv.remove(...)` and `CommandEnv.clear()` behavior without `hxrt`. |
 | `test/negative/metal_process_raw_escape` | Rejects app-side raw `std::process::Command` as a substitute for the facade under strict policy. |
-| `scripts/ci/check-metal-policy.sh` native-process output-shape cases | Checks for avoidable `hxrt`, `Dynamic`, raw, portable process paths, direct `std::process::Command` helper use, quiet status execution, owned stdout capture, owned `std::process::Output` conversion, direct `current_dir(cwd)` wiring, and direct `command.env(...)` wiring. |
+| `scripts/ci/check-metal-policy.sh` native-process output-shape cases | Checks for avoidable `hxrt`, `Dynamic`, raw, portable process paths, direct `std::process::Command` helper use, quiet status execution, owned stdout capture, owned `std::process::Output` conversion, direct `current_dir(cwd)` wiring, and direct `command.env(...)` / `env_remove(...)` / `env_clear()` wiring. |
 
 Future expansion can add snapshots once these APIs grow beyond the current no-hxrt compile/run
 contracts, but the evidence shape should stay contract-first.
@@ -172,6 +179,11 @@ can use direct Rust ownership, add the typed facade and prove the emitted shape.
 | `haxe.rust-oo3.79.2` | `CommandEnv` / `statusCodeWithEnv` / `outputUtf8WithEnv` implementation. |
 | `haxe.rust-oo3.79.3` | Env command no-hxrt output-shape gate. |
 | `haxe.rust-oo3.79.4` | Env command docs and evidence refresh. |
+| `haxe.rust-oo3.80` | M48 command environment removal/clear facade. |
+| `haxe.rust-oo3.80.1` | Env remove/clear command contract fixture. |
+| `haxe.rust-oo3.80.2` | `CommandEnv.remove` / `CommandEnv.clear` implementation. |
+| `haxe.rust-oo3.80.3` | Env remove/clear no-hxrt output-shape gate. |
+| `haxe.rust-oo3.80.4` | Env remove/clear docs and evidence refresh. |
 
 ## Review Notes
 
@@ -201,5 +213,11 @@ separate API design because they introduce input ownership or lifecycle semantic
 
 Review note for `haxe.rust-oo3.79`: explicit per-command environment overrides are small enough for
 the same owned-output facade because `std::process::Command::env(...)` mutates only the child
-process builder, not process-global state. The first API exposes `CommandEnv.set(...)` only; inherited
-environment clearing/removal and cwd+env convenience combinations remain future slices.
+process builder, not process-global state. The first API exposed `CommandEnv.set(...)` only; ordered
+environment clearing/removal and cwd+env convenience combinations were left for later slices.
+
+Review note for `haxe.rust-oo3.80`: env removal and clearing stay in the same owned-output
+`CommandEnv` value because they are still child process builder mutations, not process-global state.
+The operation list is intentionally ordered so `set(...); remove(...)` and `clear(); set(...)`
+preserve Rust `std::process::Command` semantics. Cwd+env convenience combinations, stdin, live
+handles, and async process remain separate design slices.

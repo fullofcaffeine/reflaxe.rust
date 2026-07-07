@@ -10,15 +10,18 @@ package rust.process;
 	  through a typed Rust-native value instead of positional `Vec<String>` pairs.
 
 	What
-	- A small owned set of environment overrides for `rust.process.NativeCommands`.
+	- A small owned sequence of environment mutations for `rust.process.NativeCommands`.
 	- `set(key, value)` records one `std::process::Command::env(...)` override.
-	- This first slice intentionally does not expose inherited-environment clearing, variable
-	  removal, cwd+env combinations, live process handles, stdin piping, or async process APIs.
+	- `remove(key)` records one `std::process::Command::env_remove(...)` mutation.
+	- `clear()` records one `std::process::Command::env_clear()` mutation.
+	- This slice intentionally does not expose cwd+env convenience combinations, live process
+	  handles, stdin piping, or async process APIs.
 
 	How
 	- The extern maps to `crate::native_process_tools::CommandEnv`.
-	- The Rust helper stores owned `(String, String)` pairs and applies them directly to
-	  `std::process::Command`.
+	- The Rust helper stores owned operations and applies them directly, in order, to
+	  `std::process::Command` so `set(...); remove(...)` and `clear(); set(...)` mean exactly what
+	  their Rust builder equivalents mean.
 	- In `metal + rust_no_hxrt`, this type must remain free of `hxrt`, `Dynamic`, Haxe `Array`, and
 	  raw Rust snippets; the metal policy fixture checks that generated shape.
 **/
@@ -29,4 +32,10 @@ extern class CommandEnv {
 
 	@:rustMutating
 	public function set(key:String, value:String):Void;
+
+	@:rustMutating
+	public function remove(key:String):Void;
+
+	@:rustMutating
+	public function clear():Void;
 }

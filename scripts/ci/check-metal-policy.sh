@@ -1632,8 +1632,13 @@ run_native_process_output_shape_case() {
 			sed "s|$root_dir|.|g" "$native_process_rs"
 			exit 1
 		fi
-		if ! match_regex 'overrides: Vec<\(String, String\)>' "$native_process_rs"; then
-			echo "[metal-policy] error: command-env fixture should store typed String env override pairs for ${failure_label}."
+		if ! match_regex 'ops: Vec<CommandEnvOp>' "$native_process_rs"; then
+			echo "[metal-policy] error: command-env fixture should store typed ordered env operations for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'enum CommandEnvOp' "$native_process_rs" || ! match_regex 'CommandEnvOp::Set' "$native_process_rs"; then
+			echo "[metal-policy] error: command-env fixture should model set operations with a typed CommandEnvOp enum for ${failure_label}."
 			sed "s|$root_dir|.|g" "$native_process_rs"
 			exit 1
 		fi
@@ -1654,6 +1659,33 @@ run_native_process_output_shape_case() {
 		fi
 		if ! match_regex 'outputUtf8WithEnv' "$native_process_rs"; then
 			echo "[metal-policy] error: command-env fixture missing outputUtf8WithEnv helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+	fi
+	if [[ "$fixture_rel" == *"metal_no_hxrt_command_env_ops"* ]]; then
+		if ! match_regex 'CommandEnvOp::Remove' "$native_process_rs" || ! match_regex 'CommandEnvOp::Clear' "$native_process_rs"; then
+			echo "[metal-policy] error: command-env-ops fixture should model remove/clear as typed CommandEnvOp variants for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'command\.env_remove\(key\.as_str\(\)\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-env-ops fixture missing direct Command::env_remove wiring for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'command\.env_clear\(\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-env-ops fixture missing direct Command::env_clear wiring for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'pub fn remove\(&mut self, key: String\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-env-ops fixture missing CommandEnv.remove helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'pub fn clear\(&mut self\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-env-ops fixture missing CommandEnv.clear helper for ${failure_label}."
 			sed "s|$root_dir|.|g" "$native_process_rs"
 			exit 1
 		fi
@@ -1995,5 +2027,7 @@ run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_cwd" "
 	'rust.process.NativeCommands current_dir emits direct std::process no-hxrt output'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_env" "compile.hxml" \
 	'rust.process.NativeCommands env overrides emit direct std::process no-hxrt output'
+run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_env_ops" "compile.hxml" \
+	'rust.process.CommandEnv remove/clear emit direct std::process no-hxrt output'
 
 echo "[metal-policy] ok"
