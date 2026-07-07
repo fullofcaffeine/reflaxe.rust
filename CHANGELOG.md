@@ -1,3 +1,10 @@
+# [0.65.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.64.3...v0.65.0) (2026-07-07)
+
+
+### Features
+
+* add typed command output facade ([312f7cd](https://github.com/fullofcaffeine/reflaxe.rust/commit/312f7cde087f4d2c55ae238ea4fd28815d1d7d74))
+
 ## [0.64.3](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.64.2...v0.64.3) (2026-06-30)
 
 
