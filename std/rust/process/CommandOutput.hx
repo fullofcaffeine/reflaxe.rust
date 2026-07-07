@@ -1,6 +1,7 @@
 package rust.process;
 
 import rust.Result;
+import rust.process.CommandError;
 
 /**
 	`rust.process.CommandOutput`
@@ -20,6 +21,9 @@ import rust.Result;
 	  an integer code.
 	- `stdoutUtf8()` and `stderrUtf8()` decode captured bytes as UTF-8 and return explicit
 	  `rust.Result` values.
+	- `stdoutUtf8Detailed()` and `stderrUtf8Detailed()` keep the same decode boundary but return
+	  `rust.process.CommandError` so callers can branch on typed UTF-8 failures instead of parsing
+	  strings.
 	- This is still an owned-output API, not a live child process, pipe, shell, async task, or
 	  portable `sys.io.Process` replacement.
 
@@ -35,4 +39,6 @@ extern class CommandOutput {
 	public function statusCode():Int;
 	public function stdoutUtf8():Result<String, String>;
 	public function stderrUtf8():Result<String, String>;
+	public function stdoutUtf8Detailed():Result<String, CommandError>;
+	public function stderrUtf8Detailed():Result<String, CommandError>;
 }

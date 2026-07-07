@@ -50,8 +50,9 @@ networking, TLS, DB, processes, or threading, add app-specific smoke tests aroun
 - Rust-native systems facades are growing beside portable `sys.*` APIs. Current slices include
   `rust.fs.NativeFiles` for typed no-hxrt file/path work and `rust.process.NativeCommands` for a
   narrow owned-command process subset with `rust.process.CommandOutput`, `rust.process.CommandSpec`,
-  and explicit working directory/environment set-remove-clear/cwd+env/stdin-input/stdin+cwd+env
-  support; neither replaces portable `sys.io.File` / `sys.io.Process`.
+  `rust.process.CommandError`, and explicit working directory/environment
+  set-remove-clear/cwd+env/stdin-input/stdin+cwd+env support; neither replaces portable
+  `sys.io.File` / `sys.io.Process`.
 - Typed anonymous records preserve Haxe aliasing while keeping field access typed; required fields and
   omitted `@:optional` fields are covered by focused generated-Rust fixtures.
 - CI evidence: snapshots, negative policy fixtures, runtime/optimizer plan reports, product-neutral

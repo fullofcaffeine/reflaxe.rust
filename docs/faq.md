@@ -180,7 +180,9 @@ Rust-native metal code should use typed `rust.*` facades instead. Today that inc
 now supports explicit command working directories, typed environment set/remove/clear operations, and
 combined cwd+env plus one-shot stdin-input and stdin+cwd+env owned-command calls. Use
 `rust.process.CommandSpec` when a command needs one typed owned config value for program/args plus
-optional cwd, env, and stdin settings.
+optional cwd, env, and stdin settings. Use the `Detailed` command/output methods with
+`rust.process.CommandError` when recovery needs typed IO/stdin/UTF-8 error categories instead of
+String-only diagnostics.
 It is not a live `sys.io.Process` replacement.
 
 Prefer typed APIs and helpers over raw Rust injection. Raw `untyped __rust__(...)` remains an escape

@@ -4,6 +4,7 @@ import rust.PathBuf;
 import rust.Ref;
 import rust.Result;
 import rust.Vec;
+import rust.process.CommandError;
 import rust.process.CommandSpec;
 import rust.process.CommandOutput;
 
@@ -38,7 +39,11 @@ import rust.process.CommandOutput;
 	- `statusCodeFromSpec(...)` and `outputUtf8FromSpec(...)` run an owned `CommandSpec`, which
 	  centralizes program/args plus optional cwd, env, and stdin settings without adding more method
 	  combinations.
+	- `statusCodeDetailedFromSpec(...)` and `outputUtf8DetailedFromSpec(...)` use the same owned
+	  `CommandSpec` execution path but return `rust.process.CommandError` for callers that need
+	  typed recovery policy.
 	- Fallible operations return `rust.Result<..., String>` so callers handle errors explicitly.
+	  The `Detailed` variants are opt-in and keep existing String-error methods source-compatible.
 	- This is not a replacement for `sys.io.Process` and intentionally does not expose live pipes,
 	  detached handles, reusable stdin pipes, or async process APIs yet.
 
@@ -70,4 +75,6 @@ extern class NativeCommands {
 	public static function outputUtf8InDirWithEnvAndStdin(program:Ref<PathBuf>, args:Ref<Vec<String>>, cwd:Ref<PathBuf>, env:Ref<CommandEnv>, stdinUtf8:String):Result<CommandOutput, String>;
 	public static function statusCodeFromSpec(spec:Ref<CommandSpec>):Result<Int, String>;
 	public static function outputUtf8FromSpec(spec:Ref<CommandSpec>):Result<CommandOutput, String>;
+	public static function statusCodeDetailedFromSpec(spec:Ref<CommandSpec>):Result<Int, CommandError>;
+	public static function outputUtf8DetailedFromSpec(spec:Ref<CommandSpec>):Result<CommandOutput, CommandError>;
 }

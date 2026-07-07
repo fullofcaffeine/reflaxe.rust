@@ -32,10 +32,27 @@ pub struct CommandSpec {
 }
 
 #[derive(Debug)]
+pub struct CommandError {
+    kind: CommandErrorKind,
+    message: String,
+}
+
+#[derive(Debug)]
+enum CommandErrorKind {
+    Io,
+    Utf8,
+    Stdin,
+}
+
+#[derive(Debug)]
 pub struct CommandOutput {
     status_code: i32,
     stdout: Vec<u8>,
     stderr: Vec<u8>,
+}
+
+fn command_error_message(error: CommandError) -> String {
+    error.message
 }
 
 fn command(program: &std::path::PathBuf, args: &Vec<String>) -> std::process::Command {
@@ -112,14 +129,44 @@ fn to_command_output(output: std::process::Output) -> CommandOutput {
     }
 }
 
-fn write_child_stdin(child: &mut std::process::Child, stdin_utf8: &str) -> Result<(), String> {
+fn write_child_stdin_detailed(
+    child: &mut std::process::Child,
+    stdin_utf8: &str,
+) -> Result<(), CommandError> {
     let mut stdin = child
         .stdin
         .take()
-        .ok_or_else(|| String::from("child stdin was not piped"))?;
+        .ok_or_else(|| CommandError::stdin(String::from("child stdin was not piped")))?;
     stdin
         .write_all(stdin_utf8.as_bytes())
-        .map_err(|err| err.to_string())
+        .map_err(CommandError::io)
+}
+
+fn write_child_stdin(child: &mut std::process::Child, stdin_utf8: &str) -> Result<(), String> {
+    write_child_stdin_detailed(child, stdin_utf8).map_err(command_error_message)
+}
+
+fn status_code_with_stdin_detailed(
+    mut command: std::process::Command,
+    stdin_utf8: &str,
+) -> Result<i32, CommandError> {
+    let mut child = command
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(CommandError::io)?;
+
+    if let Err(err) = write_child_stdin_detailed(&mut child, stdin_utf8) {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(err);
+    }
+
+    child
+        .wait()
+        .map(|status| status.code().unwrap_or(1))
+        .map_err(CommandError::io)
 }
 
 fn status_code_with_stdin(
@@ -145,6 +192,29 @@ fn status_code_with_stdin(
         .map_err(|err| err.to_string())
 }
 
+fn output_with_stdin_detailed(
+    mut command: std::process::Command,
+    stdin_utf8: &str,
+) -> Result<CommandOutput, CommandError> {
+    let mut child = command
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(CommandError::io)?;
+
+    if let Err(err) = write_child_stdin_detailed(&mut child, stdin_utf8) {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(err);
+    }
+
+    child
+        .wait_with_output()
+        .map(to_command_output)
+        .map_err(CommandError::io)
+}
+
 fn output_with_stdin(
     mut command: std::process::Command,
     stdin_utf8: &str,
@@ -166,6 +236,46 @@ fn output_with_stdin(
         .wait_with_output()
         .map(to_command_output)
         .map_err(|err| err.to_string())
+}
+
+#[allow(non_snake_case)]
+impl CommandError {
+    fn io(error: std::io::Error) -> CommandError {
+        CommandError {
+            kind: CommandErrorKind::Io,
+            message: error.to_string(),
+        }
+    }
+
+    fn utf8(error: std::string::FromUtf8Error) -> CommandError {
+        CommandError {
+            kind: CommandErrorKind::Utf8,
+            message: error.to_string(),
+        }
+    }
+
+    fn stdin(message: String) -> CommandError {
+        CommandError {
+            kind: CommandErrorKind::Stdin,
+            message,
+        }
+    }
+
+    pub fn message(&self) -> String {
+        self.message.clone()
+    }
+
+    pub fn isIo(&self) -> bool {
+        matches!(self.kind, CommandErrorKind::Io)
+    }
+
+    pub fn isUtf8(&self) -> bool {
+        matches!(self.kind, CommandErrorKind::Utf8)
+    }
+
+    pub fn isStdin(&self) -> bool {
+        matches!(self.kind, CommandErrorKind::Stdin)
+    }
 }
 
 #[allow(non_snake_case)]
@@ -224,6 +334,14 @@ impl CommandOutput {
 
     pub fn stderrUtf8(&self) -> Result<String, String> {
         String::from_utf8(self.stderr.clone()).map_err(|err| err.to_string())
+    }
+
+    pub fn stdoutUtf8Detailed(&self) -> Result<String, CommandError> {
+        String::from_utf8(self.stdout.clone()).map_err(CommandError::utf8)
+    }
+
+    pub fn stderrUtf8Detailed(&self) -> Result<String, CommandError> {
+        String::from_utf8(self.stderr.clone()).map_err(CommandError::utf8)
     }
 }
 
@@ -396,6 +514,30 @@ impl NativeCommands {
                 .output()
                 .map(to_command_output)
                 .map_err(|err| err.to_string()),
+        }
+    }
+
+    pub fn statusCodeDetailedFromSpec(spec: &CommandSpec) -> Result<i32, CommandError> {
+        let mut command = command_from_spec(spec);
+        match &spec.stdin_utf8 {
+            Some(stdin_utf8) => status_code_with_stdin_detailed(command, stdin_utf8.as_str()),
+            None => command
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status()
+                .map(|status| status.code().unwrap_or(1))
+                .map_err(CommandError::io),
+        }
+    }
+
+    pub fn outputUtf8DetailedFromSpec(spec: &CommandSpec) -> Result<CommandOutput, CommandError> {
+        let mut command = command_from_spec(spec);
+        match &spec.stdin_utf8 {
+            Some(stdin_utf8) => output_with_stdin_detailed(command, stdin_utf8.as_str()),
+            None => command
+                .output()
+                .map(to_command_output)
+                .map_err(CommandError::io),
         }
     }
 }

@@ -1863,6 +1863,43 @@ run_native_process_output_shape_case() {
 			exit 1
 		fi
 	fi
+	if [[ "$fixture_rel" == *"metal_no_hxrt_command_error"* ]]; then
+		if ! match_regex 'pub struct CommandError' "$native_process_rs"; then
+			echo "[metal-policy] error: command-error fixture missing typed CommandError helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'enum CommandErrorKind' "$native_process_rs" || ! match_regex 'CommandErrorKind::Io' "$native_process_rs" || ! match_regex 'CommandErrorKind::Utf8' "$native_process_rs" || ! match_regex 'CommandErrorKind::Stdin' "$native_process_rs"; then
+			echo "[metal-policy] error: command-error fixture should model typed IO/UTF-8/stdin categories for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'pub fn message\(&self\) -> String' "$native_process_rs" || ! match_regex 'pub fn isIo\(&self\) -> bool' "$native_process_rs" || ! match_regex 'pub fn isUtf8\(&self\) -> bool' "$native_process_rs" || ! match_regex 'pub fn isStdin\(&self\) -> bool' "$native_process_rs"; then
+			echo "[metal-policy] error: command-error fixture missing typed error accessors for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'map_err\(CommandError::io\)' "$native_process_rs" || ! match_regex 'map_err\(CommandError::utf8\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-error fixture should map std::io and FromUtf8Error into CommandError for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'statusCodeDetailedFromSpec' "$native_process_rs" || ! match_regex 'outputUtf8DetailedFromSpec' "$native_process_rs"; then
+			echo "[metal-policy] error: command-error fixture missing detailed NativeCommands spec helpers for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'stdoutUtf8Detailed' "$native_process_rs" || ! match_regex 'stderrUtf8Detailed' "$native_process_rs"; then
+			echo "[metal-policy] error: command-error fixture missing detailed CommandOutput UTF-8 helpers for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'Result<i32, CommandError>' "$native_process_rs" || ! match_regex 'Result<CommandOutput, CommandError>' "$native_process_rs" || ! match_regex 'Result<String, CommandError>' "$native_process_rs"; then
+			echo "[metal-policy] error: command-error fixture should expose typed Result boundaries for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+	fi
 	if ! (cd "$out_dir" && cargo build -q); then
 		echo "[metal-policy] error: native process no-hxrt fixture did not cargo-build for ${failure_label}."
 		exit 1
@@ -2210,5 +2247,7 @@ run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_stdin_
 	'rust.process.NativeCommands stdin+cwd+env emits direct std::process no-hxrt output'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_spec" "compile.hxml" \
 	'rust.process.CommandSpec emits direct std::process no-hxrt output'
+run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_error" "compile.hxml" \
+	'rust.process.CommandError emits typed no-hxrt command errors'
 
 echo "[metal-policy] ok"
