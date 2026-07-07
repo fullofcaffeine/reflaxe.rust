@@ -1726,6 +1726,134 @@ run_native_udp_output_shape_case() {
 	finish_policy_case "$failure_label" "$case_start"
 }
 
+run_socket_error_output_shape_case() {
+	local fixture_rel="$1"
+	local hxml_file="$2"
+	local failure_label="$3"
+	local case_start="$SECONDS"
+	local fixture_dir="$root_dir/$fixture_rel"
+	local out_dir="$fixture_dir/out_socket_error_shape"
+	local log_file="$fixture_dir/.compile_socket_error_shape.log"
+	local run_log="$fixture_dir/.run_socket_error_shape.log"
+	local native_tcp_rs="$out_dir/src/native_tcp_tools.rs"
+	local native_udp_rs="$out_dir/src/native_udp_tools.rs"
+	local socket_error_rs="$out_dir/src/native_socket_error_tools.rs"
+	echo "[metal-policy] case: ${failure_label}"
+
+	rm -rf "$out_dir"
+	rm -f "$log_file" "$run_log"
+
+	set +e
+	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_output=out_socket_error_shape) >"$log_file" 2>&1
+	local status=$?
+	set -e
+
+	if [[ "$status" -ne 0 ]]; then
+		echo "[metal-policy] error: expected compile success for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	if [[ ! -f "$socket_error_rs" || ! -f "$native_tcp_rs" || ! -f "$native_udp_rs" ]]; then
+		echo "[metal-policy] error: missing socket error/TCP/UDP helper modules for ${failure_label}."
+		find "$out_dir/src" -maxdepth 1 -type f -name '*.rs' -print | sed "s|$root_dir|.|g"
+		exit 1
+	fi
+	if match_regex 'hxrt[[:space:]]*=' "$out_dir/Cargo.toml"; then
+		echo "[metal-policy] error: socket-error no-hxrt fixture emitted hxrt dependency for ${failure_label}."
+		sed "s|$root_dir|.|g" "$out_dir/Cargo.toml"
+		exit 1
+	fi
+	if [[ -d "$out_dir/hxrt" ]]; then
+		echo "[metal-policy] error: socket-error no-hxrt fixture copied runtime crate for ${failure_label}."
+		exit 1
+	fi
+	if tree_match_regex 'hxrt::|hxrt\.|Dynamic|__rust__|ERaw|SocketHandle|socket_native|sys_net' "$out_dir/src"; then
+		echo "[metal-policy] error: socket-error fixture used runtime, Dynamic, raw, or portable sys/socket paths for ${failure_label}."
+		sed "s|$root_dir|.|g" "$out_dir/src/main.rs"
+		exit 1
+	fi
+	if ! match_regex 'pub struct SocketError' "$socket_error_rs" || ! match_regex 'enum SocketErrorKind' "$socket_error_rs"; then
+		echo "[metal-policy] error: socket-error fixture missing typed SocketError helper for ${failure_label}."
+		sed "s|$root_dir|.|g" "$socket_error_rs"
+		exit 1
+	fi
+	if ! match_regex 'SocketErrorKind::InvalidInput' "$socket_error_rs" || ! match_regex 'SocketErrorKind::Io' "$socket_error_rs" || ! match_regex 'SocketErrorKind::Utf8' "$socket_error_rs"; then
+		echo "[metal-policy] error: socket-error fixture missing InvalidInput/Io/Utf8 categories for ${failure_label}."
+		sed "s|$root_dir|.|g" "$socket_error_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub\(crate\) fn invalid_input' "$socket_error_rs" || ! match_regex 'pub\(crate\) fn io' "$socket_error_rs" || ! match_regex 'pub\(crate\) fn utf8' "$socket_error_rs"; then
+		echo "[metal-policy] error: socket-error fixture missing typed category constructors for ${failure_label}."
+		sed "s|$root_dir|.|g" "$socket_error_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn isInvalidInput\(&self\) -> bool' "$socket_error_rs" || ! match_regex 'pub fn isIo\(&self\) -> bool' "$socket_error_rs" || ! match_regex 'pub fn isUtf8\(&self\) -> bool' "$socket_error_rs"; then
+		echo "[metal-policy] error: socket-error fixture missing predicate accessors for ${failure_label}."
+		sed "s|$root_dir|.|g" "$socket_error_rs"
+		exit 1
+	fi
+	if ! match_regex 'use crate::native_socket_error_tools::SocketError' "$native_tcp_rs" || ! match_regex 'use crate::native_socket_error_tools::SocketError' "$native_udp_rs"; then
+		echo "[metal-policy] error: TCP/UDP helpers should share native_socket_error_tools::SocketError for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		sed "s|$root_dir|.|g" "$native_udp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn bindLocalhostDetailed\(port: i32\) -> Result<TcpListener, SocketError>' "$native_tcp_rs" || ! match_regex 'pub fn connectLocalhostDetailed\(port: i32\) -> Result<TcpStream, SocketError>' "$native_tcp_rs"; then
+		echo "[metal-policy] error: TCP helper missing detailed bind/connect Result<_, SocketError> methods for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn localPortDetailed\(&self\) -> Result<i32, SocketError>' "$native_tcp_rs" || ! match_regex 'pub fn acceptDetailed\(&self\) -> Result<TcpStream, SocketError>' "$native_tcp_rs"; then
+		echo "[metal-policy] error: TCP listener missing detailed localPort/accept methods for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn writeUtf8AndShutdownWriteDetailed' "$native_tcp_rs" || ! match_regex 'pub fn readToStringDetailed\(&mut self\) -> Result<String, SocketError>' "$native_tcp_rs"; then
+		echo "[metal-policy] error: TCP stream missing detailed write/read methods for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! match_regex 'port_to_u16_detailed' "$native_tcp_rs" || ! match_regex 'SocketError::invalid_input' "$native_tcp_rs" || ! match_regex 'map_err\(SocketError::io\)' "$native_tcp_rs" || ! match_regex 'map_err\(SocketError::utf8\)' "$native_tcp_rs"; then
+		echo "[metal-policy] error: TCP helper should map invalid input, IO, and UTF-8 failures into SocketError for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_tcp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn bindLocalhostDetailed\(port: i32\) -> Result<UdpSocket, SocketError>' "$native_udp_rs"; then
+		echo "[metal-policy] error: UDP helper missing detailed bind Result<_, SocketError> method for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_udp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn localPortDetailed\(&self\) -> Result<i32, SocketError>' "$native_udp_rs" || ! match_regex 'pub fn sendUtf8ToLocalhostDetailed' "$native_udp_rs" || ! match_regex 'pub fn recvUtf8Detailed\(&self, max_bytes: i32\) -> Result<String, SocketError>' "$native_udp_rs"; then
+		echo "[metal-policy] error: UDP socket missing detailed localPort/send/recv methods for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_udp_rs"
+		exit 1
+	fi
+	if ! match_regex 'positive_len_to_usize_detailed' "$native_udp_rs" || ! match_regex 'SocketError::invalid_input' "$native_udp_rs" || ! match_regex 'map_err\(SocketError::io\)' "$native_udp_rs" || ! match_regex 'map_err\(SocketError::utf8\)' "$native_udp_rs"; then
+		echo "[metal-policy] error: UDP helper should map invalid input, IO, and UTF-8 failures into SocketError for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_udp_rs"
+		exit 1
+	fi
+	if ! (cd "$out_dir" && cargo build -q); then
+		echo "[metal-policy] error: socket-error no-hxrt fixture did not cargo-build for ${failure_label}."
+		exit 1
+	fi
+	if ! (cd "$out_dir" && cargo run -q) >"$run_log" 2>&1; then
+		echo "[metal-policy] error: socket-error no-hxrt fixture did not cargo-run for ${failure_label}."
+		sed "s|$root_dir|.|g" "$run_log"
+		exit 1
+	fi
+	if [[ -s "$run_log" ]]; then
+		echo "[metal-policy] error: socket-error fixture produced unexpected stdout/stderr for ${failure_label}."
+		sed "s|$root_dir|.|g" "$run_log"
+		exit 1
+	fi
+
+	rm -f "$log_file" "$run_log"
+	rm -rf "$out_dir"
+	finish_policy_case "$failure_label" "$case_start"
+}
+
 run_native_process_output_shape_case() {
 	local fixture_rel="$1"
 	local hxml_file="$2"
@@ -2508,6 +2636,8 @@ run_native_tcp_output_shape_case "test/positive/metal_no_hxrt_native_tcp" "compi
 	'rust.net.NativeTcp emits direct std::net no-hxrt output'
 run_native_udp_output_shape_case "test/positive/metal_no_hxrt_native_udp" "compile.hxml" \
 	'rust.net.NativeUdp emits direct std::net UDP no-hxrt output'
+run_socket_error_output_shape_case "test/positive/metal_no_hxrt_socket_error" "compile.hxml" \
+	'rust.net.SocketError emits typed no-hxrt socket errors'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_native_process" "compile.hxml" \
 	'rust.process.NativeCommands emits direct std::process no-hxrt output'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_output" "compile.hxml" \

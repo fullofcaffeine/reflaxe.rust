@@ -121,6 +121,10 @@ if [[ "$clean_outputs" -eq 1 ]]; then
 
   while IFS= read -r -d '' path; do
     paths+=("$path")
+  done < <(find "$root_dir/test/positive" -mindepth 3 -maxdepth 3 -type f -path '*/m*_cwd_dir/*' \( -name 'm*_probe' -o -name 'm*_probe.exe' -o -name '*.rlib' \) -print0 2>/dev/null || true)
+
+  while IFS= read -r -d '' path; do
+    paths+=("$path")
   done < <(find "$root_dir/test/negative" -mindepth 2 -maxdepth 2 -type d \( -name 'out' -o -name 'out_*' \) -print0 2>/dev/null || true)
 
   while IFS= read -r -d '' path; do

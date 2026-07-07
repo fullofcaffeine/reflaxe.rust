@@ -16,6 +16,8 @@ import rust.Result;
 	- `writeUtf8AndShutdownWrite(...)` writes one UTF-8 payload and shuts down only the write half,
 	  allowing the peer to read to EOF while the caller may still read a response.
 	- `readToString()` reads UTF-8 text until EOF.
+	- The `Detailed` variants return `SocketError`, including a distinct UTF-8 decode category for
+	  `readToStringDetailed()`.
 
 	How
 	- The extern maps to `crate::native_tcp_tools::TcpStream`, a wrapper around
@@ -32,5 +34,11 @@ extern class TcpStream {
 	public function writeUtf8AndShutdownWrite(payload:String):Result<Bool, String>;
 
 	@:rustMutating
+	public function writeUtf8AndShutdownWriteDetailed(payload:String):Result<Bool, SocketError>;
+
+	@:rustMutating
 	public function readToString():Result<String, String>;
+
+	@:rustMutating
+	public function readToStringDetailed():Result<String, SocketError>;
 }

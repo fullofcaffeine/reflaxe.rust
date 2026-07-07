@@ -15,6 +15,8 @@ import rust.Result;
 	- `localPort()` reports the concrete port assigned by the OS, which makes `port = 0` fixtures
 	  deterministic without hardcoding a port.
 	- `accept()` waits for one incoming connection and returns a typed `TcpStream`.
+	- The `Detailed` variants keep existing String-error methods source-compatible while returning
+	  `SocketError` for callers that need typed IO category checks.
 
 	How
 	- The extern maps to `crate::native_tcp_tools::TcpListener`, a wrapper around
@@ -27,5 +29,7 @@ import rust.Result;
 @:rustExtraSrc("rust/native/native_tcp_tools.rs")
 extern class TcpListener {
 	public function localPort():Result<Int, String>;
+	public function localPortDetailed():Result<Int, SocketError>;
 	public function accept():Result<TcpStream, String>;
+	public function acceptDetailed():Result<TcpStream, SocketError>;
 }

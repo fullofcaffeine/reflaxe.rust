@@ -26,6 +26,9 @@ Before committing bead status changes, run `bd export -o .beads/issues.jsonl` an
   For explicit historical IDs such as `haxe.rust-oo3.76`, create the issue with the explicit ID,
   let Beads infer the dotted hierarchy, then add only the sibling blocker dependencies you need and
   run `bd export -o .beads/issues.jsonl`.
+  Dependency direction gotcha: `bd create --deps blocks:OTHER` means the new issue blocks `OTHER`,
+  so the new issue must close before `OTHER`. To model "this issue waits for OTHER", use the
+  appropriate depends-on edge instead of `blocks:OTHER`.
 
 Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rust-oo3 --compact`).
 

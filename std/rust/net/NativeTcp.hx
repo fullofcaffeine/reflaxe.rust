@@ -19,6 +19,8 @@ import rust.Result;
 	- `bindLocalhost(port)` binds `127.0.0.1:<port>` and returns a typed `TcpListener`; passing `0`
 	  asks the OS for an ephemeral port.
 	- `connectLocalhost(port)` connects a typed `TcpStream` to `127.0.0.1:<port>`.
+	- The `Detailed` variants keep the same behavior but return `SocketError` so callers can branch
+	  on invalid-input or IO categories without parsing error text.
 	- This is intentionally not portable `sys.net` parity, not TLS, not UDP, not async networking,
 	  and not a general host/address API yet.
 
@@ -34,5 +36,7 @@ import rust.Result;
 @:rustExtraSrc("rust/native/native_tcp_tools.rs")
 extern class NativeTcp {
 	public static function bindLocalhost(port:Int):Result<TcpListener, String>;
+	public static function bindLocalhostDetailed(port:Int):Result<TcpListener, SocketError>;
 	public static function connectLocalhost(port:Int):Result<TcpStream, String>;
+	public static function connectLocalhostDetailed(port:Int):Result<TcpStream, SocketError>;
 }

@@ -16,6 +16,8 @@ import rust.Result;
 	  deterministic without hardcoding a port.
 	- `sendUtf8ToLocalhost(...)` sends one UTF-8 datagram to `127.0.0.1:<port>`.
 	- `recvUtf8(...)` receives one datagram into an explicitly sized buffer and decodes it as UTF-8.
+	- The `Detailed` variants keep the String-error methods source-compatible while returning
+	  `SocketError` for invalid input, IO, and UTF-8 decode categories.
 
 	How
 	- The extern maps to `crate::native_udp_tools::UdpSocket`, a wrapper around
@@ -28,6 +30,9 @@ import rust.Result;
 @:rustExtraSrc("rust/native/native_udp_tools.rs")
 extern class UdpSocket {
 	public function localPort():Result<Int, String>;
+	public function localPortDetailed():Result<Int, SocketError>;
 	public function sendUtf8ToLocalhost(payload:String, port:Int):Result<Int, String>;
+	public function sendUtf8ToLocalhostDetailed(payload:String, port:Int):Result<Int, SocketError>;
 	public function recvUtf8(maxBytes:Int):Result<String, String>;
+	public function recvUtf8Detailed(maxBytes:Int):Result<String, SocketError>;
 }

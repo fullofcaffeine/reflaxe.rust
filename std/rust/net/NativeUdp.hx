@@ -17,6 +17,8 @@ import rust.Result;
 	- First M56 Rust-native UDP entry point.
 	- `bindLocalhost(port)` binds `127.0.0.1:<port>` and returns a typed `UdpSocket`; passing `0`
 	  asks the OS for an ephemeral port.
+	- `bindLocalhostDetailed(...)` keeps the same bind behavior but returns `SocketError` so callers
+	  can distinguish invalid port values from Rust IO failures without parsing message text.
 	- This is intentionally not portable `sys.net` parity, not TCP, not TLS, not async networking,
 	  and not a general host/address API yet.
 
@@ -32,4 +34,5 @@ import rust.Result;
 @:rustExtraSrc("rust/native/native_udp_tools.rs")
 extern class NativeUdp {
 	public static function bindLocalhost(port:Int):Result<UdpSocket, String>;
+	public static function bindLocalhostDetailed(port:Int):Result<UdpSocket, SocketError>;
 }
