@@ -13,7 +13,8 @@ import rust.Result;
 	  Methods keep the boundary typed and let the helper own byte-to-UTF-8 validation.
 
 	What
-	- Owned command output value returned by `rust.process.NativeCommands.outputUtf8(...)`.
+	- Owned command output value returned by `rust.process.NativeCommands.outputUtf8(...)` and the
+	  related owned-output helpers.
 	- `statusCode()` exposes the process exit code, using `1` when Rust reports termination without
 	  an integer code.
 	- `stdoutUtf8()` and `stderrUtf8()` decode captured bytes as UTF-8 and return explicit

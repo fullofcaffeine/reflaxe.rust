@@ -5,6 +5,8 @@
 /// This module intentionally uses direct `std::process::Command` APIs and owned `Result<_, String>`
 /// values so the metal no-hxrt fixture can prove Rust-native command execution without depending on
 /// portable `sys.io.Process` runtime handles or Haxe stream wrappers.
+use std::io::Write;
+
 #[derive(Debug)]
 pub struct NativeCommands;
 
@@ -88,6 +90,62 @@ fn to_command_output(output: std::process::Output) -> CommandOutput {
         stdout: output.stdout,
         stderr: output.stderr,
     }
+}
+
+fn write_child_stdin(child: &mut std::process::Child, stdin_utf8: &String) -> Result<(), String> {
+    let mut stdin = child
+        .stdin
+        .take()
+        .ok_or_else(|| String::from("child stdin was not piped"))?;
+    stdin
+        .write_all(stdin_utf8.as_bytes())
+        .map_err(|err| err.to_string())
+}
+
+fn status_code_with_stdin(
+    mut command: std::process::Command,
+    stdin_utf8: String,
+) -> Result<i32, String> {
+    let mut child = command
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|err| err.to_string())?;
+
+    if let Err(err) = write_child_stdin(&mut child, &stdin_utf8) {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(err);
+    }
+
+    child
+        .wait()
+        .map(|status| status.code().unwrap_or(1))
+        .map_err(|err| err.to_string())
+}
+
+fn output_with_stdin(
+    mut command: std::process::Command,
+    stdin_utf8: String,
+) -> Result<CommandOutput, String> {
+    let mut child = command
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|err| err.to_string())?;
+
+    if let Err(err) = write_child_stdin(&mut child, &stdin_utf8) {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(err);
+    }
+
+    child
+        .wait_with_output()
+        .map(to_command_output)
+        .map_err(|err| err.to_string())
 }
 
 #[allow(non_snake_case)]
@@ -228,5 +286,21 @@ impl NativeCommands {
             .output()
             .map(to_command_output)
             .map_err(|err| err.to_string())
+    }
+
+    pub fn statusCodeWithStdin(
+        program: &std::path::PathBuf,
+        args: &Vec<String>,
+        stdin_utf8: String,
+    ) -> Result<i32, String> {
+        status_code_with_stdin(command(program, args), stdin_utf8)
+    }
+
+    pub fn outputUtf8WithStdin(
+        program: &std::path::PathBuf,
+        args: &Vec<String>,
+        stdin_utf8: String,
+    ) -> Result<CommandOutput, String> {
+        output_with_stdin(command(program, args), stdin_utf8)
     }
 }
