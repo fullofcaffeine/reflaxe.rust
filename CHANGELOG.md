@@ -1,3 +1,10 @@
+# [0.66.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.65.0...v0.66.0) (2026-07-07)
+
+
+### Features
+
+* add command cwd facade ([57119f8](https://github.com/fullofcaffeine/reflaxe.rust/commit/57119f8be8b119320b35531ee13114982a4c1236))
+
 # [0.65.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.64.3...v0.65.0) (2026-07-07)
 
 
