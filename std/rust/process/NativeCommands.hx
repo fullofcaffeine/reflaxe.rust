@@ -23,9 +23,11 @@ import rust.process.CommandOutput;
 	- `statusCode(...)` runs a command and returns its process exit code.
 	- `stdoutUtf8(...)` captures stdout and decodes it as UTF-8.
 	- `outputUtf8(...)` captures status, stdout, and stderr in one owned `CommandOutput` value.
+	- `statusCodeInDir(...)` and `outputUtf8InDir(...)` run the same owned command shape with an
+	  explicit Rust `current_dir(...)`.
 	- Fallible operations return `rust.Result<..., String>` so callers handle errors explicitly.
 	- This is not a replacement for `sys.io.Process` and intentionally does not expose live pipes,
-	  detached handles, environment mutation, working-directory control, or async process APIs yet.
+	  detached handles, environment mutation, stdin piping, or async process APIs yet.
 
 	How
 	- `@:native("crate::native_process_tools::NativeCommands")` binds to a small Rust helper module.
@@ -43,4 +45,6 @@ extern class NativeCommands {
 	public static function statusCode(program:Ref<PathBuf>, args:Ref<Vec<String>>):Result<Int, String>;
 	public static function stdoutUtf8(program:Ref<PathBuf>, args:Ref<Vec<String>>):Result<String, String>;
 	public static function outputUtf8(program:Ref<PathBuf>, args:Ref<Vec<String>>):Result<CommandOutput, String>;
+	public static function statusCodeInDir(program:Ref<PathBuf>, args:Ref<Vec<String>>, cwd:Ref<PathBuf>):Result<Int, String>;
+	public static function outputUtf8InDir(program:Ref<PathBuf>, args:Ref<Vec<String>>, cwd:Ref<PathBuf>):Result<CommandOutput, String>;
 }

@@ -1604,6 +1604,28 @@ run_native_process_output_shape_case() {
 			exit 1
 		fi
 	fi
+	if [[ "$fixture_rel" == *"metal_no_hxrt_command_cwd"* ]]; then
+		if ! match_regex 'current_dir\(cwd\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-cwd fixture missing direct Command::current_dir(cwd) for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'statusCodeInDir' "$native_process_rs"; then
+			echo "[metal-policy] error: command-cwd fixture missing statusCodeInDir helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'outputUtf8InDir' "$native_process_rs"; then
+			echo "[metal-policy] error: command-cwd fixture missing outputUtf8InDir helper for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'cwd: &std::path::PathBuf' "$native_process_rs"; then
+			echo "[metal-policy] error: command-cwd fixture should pass cwd as borrowed PathBuf for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+	fi
 	if ! (cd "$out_dir" && cargo build -q); then
 		echo "[metal-policy] error: native process no-hxrt fixture did not cargo-build for ${failure_label}."
 		exit 1
@@ -1937,5 +1959,7 @@ run_native_process_output_shape_case "test/positive/metal_no_hxrt_native_process
 	'rust.process.NativeCommands emits direct std::process no-hxrt output'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_output" "compile.hxml" \
 	'rust.process.CommandOutput emits direct std::process::Output no-hxrt output'
+run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_cwd" "compile.hxml" \
+	'rust.process.NativeCommands current_dir emits direct std::process no-hxrt output'
 
 echo "[metal-policy] ok"

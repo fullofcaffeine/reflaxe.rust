@@ -23,6 +23,16 @@ fn command(program: &std::path::PathBuf, args: &Vec<String>) -> std::process::Co
     command
 }
 
+fn command_in_dir(
+    program: &std::path::PathBuf,
+    args: &Vec<String>,
+    cwd: &std::path::PathBuf,
+) -> std::process::Command {
+    let mut command = command(program, args);
+    command.current_dir(cwd);
+    command
+}
+
 fn to_command_output(output: std::process::Output) -> CommandOutput {
     CommandOutput {
         status_code: output.status.code().unwrap_or(1),
@@ -70,6 +80,31 @@ impl NativeCommands {
         args: &Vec<String>,
     ) -> Result<CommandOutput, String> {
         command(program, args)
+            .output()
+            .map(to_command_output)
+            .map_err(|err| err.to_string())
+    }
+
+    pub fn statusCodeInDir(
+        program: &std::path::PathBuf,
+        args: &Vec<String>,
+        cwd: &std::path::PathBuf,
+    ) -> Result<i32, String> {
+        let mut command = command_in_dir(program, args, cwd);
+        command
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map(|status| status.code().unwrap_or(1))
+            .map_err(|err| err.to_string())
+    }
+
+    pub fn outputUtf8InDir(
+        program: &std::path::PathBuf,
+        args: &Vec<String>,
+        cwd: &std::path::PathBuf,
+    ) -> Result<CommandOutput, String> {
+        command_in_dir(program, args, cwd)
             .output()
             .map(to_command_output)
             .map_err(|err| err.to_string())

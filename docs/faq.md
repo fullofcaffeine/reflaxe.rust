@@ -176,8 +176,8 @@ For systems APIs, keep the contract split in mind. Portable `sys.io.File` and `s
 preserve Haxe semantics and may use `hxrt` for handles, streams, exceptions, and platform behavior.
 Rust-native metal code should use typed `rust.*` facades instead. Today that includes the first
 `rust.fs.NativeFiles` file/path slice and the `rust.process.NativeCommands` owned-command slice.
-`rust.process.CommandOutput` covers status/stdout/stderr from one owned run. The process facade is
-not a live `sys.io.Process` replacement.
+`rust.process.CommandOutput` covers status/stdout/stderr from one owned run, and the process facade
+now supports explicit command working directories. It is not a live `sys.io.Process` replacement.
 
 Prefer typed APIs and helpers over raw Rust injection. Raw `untyped __rust__(...)` remains an escape
 hatch for narrow low-level abstraction modules, but app code should normally use typed externs,
