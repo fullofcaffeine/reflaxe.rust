@@ -1,3 +1,10 @@
+# [0.78.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.77.0...v0.78.0) (2026-07-07)
+
+
+### Features
+
+* add udp byte datagrams ([f9e8fb3](https://github.com/fullofcaffeine/reflaxe.rust/commit/f9e8fb3742ba28f18d6d61bc39ffe47a908d6ff7))
+
 # [0.77.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.76.0...v0.77.0) (2026-07-07)
 
 
