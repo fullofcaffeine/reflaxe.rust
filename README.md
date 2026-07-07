@@ -53,8 +53,9 @@ networking, TLS, DB, processes, or threading, add app-specific smoke tests aroun
   `rust.process.CommandError`, `rust.process.CommandChild`, and explicit working
   directory/environment set-remove-clear/cwd+env/stdin-input/stdin+cwd+env plus narrow live child
   write/wait/kill lifecycle support. `rust.net.NativeTcp` adds a blocking localhost TCP loopback
-  proof with typed `TcpListener` / `TcpStream` wrappers, and `rust.net.NativeUdp` adds a blocking
-  localhost datagram proof with a typed `UdpSocket` wrapper for UTF-8 and byte payloads.
+  proof with typed `TcpListener` / `TcpStream` wrappers for UTF-8 and byte-stream payloads, and
+  `rust.net.NativeUdp` adds a blocking localhost datagram proof with a typed `UdpSocket` wrapper
+  for UTF-8 and byte payloads.
   `rust.net.SocketError` is available through opt-in socket `Detailed` methods for invalid-input,
   IO, and UTF-8 recovery without parsing strings. These do not replace portable `sys.io.File`,
   `sys.io.Process`, or `sys.net.Socket`.

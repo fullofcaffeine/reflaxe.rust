@@ -4,7 +4,9 @@
 ///
 /// This module intentionally uses direct `std::net` APIs and owned `Result<_, String>` values so
 /// the metal no-hxrt fixture can prove Rust-native blocking TCP behavior without depending on
-/// portable `sys.net` runtime handles, Haxe stream wrappers, async runtimes, or TLS setup.
+/// portable `sys.net` runtime handles, Haxe stream wrappers, `haxe.io.Bytes`, async runtimes, or
+/// TLS setup. Byte-stream helpers validate Haxe `Int` values before converting them into Rust
+/// `u8` buffers.
 use std::io::{Read, Write};
 use std::net::{Shutdown, TcpListener as StdTcpListener, TcpStream as StdTcpStream};
 
@@ -30,6 +32,25 @@ fn port_to_u16(port: i32) -> Result<u16, String> {
 fn port_to_u16_detailed(port: i32) -> Result<u16, SocketError> {
     u16::try_from(port)
         .map_err(|_| SocketError::invalid_input(format!("TCP port out of range: {}", port)))
+}
+
+fn bytes_to_u8_vec(payload: Vec<i32>) -> Result<Vec<u8>, String> {
+    payload
+        .into_iter()
+        .enumerate()
+        .map(|(index, byte)| {
+            u8::try_from(byte)
+                .map_err(|_| format!("TCP byte at index {} out of range: {}", index, byte))
+        })
+        .collect()
+}
+
+fn bytes_to_u8_vec_detailed(payload: Vec<i32>) -> Result<Vec<u8>, SocketError> {
+    bytes_to_u8_vec(payload).map_err(SocketError::invalid_input)
+}
+
+fn u8_vec_to_i32_vec(payload: Vec<u8>) -> Vec<i32> {
+    payload.into_iter().map(i32::from).collect()
 }
 
 #[allow(non_snake_case)]
@@ -115,6 +136,27 @@ impl TcpStream {
             .map_err(SocketError::io)
     }
 
+    pub fn writeBytesAndShutdownWrite(&mut self, payload: Vec<i32>) -> Result<bool, String> {
+        let bytes = bytes_to_u8_vec(payload)?;
+        self.stream
+            .write_all(&bytes)
+            .and_then(|_| self.stream.shutdown(Shutdown::Write))
+            .map(|_| true)
+            .map_err(|err| err.to_string())
+    }
+
+    pub fn writeBytesAndShutdownWriteDetailed(
+        &mut self,
+        payload: Vec<i32>,
+    ) -> Result<bool, SocketError> {
+        let bytes = bytes_to_u8_vec_detailed(payload)?;
+        self.stream
+            .write_all(&bytes)
+            .and_then(|_| self.stream.shutdown(Shutdown::Write))
+            .map(|_| true)
+            .map_err(SocketError::io)
+    }
+
     pub fn readToString(&mut self) -> Result<String, String> {
         let mut output = String::new();
         self.stream
@@ -129,5 +171,21 @@ impl TcpStream {
             .read_to_end(&mut output)
             .map_err(SocketError::io)?;
         String::from_utf8(output).map_err(SocketError::utf8)
+    }
+
+    pub fn readBytes(&mut self) -> Result<Vec<i32>, String> {
+        let mut output = Vec::new();
+        self.stream
+            .read_to_end(&mut output)
+            .map(|_| u8_vec_to_i32_vec(output))
+            .map_err(|err| err.to_string())
+    }
+
+    pub fn readBytesDetailed(&mut self) -> Result<Vec<i32>, SocketError> {
+        let mut output = Vec::new();
+        self.stream
+            .read_to_end(&mut output)
+            .map_err(SocketError::io)?;
+        Ok(u8_vec_to_i32_vec(output))
     }
 }
