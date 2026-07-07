@@ -1,3 +1,10 @@
+# [0.70.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.69.0...v0.70.0) (2026-07-07)
+
+
+### Features
+
+* add command stdin helpers ([73a92e3](https://github.com/fullofcaffeine/reflaxe.rust/commit/73a92e31bbe8475ff1bdecbadf5692dd436eb919))
+
 # [0.69.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.68.0...v0.69.0) (2026-07-07)
 
 
