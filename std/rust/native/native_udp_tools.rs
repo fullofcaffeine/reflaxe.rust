@@ -3,8 +3,10 @@
 /// Typed helper module backing `rust.net.NativeUdp` and `UdpSocket`.
 ///
 /// This module intentionally uses direct `std::net` APIs and owned `Result<_, String>` values so
-/// the metal no-hxrt fixture can prove Rust-native blocking UDP datagram behavior without depending
-/// on portable `sys.net` runtime handles, Haxe stream wrappers, async runtimes, DNS, or TLS setup.
+/// the metal no-hxrt fixtures can prove Rust-native blocking UDP datagram behavior without
+/// depending on portable `sys.net` runtime handles, Haxe stream wrappers, `haxe.io.Bytes`, async
+/// runtimes, DNS, or TLS setup. Byte datagram helpers validate Haxe `Int` values before converting
+/// them into Rust `u8` buffers.
 use std::net::UdpSocket as StdUdpSocket;
 
 use crate::native_socket_error_tools::SocketError;
@@ -44,6 +46,30 @@ fn positive_len_to_usize_detailed(value: i32, label: &str) -> Result<usize, Sock
         .map_err(|_| SocketError::invalid_input(format!("{} out of range: {}", label, value)))
 }
 
+fn byte_count_to_i32(sent: usize) -> Result<i32, std::io::Error> {
+    i32::try_from(sent)
+        .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "UDP byte count overflow"))
+}
+
+fn bytes_to_u8_vec(payload: Vec<i32>) -> Result<Vec<u8>, String> {
+    payload
+        .into_iter()
+        .enumerate()
+        .map(|(index, byte)| {
+            u8::try_from(byte)
+                .map_err(|_| format!("UDP byte at index {} out of range: {}", index, byte))
+        })
+        .collect()
+}
+
+fn bytes_to_u8_vec_detailed(payload: Vec<i32>) -> Result<Vec<u8>, SocketError> {
+    bytes_to_u8_vec(payload).map_err(SocketError::invalid_input)
+}
+
+fn u8_vec_to_i32_vec(payload: Vec<u8>) -> Vec<i32> {
+    payload.into_iter().map(i32::from).collect()
+}
+
 #[allow(non_snake_case)]
 impl NativeUdp {
     pub fn bindLocalhost(port: i32) -> Result<UdpSocket, String> {
@@ -81,11 +107,7 @@ impl UdpSocket {
         let port = port_to_u16(port)?;
         self.socket
             .send_to(payload.as_bytes(), ("127.0.0.1", port))
-            .and_then(|sent| {
-                i32::try_from(sent).map_err(|_| {
-                    std::io::Error::new(std::io::ErrorKind::Other, "UDP byte count overflow")
-                })
-            })
+            .and_then(byte_count_to_i32)
             .map_err(|err| err.to_string())
     }
 
@@ -97,11 +119,7 @@ impl UdpSocket {
         let port = port_to_u16_detailed(port)?;
         self.socket
             .send_to(payload.as_bytes(), ("127.0.0.1", port))
-            .and_then(|sent| {
-                i32::try_from(sent).map_err(|_| {
-                    std::io::Error::new(std::io::ErrorKind::Other, "UDP byte count overflow")
-                })
-            })
+            .and_then(byte_count_to_i32)
             .map_err(SocketError::io)
     }
 
@@ -122,5 +140,46 @@ impl UdpSocket {
         let (read, _addr) = self.socket.recv_from(&mut buffer).map_err(SocketError::io)?;
         buffer.truncate(read);
         String::from_utf8(buffer).map_err(SocketError::utf8)
+    }
+
+    pub fn sendBytesToLocalhost(&self, payload: Vec<i32>, port: i32) -> Result<i32, String> {
+        let port = port_to_u16(port)?;
+        let bytes = bytes_to_u8_vec(payload)?;
+        self.socket
+            .send_to(&bytes, ("127.0.0.1", port))
+            .and_then(byte_count_to_i32)
+            .map_err(|err| err.to_string())
+    }
+
+    pub fn sendBytesToLocalhostDetailed(
+        &self,
+        payload: Vec<i32>,
+        port: i32,
+    ) -> Result<i32, SocketError> {
+        let port = port_to_u16_detailed(port)?;
+        let bytes = bytes_to_u8_vec_detailed(payload)?;
+        self.socket
+            .send_to(&bytes, ("127.0.0.1", port))
+            .and_then(byte_count_to_i32)
+            .map_err(SocketError::io)
+    }
+
+    pub fn recvBytes(&self, max_bytes: i32) -> Result<Vec<i32>, String> {
+        let max_bytes = positive_len_to_usize(max_bytes, "UDP receive buffer size")?;
+        let mut buffer = vec![0_u8; max_bytes];
+        let (read, _addr) = self
+            .socket
+            .recv_from(&mut buffer)
+            .map_err(|err| err.to_string())?;
+        buffer.truncate(read);
+        Ok(u8_vec_to_i32_vec(buffer))
+    }
+
+    pub fn recvBytesDetailed(&self, max_bytes: i32) -> Result<Vec<i32>, SocketError> {
+        let max_bytes = positive_len_to_usize_detailed(max_bytes, "UDP receive buffer size")?;
+        let mut buffer = vec![0_u8; max_bytes];
+        let (read, _addr) = self.socket.recv_from(&mut buffer).map_err(SocketError::io)?;
+        buffer.truncate(read);
+        Ok(u8_vec_to_i32_vec(buffer))
     }
 }

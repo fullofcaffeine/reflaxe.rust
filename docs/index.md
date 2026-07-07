@@ -67,7 +67,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Profile migration guide](rusty-profile.md): migration mapping from removed `idiomatic`/`rusty` selectors.
 - [Metal profile](metal-profile.md): Rust-first authoring and boundary policy.
 - [Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md): long-range metal compiler/API plan and tracker sweep.
-- [Metal systems facades roadmap](metal-systems-facades-roadmap.md): shipped file/path, owned-command/process-output/cwd/env set-remove-clear/cwd+env/stdin-input/stdin+cwd+env/command-spec/command-error/command-child lifecycle, blocking TCP localhost, blocking UDP localhost, and typed socket-error slices for Rust-native systems handles distinct from portable `sys.*` semantics.
+- [Metal systems facades roadmap](metal-systems-facades-roadmap.md): shipped file/path, owned-command/process-output/cwd/env set-remove-clear/cwd+env/stdin-input/stdin+cwd+env/command-spec/command-error/command-child lifecycle, blocking TCP localhost, blocking UDP localhost with UTF-8 and byte datagrams, and typed socket-error slices for Rust-native systems handles distinct from portable `sys.*` semantics.
 - [Metal typed DSL authority](metal-typed-dsl-authority.md): when a metal DSL is justified and how raw-code authority is contained.
 - [Metal trait, impl, and bound model](metal-trait-impl-bound-model.md): `@:rustImpl`, `@:rustGeneric`, interface trait objects, and future typed trait metadata.
 - [Metal capability fixture plan](metal-capability-fixtures.md): planned metal capability fixtures and owning harnesses.

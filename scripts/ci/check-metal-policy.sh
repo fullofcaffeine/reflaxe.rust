@@ -1854,6 +1854,113 @@ run_socket_error_output_shape_case() {
 	finish_policy_case "$failure_label" "$case_start"
 }
 
+run_udp_bytes_output_shape_case() {
+	local fixture_rel="$1"
+	local hxml_file="$2"
+	local failure_label="$3"
+	local case_start="$SECONDS"
+	local fixture_dir="$root_dir/$fixture_rel"
+	local out_dir="$fixture_dir/out_udp_bytes_shape"
+	local log_file="$fixture_dir/.compile_udp_bytes_shape.log"
+	local run_log="$fixture_dir/.run_udp_bytes_shape.log"
+	local native_udp_rs="$out_dir/src/native_udp_tools.rs"
+	local socket_error_rs="$out_dir/src/native_socket_error_tools.rs"
+	echo "[metal-policy] case: ${failure_label}"
+
+	rm -rf "$out_dir"
+	rm -f "$log_file" "$run_log"
+
+	set +e
+	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_output=out_udp_bytes_shape) >"$log_file" 2>&1
+	local status=$?
+	set -e
+
+	if [[ "$status" -ne 0 ]]; then
+		echo "[metal-policy] error: expected compile success for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	if [[ ! -f "$native_udp_rs" || ! -f "$socket_error_rs" ]]; then
+		echo "[metal-policy] error: missing UDP byte/socket error helper modules for ${failure_label}."
+		find "$out_dir/src" -maxdepth 1 -type f -name '*.rs' -print | sed "s|$root_dir|.|g"
+		exit 1
+	fi
+	if match_regex 'hxrt[[:space:]]*=' "$out_dir/Cargo.toml"; then
+		echo "[metal-policy] error: UDP byte no-hxrt fixture emitted hxrt dependency for ${failure_label}."
+		sed "s|$root_dir|.|g" "$out_dir/Cargo.toml"
+		exit 1
+	fi
+	if [[ -d "$out_dir/hxrt" ]]; then
+		echo "[metal-policy] error: UDP byte no-hxrt fixture copied runtime crate for ${failure_label}."
+		exit 1
+	fi
+	if tree_match_regex 'hxrt::|hxrt\.|Dynamic|__rust__|ERaw|SocketHandle|socket_native|sys_net|haxe_io_bytes' "$out_dir/src"; then
+		echo "[metal-policy] error: UDP byte fixture used runtime, Dynamic, raw, portable socket, or haxe.io.Bytes paths for ${failure_label}."
+		sed "s|$root_dir|.|g" "$out_dir/src/main.rs"
+		sed "s|$root_dir|.|g" "$native_udp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn sendBytesToLocalhost\(&self, payload: Vec<i32>, port: i32\) -> Result<i32, String>' "$native_udp_rs"; then
+		echo "[metal-policy] error: UDP byte fixture missing String-error byte send method for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_udp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn sendBytesToLocalhostDetailed' "$native_udp_rs" || ! match_regex 'payload: Vec<i32>' "$native_udp_rs" || ! match_regex 'Result<i32, SocketError>' "$native_udp_rs"; then
+		echo "[metal-policy] error: UDP byte fixture missing detailed byte send method for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_udp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn recvBytes\(&self, max_bytes: i32\) -> Result<Vec<i32>, String>' "$native_udp_rs"; then
+		echo "[metal-policy] error: UDP byte fixture missing String-error byte receive method for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_udp_rs"
+		exit 1
+	fi
+	if ! match_regex 'pub fn recvBytesDetailed\(&self, max_bytes: i32\) -> Result<Vec<i32>, SocketError>' "$native_udp_rs"; then
+		echo "[metal-policy] error: UDP byte fixture missing detailed byte receive method for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_udp_rs"
+		exit 1
+	fi
+	if ! match_regex 'fn bytes_to_u8_vec\(payload: Vec<i32>\) -> Result<Vec<u8>, String>' "$native_udp_rs" || ! match_regex 'u8::try_from\(byte\)' "$native_udp_rs"; then
+		echo "[metal-policy] error: UDP byte fixture should validate Vec<Int> byte values before u8 conversion for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_udp_rs"
+		exit 1
+	fi
+	if ! match_regex 'bytes_to_u8_vec_detailed\(payload: Vec<i32>\) -> Result<Vec<u8>, SocketError>' "$native_udp_rs" || ! match_regex 'map_err\(SocketError::invalid_input\)' "$native_udp_rs"; then
+		echo "[metal-policy] error: UDP byte fixture should map invalid byte values to SocketError::invalid_input for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_udp_rs"
+		exit 1
+	fi
+	if ! match_regex 'fn u8_vec_to_i32_vec\(payload: Vec<u8>\) -> Vec<i32>' "$native_udp_rs" || ! match_regex 'payload\.into_iter\(\)\.map\(i32::from\)\.collect\(\)' "$native_udp_rs"; then
+		echo "[metal-policy] error: UDP byte fixture should convert received u8 buffers back to Vec<Int> for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_udp_rs"
+		exit 1
+	fi
+	if ! match_regex 'send_to\(&bytes, \("127\.0\.0\.1", port\)\)' "$native_udp_rs" || ! match_regex 'recv_from\(&mut buffer\)' "$native_udp_rs"; then
+		echo "[metal-policy] error: UDP byte fixture missing direct std::net send_to/recv_from wiring for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_udp_rs"
+		exit 1
+	fi
+	if ! (cd "$out_dir" && cargo build -q); then
+		echo "[metal-policy] error: UDP byte no-hxrt fixture did not cargo-build for ${failure_label}."
+		exit 1
+	fi
+	if ! (cd "$out_dir" && cargo run -q) >"$run_log" 2>&1; then
+		echo "[metal-policy] error: UDP byte no-hxrt fixture did not cargo-run for ${failure_label}."
+		sed "s|$root_dir|.|g" "$run_log"
+		exit 1
+	fi
+	if [[ -s "$run_log" ]]; then
+		echo "[metal-policy] error: UDP byte fixture produced unexpected stdout/stderr for ${failure_label}."
+		sed "s|$root_dir|.|g" "$run_log"
+		exit 1
+	fi
+
+	rm -f "$log_file" "$run_log"
+	rm -rf "$out_dir"
+	finish_policy_case "$failure_label" "$case_start"
+}
+
 run_native_process_output_shape_case() {
 	local fixture_rel="$1"
 	local hxml_file="$2"
@@ -2638,6 +2745,8 @@ run_native_udp_output_shape_case "test/positive/metal_no_hxrt_native_udp" "compi
 	'rust.net.NativeUdp emits direct std::net UDP no-hxrt output'
 run_socket_error_output_shape_case "test/positive/metal_no_hxrt_socket_error" "compile.hxml" \
 	'rust.net.SocketError emits typed no-hxrt socket errors'
+run_udp_bytes_output_shape_case "test/positive/metal_no_hxrt_udp_bytes" "compile.hxml" \
+	'rust.net.UdpSocket byte datagrams emit direct std::net no-hxrt output'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_native_process" "compile.hxml" \
 	'rust.process.NativeCommands emits direct std::process no-hxrt output'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_output" "compile.hxml" \

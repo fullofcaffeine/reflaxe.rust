@@ -176,8 +176,8 @@ Bead: `haxe.rust-oo3.74.4`
 - Current audit: [Metal type surface gap matrix](metal-type-surface-gap-matrix.md).
 - Systems-facade follow-up: [Metal systems facades roadmap](metal-systems-facades-roadmap.md)
   started M43 with a Rust-native file/path facade and now tracks shipped file, process, first
-  blocking TCP, first blocking UDP localhost, and typed socket-error slices plus broader
-  socket/TLS/DB follow-ups.
+  blocking TCP, first blocking UDP localhost, typed socket-error, and UDP byte-datagram slices plus
+  broader socket/TLS/DB follow-ups.
 
 ### 5. Typed Mini-DSL Authority
 

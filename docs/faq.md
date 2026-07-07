@@ -187,10 +187,12 @@ case: spawn from a `CommandSpec`, write and close one stdin payload, wait, or ki
 It is not a live `sys.io.Process` stream/shell/async replacement.
 For networking, `rust.net.NativeTcp` is a narrow blocking localhost TCP proof with typed
 `TcpListener` / `TcpStream` wrappers, and `rust.net.NativeUdp` is a narrow blocking localhost
-datagram proof with a typed `UdpSocket` wrapper. Use socket `Detailed` methods with
-`rust.net.SocketError` when recovery needs typed invalid-input, IO, or UTF-8 categories instead of
-String-only diagnostics. These are not portable `sys.net.Socket` parity, TLS, async networking,
-byte-stream/datagram-buffer abstractions, or arbitrary host/address APIs yet.
+datagram proof with a typed `UdpSocket` wrapper. The UDP facade supports UTF-8 datagrams and
+byte datagrams as `rust.Vec<Int>` values, validating each send byte before converting to Rust `u8`.
+Use socket `Detailed` methods with `rust.net.SocketError` when recovery needs typed invalid-input,
+IO, or UTF-8 categories instead of String-only diagnostics. These are not portable
+`sys.net.Socket` parity, TLS, async networking, live stream adapters, or arbitrary host/address
+APIs yet.
 
 Prefer typed APIs and helpers over raw Rust injection. Raw `untyped __rust__(...)` remains an escape
 hatch for narrow low-level abstraction modules, but app code should normally use typed externs,
