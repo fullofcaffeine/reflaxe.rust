@@ -1420,10 +1420,85 @@ run_no_hxrt_success_case() {
 	finish_policy_case "$failure_label" "$case_start"
 }
 
+run_native_file_output_shape_case() {
+	local fixture_rel="$1"
+	local hxml_file="$2"
+	local failure_label="$3"
+	local case_start="$SECONDS"
+	local fixture_dir="$root_dir/$fixture_rel"
+	local out_dir="$fixture_dir/out_native_file_shape"
+	local log_file="$fixture_dir/.compile_native_file_shape.log"
+	local native_file_rs="$out_dir/src/native_file_tools.rs"
+	echo "[metal-policy] case: ${failure_label}"
+
+	rm -rf "$out_dir"
+	rm -f "$log_file"
+
+	set +e
+	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_output=out_native_file_shape) >"$log_file" 2>&1
+	local status=$?
+	set -e
+
+	if [[ "$status" -ne 0 ]]; then
+		echo "[metal-policy] error: expected compile success for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	if [[ ! -f "$native_file_rs" ]]; then
+		echo "[metal-policy] error: missing native_file_tools.rs for ${failure_label}."
+		exit 1
+	fi
+	if match_regex 'hxrt[[:space:]]*=' "$out_dir/Cargo.toml"; then
+		echo "[metal-policy] error: native file no-hxrt fixture emitted hxrt dependency for ${failure_label}."
+		sed "s|$root_dir|.|g" "$out_dir/Cargo.toml"
+		exit 1
+	fi
+	if [[ -d "$out_dir/hxrt" ]]; then
+		echo "[metal-policy] error: native file no-hxrt fixture copied runtime crate for ${failure_label}."
+		exit 1
+	fi
+	if tree_match_regex 'hxrt::|hxrt\.|Dynamic|__rust__|ERaw|FileHandle|file_native|sys_io_' "$out_dir/src"; then
+		echo "[metal-policy] error: native file fixture used runtime, Dynamic, raw, or portable sys/file paths for ${failure_label}."
+		sed "s|$root_dir|.|g" "$out_dir/src/main.rs"
+		exit 1
+	fi
+	if ! match_regex 'std::fs::write' "$native_file_rs"; then
+		echo "[metal-policy] error: native file fixture missing direct std::fs::write helper for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_file_rs"
+		exit 1
+	fi
+	if ! match_regex 'std::fs::read_to_string' "$native_file_rs"; then
+		echo "[metal-policy] error: native file fixture missing direct std::fs::read_to_string helper for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_file_rs"
+		exit 1
+	fi
+	if ! match_regex 'std::fs::remove_file' "$native_file_rs"; then
+		echo "[metal-policy] error: native file fixture missing direct std::fs::remove_file helper for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_file_rs"
+		exit 1
+	fi
+	if ! match_regex 'Result<[^>]*String' "$native_file_rs"; then
+		echo "[metal-policy] error: native file fixture should expose Result<_, String> error boundaries for ${failure_label}."
+		sed "s|$root_dir|.|g" "$native_file_rs"
+		exit 1
+	fi
+	if ! (cd "$out_dir" && cargo build -q); then
+		echo "[metal-policy] error: native file no-hxrt fixture did not cargo-build for ${failure_label}."
+		exit 1
+	fi
+
+	rm -f "$log_file"
+	rm -rf "$out_dir"
+	finish_policy_case "$failure_label" "$case_start"
+}
+
 run_negative_case "test/negative/metal_raw_rust" 'Strict mode forbids `__rust__\(\)` code injection in application code' \
 	'raw __rust__ in app code under metal profile'
 run_negative_case "test/negative/metal_raw_rust_under_std" 'Strict mode forbids `__rust__\(\)` code injection in application code' \
 	'raw __rust__ in user code under a /std/ path must still be rejected'
+run_negative_case "test/negative/metal_fs_raw_escape" 'Strict mode forbids `__rust__\(\)` code injection in application code' \
+	'raw std::fs escape in app code must use typed rust.fs facade'
 run_negative_case "test/negative/metal_stringly_dsl_app_api" '`rust\.metal\.Code\.expr` is a controlled raw Rust escape hatch' \
 	'stringly rust.metal.Code app API requires scoped raw authority'
 run_negative_case "test/negative/metal_reflect" 'metal profile forbids reflection/runtime-introspection modules' \
@@ -1723,5 +1798,7 @@ run_optional_fallback_group "examples/chat_loopback" "compile.metal.hxml" 'Metal
 	'metal fallback top-modules keeps profile.RemoteRuntime raw fallback below 21 after typed catch/downcast lowering'
 run_no_hxrt_success_case "test/positive/metal_no_hxrt_minimal" "compile.hxml" \
 	'rust_no_hxrt emits runtime-free minimal crate'
+run_native_file_output_shape_case "test/positive/metal_no_hxrt_native_file" "compile.hxml" \
+	'rust.fs.NativeFiles emits direct std::fs no-hxrt output'
 
 echo "[metal-policy] ok"

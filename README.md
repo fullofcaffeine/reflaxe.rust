@@ -171,6 +171,7 @@ Rule of thumb:
 Read more: [Profiles guide](docs/profiles.md), [Rusty migration guide](docs/rusty-profile.md),
 [Metal profile details](docs/metal-profile.md), [Extern and lifetime-island cookbook](docs/extern-lifetime-island-cookbook.md),
 [RAII guard and lifetime-island rules](docs/raii-guard-lifetime-islands.md),
+[Metal systems facades roadmap](docs/metal-systems-facades-roadmap.md),
 [HXRT overhead benchmarks](docs/perf-hxrt-overhead.md),
 [Consumer runtime benchmark corpus](docs/consumer-runtime-benchmark-corpus.md), and
 [Lifetime encoding design](docs/lifetime-encoding.md).

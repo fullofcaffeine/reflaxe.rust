@@ -29,7 +29,8 @@ Usage: scripts/ci/clean-artifacts.sh [--outputs] [--cache] [--all] [--dry-run]
 Removes generated test/example artifacts and optional harness/perf/cache build dirs.
 
 Options:
-  --outputs   Remove generated `out*` folders under snapshot, semantic-diff, and example cases.
+  --outputs   Remove generated `out*` folders under snapshot, semantic-diff, positive/negative,
+              and example cases.
   --cache     Remove cache folders used by harness/perf scripts under `.cache/` and `test/.cache/`,
               plus Cargo target dirs produced by repo-level CI/tooling checks.
   --all       Same as `--outputs --cache`.
@@ -113,6 +114,14 @@ if [[ "$clean_outputs" -eq 1 ]]; then
   while IFS= read -r -d '' path; do
     paths+=("$path")
   done < <(find "$root_dir/test/semantic_diff_lanes" -mindepth 2 -maxdepth 2 -type d \( -name 'out' -o -name 'out_*' \) -print0 2>/dev/null || true)
+
+  while IFS= read -r -d '' path; do
+    paths+=("$path")
+  done < <(find "$root_dir/test/positive" -mindepth 2 -maxdepth 2 -type d \( -name 'out' -o -name 'out_*' \) -print0 2>/dev/null || true)
+
+  while IFS= read -r -d '' path; do
+    paths+=("$path")
+  done < <(find "$root_dir/test/negative" -mindepth 2 -maxdepth 2 -type d \( -name 'out' -o -name 'out_*' \) -print0 2>/dev/null || true)
 
   while IFS= read -r -d '' path; do
     paths+=("$path")

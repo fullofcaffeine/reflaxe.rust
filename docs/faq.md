@@ -165,8 +165,8 @@ and [Stdlib Parity Policy](stdlib-policy.md).
 Yes, intentionally.
 
 The `rust.*` API surface exposes Rust-shaped concepts such as references, mutable references,
-borrows, vectors, maps, slices, `Option`, and `Result`. These are best used at typed native
-boundaries, in `metal`, or in clearly marked Rust-first modules.
+borrows, vectors, maps, slices, `Option`, `Result`, paths, and selected native/system concepts.
+These are best used at typed native boundaries, in `metal`, or in clearly marked Rust-first modules.
 
 For Haxe `Array<T>` values in metal code, `SliceTools.with(...)` and `MutSliceTools.with(...)` borrow
 the underlying storage as scoped Rust slice views instead of cloning the array into a temporary
@@ -178,7 +178,8 @@ metadata, or framework facades.
 
 See [Interop](interop.md), [Metal profile](metal-profile.md), and
 [Lifetime encoding design](lifetime-encoding.md). For the broader compiler/API direction, see
-[Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md).
+[Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md). For the current file/process/socket
+handle plan, see [Metal systems facades roadmap](metal-systems-facades-roadmap.md).
 
 ## Can Haxe express Rust lifetimes?
 

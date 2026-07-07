@@ -39,7 +39,8 @@ is proving an already-supported surface, closing a partial surface, or defining 
 | Typed mini-DSL authority | `test/snapshot/metal_typed_injection`, `test/negative/metal_stringly_dsl_app_api`, `test/negative/metal_dsl_bypasses_policy`, raw app-side negative fixtures | `test/snapshot/metal_typed_dsl_contract` | snapshot + metal policy |
 | Extern and lifetime islands | `@:native`, `@:rustCargo`, `@:rustExtraSrc` examples, `docs/extern-lifetime-island-cookbook.md`, `test/snapshot/metal_extern_lifetime_island` | `test/negative/metal_extern_unsafe_surface`, richer cookbook example with cargo test | snapshot + example smoke |
 | RAII guards | `docs/raii-guard-lifetime-islands.md`, `test/positive/metal_raii_guard_scoped`, `test/negative/metal_raii_guard_escape`, HXRT concurrent scoped-guard tests | File/socket/transaction scoped facade fixtures | positive/negative + runtime tests |
-| no-hxrt minimal runtime | `test/positive/metal_no_hxrt_minimal`, `test/negative/metal_no_hxrt_runtime_boundary`, `test/negative/metal_no_hxrt_requires_metal`, `test/negative/metal_no_hxrt_dynamic_boundary`, `test/negative/metal_no_hxrt_reflection_boundary`, `test/negative/metal_no_hxrt_platform_boundary` | `test/snapshot/metal_no_hxrt_option_result_values`, future portable no-hxrt facade subset fixtures | positive/negative + cargo check |
+| no-hxrt minimal runtime | `test/positive/metal_no_hxrt_minimal`, `test/positive/metal_no_hxrt_native_file`, `test/negative/metal_no_hxrt_runtime_boundary`, `test/negative/metal_no_hxrt_requires_metal`, `test/negative/metal_no_hxrt_dynamic_boundary`, `test/negative/metal_no_hxrt_reflection_boundary`, `test/negative/metal_no_hxrt_platform_boundary` | `test/snapshot/metal_no_hxrt_option_result_values`, future portable no-hxrt facade subset fixtures | positive/negative + cargo check |
+| Rust-native systems facades | `docs/metal-systems-facades-roadmap.md`, `std/rust/fs/NativeFiles.hx`, `test/positive/metal_no_hxrt_native_file`, `test/negative/metal_fs_raw_escape` | Process/socket/TLS/DB facades after the file/path pattern is proven | positive/negative + output-shape + cargo check |
 | Dynamic/reflection boundaries | `test/negative/metal_dynamic_access`, `test/negative/metal_reflect`, `test/negative/metal_type_reflection` | `test/negative/metal_dynamic_dsl_payload`, `test/negative/metal_reflect_trait_boundary` | metal policy |
 | Metal islands in portable builds | `test/negative/metal_island_*`, contract report cases | `test/snapshot/portable_with_metal_trait_island`, `test/negative/metal_island_lifetime_escape` | metal policy + contract report |
 | Idiomatic output shape | fallback baseline, metal idiom count baseline, rustfmt/cargo build in snapshots, portable facade output-shape gate, slice-view output-shape gate | Broader value/module-path fixture coverage such as future `test/snapshot/metal_idiom_values` | snapshot + fallback/count baselines + output-shape |
@@ -165,6 +166,11 @@ fixtures, or runtime fallback reasons before they can be treated as native Rust 
 | `haxe.rust-oo3.74.14` | Wrapper/helper/object/throw borrow-token escape fixtures. |
 | `haxe.rust-oo3.74.15` | No-clone Array slice-view output-shape gate. |
 | `haxe.rust-oo3.74.16` | Scoped RAII guard callbacks and lifetime-island selection rules. |
+| `haxe.rust-oo3.75` | Rust-native systems facades and no-hxrt proof. |
+| `haxe.rust-oo3.75.2` | Native file/path contract fixtures and raw-escape negative fixture. |
+| `haxe.rust-oo3.75.3` | `rust.fs.NativeFiles` typed facade and narrow Rust helper module. |
+| `haxe.rust-oo3.75.4` | Native file no-hxrt output-shape gate in the metal policy script. |
+| `haxe.rust-oo3.75.5` | Systems-facade docs, FAQ, README, and evidence refresh. |
 
 ## Closeout Checklist For New Metal Capability Fixtures
 

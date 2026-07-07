@@ -45,7 +45,7 @@ Rust representation, and fixture evidence are all present.
 | Async tasks | `rust.async.*` | Tokio/future-backed tasks plus `hxrt` async runtime handles | partial | `test/snapshot/rust_async_tasks`, `test/snapshot/async_*`, `examples/async_retry_pipeline`, `docs/async-contract.md` | `rust_no_hxrt` async remains unsupported; future/lifetime surface design; clearer split between metal async and portable facade async. |
 | Concurrency primitives | `rust.concurrent.Channel/Mutex/RwLock/Task`, helper modules | Runtime-owned typed handles over Rust concurrency primitives | partial | `test/snapshot/rust_concurrent`; `test/positive/metal_raii_guard_scoped`; `test/negative/metal_raii_guard_escape`; `std/hxrt/concurrent/*` | Decide which primitives can be no-hxrt native values; broader Send/Sync diagnostics. |
 | Process handles | `hxrt.process.ProcessHandle`, `std/sys/io/Process` style overrides | Runtime-owned process handle wrapping `std::process` | partial | sys/process snapshots and semantic failure-path tests | Rust-native `rust.process` facade is missing; no-hxrt process subset unclear; typed exit/status/stdout API needed. |
-| File handles | `hxrt.fs.FileHandle`, `rust.fs.NativeFile` | Runtime/file handle over `std::fs::File` | partial | sys.io and filesystem snapshots | Rust-native file/path facade should avoid Dynamic and broad hxrt where possible; RAII file handle API and no-hxrt subset need design. |
+| File handles | `hxrt.fs.FileHandle`, `rust.fs.NativeFile`, `rust.fs.NativeFiles` | Runtime/file handle over `std::fs::File`; Rust-native helper facade over direct `std::fs` operations | partial | sys.io and filesystem snapshots; `test/positive/metal_no_hxrt_native_file`; `test/negative/metal_fs_raw_escape`; [Metal systems facades roadmap](metal-systems-facades-roadmap.md) | M43 first slice now has a typed Rust-native file/path facade distinct from portable `sys.io.*`; continue expanding file ownership/RAII APIs while keeping no-hxrt output-shape gates. |
 | Socket/TLS handles | `hxrt.net.SocketHandle`, `hxrt.ssl.*Handle` | Runtime-owned TCP/UDP/TLS handles | partial | `test/snapshot/sys_ssl_sni`, sys.net/sys.ssl sweeps/examples | Rust-native socket facade is missing; async/blocking split and no-hxrt subset need design; TLS unsafe/native setup remains facade-owned. |
 | Database handles | `hxrt.db.*Handle` and native drivers | Runtime-owned SQLite/MySQL handles | partial | `test/snapshot/sys_db_sqlite_smoke`, `test/snapshot/sys_db_mysql_compile` | Rust-native typed DB facade is missing; row/statement types still runtime-heavy; no-hxrt DB story likely out of initial scope. |
 | RAII guards | Scoped lock guard callbacks and future file/socket/transaction facades | Rust guard/drop types (`MutexGuard`, `RwLock*Guard`, file/socket owners, scoped locks) | partial | `test/positive/metal_raii_guard_scoped`; `test/negative/metal_raii_guard_escape`; `docs/raii-guard-lifetime-islands.md`; HXRT concurrent tests | Extend scoped-callback or extern-island pattern to file/socket/transaction APIs; no-hxrt subset remains future work. |
@@ -60,7 +60,7 @@ Rust representation, and fixture evidence are all present.
 3. RAII guard modeling: lock guards have scoped callbacks; file/socket/transaction guard lifetimes need typed scoped patterns or extern islands.
 4. No-hxrt eligibility reports: metal/facade code needs deterministic reasons whenever `hxrt` is still required.
 5. Iterator and collection output shape: reduce avoidable clones and borrow-guard bloat under explicit metal/facade contracts.
-6. Rust-native systems facades: process, file, socket, TLS, and DB handles need typed Rust-first APIs distinct from portable sys semantics.
+6. Rust-native systems facades: process, file, socket, TLS, and DB handles need typed Rust-first APIs distinct from portable sys semantics. M43 starts with file/path because it is deterministic in CI and can prove owned RAII plus no-hxrt eligibility before process/socket/DB work.
 
 ## Tracker Mapping
 
@@ -75,3 +75,9 @@ Rust representation, and fixture evidence are all present.
 | `haxe.rust-oo3.74.14` | Wrapper/helper/object/throw borrow-token escape checks. |
 | `haxe.rust-oo3.74.15` | No-clone Array slice-view output-shape gate. |
 | `haxe.rust-oo3.74.16` | Scoped RAII lock guard callbacks and lifetime-island selection rules. |
+| `haxe.rust-oo3.75` | Rust-native systems facades and no-hxrt proof. |
+| `haxe.rust-oo3.75.1` | Systems-facade audit and file/path first-slice decision. |
+| `haxe.rust-oo3.75.2` | Contract-first fixtures for the selected file/path facade. |
+| `haxe.rust-oo3.75.3` | First typed Rust-native systems facade implementation. |
+| `haxe.rust-oo3.75.4` | No-hxrt/runtime-plan and output-shape gates for the facade. |
+| `haxe.rust-oo3.75.5` | Docs/FAQ/README and app-level evidence refresh. |

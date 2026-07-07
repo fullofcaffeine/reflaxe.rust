@@ -22,6 +22,8 @@ seed_outputs() {
     "$tmp_root/test/snapshot/snap_case/out_metal" \
     "$tmp_root/test/semantic_diff/core_case/out" \
     "$tmp_root/test/semantic_diff_lanes/lane_case/out" \
+    "$tmp_root/test/positive/positive_case/out" \
+    "$tmp_root/test/negative/negative_case/out_negative" \
     "$tmp_root/examples/demo/out" \
     "$tmp_root/examples/demo/out_ci"
 
@@ -30,6 +32,8 @@ seed_outputs() {
     "$tmp_root/test/snapshot/snap_case/out_metal/Cargo.toml" \
     "$tmp_root/test/semantic_diff/core_case/out/Cargo.toml" \
     "$tmp_root/test/semantic_diff_lanes/lane_case/out/Cargo.toml" \
+    "$tmp_root/test/positive/positive_case/out/Cargo.toml" \
+    "$tmp_root/test/negative/negative_case/out_negative/Cargo.toml" \
     "$tmp_root/examples/demo/out/Cargo.toml" \
     "$tmp_root/examples/demo/out_ci/Cargo.toml"
 }
@@ -49,6 +53,8 @@ seed_caches() {
     "$tmp_root/test/.cache/semantic-diff-target" \
     "$tmp_root/.cache/preserved-cache" \
     "$tmp_root/test/snapshot/snap_case/preserved" \
+    "$tmp_root/test/positive/positive_case/preserved" \
+    "$tmp_root/test/negative/negative_case/preserved" \
     "$tmp_root/examples/demo/preserved"
 
   touch \
@@ -65,6 +71,8 @@ seed_caches() {
     "$tmp_root/test/.cache/semantic-diff-target/artifact" \
     "$tmp_root/.cache/preserved-cache/artifact" \
     "$tmp_root/test/snapshot/snap_case/preserved/file" \
+    "$tmp_root/test/positive/positive_case/preserved/file" \
+    "$tmp_root/test/negative/negative_case/preserved/file" \
     "$tmp_root/examples/demo/preserved/file"
 }
 
@@ -83,6 +91,8 @@ assert_outputs_absent() {
   assert_absent "test/snapshot/snap_case/out_metal"
   assert_absent "test/semantic_diff/core_case/out"
   assert_absent "test/semantic_diff_lanes/lane_case/out"
+  assert_absent "test/positive/positive_case/out"
+  assert_absent "test/negative/negative_case/out_negative"
   assert_absent "examples/demo/out"
   assert_absent "examples/demo/out_ci"
 }
@@ -111,6 +121,8 @@ assert_present ".cache/perf-hxrt"
 assert_present "test/.cache"
 assert_present ".cache/preserved-cache/artifact"
 assert_present "test/snapshot/snap_case/preserved/file"
+assert_present "test/positive/positive_case/preserved/file"
+assert_present "test/negative/negative_case/preserved/file"
 assert_present "examples/demo/preserved/file"
 
 seed_outputs
@@ -119,6 +131,8 @@ assert_outputs_absent
 assert_caches_absent
 assert_present ".cache/preserved-cache/artifact"
 assert_present "test/snapshot/snap_case/preserved/file"
+assert_present "test/positive/positive_case/preserved/file"
+assert_present "test/negative/negative_case/preserved/file"
 assert_present "examples/demo/preserved/file"
 
 echo "[clean-artifacts-test] ok"
