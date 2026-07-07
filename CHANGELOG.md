@@ -1,3 +1,10 @@
+# [0.72.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.71.0...v0.72.0) (2026-07-07)
+
+
+### Features
+
+* add command spec helpers ([9d0edad](https://github.com/fullofcaffeine/reflaxe.rust/commit/9d0edad3db4483c47bddd9f14c9b6fc5b61df6c5))
+
 # [0.71.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.70.0...v0.71.0) (2026-07-07)
 
 
