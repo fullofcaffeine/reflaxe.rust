@@ -1,3 +1,10 @@
+# [0.81.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.80.0...v0.81.0) (2026-07-08)
+
+
+### Features
+
+* lower socket addr constructors ([a1ab0ff](https://github.com/fullofcaffeine/reflaxe.rust/commit/a1ab0ff0f77b74aad4c41cb32b8a9098359eedbc))
+
 # [0.80.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.79.0...v0.80.0) (2026-07-07)
 
 
