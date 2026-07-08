@@ -44,8 +44,8 @@ optimized plain parse/stringify path.
 Follow-up work should happen in this order:
 
 1. Add a JSON schema/typed-validation benchmark contract.
-   - Extend the consumer-runtime benchmark corpus with a concrete fixture that exercises
-     `haxe.Json.parseValue` plus typed validation over object/array/string/number fields.
+   - `test/perf/json_schema_validate` exercises `haxe.Json.parseValue` plus typed validation over
+     object/array/string/number/bool/null fields.
    - Keep the existing round-trip JSON benchmark as the headline dynamic-boundary signal.
    - Use the same deterministic artifact flow as the current HXRT perf harness.
 2. Add a contract-first output-shape fixture for borrowed introspection.

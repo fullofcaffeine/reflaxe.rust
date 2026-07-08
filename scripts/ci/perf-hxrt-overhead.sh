@@ -29,7 +29,7 @@ Environment:
   HXRT_PERF_HOT_LOOP_INPROC_RUNS In-process sample count for hot_loop_inproc binaries (default: 80)
   HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS In-process sample count for hot_loop_no_hxrt binaries (default: 20)
   HXRT_PERF_BYTES_INPROC_RUNS In-process sample count for bytes microbench binaries (default: 60)
-  HXRT_PERF_JSON_INPROC_RUNS In-process sample count for json microbench binaries (default: 60)
+  HXRT_PERF_JSON_INPROC_RUNS In-process sample count for json and json_schema_validate binaries (default: 60)
   HXRT_PERF_INT64_INPROC_RUNS In-process sample count for int64 microbench binaries (default: 20)
   HXRT_PERF_CHAT_ITERS      Startup loop count for chat headless case (default: 40)
   HXRT_PERF_PORTABLE_METAL_ARRAY_MAX
@@ -54,7 +54,7 @@ Environment:
   HXRT_PERF_PR_PORTABLE_METAL_BYTES_MAX
                             PR warning target for portable/metal bytes runtime convergence ratio (default: 1.20)
   HXRT_PERF_PR_PORTABLE_METAL_JSON_MAX
-                            PR hard-fail portable/metal json runtime convergence max ratio (default: 1.25)
+                            PR hard-fail portable/metal json-family runtime convergence max ratio (default: 1.25)
   HXRT_PERF_PR_PORTABLE_METAL_INT64_MAX
                             PR hard-fail portable/metal int64 runtime convergence max ratio (default: 1.20)
   HXRT_PERF_NIGHTLY_SIZE_FAIL_PCT
@@ -68,7 +68,7 @@ Environment:
   HXRT_PERF_NIGHTLY_PORTABLE_METAL_BYTES_MAX
                             Nightly warning target for portable/metal bytes runtime convergence ratio (default: 1.08)
   HXRT_PERF_NIGHTLY_PORTABLE_METAL_JSON_MAX
-                            Nightly hard-fail portable/metal json runtime convergence max ratio (default: 1.12)
+                            Nightly hard-fail portable/metal json-family runtime convergence max ratio (default: 1.12)
   HXRT_PERF_NIGHTLY_PORTABLE_METAL_INT64_MAX
                             Nightly hard-fail portable/metal int64 runtime convergence max ratio (default: 1.08)
 
@@ -473,6 +473,172 @@ fn crunch() -> i32 {
         run += 1;
     }
     acc
+}
+
+fn main() {
+    let acc = crunch();
+    if acc == -1 {
+        println!("unreachable");
+    }
+}
+EOF
+}
+
+write_pure_json_schema_validate_crate() {
+  local crate_dir="$1"
+  mkdir -p "$crate_dir/src"
+  cat > "$crate_dir/Cargo.toml" <<'EOF'
+[package]
+name = "pure_json_schema_validate"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde_json = "1"
+EOF
+  cat > "$crate_dir/src/main.rs" <<'EOF'
+use serde_json::Value;
+
+struct NestedPayload {
+    count: i32,
+    tag: String,
+}
+
+struct ValidatedPayload {
+    id: i32,
+    label: String,
+    active: bool,
+    flags: Vec<bool>,
+    weights: Vec<f64>,
+    nested: NestedPayload,
+    empty_was_null: bool,
+}
+
+fn crunch() -> i32 {
+    const OUTER_RUNS: i32 = 18;
+    const INNER_RUNS: i32 = 40;
+
+    let mut acc = 0i32;
+    let mut run = 0i32;
+    while run < OUTER_RUNS {
+        let mut inner = 0i32;
+        while inner < INNER_RUNS {
+            let parsed: Value = serde_json::from_str(&build_json(run, inner, acc)).expect("parse schema payload");
+            let payload = validate_payload(&parsed);
+            acc = fold_payload(acc, &payload);
+            inner += 1;
+        }
+        run += 1;
+    }
+    acc
+}
+
+fn build_json(run: i32, inner: i32, acc: i32) -> String {
+    const INNER_RUNS: i32 = 40;
+    let id = run * INNER_RUNS + inner;
+    let label = format!("schema-{run}-{inner}");
+    let active = inner % 2 == 0;
+    let flag_a = inner % 2 == 0;
+    let flag_b = inner % 3 == 0;
+    let flag_c = inner % 5 == 0;
+    let weight_a = id % 17;
+    let weight_b = (acc + inner) % 23;
+    let weight_c = (run + inner) % 29;
+    let count = acc + inner;
+    let tag = format!("tag-{}", run & 7);
+    format!(
+        "{{\"id\":{id},\"label\":\"{label}\",\"active\":{active},\"flags\":[{flag_a},{flag_b},{flag_c}],\"weights\":[{weight_a},{weight_b},{weight_c}],\"nested\":{{\"count\":{count},\"tag\":\"{tag}\"}},\"empty\":null}}"
+    )
+}
+
+fn validate_payload(value: &Value) -> ValidatedPayload {
+    ValidatedPayload {
+        id: expect_i32(object_field(value, "id")),
+        label: expect_string(object_field(value, "label")).to_owned(),
+        active: expect_bool(object_field(value, "active")),
+        flags: expect_bool_array(object_field(value, "flags")),
+        weights: expect_number_array(object_field(value, "weights")),
+        nested: validate_nested(object_field(value, "nested")),
+        empty_was_null: expect_null(object_field(value, "empty")),
+    }
+}
+
+fn validate_nested(value: &Value) -> NestedPayload {
+    NestedPayload {
+        count: expect_i32(object_field(value, "count")),
+        tag: expect_string(object_field(value, "tag")).to_owned(),
+    }
+}
+
+fn fold_payload(acc: i32, payload: &ValidatedPayload) -> i32 {
+    let mut next = (acc
+        + payload.id
+        + payload.label.len() as i32
+        + payload.nested.count
+        + payload.nested.tag.len() as i32)
+        & 0x7FFF_FFFF;
+    next = (next + if payload.active { 17 } else { 3 }) & 0x7FFF_FFFF;
+    for flag in &payload.flags {
+        next = (next ^ if *flag { 0x55 } else { 0x33 }) & 0x7FFF_FFFF;
+    }
+    for weight in &payload.weights {
+        next = (next + (*weight * 3.0) as i32) & 0x7FFF_FFFF;
+    }
+    if payload.empty_was_null {
+        next = (next + 7) & 0x7FFF_FFFF;
+    }
+    next
+}
+
+fn object_field<'a>(value: &'a Value, name: &str) -> &'a Value {
+    value
+        .as_object()
+        .and_then(|object| object.get(name))
+        .unwrap_or_else(|| panic!("missing object field: {name}"))
+}
+
+fn expect_bool_array(value: &Value) -> Vec<bool> {
+    value
+        .as_array()
+        .unwrap_or_else(|| panic!("expected bool array"))
+        .iter()
+        .map(expect_bool)
+        .collect()
+}
+
+fn expect_number_array(value: &Value) -> Vec<f64> {
+    value
+        .as_array()
+        .unwrap_or_else(|| panic!("expected number array"))
+        .iter()
+        .map(expect_number)
+        .collect()
+}
+
+fn expect_bool(value: &Value) -> bool {
+    value.as_bool().unwrap_or_else(|| panic!("expected bool"))
+}
+
+fn expect_i32(value: &Value) -> i32 {
+    value
+        .as_i64()
+        .unwrap_or_else(|| panic!("expected int")) as i32
+}
+
+fn expect_number(value: &Value) -> f64 {
+    value.as_f64().unwrap_or_else(|| panic!("expected number"))
+}
+
+fn expect_string(value: &Value) -> &str {
+    value.as_str().unwrap_or_else(|| panic!("expected string"))
+}
+
+fn expect_null(value: &Value) -> bool {
+    if value.is_null() {
+        true
+    } else {
+        panic!("expected null")
+    }
 }
 
 fn main() {
@@ -948,6 +1114,41 @@ record_metric_inproc "json_pure_rust" "json" "pure" "pure_rust" \
   "$json_pure_target/release/pure_json" "$json_inproc_runs" "$json_pure_dir/inproc.out"
 
 for profile in "${profiles[@]}"; do
+  log "json_schema_validate case ($profile)"
+  case_dir="$work_dir/json_schema_validate/$profile"
+  out_dir="$case_dir/out"
+  target_dir="$case_dir/target"
+  mkdir -p "$case_dir"
+  if [[ "$profile" == "metal" ]]; then
+    "$haxe_bin" -cp "$root_dir/test/perf/json_schema_validate" -lib reflaxe.rust \
+      -D "reflaxe_rust_profile=$profile" \
+      -D rust_metal_allow_fallback \
+      -D "rust_output=$out_dir" \
+      -D rust_no_build \
+      -main Main >/dev/null
+  else
+    "$haxe_bin" -cp "$root_dir/test/perf/json_schema_validate" -lib reflaxe.rust \
+      -D "reflaxe_rust_profile=$profile" \
+      -D "rust_output=$out_dir" \
+      -D rust_no_build \
+      -main Main >/dev/null
+  fi
+  CARGO_TARGET_DIR="$target_dir" "$cargo_bin" build --manifest-path "$out_dir/Cargo.toml" --release -q
+  package_name="$(extract_package_name "$out_dir/Cargo.toml")"
+  [[ -n "$package_name" ]] || fail "unable to parse package name in $(display_path "$out_dir/Cargo.toml")"
+  record_metric_inproc "json_schema_validate_haxe_${profile}" "json_schema_validate" "$profile" "haxe" \
+    "$target_dir/release/$package_name" "$json_inproc_runs" "$case_dir/inproc.out"
+done
+
+log "json_schema_validate pure rust baseline"
+json_schema_validate_pure_dir="$work_dir/json_schema_validate/pure"
+json_schema_validate_pure_target="$json_schema_validate_pure_dir/target"
+write_pure_json_schema_validate_crate "$json_schema_validate_pure_dir"
+CARGO_TARGET_DIR="$json_schema_validate_pure_target" "$cargo_bin" build --manifest-path "$json_schema_validate_pure_dir/Cargo.toml" --release -q
+record_metric_inproc "json_schema_validate_pure_rust" "json_schema_validate" "pure" "pure_rust" \
+  "$json_schema_validate_pure_target/release/pure_json_schema_validate" "$json_inproc_runs" "$json_schema_validate_pure_dir/inproc.out"
+
+for profile in "${profiles[@]}"; do
   log "int64 case ($profile)"
   case_dir="$work_dir/int64/$profile"
   out_dir="$case_dir/out"
@@ -1168,6 +1369,7 @@ const hotLoopInprocOverheadRatios = buildCaseOverhead("hot_loop_inproc");
 const hotLoopNoHxrtOverheadRatios = buildCaseOverhead("hot_loop_no_hxrt", ["metal"]);
 const bytesOverheadRatios = buildCaseOverhead("bytes");
 const jsonOverheadRatios = buildCaseOverhead("json");
+const jsonSchemaValidateOverheadRatios = buildCaseOverhead("json_schema_validate");
 const int64OverheadRatios = buildCaseOverhead("int64");
 
 const chatMetrics = Object.fromEntries(
@@ -1220,6 +1422,11 @@ const runtimeStats = {
     metal: metricRuntimeStats("json_haxe_metal"),
     pure: metricRuntimeStats("json_pure_rust"),
   },
+  jsonSchemaValidate: {
+    portable: metricRuntimeStats("json_schema_validate_haxe_portable"),
+    metal: metricRuntimeStats("json_schema_validate_haxe_metal"),
+    pure: metricRuntimeStats("json_schema_validate_pure_rust"),
+  },
   int64: {
     portable: metricRuntimeStats("int64_haxe_portable"),
     metal: metricRuntimeStats("int64_haxe_metal"),
@@ -1235,6 +1442,8 @@ const bytesPortable = requireMetric("bytes_haxe_portable");
 const bytesMetal = requireMetric("bytes_haxe_metal");
 const jsonPortable = requireMetric("json_haxe_portable");
 const jsonMetal = requireMetric("json_haxe_metal");
+const jsonSchemaValidatePortable = requireMetric("json_schema_validate_haxe_portable");
+const jsonSchemaValidateMetal = requireMetric("json_schema_validate_haxe_metal");
 const int64Portable = requireMetric("int64_haxe_portable");
 const int64Metal = requireMetric("int64_haxe_metal");
 const portableVsMetalConvergence = {
@@ -1257,6 +1466,11 @@ const portableVsMetalConvergence = {
     binaryRatio: ratio(jsonPortable.binary_bytes, jsonMetal.binary_bytes),
     strippedRatio: ratio(jsonPortable.stripped_bytes, jsonMetal.stripped_bytes),
     runtimeRatio: ratio(jsonPortable.runtime_metric_ms, jsonMetal.runtime_metric_ms),
+  },
+  jsonSchemaValidate: {
+    binaryRatio: ratio(jsonSchemaValidatePortable.binary_bytes, jsonSchemaValidateMetal.binary_bytes),
+    strippedRatio: ratio(jsonSchemaValidatePortable.stripped_bytes, jsonSchemaValidateMetal.stripped_bytes),
+    runtimeRatio: ratio(jsonSchemaValidatePortable.runtime_metric_ms, jsonSchemaValidateMetal.runtime_metric_ms),
   },
   int64: {
     binaryRatio: ratio(int64Portable.binary_bytes, int64Metal.binary_bytes),
@@ -1292,6 +1506,7 @@ const current = {
     hot_loop_no_hxrt: hotLoopNoHxrtInprocRuns,
     bytes: bytesInprocRuns,
     json: jsonInprocRuns,
+    json_schema_validate: jsonInprocRuns,
     int64: int64InprocRuns,
     chat: chatIters,
   },
@@ -1305,6 +1520,7 @@ const current = {
     hotLoopNoHxrtOverheadRatios,
     bytesOverheadRatios,
     jsonOverheadRatios,
+    jsonSchemaValidateOverheadRatios,
     int64OverheadRatios,
     chatRelativeToMin,
     portableVsMetalConvergence,
@@ -1416,6 +1632,15 @@ function compareGroup(groupLabel, currentGroup, baselineGroup, opts) {
   }
 }
 
+function compareOptionalBaselineGroup(groupLabel, currentGroup, baselineGroup, opts) {
+  if (baselineGroup) {
+    compareGroup(groupLabel, currentGroup, baselineGroup, opts);
+  } else if (!updateBaseline) {
+    const sink = opts?.missingSink ?? opts?.sink ?? warnings;
+    sink.push(`${groupLabel}: waiting for baseline group; run npm run test:perf:hxrt:update-baseline to activate regression comparison`);
+  }
+}
+
 let baselineLoaded = null;
 if (!updateBaseline) {
   if (!fs.existsSync(baselinePath)) {
@@ -1444,6 +1669,10 @@ if (!updateBaseline) {
       runtimeProfiles: ["metal"],
     });
     compareGroup("json_overhead", current.derived.jsonOverheadRatios, baselineDerived.jsonOverheadRatios, {
+      includeRuntime: true,
+      runtimeProfiles: ["metal"],
+    });
+    compareOptionalBaselineGroup("json_schema_validate_overhead", current.derived.jsonSchemaValidateOverheadRatios, baselineDerived.jsonSchemaValidateOverheadRatios, {
       includeRuntime: true,
       runtimeProfiles: ["metal"],
     });
@@ -1502,6 +1731,14 @@ if (!updateBaseline) {
         runtimePct: activeGate.runtimeFailPct,
         sink: hardFailures,
       });
+      compareOptionalBaselineGroup("json_schema_validate_overhead", current.derived.jsonSchemaValidateOverheadRatios, baselineDerived.jsonSchemaValidateOverheadRatios, {
+        includeRuntime: true,
+        runtimeProfiles: ["metal"],
+        sizePct: activeGate.sizeFailPct,
+        runtimePct: activeGate.runtimeFailPct,
+        sink: hardFailures,
+        missingSink: warnings,
+      });
     }
   }
 }
@@ -1521,6 +1758,10 @@ const convergenceChecks = {
   },
   jsonRuntimePortableVsMetal: {
     ratio: Number(current.derived.portableVsMetalConvergence.json.runtimeRatio),
+    max: portableMetalJsonMax,
+  },
+  jsonSchemaValidateRuntimePortableVsMetal: {
+    ratio: Number(current.derived.portableVsMetalConvergence.jsonSchemaValidate.runtimeRatio),
     max: portableMetalJsonMax,
   },
   int64RuntimePortableVsMetal: {
@@ -1554,6 +1795,10 @@ const gateConvergenceChecks = activeGate == null ? {} : {
   },
   jsonRuntimePortableVsMetal: {
     ratio: Number(current.derived.portableVsMetalConvergence.json.runtimeRatio),
+    max: activeGate.portableMetalJsonMax,
+  },
+  jsonSchemaValidateRuntimePortableVsMetal: {
+    ratio: Number(current.derived.portableVsMetalConvergence.jsonSchemaValidate.runtimeRatio),
     max: activeGate.portableMetalJsonMax,
   },
   int64RuntimePortableVsMetal: {
@@ -1660,12 +1905,12 @@ if (gateThresholds != null) {
     `- Gate portable/metal convergence caps: array<=${gateThresholds.portableMetalArrayMax.toFixed(3)}x, ` +
       `hot_loop_inproc<=${gateThresholds.portableMetalHotLoopInprocMax.toFixed(3)}x, ` +
       `bytes<=${gateThresholds.portableMetalBytesMax.toFixed(3)}x, ` +
-      `json<=${gateThresholds.portableMetalJsonMax.toFixed(3)}x, ` +
+      `json/json_schema_validate<=${gateThresholds.portableMetalJsonMax.toFixed(3)}x, ` +
       `int64<=${gateThresholds.portableMetalInt64Max.toFixed(3)}x`
   );
 }
 summaryLines.push(
-  `- Runtime loops: hello=${helloIters}, array=${arrayIters}, hot_loop=${hotLoopIters}, hot_loop_inproc=${hotLoopInprocRuns}, hot_loop_no_hxrt=${hotLoopNoHxrtInprocRuns}, bytes=${bytesInprocRuns}, json=${jsonInprocRuns}, int64=${int64InprocRuns}, chat=${chatIters}`
+  `- Runtime loops: hello=${helloIters}, array=${arrayIters}, hot_loop=${hotLoopIters}, hot_loop_inproc=${hotLoopInprocRuns}, hot_loop_no_hxrt=${hotLoopNoHxrtInprocRuns}, bytes=${bytesInprocRuns}, json=${jsonInprocRuns}, json_schema_validate=${jsonInprocRuns}, int64=${int64InprocRuns}, chat=${chatIters}`
 );
 if (haxeVersion.length > 0 || rustcVersion.length > 0) {
   summaryLines.push(`- Toolchain: ${haxeVersion || "haxe:unknown"} | ${rustcVersion || "rustc:unknown"}`);
@@ -1678,6 +1923,7 @@ summaryLines.push(ratioTable("Hot Loop In-Process Overhead (x vs pure Rust hot l
 summaryLines.push(ratioTable("Hot Loop No-HXRT Overhead (x vs pure Rust in-process hot loop throughput; metal + rust_no_hxrt)", current.derived.hotLoopNoHxrtOverheadRatios));
 summaryLines.push(ratioTable("Bytes Overhead (x vs pure Rust bytes microbench throughput)", current.derived.bytesOverheadRatios));
 summaryLines.push(ratioTable("JSON Overhead (x vs pure Rust json microbench throughput)", current.derived.jsonOverheadRatios));
+summaryLines.push(ratioTable("JSON Schema Validate Overhead (x vs pure Rust parseValue/schema-validation throughput)", current.derived.jsonSchemaValidateOverheadRatios));
 summaryLines.push(ratioTable("Int64 Overhead (x vs pure Rust int64 microbench throughput)", current.derived.int64OverheadRatios));
 summaryLines.push(ratioTable("Chat Profile Spread (x vs fastest/smallest chat profile in this run; startup-weighted)", current.derived.chatRelativeToMin));
 
@@ -1693,6 +1939,9 @@ summaryLines.push(`- bytes pure: mean=${current.runtimeStats.bytes.pure.meanMs.t
 summaryLines.push(`- json portable: mean=${current.runtimeStats.json.portable.meanMs.toFixed(3)}ms, median=${current.runtimeStats.json.portable.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.json.portable.madMs.toFixed(3)}ms, n=${current.runtimeStats.json.portable.iterations}`);
 summaryLines.push(`- json metal: mean=${current.runtimeStats.json.metal.meanMs.toFixed(3)}ms, median=${current.runtimeStats.json.metal.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.json.metal.madMs.toFixed(3)}ms, n=${current.runtimeStats.json.metal.iterations}`);
 summaryLines.push(`- json pure: mean=${current.runtimeStats.json.pure.meanMs.toFixed(3)}ms, median=${current.runtimeStats.json.pure.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.json.pure.madMs.toFixed(3)}ms, n=${current.runtimeStats.json.pure.iterations}`);
+summaryLines.push(`- json_schema_validate portable: mean=${current.runtimeStats.jsonSchemaValidate.portable.meanMs.toFixed(3)}ms, median=${current.runtimeStats.jsonSchemaValidate.portable.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.jsonSchemaValidate.portable.madMs.toFixed(3)}ms, n=${current.runtimeStats.jsonSchemaValidate.portable.iterations}`);
+summaryLines.push(`- json_schema_validate metal: mean=${current.runtimeStats.jsonSchemaValidate.metal.meanMs.toFixed(3)}ms, median=${current.runtimeStats.jsonSchemaValidate.metal.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.jsonSchemaValidate.metal.madMs.toFixed(3)}ms, n=${current.runtimeStats.jsonSchemaValidate.metal.iterations}`);
+summaryLines.push(`- json_schema_validate pure: mean=${current.runtimeStats.jsonSchemaValidate.pure.meanMs.toFixed(3)}ms, median=${current.runtimeStats.jsonSchemaValidate.pure.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.jsonSchemaValidate.pure.madMs.toFixed(3)}ms, n=${current.runtimeStats.jsonSchemaValidate.pure.iterations}`);
 summaryLines.push(`- int64 portable: mean=${current.runtimeStats.int64.portable.meanMs.toFixed(3)}ms, median=${current.runtimeStats.int64.portable.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.int64.portable.madMs.toFixed(3)}ms, n=${current.runtimeStats.int64.portable.iterations}`);
 summaryLines.push(`- int64 metal: mean=${current.runtimeStats.int64.metal.meanMs.toFixed(3)}ms, median=${current.runtimeStats.int64.metal.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.int64.metal.madMs.toFixed(3)}ms, n=${current.runtimeStats.int64.metal.iterations}`);
 summaryLines.push(`- int64 pure: mean=${current.runtimeStats.int64.pure.meanMs.toFixed(3)}ms, median=${current.runtimeStats.int64.pure.medianMs.toFixed(3)}ms, mad=${current.runtimeStats.int64.pure.madMs.toFixed(3)}ms, n=${current.runtimeStats.int64.pure.iterations}`);
@@ -1721,6 +1970,11 @@ summaryLines.push(
     `${convergenceChecks.jsonRuntimePortableVsMetal.pass ? "target met" : "target not met"})`
 );
 summaryLines.push(
+  `- json_schema_validate runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.jsonSchemaValidate.runtimeRatio)}x ` +
+    `(target <= ${portableMetalJsonMax.toFixed(3)}x, ` +
+    `${convergenceChecks.jsonSchemaValidateRuntimePortableVsMetal.pass ? "target met" : "target not met"})`
+);
+summaryLines.push(
   `- int64 runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.int64.runtimeRatio)}x ` +
     `(target <= ${portableMetalInt64Max.toFixed(3)}x, ` +
     `${convergenceChecks.int64RuntimePortableVsMetal.pass ? "target met" : "target not met"})`
@@ -1745,6 +1999,11 @@ if (activeGate != null) {
     `- [gate] json runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.json.runtimeRatio)}x ` +
       `(target <= ${activeGate.portableMetalJsonMax.toFixed(3)}x, ` +
       `${gateConvergenceChecks.jsonRuntimePortableVsMetal?.pass ? "target met" : "target not met"})`
+  );
+  summaryLines.push(
+    `- [gate] json_schema_validate runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.jsonSchemaValidate.runtimeRatio)}x ` +
+      `(target <= ${activeGate.portableMetalJsonMax.toFixed(3)}x, ` +
+      `${gateConvergenceChecks.jsonSchemaValidateRuntimePortableVsMetal?.pass ? "target met" : "target not met"})`
   );
   summaryLines.push(
     `- [gate] int64 runtime portable/metal: ${formatRatio(current.derived.portableVsMetalConvergence.int64.runtimeRatio)}x ` +

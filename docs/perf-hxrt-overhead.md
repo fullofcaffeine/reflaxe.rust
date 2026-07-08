@@ -19,7 +19,7 @@ This benchmark keeps that cost visible over time so regressions are noticed earl
 
 ## Cases and measurements
 
-The script benchmarks nine cases:
+The script benchmarks ten cases:
 
 1. `hello`:
    - `examples/hello` across `portable`, `metal`
@@ -47,11 +47,15 @@ The script benchmarks nine cases:
    - `test/perf/json` across `portable`, `metal`
    - hand-written pure Rust `serde_json` parse/stringify baseline
    - used to track `haxe.Json` dynamic boundary overhead
-8. `int64`:
+8. `json_schema_validate`:
+   - `test/perf/json_schema_validate` across `portable`, `metal`
+   - hand-written pure Rust `serde_json::Value` parse plus typed schema-validation baseline
+   - used to track `haxe.Json.parseValue` and typed validation boundary overhead
+9. `int64`:
    - `test/perf/int64` across `portable`, `metal`
    - hand-written pure Rust `i64` arithmetic/bitops baseline
    - used to track `haxe.Int64` abstraction overhead
-9. `chat`:
+10. `chat`:
    - `examples/chat_loopback` via `compile.<profile>.ci.hxml` (headless deterministic mode)
    - cross-profile spread only (no pure Rust chat baseline)
 
@@ -93,7 +97,8 @@ Runtime measurement protocol is fixed so pass/fail decisions are explainable and
 - `startup` mode (`hello`, `array`, `hot_loop`, `chat`)
   - process is launched repeatedly with `/usr/bin/time`
   - reported runtime metric is `mean_ms`
-- `inproc` mode (`hot_loop_inproc`, `hot_loop_no_hxrt`, `bytes`, `json`, `int64`)
+- `inproc` mode (`hot_loop_inproc`, `hot_loop_no_hxrt`, `bytes`, `json`,
+  `json_schema_validate`, `int64`)
   - each run is timed independently
   - reported runtime metric is `median_ms`
   - dispersion is reported as `mad_ms`
@@ -104,7 +109,7 @@ Runtime measurement protocol is fixed so pass/fail decisions are explainable and
   - `HXRT_PERF_HOT_LOOP_INPROC_RUNS`
   - `HXRT_PERF_HOT_LOOP_NO_HXRT_INPROC_RUNS`
   - `HXRT_PERF_BYTES_INPROC_RUNS`
-  - `HXRT_PERF_JSON_INPROC_RUNS`
+  - `HXRT_PERF_JSON_INPROC_RUNS` (used by both `json` and `json_schema_validate`)
   - `HXRT_PERF_INT64_INPROC_RUNS`
   - `HXRT_PERF_CHAT_ITERS`
 
@@ -113,8 +118,8 @@ Default in-process sample counts are intentionally uneven:
 - `hot_loop_inproc` defaults to `80` samples because the emitted metal path is close enough to the
   pure Rust baseline that shorter runs can over-report tiny process-launch and scheduler noise as a
   regression.
-- `bytes` and `json` default to `60` samples because their per-run medians are short enough that
-  `20` samples produced noisy portable/metal conclusions.
+- `bytes`, `json`, and `json_schema_validate` default to `60` samples because their per-run medians
+  are short enough that `20` samples produced noisy portable/metal conclusions.
 - `int64` stays at `20` samples because each run is already long enough to be stable, and raising
   the sample count mostly burns CI time without improving decision quality.
 
@@ -147,7 +152,7 @@ Default hard-fail thresholds:
     - `array` runtime `<= 1.20x`
     - `hot_loop_inproc` runtime `<= 1.10x`
     - `bytes` runtime warning target `<= 1.20x`
-    - `json` runtime `<= 1.25x`
+    - `json` and `json_schema_validate` runtime `<= 1.25x`
     - `int64` runtime `<= 1.20x`
 - `nightly`
   - size regression vs baseline: `+8%`
@@ -156,7 +161,7 @@ Default hard-fail thresholds:
     - `array` runtime `<= 1.08x`
     - `hot_loop_inproc` runtime `<= 1.08x`
     - `bytes` runtime warning target `<= 1.08x`
-    - `json` runtime `<= 1.12x`
+    - `json` and `json_schema_validate` runtime `<= 1.12x`
     - `int64` runtime `<= 1.08x`
 
 The runtime regression budget applies only to runtime metrics that are release-blocking signals.
@@ -192,12 +197,13 @@ Budgets (defaults):
   - `array` runtime portable/metal must stay `<= 1.08x`
   - `hot_loop_inproc` runtime portable/metal must stay `<= 1.05x`
   - `bytes` runtime portable/metal must stay `<= 1.08x`
-  - `json` runtime portable/metal must stay `<= 1.12x`
+  - `json` and `json_schema_validate` runtime portable/metal must stay `<= 1.12x`
   - `int64` runtime portable/metal must stay `<= 1.08x`
 
 Comparison model:
 
-- `hello`, `array`, `hot_loop`, `hot_loop_inproc`, `bytes`, `json`, and `int64`: compare **ratio vs pure Rust baseline** in the same run.
+- `hello`, `array`, `hot_loop`, `hot_loop_inproc`, `bytes`, `json`,
+  `json_schema_validate`, and `int64`: compare **ratio vs pure Rust baseline** in the same run.
 - `chat`: compare **ratio vs fastest/smallest chat profile** in the same run.
 
 Noise policy:
@@ -211,8 +217,11 @@ Noise policy:
   - Runtime warning gate is currently focused on `metal` (the near-pure-Rust target profile); all profile runtime ratios are still reported.
 - `hot_loop_no_hxrt`: warning checks use **size + runtime ratios**.
   - Runtime warning gate is focused on `metal` (no-hxrt mode only).
-- `bytes`, `json`, `int64`: warning checks use **size + runtime ratios**.
+- `bytes`, `json`, `json_schema_validate`, `int64`: warning checks use **size + runtime ratios**.
   - Runtime warning gate is focused on `metal`; portable/metal convergence is tracked explicitly for these stdlib-heavy microbenches.
+  - `json_schema_validate` baseline-regression comparison is warning-only until the tracked baseline
+    file has a `jsonSchemaValidateOverheadRatios` group; portable/metal convergence still reuses the
+    JSON-family threshold immediately.
 - `chat`: warning checks use profile-spread ratios (size + runtime), not pure-Rust parity.
 - PR/nightly hard failures are intentionally narrower than the warning stream:
   - `bytes` runtime ratios stay warning-only because the benchmark is most useful as a trend signal
@@ -228,10 +237,11 @@ Additional explicit convergence checks:
 - `portable_vs_metal.hotLoopInprocRuntimePortableVsMetal`
 - `portable_vs_metal.bytesRuntimePortableVsMetal`
 - `portable_vs_metal.jsonRuntimePortableVsMetal`
+- `portable_vs_metal.jsonSchemaValidateRuntimePortableVsMetal`
 - `portable_vs_metal.int64RuntimePortableVsMetal`
 
 These checks are emitted in `comparison.json` and `summary.md`, and they warn when
-portable drifts too far from metal on the two primary convergence workloads.
+portable drifts too far from metal on the tracked convergence workloads.
 
 ## Profile vs pure Rust interpretation
 
@@ -273,6 +283,12 @@ When reading ratios (`x vs pure`):
   - That means future optimization work should keep targeting the `hxrt::json` boundary and
     JSON-specific lowering paths, not the benchmark harness itself and not generic optimizer sprees.
   - Contract source for this work: `docs/json-boundary-contract.md`
+- `json_schema_validate`
+  - This is the typed `parseValue` companion to the dynamic JSON round-trip benchmark.
+  - The fixture parses JSON through `haxe.Json.parseValue`, validates object/array/string/number/bool/null
+    fields into typed Haxe structures, and compares against a pure Rust `serde_json::Value` validator.
+  - It exists to make future borrowed-introspection work measurable before `NativeJson` or `hxrt::json`
+    read-only accessors change.
 - `hot_loop_inproc`
   - Treat this as the clean near-native parity signal only after using a large enough sample count.
   - Focused reruns with `80` samples showed the emitted metal binary tracking the pure Rust baseline
