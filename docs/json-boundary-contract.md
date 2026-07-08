@@ -72,6 +72,12 @@ The outer portable `HxString` / metal `String` bridge remains intentionally unch
 Eliminating that bridge directly would require profile-aware native-return inference in generated
 callers, which is a larger compiler contract change than this milestone should take on casually.
 
+The next-slice audit is recorded in
+[JSON Boundary Next Slice Audit](json-boundary-next-slice-audit.md). Its conclusion is that the next
+safe implementation target is the typed `parseValue` boundary: generated Rust currently clones the
+same `Dynamic` repeatedly while read-only native JSON introspection helpers walk a parsed value.
+That work should start with a fixture/benchmark contract before changing the native helper surface.
+
 ### Current semantic contract
 
 The following coverage is the minimum contract that future JSON optimization work must preserve:

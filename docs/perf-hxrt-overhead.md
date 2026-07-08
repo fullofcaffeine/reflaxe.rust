@@ -73,6 +73,12 @@ boundary shims, state transitions, async/runtime surfaces, and no-runtime lower-
 does not replace this benchmark policy. Instead, candidates reuse the threshold families below unless
 a new `HXRT_PERF_*` override and documented rationale are added in the same change.
 
+For JSON specifically, the current follow-up plan is captured in
+[JSON Boundary Next Slice Audit](json-boundary-next-slice-audit.md). The next benchmark expansion
+should cover typed `parseValue` / schema-validation work separately from the existing dynamic
+parse/stringify round trip, so runtime and generated-output improvements can be attributed without
+weakening JSON semantics.
+
 The practical rule is:
 
 - generic pressure becomes a generic fixture,

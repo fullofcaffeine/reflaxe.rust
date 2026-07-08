@@ -53,6 +53,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [v1 support matrix](v1.md): release-scope contract and parity constraints.
 - [HXRT overhead benchmarks](perf-hxrt-overhead.md): size/startup tracking, soft perf budgets, and baseline workflow.
 - [JSON boundary contract](json-boundary-contract.md): perf/semantic contract for the current post-`1.0` JSON hotspot tranche.
+- [JSON boundary next slice audit](json-boundary-next-slice-audit.md): follow-up attribution for typed `parseValue` / schema-validation work.
 - [Workflow](workflow.md): Haxe -> Rust -> Cargo workflow.
 - [Install via lix](install-via-lix.md): release-tag install and generated-app setup paths.
 - [Haxe-authored Rust tests](haxe-rust-tests.md): `@:rustTest` metadata and generated Rust test wrappers.
