@@ -2671,8 +2671,43 @@ run_native_process_output_shape_case() {
 			sed "s|$root_dir|.|g" "$native_process_rs"
 			exit 1
 		fi
+		if ! awk '
+			/pub fn writeStdinAndClose\(&mut self, stdin_utf8: String\) -> Result<bool, CommandError>/ {
+				in_fn = 1
+				saw_stdin = 0
+				saw_take = 0
+				saw_write = 0
+			}
+			in_fn && /\.stdin/ {
+				saw_stdin = 1
+			}
+			in_fn && /\.take\(\)/ {
+				saw_take = 1
+			}
+			in_fn && /write_all\(stdin_utf8\.as_bytes\(\)\)/ {
+				saw_write = 1
+			}
+			in_fn && /^    }$/ {
+				if (saw_stdin && saw_take && saw_write) {
+					found = 1
+				}
+				in_fn = 0
+			}
+			END {
+				exit found ? 0 : 1
+			}
+		' "$native_process_rs"; then
+			echo "[metal-policy] error: command-child fixture should take child stdin before writing the UTF-8 payload for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
 		if ! match_regex 'pub fn wait\(&mut self\) -> Result<i32, CommandError>' "$native_process_rs" || ! match_regex 'pub fn killAndWait\(&mut self\) -> Result<i32, CommandError>' "$native_process_rs"; then
 			echo "[metal-policy] error: command-child fixture missing wait and kill/wait lifecycle helpers for ${failure_label}."
+			sed "s|$root_dir|.|g" "$native_process_rs"
+			exit 1
+		fi
+		if ! match_regex 'self\.child\.kill\(\)' "$native_process_rs" || ! match_regex 'self\.wait\(\)' "$native_process_rs"; then
+			echo "[metal-policy] error: command-child fixture should kill the owned child and then wait to reap it for ${failure_label}."
 			sed "s|$root_dir|.|g" "$native_process_rs"
 			exit 1
 		fi

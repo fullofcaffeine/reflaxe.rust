@@ -216,7 +216,7 @@
         "stream runtime",
         "platform abstraction beyond the facade contract"
       ],
-      "evidenceOwner": "metal native file fixtures and native facade manifest guard",
+      "evidenceOwner": "test/positive/metal_no_hxrt_native_file and scripts/ci/check-metal-policy.sh native-file output-shape case",
       "codeLineBudget": 30
     },
     {
@@ -234,7 +234,7 @@
         "generic process registry",
         "stream runtime unrelated to CommandChild lifecycle"
       ],
-      "evidenceOwner": "metal native process fixtures and native facade manifest guard",
+      "evidenceOwner": "test/positive/metal_no_hxrt_command_* fixtures and scripts/ci/check-metal-policy.sh native-process/command-child output-shape cases",
       "codeLineBudget": 560
     },
     {
@@ -287,7 +287,7 @@
         "portable socket compatibility",
         "broad stream adapters"
       ],
-      "evidenceOwner": "test/positive/metal_no_hxrt_tcp_* fixtures, test/positive/metal_no_hxrt_socket_addr, and scripts/ci/check-metal-policy.sh TCP output-shape cases",
+      "evidenceOwner": "test/positive/metal_no_hxrt_native_tcp, test/positive/metal_no_hxrt_tcp_bytes, test/positive/metal_no_hxrt_socket_addr, and scripts/ci/check-metal-policy.sh TCP output-shape cases",
       "codeLineBudget": 215
     },
     {
@@ -305,7 +305,7 @@
         "portable socket compatibility",
         "generic datagram registry"
       ],
-      "evidenceOwner": "test/positive/metal_no_hxrt_udp_* fixtures, test/positive/metal_no_hxrt_socket_addr, and scripts/ci/check-metal-policy.sh UDP output-shape cases",
+      "evidenceOwner": "test/positive/metal_no_hxrt_native_udp, test/positive/metal_no_hxrt_udp_bytes, test/positive/metal_no_hxrt_socket_addr, and scripts/ci/check-metal-policy.sh UDP output-shape cases",
       "codeLineBudget": 235
     },
     {

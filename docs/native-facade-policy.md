@@ -91,6 +91,27 @@ allowed dependency prefixes, allowed imports, forbidden growth notes, evidence o
 review budgets. New work should refine the manifest when it touches a helper, rather than expanding
 unclassified behavior.
 
+## Lifecycle Helper Review
+
+`haxe.rust-oo3.96` audited the current resource/lifecycle helpers after the manifest guard landed.
+The review outcome is intentionally narrow: current helpers may stay handwritten only where they own
+Rust resources or resource-like boundary behavior that Haxe externs and current compiler lowering
+cannot express cleanly.
+
+| Helper | Facades | Classification | Review result | Evidence |
+| --- | --- | --- | --- | --- |
+| `std/rust/native/native_file_tools.rs` | `rust.fs.NativeFiles` | `permanent-native-facade` | Keep as a path-scoped native facade over direct `std::fs` operations. It does not claim to be a live file-handle owner; portable handle ownership stays in `sys.io.*` / `hxrt.fs.FileHandle`, and any future app-facing Rust-native file handle needs its own contract fixture and output-shape gate. | `test/positive/metal_no_hxrt_native_file`; `scripts/ci/check-metal-policy.sh` native-file case checks no `hxrt`, no portable `sys.io` paths, direct `std::fs::write`, `read_to_string`, and `remove_file`, plus cargo build. |
+| `std/rust/native/native_process_tools.rs` | `rust.process.NativeCommands`, `CommandSpec`, `CommandChild`, `CommandOutput`, `CommandError`, `CommandEnv` | `permanent-native-facade` | Keep as a lifecycle/resource helper. `CommandChild` owns `std::process::Child`, performs the stdin partial move with `child.stdin.take()`, writes the UTF-8 payload, drops the pipe, waits, and implements kill-then-wait reaping. | `test/positive/metal_no_hxrt_command_child` runtime-spawns a live child, rejects one-shot stdin specs at the live boundary, writes stdin then waits, and kills then waits; `scripts/ci/check-metal-policy.sh` checks the `std::process::Child` owner, `stdin.take()`/`write_all(...)` shape, `wait`, `killAndWait`, `Stdio::piped`, null output streams, and no `hxrt`/portable process paths. |
+| `std/rust/native/native_tcp_tools.rs` | `rust.net.NativeTcp`, `TcpListener`, `TcpStream` | `permanent-native-facade` | Keep as a native TCP owner. The helper owns `std::net::TcpListener` / `TcpStream`, keeps blocking localhost scope explicit, and uses write-half shutdown so read-to-EOF behavior is not hidden in runtime semantics. | `test/positive/metal_no_hxrt_native_tcp` proves a bidirectional localhost round trip; TCP byte and socket-address fixtures extend the same owner shape; `scripts/ci/check-metal-policy.sh` checks direct `std::net` owners, bind/connect/accept, `write_all`, `Shutdown::Write`, read-to-string/read-to-end, and no `hxrt`/portable socket paths. |
+| `std/rust/native/native_udp_tools.rs` | `rust.net.NativeUdp`, `UdpSocket` | `permanent-native-facade` | Keep as a native UDP owner. The helper owns `std::net::UdpSocket`, exposes explicit send/receive datagram operations, validates byte payloads at the typed boundary, and avoids portable socket or byte-buffer semantics. | `test/positive/metal_no_hxrt_native_udp` proves localhost send/receive; UDP byte and socket-address fixtures cover bytes and typed addresses; `scripts/ci/check-metal-policy.sh` checks direct `std::net::UdpSocket` ownership, `send_to`, `recv_from`, byte conversion, and no `hxrt`/portable socket paths. |
+| `std/rust/native/native_socket_addr_tools.rs` | `rust.net.SocketAddr` | `lowering-candidate` | Keep temporary and small. It is a pure typed wrapper over `std::net::SocketAddr` plus crate-private conversions for TCP/UDP helpers, so it should graduate through `haxe.rust-oo3.95` or the wrapper facility spike when representation rules are stable. | `test/positive/metal_no_hxrt_socket_addr`; `scripts/ci/check-metal-policy.sh` socket-address case checks direct `std::net::SocketAddr` storage, loopback construction, `port()`, crate-private conversions, TCP/UDP `addr.as_std()` use, and no `hxrt`/portable socket paths. |
+| `std/rust/native/native_socket_error_tools.rs` | `rust.net.SocketError` | `permanent-native-facade` | Keep as a small typed error-category facade shared by TCP/UDP resource helpers. It is not a broad exception or error runtime. | `test/positive/metal_no_hxrt_socket_error`; TCP/UDP byte fixtures; `scripts/ci/check-metal-policy.sh` socket-error case checks invalid-input, IO, UTF-8 categories and detailed TCP/UDP call sites. |
+
+No uncovered current lifecycle helper was normalized as implicit runtime behavior in this review.
+The only explicit non-goal recorded here is app-facing live Rust-native file-handle ownership beyond
+the path-scoped `NativeFiles` surface; that work should start as a new contract-first bead if it
+becomes product scope.
+
 ## Follow-Up Beads
 
 | Bead | Scope |
