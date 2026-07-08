@@ -2136,8 +2136,28 @@ run_socket_addr_output_shape_case() {
 		sed "s|$root_dir|.|g" "$socket_addr_rs"
 		exit 1
 	fi
-	if ! match_regex 'crate::native_socket_addr_tools::SocketAddr::localhostDetailed\(70000\)' "$main_rs" || ! match_regex 'crate::native_socket_addr_tools::SocketAddr::localhostDetailed\(-1\)' "$main_rs"; then
-		echo "[metal-policy] error: generated call site should exercise high and negative typed SocketAddr invalid-port checks for ${failure_label}."
+	if match_regex 'crate::native_socket_addr_tools::SocketAddr::localhostDetailed\(' "$main_rs" || match_regex 'crate::native_socket_addr_tools::SocketAddr::localhost\(' "$main_rs"; then
+		echo "[metal-policy] error: SocketAddr localhost constructors should be compiler-lowered, not helper calls, for ${failure_label}."
+		sed "s|$root_dir|.|g" "$main_rs"
+		exit 1
+	fi
+	if ! match_regex 'let __hx_socket_port_value: i32 = 70000' "$main_rs" || ! match_regex 'let __hx_socket_port_value: i32 = -1' "$main_rs" || ! match_regex 'u16::try_from\(__hx_socket_port_value\)' "$main_rs"; then
+		echo "[metal-policy] error: generated call site should exercise direct high and negative SocketAddr invalid-port checks for ${failure_label}."
+		sed "s|$root_dir|.|g" "$main_rs"
+		exit 1
+	fi
+	if ! match_regex 'std::net::SocketAddrV4::new\(std::net::Ipv4Addr::LOCALHOST, __hx_socket_port\)' "$main_rs"; then
+		echo "[metal-policy] error: generated call site should directly construct loopback std::net::SocketAddr values for ${failure_label}."
+		sed "s|$root_dir|.|g" "$main_rs"
+		exit 1
+	fi
+	if ! match_regex 'crate::native_socket_addr_tools::SocketAddr::from_std' "$main_rs"; then
+		echo "[metal-policy] error: generated call site should wrap direct std::net::SocketAddr values through the narrow native facade conversion for ${failure_label}."
+		sed "s|$root_dir|.|g" "$main_rs"
+		exit 1
+	fi
+	if match_regex '\.port\(\)' "$main_rs" && ! match_regex '\.as_std\(\)\.port\(\)' "$main_rs"; then
+		echo "[metal-policy] error: SocketAddr.port() should lower through as_std().port(), not the helper accessor, for ${failure_label}."
 		sed "s|$root_dir|.|g" "$main_rs"
 		exit 1
 	fi
@@ -2151,8 +2171,8 @@ run_socket_addr_output_shape_case() {
 		sed "s|$root_dir|.|g" "$main_rs"
 		exit 1
 	fi
-	if ! match_regex 'use std::net::\{Ipv4Addr, SocketAddr as StdSocketAddr, SocketAddrV4\}' "$socket_addr_rs"; then
-		echo "[metal-policy] error: socket-address fixture missing direct std::net address imports for ${failure_label}."
+	if ! match_regex 'use std::net::SocketAddr as StdSocketAddr' "$socket_addr_rs"; then
+		echo "[metal-policy] error: socket-address helper should only import the retained std::net wrapper type for ${failure_label}."
 		sed "s|$root_dir|.|g" "$socket_addr_rs"
 		exit 1
 	fi
@@ -2161,18 +2181,13 @@ run_socket_addr_output_shape_case() {
 		sed "s|$root_dir|.|g" "$socket_addr_rs"
 		exit 1
 	fi
-	if ! match_regex 'SocketAddrV4::new\(Ipv4Addr::LOCALHOST, port\)' "$socket_addr_rs"; then
-		echo "[metal-policy] error: socket-address fixture should construct loopback addresses with SocketAddrV4::new for ${failure_label}."
+	if match_regex 'SocketAddrV4::new|Ipv4Addr::LOCALHOST|u16::try_from|SocketError::invalid_input|format!\("socket port out of range' "$socket_addr_rs"; then
+		echo "[metal-policy] error: socket-address helper should not retain pure localhost construction or port validation for ${failure_label}."
 		sed "s|$root_dir|.|g" "$socket_addr_rs"
 		exit 1
 	fi
-	if ! match_regex 'pub fn localhost\(port: i32\) -> Result<SocketAddr, String>' "$socket_addr_rs" || ! match_regex 'pub fn localhostDetailed\(port: i32\) -> Result<SocketAddr, SocketError>' "$socket_addr_rs"; then
-		echo "[metal-policy] error: socket-address fixture missing String-error and detailed constructors for ${failure_label}."
-		sed "s|$root_dir|.|g" "$socket_addr_rs"
-		exit 1
-	fi
-	if ! match_regex 'SocketError::invalid_input' "$socket_addr_rs" || ! match_regex 'pub fn port\(&self\) -> i32' "$socket_addr_rs"; then
-		echo "[metal-policy] error: socket-address fixture should classify invalid ports and expose port() for ${failure_label}."
+	if match_regex 'pub fn localhost\(|pub fn localhostDetailed\(|pub fn port\(&self\) -> i32' "$socket_addr_rs"; then
+		echo "[metal-policy] error: socket-address helper should retain only wrapper/conversion behavior, not pure constructors/accessors, for ${failure_label}."
 		sed "s|$root_dir|.|g" "$socket_addr_rs"
 		exit 1
 	fi

@@ -4102,6 +4102,98 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return nativePath == "hxrt::async_::HxFuture";
 	}
 
+	/**
+		Returns whether a class is the Rust-native socket-address facade.
+
+		Why
+		- `rust.net.SocketAddr` is an extern Haxe type, but its simplest methods should not require
+		  handwritten Rust helper bodies once the compiler can express their closed `std::net` shape.
+		- The retained helper is only the private wrapper/conversion boundary used by TCP/UDP owners.
+
+		What
+		- Recognizes the public Haxe facade and its native Rust wrapper path.
+
+		How
+		- Prefer the Haxe package/name for stability, with the `@:native` path as a packaged-layout
+		  fallback.
+	**/
+	function isRustNetSocketAddrClass(cls:ClassType):Bool {
+		if (cls == null)
+			return false;
+		var packPath = cls.pack != null ? cls.pack.join(".") : "";
+		if (cls.name == "SocketAddr" && packPath == "rust.net")
+			return true;
+		return rustExternBasePath(cls) == "crate::native_socket_addr_tools::SocketAddr";
+	}
+
+	/**
+		Compile `SocketAddr.localhost(...)` and `localhostDetailed(...)` directly into Rust AST.
+
+		Why
+		- Port range checking and loopback address construction are pure functions of a typed `Int`.
+		  Keeping those bodies in `native_socket_addr_tools.rs` made the helper look like a second
+		  runtime surface instead of a narrow wrapper/conversion island.
+		- The compiler already has enough typed call-site information to emit the exact `std::net`
+		  operations without raw snippets or `hxrt`.
+
+		What
+		- Emits a single-evaluation port binding, `u16::try_from(...)` validation, direct
+		  `SocketAddrV4::new(Ipv4Addr::LOCALHOST, ...)` construction, and a final conversion through
+		  `SocketAddr::from_std(...)`.
+		- The detailed variant maps invalid ports to `SocketError::invalid_input(...)`; the String
+		  variant returns the same formatted message as a plain Rust `String`.
+
+		How
+		- The helper wrapper remains responsible only for private storage and crate-local conversions.
+		  This lowering uses `from_std` because Haxe externs still cannot construct the private Rust
+		  field directly.
+	**/
+	function compileRustSocketAddrLocalhostCall(portExpr:TypedExpr, detailed:Bool):RustExpr {
+		var portValue = "__hx_socket_port_value";
+		var port = "__hx_socket_port";
+		var portRead = EPath(portValue);
+		var stdAddr = ECall(EField(ECall(EPath("std::net::SocketAddrV4::new"), [
+			EPath("std::net::Ipv4Addr::LOCALHOST"),
+			EPath(port)
+		]), "into"), []);
+		var okValue = ECall(EPath("crate::native_socket_addr_tools::SocketAddr::from_std"), [stdAddr]);
+		var errMessage = EMacroCall("format", [ELitString("socket port out of range: {}"), portRead]);
+		var errValue = detailed ? ECall(EPath("crate::native_socket_error_tools::SocketError::invalid_input"), [errMessage]) : errMessage;
+
+		return EBlock({
+			stmts: [RLet(portValue, false, RI32, compileExpr(portExpr))],
+			tail: EMatch(ECall(EPath("u16::try_from"), [portRead]), [
+				{pat: PTupleStruct("Result::Ok", [PBind(port)]), expr: ECall(EPath("Result::Ok"), [okValue])},
+				{pat: PTupleStruct("Result::Err", [PWildcard]), expr: ECall(EPath("Result::Err"), [errValue])}
+			])
+		});
+	}
+
+	/**
+		Compile `SocketAddr.port()` as a direct Rust stdlib accessor.
+
+		Why
+		- Reading the port from a typed socket address is a pure `std::net::SocketAddr` operation.
+		  It should not keep a public helper method alive when the only unavoidable native boundary is
+		  the wrapper's private representation.
+
+		What
+		- Emits `i32::from(addr.as_std().port())`, preserving Haxe's `Int` result type.
+
+		How
+		- The receiver is bound once, then borrowed through the retained crate-private `as_std()`
+		  conversion. This keeps the generated call site inspectable while avoiding direct access to
+		  the helper's private field.
+	**/
+	function compileRustSocketAddrPortCall(receiver:TypedExpr):RustExpr {
+		var recvName = "__hx_socket_addr";
+		var portRead = ECall(EField(ECall(EField(EPath(recvName), "as_std"), []), "port"), []);
+		return EBlock({
+			stmts: [RLet(recvName, false, null, compileExpr(receiver))],
+			tail: ECall(EPath("i32::from"), [portRead])
+		});
+	}
+
 	function rustFutureInnerType(t:Type):Null<Type> {
 		function resolve(cur:Type):Null<Type> {
 			if (cur == null)
@@ -11417,6 +11509,27 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case _:
 		}
 
+		// Special-case: rust.net.SocketAddr pure constructors.
+		switch (callExpr.expr) {
+			case TField(_, FStatic(clsRef, fieldRef)):
+				var cls = clsRef.get();
+				var field = fieldRef.get();
+				if (isRustNetSocketAddrClass(cls)) {
+					switch (field.getHaxeName()) {
+						case "localhost":
+							if (args.length != 1)
+								return unsupported(fullExpr, "SocketAddr.localhost args");
+							return compileRustSocketAddrLocalhostCall(args[0], false);
+						case "localhostDetailed":
+							if (args.length != 1)
+								return unsupported(fullExpr, "SocketAddr.localhostDetailed args");
+							return compileRustSocketAddrLocalhostCall(args[0], true);
+						case _:
+					}
+				}
+			case _:
+		}
+
 		// Special-case: Std.*
 		switch (callExpr.expr) {
 			case TField(_, FStatic(clsRef, fieldRef)):
@@ -12590,6 +12703,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								}
 							case _:
 						}
+					}
+					if (isRustNetSocketAddrClass(owner) && cf.getHaxeName() == "port") {
+						if (args.length != 0)
+							return unsupported(fullExpr, "SocketAddr.port args");
+						return compileRustSocketAddrPortCall(obj);
 					}
 					switch (cf.kind) {
 						case FMethod(_): {

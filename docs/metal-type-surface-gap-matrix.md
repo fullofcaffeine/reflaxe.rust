@@ -144,5 +144,5 @@ Rust representation, and fixture evidence are all present.
 | `haxe.rust-oo3.92` | Typed socket address facade, no-hxrt output-shape proof, and metal networking example. |
 | `haxe.rust-oo3.93` | Native facade helper manifest and growth guard. |
 | `haxe.rust-oo3.94` | Compiler-generated native wrapper facility spike. |
-| `haxe.rust-oo3.95` | SocketAddr lowering-candidate graduation follow-up. |
+| `haxe.rust-oo3.95` | SocketAddr pure constructor/accessor compiler-lowering graduation. |
 | `haxe.rust-oo3.96` | Resource lifecycle native facade review follow-up. |

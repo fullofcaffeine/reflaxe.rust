@@ -240,11 +240,11 @@
     {
       "path": "std/rust/native/native_socket_addr_tools.rs",
       "ownerFacades": ["rust.net.SocketAddr"],
-      "classification": "lowering-candidate",
+      "classification": "permanent-native-facade",
       "runtimeContract": "no-hxrt",
-      "whyNotLoweringToday": "The current compiler cannot declare the private wrapper field and crate-private std::net conversions used by TCP/UDP helpers without a helper or native-wrapper generation support.",
-      "allowedUsePrefixes": ["std::net", "crate::native_socket_error_tools"],
-      "allowedDependencyPrefixes": ["crate::native_socket_error_tools", "std::net"],
+      "whyNotLoweringToday": "SocketAddr.localhost/localhostDetailed/port are compiler-lowered. The retained helper exists only because current Haxe externs cannot declare the private wrapper field and crate-private std::net conversions used by TCP/UDP helpers without a helper or native-wrapper generation support.",
+      "allowedUsePrefixes": ["std::net"],
+      "allowedDependencyPrefixes": ["std::net"],
       "allowedRuntimeDependencies": [],
       "forbiddenGrowth": [
         "DNS",
@@ -253,7 +253,7 @@
         "portable sys.net semantics"
       ],
       "evidenceOwner": "test/positive/metal_no_hxrt_socket_addr and scripts/ci/check-metal-policy.sh socket-address output-shape case",
-      "codeLineBudget": 50
+      "codeLineBudget": 35
     },
     {
       "path": "std/rust/native/native_socket_error_tools.rs",

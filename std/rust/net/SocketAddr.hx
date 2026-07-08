@@ -26,11 +26,12 @@ import rust.Result;
 	- The extern maps to `crate::native_socket_addr_tools::SocketAddr`, a small wrapper around
 	  `std::net::SocketAddr`.
 	- TCP/UDP helper modules accept this wrapper and convert it internally to `std::net` values.
-	- This helper is classified as `lowering-candidate`: it is accepted for M60 because the current
-	  compiler cannot declare the Rust wrapper field and crate-private conversions needed by
-	  `TcpListener` / `UdpSocket` helpers without raw Rust or generic native-wrapper generation.
-	  The pure constructor/accessor pieces (`localhost` and `port`) should be reconsidered for
-	  compiler lowering once that representation stabilizes.
+	- `localhost(...)`, `localhostDetailed(...)`, and `port()` are compiler-lowered into direct
+	  `std::net` operations. The helper no longer owns those pure constructor/accessor bodies.
+	- The helper is retained only for representation privacy and crate-private conversion handoff:
+	  current Haxe externs still cannot declare the Rust wrapper field or expose the narrow
+	  `from_std` / `as_std` bridge needed by `TcpListener` / `UdpSocket` helpers without raw Rust or
+	  generic native-wrapper generation.
 	- This is a native facade island, not `hxrt`: it carries a direct Rust stdlib value and does not
 	  provide Haxe semantic runtime behavior.
 	- In `metal + rust_no_hxrt`, this must stay free of `hxrt`, `Dynamic`, portable socket handles,
