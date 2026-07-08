@@ -37,6 +37,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Metal trait, impl, and bound model](metal-trait-impl-bound-model.md): current trait-facing surfaces and missing typed Rust trait shapes.
 - [Extern and lifetime-island cookbook](extern-lifetime-island-cookbook.md): typed facade pattern for Rust APIs with lifetimes, HRTB, const generics, macro setup, or contained unsafe internals.
 - [Native facade helper policy](native-facade-policy.md) and [manifest](native-facade-manifest.json): taxonomy, machine-checkable inventory, and guardrails for `std/rust/native/*.rs` typed helper modules so they do not become a second runtime.
+- [Native wrapper facility spike](native-wrapper-facility-spike.md): reserved `@:rustNativeWrapper` metadata, candidate generated Rust shape, and migration criteria for simple value-wrapper helpers.
 - [RAII guard and lifetime-island rules](raii-guard-lifetime-islands.md): when to expose guards as scoped callbacks versus typed Rust islands.
 - [Metal capability fixture plan](metal-capability-fixtures.md): contract-first positive/negative fixture matrix for the haxified Rust milestone.
 - [Metal type surface gap matrix](metal-type-surface-gap-matrix.md): Rust-native type/facade support audit for metal and portable-facade lowering work.
@@ -65,6 +66,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Interop](interop.md): externs, metadata-driven Cargo deps, extra Rust modules, and escape hatch policy.
 - [Extern and lifetime-island cookbook](extern-lifetime-island-cookbook.md): cookbook for small Rust implementation islands behind typed Haxe facades.
 - [Native facade helper policy](native-facade-policy.md) and [manifest](native-facade-manifest.json): classification rules, inventory, and evidence requirements for handwritten Rust helper modules under `std/rust/native`.
+- [Native wrapper facility spike](native-wrapper-facility-spike.md): non-product M94 contract for future compiler-generated native value wrappers; metadata is reserved today.
 - [RAII guard and lifetime-island rules](raii-guard-lifetime-islands.md): scoped callback versus extern-island selection rules for locks, files, sockets, and other guard/drop APIs.
 - [Profile migration guide](rusty-profile.md): migration mapping from removed `idiomatic`/`rusty` selectors.
 - [Metal profile](metal-profile.md): Rust-first authoring and boundary policy.

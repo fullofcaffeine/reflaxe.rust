@@ -363,7 +363,8 @@ compiler-lowered into direct `std::net` operations: the generated Rust validates
 ports through `addr.as_std().port()`. The retained helper is classified as a
 `permanent-native-facade` only for the private wrapper field and crate-private `std::net::SocketAddr`
 conversions used by TCP/UDP helpers. The wrapper facility spike can still revisit generating that
-island once native-wrapper rules are stable.
+island once native-wrapper rules are stable; M94 records the reserved metadata and candidate
+generated shape in [Native wrapper facility spike](native-wrapper-facility-spike.md).
 
 This is still not portable `sys.net.Socket`, arbitrary host/address networking, DNS, external
 network access, TLS, async networking, live stream adapters, or a complete socket abstraction.
@@ -520,7 +521,7 @@ can use direct Rust ownership, add the typed facade and prove the emitted shape.
 | `haxe.rust-oo3.92.4` | Examples audit and `examples/metal_native_net`. |
 | `haxe.rust-oo3.92.5` | Native facade policy, docs, and evidence refresh. |
 | `haxe.rust-oo3.93` | Native facade helper manifest and growth guard. |
-| `haxe.rust-oo3.94` | Follow-up compiler-generated native wrapper facility spike. |
+| `haxe.rust-oo3.94` | Native wrapper facility spike: reserve `@:rustNativeWrapper`, document candidate generated value-wrapper shape, and defer product generation. |
 | `haxe.rust-oo3.95` | `SocketAddr` lowering-candidate graduation for pure constructor/accessor behavior. |
 | `haxe.rust-oo3.96` | Follow-up resource lifecycle native facade review. |
 

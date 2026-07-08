@@ -2827,6 +2827,8 @@ run_negative_case "test/negative/profile_removed_idiomatic" 'Unknown `-D reflaxe
 	'idiomatic profile selector removed'
 run_negative_case "test/negative/profile_removed_rusty" 'Unknown `-D reflaxe_rust_profile=rusty`\. Expected portable\|metal\.' \
 	'rusty profile selector removed'
+run_negative_case "test/negative/native_wrapper_reserved_metadata" '`@:rustNativeWrapper` is reserved for the native wrapper facility spike and is not enabled as product metadata\.' \
+	'reserved native wrapper metadata is rejected'
 run_negative_case "test/negative/portable_native_import_strict" 'portable contract imported native target modules: rust\.Option' \
 	'portable native-target import strict mode rejects rust.* imports' \
 	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust profile contract violation\(s\):'

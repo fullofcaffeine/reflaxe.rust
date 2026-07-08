@@ -91,6 +91,18 @@ allowed dependency prefixes, allowed imports, forbidden growth notes, evidence o
 review budgets. New work should refine the manifest when it touches a helper, rather than expanding
 unclassified behavior.
 
+## Native Wrapper Facility
+
+The M94 [native wrapper facility spike](native-wrapper-facility-spike.md) defines the candidate
+metadata and generated Rust shape for simple value wrappers such as the remaining
+`rust.net.SocketAddr` private-field/conversion island. The compiler reserves `@:rustNativeWrapper`
+and rejects it today so unsupported metadata cannot be silently ignored or mistaken for a stable
+generator.
+
+Future generated value wrappers must stay under this policy: no `hxrt`, no `Dynamic`/`Any`, no method
+body strings, no resource lifecycle hooks, and manifest-visible evidence before replacing a
+handwritten helper.
+
 ## Lifecycle Helper Review
 
 `haxe.rust-oo3.96` audited the current resource/lifecycle helpers after the manifest guard landed.
@@ -117,6 +129,6 @@ becomes product scope.
 | Bead | Scope |
 | --- | --- |
 | `haxe.rust-oo3.93` | Turn this inventory into a machine-checkable helper manifest and CI growth guard. |
-| `haxe.rust-oo3.94` | Spike compiler-generated native wrapper support for simple typed Rust value wrappers. |
+| `haxe.rust-oo3.94` | Document the compiler-generated native wrapper spike, reserve `@:rustNativeWrapper`, and keep product generation deferred. |
 | `haxe.rust-oo3.95` | Graduate `rust.net.SocketAddr` pure constructor/accessor behavior into compiler lowering while retaining only the wrapper/conversion island. |
 | `haxe.rust-oo3.96` | Audit resource/lifecycle helpers such as process, file, TCP, and UDP facades under this taxonomy. |

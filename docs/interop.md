@@ -11,6 +11,11 @@ For APIs whose Rust shape needs explicit lifetimes, HRTB, const generics, macro-
 contained `unsafe`, use the [Extern and lifetime-island cookbook](extern-lifetime-island-cookbook.md)
 as the practical template.
 
+Compiler-generated native wrappers are not a shipped user feature yet. The M94
+[native wrapper facility spike](native-wrapper-facility-spike.md) reserves `@:rustNativeWrapper` for
+future simple value-wrapper generation, and the compiler rejects that metadata today. Use
+`@:rustExtraSrc` plus the native facade manifest for current handwritten helper islands.
+
 ## Preferred pattern: `extern` + `@:native(...)` + extra Rust modules
 
 ### 1) Write the Rust module (hand-written)

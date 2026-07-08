@@ -944,6 +944,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// Collect extra Rust sources declared via metadata (framework code can bring its own modules).
 		RustExtraSrcRegistry.collectFromContext();
 
+		// Keep the M94 wrapper-facility spike from silently becoming product metadata.
+		rejectReservedNativeWrapperMetadata();
+
 		// Collect optional metal-lane declarations (`@:haxeMetal` canonical, `@:rustMetal` alias)
 		// for strict island checks in portable mode.
 		metalIslandSnapshot = MetalIslandAnalyzer.collect(Context.getAllModuleTypes());
@@ -3762,6 +3765,52 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 		return false;
+	}
+
+	/**
+		Rejects `@:rustNativeWrapper` until the native-wrapper generator has a stable contract.
+
+		Why
+		- M94 defines the proposed wrapper facility shape, but accepting metadata silently would
+		  make users think the generator exists and could create misleading facade evidence.
+		- Native facade helpers are part of the Rust authority boundary, so unsupported wrapper
+		  declarations must fail early at the metadata site instead of degrading to ignored metadata.
+
+		What
+		- Reserves `@:rustNativeWrapper(...)` across classes, enums, typedefs, and abstracts.
+		- Emits an actionable diagnostic that points users back to `@:rustExtraSrc` plus the
+		  native facade manifest until a future bead lands an audited generator.
+
+		How
+		- Walks typed module metadata from `Context.getAllModuleTypes()`.
+		- Uses the same metadata-name normalization as other Rust metadata readers.
+		- Does not parse the proposed object shape here; parsing belongs to the future generator
+		  once the accepted subset and emitted Rust contract are implemented together.
+	**/
+	function rejectReservedNativeWrapperMetadata():Void {
+		for (moduleType in Context.getAllModuleTypes()) {
+			switch (moduleType) {
+				case TClassDecl(clsRef):
+					rejectReservedNativeWrapperMeta(clsRef.get().meta);
+				case TEnumDecl(enRef):
+					rejectReservedNativeWrapperMeta(enRef.get().meta);
+				case TTypeDecl(tdRef):
+					rejectReservedNativeWrapperMeta(tdRef.get().meta);
+				case TAbstract(abRef):
+					rejectReservedNativeWrapperMeta(abRef.get().meta);
+			}
+		}
+	}
+
+	function rejectReservedNativeWrapperMeta(meta:haxe.macro.Type.MetaAccess):Void {
+		if (meta == null)
+			return;
+		for (entry in meta.get()) {
+			if (!metaNameEquals(entry.name, "rustNativeWrapper"))
+				continue;
+			Context.error("`@:rustNativeWrapper` is reserved for the native wrapper facility spike and is not enabled as product metadata. "
+				+ "Use `@:rustExtraSrc` plus a native facade manifest entry for now; see docs/native-wrapper-facility-spike.md.", entry.pos);
+		}
 	}
 
 	function hasRustTestMeta(meta:haxe.macro.Type.MetaAccess):Bool {
