@@ -1,3 +1,10 @@
+## [0.81.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.81.0...v0.81.1) (2026-07-08)
+
+
+### Performance Improvements
+
+* borrow json parsevalue introspection ([308ad9d](https://github.com/fullofcaffeine/reflaxe.rust/commit/308ad9dff69c5822eab9b4b2d5c60633d16b4a52))
+
 # [0.81.0](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.80.0...v0.81.0) (2026-07-08)
 
 
