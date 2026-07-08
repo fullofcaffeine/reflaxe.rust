@@ -9246,6 +9246,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						&& (TypeHelper.isInt(toT) || TypeHelper.isFloat(toT))) {
 						var target = rustTypeToString(toRustType(toT, e.pos));
 						ECast(inner, target);
+					} else if (rustRefKind(e.t) != null) {
+						// Casts introduced by `rust.Ref<T>` / `rust.MutRef<T>` `@:from` conversions are
+						// compile-time borrow markers. Do not route `Dynamic -> Ref<Dynamic>` through a
+						// runtime downcast here; the call-argument coercion layer emits the actual `&`/`&mut`.
+						inner;
 					} else if (!fromIsDyn && toIsDyn) {
 						// Casting to `Dynamic` must box the value (our `Dynamic` is a runtime wrapper).
 						coerceExprToExpected(inner, e1, haxeDynamicBoundaryType());
@@ -13288,6 +13293,17 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case _:
 		}
 
+		var refInnerType = rustRefBorrowedValueType(paramType);
+		if (refInnerType != null) {
+			var borrowSource = unwrapRustRefIntroducer(argExpr);
+			if (!isDirectRustRefValue(argExpr)) {
+				if (!shouldSkipBorrowedStringInnerCoercion(compiled, borrowSource, refInnerType)) {
+					compiled = coerceExprToExpected(compiled, borrowSource, refInnerType);
+				}
+			}
+			return wrapBorrowIfNeeded(compiled, rustParamTy, argExpr);
+		}
+
 		compiled = coerceExprToExpected(compiled, argExpr, paramType);
 		return wrapBorrowIfNeeded(compiled, rustParamTy, argExpr);
 	}
@@ -13327,6 +13343,52 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 			case _:
 				null;
+		}
+	}
+
+	function rustRefBorrowedValueType(t:Type):Null<Type> {
+		return switch (followType(t)) {
+			case TAbstract(absRef, params): {
+					var abs = absRef.get();
+					var key = abs.pack.join(".") + "." + abs.name;
+					if ((key == "rust.Ref" || key == "rust.MutRef") && params.length == 1) {
+						params[0];
+					} else {
+						null;
+					}
+				}
+			case _:
+				null;
+		}
+	}
+
+	function unwrapRustRefIntroducer(e:TypedExpr):TypedExpr {
+		var cur = unwrapMetaParen(e);
+		while (true) {
+			switch (cur.expr) {
+				case TCast(inner, _) if (rustRefKind(cur.t) != null && rustRefKind(inner.t) == null):
+					cur = unwrapMetaParen(inner);
+					continue;
+				case _:
+			}
+			break;
+		}
+		return cur;
+	}
+
+	function shouldSkipBorrowedStringInnerCoercion(expr:RustExpr, source:TypedExpr, expectedInner:Type):Bool {
+		if (!isStringType(expectedInner) || !isStringType(source.t))
+			return false;
+		var sourceRust = rustTypeToString(toRustType(source.t, source.pos));
+		if (sourceRust != "hxrt::string::HxString")
+			return false;
+		return switch (expr) {
+			case EPath(_): true;
+			case EField(_, _): true;
+			case ECall(EField(_, "clone"), []): true;
+			case ECall(EPath(path), _) if (path == "hxrt::string::HxString::from"): true;
+			case _:
+				false;
 		}
 	}
 

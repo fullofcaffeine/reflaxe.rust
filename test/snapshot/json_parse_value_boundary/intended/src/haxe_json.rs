@@ -50,39 +50,37 @@ impl Json {
 
     fn dynamic_to_value(value: hxrt::dynamic::Dynamic) -> crate::haxe_json_value::Value {
         {
-            let _g: i32 = hxrt::json::value_kind(value.clone());
+            let _g: i32 = hxrt::json::value_kind(&value);
             match _g {
                 0 => {
                     return crate::haxe_json_value::Value::JNull;
                 }
                 1 => {
-                    return crate::haxe_json_value::Value::JBool(hxrt::json::value_as_bool(
-                        value.clone(),
-                    ));
+                    return crate::haxe_json_value::Value::JBool(hxrt::json::value_as_bool(&value));
                 }
                 2 => {
-                    return crate::haxe_json_value::Value::JNumber(hxrt::json::value_as_int(
-                        value.clone(),
-                    ) as f64);
+                    return crate::haxe_json_value::Value::JNumber(
+                        hxrt::json::value_as_int(&value) as f64,
+                    );
                 }
                 3 => {
                     return crate::haxe_json_value::Value::JNumber(hxrt::json::value_as_float(
-                        value.clone(),
+                        &value,
                     ));
                 }
                 4 => {
                     return crate::haxe_json_value::Value::JString(hxrt::string::HxString::from(
-                        hxrt::json::value_as_string(value.clone()),
+                        hxrt::json::value_as_string(&value),
                     ));
                 }
                 5 => {
-                    let len: i32 = hxrt::json::value_array_length(value.clone());
+                    let len: i32 = hxrt::json::value_array_length(&value);
                     let out: hxrt::array::Array<crate::haxe_json_value::Value> =
                         hxrt::array::Array::<crate::haxe_json_value::Value>::new();
                     let mut i: i32 = 0;
                     while i < len {
                         out.push(crate::haxe_json::Json::dynamic_to_value(
-                            hxrt::json::value_array_get(value.clone(), i),
+                            hxrt::json::value_array_get(&value, i),
                         ));
                         i = i + 1;
                     }
@@ -90,13 +88,13 @@ impl Json {
                 }
                 6 => {
                     let keys: hxrt::array::Array<hxrt::string::HxString> =
-                        hxrt::json::value_object_keys(value.clone());
+                        hxrt::json::value_object_keys(&value);
                     let values: hxrt::array::Array<crate::haxe_json_value::Value> =
                         hxrt::array::Array::<crate::haxe_json_value::Value>::new();
                     for name in keys.iter_borrowed() {
                         values.push(crate::haxe_json::Json::dynamic_to_value(
                             hxrt::json::value_object_field(
-                                value.clone(),
+                                &value,
                                 hxrt::string::HxString::from(name.clone()),
                             ),
                         ));

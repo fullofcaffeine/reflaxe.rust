@@ -73,10 +73,14 @@ Eliminating that bridge directly would require profile-aware native-return infer
 callers, which is a larger compiler contract change than this milestone should take on casually.
 
 The next-slice audit is recorded in
-[JSON Boundary Next Slice Audit](json-boundary-next-slice-audit.md). Its conclusion is that the next
-safe implementation target is the typed `parseValue` boundary: generated Rust currently clones the
-same `Dynamic` repeatedly while read-only native JSON introspection helpers walk a parsed value.
-That work should start with a fixture/benchmark contract before changing the native helper surface.
+[JSON Boundary Next Slice Audit](json-boundary-next-slice-audit.md). It selected the typed
+`parseValue` boundary as the next safe implementation target: generated Rust cloned the same
+`Dynamic` repeatedly while read-only native JSON introspection helpers walked a parsed value.
+The landed slice added a schema-validation benchmark contract and changed the read-only
+`NativeJson` / `hxrt::json` helper surface to borrow `Dynamic` values. The emitted shape is gated by
+`test/snapshot/json_parse_value_boundary`, which now expects `value_kind`, scalar accessors,
+array-length/get, and object-key/field calls to pass `&value` for read-only inspection while child
+extraction still returns owned `Dynamic` for recursive `haxe.json.Value` construction.
 
 ### Current semantic contract
 

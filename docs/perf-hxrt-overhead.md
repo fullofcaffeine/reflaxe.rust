@@ -287,8 +287,11 @@ When reading ratios (`x vs pure`):
   - This is the typed `parseValue` companion to the dynamic JSON round-trip benchmark.
   - The fixture parses JSON through `haxe.Json.parseValue`, validates object/array/string/number/bool/null
     fields into typed Haxe structures, and compares against a pure Rust `serde_json::Value` validator.
-  - It exists to make future borrowed-introspection work measurable before `NativeJson` or `hxrt::json`
-    read-only accessors change.
+  - It now tracks the borrowed-introspection slice where generated `parseValue` code passes the
+    inspected `Dynamic` by `&value` to read-only `NativeJson` / `hxrt::json` helpers instead of
+    cloning it for kind/accessor checks.
+  - Baseline-regression comparison remains warning-only until the checked-in baseline includes the
+    `jsonSchemaValidateOverheadRatios` group.
 - `hot_loop_inproc`
   - Treat this as the clean near-native parity signal only after using a large enough sample count.
   - Focused reruns with `80` samples showed the emitted metal binary tracking the pure Rust baseline

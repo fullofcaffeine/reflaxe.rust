@@ -749,8 +749,7 @@ pub fn stringify_with_replacer_pretty<S: AsRef<str>>(
 /// - `4`: string
 /// - `5`: array
 /// - `6`: object
-pub fn value_kind(value: Dynamic) -> i32 {
-    let value = &value;
+pub fn value_kind(value: &Dynamic) -> i32 {
     if value.is_null() {
         return VALUE_KIND_NULL;
     }
@@ -776,40 +775,40 @@ pub fn value_kind(value: Dynamic) -> i32 {
     ))
 }
 
-pub fn value_as_bool(value: Dynamic) -> bool {
+pub fn value_as_bool(value: &Dynamic) -> bool {
     value
         .downcast_ref::<bool>()
         .copied()
         .unwrap_or_else(|| throw_json(String::from("Expected JSON bool")))
 }
 
-pub fn value_as_int(value: Dynamic) -> i32 {
+pub fn value_as_int(value: &Dynamic) -> i32 {
     value
         .downcast_ref::<i32>()
         .copied()
         .unwrap_or_else(|| throw_json(String::from("Expected JSON int")))
 }
 
-pub fn value_as_float(value: Dynamic) -> f64 {
+pub fn value_as_float(value: &Dynamic) -> f64 {
     value
         .downcast_ref::<f64>()
         .copied()
         .unwrap_or_else(|| throw_json(String::from("Expected JSON float")))
 }
 
-pub fn value_as_string(value: Dynamic) -> String {
-    dynamic_json_owned_string(&value)
+pub fn value_as_string(value: &Dynamic) -> String {
+    dynamic_json_owned_string(value)
         .unwrap_or_else(|| throw_json(String::from("Expected JSON string")))
 }
 
-pub fn value_array_length(value: Dynamic) -> i32 {
+pub fn value_array_length(value: &Dynamic) -> i32 {
     value
         .downcast_ref::<Array<Dynamic>>()
         .map(|a| a.len() as i32)
         .unwrap_or_else(|| throw_json(String::from("Expected JSON array")))
 }
 
-pub fn value_array_get(value: Dynamic, index: i32) -> Dynamic {
+pub fn value_array_get(value: &Dynamic, index: i32) -> Dynamic {
     let Some(arr) = value.downcast_ref::<Array<Dynamic>>() else {
         throw_json(String::from("Expected JSON array"));
     };
@@ -818,7 +817,7 @@ pub fn value_array_get(value: Dynamic, index: i32) -> Dynamic {
         .unwrap_or_else(|| throw_json(format!("JSON array index out of range: {index}")))
 }
 
-pub fn value_object_keys<S>(value: Dynamic) -> Array<S>
+pub fn value_object_keys<S>(value: &Dynamic) -> Array<S>
 where
     S: From<String> + Clone,
 {
@@ -828,7 +827,7 @@ where
     crate::dynamic::dyn_object_keys::<S>(obj)
 }
 
-pub fn value_object_field<K>(value: Dynamic, key: K) -> Dynamic
+pub fn value_object_field<K>(value: &Dynamic, key: K) -> Dynamic
 where
     K: AsRef<str>,
 {
