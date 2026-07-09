@@ -28,8 +28,12 @@ Contract inputs:
 
 | Module | Ownership class | Primary implementation location | Runtime dependency | Tier1 conformance cases |
 | --- | --- | --- | --- | --- |
-| `Std` | `mixed` (`compiler_intrinsic` + `runtime_binding`) | `src/reflaxe/rust/RustCompiler.hx` + `std/Std.cross.hx` | `runtime/hxrt/string.rs`, `runtime/hxrt/exception.rs`, core helpers | `exceptions_typed_dynamic`, `null_string_concat`, `virtual_dispatch` |
+| `Std` | `mixed` (`compiler_intrinsic` + `runtime_binding`) | `src/reflaxe/rust/RustCompiler.hx`; no tracked `std/Std.cross.hx` override | `runtime/hxrt/string.rs`, `runtime/hxrt/exception.rs`, core helpers | `exceptions_typed_dynamic`, `null_string_concat`, `virtual_dispatch` |
 | `Sys` | `mixed` (`haxe_source` + `runtime_binding`) | `std/Sys.cross.hx` | `runtime/hxrt/sys.rs` | `sys_getenv_null` |
+
+`Std` is intentionally called out because it is not part of the `std/**/*.cross.hx` override
+ledger. Its current Rust-target behavior is owned by compiler lowering plus runtime helpers, while
+upstream-colliding Haxe-source std overrides remain `.cross.hx` files under `std/`.
 
 ## Governance rule
 
