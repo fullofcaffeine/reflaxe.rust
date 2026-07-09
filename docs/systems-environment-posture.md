@@ -135,12 +135,14 @@ Use these practical rules:
 
 1. `sys.Http`, `sys.ssl.*`, and `sys.db.*` are supported surfaces on the Rust target.
 2. Their proof depth is not identical:
-   - `sys.Http` and `sys.ssl.*` are currently smoke-backed,
+   - `sys.Http` combines targeted local-server callback/status/error proof with smoke-backed request
+     assembly coverage,
+   - `sys.ssl.*` is currently snapshot/smoke-backed,
    - `sys.db.*` is explicitly environment-sensitive,
    - Windows remains a smoke-confidence platform lane.
 3. Stronger future claims for these surfaces require stronger artifacts, not just stronger prose.
-4. Until then, production language should stay explicit about smoke-only and environment-sensitive
-   proof depth.
+4. Until then, production language should stay explicit about targeted/smoke and
+   environment-sensitive proof depth.
 
 ## What this page does not claim
 

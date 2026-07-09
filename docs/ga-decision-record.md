@@ -72,7 +72,7 @@ Historical classification summary at the Milestone 28 gate:
 - `explicit defer`
   - typed catch exact-type limitation (now narrowed after Milestone 35)
   - `haxe.MainLoop` / `haxe.EntryPoint` vs direct `sys.thread.EventLoop`
-  - `sys.Http` smoke-only confidence
+  - `sys.Http` targeted local-server plus smoke-backed confidence
   - `sys.ssl.*` smoke-only confidence
   - `sys.db.*` environment-sensitive smoke confidence
   - Windows smoke subset vs blanket platform claims
@@ -142,7 +142,8 @@ Docs alignment checks:
 Residual risks:
 - typed catch now covers emitted non-generic class hierarchies; narrower exact-type limits remain on some interface/metadata-free paths
 - MainLoop/EntryPoint remain narrower than direct EventLoop evidence
-- sys.Http / sys.ssl / sys.db remain supported with smoke-level or environment-sensitive proof depth
+- sys.Http / sys.ssl / sys.db remain supported with targeted, smoke-level, or environment-sensitive
+  proof depth
 - Windows confidence remains smoke-subset rather than blanket parity
 - semver/public packaging posture is still unresolved while version remains 0.62.0
 

@@ -72,7 +72,8 @@ Still explicitly qualified:
 
 - narrower typed-catch caveat on interface-typed or metadata-free catch paths
 - `haxe.MainLoop` / `haxe.EntryPoint` narrower than direct `sys.thread.EventLoop` evidence
-- `sys.Http`, `sys.ssl.*`, and `sys.db.*` confidence remains bounded by the current smoke/env-sensitive proof depth
+- `sys.Http`, `sys.ssl.*`, and `sys.db.*` confidence remains bounded by the current
+  targeted/smoke/env-sensitive proof depth
 - Windows support remains proven by the current smoke subset, not by blanket parity claims
 
 Those caveats remain part of the public contract and do not block `1.0` as long as they stay
