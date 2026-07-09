@@ -112,6 +112,11 @@ Use `bash scripts/ci/package-smoke.sh` to validate the shipped artifact end-to-e
 Important: validate packaged behavior through `haxelib install` + `-lib reflaxe.rust`, not raw `-cp <pkg>/src`.
 Raw classpath-only tests are not equivalent for packaged `.cross.hx` std override selection.
 
+Release automation runs the same package builder from semantic-release `prepareCmd`, so the release
+workflow must install the pinned lix Haxe toolchain before semantic-release starts. The local
+package-smoke guard proves package semantics; the workflow setup makes sure the GitHub runner has the
+matching `haxe`/`haxelib` runtime available when building the release asset.
+
 ## Stdlib provenance guards
 
 Packaging checks are complemented by stdlib governance guards:

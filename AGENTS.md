@@ -472,6 +472,9 @@ Agent policy:
   - `.github/workflows/rustsec.yml` runs `cargo audit` on a schedule.
   - Workspace gotcha: exclude `examples/` + `test/` + `.cache/` from the root workspace so `cargo fmt/build` works inside generated `*/out/` crates during snapshot and template-smoke runs.
 - Packaging policy: `scripts/release/package-haxelib.sh` delegates the generic layout work to the vendored Reflaxe `Run build` flow, which merges `reflaxe.stdPaths` into `classPath`, converts `_std/*.hx` sources into packaged `*.cross.hx`, and sanitizes `haxelib.json` (remove `reflaxe` field). The script still ships target-required `runtime/` + `vendor/`.
+- Release toolchain gotcha: `.github/workflows/release.yml` must install the pinned lix Haxe toolchain before running `semantic-release`.
+  `semantic-release` executes `scripts/release/package-haxelib.sh` from `prepareCmd`, and that script runs Reflaxe build through `haxe`/`haxelib`.
+  Keep this setup aligned with the CI package-smoke Haxe setup; `npm ci --ignore-scripts` alone is insufficient because it skips lix postinstall and can leave `haxelib` without its Neko runtime.
 - Conventional commits are required on `main` so semantic-release can compute the next version.
   - Use `feat:` for minor, `fix:` for patch, and `feat!:` / `BREAKING CHANGE:` for major.
 - Version strings are kept in sync by `scripts/release/sync-versions.js` (used by semantic-release).

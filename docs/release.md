@@ -52,6 +52,17 @@ Those updates are committed back to `main` as `chore(release): <version>`.
 Note: even though we package a “haxelib style” zip, the intended distribution path is GitHub
 Releases plus lix. This stable `1.x` posture does not claim haxelib.org publication.
 
+## Release toolchain
+
+The release job installs the same pinned lix Haxe toolchain used by CI before running
+`semantic-release`. This is required because semantic-release runs `scripts/release/package-haxelib.sh`
+from `prepareCmd`, and that packaging script invokes Reflaxe build through `haxe`.
+
+Keep `.github/workflows/release.yml` aligned with the CI package-smoke Haxe setup. `npm ci
+--ignore-scripts` intentionally skips the lix postinstall hook; without explicit `npx lix download`
+and `npx lix use haxe 4.3.7` steps, release packaging can fail when `haxelib` cannot find its Neko
+runtime.
+
 ## Auth
 
 - If `RELEASE_TOKEN` is configured as a GitHub Actions secret, it is used.
