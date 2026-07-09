@@ -9,14 +9,14 @@ pub struct Widget {
 }
 
 impl Widget {
-    pub fn new(value: i32) -> crate::HxRef<crate::demo_domain_widget::Widget> {
-        let self_: crate::HxRef<crate::demo_domain_widget::Widget> =
+    pub fn new(value: i32) -> crate::HxRef<crate::demo::domain::widget::Widget> {
+        let self_: crate::HxRef<crate::demo::domain::widget::Widget> =
             crate::HxRef::new(Widget { value: value });
         return self_;
     }
 
     pub fn bump(self_: &crate::HxRefCell<Widget>) {
-        let __hx_this: crate::HxRef<crate::demo_domain_widget::Widget> = self_.self_ref();
+        let __hx_this: crate::HxRef<crate::demo::domain::widget::Widget> = self_.self_ref();
         {
             let __tmp = ({
                 let __b = __hx_this.borrow();

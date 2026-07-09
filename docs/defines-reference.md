@@ -23,8 +23,9 @@ This page is a practical reference for the most relevant compiler defines.
 - `rust_nested_modules`
   - Emit generated Haxe package/type modules under nested Rust source directories
     (`foo.bar.Baz` -> `src/foo/bar/baz.rs`) instead of one flat `foo_bar_baz.rs` file.
-  - Root alias modules are also emitted for compatibility with current generated
-    `crate::<flat_module>::...` paths while canonical nested path lowering evolves.
+  - Generated references use canonical nested paths such as `crate::foo::bar::baz::Baz`.
+  - Root alias modules are still emitted as a compatibility bridge for handwritten extra Rust or
+    raw snippets that refer to the older `crate::<flat_module>::...` shape.
 
 ## Contracts and semantics
 

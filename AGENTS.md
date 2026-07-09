@@ -217,8 +217,7 @@ Agent policy:
   - For std overrides that need complex backend-specific setup (for example DB driver connection builders),
     prefer moving Rust-heavy constructors into typed extern modules (`std/hxrt/**` + `@:rustExtraSrc`) rather than inline `untyped __rust__` in Haxe methods.
 - Rust module names must avoid keywords (e.g. class `Impl` becomes module `impl_`).
-- Nested module output migration: `-D rust_nested_modules` emits package-shaped Rust source paths and nested `mod` declarations, while preserving root flat alias modules for existing generated `crate::<flat_module>::...` references.
-  Treat those aliases as a compatibility bridge, not the final idiomatic shape; future path lowering should move generated references to canonical nested `crate::foo::bar::baz::Type` paths with focused snapshots.
+- Nested module output migration: `-D rust_nested_modules` emits package-shaped Rust source paths and nested `mod` declarations. Generated references should use canonical nested `crate::foo::bar::baz::Type` paths; root flat alias modules remain only as a compatibility bridge for handwritten extra Rust/raw snippets that still refer to `crate::<flat_module>::...`.
   - Rust module topology gotcha: a package segment can also be a generated file-backed module (`sys.Sys` plus `sys.io.Stdout`, or `demo.Domain` plus `demo.domain.Widget`). In that case, the parent must be declared as `pub mod sys;`/`pub mod demo;`, and the generated `sys.rs`/`demo.rs` file must declare its child modules. Do not inline a file-backed parent module in `main.rs`; Rust will ignore the sibling file and generated paths such as `crate::sys::Sys` will fail.
 - Rust keyword escaping must include reserved keywords like `box` (Rust 2021); keep `RustNaming.KEYWORDS` / extra-src keyword checks in sync.
 - Generics: Rust rejects unused type params on structs; emit a `PhantomData` field (e.g. `__hx_phantom`) when a class has type params not referenced by any instance fields.

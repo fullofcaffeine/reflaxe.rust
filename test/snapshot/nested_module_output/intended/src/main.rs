@@ -46,8 +46,8 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 }
 
 fn main() {
-    crate::demo_domain::Domain::touch();
-    let widget: crate::HxRef<crate::demo_domain_widget::Widget> =
-        crate::demo_domain_widget::Widget::new(41);
-    crate::demo_domain_widget::Widget::bump(&*widget);
+    crate::demo::domain::Domain::touch();
+    let widget: crate::HxRef<crate::demo::domain::widget::Widget> =
+        crate::demo::domain::widget::Widget::new(41);
+    crate::demo::domain::widget::Widget::bump(&*widget);
 }

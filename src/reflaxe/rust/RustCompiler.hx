@@ -2621,7 +2621,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var base = classType.superClass != null ? classType.superClass.t.get() : null;
 			while (base != null) {
 				if (shouldEmitClass(base, false)) {
-					var baseMod = rustModuleNameForClass(base);
+					var baseMod = rustModulePathForClass(base);
 					var baseTrait = rustTypeNameForClass(base) + "Trait";
 					var key = baseMod + "::" + baseTrait;
 					if (!seenBaseUses.exists(key) && baseCtorCallsThisMethods(base)) {
@@ -2835,7 +2835,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				if (!shouldEmitClass(ifaceType, false))
 					continue;
 
-				var ifaceMod = rustModuleNameForClass(ifaceType);
+				var ifaceMod = rustModulePathForClass(ifaceType);
 				var traitPath = "crate::" + ifaceMod + "::" + rustTypeNameForClass(ifaceType);
 				var ifaceTypeParams = ifaceTarget.params != null ? ifaceTarget.params : [];
 				var ifaceTypeArgs = ifaceTypeParams.length > 0 ? ("<"
@@ -2929,7 +2929,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					implLines.push("\t}");
 				}
 				implLines.push("\tfn __hx_type_id(&self) -> u32 {");
-				implLines.push("\t\tcrate::" + rustModuleNameForClass(classType) + "::__HX_TYPE_ID");
+				implLines.push("\t\tcrate::" + rustModulePathForClass(classType) + "::__HX_TYPE_ID");
 				implLines.push("\t}");
 				implLines.push("}");
 				items.push(RRaw(implLines.join("\n")));
@@ -3017,7 +3017,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var enumGenericNames = rustGenericNamesForEnum(enumType);
 		var enumTypeName = rustTypeNameForEnum(enumType);
 		var enumTypeInst = enumGenericNames.length > 0 ? enumTypeName + "<" + enumGenericNames.join(", ") + ">" : enumTypeName;
-		var enumTypePathInst = "crate::" + rustModuleNameForEnum(enumType) + "::" + enumTypeInst;
+		var enumTypePathInst = "crate::" + rustModulePathForEnum(enumType) + "::" + enumTypeInst;
 
 		function boxRecursiveEnumArg(rt:reflaxe.rust.ast.RustAST.RustType):reflaxe.rust.ast.RustAST.RustType {
 			var s = rustTypeToString(rt);
@@ -3502,6 +3502,41 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return RustNaming.snakeIdent(base);
 	}
 
+	/**
+		Returns the Rust module path used in generated references for a Haxe class.
+
+		Why
+		- `rustModuleNameForClass` is a flat compatibility name (`foo_bar_Baz` -> `foo_bar_baz`)
+		  used for legacy filenames, alias modules, and generated identifiers that cannot contain
+		  `::`.
+		- In `-D rust_nested_modules` output, semantic references should follow the physical nested
+		  module tree (`crate::foo::bar::baz::Baz`) so emitted Rust reads like the generated layout.
+
+		What
+		- Non-nested output keeps the historical flat module path.
+		- Nested output returns package-shaped Rust module segments joined with `::`.
+
+		How
+		- Use this helper for `crate::<module>::Type` references, method paths, trait paths, and type
+		  signatures.
+		- Keep using `rustModuleNameForClass` for file/alias names or any generated Rust identifier.
+	**/
+	function rustModulePathForClass(classType:ClassType):String {
+		return nestedModuleOutputEnabled() ? rustModuleSegmentsForClass(classType).join("::") : rustModuleNameForClass(classType);
+	}
+
+	/**
+		Returns the Rust module path used in generated references for a Haxe enum.
+
+		Why / What / How
+		- Mirrors `rustModulePathForClass` for enum modules so recursive enum types, variant paths,
+		  and ordinary enum type references use canonical nested paths when `rust_nested_modules`
+		  is enabled, while flat compatibility names remain available for aliases and filenames.
+	**/
+	function rustModulePathForEnum(enumType:EnumType):String {
+		return nestedModuleOutputEnabled() ? rustModuleSegmentsForEnum(enumType).join("::") : rustModuleNameForEnum(enumType);
+	}
+
 	inline function nestedModuleOutputEnabled():Bool {
 		return Context.defined("rust_nested_modules");
 	}
@@ -3514,8 +3549,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		  `foo_bar.rs`). That keeps path rewriting simple but produces generated crates that are hard
 		  to review against idiomatic Rust projects.
 		- `-D rust_nested_modules` is the migration bridge: files are emitted under package-shaped
-		  directories while root alias modules preserve existing generated `crate::<flat_module>::...`
-		  references until path lowering can be fully canonicalized.
+		  directories. Generated references use `rustModulePathFor*` canonical nested paths, while
+		  root alias modules still preserve `crate::<flat_module>::...` compatibility for handwritten
+		  extra Rust modules or raw snippets that were authored against the old shape.
 
 		How
 		- Package segments and type filenames are snake-cased independently so Rust keywords and Haxe
@@ -3764,7 +3800,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function staticVarHelperPath(owner:ClassType, helperName:String):String {
 		if (mainClassKey != null && classKey(owner) == mainClassKey)
 			return "crate::" + helperName;
-		return "crate::" + rustModuleNameForClass(owner) + "::" + helperName;
+		return "crate::" + rustModulePathForClass(owner) + "::" + helperName;
 	}
 
 	/**
@@ -4140,7 +4176,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		for (spec in tests) {
-			var methodPath = "crate::" + rustModuleNameForClass(spec.classType) + "::" + rustTypeNameForClass(spec.classType) + "::"
+			var methodPath = "crate::" + rustModulePathForClass(spec.classType) + "::" + rustTypeNameForClass(spec.classType) + "::"
 				+ rustMethodName(spec.classType, spec.field);
 
 			lines.push("\t#[test]");
@@ -5065,7 +5101,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								case _:
 							}
 
-							var modName = rustModuleNameForClass(cls);
+							var modName = rustModulePathForClass(cls);
 							var typeName = rustTypeNameForClass(cls);
 							var typeParams = params != null
 								&& params.length > 0 ? ("::<" + [for (p in params) rustTypeToString(toRustType(p, pos))].join(", ") + ">") : "";
@@ -5231,7 +5267,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			#end
 		}
 		var args:Array<reflaxe.rust.ast.RustAST.RustFnArg> = [];
-		var modName = rustModuleNameForClass(classType);
+		var modName = rustModulePathForClass(classType);
 		var rustSelfType = rustTypeNameForClass(classType);
 		var selfRefTy = RPath("crate::HxRef<crate::" + modName + "::" + rustClassTypeInst(classType) + ">");
 
@@ -5815,7 +5851,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				var innerBody = compileFunctionBody(f.expr, asyncInnerRet, true);
 				var prefix:Array<RustStmt> = [];
 				if (selfName == "self_") {
-					var modName = rustModuleNameForClass(classType);
+					var modName = rustModulePathForClass(classType);
 					var thisTy = RPath("crate::HxRef<crate::" + modName + "::" + rustClassTypeInst(classType) + ">");
 					prefix.push(RLet("__hx_this", false, thisTy, ECall(EField(EPath(selfName), "self_ref"), [])));
 				}
@@ -5826,7 +5862,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			} else {
 				body = compileFunctionBody(f.expr, f.ret, true);
 				if (selfName == "self_") {
-					var modName = rustModuleNameForClass(classType);
+					var modName = rustModulePathForClass(classType);
 					var thisTy = RPath("crate::HxRef<crate::" + modName + "::" + rustClassTypeInst(classType) + ">");
 					body.stmts.unshift(RLet("__hx_this", false, thisTy, ECall(EField(EPath(selfName), "self_ref"), [])));
 				}
@@ -6072,7 +6108,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				currentThisIdent = "__hx_this";
 			body = compileFunctionBody(bodyExpr, sig.ret, true);
 			if (selfName == "self_") {
-				var modName = rustModuleNameForClass(classType);
+				var modName = rustModulePathForClass(classType);
 				var thisTy = RPath("crate::HxRef<crate::" + modName + "::" + rustClassTypeInst(classType) + ">");
 				body.stmts.unshift(RLet("__hx_this", false, thisTy, ECall(EField(EPath(selfName), "self_ref"), [])));
 			}
@@ -9082,7 +9118,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					} else if (cls != null && cls.isExtern) {
 						cls.name;
 					} else if (cls != null) {
-						"crate::" + rustModuleNameForClass(cls) + "::" + rustTypeNameForClass(cls);
+						"crate::" + rustModulePathForClass(cls) + "::" + rustTypeNameForClass(cls);
 					} else {
 						"todo!()";
 					}
@@ -9715,7 +9751,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		var candidateArms:Array<RustMatchArm> = [];
 		for (cls in candidates) {
-			var concreteRustTy = RPath("crate::HxRef<crate::" + rustModuleNameForClass(cls) + "::" + rustTypeNameForClass(cls) + ">");
+			var concreteRustTy = RPath("crate::HxRef<crate::" + rustModulePathForClass(cls) + "::" + rustTypeNameForClass(cls) + ">");
 			if (!rustTypeIsHxRef(concreteRustTy))
 				continue;
 
@@ -11065,7 +11101,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					} else if (isInterfaceType(valueExpr.t) || isPolymorphicClassType(valueExpr.t)) {
 						ECall(EField(EPath(recvName), rustMethodName(actualCls, actualMethod)), callArgs);
 					} else {
-						var modName = rustModuleNameForClass(actualCls);
+						var modName = rustModulePathForClass(actualCls);
 						var path = "crate::" + modName + "::" + rustTypeNameForClass(actualCls) + "::" + rustMethodName(actualCls, actualMethod);
 						ECall(EPath(path), [EUnary("&", EUnary("*", EPath(recvName)))].concat(callArgs));
 					};
@@ -11266,7 +11302,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case "haxe.io.Error":
 				"hxrt::io::Error::" + variant;
 			case _:
-				"crate::" + rustModuleNameForEnum(en) + "::" + rustTypeNameForEnum(en) + "::" + variant;
+				"crate::" + rustModulePathForEnum(en) + "::" + rustTypeNameForEnum(en) + "::" + variant;
 		}
 	}
 
@@ -13705,7 +13741,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					if (mainClassKey != null && currentClassKey != null && key == currentClassKey && key == mainClassKey) {
 						EPath(rustMethodName(cls, cf));
 					} else {
-						var modName = rustModuleNameForClass(cls);
+						var modName = rustModulePathForClass(cls);
 						EPath("crate::" + modName + "::" + rustTypeNameForClass(cls) + "::" + rustMethodName(cls, cf));
 					}
 				}
@@ -13876,7 +13912,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			ECall(EField(EPath(recvName), rustMethodName(owner, cf)), callArgs);
 		} else {
 			var recvOwner = if (isThisExpr(obj) && currentClassType != null) currentClassType else owner;
-			var modName = rustModuleNameForClass(recvOwner);
+			var modName = rustModulePathForClass(recvOwner);
 			var path = "crate::" + modName + "::" + rustTypeNameForClass(recvOwner) + "::" + rustMethodName(recvOwner, cf);
 			ECall(EPath(path), [EUnary("&", EUnary("*", EPath(recvName)))].concat(callArgs));
 		};
@@ -13955,7 +13991,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								return ECall(EField(compileExpr(obj), rustMethodName(recvCls, getter)), []);
 							}
 
-							var modName = rustModuleNameForClass(recvCls);
+							var modName = rustModulePathForClass(recvCls);
 							var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, getter);
 							return ECall(EPath(path), [EUnary("&", EUnary("*", compileExpr(obj)))]);
 						}
@@ -14110,7 +14146,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								return ECall(EField(compileExpr(obj), rustMethodName(recvCls, setter)), [rhsCompiled]);
 							}
 
-							var modName = rustModuleNameForClass(recvCls);
+							var modName = rustModulePathForClass(recvCls);
 							var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, setter);
 							return ECall(EPath(path), [EUnary("&", EUnary("*", compileExpr(obj))), rhsCompiled]);
 						}
@@ -14226,14 +14262,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					else if (isMainClass(cls))
 						rustTypeNameForClass(cls)
 					else
-						("crate::" + rustModuleNameForClass(cls) + "::" + rustTypeNameForClass(cls));
+						("crate::" + rustModulePathForClass(cls) + "::" + rustTypeNameForClass(cls));
 				}
 			case _: null;
 		}
 	}
 
 	function classNameFromClass(cls:ClassType):String {
-		return isMainClass(cls) ? rustTypeNameForClass(cls) : ("crate::" + rustModuleNameForClass(cls) + "::" + rustTypeNameForClass(cls));
+		return isMainClass(cls) ? rustTypeNameForClass(cls) : ("crate::" + rustModulePathForClass(cls) + "::" + rustTypeNameForClass(cls));
 	}
 
 	function isExternInstanceType(t:Type):Bool {
@@ -14609,7 +14645,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function emitClassTraitImplForSelf(classType:ClassType, funcFields:Array<ClassFuncData>):String {
-		var modName = rustModuleNameForClass(classType);
+		var modName = rustModulePathForClass(classType);
 		var traitPathBase = "crate::" + modName + "::" + rustTypeNameForClass(classType) + "Trait";
 		var rustSelfType = rustTypeNameForClass(classType);
 		var rustSelfInst = rustClassTypeInst(classType);
@@ -14679,7 +14715,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function emitBaseTraitImplForSubclass(baseType:ClassType, subType:ClassType, subFuncFields:Array<ClassFuncData>):String {
-		var baseMod = rustModuleNameForClass(baseType);
+		var baseMod = rustModulePathForClass(baseType);
 		var baseTraitPathBase = "crate::" + baseMod + "::" + rustTypeNameForClass(baseType) + "Trait";
 		var rustSubType = rustTypeNameForClass(subType);
 		var rustSubInst = rustClassTypeInst(subType);
@@ -14872,7 +14908,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 
-		var subMod = rustModuleNameForClass(subType);
+		var subMod = rustModulePathForClass(subType);
 		lines.push("\tfn __hx_type_id(&self) -> u32 {");
 		lines.push("\t\tcrate::" + subMod + "::__HX_TYPE_ID");
 		lines.push("\t}");
@@ -15998,7 +16034,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 												if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
 													return ECall(EField(recvExpr, rustMethodName(recvCls, getter)), []);
 												}
-												var modName = rustModuleNameForClass(recvCls);
+												var modName = rustModulePathForClass(recvCls);
 												var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, getter);
 												return ECall(EPath(path), [EUnary("&", recvExpr)]);
 											}
@@ -16013,7 +16049,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 												if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
 													return ECall(EField(recvExpr, rustMethodName(recvCls, setter)), [value]);
 												}
-												var modName = rustModuleNameForClass(recvCls);
+												var modName = rustModulePathForClass(recvCls);
 												var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, setter);
 												return ECall(EPath(path), [EUnary("&", recvExpr), value]);
 											}
@@ -16235,7 +16271,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 											if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
 												return ECall(EField(recvExpr, rustMethodName(recvCls, getter)), []);
 											}
-											var modName = rustModuleNameForClass(recvCls);
+											var modName = rustModulePathForClass(recvCls);
 											var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, getter);
 											return ECall(EPath(path), [EUnary("&", recvExpr)]);
 										}
@@ -16254,7 +16290,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 											if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
 												return ECall(EField(recvExpr, rustMethodName(recvCls, setter)), [value]);
 											}
-											var modName = rustModuleNameForClass(recvCls);
+											var modName = rustModulePathForClass(recvCls);
 											var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, setter);
 											return ECall(EPath(path), [EUnary("&", recvExpr), value]);
 										}
@@ -16468,14 +16504,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					} else {
 						var typeParams = params != null
 							&& params.length > 0 ? ("<" + [for (p in params) rustTypeToString(toRustType(p, pos))].join(", ") + ">") : "";
-						if (cls.isInterface) {var modName = rustModuleNameForClass(cls);
+						if (cls.isInterface) {var modName = rustModulePathForClass(cls);
 							"dyn crate::"
 							+ modName
 							+ "::"
 							+ rustTypeNameForClass(cls)
 							+ typeParams
 							+ " + Send + Sync";
-						} else if (classHasSubclasses(cls)) {var modName = rustModuleNameForClass(cls);
+						} else if (classHasSubclasses(cls)) {var modName = rustModulePathForClass(cls);
 							"dyn crate::"
 							+ modName
 							+ "::"
@@ -16818,7 +16854,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					} else if (key == "haxe.io.Error") {
 						RPath("hxrt::io::Error");
 					} else {
-						var modName = rustModuleNameForEnum(en);
+						var modName = rustModulePathForEnum(en);
 						var typeParams = params != null
 							&& params.length > 0 ? ("<" + [for (p in params) rustTypeToString(toRustType(p, pos))].join(", ") + ">") : "";
 						RPath("crate::" + modName + "::" + rustTypeNameForEnum(en) + typeParams);
@@ -16860,7 +16896,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					} else if (classHasSubclasses(cls)) {
 						RPath(rcBasePath() + "<" + traitObjectRustInnerPath(t, pos) + ">");
 					} else {
-						var modName = rustModuleNameForClass(cls);
+						var modName = rustModulePathForClass(cls);
 						RPath("crate::HxRef<crate::" + modName + "::" + rustTypeNameForClass(cls) + typeParams + ">");
 					}
 				}
