@@ -32,7 +32,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Portable near-native guidance](portable-near-native-guidance.md): when portable can lower to native Rust representations/cost, when `metal` is still the right contract, and where `reflaxe.std` fits.
 - [Portable vs metal authoring](portable-vs-metal-authoring.md): concise source-style guidance for performance-oriented users choosing between portable and metal.
 - [Consumer runtime benchmark corpus](consumer-runtime-benchmark-corpus.md): product-neutral benchmark candidates for DTO/codecs, JSON/schema validation, process/tool shims, state transitions, async/runtime surfaces, and no-runtime lower-bound signals.
-- [Ongoing quality milestones](milestones-oo5.md): closed `oo5` quality baseline and current continuation guidance for compiler hygiene, Rust-first runtime/stdlib parity, and CI security guardrails.
+- [Ongoing quality milestones](milestones-oo5.md): closed `oo5` quality baseline, closed continuation evidence, and fresh-issue guidance for future compiler hygiene, Rust-first runtime/stdlib parity, and CI security guardrail work.
 - [Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md): compiler/API plan for making `metal` a Rust-native authoring surface through Haxe constructs, typed metadata/macros, and constrained DSLs.
 - [Metal systems facades roadmap](metal-systems-facades-roadmap.md): active plan for Rust-native file/process/socket/TLS/DB facades and no-hxrt proof.
 - [Metal typed DSL authority](metal-typed-dsl-authority.md): rules for admitting typed DSLs and containing `rust.metal.Code`.
