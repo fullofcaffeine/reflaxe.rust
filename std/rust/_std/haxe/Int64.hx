@@ -25,7 +25,7 @@ using haxe.Int64;
  *   removed. That keeps semantics stable and makes future upstream diff reviews straightforward.
  * - `toString()` stays on the abstract and the backing class forwards to it so `Std.string`,
  *   `trace`, and direct string interpolation all share the same decimal formatting path.
- * - Parsing and float conversion live in `std/haxe/Int64Helper.cross.hx`, matching upstream
+ * - Parsing and float conversion live in `std/rust/_std/haxe/Int64Helper.hx`, matching upstream
  *   structure and keeping the core arithmetic logic here focused.
  *
  * Design notes:

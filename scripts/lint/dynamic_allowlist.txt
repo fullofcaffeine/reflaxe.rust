@@ -5,11 +5,11 @@
 
 # Rust compiler dynamic bridge points (line-scoped; see docs/dynamic-boundaries.md)
 src/reflaxe/rust/DynamicBoundary.hx:22
-src/reflaxe/rust/RustCompiler.hx:1439
-src/reflaxe/rust/RustCompiler.hx:1440
-src/reflaxe/rust/RustCompiler.hx:1447
-src/reflaxe/rust/RustCompiler.hx:1450
-src/reflaxe/rust/RustCompiler.hx:1458
+src/reflaxe/rust/RustCompiler.hx:1461
+src/reflaxe/rust/RustCompiler.hx:1462
+src/reflaxe/rust/RustCompiler.hx:1469
+src/reflaxe/rust/RustCompiler.hx:1472
+src/reflaxe/rust/RustCompiler.hx:1480
 src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:103
 src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:106
 src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:115
@@ -21,21 +21,21 @@ src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:144
 src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:147
 src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:148
 src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:212
-src/reflaxe/rust/CompilerBootstrap.hx:62
+src/reflaxe/rust/CompilerBootstrap.hx:63
 src/reflaxe/rust/CompilerInit.hx:50
-std/haxe/BoundaryTypes.cross.hx:27
-std/haxe/BoundaryTypes.cross.hx:29
-std/haxe/BoundaryTypes.cross.hx:31
-std/haxe/BoundaryTypes.cross.hx:32
-std/haxe/BoundaryTypes.cross.hx:33
-std/haxe/BoundaryTypes.cross.hx:34
-std/haxe/BoundaryTypes.cross.hx:35
-std/haxe/BoundaryTypes.cross.hx:36
-std/haxe/BoundaryTypes.cross.hx:37
-std/haxe/Int64.cross.hx:59
-std/haxe/Int64.cross.hx:63
-std/sys/Http.cross.hx:370
-std/sys/Http.cross.hx:373
+std/rust/_std/haxe/BoundaryTypes.hx:27
+std/rust/_std/haxe/BoundaryTypes.hx:29
+std/rust/_std/haxe/BoundaryTypes.hx:31
+std/rust/_std/haxe/BoundaryTypes.hx:32
+std/rust/_std/haxe/BoundaryTypes.hx:33
+std/rust/_std/haxe/BoundaryTypes.hx:34
+std/rust/_std/haxe/BoundaryTypes.hx:35
+std/rust/_std/haxe/BoundaryTypes.hx:36
+std/rust/_std/haxe/BoundaryTypes.hx:37
+std/rust/_std/haxe/Int64.hx:59
+std/rust/_std/haxe/Int64.hx:63
+std/rust/_std/sys/Http.hx:370
+std/rust/_std/sys/Http.hx:373
 test/perf/json/Main.hx # FILE_SCOPE_JUSTIFICATION: Perf fixture intentionally round-trips through haxe.Json.parse Dynamic values to measure JSON runtime overhead.
 test/semantic_diff/exception_dynamic_payload/Main.hx # FILE_SCOPE_JUSTIFICATION: Semantic diff fixture intentionally throws and catches Dynamic payloads to validate exception boundary behavior.
 test/semantic_diff/exceptions_typed_dynamic/Main.hx # FILE_SCOPE_JUSTIFICATION: Semantic diff fixture intentionally exercises typed and Dynamic exception catch paths.

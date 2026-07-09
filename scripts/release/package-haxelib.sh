@@ -11,8 +11,14 @@ if ! command -v zip >/dev/null 2>&1; then
   exit 2
 fi
 
-if ! command -v node >/dev/null 2>&1; then
-  echo "error: node not found in PATH" >&2
+if ! command -v haxe >/dev/null 2>&1; then
+  echo "error: haxe not found in PATH" >&2
+  exit 2
+fi
+
+reflaxe_run="$root_dir/vendor/reflaxe/Run.hx"
+if [ ! -f "$reflaxe_run" ]; then
+  echo "error: vendored Reflaxe build runner missing: vendor/reflaxe/Run.hx" >&2
   exit 2
 fi
 
@@ -23,8 +29,9 @@ tmp="$(mktemp -d "${TMPDIR:-/tmp}/reflaxe.rust-haxelib.XXXXXX")"
 cleanup() { rm -rf "$tmp"; }
 trap cleanup EXIT
 
-pkg_dir="$tmp/package"
-mkdir -p "$pkg_dir"
+work_dir="$tmp/work/reflaxe.rust"
+build_dir="$work_dir/_Build"
+mkdir -p "$work_dir"
 
 log() {
   echo "[package] $*"
@@ -77,42 +84,53 @@ copy_tree_content() {
   done < <(find "$from" -type f -print0)
 }
 
-copy_file_required() {
+copy_file_required_to_work() {
   local rel="$1"
   local src="$root_dir/$rel"
   if [ ! -f "$src" ]; then
     echo "[package] error: required file missing: $rel" >&2
     exit 2
   fi
-  mkdir -p "$pkg_dir/$(dirname "$rel")"
-  cp "$src" "$pkg_dir/$rel"
+  mkdir -p "$work_dir/$(dirname "$rel")"
+  cp "$src" "$work_dir/$rel"
   log "Copying file: $rel"
 }
 
-copy_file_optional() {
+copy_file_optional_to_work() {
   local rel="$1"
   local src="$root_dir/$rel"
   if [ ! -f "$src" ]; then
     return
   fi
-  mkdir -p "$pkg_dir/$(dirname "$rel")"
-  cp "$src" "$pkg_dir/$rel"
+  mkdir -p "$work_dir/$(dirname "$rel")"
+  cp "$src" "$work_dir/$rel"
   log "Copying file: $rel"
 }
 
-copy_dir_required() {
+copy_dir_required_to_work() {
   local rel="$1"
   local src="$root_dir/$rel"
   if [ ! -d "$src" ]; then
     echo "[package] error: required directory missing: $rel" >&2
     exit 2
   fi
-  copy_tree_content "$src" "$pkg_dir/$rel"
+  copy_tree_content "$src" "$work_dir/$rel"
+  log "Copying directory: $rel/"
+}
+
+copy_dir_required_to_build() {
+  local rel="$1"
+  local src="$root_dir/$rel"
+  if [ ! -d "$src" ]; then
+    echo "[package] error: required directory missing: $rel" >&2
+    exit 2
+  fi
+  copy_tree_content "$src" "$build_dir/$rel"
   log "Copying directory: $rel/"
 }
 
 prune_runtime_dev_artifacts() {
-  local hxrt_dir="$pkg_dir/runtime/hxrt"
+  local hxrt_dir="$build_dir/runtime/hxrt"
   if [ ! -d "$hxrt_dir" ]; then
     return
   fi
@@ -124,77 +142,25 @@ prune_runtime_dev_artifacts() {
   done
 }
 
-lib_meta_file="$tmp/lib-meta.txt"
-(cd "$root_dir" && node <<'NODE'
-const fs = require("fs");
-const data = JSON.parse(fs.readFileSync("haxelib.json", "utf8"));
-if (!data.classPath || typeof data.classPath !== "string") {
-  console.error('error: "classPath" must be defined in haxelib.json');
-  process.exit(2);
-}
-console.log(data.classPath);
-const stdPaths = (data.reflaxe && Array.isArray(data.reflaxe.stdPaths)) ? data.reflaxe.stdPaths : [];
-for (const p of stdPaths) console.log(p);
-NODE
-) > "$lib_meta_file"
+copy_dir_required_to_work "src"
+copy_dir_required_to_work "std"
+copy_file_required_to_work "haxelib.json"
+copy_file_required_to_work "extraParams.hxml"
+copy_file_required_to_work "LICENSE"
+copy_file_required_to_work "README.md"
+copy_file_optional_to_work "Run.hx"
+copy_file_optional_to_work "run.n"
 
-class_path=""
-std_paths=()
-line_index=0
-while IFS= read -r line || [ -n "$line" ]; do
-  if [ "$line_index" -eq 0 ]; then
-    class_path="$line"
-  else
-    std_paths+=("$line")
-  fi
-  line_index=$((line_index + 1))
-done < "$lib_meta_file"
-
-if [ -z "$class_path" ]; then
-  echo "[package] error: failed to parse haxelib.json metadata" >&2
-  exit 2
-fi
-class_path_src="$root_dir/$class_path"
-class_path_dest="$pkg_dir/$class_path"
-
-copy_tree_content "$class_path_src" "$class_path_dest"
-log "Copying class path: $(strip_trailing_slashes "$class_path")/"
-
-for std_path in "${std_paths[@]}"; do
-  [ -z "$std_path" ] && continue
-  std_src="$root_dir/$std_path"
-  std_trimmed="$(strip_trailing_slashes "$std_path")"
-  replace_ext=""
-  if [[ "$std_trimmed" == *_std ]]; then
-    replace_ext=".cross.hx"
-  fi
-  copy_tree_content "$std_src" "$class_path_dest" "$replace_ext"
-  log "Copying std path into class path: ${std_trimmed}/"
-done
+(
+  cd "$work_dir"
+  log "Running Reflaxe build into _Build/"
+  haxe -cp "$root_dir/vendor/reflaxe" --run Run build _Build --deleteOldFolder "$work_dir"
+)
 
 # Target-specific runtime/compiler assets not covered by generic Reflaxe build flow.
-copy_dir_required "runtime"
+copy_dir_required_to_build "runtime"
 prune_runtime_dev_artifacts
-copy_dir_required "vendor"
+copy_dir_required_to_build "vendor"
 
-# Reflaxe build parity files.
-copy_file_required "LICENSE"
-copy_file_required "README.md"
-copy_file_required "extraParams.hxml"
-copy_file_optional "Run.hx"
-copy_file_optional "run.n"
-
-# Copy and sanitize haxelib.json.
-node - "$root_dir/haxelib.json" "$pkg_dir/haxelib.json" <<'NODE'
-const fs = require("fs");
-const [src, dest] = process.argv.slice(2);
-const data = JSON.parse(fs.readFileSync(src, "utf8"));
-if (Object.prototype.hasOwnProperty.call(data, "reflaxe")) {
-  delete data.reflaxe;
-}
-fs.writeFileSync(dest, JSON.stringify(data, null, "\t") + "\n");
-NODE
-log "Copying and sanitizing haxelib.json"
-
-(cd "$pkg_dir" && zip -r -X "$out_abs" . >/dev/null)
+(cd "$build_dir" && zip -r -X "$out_abs" . >/dev/null)
 log "wrote: $out"

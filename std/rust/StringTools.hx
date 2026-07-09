@@ -19,7 +19,7 @@ package rust;
  *   - `rust_string_tools_nullable.rs` for `hxrt::string::HxString`.
  * - The module names intentionally include the `rust_` prefix so this native helper
  *   cannot collide with the generated std `StringTools` module (`crate::string_tools`)
- *   emitted from `std/StringTools.cross.hx`.
+ *   emitted from `std/rust/_std/StringTools.hx`.
  * - Callers stay typed (`Ref<String>` + `Str`) with no raw injection fallback.
  */
 #if rust_string_nullable

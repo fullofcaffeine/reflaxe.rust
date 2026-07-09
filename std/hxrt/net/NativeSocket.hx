@@ -15,7 +15,7 @@ import rust.Ref;
 	  improves metal fallback diagnostics.
 
 	What
-	- Exposes TCP socket lifecycle and polling helpers used by `std/sys/net/Socket.cross.hx`.
+	- Exposes TCP socket lifecycle and polling helpers used by `std/rust/_std/sys/net/Socket.hx`.
 	- Returns plain typed values (`Int`, `Bool`, `Array<Array<Int>>`) so callers immediately return
 	  to normal typed Haxe code.
 

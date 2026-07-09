@@ -111,7 +111,9 @@ npm run test:codex-hxrust
 
 Use `npm run test:codex-hxrust` locally after important complex compiler/runtime/std/profile
 milestones when the sibling app checkout is available. This keeps the weekly killer-app signal from
-being the first time a broad generated-Rust regression is seen.
+being the first time a broad generated-Rust regression is seen. Source-checkout sibling apps should
+mirror `reflaxe.rust`'s `haxe_libraries/reflaxe.rust.hxml` classpaths, including `std/rust/_std`,
+so upstream-colliding std modules are visible before Haxe typing starts.
 
 ## Related docs
 

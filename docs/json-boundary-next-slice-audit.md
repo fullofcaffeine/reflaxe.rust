@@ -30,7 +30,7 @@ The current evidence points to three distinct paths:
      replacer-before-descent ordering are all part of the contract.
    - It should not be optimized until a replacer-specific benchmark or attribution fixture exists.
 3. typed `parseValue` conversion
-   - `std/haxe/Json.cross.hx` converts a parsed `Dynamic` into `haxe.json.Value` by calling native
+   - `std/rust/_std/haxe/Json.hx` converts a parsed `Dynamic` into `haxe.json.Value` by calling native
      JSON introspection helpers.
    - This used to call read-only helpers by value, so kind/accessor checks cloned the same
      `Dynamic` repeatedly while walking objects and arrays.

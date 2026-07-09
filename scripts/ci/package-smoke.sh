@@ -69,7 +69,7 @@ zip_abs="$root_dir/$zip_rel"
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/reflaxe-rust-package-smoke.XXXXXX")"
 pkg_dir="$tmp_root/package"
 app_dir="$tmp_root/app"
-dev_app_dir="$tmp_root/app_dev"
+source_app_dir="$tmp_root/app_source"
 
 log "build package zip"
 rm -f "$zip_abs"
@@ -80,34 +80,8 @@ if [[ ! -f "$zip_abs" ]]; then
   exit 2
 fi
 
-mkdir -p "$pkg_dir" "$app_dir" "$dev_app_dir"
+mkdir -p "$pkg_dir" "$app_dir" "$source_app_dir"
 unzip -q "$zip_abs" -d "$pkg_dir"
-
-verify_dev_std_mirror() {
-  local rel
-  for rel in \
-    ArrayTools.hx \
-    Date.cross.hx \
-    Lambda.cross.hx \
-    StringBuf.cross.hx \
-    StringTools.cross.hx \
-    Sys.cross.hx \
-    SysTypes.cross.hx \
-    haxe \
-    hxrt \
-    rust \
-    sys
-  do
-    if [[ ! -L "$root_dir/src/$rel" ]]; then
-      echo "error: dev haxelib std mirror is missing symlink: src/$rel" >&2
-      exit 2
-    fi
-    if [[ ! -e "$root_dir/src/$rel" ]]; then
-      echo "error: dev haxelib std mirror symlink is broken: src/$rel" >&2
-      exit 2
-    fi
-  done
-}
 
 write_smoke_main() {
   local dest_dir="$1"
@@ -116,14 +90,17 @@ class Main {
   static function main() {
     var list = new haxe.ds.List<Int>();
     list.add(1);
+    try {
+      throw new haxe.Exception("package smoke");
+    } catch (e:haxe.Exception) {
+      trace(e.message);
+    }
+    Sys.println("package smoke");
     trace(list.length);
   }
 }
 HX
 }
-
-log "verify dev haxelib std mirror"
-verify_dev_std_mirror
 
 log "verify package layout"
 [[ -f "$pkg_dir/haxelib.json" ]]
@@ -133,6 +110,8 @@ log "verify package layout"
 [[ -f "$pkg_dir/src/reflaxe/rust/CompilerInit.hx" ]]
 [[ -f "$pkg_dir/src/haxe/Exception.cross.hx" ]]
 [[ -f "$pkg_dir/src/haxe/ds/List.cross.hx" ]]
+[[ -f "$pkg_dir/src/rust/Option.hx" ]]
+[[ ! -d "$pkg_dir/src/rust/_std" ]]
 
 if [[ -d "$pkg_dir/std" ]]; then
   echo "error: package unexpectedly contains top-level std/ (std paths should be flattened into src/)" >&2
@@ -185,6 +164,15 @@ assert_emitted_std_modules() {
   fi
 }
 
+log "compile source layout via repo haxe_libraries"
+write_smoke_main "$source_app_dir"
+(
+  cd "$root_dir"
+  haxe -cp "$source_app_dir" -lib reflaxe.rust -main Main -D rust_output="$source_app_dir/out_source" -D rust_no_build
+)
+
+assert_emitted_std_modules "$source_app_dir/out_source"
+
 (
   cd "$app_dir"
   haxelib newrepo >/dev/null
@@ -198,18 +186,8 @@ if [[ -z "${CARGO_TARGET_DIR:-}" ]]; then
   export CARGO_TARGET_DIR="$root_dir/.cache/package-smoke-target"
 fi
 
-log "compile via dev haxelib checkout"
-write_smoke_main "$dev_app_dir"
 (
-  cd "$dev_app_dir"
-  haxelib newrepo >/dev/null
-  haxelib dev reflaxe.rust "$root_dir" >/dev/null
-  haxe -cp . -lib reflaxe.rust -main Main -D rust_output=out_dev -D rust_no_build
-)
-
-assert_emitted_std_modules "$dev_app_dir/out_dev"
-(
-  cd "$dev_app_dir/out_dev"
+  cd "$source_app_dir/out_source"
   cargo build -q
 )
 

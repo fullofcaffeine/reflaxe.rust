@@ -45,9 +45,14 @@ Current Rust-local posture:
 
 ## Override model
 
-- Upstream-colliding std overrides live under `std/**` and use `.cross.hx` suffixes.
-- `.cross.hx` prevents accidental leakage into non-target eval/macro contexts while preserving
-  packaged-target behavior.
+- Upstream-colliding Rust std override sources live under `std/rust/_std/**/*.hx`.
+- Reflaxe build turns those source files into packaged `src/**/*.cross.hx` files, preserving
+  target-conditional packaged behavior without checking generated package mirrors into source.
+- Source checkout tests/examples must put `std/rust/_std` on the initial Haxe classpath. Late macro
+  injection is not a substitute because upstream-colliding modules can be typed before target init.
+- Compiler policies that need to distinguish framework std/support code from user code should use
+  Haxe/Reflaxe typed module metadata for module identity and filesystem roots only for source
+  ownership.
 
 ## Provenance governance
 
@@ -70,7 +75,7 @@ Tracked artifacts:
 - `test/upstream_std_modules_tier2_extras.txt`
   - Tier2 extras list merged with Tier1 to deterministically produce `test/upstream_std_modules_tier2.txt`.
 - `docs/stdlib-provenance-ledger.json`
-  - Ledger for all tracked `std/**/*.cross.hx` files.
+  - Ledger for all tracked `std/rust/_std/**/*.hx` source override files.
   - Records whether each file is an upstream sync or a repo-authored override.
 - `family/family_std_pin.json`
   - Pin file for the in-repo `reflaxe.family.std` bootstrap snapshot consumed by this repo.
@@ -95,7 +100,7 @@ CI/guard scripts:
   - Enforces `vendor/haxe/**` remains untracked.
   - Restricts checked-in std override file types under `std/`.
 - `scripts/ci/stdlib-provenance-ledger-check.js`
-  - Enforces ledger coverage and stale-entry detection for tracked `.cross.hx` files.
+  - Enforces ledger coverage and stale-entry detection for tracked `_std` source override files.
   - Enforces Tier2 upstream sweep coverage for every ledger-derived import module.
   - Requires explicit `tier2SweepExcludeReason` on ledger entries that intentionally do not
     map to importable upstream modules (for example boundary alias modules).

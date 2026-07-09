@@ -4,7 +4,7 @@ package hxrt.string;
 	Typed bindings for `hxrt::string` helper functions.
 
 	Why
-	- `StringTools.cross.hx` needs a few runtime-specialized helpers (`hex`, `fastCodeAt`) that are
+	- `std/rust/_std/StringTools.hx` needs a few runtime-specialized helpers (`hex`, `fastCodeAt`) that are
 	  easier to implement in Rust than in pure Haxe while preserving exact behavior.
 	- Exposing these as typed extern calls keeps std overrides beginner-friendly and avoids raw
 	  `untyped __rust__` snippets in framework code.

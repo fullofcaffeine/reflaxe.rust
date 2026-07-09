@@ -90,6 +90,9 @@ Agent policy:
 
 - Keep the pipeline **AST-first**: Builder → Transformer passes → Printer (avoid string-gen except at the printer).
 - Prefer typed analysis + passes over regex/string heuristics.
+- Framework-first rule: before adding local helpers for concepts a framework already models (module identity, source ownership, build layout, type usage,
+  output registration, metadata extraction), check and use the framework/Haxe typed APIs first. Only add a local adapter for the missing boundary,
+  keep it narrow, and document why the framework primitive is insufficient there.
 - Compile-time-first lowering rule: when typed Haxe information gives a closed answer, encode that answer in Rust AST/lowering instead of making generated code ask `hxrt` at runtime. If an implementation idea starts with a new runtime function, first write down which source/typed information is unavailable to the compiler; without that proof, fix lowering, planner, analysis, or printing instead.
 - Architecture policy: when warnings/regressions come from emitted Rust shape (lowering/printer artifacts),
   fix the compiler pass/lowering logic instead of relying on style-level source workarounds (for example rewriting app code to avoid explicit `return` in lambdas).
@@ -105,7 +108,7 @@ Agent policy:
   Prefer typed fields/enums/interfaces; if an upstream/runtime boundary forces `Reflect` or `Any`, keep it tightly scoped and convert back to typed data immediately.
 - Compatibility policy (stable releases): avoid silent breakage.
   For intentional breaking changes, require explicit migration notes in docs and linked Beads issues.
-- For unavoidable stdlib API boundaries, prefer a descriptive `typedef` alias module (for example `*Types.cross.hx`)
+- For unavoidable stdlib API boundaries, prefer a descriptive `typedef` alias module (for example `*Types.hx` under `std/rust/_std`)
   so raw `Dynamic` is centralized and documented instead of scattered across implementation files.
 - Path privacy policy: never disclose machine-specific absolute local paths (for example `<home>/...`).
   Always use repository-relative paths; for sibling repos, use relative references like `../haxe.elixir.reference`.
@@ -229,15 +232,25 @@ Agent policy:
   - Upstream Haxe std files (the default `.../haxe/versions/<ver>/std/`) are *typed* but **not emitted** by default.
   - Consequence: any std API type that appears in emitted signatures (e.g. `sys.io.FileSeek`) must exist under `std/`
     (or the emission filter must be expanded intentionally).
-  - File suffix policy: upstream-colliding overrides under `std/` should use `.cross.hx` so they are selected only for cross/custom-target
-    compilation, avoiding accidental pickup in eval/macro/non-target contexts.
-  - Packaging gotcha: release packaging flattens `reflaxe.stdPaths` into `classPath` (`src/**`), so framework-stdlib detection must support both
-    local layout (`std/**`) and packaged layout (`src/haxe/**`, `src/sys/**`, top-level std modules).
+  - Reflaxe convention policy: `haxelib.json` `reflaxe.stdPaths` is the source of truth for target std/support paths.
+    Source checkout dev/test hxml must provide those paths before typing; release packaging must delegate the generic
+    merge/`.cross.hx` conversion to Reflaxe build. Do not preserve stale source workflows by adding package-layout
+    mirrors, symlink mirrors, or macro-time `_std` injection; those hide resolution-order bugs and make compiler code
+    depend on deployment layout. Any deviation from Reflaxe conventions must be local, documented, and justified by
+    a target-specific Rust runtime/package asset need.
+  - Source layout policy: upstream-colliding Rust std overrides live under `std/rust/_std/**/*.hx`, matching Reflaxe-generated compiler layout.
+    Dev/test entrypoints must put `std/rust/_std` on the initial classpath; do not rely on macro-time classpath injection for these modules.
+  - Source/generated boundary lesson: do not make checked-in source imitate generated or deployed output just to preserve a brittle convenience workflow.
+    That couples independent lifecycle stages, creates drift risk, and tends to push release/package concerns into compiler or runtime code.
+    Keep the canonical source layout, generated artifact layout, and compatibility workflows distinct; validate each through the workflow that owns it.
+  - Packaging gotcha: release packaging uses Reflaxe build flow to flatten `reflaxe.stdPaths` into `classPath` (`src/**`), converting
+    `_std/*.hx` source overrides into packaged `*.cross.hx` files. Compiler policy should not parse those generated filenames to infer std identity;
+    use Reflaxe/Haxe typed module metadata for semantic module identity and use filesystem roots only for source ownership.
   - Path-alias gotcha: framework std detection must canonicalize absolute paths (`FileSystem.fullPath`) before prefix checks, otherwise
     symlink aliases (for example `/var/...` vs `/private/var/...`) can make packaged std overrides look like non-framework files and skip emission.
   - Validation gotcha: `.cross.hx` std override behavior must be validated through a real `-lib reflaxe.rust` install path (`haxelib newrepo` + `haxelib install <zip>`).
     A raw `-cp <pkg>/src` compile is not an equivalent packaging test and can resolve upstream std modules instead.
-  - Governance rule: keep `docs/stdlib-provenance-ledger.json` in sync with tracked `std/**/*.cross.hx` files, keep
+  - Governance rule: keep `docs/stdlib-provenance-ledger.json` in sync with tracked `std/rust/_std/**/*.hx` files, keep
     `docs/portable-stdlib-allowlist.json` aligned with `test/upstream_std_modules.txt`, and run boundary guards:
     `npm run guard:upstream-stdlib-boundary` + `npm run guard:stdlib-ledger` + `npm run guard:portable-stdlib-allowlist`.
     - Preferred update flow for Tier1 list changes: edit `test/upstream_std_modules.txt`, run
@@ -456,7 +469,7 @@ Agent policy:
   - `.github/workflows/release.yml` runs **semantic-release** after CI succeeds on `main` (semver tag + CHANGELOG + GitHub Release + zip asset).
   - `.github/workflows/rustsec.yml` runs `cargo audit` on a schedule.
   - Workspace gotcha: exclude `examples/` + `test/` + `.cache/` from the root workspace so `cargo fmt/build` works inside generated `*/out/` crates during snapshot and template-smoke runs.
-- Packaging policy: `scripts/release/package-haxelib.sh` mirrors Reflaxe build flow by merging `reflaxe.stdPaths` into `classPath` and sanitizing `haxelib.json` (remove `reflaxe` field), while still shipping target-required `runtime/` + `vendor/`.
+- Packaging policy: `scripts/release/package-haxelib.sh` delegates the generic layout work to the vendored Reflaxe `Run build` flow, which merges `reflaxe.stdPaths` into `classPath`, converts `_std/*.hx` sources into packaged `*.cross.hx`, and sanitizes `haxelib.json` (remove `reflaxe` field). The script still ships target-required `runtime/` + `vendor/`.
 - Conventional commits are required on `main` so semantic-release can compute the next version.
   - Use `feat:` for minor, `fix:` for patch, and `feat!:` / `BREAKING CHANGE:` for major.
 - Version strings are kept in sync by `scripts/release/sync-versions.js` (used by semantic-release).

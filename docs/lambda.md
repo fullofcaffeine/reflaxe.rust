@@ -1,6 +1,6 @@
 # Lambda Helpers (reflaxe.rust)
 
-This target ships a `std/Lambda.cross.hx` implementation that is designed to work well with reflaxe.rust’s current iteration model.
+This target ships a `std/rust/_std/Lambda.hx` implementation that is designed to work well with reflaxe.rust’s current iteration model.
 
 ## Key design choice: inline-only, non-emitted
 

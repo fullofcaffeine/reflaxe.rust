@@ -48,7 +48,7 @@ extern class NativeSys {
 		Return environment key/value pairs as a fully typed nested array.
 
 		Why
-		- `std/Sys.cross.hx::environment()` must avoid inline `untyped __rust__` in first-party std code.
+		- `std/rust/_std/Sys.hx::environment()` must avoid inline `untyped __rust__` in first-party std code.
 		- Returning typed pairs keeps the dynamic/native boundary centralized in `hxrt::sys`.
 
 		How

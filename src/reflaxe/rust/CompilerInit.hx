@@ -37,8 +37,8 @@ class CompilerInit {
 		// Ensure Reflaxe hooks are initialized (vendored under vendor/reflaxe).
 		ReflectCompiler.Start();
 
-		// Target-conditional classpath gating for std overrides.
-		// (Bootstrap adds std/ already; keep this as a belt-and-suspenders guard.)
+		// Target-conditional classpath gating for framework support modules.
+		// Source std overrides are supplied by dev/test hxml or by packaged Reflaxe build output.
 		try {
 			var compilerInitPath = Context.resolvePath("reflaxe/rust/CompilerInit.hx");
 			var rustDir = Path.directory(compilerInitPath); // .../src/reflaxe/rust
@@ -77,7 +77,7 @@ class CompilerInit {
 		StrictModeEnforcer.init();
 
 		// Signal threaded sys support so upstream `sys.thread.*` APIs are available.
-		// We provide target overrides for the core primitives under `std/sys/thread/*`.
+		// We provide target overrides for the core primitives under `std/rust/_std/sys/thread/*`.
 		Compiler.define("target.threaded");
 
 		// String representation policy:

@@ -22,7 +22,7 @@ function summarize(paths, limit) {
   return `${slice.join('\n')}${suffix}`
 }
 
-const approvedStdOverrideRoots = ['std/']
+const approvedStdOverrideRoots = ['std/', 'std/rust/_std/']
 const trackedVendor = gitTrackedUnder('vendor/haxe')
 
 if (trackedVendor.length > 0) {
@@ -34,24 +34,30 @@ if (trackedVendor.length > 0) {
 }
 
 const trackedStd = gitTrackedUnder('std')
+const sourceCrossFiles = trackedStd.filter((path) => path.endsWith('.cross.hx'))
 const allowedStdFiles = trackedStd.filter((path) => {
   if (path === 'std/AGENTS.md') return true
   return (
     path.endsWith('.hx') ||
-    path.endsWith('.cross.hx') ||
     path.endsWith('.rs')
   )
 })
 
+if (sourceCrossFiles.length > 0) {
+  fail(
+    `checked-in std sources must not use .cross.hx; Reflaxe build generates packaged .cross.hx files from std/rust/_std/**/*.hx. Found:\n${summarize(sourceCrossFiles, 20)}`
+  )
+}
+
 if (allowedStdFiles.length !== trackedStd.length) {
   const disallowed = trackedStd.filter((path) => !allowedStdFiles.includes(path))
   fail(
-    `stdlib override roots may only contain .hx/.cross.hx/.rs files (plus std/AGENTS.md). Found:\n${summarize(disallowed, 20)}`
+    `stdlib override roots may only contain .hx/.rs files (plus std/AGENTS.md). Found:\n${summarize(disallowed, 20)}`
   )
 }
 
 console.log(
-  `[ci:guards] OK: upstream stdlib boundary (vendor/haxe untracked; approved override roots: ${approvedStdOverrideRoots.join(', ')})`
+  `[ci:guards] OK: upstream stdlib boundary (vendor/haxe untracked; checked-in std sources use .hx/.rs; approved override roots: ${approvedStdOverrideRoots.join(', ')})`
 )
 
 if (process.exitCode) process.exit(process.exitCode)

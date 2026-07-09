@@ -40,6 +40,7 @@ Those updates are committed back to `main` as `chore(release): <version>`.
 - Packaging semantics intentionally mirror Reflaxe `build` behavior:
   - copy `classPath` into the package root
   - merge `reflaxe.stdPaths` into `classPath`
+  - convert files from `_std` std paths into packaged `.cross.hx` files
   - include `LICENSE` + `README.md`
   - sanitize `haxelib.json` by removing the `reflaxe` metadata block
 - Target-specific additions (required by this backend):

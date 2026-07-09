@@ -22,7 +22,7 @@ Current support includes:
 - Upstream-style Haxe `dynamic function` members are supported.
   - The compiler lowers them to stored function-value backing fields plus wrapper methods, so both
   `obj.onData = fn` assignment and subclass overrides work.
-  - This is the mechanism used by `std/haxe/http/HttpBase.cross.hx`.
+  - This is the mechanism used by `std/rust/_std/haxe/http/HttpBase.hx`.
 - Reusable callback values are supported.
   - Passing the same callback through multiple calls, storing it in locals, and forwarding it
     through higher-order helpers keeps the original Haxe value usable.

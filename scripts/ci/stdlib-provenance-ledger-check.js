@@ -54,7 +54,8 @@ function detectTargetDivergenceMarkers(path) {
 }
 
 const ledgerPath = 'docs/stdlib-provenance-ledger.json'
-const stdRoot = 'std/'
+const overrideRoot = 'std/rust/_std/'
+const overrideSuffix = '.hx'
 const tier2ModulesPath = 'test/upstream_std_modules_tier2.txt'
 
 function parseModuleList(path) {
@@ -70,11 +71,11 @@ function parseModuleList(path) {
 }
 
 function ledgerPathToModule(path) {
-  if (!path.startsWith(stdRoot) || !path.endsWith('.cross.hx')) {
+  if (!path.startsWith(overrideRoot) || !path.endsWith(overrideSuffix)) {
     return null
   }
   const moduleName = path
-    .slice(stdRoot.length, -'.cross.hx'.length)
+    .slice(overrideRoot.length, -overrideSuffix.length)
     .replace(/\//g, '.')
   return moduleName.length > 0 ? moduleName : null
 }
@@ -100,10 +101,10 @@ if (!Array.isArray(ledger.entries)) {
   fail(`${ledgerPath} must contain an entries array`)
 }
 
-const trackedStdCrossFiles = gitTrackedUnder('std').filter(
-  (path) => path.startsWith(stdRoot) && path.endsWith('.cross.hx')
+const trackedStdOverrideFiles = gitTrackedUnder(overrideRoot).filter(
+  (path) => path.startsWith(overrideRoot) && path.endsWith(overrideSuffix)
 )
-const trackedSet = new Set(trackedStdCrossFiles)
+const trackedSet = new Set(trackedStdOverrideFiles)
 const tier2Modules = parseModuleList(tier2ModulesPath)
 const tier2Set = new Set(tier2Modules)
 
@@ -126,12 +127,12 @@ for (const entry of ledger.entries) {
     continue
   }
 
-  if (!path.startsWith(stdRoot)) {
-    fail(`${ledgerPath} entry path must stay under ${stdRoot}: ${path}`)
+  if (!path.startsWith(overrideRoot)) {
+    fail(`${ledgerPath} entry path must stay under ${overrideRoot}: ${path}`)
   }
 
-  if (!path.endsWith('.cross.hx')) {
-    fail(`${ledgerPath} entry path must target a .cross.hx file: ${path}`)
+  if (!path.endsWith(overrideSuffix)) {
+    fail(`${ledgerPath} entry path must target a source override ${overrideSuffix} file: ${path}`)
   }
 
   if (ledgerPaths.includes(path)) {
@@ -186,7 +187,7 @@ for (const entry of ledger.entries) {
 }
 
 const ledgerSet = new Set(ledgerPaths)
-const missingCoverage = trackedStdCrossFiles.filter((path) => !ledgerSet.has(path))
+const missingCoverage = trackedStdOverrideFiles.filter((path) => !ledgerSet.has(path))
 const staleCoverage = ledgerPaths.filter((path) => !trackedSet.has(path))
 const uniqueExpectedTier2Modules = Array.from(new Set(expectedTier2Modules)).sort()
 const missingTier2Coverage = uniqueExpectedTier2Modules.filter((moduleName) => !tier2Set.has(moduleName))
@@ -196,13 +197,13 @@ const divergenceStale = []
 
 if (missingCoverage.length > 0) {
   fail(
-    `stdlib provenance ledger missing tracked .cross.hx files:\n${summarize(missingCoverage, 20)}`
+    `stdlib provenance ledger missing tracked _std override source files:\n${summarize(missingCoverage, 20)}`
   )
 }
 
 if (staleCoverage.length > 0) {
   fail(
-    `stdlib provenance ledger references non-tracked .cross.hx files:\n${summarize(staleCoverage, 20)}`
+    `stdlib provenance ledger references non-tracked _std override source files:\n${summarize(staleCoverage, 20)}`
   )
 }
 
@@ -218,7 +219,7 @@ if (missingTier2Coverage.length > 0) {
 for (const entry of ledger.entries) {
   if (entry == null || typeof entry !== 'object') continue
   const path = entry.path
-  if (typeof path !== 'string' || !path.endsWith('.cross.hx')) continue
+  if (typeof path !== 'string' || !path.endsWith(overrideSuffix)) continue
 
   const knownDivergenceReason = entry.knownDivergenceReason
   const knownDivergenceTestRefs = entry.knownDivergenceTestRefs
@@ -275,5 +276,5 @@ if (divergenceStale.length > 0) {
 
 if (process.exitCode) process.exit(process.exitCode)
 console.log(
-  `[ci:guards] OK: stdlib provenance ledger covers ${trackedStdCrossFiles.length} tracked .cross.hx files and ${uniqueExpectedTier2Modules.length} ledger-derived Tier2 modules (${tier2Excluded.length} explicit Tier2 exclusions, ${divergenceCovered.length} declared divergence entries)`
+  `[ci:guards] OK: stdlib provenance ledger covers ${trackedStdOverrideFiles.length} tracked _std override files and ${uniqueExpectedTier2Modules.length} ledger-derived Tier2 modules (${tier2Excluded.length} explicit Tier2 exclusions, ${divergenceCovered.length} declared divergence entries)`
 )

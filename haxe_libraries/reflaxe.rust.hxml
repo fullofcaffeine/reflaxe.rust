@@ -3,14 +3,20 @@
 # Self-referential config so examples/snapshots can use `-lib reflaxe.rust`
 # inside this repo without needing `haxelib dev`.
 #
+# Keep these source classpaths aligned with haxelib.json `reflaxe.stdPaths`.
+# Reflaxe package build turns `std/rust/_std/**/*.hx` into packaged
+# `src/**/*.cross.hx`; source-mode compiles need `_std` before typing starts.
+#
 # Paths are resolved relative to the current working directory (CWD).
 # Use `${SCOPE_DIR}` so it works from any subdirectory.
 
 -cp ${SCOPE_DIR}/src/
 -cp ${SCOPE_DIR}/std/
+-cp ${SCOPE_DIR}/std/rust/_std/
 
 -lib reflaxe
 
 -D reflaxe.rust=0.81.1
+--macro nullSafety("reflaxe.rust")
 --macro reflaxe.rust.CompilerBootstrap.Start()
 --macro reflaxe.rust.CompilerInit.Start()

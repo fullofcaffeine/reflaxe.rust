@@ -97,9 +97,9 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Release](release.md): semantic-release flow and release artifacts.
 - [Semver and release posture](semver-release-posture.md): public `1.x` posture and packaging truth.
 - [Release Gate Closeout](release-gate-closeout.md): closeout template used by the historical release-gate work.
-- [Haxelib Packaging Notes](haxelib-packaging.md): package layout rules, flattening behavior, and `.cross.hx` rationale.
+- [Haxelib Packaging Notes](haxelib-packaging.md): Reflaxe `stdPaths` source layout, package build flow, and `.cross.hx` rationale.
 - [Stdlib Parity Policy](stdlib-policy.md): parity scope, provenance ledger, and CI boundary governance.
-- [Cross overrides and hardening](cross-overrides-and-hardening.md): `.cross.hx` ownership, sibling-target coexistence risk, and hardening notes.
+- [Cross overrides and hardening](cross-overrides-and-hardening.md): `_std`/`.cross.hx` ownership, sibling-target coexistence risk, and hardening notes.
 - [Spike: Family `portable|metal` Alignment](spikes/family-portable-metal-alignment.md): cross-repo contract alignment notes and implementation gap history.
 - [Spike: `reflaxe.std` Cross-Repo Handoff](spikes/reflaxe-std-cross-repo-handoff.md): ownership split between Rust adoption work and the remaining Go/Elixir/JS/genes rollout tasks.
 - [Spike: Auto Profile Exploration](spikes/auto-profile-exploration.md): decision memo for keeping explicit `portable|metal` contracts and constraints for any future `auto` experiment.

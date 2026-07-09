@@ -17,22 +17,17 @@ class Main {
 }
 HX
 
-cat > "$tmp_root/compile.hxml" <<'HXML'
--cp .
--lib reflaxe.rust
--D reflaxe_rust_profile=portable
--D rust_output=out
--D rust_cargo_subcommand=definitely-not-a-cargo-subcommand
--main Main
-HXML
-
 log_file="$tmp_root/haxe.log"
 set +e
 (
-  cd "$tmp_root"
-  haxelib newrepo >/dev/null
-  haxelib dev reflaxe.rust "$root_dir" >/dev/null
-  haxe compile.hxml
+  cd "$root_dir"
+  haxe \
+    -cp "$tmp_root" \
+    -lib reflaxe.rust \
+    -D reflaxe_rust_profile=portable \
+    -D rust_output="$tmp_root/out" \
+    -D rust_cargo_subcommand=definitely-not-a-cargo-subcommand \
+    -main Main
 ) >"$log_file" 2>&1
 code=$?
 set -e

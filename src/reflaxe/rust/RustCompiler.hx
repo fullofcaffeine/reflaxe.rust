@@ -198,9 +198,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var extraRustSrcFiles:Array<{module:String, fileName:String, fullPath:String}> = [];
 	var classHasSubclass:Null<Map<String, Bool>> = null;
 	var frameworkStdDir:Null<String> = null;
-	var frameworkSrcDir:Null<String> = null;
+	var frameworkClassPathDir:Null<String> = null;
 	var upstreamStdDirs:Array<String> = [];
 	var frameworkRuntimeDir:Null<String> = null;
+	var sourceModuleByCanonicalFile:Map<String, String> = [];
+	var frameworkStdSourceFiles:Map<String, Bool> = [];
 	var profile:RustProfile = Portable;
 	// When inlining constructor `super(...)` bodies, we need to substitute base-ctor parameter locals.
 	// Map is keyed by Haxe local name and returns a Rust expression to use in place of that local.
@@ -670,34 +672,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				out.set(module, pos);
 		}
 
-		inline function pathFromPack(pack:Array<String>, name:String):String {
-			return pack == null || pack.length == 0 ? name : pack.join(".") + "." + name;
-		}
-
 		for (moduleType in Context.getAllModuleTypes()) {
 			var sourceFile = moduleSourceFile(moduleType);
-			switch (moduleType) {
-				case TClassDecl(classRef):
-					var classType = classRef.get();
-					var module = classType.module != null
-						&& classType.module.length > 0 ? classType.module : pathFromPack(classType.pack, classType.name);
-					add(module, classType.pos, sourceFile);
-				case TEnumDecl(enumRef):
-					var enumType = enumRef.get();
-					var module = enumType.module != null
-						&& enumType.module.length > 0 ? enumType.module : pathFromPack(enumType.pack, enumType.name);
-					add(module, enumType.pos, sourceFile);
-				case TTypeDecl(typeRef):
-					var typeDecl = typeRef.get();
-					var module = typeDecl.module != null
-						&& typeDecl.module.length > 0 ? typeDecl.module : pathFromPack(typeDecl.pack, typeDecl.name);
-					add(module, typeDecl.pos, sourceFile);
-				case TAbstract(absRef):
-					var abstractType = absRef.get();
-					var module = abstractType.module != null
-						&& abstractType.module.length > 0 ? abstractType.module : pathFromPack(abstractType.pack, abstractType.name);
-					add(module, abstractType.pos, sourceFile);
-			}
+			add(modulePathForModuleType(moduleType), moduleType.getPos(), sourceFile);
 		}
 		return out;
 	}
@@ -851,6 +828,49 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
+		Build source-position provenance from Haxe/Reflaxe typed module metadata.
+
+		Why
+		- Several policy checks receive only a `Position`, whose public data is a source file path.
+		- Typed module declarations already know their semantic Haxe module path (`ModuleType.getModule()`),
+		  so the compiler should reuse that instead of deriving module identity from filesystem spellings.
+
+		What
+		- Records `canonical source file -> Haxe module path`.
+		- Records the subset of source files that are framework-owned target std/support modules.
+
+		How
+		- Uses Reflaxe's `ModuleTypeHelper` extension methods to read module identity.
+		- Uses filesystem roots only for ownership (`framework std root`, `framework classpath root`,
+		  optional upstream std roots), not for reconstructing module names.
+	**/
+	function buildSourceProvenanceIndex():Void {
+		sourceModuleByCanonicalFile = [];
+		frameworkStdSourceFiles = [];
+
+		for (moduleType in Context.getAllModuleTypes()) {
+			var sourceFile = moduleSourceFile(moduleType);
+			if (sourceFile == null || sourceFile.length == 0)
+				continue;
+
+			var full = canonicalizePosFile(sourceFile);
+			var modulePath = modulePathForModuleType(moduleType);
+			if (modulePath != null && modulePath.length > 0 && !sourceModuleByCanonicalFile.exists(full))
+				sourceModuleByCanonicalFile.set(full, modulePath);
+
+			if (isFrameworkStdModuleSource(full, modulePath))
+				frameworkStdSourceFiles.set(full, true);
+		}
+	}
+
+	function modulePathForModuleType(moduleType:ModuleType):String {
+		var modulePath = moduleType.getModule();
+		if (modulePath != null && modulePath.length > 0)
+			return modulePath;
+		return moduleType.getPath();
+	}
+
+	/**
 		Enforces Send/Sync boundary diagnostics for thread/task spawn closures.
 
 		Why
@@ -918,9 +938,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// Reset cached class hierarchy info per compilation.
 		classHasSubclass = null;
 		frameworkStdDir = null;
-		frameworkSrcDir = null;
+		frameworkClassPathDir = null;
 		upstreamStdDirs = [];
 		frameworkRuntimeDir = null;
+		sourceModuleByCanonicalFile = [];
+		frameworkStdSourceFiles = [];
 		warnedUnresolvedMonomorphPos = [];
 		rustTestSpecs = [];
 		usedModulePaths = [];
@@ -956,11 +978,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (v != null && v.length > 0)
 			crateName = v;
 
-		// Compute this haxelib's key roots:
-		// - `std/` for local-dev layout in this repository
-		// - `src/` for flattened package layout (where std overrides are merged into classPath)
-		//
-		// We intentionally keep both so framework std classification stays correct in both environments.
+		// Compute this library's framework-owned source roots. Haxe exposes source ownership to
+		// macros as file paths, so emission and diagnostics need path-root classification to avoid
+		// treating framework internals as user project code.
 		try {
 			var compilerPath = Context.resolvePath("reflaxe/rust/RustCompiler.hx");
 			var rustDir = Path.directory(compilerPath); // .../src/reflaxe/rust
@@ -968,11 +988,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var srcDir = Path.directory(reflaxeDir); // .../src
 			var libraryRoot = Path.directory(srcDir); // .../
 			frameworkStdDir = canonicalizePath(Path.normalize(Path.join([libraryRoot, "std"])));
-			frameworkSrcDir = canonicalizePath(Path.normalize(Path.join([libraryRoot, "src"])));
+			frameworkClassPathDir = canonicalizePath(srcDir);
 			frameworkRuntimeDir = canonicalizePath(Path.normalize(Path.join([libraryRoot, "runtime", "hxrt"])));
 		} catch (e:haxe.Exception) {
 			frameworkStdDir = null;
-			frameworkSrcDir = null;
+			frameworkClassPathDir = null;
 			frameworkRuntimeDir = null;
 		}
 
@@ -1011,6 +1031,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				upstreamStdDirs = [];
 			}
 		}
+
+		buildSourceProvenanceIndex();
 
 		// Collect Haxe-authored Rust test wrappers (`@:rustTest`) once per compile.
 		collectRustTests();
@@ -3139,11 +3161,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// Same idea as `Lambda`: this is an inline-only helper surface.
 		if (classType.pack.length == 0 && classType.name == "ArrayTools")
 			return false;
-		var file = Context.getPosInfos(classType.pos).file;
-		var frameworkStd = isFrameworkStdFile(file);
+		var frameworkStd = isFrameworkStdClass(classType);
 		if (noHxrtEnabled() && frameworkStd)
 			return false;
-		return isUserProjectFile(file) || frameworkStd;
+		return isUserProjectFile(sourceFileForPosition(classType.pos)) || frameworkStd;
 	}
 
 	function shouldEmitEnum(enumType:EnumType):Bool {
@@ -3156,35 +3177,52 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			if (p1 == "macro" || p1 == "display")
 				return false;
 		}
-		var file = Context.getPosInfos(enumType.pos).file;
-		var frameworkStd = isFrameworkStdFile(file);
+		var frameworkStd = isFrameworkStdEnum(enumType);
 		if (noHxrtEnabled() && frameworkStd)
 			return false;
-		return isUserProjectFile(file) || frameworkStd;
+		return isUserProjectFile(sourceFileForPosition(enumType.pos)) || frameworkStd;
 	}
 
 	function isUserProjectFile(file:String):Bool {
+		if (file == null || file.length == 0)
+			return false;
 		var cwd = normalizePath(Sys.getCwd());
 		var full = resolvePosFileToAbsolute(file, cwd);
 		return StringTools.startsWith(full, ensureTrailingSlash(cwd)) && !isFrameworkOwnedFile(full);
 	}
 
 	function isFrameworkStdFile(file:String):Bool {
-		var cwd = normalizePath(Sys.getCwd());
-		var full = resolvePosFileToAbsolute(file, cwd);
+		var full = canonicalizePosFile(file);
 
-		if (isUnderFrameworkStdRoot(full))
+		if (frameworkStdSourceFiles.exists(full))
 			return true;
 
-		if (upstreamStdDirs.length > 0) {
-			for (d in upstreamStdDirs) {
-				var r = ensureTrailingSlash(normalizePath(d));
-				if (StringTools.startsWith(full, r))
-					return true;
-			}
-		}
+		var modulePath = sourceModuleByCanonicalFile.get(full);
+		if (modulePath != null && isFrameworkStdModuleSource(full, modulePath))
+			return true;
+
+		if (isUnderUpstreamStdRoot(full))
+			return true;
 
 		return false;
+	}
+
+	function isFrameworkStdClass(classType:ClassType):Bool {
+		return isFrameworkStdDeclaration(modulePathForClass(classType), classType.pos);
+	}
+
+	function isFrameworkStdEnum(enumType:EnumType):Bool {
+		return isFrameworkStdDeclaration(modulePathForEnum(enumType), enumType.pos);
+	}
+
+	function isFrameworkStdDeclaration(modulePath:String, pos:haxe.macro.Expr.Position):Bool {
+		var sourceFile = sourceFileForPosition(pos);
+		if (sourceFile == null || sourceFile.length == 0)
+			return false;
+		var full = canonicalizePosFile(sourceFile);
+		if (isFrameworkStdModuleSource(full, modulePath))
+			return true;
+		return isUnderUpstreamStdRoot(full);
 	}
 
 	/**
@@ -3198,17 +3236,17 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		  as application code.
 
 		How
-		- Reuses framework std detection for flattened/local std overrides.
-		- Separately checks `src/` for compiler/framework implementation files and `runtime/hxrt/`
-		  for bundled runtime sources.
+		- Checks the explicit framework std root for source-checkout std/support modules.
+		- Separately checks the framework classpath root for compiler/framework implementation files
+		  and `runtime/hxrt/` for bundled runtime sources.
 	**/
 	function isFrameworkOwnedFile(full:String):Bool {
-		if (isUnderFrameworkStdRoot(full))
+		if (isUnderFrameworkStdSourceRoot(full))
 			return true;
 
-		if (frameworkSrcDir != null) {
-			var srcRoot = ensureTrailingSlash(normalizePath(frameworkSrcDir));
-			if (StringTools.startsWith(full, srcRoot))
+		if (frameworkClassPathDir != null) {
+			var classPathRoot = ensureTrailingSlash(normalizePath(frameworkClassPathDir));
+			if (StringTools.startsWith(full, classPathRoot))
 				return true;
 		}
 
@@ -3222,74 +3260,94 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
-		Returns whether an absolute file path belongs to this library's framework std overrides.
+		Returns whether an absolute file path is inside this library's source std/support root.
 
 		Why
-		- During local development, overrides live under `<repo>/std/**`.
-		- In release packages, we flatten `stdPaths` into `classPath` (`src/**`) to mirror Reflaxe's
-		  build flow and keep install-time classpaths simple.
-		- We need one classifier that works in both layouts so emission and warning policies remain
-		  deterministic regardless of install method.
+		- Source checkouts keep framework std/support Haxe files under `std/`.
+		- This is a root ownership check only; semantic std identity comes from typed module metadata
+		  recorded by `buildSourceProvenanceIndex()`.
 
 		How
-		- First check the explicit `std/` root when present.
-		- Then check flattened `src/` paths against known std roots/modules (`haxe/`, `sys/`,
-		  `rust/`, `hxrt/`, plus top-level std modules like `Date`/`Sys`).
+		- Canonicalize both sides before prefix matching so symlink aliases do not split ownership.
 	**/
-	function isUnderFrameworkStdRoot(full:String):Bool {
+	function isUnderFrameworkStdSourceRoot(full:String):Bool {
 		if (frameworkStdDir != null) {
 			var stdRoot = ensureTrailingSlash(normalizePath(frameworkStdDir));
 			if (StringTools.startsWith(full, stdRoot))
 				return true;
 		}
+		return false;
+	}
 
-		if (frameworkSrcDir != null) {
-			var srcRoot = ensureTrailingSlash(normalizePath(frameworkSrcDir));
-			if (StringTools.startsWith(full, srcRoot)) {
-				var rel = full.substr(srcRoot.length);
-				if (isFrameworkStdRelativePath(rel))
-					return true;
-			}
+	/**
+		Returns true when a typed module source belongs to this library's target std/support surface.
+
+		Why
+		- Installed packages place compiler code and generated std overrides under the same framework
+		  classpath root, so root ownership alone cannot distinguish `reflaxe.rust.*` implementation
+		  modules from target std/support modules.
+		- Haxe/Reflaxe typed module metadata already carries the semantic module path, which is stable
+		  across source and installed layouts.
+
+		How
+		- Source checkout std/support files are accepted by explicit `std/` root ownership.
+		- Framework classpath files are accepted only when their typed module path is a target
+		  std/support module (`haxe.*`, `sys.*`, `rust.*`, `hxrt.*`, or known top-level std modules).
+	**/
+	function isFrameworkStdModuleSource(full:String, modulePath:String):Bool {
+		if (isUnderFrameworkStdSourceRoot(full))
+			return true;
+
+		if (modulePath == null || modulePath.length == 0)
+			return false;
+
+		if (frameworkClassPathDir != null) {
+			var classPathRoot = ensureTrailingSlash(normalizePath(frameworkClassPathDir));
+			if (StringTools.startsWith(full, classPathRoot))
+				return isFrameworkStdModulePath(modulePath);
 		}
 
 		return false;
 	}
 
-	/**
-		Returns true when a path relative to framework `src/` points to a flattened std override file.
-
-		Examples
-		- `haxe/Json.cross.hx` -> true
-		- `sys/net/Socket.cross.hx` -> true
-		- `rust/tui/TuiDemo.hx` -> true
-		- `reflaxe/rust/RustCompiler.hx` -> false
-	**/
-	function isFrameworkStdRelativePath(rel:String):Bool {
-		if (rel == null || rel.length == 0)
+	function isFrameworkStdModulePath(modulePath:String):Bool {
+		if (modulePath == null || modulePath.length == 0)
 			return false;
-
-		var normalized = normalizePath(rel);
-		while (StringTools.startsWith(normalized, "./"))
-			normalized = normalized.substr(2);
-
-		if (StringTools.startsWith(normalized, "haxe/")
-			|| StringTools.startsWith(normalized, "sys/")
-			|| StringTools.startsWith(normalized, "rust/")
-			|| StringTools.startsWith(normalized, "hxrt/"))
+		if (modulePath == "haxe" || StringTools.startsWith(modulePath, "haxe."))
 			return true;
-
-		// Top-level framework std overrides (no subdirectories).
-		if (normalized.indexOf("/") != -1 || !StringTools.endsWith(normalized, ".hx"))
-			return false;
-
-		var stem = Path.withoutExtension(normalized); // `Date.cross` or `Date`
-		if (StringTools.endsWith(stem, ".cross"))
-			stem = stem.substr(0, stem.length - ".cross".length);
-
-		return switch (stem) {
-			case "Date" | "Lambda" | "StringBuf" | "StringTools" | "Sys" | "ArrayTools": true;
+		if (modulePath == "sys" || StringTools.startsWith(modulePath, "sys."))
+			return true;
+		if (modulePath == "rust" || StringTools.startsWith(modulePath, "rust."))
+			return true;
+		if (modulePath == "hxrt" || StringTools.startsWith(modulePath, "hxrt."))
+			return true;
+		return switch (modulePath) {
+			case "Date" | "Lambda" | "StringBuf" | "StringTools" | "Sys" | "SysTypes" | "ArrayTools": true;
 			case _: false;
 		}
+	}
+
+	function isUnderUpstreamStdRoot(full:String):Bool {
+		if (upstreamStdDirs.length == 0)
+			return false;
+		for (d in upstreamStdDirs) {
+			var r = ensureTrailingSlash(normalizePath(d));
+			if (StringTools.startsWith(full, r))
+				return true;
+		}
+		return false;
+	}
+
+	function modulePathForClass(classType:ClassType):String {
+		return classType.module != null && classType.module.length > 0 ? classType.module : dotPathFromPack(classType.pack, classType.name);
+	}
+
+	function modulePathForEnum(enumType:EnumType):String {
+		return enumType.module != null && enumType.module.length > 0 ? enumType.module : dotPathFromPack(enumType.pack, enumType.name);
+	}
+
+	function dotPathFromPack(pack:Array<String>, name:String):String {
+		return pack == null || pack.length == 0 ? name : pack.join(".") + "." + name;
 	}
 
 	/**
@@ -3379,6 +3437,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		- Canonicalize existing paths (`FileSystem.fullPath`) so symlink aliases (for example
 		  `/var/...` vs `/private/var/...`) don't break framework-stdlib prefix checks.
 	**/
+	function canonicalizePosFile(file:String):String {
+		if (file == null || file.length == 0)
+			return "";
+		var cwd = normalizePath(Sys.getCwd());
+		return resolvePosFileToAbsolute(file, cwd);
+	}
+
 	function resolvePosFileToAbsolute(file:String, cwd:String):String {
 		var full = file;
 		if (!Path.isAbsolute(full)) {

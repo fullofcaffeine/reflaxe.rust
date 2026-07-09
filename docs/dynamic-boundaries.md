@@ -45,7 +45,7 @@ This document is the source of truth for intentional `Dynamic` usage in `reflaxe
 
 - None currently.
 
-### `std/haxe/BoundaryTypes.cross.hx` (line-scoped)
+### `std/rust/_std/haxe/BoundaryTypes.hx` (line-scoped)
 
 - Why: this module is the intentional stdlib boundary alias hub for unavoidable untyped payload contracts.
 - Lines allowlisted:

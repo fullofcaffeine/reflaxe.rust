@@ -23,12 +23,13 @@ import sys.FileSystem;
  * - If this compilation appears to be a Rust build (`-D rust_output` or custom target),
  *   compute the library root from this file’s resolved path and add:
  *   - `vendor/reflaxe/src` (vendored Reflaxe framework)
- *   - `std/` when present (local repository fallback/classification path)
+ *   - `std/` when present (Rust-native support modules)
  *
  * Packaging note
  * - Release zips flatten `stdPaths` into `classPath` (`src/**`) to mirror Reflaxe build behavior.
- * - Dev checkouts mirror those top-level `std/**` entries under `src/**` with tracked symlinks so
- *   upstream-colliding modules are visible before this macro runs.
+ * - Source-checkout std overrides are intentionally not injected here; they must be present on
+ *   the initial classpath through dev/test hxml, the same way Reflaxe's own test flow handles
+ *   `reflaxe.stdPaths`.
  * - In the packaged layout there is no top-level `std/`, so we only add it when the directory exists.
  */
 class CompilerBootstrap {

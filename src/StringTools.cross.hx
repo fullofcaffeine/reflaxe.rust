@@ -1,1 +1,0 @@
-../std/StringTools.cross.hx
