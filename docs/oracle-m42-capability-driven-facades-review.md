@@ -25,6 +25,14 @@ Required changes before closure:
   reasons.
 - Split current `Option` / `Result` facade proof from any future `Vec`/collection facade proof.
 
+These changes landed before `haxe.rust-oo3.74.9` closed. The closure implementation artifacts are
+recorded in `docs/metal-haxified-rust-roadmap.md` under "Capability-Driven Portable Facades":
+surface contract classification, native representation planning, semantic runtime requirement
+reporting, no-hxrt eligibility analysis, deterministic `contract_report.*` / `runtime_plan.*`
+fixtures, deferred portable `Vec` admission, and output-shape gates for the first admitted facades.
+The prompt below is the original review request. The review result above supersedes any fixture names
+or wording that Oracle asked us to change.
+
 ## Uploads
 
 Upload this current repo bundle:
@@ -77,9 +85,6 @@ Ask Oracle to prioritize these files in the uploaded bundle:
 - `runtime/hxrt/src/dynamic.rs`
 
 ## Original Prompt
-
-The prompt below is the original review request. The review result above supersedes any fixture names
-or wording that Oracle asked us to change.
 
 You are reviewing the Haxe-to-Rust target `reflaxe.rust`.
 
