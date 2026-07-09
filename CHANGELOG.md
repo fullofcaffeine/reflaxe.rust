@@ -1,3 +1,10 @@
+## [0.81.3](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.81.2...v0.81.3) (2026-07-09)
+
+
+### Bug Fixes
+
+* **release:** generate and verify release state ([a27f725](https://github.com/fullofcaffeine/reflaxe.rust/commit/a27f7254a4e0fe7c4f7c4d91f014db9e8f3709eb))
+
 ## [0.81.2](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.81.1...v0.81.2) (2026-07-09)
 
 
