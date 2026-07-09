@@ -3,9 +3,9 @@
 This document explains the intent behind the current quality milestones in plain language.
 
 Historical tracker anchor: `haxe.rust-oo5` (closed).
-Current continuation beads: `haxe_rust-mfmm` and follow-up `haxe_rust-sqon`.
+Closed continuation evidence: `haxe_rust-mfmm` and follow-up `haxe_rust-sqon`.
 
-This page records the closed `oo5` quality baseline and the current continuation guidance. It is
+This page records the closed `oo5` quality baseline and continuation guidance. It is
 not a new release gate by itself; it is the ongoing quality queue for compiler polish, Rust-first
 API depth, and CI guardrail maintenance. New work should use fresh Beads issues rather than
 reopening historical `haxe.rust-oo5` / `haxe.rust-oo6` IDs.
@@ -36,11 +36,13 @@ Remaining work:
 - Portable mode style-warning policy: keep builds warning-light by default (snake_case naming + lint strategy so builds are readable).
 - Broader deny-warnings coverage for newly discovered generated-output warning classes.
 
-Next tracked slices:
+Closed continuation slices:
 
 - `haxe_rust-mfmm` — sync the closed `oo5` baseline docs and std override mapping.
-- `haxe_rust-sqon` — audit import-hygiene output shape before changing lowering or printer
-  behavior again.
+- `haxe_rust-sqon` — audited import-hygiene output shape and landed the nested-module path fix.
+
+Future slices should start from fresh Beads issues with current emitted-Rust evidence rather than
+reusing these closed continuation IDs.
 
 ## Milestone 2 — Rust-first runtime + stdlib parity
 
