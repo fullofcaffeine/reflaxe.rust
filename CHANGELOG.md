@@ -1,3 +1,10 @@
+## [0.81.2](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.81.1...v0.81.2) (2026-07-09)
+
+
+### Bug Fixes
+
+* canonicalize nested module rust paths ([76996d3](https://github.com/fullofcaffeine/reflaxe.rust/commit/76996d3aeb0a2b73ef8c335a19d1e46e25965a69))
+
 ## [0.81.1](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.81.0...v0.81.1) (2026-07-08)
 
 
