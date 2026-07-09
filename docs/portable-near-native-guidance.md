@@ -14,7 +14,7 @@ This page answers the practical post-`1.0` question for performance-oriented tea
 - a stable public `portable|metal` contract model,
 - evidence-backed release posture,
 - targeted performance baselines,
-- and a small but real `reflaxe.std` portable idiom slice.
+- and a small but real compiler-admitted `reflaxe.std` portable idiom slice.
 
 The architecture slogan is:
 
@@ -63,7 +63,8 @@ It **does** mean:
 - and any remaining gap should come from conservative lowering/runtime obligations, not from a
   second-class representation choice.
 
-Current concrete examples:
+Current concrete examples, when the `reflaxe.std` source modules are supplied by the shared package
+or an explicit local dependency:
 
 - `reflaxe.std.Option<T>` -> Rust `Option<T>`
 - `reflaxe.std.Result<T, E>` -> Rust `Result<T, E>`
@@ -145,9 +146,10 @@ Use it when you want that contract on purpose, not because the backend might opt
 
 Current Rust-local truth:
 
-- local adoption is real for `Option` / `Result`,
+- compiler admission, fixture coverage, and lowering are real for `Option` / `Result`,
 - those abstractions lower directly to native Rust `Option` / `Result`,
 - adapters exist for explicit portable/native boundary crossings,
+- canonical `reflaxe.std` module definitions are not bundled by this haxelib today,
 - standalone family package hosting/publishing does **not** happen from this repo.
 
 The role of `reflaxe.std` is:
@@ -201,7 +203,8 @@ Use this rule of thumb:
 1. Start with `portable`.
 2. Stay in `portable` if the code is already compiling to native-feeling Rust shapes and the
    measured cost is acceptable.
-3. Use `reflaxe.std` where it gives portable idioms that can still lower efficiently.
+3. Use `reflaxe.std` where the shared package is available and gives portable idioms that can still
+   lower efficiently.
 4. Move to `metal` when the **source contract** should become Rust-first, not merely because you
    hope the backend might optimize harder.
 

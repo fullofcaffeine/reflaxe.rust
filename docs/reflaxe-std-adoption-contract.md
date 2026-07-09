@@ -2,7 +2,9 @@
 
 Status:
 
-- implemented locally in `haxe.rust`
+- compiler admission, fixture coverage, adapters, and Rust lowering are implemented locally in
+  `haxe.rust` for supplied `reflaxe.std.Option/Result` modules
+- canonical `reflaxe.std` Haxe module definitions are not shipped by the `reflaxe.rust` haxelib
 - family-host/package extraction still pending outside this repo
 
 This document defines the Rust-side contract for adopting a shared portable idiom package.
@@ -28,7 +30,8 @@ fixtures, and migration rules before broadening the public surface.
    - Owns contract specs, allowlists, conformance mappings, provenance rules, and shared fixtures.
    - Is not a user-facing idiom API.
 2. `reflaxe.std` (user-facing portable API layer)
-   - Installed by app authors (via lix/haxelib workflow).
+   - Installed by app authors (via lix/haxelib workflow) once the shared package is published.
+   - Not bundled as canonical module definitions by `reflaxe.rust` today.
    - Exposes portable idioms with backend mappings.
    - Starts with `Option` / `Result` in v1.
 
@@ -61,9 +64,11 @@ Non-goal:
 
 For the current GA review, Rust freezes the local `reflaxe.std` truth at:
 
-- local adoption is real for `Option` / `Result`,
+- compiler admission and fixture evidence are real for `Option` / `Result`,
 - direct lowering to native Rust `Option` / `Result` is implemented here,
 - adapters and family-pin/report plumbing are implemented here,
+- the canonical Haxe module definitions are fixture-local or externally supplied, not shipped as a
+  public `reflaxe.rust` package surface,
 - standalone package hosting/publishing is not owned here,
 - no broader `reflaxe.std` surface expansion is queued in `haxe.rust` as part of the GA decision.
 
@@ -98,7 +103,8 @@ ordinary Haxe `Array<T>` or an unadmitted `reflaxe.std.*` collection lowers to n
 
 Portable lane:
 
-- portable modules should import `reflaxe.std` surfaces for cross-target idioms.
+- portable modules should import `reflaxe.std` surfaces for cross-target idioms once the shared
+  package supplies those modules on the classpath.
 - importing native target modules (`rust.*`, `go.*`, etc.) is a portability signal:
   - warning by default,
   - error with `-D rust_portable_native_import_strict`.
@@ -114,8 +120,8 @@ Native lane:
 
 ## Rust lowering expectation
 
-When portable code uses `reflaxe.std.Option/Result`, Rust lowering should map to native Rust
-`Option/Result` representations without changing portable semantics.
+When portable code uses supplied `reflaxe.std.Option/Result` modules, Rust lowering should map to
+native Rust `Option/Result` representations without changing portable semantics.
 
 Rule: representation optimization is allowed; semantic mode switching is not.
 
@@ -146,7 +152,7 @@ while keeping the portable authoring contract stable and explicit.
 ## Migration contract
 
 - Existing Rust-native code can keep `rust.*` imports.
-- Portable code should converge to `reflaxe.std` imports.
+- Portable code should converge to `reflaxe.std` imports after the shared package is available.
 - Transition helpers/adapters must be typed and avoid public `Dynamic`/`Reflect` usage.
 - Any deprecations must ship with migration notes and CI evidence.
 

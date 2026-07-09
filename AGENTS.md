@@ -243,6 +243,9 @@ Agent policy:
   - Source/generated boundary lesson: do not make checked-in source imitate generated or deployed output just to preserve a brittle convenience workflow.
     That couples independent lifecycle stages, creates drift risk, and tends to push release/package concerns into compiler or runtime code.
     Keep the canonical source layout, generated artifact layout, and compatibility workflows distinct; validate each through the workflow that owns it.
+  - Compiler-admission vs shipped-API lesson: do not describe a namespace as user-installable just because the compiler can recognize or optimize it.
+    A surface is not public package API until its Haxe modules are actually shipped by the owning package or required as an explicit dependency.
+    Keep docs and examples clear about whether a type is bundled here, fixture-local, externally supplied, or future family package work.
   - Packaging gotcha: release packaging uses Reflaxe build flow to flatten `reflaxe.stdPaths` into `classPath` (`src/**`), converting
     `_std/*.hx` source overrides into packaged `*.cross.hx` files. Compiler policy should not parse those generated filenames to infer std identity;
     use Reflaxe/Haxe typed module metadata for semantic module identity and use filesystem roots only for source ownership.

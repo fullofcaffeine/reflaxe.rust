@@ -114,6 +114,7 @@ What metal demonstrates that portable examples intentionally do not:
 
 Use `reflaxe.std` when:
 
+- the shared package or an explicit local dependency supplies the modules,
 - you want a portable idiom surface,
 - the abstraction should stay cross-backend in meaning,
 - and you want the backend to map it to the best native representation available when semantics

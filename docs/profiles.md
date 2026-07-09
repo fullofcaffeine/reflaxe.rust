@@ -43,7 +43,8 @@ typed surfaces a program consumes and lower them according to their declared sem
 
 - ordinary Haxe/std APIs preserve Haxe semantics first,
 - admitted `reflaxe.std` facade surfaces are portable APIs that may declare native Rust
-  representations for this backend,
+  representations for this backend when the source modules are supplied by the shared package or an
+  explicit local dependency,
 - `rust.*` and `rust.metal.*` APIs are explicit Rust-native source contracts,
 - `@:haxeMetal` marks a strict Rust-native island inside a wider portable build,
 - today, `rust_no_hxrt` is a metal-only minimal-runtime gate; future portable use requires a
@@ -103,7 +104,8 @@ Default behavior:
 
 Portable idiom guidance:
 
-- Prefer portable shared surfaces (`reflaxe.std`) for cross-target Option/Result style flows.
+- Prefer portable shared surfaces (`reflaxe.std`) for cross-target Option/Result style flows once
+  the shared package is on the consuming project's classpath.
 - On Rust, `reflaxe.std.Option/Result` are expected to lower to the same native Rust
   `Option/Result` representations used by `rust.Option` / `rust.Result`.
   The difference is API contract and portability intent, not a wrapper runtime type.
@@ -232,7 +234,8 @@ These reports help keep the boundary reviewable:
 - selected backend-native representations appear in `nativeRepresentationPlan` with stable reasons,
 - runtime requirements appear in `runtimeRequirements` with stable semantic reason kinds,
 - `fallbackSummary` states whether the selected program needs `hxrt` and whether no-hxrt is blocked,
-- family pin metadata keeps Rust-local adoption distinct from standalone package hosting claims.
+- family pin metadata keeps Rust-local compiler admission/lowering distinct from standalone package
+  hosting claims.
 
 The report schemas include explicit identity fields:
 

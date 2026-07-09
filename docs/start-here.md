@@ -111,7 +111,10 @@ line up cleanly, the compiler can still lower to the native Rust representation.
 - `reflaxe.std.Option<T>` -> Rust `Option<T>`
 - `reflaxe.std.Result<T, E>` -> Rust `Result<T, E>`
 
-That keeps the portable authoring surface while aiming for Rust-native cost on this backend.
+Those examples describe admitted shared-package surfaces. The Rust backend has fixture coverage and
+lowering for them, but this haxelib does not currently bundle the canonical `reflaxe.std` module
+definitions; a consuming project must get those modules from the shared package once it exists, or
+from an explicit local dependency during experiments.
 
 `reflaxe.std` is intended to grow into a broader portable idiom layer over time. v1 starts with
 `Option` / `Result` because those are small enough to lock semantics and migration rules first.

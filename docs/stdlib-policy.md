@@ -39,7 +39,8 @@ Current Rust-local posture:
 
 - Rust implements the first adoption slice (`Option` / `Result`) and emits family pin/report
   evidence for it.
-- Rust does not claim to host or publish the standalone `reflaxe.std` package from this repo.
+- Rust does not claim to host or publish the standalone `reflaxe.std` package from this repo, and
+  this haxelib does not currently ship the canonical `reflaxe.std` Haxe module definitions.
 - Broader portable idiom expansion should wait for family-governed cross-backend rollout, not grow
   opportunistically inside `haxe.rust`.
 

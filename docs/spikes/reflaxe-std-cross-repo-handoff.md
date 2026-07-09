@@ -13,9 +13,10 @@ Scope bead: `haxe.rust-oo3.18.6`
 - typed migration adapters,
 - deterministic report artifacts carrying family pin metadata.
 
-That work is intentionally only the Rust adoption slice. The shared package model is larger than
-this repo and needs explicit ownership so the roadmap stays honest about what belongs here versus
-what belongs in sibling repos.
+That work is intentionally only the Rust compiler-admission and lowering slice. The canonical
+`reflaxe.std` Haxe module definitions are not shipped by the `reflaxe.rust` haxelib today. The
+shared package model is larger than this repo and needs explicit ownership so the roadmap stays
+honest about what belongs here versus what belongs in sibling repos.
 
 ## Two-layer package model
 
@@ -39,7 +40,8 @@ Important constraint:
 
 ### `haxe.rust`
 
-Status: implemented for the initial adoption slice.
+Status: implemented for compiler admission/lowering of the initial adoption slice; not a standalone
+package host.
 
 Rust owns:
 
@@ -58,7 +60,8 @@ Rust does **not** own:
 
 ### `haxe.go`
 
-Status: intended host / reference implementation for the family split.
+Status: intended future host / reference implementation for the family split; current source still
+uses backend-local `go.Result` rather than an active shipped `reflaxe.std` package.
 
 Go is the expected host for:
 
@@ -85,6 +88,21 @@ Elixir needs root-cause work before it can be considered a clean adopter:
 
 Rust depends on Elixir only for cross-family convergence, not for local correctness.
 
+### `haxe.ocaml` / `reflaxe.ocaml`
+
+Status: adopter/reference for Reflaxe `_std` layout, not a current `reflaxe.std` host.
+
+OCaml currently exposes backend-native `ocaml.Option` / `ocaml.Result` surfaces. It can help keep
+the package-boundary split honest, but it does not currently publish the canonical portable
+`reflaxe.std` package.
+
+### `haxe.ruby`
+
+Status: no active `reflaxe.std` package surface today.
+
+Ruby follows the Reflaxe `_std` override layout for target std work, but current public surfaces are
+Ruby/backend and std-facade oriented rather than a shared `reflaxe.std` Option/Result host.
+
 ### `haxe` JS target
 
 Status: consumer/reference, not host.
@@ -106,15 +124,20 @@ Rust can consider the cross-repo handoff done when:
 1. Rust docs explicitly state what is implemented locally and what is external ownership.
 2. Rust docs make the package layering clear:
    - `reflaxe.family.std` = governance
-   - `reflaxe.std` = user-facing portable idiom package
+   - `reflaxe.std` = user-facing portable idiom package, once hosted outside this repo
 3. Rust docs make the v1 scope clear:
    - `Option` / `Result` are the first slice, not the whole long-term package ambition.
-4. The roadmap no longer implies that Rust alone is responsible for publishing the family package.
+4. The roadmap no longer implies that Rust alone is responsible for publishing the family package or
+   shipping canonical `reflaxe.std` module definitions.
 
 ## Current blockers outside this repo
 
 - `haxe.go`: publish/host the standalone package boundary and family rollout workflow
 - `haxe.elixir`: formal portable/native contract lanes + real `Option` transform support
+- `haxe.ocaml` / `reflaxe.ocaml`: decide whether `ocaml.Option` / `ocaml.Result` get adapters to
+  the shared package once it exists
+- `haxe.ruby`: decide whether any Ruby-native idiom surfaces should have adapters after the shared
+  package exists
 - `haxe` / JS consumer path: fixture/docs confirmation for portable enum shape
 - `genes-ts`: stable JS/TS consumer docs and golden fixtures for portable enum shape
 

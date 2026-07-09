@@ -25,12 +25,14 @@ networking, TLS, DB, processes, or threading, add app-specific smoke tests aroun
 
 - `portable` contract (default): Haxe-first semantics with portability-oriented behavior and predictable stdlib/runtime integration.
 - `metal` contract: Rust-first boundary rules, typed interop surfaces, and performance-focused paths.
-- Portable abstractions do not have to mean wrapper tax: when semantics line up, shared portable
-  surfaces can lower directly to native Rust representations (for example
-  `reflaxe.std.Option/Result` -> Rust `Option/Result`).
-- `reflaxe.std` is the start of a broader portable idiom layer, not a Rust-only wrapper module.
-  V1 is intentionally narrow (`Option` / `Result`) so semantics and migration stay stable before
-  the portable API surface grows.
+- Portable abstractions do not have to mean wrapper tax: when semantics line up, admitted shared
+  portable surfaces can lower directly to native Rust representations. The current fixture-backed
+  `reflaxe.std.Option/Result` contract maps to Rust `Option/Result`, while the standalone
+  `reflaxe.std` package modules remain family-package work rather than modules bundled by this
+  haxelib today.
+- `reflaxe.std` is the planned broader portable idiom layer, not a Rust-only wrapper module. V1 is
+  intentionally narrow (`Option` / `Result`) so semantics and migration stay stable before the
+  portable API surface grows.
 - Portable lowering can still target native Rust representations when semantics match, but that is
   an implementation win inside the `portable` contract, not a silent switch into native-lane code.
   See [Portable near-native guidance](docs/portable-near-native-guidance.md).
@@ -172,8 +174,10 @@ Rule of thumb:
 
 - Start in `portable`.
 - Add `metal` only where the app needs Rust-first APIs, stricter boundaries, or measured hot-path work.
-- Use `reflaxe.std` portable idioms when they express the right semantics; on Rust, `Option` and
-  `Result` lower to native Rust representations when the contract lines up.
+- Use `reflaxe.std` portable idioms when the shared package is on your classpath and they express
+  the right semantics; on Rust, admitted `Option` and `Result` surfaces lower to native Rust
+  representations when the contract lines up. Until that package is supplied, keep using the
+  shipped `haxe.*` or `rust.*` surfaces that match your portability intent.
 - Use `rust.*`/`rust.metal.*` when the source itself should be Rust-native. Treat awkward source
   code written only to appease current codegen as a compiler/API gap to report or fixture.
 - Use scoped borrow helpers (`Borrow.withRef/withMut`, slice/str helpers) for Rust-like borrowed

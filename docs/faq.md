@@ -49,8 +49,10 @@ The short version:
 Concrete examples:
 
 - `Int`, `Bool`, `Float`, and many enum/value paths lower toward normal Rust scalar/value shapes.
-- `reflaxe.std.Option<T>` and `reflaxe.std.Result<T, E>` lower to Rust `Option<T>` and
-  `Result<T, E>` on this backend.
+- Admitted `reflaxe.std.Option<T>` and `reflaxe.std.Result<T, E>` surfaces lower to Rust
+  `Option<T>` and `Result<T, E>` on this backend when those modules are supplied by the shared
+  package or an explicit local dependency. This haxelib does not currently ship the canonical
+  `reflaxe.std` module definitions.
 - `Array<T>` currently maps to a lightweight runtime array over a shared `Vec<T>` handle because
   Haxe arrays are nullable, assignable reference values with mutation semantics.
 - Portable nullable strings use the runtime string representation. Metal defaults to non-null Rust
@@ -300,8 +302,9 @@ In portable, strings default to a nullable runtime representation so Haxe string
 available. In metal, `String` defaults to non-null Rust `String` semantics; use `Null<String>` when a
 nullable value is the real contract.
 
-For Rust-native optional values, prefer typed option shapes such as `reflaxe.std.Option<T>` or
-`rust.Option<T>` depending on the layer you are writing.
+For Rust-native optional values, prefer typed option shapes. Use `rust.Option<T>` for explicit
+Rust-native code; use `reflaxe.std.Option<T>` only when the shared portable package is available
+and the source should stay cross-backend.
 
 Reference-like Haxe values such as classes already have explicit runtime null handles. Generic APIs
 like `Array<Class>.shift()` may use `Option` internally, but typed `Null<Class>` callsites map the
