@@ -2,6 +2,9 @@
 
 This directory is a bootstrap snapshot for the future standalone `reflaxe.family.std` repository.
 
+It is the governance/spec/conformance layer, not the user-facing `reflaxe.std` package. It does not
+ship canonical `reflaxe.std.Option` / `reflaxe.std.Result` Haxe module definitions.
+
 It packages family-shared portable contract artifacts extracted from `reflaxe.rust`:
 
 - portable semantics contract (`contracts/portable-semantics/v1.md`)

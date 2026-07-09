@@ -24,6 +24,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Contracts](profiles.md): portable vs metal contract semantics and lane/capability controls.
 - [FAQ](faq.md): first-user answers about GC, memory management, generated Rust quality, runtime overhead, profile choice, and interop.
 - [Portable idiom adoption contract](reflaxe-std-adoption-contract.md): Rust-side boundary and migration rules for the shared `reflaxe.std` portable idiom layer (v1 starts with `Option`/`Result`).
+- [Portable idiom package extraction tracker](reflaxe-std-package-extraction-tracker.md): current cross-repo ownership, adapter, install, and public-guidance gates before app authors should depend on `reflaxe.std` by default.
 - [Semver and release posture](semver-release-posture.md): canonical public `1.x` release posture and packaging decision.
 - [GA decision record](ga-decision-record.md): historical Milestone 28 gate outcome that led to the semver/public-packaging follow-up.
 - [GA caveat classification](ga-caveat-classification.md): historical blocker/defer/non-issue input used by the Milestone 28 gate.
@@ -102,6 +103,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Cross overrides and hardening](cross-overrides-and-hardening.md): `_std`/`.cross.hx` ownership, sibling-target coexistence risk, and hardening notes.
 - [Spike: Family `portable|metal` Alignment](spikes/family-portable-metal-alignment.md): cross-repo contract alignment notes and implementation gap history.
 - [Spike: `reflaxe.std` Cross-Repo Handoff](spikes/reflaxe-std-cross-repo-handoff.md): ownership split between Rust adoption work and the remaining Go/Elixir/JS/genes rollout tasks.
+- [Portable idiom package extraction tracker](reflaxe-std-package-extraction-tracker.md): active gates for the standalone `reflaxe.std` package extraction and adoption path.
 - [Spike: Auto Profile Exploration](spikes/auto-profile-exploration.md): decision memo for keeping explicit `portable|metal` contracts and constraints for any future `auto` experiment.
 
 ## Historical release-gate records

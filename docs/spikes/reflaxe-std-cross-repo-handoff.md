@@ -3,6 +3,10 @@
 Date: 2026-03-06  
 Scope bead: `haxe.rust-oo3.18.6`
 
+Current tracker: [`docs/reflaxe-std-package-extraction-tracker.md`](../reflaxe-std-package-extraction-tracker.md)
+records the active Rust-side package extraction gate. This spike remains the historical handoff
+record; use the tracker for current public-guidance and cross-repo ownership checks.
+
 ## Why this exists
 
 `reflaxe.rust` now has the first concrete adoption slice for the shared portable idiom layer:

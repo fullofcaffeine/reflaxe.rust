@@ -43,6 +43,8 @@ Current Rust-local posture:
   this haxelib does not currently ship the canonical `reflaxe.std` Haxe module definitions.
 - Broader portable idiom expansion should wait for family-governed cross-backend rollout, not grow
   opportunistically inside `haxe.rust`.
+- The active package extraction tracker is `docs/reflaxe-std-package-extraction-tracker.md`; keep
+  public guidance aligned with its install, adapter, and conformance gates.
 
 ## Override model
 

@@ -6,6 +6,8 @@ Status:
   `haxe.rust` for supplied `reflaxe.std.Option/Result` modules
 - canonical `reflaxe.std` Haxe module definitions are not shipped by the `reflaxe.rust` haxelib
 - family-host/package extraction still pending outside this repo
+- the current package extraction tracker is
+  [`docs/reflaxe-std-package-extraction-tracker.md`](reflaxe-std-package-extraction-tracker.md)
 
 This document defines the Rust-side contract for adopting a shared portable idiom package.
 
@@ -176,3 +178,4 @@ Current contract-first fixture seed:
 - `docs/portable-semantics-v1.md`
 - `docs/portable-module-mapping-contract.md`
 - `docs/spikes/reflaxe-std-cross-repo-handoff.md`
+- `docs/reflaxe-std-package-extraction-tracker.md`
