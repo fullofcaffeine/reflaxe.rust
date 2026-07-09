@@ -5,6 +5,15 @@
 - Do not expose raw `__rust__` calls to application/example code; enforce “apps call Haxe APIs, not injections”.
 - `@:rustAllowRaw` is for narrow low-level authority islands when strict boundary enforcement would otherwise reject a necessary raw bridge.
   It does not weaken `metal` / `@:haxeMetal`; those paths must still become typed instead of relying on raw fallback.
+- Reflaxe convention: target std/support roots are declared in `haxelib.json` `reflaxe.stdPaths`;
+  package builds flatten those roots, and paths ending in `_std` become packaged `.cross.hx` files.
+- Rust-target instance: upstream-colliding Haxe stdlib overrides live under `std/rust/_std/**`
+  in the source checkout
+  (for example `std/rust/_std/haxe/Exception.hx`, `std/rust/_std/Sys.hx`, and
+  `std/rust/_std/sys/io/File.hx`). Do not add new upstream-colliding overrides directly under
+  `std/haxe/**`, `std/sys/**`, or top-level `std/*.hx`.
+- Top-level support namespaces such as `std/haxe/**` and `std/sys/**` are not deprecated, but they
+  are for Rust-target support modules/native helper files that do not shadow upstream std modules.
 - When overriding Haxe stdlib modules (e.g. `haxe.io.Bytes`, `Sys`, `sys.*`), keep their public signatures compatible so other std modules typecheck.
 - Some stdlib APIs are declared as `@:coreApi extern` in the eval stdlib (`std/eval/_std/**`). Target overrides must match these signatures exactly (including property accessor shapes like `var x(get, never)`), otherwise Haxe will error during typing.
 - Prefer stable, typed interop surfaces:
