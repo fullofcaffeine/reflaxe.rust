@@ -4,7 +4,7 @@ Historical note:
 
 - this document records the Milestone 26 hardening work that made public readiness claims honest
 - the current public semver/package posture now lives in
-  [Semver And Release Posture Decision](semver-release-posture.md)
+  [Semver And Release Posture](semver-release-posture.md)
 
 This document records the release-evidence hardening playbook and its closeout state for `reflaxe.rust`.
 
@@ -38,9 +38,10 @@ As of March 8, 2026:
 - release-evidence hardening: closed
 - semver/public packaging posture: unresolved at the time of this hardening snapshot
 
-That last item was later resolved by
-[Semver And Release Posture Decision](semver-release-posture.md), which records the current stable
-`1.x` public release posture.
+That item first produced a historical `1.0` direction in Milestone 29, but the release was never
+tagged and the real release line continued on `0.x`. In July 2026,
+[Semver And Release Posture](semver-release-posture.md) superseded that unexecuted decision with an
+intentional pre-1.0 line and measurable graduation gate.
 
 Meaning:
 

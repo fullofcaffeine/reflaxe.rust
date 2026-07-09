@@ -1,11 +1,12 @@
 # Rust Interop (No `__rust__` in apps)
 
-This target supports an escape hatch (`__rust__`) for emitting raw Rust, but **v1.0 policy is:**
+This target supports an escape hatch (`__rust__`) for emitting raw Rust, but the **proposed v1.0
+policy is:**
 
 - Application code should stay “pure Haxe” (no raw `__rust__` calls).
 - Rust interop belongs in **framework code** (`std/`, `runtime/`) behind typed APIs.
 
-This doc describes the recommended, stable pattern for binding to Rust.
+This doc describes the recommended, documented pattern for binding to Rust.
 
 For APIs whose Rust shape needs explicit lifetimes, HRTB, const generics, macro-heavy setup, or
 contained `unsafe`, use the [Extern and lifetime-island cookbook](extern-lifetime-island-cookbook.md)

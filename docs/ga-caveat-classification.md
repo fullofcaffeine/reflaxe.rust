@@ -4,7 +4,7 @@ Historical note:
 
 - this document is the Milestone 28 caveat input, not the current public release posture
 - the semver/public-packaging blocker identified here was resolved by
-  [Semver And Release Posture Decision](semver-release-posture.md)
+  [Semver And Release Posture](semver-release-posture.md)
 
 ## Why
 
@@ -44,7 +44,7 @@ Interpretation rule:
 ## Historical Classification Table
 
 This table is preserved as the Milestone 28 classification input. The semver/public-packaging row
-was later resolved by [Semver And Release Posture Decision](semver-release-posture.md).
+was later resolved by [Semver And Release Posture](semver-release-posture.md).
 
 | Bucket | Current evidence | Classification | Why | GA implication |
 | --- | --- | --- | --- | --- |
@@ -55,7 +55,7 @@ was later resolved by [Semver And Release Posture Decision](semver-release-postu
 | `sys.db.*` native-environment smoke confidence | `docs/feature-support-matrix.md`, `docs/semantic-confidence-summary.md`, `test/snapshot/sys_db_mysql_compile`, `test/snapshot/sys_db_sqlite_smoke`, Tier2 sweep | `explicit defer` | DB support is real on the Rust target, but current evidence is compile/smoke-oriented and depends on destination native libraries and environment setup. | Preserve support language, but keep environment-sensitive caveats explicit. This is not broad host-independent parity proof. |
 | Windows smoke subset vs blanket platform claims | `.github/workflows/ci.yml`, `.github/workflows/weekly-ci-evidence.yml`, `docs/weekly-ci-evidence.md`, `docs/semantic-confidence-summary.md` | `explicit defer` | Windows confidence is real, but it is a curated smoke subset, not the same as full Windows semantic closure. | Broad production language must say Linux CI + Windows smoke, not imply broad cross-platform parity. |
 | `reflaxe.std` package-hosting truth vs local Rust adoption | `docs/reflaxe-std-adoption-contract.md`, `docs/road-to-1.0.md`, `docs/index.md` | `non-issue` | The repo documents the important truth: Rust has compiler admission, fixture evidence, adapters, and lowering, but standalone family hosting/publishing and canonical Haxe module definitions are not owned here. | Keep public wording clear that `reflaxe.std` is admitted when supplied, not bundled as a `reflaxe.rust` package surface today. |
-| Semver / public packaging posture while still on `0.x` | `package.json`, `docs/production-readiness.md`, `docs/road-to-1.0.md`, `README.md` as they stood during Milestone 28 | `blocker` | The repo could plausibly justify production use on validated lanes, but an honest broad GA / `1.0` closeout still required an explicit semver and release decision. Staying on `0.62.0` while speaking like GA was closed would have collapsed the distinction between “production-capable” and “released as 1.0”. | Milestone 28 had to end with an explicit go/no-go decision. That follow-up decision is now recorded in [Semver And Release Posture Decision](semver-release-posture.md). |
+| Semver / public packaging posture while still on `0.x` | `package.json`, `docs/production-readiness.md`, `docs/road-to-1.0.md`, `README.md` as they stood during Milestone 28 | `blocker` | The repo could plausibly justify production use on validated lanes, but an honest broad GA / `1.0` closeout still required an explicit semver and release decision. Staying on `0.62.0` while speaking like GA was closed would have collapsed the distinction between “production-capable” and “released as 1.0”. | Milestone 28 had to end with an explicit go/no-go decision. That follow-up decision is now recorded in [Semver And Release Posture](semver-release-posture.md). |
 
 ## Out-Of-Band Findings For Milestone 28
 
@@ -68,15 +68,15 @@ These were not separate caveat buckets, but they affected the Milestone 28 publi
 - The support matrix and semantic-confidence summary were directionally honest, but public
   entrypoint docs still needed a single canonical GA-decision source once Milestone 28 closed.
 
-Current status:
+July 2026 correction:
 
-- README and public entrypoint docs now point to the stable `1.x` posture and canonical release
-  docs instead of saying release-evidence hardening is still in progress.
-- The canonical current release posture is [Semver And Release Posture Decision](semver-release-posture.md).
+- README and public entrypoint docs were aligned to the intentional pre-1.0 posture and canonical
+  graduation gate instead of claiming that the untagged historical `1.0` direction shipped.
+- The canonical current release posture is [Semver And Release Posture](semver-release-posture.md).
 - The remaining caveats from this document should be read as explicit defers/proof-depth qualifiers,
   not as unresolved public-entrypoint cleanup work.
 
-## Current Decision Posture
+## Subsequent Decision Posture
 
 Historical posture immediately after this classification:
 
@@ -84,11 +84,11 @@ Historical posture immediately after this classification:
 - Most remaining caveats are `explicit defer`, not broad architectural blockers.
 - The only `blocker` to an honest broad GA / `1.0` closeout at that time was that the repo had not yet made the explicit semver/release decision and aligned public entrypoint language around it.
 
-Current release posture:
+July 2026 release correction:
 
-- that semver/release blocker is resolved by
-  [Semver And Release Posture Decision](semver-release-posture.md)
-- the explicit defers remain documented caveats, not broad release blockers
+- the historical `1.0` direction was superseded by the intentional pre-1.0 posture in
+  [Semver And Release Posture](semver-release-posture.md)
+- the explicit defers remain documented caveats and inputs to the measurable graduation gate
 
 At the time, that meant Milestone 28 should continue as planned:
 
@@ -97,5 +97,5 @@ At the time, that meant Milestone 28 should continue as planned:
 3. freeze the Rust-local `reflaxe.std` boundary truth,
 4. then publish one canonical GA decision record.
 
-That follow-through is historical now; use [Semver And Release Posture Decision](semver-release-posture.md)
+That follow-through is historical now; use [Semver And Release Posture](semver-release-posture.md)
 and [Production Readiness](production-readiness.md) for current adoption decisions.

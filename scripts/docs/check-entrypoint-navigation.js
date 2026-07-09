@@ -98,8 +98,8 @@ const entrypointRules = [
     ],
     requiredPhrases: [
       'historical decision record, not the current release posture',
-      'stable `1.x` posture: adopted',
-      'semver/public-packaging blocker was resolved',
+      '`0.x` posture: intentional until the graduation gate passes',
+      'intentional pre-1.0 decision superseded it',
     ],
   },
   {
@@ -109,8 +109,8 @@ const entrypointRules = [
     ],
     requiredPhrases: [
       'Milestone 28 caveat input, not the current public release posture',
-      'semver/public-packaging blocker identified here was resolved',
-      'explicit defers remain documented caveats',
+      'historical `1.0` direction was superseded by the intentional pre-1.0 posture',
+      'explicit defers remain documented caveats and inputs to the measurable graduation gate',
     ],
   },
   {
@@ -120,7 +120,7 @@ const entrypointRules = [
     ],
     requiredPhrases: [
       'current public semver/package posture now lives',
-      'stable `1.x` public release posture',
+      'intentional pre-1.0 line and measurable graduation gate',
     ],
   },
 ];

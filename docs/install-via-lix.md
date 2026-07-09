@@ -1,12 +1,15 @@
-# Install via lix (GitHub-only, Stable 1.x)
+# Install via lix (GitHub-only)
 
 This project is distributed via **GitHub Releases** and installed via **lix**.
 
-Current public packaging posture:
+<!-- GENERATED:release-posture:start -->
+Current release posture: **intentional `0.x` pre-1.0 posture**.
 
-- stable release line: `1.x`
-- install source: GitHub release tags
-- no haxelib.org publish required
+Maturity: **production-capable preview on validated lanes**. See [Semver And Release Posture](semver-release-posture.md).
+<!-- GENERATED:release-posture:end -->
+
+The install source is a pinned GitHub release tag. Haxelib.org publication is not required by the
+current distribution contract.
 
 The release artifact is haxelib-shaped because Reflaxe/Haxe tooling expects that layout. That does
 not mean this repo currently publishes to haxelib.org.

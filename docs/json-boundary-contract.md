@@ -2,8 +2,8 @@
 
 ## Why
 
-Post-`1.0`, JSON is the only current performance hotspot that is justified by the committed
-evidence rather than by intuition.
+In the current release-hardening evidence, JSON is the only performance hotspot justified by
+committed measurements rather than by intuition.
 
 That makes JSON boundary work unusually risk-sensitive:
 
@@ -43,7 +43,7 @@ That means the measured cost is not “serde_json is slow”. It is mostly bound
 
 The important post-fix nuance is that the old double-tree path is no longer the main explanation.
 `hxrt::json` no longer needs to rebuild a full intermediate `serde_json::Value` tree for the plain
-parse/stringify fast path, and the first post-`1.0` runtime-side optimization pass also removed the
+parse/stringify fast path, and the first release-hardening runtime-side optimization pass also removed the
 extra key/value-buffer cloning on plain `DynObject` / `Anon` stringify walks.
 
 The remaining gap is now mostly the cost of walking dynamic/runtime shapes themselves, plus the

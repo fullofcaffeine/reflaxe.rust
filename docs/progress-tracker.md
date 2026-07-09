@@ -1,6 +1,13 @@
 # Compiler Progress Tracker
 
-This page answers, in plain language, how the stable `1.x` release posture is holding up.
+<!-- GENERATED:release-posture:start -->
+Current release posture: **intentional `0.x` pre-1.0 posture**.
+
+Maturity: **production-capable preview on validated lanes**. See [Semver And Release Posture](semver-release-posture.md).
+<!-- GENERATED:release-posture:end -->
+
+This page answers, in plain language, how the compiler's evidence and graduation readiness are
+holding up.
 
 It is intentionally conservative:
 
@@ -40,7 +47,8 @@ Current state:
 - The core compiler/runtime baseline is complete.
 - The real-app harness is complete.
 - Release-evidence hardening closeout is complete.
-- Public `1.x` release posture is now recorded in `docs/semver-release-posture.md`.
+- The current release posture and measurable `1.0` graduation gate are recorded in
+  `docs/semver-release-posture.md`.
 
 ## Confidence framing
 

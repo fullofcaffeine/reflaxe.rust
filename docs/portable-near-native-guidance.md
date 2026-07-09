@@ -1,6 +1,6 @@
 # Portable Near-Native Guidance
 
-This page answers the practical post-`1.0` question for performance-oriented teams:
+This page answers the practical production question for performance-oriented teams:
 
 - how close can `portable` get to native Rust output,
 - when is `metal` still the right choice,
@@ -11,7 +11,7 @@ This page answers the practical post-`1.0` question for performance-oriented tea
 
 `reflaxe.rust` now has:
 
-- a stable public `portable|metal` contract model,
+- a documented public `portable|metal` contract model,
 - evidence-backed release posture,
 - targeted performance baselines,
 - and a small but real compiler-admitted `reflaxe.std` portable idiom slice.

@@ -2,6 +2,12 @@
 
 Use this page as the map for `reflaxe.rust` docs.
 
+<!-- GENERATED:release-posture:start -->
+Current release posture: **intentional `0.x` pre-1.0 posture**.
+
+Maturity: **production-capable preview on validated lanes**. See [Semver And Release Posture](semver-release-posture.md).
+<!-- GENERATED:release-posture:end -->
+
 ## Quick start by audience
 
 - New to compiler internals: [Start Here](start-here.md)
@@ -25,7 +31,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [FAQ](faq.md): first-user answers about GC, memory management, generated Rust quality, runtime overhead, profile choice, and interop.
 - [Portable idiom adoption contract](reflaxe-std-adoption-contract.md): Rust-side boundary and migration rules for the shared `reflaxe.std` portable idiom layer (v1 starts with `Option`/`Result`).
 - [Portable idiom package extraction tracker](reflaxe-std-package-extraction-tracker.md): current cross-repo ownership, adapter, install, and public-guidance gates before app authors should depend on `reflaxe.std` by default.
-- [Semver and release posture](semver-release-posture.md): canonical public `1.x` release posture and packaging decision.
+- [Semver and release posture](semver-release-posture.md): canonical current posture, structured release-state contract, and measurable graduation gate.
 - [GA decision record](ga-decision-record.md): historical Milestone 28 gate outcome that led to the semver/public-packaging follow-up.
 - [GA caveat classification](ga-caveat-classification.md): historical blocker/defer/non-issue input used by the Milestone 28 gate.
 - [Examples matrix](examples-matrix.md): scenario coverage, profile entrypoints, and native-parity quick check (`profile_storyboard`).
@@ -54,7 +60,7 @@ Use this page as the map for `reflaxe.rust` docs.
 - [Semantic confidence summary](semantic-confidence-summary.md): generated rollup separating compile coverage, targeted parity, and smoke-only buckets.
 - [v1 support matrix](v1.md): release-scope contract and parity constraints.
 - [HXRT overhead benchmarks](perf-hxrt-overhead.md): size/startup tracking, soft perf budgets, and baseline workflow.
-- [JSON boundary contract](json-boundary-contract.md): perf/semantic contract for the current post-`1.0` JSON hotspot tranche.
+- [JSON boundary contract](json-boundary-contract.md): perf/semantic contract for the current release-hardening JSON hotspot tranche.
 - [JSON boundary next slice audit](json-boundary-next-slice-audit.md): follow-up attribution for typed `parseValue` / schema-validation work.
 - [Workflow](workflow.md): Haxe -> Rust -> Cargo workflow.
 - [Install via lix](install-via-lix.md): release-tag install and generated-app setup paths.
@@ -96,7 +102,9 @@ Use this page as the map for `reflaxe.rust` docs.
 ## Release and governance
 
 - [Release](release.md): semantic-release flow and release artifacts.
-- [Semver and release posture](semver-release-posture.md): public `1.x` posture and packaging truth.
+- [Semver and release posture](semver-release-posture.md): current posture, graduation criteria, and packaging truth.
+- [Release and SemVer reference architecture](release-reference-architecture.md): reusable manifest, generation, lifecycle-verification, and adoption invariants for sibling repositories.
+- [Structured release manifest](../release-manifest.json): machine-readable release-line policy and generated posture owners.
 - [Release Gate Closeout](release-gate-closeout.md): closeout template used by the historical release-gate work.
 - [Haxelib Packaging Notes](haxelib-packaging.md): Reflaxe `stdPaths` source layout, package build flow, and `.cross.hx` rationale.
 - [Stdlib Parity Policy](stdlib-policy.md): parity scope, provenance ledger, and CI boundary governance.

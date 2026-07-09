@@ -20,6 +20,7 @@
     "test:update": "bash test/run-snapshots.sh --update",
     "test:watcher": "bash test/scripts/watch-haxe-rust.sh",
     "test:clean-artifacts": "bash test/scripts/clean-artifacts.sh",
+    "test:release-state": "node test/scripts/release-state.test.js",
     "test:upstream-stdlib": "bash test/run-upstream-stdlib-sweep.sh",
     "test:upstream-stdlib:tier2": "bash test/run-upstream-stdlib-sweep.sh --tier tier2",
     "test:semantic-diff": "python3 test/run-semantic-diff.py",
@@ -63,10 +64,11 @@
     "guard:deprecated-defines": "bash scripts/lint/deprecated_define_guard.sh",
     "guard:defines-doc": "bash scripts/lint/defines_doc_guard.sh",
     "guard:security-wiring": "bash scripts/lint/security_wiring_guard.sh",
+    "guard:release-state": "node scripts/release/sync-versions.js --check",
     "guard:native-facade-manifest": "node scripts/ci/native-facade-manifest-check.js",
     "hooks:install": "bash scripts/install-git-hooks.sh",
-    "hooks:check": "npm run guard:local-paths && npm run guard:tracked-artifacts && npm run guard:upstream-stdlib-boundary && npm run guard:stdlib-ledger && npm run guard:native-facade-manifest && npm run guard:portable-stdlib-allowlist && npm run guard:stdlib-candidates && npm run guard:stdlib-candidate-gap && bash scripts/lint/name_heuristics_guard.sh && bash scripts/lint/numeric_suffix_guard.sh && bash scripts/lint/dynamic_usage_guard.sh && npm run guard:deprecated-defines && npm run guard:defines-doc && bash scripts/lint/cargo_hx_project_guard.sh && npm run guard:security-wiring && bash scripts/docs/check-progress-tracker.sh && npm run docs:check:navigation && npm run docs:check:evidence && npm run test:watcher && npm run test:clean-artifacts",
-    "hooks:check:full": "npm run guard:local-paths && npm run guard:tracked-artifacts && npm run guard:upstream-stdlib-boundary && npm run guard:stdlib-ledger && npm run guard:native-facade-manifest && npm run guard:portable-stdlib-allowlist && npm run guard:stdlib-candidates && npm run guard:stdlib-candidate-gap && bash scripts/lint/name_heuristics_guard.sh && bash scripts/lint/numeric_suffix_guard.sh && bash scripts/lint/dynamic_usage_guard.sh && npm run guard:deprecated-defines && npm run guard:defines-doc && bash scripts/lint/cargo_hx_project_guard.sh && npm run guard:security-wiring && bash scripts/docs/check-progress-tracker.sh && npm run docs:check:navigation && npm run docs:check:evidence && npm run test:clean-artifacts && npm run check:harness",
+    "hooks:check": "npm run guard:local-paths && npm run guard:tracked-artifacts && npm run guard:release-state && npm run guard:upstream-stdlib-boundary && npm run guard:stdlib-ledger && npm run guard:native-facade-manifest && npm run guard:portable-stdlib-allowlist && npm run guard:stdlib-candidates && npm run guard:stdlib-candidate-gap && bash scripts/lint/name_heuristics_guard.sh && bash scripts/lint/numeric_suffix_guard.sh && bash scripts/lint/dynamic_usage_guard.sh && npm run guard:deprecated-defines && npm run guard:defines-doc && bash scripts/lint/cargo_hx_project_guard.sh && npm run guard:security-wiring && bash scripts/docs/check-progress-tracker.sh && npm run docs:check:navigation && npm run docs:check:evidence && npm run test:release-state && npm run test:watcher && npm run test:clean-artifacts",
+    "hooks:check:full": "npm run guard:local-paths && npm run guard:tracked-artifacts && npm run guard:release-state && npm run guard:upstream-stdlib-boundary && npm run guard:stdlib-ledger && npm run guard:native-facade-manifest && npm run guard:portable-stdlib-allowlist && npm run guard:stdlib-candidates && npm run guard:stdlib-candidate-gap && bash scripts/lint/name_heuristics_guard.sh && bash scripts/lint/numeric_suffix_guard.sh && bash scripts/lint/dynamic_usage_guard.sh && npm run guard:deprecated-defines && npm run guard:defines-doc && bash scripts/lint/cargo_hx_project_guard.sh && npm run guard:security-wiring && bash scripts/docs/check-progress-tracker.sh && npm run docs:check:navigation && npm run docs:check:evidence && npm run test:release-state && npm run test:clean-artifacts && npm run check:harness",
     "docs:sync:progress": "node scripts/docs/sync-progress-tracker.js",
     "docs:check:progress": "bash scripts/docs/check-progress-tracker.sh",
     "docs:check:navigation": "node scripts/docs/check-entrypoint-navigation.js",
@@ -78,46 +80,5 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/fullofcaffeine/reflaxe.rust.git"
-  },
-  "release": {
-    "branches": [
-      "main"
-    ],
-    "plugins": [
-      "@semantic-release/commit-analyzer",
-      "@semantic-release/release-notes-generator",
-      "@semantic-release/changelog",
-      [
-        "@semantic-release/exec",
-        {
-          "prepareCmd": "node scripts/release/sync-versions.js ${nextRelease.version} && (rm -f dist/*.zip 2>/dev/null || true) && bash scripts/release/package-haxelib.sh dist/reflaxe.rust-${nextRelease.version}.zip"
-        }
-      ],
-      [
-        "@semantic-release/git",
-        {
-          "assets": [
-            "package.json",
-            "package-lock.json",
-            "haxelib.json",
-            "haxe_libraries/reflaxe.rust.hxml",
-            "README.md",
-            "CHANGELOG.md"
-          ],
-          "message": "chore(release): ${nextRelease.version}\n\n${nextRelease.notes}"
-        }
-      ],
-      [
-        "@semantic-release/github",
-        {
-          "assets": [
-            {
-              "path": "dist/*.zip",
-              "label": "reflaxe.rust haxelib package"
-            }
-          ]
-        }
-      ]
-    ]
   }
 }

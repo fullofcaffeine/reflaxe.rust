@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "canonicalDocument": "docs/semver-release-posture.md",
+  "stableGraduation": {
+    "major": 1,
+    "approved": false,
+    "approvalBead": null,
+    "approvalDate": null
+  },
+  "releaseLines": {
+    "0": {
+      "channel": "pre-1.0",
+      "status": "intentional `0.x` pre-1.0 posture",
+      "maturity": "production-capable preview on validated lanes"
+    },
+    "1": {
+      "channel": "stable",
+      "status": "stable `1.x` release posture",
+      "maturity": "stable on the documented contract",
+      "requiresGraduationApproval": true
+    }
+  },
+  "generatedPostureFiles": [
+    {
+      "path": "README.md",
+      "canonicalLink": "docs/semver-release-posture.md"
+    },
+    {
+      "path": "docs/index.md",
+      "canonicalLink": "semver-release-posture.md"
+    },
+    {
+      "path": "docs/install-via-lix.md",
+      "canonicalLink": "semver-release-posture.md"
+    },
+    {
+      "path": "docs/progress-tracker.md",
+      "canonicalLink": "semver-release-posture.md"
+    },
+    {
+      "path": "docs/release.md",
+      "canonicalLink": "semver-release-posture.md"
+    },
+    {
+      "path": "docs/semver-release-posture.md",
+      "canonicalLink": "#current-decision"
+    },
+    {
+      "path": "docs/start-here.md",
+      "canonicalLink": "semver-release-posture.md"
+    },
+    {
+      "path": "docs/vision-vs-implementation.md",
+      "canonicalLink": "semver-release-posture.md"
+    }
+  ]
+}

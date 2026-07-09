@@ -4,8 +4,13 @@ This guide is for teams that want native Rust binaries without becoming compiler
 
 Current status:
 
+<!-- GENERATED:release-posture:start -->
+Current release posture: **intentional `0.x` pre-1.0 posture**.
+
+Maturity: **production-capable preview on validated lanes**. See [Semver And Release Posture](semver-release-posture.md).
+<!-- GENERATED:release-posture:end -->
+
 - the compiler/runtime baseline is closed and production-capable on validated lanes
-- stable `1.x` public posture is recorded in the [Semver and release posture decision](semver-release-posture.md)
 - production use should still follow the proof-depth caveats in the [Production Readiness guide](production-readiness.md)
 
 The shortest honest answer is: yes, use it for controlled production when your app stays inside the

@@ -14,14 +14,15 @@ Scope bead: `haxe.rust-oo3.22.5`
 This is a historical decision record, not the current release posture.
 
 Milestone 28 ended with one blocker: semver/public-packaging posture while the repo was still on
-`0.x`. That blocker was intentionally narrowed into Milestone 29 and then resolved by
-[Semver And Release Posture Decision](semver-release-posture.md), which adopted the stable `1.x`
-public posture.
+`0.x`. That blocker was intentionally narrowed into Milestone 29, which selected a `1.0` direction
+but did not produce a `v1.0.0` tag or release. In July 2026,
+[Semver And Release Posture](semver-release-posture.md) superseded that unexecuted direction with an
+intentional pre-1.0 line and measurable graduation gate.
 
-Current public truth:
+July 2026 public truth:
 
 - validated-lane production use: ready
-- stable `1.x` posture: adopted
+- `0.x` posture: intentional until the graduation gate passes
 - documented caveats: still part of the public contract
 - blanket Haxe/std/sys parity across every host: still not claimed
 
@@ -176,5 +177,7 @@ Historical final call for Milestone 28:
 - broad GA / `1.0` closeout: not yet
 - reason: explicit semver/public-packaging blocker remained
 
-Milestone 28 closed after the full local CI-equivalent run was recorded as `PASS`. The follow-up
-semver/public-packaging blocker was resolved by `docs/semver-release-posture.md`.
+Milestone 28 closed after the full local CI-equivalent run was recorded as `PASS`. Milestone 29
+recorded a `1.0` direction, but that direction did not produce a tag or release. The July 2026
+intentional pre-1.0 decision superseded it and turned the remaining proof questions into an explicit
+graduation gate in `docs/semver-release-posture.md`.

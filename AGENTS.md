@@ -97,6 +97,16 @@ Agent policy:
 - Architecture policy: when warnings/regressions come from emitted Rust shape (lowering/printer artifacts),
   fix the compiler pass/lowering logic instead of relying on style-level source workarounds (for example rewriting app code to avoid explicit `return` in lambdas).
 - Workaround policy (strict): do not land temporary workarounds. Fix the root cause in compiler/runtime lowering and add or update regression coverage in the same change.
+- Single-source convergence policy (strict): when a defect is caused by the same contract, version,
+  schema, status, or policy fact being maintained independently across code, config, docs, generated
+  artifacts, and workflows, fix the ownership model instead of adding a checker that preserves the
+  duplication. Establish one structured authoritative source, generate every mechanically derivable
+  consumer from it, and make local/CI validation compare regenerated outputs byte-for-byte. Workflows
+  that publish or package those consumers must invoke the same generator and verify the resulting
+  artifact from the same source. A standalone cross-file/phrase-scanning guard is allowed only when a
+  consumer genuinely cannot be generated; document that constraint, the replacement/deprecation
+  condition, and the Beads evidence beside the guard. Do not normalize a synchronization bandage into
+  permanent architecture merely because it catches the current symptom.
 - Portable mode first; keep a single runtime abstraction point so backends can evolve (e.g., `HxRef<T>`).
 - Prefer `import` (and small local `typedef` aliases when appropriate) to avoid verbose fully-qualified type paths in compiler code
   (example: avoid `reflaxe.rust.ast.RustAST.RustMatchArm` when `import reflaxe.rust.ast.RustAST.RustMatchArm` lets you use `RustMatchArm`).
@@ -477,4 +487,19 @@ Agent policy:
   Keep this setup aligned with the CI package-smoke Haxe setup; `npm ci --ignore-scripts` alone is insufficient because it skips lix postinstall and can leave `haxelib` without its Neko runtime.
 - Conventional commits are required on `main` so semantic-release can compute the next version.
   - Use `feat:` for minor, `fix:` for patch, and `feat!:` / `BREAKING CHANGE:` for major.
-- Version strings are kept in sync by `scripts/release/sync-versions.js` (used by semantic-release).
+- Structured release-state policy lives in `release-manifest.json`; do not hand-maintain current
+  posture prose or version surfaces independently. `scripts/release/sync-versions.js` selects the
+  policy for the requested major, generates version metadata plus marker-delimited posture blocks,
+  and provides deterministic `--check` mode for hooks/CI. Stable-line generation is disabled by
+  default and may be enabled only when the manifest contains the reviewed graduation Bead/date.
+  Semantic-release uses the same generator during `prepare`;
+  `scripts/release/verify-release-state.js` verifies the prepared release commit plus packaged
+  haxelib/README before tag creation, verifies the resulting tag before GitHub publication, then
+  verifies the published GitHub Release and zip asset during the success lifecycle.
+  `release.config.js` derives release-commit assets from the generator rather than repeating the
+  manifest's generated-file list. If an external failure leaves a tag without a complete GitHub
+  Release, follow `docs/release.md` partial-publication recovery; do not silently advance versions.
+- Treat `docs/release-reference-architecture.md` as the reference contract for sibling compiler
+  repositories. Reuse its ownership and lifecycle invariants, but inventory and adapt each repo's
+  version surfaces, package format, stable-graduation evidence, and application pressure test rather
+  than copying haxe.rust-specific paths blindly.

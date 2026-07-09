@@ -11,11 +11,14 @@ Haxe 4.3.7 -> Rust target built on Reflaxe.
 
 This project lets you write Haxe and ship native Rust binaries, with a path for both Haxe-first and Rust-first teams.
 
-Current posture:
+<!-- GENERATED:release-posture:start -->
+Current release posture: **intentional `0.x` pre-1.0 posture**.
 
-- architecture and contract model: strong
-- validated implementation baseline: broad and evidence-backed
-- public release posture: stable `1.x`, with explicit documented caveats and proof-depth limits (`docs/semver-release-posture.md`)
+Maturity: **production-capable preview on validated lanes**. See [Semver And Release Posture](docs/semver-release-posture.md).
+<!-- GENERATED:release-posture:end -->
+
+Architecture and contract confidence is strong, and the validated implementation baseline is broad
+and evidence-backed.
 
 Production shorthand: use it for controlled production on validated lanes, not as a blanket promise
 that every arbitrary Haxe/std/sys edge behaves identically on every platform. If your app touches

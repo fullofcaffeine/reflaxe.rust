@@ -4,6 +4,12 @@ This document checks whether the original product vision matches what is impleme
 
 It should read as a calibration document, not a victory lap.
 
+<!-- GENERATED:release-posture:start -->
+Current release posture: **intentional `0.x` pre-1.0 posture**.
+
+Maturity: **production-capable preview on validated lanes**. See [Semver And Release Posture](semver-release-posture.md).
+<!-- GENERATED:release-posture:end -->
+
 ## Vision in one paragraph
 
 `reflaxe.rust` should let teams ship native Rust binaries from Haxe with two practical authoring styles:
@@ -59,7 +65,8 @@ Status: aligned with enforcement options
 Status: aligned with explicit caveats
 
 - The repo has strong compile/inventory closure and real CI evidence.
-- Stable `1.x` public release posture is now recorded separately from the historical gate docs.
+- The canonical posture and its measurable graduation evidence are recorded separately from the
+  historical gate docs.
 - The release-evidence hardening tranche is closed, and current docs now keep compile coverage, targeted semantic parity, and smoke-only confidence separate instead of blending them into one vague support claim.
 
 ### 5) Product should be battle-tested by a real application harness

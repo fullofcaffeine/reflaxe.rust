@@ -2,8 +2,8 @@
 
 This page defines the recurring validation cadence for `reflaxe.rust`.
 
-Release-evidence hardening is already closed. This runbook remains useful because the repo still
-needs recurring proof that the validated `1.x` lanes stay green and that compile coverage,
+Release-evidence hardening is already closed. This runbook remains useful because every supported
+release line needs recurring proof that its validated lanes stay green and that compile coverage,
 semantic parity, and smoke-only confidence remain separated honestly.
 
 Goal: keep confidence anchored to repeatable evidence by re-running full validation on a predictable schedule and reacting quickly to regressions.

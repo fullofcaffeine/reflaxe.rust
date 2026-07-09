@@ -3,7 +3,7 @@
 ## Why this matters
 
 Portable Haxe code uses function values everywhere (callbacks, iterators, “Lambda”-style helpers, etc.).
-The stable `1.x` portable contract supports *passing*, *storing*, and *calling* functions without
+The portable contract and proposed `1.0` scope support *passing*, *storing*, and *calling* functions without
 requiring application code to model Rust closure traits directly.
 
 ## What we support
@@ -44,7 +44,7 @@ Current support includes:
 
 The remaining constraints are now narrower than “mutable callbacks might not work”:
 
-- The stable contract is about Haxe function values, not arbitrary Rust closure trait interop.
+- The documented contract is about Haxe function values, not arbitrary Rust closure trait interop.
   - Generated code uses the Rust `Fn` family internally because that is the callable shape the
     backend owns today.
   - If a future Rust-native surface genuinely needs `FnMut` or `FnOnce`, that should be exposed as
