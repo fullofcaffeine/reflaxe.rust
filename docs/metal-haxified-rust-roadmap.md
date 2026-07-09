@@ -288,7 +288,7 @@ Tracker children created from the Oracle review:
 
 The tracker was migrated to the modern embedded Beads database on July 2, 2026 and recovered from the tracked JSONL export.
 
-Current recovered inventory before adding this milestone:
+Historical recovered inventory before adding this milestone:
 
 - 567 issue records imported into the modern Beads DB.
 - 553 closed.
@@ -296,7 +296,17 @@ Current recovered inventory before adding this milestone:
 - 13 ready.
 - 1 blocked.
 
-The remaining open pre-existing beads stay relevant. They are concrete compiler/runtime gaps rather than stale planning work:
+That July 2 snapshot was the planning input for this milestone, not the current ready queue.
+Use `bd ready`, `bd status`, and `docs/progress-tracker.md` for live status.
+
+Current sync note:
+
+- the root roadmap `haxe.rust-oo3` is closed,
+- `haxe.rust-oo3.74` is closed,
+- the post-roadmap bug/follow-up beads that were open during the recovery sweep are closed,
+- and the current Beads status has no open or ready issues.
+
+Historical open buckets from the recovery sweep included:
 
 - anonymous structure/runtime correctness is now covered for required typed fields (`test/snapshot/anon_required_field_types`) and omitted optional fields (`test/snapshot/anon_optional_fields`)
 - option/null/default lowering: `haxe.rust-362`
@@ -305,20 +315,29 @@ The remaining open pre-existing beads stay relevant. They are concrete compiler/
 - std/codegen missing lowers: `haxe.rust-7xia`, `haxe.rust-fz20`, `haxe.rust-gn0`
 - root roadmap and performance corpus: `haxe.rust-oo3`, `haxe.rust-oo3.73`
 
-The new milestone does not supersede those beads. It gives them a broader metal-authoring direction and adds the missing compiler/API roadmap.
+Those buckets remained relevant while the milestone was planned, but they are no longer active work
+items. Do not reopen them from this historical list; consult the closed Beads and current progress
+tracker for their final evidence.
 
-## Review Requirement
+## Review Closure
 
-This milestone is `thinking:xhigh` because it changes the metal contract direction and can shape public authoring guidance.
+This milestone was `thinking:xhigh` because it changed the metal contract direction and shaped public
+authoring guidance.
 
-Before closure:
+The review requirement was satisfied before closure:
 
-- get an Oracle/GPT-5.5 Pro-style second-pass review if available, or
-- record an explicit written second-pass design review in Beads comments/design notes.
+- the initial second-pass design review recorded no blocking issue in the metal-as-haxified-Rust
+  direction and tightened roadmap/order/output-gate requirements,
+- the focused GPT-5.5 Pro Oracle review for scoped borrow regions returned `APPROVE_WITH_CHANGES`,
+- and the final M42 Beads closure review recorded the incorporated changes, remaining limits, and
+  validation evidence.
 
-The review should answer:
+The review questions were:
 
 - Does this preserve the portable/metal contract boundary?
 - Does it avoid promising full Rust lifetime syntax in Haxe?
 - Are mini-DSLs constrained enough to avoid becoming raw Rust strings?
 - Are output-quality gates concrete enough to prevent "haxified Rust" from becoming marketing language?
+
+Future `thinking:xhigh` metal contract changes should still run their own second-pass review instead
+of relying on this historical M42 closure.
