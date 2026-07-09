@@ -1,6 +1,6 @@
 //! `hxrt::sys`
 //!
-//! Runtime-backed helpers for `std/Sys.cross.hx` and `sys.io.Std*`.
+//! Runtime-backed helpers for the Rust-target `Sys` override and `sys.io.Std*`.
 //!
 //! Why
 //! - `Sys` and `sys.io.Std*` previously used many inline `untyped __rust__` expressions.
