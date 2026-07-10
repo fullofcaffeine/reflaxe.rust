@@ -128,8 +128,17 @@ Release run `29054963288`, archive SHA-256
 `8fef7a08e306f92a519d397cb650da756c50ba6e1a1928d69311726b2c46f536`, and no-op follow-up
 `29056092503`). It did not prove all failure paths and motivated the simplification.
 
-The first real release through this smaller protocol must be recorded here before haxe.rust is
-called the completed reference implementation.
+`v0.81.4` is the first live proof of the smaller protocol. CI run `29107200668` passed every
+required job for source commit `341f9af0`, and its final release job tagged that exact commit without
+creating another commit. The deterministic Haxelib artifact is 662,266 bytes with SHA-256
+`531442c997dbaec734882844eb23dce5cd726eae673c489f13a9a2b5ebe31715`; the hosted checksum asset
+has SHA-256 `5c16b793153ec194a0ce1204faf6cab2e7ee2aed63de8364689b768b085f2b0c`.
+Independent verification resolved local tag, remote tag, and HEAD to the same commit, downloaded
+and hashed the ZIP, matched its sidecar, confirmed the exact two-asset set, and confirmed the
+GitHub Release is published, non-prerelease, and immutable. The tag still contains development
+sentinels (`package.json` `0.0.0-development`, `haxelib.json` `0.0.0`), proving tracked metadata did
+not participate in version lineage. The required docs-only no-op follow-up is recorded after its CI
+run completes.
 
 ## Anti-Patterns
 
