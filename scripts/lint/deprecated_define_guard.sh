@@ -10,9 +10,14 @@ if [[ "${REFLAXE_NO_RG:-0}" != "1" ]] && command -v rg >/dev/null 2>&1; then
 fi
 
 scan_files() {
+  # `git ls-files` keeps index entries for working-tree deletions until the commit is created.
+  # Skip absent paths so intentional removals do not emit repeated rg/grep I/O errors.
   git ls-files \
     | grep -Ev '^(vendor/|\.beads/|test/snapshot/.*/intended/|test/snapshot/.*/intended_metal/)' \
-    | grep -E '\.(hx|cross\.hx|hxml|md|sh|json)$' || true
+    | grep -E '\.(hx|cross\.hx|hxml|md|sh|json)$' \
+    | while IFS= read -r file || [ -n "$file" ]; do
+        [[ -f "$file" ]] && printf '%s\n' "$file"
+      done || true
 }
 
 contains_line() {
@@ -83,6 +88,7 @@ removed_async_allowlist=(
   "AGENTS.md"
   "docs/async-await.md"
   "docs/defines-reference.md"
+  "docs/public-compatibility-manifest.json"
   "scripts/lint/deprecated_define_guard.sh"
   "scripts/ci/check-metal-policy.sh"
   "src/reflaxe/rust/CompilerInit.hx"

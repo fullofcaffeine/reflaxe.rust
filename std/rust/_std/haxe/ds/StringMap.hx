@@ -31,7 +31,7 @@ class StringMap<T> implements IMap<String, T> {
 		Storage backing for Rust target map operations.
 
 		Why public
-		- `rust.MapStorageTools` hosts shared typed boundary helpers in a separate module.
+		- `rust._internal.MapStorageTools` hosts shared typed boundary helpers in a separate module.
 		- Generated helper modules currently require direct field visibility in emitted Rust.
 		- Keeping this private would force repeated raw fallback in each map method until the compiler
 		  supports friend-style visibility for this cross-module pattern.
@@ -48,7 +48,7 @@ class StringMap<T> implements IMap<String, T> {
 	public function set(key:String, value:T):Void {
 		#if macro
 		#else
-		rust.MapStorageTools.stringMapSet(this, key, value);
+		rust._internal.MapStorageTools.stringMapSet(this, key, value);
 		#end
 	}
 
@@ -57,7 +57,7 @@ class StringMap<T> implements IMap<String, T> {
 		#if macro
 		return null;
 		#else
-		return rust.MapStorageTools.stringMapGetCloned(this, key);
+		return rust._internal.MapStorageTools.stringMapGetCloned(this, key);
 		#end
 	}
 
@@ -65,7 +65,7 @@ class StringMap<T> implements IMap<String, T> {
 		#if macro
 		return false;
 		#else
-		return rust.MapStorageTools.stringMapExists(this, key);
+		return rust._internal.MapStorageTools.stringMapExists(this, key);
 		#end
 	}
 
@@ -73,7 +73,7 @@ class StringMap<T> implements IMap<String, T> {
 		#if macro
 		return false;
 		#else
-		return rust.MapStorageTools.stringMapRemoveExists(this, key);
+		return rust._internal.MapStorageTools.stringMapRemoveExists(this, key);
 		#end
 	}
 
@@ -81,7 +81,7 @@ class StringMap<T> implements IMap<String, T> {
 		#if macro
 		return [].iterator();
 		#else
-		return rust.MapStorageTools.stringMapKeysOwned(this);
+		return rust._internal.MapStorageTools.stringMapKeysOwned(this);
 		#end
 	}
 
@@ -89,7 +89,7 @@ class StringMap<T> implements IMap<String, T> {
 		#if macro
 		return [].iterator();
 		#else
-		return rust.MapStorageTools.stringMapValuesOwned(this);
+		return rust._internal.MapStorageTools.stringMapValuesOwned(this);
 		#end
 	}
 
@@ -97,7 +97,7 @@ class StringMap<T> implements IMap<String, T> {
 		#if macro
 		return [].iterator();
 		#else
-		return rust.MapStorageTools.stringMapKeyValuesOwned(this);
+		return rust._internal.MapStorageTools.stringMapKeyValuesOwned(this);
 		#end
 	}
 
@@ -105,7 +105,7 @@ class StringMap<T> implements IMap<String, T> {
 		var out = new StringMap<T>();
 		#if macro
 		#else
-		rust.MapStorageTools.stringMapCloneInto(out, this);
+		rust._internal.MapStorageTools.stringMapCloneInto(out, this);
 		#end
 		return out;
 	}
@@ -114,14 +114,14 @@ class StringMap<T> implements IMap<String, T> {
 		#if macro
 		return "{}";
 		#else
-		return rust.MapStorageTools.stringMapDebugString(this);
+		return rust._internal.MapStorageTools.stringMapDebugString(this);
 		#end
 	}
 
 	public function clear():Void {
 		#if macro
 		#else
-		rust.MapStorageTools.stringMapClear(this);
+		rust._internal.MapStorageTools.stringMapClear(this);
 		#end
 	}
 }

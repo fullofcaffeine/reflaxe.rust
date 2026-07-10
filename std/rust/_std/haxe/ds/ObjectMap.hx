@@ -33,7 +33,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		Storage backing for Rust target object-keyed map operations.
 
 		Why public
-		- `rust.MapStorageTools` centralizes unavoidable Rust-boundary map storage operations.
+		- `rust._internal.MapStorageTools` centralizes unavoidable Rust-boundary map storage operations.
 		- Generated helper modules currently require direct field visibility.
 		- Keeping these private would force repeated raw fallback inside each `ObjectMap` method.
 
@@ -54,7 +54,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		#if macro
 		return "";
 		#else
-		return rust.MapStorageTools.objectMapKeyId(key);
+		return rust._internal.MapStorageTools.objectMapKeyId(key);
 		#end
 	}
 
@@ -62,7 +62,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		var id = keyId(key);
 		#if macro
 		#else
-		rust.MapStorageTools.objectMapSet(this, id, key, value);
+		rust._internal.MapStorageTools.objectMapSet(this, id, key, value);
 		#end
 	}
 
@@ -72,7 +72,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		#if macro
 		return null;
 		#else
-		return rust.MapStorageTools.objectMapGetCloned(this, id);
+		return rust._internal.MapStorageTools.objectMapGetCloned(this, id);
 		#end
 	}
 
@@ -81,7 +81,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		#if macro
 		return false;
 		#else
-		return rust.MapStorageTools.objectMapExists(this, id);
+		return rust._internal.MapStorageTools.objectMapExists(this, id);
 		#end
 	}
 
@@ -90,7 +90,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		#if macro
 		return false;
 		#else
-		return rust.MapStorageTools.objectMapRemoveExists(this, id);
+		return rust._internal.MapStorageTools.objectMapRemoveExists(this, id);
 		#end
 	}
 
@@ -98,7 +98,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		#if macro
 		return [].iterator();
 		#else
-		return rust.MapStorageTools.objectMapKeysOwned(this);
+		return rust._internal.MapStorageTools.objectMapKeysOwned(this);
 		#end
 	}
 
@@ -106,7 +106,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		#if macro
 		return [].iterator();
 		#else
-		return rust.MapStorageTools.objectMapValuesOwned(this);
+		return rust._internal.MapStorageTools.objectMapValuesOwned(this);
 		#end
 	}
 
@@ -114,7 +114,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		#if macro
 		return [].iterator();
 		#else
-		return rust.MapStorageTools.objectMapKeyValuesOwned(this);
+		return rust._internal.MapStorageTools.objectMapKeyValuesOwned(this);
 		#end
 	}
 
@@ -122,7 +122,7 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		var out = new ObjectMap<K, V>();
 		#if macro
 		#else
-		rust.MapStorageTools.objectMapCloneInto(out, this);
+		rust._internal.MapStorageTools.objectMapCloneInto(out, this);
 		#end
 		return out;
 	}
@@ -131,14 +131,14 @@ class ObjectMap<K:{}, V> implements IMap<K, V> {
 		#if macro
 		return "{}";
 		#else
-		return rust.MapStorageTools.objectMapDebugString(this);
+		return rust._internal.MapStorageTools.objectMapDebugString(this);
 		#end
 	}
 
 	public function clear():Void {
 		#if macro
 		#else
-		rust.MapStorageTools.objectMapClear(this);
+		rust._internal.MapStorageTools.objectMapClear(this);
 		#end
 	}
 }

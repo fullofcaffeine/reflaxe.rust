@@ -46,8 +46,12 @@ returning, storing, wrapping, throwing, or otherwise escaping that token.
 Accepted:
 
 ```haxe
-var next = Mutexes.withRef(mutex, guard -> CloneTools.cloneValue(guard) + 1);
+var next = Mutexes.withRef(mutex, guard -> RefTools.toOwned(guard) + 1);
 ```
+
+Migration during the pre-1.0 review: replace `CloneTools.cloneValue(guard)` with
+`RefTools.toOwned(guard)`. The new name describes the public borrow-to-owned operation; the
+implementation-specific `CloneTools` facade was removed before stable-major admission.
 
 Rejected:
 

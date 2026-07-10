@@ -29,7 +29,7 @@ class EnumValueMap<K:EnumValue, V> implements IMap<K, V> {
 		Storage backing for Rust target enum-value-keyed map operations.
 
 		Why public
-		- `rust.MapStorageTools` centralizes unavoidable Rust-boundary storage operations.
+		- `rust._internal.MapStorageTools` centralizes unavoidable Rust-boundary storage operations.
 		- Generated helper modules currently require direct field visibility.
 		- Keeping these private would force repeated raw fallback inside each `EnumValueMap` method.
 
@@ -50,7 +50,7 @@ class EnumValueMap<K:EnumValue, V> implements IMap<K, V> {
 		var id = Std.string(key);
 		#if macro
 		#else
-		rust.MapStorageTools.enumValueMapSet(this, id, key, value);
+		rust._internal.MapStorageTools.enumValueMapSet(this, id, key, value);
 		#end
 	}
 
@@ -60,7 +60,7 @@ class EnumValueMap<K:EnumValue, V> implements IMap<K, V> {
 		#if macro
 		return null;
 		#else
-		return rust.MapStorageTools.enumValueMapGetCloned(this, id);
+		return rust._internal.MapStorageTools.enumValueMapGetCloned(this, id);
 		#end
 	}
 
@@ -69,7 +69,7 @@ class EnumValueMap<K:EnumValue, V> implements IMap<K, V> {
 		#if macro
 		return false;
 		#else
-		return rust.MapStorageTools.enumValueMapExists(this, id);
+		return rust._internal.MapStorageTools.enumValueMapExists(this, id);
 		#end
 	}
 
@@ -78,7 +78,7 @@ class EnumValueMap<K:EnumValue, V> implements IMap<K, V> {
 		#if macro
 		return false;
 		#else
-		return rust.MapStorageTools.enumValueMapRemoveExists(this, id);
+		return rust._internal.MapStorageTools.enumValueMapRemoveExists(this, id);
 		#end
 	}
 
@@ -86,7 +86,7 @@ class EnumValueMap<K:EnumValue, V> implements IMap<K, V> {
 		#if macro
 		return [].iterator();
 		#else
-		return rust.MapStorageTools.enumValueMapKeysOwned(this);
+		return rust._internal.MapStorageTools.enumValueMapKeysOwned(this);
 		#end
 	}
 
@@ -94,7 +94,7 @@ class EnumValueMap<K:EnumValue, V> implements IMap<K, V> {
 		#if macro
 		return [].iterator();
 		#else
-		return rust.MapStorageTools.enumValueMapValuesOwned(this);
+		return rust._internal.MapStorageTools.enumValueMapValuesOwned(this);
 		#end
 	}
 
@@ -102,7 +102,7 @@ class EnumValueMap<K:EnumValue, V> implements IMap<K, V> {
 		#if macro
 		return [].iterator();
 		#else
-		return rust.MapStorageTools.enumValueMapKeyValuesOwned(this);
+		return rust._internal.MapStorageTools.enumValueMapKeyValuesOwned(this);
 		#end
 	}
 
@@ -110,7 +110,7 @@ class EnumValueMap<K:EnumValue, V> implements IMap<K, V> {
 		var out = new EnumValueMap<K, V>();
 		#if macro
 		#else
-		rust.MapStorageTools.enumValueMapCloneInto(out, this);
+		rust._internal.MapStorageTools.enumValueMapCloneInto(out, this);
 		#end
 		return out;
 	}
@@ -119,14 +119,14 @@ class EnumValueMap<K:EnumValue, V> implements IMap<K, V> {
 		#if macro
 		return "{}";
 		#else
-		return rust.MapStorageTools.enumValueMapDebugString(this);
+		return rust._internal.MapStorageTools.enumValueMapDebugString(this);
 		#end
 	}
 
 	public function clear():Void {
 		#if macro
 		#else
-		rust.MapStorageTools.enumValueMapClear(this);
+		rust._internal.MapStorageTools.enumValueMapClear(this);
 		#end
 	}
 }

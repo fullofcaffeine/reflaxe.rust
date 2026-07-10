@@ -24,7 +24,7 @@ class IntMap<T> implements IMap<Int, T> {
 		Storage backing for Rust target map operations.
 
 		Why public
-		- `rust.MapStorageTools` centralizes typed boundary helpers for map operations in another module.
+		- `rust._internal.MapStorageTools` centralizes typed boundary helpers for map operations in another module.
 		- Generated Rust helper modules currently require direct field visibility.
 		- Keeping this private would re-introduce per-method raw fallback until the compiler can emit
 		  friend-style visibility for this pattern.
@@ -41,7 +41,7 @@ class IntMap<T> implements IMap<Int, T> {
 	public function set(key:Int, value:T):Void {
 		#if macro
 		#else
-		rust.MapStorageTools.intMapSet(this, key, value);
+		rust._internal.MapStorageTools.intMapSet(this, key, value);
 		#end
 	}
 
@@ -50,7 +50,7 @@ class IntMap<T> implements IMap<Int, T> {
 		#if macro
 		return null;
 		#else
-		return rust.MapStorageTools.intMapGetCloned(this, key);
+		return rust._internal.MapStorageTools.intMapGetCloned(this, key);
 		#end
 	}
 
@@ -58,7 +58,7 @@ class IntMap<T> implements IMap<Int, T> {
 		#if macro
 		return false;
 		#else
-		return rust.MapStorageTools.intMapExists(this, key);
+		return rust._internal.MapStorageTools.intMapExists(this, key);
 		#end
 	}
 
@@ -66,7 +66,7 @@ class IntMap<T> implements IMap<Int, T> {
 		#if macro
 		return false;
 		#else
-		return rust.MapStorageTools.intMapRemoveExists(this, key);
+		return rust._internal.MapStorageTools.intMapRemoveExists(this, key);
 		#end
 	}
 
@@ -74,7 +74,7 @@ class IntMap<T> implements IMap<Int, T> {
 		#if macro
 		return [].iterator();
 		#else
-		return rust.MapStorageTools.intMapKeysOwned(this);
+		return rust._internal.MapStorageTools.intMapKeysOwned(this);
 		#end
 	}
 
@@ -82,7 +82,7 @@ class IntMap<T> implements IMap<Int, T> {
 		#if macro
 		return [].iterator();
 		#else
-		return rust.MapStorageTools.intMapValuesOwned(this);
+		return rust._internal.MapStorageTools.intMapValuesOwned(this);
 		#end
 	}
 
@@ -90,7 +90,7 @@ class IntMap<T> implements IMap<Int, T> {
 		#if macro
 		return [].iterator();
 		#else
-		return rust.MapStorageTools.intMapKeyValuesOwned(this);
+		return rust._internal.MapStorageTools.intMapKeyValuesOwned(this);
 		#end
 	}
 
@@ -98,7 +98,7 @@ class IntMap<T> implements IMap<Int, T> {
 		var out = new IntMap<T>();
 		#if macro
 		#else
-		rust.MapStorageTools.intMapCloneInto(out, this);
+		rust._internal.MapStorageTools.intMapCloneInto(out, this);
 		#end
 		return out;
 	}
@@ -107,14 +107,14 @@ class IntMap<T> implements IMap<Int, T> {
 		#if macro
 		return "{}";
 		#else
-		return rust.MapStorageTools.intMapDebugString(this);
+		return rust._internal.MapStorageTools.intMapDebugString(this);
 		#end
 	}
 
 	public function clear():Void {
 		#if macro
 		#else
-		rust.MapStorageTools.intMapClear(this);
+		rust._internal.MapStorageTools.intMapClear(this);
 		#end
 	}
 }

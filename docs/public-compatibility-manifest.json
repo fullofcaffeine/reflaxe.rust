@@ -1,0 +1,1709 @@
+{
+  "schemaVersion": 1,
+  "classes": [
+    "stable-candidate",
+    "qualified-stable-candidate",
+    "experimental",
+    "excluded-internal"
+  ],
+  "contracts": [
+    {
+      "id": "portable-core",
+      "class": "stable-candidate",
+      "status": "active",
+      "qualification": "Only module/member behavior admitted by the versioned feature-support inventory; Haxe semantics are the oracle inside that set.",
+      "protectedContract": [
+        "documented Haxe names and signatures",
+        "admitted semantics and defaults"
+      ],
+      "evidence": [
+        "docs/feature-support-matrix.md",
+        "test/upstream-stdlib-api-manifest.json"
+      ],
+      "exclusions": [
+        "unlisted upstream modules or members",
+        "known bugs",
+        "exact generated formatting"
+      ]
+    },
+    {
+      "id": "portable-mainloop",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Only the target-side MainLoop and EntryPoint paths documented in the concurrency posture.",
+      "protectedContract": [
+        "documented names and signatures",
+        "the two admitted scheduler paths"
+      ],
+      "evidence": [
+        "docs/concurrency-posture.md"
+      ],
+      "exclusions": [
+        "blanket scheduler parity"
+      ]
+    },
+    {
+      "id": "portable-sys-core",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Linux full CI plus the specifically documented Windows smoke operations; macOS is local-only evidence.",
+      "protectedContract": [
+        "admitted Sys, filesystem, io, process, direct thread, EventLoop, Deque, and pool operations",
+        "documented failure/output behavior"
+      ],
+      "evidence": [
+        "docs/systems-environment-posture.md",
+        "docs/concurrency-posture.md"
+      ],
+      "exclusions": [
+        "blanket platform parity"
+      ]
+    },
+    {
+      "id": "portable-http",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Documented local-server status, body, error, and callback behavior.",
+      "protectedContract": [
+        "admitted sys.Http and haxe.http.HttpBase operations"
+      ],
+      "evidence": [
+        "docs/systems-environment-posture.md",
+        "docs/feature-support-matrix.md"
+      ],
+      "exclusions": [
+        "arbitrary internet/environment behavior"
+      ]
+    },
+    {
+      "id": "portable-net-tcp",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Targeted blocking TCP behavior on documented local-server lanes.",
+      "protectedContract": [
+        "admitted address, host, and TCP socket operations"
+      ],
+      "evidence": [
+        "docs/systems-environment-posture.md"
+      ],
+      "exclusions": [
+        "DNS breadth",
+        "arbitrary-host guarantees",
+        "async networking"
+      ]
+    },
+    {
+      "id": "portable-net-udp",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Curated UDP smoke behavior only.",
+      "protectedContract": [
+        "admitted UDP operations"
+      ],
+      "evidence": [
+        "docs/systems-environment-posture.md"
+      ],
+      "exclusions": [
+        "blanket UDP/platform behavior"
+      ]
+    },
+    {
+      "id": "portable-tls",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Buildable TLS/SNI path; runtime behavior remains certificate-, network-, and environment-sensitive.",
+      "protectedContract": [
+        "admitted sys.ssl names/signatures and documented build path"
+      ],
+      "evidence": [
+        "docs/systems-environment-posture.md"
+      ],
+      "exclusions": [
+        "blanket TLS interoperability"
+      ]
+    },
+    {
+      "id": "portable-db-types",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Shared DB interface/type shapes used by separately qualified drivers.",
+      "protectedContract": [
+        "documented Connection, ResultSet, SqlValue, and ResultRow shapes"
+      ],
+      "evidence": [
+        "docs/systems-environment-posture.md"
+      ],
+      "exclusions": [
+        "driver runtime parity"
+      ]
+    },
+    {
+      "id": "portable-sqlite",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "In-memory SQLite runtime smoke boundary.",
+      "protectedContract": [
+        "documented Sqlite connection/query behavior in the admitted smoke"
+      ],
+      "evidence": [
+        "docs/systems-environment-posture.md"
+      ],
+      "exclusions": [
+        "filesystem/database breadth"
+      ]
+    },
+    {
+      "id": "portable-mysql-compile",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Dependency and generated-code compile contract only.",
+      "protectedContract": [
+        "documented Mysql names/signatures and compile behavior"
+      ],
+      "evidence": [
+        "docs/systems-environment-posture.md"
+      ],
+      "exclusions": [
+        "MySQL runtime behavior"
+      ]
+    },
+    {
+      "id": "rust-values-core",
+      "class": "stable-candidate",
+      "status": "active",
+      "qualification": "Documented Option, Result, and tool operations only.",
+      "protectedContract": [
+        "Haxe names/signatures",
+        "accepted values",
+        "documented Rust-shaped semantics"
+      ],
+      "evidence": [
+        "docs/metal-type-surface-gap-matrix.md"
+      ],
+      "exclusions": [
+        "unlisted trait ergonomics"
+      ]
+    },
+    {
+      "id": "rust-values-qualified",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Only individually documented operations; gaps in traits, borrowed entries, cloning, strings, OsString, and iteration remain visible.",
+      "protectedContract": [
+        "listed Haxe names/signatures and admitted operations"
+      ],
+      "evidence": [
+        "docs/metal-type-surface-gap-matrix.md"
+      ],
+      "exclusions": [
+        "unlisted methods",
+        "representation/layout"
+      ]
+    },
+    {
+      "id": "rust-borrows",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Documented lexical borrow regions, slice/string views, and scoped callbacks.",
+      "protectedContract": [
+        "Haxe names/signatures",
+        "accepted callback shapes",
+        "borrow escape rejection conditions"
+      ],
+      "evidence": [
+        "docs/raii-guard-lifetime-islands.md",
+        "docs/metal-type-surface-gap-matrix.md"
+      ],
+      "exclusions": [
+        "richer provenance",
+        "exact diagnostic prose"
+      ]
+    },
+    {
+      "id": "rust-hxref",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Opaque shared Haxe-reference handle for APIs that expose rust.HxRef<T>; the representation is not contractual.",
+      "protectedContract": [
+        "type name",
+        "generic shape",
+        "null/shared-handle semantics needed by admitted APIs"
+      ],
+      "evidence": [
+        "std/rust/HxRef.hx",
+        "docs/concurrency-posture.md"
+      ],
+      "exclusions": [
+        "Arc/HxCell/RwLock representation",
+        "internal methods/layout"
+      ]
+    },
+    {
+      "id": "rust-concurrency",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Documented typed handle and scoped-guard subset with hxrt.",
+      "protectedContract": [
+        "listed names/signatures",
+        "documented handle and callback behavior"
+      ],
+      "evidence": [
+        "docs/concurrency-posture.md"
+      ],
+      "exclusions": [
+        "unlisted concurrency primitives",
+        "no-hxrt"
+      ]
+    },
+    {
+      "id": "rust-async",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Metal plus rust_async plus hxrt; synchronous main boundary.",
+      "protectedContract": [
+        "async/await metadata aliases",
+        "Async.await/blockOn and documented Future/Task operations"
+      ],
+      "evidence": [
+        "docs/async-contract.md"
+      ],
+      "exclusions": [
+        "rust_no_hxrt",
+        "general async networking"
+      ]
+    },
+    {
+      "id": "rust-systems",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Documented direct file, owned command/narrow child, and blocking localhost socket operations.",
+      "protectedContract": [
+        "listed facade names/signatures and admitted operations"
+      ],
+      "evidence": [
+        "docs/metal-systems-facades-roadmap.md"
+      ],
+      "exclusions": [
+        "DNS",
+        "TLS/DB",
+        "shell/detached process",
+        "live streaming",
+        "async network"
+      ]
+    },
+    {
+      "id": "rust-prelude",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Metal-only import hub; exported alias module path is protected.",
+      "protectedContract": [
+        "rust.metal.Prelude module path",
+        "listed aliases"
+      ],
+      "evidence": [
+        "std/rust/metal/Prelude.hx"
+      ],
+      "exclusions": [
+        "additional rust.* surfaces not listed by Prelude"
+      ]
+    },
+    {
+      "id": "public-experimental",
+      "class": "experimental",
+      "status": "active",
+      "qualification": "Public preview/tooling surface excluded from stable-major admission until explicitly promoted.",
+      "protectedContract": [
+        "current documented entry points for migration purposes"
+      ],
+      "evidence": [
+        "docs/feature-support-matrix.md"
+      ],
+      "exclusions": [
+        "stable-major compatibility promise"
+      ]
+    },
+    {
+      "id": "raw-experimental",
+      "class": "experimental",
+      "status": "active",
+      "qualification": "Controlled raw/stringly Rust authority under strict boundary rules.",
+      "protectedContract": [
+        "accepted metadata/escape-hatch grammar currently documented"
+      ],
+      "evidence": [
+        "docs/interop.md",
+        "docs/metal-trait-impl-bound-model.md"
+      ],
+      "exclusions": [
+        "Rust legality",
+        "stable generated body/layout"
+      ]
+    },
+    {
+      "id": "internal-helper",
+      "class": "excluded-internal",
+      "status": "active",
+      "qualification": "Compiler/framework implementation only; application imports are unsupported and must be sealed by the helper-boundary guard.",
+      "protectedContract": [
+        "no public contract"
+      ],
+      "evidence": [
+        "docs/native-facade-policy.md"
+      ],
+      "exclusions": [
+        "type path",
+        "signature",
+        "helper file/module",
+        "implementation strategy"
+      ]
+    },
+    {
+      "id": "metal-profile",
+      "class": "stable-candidate",
+      "status": "active",
+      "qualification": "Profile selection, strict app boundary, native-import policy, and documented fallback/report behavior only.",
+      "protectedContract": [
+        "profile selector",
+        "strict-boundary behavior",
+        "documented fallback categories"
+      ],
+      "evidence": [
+        "docs/profiles.md"
+      ],
+      "exclusions": [
+        "automatic no-hxrt",
+        "all rust.* features"
+      ]
+    },
+    {
+      "id": "metadata-stable",
+      "class": "stable-candidate",
+      "status": "active",
+      "qualification": "Only the explicitly listed form and placement grammar.",
+      "protectedContract": [
+        "metadata name/alias",
+        "accepted grammar/defaults",
+        "validation conditions"
+      ],
+      "evidence": [
+        "docs/interop.md",
+        "docs/haxe-rust-tests.md"
+      ],
+      "exclusions": [
+        "consumer-provided Rust legality"
+      ]
+    },
+    {
+      "id": "metadata-qualified",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Only the form and environment named by each metadata entry.",
+      "protectedContract": [
+        "metadata name/alias",
+        "accepted grammar/defaults",
+        "qualification"
+      ],
+      "evidence": [
+        "docs/async-contract.md",
+        "docs/generics.md",
+        "docs/metal-trait-impl-bound-model.md"
+      ],
+      "exclusions": [
+        "unlisted raw/object forms"
+      ]
+    },
+    {
+      "id": "metadata-experimental",
+      "class": "experimental",
+      "status": "active",
+      "qualification": "Stringly or advanced metadata excluded from stable admission.",
+      "protectedContract": [
+        "current parsed form for migration"
+      ],
+      "evidence": [
+        "docs/interop.md"
+      ],
+      "exclusions": [
+        "stable generated Rust shape"
+      ]
+    },
+    {
+      "id": "rust-metal-alias",
+      "class": "stable-candidate",
+      "status": "deprecated",
+      "qualification": "Deprecated migration alias for haxeMetal.",
+      "protectedContract": [
+        "alias recognition and equivalent profile selection"
+      ],
+      "evidence": [
+        "docs/profiles.md"
+      ],
+      "exclusions": [
+        "use in new code"
+      ]
+    },
+    {
+      "id": "metadata-reserved",
+      "class": "excluded-internal",
+      "status": "reserved",
+      "qualification": "Rejected or compiler-owned metadata.",
+      "protectedContract": [
+        "rejection/reservation only"
+      ],
+      "evidence": [
+        "docs/interop.md"
+      ],
+      "exclusions": [
+        "callable application API"
+      ]
+    },
+    {
+      "id": "build-controls",
+      "class": "stable-candidate",
+      "status": "active",
+      "qualification": "Documented normal output/build/profile/report and structured Cargo controls.",
+      "protectedContract": [
+        "define name",
+        "accepted value grammar/default",
+        "documented build effect"
+      ],
+      "evidence": [
+        "docs/defines-reference.md",
+        "docs/profiles.md"
+      ],
+      "exclusions": [
+        "environment/tool behavior outside the declared contract"
+      ]
+    },
+    {
+      "id": "build-qualified",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Only the documented profile, runtime, module topology, target, or source-ownership domain.",
+      "protectedContract": [
+        "define name",
+        "accepted value grammar/default",
+        "qualified build effect"
+      ],
+      "evidence": [
+        "docs/defines-reference.md"
+      ],
+      "exclusions": [
+        "blanket target/platform support"
+      ]
+    },
+    {
+      "id": "build-experimental",
+      "class": "experimental",
+      "status": "active",
+      "qualification": "Escape, raw passthrough, runtime-feature, or preview control.",
+      "protectedContract": [
+        "current define grammar for migration"
+      ],
+      "evidence": [
+        "docs/defines-reference.md"
+      ],
+      "exclusions": [
+        "frozen runtime feature names",
+        "stable raw merge semantics unless separately listed"
+      ]
+    },
+    {
+      "id": "build-internal",
+      "class": "excluded-internal",
+      "status": "active",
+      "qualification": "Repository enforcement, debug, deprecated/rejected selector, or compiler bootstrap detail.",
+      "protectedContract": [
+        "no consumer compatibility contract"
+      ],
+      "evidence": [
+        "docs/defines-reference.md"
+      ],
+      "exclusions": [
+        "continued availability"
+      ]
+    },
+    {
+      "id": "report-json",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Machine-readable JSON only; consumers must ignore unknown fields. Full schemas remain a major-1 blocker.",
+      "protectedContract": [
+        "filename",
+        "schemaVersion",
+        "required field names/types",
+        "stable reason/category identifiers",
+        "field meaning and documented ordering"
+      ],
+      "evidence": [
+        "docs/profiles.md",
+        "haxe_rust-ykls.11"
+      ],
+      "exclusions": [
+        "Markdown formatting",
+        "unknown optional fields"
+      ]
+    },
+    {
+      "id": "generated-crate",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Documented default, nested, no-hxrt, custom-Cargo, extra-source, and cargo-execution boundaries.",
+      "protectedContract": [
+        "listed root paths",
+        "edition/default crate kind",
+        "dependency merge/conflict behavior",
+        "Cargo failure propagation"
+      ],
+      "evidence": [
+        "docs/profiles.md",
+        "docs/defines-reference.md",
+        "haxe_rust-ykls.11"
+      ],
+      "exclusions": [
+        "whitespace",
+        "temporary ordering",
+        "private helper names",
+        "hxrt internals"
+      ]
+    },
+    {
+      "id": "generated-package",
+      "class": "stable-candidate",
+      "status": "active",
+      "qualification": "Published Haxelib-shaped package and installed-package workflow.",
+      "protectedContract": [
+        "ZIP layout and safe deterministic paths",
+        "required compiler/runtime/vendor roots",
+        "cross.hx staging",
+        "version/provenance metadata",
+        "haxelib/lix install and -lib behavior"
+      ],
+      "evidence": [
+        "docs/haxelib-packaging.md",
+        "docs/release.md"
+      ],
+      "exclusions": [
+        "source checkout internals"
+      ]
+    },
+    {
+      "id": "generated-private",
+      "class": "excluded-internal",
+      "status": "active",
+      "qualification": "Generated helper/wrapper details not admitted as consumer API.",
+      "protectedContract": [
+        "no public contract"
+      ],
+      "evidence": [
+        "docs/haxe-rust-tests.md"
+      ],
+      "exclusions": [
+        "exact wrapper names/layout"
+      ]
+    }
+  ],
+  "haxeTypes": [
+    {
+      "name": "haxe.BoundaryTypes.ConstraintValue",
+      "contract": "internal-helper"
+    },
+    {
+      "name": "haxe.BoundaryTypes.DbResultRowBoundaryValue",
+      "contract": "internal-helper"
+    },
+    {
+      "name": "haxe.BoundaryTypes.ExceptionBoundaryValue",
+      "contract": "internal-helper"
+    },
+    {
+      "name": "haxe.BoundaryTypes.JsonReplacer",
+      "contract": "internal-helper"
+    },
+    {
+      "name": "haxe.BoundaryTypes.JsonValue",
+      "contract": "internal-helper"
+    },
+    {
+      "name": "haxe.BoundaryTypes.SocketCustomBoundaryValue",
+      "contract": "internal-helper"
+    },
+    {
+      "name": "haxe.BoundaryTypes.SqlBoundaryValue",
+      "contract": "internal-helper"
+    },
+    {
+      "name": "haxe.BoundaryTypes.StringBufAddBoundaryValue",
+      "contract": "internal-helper"
+    },
+    {
+      "name": "haxe.BoundaryTypes.SysPrintBoundaryValue",
+      "contract": "internal-helper"
+    },
+    {
+      "name": "haxe.BoundaryTypes.ThreadMessageBoundaryValue",
+      "contract": "internal-helper"
+    },
+    {
+      "name": "haxe.CallStack",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.CallStack.StackItem",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.Constraints.Constructible",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.Constraints.FlatEnum",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.Constraints.Function",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.Constraints.IMap",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.Constraints.NotVoid",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.ds.EnumValueMap",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.ds.IntMap",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.ds.List",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.ds.ObjectMap",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.ds.StringMap",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.EntryPoint",
+      "contract": "portable-mainloop"
+    },
+    {
+      "name": "haxe.Exception",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.http.HttpBase",
+      "contract": "portable-http"
+    },
+    {
+      "name": "haxe.Int32",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.Int64",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.Int64Helper",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.io.Bytes",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.io.BytesBuffer",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.io.BytesOutput",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.io.Encoding",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.io.Eof",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.io.FPHelper",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.io.Input",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.io.Output",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.iterators.MapKeyValueIterator",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.iterators.StringIterator",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.iterators.StringKeyValueIterator",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.Json",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.MainLoop",
+      "contract": "portable-mainloop"
+    },
+    {
+      "name": "haxe.MainLoop.MainEvent",
+      "contract": "portable-mainloop"
+    },
+    {
+      "name": "rust.adapters.ReflaxeStdAdapters",
+      "contract": "public-experimental"
+    },
+    {
+      "name": "rust.ArrayBorrow",
+      "contract": "rust-borrows"
+    },
+    {
+      "name": "rust.async.Async",
+      "contract": "rust-async"
+    },
+    {
+      "name": "rust.async.Future",
+      "contract": "rust-async"
+    },
+    {
+      "name": "rust.async.Task",
+      "contract": "rust-async"
+    },
+    {
+      "name": "rust.async.Tasks",
+      "contract": "rust-async"
+    },
+    {
+      "name": "rust.async.TokioRuntime",
+      "contract": "rust-async"
+    },
+    {
+      "name": "rust.Borrow",
+      "contract": "rust-borrows"
+    },
+    {
+      "name": "rust.concurrent.Channel",
+      "contract": "rust-concurrency"
+    },
+    {
+      "name": "rust.concurrent.Channels",
+      "contract": "rust-concurrency"
+    },
+    {
+      "name": "rust.concurrent.Mutex",
+      "contract": "rust-concurrency"
+    },
+    {
+      "name": "rust.concurrent.Mutexes",
+      "contract": "rust-concurrency"
+    },
+    {
+      "name": "rust.concurrent.RwLock",
+      "contract": "rust-concurrency"
+    },
+    {
+      "name": "rust.concurrent.RwLocks",
+      "contract": "rust-concurrency"
+    },
+    {
+      "name": "rust.concurrent.Task",
+      "contract": "rust-concurrency"
+    },
+    {
+      "name": "rust.concurrent.Tasks",
+      "contract": "rust-concurrency"
+    },
+    {
+      "name": "rust.Duration",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.DurationTools",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.fs.NativeFiles",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.HashMap",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.HashMapTools",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.HxRef",
+      "contract": "rust-hxref"
+    },
+    {
+      "name": "rust.Instant",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.InstantTools",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.Iter",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.IterTools",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust._internal.MapStorageTools",
+      "contract": "internal-helper"
+    },
+    {
+      "name": "rust.metal.Code",
+      "contract": "raw-experimental"
+    },
+    {
+      "name": "rust.metal.Prelude",
+      "contract": "rust-prelude"
+    },
+    {
+      "name": "rust.metal.Prelude.HashMap",
+      "contract": "rust-prelude"
+    },
+    {
+      "name": "rust.metal.Prelude.MutRef",
+      "contract": "rust-prelude"
+    },
+    {
+      "name": "rust.metal.Prelude.MutSlice",
+      "contract": "rust-prelude"
+    },
+    {
+      "name": "rust.metal.Prelude.Option",
+      "contract": "rust-prelude"
+    },
+    {
+      "name": "rust.metal.Prelude.Ref",
+      "contract": "rust-prelude"
+    },
+    {
+      "name": "rust.metal.Prelude.Result",
+      "contract": "rust-prelude"
+    },
+    {
+      "name": "rust.metal.Prelude.Slice",
+      "contract": "rust-prelude"
+    },
+    {
+      "name": "rust.metal.Prelude.Str",
+      "contract": "rust-prelude"
+    },
+    {
+      "name": "rust.metal.Prelude.Vec",
+      "contract": "rust-prelude"
+    },
+    {
+      "name": "rust.MutRef",
+      "contract": "rust-borrows"
+    },
+    {
+      "name": "rust.MutSlice",
+      "contract": "rust-borrows"
+    },
+    {
+      "name": "rust.MutSliceTools",
+      "contract": "rust-borrows"
+    },
+    {
+      "name": "rust.net.NativeTcp",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.net.NativeUdp",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.net.SocketAddr",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.net.SocketError",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.net.TcpListener",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.net.TcpStream",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.net.UdpSocket",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.Option",
+      "contract": "rust-values-core"
+    },
+    {
+      "name": "rust.OptionTools",
+      "contract": "rust-values-core"
+    },
+    {
+      "name": "rust.OsString",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.OsStringTools",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.PathBuf",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.PathBufTools",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.process.CommandChild",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.process.CommandEnv",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.process.CommandError",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.process.CommandOutput",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.process.CommandSpec",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.process.NativeCommands",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.Ref",
+      "contract": "rust-borrows"
+    },
+    {
+      "name": "rust.RefTools",
+      "contract": "rust-borrows"
+    },
+    {
+      "name": "rust.Result",
+      "contract": "rust-values-core"
+    },
+    {
+      "name": "rust.ResultTools",
+      "contract": "rust-values-core"
+    },
+    {
+      "name": "rust.serde.SerdeJson",
+      "contract": "public-experimental"
+    },
+    {
+      "name": "rust.Slice",
+      "contract": "rust-borrows"
+    },
+    {
+      "name": "rust.SliceTools",
+      "contract": "rust-borrows"
+    },
+    {
+      "name": "rust.Str",
+      "contract": "rust-borrows"
+    },
+    {
+      "name": "rust.StringTools",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.StrTools",
+      "contract": "rust-borrows"
+    },
+    {
+      "name": "rust.SystemTime",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.SystemTimeError",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.SystemTimeTools",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.test.Assert",
+      "contract": "public-experimental"
+    },
+    {
+      "name": "rust.tui.Action",
+      "contract": "public-experimental"
+    },
+    {
+      "name": "rust.tui.ActionTools",
+      "contract": "public-experimental"
+    },
+    {
+      "name": "rust.tui.Constraint",
+      "contract": "public-experimental"
+    },
+    {
+      "name": "rust.tui.Event",
+      "contract": "public-experimental"
+    },
+    {
+      "name": "rust.tui.FxKind",
+      "contract": "public-experimental"
+    },
+    {
+      "name": "rust.tui.KeyCode",
+      "contract": "public-experimental"
+    },
+    {
+      "name": "rust.tui.KeyMods",
+      "contract": "public-experimental"
+    },
+    {
+      "name": "rust.tui.LayoutDir",
+      "contract": "public-experimental"
+    },
+    {
+      "name": "rust.tui.StyleToken",
+      "contract": "public-experimental"
+    },
+    {
+      "name": "rust.tui.Tui",
+      "contract": "public-experimental"
+    },
+    {
+      "name": "rust.tui.TuiDemo",
+      "contract": "public-experimental"
+    },
+    {
+      "name": "rust.tui.UiNode",
+      "contract": "public-experimental"
+    },
+    {
+      "name": "rust.Vec",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "rust.VecTools",
+      "contract": "rust-values-qualified"
+    },
+    {
+      "name": "sys.db.Connection",
+      "contract": "portable-db-types"
+    },
+    {
+      "name": "sys.db.Mysql",
+      "contract": "portable-mysql-compile"
+    },
+    {
+      "name": "sys.db.ResultSet",
+      "contract": "portable-db-types"
+    },
+    {
+      "name": "sys.db.Sqlite",
+      "contract": "portable-sqlite"
+    },
+    {
+      "name": "sys.db.Types.ResultRow",
+      "contract": "portable-db-types"
+    },
+    {
+      "name": "sys.db.Types.SqlValue",
+      "contract": "portable-db-types"
+    },
+    {
+      "name": "sys.FileStat",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.FileSystem",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.Http",
+      "contract": "portable-http"
+    },
+    {
+      "name": "sys.io.File",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.io.FileInput",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.io.FileOutput",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.io.FileSeek",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.io.Process",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.net.Address",
+      "contract": "portable-net-tcp"
+    },
+    {
+      "name": "sys.net.Host",
+      "contract": "portable-net-tcp"
+    },
+    {
+      "name": "sys.net.Socket",
+      "contract": "portable-net-tcp"
+    },
+    {
+      "name": "sys.net.Types.SocketCustomValue",
+      "contract": "portable-net-tcp"
+    },
+    {
+      "name": "sys.net.UdpSocket",
+      "contract": "portable-net-udp"
+    },
+    {
+      "name": "sys.ssl.Certificate",
+      "contract": "portable-tls"
+    },
+    {
+      "name": "sys.ssl.Digest",
+      "contract": "portable-tls"
+    },
+    {
+      "name": "sys.ssl.DigestAlgorithm",
+      "contract": "portable-tls"
+    },
+    {
+      "name": "sys.ssl.Key",
+      "contract": "portable-tls"
+    },
+    {
+      "name": "sys.ssl.Socket",
+      "contract": "portable-tls"
+    },
+    {
+      "name": "sys.thread.Condition",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.thread.Deque",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.thread.ElasticThreadPool",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.thread.EventLoop",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.thread.EventLoop.EventHandler",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.thread.EventLoop.NextEventTime",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.thread.FixedThreadPool",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.thread.IThreadPool",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.thread.Lock",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.thread.Mutex",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.thread.NoEventLoopException",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.thread.Semaphore",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.thread.Thread",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.thread.ThreadPoolException",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.thread.Tls",
+      "contract": "portable-sys-core"
+    },
+    {
+      "name": "sys.thread.Types.ThreadMessage",
+      "contract": "portable-sys-core"
+    }
+  ],
+  "memberFamilies": [
+    {
+      "id": "portable-admitted-modules-and-members",
+      "contract": "portable-core",
+      "owners": ["test/upstream-stdlib-api-manifest.json", "docs/feature-support-matrix.md"]
+    },
+    {
+      "id": "portable-systems-operations",
+      "contract": "portable-sys-core",
+      "owners": ["docs/systems-environment-posture.md", "docs/concurrency-posture.md"]
+    },
+    {
+      "id": "rust-option-result-operations",
+      "contract": "rust-values-core",
+      "owners": ["rust.Option", "rust.OptionTools", "rust.Result", "rust.ResultTools"]
+    },
+    {
+      "id": "rust-qualified-value-operations",
+      "contract": "rust-values-qualified",
+      "owners": ["docs/metal-type-surface-gap-matrix.md"]
+    },
+    {
+      "id": "rust-borrow-and-view-operations",
+      "contract": "rust-borrows",
+      "owners": ["rust.Borrow", "rust.RefTools", "rust.ArrayBorrow", "rust.SliceTools", "rust.MutSliceTools", "rust.StrTools"]
+    },
+    {
+      "id": "rust-concurrency-operations",
+      "contract": "rust-concurrency",
+      "owners": ["rust.concurrent.*"]
+    },
+    {
+      "id": "rust-async-operations",
+      "contract": "rust-async",
+      "owners": ["rust.async.*", "docs/async-contract.md"]
+    },
+    {
+      "id": "rust-systems-facade-operations",
+      "contract": "rust-systems",
+      "owners": ["rust.fs.NativeFiles", "rust.process.*", "rust.net.*"]
+    },
+    {
+      "id": "rust-metal-prelude-aliases",
+      "contract": "rust-prelude",
+      "owners": ["rust.metal.Prelude"]
+    },
+    {
+      "id": "public-experimental-tools",
+      "contract": "public-experimental",
+      "owners": ["rust.serde.*", "rust.tui.*", "rust.test.*", "rust.adapters.*"]
+    },
+    {
+      "id": "raw-authority-operations",
+      "contract": "raw-experimental",
+      "owners": ["rust.metal.Code", "docs/interop.md"]
+    }
+  ],
+  "metadata": [
+    {
+      "name": "async",
+      "contract": "metadata-qualified"
+    },
+    {
+      "name": "await",
+      "contract": "metadata-qualified"
+    },
+    {
+      "name": "haxeMetal",
+      "contract": "metadata-stable"
+    },
+    {
+      "name": "rustAllowRaw",
+      "contract": "metadata-experimental"
+    },
+    {
+      "name": "rustAsync",
+      "contract": "metadata-qualified"
+    },
+    {
+      "name": "rustAwait",
+      "contract": "metadata-qualified"
+    },
+    {
+      "name": "rustCargo",
+      "contract": "metadata-experimental",
+      "forms": [
+        {
+          "name": "structured object dependency form",
+          "contract": "metadata-stable"
+        },
+        {
+          "name": "raw string passthrough form",
+          "contract": "metadata-experimental"
+        }
+      ]
+    },
+    {
+      "name": "rustDerive",
+      "contract": "metadata-experimental"
+    },
+    {
+      "name": "rustExtraSrc",
+      "contract": "metadata-stable"
+    },
+    {
+      "name": "rustExtraSrcDir",
+      "contract": "metadata-stable"
+    },
+    {
+      "name": "rustGeneric",
+      "contract": "metadata-stable"
+    },
+    {
+      "name": "rustImpl",
+      "contract": "metadata-experimental",
+      "forms": [
+        {
+          "name": "marker-only local emitted type",
+          "contract": "metadata-qualified"
+        },
+        {
+          "name": "body-string and object/forType forms",
+          "contract": "metadata-experimental"
+        }
+      ]
+    },
+    {
+      "name": "rustMetal",
+      "contract": "rust-metal-alias"
+    },
+    {
+      "name": "rustMutating",
+      "contract": "metadata-experimental"
+    },
+    {
+      "name": "rustNativeWrapper",
+      "contract": "metadata-reserved"
+    },
+    {
+      "name": "rustRepresentation",
+      "contract": "metadata-reserved"
+    },
+    {
+      "name": "rustReturn",
+      "contract": "metadata-experimental"
+    },
+    {
+      "name": "rustTest",
+      "contract": "metadata-stable"
+    }
+  ],
+  "defines": [
+    {
+      "name": "async_tokio_adapter",
+      "contract": "build-experimental"
+    },
+    {
+      "name": "reflaxe_rust_profile",
+      "contract": "build-controls"
+    },
+    {
+      "name": "reflaxe_rust_strict",
+      "contract": "build-controls"
+    },
+    {
+      "name": "reflaxe_rust_strict_examples",
+      "contract": "build-internal"
+    },
+    {
+      "name": "rust_allow_unmapped_coretype_dynamic",
+      "contract": "build-experimental"
+    },
+    {
+      "name": "rust_allow_unresolved_monomorph_dynamic",
+      "contract": "build-experimental"
+    },
+    {
+      "name": "rust_async",
+      "contract": "build-qualified"
+    },
+    {
+      "name": "rust_async_preview",
+      "contract": "build-internal"
+    },
+    {
+      "name": "rust_build_release",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_cargo_all_features",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_cargo_cmd",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_cargo_deps",
+      "contract": "build-experimental"
+    },
+    {
+      "name": "rust_cargo_deps_file",
+      "contract": "build-experimental"
+    },
+    {
+      "name": "rust_cargo_features",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_cargo_jobs",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_cargo_locked",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_cargo_no_default_features",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_cargo_offline",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_cargo_quiet",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_cargo_subcommand",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_cargo_target_dir",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_cargo_toml",
+      "contract": "build-experimental"
+    },
+    {
+      "name": "rust_codegen_only",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_contract_report",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_crate",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_debug_metal_raw",
+      "contract": "build-internal"
+    },
+    {
+      "name": "rust_debug_string_types",
+      "contract": "build-internal"
+    },
+    {
+      "name": "rust_deny_warnings",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_emit_upstream_std",
+      "contract": "build-experimental"
+    },
+    {
+      "name": "rust_extra_src",
+      "contract": "build-experimental"
+    },
+    {
+      "name": "rust_hxrt_default_features",
+      "contract": "build-experimental"
+    },
+    {
+      "name": "rust_hxrt_features",
+      "contract": "build-experimental"
+    },
+    {
+      "name": "rust_hxrt_no_feature_infer",
+      "contract": "build-experimental"
+    },
+    {
+      "name": "rust_idiomatic",
+      "contract": "build-internal"
+    },
+    {
+      "name": "rust_metal",
+      "contract": "build-internal"
+    },
+    {
+      "name": "rust_metal_allow_fallback",
+      "contract": "build-experimental"
+    },
+    {
+      "name": "rust_metal_contract_hard_error",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_metal_viability_report",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_metal_viability_warn",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_nested_modules",
+      "contract": "build-qualified"
+    },
+    {
+      "name": "rust_no_build",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_no_gitignore",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_no_hxrt",
+      "contract": "build-qualified"
+    },
+    {
+      "name": "rust_optimizer_plan_report",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_output",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_portable_native_import_strict",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_release",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_runtime_plan_report",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_send_sync_strict",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_string_non_nullable",
+      "contract": "build-experimental"
+    },
+    {
+      "name": "rust_string_nullable",
+      "contract": "build-experimental"
+    },
+    {
+      "name": "rust_target",
+      "contract": "build-qualified"
+    },
+    {
+      "name": "rust_warn_unmapped_coretype_std",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rust_warn_unresolved_monomorph_std",
+      "contract": "build-controls"
+    },
+    {
+      "name": "rustfmt",
+      "contract": "build-controls"
+    }
+  ],
+  "reports": [
+    {
+      "filename": "metal_report.json",
+      "schemaVersion": 1,
+      "contract": "report-json"
+    },
+    {
+      "filename": "contract_report.json",
+      "schemaVersion": 6,
+      "contract": "report-json"
+    },
+    {
+      "filename": "runtime_plan.json",
+      "schemaVersion": 4,
+      "contract": "report-json"
+    },
+    {
+      "filename": "optimizer_plan.json",
+      "schemaVersion": 2,
+      "contract": "report-json"
+    }
+  ],
+  "generatedArtifacts": [
+    {
+      "id": "default-cargo-crate",
+      "contract": "generated-crate"
+    },
+    {
+      "id": "nested-module-crate-and-root-aliases",
+      "contract": "generated-crate"
+    },
+    {
+      "id": "no-hxrt-crate",
+      "contract": "generated-crate"
+    },
+    {
+      "id": "custom-cargo-and-extra-source-ownership",
+      "contract": "generated-crate"
+    },
+    {
+      "id": "rust-test-wrapper-layout",
+      "contract": "generated-private"
+    },
+    {
+      "id": "haxelib-release-package",
+      "contract": "generated-package"
+    }
+  ]
+}

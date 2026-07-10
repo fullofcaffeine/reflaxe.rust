@@ -14,6 +14,10 @@
   `std/haxe/**`, `std/sys/**`, or top-level `std/*.hx`.
 - Top-level support namespaces such as `std/haxe/**` and `std/sys/**` are not deprecated, but they
   are for Rust-target support modules/native helper files that do not shadow upstream std modules.
+- Shared Haxe declarations that exist only to connect framework std modules belong under
+  `std/rust/_internal/**`. Application imports of `rust._internal.*` are compiler errors. Do not
+  place a semantic app-facing operation there; give it a documented `rust.*` facade and classify it
+  in `docs/public-compatibility-manifest.json` instead.
 - When overriding Haxe stdlib modules (e.g. `haxe.io.Bytes`, `Sys`, `sys.*`), keep their public signatures compatible so other std modules typecheck.
 - Some stdlib APIs are declared as `@:coreApi extern` in the eval stdlib (`std/eval/_std/**`). Target overrides must match these signatures exactly (including property accessor shapes like `var x(get, never)`), otherwise Haxe will error during typing.
 - Prefer stable, typed interop surfaces:

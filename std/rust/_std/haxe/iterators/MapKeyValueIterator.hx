@@ -44,7 +44,7 @@ class MapKeyValueIterator<K, V> {
 
 	public inline function next():{key:K, value:V} {
 		var key = keys.next();
-		var value:V = cast map.get(rust.CloneTools.cloneValue(key));
+		var value:V = cast map.get(rust.RefTools.toOwned(key));
 		return {key: key, value: value};
 	}
 }

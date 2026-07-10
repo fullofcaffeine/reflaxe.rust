@@ -787,6 +787,82 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return out;
 	}
 
+	/**
+		Rejects application use of framework-owned `rust._internal.*` helper modules.
+
+		Why
+		- Haxe package naming alone does not make an `_internal` module inaccessible.
+		- Native helper declarations shared by several std overrides sometimes must remain in their own
+		  module, but exposing those declarations to applications would accidentally create public API.
+
+		What
+		- Rejects explicit application `import`/`using` declarations for `rust._internal.*`.
+		- Also checks typed user-module usage so fully qualified references cannot bypass the import guard.
+
+		How
+		- Reuses framework source ownership to inspect only user project modules.
+		- Anchors explicit-import diagnostics to the importing user module.
+		- Keeps the rule namespace-based so future internal helpers inherit the boundary without another
+		  one-off denylist.
+	**/
+	function enforceInternalRustHelperBoundary():Void {
+		var hits:Array<{modulePath:String, pos:haxe.macro.Expr.Position}> = [];
+		var seenFiles:Map<String, Bool> = [];
+		var seenPaths:Map<String, Bool> = [];
+
+		for (moduleType in Context.getAllModuleTypes()) {
+			var file = moduleSourceFile(moduleType);
+			if (file == null || file.length == 0 || seenFiles.exists(file) || !isUserProjectFile(file) || !FileSystem.exists(file))
+				continue;
+			seenFiles.set(file, true);
+			for (modulePath in collectInternalRustHelperImportsFromSource(File.getContent(file))) {
+				if (seenPaths.exists(modulePath))
+					continue;
+				seenPaths.set(modulePath, true);
+				hits.push({modulePath: modulePath, pos: moduleType.getPos()});
+			}
+		}
+
+		var fallbackPos = profileContractDiagnosticPos("", profileContractModulePosIndex());
+		for (modulePath in snapshotUserUsedModulePaths()) {
+			if (!isInternalRustHelperPath(modulePath) || seenPaths.exists(modulePath))
+				continue;
+			seenPaths.set(modulePath, true);
+			hits.push({modulePath: modulePath, pos: fallbackPos});
+		}
+
+		hits.sort((a, b) -> compareStrings(a.modulePath, b.modulePath));
+		#if eval
+		if (hits.length > 0) {
+			var first = hits[0];
+			Context.error("application code cannot import internal Rust helper `"
+				+ first.modulePath
+				+ "`; use a documented rust.* facade instead",
+				first.pos);
+		}
+		#end
+	}
+
+	function collectInternalRustHelperImportsFromSource(source:String):Array<String> {
+		var out:Array<String> = [];
+		if (source == null || source.length == 0)
+			return out;
+		var importPattern = ~/^\s*(import|using)\s+([A-Za-z0-9_.]+)\s*;/;
+		for (line in source.split("\n")) {
+			if (!importPattern.match(line))
+				continue;
+			var modulePath = importPattern.matched(2);
+			if (isInternalRustHelperPath(modulePath) && !out.contains(modulePath))
+				out.push(modulePath);
+		}
+		out.sort(compareStrings);
+		return out;
+	}
+
+	inline function isInternalRustHelperPath(modulePath:String):Bool {
+		return modulePath != null && (modulePath == "rust._internal" || StringTools.startsWith(modulePath, "rust._internal."));
+	}
+
 	function collectNativeImportsFromSource(source:String):Array<String> {
 		var out:Array<String> = [];
 		if (source == null || source.length == 0)
@@ -1099,6 +1175,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	override public function onCompileEnd() {
+		enforceInternalRustHelperBoundary();
 		enforceNoHxrtEligibility();
 		enforceProfileContracts();
 		enforceBorrowRegionContracts();
@@ -1406,7 +1483,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		What
 		- Writes `contract_report.json` and `contract_report.md` in the generated crate root.
 		- Emission is opt-in via `-D rust_contract_report`.
-		- Schema v5 includes typed surface contracts (`consumedSurfaces`) and selected Rust
+		- Schema v6 includes the family-stdlib pin plus typed surface contracts (`consumedSurfaces`) and selected Rust
 		  representation decisions (`nativeRepresentationPlan`) so portable facade lowering is
 		  explicit evidence instead of hidden namespace inference.
 

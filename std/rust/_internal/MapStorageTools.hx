@@ -1,7 +1,7 @@
-package rust;
+package rust._internal;
 
 /**
- * `rust.MapStorageTools`
+ * `rust._internal.MapStorageTools`
  *
  * Why
  * - `haxe.ds.StringMap`, `haxe.ds.IntMap`, `haxe.ds.ObjectMap`, and `haxe.ds.EnumValueMap`

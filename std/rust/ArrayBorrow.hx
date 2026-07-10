@@ -57,7 +57,7 @@ class ArrayBorrow {
  */
 @:native("crate::array_borrow_tools::ArrayBorrowTools")
 @:rustExtraSrc("rust/native/array_borrow_tools.rs")
-extern class ArrayBorrowNative {
+private extern class ArrayBorrowNative {
 	public static function withSlice<T, R>(array:Ref<Array<T>>, f:Slice<T>->R):R;
 	public static function withMutSlice<T, R>(array:Ref<Array<T>>, f:MutSlice<T>->R):R;
 }

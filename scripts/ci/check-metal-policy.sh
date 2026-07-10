@@ -2829,6 +2829,8 @@ run_negative_case "test/negative/profile_removed_rusty" 'Unknown `-D reflaxe_rus
 	'rusty profile selector removed'
 run_negative_case "test/negative/native_wrapper_reserved_metadata" '`@:rustNativeWrapper` is reserved for the native wrapper facility spike and is not enabled as product metadata\.' \
 	'reserved native wrapper metadata is rejected'
+run_negative_case "test/negative/internal_rust_helper_import" 'application code cannot import internal Rust helper `rust\._internal\.MapStorageTools`' \
+	'internal Rust helper import rejection' '^Main\.hx:'
 run_negative_case "test/negative/portable_native_import_strict" 'portable contract imported native target modules: rust\.Option' \
 	'portable native-target import strict mode rejects rust.* imports' \
 	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust profile contract violation\(s\):'

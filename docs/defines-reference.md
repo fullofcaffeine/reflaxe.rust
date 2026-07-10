@@ -1,6 +1,8 @@
 # Defines Reference (`-D ...`)
 
 This page is a practical reference for the most relevant compiler defines.
+The exhaustive machine-checked define inventory and compatibility class for every discovered
+control live in the [public compatibility manifest](public-compatibility-manifest.json).
 
 ## Core output and build
 

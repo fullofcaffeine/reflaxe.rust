@@ -30,7 +30,7 @@
     },
     {
       "path": "std/rust/native/clone_tools.rs",
-      "ownerFacades": ["rust.CloneTools"],
+      "ownerFacades": ["rust.RefTools"],
       "classification": "lowering-candidate",
       "runtimeContract": "no-hxrt",
       "whyNotLoweringToday": "The helper centralizes a typed Clone bound until generic method lowering can emit this operation directly from the Haxe facade.",
@@ -42,7 +42,7 @@
         "type-erased clone registry",
         "serialization-backed cloning"
       ],
-      "evidenceOwner": "rust.CloneTools snapshots and native facade manifest guard",
+      "evidenceOwner": "rust.RefTools scoped-borrow fixtures and native facade manifest guard",
       "codeLineBudget": 12
     },
     {
@@ -132,7 +132,7 @@
     },
     {
       "path": "std/rust/native/map_storage_tools.rs",
-      "ownerFacades": ["rust.MapStorageTools", "haxe.ds.StringMap", "haxe.ds.IntMap", "haxe.ds.ObjectMap", "haxe.ds.EnumValueMap"],
+      "ownerFacades": ["rust._internal.MapStorageTools", "haxe.ds.StringMap", "haxe.ds.IntMap", "haxe.ds.ObjectMap", "haxe.ds.EnumValueMap"],
       "classification": "permanent-native-facade",
       "runtimeContract": "hxrt-bridge",
       "whyNotLoweringToday": "The helper centralizes generated-crate map storage access for Haxe map overrides, including HxRef borrowing and owned iterator bridge results.",
@@ -159,7 +159,7 @@
     },
     {
       "path": "std/rust/native/map_storage_tools_nullable.rs",
-      "ownerFacades": ["rust.MapStorageTools", "haxe.ds.StringMap", "haxe.ds.IntMap", "haxe.ds.ObjectMap", "haxe.ds.EnumValueMap"],
+      "ownerFacades": ["rust._internal.MapStorageTools", "haxe.ds.StringMap", "haxe.ds.IntMap", "haxe.ds.ObjectMap", "haxe.ds.EnumValueMap"],
       "classification": "permanent-native-facade",
       "runtimeContract": "hxrt-bridge",
       "whyNotLoweringToday": "The nullable-string variant centralizes generated-crate map storage access when Haxe String lowers to hxrt::string::HxString.",

@@ -3,141 +3,235 @@
 Status: compatibility classification for `haxe_rust-ykls.6`.
 
 This review identifies the surfaces that could form a stable contract. It does not approve
-`1.0.0`, widen the support matrix, or convert partial evidence into blanket parity.
+`1.0.0`, widen the support matrix, satisfy the four weekly checkpoints, or remove the Rust
+toolchain-policy blocker. The machine-readable source of truth is
+[`public-compatibility-manifest.json`](public-compatibility-manifest.json); this page explains its
+policy and records its generated summary.
 
-## Classification meanings
+## Exact compatibility classes
+
+Every surface has exactly one class:
 
 | Class | Compatibility meaning |
 | --- | --- |
-| **Stable candidate** | Intended to keep its documented semantics and shape across a future stable major. Breaking changes would require the next major after graduation. |
-| **Qualified stable candidate** | Supported only inside the named profile, platform, environment, or proof boundary. The qualification is part of the contract. |
-| **Experimental** | Useful and tested, but still allowed to change during `0.x`; changes require release notes and migration guidance. It is not silently promoted by a `1.0` tag. |
-| **Excluded/internal** | Implementation detail, reserved feature, unsupported expansion, or framework-only escape hatch. No direct application compatibility promise is made. |
+| `stable-candidate` | Proposed for admission to the next stable major. If admitted, its documented names and signatures, accepted input grammar and defaults, observable semantics, and specifically listed generated artifacts become SemVer-governed public API. A change is breaking when a conforming consumer inside the documented boundary stops compiling, building, parsing, or receives behavior contrary to that contract. Accidental behavior, known bugs, exact formatting, and unlisted implementation details are not protected. |
+| `qualified-stable-candidate` | The same protection, but only inside an explicitly named profile, operating system, architecture, toolchain range, prerequisite, environment, or capability domain. Narrowing that domain or increasing its prerequisites is breaking after admission. Evidence depth is recorded separately; it is not itself the qualification. |
+| `experimental` | A documented public surface intentionally excluded from stable-major SemVer until explicitly promoted. During `0.x`, and after `1.0` in a minor rather than patch release, it may change or be removed with release notes and practical migration guidance. A major-version tag never promotes it implicitly. |
+| `excluded-internal` | Not public API: compiler implementation, private helper organization, reserved/rejected feature, or unsupported name. A callable documented escape hatch or migration alias cannot use this class merely because it is inconvenient to stabilize. |
 
-“Stable candidate” remains provisional until a separate reviewed major-1 authorization names the
-exact stable surface.
+`deprecated` is an orthogonal lifecycle status, not a fifth class. A deprecated stable surface
+remains protected for the remainder of its current major. The manifest therefore records class,
+active/deprecated/reserved status, qualification, protected contract units, evidence, and
+exclusions separately.
 
-## Public contract classification
+“Stable candidate” remains provisional until a later reviewed major-1 authorization names the
+exact admitted surface.
 
-| Surface | Classification | Boundary that must remain visible |
-| --- | --- | --- |
-| `portable` profile and ordinary supported Haxe language/std behavior | **Stable candidate** | Haxe semantics are the contract. Evidence depth still comes from the feature matrix and semantic-confidence classes, not from inventory counts alone. |
-| Portable `sys.*` | **Qualified stable candidate** | Linux is the full-CI platform. Windows and macOS are smoke lanes. HTTP has targeted proof; TLS and DB remain platform/environment-sensitive. |
-| `metal` profile, strict app boundary, native-import diagnostics, and fallback reporting | **Stable candidate** | Rust-first semantics apply only where documented. `metal` is not a promise of automatic no-runtime output or arbitrary raw Rust authority. |
-| `rust.Option`, `rust.Result`, `rust.Vec`, `rust.HashMap`, time/path values, iterator helpers, and documented tools | **Stable candidate for documented operations** | Missing trait ergonomics, borrowed-entry APIs, clone reductions, and broader no-hxrt support are not implied. |
-| `rust.Ref`, `rust.MutRef`, `rust.Str`, `rust.Slice`, `rust.MutSlice`, scoped borrow/RAII callbacks | **Qualified stable candidate** | Lexical-region restrictions and current diagnostics are part of the contract. Unknown closure/helper side effects and richer field/static provenance remain excluded. |
-| `rust.concurrent.*` and `rust.async.*` | **Qualified stable candidate** | Only the documented typed subset is included. Async is metal-only, uses a synchronous entry boundary, and is incompatible with `rust_no_hxrt`. |
-| `rust.fs.NativeFiles`, `rust.process.*`, and `rust.net.*` | **Qualified stable candidate** | Only the documented direct-file, owned-command/narrow-child, and blocking-localhost TCP/UDP contracts are included. No DNS, arbitrary-host, live-stream, TLS, DB, shell, detached-process, or async-network promise is inferred. |
-| `rust.serde.SerdeJson` | **Experimental** | Native JSON interop remains partial; there is no first-party typed schema/derive or documented no-hxrt JSON contract. |
-| `rust.tui.*` and `rust.test.*` | **Experimental tooling** | These are valuable dogfood/example helpers, not the compiler’s general stable systems/UI contract. `TuiDemo` is explicitly a low-level backend. |
-| `@:rustCargo`, `@:rustExtraSrc`, typed extern/`@:native` integration, and deterministic Cargo dependency merging | **Stable candidate** | Conflicts must keep failing closed. Application code should bind native islands through typed Haxe surfaces. |
-| `@:haxeMetal`, `@:rustMetal` migration alias, contract/runtime/optimizer reports | **Stable candidate at the documented boundary** | Report schemas are versioned machine contracts; new fields may be additive. The old alias is compatibility-only and new code uses `@:haxeMetal`. |
-| `@:rustImpl` body strings, `rust.metal.Code`, `@:rustAllowRaw`, and raw `__rust__` | **Experimental/framework escape hatches** | They must not become the normal application model. Metal-clean policy may reject them even when strict-boundary authority exists. |
-| Reserved `@:rustNativeWrapper`, portable `rust_no_hxrt`, auto-profile selection, and unbundled future `reflaxe.std` modules | **Excluded/not shipped** | Reserved metadata is rejected today. Future admission requires its own typed contract, migration rules, and fixtures. |
-| `hxrt`, `std/rust/native/*.rs`, generated private aliases/helpers, compiler passes, and internal AST/report builders | **Excluded/internal** | Public Haxe behavior and documented generated artifacts are the compatibility boundary; helper organization is not. Native helper manifest classifications govern implementation growth, not public SemVer by themselves. |
+## Machine-checked contract summary
 
-## Defines and metadata policy
+<!-- BEGIN GENERATED PUBLIC COMPATIBILITY SUMMARY -->
+| Contract | Class | Status | Qualification |
+| --- | --- | --- | --- |
+| `portable-core` | `stable-candidate` | `active` | Only module/member behavior admitted by the versioned feature-support inventory; Haxe semantics are the oracle inside that set. |
+| `portable-mainloop` | `qualified-stable-candidate` | `active` | Only the target-side MainLoop and EntryPoint paths documented in the concurrency posture. |
+| `portable-sys-core` | `qualified-stable-candidate` | `active` | Linux full CI plus the specifically documented Windows smoke operations; macOS is local-only evidence. |
+| `portable-http` | `qualified-stable-candidate` | `active` | Documented local-server status, body, error, and callback behavior. |
+| `portable-net-tcp` | `qualified-stable-candidate` | `active` | Targeted blocking TCP behavior on documented local-server lanes. |
+| `portable-net-udp` | `qualified-stable-candidate` | `active` | Curated UDP smoke behavior only. |
+| `portable-tls` | `qualified-stable-candidate` | `active` | Buildable TLS/SNI path; runtime behavior remains certificate-, network-, and environment-sensitive. |
+| `portable-db-types` | `qualified-stable-candidate` | `active` | Shared DB interface/type shapes used by separately qualified drivers. |
+| `portable-sqlite` | `qualified-stable-candidate` | `active` | In-memory SQLite runtime smoke boundary. |
+| `portable-mysql-compile` | `qualified-stable-candidate` | `active` | Dependency and generated-code compile contract only. |
+| `rust-values-core` | `stable-candidate` | `active` | Documented Option, Result, and tool operations only. |
+| `rust-values-qualified` | `qualified-stable-candidate` | `active` | Only individually documented operations; gaps in traits, borrowed entries, cloning, strings, OsString, and iteration remain visible. |
+| `rust-borrows` | `qualified-stable-candidate` | `active` | Documented lexical borrow regions, slice/string views, and scoped callbacks. |
+| `rust-hxref` | `qualified-stable-candidate` | `active` | Opaque shared Haxe-reference handle for APIs that expose rust.HxRef<T>; the representation is not contractual. |
+| `rust-concurrency` | `qualified-stable-candidate` | `active` | Documented typed handle and scoped-guard subset with hxrt. |
+| `rust-async` | `qualified-stable-candidate` | `active` | Metal plus rust_async plus hxrt; synchronous main boundary. |
+| `rust-systems` | `qualified-stable-candidate` | `active` | Documented direct file, owned command/narrow child, and blocking localhost socket operations. |
+| `rust-prelude` | `qualified-stable-candidate` | `active` | Metal-only import hub; exported alias module path is protected. |
+| `public-experimental` | `experimental` | `active` | Public preview/tooling surface excluded from stable-major admission until explicitly promoted. |
+| `raw-experimental` | `experimental` | `active` | Controlled raw/stringly Rust authority under strict boundary rules. |
+| `internal-helper` | `excluded-internal` | `active` | Compiler/framework implementation only; application imports are unsupported and must be sealed by the helper-boundary guard. |
+| `metal-profile` | `stable-candidate` | `active` | Profile selection, strict app boundary, native-import policy, and documented fallback/report behavior only. |
+| `metadata-stable` | `stable-candidate` | `active` | Only the explicitly listed form and placement grammar. |
+| `metadata-qualified` | `qualified-stable-candidate` | `active` | Only the form and environment named by each metadata entry. |
+| `metadata-experimental` | `experimental` | `active` | Stringly or advanced metadata excluded from stable admission. |
+| `rust-metal-alias` | `stable-candidate` | `deprecated` | Deprecated migration alias for haxeMetal. |
+| `metadata-reserved` | `excluded-internal` | `reserved` | Rejected or compiler-owned metadata. |
+| `build-controls` | `stable-candidate` | `active` | Documented normal output/build/profile/report and structured Cargo controls. |
+| `build-qualified` | `qualified-stable-candidate` | `active` | Only the documented profile, runtime, module topology, target, or source-ownership domain. |
+| `build-experimental` | `experimental` | `active` | Escape, raw passthrough, runtime-feature, or preview control. |
+| `build-internal` | `excluded-internal` | `active` | Repository enforcement, debug, deprecated/rejected selector, or compiler bootstrap detail. |
+| `report-json` | `qualified-stable-candidate` | `active` | Machine-readable JSON only; consumers must ignore unknown fields. Full schemas remain a major-1 blocker. |
+| `generated-crate` | `qualified-stable-candidate` | `active` | Documented default, nested, no-hxrt, custom-Cargo, extra-source, and cargo-execution boundaries. |
+| `generated-package` | `stable-candidate` | `active` | Published Haxelib-shaped package and installed-package workflow. |
+| `generated-private` | `excluded-internal` | `active` | Generated helper/wrapper details not admitted as consumer API. |
 
-The canonical inventory remains [Defines reference](defines-reference.md). Its compatibility groups
-are:
+Inventory: 170 shipped Haxe types, 11 admitted member families, 18 metadata names, 55 defines, 4 JSON reports, and 6 generated-artifact contracts.
+<!-- END GENERATED PUBLIC COMPATIBILITY SUMMARY -->
 
-- stable candidates: output/build controls, `reflaxe_rust_profile`, documented string defaults,
-  Cargo controls, report switches, strictness controls, and `@:haxeMetal`;
-- qualified stable candidates: `rust_async`, `rust_no_hxrt`, `rust_nested_modules`, native-import
-  strictness, and explicit fallback/diagnostic controls under their documented constraints;
-- migration-only: `@:rustMetal` and compiler errors for removed `rust_idiomatic`, `rust_metal`, and
-  `rust_async_preview` selectors;
-- debug/internal: debug tracing switches and repo-only example enforcement;
-- excluded until separately admitted: reserved wrapper metadata and undocumented defines.
+The guard enumerates every non-private top-level type shipped under `std/rust`, including secondary
+module types and `_std` overrides, plus compiler-owned target metadata and direct or indirect define
+lookups. A new, removed, duplicated, or unclassified surface fails CI.
 
-Adding a define is not enough to make it stable. It needs documentation, positive/negative fixtures,
-and a named compatibility class here or in a successor review.
+## Important surface decisions
 
-## Generated package and crate contract
+The portable contract is the versioned admitted module/member inventory, not the circular phrase
+“ordinary supported Haxe.” Haxe semantics remain the oracle inside that admitted set. Inventory
+closure alone is not runtime-semantic closure.
 
-Stable-candidate boundaries:
+The `metal` stable candidate covers profile selection, strict-boundary enforcement, native-import
+policy, and documented fallback/report behavior. It does not cause every `rust.*`, no-hxrt, raw,
+trait, async, or systems feature used in a metal compilation to inherit stable status.
 
-- real Git tags own published versions; checkout metadata remains a development sentinel;
-- releases provide one deterministic Haxelib-shaped ZIP through GitHub Releases;
-- the package installs through the documented lix/Haxelib flow;
-- generated output is a Cargo 2021 crate with deterministic source/report files;
-- default output may bundle `hxrt` when Haxe semantics require it;
-- metal `rust_no_hxrt` omits the runtime only after source and emitted-output eligibility gates;
-- nested module output is opt-in and retains documented root aliases for handwritten-Rust migration.
+`rust.Option`, `rust.Result`, and their documented tools are the strongest stable-value candidates.
+Vec, HashMap, path/time/string/OsString/iterator values and tools remain qualified to individually
+documented operations. Borrow and slice APIs are qualified to their lexical-region contract.
 
-Private helper paths inside `hxrt` and compiler-generated implementation details are not public APIs.
-Changing externally consumed generated module paths, report schemas, package layout, or Cargo behavior
-requires migration evidence even when Haxe source still compiles.
+`rust.HxRef<T>` is admitted only as an opaque qualified handle because concurrency and async APIs
+expose it directly. Its current `Arc<HxCell<T>>`/lock representation, layout, and internal methods
+are explicitly non-contractual.
+
+`rust.serde.SerdeJson`, `rust.tui.*`, `rust.test.*`, and
+`rust.adapters.ReflaxeStdAdapters` remain experimental. Compiler-owned `@:rustTest` is a separate
+stable metadata candidate. Marker-only `@:rustImpl("Trait")` is qualified to local emitted types;
+body-string and object/`forType` forms remain experimental raw authority. `@:rustDerive`,
+`@:rustMutating`, and `@:rustReturn` are experimental. `rust.metal.Prelude` is a qualified stable
+import hub. `@:rustMetal` is a deprecated stable-candidate alias; if it is admitted into major 1, it
+cannot be removed before major 2.
+
+Raw `rust.metal.Code`, `@:rustAllowRaw`, `__rust__`, and the injection macro shim are public
+experimental escape hatches. They are not universally framework-only: a narrowly authorized
+project class may use them under the documented strict and metal-clean rules.
+
+Native-helper manifest classifications are implementation-lifecycle labels, not public SemVer
+classes. A helper file, class, module path, or implementation may change without a public break
+when the admitted facade and explicitly listed generated artifacts remain compatible. Conversely,
+a stable facade remains protected whether implemented by lowering, a native helper, or `hxrt`.
+The helper boundary is now enforced: shared framework declarations live under `rust._internal.*`,
+application imports fail, and semantic operations use documented public facades.
+
+## Defines and metadata
+
+The manifest, not the prose-only Defines reference, is the canonical compatibility inventory. It
+includes indirect controls such as `async_tokio_adapter` and the three `rust_hxrt_*` controls.
+
+- normal output/build/report controls and structured object `@:rustCargo` are stable candidates;
+- `rust_async`, `rust_no_hxrt`, `rust_nested_modules`, and target/source ownership controls are
+  qualified candidates;
+- unresolved-monomorph/core-type escapes, metal fallback, `rust_hxrt_*`,
+  `async_tokio_adapter`, raw Cargo/dependency passthroughs, and `rust_emit_upstream_std` are
+  experimental;
+- debug, repository-only enforcement, and removed selector controls are excluded/internal;
+- raw `rust_cargo_toml` may promise literal copy/substitution only if that precise ownership rule is
+  later admitted; the resulting manifest remains consumer-owned.
+
+Each metadata entry records accepted forms separately when one name spans contracts. In particular,
+structured `@:rustCargo` does not stabilize its raw-string form, and marker-only `@:rustImpl` does
+not stabilize body-string/object forms.
+
+## Reports and generated artifacts
+
+The four machine-readable report families are:
+
+| JSON artifact | Current schema |
+| --- | ---: |
+| `metal_report.json` | 1 |
+| `contract_report.json` | 6 |
+| `runtime_plan.json` | 4 |
+| `optimizer_plan.json` | 2 |
+
+The proposed contract protects each filename, `schemaVersion`, required existing field names and
+types, documented stable reason/category identifiers, field meaning, and any ordering explicitly
+promised to consumers. Consumers must ignore unknown fields, after which new optional fields may be
+additive. A schema increment does not authorize replacing an admitted filename incompatibly: use a
+parallel versioned artifact plus migration window, or a new major. Markdown reports are human-facing
+and not machine-parseable contracts. Full schemas and compatibility checking remain owned by
+`haxe_rust-ykls.11` before major-1 authorization.
+
+The generated-crate candidate explicitly covers `Cargo.toml` and `src/main.rs` roots, binary-crate
+default, edition 2021, crate-name override, conditional `./hxrt` subtree/dependency, `rust_no_hxrt`
+omission, extra-source discovery/copy/module inclusion, structured dependency merge/conflict,
+Cargo subcommand/flags and non-zero exit propagation, nested source paths and root aliases,
+custom-Cargo ownership, and report filenames. The generated `__hx_tests` wrapper name/layout is
+private for now.
+
+Exact whitespace, rustfmt output, temporary ordering, private generated helper names, native-helper
+module paths, internal `hxrt` structure, and the checkout development-version literal are not
+protected.
+
+The package candidate protects a deterministic Haxelib-shaped ZIP, install through Haxelib/lix and
+`-lib reflaxe.rust`, staged `src/**/*.cross.hx` transformation, required compiler/`runtime/`/`vendor/`
+roots, staged version/provenance metadata, safe archive paths, and the documented source-checkout
+versus installed-package classpath behavior.
+
+Changing an admitted generated module path, report schema, package layout, or Cargo behavior is a
+breaking change after stable admission unless its documented additive/parallel-version rule applies.
+Migration evidence is required but cannot turn an incompatible change into a non-breaking one.
 
 ## Platform and toolchain policy
 
-Current `0.x` policy:
+- Haxe is pinned to `4.3.7`.
+- Repository/release automation uses Node `22.14.0` under the declared engine range.
+- Generated crates use Rust edition 2021.
+- CI validates current Rust stable; no historical MSRV is claimed.
+- Linux is the primary full-validation CI platform.
+- Windows has a curated smoke-CI lane.
+- macOS currently has local contributor validation only and is not a CI-backed support lane.
+- None of those statements implies blanket cross-platform semantic parity.
+- `rust_target` is Cargo plumbing, not proof for every target triple or platform API.
 
-- Haxe is pinned to `4.3.7`;
-- repository/release automation uses Node `22.14.0` under the declared package engine range;
-- generated crates use Rust edition 2021;
-- CI validates the current Rust stable toolchain rather than a fixed MSRV;
-- Linux is the primary full-validation platform;
-- Windows and macOS are curated smoke platforms, not blanket semantic-parity claims;
-- cross-compilation through `rust_target` is supported as Cargo plumbing, not proof that every target
-  triple or platform API is validated.
-
-The rolling-stable Rust policy is honest for the current preview line, but it is not sufficient by
-itself for a stable-major promise. Before major-1 authorization, the project must either select and
-enforce an MSRV or adopt an equivalently reproducible pinned release-toolchain policy with an
-explicit support/update window. The final stability decision owns that blocker; this review does
-not invent an unsupported historical MSRV.
+An enforced MSRV or equivalently reproducible pinned release-toolchain policy with an explicit
+support/update window remains mandatory before major-1 authorization. Existing task
+`haxe_rust-ykls.8` owns that decision.
 
 ## Migration and deprecation rules
 
-During `0.x`:
+During `0.x`, intentional breaks require Beads evidence, release notes, and concrete migration.
+Stable candidates should not be broken casually. Experimental changes/removals occur in a minor,
+not patch, release and include practical guidance.
 
-- intentional breaking changes require linked Beads evidence, release notes, and concrete migration
-  steps;
-- stable candidates should not be broken casually merely because SemVer permits `0.x` movement;
-- experimental surfaces may change in a minor release, but never silently;
-- excluded/internal surfaces carry no direct application compatibility promise.
+After stable admission:
 
-For a future stable major:
+- stable and qualified-stable breaks require a new major;
+- narrowing a qualified domain or adding prerequisites is breaking;
+- changing defaults, accepted metadata grammar, profile semantics, module paths, required Cargo
+  dependencies, Cargo edition, platform floor, or toolchain floor is breaking unless an admitted
+  update policy expressly permits it;
+- adding enum constructors or sealed cases is not automatically additive when consumers may switch
+  exhaustively;
+- stable diagnostics protect an identifier/category, severity, and trigger—not exact English prose;
+- a fix demonstrably restoring the written contract may be corrective, with release notes when
+  existing consumers could be affected;
+- security exceptions use the least disruptive safe change and record an explicit compatibility
+  disposition;
+- a deprecated stable surface and documented replacement coexist for the rest of the current major;
+  removal occurs no earlier than the next major;
+- migration aliases state introduction, deprecation, replacement, and earliest-removal major.
 
-- breaking a stable or qualified-stable surface requires a new major;
-- deprecations name the replacement and migration path and remain available through at least one
-  minor release; removal still waits for the next major;
-- additive report-schema changes are permitted, but removing or changing existing machine fields is
-  breaking unless a versioned parallel schema and migration window are provided;
-- urgent security/correctness action may disable unsafe behavior sooner, but must ship an advisory,
-  migration path, and explicit compatibility disposition;
-- experimental features remain visibly experimental after `1.0` unless the major authorization
-  explicitly promotes them.
+Stable diagnostic identifiers are not yet broadly implemented, so this review does not stabilize
+current diagnostic prose. `haxe_rust-ykls.12` owns identifiers before any diagnostic behavior is
+admitted to major 1.
 
-## Known defers and graduation blockers
+## Known defers and decision
 
-- Four correctly spaced weekly stability checkpoints have not yet elapsed.
-- No stable Rust MSRV or equivalent pinned release-toolchain support window is selected.
-- Borrow provenance beyond the documented local/scoped analysis remains partial.
-- MainLoop/EntryPoint, TLS, DB, Windows, macOS, and broader network/process behavior retain their
-  documented proof qualifications.
-- Native JSON schema/derive, portable no-hxrt, generated native wrappers, broader trait/bound
-  metadata, and general async networking are not stable-major commitments.
+Four correctly spaced weekly checkpoints have not elapsed. Toolchain policy, report/artifact schema
+enforcement, and stable diagnostic IDs remain owned blockers for the later major-1 decision. Broader
+borrow provenance, platform parity, TLS/DB/network breadth, typed derive/where/associated-type work,
+portable no-hxrt, and generated native wrappers may remain explicitly qualified, experimental, or
+excluded rather than being rushed into scope.
 
-These are honest boundaries, not instructions to implement every deferred feature before `1.0`.
-The final major scope may explicitly exclude or qualify them.
+The surface is coherent enough for continued `0.x` stability review after the manifest and helper
+boundary blockers close. That closure will classify the contract; it will not authorize `1.0.0`.
 
 ## Bun-class quality north star
 
 The compiler should be capable in principle of supporting serious, performance-sensitive,
-cross-platform systems software comparable in complexity to Bun. That is a quality criterion for
-generic compiler behavior, typed native authority, output readability, performance, diagnostics,
-and reproducibility. It is not a promise to build BunHx or a reason to add application-specific
-lowering. A future BunHx may be a bounded pressure test; every finding must generalize into a reusable
-compiler/runtime/facade contract.
-
-## Decision
-
-The current surface is coherent enough to enter the sustained stability review as an intentional
-`0.x` production-capable preview. It is not yet authorized as `1.0`: elapsed weekly evidence and a
-stable Rust toolchain policy remain outstanding, and the final reviewed major scope must preserve
-the qualifications above.
+cross-platform systems software comparable in complexity to Bun. This is a pressure test against
+declared supported lanes; it does not expand the support matrix or imply a BunHx delivery
+commitment. Findings must generalize into reusable compiler/runtime/facade behavior rather than
+application-specific lowering.
 
 ## Related evidence
 

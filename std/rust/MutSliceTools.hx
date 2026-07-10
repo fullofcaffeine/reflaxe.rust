@@ -186,7 +186,7 @@ class MutSliceTools {
  */
 @:native("crate::mut_slice_tools::MutSliceTools")
 @:rustExtraSrc("rust/native/mut_slice_tools.rs")
-extern class MutSliceToolsNative {
+private extern class MutSliceToolsNative {
 	public static function len<T>(s:MutSlice<T>):Int;
 	public static function get<T>(s:MutSlice<T>, index:Int):Option<Ref<T>>;
 	public static function set<T>(s:MutSlice<T>, index:Int, value:T):Void;

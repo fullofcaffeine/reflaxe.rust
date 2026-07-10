@@ -191,7 +191,7 @@ class SliceTools {
  */
 @:native("crate::slice_tools::SliceTools")
 @:rustExtraSrc("rust/native/slice_tools.rs")
-extern class SliceToolsNative {
+private extern class SliceToolsNative {
 	public static function len<T>(s:Slice<T>):Int;
 	public static function get<T>(s:Slice<T>, index:Int):Option<Ref<T>>;
 
