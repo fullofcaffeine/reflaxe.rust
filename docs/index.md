@@ -29,6 +29,7 @@ the latest immutable GitHub Release for the exact current version.
 - [Portable idiom adoption contract](reflaxe-std-adoption-contract.md): Rust-side boundary and migration rules for the shared `reflaxe.std` portable idiom layer (v1 starts with `Option`/`Result`).
 - [Portable idiom package extraction tracker](reflaxe-std-package-extraction-tracker.md): current cross-repo ownership, adapter, install, and public-guidance gates before app authors should depend on `reflaxe.std` by default.
 - [Semver and release posture](semver-release-posture.md): canonical current posture, structured release-state contract, and measurable graduation gate.
+- [Pre-1.0 compatibility review](pre-1.0-compatibility-review.md): stable-candidate, qualified, experimental, and excluded surfaces plus migration/toolchain blockers.
 - [GA decision record](ga-decision-record.md): historical Milestone 28 gate outcome that led to the semver/public-packaging follow-up.
 - [GA caveat classification](ga-caveat-classification.md): historical blocker/defer/non-issue input used by the Milestone 28 gate.
 - [Examples matrix](examples-matrix.md): scenario coverage, profile entrypoints, and native-parity quick check (`profile_storyboard`).

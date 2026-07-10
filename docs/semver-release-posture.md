@@ -129,6 +129,9 @@ release candidate:
 7. **API and migration review**
    - public Haxe APIs, profiles, defines/metadata, generated-crate layout, runtime-facing contracts,
      and package/install workflow receive a compatibility review,
+   - the review classifies stable candidates, qualified surfaces, experimental tooling, and
+     excluded/internal implementation boundaries in
+     [Pre-1.0 compatibility review](pre-1.0-compatibility-review.md),
    - intentional post-1.0 change policy and deprecation/migration rules are documented,
    - and known defers remain visible rather than being hidden by the version bump.
 8. **Independent second pass**

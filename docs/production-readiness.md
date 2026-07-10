@@ -148,6 +148,7 @@ Current operational sources:
 - [Semantic confidence summary](semantic-confidence-summary.md)
 - [Defines reference](defines-reference.md)
 - [Weekly CI Evidence](weekly-ci-evidence.md)
+- [Pre-1.0 Compatibility Review](pre-1.0-compatibility-review.md)
 
 Historical closeout context:
 
