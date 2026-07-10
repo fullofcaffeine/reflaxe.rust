@@ -25,10 +25,10 @@ jobs:
     timeout-minutes: 120
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
@@ -155,10 +155,10 @@ jobs:
     timeout-minutes: 50
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
@@ -211,7 +211,7 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Checkout haxe.rust
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: haxe.rust
 
@@ -221,7 +221,7 @@ jobs:
           git clone --depth 1 https://github.com/fullofcaffeine/codex-hxrust.git codex-hxrust
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
