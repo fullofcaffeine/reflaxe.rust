@@ -8,6 +8,8 @@ const root = path.resolve(__dirname, '..', '..')
 const ciPath = path.join(root, '.github', 'workflows', 'ci.yml')
 const legacyReleasePath = path.join(root, '.github', 'workflows', 'release.yml')
 const repairPath = path.join(root, '.github', 'workflows', 'release-repair.yml')
+const weeklyPath = path.join(root, '.github', 'workflows', 'weekly-ci-evidence.yml')
+const packagePath = path.join(root, 'package.json')
 
 function requireMatch(text, pattern, message) {
   assert.match(text, pattern, message)
@@ -44,6 +46,31 @@ function main() {
   requireMatch(repair, /node scripts\/release\/repair-release\.js "\$REPAIR_TAG"/, 'repair must use the non-version-deriving repair command')
   assert(!repair.includes('semantic-release'), 'repair must never derive or create a new version')
   assert(!repair.includes('git tag'), 'repair must never create, move, or delete a tag')
+
+  assert(fs.existsSync(weeklyPath), 'the sustained-stability evidence workflow must exist')
+  const weekly = fs.readFileSync(weeklyPath, 'utf8')
+  const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'))
+  const ciNode = ci.match(/^  NODE_VERSION: "([^"]+)"$/m)?.[1]
+  const weeklyNode = weekly.match(/^  NODE_VERSION: "([^"]+)"$/m)?.[1]
+  assert(ciNode, 'CI must declare its exact Node runtime')
+  assert.strictEqual(weeklyNode, ciNode, 'weekly evidence and normal CI must use the same Node runtime')
+  assert(
+    String(packageJson.engines?.node || '').startsWith(`>=${weeklyNode} `),
+    'weekly evidence Node must match the package engine minimum'
+  )
+  requireMatch(weekly, /cron: "0 10 \* \* 1"/, 'weekly evidence must retain the Monday 10:00 UTC cadence')
+  requireMatch(weekly, /workflow_dispatch: \{\}/, 'weekly evidence must support deliberate reruns')
+  requireMatch(weekly, /group: weekly-ci-evidence-\$\{\{ github\.ref \}\}/, 'weekly evidence runs must serialize per ref')
+  requireMatch(weekly, /cancel-in-progress: false/, 'a later trigger must not cancel an evidence run already in progress')
+  for (const requiredJob of ['local-equivalent', 'windows-smoke', 'codex-hxrust-qa', 'follow-up-guidance']) {
+    requireMatch(weekly, new RegExp(`\\n  ${requiredJob.replaceAll('-', '\\-')}:\\n`), `weekly evidence must retain ${requiredJob}`)
+  }
+  requireMatch(weekly, /Commit: \\?`\$\{\{ github\.sha \}\}\\?`/, 'Linux weekly evidence must record the exact compiler SHA')
+  requireMatch(weekly, /haxe\.rust commit: \\?`\$\{haxe_rust_sha\}\\?`/, 'killer-app evidence must record the compiler SHA')
+  requireMatch(weekly, /codex-hxrust commit: \\?`\$\{codex_hxrust_sha\}\\?`/, 'killer-app evidence must record the app SHA')
+  for (const requiredNeed of ['local-equivalent', 'windows-smoke', 'codex-hxrust-qa']) {
+    requireMatch(weekly, new RegExp(`- ${requiredNeed.replaceAll('-', '\\-')}`), `weekly rollup must wait for ${requiredNeed}`)
+  }
 
   console.log('[release-workflow-test] OK')
 }

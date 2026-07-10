@@ -7,13 +7,14 @@ on:
 
 concurrency:
   group: weekly-ci-evidence-${{ github.ref }}
-  cancel-in-progress: true
+  # A manual rerun must queue behind, not erase, a scheduled stability checkpoint.
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "22.14.0"
   HAXE_VERSION: "4.3.7"
   CARGO_NET_RETRY: "5"
   CARGO_HTTP_MULTIPLEXING: "false"

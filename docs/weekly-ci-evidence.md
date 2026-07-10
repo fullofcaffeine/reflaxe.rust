@@ -86,6 +86,23 @@ artifacts are uploaded from the `HXRT overhead benchmarks` shard.
 
 This keeps evidence auditable without requiring manual copy/paste into docs every week.
 
+## Counting a sustained-stability window
+
+A release-readiness stability window counts elapsed time and repeated evidence; ordinary PR CI runs
+cannot be relabeled as four weekly checkpoints.
+
+- Count at most one successful rollup in any seven-day interval.
+- The counted run may be scheduled or deliberately re-run with `workflow_dispatch`, but all three
+  required jobs must succeed on the same `haxe.rust` commit: Linux local-equivalent validation,
+  Windows smoke, and `codex-hxrust` QA.
+- Record the exact `haxe.rust` and `codex-hxrust` SHAs, workflow/run and job identifiers, semantic
+  confidence artifacts, and the open P0/P1 regression inventory in the checkpoint Bead.
+- A failed run is evidence, not a checkpoint to waive. File a regression Bead the same day.
+- A release-blocking regression resets the consecutive count after its fix; the next valid weekly
+  rollup becomes checkpoint one of the restarted window.
+- Four green checkpoints authorize a review of the evidence. They do not implicitly approve or
+  publish `1.0.0`; stable-major authorization remains a separate `thinking:xhigh` decision.
+
 ## What to do when a weekly run fails
 
 Open a regression issue in the tracker the same day and include:

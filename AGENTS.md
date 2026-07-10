@@ -64,6 +64,12 @@ Agent policy:
 ## Strategic Goal
 
 - Primary long-term goal: make `reflaxe.rust` the best way to write production Rust outside of writing raw Rust directly, by combining Haxe ergonomics with Rust-level performance, safety, and readability, while preserving an explicit portable path through Haxe when users want cross-target portability.
+- Use Bun-class systems software as a production-quality north star: the compiler should be capable
+  in principle of supporting serious performance-sensitive, cross-platform systems applications of
+  comparable complexity without routine handwritten-Rust escape hatches or app-specific compiler
+  behavior. This is a capability criterion, not a commitment to build or rewrite Bun. A future
+  `BunHx` may be used as a bounded validation project, but any gap it exposes must be fixed as a
+  generic compiler/runtime/typed-facade contract with reusable evidence.
 
 ## Typeful Haxe and Rust Output Quality
 

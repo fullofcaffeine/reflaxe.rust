@@ -16,6 +16,10 @@ and enforces typed interop policies intended for production use.
 2. Provide a strict, typed Rust-first lane in `metal`.
 3. Keep generated Rust deterministic and auditable (snapshot + report artifacts).
 4. Keep runtime overhead visible and continuously tracked in CI.
+5. Reach a production-quality ceiling capable in principle of supporting Bun-class,
+   performance-sensitive cross-platform systems software without application-specific compiler
+   behavior. This is a quality criterion, not a commitment to ship a Bun rewrite; a future BunHx
+   would be a bounded validation project whose findings must generalize to the compiler/runtime.
 
 ## 3) Contract model
 
