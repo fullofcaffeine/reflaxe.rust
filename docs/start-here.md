@@ -2,13 +2,7 @@
 
 This guide is for teams that want native Rust binaries without becoming compiler experts.
 
-Current status:
-
-<!-- GENERATED:release-posture:start -->
-Current release posture: **intentional `0.x` pre-1.0 posture**.
-
-Maturity: **production-capable preview on validated lanes**. See [Semver And Release Posture](semver-release-posture.md).
-<!-- GENERATED:release-posture:end -->
+Current status and release policy: [SemVer And Release Posture](semver-release-posture.md).
 
 - the compiler/runtime baseline is closed and production-capable on validated lanes
 - production use should still follow the proof-depth caveats in the [Production Readiness guide](production-readiness.md)

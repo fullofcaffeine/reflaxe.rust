@@ -4,11 +4,7 @@ This document checks whether the original product vision matches what is impleme
 
 It should read as a calibration document, not a victory lap.
 
-<!-- GENERATED:release-posture:start -->
-Current release posture: **intentional `0.x` pre-1.0 posture**.
-
-Maturity: **production-capable preview on validated lanes**. See [Semver And Release Posture](semver-release-posture.md).
-<!-- GENERATED:release-posture:end -->
+For maturity and compatibility policy, see [SemVer And Release Posture](semver-release-posture.md).
 
 ## Vision in one paragraph
 

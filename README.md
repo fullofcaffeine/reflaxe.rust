@@ -4,18 +4,15 @@
 
 # reflaxe.rust
 
-[![Version](https://img.shields.io/badge/version-0.81.3-blue)](https://github.com/fullofcaffeine/reflaxe.rust/releases)
+[![Latest Release](https://img.shields.io/github/v/release/fullofcaffeine/reflaxe.rust?display_name=tag)](https://github.com/fullofcaffeine/reflaxe.rust/releases/latest)
 [![CI](https://github.com/fullofcaffeine/reflaxe.rust/actions/workflows/ci.yml/badge.svg)](https://github.com/fullofcaffeine/reflaxe.rust/actions/workflows/ci.yml)
 
 Haxe 4.3.7 -> Rust target built on Reflaxe.
 
 This project lets you write Haxe and ship native Rust binaries, with a path for both Haxe-first and Rust-first teams.
 
-<!-- GENERATED:release-posture:start -->
-Current release posture: **intentional `0.x` pre-1.0 posture**.
-
-Maturity: **production-capable preview on validated lanes**. See [Semver And Release Posture](docs/semver-release-posture.md).
-<!-- GENERATED:release-posture:end -->
+Release policy and maturity are documented in [SemVer And Release Posture](docs/semver-release-posture.md);
+the exact current version is the latest immutable GitHub Release tag.
 
 Architecture and contract confidence is strong, and the validated implementation baseline is broad
 and evidence-backed.

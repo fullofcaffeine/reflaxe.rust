@@ -1,3 +1,9 @@
+# Historical Changelog
+
+This file is preserved through `v0.81.3`. Later release notes are canonical on immutable
+[GitHub Releases](https://github.com/fullofcaffeine/reflaxe.rust/releases); publication no longer
+creates a changelog/version commit after CI.
+
 ## [0.81.3](https://github.com/fullofcaffeine/reflaxe.rust/compare/v0.81.2...v0.81.3) (2026-07-09)
 
 

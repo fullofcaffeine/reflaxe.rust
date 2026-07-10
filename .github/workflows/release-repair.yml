@@ -1,0 +1,62 @@
+name: Repair Existing Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing immutable version tag to repair (for example v0.82.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+
+env:
+  HAXE_VERSION: "4.3.7"
+
+jobs:
+  repair:
+    name: Complete publication for an existing tag
+    if: startsWith(inputs.tag, 'v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout supplied tag
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.tag }}
+
+      - name: Setup exact Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22.14.0"
+
+      - name: Install locked npm dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Install Haxe 4.3.7
+        run: |
+          set -euo pipefail
+          npx lix download
+          npx lix download haxe "${{ env.HAXE_VERSION }}"
+          npx lix use haxe "${{ env.HAXE_VERSION }}"
+          echo "$(pwd)/node_modules/.bin" >> "$GITHUB_PATH"
+          export PATH="$(pwd)/node_modules/.bin:$PATH"
+          haxe -version
+
+      - name: Setup Rust for exact-artifact smoke
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+
+      - name: Repair only the supplied tag
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          REPAIR_TAG: ${{ inputs.tag }}
+        run: node scripts/release/repair-release.js "$REPAIR_TAG"

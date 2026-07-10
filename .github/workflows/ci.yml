@@ -8,18 +8,20 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel a main run that may already be publishing. Normal branch/PR runs still supersede
+  # older work for the same ref.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
 
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "22.14.0"
   HAXE_VERSION: "4.3.7"
 
 jobs:
   security:
-    name: Secret scanning (gitleaks)
+    name: Release dependency + secret audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -29,6 +31,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Setup exact Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Audit locked release dependencies
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm audit
 
       - name: Install gitleaks
         run: |
@@ -515,3 +529,54 @@ jobs:
         run: |
           set -euo pipefail
           bash test/run-upstream-stdlib-sweep.sh --tier tier2
+
+  release:
+    name: Release exact CI-tested commit
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - security
+      - rust-tooling
+      - windows-smoke
+      - rustsec-audit
+      - test
+      - tier2-stdlib-sweep
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    concurrency:
+      group: release-${{ github.repository }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout exact tested commit
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Setup exact Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22.14.0"
+
+      - name: Install locked npm dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Install Haxe 4.3.7
+        run: |
+          set -euo pipefail
+          npx lix download
+          npx lix download haxe "${{ env.HAXE_VERSION }}"
+          npx lix use haxe "${{ env.HAXE_VERSION }}"
+          echo "$(pwd)/node_modules/.bin" >> "$GITHUB_PATH"
+          export PATH="$(pwd)/node_modules/.bin:$PATH"
+          haxe -version
+
+      - name: Setup Rust for exact-artifact smoke
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+
+      - name: Derive, package, tag, publish, and verify
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+        run: npx semantic-release

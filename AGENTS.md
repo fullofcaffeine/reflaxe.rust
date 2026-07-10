@@ -478,27 +478,36 @@ Agent policy:
 
 - GitHub Actions:
   - `.github/workflows/ci.yml` runs on PRs/pushes to `main`.
-  - `.github/workflows/release.yml` runs **semantic-release** after CI succeeds on `main` (semver tag + CHANGELOG + GitHub Release + zip asset).
+  - The normal `release` job is the final job in `.github/workflows/ci.yml`, runs only for a push to
+    `main`, depends on the required jobs from that same run, checks out `github.sha`, and alone gets
+    `contents: write`.
+  - `.github/workflows/release-repair.yml` is manual existing-tag repair only. It must never derive a
+    version, create/move/delete a tag, or fall back from the supplied tag to `main`.
   - `.github/workflows/rustsec.yml` runs `cargo audit` on a schedule.
   - Workspace gotcha: exclude `examples/` + `test/` + `.cache/` from the root workspace so `cargo fmt/build` works inside generated `*/out/` crates during snapshot and template-smoke runs.
 - Packaging policy: `scripts/release/package-haxelib.sh` delegates the generic layout work to the vendored Reflaxe `Run build` flow, which merges `reflaxe.stdPaths` into `classPath`, converts `_std/*.hx` sources into packaged `*.cross.hx`, and sanitizes `haxelib.json` (remove `reflaxe` field). The script still ships target-required `runtime/` + `vendor/`.
-- Release toolchain gotcha: `.github/workflows/release.yml` must install the pinned lix Haxe toolchain before running `semantic-release`.
-  `semantic-release` executes `scripts/release/package-haxelib.sh` from `prepareCmd`, and that script runs Reflaxe build through `haxe`/`haxelib`.
+- Release toolchain gotcha: the CI `release` job and repair workflow must install the pinned lix Haxe
+  toolchain before packaging. The local artifact plugin executes `scripts/release/package-haxelib.sh`,
+  which runs Reflaxe build through `haxe`/`haxelib`.
   Keep this setup aligned with the CI package-smoke Haxe setup; `npm ci --ignore-scripts` alone is insufficient because it skips lix postinstall and can leave `haxelib` without its Neko runtime.
 - Conventional commits are required on `main` so semantic-release can compute the next version.
-  - Use `feat:` for minor, `fix:` for patch, and `feat!:` / `BREAKING CHANGE:` for major.
-- Structured release-state policy lives in `release-manifest.json`; do not hand-maintain current
-  posture prose or version surfaces independently. `scripts/release/sync-versions.js` selects the
-  policy for the requested major, generates version metadata plus marker-delimited posture blocks,
-  and provides deterministic `--check` mode for hooks/CI. Stable-line generation is disabled by
-  default and may be enabled only when the manifest contains the reviewed graduation Bead/date.
-  Semantic-release uses the same generator during `prepare`;
-  `scripts/release/verify-release-state.js` verifies the prepared release commit plus packaged
-  haxelib/README before tag creation, verifies the resulting tag before GitHub publication, then
-  verifies the published GitHub Release and zip asset during the success lifecycle.
-  `release.config.js` derives release-commit assets from the generator rather than repeating the
-  manifest's generated-file list. If an external failure leaves a tag without a complete GitHub
-  Release, follow `docs/release.md` partial-publication recovery; do not silently advance versions.
+  - Use `feat:` for minor and `fix:` for patch. On ungraduated `0.x`, `feat!:` /
+    `BREAKING CHANGE:` deliberately advances the minor line; after stable approval it advances the
+    major line normally.
+- Small release-protocol rule (strict): normal publication tags the exact CI-tested commit. Do not
+  add release-time Git commits, tracked version/changelog updates, generated patch-version prose,
+  package-version-dependent configuration loading, or a privileged `workflow_run` publisher.
+- `release-manifest.json` owns policy only. Major zero is initial development; every stable major
+  owns its own Bead/date approval; missing majors and disabled channels fail closed. Strict parsing
+  belongs to the locked standard `semver` dependency, not a custom regex.
+- Tracked package/HXML versions are development sentinels. Exact versions are injected only into the
+  staged Haxelib package and bound to the tag/source SHA in `release-metadata.json`.
+- Release artifact rule (strict): build the complete package twice, require byte-identical output,
+  validate the full ZIP contract, run package smoke against that exact ZIP, and compare hosted
+  state/size/SHA-256 to the approved local ZIP and checksum. Published releases and remote version
+  tags are immutable; never move/delete a remote version tag to recover.
+- If a valid tag lacks a complete GitHub Release, use existing-tag repair from `docs/release.md`;
+  never advance the version merely to escape partial publication.
 - Treat `docs/release-reference-architecture.md` as the reference contract for sibling compiler
   repositories. Reuse its ownership and lifecycle invariants, but inventory and adapt each repo's
   version surfaces, package format, stable-graduation evidence, and application pressure test rather

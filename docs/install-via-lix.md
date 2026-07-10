@@ -2,11 +2,8 @@
 
 This project is distributed via **GitHub Releases** and installed via **lix**.
 
-<!-- GENERATED:release-posture:start -->
-Current release posture: **intentional `0.x` pre-1.0 posture**.
-
-Maturity: **production-capable preview on validated lanes**. See [Semver And Release Posture](semver-release-posture.md).
-<!-- GENERATED:release-posture:end -->
+The latest immutable GitHub Release is the version authority. See
+[SemVer And Release Posture](semver-release-posture.md) for maturity and compatibility policy.
 
 The install source is a pinned GitHub release tag. Haxelib.org publication is not required by the
 current distribution contract.

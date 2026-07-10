@@ -3,6 +3,7 @@ set -euo pipefail
 
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root_dir"
+tracked_before="$(git status --porcelain --untracked-files=no)"
 
 log() {
   printf '[package-smoke] %s\n' "$*"
@@ -72,8 +73,12 @@ app_dir="$tmp_root/app"
 source_app_dir="$tmp_root/app_source"
 
 log "build package zip"
-rm -f "$zip_abs"
-bash scripts/release/package-haxelib.sh "$zip_rel"
+if is_truthy "${PACKAGE_SMOKE_USE_EXISTING:-0}"; then
+  log "using existing package zip: $zip_rel"
+else
+  rm -f "$zip_abs"
+  bash scripts/release/package-haxelib.sh "$zip_rel"
+fi
 
 if [[ ! -f "$zip_abs" ]]; then
   echo "error: package zip was not created: $zip_rel" >&2
@@ -219,5 +224,12 @@ assert_emitted_std_modules "$app_dir/out_symlink"
   cd "$app_dir/out_symlink"
   cargo build -q
 )
+
+tracked_after="$(git status --porcelain --untracked-files=no)"
+if [[ "$tracked_after" != "$tracked_before" ]]; then
+  echo "error: package smoke modified tracked repository files" >&2
+  diff <(printf '%s\n' "$tracked_before") <(printf '%s\n' "$tracked_after") >&2 || true
+  exit 2
+fi
 
 log "ok"

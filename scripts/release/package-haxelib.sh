@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-out="${1:-dist/reflaxe.rust.zip}"
-
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-out_abs="$root_dir/$out"
+out="${1:-dist/reflaxe.rust.zip}"
+version="${2:-$(node -p "require('$root_dir/haxelib.json').version")}"
+tag="${3:-development}"
+source_sha="${4:-$(git -C "$root_dir" rev-parse HEAD)}"
 
-if ! command -v zip >/dev/null 2>&1; then
-  echo "error: zip not found in PATH" >&2
+if [[ "$out" = /* ]]; then
+  out_abs="$out"
+else
+  out_abs="$root_dir/$out"
+fi
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "error: node not found in PATH" >&2
   exit 2
 fi
 
@@ -157,10 +164,17 @@ copy_file_optional_to_work "run.n"
   haxe -cp "$root_dir/vendor/reflaxe" --run Run build _Build --deleteOldFolder "$work_dir"
 )
 
+node "$root_dir/scripts/release/prepare-package-metadata.js" \
+  "$build_dir/haxelib.json" \
+  "$build_dir/release-metadata.json" \
+  "$version" \
+  "$tag" \
+  "$source_sha"
+
 # Target-specific runtime/compiler assets not covered by generic Reflaxe build flow.
 copy_dir_required_to_build "runtime"
 prune_runtime_dev_artifacts
 copy_dir_required_to_build "vendor"
 
-(cd "$build_dir" && zip -r -X "$out_abs" . >/dev/null)
+node "$root_dir/scripts/release/deterministic-zip.js" "$build_dir" "$out_abs"
 log "wrote: $out"

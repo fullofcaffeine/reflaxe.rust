@@ -39,7 +39,9 @@ runner:
 - It copies release files and sanitizes `haxelib.json` by removing Reflaxe metadata.
 
 The script then adds target-required `runtime/` and `vendor/` assets that generic Reflaxe packaging
-does not know about.
+does not know about. Release builds then inject the tag-derived version plus source/tag provenance
+into package staging and create a canonical ZIP with fixed metadata and sorted entries. The tracked
+checkout keeps development version sentinels and is never rewritten by publication.
 
 ## Reflaxe conventions followed here
 
@@ -112,10 +114,11 @@ Use `bash scripts/ci/package-smoke.sh` to validate the shipped artifact end-to-e
 Important: validate packaged behavior through `haxelib install` + `-lib reflaxe.rust`, not raw `-cp <pkg>/src`.
 Raw classpath-only tests are not equivalent for packaged `.cross.hx` std override selection.
 
-Release automation runs the same package builder from semantic-release `prepareCmd`, so the release
-workflow must install the pinned lix Haxe toolchain before semantic-release starts. The local
-package-smoke guard proves package semantics; the workflow setup makes sure the GitHub runner has the
-matching `haxe`/`haxelib` runtime available when building the release asset.
+Release automation runs the same package builder from the local semantic-release artifact plugin,
+builds it twice for byte equality, and runs package smoke against the exact first ZIP before the tag
+is created. The CI release job must install the pinned lix Haxe toolchain before semantic-release
+starts. The local package-smoke guard proves package semantics; the workflow setup provides the
+matching `haxe`/`haxelib` runtime when building the release asset.
 
 ## Stdlib provenance guards
 

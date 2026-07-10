@@ -2,11 +2,8 @@
 
 Use this page as the map for `reflaxe.rust` docs.
 
-<!-- GENERATED:release-posture:start -->
-Current release posture: **intentional `0.x` pre-1.0 posture**.
-
-Maturity: **production-capable preview on validated lanes**. See [Semver And Release Posture](semver-release-posture.md).
-<!-- GENERATED:release-posture:end -->
+See [SemVer And Release Posture](semver-release-posture.md) for the durable release policy and
+the latest immutable GitHub Release for the exact current version.
 
 ## Quick start by audience
 
@@ -22,7 +19,7 @@ Maturity: **production-capable preview on validated lanes**. See [Semver And Rel
 - Building async Rust-first apps: [Async/Await guide](async-await.md)
 - Need the exact async contract: [Async Contract](async-contract.md)
 - Tracking cross-platform sys risk: [Sys Regression Watchlist](sys-regression-watchlist.md)
-- Tracking 1.0 status: [Progress Tracker](progress-tracker.md)
+- Tracking release readiness: [Progress Tracker](progress-tracker.md)
 - Checking vision vs reality: [Vision vs Implementation](vision-vs-implementation.md)
 
 ## Core product docs
@@ -104,7 +101,7 @@ Maturity: **production-capable preview on validated lanes**. See [Semver And Rel
 - [Release](release.md): semantic-release flow and release artifacts.
 - [Semver and release posture](semver-release-posture.md): current posture, graduation criteria, and packaging truth.
 - [Release and SemVer reference architecture](release-reference-architecture.md): reusable manifest, generation, lifecycle-verification, and adoption invariants for sibling repositories.
-- [Structured release manifest](../release-manifest.json): machine-readable release-line policy and generated posture owners.
+- [Structured release manifest](../release-manifest.json): machine-readable initial-development and per-major stable-approval policy.
 - [Release Gate Closeout](release-gate-closeout.md): closeout template used by the historical release-gate work.
 - [Haxelib Packaging Notes](haxelib-packaging.md): Reflaxe `stdPaths` source layout, package build flow, and `.cross.hx` rationale.
 - [Stdlib Parity Policy](stdlib-policy.md): parity scope, provenance ledger, and CI boundary governance.

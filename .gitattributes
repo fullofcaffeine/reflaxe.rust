@@ -2,3 +2,12 @@
 .beads/issues.jsonl merge=beads text eol=lf
 .beads/interactions.jsonl merge=beads text eol=lf
 
+# Release policy, workflow, documentation, and package inputs compare bytes across platforms.
+*.cjs text eol=lf
+*.hxml text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.sh text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf

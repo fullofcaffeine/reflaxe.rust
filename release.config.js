@@ -1,59 +1,45 @@
 /**
  * Why
- * The release commit must contain every file generated from `release-manifest.json`. Repeating
- * that list in static semantic-release configuration would recreate the synchronization defect
- * this release architecture exists to remove.
+ * A release must identify the exact commit that passed CI. Publication therefore must not rewrite
+ * tracked metadata, create a second commit, or make current documentation part of the transaction.
  *
  * What
- * Configure semantic-release with two explicit phases around its release commit: generate/package
- * before the commit, then verify the prepared commit before semantic-release creates its tag.
- * Derive the release-commit assets directly from the same generator that owns release state.
+ * Derive the version from real tags and Conventional Commits, apply the small manifest-owned
+ * release-line policy, build one fixed-path Haxelib artifact, tag the tested commit, publish the
+ * artifact plus checksum, and verify the hosted bytes.
  *
  * How
- * `releaseCommitFiles` renders the current manifest contract in memory and returns all generated
- * paths plus the manifest and changelog. The publish phase rechecks the tag, and the success phase
- * verifies the GitHub Release and zip asset.
+ * Project-local plugins own only policy, Haxelib artifact production, and provenance verification.
+ * GitHub Release notes are canonical; no changelog or Git release commit plugin participates.
  */
-
-const { releaseCommitFiles } = require('./scripts/release/sync-versions.js')
 
 module.exports = {
   branches: ['main'],
+  tagFormat: 'v${version}',
   plugins: [
-    '@semantic-release/commit-analyzer',
-    '@semantic-release/release-notes-generator',
-    '@semantic-release/changelog',
-    [
-      '@semantic-release/exec',
-      {
-        prepareCmd: 'node scripts/release/sync-versions.js ${nextRelease.version} && (rm -f dist/*.zip 2>/dev/null || true) && bash scripts/release/package-haxelib.sh dist/reflaxe.rust-${nextRelease.version}.zip'
-      }
-    ],
-    [
-      '@semantic-release/git',
-      {
-        assets: releaseCommitFiles(__dirname),
-        message: 'chore(release): ${nextRelease.version}\n\n${nextRelease.notes}'
-      }
-    ],
-    [
-      '@semantic-release/exec',
-      {
-        prepareCmd: 'node scripts/release/verify-release-state.js ${nextRelease.version} --prepared',
-        publishCmd: 'node scripts/release/verify-release-state.js ${nextRelease.version}',
-        successCmd: 'node scripts/release/verify-release-state.js ${nextRelease.version} --published'
-      }
-    ],
+    ['./scripts/release/semantic-release-policy.cjs', { policyPath: 'release-manifest.json' }],
+    ['@semantic-release/release-notes-generator', { preset: 'conventionalcommits' }],
+    './scripts/release/haxelib-artifact-plugin.cjs',
     [
       '@semantic-release/github',
       {
+        successComment: false,
+        failComment: false,
+        releasedLabels: false,
         assets: [
           {
-            path: 'dist/*.zip',
+            path: 'dist/reflaxe.rust.zip',
+            name: 'reflaxe.rust-${nextRelease.version}.zip',
             label: 'reflaxe.rust haxelib package'
+          },
+          {
+            path: 'dist/reflaxe.rust.zip.sha256',
+            name: 'reflaxe.rust-${nextRelease.version}.zip.sha256',
+            label: 'SHA-256 checksum'
           }
         ]
       }
-    ]
+    ],
+    './scripts/release/published-verifier-plugin.cjs'
   ]
 }

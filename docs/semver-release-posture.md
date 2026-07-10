@@ -1,18 +1,19 @@
 # Semver And Release Posture
 
-Current decision date: 2026-07-09
+Current decision date: 2026-07-10
 
-Current scope bead: `haxe_rust-vqam`
+Current scope bead: `haxe_rust-tymf`
 
 Superseded decision: `haxe.rust-oo3.23.1` (2026-03-15)
 
 ## Current Decision
 
-<!-- GENERATED:release-posture:start -->
 Current release posture: **intentional `0.x` pre-1.0 posture**.
 
-Maturity: **production-capable preview on validated lanes**. See [Semver And Release Posture](#current-decision).
-<!-- GENERATED:release-posture:end -->
+Maturity: **production-capable preview on validated lanes**.
+
+This is durable major-line policy, not patch-version metadata. Exact versions come only from real
+Git tags and immutable GitHub Releases; normal patch/minor publication does not rewrite this page.
 
 For the July 2026 decision, that means:
 
@@ -65,42 +66,30 @@ While the line remains `0.x`, it does not promise that every API already has per
 compatibility. Teams adopting that line should pin versions and review release notes before
 upgrading.
 
-## How Release Truth Is Generated And Verified
+## How Release Truth Is Derived And Verified
 
-The structured source is `release-manifest.json`.
+Exact versions come from real Git tags interpreted by semantic-release. Tracked package files use
+development sentinels and cannot select or obstruct that lineage.
 
-Why:
+`release-manifest.json` contains only the policy semantic-release cannot infer by itself:
 
-- prose-only release decisions can drift away from package metadata and Git tag history,
-- and separately maintained copies of the same status are themselves the source of that drift.
+- major-zero breaking changes remain on `0.x` by advancing the minor version,
+- each stable major requires its own reviewed approval record,
+- unknown/unapproved majors fail closed,
+- release channels remain disabled until explicitly modeled.
 
-What:
+The pinned standard `semver` package parses versions. The small policy plugin delegates commit
+analysis to the official Conventional Commits analyzer and applies only the rules above.
 
-- the manifest defines each supported major line, its maturity/status language, the canonical
-  document, the files that receive generated posture blocks, and the approval record required
-  before stable-line generation is allowed.
+The normal release job tags the exact commit that passed all required CI jobs. It injects the
+derived version into Haxelib staging, builds the complete package twice, requires byte-identical
+ZIPs, runs the real package smoke against those exact bytes, and records SHA-256. Before upload it
+binds local/remote tag identity to the CI SHA; after upload it binds hosted state, size, and digest
+to the approved local artifact. Published releases are immutable.
 
-How:
-
-- `scripts/release/sync-versions.js` selects the release-line policy from the requested version,
-  updates `package.json`, `package-lock.json`, `haxelib.json`,
-  `haxe_libraries/reflaxe.rust.hxml`, the README badge, and every marker-delimited current-posture
-  block,
-- `npm run guard:release-state` renders those same outputs in memory and compares them
-  byte-for-byte,
-- `release.config.js` derives release-commit assets from the generator instead of repeating the
-  generated-file inventory,
-- semantic-release calls the same generator during `prepare`,
-- a second prepare phase runs after the release commit and uses
-  `scripts/release/verify-release-state.js --prepared` to verify generated state, changelog, and
-  packaged haxelib/README before tag creation,
-- its publish lifecycle verifies that the resulting tag contains that same release state before
-  GitHub publication,
-- and its success lifecycle verifies the published GitHub Release and expected zip asset.
-
-Approving stable generation is release-sensitive `thinking:xhigh` work. It must record the Bead and
-date in the manifest as part of the graduation review. The actual stable posture text is generated
-only when semantic-release prepares a version on the approved stable major.
+Approving a stable major is release-sensitive `thinking:xhigh` work. Add that major's Bead/date
+record without removing earlier major approvals, update this durable policy page in the same review,
+and prove the candidate on the intended CI commit.
 
 ## 1.0 Graduation Gate
 
@@ -108,10 +97,10 @@ only when semantic-release prepares a version on the approved stable major.
 release candidate:
 
 1. **Release-line correctness**
-   - the release-state guard is green,
+   - the release-policy and focused lifecycle contracts are green,
    - the semantic-release dry run derives `1.0.0` from the real Git tag lineage,
-   - version metadata, changelog, tag, GitHub Release, and packaged asset are verified as one staged
-     release outcome with an explicit partial-publication recovery path,
+   - the CI-tested commit, local/remote tag, staged metadata, GitHub Release, and exact packaged
+     digest are verified as one identity with an explicit same-tag repair path,
    - and the process cannot repeat the historical metadata-only `1.0.0` mistake.
 2. **Current-head full evidence**
    - normal CI is green on the candidate commit,

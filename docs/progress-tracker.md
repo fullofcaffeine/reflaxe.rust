@@ -1,10 +1,7 @@
 # Compiler Progress Tracker
 
-<!-- GENERATED:release-posture:start -->
-Current release posture: **intentional `0.x` pre-1.0 posture**.
-
-Maturity: **production-capable preview on validated lanes**. See [Semver And Release Posture](semver-release-posture.md).
-<!-- GENERATED:release-posture:end -->
+Release-line policy is owned by [SemVer And Release Posture](semver-release-posture.md); this page
+tracks the implementation evidence that informs future graduation decisions.
 
 This page answers, in plain language, how the compiler's evidence and graduation readiness are
 holding up.

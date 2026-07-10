@@ -1,129 +1,143 @@
 # Release And SemVer Reference Architecture
 
-This document defines the reusable release architecture that sibling Reflaxe targets and similar
-compiler repositories should adapt. It describes invariants and lifecycle boundaries, not a shared
-copy-paste script: each repository still owns its package format, version surfaces, and evidence
-requirements.
+This is the small release protocol sibling Reflaxe targets and similar repositories should adapt.
+SemVer remains responsible for version meaning; the protocol adds the minimum integrity needed to
+bind a tested source commit to an immutable hosted artifact.
 
-## Why
-
-Release drift is usually an ownership defect. A repository becomes unreliable when package
-metadata, public maturity prose, changelog, tags, and downloadable artifacts can each tell a
-different story.
-
-A phrase scanner can detect one known disagreement, but it leaves those facts independently owned.
-The reference architecture instead makes one structured policy feed deterministic consumers and
-verifies each externally visible release boundary.
-
-## Lifecycle
+## Reference Flow
 
 ```text
-real tag history + next version
+required CI succeeds for commit S
               |
               v
-structured manifest -> deterministic generator -> prepared release commit
-                                                   |
-                                                   v
-                                        prepared-state verifier
-                                                   |
-                                                   v
-                                                  tag
-                                                   |
-                                                   v
-                                             tag verifier
-                                                   |
-                                                   v
-                                      GitHub Release + artifact
-                                                   |
-                                                   v
-                                        published-state verifier
+derive V from real tags + changes + release-line policy
+              |
+              v
+build and fully validate deterministic artifact A from S
+              |
+              v
+create immutable tag vV at S
+              |
+              v
+publish A + checksum and verify hosted SHA-256
 ```
 
-The prepared-state verifier is deliberately after the release commit and before tag creation. That
-ordering prevents deterministic metadata, documentation, or artifact failures from leaving a tag
-behind. Network and hosting failures can still occur after a tag is pushed, so every adopter also
-needs an explicit partial-publication recovery procedure.
+There is no commit created inside publication. If exact versions must remain committed for a
+different ecosystem, use the optional release-PR extension described below so ordinary CI tests the
+versioned commit before it is tagged.
 
-## Reference Invariants
+## Universal Invariants
 
-1. **Real tags determine version lineage.**
-   - Editing metadata never establishes a release by itself.
-   - Dry-run evidence must derive the expected next version from reachable tags.
-2. **One structured manifest owns release-line policy.**
-   - Current and future major-line status/maturity language lives there.
-   - Stable generation requires an explicit reviewed approval record.
-   - Unknown future majors fail closed.
-3. **One generator owns mechanically derivable consumers.**
-   - Version metadata, badges, and marker-delimited current-status blocks are rendered together.
-   - Check mode renders in memory and compares byte-for-byte without writing.
-   - Repeated generation produces byte-identical outputs.
-4. **The release workflow derives its commit assets.**
-   - Do not repeat the manifest's generated-file inventory in static configuration.
-   - Adding a generated consumer automatically adds it to the release commit.
-5. **Verification follows the release lifecycle.**
-   - Prepared mode checks generated state, changelog, release commit, and packaged artifact before
-     tagging.
-   - Publish mode checks that the tag contains the same state.
-   - Success mode checks the hosted Release, release kind, and exact artifact name.
-6. **Current prose is generated or release-line-neutral.**
-   - Historical decisions stay dated and preserved.
-   - Non-generated pages link to the canonical posture rather than restating a mutable status.
-7. **Partial publication is recoverable, not silently skipped.**
-   - A tag without its complete hosted Release remains the same failed version.
-   - Repair evidence and escalation rules are documented before the failure happens.
+1. **Real tags own exact version lineage.**
+   - Generated package metadata never selects or blocks the next version.
+   - A standard, locked SemVer implementation parses versions.
+2. **Release-line policy stays small and explicit.**
+   - Initial-development breaking-bump behavior is deliberate.
+   - Every stable major owns an independent reviewed approval; unknown majors fail closed.
+3. **Publication uses the exact tested commit.**
+   - The release job is downstream of required jobs in the same trusted push workflow.
+   - The checked-out HEAD, local tag, and remote tag all resolve to that CI SHA.
+4. **One project adapter owns artifact production.**
+   - Exact release metadata is injected into staging, never written back to the checkout.
+   - The tracked tree remains unchanged.
+5. **The artifact is reproducible and fully inspected.**
+   - Complete builds in different environments produce byte-identical output.
+   - Layout, entry safety, required content, metadata, and the real install/use smoke apply to the
+     exact bytes that will be uploaded.
+6. **Hosted bytes equal approved bytes.**
+   - A checksum sidecar names the versioned artifact.
+   - Hosted state, length, and digest match local approved files; unexpected assets fail.
+7. **Version tags and published releases are immutable.**
+   - A remote version tag is never moved or deleted.
+   - Invalid public content requires a corrective version.
+8. **Repair finishes the same version.**
+   - Manual repair accepts only an existing tag and cannot analyze commits or create a version.
+   - It completes an absent/draft hosted release, or verifies an already immutable one.
+9. **Normal no-op commits remain no-op.**
+   - Release automation runs after successful main CI and lets semantic-release decide there is no
+     relevant change; commit-message phrase filters are unnecessary.
+10. **Documentation states durable policy.**
+    - The latest release/tag supplies patch-version truth.
+    - Policy pages do not need a release-time rewrite.
 
-## Implementation Map In This Repository
+## Core Versus Repository Adapter
+
+| Universal core | Repository-specific adapter |
+| --- | --- |
+| Strict SemVer parser | Package metadata/layout |
+| Conventional Commit analysis | Artifact filename/labels |
+| `0.x` and stable-major policy | Deterministic package builder |
+| Same-SHA CI/release gate | Required archive contents |
+| Local/remote tag identity | Install/compiler/application smoke |
+| Hosted size/digest verification | Distribution-host details |
+| Immutable tag/release policy | Toolchain needed to build the artifact |
+| Existing-tag repair state machine | Product-specific readiness evidence |
+
+Copy the left column. Reimplement and test the right column for each repository.
+
+## haxe.rust Implementation Map
 
 | Responsibility | Owner |
 | --- | --- |
-| Release-line policy and stable approval | `release-manifest.json` |
-| Version and posture rendering | `scripts/release/sync-versions.js` |
-| Manifest-derived semantic-release ordering/assets | `release.config.js` |
-| Prepared, tag, artifact, and hosted-release checks | `scripts/release/verify-release-state.js` |
-| Determinism, failure injection, ordering, and stable-gate contracts | `test/scripts/release-state.test.js` |
-| Current posture and graduation criteria | `docs/semver-release-posture.md` |
-| Operational workflow and recovery | `docs/release.md` |
+| Release-line policy | `release-manifest.json` |
+| Strict policy helpers | `scripts/release/release-policy.js` |
+| Conventional Commit policy adapter | `scripts/release/semantic-release-policy.cjs` |
+| Haxelib staging | `scripts/release/prepare-package-metadata.js` |
+| Deterministic ZIP | `scripts/release/deterministic-zip.js` |
+| Full archive contract | `scripts/release/verify-release-artifact.js` |
+| Artifact production and pre-host tag check | `scripts/release/haxelib-artifact-plugin.cjs` |
+| Tag/hosted digest identity | `scripts/release/release-provenance.js` |
+| Post-host verification | `scripts/release/published-verifier-plugin.cjs` |
+| Same-SHA normal publication | `.github/workflows/ci.yml` |
+| Existing-tag repair only | `.github/workflows/release-repair.yml` |
+| Focused regression suite | `test/scripts/release-*.test.js` |
 
-## Adoption Sequence For A Sibling Repository
+## Optional Extension: Committed Version Files
 
-1. Inventory every version field, public current-status statement, changelog owner, package artifact,
-   release workflow, and existing tag/release mismatch.
-2. Record the actual current line and future stable line in a structured manifest. Do not infer a
-   stable claim from old roadmap prose.
-3. Add failing contracts for deterministic generation, stale output detection, unapproved stable
-   generation, missing tag/artifact, tagged-content drift, and missing hosted assets.
-4. Extend the existing version synchronizer into the generator; do not add a parallel posture
-   checker.
-5. Move mutable current-status prose into generated blocks. Rewrite remaining prose as
-   release-line-neutral guidance or explicitly dated history.
-6. Derive release-commit assets from the generator and place a non-mutating verifier after the
-   release commit but before tag creation.
-7. Verify the tag before publication and the hosted Release afterward.
-8. Run targeted tests twice, the repository's package/install smoke, a semantic-release dry run, and
-   the full relevant application/compiler evidence.
-9. Treat the first real release through the new lifecycle as required adoption evidence. A local
-   green suite alone does not prove hosting credentials, tag propagation, or asset publication.
+Some ecosystems genuinely require exact versions or changelogs in the source tree. Do not recreate
+a release commit inside publication. Use:
+
+```text
+derive candidate version -> open/update release PR -> normal CI -> merge -> tag tested merge
+```
+
+The PR makes version mutation reviewable and ensures the tagged commit is the commit CI tested.
+This extension is optional; repositories whose artifacts can receive staged metadata should keep
+the smaller default protocol.
+
+## Adoption Sequence
+
+1. Inventory actual package artifacts and decide whether committed versions are truly required.
+2. Preserve real tag history; remove package-metadata ownership of release lineage.
+3. Add strict SemVer and explicit initial-development/stable-major policy tests.
+4. Put normal publication behind required jobs for the exact trusted default-branch SHA.
+5. Build one fixed local artifact path and inject the version only in staging.
+6. Make the full package reproducible and validate the exact artifact with its real consumer smoke.
+7. Bind checked-out commit, local/remote tag, staged metadata, checksum, and hosted digest.
+8. Enable host immutability and version-tag update/deletion protection.
+9. If no version history exists, establish a reviewed `v0.0.0` major-zero baseline before enabling
+   automation; semantic-release otherwise treats its first release as `1.0.0`.
+10. Add an existing-tag repair path that cannot derive or create a version.
+11. Prove one real release and a subsequent no-op commit before claiming adoption complete.
+
+## Evidence
+
+`v0.81.3` is dated predecessor evidence: it proved one happy-path execution of the former
+release-commit design (implementation `a27f7254`, release commit/tag `f9b9ac15`, CI `29053967075`,
+Release run `29054963288`, archive SHA-256
+`8fef7a08e306f92a519d397cb650da756c50ba6e1a1928d69311726b2c46f536`, and no-op follow-up
+`29056092503`). It did not prove all failure paths and motivated the simplification.
+
+The first real release through this smaller protocol must be recorded here before haxe.rust is
+called the completed reference implementation.
 
 ## Anti-Patterns
 
-- A standalone scanner that searches several docs for approved phrases.
-- A manually repeated generated-file list in semantic-release configuration.
-- Stable-major approval represented only by changing a version string.
-- Artifact verification that runs only after the tag already exists.
-- A successful GitHub Release with an unchecked or ambiguously named package.
-- Historical roadmap pages presented as current release truth.
-- Calling Git and GitHub publication atomic without a recovery path for external failure.
-
-## Portability Boundary
-
-The architecture is portable; exact files are not. A sibling target should reuse the lifecycle and
-invariants while adapting:
-
-- its version surfaces,
-- its package builder and artifact inspection,
-- its supported distribution hosts,
-- its stable-graduation evidence,
-- and its application-level pressure test.
-
-Copying repository-specific paths without that audit would recreate synchronization risk under a
-different name.
+- Creating and pushing a new release commit after CI tested another commit.
+- Letting tracked package versions influence tag-derived version analysis.
+- Custom SemVer regexes where a standards-tested library exists.
+- Rewriting current prose and badges on every patch release.
+- Treating a same-name hosted asset as byte identity.
+- Running normal publication from manual branch/SHA input.
+- Moving a remote version tag to repair bad publication.
+- Copying haxe.rust's Haxelib adapter into a non-Haxelib repository.
