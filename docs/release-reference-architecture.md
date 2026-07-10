@@ -137,8 +137,9 @@ Independent verification resolved local tag, remote tag, and HEAD to the same co
 and hashed the ZIP, matched its sidecar, confirmed the exact two-asset set, and confirmed the
 GitHub Release is published, non-prerelease, and immutable. The tag still contains development
 sentinels (`package.json` `0.0.0-development`, `haxelib.json` `0.0.0`), proving tracked metadata did
-not participate in version lineage. The required docs-only no-op follow-up is recorded after its CI
-run completes.
+not participate in version lineage. Docs-only follow-up commit `a6f1defd` then passed full CI run
+`29109083126`; its release job found `v0.81.4`, analyzed that one docs commit, produced a clean
+no-op, created no `v0.81.5` tag, and left `v0.81.4` as the latest Release.
 
 ## Anti-Patterns
 
