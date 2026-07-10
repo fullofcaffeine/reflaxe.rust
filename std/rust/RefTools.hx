@@ -28,9 +28,11 @@ extern class RefTools {
 	 * Why: Returning the borrow would violate the scoped-region contract, while many Rust values can
 	 * safely leave the callback by cloning.
 	 * What: Calls `Clone::clone` and returns the owned `T`.
-	 * How: The Rust `T: Clone` bound is emitted from `@:rustGeneric`; clone cost remains explicit in
-	 * the method name and belongs to the caller's chosen type.
+	 * How: The Rust `T: Clone` bound is emitted from `@:rustGeneric`. `@:native("cloneValue")`
+	 * preserves the narrow helper's existing Rust symbol while the Haxe API uses the semantic
+	 * `toOwned` name; clone cost remains explicit and belongs to the caller's chosen type.
 	 */
 	@:rustGeneric("T: Clone")
+	@:native("cloneValue")
 	public static function toOwned<T>(value:Ref<T>):T;
 }
