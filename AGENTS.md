@@ -140,6 +140,12 @@ Agent policy:
 - Contract-first TDD policy (strict): for non-trivial compiler/runtime/std behavior changes, start by adding/updating the expected test contract first (snapshot, negative fixture, policy/harness assertion), confirm failure, then implement and re-run targeted checks plus full harness.
   For deterministic report/artifact features, include repeatability assertions (run twice, compare outputs byte-for-byte) in CI guards.
 - Killer-app QA cadence: after any important complex task or milestone that changes compiler lowering, runtime behavior, std overrides, profile policy, report schemas, generated Rust shape, or metal/portable semantics, run `npm run test:codex-hxrust` when the sibling `codex-hxrust` checkout is available. Treat it as the local app-level pressure test for this compiler, not as a replacement for focused fixtures. If it is skipped, state the reason in the final response or Beads evidence. For small docs-only/mechanical edits, this QA is optional.
+- Consumer-app QA boundary: `codex-hxrust` is an independent application that happens to compile
+  through this backend, not a compiler-owned test fixture. Do not add haxe.rust-specific scenarios,
+  markers, assertions, or workflow wiring to that repository merely to deepen compiler evidence.
+  Purpose-built portable/metal runtime contracts belong under this repository's tests or examples.
+  The consumer check should invoke the app's normal documented build/test command unchanged; when
+  it exposes a generic backend defect, minimize and permanently regress that defect in haxe.rust.
 - Escalation visibility rule: when a task crosses the threshold for extended thinking or Oracle review, say so explicitly in chat before escalating.
   Do not silently switch into a deeper-thinking or Oracle-needed path; call out why the escalation is warranted and what question it is meant to resolve.
 

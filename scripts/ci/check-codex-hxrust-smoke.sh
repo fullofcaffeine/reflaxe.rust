@@ -6,7 +6,7 @@ APP_DIR="${CODEX_HXRUST_DIR:-"${ROOT_DIR}/../codex-hxrust"}"
 APP_LABEL="${CODEX_HXRUST_LABEL:-../codex-hxrust}"
 MODE="${CODEX_HXRUST_QA_MODE:-generated-cargo}"
 
-# Runs the codex-hxrust killer-app pressure test from this compiler repo.
+# Runs codex-hxrust's normal generated-Cargo command as an independent consumer compatibility check.
 #
 # Default mode delegates to codex-hxrust's generated Cargo gate:
 # - regenerate portable Rust from Haxe,
@@ -15,9 +15,8 @@ MODE="${CODEX_HXRUST_QA_MODE:-generated-cargo}"
 # - run cargo test --locked,
 # - repeat the same sequence for metal.
 #
-# `cargo test` only exercises runtime behavior to the extent that codex-hxrust has generated or
-# native Rust tests. It is intentionally a compile/link/test-harness QA today, with deeper runtime
-# and output-shape assertions tracked as follow-up work.
+# `cargo test` only exercises runtime behavior that codex-hxrust independently owns as application
+# behavior. Compiler-specific runtime and generated-output contracts stay in haxe.rust.
 describe_git() {
   local dir="$1"
   local rev="unknown"

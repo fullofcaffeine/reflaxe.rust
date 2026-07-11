@@ -1,0 +1,5 @@
+# Generated Rust test names that must exist in every CI profile build.
+__hx_tests::storyboard_report_shape
+__hx_tests::storyboard_tests_move_flow_remains_stable
+__hx_tests::storyboard_tests_profile_define_is_supported
+__hx_tests::storyboard_tests_risk_digest_includes_card_count

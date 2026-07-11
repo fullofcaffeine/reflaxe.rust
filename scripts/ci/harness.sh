@@ -329,6 +329,10 @@ run_example() {
     echo "[harness] example: ${dir} (${requested_hxml}) [reuse ${hxml}]"
   fi
   compile_example "$dir" "$hxml"
+  if [[ -f "$dir/required-rust-tests.txt" ]]; then
+    bash "$root_dir/scripts/ci/verify-required-rust-tests.sh" \
+      "$dir/$out_dir" "$dir/required-rust-tests.txt"
+  fi
   run_timed_step "cargo test: ${dir}/${out_dir}" bash -c 'cd "$1" && cargo test -q' _ "$dir/$out_dir"
   run_timed_step "cargo run: ${dir}/${out_dir}" bash -c 'cd "$1" && cargo run -q' _ "$dir/$out_dir"
   local elapsed=$((SECONDS - start))
@@ -469,6 +473,8 @@ run_examples_group() {
   if [[ -z "${CARGO_TARGET_DIR:-}" ]]; then
     export CARGO_TARGET_DIR="${EXAMPLES_CARGO_TARGET_DIR:-$root_dir/.cache/examples-target}"
   fi
+
+  run_stage "runtime E2E contract" npm run test:runtime-e2e-contract
 
   run_stage "examples (compile-only developer variants)" run_examples_compile_only
 

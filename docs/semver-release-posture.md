@@ -47,13 +47,14 @@ calendar:
 - runtime semantic proof remains narrower than compile inventory coverage,
 - TLS, DB, higher-level scheduler behavior, async, and Windows remain intentionally bounded by
   targeted or smoke-level evidence,
-- the representative app gate still needs runtime workflow assertions beyond Cargo check/test,
+- compiler-owned portable/metal E2E workflows now have asserted generated-runtime coverage, while
+  the independent app remains a compile/build consumer pressure test by design,
 - the supported-platform promise remains deliberately qualified; the Rust minimum/release/current
   lanes are now governed by the explicit [Rust Toolchain Policy](rust-toolchain-policy.md),
 - materially distinct baseline, defect/fix, immutable release, release no-op, exact-minimum,
   current-stable, Windows, and `codex-hxrust` events are green with no open regression bugs,
-- but the representative app still proves generation plus Cargo compile/link/test-harness
-  construction rather than asserted generated runtime workflows,
+- representative-app evidence remains correctly limited to generation plus Cargo
+  compile/link/test-harness construction unless that application independently adds runtime tests,
 - and qualified/experimental boundaries remain intentionally broader than the exact contract the
   project is ready to admit permanently.
 
@@ -144,9 +145,10 @@ release candidate:
    - critical snapshot/smoke-only buckets are either deepened or explicitly excluded/qualified in
      the stable support matrix,
    - and compile inventory is never presented as blanket runtime parity.
-5. **Representative application runtime proof**
-   - `codex-hxrust` exercises representative generated runtime workflows with assertions,
-   - not only Haxe generation plus Cargo check/test-harness construction,
+5. **Compiler runtime and independent-application proof**
+   - compiler-owned portable and metal E2E workflows execute named generated-runtime assertions,
+   - removal of those generated tests fails CI rather than silently passing with zero tests,
+   - `codex-hxrust` independently passes its normal portable/metal build command at recorded SHAs,
    - and portable/metal generated-output budgets remain within their documented contracts.
 6. **Platform and Rust toolchain policy**
    - the supported operating-system matrix is explicit,

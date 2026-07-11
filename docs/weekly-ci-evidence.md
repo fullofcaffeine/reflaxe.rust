@@ -23,10 +23,12 @@ Jobs:
    - `npm run docs:sync:progress`
    - `npm run docs:check:progress` (inside `scripts/ci/local.sh`)
    - `bash scripts/ci/local.sh` (includes Tier2 upstream stdlib sweep)
+   - compiler-owned `profile_storyboard` runtime assertions execute through generated portable and
+     metal Cargo tests; a required-test inventory makes a missing generated test fail the harness
 2. Windows smoke validation:
    - exact minimum Rust lane from the same policy
    - `bash scripts/ci/windows-smoke.sh`
-3. Codex Haxe/Rust killer-app QA:
+3. Independent `codex-hxrust` consumer compatibility:
    - exact minimum Rust lane from the same policy
    - clones `https://github.com/fullofcaffeine/codex-hxrust` beside this repo
    - `npm run test:codex-hxrust`
@@ -34,10 +36,11 @@ Jobs:
    - verifies generated `Cargo.toml` / `Cargo.lock`
    - runs `cargo check --locked` and `cargo test --locked` for both generated profiles
 
-The codex-hxrust job is currently a generated-Cargo compile/link/test-harness gate. Its `cargo test`
-step becomes runtime smoke coverage as soon as codex-hxrust owns tests for the generated crates; if
-there are no app tests, the job still proves both profiles compile and link through Cargo, but does
-not claim full interactive runtime coverage.
+The `codex-hxrust` job deliberately consumes that application's normal generated-Cargo command; it
+does not turn the app into a compiler test fixture. If the app has no generated tests, the job proves
+both profiles compile and link through Cargo but does not claim interactive application runtime
+coverage. Purpose-built compiler runtime proof lives in this repository's E2E examples. A generic
+backend defect discovered through the consumer build receives a minimized regression here.
 
 Normal push/PR CI also has a required rolling current-stable Rust compatibility job. It catches new
 compiler or lint incompatibilities without silently changing the minimum supported version. See

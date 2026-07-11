@@ -222,7 +222,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   codex-hxrust-qa:
-    name: Weekly codex-hxrust killer-app QA
+    name: Weekly codex-hxrust consumer compatibility
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -283,7 +283,7 @@ jobs:
           toolchain: ${{ steps.rust-policy.outputs.minimum }}
           components: rustfmt
 
-      - name: Run codex-hxrust generated Cargo QA
+      - name: Run codex-hxrust generated Cargo compatibility check
         working-directory: haxe.rust
         run: |
           set -euo pipefail
@@ -300,7 +300,7 @@ jobs:
           codex_hxrust_sha="$(git -C codex-hxrust rev-parse --short HEAD 2>/dev/null || echo unknown)"
           rust_version="$(rustc --version)"
           {
-            echo "## Weekly CI Evidence (codex-hxrust)"
+            echo "## Weekly CI Evidence (codex-hxrust consumer compatibility)"
             echo "- Result: ${JOB_STATUS}"
             echo "- haxe.rust commit: \`${haxe_rust_sha}\`"
             echo "- codex-hxrust commit: \`${codex_hxrust_sha}\`"
@@ -330,7 +330,7 @@ jobs:
             echo "## Weekly CI Evidence Rollup"
             echo "- Linux local-equivalent job: **${linux_status}**"
             echo "- Windows smoke job: **${windows_status}**"
-            echo "- codex-hxrust QA job: **${codex_status}**"
+            echo "- codex-hxrust consumer compatibility job: **${codex_status}**"
             echo "- Run URL: ${run_url}"
             echo ""
             if [[ "${linux_status}" != "success" || "${windows_status}" != "success" || "${codex_status}" != "success" ]]; then

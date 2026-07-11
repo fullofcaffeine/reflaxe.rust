@@ -46,9 +46,9 @@ If those are not true yet, treat adoption as a pilot rather than broad rollout.
 
 - Confirm the current public release posture in `docs/semver-release-posture.md` matches the rollout you intend to adopt.
 - Document team profile policy (when metal is required vs portable).
-- Add periodic regression runs against representative workloads. For this compiler repo, the
-  `codex-hxrust` killer-app gate is the representative pressure test and should stay on the weekly
-  evidence cadence.
+- Add periodic regression runs against representative workloads. For this compiler repo,
+  `codex-hxrust` remains an independent consumer compatibility check on the weekly evidence cadence;
+  compiler-owned runtime assertions stay in this repository's E2E suite.
 
 ## Operational checklist
 
@@ -77,12 +77,12 @@ For each production app, add focused tests for the runtime edges it actually rel
 This is intentionally narrower than "prove the whole stdlib." It turns the broad support matrix into
 evidence for your real deployment shape.
 
-## Killer-App QA
+## Independent Consumer Compatibility
 
-`../codex-hxrust` is the repo-level application pressure test for production Rust output. It should
-compile through this compiler in both portable and metal lanes, and the generated Rust should trend
-toward the hand-written Codex shape: direct Rust where semantics permit, with `hxrt` limited to
-real Haxe semantic requirements.
+`../codex-hxrust` is an independent application and a useful consumer pressure test for production
+Rust output. Its normal build should keep compiling through this compiler in both portable and metal
+lanes. It is not a compiler-owned fixture and should not receive haxe.rust-specific scenarios or
+assertions merely to deepen this repository's evidence.
 
 Run it locally with:
 
@@ -102,18 +102,17 @@ What the gate does today:
 - runs `cargo test --locked` for the portable generated crate,
 - repeats the same regeneration, Cargo artifact checks, `cargo check`, and `cargo test` for metal.
 
-`cargo test` is a real Rust test-harness invocation, but it only performs runtime smoke testing to
-the extent that `codex-hxrust` defines tests in its generated/native Rust project. If the app has no
-tests yet, this still proves Haxe-to-Rust codegen, Cargo dependency resolution, Rust type checking,
-linking, and test-harness construction for both profiles; it does not prove interactive Codex
-runtime behavior.
+`cargo test` is a real Rust test-harness invocation, but it only performs runtime testing to the
+extent that `codex-hxrust` independently defines application tests. If it has no generated tests,
+this still proves Haxe-to-Rust codegen, Cargo dependency resolution, Rust type checking, linking,
+and test-harness construction for both profiles; it does not prove interactive Codex behavior.
 
-What the gate should grow into:
+Compiler-owned runtime proof is separate:
 
-- focused generated Rust runtime smokes for representative Codex workflows,
-- assertions that metal output avoids accidental `Dynamic`/reflection-heavy lowering,
-- `hxrt` usage and Cargo feature budgets for Rust-first paths,
-- output-shape comparisons against representative hand-written Codex modules where practical.
+- `examples/profile_storyboard` compiles the same typed scenario under portable and metal profiles,
+- both generated crates execute four named `@:rustTest` assertions,
+- `required-rust-tests.txt` plus the harness verifier prevents silent regression to zero tests,
+- compiler lowering/output-shape defects receive focused fixtures in this repository.
 
 Local cadence: run this QA after important complex tasks or milestones that touch compiler lowering,
 runtime behavior, std overrides, profile policy, report schemas, generated Rust shape, or
