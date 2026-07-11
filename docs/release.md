@@ -106,7 +106,8 @@ artifacts but heading-only release bodies because an incompatible explicit write
 covered by an end-to-end notes assertion. Published releases remain immutable, so those bodies are
 not rewritten. Their tag comparisons still expose the exact commit history. The configured notes
 generator is now exercised by `npm run test:release-notes`, including feature, fix, performance,
-scoped, bang-header, and breaking-footer cases.
+scoped, bang-header, and breaking-footer cases. Live recovery was proven by immutable `v0.85.1`,
+whose hosted body includes both release-relevant fixes from the corrected tag range.
 
 ## Partial Publication Repair
 
