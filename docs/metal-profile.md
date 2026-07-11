@@ -67,7 +67,7 @@ If you are new to `metal`, use this decision tree:
      in framework code or a narrow owning class tagged with `@:rustAllowRaw`.
 3. Need to drop raw `untyped __rust__(...)` in app code?
    - Don’t. `metal` rejects this by default because it bypasses compiler diagnostics and policy checks.
-   - `@:rustAllowRaw` is not a workaround here; metal and `@:haxeMetal` still reject raw fallback.
+   - `@:rustAllowRaw` is not a workaround here; metal and `@:rustMetal` still reject raw fallback.
 
 This keeps generated code analyzable (fallback counts, contract reports, metal-island checks) while still giving Rust-level control through typed boundaries.
 
@@ -144,7 +144,7 @@ Portable projects can still lock specific modules to metal-clean rules with lane
 Canonical lane metadata:
 
 ```haxe
-@:haxeMetal
+@:rustMetal
 class CriticalPath {
   public static function run(v:Int):Int {
     return v + 1;
@@ -154,8 +154,8 @@ class CriticalPath {
 
 Compatibility alias:
 
-- `@:rustMetal` is accepted as an alias.
-- Prefer `@:haxeMetal` in new code.
+- `@:haxeMetal` is accepted as an alias for compatibility.
+- Prefer `@:rustMetal` in new code.
 
 Behavior in portable:
 

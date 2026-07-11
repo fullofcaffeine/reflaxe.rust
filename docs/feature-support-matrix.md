@@ -107,7 +107,7 @@ The table below keeps the per-package story explicit so "supported" does not col
 | `portable` profile contract | Supported | contract reports, snapshot/semantic diff coverage, portable native-import diagnostics guard | `docs/profiles.md` is explanatory guidance, not primary proof. |
 | `metal` profile contract | Supported | negative metal fixtures, metal report/fallback guards, lane-diff gate | `docs/metal-profile.md` is explanatory guidance, not primary proof. |
 | `rust_async` (`metal` only) | Supported Rust-first subset | `test/snapshot/async_entry_boundary`, `test/snapshot/async_instance_method`, `test/snapshot/rust_async_tasks`, `examples/async_retry_pipeline`, async negative fixtures | Stable on the documented metal + hxrt subset. Not a blanket async claim for portable, `rust_no_hxrt`, async constructors, or async `main`. |
-| `@:haxeMetal` lanes inside portable builds | Supported | lane-diff CI gate, metal restriction pass, contract reports | Lane cleanliness is enforced, but lane cleanliness is not the same as blanket semantic closure for the entire program. |
+| `@:rustMetal` lanes inside portable builds | Supported | lane-diff CI gate, metal restriction pass, contract reports | `@:haxeMetal` remains a compatibility alias. Lane cleanliness is enforced, but lane cleanliness is not the same as blanket semantic closure for the entire program. |
 
 ## Source Of Truth Files
 

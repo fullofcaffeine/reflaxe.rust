@@ -84,7 +84,7 @@ Implement these before broad compiler work in the milestone:
 
 8. `test/negative/metal_dsl_bypasses_policy`
    - Proves scoped raw authority still does not bypass metal-island raw fallback restrictions.
-   - Implemented as a metal-policy negative case with `@:rustAllowRaw` + `@:haxeMetal`.
+   - Implemented as a metal-policy negative case with `@:rustAllowRaw` + `@:rustMetal`.
 
 9. `test/snapshot/metal_extern_lifetime_island`
    - Proves a lifetime-heavy Rust helper can sit in a handwritten Rust module behind a typed Haxe facade.
@@ -228,7 +228,7 @@ fixtures, or runtime fallback reasons before they can be treated as native Rust 
 ## Closeout Checklist For New Metal Capability Fixtures
 
 - Fixture source is typed Haxe unless the boundary under test is explicitly a framework/native facade.
-- The hxml states the intended contract: `portable`, `metal`, `@:haxeMetal`, `rust_no_hxrt`, fallback allowed, or fallback forbidden.
+- The hxml states the intended contract: `portable`, `metal`, `@:rustMetal`, `rust_no_hxrt`, fallback allowed, or fallback forbidden.
 - Diagnostics anchor to project source for negative cases where possible.
 - Generated Rust is inspected for ownership, allocation, module paths, `Dynamic`, `hxrt`, raw `ERaw`, clone noise, and borrow-guard scope.
 - The owning script runs locally and is wired to the relevant aggregate guard before the bead closes.

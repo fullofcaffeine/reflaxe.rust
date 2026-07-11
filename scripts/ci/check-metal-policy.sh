@@ -2791,15 +2791,15 @@ run_negative_case "test/negative/metal_dynamic_access" 'metal profile forbids ha
 	'haxe.DynamicAccess usage under metal profile' \
 	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : \[HXRS-PROFILE-CONTRACT-ERROR\]'
 run_negative_case "test/negative/metal_island_dynamic_access" 'Metal island violation in module `Main`.*dynamic_boundary/dynamic_access' \
-	'@:haxeMetal module rejects dynamic boundary usage in portable profile'
+	'@:rustMetal module rejects dynamic boundary usage in portable profile'
 run_negative_case "test/negative/metal_island_raw_fallback" 'Metal island violation in module `Main`.*raw Rust expression node\(s\) \(`ERaw`\)' \
-	'@:haxeMetal module rejects raw fallback codegen in portable profile'
+	'@:rustMetal module rejects raw fallback codegen in portable profile'
 run_negative_case "test/negative/metal_island_allow_raw_fallback" 'Metal island violation in module `Main`.*raw Rust expression node\(s\) \(`ERaw`\)' \
-	'@:rustAllowRaw does not bypass @:haxeMetal raw-fallback restrictions'
+	'@:rustAllowRaw does not bypass @:rustMetal raw-fallback restrictions'
 run_negative_case "test/negative/metal_dsl_bypasses_policy" 'Metal island violation in module `Main`.*raw Rust expression node\(s\) \(`ERaw`\)' \
-	'rust.metal.Code does not bypass @:haxeMetal raw-fallback restrictions'
-run_negative_case "test/negative/metal_island_rust_alias_dynamic_access" 'Metal island violation in module `Main`.*dynamic_boundary/dynamic_access' \
-	'@:rustMetal alias still enforces metal island contract in portable profile'
+	'rust.metal.Code does not bypass @:rustMetal raw-fallback restrictions'
+run_negative_case "test/negative/metal_island_haxe_alias_dynamic_access" 'Metal island violation in module `Main`.*dynamic_boundary/dynamic_access' \
+	'@:haxeMetal alias still enforces metal island contract in portable profile'
 run_negative_case "test/negative/metal_nullable_strings" 'metal profile does not allow -D rust_string_nullable in metal-clean mode' \
 	'rust_string_nullable under metal profile' \
 	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : \[HXRS-PROFILE-CONTRACT-ERROR\]'

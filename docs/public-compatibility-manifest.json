@@ -428,10 +428,10 @@
       ]
     },
     {
-      "id": "rust-metal-alias",
+      "id": "haxe-metal-alias",
       "class": "stable-candidate",
       "status": "deprecated",
-      "qualification": "Deprecated migration alias for haxeMetal.",
+      "qualification": "Deprecated compatibility alias for rustMetal.",
       "protectedContract": [
         "alias recognition and equivalent profile selection"
       ],
@@ -1377,7 +1377,7 @@
     },
     {
       "name": "haxeMetal",
-      "contract": "metadata-stable"
+      "contract": "haxe-metal-alias"
     },
     {
       "name": "rustAllowRaw",
@@ -1437,7 +1437,7 @@
     },
     {
       "name": "rustMetal",
-      "contract": "rust-metal-alias"
+      "contract": "metadata-stable"
     },
     {
       "name": "rustMutating",

@@ -28,7 +28,8 @@ and enforces typed interop policies intended for production use.
 - Default profile.
 - Nullable string representation by default.
 - Warnings for native-target imports (`rust.*`, `cpp.*`, etc.) with strict escalation available.
-- Supports `@:haxeMetal` lane metadata for metal-island enforcement inside portable builds.
+- Supports canonical `@:rustMetal` lane metadata for metal-island enforcement inside portable builds;
+  `@:haxeMetal` remains a compatibility alias.
 
 ### Metal contract
 

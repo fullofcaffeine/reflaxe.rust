@@ -32,7 +32,7 @@ semantics must be preserved.
 - ordinary Haxe/std APIs keep portable Haxe semantics,
 - admitted `reflaxe.std` facade surfaces can have Rust-native representations on this backend,
 - `rust.*` / `rust.metal.*` APIs are explicit native-lane source choices,
-- `@:haxeMetal` turns a selected module into a strict native-lane island.
+- `@:rustMetal` turns a selected module into a strict native-lane island.
 
 This means the portable/metal boundary is not only a folder or module split. It is visible in
 imports, metadata, and reports. Portable code can lower to native Rust shapes when its chosen facade
@@ -45,7 +45,7 @@ permits that; it must not receive Rust-native semantics by accident.
 | ordinary Haxe/std APIs | Keep Haxe semantics. | Prefer direct Rust; use `hxrt` only for real semantic gaps. |
 | admitted `reflaxe.std` facades | Keep portable source semantics, but allow backend specialization. | Lower to native Rust shapes such as `Option<T>` / `Result<T,E>` when admitted. |
 | `rust.*` / `rust.metal.*` | This module is Rust-native by source contract. | Enforce native boundaries and emit Rust-shaped code. |
-| `@:haxeMetal` | This portable-project module is a metal island. | Apply metal checks locally and report it as an island. |
+| `@:rustMetal` | This portable-project module is a metal island. | Apply metal checks locally and report it as an island. |
 | `Dynamic`, `Reflect`, runtime anonymous objects, exceptions, platform wrappers | Haxe runtime semantics are required. | Use narrow `hxrt` helpers and report stable fallback reasons. |
 
 The goal is not to make users memorize compiler internals. The goal is that the source surface you

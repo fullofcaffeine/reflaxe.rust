@@ -27,7 +27,7 @@ import reflaxe.rust.analyze.RustRawInjectionAuthorityAnalyzer;
  *   while still rejecting raw app-side injection.
  * - `@:rustAllowRaw` can authorize a tagged example/snapshot fixture when the test itself is
  *   validating the scoped-authority policy.
- * - `@:rustAllowRaw` does not bypass `metal` / `@:haxeMetal` raw-fallback restrictions.
+ * - `@:rustAllowRaw` does not bypass `metal` / `@:rustMetal` raw-fallback restrictions.
  */
 class BoundaryEnforcer {
 	public static function init():Void {

@@ -27,7 +27,7 @@ An accepted metal DSL must have:
 - actionable diagnostics when used outside its supported shape,
 - a generated-Rust shape fixture or policy fixture,
 - rustfmt-friendly emitted Rust,
-- no bypass around `portable`, `metal`, `@:haxeMetal`, `rust_no_hxrt`, or strict app-boundary rules.
+- no bypass around `portable`, `metal`, `@:rustMetal`, `rust_no_hxrt`, or strict app-boundary rules.
 
 If the DSL lowers to raw Rust internally, it is still a raw-authority boundary. The owning API must
 document why the raw boundary exists and what typed shape callers should use instead.
@@ -47,14 +47,14 @@ Rejected use:
 
 - direct application/business logic calls,
 - broad helper modules that become an app-side Rust string DSL,
-- attempts to bypass `@:haxeMetal` or metal-clean raw-fallback checks.
+- attempts to bypass `@:rustMetal` or metal-clean raw-fallback checks.
 
 For `rust.metal.Code`, the current early macro guard checks framework ownership or
 `@:rustAllowRaw` on the local class. The broader raw `__rust__` scanners still treat
 `@:rustAllowRaw` as a module/type authority after typing.
 
 `@:rustAllowRaw` only permits the call through the strict boundary scanner. It does not make the
-result metal-clean. If the generated Rust still contains raw `ERaw`, metal and `@:haxeMetal` policy
+result metal-clean. If the generated Rust still contains raw `ERaw`, metal and `@:rustMetal` policy
 passes can still reject it unless the build explicitly enables fallback for the fixture under test.
 
 ## Replacement Patterns
@@ -80,7 +80,7 @@ Current policy evidence:
 - `test/negative/metal_stringly_dsl_app_api`
   rejects direct app-side `rust.metal.Code.expr(...)` without scoped raw authority.
 - `test/negative/metal_dsl_bypasses_policy`
-  proves `rust.metal.Code` plus `@:rustAllowRaw` still cannot bypass `@:haxeMetal` raw-fallback
+  proves `rust.metal.Code` plus `@:rustAllowRaw` still cannot bypass `@:rustMetal` raw-fallback
   restrictions.
 - `test/snapshot/metal_typed_injection`
   remains an explicit fallback fixture for the controlled bridge itself; it is tagged

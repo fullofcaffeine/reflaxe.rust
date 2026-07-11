@@ -33,6 +33,10 @@ fixtures, deferred portable `Vec` admission, and output-shape gates for the firs
 The prompt below is the original review request. The review result above supersedes any fixture names
 or wording that Oracle asked us to change.
 
+Current naming note (2026-07-11): `@:rustMetal` is again the canonical Rust-backend lane metadata;
+`@:haxeMetal` remains accepted as a compatibility alias. The original prompt below retains the
+spelling used when that review was conducted.
+
 ## Uploads
 
 Upload this current repo bundle:

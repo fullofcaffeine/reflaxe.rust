@@ -160,15 +160,15 @@ control live in the [public compatibility manifest](public-compatibility-manifes
 
 ## Lane metadata
 
-- `@:haxeMetal`
-  - Canonical portable-lane metadata for strict metal island enforcement.
 - `@:rustMetal`
-  - Compatibility alias; supported for migration, but new code should use `@:haxeMetal`.
+  - Canonical portable-lane metadata for strict metal island enforcement.
+- `@:haxeMetal`
+  - Compatibility alias; existing code remains supported, but new code should use `@:rustMetal`.
 - `@:rustAllowRaw`
   - Scoped raw-`__rust__` authority for a tagged module/type.
   - Intended for narrow low-level abstraction islands that still need raw injection while
     `reflaxe_rust_strict` or `reflaxe_rust_strict_examples` is enabled.
-  - Does not bypass `metal` or `@:haxeMetal` raw-fallback restrictions; those are enforced later by
+  - Does not bypass `metal` or `@:rustMetal` raw-fallback restrictions; those are enforced later by
     metal-clean policy passes.
   - Document the boundary with `Why / What / How` HaxeDoc where the abstraction is declared.
 

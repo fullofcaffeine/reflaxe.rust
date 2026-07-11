@@ -17,7 +17,7 @@ import reflaxe.rust.ast.RustAST.RustFile;
 
 	How
 	- `portable`: normalize + mut inference + clone elision + borrow tightening
-	  (+ metal restrictions for `@:haxeMetal` islands)
+	  (+ metal restrictions for `@:rustMetal` islands)
 	- `metal`: portable set + borrow-scope stage + metal restrictions
 	- `rust_no_hxrt`: appends a no-runtime verification stage (`NoHxrtPass`)
 **/
@@ -44,7 +44,7 @@ class PassRunner {
 	static function selectPasses(context:CompilationContext):Array<RustPass> {
 		var passes = switch (context.profile) {
 			case Portable:
-				// Keep metal restrictions active in portable compilations so `@:haxeMetal`
+				// Keep metal restrictions active in portable compilations so `@:rustMetal`
 				// islands are enforced by the same pass contract as full metal profile.
 				[
 					NORMALIZE,

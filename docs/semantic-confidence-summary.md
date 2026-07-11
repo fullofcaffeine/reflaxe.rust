@@ -88,7 +88,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
   - `bash test/run-snapshots.sh --case array_shift_nullable_class_return`
 - Notes: These are the current backbone portable semantic fixtures, not a claim about every portable surface.
 
-### Portable vs `@:haxeMetal` lane stability
+### Portable vs `@:rustMetal` lane stability
 - Class: `targeted_semantic_parity`
 - Scope: Lane-clean programs must keep portable semantics when metal lanes are introduced
 - Evidence:

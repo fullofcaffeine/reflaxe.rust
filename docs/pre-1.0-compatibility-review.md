@@ -3,8 +3,8 @@
 Status: compatibility classification for `haxe_rust-ykls.6`.
 
 This review identifies the surfaces that could form a stable contract. It does not approve
-`1.0.0`, widen the support matrix, satisfy the four weekly checkpoints, or remove the Rust
-toolchain-policy blocker. The machine-readable source of truth is
+`1.0.0`, widen the support matrix, or implicitly promote qualified and experimental surfaces. The
+Rust toolchain policy is now enforced separately. The machine-readable source of truth is
 [`public-compatibility-manifest.json`](public-compatibility-manifest.json); this page explains its
 policy and records its generated summary.
 
@@ -57,7 +57,7 @@ exact admitted surface.
 | `metadata-stable` | `stable-candidate` | `active` | Only the explicitly listed form and placement grammar. |
 | `metadata-qualified` | `qualified-stable-candidate` | `active` | Only the form and environment named by each metadata entry. |
 | `metadata-experimental` | `experimental` | `active` | Stringly or advanced metadata excluded from stable admission. |
-| `rust-metal-alias` | `stable-candidate` | `deprecated` | Deprecated migration alias for haxeMetal. |
+| `haxe-metal-alias` | `stable-candidate` | `deprecated` | Deprecated compatibility alias for rustMetal. |
 | `metadata-reserved` | `excluded-internal` | `reserved` | Rejected or compiler-owned metadata. |
 | `build-controls` | `stable-candidate` | `active` | Documented normal output/build/profile/report and structured Cargo controls. |
 | `build-qualified` | `qualified-stable-candidate` | `active` | Only the documented profile, runtime, module topology, target, or source-ownership domain. |
@@ -99,8 +99,9 @@ are explicitly non-contractual.
 stable metadata candidate. Marker-only `@:rustImpl("Trait")` is qualified to local emitted types;
 body-string and object/`forType` forms remain experimental raw authority. `@:rustDerive`,
 `@:rustMutating`, and `@:rustReturn` are experimental. `rust.metal.Prelude` is a qualified stable
-import hub. `@:rustMetal` is a deprecated stable-candidate alias; if it is admitted into major 1, it
-cannot be removed before major 2.
+import hub. `@:rustMetal` is the canonical stable metadata candidate. `@:haxeMetal` remains a
+deprecated stable-candidate compatibility alias; if the alias is admitted into major 1, it cannot
+be removed before major 2.
 
 Raw `rust.metal.Code`, `@:rustAllowRaw`, `__rust__`, and the injection macro shim are public
 experimental escape hatches. They are not universally framework-only: a narrowly authorized
@@ -223,13 +224,15 @@ remain free to improve. Diagnostics outside that explicit registry remain unadmi
 
 ## Known defers and decision
 
-Four correctly spaced weekly checkpoints have not elapsed. Broader
-borrow provenance, platform parity, TLS/DB/network breadth, typed derive/where/associated-type work,
-portable no-hxrt, and generated native wrappers may remain explicitly qualified, experimental, or
-excluded rather than being rushed into scope.
+The former fixed-count calendar checkpoint gate was superseded by materially distinct event
+evidence. Weekly runs continue as monitoring, but elapsed Mondays are not a proxy for compatibility.
+Broader borrow provenance, platform parity, TLS/DB/network breadth, typed
+derive/where/associated-type work, portable no-hxrt, and generated native wrappers may remain
+explicitly qualified, experimental, or excluded rather than being rushed into scope.
 
-The surface is coherent enough for continued `0.x` stability review after the manifest and helper
-boundary blockers close. That closure will classify the contract; it will not authorize `1.0.0`.
+The surface is coherently classified for continued `0.x` releases. Classification and event
+evidence still do not authorize `1.0.0`; a separate reviewed per-major approval must name the exact
+stable contract when the remaining substantive evidence warrants it.
 
 ## Bun-class quality north star
 

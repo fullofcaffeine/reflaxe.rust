@@ -219,7 +219,7 @@ const bucketDefinitions = [
   {
     id: 'portable-metal-lane-stability',
     class: 'targeted_semantic_parity',
-    label: 'Portable vs `@:haxeMetal` lane stability',
+    label: 'Portable vs `@:rustMetal` lane stability',
     scope: 'Lane-clean programs must keep portable semantics when metal lanes are introduced',
     evidence: ['test/semantic_diff_lanes/lane_clean_arithmetic', 'test/semantic_diff_lanes/lane_clean_dispatch'],
     commands: ['npm run test:semantic-diff:lanes'],

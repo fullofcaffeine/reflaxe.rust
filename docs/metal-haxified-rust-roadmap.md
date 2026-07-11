@@ -29,7 +29,7 @@ consumption into explicit, reportable surface contracts:
 - ordinary Haxe/std APIs keep the Haxe semantics they already promise,
 - admitted `reflaxe.std` facade surfaces can have declared native Rust representation contracts,
 - `rust.*` / `rust.metal.*` APIs are explicit Rust-native source contracts,
-- `@:haxeMetal` marks strict Rust-native islands inside a portable build.
+- `@:rustMetal` marks strict Rust-native islands inside a portable build.
 
 The source API stays cross-target and intentionally portable-shaped when the user chooses a facade.
 The Rust implementation can still use metal internals: native `Option`/`Result`/`Vec`, typed

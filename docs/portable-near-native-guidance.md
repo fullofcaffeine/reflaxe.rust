@@ -38,7 +38,7 @@ The compiler should therefore decide lowering from the API being consumed:
 - admitted `reflaxe.std` facade surfaces can declare portable contracts with native Rust
   representations on this backend,
 - `rust.*` / `rust.metal.*` imports mean the source contract is explicitly Rust-native,
-- `@:haxeMetal` applies strict Rust-native checks to a selected island,
+- `@:rustMetal` applies strict Rust-native checks to a selected island,
 - today, `rust_no_hxrt` is metal-only; future portable no-runtime support requires a separate
   eligibility pass that proves admitted facades do not need runtime support.
 

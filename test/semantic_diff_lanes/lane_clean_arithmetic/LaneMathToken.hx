@@ -1,4 +1,4 @@
-@:haxeMetal
+@:rustMetal
 enum LaneMathToken {
 	Zero;
 	Sum;

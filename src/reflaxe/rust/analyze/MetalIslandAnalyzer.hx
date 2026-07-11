@@ -18,8 +18,8 @@ import haxe.macro.Type;
 	- Supports metadata on:
 	  - module types (`class`, `enum`, `typedef`, `abstract`),
 	  - class/abstract-impl fields (methods/vars).
-	- Canonical lane metadata is `@:haxeMetal`; `@:rustMetal` is also accepted as an alias
-	  for compatibility while migrations are in progress.
+	- Canonical lane metadata is `@:rustMetal`; `@:haxeMetal` remains accepted as a compatibility
+	  alias so projects using the former cross-backend spelling do not break.
 
 	How
 	- Walks `Context.getAllModuleTypes()` input.
@@ -106,7 +106,7 @@ class MetalIslandAnalyzer {
 
 	static function metaHasMetalLane(meta:MetaAccess):Bool {
 		for (entry in meta.get()) {
-			if (entry.name == ":haxeMetal" || entry.name == "haxeMetal" || entry.name == ":rustMetal" || entry.name == "rustMetal")
+			if (entry.name == ":rustMetal" || entry.name == "rustMetal" || entry.name == ":haxeMetal" || entry.name == "haxeMetal")
 				return true;
 		}
 		return false;

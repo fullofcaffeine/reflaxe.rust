@@ -69,7 +69,7 @@ Conformance fixtures:
 
 ## Contract invariance across lanes
 
-If code stays on portable surfaces, semantics must remain equivalent with and without portable metal lanes (`@:haxeMetal`/`@:rustMetal`) for lane-clean modules.
+If code stays on portable surfaces, semantics must remain equivalent with and without portable metal lanes (`@:rustMetal`, with `@:haxeMetal` accepted as a compatibility alias) for lane-clean modules.
 
 Conformance fixtures:
 

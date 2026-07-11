@@ -40,6 +40,15 @@ function main() {
   assert.strictEqual(hxRefContract.class, 'qualified-stable-candidate')
   assert(hxRefContract.exclusions.some((value) => value.includes('Arc/HxCell')), 'HxRef representation must remain non-contractual')
 
+  const rustMetal = canonical.metadata.find((entry) => entry.name === 'rustMetal')
+  assert.strictEqual(rustMetal.contract, 'metadata-stable', '@:rustMetal must be the canonical stable metal-island metadata')
+  const haxeMetal = canonical.metadata.find((entry) => entry.name === 'haxeMetal')
+  assert.strictEqual(haxeMetal.contract, 'haxe-metal-alias', '@:haxeMetal must remain a compatibility alias')
+  const haxeMetalAlias = canonical.contracts.find((entry) => entry.id === haxeMetal.contract)
+  assert.strictEqual(haxeMetalAlias.class, 'stable-candidate')
+  assert.strictEqual(haxeMetalAlias.status, 'deprecated')
+  assert(haxeMetalAlias.qualification.includes('rustMetal'), 'the alias contract must name @:rustMetal as the replacement')
+
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-public-compat-'))
   try {
     const manifest = canonical

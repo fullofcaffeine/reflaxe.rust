@@ -150,8 +150,8 @@ Important limits:
 
 - `@:rustAllowRaw` only relaxes strict boundary enforcement (`reflaxe_rust_strict` and
   `reflaxe_rust_strict_examples`) for the tagged module.
-- It does **not** bypass `metal` or `@:haxeMetal` raw-fallback restrictions.
-- If the same module is compiled as `metal` or tagged `@:haxeMetal`, raw fallback still errors.
+- It does **not** bypass `metal` or `@:rustMetal` raw-fallback restrictions.
+- If the same module is compiled as `metal` or tagged `@:rustMetal`, raw fallback still errors.
 
 Practical rule:
 

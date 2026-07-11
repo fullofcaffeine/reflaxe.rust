@@ -198,8 +198,8 @@ Agent policy:
 - Escape hatch policy: **apps/examples should not use `__rust__` directly**. Put injections behind Haxe APIs in `std/` and keep examples “pure”.
   - Repo enforcement: `-D reflaxe_rust_strict_examples` (used by `examples/**` and `test/snapshot/**`).
   - Opt-in user enforcement: `-D reflaxe_rust_strict`.
-  - Narrow exception: `@:rustAllowRaw` can authorize a single low-level abstraction module under strict boundary enforcement, but it must stay small, documented, and never be used to bypass `metal` / `@:haxeMetal` raw-fallback restrictions.
-  - `rust.metal.Code.expr/stmt` is a scoped raw bridge, not a normal app-facing DSL. Project-local direct use must be in an owning class tagged `@:rustAllowRaw`; framework/compiler-owned use is allowed via resolved framework roots. This still emits raw `ERaw`, so metal-clean and `@:haxeMetal` policy can reject it unless fallback is explicitly enabled for the fixture.
+  - Narrow exception: `@:rustAllowRaw` can authorize a single low-level abstraction module under strict boundary enforcement, but it must stay small, documented, and never be used to bypass `metal` / `@:rustMetal` raw-fallback restrictions.
+  - `rust.metal.Code.expr/stmt` is a scoped raw bridge, not a normal app-facing DSL. Project-local direct use must be in an owning class tagged `@:rustAllowRaw`; framework/compiler-owned use is allowed via resolved framework roots. This still emits raw `ERaw`, so metal-clean and `@:rustMetal` policy can reject it unless fallback is explicitly enabled for the fixture.
   - `@:rustImpl(..., "fn ...")` body strings are a narrow trait-impl metadata escape for local generated types, not the long-term app authoring model for common Rust trait patterns. Prefer Haxe interfaces, `@:rustGeneric`, typed extern islands, or future typed trait metadata when the Rust shape is common and inspectable.
 - `__rust__` can be called without a prefix as `untyped __rust__("...")` (like Elixir’s `untyped __elixir__`). `reflaxe.rust.macros.RustInjection.__rust__` is an optional macro shim that:
   - keeps a typed callable surface (no `untyped` at callsites)

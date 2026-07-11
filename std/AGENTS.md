@@ -4,7 +4,7 @@
 - `__rust__` injection is allowed here, but keep it as a last-resort escape hatch and hide it behind typed Haxe APIs.
 - Do not expose raw `__rust__` calls to application/example code; enforce “apps call Haxe APIs, not injections”.
 - `@:rustAllowRaw` is for narrow low-level authority islands when strict boundary enforcement would otherwise reject a necessary raw bridge.
-  It does not weaken `metal` / `@:haxeMetal`; those paths must still become typed instead of relying on raw fallback.
+  It does not weaken `metal` / `@:rustMetal`; those paths must still become typed instead of relying on raw fallback.
 - Reflaxe convention: target std/support roots are declared in `haxelib.json` `reflaxe.stdPaths`;
   package builds flatten those roots, and paths ending in `_std` become packaged `.cross.hx` files.
 - Rust-target instance: upstream-colliding Haxe stdlib overrides live under `std/rust/_std/**`

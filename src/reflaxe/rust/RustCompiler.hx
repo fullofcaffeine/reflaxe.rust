@@ -1049,7 +1049,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// Keep the M94 wrapper-facility spike from silently becoming product metadata.
 		rejectReservedNativeWrapperMetadata();
 
-		// Collect optional metal-lane declarations (`@:haxeMetal` canonical, `@:rustMetal` alias)
+		// Collect optional metal-lane declarations (`@:rustMetal` canonical, `@:haxeMetal` alias)
 		// for strict island checks in portable mode.
 		metalIslandSnapshot = MetalIslandAnalyzer.collect(Context.getAllModuleTypes());
 
@@ -1366,7 +1366,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
-		Enforces strict `@:haxeMetal` island contracts in portable profile.
+		Enforces strict `@:rustMetal` island contracts in portable profile.
 
 		Why
 		- Islands are an incremental migration path: users can lock specific modules to metal-clean
@@ -1374,7 +1374,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		- Violations must hard-error at the declaration site to keep island boundaries explicit.
 
 		What
-		- For each module declared via `@:haxeMetal` (or `@:rustMetal` alias), checks viability blockers.
+		- For each module declared via `@:rustMetal` (or `@:haxeMetal` alias), checks viability blockers.
 		- Emits one compile error per violating island module with blocker categories/ids.
 
 		How
@@ -1410,14 +1410,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var moduleData = modulesByName.get(module);
 			var declarations = declarationsByModule.exists(module) ? declarationsByModule.get(module) : [];
 			var pos = declarations.length > 0 ? declarations[0].pos : Context.currentPos();
-			var declarationSummary = declarations.length == 0 ? "`@:haxeMetal`" : declarations.map(entry -> "`" + entry.source + "`").join(", ");
+			var declarationSummary = declarations.length == 0 ? "`@:rustMetal`" : declarations.map(entry -> "`" + entry.source + "`").join(", ");
 
 			if (moduleData == null) {
 				RustDiagnostic.error(RustDiagnosticId.ProfileContractError, "Metal island violation in module `"
 					+ module
 					+ "` declared by "
 					+ declarationSummary
-					+ ": viability analyzer could not resolve this module. Keep `@:haxeMetal` on emitted class/enum/typedef/abstract modules.",
+					+ ": viability analyzer could not resolve this module. Keep `@:rustMetal` on emitted class/enum/typedef/abstract modules.",
 					pos);
 				continue;
 			}
@@ -1433,7 +1433,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				+ declarationSummary
 				+ ": "
 				+ blockers
-				+ ". Remove dynamic/reflection/raw fallback boundaries before marking this module as `@:haxeMetal`.",
+				+ ". Remove dynamic/reflection/raw fallback boundaries before marking this module as `@:rustMetal`.",
 				pos);
 		}
 		#end

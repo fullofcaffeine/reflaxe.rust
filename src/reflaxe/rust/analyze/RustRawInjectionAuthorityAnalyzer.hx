@@ -20,7 +20,7 @@ import haxe.macro.Type;
 	- Macro enforcers collect tagged modules after typing.
 	- Strict/example boundary checks can then allow raw `__rust__` only for those modules.
 	- Metal cleanliness remains enforced separately by `MetalRestrictionsPass`, so this metadata
-	  does not weaken `metal` or `@:haxeMetal`.
+	  does not weaken `metal` or `@:rustMetal`.
 **/
 class RustRawInjectionAuthorityAnalyzer {
 	public static inline final META_NAME = "rustAllowRaw";

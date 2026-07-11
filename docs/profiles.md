@@ -46,7 +46,7 @@ typed surfaces a program consumes and lower them according to their declared sem
   representations for this backend when the source modules are supplied by the shared package or an
   explicit local dependency,
 - `rust.*` and `rust.metal.*` APIs are explicit Rust-native source contracts,
-- `@:haxeMetal` marks a strict Rust-native island inside a wider portable build,
+- `@:rustMetal` marks a strict Rust-native island inside a wider portable build,
 - today, `rust_no_hxrt` is a metal-only minimal-runtime gate; future portable use requires a
   source/typed-AST eligibility pass before the final generated-code `NoHxrtPass`.
 
@@ -75,7 +75,7 @@ New code should be read through five layers:
 | Ordinary portable Haxe | Haxe syntax plus upstream `Std`, `haxe.*`, `sys.*`, `Array<T>`, classes | Preserve Haxe semantics first | Direct Rust when semantics are proven; narrow `hxrt` fallback when required |
 | Portable facades | Admitted `reflaxe.std` / family-style APIs | Portable source semantics with a per-surface backend contract | Native Rust representation when the facade contract permits it |
 | Rust-native APIs | `rust.*`, `rust.metal.*`, typed externs, borrow/slice/RAII surfaces | Explicit Rust-target source contract | Idiomatic Rust shapes with strict native boundaries |
-| Metal islands | `@:haxeMetal` inside portable projects | Rust-native checks for selected modules | Same as metal for that island, while the project remains portable |
+| Metal islands | `@:rustMetal` inside portable projects | Rust-native checks for selected modules | Same as metal for that island, while the project remains portable |
 | Runtime fallback | `hxrt` helpers selected by semantic requirements | Preserve Haxe behavior that Rust does not provide directly | Small typed helpers, reported with stable fallback reasons |
 
 Leverage Haxe by using strong types, abstracts, enums, metadata, macros, and typed facades to make
@@ -97,7 +97,7 @@ Default behavior:
 
 - nullable string representation (`rust_string_nullable`) unless explicitly overridden.
 - pass pipeline includes normalize + mut inference + clone elision + borrow-scope tightening.
-- metal restrictions pass is still executed so `@:haxeMetal` lanes enforce strict island rules.
+- metal restrictions pass is still executed so `@:rustMetal` lanes enforce strict island rules.
 - strict app-boundary mode is not auto-enabled; add `-D reflaxe_rust_strict` to reject raw app-side `untyped __rust__(...)`.
 - scoped raw authority is available via `@:rustAllowRaw` for narrow low-level abstraction modules that
   intentionally need raw `__rust__` under strict boundary enforcement.
@@ -155,7 +155,7 @@ You can enforce metal-clean checks on selected modules while the project contrac
 Canonical metadata:
 
 ```haxe
-@:haxeMetal
+@:rustMetal
 class HotPath {
   public static function run(v:Int):Int {
     return v + 1;
@@ -165,8 +165,8 @@ class HotPath {
 
 Compatibility alias:
 
-- `@:rustMetal` is still accepted.
-- New code should use `@:haxeMetal`.
+- `@:haxeMetal` is still accepted as a compatibility alias.
+- New code should use `@:rustMetal`.
 
 Both metadata names enforce the same strict island checks in `portable`.
 
@@ -187,7 +187,7 @@ Rules:
 
 - Intended for narrow low-level abstraction modules, not business logic.
 - Bypasses `reflaxe_rust_strict` / `reflaxe_rust_strict_examples` for the tagged module only.
-- Does not bypass `metal` or `@:haxeMetal` raw-fallback enforcement.
+- Does not bypass `metal` or `@:rustMetal` raw-fallback enforcement.
 - Prefer typed extern metadata and framework wrappers first; use this only when raw injection is the
   real remaining requirement.
 
