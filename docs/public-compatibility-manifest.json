@@ -546,6 +546,27 @@
       ]
     },
     {
+      "id": "diagnostic-identifiers",
+      "class": "stable-candidate",
+      "status": "active",
+      "qualification": "Only identifiers explicitly listed in the diagnostic registry; unlisted compiler diagnostics are not admitted.",
+      "protectedContract": [
+        "identifier",
+        "severity",
+        "documented trigger"
+      ],
+      "evidence": [
+        "docs/diagnostic-identifiers.md",
+        "docs/diagnostic-contract.json",
+        "haxe_rust-ykls.12"
+      ],
+      "exclusions": [
+        "exact English prose",
+        "source-position formatting",
+        "unlisted diagnostics"
+      ]
+    },
+    {
       "id": "generated-crate",
       "class": "qualified-stable-candidate",
       "status": "active",

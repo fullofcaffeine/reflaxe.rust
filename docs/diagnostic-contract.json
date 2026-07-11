@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "prefix": "[HXRS-",
+  "diagnostics": [
+    { "id": "HXRS-PROFILE-VALUE-REQUIRED", "family": "profile", "severity": "error", "trigger": "reflaxe_rust_profile is present without a value", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-PROFILE-UNKNOWN", "family": "profile", "severity": "error", "trigger": "reflaxe_rust_profile names a profile other than portable or metal", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-PROFILE-CONTRACT-WARNING", "family": "profile", "severity": "warning", "trigger": "a metal profile violation is temporarily permitted by the documented fallback policy", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-PROFILE-CONTRACT-ERROR", "family": "profile", "severity": "error", "trigger": "one or more enforced profile boundaries are violated", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-NATIVE-IMPORT-WARNING", "family": "native-import", "severity": "warning", "trigger": "portable code imports a target-native module without strict native-import enforcement", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-NATIVE-IMPORT-ERROR", "family": "native-import", "severity": "error", "trigger": "portable code imports a target-native module with strict native-import enforcement", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-NO-HXRT-REQUIRES-METAL", "family": "no-hxrt", "severity": "error", "trigger": "rust_no_hxrt is selected outside the metal profile", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-NO-HXRT-FEATURE-CONFLICT", "family": "no-hxrt", "severity": "error", "trigger": "rust_no_hxrt is combined with explicit hxrt feature controls", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-NO-HXRT-NULLABLE-STRING", "family": "no-hxrt", "severity": "error", "trigger": "rust_no_hxrt is combined with the runtime-backed nullable String representation", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-NO-HXRT-ELIGIBILITY", "family": "no-hxrt", "severity": "error", "trigger": "typed source semantics require hxrt while rust_no_hxrt is active", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-NO-HXRT-EMITTED-RUNTIME", "family": "no-hxrt", "severity": "error", "trigger": "generated Rust still contains an hxrt dependency or path while rust_no_hxrt is active", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-ASYNC-REQUIRES-METAL", "family": "async", "severity": "error", "trigger": "Rust async is used outside the metal profile", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-ASYNC-NO-HXRT", "family": "async", "severity": "error", "trigger": "Rust async is combined with rust_no_hxrt", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-ASYNC-NOT-ENABLED", "family": "async", "severity": "error", "trigger": "an async-only surface is used without rust_async", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-ASYNC-MAIN-SYNC", "family": "async", "severity": "error", "trigger": "the Haxe main entrypoint is declared async", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-ASYNC-CONSTRUCTOR", "family": "async", "severity": "error", "trigger": "a constructor is marked async", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-ASYNC-RETURN-FUTURE", "family": "async", "severity": "error", "trigger": "an async method does not return rust.async.Future<T>", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-ASYNC-FUTURE-SHAPE", "family": "async", "severity": "error", "trigger": "rust.async.Future is used without exactly one type parameter", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-ASYNC-AWAIT-CONTEXT", "family": "async", "severity": "error", "trigger": "await is used outside an async function", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-ASYNC-BLOCK-ON-CONTEXT", "family": "async", "severity": "error", "trigger": "Async.blockOn is used inside an async function", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-BORROW-REGION", "family": "borrow", "severity": "error", "trigger": "a borrow-only token escapes its callback region or mutable regions overlap", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-METADATA-ARITY", "family": "metadata", "severity": "error", "trigger": "compiler-recognized Rust metadata receives an unsupported number of parameters", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-METADATA-VALUE", "family": "metadata", "severity": "error", "trigger": "a compiler-recognized Rust metadata parameter has an invalid compile-time type or value grammar", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-METADATA-PLACEMENT", "family": "metadata", "severity": "error", "trigger": "compiler-recognized Rust metadata is attached to an unsupported declaration or method shape", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-CARGO-DEPENDENCY-CONFLICT", "family": "cargo", "severity": "error", "trigger": "structured rustCargo declarations provide incompatible values for one dependency field", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-CARGO-INVOCATION", "family": "cargo", "severity": "error", "trigger": "the configured Cargo command or subcommand exits non-zero", "introduced": "0.84.0", "status": "active", "replacement": null }
+  ]
+}

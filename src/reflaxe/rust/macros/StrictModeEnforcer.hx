@@ -6,6 +6,8 @@ import haxe.macro.Context;
 import haxe.macro.Type;
 import haxe.macro.TypedExprTools;
 import reflaxe.rust.ProfileResolver;
+import reflaxe.rust.RustDiagnostic;
+import reflaxe.rust.RustDiagnostic.RustDiagnosticId;
 import reflaxe.rust.RustProfile;
 import reflaxe.rust.analyze.RustRawInjectionAuthorityAnalyzer;
 
@@ -104,7 +106,7 @@ class StrictModeEnforcer {
 				return;
 			}
 
-			Context.error("Strict mode forbids `__rust__()` code injection in application code. "
+			RustDiagnostic.error(RustDiagnosticId.ProfileContractError, "Strict mode forbids `__rust__()` code injection in application code. "
 				+ "Prefer a typed wrapper or move target-specific interop into `std/`.",
 				expr.pos);
 		}

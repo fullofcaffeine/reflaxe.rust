@@ -6,6 +6,8 @@ import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.Type;
 import sys.FileSystem;
+import reflaxe.rust.RustDiagnostic;
+import reflaxe.rust.RustDiagnostic.RustDiagnosticId;
 
 typedef RustExtraSrcFile = {
 	var module:String;
@@ -66,13 +68,15 @@ class RustExtraSrcRegistry {
 			switch (entry.name) {
 				case ":rustExtraSrc":
 					if (entry.params == null || entry.params.length != 1) {
-						Context.error("`@:rustExtraSrc` requires a single string parameter.", entry.pos);
+						RustDiagnostic.error(RustDiagnosticId.MetadataArity,
+							"`@:rustExtraSrc` requires a single string parameter.", entry.pos);
 						continue;
 					}
 					addFileFromExpr(entry.params[0], entry.pos);
 				case ":rustExtraSrcDir":
 					if (entry.params == null || entry.params.length != 1) {
-						Context.error("`@:rustExtraSrcDir` requires a single string parameter.", entry.pos);
+						RustDiagnostic.error(RustDiagnosticId.MetadataArity,
+							"`@:rustExtraSrcDir` requires a single string parameter.", entry.pos);
 						continue;
 					}
 					addDirFromExpr(entry.params[0], entry.pos);
@@ -90,7 +94,8 @@ class RustExtraSrcRegistry {
 			return;
 
 		if (FileSystem.isDirectory(full)) {
-			Context.error("`@:rustExtraSrc` must point to a .rs file, not a directory: " + full, pos);
+			RustDiagnostic.error(RustDiagnosticId.MetadataValue,
+				"`@:rustExtraSrc` must point to a .rs file, not a directory: " + full, pos);
 			return;
 		}
 		addFilePath(full, pos);
@@ -105,7 +110,7 @@ class RustExtraSrcRegistry {
 			return;
 
 		if (!FileSystem.isDirectory(full)) {
-			Context.error("`@:rustExtraSrcDir` must point to a directory: " + full, pos);
+			RustDiagnostic.error(RustDiagnosticId.MetadataValue, "`@:rustExtraSrcDir` must point to a directory: " + full, pos);
 			return;
 		}
 
@@ -124,7 +129,7 @@ class RustExtraSrcRegistry {
 
 	static function addFilePath(fullPath:String, pos:haxe.macro.Expr.Position):Void {
 		if (!StringTools.endsWith(fullPath, ".rs")) {
-			Context.error("Extra Rust source must end with .rs: " + fullPath, pos);
+			RustDiagnostic.error(RustDiagnosticId.MetadataValue, "Extra Rust source must end with .rs: " + fullPath, pos);
 			return;
 		}
 
@@ -134,7 +139,7 @@ class RustExtraSrcRegistry {
 
 		var moduleName = fileName.substr(0, fileName.length - 3);
 		if (!isValidRustIdent(moduleName) || isRustKeyword(moduleName)) {
-			Context.error("Invalid Rust module file name for extra src: " + fileName, pos);
+			RustDiagnostic.error(RustDiagnosticId.MetadataValue, "Invalid Rust module file name for extra src: " + fileName, pos);
 			return;
 		}
 
@@ -149,14 +154,14 @@ class RustExtraSrcRegistry {
 	static function extractString(e:Expr, pos:haxe.macro.Expr.Position, metaName:String):Null<String> {
 		var value = readConstString(e);
 		if (value == null) {
-			Context.error("`@:" + metaName.substr(1) + "` must be a string.", pos);
+			RustDiagnostic.error(RustDiagnosticId.MetadataValue, "`@:" + metaName.substr(1) + "` must be a string.", pos);
 			return null;
 		}
 
 		var s = value;
 		s = StringTools.trim(s);
 		if (s.length == 0) {
-			Context.error("`@:" + metaName.substr(1) + "` must not be empty.", pos);
+			RustDiagnostic.error(RustDiagnosticId.MetadataValue, "`@:" + metaName.substr(1) + "` must not be empty.", pos);
 			return null;
 		}
 		return s;
@@ -180,7 +185,7 @@ class RustExtraSrcRegistry {
 		}
 
 		if (full == null || !FileSystem.exists(full)) {
-			Context.error("Extra Rust source path not found: " + path, pos);
+			RustDiagnostic.error(RustDiagnosticId.MetadataValue, "Extra Rust source path not found: " + path, pos);
 			return null;
 		}
 

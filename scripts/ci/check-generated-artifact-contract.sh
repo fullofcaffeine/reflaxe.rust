@@ -54,7 +54,7 @@ if [[ "$conflict_status" -eq 0 ]]; then
   echo "error: conflicting structured @:rustCargo declarations unexpectedly compiled" >&2
   exit 1
 fi
-if ! grep -q 'Conflicting `@:rustCargo` version for dependency `serde`' "$conflict_log"; then
+if ! grep -q '\[HXRS-CARGO-DEPENDENCY-CONFLICT\].*Conflicting `@:rustCargo` version for dependency `serde`' "$conflict_log"; then
   echo "error: structured Cargo conflict did not report the owned dependency field" >&2
   exit 1
 fi

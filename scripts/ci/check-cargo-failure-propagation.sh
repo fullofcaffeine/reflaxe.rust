@@ -43,5 +43,10 @@ if ! grep -q "definitely-not-a-cargo-subcommand" "$log_file"; then
   sed -n '1,160p' "$log_file" >&2
   exit 1
 fi
+if ! grep -q '\[HXRS-CARGO-INVOCATION\]' "$log_file"; then
+  echo "error: expected Cargo failure log to contain HXRS-CARGO-INVOCATION" >&2
+  sed -n '1,160p' "$log_file" >&2
+  exit 1
+fi
 
 printf '[cargo-failure-propagation] ok (haxe exit %s)\n' "$code"

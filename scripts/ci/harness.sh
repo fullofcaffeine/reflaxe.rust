@@ -423,6 +423,9 @@ run_policy_group() {
   run_stage "generated report schema and repeatability contract" bash scripts/ci/check-generated-report-contract.sh
   intermediate_cleanup "generated-report-contract"
 
+  run_stage "stable diagnostic identifier contract" bash scripts/ci/check-diagnostic-contract.sh
+  intermediate_cleanup "diagnostic-contract"
+
   run_stage "metal boundary policy" bash scripts/ci/check-metal-policy.sh
   intermediate_cleanup "metal-policy"
 

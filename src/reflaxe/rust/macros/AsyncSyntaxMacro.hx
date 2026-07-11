@@ -3,6 +3,8 @@ package reflaxe.rust.macros;
 #if macro
 import haxe.macro.Compiler;
 import haxe.macro.Context;
+import reflaxe.rust.RustDiagnostic;
+import reflaxe.rust.RustDiagnostic.RustDiagnosticId;
 import haxe.macro.Expr;
 import haxe.macro.ExprTools;
 #end
@@ -61,7 +63,7 @@ class AsyncSyntaxMacro {
 		return switch (expr.expr) {
 			case EMeta(meta, inner) if (isAwaitMeta(meta.name)):
 				if (meta.params != null && meta.params.length > 0) {
-					Context.error("`@" + meta.name + "` does not take parameters.", meta.pos);
+					RustDiagnostic.error(RustDiagnosticId.MetadataArity, "`@" + meta.name + "` does not take parameters.", meta.pos);
 				}
 				var rewrittenInner = rewriteExpr(inner);
 				var call = macro rust.async.Async.await($rewrittenInner);

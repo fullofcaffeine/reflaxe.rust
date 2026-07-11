@@ -2,6 +2,7 @@ package reflaxe.rust;
 
 #if (macro || reflaxe_runtime)
 import haxe.macro.Context;
+import reflaxe.rust.RustDiagnostic.RustDiagnosticId;
 
 /**
  * Resolve and validate Rust profile defines.
@@ -34,7 +35,8 @@ class ProfileResolver {
 
 		if (profileDefine != null) {
 			if (profileDefine.length == 0) {
-				Context.error("`-D reflaxe_rust_profile` requires a value: portable|metal.", Context.currentPos());
+				RustDiagnostic.error(RustDiagnosticId.ProfileValueRequired,
+					"`-D reflaxe_rust_profile` requires a value: portable|metal.", Context.currentPos());
 			}
 			return parseProfile(profileDefine);
 		}
@@ -50,7 +52,8 @@ class ProfileResolver {
 			case "portable": Portable;
 			case "metal": Metal;
 			case _:
-				Context.error("Unknown `-D reflaxe_rust_profile=" + profile + "`. Expected portable|metal.", Context.currentPos());
+				RustDiagnostic.error(RustDiagnosticId.ProfileUnknown,
+					"Unknown `-D reflaxe_rust_profile=" + profile + "`. Expected portable|metal.", Context.currentPos());
 				Portable;
 		}
 	}

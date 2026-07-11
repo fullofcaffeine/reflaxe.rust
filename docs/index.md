@@ -31,6 +31,7 @@ the latest immutable GitHub Release for the exact current version.
 - [Semver and release posture](semver-release-posture.md): canonical current posture, structured release-state contract, and measurable graduation gate.
 - [Pre-1.0 compatibility review](pre-1.0-compatibility-review.md) and [public compatibility manifest](public-compatibility-manifest.json): exact stable-candidate, qualified, experimental, and excluded classes; machine-checked shipped-surface inventory; migration and major-1 blockers.
 - [Generated consumer contract](generated-consumer-contract.md), [machine manifest](generated-consumer-contract.json), and [report schemas](schemas/): versioned JSON report shapes, compatibility baseline, generated Cargo/package ownership, and private-detail exclusions.
+- [Diagnostic identifier contract](diagnostic-identifiers.md) and [machine registry](diagnostic-contract.json): stable `HXRS-*` identifiers, severities, triggers, and retirement rules for admitted compiler failures.
 - [GA decision record](ga-decision-record.md): historical Milestone 28 gate outcome that led to the semver/public-packaging follow-up.
 - [GA caveat classification](ga-caveat-classification.md): historical blocker/defer/non-issue input used by the Milestone 28 gate.
 - [Examples matrix](examples-matrix.md): scenario coverage, profile entrypoints, and native-parity quick check (`profile_storyboard`).

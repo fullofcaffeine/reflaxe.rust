@@ -4,6 +4,8 @@ package reflaxe.rust.macros;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.Type;
+import reflaxe.rust.RustDiagnostic;
+import reflaxe.rust.RustDiagnostic.RustDiagnosticId;
 
 typedef RustCargoDep = {
 	var name:String;
@@ -96,7 +98,7 @@ class CargoMetaRegistry {
 				continue;
 
 			if (entry.params == null || entry.params.length == 0) {
-				Context.error("`@:rustCargo` requires a single parameter.", entry.pos);
+				RustDiagnostic.error(RustDiagnosticId.MetadataArity, "`@:rustCargo` requires a single parameter.", entry.pos);
 				continue;
 			}
 
@@ -113,13 +115,13 @@ class CargoMetaRegistry {
 
 		var fields = readObjectFields(e);
 		if (fields == null) {
-			Context.error("`@:rustCargo` must be a compile-time constant string or object.", pos);
+			RustDiagnostic.error(RustDiagnosticId.MetadataValue, "`@:rustCargo` must be a compile-time constant string or object.", pos);
 			return;
 		}
 
 		var name = readOptionalStringField(fields, "name", pos);
 		if (name == null || StringTools.trim(name).length == 0) {
-			Context.error("`@:rustCargo` object form must include a non-empty `name` field.", pos);
+			RustDiagnostic.error(RustDiagnosticId.MetadataValue, "`@:rustCargo` object form must include a non-empty `name` field.", pos);
 			return;
 		}
 
@@ -187,7 +189,7 @@ class CargoMetaRegistry {
 			return null;
 		var s = readConstString(value);
 		if (s == null) {
-			Context.error("`@:rustCargo` field `" + field + "` must be a string.", pos);
+			RustDiagnostic.error(RustDiagnosticId.MetadataValue, "`@:rustCargo` field `" + field + "` must be a string.", pos);
 		}
 		return s;
 	}
@@ -198,7 +200,7 @@ class CargoMetaRegistry {
 			return null;
 		var b = readConstBool(value);
 		if (b == null) {
-			Context.error("`@:rustCargo` field `" + field + "` must be a bool literal.", pos);
+			RustDiagnostic.error(RustDiagnosticId.MetadataValue, "`@:rustCargo` field `" + field + "` must be a bool literal.", pos);
 		}
 		return b;
 	}
@@ -214,14 +216,16 @@ class CargoMetaRegistry {
 				for (item in items) {
 					var s = readConstString(item);
 					if (s == null) {
-						Context.error("`@:rustCargo` field `" + field + "` must contain only strings.", pos);
+						RustDiagnostic.error(RustDiagnosticId.MetadataValue,
+							"`@:rustCargo` field `" + field + "` must contain only strings.", pos);
 						return null;
 					}
 					out.push(s);
 				}
 				out;
 			case _:
-				Context.error("`@:rustCargo` field `" + field + "` must be an array of strings.", pos);
+				RustDiagnostic.error(RustDiagnosticId.MetadataValue,
+					"`@:rustCargo` field `" + field + "` must be an array of strings.", pos);
 				null;
 		};
 	}
@@ -275,7 +279,8 @@ class CargoMetaRegistry {
 		if (incoming == null || incoming.length == 0)
 			return existing;
 		if (existing != incoming) {
-			Context.error("Conflicting `@:rustCargo` " + field + " for dependency `" + name + "`: `" + existing + "` vs `" + incoming + "`.", pos);
+			RustDiagnostic.error(RustDiagnosticId.CargoDependencyConflict,
+				"Conflicting `@:rustCargo` " + field + " for dependency `" + name + "`: `" + existing + "` vs `" + incoming + "`.", pos);
 		}
 		return existing;
 	}
@@ -286,7 +291,8 @@ class CargoMetaRegistry {
 		if (incoming == null)
 			return existing;
 		if (existing != incoming) {
-			Context.error("Conflicting `@:rustCargo` " + field + " for dependency `" + name + "`.", pos);
+			RustDiagnostic.error(RustDiagnosticId.CargoDependencyConflict,
+				"Conflicting `@:rustCargo` " + field + " for dependency `" + name + "`.", pos);
 		}
 		return existing;
 	}

@@ -12,6 +12,7 @@ import reflaxe.rust.macros.BoundaryEnforcer;
 import reflaxe.rust.macros.StrictModeEnforcer;
 import reflaxe.rust.ProfileResolver;
 import reflaxe.rust.RustProfile;
+import reflaxe.rust.RustDiagnostic.RustDiagnosticId;
 
 /**
  * Initialization and registration of the Rust compiler.
@@ -52,14 +53,16 @@ class CompilerInit {
 		var profile = ProfileResolver.resolve();
 		var wantsNoHxrt = Context.defined("rust_no_hxrt");
 		if (wantsNoHxrt && profile != RustProfile.Metal) {
-			Context.error("`-D rust_no_hxrt` currently requires `-D reflaxe_rust_profile=metal`.", Context.currentPos());
+			RustDiagnostic.error(RustDiagnosticId.NoHxrtRequiresMetal,
+				"`-D rust_no_hxrt` currently requires `-D reflaxe_rust_profile=metal`.", Context.currentPos());
 		}
 		if (wantsNoHxrt) {
 			var explicitHxrtFeatures = Context.definedValue("rust_hxrt_features");
 			if (Context.defined("rust_hxrt_default_features")
 				|| Context.defined("rust_hxrt_no_feature_infer")
 				|| (explicitHxrtFeatures != null && explicitHxrtFeatures.length > 0)) {
-				Context.error("`-D rust_no_hxrt` cannot be combined with hxrt feature defines (`rust_hxrt_default_features`, `rust_hxrt_no_feature_infer`, `rust_hxrt_features`).",
+				RustDiagnostic.error(RustDiagnosticId.NoHxrtFeatureConflict,
+					"`-D rust_no_hxrt` cannot be combined with hxrt feature defines (`rust_hxrt_default_features`, `rust_hxrt_no_feature_infer`, `rust_hxrt_features`).",
 					Context.currentPos());
 			}
 		}
@@ -94,7 +97,8 @@ class CompilerInit {
 			}
 		}
 		if (wantsNoHxrt && Context.defined("rust_string_nullable")) {
-			Context.error("`-D rust_no_hxrt` is incompatible with `-D rust_string_nullable` because nullable strings rely on `hxrt::string::HxString`.",
+			RustDiagnostic.error(RustDiagnosticId.NoHxrtNullableString,
+				"`-D rust_no_hxrt` is incompatible with `-D rust_string_nullable` because nullable strings rely on `hxrt::string::HxString`.",
 				Context.currentPos());
 		}
 
@@ -105,10 +109,12 @@ class CompilerInit {
 		var wantsAsync = Context.defined("rust_async");
 		if (wantsAsync) {
 			if (!ProfileResolver.isRustFirst(profile)) {
-				Context.error("Async (`-D rust_async`) currently requires `-D reflaxe_rust_profile=metal`.", Context.currentPos());
+				RustDiagnostic.error(RustDiagnosticId.AsyncRequiresMetal,
+					"Async (`-D rust_async`) currently requires `-D reflaxe_rust_profile=metal`.", Context.currentPos());
 			}
 			if (wantsNoHxrt) {
-				Context.error("Async (`-D rust_async`) is incompatible with `-D rust_no_hxrt` because async lowering currently uses `hxrt::async_`.",
+				RustDiagnostic.error(RustDiagnosticId.AsyncNoHxrt,
+					"Async (`-D rust_async`) is incompatible with `-D rust_no_hxrt` because async lowering currently uses `hxrt::async_`.",
 					Context.currentPos());
 			}
 			AsyncSyntaxMacro.init();

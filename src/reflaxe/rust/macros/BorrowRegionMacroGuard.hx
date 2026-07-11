@@ -4,6 +4,8 @@ package reflaxe.rust.macros;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.ExprTools;
+import reflaxe.rust.RustDiagnostic;
+import reflaxe.rust.RustDiagnostic.RustDiagnosticId;
 
 /**
 	BorrowRegionMacroGuard
@@ -217,7 +219,7 @@ class BorrowRegionMacroGuard {
 	}
 
 	static function error(helperLabel:String, tokenKind:String, tokenName:String, detail:String, pos:haxe.macro.Expr.Position):Void {
-		Context.error("Rust borrow region violation: " + helperLabel + " creates " + tokenKind + " `" + tokenName
+		RustDiagnostic.error(RustDiagnosticId.BorrowRegion, "Rust borrow region violation: " + helperLabel + " creates " + tokenKind + " `" + tokenName
 			+ "` that must not escape its callback region. " + detail,
 			pos);
 	}

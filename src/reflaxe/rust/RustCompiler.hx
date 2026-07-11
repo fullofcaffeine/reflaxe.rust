@@ -62,6 +62,7 @@ import reflaxe.rust.macros.RustExtraSrcRegistry;
 import reflaxe.rust.naming.RustNaming;
 import reflaxe.rust.ProfileResolver;
 import reflaxe.rust.RustProfile;
+import reflaxe.rust.RustDiagnostic.RustDiagnosticId;
 import reflaxe.rust.compiler.RustBuildContext;
 import reflaxe.rust.compiler.RustClassContext;
 import reflaxe.rust.compiler.RustFuncContext;
@@ -423,7 +424,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (!enforceMetalNonNullStringContract())
 			return;
 		#if eval
-		Context.error("metal non-null string contract forbids `null` for `String`. Use `Null<String>` for nullable values, or enable `-D rust_string_nullable`.",
+		RustDiagnostic.error(RustDiagnosticId.ProfileContractError,
+			"metal non-null string contract forbids `null` for `String`. Use `Null<String>` for nullable values, or enable `-D rust_string_nullable`.",
 			pos);
 		#end
 	}
@@ -572,10 +574,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var modulePosIndex = profileContractModulePosIndex();
 		#if eval
 		for (warning in diagnostics.warnings)
-			Context.warning("Rust profile contract: " + warning, profileContractDiagnosticPos(warning, modulePosIndex));
+			Context.warning(warning, profileContractDiagnosticPos(warning, modulePosIndex));
 		if (diagnostics.errors.length > 0) {
-			var details = diagnostics.errors.map(msg -> "- " + msg).join("\n");
-			Context.error("Rust profile contract violation(s):\n" + details, profileContractDiagnosticPos(diagnostics.errors[0], modulePosIndex));
+			var first = diagnostics.errors[0];
+			var remaining = diagnostics.errors.slice(1);
+			var details = remaining.length == 0 ? first : first + "\nAdditional profile violations:\n" + remaining.map(msg -> "- " + msg).join("\n");
+			Context.error(details, profileContractDiagnosticPos(first, modulePosIndex));
 		}
 		#end
 	}
@@ -607,7 +611,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		#if eval
 		var details = result.requirements.filter(entry -> entry.noHxrtBlocked).map(formatNoHxrtRequirement).join("\n");
 		var pos = noHxrtEligibilityDiagnosticPos(result);
-		Context.error("Rust no-hxrt eligibility violation(s):\n"
+		RustDiagnostic.error(RustDiagnosticId.NoHxrtEligibility, "Rust no-hxrt eligibility violation(s):\n"
 			+ details
 			+
 			"\n`-D rust_no_hxrt` still requires the source subset to avoid Haxe runtime semantics; remove `-D rust_no_hxrt` or refactor to admitted Rust-native/no-runtime surfaces.",
@@ -995,7 +999,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var diagnostics = BorrowRegionAnalyzer.analyze(Context.getAllModuleTypes(), shouldReportBorrowRegionDiagnostic);
 		#if eval
 		for (error in diagnostics.errors)
-			Context.error("Rust borrow region violation: " + error.message, error.pos);
+			RustDiagnostic.error(RustDiagnosticId.BorrowRegion, "Rust borrow region violation: " + error.message, error.pos);
 		#end
 	}
 
@@ -1408,7 +1412,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var declarationSummary = declarations.length == 0 ? "`@:haxeMetal`" : declarations.map(entry -> "`" + entry.source + "`").join(", ");
 
 			if (moduleData == null) {
-				Context.error("Metal island violation in module `"
+				RustDiagnostic.error(RustDiagnosticId.ProfileContractError, "Metal island violation in module `"
 					+ module
 					+ "` declared by "
 					+ declarationSummary
@@ -1422,7 +1426,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 			var blockers = moduleData.blockers.map(blocker -> blocker.category + "/" + blocker.id + "(x" + blocker.occurrences + ",w" + blocker.weight + ")")
 				.join("; ");
-			Context.error("Metal island violation in module `"
+			RustDiagnostic.error(RustDiagnosticId.ProfileContractError, "Metal island violation in module `"
 				+ module
 				+ "` declared by "
 				+ declarationSummary
@@ -3043,7 +3047,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			if (mainFunc != null && hasAsyncFunctionMeta(mainFunc.field.meta)) {
 				ensureAsyncAllowed(mainFunc.field.pos);
 				#if eval
-				Context.error("`main` must stay synchronous for the Rust async contract. Move async work into a helper returning `rust.async.Future<T>` and call `rust.async.Async.blockOn(...)` from sync `main`.",
+				RustDiagnostic.error(RustDiagnosticId.AsyncMainSync,
+					"`main` must stay synchronous for the Rust async contract. Move async work into a helper returning `rust.async.Future<T>` and call `rust.async.Async.blockOn(...)` from sync `main`.",
 					mainFunc.field.pos);
 				#end
 			}
@@ -4051,7 +4056,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				seen++;
 				if (seen > 1) {
 					#if eval
-					Context.error("`@:rustTest` can only be declared once per method.", entry.pos);
+					RustDiagnostic.error(RustDiagnosticId.MetadataArity, "`@:rustTest` can only be declared once per method.", entry.pos);
 					#end
 					continue;
 				}
@@ -4061,7 +4066,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 				if (entry.params.length != 1) {
 					#if eval
-					Context.error("`@:rustTest` accepts no params or a single string/object parameter.", entry.pos);
+					RustDiagnostic.error(RustDiagnosticId.MetadataArity,
+						"`@:rustTest` accepts no params or a single string/object parameter.", entry.pos);
 					#end
 					continue;
 				}
@@ -4077,7 +4083,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									var nameValue = readConstString(field.expr);
 									if (nameValue == null) {
 										#if eval
-										Context.error("`@:rustTest` field `name` must be a compile-time string.", field.expr.pos);
+										RustDiagnostic.error(RustDiagnosticId.MetadataValue,
+											"`@:rustTest` field `name` must be a compile-time string.", field.expr.pos);
 										#end
 										continue;
 									}
@@ -4086,20 +4093,23 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									var serialValue = readConstBool(field.expr);
 									if (serialValue == null) {
 										#if eval
-										Context.error("`@:rustTest` field `serial` must be a compile-time bool.", field.expr.pos);
+										RustDiagnostic.error(RustDiagnosticId.MetadataValue,
+											"`@:rustTest` field `serial` must be a compile-time bool.", field.expr.pos);
 										#end
 										continue;
 									}
 									cfg.serial = serialValue;
 								case _:
 									#if eval
-									Context.error("`@:rustTest` only supports `name` and `serial` fields.", field.expr.pos);
+									RustDiagnostic.error(RustDiagnosticId.MetadataValue,
+										"`@:rustTest` only supports `name` and `serial` fields.", field.expr.pos);
 									#end
 							}
 						}
 					case _:
 						#if eval
-						Context.error("`@:rustTest` parameter must be a string name or object `{ name, serial }`.", entry.pos);
+						RustDiagnostic.error(RustDiagnosticId.MetadataValue,
+							"`@:rustTest` parameter must be a string name or object `{ name, serial }`.", entry.pos);
 						#end
 				}
 			}
@@ -4130,14 +4140,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 						if (isMain) {
 							#if eval
-							Context.error("`@:rustTest` methods must live in non-main classes so wrappers can call `crate::<module>::Type::method`.", cf.pos);
+							RustDiagnostic.error(RustDiagnosticId.MetadataPlacement,
+								"`@:rustTest` methods must live in non-main classes so wrappers can call `crate::<module>::Type::method`.", cf.pos);
 							#end
 							continue;
 						}
 
 						if (!cf.isPublic) {
 							#if eval
-							Context.error("`@:rustTest` methods must be `public static` so generated wrappers can call them.", cf.pos);
+							RustDiagnostic.error(RustDiagnosticId.MetadataPlacement,
+								"`@:rustTest` methods must be `public static` so generated wrappers can call them.", cf.pos);
 							#end
 							continue;
 						}
@@ -4147,7 +4159,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							case TFun(params, ret):
 								if (params.length != 0) {
 									#if eval
-									Context.error("`@:rustTest` methods must have zero parameters.", cf.pos);
+									RustDiagnostic.error(RustDiagnosticId.MetadataPlacement,
+										"`@:rustTest` methods must have zero parameters.", cf.pos);
 									#end
 									continue;
 								}
@@ -4158,13 +4171,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									returnKind = TestBool;
 								} else {
 									#if eval
-									Context.error("`@:rustTest` methods must return `Void` or `Bool` (got `" + TypeTools.toString(ret) + "`).", cf.pos);
+									RustDiagnostic.error(RustDiagnosticId.MetadataPlacement,
+										"`@:rustTest` methods must return `Void` or `Bool` (got `" + TypeTools.toString(ret) + "`).", cf.pos);
 									#end
 									continue;
 								}
 							case _:
 								#if eval
-								Context.error("`@:rustTest` can only be used on methods.", cf.pos);
+								RustDiagnostic.error(RustDiagnosticId.MetadataPlacement, "`@:rustTest` can only be used on methods.", cf.pos);
 								#end
 								continue;
 						}
@@ -4289,18 +4303,19 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function ensureAsyncAllowed(pos:haxe.macro.Expr.Position):Void {
 		if (!asyncEnabled()) {
 			#if eval
-			Context.error("Async support requires `-D rust_async`.", pos);
+			RustDiagnostic.error(RustDiagnosticId.AsyncNotEnabled, "Async support requires `-D rust_async`.", pos);
 			#end
 			return;
 		}
 		if (!ProfileResolver.isRustFirst(profile)) {
 			#if eval
-			Context.error("Async currently requires `-D reflaxe_rust_profile=metal`.", pos);
+			RustDiagnostic.error(RustDiagnosticId.AsyncRequiresMetal, "Async currently requires `-D reflaxe_rust_profile=metal`.", pos);
 			#end
 		}
 		if (noHxrtEnabled()) {
 			#if eval
-			Context.error("Async is incompatible with `-D rust_no_hxrt`; async lowering currently depends on `hxrt::async_`.", pos);
+			RustDiagnostic.error(RustDiagnosticId.AsyncNoHxrt,
+				"Async is incompatible with `-D rust_no_hxrt`; async lowering currently depends on `hxrt::async_`.", pos);
 			#end
 		}
 	}
@@ -4907,7 +4922,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var code = Sys.command(cargoCmd, args);
 			if (code != 0) {
 				#if eval
-				Context.error("`" + cargoCmd + " " + subcommand + "` failed (exit " + code + ") for output: " + manifest, Context.currentPos());
+				RustDiagnostic.error(RustDiagnosticId.CargoInvocation,
+					"`" + cargoCmd + " " + subcommand + "` failed (exit " + code + ") for output: " + manifest, Context.currentPos());
 				#end
 			}
 		}
@@ -5340,7 +5356,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (hasAsyncFunctionMeta(f.field.meta)) {
 			ensureAsyncAllowed(f.field.pos);
 			#if eval
-			Context.error("Constructors cannot be marked `@:async` / `@:rustAsync` under the Rust async contract.", f.field.pos);
+			RustDiagnostic.error(RustDiagnosticId.AsyncConstructor,
+				"Constructors cannot be marked `@:async` / `@:rustAsync` under the Rust async contract.", f.field.pos);
 			#end
 		}
 		var args:Array<reflaxe.rust.ast.RustAST.RustFnArg> = [];
@@ -5897,7 +5914,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			asyncInnerRet = rustFutureInnerType(f.ret);
 			if (asyncInnerRet == null) {
 				#if eval
-				Context.error("`@:async`/`@:rustAsync` instance methods must return `rust.async.Future<T>` (got `" + TypeTools.toString(f.ret) + "`).",
+				RustDiagnostic.error(RustDiagnosticId.AsyncReturnFuture,
+					"`@:async`/`@:rustAsync` instance methods must return `rust.async.Future<T>` (got `" + TypeTools.toString(f.ret) + "`).",
 					f.field.pos);
 				#end
 			}
@@ -6089,7 +6107,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			asyncInnerRet = rustFutureInnerType(f.ret);
 			if (asyncInnerRet == null) {
 				#if eval
-				Context.error("`@:async`/`@:rustAsync` static methods must return `rust.async.Future<T>` (got `" + TypeTools.toString(f.ret) + "`).",
+				RustDiagnostic.error(RustDiagnosticId.AsyncReturnFuture,
+					"`@:async`/`@:rustAsync` static methods must return `rust.async.Future<T>` (got `" + TypeTools.toString(f.ret) + "`).",
 					f.field.pos);
 				#end
 			}
@@ -6380,7 +6399,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 			if (entry.params == null || entry.params.length == 0) {
 				#if eval
-				Context.error("`@:rustGeneric` requires a single parameter.", entry.pos);
+				RustDiagnostic.error(RustDiagnosticId.MetadataArity, "`@:rustGeneric` requires a single parameter.", entry.pos);
 				#end
 				continue;
 			}
@@ -6396,14 +6415,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									out.push(s);
 								case _:
 									#if eval
-									Context.error("`@:rustGeneric` array must contain only strings.", entry.pos);
+									RustDiagnostic.error(RustDiagnosticId.MetadataValue,
+										"`@:rustGeneric` array must contain only strings.", entry.pos);
 									#end
 							}
 						}
 					}
 				case _:
 					#if eval
-					Context.error("`@:rustGeneric` must be a string or array of strings.", entry.pos);
+					RustDiagnostic.error(RustDiagnosticId.MetadataValue,
+						"`@:rustGeneric` must be a string or array of strings.", entry.pos);
 					#end
 			}
 		}
@@ -6473,7 +6494,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 			if (entry.params == null || entry.params.length == 0) {
 				#if eval
-				Context.error("`@:rustGeneric` requires a single parameter.", entry.pos);
+				RustDiagnostic.error(RustDiagnosticId.MetadataArity, "`@:rustGeneric` requires a single parameter.", entry.pos);
 				#end
 				continue;
 			}
@@ -6489,14 +6510,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									out.push(s);
 								case _:
 									#if eval
-									Context.error("`@:rustGeneric` array must contain only strings.", entry.pos);
+									RustDiagnostic.error(RustDiagnosticId.MetadataValue,
+										"`@:rustGeneric` array must contain only strings.", entry.pos);
 									#end
 							}
 						}
 					}
 				case _:
 					#if eval
-					Context.error("`@:rustGeneric` must be a string or array of strings.", entry.pos);
+					RustDiagnostic.error(RustDiagnosticId.MetadataValue,
+						"`@:rustGeneric` must be a string or array of strings.", entry.pos);
 					#end
 			}
 		}
@@ -9301,7 +9324,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				if (isAwaitMetaName(m.name)) {
 					if (!currentFunctionIsAsync) {
 						#if eval
-						Context.error("`@:await` / `@:rustAwait` is only allowed inside `@:async` / `@:rustAsync` functions.", e.pos);
+						RustDiagnostic.error(RustDiagnosticId.AsyncAwaitContext,
+							"`@:await` / `@:rustAwait` is only allowed inside `@:async` / `@:rustAsync` functions.", e.pos);
 						#end
 					}
 					EAwait(compileExpr(e1));
@@ -11679,7 +11703,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									return unsupported(fullExpr, "Async.await args");
 								if (!currentFunctionIsAsync) {
 									#if eval
-									Context.error("`Async.await(...)` / `@:await` is only allowed inside `@:async` / `@:rustAsync` functions.", fullExpr.pos);
+									RustDiagnostic.error(RustDiagnosticId.AsyncAwaitContext,
+										"`Async.await(...)` / `@:await` is only allowed inside `@:async` / `@:rustAsync` functions.", fullExpr.pos);
 									#end
 								}
 								return EAwait(compileExpr(args[0]));
@@ -11689,7 +11714,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									return unsupported(fullExpr, "Async.blockOn args");
 								if (currentFunctionIsAsync) {
 									#if eval
-									Context.error("`Async.blockOn(...)` is not allowed inside async functions. Use `await` instead.", fullExpr.pos);
+									RustDiagnostic.error(RustDiagnosticId.AsyncBlockOnContext,
+										"`Async.blockOn(...)` is not allowed inside async functions. Use `await` instead.", fullExpr.pos);
 									#end
 								}
 								return ECall(EPath("hxrt::async_::block_on"), [compileExpr(args[0])]);
@@ -11715,7 +11741,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									return unsupported(fullExpr, "Async.await args");
 								if (!currentFunctionIsAsync) {
 									#if eval
-									Context.error("`Async.await(...)` / `@:await` is only allowed inside `@:async` / `@:rustAsync` functions.", fullExpr.pos);
+									RustDiagnostic.error(RustDiagnosticId.AsyncAwaitContext,
+										"`Async.await(...)` / `@:await` is only allowed inside `@:async` / `@:rustAsync` functions.", fullExpr.pos);
 									#end
 								}
 								return EAwait(compileExpr(args[0]));
@@ -11725,7 +11752,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									return unsupported(fullExpr, "Async.blockOn args");
 								if (currentFunctionIsAsync) {
 									#if eval
-									Context.error("`Async.blockOn(...)` is not allowed inside async functions. Use `await` instead.", fullExpr.pos);
+									RustDiagnostic.error(RustDiagnosticId.AsyncBlockOnContext,
+										"`Async.blockOn(...)` is not allowed inside async functions. Use `await` instead.", fullExpr.pos);
 									#end
 								}
 								return ECall(EPath("hxrt::async_::block_on"), [compileExpr(args[0])]);
@@ -16942,7 +16970,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					if (isRustAsyncFutureClass(cls)) {
 						if (params == null || params.length != 1) {
 							#if eval
-							Context.error("`rust.async.Future<T>` requires exactly one type parameter.", pos);
+							RustDiagnostic.error(RustDiagnosticId.AsyncFutureShape, "`rust.async.Future<T>` requires exactly one type parameter.", pos);
 							#end
 							return RPath("hxrt::async_::HxFuture<()>");
 						}

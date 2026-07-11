@@ -2,6 +2,8 @@ package reflaxe.rust.passes;
 
 import haxe.macro.Context;
 import reflaxe.rust.CompilationContext;
+import reflaxe.rust.RustDiagnostic;
+import reflaxe.rust.RustDiagnostic.RustDiagnosticId;
 import reflaxe.rust.ast.RustAST.RustBlock;
 import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustFile;
@@ -232,7 +234,7 @@ class NoHxrtPass implements RustPass {
 			var diagPos = context.diagnosticPos(moduleLabel);
 			if (diagPos == null)
 				diagPos = Context.currentPos();
-			Context.error("`-D rust_no_hxrt` violation in module `"
+			RustDiagnostic.error(RustDiagnosticId.NoHxrtEmittedRuntime, "`-D rust_no_hxrt` violation in module `"
 				+ moduleLabel
 				+ "`: generated Rust still references `hxrt` "
 				+ violationCount

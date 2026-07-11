@@ -64,6 +64,7 @@ exact admitted surface.
 | `build-experimental` | `experimental` | `active` | Escape, raw passthrough, runtime-feature, or preview control. |
 | `build-internal` | `excluded-internal` | `active` | Repository enforcement, debug, deprecated/rejected selector, or compiler bootstrap detail. |
 | `report-json` | `qualified-stable-candidate` | `active` | Machine-readable JSON only; consumers must ignore unknown fields. Versioned schemas and compatibility baselines protect the admitted shape. |
+| `diagnostic-identifiers` | `stable-candidate` | `active` | Only identifiers explicitly listed in the diagnostic registry; unlisted compiler diagnostics are not admitted. |
 | `generated-crate` | `qualified-stable-candidate` | `active` | Documented default, nested, no-hxrt, custom-Cargo, extra-source, and cargo-execution boundaries. |
 | `generated-package` | `stable-candidate` | `active` | Published Haxelib-shaped package and installed-package workflow. |
 | `generated-private` | `excluded-internal` | `active` | Generated helper/wrapper details not admitted as consumer API. |
@@ -211,14 +212,16 @@ After stable admission:
   removal occurs no earlier than the next major;
 - migration aliases state introduction, deprecation, replacement, and earliest-removal major.
 
-Stable diagnostic identifiers are not yet broadly implemented, so this review does not stabilize
-current diagnostic prose. `haxe_rust-ykls.12` owns identifiers before any diagnostic behavior is
-admitted to major 1.
+Admitted profile, async/no-hxrt, borrow-region, native-import, structured-metadata, and Cargo
+failures now use the typed `HXRS-*` registry in
+[`diagnostic-contract.json`](diagnostic-contract.json). Their identifier, severity, and documented
+trigger are protected contract units; exact diagnostic prose and Haxe's source-position formatting
+remain free to improve. Diagnostics outside that explicit registry remain unadmitted.
 
 ## Known defers and decision
 
-Four correctly spaced weekly checkpoints have not elapsed. Toolchain policy and stable diagnostic
-IDs remain owned blockers for the later major-1 decision. Broader
+Four correctly spaced weekly checkpoints have not elapsed. Toolchain policy remains an owned
+blocker for the later major-1 decision. Broader
 borrow provenance, platform parity, TLS/DB/network breadth, typed derive/where/associated-type work,
 portable no-hxrt, and generated native wrappers may remain explicitly qualified, experimental, or
 excluded rather than being rushed into scope.

@@ -1,5 +1,7 @@
 package reflaxe.rust.passes;
 
+import reflaxe.rust.RustDiagnostic;
+import reflaxe.rust.RustDiagnostic.RustDiagnosticId;
 import haxe.macro.Context;
 import StringTools;
 import reflaxe.rust.CompilationContext;
@@ -64,7 +66,7 @@ class MetalRestrictionsPass implements RustPass {
 
 		if (context.profile == Metal && context.build.metalContractHardError) {
 			#if eval
-			Context.error("Metal contract violation in module `"
+			RustDiagnostic.error(RustDiagnosticId.ProfileContractError, "Metal contract violation in module `"
 				+ moduleLabel
 				+ "`: generated output still contains "
 				+ rawExprCount
@@ -75,7 +77,7 @@ class MetalRestrictionsPass implements RustPass {
 		}
 		if (context.profile != Metal) {
 			#if eval
-			Context.error("Metal island violation in module `"
+			RustDiagnostic.error(RustDiagnosticId.ProfileContractError, "Metal island violation in module `"
 				+ moduleLabel
 				+ "`: generated output still contains "
 				+ rawExprCount

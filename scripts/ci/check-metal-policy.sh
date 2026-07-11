@@ -2784,12 +2784,12 @@ run_negative_case "test/negative/metal_stringly_dsl_app_api" '`rust\.metal\.Code
 	'stringly rust.metal.Code app API requires scoped raw authority'
 run_negative_case "test/negative/metal_reflect" 'metal profile forbids reflection/runtime-introspection modules' \
 	'Reflect usage under metal profile' \
-	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust profile contract violation\(s\):'
+	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : \[HXRS-PROFILE-CONTRACT-ERROR\]'
 run_negative_case "test/negative/metal_type_reflection" 'metal profile forbids reflection/runtime-introspection modules' \
 	'Type runtime introspection under metal profile'
 run_negative_case "test/negative/metal_dynamic_access" 'metal profile forbids haxe\.DynamicAccess runtime map semantics' \
 	'haxe.DynamicAccess usage under metal profile' \
-	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust profile contract violation\(s\):'
+	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : \[HXRS-PROFILE-CONTRACT-ERROR\]'
 run_negative_case "test/negative/metal_island_dynamic_access" 'Metal island violation in module `Main`.*dynamic_boundary/dynamic_access' \
 	'@:haxeMetal module rejects dynamic boundary usage in portable profile'
 run_negative_case "test/negative/metal_island_raw_fallback" 'Metal island violation in module `Main`.*raw Rust expression node\(s\) \(`ERaw`\)' \
@@ -2802,7 +2802,7 @@ run_negative_case "test/negative/metal_island_rust_alias_dynamic_access" 'Metal 
 	'@:rustMetal alias still enforces metal island contract in portable profile'
 run_negative_case "test/negative/metal_nullable_strings" 'metal profile does not allow -D rust_string_nullable in metal-clean mode' \
 	'rust_string_nullable under metal profile' \
-	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust profile contract violation\(s\):'
+	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : \[HXRS-PROFILE-CONTRACT-ERROR\]'
 run_negative_case "test/negative/metal_string_null_forbidden" 'metal non-null string contract forbids `null` for `String`' \
 	'metal non-null contract rejects String = null assignments'
 run_negative_case "test/negative/metal_no_hxrt_requires_metal" '`-D rust_no_hxrt` currently requires `-D reflaxe_rust_profile=metal`\.' \
@@ -2833,84 +2833,84 @@ run_negative_case "test/negative/internal_rust_helper_import" 'application code 
 	'internal Rust helper import rejection' '^Main\.hx:'
 run_negative_case "test/negative/portable_native_import_strict" 'portable contract imported native target modules: rust\.Option' \
 	'portable native-target import strict mode rejects rust.* imports' \
-	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust profile contract violation\(s\):'
+	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : \[HXRS-NATIVE-IMPORT-ERROR\]'
 run_negative_case "test/negative/portable_native_typed_strict" 'portable contract imported native target modules: rust\.Option' \
 	'portable native-target strict mode rejects fully qualified typed rust.* usage' \
-	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust profile contract violation\(s\):'
+	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : \[HXRS-NATIVE-IMPORT-ERROR\]'
 run_negative_case "test/negative/send_sync_borrow_capture" 'Rust concurrency contract violation: sys\.thread\.Thread\.create\(job\) captures `borrowed` with borrowed type `rust\.Ref<T>`' \
 	'spawn closure captures borrow-only value under rust_send_sync_strict'
 run_negative_case "test/negative/send_sync_str_capture" 'Rust concurrency contract violation: sys\.thread\.Thread\.create\(job\) captures `borrowed` with borrowed type `rust\.Str`' \
 	'spawn closure captures borrowed Str under rust_send_sync_strict'
 run_negative_case "test/negative/metal_ref_escape" 'Rust borrow region violation: rust\.Borrow\.withRef creates rust\.Ref<T> `borrowed` that must not escape its callback region\.' \
 	'metal borrow region rejects escaped rust.Ref token' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_ref_return_escape" 'Rust borrow region violation: rust\.Borrow\.withRef creates rust\.Ref<T> `borrowed` that must not escape its callback region\.' \
 	'metal borrow region rejects returned rust.Ref token' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_ref_assignment_escape" 'Rust borrow region violation: rust\.Borrow\.withRef creates rust\.Ref<T> `borrowed` that must not escape its callback region\.' \
 	'metal borrow region rejects assigned rust.Ref token' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_ref_literal_escape" 'Rust borrow region violation: rust\.Borrow\.withRef creates rust\.Ref<T> `borrowed` that must not escape its callback region\.' \
 	'metal borrow region rejects literal-contained rust.Ref token' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_ref_closure_escape" 'Rust borrow region violation: rust\.Borrow\.withRef creates rust\.Ref<T> `borrowed` that must not escape its callback region\.' \
 	'metal borrow region rejects closure-captured rust.Ref token' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_ref_alias_tail_escape" 'Rust borrow region violation: returned borrow-only alias `alias` \(rust\.Ref<T>\)\. Return an owned value derived from the borrow instead\.' \
 	'typed borrow region rejects tail-returned rust.Ref alias' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_ref_alias_return_escape" 'Rust borrow region violation: returned borrow-only alias `alias` \(rust\.Ref<T>\)\. Return an owned value derived from the borrow instead\.' \
 	'typed borrow region rejects explicitly returned rust.Ref alias' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_ref_alias_field_storage_escape" 'Rust borrow region violation: stored borrow-only alias `alias` \(rust\.Ref<T>\) in a field/static slot\.' \
 	'typed borrow region rejects rust.Ref alias field/static storage' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_ref_alias_closure_storage_escape" 'Rust borrow region violation: stored closure captures borrow-only alias `alias` \(rust\.Ref<T>\)\.' \
 	'typed borrow region rejects stored closure capture of rust.Ref alias' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_ref_option_wrapper_escape" 'Rust borrow region violation: returned value packages borrow-only alias `alias` \(rust\.Ref<T>\)\. Return an owned value derived from the borrow instead of wrapping the borrow token\.' \
 	'typed borrow region rejects Option-wrapped rust.Ref alias' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_ref_object_wrapper_escape" 'Rust borrow region violation: returned value packages borrow-only alias `alias` \(rust\.Ref<T>\)\. Return an owned value derived from the borrow instead of wrapping the borrow token\.' \
 	'typed borrow region rejects object-wrapped rust.Ref alias' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_ref_helper_wrapper_escape" 'Rust borrow region violation: returned value packages borrow-only alias `alias` \(rust\.Ref<T>\)\. Return an owned value derived from the borrow instead of wrapping the borrow token\.' \
 	'typed borrow region rejects helper-wrapped rust.Ref alias' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_ref_throw_escape" 'Rust borrow region violation: thrown borrow-only alias `alias` \(rust\.Ref<T>\)\. Throw owned error data instead of a scoped borrow token\.' \
 	'typed borrow region rejects thrown rust.Ref alias' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_raii_guard_escape" 'Rust borrow region violation: returned borrow-only alias `guard` \(rust\.Ref<T>\)\. Return an owned value derived from the borrow instead\.' \
 	'typed borrow region rejects escaped scoped RAII guard token' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_mut_ref_escape" 'Rust borrow region violation: rust\.Borrow\.withMut creates rust\.MutRef<T> `borrowed` that must not escape its callback region\.' \
 	'metal borrow region rejects escaped rust.MutRef token' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_mut_ref_nested_overlap" 'Rust borrow region violation: overlapping mutable borrow of `map` through `second` \(rust\.MutRef<T>\) while `first` is still active\.' \
 	'typed borrow region rejects nested overlapping rust.MutRef regions' \
-	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_slice_escape" 'Rust borrow region violation: rust\.SliceTools\.with creates rust\.Slice<T> `slice` that must not escape its callback region\.' \
 	'metal borrow region rejects escaped rust.Slice token' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_slice_alias_return_escape" 'Rust borrow region violation: returned borrow-only alias `alias` \(rust\.Slice<T>\)\. Return an owned value derived from the borrow instead\.' \
 	'typed borrow region rejects returned rust.Slice alias' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_mut_slice_escape" 'Rust borrow region violation: rust\.MutSliceTools\.with creates rust\.MutSlice<T> `slice` that must not escape its callback region\.' \
 	'metal borrow region rejects escaped rust.MutSlice token' \
-	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_mut_slice_nested_overlap" 'Rust borrow region violation: overlapping mutable borrow of `values` through `second` \(rust\.MutSlice<T>\) while `first` is still active\.' \
 	'typed borrow region rejects nested overlapping rust.MutSlice regions' \
-	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust borrow region violation:'
+	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_mut_region_sibling_overlap" 'Rust borrow region violation: overlapping mutable borrow of `values` through `slice` \(rust\.MutSlice<T>\) while `outer` is still active\.' \
 	'typed borrow region rejects sibling mutable helper under active mutable borrow' \
-	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Rust borrow region violation:'
-run_warning_case "test/negative/metal_dynamic_access" "compile.fallback.hxml" 'Rust profile contract: metal profile forbids haxe\.DynamicAccess runtime map semantics' \
+	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
+run_warning_case "test/negative/metal_dynamic_access" "compile.fallback.hxml" '\[HXRS-PROFILE-CONTRACT-WARNING\] metal profile forbids haxe\.DynamicAccess runtime map semantics' \
 	'1' 'haxe.DynamicAccess warning in explicit metal fallback mode'
 run_warning_case "test/snapshot/metal_typed_injection" "compile.hxml" 'metal raw expr \[Main\]' \
 	'2' 'metal raw debug warnings include source location' \
 	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Warning : metal raw expr \[Main\]' \
 	'rust_debug_metal_raw'
-run_warning_case "test/negative/portable_native_import_strict" "compile.warn.hxml" 'Rust profile contract: portable contract imported native target modules: rust\.Option' \
+run_warning_case "test/negative/portable_native_import_strict" "compile.warn.hxml" '\[HXRS-NATIVE-IMPORT-WARNING\] portable contract imported native target modules: rust\.Option' \
 	'1' 'portable profile warns when app code imports target-specific module surface'
 run_warning_case "test/negative/metal_dynamic_access" "compile.viability.hxml" 'Metal viability: overall score [0-9]+/100, modules=[0-9]+, ready=[0-9]+, blockers=[0-9]+\.' \
 	'1' 'metal viability summary warning output'

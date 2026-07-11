@@ -1,6 +1,8 @@
 package reflaxe.rust.analyze;
 
 import reflaxe.rust.RustProfile;
+import reflaxe.rust.RustDiagnostic;
+import reflaxe.rust.RustDiagnostic.RustDiagnosticId;
 
 /**
 	ProfileContractAnalyzer
@@ -54,9 +56,10 @@ class ProfileContractAnalyzer {
 				case Metal:
 					var msg = "metal profile forbids reflection/runtime-introspection modules; found: " + joined + ". Prefer typed fields/enums/interfaces.";
 					if (metalAllowFallback)
-						addWarning(msg + " (allowed because -D rust_metal_allow_fallback is set)")
+						addWarning(RustDiagnostic.message(RustDiagnosticId.ProfileContractWarning,
+							msg + " (allowed because -D rust_metal_allow_fallback is set)"))
 					else
-						addError(msg);
+						addError(RustDiagnostic.message(RustDiagnosticId.ProfileContractError, msg));
 				case Portable:
 			}
 		}
@@ -70,9 +73,10 @@ class ProfileContractAnalyzer {
 						+ joined
 						+ ". Prefer typed map surfaces (for example rust.HashMap<K,V>) at Rust-first boundaries.";
 					if (metalAllowFallback)
-						addWarning(msg + " (allowed because -D rust_metal_allow_fallback is set)")
+						addWarning(RustDiagnostic.message(RustDiagnosticId.ProfileContractWarning,
+							msg + " (allowed because -D rust_metal_allow_fallback is set)"))
 					else
-						addError(msg);
+						addError(RustDiagnostic.message(RustDiagnosticId.ProfileContractError, msg));
 				case Portable:
 			}
 		}
@@ -82,9 +86,10 @@ class ProfileContractAnalyzer {
 				case Metal:
 					var msg = "metal profile does not allow -D rust_allow_unresolved_monomorph_dynamic; keep monomorph fallbacks typed.";
 					if (metalAllowFallback)
-						addWarning(msg + " (allowed because -D rust_metal_allow_fallback is set)")
+						addWarning(RustDiagnostic.message(RustDiagnosticId.ProfileContractWarning,
+							msg + " (allowed because -D rust_metal_allow_fallback is set)"))
 					else
-						addError(msg);
+						addError(RustDiagnostic.message(RustDiagnosticId.ProfileContractError, msg));
 				case Portable:
 			}
 		}
@@ -94,9 +99,10 @@ class ProfileContractAnalyzer {
 				case Metal:
 					var msg = "metal profile does not allow -D rust_allow_unmapped_coretype_dynamic; map core types explicitly.";
 					if (metalAllowFallback)
-						addWarning(msg + " (allowed because -D rust_metal_allow_fallback is set)")
+						addWarning(RustDiagnostic.message(RustDiagnosticId.ProfileContractWarning,
+							msg + " (allowed because -D rust_metal_allow_fallback is set)"))
 					else
-						addError(msg);
+						addError(RustDiagnostic.message(RustDiagnosticId.ProfileContractError, msg));
 				case Portable:
 			}
 		}
@@ -106,9 +112,10 @@ class ProfileContractAnalyzer {
 				case Metal:
 					var msg = "metal profile does not allow -D rust_string_nullable in metal-clean mode; keep Rust-owned String representation for Rust-first boundaries.";
 					if (metalAllowFallback)
-						addWarning(msg + " (allowed because -D rust_metal_allow_fallback is set)")
+						addWarning(RustDiagnostic.message(RustDiagnosticId.ProfileContractWarning,
+							msg + " (allowed because -D rust_metal_allow_fallback is set)"))
 					else
-						addError(msg);
+						addError(RustDiagnostic.message(RustDiagnosticId.ProfileContractError, msg));
 				case Portable:
 			}
 		}
@@ -117,9 +124,11 @@ class ProfileContractAnalyzer {
 			var msg = "portable contract imported native target modules: " + normalizedNativeImportHits.join(", ")
 				+ ". This build is non-portable across targets.";
 			if (portableNativeImportStrict)
-				addError(msg + " (strict mode enabled via -D rust_portable_native_import_strict)")
+				addError(RustDiagnostic.message(RustDiagnosticId.NativeImportError,
+					msg + " (strict mode enabled via -D rust_portable_native_import_strict)"))
 			else
-				addWarning(msg + " (set -D rust_portable_native_import_strict to enforce as an error)");
+				addWarning(RustDiagnostic.message(RustDiagnosticId.NativeImportWarning,
+					msg + " (set -D rust_portable_native_import_strict to enforce as an error)"));
 		}
 
 		return {
