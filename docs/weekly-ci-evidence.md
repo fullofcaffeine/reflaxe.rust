@@ -94,22 +94,24 @@ artifacts are uploaded from the `HXRT overhead benchmarks` shard.
 
 This keeps evidence auditable without requiring manual copy/paste into docs every week.
 
-## Counting a sustained-stability window
+## Using recurring evidence for release posture
 
-A release-readiness stability window counts elapsed time and repeated evidence; ordinary PR CI runs
-cannot be relabeled as four weekly checkpoints.
+Weekly CI is ongoing monitoring, not a calendar that automatically matures the project. Repeating
+an unchanged commit several times mainly tests flake resistance; materially distinct events provide
+the stronger release-posture evidence.
 
-- Count at most one successful rollup in any seven-day interval.
-- The counted run may be scheduled or deliberately re-run with `workflow_dispatch`, but all three
-  required jobs must succeed on the same `haxe.rust` commit: Linux local-equivalent validation,
-  Windows smoke, and `codex-hxrust` QA.
-- Record the exact `haxe.rust` and `codex-hxrust` SHAs, workflow/run and job identifiers, semantic
-  confidence artifacts, and the open P0/P1 regression inventory in the checkpoint Bead.
-- A failed run is evidence, not a checkpoint to waive. File a regression Bead the same day.
-- A release-blocking regression resets the consecutive count after its fix; the next valid weekly
-  rollup becomes checkpoint one of the restarted window.
-- Four green checkpoints authorize a review of the evidence. They do not implicitly approve or
-  publish `1.0.0`; stable-major authorization remains a separate `thinking:xhigh` decision.
+- Keep baseline, defect/fix, real release, later no-op or repair, toolchain transition,
+  cross-platform, and representative-application evidence distinct.
+- A scheduled or manually dispatched run is valid recurring evidence only when all three required
+  jobs succeed on the same `haxe.rust` commit: Linux local-equivalent validation, Windows smoke,
+  and `codex-hxrust` QA.
+- Record exact `haxe.rust` and `codex-hxrust` SHAs, workflow/run and job identifiers, semantic
+  confidence artifacts, and the open P0/P1 regression inventory when a run informs a posture
+  decision.
+- A failed run is evidence, not something to waive. File a regression Bead the same day and require
+  a root-cause fix plus regression coverage before relying on later evidence.
+- Time-separated runs remain useful for ecosystem and runner drift, but no fixed number of Mondays
+  substitutes for the independent `thinking:xhigh` stable-major authorization.
 
 ## What to do when a weekly run fails
 

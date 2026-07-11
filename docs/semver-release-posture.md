@@ -1,8 +1,8 @@
 # Semver And Release Posture
 
-Current decision date: 2026-07-10
+Current decision date: 2026-07-11
 
-Current scope bead: `haxe_rust-tymf`
+Current scope bead: `haxe_rust-ykls.7`
 
 Superseded decision: `haxe.rust-oo3.23.1` (2026-03-15)
 
@@ -41,7 +41,8 @@ The repository has strong implementation evidence:
 - package-install smoke coverage,
 - Linux CI, curated Windows smoke, and a representative `codex-hxrust` pressure test.
 
-At that review, the evidence was not yet a sufficient broad stability window for `1.0`:
+The event-based review retained `0.x` for substantive contract reasons rather than an unfinished
+calendar:
 
 - runtime semantic proof remains narrower than compile inventory coverage,
 - TLS, DB, higher-level scheduler behavior, async, and Windows remain intentionally bounded by
@@ -49,8 +50,30 @@ At that review, the evidence was not yet a sufficient broad stability window for
 - the representative app gate still needs runtime workflow assertions beyond Cargo check/test,
 - the supported-platform promise remains deliberately qualified; the Rust minimum/release/current
   lanes are now governed by the explicit [Rust Toolchain Policy](rust-toolchain-policy.md),
-- and recent compiler/API change velocity has been high enough that sustained regression-free
-  validation is more valuable than a major-version deadline.
+- materially distinct baseline, defect/fix, immutable release, release no-op, exact-minimum,
+  current-stable, Windows, and `codex-hxrust` events are green with no open regression bugs,
+- but the representative app still proves generation plus Cargo compile/link/test-harness
+  construction rather than asserted generated runtime workflows,
+- and qualified/experimental boundaries remain intentionally broader than the exact contract the
+  project is ready to admit permanently.
+
+Weekly CI remains useful monitoring for ecosystem and runner drift. A fixed number of elapsed
+Mondays is not itself a compatibility guarantee and no longer blocks posture review.
+
+The reviewed event trail is concrete:
+
+- CI `29136228817` exposed the GitHub-only toolchain-policy stdout bug and correctly skipped
+  publication;
+- commit `6499da4a15d0cfb56a21e531999cac2076dcb98c` fixed that root cause, CI/release run
+  `29136707978` passed, and immutable `v0.85.0` published the same commit;
+- CI `29137469525` and `29142640624` proved later bookkeeping commits produce release no-ops;
+- weekly-equivalent rehearsal `29138159256` passed Linux, Windows, and `codex-hxrust` on Rust
+  `1.96.0`, while required CI separately passed current stable Rust `1.97.0`;
+- the open regression-bug inventory was empty at disposition.
+
+`reflaxe.rust` is ready for continued production-capable `0.x` releases. Before calling a release
+`1.0`, the representative app must run asserted generated behavior—not only compile—and the project
+must explicitly approve the exact APIs it promises to keep compatible throughout `1.x`.
 
 ## What The 0.x Contract Promises Until Graduation
 
@@ -108,10 +131,14 @@ release candidate:
    - Windows smoke and `codex-hxrust` QA are green on that same commit,
    - package install/build smoke, RustSec, formatting, clippy, and release dry-run evidence are
      attached to the gate.
-3. **Sustained stability window**
-   - at least four consecutive weekly evidence rollups are green,
+3. **Materially distinct stability evidence**
+   - evidence covers baseline validation, a real defect and root-cause fix, immutable publication,
+     a later release no-op or same-tag repair, and the declared minimum/current toolchain lanes,
+   - Linux local-equivalent, Windows smoke, and representative-app runs are green on explicitly
+     recorded commits,
    - no unresolved release-blocking P0/P1 regression exists,
-   - and a release-blocking regression restarts the window after its fix.
+   - and any release-blocking failure requires a root-cause fix plus regression coverage before
+     later evidence is relied upon.
 4. **Semantic-proof classification**
    - every surface proposed for the stable contract is classified by runtime proof depth,
    - critical snapshot/smoke-only buckets are either deepened or explicitly excluded/qualified in
