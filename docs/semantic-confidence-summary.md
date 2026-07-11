@@ -71,10 +71,11 @@ This summary rolls up the current evidence buckets without pretending that Tier2
 
 ### Portable core contract semantics
 - Class: `targeted_semantic_parity`
-- Scope: Null strings, typed/dynamic exceptions, subclass-aware typed catches, virtual dispatch, env vars, function-value parity, portable Option/Result
+- Scope: Null strings, typed/dynamic exceptions, class/interface subtype-aware catches, virtual dispatch, env vars, function-value parity, portable Option/Result
 - Evidence:
   - `test/semantic_diff/null_string_concat`
   - `test/semantic_diff/exceptions_typed_dynamic`
+  - `test/semantic_diff/typed_catch_interface`
   - `test/semantic_diff/typed_catch_subclass`
   - `test/semantic_diff/virtual_dispatch`
   - `test/semantic_diff/sys_getenv_null`
@@ -104,6 +105,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
 - Evidence:
   - `test/semantic_diff/reflect_dynamic_receivers`
   - `test/semantic_diff/exception_dynamic_payload`
+  - `test/semantic_diff/typed_catch_interface`
   - `test/semantic_diff/typed_catch_subclass`
   - `test/snapshot/reflect_basic`
   - `test/snapshot/reflect_compare_sort`
@@ -113,7 +115,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
   - `bash test/run-snapshots.sh --case reflect_basic`
   - `bash test/run-snapshots.sh --case reflect_compare_sort`
   - `bash test/run-snapshots.sh --case catch_dynamic`
-- Notes: Targeted proof only. Emitted non-generic class hierarchies now have subclass-aware typed catch parity; narrower exact-type limits remain on interface-typed or metadata-free catch paths.
+- Notes: Targeted proof only. Emitted non-generic class and interface hierarchies now have subtype-aware typed catch parity; exact-type limits remain for generic classes and payloads without emitted subtype metadata.
 
 ### Portable stdlib runtime hotspots
 - Class: `targeted_semantic_parity`

@@ -57,6 +57,10 @@ was later resolved by [Semver And Release Posture](semver-release-posture.md).
 | `reflaxe.std` package-hosting truth vs local Rust adoption | `docs/reflaxe-std-adoption-contract.md`, `docs/road-to-1.0.md`, `docs/index.md` | `non-issue` | The repo documents the important truth: Rust has compiler admission, fixture evidence, adapters, and lowering, but standalone family hosting/publishing and canonical Haxe module definitions are not owned here. | Keep public wording clear that `reflaxe.std` is admitted when supplied, not bundled as a `reflaxe.rust` package surface today. |
 | Semver / public packaging posture while still on `0.x` | `package.json`, `docs/production-readiness.md`, `docs/road-to-1.0.md`, `README.md` as they stood during Milestone 28 | `blocker` | The repo could plausibly justify production use on validated lanes, but an honest broad GA / `1.0` closeout still required an explicit semver and release decision. Staying on `0.62.0` while speaking like GA was closed would have collapsed the distinction between “production-capable” and “released as 1.0”. | Milestone 28 had to end with an explicit go/no-go decision. That follow-up decision is now recorded in [Semver And Release Posture](semver-release-posture.md). |
 
+Subsequent correction: interface-annotated catches for emitted non-generic implementers gained
+targeted semantic-diff parity in July 2026. The typed-catch defer in this historical table is now
+limited to generic classes and payloads without emitted subtype metadata; see `docs/v1.md`.
+
 ## Out-Of-Band Findings For Milestone 28
 
 These were not separate caveat buckets, but they affected the Milestone 28 public-truth pass:

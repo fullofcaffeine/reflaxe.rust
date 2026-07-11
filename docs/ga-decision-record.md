@@ -141,7 +141,8 @@ Docs alignment checks:
 - docs/perf-hxrt-overhead.md reviewed and corrected
 
 Residual risks:
-- typed catch now covers emitted non-generic class hierarchies; narrower exact-type limits remain on some interface/metadata-free paths
+- typed catch covered emitted non-generic class hierarchies at this decision point; interface-typed
+  catch parity was added later, leaving exact-type limits for generic or metadata-free paths
 - MainLoop/EntryPoint remain narrower than direct EventLoop evidence
 - sys.Http / sys.ssl / sys.db remain supported with targeted, smoke-level, or environment-sensitive
   proof depth

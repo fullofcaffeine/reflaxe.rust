@@ -9725,7 +9725,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case TInst(clsRef, _): clsRef.get();
 			case _: null;
 		};
-		if (expectedClass != null && !expectedClass.isInterface) {
+		if (expectedClass != null) {
 			var subtypeAware = compileSubtypeAwareClassCatchDispatch(exVarName, c, rest, expectedReturn, expectedClass);
 			if (subtypeAware != null)
 				return subtypeAware;
@@ -9799,20 +9799,24 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
-		Collects emitted concrete subclasses that can satisfy a base-class typed catch.
+		Collects emitted concrete classes that can satisfy a class- or interface-typed catch.
 
 		Why
 		- The catch dispatcher needs concrete emitted classes so it can perform a typed
-		  `Dynamic.downcast::<HxRef<Concrete>>()` before re-upcasting to the requested catch type.
+		  `Dynamic.downcast::<HxRef<Concrete>>()` before re-upcasting to the requested class or interface.
+		- Interface declarations are traits in Rust, not concrete payload types, so they must never become
+		  downcast candidates even though the subtype registry contains their stable type ids.
 		- This intentionally scopes the feature to classes we actually emit and register for runtime type ids.
 
 		How
-		- Walks the emitted type-id registry, filters to subclasses of the requested base class, and skips
-		  generic classes for now because this milestone only closes the non-generic subclass parity slice.
+		- Walks the emitted type-id registry, filters to concrete subtypes/implementers of the requested
+		  class or interface, and skips generic classes because their erased payload shape is not yet admitted.
 	**/
 	function emittedCatchSubtypeCandidates(expectedClass:ClassType):Array<ClassType> {
 		var out:Array<ClassType> = [];
 		for (cls in getEmittedClassesForTypeIdRegistry()) {
+			if (cls.isInterface)
+				continue;
 			if (!isClassSubtype(cls, expectedClass))
 				continue;
 			if (cls.params != null && cls.params.length > 0)
@@ -9824,24 +9828,26 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
-		Builds the subclass-aware catch path for supported class hierarchies.
+		Builds subtype-aware catch dispatch for supported class and interface hierarchies.
 
 		Why
-		- Haxe typed catch follows the subclass chain (`catch (animal:Animal)` should match a thrown `Dog`).
+		- Haxe typed catch follows class and interface subtype relations: both `catch (animal:Animal)` and
+		  `catch (problem:Problem)` must match a concrete emitted implementation.
 		- The old Rust lowering only performed exact `Dynamic.downcast::<T>()`, which dropped subclass matches
 		  into the later dynamic catch path.
 
 		How
 		- Reads the optional runtime type id from the exception payload.
-		- Verifies the payload is a subtype of the requested catch class.
+		- Verifies the payload is a subtype/implementer of the requested catch class or interface.
 		- Tries concrete emitted subclasses in deterministic order, downcasts to the concrete `HxRef<Sub>`,
 		  then upcasts back to the annotated catch type for the bound variable.
-		- Falls back to the exact typed catch path when the payload lacks subtype metadata.
+		- Falls back to the exact typed catch path when the payload lacks subtype metadata or was already
+		  boxed in its polymorphic class/interface representation instead of as the concrete `HxRef`.
 	**/
 	function compileSubtypeAwareClassCatchDispatch(exVarName:String, c:{v:TVar, expr:TypedExpr}, rest:Array<{v:TVar, expr:TypedExpr}>, expectedReturn:Type,
 			expectedClass:ClassType):Null<RustExpr> {
 		var candidates = emittedCatchSubtypeCandidates(expectedClass);
-		if (candidates.length <= 1)
+		if (candidates.length == 0 || (!expectedClass.isInterface && candidates.length <= 1))
 			return null;
 
 		if (expectedClass.params != null && expectedClass.params.length > 0)
@@ -9871,7 +9877,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var okExpr:RustExpr = EBlock({stmts: okStmts, tail: okBody.tail});
 			var downcastMatch = EMatch(downcast, [
 				{pat: PTupleStruct("Ok", [needsVar ? PBind("__hx_box") : PWildcard]), expr: okExpr},
-				{pat: PTupleStruct("Err", [PBind(exVarName)]), expr: errExpr}
+				{pat: PTupleStruct("Err", [PBind(exVarName)]), expr: exactFallback}
 			]);
 
 			candidateArms.push({

@@ -100,6 +100,14 @@ Agent policy:
   output registration, metadata extraction), check and use the framework/Haxe typed APIs first. Only add a local adapter for the missing boundary,
   keep it narrow, and document why the framework primitive is insufficient there.
 - Compile-time-first lowering rule: when typed Haxe information gives a closed answer, encode that answer in Rust AST/lowering instead of making generated code ask `hxrt` at runtime. If an implementation idea starts with a new runtime function, first write down which source/typed information is unavailable to the compiler; without that proof, fix lowering, planner, analysis, or printing instead.
+- Lowering ownership order (strict): choose the narrowest layer that can express the contract, in
+  this order: (1) typed compiler analysis/lowering that emits direct idiomatic Rust, (2) a narrow
+  typed native facade only when Rust lifetimes, ownership, traits, resources, macros, layout, or
+  contained `unsafe` cannot be represented cleanly by the current Haxe/compiler surface, and
+  (3) `hxrt` only for semantics that genuinely require runtime state or coordination. Do not skip
+  directly to a native helper or `hxrt` because it is easier to implement. A runtime solution is a
+  rejected design when the compiler already knows the concrete type, field shape, default, subtype
+  relation, ownership conversion, module path, or other fact needed to emit the Rust operation.
 - Architecture policy: when warnings/regressions come from emitted Rust shape (lowering/printer artifacts),
   fix the compiler pass/lowering logic instead of relying on style-level source workarounds (for example rewriting app code to avoid explicit `return` in lambdas).
 - Workaround policy (strict): do not land temporary workarounds. Fix the root cause in compiler/runtime lowering and add or update regression coverage in the same change.
