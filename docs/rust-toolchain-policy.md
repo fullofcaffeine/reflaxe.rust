@@ -59,3 +59,17 @@ for an unmet floor.
 
 Use `npm run toolchain:sync` only after reviewing a policy change. Generated consumers must not be
 edited independently.
+
+## First live implementation evidence
+
+The first complete run of this policy finished on 2026-07-11 UTC:
+
+- source/tag commit: `6499da4a15d0cfb56a21e531999cac2076dcb98c`;
+- CI/release run: `29136707978`;
+- exercised toolchains: minimum `1.96.0`, rolling stable `1.97.0`, and release `1.96.1`;
+- immutable release/tag: `v0.85.0`, resolving to the same source commit;
+- hosted artifact: `reflaxe.rust-0.85.0.zip`, 666492 bytes;
+- hosted SHA-256: `27a6b2a3b5c960a5f6e945308cb6d100caed197d1ed6b7176f654b4957c60935`.
+
+This is point-in-time evidence for one successful end-to-end execution. It does not replace the
+required recurring minimum/current/weekly checks or prove every future toolchain transition.
