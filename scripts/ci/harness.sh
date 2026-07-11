@@ -420,6 +420,9 @@ run_conformance_group() {
 }
 
 run_policy_group() {
+  run_stage "generated report schema and repeatability contract" bash scripts/ci/check-generated-report-contract.sh
+  intermediate_cleanup "generated-report-contract"
+
   run_stage "metal boundary policy" bash scripts/ci/check-metal-policy.sh
   intermediate_cleanup "metal-policy"
 
@@ -443,6 +446,9 @@ run_packaging_group() {
     run_stage "package smoke" env PACKAGE_ZIP_REL=".cache/package-smoke/reflaxe.rust-audit.zip" bash scripts/ci/package-smoke.sh
     intermediate_cleanup "package-smoke"
   fi
+
+  run_stage "generated artifact ownership contract" env GENERATED_ARTIFACT_SKIP_CARGO_FAILURE=1 bash scripts/ci/check-generated-artifact-contract.sh
+  intermediate_cleanup "generated-artifact-contract"
 
   run_stage "cargo failure propagation" bash scripts/ci/check-cargo-failure-propagation.sh
   intermediate_cleanup "cargo-failure-propagation"

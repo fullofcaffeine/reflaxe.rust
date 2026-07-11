@@ -63,7 +63,7 @@ exact admitted surface.
 | `build-qualified` | `qualified-stable-candidate` | `active` | Only the documented profile, runtime, module topology, target, or source-ownership domain. |
 | `build-experimental` | `experimental` | `active` | Escape, raw passthrough, runtime-feature, or preview control. |
 | `build-internal` | `excluded-internal` | `active` | Repository enforcement, debug, deprecated/rejected selector, or compiler bootstrap detail. |
-| `report-json` | `qualified-stable-candidate` | `active` | Machine-readable JSON only; consumers must ignore unknown fields. Full schemas remain a major-1 blocker. |
+| `report-json` | `qualified-stable-candidate` | `active` | Machine-readable JSON only; consumers must ignore unknown fields. Versioned schemas and compatibility baselines protect the admitted shape. |
 | `generated-crate` | `qualified-stable-candidate` | `active` | Documented default, nested, no-hxrt, custom-Cargo, extra-source, and cargo-execution boundaries. |
 | `generated-package` | `stable-candidate` | `active` | Published Haxelib-shaped package and installed-package workflow. |
 | `generated-private` | `excluded-internal` | `active` | Generated helper/wrapper details not admitted as consumer API. |
@@ -142,13 +142,14 @@ The four machine-readable report families are:
 | `runtime_plan.json` | 4 |
 | `optimizer_plan.json` | 2 |
 
-The proposed contract protects each filename, `schemaVersion`, required existing field names and
+The enforced contract protects each filename, `schemaVersion`, required existing field names and
 types, documented stable reason/category identifiers, field meaning, and any ordering explicitly
 promised to consumers. Consumers must ignore unknown fields, after which new optional fields may be
 additive. A schema increment does not authorize replacing an admitted filename incompatibly: use a
 parallel versioned artifact plus migration window, or a new major. Markdown reports are human-facing
-and not machine-parseable contracts. Full schemas and compatibility checking remain owned by
-`haxe_rust-ykls.11` before major-1 authorization.
+and not machine-parseable contracts. The versioned schemas, compatibility baseline, and generated
+crate/package boundaries are documented in
+[`generated-consumer-contract.md`](generated-consumer-contract.md).
 
 The generated-crate candidate explicitly covers `Cargo.toml` and `src/main.rs` roots, binary-crate
 default, edition 2021, crate-name override, conditional `./hxrt` subtree/dependency, `rust_no_hxrt`
@@ -216,8 +217,8 @@ admitted to major 1.
 
 ## Known defers and decision
 
-Four correctly spaced weekly checkpoints have not elapsed. Toolchain policy, report/artifact schema
-enforcement, and stable diagnostic IDs remain owned blockers for the later major-1 decision. Broader
+Four correctly spaced weekly checkpoints have not elapsed. Toolchain policy and stable diagnostic
+IDs remain owned blockers for the later major-1 decision. Broader
 borrow provenance, platform parity, TLS/DB/network breadth, typed derive/where/associated-type work,
 portable no-hxrt, and generated native wrappers may remain explicitly qualified, experimental, or
 excluded rather than being rushed into scope.

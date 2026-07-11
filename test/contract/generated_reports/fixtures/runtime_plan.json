@@ -1,0 +1,138 @@
+{
+	"schemaVersion": 4,
+	"backendId": "reflaxe.rust",
+	"runtimeId": "hxrt",
+	"contract": "metal",
+	"familyStdPin": {
+		"found": true,
+		"pinFile": "family/family_std_pin.json",
+		"name": "reflaxe.family.std",
+		"version": "0.1.0-bootstrap.1",
+		"source": "in-repo-bootstrap",
+		"migrationMode": "dual-run"
+	},
+	"mode": "selective",
+	"noHxrt": false,
+	"useDefaultFeatures": false,
+	"inferenceDisabled": false,
+	"manualFeatures": [
+	],
+	"selectedFeatures": [
+		"core",
+		"io"
+	],
+	"reasons": [
+		{
+			"feature": "core",
+			"sourceKind": "dependency_edge",
+			"source": "baseline->core"
+		},
+		{
+			"feature": "io",
+			"sourceKind": "module",
+			"source": "haxe.io.Error"
+		},
+		{
+			"feature": "io",
+			"sourceKind": "module",
+			"source": "haxe.io.Input"
+		},
+		{
+			"feature": "io",
+			"sourceKind": "module",
+			"source": "haxe.io.Output"
+		}
+	],
+	"runtimeRequirements": [
+		{
+			"reasonKind": "haxe_string_semantics",
+			"sourceKind": "module",
+			"sourceModule": "hxrt.string.NativeString.Class<hxrt.string.NativeString>",
+			"sourceSpan": "",
+			"surfaceId": null,
+			"requiresHxrt": true,
+			"noHxrtBlocked": false,
+			"message": "Runtime-backed Haxe string semantics require hxrt string support."
+		},
+		{
+			"reasonKind": "haxe_string_semantics",
+			"sourceKind": "module",
+			"sourceModule": "hxrt.string.NativeString.hxrt::string",
+			"sourceSpan": "",
+			"surfaceId": null,
+			"requiresHxrt": true,
+			"noHxrtBlocked": false,
+			"message": "Runtime-backed Haxe string semantics require hxrt string support."
+		},
+		{
+			"reasonKind": "platform_abstraction",
+			"sourceKind": "module",
+			"sourceModule": "Sys",
+			"sourceSpan": "",
+			"surfaceId": null,
+			"requiresHxrt": true,
+			"noHxrtBlocked": false,
+			"message": "Platform abstraction requires hxrt wrapper support."
+		},
+		{
+			"reasonKind": "platform_abstraction",
+			"sourceKind": "module",
+			"sourceModule": "hxrt.sys.NativeSys.Class<hxrt.sys.NativeSys>",
+			"sourceSpan": "",
+			"surfaceId": null,
+			"requiresHxrt": true,
+			"noHxrtBlocked": false,
+			"message": "Platform abstraction requires hxrt wrapper support."
+		},
+		{
+			"reasonKind": "platform_abstraction",
+			"sourceKind": "module",
+			"sourceModule": "hxrt.sys.NativeSys.hxrt::sys",
+			"sourceSpan": "",
+			"surfaceId": null,
+			"requiresHxrt": true,
+			"noHxrtBlocked": false,
+			"message": "Platform abstraction requires hxrt wrapper support."
+		},
+		{
+			"reasonKind": "platform_abstraction",
+			"sourceKind": "module",
+			"sourceModule": "sys.io.Stderr",
+			"sourceSpan": "",
+			"surfaceId": null,
+			"requiresHxrt": true,
+			"noHxrtBlocked": false,
+			"message": "Platform abstraction requires hxrt wrapper support."
+		},
+		{
+			"reasonKind": "platform_abstraction",
+			"sourceKind": "module",
+			"sourceModule": "sys.io.Stdin",
+			"sourceSpan": "",
+			"surfaceId": null,
+			"requiresHxrt": true,
+			"noHxrtBlocked": false,
+			"message": "Platform abstraction requires hxrt wrapper support."
+		},
+		{
+			"reasonKind": "platform_abstraction",
+			"sourceKind": "module",
+			"sourceModule": "sys.io.Stdout",
+			"sourceSpan": "",
+			"surfaceId": null,
+			"requiresHxrt": true,
+			"noHxrtBlocked": false,
+			"message": "Platform abstraction requires hxrt wrapper support."
+		}
+	],
+	"fallbackSummary": {
+		"requiresHxrt": true,
+		"blockedByNoHxrt": false,
+		"reasonKinds": [
+			"haxe_string_semantics",
+			"platform_abstraction"
+		]
+	},
+	"usedModuleCount": 101,
+	"hxrtDependencyLine": "hxrt = { path = \"./hxrt\", default-features = false, features = [\"core\", \"io\"] }"
+}

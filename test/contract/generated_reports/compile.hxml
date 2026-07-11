@@ -1,0 +1,11 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_strict_examples
+-D reflaxe_rust_profile=metal
+-D rust_metal_allow_fallback
+-D rust_codegen_only
+-D rust_metal_viability_report
+-D rust_contract_report
+-D rust_runtime_plan_report
+-D rust_optimizer_plan_report
+-main Main

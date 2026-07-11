@@ -1,0 +1,5 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_profile=portable
+-D rust_codegen_only
+-main Main

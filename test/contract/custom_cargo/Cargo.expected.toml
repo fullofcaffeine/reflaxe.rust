@@ -1,0 +1,7 @@
+[package]
+name = "contract_crate"
+version = "0.0.1"
+edition = "2021"
+
+[package.metadata.reflaxe-rust-contract]
+owner = "consumer"

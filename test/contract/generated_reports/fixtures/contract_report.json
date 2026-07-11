@@ -1,0 +1,35 @@
+{
+	"schemaVersion": 6,
+	"backendId": "reflaxe.rust",
+	"contract": "metal",
+	"familyStdPin": {
+		"found": true,
+		"pinFile": "family/family_std_pin.json",
+		"name": "reflaxe.family.std",
+		"version": "0.1.0-bootstrap.1",
+		"source": "in-repo-bootstrap",
+		"migrationMode": "dual-run"
+	},
+	"strictBoundary": true,
+	"strictExamples": true,
+	"metalFallbackAllowed": true,
+	"metalContractHardError": false,
+	"noHxrt": false,
+	"asyncEnabled": false,
+	"nullableStrings": false,
+	"portableNativeImportStrict": false,
+	"portableNativeImportsDetected": false,
+	"nativeImportHits": [
+	],
+	"nativeImportHitsTyped": [
+	],
+	"consumedSurfaces": [
+	],
+	"nativeRepresentationPlan": [
+	],
+	"usedModuleCount": 101,
+	"warnings": [
+	],
+	"errors": [
+	]
+}

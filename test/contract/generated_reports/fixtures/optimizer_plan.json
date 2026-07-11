@@ -1,0 +1,42 @@
+{
+	"schemaVersion": 2,
+	"backendId": "reflaxe.rust",
+	"contract": "metal",
+	"familyStdPin": {
+		"found": true,
+		"pinFile": "family/family_std_pin.json",
+		"name": "reflaxe.family.std",
+		"version": "0.1.0-bootstrap.1",
+		"source": "in-repo-bootstrap",
+		"migrationMode": "dual-run"
+	},
+	"executedPasses": [
+		"normalize",
+		"statement_cleanup",
+		"mut_inference",
+		"clone_elision",
+		"borrow_scope_tightening",
+		"metal_restrictions"
+	],
+	"applied": [
+		{
+			"id": "loop_optimizations.applied.array_iter_borrowed.desugared_for",
+			"count": 2
+		}
+	],
+	"skipped": [
+		{
+			"id": "borrow_scope_tightening.skipped.tail_local_target",
+			"count": 347
+		},
+		{
+			"id": "loop_optimizations.skipped.tail_local_target",
+			"count": 73
+		}
+	],
+	"appliedTotal": 2,
+	"skippedTotal": 420,
+	"cloneElisions": 0,
+	"loopOptimizations": 2,
+	"usedModuleCount": 101
+}

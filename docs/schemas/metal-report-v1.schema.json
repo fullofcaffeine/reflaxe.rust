@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:reflaxe-rust:schema:metal-report:v1",
+  "title": "reflaxe.rust metal_report.json schema v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schemaVersion",
+    "profile",
+    "overallScore",
+    "moduleCount",
+    "moduleReadyCount",
+    "blockerCount",
+    "globalBlockers",
+    "issueClasses",
+    "modules"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "profile": { "const": "metal" },
+    "overallScore": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "moduleCount": { "$ref": "#/$defs/count" },
+    "moduleReadyCount": { "$ref": "#/$defs/count" },
+    "blockerCount": { "$ref": "#/$defs/count" },
+    "globalBlockers": { "type": "array", "items": { "$ref": "#/$defs/blocker" } },
+    "issueClasses": { "type": "array", "items": { "$ref": "#/$defs/issueClass" } },
+    "modules": { "type": "array", "items": { "$ref": "#/$defs/module" } }
+  },
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0 },
+    "blockerId": {
+      "type": "string",
+      "anyOf": [
+        {
+          "enum": [
+            "raw_expr_fallback",
+            "metal_allow_fallback",
+            "allow_unresolved_monomorph_dynamic",
+            "allow_unmapped_coretype_dynamic",
+            "metal_nullable_strings",
+            "dynamic_access",
+            "dynamic_type",
+            "dynamic_field_access"
+          ]
+        },
+        { "pattern": "^reflection_runtime_api:.+$" }
+      ]
+    },
+    "blocker": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "category", "summary", "fix", "occurrences", "weight"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockerId" },
+        "category": {
+          "enum": ["reflection", "raw_fallback", "dynamic_boundary", "policy_toggle"]
+        },
+        "summary": { "type": "string" },
+        "fix": { "type": "string" },
+        "occurrences": { "$ref": "#/$defs/count" },
+        "weight": { "$ref": "#/$defs/count" }
+      }
+    },
+    "issueClass": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "id",
+        "title",
+        "recommendedAction",
+        "blockerCount",
+        "occurrenceCount",
+        "moduleCount",
+        "totalWeight",
+        "modules",
+        "blockerIds"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "reflection_runtime_api",
+            "raw_codegen_fallback",
+            "dynamic_boundary",
+            "policy_toggle",
+            "uncategorized"
+          ]
+        },
+        "title": { "type": "string" },
+        "recommendedAction": { "type": "string" },
+        "blockerCount": { "$ref": "#/$defs/count" },
+        "occurrenceCount": { "$ref": "#/$defs/count" },
+        "moduleCount": { "$ref": "#/$defs/count" },
+        "totalWeight": { "$ref": "#/$defs/count" },
+        "modules": { "type": "array", "items": { "type": "string" } },
+        "blockerIds": { "type": "array", "items": { "$ref": "#/$defs/blockerId" } }
+      }
+    },
+    "module": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["module", "score", "metalReady", "blockers"],
+      "properties": {
+        "module": { "type": "string" },
+        "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "metalReady": { "type": "boolean" },
+        "blockers": { "type": "array", "items": { "$ref": "#/$defs/blocker" } }
+      }
+    }
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:reflaxe-rust:schema:contract-report:v6",
+  "title": "reflaxe.rust contract_report.json schema v6",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schemaVersion",
+    "backendId",
+    "contract",
+    "familyStdPin",
+    "strictBoundary",
+    "strictExamples",
+    "metalFallbackAllowed",
+    "metalContractHardError",
+    "noHxrt",
+    "asyncEnabled",
+    "nullableStrings",
+    "portableNativeImportStrict",
+    "portableNativeImportsDetected",
+    "nativeImportHits",
+    "nativeImportHitsTyped",
+    "consumedSurfaces",
+    "nativeRepresentationPlan",
+    "usedModuleCount",
+    "warnings",
+    "errors"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 6 },
+    "backendId": { "const": "reflaxe.rust" },
+    "contract": { "enum": ["portable", "metal"] },
+    "familyStdPin": { "$ref": "#/$defs/familyStdPin" },
+    "strictBoundary": { "type": "boolean" },
+    "strictExamples": { "type": "boolean" },
+    "metalFallbackAllowed": { "type": "boolean" },
+    "metalContractHardError": { "type": "boolean" },
+    "noHxrt": { "type": "boolean" },
+    "asyncEnabled": { "type": "boolean" },
+    "nullableStrings": { "type": "boolean" },
+    "portableNativeImportStrict": { "type": "boolean" },
+    "portableNativeImportsDetected": { "type": "boolean" },
+    "nativeImportHits": { "type": "array", "items": { "type": "string" } },
+    "nativeImportHitsTyped": { "type": "array", "items": { "$ref": "#/$defs/nativeImportHit" } },
+    "consumedSurfaces": { "type": "array", "items": { "$ref": "#/$defs/surface" } },
+    "nativeRepresentationPlan": { "type": "array", "items": { "$ref": "#/$defs/representation" } },
+    "usedModuleCount": { "type": "integer", "minimum": 0 },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "errors": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "familyStdPin": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["found", "pinFile", "name", "version", "source", "migrationMode"],
+      "properties": {
+        "found": { "type": "boolean" },
+        "pinFile": { "type": "string" },
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "source": { "type": "string" },
+        "migrationMode": { "type": "string" }
+      }
+    },
+    "nativeImportHit": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["modulePath", "nativeFamily", "surfaceKind", "sourceKind"],
+      "properties": {
+        "modulePath": { "type": "string" },
+        "nativeFamily": { "type": "string" },
+        "surfaceKind": { "enum": ["rust_native", "target_native"] },
+        "sourceKind": { "const": "typed_module_usage" }
+      }
+    },
+    "surface": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "surfaceId",
+        "modulePath",
+        "sourceContract",
+        "facadeVersion",
+        "portableSemantics",
+        "rustRepresentation",
+        "backendSpecializationAllowed",
+        "requiresRustImport",
+        "noHxrtEligible",
+        "fallbackPolicy"
+      ],
+      "properties": {
+        "surfaceId": { "type": "string" },
+        "modulePath": { "type": "string" },
+        "sourceContract": { "const": "portable_facade" },
+        "facadeVersion": { "type": "integer", "minimum": 1 },
+        "portableSemantics": { "type": "string" },
+        "rustRepresentation": { "type": "string" },
+        "backendSpecializationAllowed": { "type": "boolean" },
+        "requiresRustImport": { "type": "boolean" },
+        "noHxrtEligible": { "type": "boolean" },
+        "fallbackPolicy": { "const": "error_or_reasoned_runtime_requirement" }
+      }
+    },
+    "representation": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["surfaceId", "selectedRepresentation", "reason"],
+      "properties": {
+        "surfaceId": { "type": "string" },
+        "selectedRepresentation": { "type": "string" },
+        "reason": { "const": "admitted_portable_facade" }
+      }
+    }
+  }
+}

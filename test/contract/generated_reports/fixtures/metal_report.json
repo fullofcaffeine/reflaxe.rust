@@ -1,0 +1,724 @@
+{
+	"schemaVersion": 1,
+	"profile": "metal",
+	"overallScore": 74,
+	"moduleCount": 51,
+	"moduleReadyCount": 13,
+	"blockerCount": 40,
+	"globalBlockers": [
+		{
+			"id": "metal_allow_fallback",
+			"category": "policy_toggle",
+			"summary": "Fallback mode is enabled (`-D rust_metal_allow_fallback`).",
+			"fix": "Remove `-D rust_metal_allow_fallback` after blockers are resolved to enforce metal-clean output.",
+			"occurrences": 1,
+			"weight": 12
+		}
+	],
+	"issueClasses": [
+		{
+			"id": "dynamic_boundary",
+			"title": "Runtime Boundary",
+			"recommendedAction": "Decode runtime values into typed schemas immediately after boundary crossing.",
+			"blockerCount": 38,
+			"occurrenceCount": 1163,
+			"moduleCount": 38,
+			"totalWeight": 684,
+			"modules": ["Any", "Array", "Main", "Math", "Std", "StdTypes", "StringBuf", "StringTools", "Sys", "SysTypes", "Type", "haxe.BoundaryTypes", "haxe.CallStack", "haxe.Constraints", "haxe.EnumTools", "haxe.Exception", "haxe.Int32", "haxe.Int64", "haxe.Int64Helper", "haxe.Log", "haxe.PosInfos", "haxe.ds.EnumValueMap", "haxe.ds.IntMap", "haxe.ds.ObjectMap", "haxe.ds.StringMap", "haxe.io.BytesBuffer", "haxe.io.Eof", "haxe.io.Error", "haxe.io.FPHelper", "haxe.io.Input", "haxe.io.Output", "haxe.iterators.StringIterator", "haxe.iterators.StringKeyValueIterator", "hxrt.sys.NativeSys", "rust.Ref", "sys.io.Stderr", "sys.io.Stdin", "sys.io.Stdout"],
+			"blockerIds": ["dynamic_type"]
+		},
+		{
+			"id": "reflection_runtime_api",
+			"title": "Reflection Runtime API",
+			"recommendedAction": "Replace reflection/introspection with typed fields/enums/interfaces in metal paths.",
+			"blockerCount": 1,
+			"occurrenceCount": 18,
+			"moduleCount": 1,
+			"totalWeight": 30,
+			"modules": ["haxe.EnumTools"],
+			"blockerIds": ["reflection_runtime_api:Type"]
+		},
+		{
+			"id": "policy_toggle",
+			"title": "Policy Toggle",
+			"recommendedAction": "Remove fallback compatibility defines to enforce metal-clean guarantees.",
+			"blockerCount": 1,
+			"occurrenceCount": 1,
+			"moduleCount": 1,
+			"totalWeight": 12,
+			"modules": ["<global>"],
+			"blockerIds": ["metal_allow_fallback"]
+		}
+	],
+	"modules": [
+		{
+			"module": "haxe.EnumTools",
+			"score": 52,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "reflection_runtime_api:Type",
+					"category": "reflection",
+					"summary": "Uses reflection/runtime-introspection API `Type`.",
+					"fix": "Replace reflection lookups with typed fields/enums/interfaces in metal paths.",
+					"occurrences": 18,
+					"weight": 30
+				},
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 167,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "Any",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 1,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "Array",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 8,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "Main",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 7,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "Math",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 6,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "Std",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 5,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "StdTypes",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 1,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "StringBuf",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 13,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "StringTools",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 51,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "Sys",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 75,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "SysTypes",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 1,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "Type",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 15,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.BoundaryTypes",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 12,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.CallStack",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 36,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.Constraints",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 4,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.Exception",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 18,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.Int32",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 100,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.Int64",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 336,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.Int64Helper",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 10,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.Log",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 48,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.PosInfos",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 1,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.ds.EnumValueMap",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 40,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.ds.IntMap",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 16,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.ds.ObjectMap",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 18,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.ds.StringMap",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 16,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.io.BytesBuffer",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 22,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.io.Eof",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 2,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.io.Error",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 1,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.io.FPHelper",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 8,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.io.Input",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 51,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.io.Output",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 26,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.iterators.StringIterator",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 4,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "haxe.iterators.StringKeyValueIterator",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 4,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "hxrt.sys.NativeSys",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 2,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "rust.Ref",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 4,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "sys.io.Stderr",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 11,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "sys.io.Stdin",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 12,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "sys.io.Stdout",
+			"score": 82,
+			"metalReady": false,
+			"blockers": [
+				{
+					"id": "dynamic_type",
+					"category": "dynamic_boundary",
+					"summary": "Uses `Dynamic`-typed values (not statically metal-safe).",
+					"fix": "Convert runtime payloads to typed structures immediately after boundary crossing.",
+					"occurrences": 11,
+					"weight": 18
+				}
+			]
+		},
+		{
+			"module": "Class",
+			"score": 100,
+			"metalReady": true,
+			"blockers": [
+			]
+		},
+		{
+			"module": "Enum",
+			"score": 100,
+			"metalReady": true,
+			"blockers": [
+			]
+		},
+		{
+			"module": "EnumValue",
+			"score": 100,
+			"metalReady": true,
+			"blockers": [
+			]
+		},
+		{
+			"module": "Map",
+			"score": 100,
+			"metalReady": true,
+			"blockers": [
+			]
+		},
+		{
+			"module": "String",
+			"score": 100,
+			"metalReady": true,
+			"blockers": [
+			]
+		},
+		{
+			"module": "haxe.ds.Map",
+			"score": 100,
+			"metalReady": true,
+			"blockers": [
+			]
+		},
+		{
+			"module": "haxe.io.Bytes",
+			"score": 100,
+			"metalReady": true,
+			"blockers": [
+			]
+		},
+		{
+			"module": "haxe.io.BytesData",
+			"score": 100,
+			"metalReady": true,
+			"blockers": [
+			]
+		},
+		{
+			"module": "haxe.io.Encoding",
+			"score": 100,
+			"metalReady": true,
+			"blockers": [
+			]
+		},
+		{
+			"module": "hxrt.string.NativeString",
+			"score": 100,
+			"metalReady": true,
+			"blockers": [
+			]
+		},
+		{
+			"module": "rust.HashMap",
+			"score": 100,
+			"metalReady": true,
+			"blockers": [
+			]
+		},
+		{
+			"module": "rust.Option",
+			"score": 100,
+			"metalReady": true,
+			"blockers": [
+			]
+		},
+		{
+			"module": "rust._internal.MapStorageTools",
+			"score": 100,
+			"metalReady": true,
+			"blockers": [
+			]
+		}
+	]
+}

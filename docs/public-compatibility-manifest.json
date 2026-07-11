@@ -527,7 +527,7 @@
       "id": "report-json",
       "class": "qualified-stable-candidate",
       "status": "active",
-      "qualification": "Machine-readable JSON only; consumers must ignore unknown fields. Full schemas remain a major-1 blocker.",
+      "qualification": "Machine-readable JSON only; consumers must ignore unknown fields. Versioned schemas and compatibility baselines protect the admitted shape.",
       "protectedContract": [
         "filename",
         "schemaVersion",
@@ -537,6 +537,7 @@
       ],
       "evidence": [
         "docs/profiles.md",
+        "docs/generated-consumer-contract.md",
         "haxe_rust-ykls.11"
       ],
       "exclusions": [

@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:reflaxe-rust:schema:runtime-plan:v4",
+  "title": "reflaxe.rust runtime_plan.json schema v4",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schemaVersion",
+    "backendId",
+    "runtimeId",
+    "contract",
+    "familyStdPin",
+    "mode",
+    "noHxrt",
+    "useDefaultFeatures",
+    "inferenceDisabled",
+    "manualFeatures",
+    "selectedFeatures",
+    "reasons",
+    "runtimeRequirements",
+    "fallbackSummary",
+    "usedModuleCount",
+    "hxrtDependencyLine"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 4 },
+    "backendId": { "const": "reflaxe.rust" },
+    "runtimeId": { "const": "hxrt" },
+    "contract": { "enum": ["portable", "metal"] },
+    "familyStdPin": { "$ref": "#/$defs/familyStdPin" },
+    "mode": { "enum": ["no_hxrt", "default_features", "selective"] },
+    "noHxrt": { "type": "boolean" },
+    "useDefaultFeatures": { "type": "boolean" },
+    "inferenceDisabled": { "type": "boolean" },
+    "manualFeatures": { "type": "array", "items": { "$ref": "#/$defs/feature" } },
+    "selectedFeatures": { "type": "array", "items": { "$ref": "#/$defs/feature" } },
+    "reasons": { "type": "array", "items": { "$ref": "#/$defs/featureReason" } },
+    "runtimeRequirements": { "type": "array", "items": { "$ref": "#/$defs/runtimeRequirement" } },
+    "fallbackSummary": { "$ref": "#/$defs/fallbackSummary" },
+    "usedModuleCount": { "type": "integer", "minimum": 0 },
+    "hxrtDependencyLine": { "type": "string" }
+  },
+  "$defs": {
+    "feature": { "type": "string", "minLength": 1 },
+    "reasonKind": {
+      "enum": [
+        "object_identity",
+        "reference_mutation",
+        "dynamic",
+        "reflection",
+        "anonymous_object",
+        "exception",
+        "nullable_compat",
+        "shared_closure_cell",
+        "platform_abstraction",
+        "haxe_array_semantics",
+        "haxe_string_semantics"
+      ]
+    },
+    "familyStdPin": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["found", "pinFile", "name", "version", "source", "migrationMode"],
+      "properties": {
+        "found": { "type": "boolean" },
+        "pinFile": { "type": "string" },
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "source": { "type": "string" },
+        "migrationMode": { "type": "string" }
+      }
+    },
+    "featureReason": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["feature", "sourceKind", "source"],
+      "properties": {
+        "feature": { "$ref": "#/$defs/feature" },
+        "sourceKind": { "enum": ["module", "define", "dependency_edge"] },
+        "source": { "type": "string" }
+      }
+    },
+    "runtimeRequirement": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "reasonKind",
+        "sourceKind",
+        "sourceModule",
+        "sourceSpan",
+        "surfaceId",
+        "requiresHxrt",
+        "noHxrtBlocked",
+        "message"
+      ],
+      "properties": {
+        "reasonKind": { "$ref": "#/$defs/reasonKind" },
+        "sourceKind": { "enum": ["module", "define"] },
+        "sourceModule": { "type": "string" },
+        "sourceSpan": { "type": "string" },
+        "surfaceId": { "type": ["string", "null"] },
+        "requiresHxrt": { "type": "boolean" },
+        "noHxrtBlocked": { "type": "boolean" },
+        "message": { "type": "string" }
+      }
+    },
+    "fallbackSummary": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["requiresHxrt", "blockedByNoHxrt", "reasonKinds"],
+      "properties": {
+        "requiresHxrt": { "type": "boolean" },
+        "blockedByNoHxrt": { "type": "boolean" },
+        "reasonKinds": { "type": "array", "items": { "$ref": "#/$defs/reasonKind" } }
+      }
+    }
+  }
+}

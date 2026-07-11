@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:reflaxe-rust:schema:optimizer-plan:v2",
+  "title": "reflaxe.rust optimizer_plan.json schema v2",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schemaVersion",
+    "backendId",
+    "contract",
+    "familyStdPin",
+    "executedPasses",
+    "applied",
+    "skipped",
+    "appliedTotal",
+    "skippedTotal",
+    "cloneElisions",
+    "loopOptimizations",
+    "usedModuleCount"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "backendId": { "const": "reflaxe.rust" },
+    "contract": { "enum": ["portable", "metal"] },
+    "familyStdPin": { "$ref": "#/$defs/familyStdPin" },
+    "executedPasses": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "normalize",
+          "statement_cleanup",
+          "mut_inference",
+          "clone_elision",
+          "borrow_scope_tightening",
+          "metal_restrictions"
+        ]
+      }
+    },
+    "applied": { "type": "array", "items": { "$ref": "#/$defs/appliedMetric" } },
+    "skipped": { "type": "array", "items": { "$ref": "#/$defs/skippedMetric" } },
+    "appliedTotal": { "$ref": "#/$defs/count" },
+    "skippedTotal": { "$ref": "#/$defs/count" },
+    "cloneElisions": { "$ref": "#/$defs/count" },
+    "loopOptimizations": { "$ref": "#/$defs/count" },
+    "usedModuleCount": { "$ref": "#/$defs/count" }
+  },
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0 },
+    "familyStdPin": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["found", "pinFile", "name", "version", "source", "migrationMode"],
+      "properties": {
+        "found": { "type": "boolean" },
+        "pinFile": { "type": "string" },
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "source": { "type": "string" },
+        "migrationMode": { "type": "string" }
+      }
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "count"],
+      "properties": {
+        "id": { "type": "string" },
+        "count": { "$ref": "#/$defs/count" }
+      }
+    },
+    "appliedMetricId": {
+      "enum": [
+        "borrow_scope_tightening.applied.immediate_alias_inline",
+        "borrow_scope_tightening.applied.tail_alias_inline",
+        "clone_elision.applied.last_use_dynamic_from",
+        "clone_elision.applied.last_use_match_scrutinee",
+        "clone_elision.applied.literal_clone",
+        "clone_elision.applied.nested_clone",
+        "loop_optimizations.applied.array_iter_borrowed.desugared_for",
+        "loop_optimizations.applied.array_iter_borrowed.direct_for",
+        "loop_optimizations.applied.borrow_scope_tightening_immediate_alias_inline",
+        "loop_optimizations.applied.borrow_scope_tightening_tail_alias_inline"
+      ]
+    },
+    "skippedMetricId": {
+      "enum": [
+        "borrow_scope_tightening.skipped.alias_used_after_consumer",
+        "borrow_scope_tightening.skipped.consumer_not_rewritable",
+        "borrow_scope_tightening.skipped.tail_closure_consumer",
+        "borrow_scope_tightening.skipped.tail_local_target",
+        "borrow_scope_tightening.skipped.tail_non_single_use",
+        "clone_elision.skipped.last_use_dynamic_from.disabled_context",
+        "clone_elision.skipped.last_use_dynamic_from.missing_local_binding",
+        "clone_elision.skipped.last_use_dynamic_from.multiple_uses_in_expr",
+        "clone_elision.skipped.last_use_dynamic_from.non_movable_or_reference_typed",
+        "clone_elision.skipped.last_use_dynamic_from.non_simple_local_path",
+        "clone_elision.skipped.last_use_dynamic_from.path_used_after_stmt",
+        "clone_elision.skipped.last_use_match_scrutinee.missing_local_binding",
+        "clone_elision.skipped.last_use_match_scrutinee.multiple_uses_in_expr",
+        "clone_elision.skipped.last_use_match_scrutinee.non_movable_or_reference_typed",
+        "clone_elision.skipped.last_use_match_scrutinee.non_simple_local_path",
+        "clone_elision.skipped.last_use_match_scrutinee.path_used_after_stmt",
+        "loop_optimizations.skipped.alias_used_after_consumer",
+        "loop_optimizations.skipped.array_iter_borrowed.desugared_for.alias_hazard",
+        "loop_optimizations.skipped.array_iter_borrowed.direct_for.alias_hazard",
+        "loop_optimizations.skipped.array_iter_borrowed.direct_for.iterable_not_local",
+        "loop_optimizations.skipped.consumer_not_rewritable",
+        "loop_optimizations.skipped.tail_closure_consumer",
+        "loop_optimizations.skipped.tail_local_target",
+        "loop_optimizations.skipped.tail_non_single_use"
+      ]
+    },
+    "appliedMetric": {
+      "allOf": [
+        { "$ref": "#/$defs/metric" },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "id": { "$ref": "#/$defs/appliedMetricId" }
+          }
+        }
+      ]
+    },
+    "skippedMetric": {
+      "allOf": [
+        { "$ref": "#/$defs/metric" },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "id": { "$ref": "#/$defs/skippedMetricId" }
+          }
+        }
+      ]
+    }
+  }
+}

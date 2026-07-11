@@ -1,0 +1,408 @@
+{
+  "schemaVersion": 1,
+  "compatibilityBaseline": "test/compatibility-baselines/generated-consumer-contract-initial.json",
+  "unknownFieldPolicy": "consumers-must-ignore",
+  "markdownPolicy": "human-only-not-machine-contract",
+  "reports": [
+    {
+      "id": "metal-report-v1",
+      "filename": "metal_report.json",
+      "schemaVersion": 1,
+      "schema": "docs/schemas/metal-report-v1.schema.json",
+      "fixture": "test/contract/generated_reports/fixtures/metal_report.json",
+      "emissionDefine": "rust_metal_viability_report",
+      "protectedFields": [
+        { "path": "$.schemaVersion", "type": "integer" },
+        { "path": "$.profile", "type": "string" },
+        { "path": "$.overallScore", "type": "integer" },
+        { "path": "$.moduleCount", "type": "integer" },
+        { "path": "$.moduleReadyCount", "type": "integer" },
+        { "path": "$.blockerCount", "type": "integer" },
+        { "path": "$.globalBlockers", "type": "array" },
+        { "path": "$.issueClasses", "type": "array" },
+        { "path": "$.modules", "type": "array" }
+      ],
+      "stableIdentifiers": [
+        {
+          "path": "$.globalBlockers[*].category",
+          "values": [
+            { "id": "reflection", "meaning": "typed use of reflection or runtime-introspection APIs" },
+            { "id": "raw_fallback", "meaning": "generated output still contains raw fallback expression nodes" },
+            { "id": "dynamic_boundary", "meaning": "typed code crosses a Dynamic-compatible runtime boundary" },
+            { "id": "policy_toggle", "meaning": "a compile-time compatibility toggle weakens metal-clean enforcement" }
+          ]
+        },
+        {
+          "path": "$.issueClasses[*].id",
+          "values": [
+            { "id": "reflection_runtime_api", "meaning": "group of reflection and runtime-introspection blockers" },
+            { "id": "raw_codegen_fallback", "meaning": "group of raw code-generation fallback blockers" },
+            { "id": "dynamic_boundary", "meaning": "group of Dynamic-compatible boundary blockers" },
+            { "id": "policy_toggle", "meaning": "group of fallback-policy toggle blockers" },
+            { "id": "uncategorized", "meaning": "blocker category that lacks an admitted typed issue-class mapping" }
+          ]
+        }
+      ],
+      "deterministicOrdering": [
+        "globalBlockers and module blockers use weight-descending then id ordering",
+        "issueClasses use total-weight-descending then id ordering",
+        "modules use score-ascending then module-path ordering"
+      ]
+    },
+    {
+      "id": "contract-report-v6",
+      "filename": "contract_report.json",
+      "schemaVersion": 6,
+      "schema": "docs/schemas/contract-report-v6.schema.json",
+      "fixture": "test/contract/generated_reports/fixtures/contract_report.json",
+      "emissionDefine": "rust_contract_report",
+      "protectedFields": [
+        { "path": "$.schemaVersion", "type": "integer" },
+        { "path": "$.backendId", "type": "string" },
+        { "path": "$.contract", "type": "string" },
+        { "path": "$.familyStdPin", "type": "object" },
+        { "path": "$.strictBoundary", "type": "boolean" },
+        { "path": "$.strictExamples", "type": "boolean" },
+        { "path": "$.metalFallbackAllowed", "type": "boolean" },
+        { "path": "$.metalContractHardError", "type": "boolean" },
+        { "path": "$.noHxrt", "type": "boolean" },
+        { "path": "$.asyncEnabled", "type": "boolean" },
+        { "path": "$.nullableStrings", "type": "boolean" },
+        { "path": "$.portableNativeImportStrict", "type": "boolean" },
+        { "path": "$.portableNativeImportsDetected", "type": "boolean" },
+        { "path": "$.nativeImportHits", "type": "array" },
+        { "path": "$.nativeImportHitsTyped", "type": "array" },
+        { "path": "$.consumedSurfaces", "type": "array" },
+        { "path": "$.nativeRepresentationPlan", "type": "array" },
+        { "path": "$.usedModuleCount", "type": "integer" },
+        { "path": "$.warnings", "type": "array" },
+        { "path": "$.errors", "type": "array" }
+      ],
+      "stableIdentifiers": [
+        {
+          "path": "$.nativeImportHitsTyped[*].surfaceKind",
+          "values": [
+            { "id": "rust_native", "meaning": "typed usage of this backend's rust.* native surface" },
+            { "id": "target_native", "meaning": "typed usage of a different target-native namespace" }
+          ]
+        },
+        {
+          "path": "$.nativeImportHitsTyped[*].sourceKind",
+          "values": [
+            { "id": "typed_module_usage", "meaning": "entry came from Haxe/Reflaxe typed module usage" }
+          ]
+        },
+        {
+          "path": "$.consumedSurfaces[*].sourceContract",
+          "values": [
+            { "id": "portable_facade", "meaning": "portable Haxe facade with an admitted backend representation" }
+          ]
+        },
+        {
+          "path": "$.consumedSurfaces[*].fallbackPolicy",
+          "values": [
+            { "id": "error_or_reasoned_runtime_requirement", "meaning": "unsupported lowering must fail or emit a semantic runtime-requirement reason" }
+          ]
+        },
+        {
+          "path": "$.nativeRepresentationPlan[*].reason",
+          "values": [
+            { "id": "admitted_portable_facade", "meaning": "representation was selected from an explicit facade admission" }
+          ]
+        }
+      ],
+      "deterministicOrdering": [
+        "native import hits, consumed surfaces, representation decisions, warnings, and errors are sorted by their documented stable keys"
+      ]
+    },
+    {
+      "id": "runtime-plan-v4",
+      "filename": "runtime_plan.json",
+      "schemaVersion": 4,
+      "schema": "docs/schemas/runtime-plan-v4.schema.json",
+      "fixture": "test/contract/generated_reports/fixtures/runtime_plan.json",
+      "emissionDefine": "rust_runtime_plan_report",
+      "protectedFields": [
+        { "path": "$.schemaVersion", "type": "integer" },
+        { "path": "$.backendId", "type": "string" },
+        { "path": "$.runtimeId", "type": "string" },
+        { "path": "$.contract", "type": "string" },
+        { "path": "$.familyStdPin", "type": "object" },
+        { "path": "$.mode", "type": "string" },
+        { "path": "$.noHxrt", "type": "boolean" },
+        { "path": "$.useDefaultFeatures", "type": "boolean" },
+        { "path": "$.inferenceDisabled", "type": "boolean" },
+        { "path": "$.manualFeatures", "type": "array" },
+        { "path": "$.selectedFeatures", "type": "array" },
+        { "path": "$.reasons", "type": "array" },
+        { "path": "$.runtimeRequirements", "type": "array" },
+        { "path": "$.fallbackSummary", "type": "object" },
+        { "path": "$.usedModuleCount", "type": "integer" },
+        { "path": "$.hxrtDependencyLine", "type": "string" }
+      ],
+      "stableIdentifiers": [
+        {
+          "path": "$.runtimeRequirements[*].reasonKind",
+          "values": [
+            { "id": "object_identity", "meaning": "Haxe object identity requires runtime-managed reference semantics" },
+            { "id": "reference_mutation", "meaning": "shared reference mutation requires runtime-managed storage" },
+            { "id": "dynamic", "meaning": "Dynamic-compatible values require runtime representation" },
+            { "id": "reflection", "meaning": "reflection or runtime introspection requires runtime support" },
+            { "id": "anonymous_object", "meaning": "anonymous runtime objects require runtime object storage" },
+            { "id": "exception", "meaning": "Haxe exception payload semantics require runtime support" },
+            { "id": "nullable_compat", "meaning": "nullable compatibility mode requires runtime-backed null representation" },
+            { "id": "shared_closure_cell", "meaning": "captured shared mutation requires a runtime-managed closure cell" },
+            { "id": "platform_abstraction", "meaning": "portable platform APIs require a runtime abstraction" },
+            { "id": "haxe_array_semantics", "meaning": "Haxe Array semantics require runtime array representation" },
+            { "id": "haxe_string_semantics", "meaning": "Haxe String compatibility requires runtime string representation" }
+          ]
+        },
+        {
+          "path": "$.mode",
+          "values": [
+            { "id": "no_hxrt", "meaning": "the generated crate omits the bundled Haxe runtime" },
+            { "id": "default_features", "meaning": "the hxrt dependency uses its default Cargo feature set" },
+            { "id": "selective", "meaning": "the hxrt dependency uses an explicitly selected feature set" }
+          ]
+        },
+        {
+          "path": "$.reasons[*].sourceKind",
+          "values": [
+            { "id": "module", "meaning": "feature selection follows typed module usage" },
+            { "id": "define", "meaning": "feature selection follows an explicit compiler define" },
+            { "id": "dependency_edge", "meaning": "feature selection follows an internal hxrt feature dependency" }
+          ]
+        }
+      ],
+      "deterministicOrdering": [
+        "manual and selected features are lexicographically sorted",
+        "feature reasons and runtime requirements are sorted by their documented tuple keys",
+        "fallback reason kinds are unique and lexicographically sorted"
+      ]
+    },
+    {
+      "id": "optimizer-plan-v2",
+      "filename": "optimizer_plan.json",
+      "schemaVersion": 2,
+      "schema": "docs/schemas/optimizer-plan-v2.schema.json",
+      "fixture": "test/contract/generated_reports/fixtures/optimizer_plan.json",
+      "emissionDefine": "rust_optimizer_plan_report",
+      "protectedFields": [
+        { "path": "$.schemaVersion", "type": "integer" },
+        { "path": "$.backendId", "type": "string" },
+        { "path": "$.contract", "type": "string" },
+        { "path": "$.familyStdPin", "type": "object" },
+        { "path": "$.executedPasses", "type": "array" },
+        { "path": "$.applied", "type": "array" },
+        { "path": "$.skipped", "type": "array" },
+        { "path": "$.appliedTotal", "type": "integer" },
+        { "path": "$.skippedTotal", "type": "integer" },
+        { "path": "$.cloneElisions", "type": "integer" },
+        { "path": "$.loopOptimizations", "type": "integer" },
+        { "path": "$.usedModuleCount", "type": "integer" }
+      ],
+      "stableIdentifiers": [
+        {
+          "path": "$.executedPasses[*]",
+          "values": [
+            { "id": "normalize", "meaning": "normalizes the lowered Rust AST before later optimization passes" },
+            { "id": "statement_cleanup", "meaning": "removes or reshapes statements made redundant by diverging control flow" },
+            { "id": "mut_inference", "meaning": "infers emitted Rust local mutability" },
+            { "id": "clone_elision", "meaning": "removes proven-unnecessary clone operations" },
+            { "id": "borrow_scope_tightening", "meaning": "shortens eligible generated borrow lifetimes" },
+            { "id": "metal_restrictions", "meaning": "audits metal output for forbidden fallback shapes" }
+          ]
+        },
+        {
+          "path": "$.applied[*].id",
+          "values": [
+            { "id": "borrow_scope_tightening.applied.immediate_alias_inline", "meaning": "an immediately consumed borrow alias was inlined" },
+            { "id": "borrow_scope_tightening.applied.tail_alias_inline", "meaning": "a tail-expression borrow alias was inlined" },
+            { "id": "clone_elision.applied.last_use_dynamic_from", "meaning": "a clone at the last-use Dynamic conversion boundary was removed" },
+            { "id": "clone_elision.applied.last_use_match_scrutinee", "meaning": "a clone at a last-use match scrutinee was removed" },
+            { "id": "clone_elision.applied.literal_clone", "meaning": "a clone of a literal value was removed" },
+            { "id": "clone_elision.applied.nested_clone", "meaning": "a redundant nested clone was collapsed" },
+            { "id": "loop_optimizations.applied.array_iter_borrowed.desugared_for", "meaning": "a desugared Array loop now iterates through a borrowed view" },
+            { "id": "loop_optimizations.applied.array_iter_borrowed.direct_for", "meaning": "a direct Array loop now iterates through a borrowed view" },
+            { "id": "loop_optimizations.applied.borrow_scope_tightening_immediate_alias_inline", "meaning": "loop-local immediate borrow alias tightening was applied" },
+            { "id": "loop_optimizations.applied.borrow_scope_tightening_tail_alias_inline", "meaning": "loop-local tail borrow alias tightening was applied" }
+          ]
+        },
+        {
+          "path": "$.skipped[*].id",
+          "values": [
+            { "id": "borrow_scope_tightening.skipped.alias_used_after_consumer", "meaning": "the borrow alias remains live after its immediate consumer" },
+            { "id": "borrow_scope_tightening.skipped.consumer_not_rewritable", "meaning": "the immediate consumer shape cannot safely inline the borrow" },
+            { "id": "borrow_scope_tightening.skipped.tail_closure_consumer", "meaning": "the tail consumer contains a closure boundary" },
+            { "id": "borrow_scope_tightening.skipped.tail_local_target", "meaning": "the tail borrow target is not an admitted rewrite target" },
+            { "id": "borrow_scope_tightening.skipped.tail_non_single_use", "meaning": "the tail borrow alias is not consumed exactly once" },
+            { "id": "clone_elision.skipped.last_use_dynamic_from.disabled_context", "meaning": "last-use Dynamic conversion analysis lacked an enabled function context" },
+            { "id": "clone_elision.skipped.last_use_dynamic_from.missing_local_binding", "meaning": "the Dynamic conversion operand has no tracked local binding" },
+            { "id": "clone_elision.skipped.last_use_dynamic_from.multiple_uses_in_expr", "meaning": "the Dynamic conversion operand is used multiple times in its expression" },
+            { "id": "clone_elision.skipped.last_use_dynamic_from.non_movable_or_reference_typed", "meaning": "the Dynamic conversion operand cannot be moved safely" },
+            { "id": "clone_elision.skipped.last_use_dynamic_from.non_simple_local_path", "meaning": "the Dynamic conversion operand is not a simple local path" },
+            { "id": "clone_elision.skipped.last_use_dynamic_from.path_used_after_stmt", "meaning": "the Dynamic conversion operand is read after the statement" },
+            { "id": "clone_elision.skipped.last_use_match_scrutinee.missing_local_binding", "meaning": "the match scrutinee has no tracked local binding" },
+            { "id": "clone_elision.skipped.last_use_match_scrutinee.multiple_uses_in_expr", "meaning": "the match scrutinee local is used multiple times in its expression" },
+            { "id": "clone_elision.skipped.last_use_match_scrutinee.non_movable_or_reference_typed", "meaning": "the match scrutinee local cannot be moved safely" },
+            { "id": "clone_elision.skipped.last_use_match_scrutinee.non_simple_local_path", "meaning": "the match scrutinee is not a simple local path" },
+            { "id": "clone_elision.skipped.last_use_match_scrutinee.path_used_after_stmt", "meaning": "the match scrutinee local is read after the statement" },
+            { "id": "loop_optimizations.skipped.alias_used_after_consumer", "meaning": "a loop-local borrow alias remains live after its consumer" },
+            { "id": "loop_optimizations.skipped.array_iter_borrowed.desugared_for.alias_hazard", "meaning": "a desugared Array loop has a mutation or alias hazard" },
+            { "id": "loop_optimizations.skipped.array_iter_borrowed.direct_for.alias_hazard", "meaning": "a direct Array loop has a mutation or alias hazard" },
+            { "id": "loop_optimizations.skipped.array_iter_borrowed.direct_for.iterable_not_local", "meaning": "a direct Array loop iterable is not a simple local" },
+            { "id": "loop_optimizations.skipped.consumer_not_rewritable", "meaning": "a loop-local borrow consumer cannot be rewritten safely" },
+            { "id": "loop_optimizations.skipped.tail_closure_consumer", "meaning": "a loop tail borrow consumer contains a closure boundary" },
+            { "id": "loop_optimizations.skipped.tail_local_target", "meaning": "a loop tail borrow target is not an admitted rewrite target" },
+            { "id": "loop_optimizations.skipped.tail_non_single_use", "meaning": "a loop tail borrow alias is not consumed exactly once" }
+          ]
+        }
+      ],
+      "deterministicOrdering": [
+        "executed passes preserve compiler pipeline order",
+        "applied and skipped metric entries are sorted by metric id"
+      ]
+    }
+  ],
+  "generatedArtifacts": [
+    {
+      "id": "default-cargo-crate",
+      "publicContract": "generated-crate",
+      "protectedContract": [
+        "Cargo.toml and src/main.rs are emitted at the generated crate root",
+        "the default output is a Rust 2021 binary crate",
+        "rust_crate controls the generated Cargo package name",
+        "the default runtime-backed crate includes ./hxrt and its path dependency",
+        "documented Cargo subcommands and flags are forwarded and non-zero Cargo status fails Haxe compilation",
+        "the four admitted JSON report filenames are emitted at the crate root when enabled"
+      ],
+      "evidenceFiles": [
+        "test/snapshot/portable_profile_smoke/intended/Cargo.toml",
+        "test/snapshot/portable_profile_smoke/intended/src/main.rs",
+        "scripts/ci/check-cargo-failure-propagation.sh"
+      ],
+      "validationCommands": [
+        "npm run test -- --case portable_profile_smoke",
+        "npm run test:cargo-failure-propagation"
+      ],
+      "exclusions": [
+        "exact whitespace or rustfmt output",
+        "private generated helper names",
+        "temporary file ordering"
+      ]
+    },
+    {
+      "id": "nested-module-crate-and-root-aliases",
+      "publicContract": "generated-crate",
+      "protectedContract": [
+        "rust_nested_modules emits package-shaped Rust source paths",
+        "root compatibility alias modules remain available for documented handwritten extra-source migration"
+      ],
+      "evidenceFiles": [
+        "test/snapshot/nested_module_output/compile.hxml",
+        "test/snapshot/nested_module_output/intended/src/main.rs"
+      ],
+      "validationCommands": [
+        "npm run test -- --case nested_module_output"
+      ],
+      "exclusions": [
+        "private module declaration ordering",
+        "internal helper module paths"
+      ]
+    },
+    {
+      "id": "no-hxrt-crate",
+      "publicContract": "generated-crate",
+      "protectedContract": [
+        "eligible metal rust_no_hxrt output omits the hxrt dependency and bundled hxrt subtree",
+        "generated no-hxrt source contains no hxrt paths",
+        "ineligible runtime-dependent programs fail before a misleading runtime-free crate is admitted"
+      ],
+      "evidenceFiles": [
+        "scripts/ci/check-metal-policy.sh",
+        "test/negative/metal_no_hxrt_runtime_boundary/compile.hxml"
+      ],
+      "validationCommands": [
+        "bash scripts/ci/check-metal-policy.sh"
+      ],
+      "exclusions": [
+        "portable-profile no-hxrt support",
+        "blanket Haxe semantic parity without hxrt"
+      ]
+    },
+    {
+      "id": "custom-cargo-and-extra-source-ownership",
+      "publicContract": "generated-crate",
+      "protectedContract": [
+        "structured @:rustCargo declarations merge compatible dependency fields and feature sets deterministically",
+        "conflicting structured dependency declarations fail compilation",
+        "rust_cargo_toml copies the consumer-owned manifest and substitutes {{crate_name}} only",
+        "@:rustExtraSrc, @:rustExtraSrcDir, and rust_extra_src copy admitted Rust modules and include their module declarations"
+      ],
+      "evidenceFiles": [
+        "src/reflaxe/rust/macros/CargoMetaRegistry.hx",
+        "src/reflaxe/rust/macros/RustExtraSrcRegistry.hx",
+        "test/contract/generated_artifacts/compile.hxml",
+        "test/contract/generated_artifacts/native/artifact_helper.rs",
+        "test/contract/generated_artifacts/native_dir/secondary_helper.rs",
+        "test/negative/rust_cargo_structured_conflict/compile.hxml",
+        "test/contract/custom_cargo/Cargo.template.toml",
+        "scripts/ci/check-generated-artifact-contract.sh",
+        "test/snapshot/metal_extern_lifetime_island/compile.hxml",
+        "test/snapshot/rust_interop_extern/compile.hxml"
+      ],
+      "validationCommands": [
+        "npm run test:generated-artifact-contract",
+        "npm run test -- --case metal_extern_lifetime_island",
+        "npm run test -- --case rust_interop_extern"
+      ],
+      "exclusions": [
+        "semantic validity of consumer-authored Rust or Cargo TOML",
+        "raw-string Cargo declarations beyond literal passthrough"
+      ]
+    },
+    {
+      "id": "rust-test-wrapper-layout",
+      "publicContract": "generated-private",
+      "protectedContract": [
+        "@:rustTest metadata forms, validation, serial default, and native cargo test behavior are public",
+        "the generated __hx_tests wrapper name and internal layout are private"
+      ],
+      "evidenceFiles": [
+        "docs/haxe-rust-tests.md",
+        "examples/bytes_ops/BytesTests.hx"
+      ],
+      "validationCommands": [
+        "npm run test:template-smoke"
+      ],
+      "exclusions": [
+        "generated test-wrapper names",
+        "generated test-wrapper layout"
+      ]
+    },
+    {
+      "id": "haxelib-release-package",
+      "publicContract": "generated-package",
+      "protectedContract": [
+        "the release asset is a deterministic safe-path Haxelib-shaped ZIP",
+        "the package installs through Haxelib/lix and compiles with -lib reflaxe.rust",
+        "packaged src/**/*.cross.hx files are staged with the documented transformation",
+        "compiler src, runtime, and vendor roots plus staged version and release provenance metadata are present",
+        "source-checkout and installed-package classpath behavior remain documented and tested"
+      ],
+      "evidenceFiles": [
+        "scripts/release/package-haxelib.sh",
+        "scripts/ci/package-smoke.sh",
+        "test/scripts/release-artifact.test.js"
+      ],
+      "validationCommands": [
+        "npm run test:release-artifact",
+        "npm run test:package-smoke"
+      ],
+      "exclusions": [
+        "archive compressor implementation details that do not change deterministic bytes",
+        "source-checkout development version literals"
+      ]
+    }
+  ]
+}
