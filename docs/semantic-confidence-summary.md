@@ -24,7 +24,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
 - Portable candidate importable modules: `184`
 - Portable candidate covered in Tier2: `184`
 - Portable candidate missing from Tier2: `0`
-- Portable semantic-diff cases: `18`
+- Portable semantic-diff cases: `19`
 - Lane semantic-diff cases: `2`
 - Snapshot cases: `138`
 - Compile/inventory buckets: `2`
@@ -262,7 +262,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
 
 ## Discovered Semantic-Diff Suites
 
-- Portable semantic-diff cases (18): `bytes_extended_api`, `closure_capture_mutation`, `exception_dynamic_payload`, `exceptions_typed_dynamic`, `function_value_mutable_callbacks`, `int64_parity`, `json_stringify_replacer`, `map_key_value_iterator_manual`, `null_string_concat`, `portable_option_result_basics`, `reflect_dynamic_receivers`, `sys_getenv_null`, `sys_http_callback_contract`, `sys_net_failure_paths`, `sys_process_failure_paths`, `this_method_closure`, `typed_catch_subclass`, `virtual_dispatch`
+- Portable semantic-diff cases (19): `bytes_extended_api`, `closure_capture_mutation`, `exception_dynamic_payload`, `exceptions_typed_dynamic`, `function_value_mutable_callbacks`, `int64_parity`, `json_stringify_replacer`, `map_key_value_iterator_manual`, `null_string_concat`, `portable_option_result_basics`, `reflect_dynamic_receivers`, `sys_getenv_null`, `sys_http_callback_contract`, `sys_net_failure_paths`, `sys_process_failure_paths`, `this_method_closure`, `typed_catch_interface`, `typed_catch_subclass`, `virtual_dispatch`
 - Lane semantic-diff cases (2): `lane_clean_arithmetic`, `lane_clean_dispatch`
 
 ## Interpretation Rule

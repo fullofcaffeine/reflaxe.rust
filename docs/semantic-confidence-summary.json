@@ -16,7 +16,7 @@
     "portableCandidateImportableModules": 184,
     "portableCandidateCoveredInTier2": 184,
     "portableCandidateMissingFromTier2": 0,
-    "portableSemanticDiffCases": 18,
+    "portableSemanticDiffCases": 19,
     "laneSemanticDiffCases": 2,
     "snapshotCases": 138,
     "bucketsByClass": {
@@ -66,6 +66,7 @@
       "sys_net_failure_paths",
       "sys_process_failure_paths",
       "this_method_closure",
+      "typed_catch_interface",
       "typed_catch_subclass",
       "virtual_dispatch"
     ],
