@@ -2,6 +2,7 @@
 name = "hx_app"
 version = "0.0.1"
 edition = "2021"
+rust-version = "1.96.0"
 
 [dependencies]
 hxrt = { path = "./hxrt", default-features = false, features = ["async", "async_tokio", "core", "io"] }

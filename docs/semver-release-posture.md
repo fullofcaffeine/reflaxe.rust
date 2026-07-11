@@ -47,8 +47,8 @@ At that review, the evidence was not yet a sufficient broad stability window for
 - TLS, DB, higher-level scheduler behavior, async, and Windows remain intentionally bounded by
   targeted or smoke-level evidence,
 - the representative app gate still needs runtime workflow assertions beyond Cargo check/test,
-- the supported Rust toolchain/MSRV policy and supported-platform promise need an explicit stable
-  contract,
+- the supported-platform promise remains deliberately qualified; the Rust minimum/release/current
+  lanes are now governed by the explicit [Rust Toolchain Policy](rust-toolchain-policy.md),
 - and recent compiler/API change velocity has been high enough that sustained regression-free
   validation is more valuable than a major-version deadline.
 

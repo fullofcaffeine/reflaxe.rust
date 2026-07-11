@@ -15,7 +15,9 @@ not mean this repo currently publishes to haxelib.org.
 
 - Node.js/npm, for `lix` and project scripts.
 - Haxe 4.3.7, installed through `lix` below.
-- Rust toolchain with `cargo`.
+- Rust `1.96.0` or newer with `cargo`. `rust-toolchain.toml` selects that supported floor for
+  repository work; release automation independently activates the reviewed release patch. See
+  [Rust Toolchain Policy](rust-toolchain-policy.md).
 - Git, if installing directly from a GitHub release tag.
 
 ## Path 1: Install In An App With lix

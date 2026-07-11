@@ -2,5 +2,6 @@
 name = "profile_storyboard_native"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.96.0"
 
 [dependencies]

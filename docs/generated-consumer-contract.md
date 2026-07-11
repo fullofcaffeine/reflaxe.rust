@@ -55,7 +55,8 @@ match byte-for-byte across the two compilations.
 
 The generated-crate contract protects:
 
-- `Cargo.toml` and `src/main.rs` root locations, Rust 2021 binary default, and crate-name override;
+- `Cargo.toml` and `src/main.rs` root locations, Rust 2021 binary default, declared minimum
+  `rust-version`, and crate-name override;
 - the default `./hxrt` subtree/path dependency and proven `rust_no_hxrt` omission boundary;
 - nested source paths plus documented root compatibility aliases;
 - structured `@:rustCargo` merge/conflict behavior;

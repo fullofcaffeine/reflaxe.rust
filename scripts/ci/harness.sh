@@ -420,6 +420,9 @@ run_conformance_group() {
 }
 
 run_policy_group() {
+  run_stage "Rust toolchain minimum and generated Cargo contract" bash scripts/ci/check-rust-toolchain-floor.sh
+  intermediate_cleanup "rust-toolchain-floor"
+
   run_stage "generated report schema and repeatability contract" bash scripts/ci/check-generated-report-contract.sh
   intermediate_cleanup "generated-report-contract"
 

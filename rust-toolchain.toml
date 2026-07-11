@@ -1,0 +1,6 @@
+# Generated from rust-toolchain-policy.json by scripts/ci/rust-toolchain-policy.js.
+# Local repository work defaults to the supported Rust floor. CI activates each declared lane explicitly.
+[toolchain]
+channel = "1.96.0"
+profile = "minimal"
+components = ["rustfmt", "clippy"]

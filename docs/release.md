@@ -137,7 +137,9 @@ make normal publication convenient.
 
 ## Local Checks
 
-Use the supported Node `22.14.x` toolchain (CI pins `22.14.0`).
+Use the supported Node `22.14.x` toolchain (CI pins `22.14.0`). `rust-toolchain.toml` selects the
+tested Rust minimum for ordinary repository checks; release and repair workflows explicitly
+activate the exact release patch from [Rust Toolchain Policy](rust-toolchain-policy.md).
 
 ```bash
 npm run guard:release-policy

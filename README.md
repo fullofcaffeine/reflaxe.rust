@@ -103,7 +103,11 @@ For the full generated-app loop, see [Workflow](docs/workflow.md#new-project-sca
 
 ## Quick Start (First Successful Run)
 
-1. Install dependencies (toolchain is pinned via lix):
+Prerequisites include Rust `1.96.0` or newer. `rust-toolchain.toml` makes that supported floor the
+repository default; release automation separately pins its reviewed patch toolchain. See the
+[Rust toolchain policy](docs/rust-toolchain-policy.md).
+
+1. Install dependencies (the Haxe toolchain is pinned via lix):
 
 ```bash
 npm install

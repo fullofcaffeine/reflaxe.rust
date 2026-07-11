@@ -19,12 +19,15 @@ Automated workflow:
 Jobs:
 
 1. Linux local-equivalent validation:
+   - exact minimum Rust lane from `rust-toolchain-policy.json`
    - `npm run docs:sync:progress`
    - `npm run docs:check:progress` (inside `scripts/ci/local.sh`)
    - `bash scripts/ci/local.sh` (includes Tier2 upstream stdlib sweep)
 2. Windows smoke validation:
+   - exact minimum Rust lane from the same policy
    - `bash scripts/ci/windows-smoke.sh`
 3. Codex Haxe/Rust killer-app QA:
+   - exact minimum Rust lane from the same policy
    - clones `https://github.com/fullofcaffeine/codex-hxrust` beside this repo
    - `npm run test:codex-hxrust`
    - regenerates portable and metal Rust from Haxe
@@ -35,6 +38,10 @@ The codex-hxrust job is currently a generated-Cargo compile/link/test-harness ga
 step becomes runtime smoke coverage as soon as codex-hxrust owns tests for the generated crates; if
 there are no app tests, the job still proves both profiles compile and link through Cargo, but does
 not claim full interactive runtime coverage.
+
+Normal push/PR CI also has a required rolling current-stable Rust compatibility job. It catches new
+compiler or lint incompatibilities without silently changing the minimum supported version. See
+[Rust Toolchain Policy](rust-toolchain-policy.md).
 
 ## PR CI harness topology
 
@@ -71,6 +78,7 @@ For each run, evidence is recorded in the workflow run summary (`$GITHUB_STEP_SU
 - pass/fail status for each job
 - run URL
 - command set executed
+- exact `rustc --version` used by each required evidence job
 - semantic-confidence counts that separate:
   - compile/inventory closure
   - targeted semantic/runtime buckets

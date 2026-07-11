@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "minimumSupportedRust": "1.96.0",
+  "releaseToolchain": "1.96.1",
+  "currentStableLane": "stable",
+  "generatedCargoRustVersion": "1.96.0",
+  "reviewCadenceWeeks": 12,
+  "minimumFloorRaiseNoticeDays": 30,
+  "floorRaiseRelease": "minor",
+  "setupActionCommit": "4be7066ada62dd38de10e7b70166bc74ed198c30",
+  "components": [
+    "rustfmt",
+    "clippy"
+  ]
+}

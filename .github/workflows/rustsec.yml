@@ -21,8 +21,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Setup Rust (stable)
-        uses: dtolnay/rust-toolchain@stable
+      - name: Resolve Rust toolchain policy
+        id: rust-policy
+        run: node scripts/ci/rust-toolchain-policy.js --github-output --activate release
+
+      - name: Setup reproducible release Rust
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30
+        with:
+          toolchain: ${{ steps.rust-policy.outputs.release }}
 
       - name: Install cargo-audit
         uses: taiki-e/install-action@v2

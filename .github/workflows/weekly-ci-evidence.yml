@@ -56,9 +56,14 @@ jobs:
           export PATH="$(pwd)/node_modules/.bin:$PATH"
           haxe -version
 
-      - name: Setup Rust (stable + rustfmt + clippy)
-        uses: dtolnay/rust-toolchain@stable
+      - name: Resolve Rust toolchain policy
+        id: rust-policy
+        run: node scripts/ci/rust-toolchain-policy.js --github-output --activate minimum
+
+      - name: Setup minimum Rust + rustfmt + clippy
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30
         with:
+          toolchain: ${{ steps.rust-policy.outputs.minimum }}
           components: rustfmt, clippy
 
       - name: Free runner disk space (before harness)
@@ -122,6 +127,7 @@ jobs:
         run: |
           set -euo pipefail
           run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          rust_version="$(rustc --version)"
           semantic_counts="$(node <<'NODE'
           const fs = require('fs')
           const summaryPath = '.cache/weekly-evidence/semantic-confidence-summary.json'
@@ -141,6 +147,7 @@ jobs:
             echo "## Weekly CI Evidence (Linux local equivalent)"
             echo "- Result: ${JOB_STATUS}"
             echo "- Commit: \`${{ github.sha }}\`"
+            echo "- Rust toolchain: \`${rust_version}\`"
             echo "- Run: ${run_url}"
             echo "- Commands:"
             echo "  - \`npm run docs:sync:progress\`"
@@ -179,9 +186,15 @@ jobs:
           export PATH="$(pwd)/node_modules/.bin:$PATH"
           haxe -version
 
-      - name: Setup Rust (stable + rustfmt + clippy)
-        uses: dtolnay/rust-toolchain@stable
+      - name: Resolve Rust toolchain policy
+        id: rust-policy
+        shell: bash
+        run: node scripts/ci/rust-toolchain-policy.js --github-output --activate minimum
+
+      - name: Setup minimum Rust + rustfmt + clippy
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30
         with:
+          toolchain: ${{ steps.rust-policy.outputs.minimum }}
           components: rustfmt, clippy
 
       - name: Run Windows smoke harness
@@ -198,10 +211,12 @@ jobs:
         run: |
           set -euo pipefail
           run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          rust_version="$(rustc --version)"
           {
             echo "## Weekly CI Evidence (Windows smoke)"
             echo "- Result: ${JOB_STATUS}"
             echo "- Commit: \`${{ github.sha }}\`"
+            echo "- Rust toolchain: \`${rust_version}\`"
             echo "- Run: ${run_url}"
             echo "- Command: \`bash scripts/ci/windows-smoke.sh\`"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -258,9 +273,14 @@ jobs:
           export PATH="$(pwd)/node_modules/.bin:$(pwd)/../codex-hxrust/node_modules/.bin:$PATH"
           haxe -version
 
-      - name: Setup Rust (stable + rustfmt)
-        uses: dtolnay/rust-toolchain@stable
+      - name: Resolve Rust toolchain policy
+        id: rust-policy
+        run: node haxe.rust/scripts/ci/rust-toolchain-policy.js --github-output --activate minimum
+
+      - name: Setup minimum Rust + rustfmt
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30
         with:
+          toolchain: ${{ steps.rust-policy.outputs.minimum }}
           components: rustfmt
 
       - name: Run codex-hxrust generated Cargo QA
@@ -278,11 +298,13 @@ jobs:
           run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           haxe_rust_sha="$(git -C haxe.rust rev-parse --short HEAD 2>/dev/null || echo unknown)"
           codex_hxrust_sha="$(git -C codex-hxrust rev-parse --short HEAD 2>/dev/null || echo unknown)"
+          rust_version="$(rustc --version)"
           {
             echo "## Weekly CI Evidence (codex-hxrust)"
             echo "- Result: ${JOB_STATUS}"
             echo "- haxe.rust commit: \`${haxe_rust_sha}\`"
             echo "- codex-hxrust commit: \`${codex_hxrust_sha}\`"
+            echo "- Rust toolchain: \`${rust_version}\`"
             echo "- Run: ${run_url}"
             echo "- Command: \`npm run test:codex-hxrust\`"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -574,12 +574,14 @@
       "protectedContract": [
         "listed root paths",
         "edition/default crate kind",
+        "generated Cargo rust-version under the admitted floor-update policy",
         "dependency merge/conflict behavior",
         "Cargo failure propagation"
       ],
       "evidence": [
         "docs/profiles.md",
         "docs/defines-reference.md",
+        "docs/rust-toolchain-policy.md",
         "haxe_rust-ykls.11"
       ],
       "exclusions": [

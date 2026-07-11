@@ -177,16 +177,19 @@ Migration evidence is required but cannot turn an incompatible change into a non
 - Haxe is pinned to `4.3.7`.
 - Repository/release automation uses Node `22.14.0` under the declared engine range.
 - Generated crates use Rust edition 2021.
-- CI validates current Rust stable; no historical MSRV is claimed.
+- Generated crates require Rust `1.96.0` or newer, and exact-minimum CI validates that floor.
+- `rust-toolchain.toml` defaults repository work to the exact minimum. Release automation
+  explicitly activates its reviewed patch toolchain, and a separate required lane validates
+  rolling current stable.
 - Linux is the primary full-validation CI platform.
 - Windows has a curated smoke-CI lane.
 - macOS currently has local contributor validation only and is not a CI-backed support lane.
 - None of those statements implies blanket cross-platform semantic parity.
 - `rust_target` is Cargo plumbing, not proof for every target triple or platform API.
 
-An enforced MSRV or equivalently reproducible pinned release-toolchain policy with an explicit
-support/update window remains mandatory before major-1 authorization. Existing task
-`haxe_rust-ykls.8` owns that decision.
+The complete support and floor-update contract is
+[`rust-toolchain-policy.md`](rust-toolchain-policy.md). It does not claim support for any historical
+Rust version below the tested floor.
 
 ## Migration and deprecation rules
 
@@ -220,8 +223,7 @@ remain free to improve. Diagnostics outside that explicit registry remain unadmi
 
 ## Known defers and decision
 
-Four correctly spaced weekly checkpoints have not elapsed. Toolchain policy remains an owned
-blocker for the later major-1 decision. Broader
+Four correctly spaced weekly checkpoints have not elapsed. Broader
 borrow provenance, platform parity, TLS/DB/network breadth, typed derive/where/associated-type work,
 portable no-hxrt, and generated native wrappers may remain explicitly qualified, experimental, or
 excluded rather than being rushed into scope.

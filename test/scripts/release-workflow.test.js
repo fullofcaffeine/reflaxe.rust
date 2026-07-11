@@ -25,7 +25,7 @@ function main() {
   assert(releaseStart !== -1, 'CI must contain a release job')
   const release = ci.slice(releaseStart)
   requireMatch(release, /if: github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/, 'release must be push/main only')
-  for (const required of ['security', 'rust-tooling', 'windows-smoke', 'rustsec-audit', 'test', 'tier2-stdlib-sweep']) {
+  for (const required of ['security', 'rust-tooling', 'rust-current-stable', 'windows-smoke', 'rustsec-audit', 'test', 'tier2-stdlib-sweep']) {
     requireMatch(release, new RegExp(`- ${required.replace('-', '\\-')}`), `release must wait for ${required}`)
   }
   requireMatch(release, /contents: write/, 'only the release job needs contents write authority')

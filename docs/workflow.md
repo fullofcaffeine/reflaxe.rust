@@ -71,6 +71,8 @@ cargo hx --project examples/chat_loopback --profile metal --action build --relea
 
 ## Recommended project workflow
 
+- Use Rust `1.96.0` or newer. Default generated Cargo manifests declare this floor; see
+  [Rust Toolchain Policy](rust-toolchain-policy.md) for the release pin and update cadence.
 - Keep `Cargo.lock` committed in your project (and use `-D rust_cargo_locked` in CI) for reproducibility.
 - Prefer declaring Rust deps via Haxe metadata (framework-first):
   - `@:rustCargo({ name: "dep", version: "1.2", features: ["x"] })`

@@ -37,7 +37,8 @@ If those are not true yet, treat adoption as a pilot rather than broad rollout.
 
 ### Stage 2: Controlled production
 
-- Pin toolchain and Cargo lockfiles.
+- Use the supported Rust floor and repository/release pin from
+  [Rust Toolchain Policy](rust-toolchain-policy.md), and commit Cargo lockfiles.
 - Add explicit build defines in CI (`rust_cargo_locked`, target triple if required).
 - Validate runtime paths for file, process, net, and thread behavior your app uses.
 
