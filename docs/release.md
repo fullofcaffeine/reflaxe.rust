@@ -101,6 +101,13 @@ GitHub Release notes generated from Conventional Commits are canonical beginning
 longer mutated during publication. Durable policy docs and the dynamic latest-release badge also do
 not change on every patch release.
 
+Known immutable-history note: `v0.81.4` through `v0.85.0` were published with correct tags and
+artifacts but heading-only release bodies because an incompatible explicit writer preset was not
+covered by an end-to-end notes assertion. Published releases remain immutable, so those bodies are
+not rewritten. Their tag comparisons still expose the exact commit history. The configured notes
+generator is now exercised by `npm run test:release-notes`, including feature, fix, performance,
+scoped, bang-header, and breaking-footer cases.
+
 ## Partial Publication Repair
 
 After removing the release commit, only one expected external partial state remains: a valid remote

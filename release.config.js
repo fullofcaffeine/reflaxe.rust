@@ -18,7 +18,20 @@ module.exports = {
   tagFormat: 'v${version}',
   plugins: [
     ['./scripts/release/semantic-release-policy.cjs', { policyPath: 'release-manifest.json' }],
-    ['@semantic-release/release-notes-generator', { preset: 'conventionalcommits' }],
+    [
+      '@semantic-release/release-notes-generator',
+      {
+        // The locked `conventionalcommits` preset writer currently emits only a heading with the
+        // release-notes generator. Keep its strict header grammar while using the generator's
+        // proven default writer so feat/fix/perf and breaking entries remain visible.
+        parserOpts: {
+          headerPattern: /^(\w*)(?:\((.*)\))?!?: (.*)$/,
+          breakingHeaderPattern: /^(\w*)(?:\((.*)\))?!: (.*)$/,
+          headerCorrespondence: ['type', 'scope', 'subject'],
+          noteKeywords: ['BREAKING CHANGE', 'BREAKING-CHANGE']
+        }
+      }
+    ],
     './scripts/release/haxelib-artifact-plugin.cjs',
     [
       '@semantic-release/github',

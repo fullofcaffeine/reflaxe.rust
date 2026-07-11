@@ -500,6 +500,10 @@ Agent policy:
   - Use `feat:` for minor and `fix:` for patch. On ungraduated `0.x`, `feat!:` /
     `BREAKING CHANGE:` deliberately advances the minor line; after stable approval it advances the
     major line normally.
+  - GitHub Release notes are the canonical changelog. The locked release-notes generator must be
+    exercised through `test:release-notes` with feat/fix/perf, scoped, bang-header, and breaking-footer
+    commits. Do not assume that a preset shared with the commit analyzer has a compatible writer;
+    `conventionalcommits` 10.2.1 with release-notes-generator 14.1.1 emitted heading-only releases.
 - Small release-protocol rule (strict): normal publication tags the exact CI-tested commit. Do not
   add release-time Git commits, tracked version/changelog updates, generated patch-version prose,
   package-version-dependent configuration loading, or a privileged `workflow_run` publisher.
