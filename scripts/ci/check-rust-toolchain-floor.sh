@@ -10,7 +10,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-minimum="$(node "$policy_script" --github-output | sed -n 's/^minimum=//p')"
+minimum="$(node "$policy_script" --print minimum)"
 actual="$(rustc --version | sed -n 's/^rustc \([^ ]*\).*/\1/p')"
 
 if ! node "$policy_script" --assert-supported "$actual"; then

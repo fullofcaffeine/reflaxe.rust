@@ -296,6 +296,18 @@ function main() {
   if (render === 'docs') return process.stdout.write(`${renderDocs(manifest)}\n`)
   if (render != null) return reportErrors([`unknown render target: ${render}`])
 
+  const printLane = argumentValue(args, '--print', null)
+  if (printLane != null) {
+    const laneVersions = {
+      minimum: manifest.minimumSupportedRust,
+      release: manifest.releaseToolchain,
+      current: manifest.currentStableLane
+    }
+    if (!Object.hasOwn(laneVersions, printLane)) return reportErrors([`unknown print lane: ${printLane}`])
+    process.stdout.write(`${laneVersions[printLane]}\n`)
+    return
+  }
+
   if (args.includes('--write')) {
     fs.writeFileSync(generatedHaxePath, renderHaxe(manifest))
     fs.writeFileSync(generatedTomlPath, renderToml(manifest))
@@ -335,7 +347,7 @@ function main() {
     console.log('[rust-toolchain-policy] OK')
     return
   }
-  reportErrors(['expected --check, --write, --validate-only, --assert-supported, --github-output, or --render'])
+  reportErrors(['expected --check, --write, --validate-only, --assert-supported, --github-output, --print, or --render'])
 }
 
 if (require.main === module) main()

@@ -58,6 +58,9 @@ function main() {
 
     const githubOutput = path.join(root, 'github-output')
     const githubEnv = path.join(root, 'github-env')
+    const printedMinimum = run(['--print', 'minimum'], { ...process.env, GITHUB_OUTPUT: githubOutput })
+    assert.strictEqual(printedMinimum.status, 0, printedMinimum.stderr || printedMinimum.stdout)
+    assert.strictEqual(printedMinimum.stdout, `${canonical.minimumSupportedRust}\n`)
     const activation = run(
       ['--github-output', '--activate', 'minimum'],
       { ...process.env, GITHUB_OUTPUT: githubOutput, GITHUB_ENV: githubEnv }
