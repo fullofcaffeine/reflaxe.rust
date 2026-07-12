@@ -16232,6 +16232,46 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									});
 								}
 							}
+						case TField(_, FStatic(clsRef, cfRef)): {
+								var owner = clsRef.get();
+								var cf = cfRef.get();
+								if (owner == null || cf == null)
+									return unsupported(fullExpr, "assignop static field lvalue");
+								switch (cf.kind) {
+									case FVar(_, _):
+									case _:
+										return unsupported(fullExpr, "assignop static field lvalue");
+								}
+
+								var stringy = inner == OpAdd
+									&& (isStringType(followType(fullExpr.t))
+										|| isStringType(followType(e1.t))
+										|| isStringType(followType(e2.t)));
+								if (!isCopyType(e1.t) && !stringy)
+									return unsupported(fullExpr, "assignop static field lvalue (non-copy)");
+
+								// Why: generated static reads are getter calls, so they are not Rust lvalues.
+								// What: preserve Haxe read/compute/write and assigned-value semantics for static updates.
+								// How: bind the RHS once, call the existing typed getter, then call the typed setter.
+								var rustName = rustMethodName(owner, cf);
+								var getter = staticVarHelperPath(owner, rustStaticVarHelperName("__hx_static_get", rustName));
+								var setter = staticVarHelperPath(owner, rustStaticVarHelperName("__hx_static_set", rustName));
+								var rhsExpr = maybeCloneForReuseValue(compileExpr(e2), e2);
+								var stmts:Array<RustStmt> = [RLet("__rhs", false, null, rhsExpr)];
+								var current = ECall(EPath(getter), []);
+								var updated:RustExpr;
+								if (stringy) {
+									var rhsStr:RustExpr = isStringType(followType(e2.t)) ? EPath("__rhs") : ECall(EField(ECall(EPath("hxrt::dynamic::from"),
+										[EPath("__rhs")]), "to_haxe_string"), []);
+									updated = wrapRustStringExpr(EMacroCall("format", [ELitString("{}{}"), current, rhsStr]));
+								} else {
+									updated = EBinary(opStr, current, EPath("__rhs"));
+								}
+								stmts.push(RLet("__tmp", false, null, updated));
+								var setterValue:RustExpr = stringy ? ECall(EField(EPath("__tmp"), "clone"), []) : EPath("__tmp");
+								stmts.push(RSemi(ECall(EPath(setter), [setterValue])));
+								return EBlock({stmts: stmts, tail: EPath("__tmp")});
+							}
 						case TArray(arr, index): {
 								// Compound assignment on an array element: `arr[index] <op>= rhs`.
 								//
@@ -16465,7 +16505,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function compileUnop(op:Unop, postFix:Bool, expr:TypedExpr, fullExpr:TypedExpr):RustExpr {
 		if (op == OpIncrement || op == OpDecrement) {
-			// Current behavior: support ++/-- for locals (needed for Haxe's for-loop lowering).
+			// Current behavior: support ++/-- for locals, static fields, and instance fields.
 			return switch (expr.expr) {
 				case TLocal(v): {
 						var name = rustLocalRefIdent(v);
@@ -16506,6 +16546,37 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								tail: EPath(name)
 							});
 						}
+					}
+
+				case TField(_, FStatic(clsRef, cfRef)): {
+						var owner = clsRef.get();
+						var cf = cfRef.get();
+						if (owner == null || cf == null || !isCopyType(expr.t))
+							return unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " static field unop");
+						switch (cf.kind) {
+							case FVar(_, _):
+							case _:
+								return unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " static field unop");
+						}
+
+						// Why: the lazy static cell is intentionally hidden behind generated functions.
+						// What: preserve Haxe's old-value postfix and new-value prefix results.
+						// How: read once through the getter, compute directly, and write once through the setter.
+						var rustName = rustMethodName(owner, cf);
+						var getter = staticVarHelperPath(owner, rustStaticVarHelperName("__hx_static_get", rustName));
+						var setter = staticVarHelperPath(owner, rustStaticVarHelperName("__hx_static_set", rustName));
+						var delta:RustExpr = TypeHelper.isFloat(expr.t) ? ELitFloat(1.0) : ELitInt(1);
+						var binop = (op == OpIncrement) ? "+" : "-";
+						var stmts:Array<RustStmt> = [];
+						if (postFix) {
+							stmts.push(RLet("__old", false, null, ECall(EPath(getter), [])));
+							stmts.push(RLet("__new", false, null, EBinary(binop, EPath("__old"), delta)));
+							stmts.push(RSemi(ECall(EPath(setter), [EPath("__new")])));
+							return EBlock({stmts: stmts, tail: EPath("__old")});
+						}
+						stmts.push(RLet("__new", false, null, EBinary(binop, ECall(EPath(getter), []), delta)));
+						stmts.push(RSemi(ECall(EPath(setter), [EPath("__new")])));
+						return EBlock({stmts: stmts, tail: EPath("__new")});
 					}
 
 				case TField(obj, FInstance(clsRef, _, cfRef)): {

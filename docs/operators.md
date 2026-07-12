@@ -26,6 +26,10 @@ trait object rather than the concrete child storage, lowering evaluates the rece
 then uses the generated typed field getter and setter. Numeric prefix/postfix `++` and `--` preserve
 Haxe's new-value/old-value expression results through this path as well.
 
+Mutable static fields use the same semantic contract through their generated lazy-cell getter and
+setter functions. Copy-like numeric compound assignments, numeric prefix/postfix `++` and `--`, and
+`String +=` evaluate the RHS once and return the Haxe assigned/old/new expression value.
+
 Current limitation: compound assignment support is still conservative for some complex lvalues,
 especially non-Copy array indices and anonymous-object fields.
 
@@ -36,3 +40,4 @@ See:
 - `test/snapshot/mod_bitwise`
 - `test/snapshot/class_string_field_assignop`
 - `test/semantic_diff/polymorphic_field_updates`
+- `test/semantic_diff/static_field_updates`

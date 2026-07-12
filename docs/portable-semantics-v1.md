@@ -54,12 +54,15 @@ Conformance fixtures:
 5. Base-typed field compound assignments and numeric prefix/postfix updates must dispatch through
    the generated polymorphic field contract, evaluate receiver and RHS once, and preserve Haxe
    expression-result semantics.
+6. Mutable static field compound assignments and numeric prefix/postfix updates must use the
+   generated static storage contract, evaluate the RHS once, and preserve assigned/old/new results.
 
 Conformance fixtures:
 
 - `test/semantic_diff/generic_base_specialization`
 - `test/semantic_diff/generic_interface_specialization`
 - `test/semantic_diff/polymorphic_field_updates`
+- `test/semantic_diff/static_field_updates`
 - `test/semantic_diff/virtual_dispatch`
 
 ### 4) Sys environment semantics
