@@ -7807,10 +7807,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case TBinop(OpAssignOp(OpAdd), lhs, rhs) if (isStringType(followType(e.t)) || isStringType(followType(lhs.t)) || isStringType(followType(rhs.t))): {
 					// Statement-position `x += y` where the result is unused.
 					//
-					// `compileExpr` must preserve the expression value, which requires cloning the updated
-					// String to avoid moving it. When used as a statement, that clone becomes a `must_use`
-					// warning. Emit a unit block that only performs the assignment.
+					// `compileExpr` must preserve the expression value, which can require cloning the updated
+					// String. Emit a unit block that only performs the assignment when the lvalue has a
+					// dedicated statement lowering.
 					switch (unwrapMetaParen(lhs).expr) {
+						case TArray(arrayExpr, indexExpr):
+							RExpr(compileArrayElementAssignOp(OpAdd, "+", lhs, arrayExpr, indexExpr, rhs, e, false), false);
 						case TLocal(_): {
 								var lhsExpr = compileExpr(lhs);
 								var rhsExpr = maybeCloneForReuseValue(compileExpr(rhs), rhs);
@@ -15428,6 +15430,63 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return out;
 	}
 
+	/**
+		Lowers a compound update of one typed Haxe array element.
+
+		Why
+		- `array[index]` is a get/set protocol in generated Rust, not a Rust place expression.
+		- Haxe resolves the array, index, and current element before evaluating the right-hand side.
+		  The RHS may mutate the same array, so reading after it would change observable behavior.
+		- `String` is reusable but non-`Copy`; expression position needs separate stored and returned
+		  ownership, while statement position should not pay for an unused clone.
+
+		What
+		- Supports the existing `Copy` compound operators plus typed `String` append (`+=`).
+		- Rejects other non-`Copy` element operators instead of inventing runtime dispatch.
+
+		How
+		- Binds array, index, current element, and RHS exactly once in source evaluation order.
+		- Computes the updated value through typed Rust operations and the existing string wrapper.
+		- Clones a new String only when both the array and the enclosing Haxe expression need ownership.
+	**/
+	function compileArrayElementAssignOp(inner:Binop, opStr:String, element:TypedExpr, arrayExpr:TypedExpr, indexExpr:TypedExpr,
+			rhsExpr:TypedExpr, fullExpr:TypedExpr, preserveResult:Bool):RustExpr {
+		var stringy = inner == OpAdd
+			&& (isStringType(followType(fullExpr.t))
+				|| isStringType(followType(element.t))
+				|| isStringType(followType(rhsExpr.t)));
+		if (!isCopyType(element.t) && !stringy)
+			return unsupported(fullExpr, "assignop array lvalue (non-copy)");
+
+		var arrayName = "__hx_arr";
+		var indexName = "__hx_idx";
+		var currentName = "__current";
+		var rhsName = "__rhs";
+		var updatedName = "__tmp";
+		var stmts:Array<RustStmt> = [
+			RLet(arrayName, false, null, maybeCloneForReuseValue(compileExpr(arrayExpr), arrayExpr)),
+			RLet(indexName, false, null, ECast(compileExpr(indexExpr), "usize")),
+			RLet(currentName, false, null, ECall(EField(EPath(arrayName), "get_unchecked"), [EPath(indexName)]))
+		];
+
+		var compiledRhs = stringy ? maybeCloneForReuseValue(compileExpr(rhsExpr), rhsExpr) : compileExpr(rhsExpr);
+		stmts.push(RLet(rhsName, false, null, compiledRhs));
+
+		var updated:RustExpr;
+		if (stringy) {
+			var rhsString:RustExpr = isStringType(followType(rhsExpr.t)) ? EPath(rhsName) : ECall(EField(ECall(EPath("hxrt::dynamic::from"),
+				[EPath(rhsName)]), "to_haxe_string"), []);
+			updated = wrapRustStringExpr(EMacroCall("format", [ELitString("{}{}"), EPath(currentName), rhsString]));
+		} else {
+			updated = EBinary(opStr, EPath(currentName), EPath(rhsName));
+		}
+		stmts.push(RLet(updatedName, false, null, updated));
+
+		var storedValue:RustExpr = stringy && preserveResult ? ECall(EField(EPath(updatedName), "clone"), []) : EPath(updatedName);
+		stmts.push(RSemi(ECall(EField(EPath(arrayName), "set"), [EPath(indexName), storedValue])));
+		return EBlock({stmts: stmts, tail: preserveResult ? EPath(updatedName) : null});
+	}
+
 	function compileBinop(op:Binop, e1:TypedExpr, e2:TypedExpr, fullExpr:TypedExpr):RustExpr {
 		function unwrapAssignLocal(e:TypedExpr):Null<TVar> {
 			var cur = unwrapMetaParen(e);
@@ -16275,29 +16334,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								return EBlock({stmts: stmts, tail: EPath("__tmp")});
 							}
 						case TArray(arr, index): {
-								// Compound assignment on an array element: `arr[index] <op>= rhs`.
-								//
-								// Preserve evaluation order (arr -> index -> rhs) and ensure arr/index are evaluated once.
-								// Current behavior: only support Copy element types (mirrors instance-field support).
-								if (!isCopyType(e1.t)) {
-									return unsupported(fullExpr, "assignop array lvalue (non-copy)");
-								}
-
-								var arrName = "__hx_arr";
-								var idxName = "__hx_idx";
-								var rhsName = "__rhs";
-								var tmpName = "__tmp";
-
-								var stmts:Array<RustStmt> = [];
-								stmts.push(RLet(arrName, false, null, maybeCloneForReuseValue(compileExpr(arr), arr)));
-								stmts.push(RLet(idxName, false, null, ECast(compileExpr(index), "usize")));
-								stmts.push(RLet(rhsName, false, null, compileExpr(e2)));
-
-								var read = ECall(EField(EPath(arrName), "get_unchecked"), [EPath(idxName)]);
-								stmts.push(RLet(tmpName, false, null, EBinary(opStr, read, EPath(rhsName))));
-								stmts.push(RSemi(ECall(EField(EPath(arrName), "set"), [EPath(idxName), EPath(tmpName)])));
-
-								EBlock({stmts: stmts, tail: EPath(tmpName)});
+								compileArrayElementAssignOp(inner, opStr, e1, arr, index, e2, fullExpr, true);
 							}
 						case TField(obj, FInstance(clsRef, _, cfRef)): {
 								// Compound assignment on a concrete instance field: `obj.field <op>= rhs`.

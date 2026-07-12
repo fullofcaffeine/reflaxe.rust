@@ -18,8 +18,11 @@ This target lowers Haxe numeric operators to Rust operators with a few target-sp
 Compound assignments for locals are supported (e.g. `x += y`, `x %= y`, `x <<= 1`).
 
 Copy-like numeric array elements support compound assignment plus prefix/postfix `++` and `--`.
-Array and index expressions are evaluated once, and updates preserve Haxe's assigned/old/new
-expression results through the existing typed array get/set contract.
+`Array<String>` elements also support append assignment (`values[index] += suffix`). Compound
+assignment resolves the array, index, and current element before evaluating the RHS, evaluates each
+source expression once, and preserves Haxe's assigned-value result through the existing typed array
+get/set contract. Statement-position String append moves the new value directly into the array;
+expression position clones only because both the array and expression result need ownership.
 
 Class field compound assignments are supported for Copy-like numeric values and for `String` append
 (`field += value`). String field append evaluates the RHS before taking the mutable field borrow,
@@ -39,7 +42,7 @@ Haxe's typed AST supplies `get_value` / `set_value` calls for ordinary, compound
 String-append updates, including the setter's returned expression value.
 
 Current limitation: compound assignment support is still conservative for some complex lvalues,
-especially non-Copy array indices and anonymous-object fields.
+especially non-Copy array-element operations other than String append and anonymous-object fields.
 
 Fields reached through a `Dynamic` receiver support ordinary runtime get/set, but not compound
 assignment or prefix/postfix updates. Their payload type is known only at runtime, so silently
@@ -56,6 +59,7 @@ See:
 - `test/snapshot/array_assignop_index`
 - `test/snapshot/class_string_field_assignop`
 - `test/semantic_diff/array_index_updates`
+- `test/semantic_diff/array_string_element_append`
 - `test/semantic_diff/polymorphic_field_updates`
 - `test/semantic_diff/static_property_updates`
 - `test/semantic_diff/static_field_updates`

@@ -19,6 +19,11 @@ class Main {
 		return value;
 	}
 
+	static function mutatingDelta():Int {
+		ints[0] = 100;
+		return 5;
+	}
+
 	static function main() {
 		Sys.println("int-post-inc-result=" + intArray()[index(1)]++);
 		Sys.println("int-post-inc-value=" + ints[1]);
@@ -32,6 +37,8 @@ class Main {
 		Sys.println("float-post-value=" + floats[0]);
 		Sys.println("float-pre-result=" + ++floatArray()[index(0)]);
 		Sys.println("float-pre-value=" + floats[0]);
+		Sys.println("int-assignop-result=" + (intArray()[index(0)] += mutatingDelta()));
+		Sys.println("int-assignop-value=" + ints[0]);
 		Sys.println("array-calls=" + arrayCalls);
 		Sys.println("index-calls=" + indexCalls);
 	}

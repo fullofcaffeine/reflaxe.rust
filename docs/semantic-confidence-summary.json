@@ -16,7 +16,7 @@
     "portableCandidateImportableModules": 184,
     "portableCandidateCoveredInTier2": 184,
     "portableCandidateMissingFromTier2": 0,
-    "portableSemanticDiffCases": 25,
+    "portableSemanticDiffCases": 26,
     "laneSemanticDiffCases": 2,
     "snapshotCases": 138,
     "bucketsByClass": {
@@ -51,6 +51,7 @@
   "discoveredCases": {
     "portableSemanticDiff": [
       "array_index_updates",
+      "array_string_element_append",
       "bytes_extended_api",
       "closure_capture_mutation",
       "exception_dynamic_payload",
@@ -123,7 +124,7 @@
       "id": "portable-core-contracts",
       "class": "targeted_semantic_parity",
       "label": "Portable core contract semantics",
-      "scope": "Null strings, typed/dynamic exceptions, class/interface subtype-aware catches, generic base/interface specialization, array/polymorphic/static field and property updates, virtual dispatch, env vars, function-value parity, portable Option/Result",
+      "scope": "Null strings, typed/dynamic exceptions, class/interface subtype-aware catches, generic base/interface specialization, numeric and String array updates, polymorphic/static field and property updates, virtual dispatch, env vars, function-value parity, portable Option/Result",
       "evidence": [
         "test/semantic_diff/null_string_concat",
         "test/semantic_diff/exceptions_typed_dynamic",
@@ -132,6 +133,7 @@
         "test/semantic_diff/generic_base_specialization",
         "test/semantic_diff/generic_interface_specialization",
         "test/semantic_diff/array_index_updates",
+        "test/semantic_diff/array_string_element_append",
         "test/semantic_diff/polymorphic_field_updates",
         "test/semantic_diff/static_field_updates",
         "test/semantic_diff/static_property_updates",

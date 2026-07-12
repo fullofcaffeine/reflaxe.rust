@@ -63,8 +63,9 @@ fn main() {
     {
         let __hx_arr = a.clone();
         let __hx_idx = 1 as usize;
+        let __current = __hx_arr.get_unchecked(__hx_idx);
         let __rhs = 5;
-        let __tmp = __hx_arr.get_unchecked(__hx_idx) + __rhs;
+        let __tmp = __current + __rhs;
         __hx_arr.set(__hx_idx, __tmp);
         __tmp
     };
@@ -77,8 +78,9 @@ fn main() {
     {
         let __hx_arr = a.clone();
         let __hx_idx = 0 as usize;
+        let __current = __hx_arr.get_unchecked(__hx_idx);
         let __rhs = 3;
-        let __tmp = __hx_arr.get_unchecked(__hx_idx) * __rhs;
+        let __tmp = __current * __rhs;
         __hx_arr.set(__hx_idx, __tmp);
         __tmp
     };
@@ -92,8 +94,9 @@ fn main() {
     {
         let __hx_arr = b.clone();
         let __hx_idx = 0 as usize;
+        let __current = __hx_arr.get_unchecked(__hx_idx);
         let __rhs = 2.5;
-        let __tmp = __hx_arr.get_unchecked(__hx_idx) * __rhs;
+        let __tmp = __current * __rhs;
         __hx_arr.set(__hx_idx, __tmp);
         __tmp
     };
@@ -103,4 +106,32 @@ fn main() {
             hxrt::string::HxString::from(b.join(hxrt::string::HxString::from(","))).clone()
         )
     );
+    let strings: hxrt::array::Array<hxrt::string::HxString> =
+        hxrt::array::Array::<hxrt::string::HxString>::from_vec(vec![hxrt::string::HxString::from(
+            "a",
+        )]);
+    {
+        let __hx_arr = strings.clone();
+        let __hx_idx = 0 as usize;
+        let __current = __hx_arr.get_unchecked(__hx_idx);
+        let __rhs = hxrt::string::HxString::from("-b");
+        let __tmp = hxrt::string::HxString::from(format!("{}{}", __current, __rhs));
+        __hx_arr.set(__hx_idx, __tmp);
+    }
+    println!(
+        "{}",
+        hxrt::dynamic::from(
+            hxrt::string::HxString::from(strings.join(hxrt::string::HxString::from(","))).clone()
+        )
+    );
+    let appended: hxrt::string::HxString = hxrt::string::HxString::from({
+        let __hx_arr = strings;
+        let __hx_idx = 0 as usize;
+        let __current = __hx_arr.get_unchecked(__hx_idx);
+        let __rhs = hxrt::string::HxString::from("-c");
+        let __tmp = hxrt::string::HxString::from(format!("{}{}", __current, __rhs));
+        __hx_arr.set(__hx_idx, __tmp.clone());
+        __tmp
+    });
+    println!("{}", hxrt::dynamic::from(appended));
 }

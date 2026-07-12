@@ -103,8 +103,9 @@ impl Sha256 {
         {
             let __hx_arr = m.clone();
             let __hx_idx = index as usize;
+            let __current = __hx_arr.get_unchecked(__hx_idx);
             let __rhs = 128 << 24 - l % 32;
-            let __tmp = __hx_arr.get_unchecked(__hx_idx) | __rhs;
+            let __tmp = __current | __rhs;
             __hx_arr.set(__hx_idx, __tmp);
             __tmp
         };
@@ -382,8 +383,9 @@ impl Sha256 {
                 {
                     let __hx_arr = blks.clone();
                     let __hx_idx = p as usize;
+                    let __current = __hx_arr.get_unchecked(__hx_idx);
                     let __rhs = s_2.borrow().get(i_2) << 24 - ((i_2 & 3) << 3);
-                    let __tmp = __hx_arr.get_unchecked(__hx_idx) | __rhs;
+                    let __tmp = __current | __rhs;
                     __hx_arr.set(__hx_idx, __tmp);
                     __tmp
                 };
@@ -394,8 +396,9 @@ impl Sha256 {
         {
             let __hx_arr = blks.clone();
             let __hx_idx = p_2 as usize;
+            let __current = __hx_arr.get_unchecked(__hx_idx);
             let __rhs = 128 << 24 - ((i_3 & 3) << 3);
-            let __tmp = __hx_arr.get_unchecked(__hx_idx) | __rhs;
+            let __tmp = __current | __rhs;
             __hx_arr.set(__hx_idx, __tmp);
             __tmp
         };

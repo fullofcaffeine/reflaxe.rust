@@ -9,6 +9,11 @@ class Main {
 		var b = [1.0, 2.0];
 		b[0] *= 2.5;
 		trace(b.join(","));
+
+		var strings = ["a"];
+		strings[0] += "-b";
+		trace(strings.join(","));
+		var appended = strings[0] += "-c";
+		trace(appended);
 	}
 }
-
