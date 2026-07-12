@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SNAP_DIR="$ROOT_DIR/test/snapshot"
+source "$ROOT_DIR/scripts/ci/timed-command.sh"
 
 HAXE_BIN="${HAXE_BIN:-}"
 if [[ -z "$HAXE_BIN" ]]; then
@@ -131,11 +132,7 @@ SNAP_CARGO_QUIET="${SNAP_CARGO_QUIET:-1}"
 run_timed_step() {
   local label="$1"
   shift
-  local start="$SECONDS"
-  echo "  start: $label" >&2
-  "$@"
-  local elapsed=$((SECONDS - start))
-  echo "  done:  $label (${elapsed}s)" >&2
+  ci_run_timed_command "$label" "  start: " "  done:  " 2 "$@"
 }
 
 should_run_clippy_for_case() {

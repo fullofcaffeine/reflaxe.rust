@@ -3,6 +3,7 @@ set -euo pipefail
 
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root_dir"
+source "$root_dir/scripts/ci/timed-command.sh"
 
 stage_timings_file="$(mktemp "${TMPDIR:-/tmp}/harness-stage-timings.XXXXXX")"
 compiled_hxml_cache_file="$(mktemp "${TMPDIR:-/tmp}/harness-compiled-hxml.XXXXXX")"
@@ -72,19 +73,21 @@ run_stage() {
   shift || true
   local start="$SECONDS"
   echo "[harness] ${stage}"
-  "$@"
+  local status=0
+  if "$@"; then
+    status=0
+  else
+    status=$?
+  fi
   local elapsed=$((SECONDS - start))
   record_stage_timing "$stage" "$elapsed"
+  return "$status"
 }
 
 run_timed_step() {
   local label="$1"
   shift
-  local start="$SECONDS"
-  echo "[harness] ${label}"
-  "$@"
-  local elapsed=$((SECONDS - start))
-  echo "[harness] done: ${label} (${elapsed}s)"
+  ci_run_timed_command "$label" "[harness] " "[harness] done: " 1 "$@"
 }
 
 trap 'status=$?; print_stage_timings; cleanup_artifacts "$status"' EXIT

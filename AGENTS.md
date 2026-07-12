@@ -176,6 +176,11 @@ Agent policy:
 
 ## Important Lessons (POC)
 
+- CI timing-wrapper gotcha: a shell function that runs a command and then prints elapsed time will
+  otherwise return the print command's success status. Always capture and explicitly return the
+  wrapped command's exact status, including when the wrapper is called from `if` / `if !` contexts
+  where `set -e` is suppressed. Reuse `scripts/ci/timed-command.sh` and keep
+  `npm run test:timed-command-failure-propagation` wired into hooks.
 - Reflaxe’s `Context.getMainExpr()` is only reliable when the consumer uses `-main <Class>` (don’t rely on a bare trailing `Main` line in `.hxml`).
 - Use `BaseCompiler.setExtraFile()` for non-`.rs` outputs like `Cargo.toml` (the default OutputManager always appends `fileOutputExtension` for normal outputs).
 - Haxe “multi-type modules” behave like `haxe.macro.Expr.*`: types in `RustAST.hx` are addressed as `RustAST.RustExpr`, `RustAST.RustFile`, etc.

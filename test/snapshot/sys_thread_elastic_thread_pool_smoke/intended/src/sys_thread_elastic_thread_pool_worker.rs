@@ -196,7 +196,23 @@ impl Worker {
                             hxrt::dynamic::from_ref_with_type_id(__hx_box, __hx_box_type_id)
                         });
                     }
-                    Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
+                    Err(__hx_ex) => match __hx_ex.downcast::<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>>() {
+                        Ok(__hx_box) => {
+                            let e: crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync> = *__hx_box;
+                            {
+                                let __tmp = crate::HxDynRef::<dyn Fn() + Send + Sync>::null();
+                                worker.borrow_mut().task = __tmp.clone();
+                                __tmp
+                            };
+                            crate::sys_thread_elastic_thread_pool_worker::Worker::start(worker.clone());
+                            hxrt::exception::throw({
+                                let __hx_box = e;
+                                let __hx_box_type_id = __hx_box.__hx_type_id();
+                                hxrt::dynamic::from_ref_with_type_id(__hx_box, __hx_box_type_id)
+                            });
+                        }
+                        Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
+                    },
                 } } else { if __actual_type_id == 0x06e5ab1du32 { match __hx_ex.downcast::<crate::HxRef<crate::sys_thread_thread_pool_exception::ThreadPoolException>>() {
                     Ok(__hx_box) => {
                         let e: crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync> = {
@@ -219,7 +235,23 @@ impl Worker {
                             hxrt::dynamic::from_ref_with_type_id(__hx_box, __hx_box_type_id)
                         });
                     }
-                    Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
+                    Err(__hx_ex) => match __hx_ex.downcast::<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>>() {
+                        Ok(__hx_box) => {
+                            let e: crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync> = *__hx_box;
+                            {
+                                let __tmp = crate::HxDynRef::<dyn Fn() + Send + Sync>::null();
+                                worker.borrow_mut().task = __tmp.clone();
+                                __tmp
+                            };
+                            crate::sys_thread_elastic_thread_pool_worker::Worker::start(worker.clone());
+                            hxrt::exception::throw({
+                                let __hx_box = e;
+                                let __hx_box_type_id = __hx_box.__hx_type_id();
+                                hxrt::dynamic::from_ref_with_type_id(__hx_box, __hx_box_type_id)
+                            });
+                        }
+                        Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
+                    },
                 } } else { hxrt::exception::rethrow(__hx_ex) } } } else { hxrt::exception::rethrow(__hx_ex) },
                 None => match __hx_ex.downcast::<crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync>>() {
                     Ok(__hx_box) => {
