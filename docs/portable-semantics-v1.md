@@ -58,6 +58,8 @@ Conformance fixtures:
    generated static storage contract, evaluate the RHS once, and preserve assigned/old/new results.
 7. Copy-like numeric array-element prefix/postfix updates must evaluate the array and index once,
    update through the typed array storage contract, and preserve old/new expression results.
+8. Static accessor properties must dispatch through their typed getter/setter methods for ordinary,
+   compound, prefix/postfix, and String updates, preserving accessor calls and setter results.
 
 Conformance fixtures:
 
@@ -66,6 +68,7 @@ Conformance fixtures:
 - `test/semantic_diff/array_index_updates`
 - `test/semantic_diff/polymorphic_field_updates`
 - `test/semantic_diff/static_field_updates`
+- `test/semantic_diff/static_property_updates`
 - `test/semantic_diff/virtual_dispatch`
 
 ### 4) Sys environment semantics

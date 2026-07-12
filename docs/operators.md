@@ -34,6 +34,10 @@ Mutable static fields use the same semantic contract through their generated laz
 setter functions. Copy-like numeric compound assignments, numeric prefix/postfix `++` and `--`, and
 `String +=` evaluate the RHS once and return the Haxe assigned/old/new expression value.
 
+Static accessor properties (`static var value(get,set)`) remain distinct from raw static storage.
+Haxe's typed AST supplies `get_value` / `set_value` calls for ordinary, compound, prefix/postfix, and
+String-append updates, including the setter's returned expression value.
+
 Current limitation: compound assignment support is still conservative for some complex lvalues,
 especially non-Copy array indices and anonymous-object fields.
 
@@ -46,4 +50,5 @@ See:
 - `test/snapshot/class_string_field_assignop`
 - `test/semantic_diff/array_index_updates`
 - `test/semantic_diff/polymorphic_field_updates`
+- `test/semantic_diff/static_property_updates`
 - `test/semantic_diff/static_field_updates`
