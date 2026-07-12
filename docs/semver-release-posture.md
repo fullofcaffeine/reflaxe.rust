@@ -73,8 +73,10 @@ The reviewed event trail is concrete:
 - the open regression-bug inventory was empty at disposition.
 
 `reflaxe.rust` is ready for continued production-capable `0.x` releases. Before calling a release
-`1.0`, the representative app must run asserted generated behavior—not only compile—and the project
-must explicitly approve the exact APIs it promises to keep compatible throughout `1.x`.
+`1.0`, this repository's compiler-owned portable/metal E2E workflows must keep executing named
+generated-runtime assertions, `codex-hxrust` must independently pass its normal portable/metal
+consumer build at recorded SHAs, and the project must explicitly approve the exact APIs it promises
+to keep compatible throughout `1.x`.
 
 ## What The 0.x Contract Promises Until Graduation
 

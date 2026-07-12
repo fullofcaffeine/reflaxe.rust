@@ -229,7 +229,7 @@ Coverage map: [docs/examples-matrix.md](docs/examples-matrix.md).
 - Snapshot tests: `bash test/run-snapshots.sh`
 - Upstream stdlib sweep: `bash test/run-upstream-stdlib-sweep.sh`
 - Template task-matrix smoke: `bash scripts/ci/template-smoke.sh`
-- Codex Haxe/Rust killer-app QA: `npm run test:codex-hxrust` (requires sibling `codex-hxrust` checkout; skips when absent)
+- Independent `codex-hxrust` consumer compatibility: `npm run test:codex-hxrust` (requires the sibling checkout; skips when absent)
 - Windows-safe smoke subset: `bash scripts/ci/windows-smoke.sh`
 - Metal idiom count guard: `npm run test:metal-idiom`
 - Native facade manifest guard: `npm run guard:native-facade-manifest`
