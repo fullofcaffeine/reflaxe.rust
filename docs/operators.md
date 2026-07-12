@@ -17,6 +17,10 @@ This target lowers Haxe numeric operators to Rust operators with a few target-sp
 
 Compound assignments for locals are supported (e.g. `x += y`, `x %= y`, `x <<= 1`).
 
+Copy-like numeric array elements support compound assignment plus prefix/postfix `++` and `--`.
+Array and index expressions are evaluated once, and updates preserve Haxe's assigned/old/new
+expression results through the existing typed array get/set contract.
+
 Class field compound assignments are supported for Copy-like numeric values and for `String` append
 (`field += value`). String field append evaluates the RHS before taking the mutable field borrow,
 formats from an immutable field borrow, writes the new value, and returns the assigned value.
@@ -38,6 +42,8 @@ especially non-Copy array indices and anonymous-object fields.
 See:
 
 - `test/snapshot/mod_bitwise`
+- `test/snapshot/array_assignop_index`
 - `test/snapshot/class_string_field_assignop`
+- `test/semantic_diff/array_index_updates`
 - `test/semantic_diff/polymorphic_field_updates`
 - `test/semantic_diff/static_field_updates`

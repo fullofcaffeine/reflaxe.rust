@@ -16505,7 +16505,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function compileUnop(op:Unop, postFix:Bool, expr:TypedExpr, fullExpr:TypedExpr):RustExpr {
 		if (op == OpIncrement || op == OpDecrement) {
-			// Current behavior: support ++/-- for locals, static fields, and instance fields.
+			// Current behavior: support ++/-- for locals, array elements, static fields, and instance fields.
 			return switch (expr.expr) {
 				case TLocal(v): {
 						var name = rustLocalRefIdent(v);
@@ -16576,6 +16576,33 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						}
 						stmts.push(RLet("__new", false, null, EBinary(binop, ECall(EPath(getter), []), delta)));
 						stmts.push(RSemi(ECall(EPath(setter), [EPath("__new")])));
+						return EBlock({stmts: stmts, tail: EPath("__new")});
+					}
+
+				case TArray(arr, index): {
+						if (!isCopyType(expr.t))
+							return unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " array element unop (non-copy)");
+
+						// Why: an Array element access is a get operation, not a Rust place expression.
+						// What: preserve Haxe's single-evaluation and old/new result contract for array ++/--.
+						// How: bind array then index once, read through the existing typed array API, and write once.
+						var arrName = "__hx_arr";
+						var idxName = "__hx_idx";
+						var delta:RustExpr = TypeHelper.isFloat(expr.t) ? ELitFloat(1.0) : ELitInt(1);
+						var binop = (op == OpIncrement) ? "+" : "-";
+						var stmts:Array<RustStmt> = [
+							RLet(arrName, false, null, maybeCloneForReuseValue(compileExpr(arr), arr)),
+							RLet(idxName, false, null, ECast(compileExpr(index), "usize"))
+						];
+						var read = ECall(EField(EPath(arrName), "get_unchecked"), [EPath(idxName)]);
+						if (postFix) {
+							stmts.push(RLet("__old", false, null, read));
+							stmts.push(RLet("__new", false, null, EBinary(binop, EPath("__old"), delta)));
+							stmts.push(RSemi(ECall(EField(EPath(arrName), "set"), [EPath(idxName), EPath("__new")])));
+							return EBlock({stmts: stmts, tail: EPath("__old")});
+						}
+						stmts.push(RLet("__new", false, null, EBinary(binop, read, delta)));
+						stmts.push(RSemi(ECall(EField(EPath(arrName), "set"), [EPath(idxName), EPath("__new")])));
 						return EBlock({stmts: stmts, tail: EPath("__new")});
 					}
 
