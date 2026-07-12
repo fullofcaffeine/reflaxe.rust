@@ -21,6 +21,11 @@ Class field compound assignments are supported for Copy-like numeric values and 
 (`field += value`). String field append evaluates the RHS before taking the mutable field borrow,
 formats from an immutable field borrow, writes the new value, and returns the assigned value.
 
+The same operations work through a base-typed polymorphic reference. Because that Rust value is a
+trait object rather than the concrete child storage, lowering evaluates the receiver and RHS once,
+then uses the generated typed field getter and setter. Numeric prefix/postfix `++` and `--` preserve
+Haxe's new-value/old-value expression results through this path as well.
+
 Current limitation: compound assignment support is still conservative for some complex lvalues,
 especially non-Copy array indices and anonymous-object fields.
 
@@ -30,3 +35,4 @@ See:
 
 - `test/snapshot/mod_bitwise`
 - `test/snapshot/class_string_field_assignop`
+- `test/semantic_diff/polymorphic_field_updates`

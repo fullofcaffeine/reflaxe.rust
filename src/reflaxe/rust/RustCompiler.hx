@@ -16366,18 +16366,25 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 												return wrapRustStringExpr(EMacroCall("format", [ELitString("{}{}"), currentValue, rhsStr]));
 											}
 
-											var usesAccessors = (read == AccCall) || (write == AccCall);
+											// Why: a base-typed trait object does not expose the concrete child's physical fields.
+											// What: treat that raw field like an accessor-backed property for compound updates.
+											// How: use the same generated typed getter/setter methods as ordinary polymorphic field access.
+											var polymorphicField = !isThisExpr(obj) && isPolymorphicClassType(obj.t);
+											var usesAccessors = (read == AccCall) || (write == AccCall) || polymorphicField;
 											if (usesAccessors) {
 												var recvCls = receiverClassForField(obj, owner);
-												var curVal = (read == AccCall) ? getterCall(recvCls,
-													recvExpr) : EField(ECall(EField(recvExpr, "borrow"), []), fieldName);
-												var tmpExpr = if (stringy && read != AccCall) EBlock({
+												var curVal = if (read == AccCall) getterCall(recvCls, recvExpr) else if (polymorphicField) ECall(EField(recvExpr,
+													rustGetterName(owner, cf)), []) else EField(ECall(EField(recvExpr, "borrow"), []), fieldName);
+												var tmpExpr = if (stringy && read != AccCall && !polymorphicField) EBlock({
 													stmts: [RLet("__b", false, null, ECall(EField(recvExpr, "borrow"), []))],
 													tail: stringAssignOpValue(EUnary("&", EField(EPath("__b"), fieldName)))
 												}) else stringy ? stringAssignOpValue(curVal) : EBinary(opStr, curVal, EPath(rhsName));
 												stmts.push(RLet(tmpName, false, null, tmpExpr));
 												var setterValue:RustExpr = stringy ? ECall(EField(EPath(tmpName), "clone"), []) : EPath(tmpName);
-												var assigned = if (write == AccCall) setterCall(recvCls, recvExpr, setterValue) else EBlock({
+												var assigned = if (write == AccCall) setterCall(recvCls, recvExpr, setterValue) else if (polymorphicField) EBlock({
+													stmts: [RSemi(ECall(EField(recvExpr, rustSetterName(owner, cf)), [setterValue]))],
+													tail: EPath(tmpName)
+												}) else EBlock({
 													stmts: [
 														RSemi(EAssign(EField(ECall(EField(recvExpr, "borrow_mut"), []), fieldName), setterValue))
 													],
@@ -16386,9 +16393,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 												stmts.push(RLet("__assigned", false, null, assigned));
 												return EBlock({stmts: stmts, tail: EPath("__assigned")});
 											} else {
-												if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
-													return unsupported(fullExpr, "assignop field lvalue (polymorphic)");
-												}
 												var rhs = EPath(rhsName);
 												if (stringy) {
 													var tmpExpr = EBlock({
@@ -16563,6 +16567,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 											var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, getter);
 											return ECall(EPath(path), [EUnary("&", recvExpr)]);
 										}
+										if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+											return ECall(EField(recvExpr, rustGetterName(owner, cf)), []);
+										}
 										var fieldName = rustFieldName(owner, cf);
 										return EField(ECall(EField(recvExpr, "borrow"), []), fieldName);
 									}
@@ -16582,13 +16589,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 											var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, setter);
 											return ECall(EPath(path), [EUnary("&", recvExpr), value]);
 										}
+										if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
+											return EBlock({
+												stmts: [RSemi(ECall(EField(recvExpr, rustSetterName(owner, cf)), [value]))],
+												tail: value
+											});
+										}
 										var fieldName = rustFieldName(owner, cf);
 										var writeField = EField(ECall(EField(recvExpr, "borrow_mut"), []), fieldName);
 										return EBlock({stmts: [RSemi(EAssign(writeField, value))], tail: value});
 									}
 
-									// If either side uses accessors, treat as a property-like operation.
-									var usesAccessors = (read == AccCall) || (write == AccCall);
+									// Why: a polymorphic field is reachable only through the generated trait surface.
+									// What: use the property-shaped update path for raw polymorphic numeric fields too.
+									// How: read and write through the existing getter/setter while preserving prefix/postfix results.
+									var usesAccessors = (read == AccCall) || (write == AccCall)
+										|| (!isThisExpr(obj) && isPolymorphicClassType(obj.t));
 									if (usesAccessors) {
 										if (!isCopyType(expr.t)) {
 											return unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " property unop (non-copy)");
@@ -16624,11 +16640,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									//
 									// For `RefCell`-backed instances we must avoid overlapping borrows:
 									// read (borrow) -> compute -> write (borrow_mut).
-
-									// Polymorphic (trait object) field access uses getter/setter methods; keep it unsupported for now.
-									if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
-										return unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " field unop (polymorphic)");
-									}
 
 									var recvName = "__hx_obj";
 									var recvExpr:RustExpr = if (isThisExpr(obj)) {

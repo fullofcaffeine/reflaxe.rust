@@ -51,11 +51,15 @@ Conformance fixtures:
 4. Generic interfaces inherited through a superclass chain must be implemented on the concrete
    child storage type with composed interface arguments; interface-parent specialization follows
    the same rule.
+5. Base-typed field compound assignments and numeric prefix/postfix updates must dispatch through
+   the generated polymorphic field contract, evaluate receiver and RHS once, and preserve Haxe
+   expression-result semantics.
 
 Conformance fixtures:
 
 - `test/semantic_diff/generic_base_specialization`
 - `test/semantic_diff/generic_interface_specialization`
+- `test/semantic_diff/polymorphic_field_updates`
 - `test/semantic_diff/virtual_dispatch`
 
 ### 4) Sys environment semantics
