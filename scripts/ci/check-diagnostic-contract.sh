@@ -71,5 +71,7 @@ run_error_case test/negative/rust_cargo_metadata_arity compile.hxml HXRS-METADAT
 run_error_case test/negative/rust_generic_metadata_value compile.hxml HXRS-METADATA-VALUE '`@:rustGeneric` must be a string or array of strings' metadata-value
 run_error_case test/negative/rust_test_metadata_placement compile.hxml HXRS-METADATA-PLACEMENT 'must live in non-main classes' metadata-placement
 run_error_case test/negative/rust_cargo_structured_conflict compile.hxml HXRS-CARGO-DEPENDENCY-CONFLICT 'Conflicting `@:rustCargo` version' cargo-conflict
+run_error_case test/negative/dynamic_field_assignop compile.hxml HXRS-DYNAMIC-FIELD-OPERATOR 'Decode the field to `Int`, `Float`, or `String`.*write it back explicitly' dynamic-field-assignop
+run_error_case test/negative/dynamic_field_unop compile.hxml HXRS-DYNAMIC-FIELD-OPERATOR 'Decode the field to `Int`, `Float`, or `String`.*write it back explicitly' dynamic-field-unop
 
 echo "[diagnostic-contract-runtime] OK (identifier + severity + trigger fixtures)"

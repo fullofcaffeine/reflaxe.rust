@@ -47,6 +47,7 @@ enum abstract RustDiagnosticId(String) to String {
 	var MetadataPlacement = "HXRS-METADATA-PLACEMENT";
 	var CargoDependencyConflict = "HXRS-CARGO-DEPENDENCY-CONFLICT";
 	var CargoInvocation = "HXRS-CARGO-INVOCATION";
+	var DynamicFieldOperator = "HXRS-DYNAMIC-FIELD-OPERATOR";
 }
 
 /**

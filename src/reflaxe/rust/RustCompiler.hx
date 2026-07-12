@@ -16232,6 +16232,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									});
 								}
 							}
+						case TField(_, FDynamic(_)):
+							return unsupportedDynamicFieldOperator(fullExpr, "compound assignment");
 						case TField(_, FStatic(clsRef, cfRef)): {
 								var owner = clsRef.get();
 								var cf = cfRef.get();
@@ -16778,6 +16780,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								unsupported(fullExpr, (postFix ? "postfix" : "prefix") + " field unop");
 						}
 					}
+				case TField(_, FDynamic(_)):
+					return unsupportedDynamicFieldOperator(fullExpr, postFix ? "postfix update" : "prefix update");
+
 				case TField(obj, FAnon(cfRef)): {
 						// Support ++/-- on anonymous-object fields (Copy types only).
 						if (!isAnonObjectType(obj.t)) {
@@ -16888,6 +16893,32 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function unsupported(e:TypedExpr, what:String):RustExpr {
 		#if eval
 		Context.error('Unsupported $what for Rust target: ' + Std.string(e.expr), e.pos);
+		#end
+		return ERaw("todo!()");
+	}
+
+	/**
+		Reports the admitted boundary for operators on fields reached through `Dynamic`.
+
+		Why
+		- A Dynamic field read carries no compile-time `Int`, `Float`, or `String` payload kind.
+		- Guessing from the right-hand side would silently change Haxe behavior; general runtime
+		  operator dispatch is deliberately outside the current contract.
+
+		What
+		- Emits one stable error identifier for compound assignment and prefix/postfix updates.
+		- Leaves ordinary Dynamic field get/set behavior unchanged.
+
+		How
+		- Anchor the diagnostic at the complete user expression and direct callers back to a typed
+		  boundary: decode, update the concrete value, then write it back explicitly.
+	**/
+	function unsupportedDynamicFieldOperator(e:TypedExpr, operation:String):RustExpr {
+		#if eval
+		RustDiagnostic.error(RustDiagnosticId.DynamicFieldOperator,
+			"Dynamic field " + operation
+			+ " requires runtime payload-kind dispatch and is not supported. Decode the field to `Int`, `Float`, or `String`, perform the update, then write it back explicitly.",
+			e.pos);
 		#end
 		return ERaw("todo!()");
 	}

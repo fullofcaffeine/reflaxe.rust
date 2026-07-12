@@ -31,7 +31,7 @@ function main() {
 
   const canonical = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
   const families = new Set(canonical.diagnostics.map((entry) => entry.family))
-  for (const family of ['profile', 'async', 'no-hxrt', 'borrow', 'native-import', 'metadata', 'cargo']) {
+  for (const family of ['profile', 'async', 'no-hxrt', 'borrow', 'native-import', 'metadata', 'cargo', 'dynamic']) {
     assert(families.has(family), `missing admitted diagnostic family ${family}`)
   }
 

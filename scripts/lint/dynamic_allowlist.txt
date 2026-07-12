@@ -10,6 +10,7 @@ src/reflaxe/rust/RustCompiler.hx:1544
 src/reflaxe/rust/RustCompiler.hx:1551
 src/reflaxe/rust/RustCompiler.hx:1554
 src/reflaxe/rust/RustCompiler.hx:1562
+src/reflaxe/rust/RustCompiler.hx:16919
 src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:103
 src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:106
 src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:115
@@ -36,6 +37,8 @@ std/rust/_std/haxe/Int64.hx:59
 std/rust/_std/haxe/Int64.hx:63
 std/rust/_std/sys/Http.hx:370
 std/rust/_std/sys/Http.hx:373
+test/negative/dynamic_field_assignop/Main.hx:3
+test/negative/dynamic_field_unop/Main.hx:3
 test/perf/json/Main.hx # FILE_SCOPE_JUSTIFICATION: Perf fixture intentionally round-trips through haxe.Json.parse Dynamic values to measure JSON runtime overhead.
 test/semantic_diff/exception_dynamic_payload/Main.hx # FILE_SCOPE_JUSTIFICATION: Semantic diff fixture intentionally throws and catches Dynamic payloads to validate exception boundary behavior.
 test/semantic_diff/exceptions_typed_dynamic/Main.hx # FILE_SCOPE_JUSTIFICATION: Semantic diff fixture intentionally exercises typed and Dynamic exception catch paths.

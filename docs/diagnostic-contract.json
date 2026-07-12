@@ -27,6 +27,7 @@
     { "id": "HXRS-METADATA-VALUE", "family": "metadata", "severity": "error", "trigger": "a compiler-recognized Rust metadata parameter has an invalid compile-time type or value grammar", "introduced": "0.84.0", "status": "active", "replacement": null },
     { "id": "HXRS-METADATA-PLACEMENT", "family": "metadata", "severity": "error", "trigger": "compiler-recognized Rust metadata is attached to an unsupported declaration or method shape", "introduced": "0.84.0", "status": "active", "replacement": null },
     { "id": "HXRS-CARGO-DEPENDENCY-CONFLICT", "family": "cargo", "severity": "error", "trigger": "structured rustCargo declarations provide incompatible values for one dependency field", "introduced": "0.84.0", "status": "active", "replacement": null },
-    { "id": "HXRS-CARGO-INVOCATION", "family": "cargo", "severity": "error", "trigger": "the configured Cargo command or subcommand exits non-zero", "introduced": "0.84.0", "status": "active", "replacement": null }
+    { "id": "HXRS-CARGO-INVOCATION", "family": "cargo", "severity": "error", "trigger": "the configured Cargo command or subcommand exits non-zero", "introduced": "0.84.0", "status": "active", "replacement": null },
+    { "id": "HXRS-DYNAMIC-FIELD-OPERATOR", "family": "dynamic", "severity": "error", "trigger": "compound assignment or prefix/postfix update targets a field on a Dynamic receiver", "introduced": "0.85.8", "status": "active", "replacement": null }
   ]
 }

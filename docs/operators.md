@@ -46,6 +46,7 @@ assignment or prefix/postfix updates. Their payload type is known only at runtim
 assuming `Int`, `Float`, or `String` would be unsound and a general runtime dynamic-operator layer is
 outside the admitted contract. Decode to a typed structure at the boundary, or perform an explicit
 `Reflect.field` / typed conversion / `Reflect.setField` sequence when the field is genuinely dynamic.
+The compiler reports this boundary as `[HXRS-DYNAMIC-FIELD-OPERATOR]` at the user expression.
 
 ## Snapshot coverage
 

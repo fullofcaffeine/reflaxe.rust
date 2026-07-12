@@ -22,5 +22,5 @@ may improve without a SemVer break. A tool must not infer an identifier from Eng
   written admitted trigger is a compatibility decision.
 
 This contract covers admitted profile, async/no-hxrt, borrow-region, native-import, structured
-metadata, and Cargo failures. Internal compiler assertions and experimental escape-hatch diagnostics
-remain outside the stable registry until explicitly admitted.
+metadata, Cargo, and explicit Dynamic-field operator boundary failures. Internal compiler assertions
+and experimental escape-hatch diagnostics remain outside the stable registry until explicitly admitted.
