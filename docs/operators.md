@@ -41,6 +41,12 @@ String-append updates, including the setter's returned expression value.
 Current limitation: compound assignment support is still conservative for some complex lvalues,
 especially non-Copy array indices and anonymous-object fields.
 
+Fields reached through a `Dynamic` receiver support ordinary runtime get/set, but not compound
+assignment or prefix/postfix updates. Their payload type is known only at runtime, so silently
+assuming `Int`, `Float`, or `String` would be unsound and a general runtime dynamic-operator layer is
+outside the admitted contract. Decode to a typed structure at the boundary, or perform an explicit
+`Reflect.field` / typed conversion / `Reflect.setField` sequence when the field is genuinely dynamic.
+
 ## Snapshot coverage
 
 See:

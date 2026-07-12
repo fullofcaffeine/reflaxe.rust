@@ -205,7 +205,8 @@ Agent policy:
   - Contract diagnostic anchoring gotcha: profile-policy warnings/errors must resolve to **user project source positions**
     whenever possible. Do not anchor contract diagnostics to upstream/framework std module files just because the diagnostic
     message mentions those module names.
-  - JSON boundary gotcha: do not `cast Json.parse(...)` directly to a typed anonymous structure in app/runtime code. The Rust runtime may return a `DynObject` representation that fails anon downcasts; decode through `Reflect.field` + typed validators at the boundary, then stay strongly typed.
+- JSON boundary gotcha: do not `cast Json.parse(...)` directly to a typed anonymous structure in app/runtime code. The Rust runtime may return a `DynObject` representation that fails anon downcasts; decode through `Reflect.field` + typed validators at the boundary, then stay strongly typed.
+- Dynamic field-update boundary: ordinary runtime `Dynamic` field get/set is supported, but compound assignment and prefix/postfix updates are intentionally unadmitted because the payload's numeric/string kind exists only at runtime. Do not add broad runtime dynamic-operator dispatch or assume a payload type from the RHS; decode to a concrete type at the boundary and keep downstream updates typed.
   - Semantic-diff oracle gotcha: `haxe --interp` is not a valid oracle for threaded `sys.thread.EventLoop` / `haxe.EntryPoint` / `haxe.MainLoop` behavior on this target. Use Rust-target snapshot/example smoke for those contracts and downgrade docs accordingly instead of forcing a false semantic-diff parity claim.
 - The generated crate normally includes the bundled runtime crate at `./hxrt` and adds `hxrt = { path = "./hxrt" }` to `Cargo.toml`.
   The exception is proven `-D rust_no_hxrt` output, which must omit the bundled runtime and pass the no-runtime guard.
