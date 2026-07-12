@@ -25,21 +25,31 @@ get/set contract. Statement-position String append moves the new value directly 
 expression position clones only because both the array and expression result need ownership.
 
 Class field compound assignments are supported for Copy-like numeric values and for `String` append
-(`field += value`). String field append evaluates the RHS before taking the mutable field borrow,
-formats from an immutable field borrow, writes the new value, and returns the assigned value.
+(`field += value`). For an effectful RHS, lowering evaluates the receiver once, captures an owned
+current value, ends the read borrow, and only then evaluates the RHS. This preserves Haxe behavior
+when the RHS mutates the same field without holding a Rust borrow across user code. String append
+writes a clone of the new value and returns the assigned value. A local or literal String RHS retains
+the direct borrowed-field formatting fast path because that RHS is trivially effect-free and cannot
+mutate the receiver.
 
 The same operations work through a base-typed polymorphic reference. Because that Rust value is a
-trait object rather than the concrete child storage, lowering evaluates the receiver and RHS once,
-then uses the generated typed field getter and setter. Numeric prefix/postfix `++` and `--` preserve
-Haxe's new-value/old-value expression results through this path as well.
+trait object rather than the concrete child storage, lowering evaluates the receiver once, captures
+the current value through the generated typed getter before the RHS, and writes through the typed
+setter. Numeric prefix/postfix `++` and `--` preserve Haxe's new-value/old-value expression results
+through this path as well.
 
 Mutable static fields use the same semantic contract through their generated lazy-cell getter and
 setter functions. Copy-like numeric compound assignments, numeric prefix/postfix `++` and `--`, and
-`String +=` evaluate the RHS once and return the Haxe assigned/old/new expression value.
+`String +=` capture the getter result before the RHS and return the Haxe assigned/old/new expression
+value.
 
 Static accessor properties (`static var value(get,set)`) remain distinct from raw static storage.
 Haxe's typed AST supplies `get_value` / `set_value` calls for ordinary, compound, prefix/postfix, and
 String-append updates, including the setter's returned expression value.
+
+Copy-like anonymous-object fields support compound updates through the typed anonymous get/set
+contract. The object and current value are captured before the RHS, and no read borrow crosses RHS
+execution.
 
 Current limitation: compound assignment support is still conservative for some complex lvalues,
 especially non-Copy array-element operations other than String append and anonymous-object fields.
@@ -60,6 +70,7 @@ See:
 - `test/snapshot/class_string_field_assignop`
 - `test/semantic_diff/array_index_updates`
 - `test/semantic_diff/array_string_element_append`
+- `test/semantic_diff/field_compound_rhs_mutation`
 - `test/semantic_diff/polymorphic_field_updates`
 - `test/semantic_diff/static_property_updates`
 - `test/semantic_diff/static_field_updates`

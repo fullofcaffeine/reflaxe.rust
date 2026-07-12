@@ -16313,20 +16313,23 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 								// Why: generated static reads are getter calls, so they are not Rust lvalues.
 								// What: preserve Haxe read/compute/write and assigned-value semantics for static updates.
-								// How: bind the RHS once, call the existing typed getter, then call the typed setter.
+								// How: capture the current value before the RHS can mutate the same static, then call the
+								// existing typed setter with the computed result.
 								var rustName = rustMethodName(owner, cf);
 								var getter = staticVarHelperPath(owner, rustStaticVarHelperName("__hx_static_get", rustName));
 								var setter = staticVarHelperPath(owner, rustStaticVarHelperName("__hx_static_set", rustName));
 								var rhsExpr = maybeCloneForReuseValue(compileExpr(e2), e2);
-								var stmts:Array<RustStmt> = [RLet("__rhs", false, null, rhsExpr)];
-								var current = ECall(EPath(getter), []);
+								var stmts:Array<RustStmt> = [
+									RLet("__current", false, null, ECall(EPath(getter), [])),
+									RLet("__rhs", false, null, rhsExpr)
+								];
 								var updated:RustExpr;
 								if (stringy) {
 									var rhsStr:RustExpr = isStringType(followType(e2.t)) ? EPath("__rhs") : ECall(EField(ECall(EPath("hxrt::dynamic::from"),
 										[EPath("__rhs")]), "to_haxe_string"), []);
-									updated = wrapRustStringExpr(EMacroCall("format", [ELitString("{}{}"), current, rhsStr]));
+									updated = wrapRustStringExpr(EMacroCall("format", [ELitString("{}{}"), EPath("__current"), rhsStr]));
 								} else {
-									updated = EBinary(opStr, current, EPath("__rhs"));
+									updated = EBinary(opStr, EPath("__current"), EPath("__rhs"));
 								}
 								stmts.push(RLet("__tmp", false, null, updated));
 								var setterValue:RustExpr = stringy ? ECall(EField(EPath("__tmp"), "clone"), []) : EPath("__tmp");
@@ -16339,8 +16342,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						case TField(obj, FInstance(clsRef, _, cfRef)): {
 								// Compound assignment on a concrete instance field: `obj.field <op>= rhs`.
 								//
-								// Like field ++/--, we must avoid overlapping `RefCell` borrows:
-								// evaluate rhs first -> read via borrow() -> write via borrow_mut().
+								// Like field ++/--, we must avoid overlapping `RefCell` borrows. Compound assignment
+								// additionally requires Haxe order: receiver -> current value -> RHS -> write.
 								var owner = clsRef.get();
 								var cf = cfRef.get();
 								switch (cf.kind) {
@@ -16425,6 +16428,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 											var recvExpr:RustExpr = isThisExpr(obj) ? currentThisPathExpr() : EPath(recvName);
 
 											var fieldName = rustFieldName(owner, cf);
+											var currentName = "__current";
 											var rhsName = "__rhs";
 											var tmpName = "__tmp";
 
@@ -16434,10 +16438,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 												var base = compileExpr(obj);
 												stmts.push(RLet(recvName, false, null, ECall(EField(base, "clone"), [])));
 											}
-
-											// Evaluate rhs before taking a mutable borrow of the receiver.
-											var rhsExpr = stringy ? maybeCloneForReuseValue(compileExpr(e2), e2) : compileExpr(e2);
-											stmts.push(RLet(rhsName, false, null, rhsExpr));
 
 											function stringAssignOpValue(currentValue:RustExpr):RustExpr {
 												var rhsStr:RustExpr = isStringType(followType(e2.t)) ? EPath(rhsName) : ECall(EField(ECall(EPath("hxrt::dynamic::from"),
@@ -16450,15 +16450,64 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 											// How: use the same generated typed getter/setter methods as ordinary polymorphic field access.
 											var polymorphicField = !isThisExpr(obj) && isPolymorphicClassType(obj.t);
 											var usesAccessors = (read == AccCall) || (write == AccCall) || polymorphicField;
-											if (usesAccessors) {
-												var recvCls = receiverClassForField(obj, owner);
-												var curVal = if (read == AccCall) getterCall(recvCls, recvExpr) else if (polymorphicField) ECall(EField(recvExpr,
-													rustGetterName(owner, cf)), []) else EField(ECall(EField(recvExpr, "borrow"), []), fieldName);
-												var tmpExpr = if (stringy && read != AccCall && !polymorphicField) EBlock({
+											var recvCls = receiverClassForField(obj, owner);
+
+											/**
+												Identifies the deliberately tiny effect-free RHS set for String field append.
+
+												Why
+												- A general RHS call may mutate the same field, requiring an owned pre-RHS snapshot.
+												- Cloning the entire current String is unnecessary when the RHS is only a value read.
+
+												What
+												- Admits constants, locals, and transparent casts around them.
+												- Rejects calls, field reads, operators, and every other form conservatively.
+
+												How
+												- The admitted RHS may be bound before borrowing the field because it cannot mutate the
+												  receiver; formatting then borrows the current field without a full String clone.
+											**/
+											function rhsIsTriviallyEffectFree(expr:TypedExpr):Bool {
+												var current = unwrapMetaParen(expr);
+												return switch (current.expr) {
+													case TConst(_) | TLocal(_): true;
+													case TCast(inner, _): rhsIsTriviallyEffectFree(inner);
+													case _: false;
+												};
+											}
+											var borrowStringAfterRhs = stringy && read != AccCall && !polymorphicField && rhsIsTriviallyEffectFree(e2);
+
+											var rhsExpr = stringy ? maybeCloneForReuseValue(compileExpr(e2), e2) : compileExpr(e2);
+											if (borrowStringAfterRhs) {
+												stmts.push(RLet(rhsName, false, null, rhsExpr));
+												var borrowedUpdate = EBlock({
 													stmts: [RLet("__b", false, null, ECall(EField(recvExpr, "borrow"), []))],
 													tail: stringAssignOpValue(EUnary("&", EField(EPath("__b"), fieldName)))
-												}) else stringy ? stringAssignOpValue(curVal) : EBinary(opStr, curVal, EPath(rhsName));
+												});
+												stmts.push(RLet(tmpName, false, null, borrowedUpdate));
+											} else {
+												// Capture an owned current value before evaluating the RHS. The scoped raw-field borrow
+												// ends inside this initializer, so user code in the RHS never runs under a read lock.
+												var currentValue:RustExpr;
+												if (read == AccCall) {
+													currentValue = getterCall(recvCls, recvExpr);
+												} else if (polymorphicField) {
+													currentValue = ECall(EField(recvExpr, rustGetterName(owner, cf)), []);
+												} else {
+													var rawField = EField(EPath("__b"), fieldName);
+													var ownedField:RustExpr = stringy ? ECall(EField(rawField, "clone"), []) : rawField;
+													currentValue = EBlock({
+														stmts: [RLet("__b", false, null, ECall(EField(recvExpr, "borrow"), []))],
+														tail: ownedField
+													});
+												}
+												stmts.push(RLet(currentName, false, null, currentValue));
+												stmts.push(RLet(rhsName, false, null, rhsExpr));
+												var tmpExpr:RustExpr = stringy ? stringAssignOpValue(EPath(currentName)) : EBinary(opStr, EPath(currentName), EPath(rhsName));
 												stmts.push(RLet(tmpName, false, null, tmpExpr));
+											}
+
+											if (usesAccessors) {
 												var setterValue:RustExpr = stringy ? ECall(EField(EPath(tmpName), "clone"), []) : EPath(tmpName);
 												var assigned = if (write == AccCall) setterCall(recvCls, recvExpr, setterValue) else if (polymorphicField) EBlock({
 													stmts: [RSemi(ECall(EField(recvExpr, rustSetterName(owner, cf)), [setterValue]))],
@@ -16472,18 +16521,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 												stmts.push(RLet("__assigned", false, null, assigned));
 												return EBlock({stmts: stmts, tail: EPath("__assigned")});
 											} else {
-												var rhs = EPath(rhsName);
-												if (stringy) {
-													var tmpExpr = EBlock({
-														stmts: [RLet("__b", false, null, ECall(EField(recvExpr, "borrow"), []))],
-														tail: stringAssignOpValue(EUnary("&", EField(EPath("__b"), fieldName)))
-													});
-													stmts.push(RLet(tmpName, false, null, tmpExpr));
-												} else {
-													var read = EField(ECall(EField(recvExpr, "borrow"), []), fieldName);
-													stmts.push(RLet(tmpName, false, null, EBinary(opStr, read, rhs)));
-												}
-
 												var writeField = EField(ECall(EField(recvExpr, "borrow_mut"), []), fieldName);
 												var writeValue:RustExpr = stringy ? ECall(EField(EPath(tmpName), "clone"), []) : EPath(tmpName);
 												stmts.push(RSemi(EAssign(writeField, writeValue)));
@@ -16498,8 +16535,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						case TField(obj, FAnon(cfRef)): {
 								// Compound assignment on an anonymous-object field: `obj.field <op>= rhs`.
 								//
-								// Preserve evaluation order (obj -> rhs) and avoid overlapping `RefCell` borrows:
-								// evaluate rhs first -> read via borrow() -> write via borrow_mut().
+								// Preserve Haxe order (object -> current value -> RHS) without holding an anonymous
+								// object borrow across user code in the RHS.
 								if (!isAnonObjectType(obj.t)) {
 									return unsupported(fullExpr, "assignop anon field lvalue (non-anon)");
 								}
@@ -16518,13 +16555,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 								var stmts:Array<RustStmt> = [];
 								stmts.push(RLet(recvName, false, null, maybeCloneForReuseValue(compileExpr(obj), obj)));
-								stmts.push(RLet(rhsName, false, null, compileExpr(e2)));
 
 								var tyStr = rustTypeToString(toRustType(cf.type, fullExpr.pos));
 								var borrowRead = ECall(EField(EPath(recvName), "borrow"), []);
 								var getter = "get::<" + tyStr + ">";
 								var read = ECall(EField(borrowRead, getter), [ELitString(fieldName)]);
-								stmts.push(RLet(tmpName, false, null, EBinary(opStr, read, EPath(rhsName))));
+								stmts.push(RLet("__current", false, null, read));
+								stmts.push(RLet(rhsName, false, null, compileExpr(e2)));
+								stmts.push(RLet(tmpName, false, null, EBinary(opStr, EPath("__current"), EPath(rhsName))));
 
 								var borrowWrite = ECall(EField(EPath(recvName), "borrow_mut"), []);
 								var setCall = ECall(EField(borrowWrite, "set"), [ELitString(fieldName), EPath(tmpName)]);

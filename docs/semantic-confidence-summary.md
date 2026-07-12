@@ -24,7 +24,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
 - Portable candidate importable modules: `184`
 - Portable candidate covered in Tier2: `184`
 - Portable candidate missing from Tier2: `0`
-- Portable semantic-diff cases: `26`
+- Portable semantic-diff cases: `27`
 - Lane semantic-diff cases: `2`
 - Snapshot cases: `138`
 - Compile/inventory buckets: `2`
@@ -71,7 +71,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
 
 ### Portable core contract semantics
 - Class: `targeted_semantic_parity`
-- Scope: Null strings, typed/dynamic exceptions, class/interface subtype-aware catches, generic base/interface specialization, numeric and String array updates, polymorphic/static field and property updates, virtual dispatch, env vars, function-value parity, portable Option/Result
+- Scope: Null strings, typed/dynamic exceptions, class/interface subtype-aware catches, generic base/interface specialization, numeric and String array updates, pre-RHS concrete/polymorphic/static/anonymous field updates, typed property updates, virtual dispatch, env vars, function-value parity, portable Option/Result
 - Evidence:
   - `test/semantic_diff/null_string_concat`
   - `test/semantic_diff/exceptions_typed_dynamic`
@@ -81,6 +81,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
   - `test/semantic_diff/generic_interface_specialization`
   - `test/semantic_diff/array_index_updates`
   - `test/semantic_diff/array_string_element_append`
+  - `test/semantic_diff/field_compound_rhs_mutation`
   - `test/semantic_diff/polymorphic_field_updates`
   - `test/semantic_diff/static_field_updates`
   - `test/semantic_diff/static_property_updates`
@@ -269,7 +270,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
 
 ## Discovered Semantic-Diff Suites
 
-- Portable semantic-diff cases (26): `array_index_updates`, `array_string_element_append`, `bytes_extended_api`, `closure_capture_mutation`, `exception_dynamic_payload`, `exceptions_typed_dynamic`, `function_value_mutable_callbacks`, `generic_base_specialization`, `generic_interface_specialization`, `int64_parity`, `json_stringify_replacer`, `map_key_value_iterator_manual`, `null_string_concat`, `polymorphic_field_updates`, `portable_option_result_basics`, `reflect_dynamic_receivers`, `static_field_updates`, `static_property_updates`, `sys_getenv_null`, `sys_http_callback_contract`, `sys_net_failure_paths`, `sys_process_failure_paths`, `this_method_closure`, `typed_catch_interface`, `typed_catch_subclass`, `virtual_dispatch`
+- Portable semantic-diff cases (27): `array_index_updates`, `array_string_element_append`, `bytes_extended_api`, `closure_capture_mutation`, `exception_dynamic_payload`, `exceptions_typed_dynamic`, `field_compound_rhs_mutation`, `function_value_mutable_callbacks`, `generic_base_specialization`, `generic_interface_specialization`, `int64_parity`, `json_stringify_replacer`, `map_key_value_iterator_manual`, `null_string_concat`, `polymorphic_field_updates`, `portable_option_result_basics`, `reflect_dynamic_receivers`, `static_field_updates`, `static_property_updates`, `sys_getenv_null`, `sys_http_callback_contract`, `sys_net_failure_paths`, `sys_process_failure_paths`, `this_method_closure`, `typed_catch_interface`, `typed_catch_subclass`, `virtual_dispatch`
 - Lane semantic-diff cases (2): `lane_clean_arithmetic`, `lane_clean_dispatch`
 
 ## Interpretation Rule

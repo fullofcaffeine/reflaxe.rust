@@ -51,17 +51,22 @@ Conformance fixtures:
 4. Generic interfaces inherited through a superclass chain must be implemented on the concrete
    child storage type with composed interface arguments; interface-parent specialization follows
    the same rule.
-5. Base-typed field compound assignments and numeric prefix/postfix updates must dispatch through
-   the generated polymorphic field contract, evaluate receiver and RHS once, and preserve Haxe
-   expression-result semantics.
+5. Concrete and base-typed field compound assignments must evaluate the receiver once, capture an
+   owned current value before the RHS, end any read borrow before user code runs, and preserve Haxe
+   expression-result semantics. Base-typed updates dispatch through the generated polymorphic field
+   contract. Numeric prefix/postfix updates preserve new/old results through the same storage paths.
 6. Mutable static field compound assignments and numeric prefix/postfix updates must use the
-   generated static storage contract, evaluate the RHS once, and preserve assigned/old/new results.
+   generated static storage contract. Compound assignment captures the getter result before the RHS
+   and preserves assigned-value semantics; prefix/postfix forms preserve new/old results.
 7. Copy-like numeric array-element compound and prefix/postfix updates plus `Array<String>` append
    assignment must update through the typed array storage contract. Compound assignment resolves
    the array, index, and current element before the RHS, evaluates each source expression once, and
    preserves the assigned-value result; prefix/postfix forms preserve new/old results.
 8. Static accessor properties must dispatch through their typed getter/setter methods for ordinary,
    compound, prefix/postfix, and String updates, preserving accessor calls and setter results.
+9. Copy-like anonymous-object field compound updates must capture the object and current typed value
+   before the RHS, end the read borrow before user code runs, and write through the existing typed
+   anonymous get/set contract.
 
 Conformance fixtures:
 
@@ -69,6 +74,7 @@ Conformance fixtures:
 - `test/semantic_diff/generic_interface_specialization`
 - `test/semantic_diff/array_index_updates`
 - `test/semantic_diff/array_string_element_append`
+- `test/semantic_diff/field_compound_rhs_mutation`
 - `test/semantic_diff/polymorphic_field_updates`
 - `test/semantic_diff/static_field_updates`
 - `test/semantic_diff/static_property_updates`

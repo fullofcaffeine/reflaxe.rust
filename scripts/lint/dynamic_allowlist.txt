@@ -10,7 +10,7 @@ src/reflaxe/rust/RustCompiler.hx:1544
 src/reflaxe/rust/RustCompiler.hx:1551
 src/reflaxe/rust/RustCompiler.hx:1554
 src/reflaxe/rust/RustCompiler.hx:1562
-src/reflaxe/rust/RustCompiler.hx:16956
+src/reflaxe/rust/RustCompiler.hx:16994
 src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:103
 src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:106
 src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:115
