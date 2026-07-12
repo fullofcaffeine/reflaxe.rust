@@ -17,8 +17,12 @@ impl Counter {
     pub fn add(self_: &crate::HxRefCell<Counter>, x: i32) -> i32 {
         let __hx_this: crate::HxRef<crate::counter::Counter> = self_.self_ref();
         {
+            let __current = {
+                let __b = self_.borrow();
+                __b.n
+            };
             let __rhs = x;
-            let __tmp = self_.borrow().n + __rhs;
+            let __tmp = __current + __rhs;
             self_.borrow_mut().n = __tmp;
             __tmp
         };

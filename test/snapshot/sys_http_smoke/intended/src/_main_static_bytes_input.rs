@@ -101,8 +101,12 @@ impl StaticBytesInput {
             count,
         );
         {
+            let __current = {
+                let __b = self_.borrow();
+                __b.position
+            };
             let __rhs = count;
-            let __tmp = self_.borrow().position + __rhs;
+            let __tmp = __current + __rhs;
             self_.borrow_mut().position = __tmp;
             __tmp
         };

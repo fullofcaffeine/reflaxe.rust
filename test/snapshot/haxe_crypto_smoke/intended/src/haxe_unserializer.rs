@@ -1255,8 +1255,12 @@ impl Unserializer {
                         }
                     }
                     {
+                        let __current = {
+                            let __b = self_.borrow();
+                            __b.pos
+                        };
                         let __rhs = len;
-                        let __tmp = self_.borrow().pos + __rhs;
+                        let __tmp = __current + __rhs;
                         self_.borrow_mut().pos = __tmp;
                         __tmp
                     };
@@ -1406,8 +1410,12 @@ impl Unserializer {
                             ))
                         }));
                         {
+                            let __current = {
+                                let __b = self_.borrow();
+                                __b.pos
+                            };
                             let __rhs = 19;
-                            let __tmp = self_.borrow().pos + __rhs;
+                            let __tmp = __current + __rhs;
                             self_.borrow_mut().pos = __tmp;
                             __tmp
                         };
@@ -1556,8 +1564,12 @@ impl Unserializer {
                         ))
                     });
                     {
+                        let __current = {
+                            let __b = self_.borrow();
+                            __b.pos
+                        };
                         let __rhs = len_2;
-                        let __tmp = self_.borrow().pos + __rhs;
+                        let __tmp = __current + __rhs;
                         self_.borrow_mut().pos = __tmp;
                         __tmp
                     };

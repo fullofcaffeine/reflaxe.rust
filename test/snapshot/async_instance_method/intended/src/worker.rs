@@ -29,8 +29,12 @@ impl Worker {
         let __hx_this: crate::HxRef<crate::worker::Worker> = self_.self_ref();
         return Box::pin(async move {
             {
+                let __current = {
+                    let __b = __hx_this.borrow();
+                    __b.base
+                };
                 let __rhs = 1;
-                let __tmp = __hx_this.borrow().base + __rhs;
+                let __tmp = __current + __rhs;
                 __hx_this.borrow_mut().base = __tmp;
                 __tmp
             };
