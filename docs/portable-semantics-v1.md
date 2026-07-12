@@ -48,10 +48,14 @@ Conformance fixtures:
 3. A concrete or multi-level generic superclass instantiation must specialize inherited storage,
    constructor behavior, method signatures, and base-typed dispatch without leaking free type
    parameters into generated Rust.
+4. Generic interfaces inherited through a superclass chain must be implemented on the concrete
+   child storage type with composed interface arguments; interface-parent specialization follows
+   the same rule.
 
 Conformance fixtures:
 
 - `test/semantic_diff/generic_base_specialization`
+- `test/semantic_diff/generic_interface_specialization`
 - `test/semantic_diff/virtual_dispatch`
 
 ### 4) Sys environment semantics

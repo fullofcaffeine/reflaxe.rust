@@ -114,6 +114,28 @@ Evidence:
 - `test/semantic_diff/generic_base_specialization`
 - `test/snapshot/generics_inheritance` (open `Sub<T> extends Base<T>` parameters remain generic)
 
+## Concrete inherited-interface specialization
+
+Haxe also inherits interface conformance through a generic superclass:
+
+```haxe
+class Source<T> implements ValueSource<T> {}
+class StringSource extends Source<String> {}
+```
+
+The emitted `StringSource` has its own physical Rust storage type, so reflaxe.rust emits
+`ValueSource<HxString>` for that concrete child rather than assuming the superclass's trait impl can
+apply to a different `HxCell` type. Interface type arguments are composed across multiple
+superclass levels and interface-parent edges before Rust lowering.
+
+This uses the same compile-time typed substitution model as concrete superclass specialization. It
+does not add runtime interface registries, erased adapters, or new `hxrt` behavior.
+
+Evidence:
+
+- `test/semantic_diff/generic_interface_specialization`
+- `test/snapshot/generics_interface` (open `Box<T> implements IGet<T>` remains generic)
+
 ## Phantom type parameters (`PhantomData`)
 
 Rust rejects unused type parameters on structs.

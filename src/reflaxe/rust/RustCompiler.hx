@@ -2886,40 +2886,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				base = base.superClass != null ? base.superClass.t.get() : null;
 			}
 
-			// Implement any Haxe interfaces (including inherited interface parents)
-			// as Rust traits on `RefCell<Class>`.
-			var ifaceImplTargets:Array<{ifaceType:ClassType, params:Array<Type>}> = [];
-			var seenIfaceImplTargets:Map<String, Bool> = [];
-			function collectInterfaceImplTargets(ifaceType:ClassType, resolvedParams:Array<Type>):Void {
-				if (ifaceType == null)
-					return;
-				var key = classKey(ifaceType);
-				if (seenIfaceImplTargets.exists(key))
-					return;
-				seenIfaceImplTargets.set(key, true);
-				ifaceImplTargets.push({ifaceType: ifaceType, params: resolvedParams});
-
-				for (parent in ifaceType.interfaces) {
-					var parentType = parent.t.get();
-					if (parentType == null)
-						continue;
-					var parentResolvedParams = parent.params != null ? parent.params : [];
-					if (parentResolvedParams.length > 0 && ifaceType.params != null && ifaceType.params.length > 0 && resolvedParams != null
-						&& resolvedParams.length > 0) {
-						parentResolvedParams = [
-							for (p in parentResolvedParams)
-								TypeTools.applyTypeParameters(p, ifaceType.params, resolvedParams)
-						];
-					}
-					collectInterfaceImplTargets(parentType, parentResolvedParams);
-				}
-			}
-			for (iface in classType.interfaces) {
-				var ifaceType = iface.t.get();
-				if (ifaceType == null)
-					continue;
-				collectInterfaceImplTargets(ifaceType, iface.params != null ? iface.params : []);
-			}
+			// Implement direct, superclass-inherited, and interface-parent Haxe interfaces as Rust traits
+			// on this class's own physical `HxCell<Class>` type.
+			var ifaceImplTargets = resolvedImplementedInterfaceTargets(classType);
 			for (ifaceTarget in ifaceImplTargets) {
 				var ifaceType = ifaceTarget.ifaceType;
 				if (!shouldEmitClass(ifaceType, false))
@@ -3662,6 +3631,73 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (currentClassType == null || currentMethodOwnerType == null)
 			return t;
 		return specializeAncestorType(currentClassType, currentMethodOwnerType, t);
+	}
+
+	/**
+		Resolves every implemented interface in a descendant's concrete type context.
+
+		Why
+		- Haxe records `interfaces` on the class that declares the `implements` edge; a subclass does not
+		  repeat interfaces inherited from its superclass.
+		- Rust gives each emitted subclass its own physical `HxCell<Subclass>` type, so the subclass needs
+		  its own trait impl even when Haxe inherited `ValueSource<String>` from `Base<String>`.
+
+		What
+		- Returns direct interfaces, superclass-inherited interfaces, and their parent interfaces.
+		- Every returned type argument is expressed in the descendant's type-parameter vocabulary.
+
+		How
+		- Walks the superclass chain and specializes each declaring class's interface arguments through
+		  `specializeAncestorType`.
+		- Recursively composes interface-parent arguments with `TypeTools.applyTypeParameters`.
+		- Deduplicates by interface identity because Haxe does not admit conflicting repeated generic
+		  interface instantiations for one class hierarchy.
+	**/
+	function resolvedImplementedInterfaceTargets(descendant:ClassType):Array<{ifaceType:ClassType, params:Array<Type>}> {
+		var out:Array<{ifaceType:ClassType, params:Array<Type>}> = [];
+		var seen:Map<String, Bool> = [];
+
+		function collectInterface(ifaceType:ClassType, resolvedParams:Array<Type>):Void {
+			if (ifaceType == null)
+				return;
+			var key = classKey(ifaceType);
+			if (seen.exists(key))
+				return;
+			seen.set(key, true);
+			out.push({ifaceType: ifaceType, params: resolvedParams != null ? resolvedParams : []});
+
+			for (parent in ifaceType.interfaces) {
+				var parentType = parent.t.get();
+				if (parentType == null)
+					continue;
+				var parentParams = parent.params != null ? parent.params.copy() : [];
+				if (parentParams.length > 0 && ifaceType.params != null && ifaceType.params.length > 0 && resolvedParams != null
+					&& resolvedParams.length == ifaceType.params.length) {
+					parentParams = [
+						for (p in parentParams)
+							TypeTools.applyTypeParameters(p, ifaceType.params, resolvedParams)
+					];
+				}
+				collectInterface(parentType, parentParams);
+			}
+		}
+
+		var owner:Null<ClassType> = descendant;
+		while (owner != null) {
+			for (iface in owner.interfaces) {
+				var ifaceType = iface.t.get();
+				if (ifaceType == null)
+					continue;
+				var resolvedParams = iface.params != null ? [
+					for (p in iface.params)
+						specializeAncestorType(descendant, owner, p)
+				] : [];
+				collectInterface(ifaceType, resolvedParams);
+			}
+			owner = owner.superClass != null ? owner.superClass.t.get() : null;
+		}
+
+		return out;
 	}
 
 	function rustModuleNameForClass(classType:ClassType):String {
