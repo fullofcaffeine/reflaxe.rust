@@ -93,6 +93,27 @@ Evidence:
 - `test/snapshot/super_method_call`
 - `test/semantic_diff/virtual_dispatch`
 
+## Concrete superclass specialization
+
+A non-generic subclass may concretely instantiate a generic base:
+
+```haxe
+class StringBox extends Box<String> {}
+```
+
+reflaxe.rust specializes inherited physical fields, constructor parameters/bodies, inherited method
+signatures, accessors, and base-trait implementations before emitting the subclass. Multi-level
+chains compose their arguments as well: `Leaf extends Mid<String>` plus
+`Mid<T> extends Base<Array<T>>` emits `Base<Array<String>>` surfaces for `Leaf`.
+
+This is compiler-owned typed lowering. The generated child contains direct concrete Rust types; it
+does not add runtime type erasure or an `hxrt` specialization layer.
+
+Evidence:
+
+- `test/semantic_diff/generic_base_specialization`
+- `test/snapshot/generics_inheritance` (open `Sub<T> extends Base<T>` parameters remain generic)
+
 ## Phantom type parameters (`PhantomData`)
 
 Rust rejects unused type parameters on structs.

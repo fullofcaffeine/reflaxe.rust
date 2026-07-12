@@ -2721,22 +2721,26 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 			var derives = rustDerivesFromMeta(classType.meta);
 			var canDeriveDebug = true;
-			for (cf in getAllInstanceVarFieldsForStruct(classType)) {
-				if (shouldOptionWrapStructFieldType(cf.type)) {
+			for (spec in getAllInstanceVarFieldSpecsForStruct(classType)) {
+				var cf = spec.field;
+				var fieldType = specializeAncestorType(classType, spec.owner, cf.type);
+				if (shouldOptionWrapStructFieldType(fieldType)) {
 					canDeriveDebug = false;
 					break;
 				}
 				// Trait objects (`dyn ...`) do not implement `Debug` by default, so auto-deriving `Debug`
 				// for any struct that contains them would fail to compile.
-				var tyStr = rustTypeToString(toRustType(cf.type, cf.pos));
+				var tyStr = rustTypeToString(toRustType(fieldType, cf.pos));
 				if (tyStr.indexOf("dyn ") != -1) {
 					canDeriveDebug = false;
 					break;
 				}
 			}
 			if (canDeriveDebug) {
-				for (cf in getAllInstanceDynamicMethodFieldsForStorage(classType)) {
-					var tyStr = rustTypeToString(toRustType(cf.type, cf.pos));
+				for (spec in getAllInstanceDynamicMethodFieldSpecsForStorage(classType)) {
+					var cf = spec.field;
+					var fieldType = specializeAncestorType(classType, spec.owner, cf.type);
+					var tyStr = rustTypeToString(toRustType(fieldType, cf.pos));
 					if (tyStr.indexOf("dyn ") != -1) {
 						canDeriveDebug = false;
 						break;
@@ -2750,9 +2754,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				items.push(RRaw("#[derive(" + derives.join(", ") + ")]"));
 
 			var structFields:Array<reflaxe.rust.ast.RustAST.RustStructField> = [];
-			for (cf in getAllInstanceVarFieldsForStruct(classType)) {
-				var ty = toRustType(cf.type, cf.pos);
-				if (shouldOptionWrapStructFieldType(cf.type)) {
+			for (spec in getAllInstanceVarFieldSpecsForStruct(classType)) {
+				var cf = spec.field;
+				var fieldType = specializeAncestorType(classType, spec.owner, cf.type);
+				var ty = toRustType(fieldType, cf.pos);
+				if (shouldOptionWrapStructFieldType(fieldType)) {
 					ty = RPath("Option<" + rustTypeToString(ty) + ">");
 				}
 				structFields.push({
@@ -2761,10 +2767,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					isPub: cf.isPublic
 				});
 			}
-			for (cf in getAllInstanceDynamicMethodFieldsForStorage(classType)) {
+			for (spec in getAllInstanceDynamicMethodFieldSpecsForStorage(classType)) {
+				var cf = spec.field;
+				var fieldType = specializeAncestorType(classType, spec.owner, cf.type);
 				structFields.push({
 					name: rustDynamicMethodFieldName(classType, cf),
-					ty: toRustType(cf.type, cf.pos),
+					ty: toRustType(fieldType, cf.pos),
 					isPub: false,
 					vis: RustVisibility.VPubCrate
 				});
@@ -3573,6 +3581,87 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function classKey(classType:ClassType):String {
 		return classType.pack.join(".") + "." + classType.name;
+	}
+
+	/**
+		Resolves an ancestor's type parameters in the concrete type context of a descendant.
+
+		Why
+		- Haxe stores a base member's declared type on the base `ClassField`; `Base<T>.value` therefore
+		  remains `T` even while emitting `StringChild extends Base<String>`.
+		- Rust emits a physical child struct and synthesized inherited methods, so leaking that unbound
+		  base parameter produces invalid Rust instead of inheriting Haxe's specialization implicitly.
+
+		What
+		- Returns the ancestor arguments as seen from `descendant`, composing every generic superclass
+		  edge (for example `Leaf extends Mid<String>`, `Mid<U> extends Base<Array<U>>` becomes
+		  `Base<Array<String>>`).
+		- Returns `null` when `ancestor` is not actually in the descendant's superclass chain.
+
+		How
+		- Each `superClass.params` array is expressed in the current class's parameter vocabulary.
+		- Apply the already-resolved current arguments before advancing to the next superclass edge.
+	**/
+	function resolvedAncestorTypeArgs(descendant:ClassType, ancestor:ClassType):Null<Array<Type>> {
+		if (descendant == null || ancestor == null || classKey(descendant) == classKey(ancestor))
+			return null;
+
+		var current:Null<ClassType> = descendant;
+		var currentArgs:Null<Array<Type>> = null;
+		while (current != null && current.superClass != null) {
+			var superType = current.superClass.t.get();
+			if (superType == null)
+				return null;
+
+			var edgeArgs = current.superClass.params != null ? current.superClass.params.copy() : [];
+			if (currentArgs != null && current.params != null && current.params.length > 0 && current.params.length == currentArgs.length) {
+				edgeArgs = [for (arg in edgeArgs) TypeTools.applyTypeParameters(arg, current.params, currentArgs)];
+			}
+
+			if (classKey(superType) == classKey(ancestor))
+				return edgeArgs;
+
+			current = superType;
+			currentArgs = edgeArgs;
+		}
+		return null;
+	}
+
+	/**
+		Specializes a type declared by an ancestor for a concrete descendant emission context.
+
+		Why / What / How
+		- This is the single typed substitution boundary used by physical inherited fields, synthesized
+		  methods, constructor chains, and trait implementations.
+		- Types owned by the descendant stay unchanged. Ancestor-owned types use
+		  `TypeTools.applyTypeParameters`, preserving Haxe's typed representation until ordinary Rust
+		  type lowering runs.
+		- No string rewriting or runtime type carrier participates in specialization.
+	**/
+	function specializeAncestorType(descendant:ClassType, owner:ClassType, t:Type):Type {
+		if (descendant == null || owner == null || t == null || classKey(descendant) == classKey(owner))
+			return t;
+		var resolved = resolvedAncestorTypeArgs(descendant, owner);
+		if (resolved == null || owner.params == null || owner.params.length == 0 || owner.params.length != resolved.length)
+			return t;
+		return TypeTools.applyTypeParameters(t, owner.params, resolved);
+	}
+
+	/**
+		Applies the active inherited-method specialization to a typed AST type.
+
+		Why / What / How
+		- Inherited method bodies are compiled from their original base AST while `currentClassType`
+		  names the concrete descendant receiving the synthesized Rust method.
+		- When both contexts are active, delegate to `specializeAncestorType`; ordinary methods and
+		  non-inheritance lowering return the input unchanged.
+		- `toRustType` and copy analysis use this boundary so every nested type decision sees the same
+		  concrete ancestor substitution.
+	**/
+	function specializeCurrentMethodType(t:Type):Type {
+		if (currentClassType == null || currentMethodOwnerType == null)
+			return t;
+		return specializeAncestorType(currentClassType, currentMethodOwnerType, t);
 	}
 
 	function rustModuleNameForClass(classType:ClassType):String {
@@ -5631,7 +5720,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 				var fieldInits:Array<RustStructLitField> = [];
 				var ctorAssignedFields:Map<String, Bool> = collectThisAssignedFields(f.expr);
-				for (cf in getAllInstanceVarFieldsForStruct(classType)) {
+				for (spec in getAllInstanceVarFieldSpecsForStruct(classType)) {
+					var cf = spec.field;
+					var fieldType = specializeAncestorType(classType, spec.owner, cf.type);
 					var haxeName = cf.getHaxeName();
 					if (liftedFieldInit.exists(haxeName)) {
 						fieldInits.push({
@@ -5639,12 +5730,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							expr: liftedFieldInit.get(haxeName)
 						});
 					} else {
-						var defExpr = if (shouldOptionWrapStructFieldType(cf.type)) {
+						var defExpr = if (shouldOptionWrapStructFieldType(fieldType)) {
 							EPath("None");
-						} else if (ctorAssignedFields.exists(haxeName) && canUseNullClassReferenceDefault(cf.type)) {
-							nullFillExprForType(cf.type, cf.pos);
+						} else if (ctorAssignedFields.exists(haxeName) && canUseNullClassReferenceDefault(fieldType)) {
+							nullFillExprForType(fieldType, cf.pos);
 						} else {
-							defaultValueExprForType(cf.type, cf.pos);
+							defaultValueExprForType(fieldType, cf.pos);
 						}
 						fieldInits.push({
 							name: rustFieldName(classType, cf),
@@ -5652,10 +5743,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						});
 					}
 				}
-				for (cf in getAllInstanceDynamicMethodFieldsForStorage(classType)) {
+				for (spec in getAllInstanceDynamicMethodFieldSpecsForStorage(classType)) {
+					var cf = spec.field;
+					var fieldType = specializeAncestorType(classType, spec.owner, cf.type);
 					fieldInits.push({
 						name: rustDynamicMethodFieldName(classType, cf),
-						expr: defaultValueExprForType(cf.type, cf.pos)
+						expr: defaultValueExprForType(fieldType, cf.pos)
 					});
 				}
 				if (classNeedsPhantomForUnusedTypeParams(classType)) {
@@ -5666,12 +5759,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 				var structInitExpr = EStructLit(rustSelfType, fieldInits);
 				stmts.push(RLet("self_", false, selfRefTy, ECall(EPath("crate::HxRef::new"), [structInitExpr])));
-				for (cf in getAllInstanceDynamicMethodFieldsForStorage(classType)) {
+				for (spec in getAllInstanceDynamicMethodFieldSpecsForStorage(classType)) {
+					var cf = spec.field;
+					var fieldType = specializeAncestorType(classType, spec.owner, cf.type);
 					var recvExpr = EPath("self_");
 					var recvName = "__hx_dyn_recv_" + rustMethodName(classType, cf);
 					var fieldName = rustDynamicMethodFieldName(classType, cf);
 					var defaultName = rustDynamicMethodDefaultName(classType, cf);
-					var fnInfo = switch (followType(cf.type)) {
+					var fnInfo = switch (followType(fieldType)) {
 						case TFun(params, ret): {params: params, ret: ret};
 						case _: null;
 					};
@@ -5743,7 +5838,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var cf = ctorFieldFor(cls);
 					if (cf == null)
 						return [];
-					return switch (followType(cf.type)) {
+					var ctorType = specializeAncestorType(classType, cls, cf.type);
+					return switch (followType(ctorType)) {
 						case TFun(params, _): params;
 						case _: [];
 					};
@@ -5761,7 +5857,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					};
 				}
 
-				function compilePositionalArgsFor(params:Array<{name:String, t:Type, opt:Bool}>,
+				function compilePositionalArgsFor(owner:ClassType, params:Array<{name:String, t:Type, opt:Bool}>,
 						args:Array<TypedExpr>):Array<{param:{name:String, t:Type, opt:Bool}, rust:RustExpr, typed:Null<TypedExpr>}> {
 					var out:Array<{param:{name:String, t:Type, opt:Bool}, rust:RustExpr, typed:Null<TypedExpr>}> = [];
 					for (i in 0...params.length) {
@@ -5770,6 +5866,21 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							var a = args[i];
 							var compiled = compileExpr(a);
 							compiled = coerceArgForParam(compiled, a, p.t);
+							// A generic base constructor parameter is specialized before this call. If the
+							// actual argument is an already-typed local HxString, the general string bridge
+							// can conservatively wrap it again because the source AST still names `T`.
+							// Remove only that direct identity wrapper at this generic constructor edge;
+							// literals/native String expressions retain the ordinary bridge.
+							if (owner.params != null && owner.params.length > 0 && isLocalExpr(a)) {
+								var expectedRust = rustTypeToString(toRustType(p.t, a.pos));
+								var actualRust = rustTypeToString(toRustType(a.t, a.pos));
+								if (expectedRust == "hxrt::string::HxString" && actualRust == expectedRust) {
+									compiled = switch (compiled) {
+										case ECall(EPath("hxrt::string::HxString::from"), [inner]): inner;
+										case _: compiled;
+									}
+								}
+							}
 							out.push({param: p, rust: compiled, typed: a});
 						} else if (p.opt) {
 							out.push({param: p, rust: nullFillExprForType(p.t, f.field.pos), typed: null});
@@ -5787,9 +5898,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var ctorExpr = ctorBodyFor(cls);
 					if (ctorExpr == null)
 						return;
+					var previousMethodOwner = currentMethodOwnerType;
+					currentMethodOwnerType = cls;
 
 					var params = ctorParamsFor(cls);
-					var compiledArgs = compilePositionalArgsFor(params, callArgs);
+					var compiledArgs = compilePositionalArgsFor(cls, params, callArgs);
 
 					// Evaluate super-call args once, in order, into temps.
 					var subst:Map<String, RustExpr> = new Map();
@@ -5857,6 +5970,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						}
 						return null;
 					});
+					currentMethodOwnerType = previousMethodOwner;
 				}
 
 				// Remove a leading `super(...)` call from the derived ctor body and inline the base ctor chain.
@@ -6159,7 +6273,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		var bodyExpr = unwrapFieldFunctionBody(ex);
-		var sig = switch (followType(cf.type)) {
+		var sig = switch (followType(specializeAncestorType(classType, owner, cf.type))) {
 			case TFun(params, ret): {params: params, ret: ret};
 			case _: null;
 		};
@@ -6605,12 +6719,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		for (n in names)
 			nameSet.set(n, true);
 
-		for (cf in getAllInstanceVarFieldsForStruct(classType)) {
-			if (haxeTypeContainsClassTypeParam(cf.type, nameSet))
+		for (spec in getAllInstanceVarFieldSpecsForStruct(classType)) {
+			var fieldType = specializeAncestorType(classType, spec.owner, spec.field.type);
+			if (haxeTypeContainsClassTypeParam(fieldType, nameSet))
 				return false;
 		}
-		for (cf in getAllInstanceDynamicMethodFieldsForStorage(classType)) {
-			if (haxeTypeContainsClassTypeParam(cf.type, nameSet))
+		for (spec in getAllInstanceDynamicMethodFieldSpecsForStorage(classType)) {
+			var fieldType = specializeAncestorType(classType, spec.owner, spec.field.type);
+			if (haxeTypeContainsClassTypeParam(fieldType, nameSet))
 				return false;
 		}
 		return true;
@@ -10862,6 +10978,25 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 
+		function isSpecializedInheritedHxStringExpr(expr:RustExpr, sourceType:Type):Bool {
+			if (currentClassType == null
+				|| currentMethodOwnerType == null
+				|| classKey(currentClassType) == classKey(currentMethodOwnerType))
+				return false;
+			var specialized = specializeAncestorType(currentClassType, currentMethodOwnerType, sourceType);
+			if (TypeTools.toString(specialized) == TypeTools.toString(sourceType))
+				return false;
+			return switch (expr) {
+				// Inherited typed locals and field reads have already been declared/lowered as HxString
+				// after ancestor substitution. Literal/format/native String expressions are deliberately
+				// excluded because they still need the ordinary representation bridge.
+				case EPath(_): true;
+				case ECall(EField(_, "clone"), []): true;
+				case EBlock(block) if (block.tail != null): isSpecializedInheritedHxStringExpr(block.tail, sourceType);
+				case _: false;
+			}
+		}
+
 		// `Null<T>` (Option<T>) expects `Some(value)` for non-null values.
 		//
 		// IMPORTANT: if the inner type needs coercion (notably `HxRef<Sub>` -> `HxRc<dyn BaseTrait>`),
@@ -10945,7 +11080,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (expectedRust == "hxrt::string::HxString" && !actualIsDyn) {
 			// Preserve already-wrapped HxString values to avoid noisy `HxString::from(HxString::null())`
 			// output while still bridging plain `String`/`&str` expressions.
-			if (isDefaultDefaultCall(compiled) || isAlreadyHxStringExpr(compiled))
+			if (isDefaultDefaultCall(compiled)
+				|| isAlreadyHxStringExpr(compiled)
+				|| isSpecializedInheritedHxStringExpr(compiled, valueExpr.t))
 				return compiled;
 			return wrapRustStringExpr(compiled);
 		}
@@ -14724,8 +14861,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var lines:Array<String> = [];
 		lines.push("pub trait " + traitName + genericSuffix + ": Send + Sync {");
 
-		for (cf in getAllInstanceVarFieldsForStruct(classType)) {
-			var ty = rustTypeToString(toRustType(cf.type, cf.pos));
+		for (spec in getAllInstanceVarFieldSpecsForStruct(classType)) {
+			var cf = spec.field;
+			var fieldType = specializeAncestorType(classType, spec.owner, cf.type);
+			var ty = rustTypeToString(toRustType(fieldType, cf.pos));
 			lines.push("\tfn " + rustGetterName(classType, cf) + "(&self) -> " + ty + ";");
 			lines.push("\tfn " + rustSetterName(classType, cf) + "(&self, v: " + ty + ");");
 		}
@@ -14770,13 +14909,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var lines:Array<String> = [];
 		lines.push("impl" + implGenerics + " " + traitPathBase + traitArgs + " for " + refCellBasePath() + "<" + rustSelfInst + "> {");
 
-		for (cf in getAllInstanceVarFieldsForStruct(classType)) {
-			var ty = rustTypeToString(toRustType(cf.type, cf.pos));
+		for (spec in getAllInstanceVarFieldSpecsForStruct(classType)) {
+			var cf = spec.field;
+			var fieldType = specializeAncestorType(classType, spec.owner, cf.type);
+			var ty = rustTypeToString(toRustType(fieldType, cf.pos));
 
 			lines.push("\tfn " + rustGetterName(classType, cf) + "(&self) -> " + ty + " {");
-			if (shouldOptionWrapStructFieldType(cf.type)) {
+			if (shouldOptionWrapStructFieldType(fieldType)) {
 				lines.push("\t\tself.borrow()." + rustFieldName(classType, cf) + ".as_ref().unwrap().clone()");
-			} else if (isCopyType(cf.type)) {
+			} else if (isCopyType(fieldType)) {
 				lines.push("\t\tself.borrow()." + rustFieldName(classType, cf));
 			} else {
 				lines.push("\t\tself.borrow()." + rustFieldName(classType, cf) + ".clone()");
@@ -14784,7 +14925,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			lines.push("\t}");
 
 			lines.push("\tfn " + rustSetterName(classType, cf) + "(&self, v: " + ty + ") {");
-			if (shouldOptionWrapStructFieldType(cf.type)) {
+			if (shouldOptionWrapStructFieldType(fieldType)) {
 				lines.push("\t\tself.borrow_mut()." + rustFieldName(classType, cf) + " = Some(v);");
 			} else {
 				lines.push("\t\tself.borrow_mut()." + rustFieldName(classType, cf) + " = v;");
@@ -14836,21 +14977,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var subTurbofish = subGenericNames.length > 0 ? ("::<" + subGenericNames.join(", ") + ">") : "";
 		var subImplGenerics = subGenerics.length > 0 ? "<" + subGenerics.join(", ") + ">" : "";
 
-		function findSuperParams(sub:ClassType, base:ClassType):Array<Type> {
-			var cur:Null<ClassType> = sub;
-			while (cur != null) {
-				if (cur.superClass != null) {
-					var sup = cur.superClass.t.get();
-					if (sup != null && classKey(sup) == classKey(base)) {
-						return cur.superClass.params != null ? cur.superClass.params : [];
-					}
-				}
-				cur = cur.superClass != null ? cur.superClass.t.get() : null;
-			}
-			return [];
-		}
-
-		var baseArgs = findSuperParams(subType, baseType);
+		var resolvedBaseArgs = resolvedAncestorTypeArgs(subType, baseType);
+		var baseArgs = resolvedBaseArgs != null ? resolvedBaseArgs : [];
 		var baseTraitArgs = baseArgs.length > 0 ? ("<" + [for (p in baseArgs) rustTypeToString(toRustType(p, subType.pos))].join(", ") + ">") : "";
 
 		var subMethodsByKey = new Map<String, ClassFuncData>();
@@ -14876,13 +15004,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			+ rustSubInst
 			+ "> {");
 
-		for (cf in getAllInstanceVarFieldsForStruct(baseType)) {
-			var ty = rustTypeToString(toRustType(cf.type, cf.pos));
+		for (spec in getAllInstanceVarFieldSpecsForStruct(baseType)) {
+			var cf = spec.field;
+			var fieldType = specializeAncestorType(subType, spec.owner, cf.type);
+			var ty = rustTypeToString(toRustType(fieldType, cf.pos));
 
 			lines.push("\tfn " + rustGetterName(baseType, cf) + "(&self) -> " + ty + " {");
-			if (shouldOptionWrapStructFieldType(cf.type)) {
+			if (shouldOptionWrapStructFieldType(fieldType)) {
 				lines.push("\t\tself.borrow()." + rustFieldName(subType, cf) + ".as_ref().unwrap().clone()");
-			} else if (isCopyType(cf.type)) {
+			} else if (isCopyType(fieldType)) {
 				lines.push("\t\tself.borrow()." + rustFieldName(subType, cf));
 			} else {
 				lines.push("\t\tself.borrow()." + rustFieldName(subType, cf) + ".clone()");
@@ -14890,7 +15020,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			lines.push("\t}");
 
 			lines.push("\tfn " + rustSetterName(baseType, cf) + "(&self, v: " + ty + ") {");
-			if (shouldOptionWrapStructFieldType(cf.type)) {
+			if (shouldOptionWrapStructFieldType(fieldType)) {
 				lines.push("\t\tself.borrow_mut()." + rustFieldName(subType, cf) + " = Some(v);");
 			} else {
 				lines.push("\t\tself.borrow_mut()." + rustFieldName(subType, cf) + " = v;");
@@ -14900,10 +15030,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		// Base traits include inherited methods (see `emitClassTrait` using `effectiveFuncFields`).
 		// Implement the same surface here: baseType declared methods with bodies plus inherited base bodies.
-		var baseTraitMethods:Array<ClassField> = [];
+		var baseTraitMethods:Array<{owner:ClassType, field:ClassField}> = [];
 		var baseTraitSeen:Map<String, Bool> = [];
 
-		function considerBaseTraitMethod(cf:ClassField):Void {
+		function considerBaseTraitMethod(owner:ClassType, cf:ClassField):Void {
 			if (cf.getHaxeName() == "new")
 				return;
 			switch (cf.kind) {
@@ -14920,21 +15050,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					if (cf.expr() == null)
 						return;
 					baseTraitSeen.set(key, true);
-					baseTraitMethods.push(cf);
+					baseTraitMethods.push({owner: owner, field: cf});
 				case _:
 			}
 		}
 
 		for (cf in baseType.fields.get())
-			considerBaseTraitMethod(cf);
+			considerBaseTraitMethod(baseType, cf);
 		var curBase:Null<ClassType> = baseType.superClass != null ? baseType.superClass.t.get() : null;
 		while (curBase != null) {
 			for (cf in curBase.fields.get())
-				considerBaseTraitMethod(cf);
+				considerBaseTraitMethod(curBase, cf);
 			curBase = curBase.superClass != null ? curBase.superClass.t.get() : null;
 		}
 
-		function baseTraitKey(cf:ClassField):String {
+		function baseTraitKey(spec:{owner:ClassType, field:ClassField}):String {
+			var cf = spec.field;
 			var ft = followType(cf.type);
 			var argc = switch (ft) {
 				case TFun(a, _): a.length;
@@ -14944,11 +15075,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 		baseTraitMethods.sort((a, b) -> compareStrings(baseTraitKey(a), baseTraitKey(b)));
 
-		for (cf in baseTraitMethods) {
+		for (spec in baseTraitMethods) {
+			var cf = spec.field;
 			switch (cf.kind) {
 				case FMethod(_):
 					{
-						var ft = followType(cf.type);
+						var ft = followType(specializeAncestorType(subType, spec.owner, cf.type));
 						var args = switch (ft) {
 							case TFun(a, _): a;
 							case _: [];
@@ -15079,8 +15211,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return hash;
 	}
 
-	function getAllInstanceVarFieldsForStruct(classType:ClassType):Array<ClassField> {
-		var out:Array<ClassField> = [];
+	function getAllInstanceVarFieldSpecsForStruct(classType:ClassType):Array<{owner:ClassType, field:ClassField}> {
+		var out:Array<{owner:ClassType, field:ClassField}> = [];
 		var seen = new Map<String, Bool>();
 
 		function isPhysicalVarField(cls:ClassType, cf:ClassField):Bool {
@@ -15106,7 +15238,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							if (seen.exists(name))
 								continue;
 							seen.set(name, true);
-							out.push(cf);
+							out.push({owner: cls, field: cf});
 						}
 					case _:
 				}
@@ -15116,6 +15248,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return out;
 	}
 
+	function getAllInstanceVarFieldsForStruct(classType:ClassType):Array<ClassField> {
+		return [for (spec in getAllInstanceVarFieldSpecsForStruct(classType)) spec.field];
+	}
+
 	function isDynamicMethodField(cf:ClassField):Bool {
 		return switch (cf.kind) {
 			case FMethod(MethDynamic): true;
@@ -15123,8 +15259,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		};
 	}
 
-	function getAllInstanceDynamicMethodFieldsForStorage(classType:ClassType):Array<ClassField> {
-		var out:Array<ClassField> = [];
+	function getAllInstanceDynamicMethodFieldSpecsForStorage(classType:ClassType):Array<{owner:ClassType, field:ClassField}> {
+		var out:Array<{owner:ClassType, field:ClassField}> = [];
 		var seen = new Map<String, Bool>();
 
 		var chain:Array<ClassType> = [];
@@ -15146,11 +15282,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				if (seen.exists(key))
 					continue;
 				seen.set(key, true);
-				out.push(cf);
+				out.push({owner: cls, field: cf});
 			}
 		}
 
 		return out;
+	}
+
+	function getAllInstanceDynamicMethodFieldsForStorage(classType:ClassType):Array<ClassField> {
+		return [for (spec in getAllInstanceDynamicMethodFieldSpecsForStorage(classType)) spec.field];
 	}
 
 	function rustDynamicMethodFieldName(classType:ClassType, cf:ClassField):String {
@@ -15187,7 +15327,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		function buildFrom(owner:ClassType, cf:ClassField, body:TypedExpr):Null<{owner:ClassType, f:ClassFuncData}> {
-			var ft = followType(cf.type);
+			var ft = followType(specializeAncestorType(classType, owner, cf.type));
 			var sig = switch (ft) {
 				case TFun(args, ret): {args: args, ret: ret};
 				case _: null;
@@ -16666,6 +16806,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function toRustType(t:Type, pos:haxe.macro.Expr.Position):reflaxe.rust.ast.RustAST.RustType {
+		// Inherited bodies retain their owner's type parameters in the typed AST. Specialize those
+		// parameters for the concrete class currently being emitted before any Rust representation
+		// decision (including raw Null<T> handling) observes the type.
+		t = specializeCurrentMethodType(t);
+
 		// Haxe `Null<T>` in Rust output is represented by `Option<T>` *unless* the chosen Rust
 		// representation already has an explicit null sentinel.
 		//
@@ -17022,6 +17167,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function isCopyType(t:Type):Bool {
+		t = specializeCurrentMethodType(t);
 		var ft = followType(t);
 		return TypeHelper.isBool(ft) || TypeHelper.isInt(ft) || TypeHelper.isFloat(ft);
 	}

@@ -45,9 +45,13 @@ Conformance fixtures:
 
 1. Base-typed values must dispatch overridden methods from derived implementations.
 2. Calls from base methods into overridable methods must preserve dynamic dispatch behavior.
+3. A concrete or multi-level generic superclass instantiation must specialize inherited storage,
+   constructor behavior, method signatures, and base-typed dispatch without leaking free type
+   parameters into generated Rust.
 
 Conformance fixtures:
 
+- `test/semantic_diff/generic_base_specialization`
 - `test/semantic_diff/virtual_dispatch`
 
 ### 4) Sys environment semantics
