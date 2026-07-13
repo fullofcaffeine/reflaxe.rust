@@ -62,9 +62,13 @@ Conformance fixtures:
    assignment must update through the typed array storage contract. Compound assignment resolves
    the array, index, and current element before the RHS, evaluates each source expression once, and
    preserves the assigned-value result; prefix/postfix forms preserve new/old results.
-8. Static accessor properties must dispatch through their typed getter/setter methods for ordinary,
+8. Non-empty array literals must evaluate each source element once in order and coerce it through
+   the literal's unified element type before storage. Nullable primitive elements use `Some(value)`
+   for non-null sources and `None` for null; reusable reference values preserve Haxe aliasing rather
+   than being moved away from subsequent source uses.
+9. Static accessor properties must dispatch through their typed getter/setter methods for ordinary,
    compound, prefix/postfix, and String updates, preserving accessor calls and setter results.
-9. Copy-like anonymous-object field compound updates must capture the object and current typed value
+10. Copy-like anonymous-object field compound updates must capture the object and current typed value
    before the RHS, end the read borrow before user code runs, and write through the existing typed
    anonymous get/set contract.
 
@@ -74,6 +78,7 @@ Conformance fixtures:
 - `test/semantic_diff/generic_interface_specialization`
 - `test/semantic_diff/array_index_updates`
 - `test/semantic_diff/array_string_element_append`
+- `test/semantic_diff/nullable_array_literals`
 - `test/semantic_diff/field_compound_rhs_mutation`
 - `test/semantic_diff/polymorphic_field_updates`
 - `test/semantic_diff/static_field_updates`

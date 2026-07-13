@@ -195,6 +195,10 @@ Agent policy:
     `Option<Option<T>>`. Lower the Haxe-visible nullable result with typed `Option::flatten()` instead of a
     manual `Some(v) => v, None => None` match; the native combinator is clearer and remains clean under
     rolling-current Clippy.
+  - Array-literal coercion gotcha: compile every non-empty literal element once in source order, preserve
+    required clone/reuse semantics on that source value, and then coerce it through the literal's unified
+    `Array<T>` element contract before emitting `vec![]`. In particular, non-null values in
+    `Array<Null<Primitive>>` must become `Some(value)` while source `null` remains `None`.
   - Empty-record gotcha: a zero-field anonymous object must allocate and return its `HxRef<Anon>` directly.
     Do not acquire an empty `borrow_mut()` initialization guard; cleanup can turn the unused guard into
     `let _ = value.borrow_mut()`, which is rejected by Clippy because synchronization guards must not be

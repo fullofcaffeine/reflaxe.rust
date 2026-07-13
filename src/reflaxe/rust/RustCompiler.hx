@@ -9133,7 +9133,26 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					} else {
 						var elem = arrayElementType(e.t);
 						var elemRust = toRustType(elem, e.pos);
-						var vecExpr = EMacroCall("vec", [for (v in values) maybeCloneForReuseValue(compileExpr(v), v)]);
+						// Why: Haxe types each array-literal element against the literal's unified `Array<T>`
+						// contract. Rust's `vec![]` requires the same explicit element type, so a source value
+						// such as `7` in `Array<Null<Int>>` must become `Some(7)` before construction.
+						// What: preserve Haxe reuse semantics on the source value, then pass the resulting Rust
+						// expression through the ordinary typed coercion boundary for `T`.
+						// How: each element remains one `vec![]` operand in source order, so evaluation still
+						// occurs exactly once and left-to-right without adding a runtime helper or temporary.
+						var vecValues:Array<RustExpr> = [];
+						for (value in values) {
+							var compiled = maybeCloneForReuseValue(compileExpr(value), value);
+							// A typed local String has already crossed the compiler's String -> HxString
+							// boundary at its declaration. Avoid adding an identity wrapper here; literal,
+							// call, field, nullable, and other element forms still use the full coercion path.
+							var sourceRust = rustTypeToString(toRustType(value.t, value.pos));
+							var materializedHxStringLocal = isLocalExpr(value)
+								&& rustTypeToString(elemRust) == "hxrt::string::HxString"
+								&& sourceRust == "hxrt::string::HxString";
+							vecValues.push(materializedHxStringLocal ? compiled : coerceExprToExpected(compiled, value, elem));
+						}
+						var vecExpr = EMacroCall("vec", vecValues);
 						ECall(EPath("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::from_vec"), [vecExpr]);
 					}
 				}
