@@ -193,9 +193,12 @@ fn run_request(
         __hx_obj.borrow_mut().__hx_dyn_on_error = __tmp.clone();
         __tmp
     };
-    built
-        .borrow()
-        .get::<crate::HxDynRef<dyn Fn() + Send + Sync>>("run")();
+    ({
+        let __hx_value = built
+            .borrow()
+            .get::<crate::HxDynRef<dyn Fn() + Send + Sync>>("run");
+        __hx_value
+    })();
     crate::sys_thread_lock::Lock::wait(&*done, None);
     return {
         let __o = crate::HxRef::new(hxrt::anon::Anon::new());

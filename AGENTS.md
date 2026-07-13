@@ -208,6 +208,11 @@ Agent policy:
     must use `HxRef<Anon>` with Haxe reference equality. If a Rust-first API needs an owned pair, expose a
     distinct nominal `rust.*` facade; native map iterators must bridge their items back into the ordinary
     anonymous-record representation.
+  - Structural-iterator gotcha: field names and function signatures alone do not make an anonymous value
+    a native iterator. Reserve `hxrt::iter::Iter<T>` for Haxe's method-shaped `Iterator<T>` contract
+    (`FMethod`); a mutable record with `FVar` callbacks named `hasNext` / `next` remains `HxRef<Anon>`.
+    When reading a function-valued anonymous field, clone the typed callback in a bounded read scope and
+    drop that guard before invocation so the callback may safely mutate the same record through an alias.
   - Dynamic-runtime gotcha: prefer typed `std/hxrt/*` extern wrappers over raw `untyped __rust__` for runtime APIs returning `Dynamic`
     (example: `haxe.Json.parse`, `sys.thread.Thread.readMessage`) to avoid unresolved monomorph warnings.
   - Unresolved-monomorph fallback policy:

@@ -7563,6 +7563,17 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									if (loopVar == null)
 										return null;
 
+									// Why: Haxe also accepts shared anonymous records whose mutable function-valued
+									// fields happen to implement `hasNext` / `next`. Those values are not native Rust
+									// iterators: their field identity and mutation remain observable through aliases.
+									// What: keep the canonical Haxe `while` protocol for ordinary anonymous records.
+									// How: returning `null` lets the enclosing block lower its original iterator local,
+									// `hasNext()` condition, and `next()` call through typed `Anon` field access.
+									if (itVar != null && isAnonObjectType(itVar.t) && !isIteratorStructType(itVar.t)) {
+										recordLoopOptimizationSkipped("anon_iterator_record.protocol_semantics");
+										return null;
+									}
+
 									var it = extractRustForIterable(itInit);
 									// If we can't recover a Rust-native iterable, fall back to using the iterator value
 									// directly. `hxrt::iter::Iter<T>` implements `IntoIterator`, so Rust `for` loops can
@@ -10758,6 +10769,25 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return expr;
 	}
 
+	/**
+		Returns whether a structural type is Haxe's method-shaped iterator protocol.
+
+		Why
+		- `Iterator<T>` is structurally `{ function hasNext():Bool; function next():T; }`.
+		- An ordinary anonymous record may instead contain mutable function-valued fields with the same
+		  names. That record is still a shared Haxe object; treating names alone as an iterator erases
+		  field mutation, reference equality, and literal representation.
+
+		What
+		- Accepts only the exact two-field protocol when both fields are typed as methods.
+		- Rejects `FVar` function fields even when their signatures and names resemble an iterator.
+
+		How
+		- Haxe preserves the distinction in `ClassField.kind`: `StdTypes.Iterator` exposes `FMethod`,
+		  while mutable record function fields expose `FVar`.
+		- Type mapping and anonymous-object lowering share this predicate so they cannot select
+		  incompatible Rust representations for the same typed value.
+	**/
 	function isIteratorStructType(t:Type):Bool {
 		var ft = followType(t);
 		return switch (ft) {
@@ -10768,10 +10798,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var hasNext = false;
 					var next = false;
 					for (cf in anon.fields) {
-						switch (cf.getHaxeName()) {
-							case "hasNext": hasNext = true;
-							case "next": next = true;
-							case _:
+						var isMethod = switch (cf.kind) {
+							case FMethod(_): true;
+							case _: false;
+						};
+						if (isMethod) {
+							switch (cf.getHaxeName()) {
+								case "hasNext": hasNext = true;
+								case "next": next = true;
+								case _:
+							}
 						}
 					}
 					hasNext && next
@@ -13933,24 +13969,45 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		- Required fields read through `Anon::get::<T>` and still panic if missing.
 		- Optional fields emit a `has_key(...)` branch and use the compiler's null-fill value for the
 		  declared Haxe type when absent.
+		- Function-valued fields leave the borrow scope before surrounding user code can call them.
 
 		How
-		- The caller supplies an already borrowed `Anon` expression so normal field reads and
-		  `Reflect.field` can share this lowering while keeping their existing receiver evaluation order.
+		- The caller supplies an `Anon` borrow expression so normal field reads and `Reflect.field` can
+		  share this lowering while keeping their existing receiver evaluation order.
+		- For function-valued fields, a block binds both the read guard and cloned result. Returning the
+		  result from that block drops the guard before invocation, preventing callback-driven mutation of
+		  the same record from deadlocking on its own read lock.
+		- Ordinary required values retain the direct read shape; they do not execute user code after the
+		  typed clone and therefore need no additional scope.
 	**/
 	function compileAnonObjectBorrowedFieldRead(borrowed:RustExpr, cf:ClassField, pos:haxe.macro.Expr.Position):RustExpr {
 		var tyStr = rustTypeToString(toRustType(cf.type, pos));
 		var getter = "get::<" + tyStr + ">";
 		var fieldName = cf.getHaxeName();
-		if (isOptionalAnonField(cf)) {
-			var read = ECall(EField(EPath("__b"), getter), [ELitString(fieldName)]);
+		var read = ECall(EField(EPath("__b"), getter), [ELitString(fieldName)]);
+		var optional = isOptionalAnonField(cf);
+		var value = if (optional) {
 			var hasField = ECall(EField(EPath("__b"), "has_key"), [ELitString(fieldName)]);
+			EIf(hasField, read, nullFillExprForType(cf.type, pos));
+		} else {
+			read;
+		};
+		var functionValued = switch (followType(cf.type)) {
+			case TFun(_, _): true;
+			case _: false;
+		};
+		if (optional) {
 			return EBlock({
 				stmts: [RLet("__b", false, null, borrowed)],
-				tail: EIf(hasField, read, nullFillExprForType(cf.type, pos))
+				tail: value
 			});
 		}
-		return ECall(EField(borrowed, getter), [ELitString(fieldName)]);
+		if (!functionValued)
+			return ECall(EField(borrowed, getter), [ELitString(fieldName)]);
+		return EBlock({
+			stmts: [RLet("__b", false, null, borrowed), RLet("__hx_value", false, null, value)],
+			tail: EPath("__hx_value")
+		});
 	}
 
 	function compileAnonObjectFieldRead(obj:TypedExpr, cf:ClassField, pos:haxe.macro.Expr.Position):RustExpr {
@@ -17272,8 +17329,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case _:
 		}
 
-		// StdTypes: Iterator<T> / KeyValueIterator<K,V> are typedefs to structural types.
+		// StdTypes: Iterator<T> / KeyValueIterator<K,V> are typedefs to method-shaped structural types.
 		// We lower them to owned Rust iterators for codegen simplicity (primarily used in `for` loops).
+		// Mutable anonymous function-field records that merely reuse the names `hasNext` / `next`
+		// remain ordinary shared `HxRef<Anon>` objects.
 		//
 		// Documented limitation: manually calling `.hasNext()` / `.next()` on these iterators is not
 		// guaranteed to work; prefer `for (x in ...)`.
@@ -17293,8 +17352,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							}
 						}
 
-						// Iterator<T> (structural): { hasNext():Bool, next():T }
-						if (hasNext != null && next != null) {
+						// Iterator<T> (structural methods): { hasNext():Bool, next():T }
+						if (hasNext != null && next != null && isIteratorStructType(ft)) {
 							var nextRet:Type = switch (followType(next.type)) {
 								case TFun(_, r): r;
 								case _: next.type;

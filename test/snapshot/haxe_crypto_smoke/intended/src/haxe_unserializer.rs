@@ -448,15 +448,18 @@ impl Unserializer {
                         }
                     };
                     let cl: u32 = ({
-                        let __b = __hx_this.borrow();
-                        __b.resolver.clone()
-                    })
-                    .borrow()
-                    .get::<crate::HxDynRef<
-                        dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
-                    >>("resolveClass")(
-                        hxrt::string::HxString::from(name.clone())
-                    );
+                        let __hx_value = ({
+                            let __b = __hx_this.borrow();
+                            __b.resolver.clone()
+                        })
+                        .borrow()
+                        .get::<crate::HxDynRef<
+                            dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                        >>("resolveClass");
+                        __hx_value
+                    })(hxrt::string::HxString::from(
+                        name.clone(),
+                    ));
                     if cl == 0 as u32 {
                         hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             format!("{}{}", "Class not found ", &name),
@@ -490,15 +493,18 @@ impl Unserializer {
                         }
                     };
                     let e: u32 = ({
-                        let __b = __hx_this.borrow();
-                        __b.resolver.clone()
-                    })
-                    .borrow()
-                    .get::<crate::HxDynRef<
-                        dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
-                    >>("resolveEnum")(
-                        hxrt::string::HxString::from(name_2.clone())
-                    );
+                        let __hx_value = ({
+                            let __b = __hx_this.borrow();
+                            __b.resolver.clone()
+                        })
+                        .borrow()
+                        .get::<crate::HxDynRef<
+                            dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                        >>("resolveEnum");
+                        __hx_value
+                    })(hxrt::string::HxString::from(
+                        name_2.clone(),
+                    ));
                     if e == 0 as u32 {
                         hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             format!("{}{}", "Enum not found ", &name_2),
@@ -532,15 +538,18 @@ impl Unserializer {
                         }
                     };
                     let cl_2: u32 = ({
-                        let __b = __hx_this.borrow();
-                        __b.resolver.clone()
-                    })
-                    .borrow()
-                    .get::<crate::HxDynRef<
-                        dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
-                    >>("resolveClass")(
-                        hxrt::string::HxString::from(name_3.clone())
-                    );
+                        let __hx_value = ({
+                            let __b = __hx_this.borrow();
+                            __b.resolver.clone()
+                        })
+                        .borrow()
+                        .get::<crate::HxDynRef<
+                            dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                        >>("resolveClass");
+                        __hx_value
+                    })(hxrt::string::HxString::from(
+                        name_3.clone(),
+                    ));
                     if cl_2 == 0 as u32 {
                         hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             format!("{}{}", "Class not found ", &name_3),
@@ -833,15 +842,18 @@ impl Unserializer {
                         }
                     };
                     let cl_3: u32 = ({
-                        let __b = __hx_this.borrow();
-                        __b.resolver.clone()
-                    })
-                    .borrow()
-                    .get::<crate::HxDynRef<
-                        dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
-                    >>("resolveClass")(
-                        hxrt::string::HxString::from(name_4.clone())
-                    );
+                        let __hx_value = ({
+                            let __b = __hx_this.borrow();
+                            __b.resolver.clone()
+                        })
+                        .borrow()
+                        .get::<crate::HxDynRef<
+                            dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                        >>("resolveClass");
+                        __hx_value
+                    })(hxrt::string::HxString::from(
+                        name_4.clone(),
+                    ));
                     if cl_3 == 0 as u32 {
                         hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             format!("{}{}", "Class not found ", &name_4),
@@ -901,15 +913,18 @@ impl Unserializer {
                         }
                     };
                     let edecl: u32 = ({
-                        let __b = __hx_this.borrow();
-                        __b.resolver.clone()
-                    })
-                    .borrow()
-                    .get::<crate::HxDynRef<
-                        dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
-                    >>("resolveEnum")(
-                        hxrt::string::HxString::from(name_5.clone())
-                    );
+                        let __hx_value = ({
+                            let __b = __hx_this.borrow();
+                            __b.resolver.clone()
+                        })
+                        .borrow()
+                        .get::<crate::HxDynRef<
+                            dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                        >>("resolveEnum");
+                        __hx_value
+                    })(hxrt::string::HxString::from(
+                        name_5.clone(),
+                    ));
                     if edecl == 0 as u32 {
                         hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             format!("{}{}", "Enum not found ", &name_5),
@@ -1455,15 +1470,18 @@ impl Unserializer {
                         }
                     };
                     let edecl_2: u32 = ({
-                        let __b = __hx_this.borrow();
-                        __b.resolver.clone()
-                    })
-                    .borrow()
-                    .get::<crate::HxDynRef<
-                        dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
-                    >>("resolveEnum")(
-                        hxrt::string::HxString::from(name_6.clone())
-                    );
+                        let __hx_value = ({
+                            let __b = __hx_this.borrow();
+                            __b.resolver.clone()
+                        })
+                        .borrow()
+                        .get::<crate::HxDynRef<
+                            dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                        >>("resolveEnum");
+                        __hx_value
+                    })(hxrt::string::HxString::from(
+                        name_6.clone(),
+                    ));
                     if edecl_2 == 0 as u32 {
                         hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
                             format!("{}{}", "Enum not found ", &name_6),

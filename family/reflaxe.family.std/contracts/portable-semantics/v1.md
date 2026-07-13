@@ -75,6 +75,10 @@ Conformance fixtures:
    particular, a `{ key, value }` record and a key-value iterator item must preserve alias-visible direct,
    compound, and prefix/postfix writes plus Haxe reference equality; the shape must not silently select
    owned Rust value semantics.
+12. A mutable anonymous record with function-valued `hasNext` / `next` fields remains an ordinary shared
+   record while satisfying Haxe's structural iterator protocol. Aliasing, function-field replacement,
+   reference equality, manual calls, and `for` loops must agree with Haxe. Generated field reads must end
+   their borrow before invoking the callback so callback-driven mutation of the same record is safe.
 
 Conformance fixtures:
 
@@ -84,6 +88,7 @@ Conformance fixtures:
 - `test/semantic_diff/array_string_element_append`
 - `test/semantic_diff/nullable_array_literals`
 - `test/semantic_diff/anonymous_key_value_aliasing`
+- `test/semantic_diff/anonymous_iterator_aliasing`
 - `test/semantic_diff/field_compound_rhs_mutation`
 - `test/semantic_diff/polymorphic_field_updates`
 - `test/semantic_diff/static_field_updates`

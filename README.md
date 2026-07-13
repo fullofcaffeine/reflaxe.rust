@@ -63,8 +63,9 @@ networking, TLS, DB, processes, or threading, add app-specific smoke tests aroun
   `rust.net.SocketError` is available through opt-in socket `Detailed` methods for invalid-input,
   IO, and UTF-8 recovery without parsing strings. These do not replace portable `sys.io.File`,
   `sys.io.Process`, or `sys.net.Socket`.
-- Typed anonymous records preserve Haxe aliasing while keeping field access typed; required fields and
-  omitted `@:optional` fields are covered by focused generated-Rust fixtures.
+- Typed anonymous records preserve Haxe aliasing while keeping field access typed; required fields,
+  omitted `@:optional` fields, and mutable function-field records that implement the Haxe iterator
+  protocol are covered by focused generated-Rust and semantic-differential fixtures.
 - CI evidence: snapshots, negative policy fixtures, runtime/optimizer plan reports, product-neutral
   benchmark candidates, and HXRT overhead tracking are all part of the default workflow.
 

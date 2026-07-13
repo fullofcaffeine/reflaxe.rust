@@ -294,6 +294,12 @@ types, including `Int` fields returned from helpers or decoded from `haxe.json.V
 Omitted `@:optional` fields also work: generated Rust checks whether the runtime anonymous object has
 the key and returns the field type's Haxe null representation when it is absent.
 
+Field names do not silently change the representation. A mutable anonymous record with function-valued
+`hasNext` and `next` fields remains a shared record even though Haxe also accepts it as an iterator. It
+can be aliased, have a function field replaced through either alias, retain reference equality, and be
+used in `for` loops. Function-valued reads release the record borrow before invoking user code, so the
+callback may mutate the same record without deadlocking generated Rust.
+
 ## How does `null` work?
 
 Haxe nullability is preserved where the active contract says it must be.
