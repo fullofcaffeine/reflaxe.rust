@@ -455,6 +455,7 @@ Agent policy:
 - Semantic-confidence gotcha: `scripts/ci/generate-semantic-confidence-summary.js` discovers cases with `git ls-files`, so plain `npm run docs:check:evidence`
   can report stale counts in a dirty worktree where new snapshot directories are still untracked.
   For intended-stack validation before staging, use a temporary full index (`GIT_INDEX_FILE=... git add -A`) and run `npm run docs:check:evidence` under that index.
+  Once cases are staged, the repo pre-commit hook requires both generated summary artifacts to be staged, free of unstaged edits, and byte-for-byte current.
 - Disk-space gotcha: full snapshot regeneration and full harness runs can consume many GB in `test/snapshot/**/out*`, `examples/**/out*`, Cargo caches/registries, and `.cache/examples-target`.
   If you hit `No space left on device`, run `npm run clean:artifacts:all` before re-running, then regenerate snapshots.
   When adding a new harness stage that writes ignored generated outputs or Cargo target/cache roots,

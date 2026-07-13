@@ -31,4 +31,15 @@ if printf '%s\n' "$STAGED_FILES" | grep -Eq '^(docs/|README\.md$|\.beads/issues\
   "$ROOT_DIR/scripts/docs/check-progress-tracker.sh"
 fi
 
+if printf '%s\n' "$STAGED_FILES" | grep -Eq '^(test/semantic_diff/|test/semantic_diff_lanes/|test/snapshot/|scripts/ci/generate-semantic-confidence-summary\.js$|docs/semantic-confidence-summary\.(json|md)$)'; then
+  echo "[pre-commit] Running semantic-confidence evidence drift check..."
+  for artifact in docs/semantic-confidence-summary.json docs/semantic-confidence-summary.md; do
+    if ! git diff --quiet -- "$artifact"; then
+      echo "[pre-commit] ERROR: ${artifact} has unstaged changes; regenerate and stage both semantic-confidence artifacts." >&2
+      exit 1
+    fi
+  done
+  "$ROOT_DIR/scripts/ci/check-semantic-confidence-summary.sh"
+fi
+
 echo "[pre-commit] OK"
