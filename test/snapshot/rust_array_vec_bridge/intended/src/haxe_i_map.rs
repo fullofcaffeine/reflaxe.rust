@@ -9,7 +9,7 @@ pub trait IMap<K: Clone + Send + Sync, V: Clone + Send + Sync>: Send + Sync {
     fn remove(&self, k: K) -> bool;
     fn keys(&self) -> hxrt::iter::Iter<K>;
     fn iterator(&self) -> hxrt::iter::Iter<V>;
-    fn key_value_iterator(&self) -> hxrt::iter::Iter<hxrt::iter::KeyValue<K, V>>;
+    fn key_value_iterator(&self) -> hxrt::iter::Iter<crate::HxRef<hxrt::anon::Anon>>;
     fn copy(&self) -> crate::HxRc<dyn crate::haxe_i_map::IMap<K, V> + Send + Sync>;
     fn to_string(&self) -> String;
     fn clear(&self) -> ();

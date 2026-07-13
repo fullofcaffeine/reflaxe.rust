@@ -200,7 +200,7 @@ const bucketDefinitions = [
     id: 'portable-core-contracts',
     class: 'targeted_semantic_parity',
     label: 'Portable core contract semantics',
-    scope: 'Null strings, typed/dynamic exceptions, class/interface subtype-aware catches, generic base/interface specialization, typed nullable/reusable array literals, numeric and String array updates, pre-RHS concrete/polymorphic/static/anonymous field updates, typed property updates, virtual dispatch, env vars, function-value parity, portable Option/Result',
+    scope: 'Null strings, typed/dynamic exceptions, class/interface subtype-aware catches, generic base/interface specialization, typed nullable/reusable array literals, anonymous-record aliasing/identity, numeric and String array updates, pre-RHS concrete/polymorphic/static/anonymous field updates, typed property updates, virtual dispatch, env vars, function-value parity, portable Option/Result',
     evidence: [
       'test/semantic_diff/null_string_concat',
       'test/semantic_diff/exceptions_typed_dynamic',
@@ -211,6 +211,7 @@ const bucketDefinitions = [
       'test/semantic_diff/array_index_updates',
       'test/semantic_diff/array_string_element_append',
       'test/semantic_diff/nullable_array_literals',
+      'test/semantic_diff/anonymous_key_value_aliasing',
       'test/semantic_diff/field_compound_rhs_mutation',
       'test/semantic_diff/polymorphic_field_updates',
       'test/semantic_diff/static_field_updates',

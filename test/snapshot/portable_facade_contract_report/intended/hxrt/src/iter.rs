@@ -1,10 +1,30 @@
+use crate::anon::Anon;
 use crate::cell::HxRef;
+use std::any::Any;
 use std::iter::Peekable;
 
-#[derive(Clone, Debug)]
-pub struct KeyValue<K, V> {
-    pub key: K,
-    pub value: V,
+/// Builds the Haxe anonymous `{ key, value }` record yielded by key-value iterators.
+///
+/// Why
+/// - Haxe key-value iterator items are ordinary anonymous objects, not nominal value tuples.
+/// - They must preserve shared mutation, aliasing, and reference equality after crossing native
+///   map helper boundaries.
+///
+/// What
+/// - Returns the same `HxRef<Anon>` representation used by compiler-lowered record literals.
+///
+/// How
+/// - Stores the two typed values through the existing anonymous-object boundary and introduces no
+///   second iterator-specific object model.
+pub fn key_value<K, V>(key: K, value: V) -> HxRef<Anon>
+where
+    K: Any + Clone + Send + Sync + 'static,
+    V: Any + Clone + Send + Sync + 'static,
+{
+    let mut record = Anon::new();
+    record.set("key", key);
+    record.set("value", value);
+    HxRef::new(record)
 }
 
 /// `hxrt::iter::Iter<T>`
@@ -94,5 +114,23 @@ impl<T> Iter<T> {
             .borrow_mut()
             .next()
             .expect("hxrt::iter::Iter.next() called when exhausted")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::key_value;
+
+    #[test]
+    fn key_value_records_preserve_shared_alias_mutation() {
+        let record = key_value(String::from("before"), 1_i32);
+        let alias = record.clone();
+
+        alias.borrow_mut().set("key", String::from("after"));
+        alias.borrow_mut().set("value", 2_i32);
+
+        assert!(record.ptr_eq(&alias));
+        assert_eq!(record.borrow().get::<String>("key"), "after");
+        assert_eq!(record.borrow().get::<i32>("value"), 2);
     }
 }

@@ -71,7 +71,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
 
 ### Portable core contract semantics
 - Class: `targeted_semantic_parity`
-- Scope: Null strings, typed/dynamic exceptions, class/interface subtype-aware catches, generic base/interface specialization, typed nullable/reusable array literals, numeric and String array updates, pre-RHS concrete/polymorphic/static/anonymous field updates, typed property updates, virtual dispatch, env vars, function-value parity, portable Option/Result
+- Scope: Null strings, typed/dynamic exceptions, class/interface subtype-aware catches, generic base/interface specialization, typed nullable/reusable array literals, anonymous-record aliasing/identity, numeric and String array updates, pre-RHS concrete/polymorphic/static/anonymous field updates, typed property updates, virtual dispatch, env vars, function-value parity, portable Option/Result
 - Evidence:
   - `test/semantic_diff/null_string_concat`
   - `test/semantic_diff/exceptions_typed_dynamic`
@@ -82,6 +82,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
   - `test/semantic_diff/array_index_updates`
   - `test/semantic_diff/array_string_element_append`
   - `test/semantic_diff/nullable_array_literals`
+  - `test/semantic_diff/anonymous_key_value_aliasing`
   - `test/semantic_diff/field_compound_rhs_mutation`
   - `test/semantic_diff/polymorphic_field_updates`
   - `test/semantic_diff/static_field_updates`

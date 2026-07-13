@@ -37,26 +37,34 @@ impl StringKeyValueIterator {
 
     pub fn next(
         self_: &crate::HxRefCell<StringKeyValueIterator>,
-    ) -> hxrt::iter::KeyValue<i32, i32> {
+    ) -> crate::HxRef<hxrt::anon::Anon> {
         let __hx_this: crate::HxRef<
             crate::haxe_iterators_string_key_value_iterator::StringKeyValueIterator,
         > = self_.self_ref();
-        return hxrt::iter::KeyValue {
-            key: {
-                let __b = __hx_this.borrow();
-                __b.offset
-            },
-            value: crate::string_tools::StringTools::fast_code_at(
-                {
+        return {
+            let __o = crate::HxRef::new(hxrt::anon::Anon::new());
+            {
+                let mut __b = __o.borrow_mut();
+                __b.set("key", {
                     let __b = __hx_this.borrow();
-                    __b.s.clone()
-                },
-                {
-                    let __tmp = self_.borrow().offset;
-                    self_.borrow_mut().offset = __tmp + 1;
-                    __tmp
-                },
-            ),
+                    __b.offset
+                });
+                __b.set(
+                    "value",
+                    crate::string_tools::StringTools::fast_code_at(
+                        {
+                            let __b = __hx_this.borrow();
+                            __b.s.clone()
+                        },
+                        {
+                            let __tmp = self_.borrow().offset;
+                            self_.borrow_mut().offset = __tmp + 1;
+                            __tmp
+                        },
+                    ),
+                );
+            };
+            __o
         };
     }
 }

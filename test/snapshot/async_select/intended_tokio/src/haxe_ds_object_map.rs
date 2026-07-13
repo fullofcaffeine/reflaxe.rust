@@ -72,7 +72,7 @@ impl<
 
     pub fn key_value_iterator(
         self_: &crate::HxRefCell<ObjectMap<K, V>>,
-    ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<K, V>> {
+    ) -> hxrt::iter::Iter<crate::HxRef<hxrt::anon::Anon>> {
         let __hx_this: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>> = self_.self_ref();
         return crate::map_storage_tools::MapStorageTools::objectMapKeyValuesOwned(
             __hx_this.clone(),
@@ -126,7 +126,7 @@ impl<
     fn iterator(&self) -> hxrt::iter::Iter<V> {
         ObjectMap::<K, V>::iterator(self)
     }
-    fn key_value_iterator(&self) -> hxrt::iter::Iter<hxrt::iter::KeyValue<K, V>> {
+    fn key_value_iterator(&self) -> hxrt::iter::Iter<crate::HxRef<hxrt::anon::Anon>> {
         ObjectMap::<K, V>::key_value_iterator(self)
     }
     fn copy(&self) -> crate::HxRc<dyn crate::haxe_i_map::IMap<K, V> + Send + Sync> {

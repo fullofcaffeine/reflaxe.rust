@@ -9649,30 +9649,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 			case TObjectDecl(fields): {
 					// Anonymous objects / structural records.
-					//
-					// Special cases:
-					// - `{ key: ..., value: ... }` (used by `KeyValueIterator<K,V>`) lowers to a concrete struct.
-					// - Everything else lowers to `crate::HxRef<hxrt::anon::Anon>` for Haxe aliasing semantics.
-
-					// `{ key: ..., value: ... }` (exactly) -> `hxrt::iter::KeyValue { ... }`
-					if (fields != null && fields.length == 2) {
-						var keyExpr:Null<TypedExpr> = null;
-						var valueExpr:Null<TypedExpr> = null;
-						for (f in fields) {
-							switch (f.name) {
-								case "key": keyExpr = f.expr;
-								case "value": valueExpr = f.expr;
-								case _:
-							}
-						}
-
-						if (keyExpr != null && valueExpr != null) {
-							return EStructLit("hxrt::iter::KeyValue", [
-								{name: "key", expr: compileExpr(keyExpr)},
-								{name: "value", expr: compileExpr(valueExpr)},
-							]);
-						}
-					}
+					// Why: all Haxe anonymous records are shared mutable reference values, including the
+					// common `{ key, value }` shape used by key-value iterators. Field names alone do not
+					// authorize an owned Rust value representation.
+					// What: lower every record literal through the ordinary `HxRef<Anon>` contract.
+					// How: Rust-native APIs that want an owned pair must expose a nominal facade rather than
+					// changing the semantics of structurally identical Haxe records.
 
 					// General record literal -> allocate an `HxRef<hxrt::anon::Anon>`, mutate its fields,
 					// then return the shared handle.
@@ -10800,34 +10782,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 	}
 
-	function isKeyValueStructType(t:Type):Bool {
-		var ft = followType(t);
-		return switch (ft) {
-			case TAnonymous(anonRef): {
-					var anon = anonRef.get();
-					if (anon == null || anon.fields == null || anon.fields.length != 2)
-						return false;
-					var key = false;
-					var value = false;
-					for (cf in anon.fields) {
-						switch (cf.getHaxeName()) {
-							case "key": key = true;
-							case "value": value = true;
-							case _:
-						}
-					}
-					key && value
-					;
-				}
-			case _:
-				false;
-		}
-	}
-
 	function isAnonObjectType(t:Type):Bool {
 		var ft = followType(t);
 		return switch (ft) {
-			case TAnonymous(_): !isIteratorStructType(t) && !isKeyValueStructType(t);
+			case TAnonymous(_): !isIteratorStructType(t);
 			case _:
 				false;
 		}
@@ -12653,7 +12611,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 														var borrowed = ECall(EField(recv, "borrow"), []);
 														value = compileAnonObjectBorrowedFieldRead(borrowed, cf, fullExpr.pos);
 													} else {
-														// KeyValue structural record etc: direct field read (clone non-Copy to avoid moves).
+														// Iterator protocol structs remain direct field values.
 														value = EField(compileExpr(obj), cf.getHaxeName());
 														if (!isCopyType(cf.type)) {
 															value = ECall(EField(value, "clone"), []);
@@ -14161,7 +14119,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case FAnon(cfRef): {
 					var cf = cfRef.get();
 					// General anonymous objects are lowered to `hxrt::anon::Anon` and accessed via typed `get`.
-					// Structural iterator/keyvalue records remain direct field access.
+					// Structural iterator protocol values remain direct field access.
 					if (cf != null && isAnonObjectType(obj.t)) {
 						return compileAnonObjectFieldRead(obj, cf, fullExpr.pos);
 					}
@@ -15644,7 +15602,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							// Assignment into anonymous-object fields:
 							// `{ let __obj = obj.clone(); let __tmp = rhs; __obj.borrow_mut().set("field", __tmp.clone()); __tmp }`
 							//
-							// Only supported for general anonymous objects, not iterator/keyvalue structural types.
+							// Only supported for general anonymous objects, not iterator protocol structs.
 							if (!isAnonObjectType(obj.t)) {
 								var rhsExpr = compileExpr(e2);
 								rhsExpr = maybeCloneForReuseValue(rhsExpr, e2);
@@ -17326,15 +17284,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					if (anon != null && anon.fields != null && anon.fields.length == 2) {
 						var hasNext:Null<ClassField> = null;
 						var next:Null<ClassField> = null;
-						var keyField:Null<ClassField> = null;
-						var valueField:Null<ClassField> = null;
 
 						for (cf in anon.fields) {
 							switch (cf.getHaxeName()) {
 								case "hasNext": hasNext = cf;
 								case "next": next = cf;
-								case "key": keyField = cf;
-								case "value": valueField = cf;
 								case _:
 							}
 						}
@@ -17347,13 +17301,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							}
 							var item = toRustType(nextRet, pos);
 							return RPath("hxrt::iter::Iter<" + rustTypeToString(item) + ">");
-						}
-
-						// KeyValue record used by KeyValueIterator<K,V>: { key:K, value:V }
-						if (keyField != null && valueField != null) {
-							var k = toRustType(keyField.type, pos);
-							var v = toRustType(valueField.type, pos);
-							return RPath("hxrt::iter::KeyValue<" + rustTypeToString(k) + ", " + rustTypeToString(v) + ">");
 						}
 					}
 

@@ -71,6 +71,10 @@ Conformance fixtures:
 10. Copy-like anonymous-object field compound updates must capture the object and current typed value
    before the RHS, end the read borrow before user code runs, and write through the existing typed
    anonymous get/set contract.
+11. Anonymous records remain shared mutable reference values regardless of their field names. In
+   particular, a `{ key, value }` record and a key-value iterator item must preserve alias-visible direct,
+   compound, and prefix/postfix writes plus Haxe reference equality; the shape must not silently select
+   owned Rust value semantics.
 
 Conformance fixtures:
 
@@ -79,6 +83,7 @@ Conformance fixtures:
 - `test/semantic_diff/array_index_updates`
 - `test/semantic_diff/array_string_element_append`
 - `test/semantic_diff/nullable_array_literals`
+- `test/semantic_diff/anonymous_key_value_aliasing`
 - `test/semantic_diff/field_compound_rhs_mutation`
 - `test/semantic_diff/polymorphic_field_updates`
 - `test/semantic_diff/static_field_updates`

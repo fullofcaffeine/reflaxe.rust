@@ -52,15 +52,15 @@ impl HashMapTools {
         hxrt::iter::Iter::from_vec(m.values().cloned().collect::<Vec<_>>())
     }
 
-    pub fn keyValuesOwned<K: Eq + std::hash::Hash + Clone, V: Clone>(
+    pub fn keyValuesOwned<
+        K: Eq + std::hash::Hash + Clone + Send + Sync + 'static,
+        V: Clone + Send + Sync + 'static,
+    >(
         m: &std::collections::HashMap<K, V>,
-    ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<K, V>> {
+    ) -> hxrt::iter::Iter<crate::HxRef<hxrt::anon::Anon>> {
         hxrt::iter::Iter::from_vec(
             m.iter()
-                .map(|(k, v)| hxrt::iter::KeyValue {
-                    key: k.clone(),
-                    value: v.clone(),
-                })
+                .map(|(k, v)| hxrt::iter::key_value(k.clone(), v.clone()))
                 .collect::<Vec<_>>(),
         )
     }

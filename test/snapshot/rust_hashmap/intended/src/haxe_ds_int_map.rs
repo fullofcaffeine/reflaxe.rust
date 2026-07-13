@@ -51,7 +51,7 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> IntMap<T> {
 
     pub fn key_value_iterator(
         self_: &crate::HxRefCell<IntMap<T>>,
-    ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<i32, T>> {
+    ) -> hxrt::iter::Iter<crate::HxRef<hxrt::anon::Anon>> {
         let __hx_this: crate::HxRef<crate::haxe_ds_int_map::IntMap<T>> = self_.self_ref();
         return crate::map_storage_tools::MapStorageTools::intMapKeyValuesOwned(__hx_this.clone());
     }
@@ -98,7 +98,7 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> crate::haxe_i_map::IMap
     fn iterator(&self) -> hxrt::iter::Iter<T> {
         IntMap::<T>::iterator(self)
     }
-    fn key_value_iterator(&self) -> hxrt::iter::Iter<hxrt::iter::KeyValue<i32, T>> {
+    fn key_value_iterator(&self) -> hxrt::iter::Iter<crate::HxRef<hxrt::anon::Anon>> {
         IntMap::<T>::key_value_iterator(self)
     }
     fn copy(&self) -> crate::HxRc<dyn crate::haxe_i_map::IMap<i32, T> + Send + Sync> {

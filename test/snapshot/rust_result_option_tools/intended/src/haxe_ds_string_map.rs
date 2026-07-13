@@ -55,7 +55,7 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> StringMap<T> {
 
     pub fn key_value_iterator(
         self_: &crate::HxRefCell<StringMap<T>>,
-    ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<String, T>> {
+    ) -> hxrt::iter::Iter<crate::HxRef<hxrt::anon::Anon>> {
         let __hx_this: crate::HxRef<crate::haxe_ds_string_map::StringMap<T>> = self_.self_ref();
         return crate::map_storage_tools::MapStorageTools::stringMapKeyValuesOwned(
             __hx_this.clone(),
@@ -107,7 +107,7 @@ impl<T: Clone + Send + Sync + 'static + std::fmt::Debug> crate::haxe_i_map::IMap
     fn iterator(&self) -> hxrt::iter::Iter<T> {
         StringMap::<T>::iterator(self)
     }
-    fn key_value_iterator(&self) -> hxrt::iter::Iter<hxrt::iter::KeyValue<String, T>> {
+    fn key_value_iterator(&self) -> hxrt::iter::Iter<crate::HxRef<hxrt::anon::Anon>> {
         StringMap::<T>::key_value_iterator(self)
     }
     fn copy(&self) -> crate::HxRc<dyn crate::haxe_i_map::IMap<String, T> + Send + Sync> {

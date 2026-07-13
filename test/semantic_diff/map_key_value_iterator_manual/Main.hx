@@ -4,8 +4,12 @@ class Main {
 		var it = new haxe.iterators.MapKeyValueIterator<String, Int>(map);
 		var parts = [];
 		var total = 0;
+		var aliasesShared = true;
 		while (it.hasNext()) {
 			var kv = it.next();
+			var alias = kv;
+			alias.value += 10;
+			aliasesShared = aliasesShared && kv == alias;
 			parts.push(kv.key + ":" + kv.value);
 			total += kv.value;
 		}
@@ -14,5 +18,6 @@ class Main {
 		});
 		Sys.println(parts.join(","));
 		Sys.println("total=" + total);
+		Sys.println("aliasesShared=" + aliasesShared);
 	}
 }

@@ -122,9 +122,9 @@ fn main() {
             hxrt::dynamic::from(
                 hxrt::string::HxString::from(format!(
                     "{}{}{}",
-                    kv.key,
+                    kv.borrow().get::<hxrt::string::HxString>("key"),
                     "=>",
-                    hxrt::dynamic::from(kv.value).to_haxe_string()
+                    hxrt::dynamic::from(kv.borrow().get::<i32>("value")).to_haxe_string()
                 ))
                 .clone()
             )
@@ -213,9 +213,9 @@ fn main() {
             hxrt::dynamic::from(
                 hxrt::string::HxString::from(format!(
                     "{}{}{}",
-                    hxrt::dynamic::from(kv_2.key).to_haxe_string(),
+                    hxrt::dynamic::from(kv_2.borrow().get::<i32>("key")).to_haxe_string(),
                     "=>",
-                    hxrt::dynamic::from(kv_2.value).to_haxe_string()
+                    hxrt::dynamic::from(kv_2.borrow().get::<i32>("value")).to_haxe_string()
                 ))
                 .clone()
             )
@@ -280,9 +280,14 @@ fn main() {
             hxrt::dynamic::from(
                 hxrt::string::HxString::from(format!(
                     "{}{}{}",
-                    hxrt::dynamic::from(kv_3.key.clone()).to_haxe_string(),
+                    hxrt::dynamic::from(
+                        kv_3.borrow()
+                            .get::<crate::HxRef<crate::key::Key>>("key")
+                            .clone()
+                    )
+                    .to_haxe_string(),
                     "=>",
-                    hxrt::dynamic::from(kv_3.value).to_haxe_string()
+                    hxrt::dynamic::from(kv_3.borrow().get::<i32>("value")).to_haxe_string()
                 ))
                 .clone()
             )
@@ -347,9 +352,10 @@ fn main() {
             hxrt::dynamic::from(
                 hxrt::string::HxString::from(format!(
                     "{}{}{}",
-                    hxrt::dynamic::from(kv_4.key.clone()).to_haxe_string(),
+                    hxrt::dynamic::from(kv_4.borrow().get::<crate::e::E>("key").clone())
+                        .to_haxe_string(),
                     "=>",
-                    hxrt::dynamic::from(kv_4.value).to_haxe_string()
+                    hxrt::dynamic::from(kv_4.borrow().get::<i32>("value")).to_haxe_string()
                 ))
                 .clone()
             )

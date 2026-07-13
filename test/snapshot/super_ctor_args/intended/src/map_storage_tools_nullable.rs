@@ -50,15 +50,12 @@ impl MapStorageTools {
 
     pub fn stringMapKeyValuesOwned<V: Clone + Send + Sync + 'static + std::fmt::Debug>(
         map: crate::HxRef<crate::haxe_ds_string_map::StringMap<V>>,
-    ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<hxrt::string::HxString, V>> {
+    ) -> hxrt::iter::Iter<crate::HxRef<hxrt::anon::Anon>> {
         hxrt::iter::Iter::from_vec(
             map.borrow()
                 .h
                 .iter()
-                .map(|(k, v)| hxrt::iter::KeyValue {
-                    key: k.clone(),
-                    value: v.clone(),
-                })
+                .map(|(k, v)| hxrt::iter::key_value(k.clone(), v.clone()))
                 .collect::<Vec<_>>(),
         )
     }
@@ -125,15 +122,12 @@ impl MapStorageTools {
 
     pub fn intMapKeyValuesOwned<V: Clone + Send + Sync + 'static + std::fmt::Debug>(
         map: crate::HxRef<crate::haxe_ds_int_map::IntMap<V>>,
-    ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<i32, V>> {
+    ) -> hxrt::iter::Iter<crate::HxRef<hxrt::anon::Anon>> {
         hxrt::iter::Iter::from_vec(
             map.borrow()
                 .h
                 .iter()
-                .map(|(k, v)| hxrt::iter::KeyValue {
-                    key: k.clone(),
-                    value: v.clone(),
-                })
+                .map(|(k, v)| hxrt::iter::key_value(*k, v.clone()))
                 .collect::<Vec<_>>(),
         )
     }
@@ -241,15 +235,14 @@ impl MapStorageTools {
         V: Clone + Send + Sync + 'static + std::fmt::Debug,
     >(
         map: crate::HxRef<crate::haxe_ds_object_map::ObjectMap<K, V>>,
-    ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<K, V>> {
+    ) -> hxrt::iter::Iter<crate::HxRef<hxrt::anon::Anon>> {
         hxrt::iter::Iter::from_vec({
             let storage = map.borrow();
             storage
                 .values_map
                 .iter()
-                .map(|(id, value)| hxrt::iter::KeyValue {
-                    key: storage.keys_map.get(id).unwrap().clone(),
-                    value: value.clone(),
+                .map(|(id, value)| {
+                    hxrt::iter::key_value(storage.keys_map.get(id).unwrap().clone(), value.clone())
                 })
                 .collect::<Vec<_>>()
         })
@@ -364,15 +357,14 @@ impl MapStorageTools {
         V: Clone + Send + Sync + 'static + std::fmt::Debug,
     >(
         map: crate::HxRef<crate::haxe_ds_enum_value_map::EnumValueMap<K, V>>,
-    ) -> hxrt::iter::Iter<hxrt::iter::KeyValue<K, V>> {
+    ) -> hxrt::iter::Iter<crate::HxRef<hxrt::anon::Anon>> {
         hxrt::iter::Iter::from_vec({
             let storage = map.borrow();
             storage
                 .values_map
                 .iter()
-                .map(|(id, value)| hxrt::iter::KeyValue {
-                    key: storage.keys_map.get(id).unwrap().clone(),
-                    value: value.clone(),
+                .map(|(id, value)| {
+                    hxrt::iter::key_value(storage.keys_map.get(id).unwrap().clone(), value.clone())
                 })
                 .collect::<Vec<_>>()
         })

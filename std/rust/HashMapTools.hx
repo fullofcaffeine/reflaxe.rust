@@ -54,7 +54,10 @@ extern class HashMapTools {
 	@:rustGeneric(["K: Eq + std::hash::Hash", "V: Clone"])
 	public static function valuesOwned<K, V>(m:Ref<HashMap<K, V>>):Iterator<V>;
 
-	@:rustGeneric(["K: Eq + std::hash::Hash + Clone", "V: Clone"])
+	@:rustGeneric([
+		"K: Eq + std::hash::Hash + Clone + Send + Sync + 'static",
+		"V: Clone + Send + Sync + 'static"
+	])
 	public static function keyValuesOwned<K, V>(m:Ref<HashMap<K, V>>):KeyValueIterator<K, V>;
 
 	@:rustGeneric(["K: Eq + std::hash::Hash + std::fmt::Debug", "V: std::fmt::Debug"])

@@ -203,6 +203,11 @@ Agent policy:
     Do not acquire an empty `borrow_mut()` initialization guard; cleanup can turn the unused guard into
     `let _ = value.borrow_mut()`, which is rejected by Clippy because synchronization guards must not be
     silently discarded.
+  - Anonymous-record shape gotcha: never choose an owned/native representation from field names alone.
+    In particular, an ordinary Haxe `{ key, value }` record is still a shared mutable reference value and
+    must use `HxRef<Anon>` with Haxe reference equality. If a Rust-first API needs an owned pair, expose a
+    distinct nominal `rust.*` facade; native map iterators must bridge their items back into the ordinary
+    anonymous-record representation.
   - Dynamic-runtime gotcha: prefer typed `std/hxrt/*` extern wrappers over raw `untyped __rust__` for runtime APIs returning `Dynamic`
     (example: `haxe.Json.parse`, `sys.thread.Thread.readMessage`) to avoid unresolved monomorph warnings.
   - Unresolved-monomorph fallback policy:
