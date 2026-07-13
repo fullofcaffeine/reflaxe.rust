@@ -11,7 +11,7 @@ Bead epic `haxe_rust-p6hs`.
 | Question | Disposition | Meaning |
 | --- | --- | --- |
 | Bounded production use now | `READY_WITH_BOUNDED_SCOPE` | Pinned, tested applications may use the documented portable subset and narrow typed metal islands. Application-specific runtime edges still require application tests. |
-| Stable `1.x` compatibility promise | `NOT_READY` | The current inventory is not yet complete at operation/member/signature/transitive-type level, and several candidate surfaces still have admitted failure or lifecycle gaps. |
+| Stable `1.x` compatibility promise | `NOT_READY` | The package-complete source graph now exists, but the exact admitted set is not authorized and several candidate surfaces still have failure or lifecycle gaps. |
 | Reference implementation | `READY_WITH_BOUNDED_SCOPE` | The profile model, AST-first direction, semantic-difference tests, generated contracts, no-hxrt enforcement, and release design are reusable patterns. The compiler monolith and raw-AST blind spots are not patterns to copy blindly. |
 | Bun-class workload quality direction | `READY_WITH_BOUNDED_SCOPE` | The direction is credible, but current evidence does not establish workload-scale latency, allocation, cancellation, debugging, or operational quality. This remains a quality bar, not a BunHx commitment. |
 
@@ -44,7 +44,7 @@ The repository verified the audit against the reviewed tree before creating foll
 
 | Area | Verified state | Owner |
 | --- | --- | --- |
-| Public compatibility authority | The current guard inventories non-private top-level types under `std/rust` plus metadata/defines, but it does not yet cover the full packaged class path or mechanically protect every member, signature, constructor, default, transitive type, or evidence path. | `haxe_rust-p6hs.2`, then `.3` |
+| Public compatibility authority | Schema v2 inventories 311 shipped/importable Haxe declarations and their public operations across the installed class-path sources. It protects normalized signatures, constructors, defaults, generic bounds, direct/transitive shipped types, metadata/define grammar, lifecycle state, and validated evidence IDs. Candidate status remains distinct from stable admission. | `.2` complete; `haxe_rust-p6hs.3` owns sealing internal boundaries |
 | Portable `Sys` and standard I/O failure behavior | Normal OS failures still reach Rust `unwrap` or are collapsed into EOF/zero in admitted paths. `Sys.cpuTime()` still returns wall-clock time. | `haxe_rust-p6hs.4` |
 | Reflection and call stacks | Accepted `Type.*` paths still contain sentinel, empty, or reachable `todo!()` behavior. `CallStack` contents remain an explicitly minimal empty implementation. | `haxe_rust-p6hs.5` |
 | `HxRef` lifecycle | The safe `Arc` plus lock design remains sound, but strong cycles are not tracing-collected and payload/guard qualifications need executable stable-contract evidence. | `haxe_rust-p6hs.6` |
@@ -92,9 +92,9 @@ Therefore the audit's missing-artifact finding is closed as an **audit-package e
 not a defect in the current release architecture or hosted artifact. Vendor governance and license
 disposition remain separate real work.
 
-One cited evidence path, `test/upstream-stdlib-api-manifest.json`, genuinely does not exist. The
-first-generation compatibility guard also does not validate evidence paths. The operation-level
-contract graph work owns both corrections.
+One cited evidence path, `test/upstream-stdlib-api-manifest.json`, genuinely did not exist. Schema v2
+removed that stale broad-family reference, replaced it with operation-level source ownership, and
+now rejects missing file, npm-script, or Bead evidence targets.
 
 ## Bounded production contract today
 
@@ -118,8 +118,9 @@ This is controlled production, not arbitrary drop-in Haxe target parity.
 
 The active Beads graph is:
 
-1. `haxe_rust-p6hs.2` — package-complete operation/member/signature/transitive compatibility graph.
-2. `haxe_rust-p6hs.3` — package-wide public/internal boundary closure.
+1. `haxe_rust-p6hs.2` — package-complete operation/member/signature/transitive compatibility graph
+   (foundation implemented).
+2. `haxe_rust-p6hs.3` — package-wide public/internal boundary closure (next dependency).
 3. `haxe_rust-p6hs.4` through `.10` — fix or explicitly de-admit the selected normal-failure,
    reflection, lifecycle, async, and structured-metadata surfaces.
 4. `haxe_rust-p6hs.11` through `.13` — fresh MSRV resolution, CI input identity, vendor/license

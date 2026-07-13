@@ -100,6 +100,7 @@
     "docs:check:navigation": "node scripts/docs/check-entrypoint-navigation.js",
     "docs:sync:evidence": "node scripts/ci/generate-semantic-confidence-summary.js --write",
     "docs:check:evidence": "bash scripts/ci/check-semantic-confidence-summary.sh",
+    "docs:compatibility:refresh": "node scripts/ci/public-compatibility-manifest-check.js --refresh-manifest && node scripts/ci/public-compatibility-manifest-check.js --write-review",
     "docs:prep:closeout": "node scripts/docs/generate-release-gate-evidence.js",
     "guard:tracked-artifacts": "bash scripts/lint/tracked_artifact_guard.sh"
   },

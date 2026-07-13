@@ -1,7 +1,7 @@
 # Pre-1.0 Compatibility Review
 
-Status: first-generation compatibility classification for `haxe_rust-ykls.6`; operation-level
-completion is owned by `haxe_rust-p6hs.2`.
+Status: package-complete schema-v2 compatibility graph established by `haxe_rust-p6hs.2`;
+stable-major admission remains a separate reviewed decision.
 
 This review identifies the surfaces that could form a stable contract. It does not approve
 `1.0.0`, widen the support matrix, or implicitly promote qualified and experimental surfaces. The
@@ -9,13 +9,18 @@ Rust toolchain policy is now enforced separately. The machine-readable source of
 [`public-compatibility-manifest.json`](public-compatibility-manifest.json); this page explains its
 policy and records its generated summary.
 
-The independent 2026-07-13 review confirmed that the four-class model is sound but found that this
-first-generation manifest is not yet sufficient for stable-major admission: discovery is centered
-on `std/rust`, member families are not full extracted signatures, transitive public types are not
-closed mechanically, and evidence paths are not validated. These limitations do not invalidate the
-current `0.x` classification work, but they mean no `stable-candidate` or
-`qualified-stable-candidate` row is implicitly admitted. See the
-[audit disposition](production-readiness-audit-2026-07-13.md) and Bead `haxe_rust-p6hs.2`.
+The independent 2026-07-13 review confirmed that the four-class model is sound but found that the
+first-generation manifest saw only names under `std/rust`. Schema v2 closes that structural gap. It
+lexically inventories every importable declaration and public operation under the two source roots
+that become the installed Haxelib class path: `src/reflaxe/rust` and `std`. It records normalized
+type/member signatures, constructors, generic bounds/defaults, direct and transitive shipped-type
+references, metadata/define grammar and defaults, lifecycle state, and validated evidence IDs.
+
+This graph proves inventory and source-shape drift; it does not prove runtime correctness. No
+`stable-candidate` or `qualified-stable-candidate` row is implicitly admitted. The remaining audit
+Beads attach operation-specific semantic/failure/lifecycle evidence or move the affected operations
+to experimental/internal before major-1 authorization. See the
+[audit disposition](production-readiness-audit-2026-07-13.md).
 
 ## Exact compatibility classes
 
@@ -30,8 +35,11 @@ Every surface has exactly one class:
 
 `deprecated` is an orthogonal lifecycle status, not a fifth class. A deprecated stable surface
 remains protected for the remainder of its current major. The manifest therefore records class,
-active/deprecated/reserved status, qualification, protected contract units, evidence, and
-exclusions separately.
+admission (`candidate`, `admitted`, `experimental`, or `internal`), active/deprecated/reserved
+status, qualification, protected contract units, evidence, and exclusions separately. An admitted
+stable contract must name an authorization record and executable compile, generated-output,
+semantic, policy, or release evidence; documentation or structural inventory alone cannot promote
+it.
 
 “Stable candidate” remains provisional until a later reviewed major-1 authorization names the
 exact admitted surface.
@@ -39,54 +47,62 @@ exact admitted surface.
 ## Machine-checked contract summary
 
 <!-- BEGIN GENERATED PUBLIC COMPATIBILITY SUMMARY -->
-| Contract | Class | Status | Qualification |
-| --- | --- | --- | --- |
-| `portable-core` | `stable-candidate` | `active` | Only module/member behavior admitted by the versioned feature-support inventory; Haxe semantics are the oracle inside that set. |
-| `portable-mainloop` | `qualified-stable-candidate` | `active` | Only the target-side MainLoop and EntryPoint paths documented in the concurrency posture. |
-| `portable-sys-core` | `qualified-stable-candidate` | `active` | Linux full CI plus the specifically documented Windows smoke operations; macOS is local-only evidence. |
-| `portable-http` | `qualified-stable-candidate` | `active` | Documented local-server status, body, error, and callback behavior. |
-| `portable-net-tcp` | `qualified-stable-candidate` | `active` | Targeted blocking TCP behavior on documented local-server lanes. |
-| `portable-net-udp` | `qualified-stable-candidate` | `active` | Curated UDP smoke behavior only. |
-| `portable-tls` | `qualified-stable-candidate` | `active` | Buildable TLS/SNI path; runtime behavior remains certificate-, network-, and environment-sensitive. |
-| `portable-db-types` | `qualified-stable-candidate` | `active` | Shared DB interface/type shapes used by separately qualified drivers. |
-| `portable-sqlite` | `qualified-stable-candidate` | `active` | In-memory SQLite runtime smoke boundary. |
-| `portable-mysql-compile` | `qualified-stable-candidate` | `active` | Dependency and generated-code compile contract only. |
-| `rust-values-core` | `stable-candidate` | `active` | Documented Option, Result, and tool operations only. |
-| `rust-values-qualified` | `qualified-stable-candidate` | `active` | Only individually documented operations; gaps in traits, borrowed entries, cloning, strings, OsString, and iteration remain visible. |
-| `rust-borrows` | `qualified-stable-candidate` | `active` | Documented lexical borrow regions, slice/string views, and scoped callbacks. |
-| `rust-hxref` | `qualified-stable-candidate` | `active` | Opaque shared Haxe-reference handle for APIs that expose rust.HxRef<T>; the representation is not contractual. |
-| `rust-concurrency` | `qualified-stable-candidate` | `active` | Documented typed handle and scoped-guard subset with hxrt. |
-| `rust-async` | `qualified-stable-candidate` | `active` | Metal plus rust_async plus hxrt; synchronous main boundary. |
-| `rust-systems` | `qualified-stable-candidate` | `active` | Documented direct file, owned command/narrow child, and blocking localhost socket operations. |
-| `rust-prelude` | `qualified-stable-candidate` | `active` | Metal-only import hub; exported alias module path is protected. |
-| `public-experimental` | `experimental` | `active` | Public preview/tooling surface excluded from stable-major admission until explicitly promoted. |
-| `raw-experimental` | `experimental` | `active` | Controlled raw/stringly Rust authority under strict boundary rules. |
-| `internal-helper` | `excluded-internal` | `active` | Compiler/framework implementation only; application imports are unsupported and must be sealed by the helper-boundary guard. |
-| `metal-profile` | `stable-candidate` | `active` | Profile selection, strict app boundary, native-import policy, and documented fallback/report behavior only. |
-| `metadata-stable` | `stable-candidate` | `active` | Only the explicitly listed form and placement grammar. |
-| `metadata-qualified` | `qualified-stable-candidate` | `active` | Only the form and environment named by each metadata entry. |
-| `metadata-experimental` | `experimental` | `active` | Stringly or advanced metadata excluded from stable admission. |
-| `haxe-metal-alias` | `stable-candidate` | `deprecated` | Deprecated compatibility alias for rustMetal. |
-| `metadata-reserved` | `excluded-internal` | `reserved` | Rejected or compiler-owned metadata. |
-| `build-controls` | `stable-candidate` | `active` | Documented normal output/build/profile/report and structured Cargo controls. |
-| `build-qualified` | `qualified-stable-candidate` | `active` | Only the documented profile, runtime, module topology, target, or source-ownership domain. |
-| `build-experimental` | `experimental` | `active` | Escape, raw passthrough, runtime-feature, or preview control. |
-| `build-internal` | `excluded-internal` | `active` | Repository enforcement, debug, deprecated/rejected selector, or compiler bootstrap detail. |
-| `report-json` | `qualified-stable-candidate` | `active` | Machine-readable JSON only; consumers must ignore unknown fields. Versioned schemas and compatibility baselines protect the admitted shape. |
-| `diagnostic-identifiers` | `stable-candidate` | `active` | Only identifiers explicitly listed in the diagnostic registry; unlisted compiler diagnostics are not admitted. |
-| `generated-crate` | `qualified-stable-candidate` | `active` | Documented default, nested, no-hxrt, custom-Cargo, extra-source, and cargo-execution boundaries. |
-| `generated-package` | `stable-candidate` | `active` | Published Haxelib-shaped package and installed-package workflow. |
-| `generated-private` | `excluded-internal` | `active` | Generated helper/wrapper details not admitted as consumer API. |
+| Contract | Class | Admission | Status | Qualification |
+| --- | --- | --- | --- | --- |
+| `portable-core` | `stable-candidate` | `candidate` | `active` | Only module/member behavior admitted by the versioned feature-support inventory; Haxe semantics are the oracle inside that set. |
+| `portable-mainloop` | `qualified-stable-candidate` | `candidate` | `active` | Only the target-side MainLoop and EntryPoint paths documented in the concurrency posture. |
+| `portable-sys-core` | `qualified-stable-candidate` | `candidate` | `active` | Linux full CI plus the specifically documented Windows smoke operations; macOS is local-only evidence. |
+| `portable-http` | `qualified-stable-candidate` | `candidate` | `active` | Documented local-server status, body, error, and callback behavior. |
+| `portable-net-tcp` | `qualified-stable-candidate` | `candidate` | `active` | Targeted blocking TCP behavior on documented local-server lanes. |
+| `portable-net-udp` | `qualified-stable-candidate` | `candidate` | `active` | Curated UDP smoke behavior only. |
+| `portable-tls` | `qualified-stable-candidate` | `candidate` | `active` | Buildable TLS/SNI path; runtime behavior remains certificate-, network-, and environment-sensitive. |
+| `portable-db-types` | `qualified-stable-candidate` | `candidate` | `active` | Shared DB interface/type shapes used by separately qualified drivers. |
+| `portable-sqlite` | `qualified-stable-candidate` | `candidate` | `active` | In-memory SQLite runtime smoke boundary. |
+| `portable-mysql-compile` | `qualified-stable-candidate` | `candidate` | `active` | Dependency and generated-code compile contract only. |
+| `rust-values-core` | `stable-candidate` | `candidate` | `active` | Documented Option, Result, and tool operations only. |
+| `rust-values-qualified` | `qualified-stable-candidate` | `candidate` | `active` | Only individually documented operations; gaps in traits, borrowed entries, cloning, strings, OsString, and iteration remain visible. |
+| `rust-borrows` | `qualified-stable-candidate` | `candidate` | `active` | Documented lexical borrow regions, slice/string views, and scoped callbacks. |
+| `rust-hxref` | `qualified-stable-candidate` | `candidate` | `active` | Opaque shared Haxe-reference handle for APIs that expose rust.HxRef<T>; the representation is not contractual. |
+| `rust-concurrency` | `qualified-stable-candidate` | `candidate` | `active` | Documented typed handle and scoped-guard subset with hxrt. |
+| `rust-async` | `qualified-stable-candidate` | `candidate` | `active` | Metal plus rust_async plus hxrt; synchronous main boundary. |
+| `rust-systems` | `qualified-stable-candidate` | `candidate` | `active` | Documented direct file, owned command/narrow child, and blocking localhost socket operations. |
+| `rust-prelude` | `qualified-stable-candidate` | `candidate` | `active` | Metal-only import hub; exported alias module path is protected. |
+| `public-experimental` | `experimental` | `experimental` | `active` | Public preview/tooling surface excluded from stable-major admission until explicitly promoted. |
+| `raw-experimental` | `experimental` | `experimental` | `active` | Controlled raw/stringly Rust authority under strict boundary rules. |
+| `internal-helper` | `excluded-internal` | `internal` | `active` | Compiler/framework implementation only; application imports are unsupported and must be sealed by the helper-boundary guard. |
+| `metal-profile` | `stable-candidate` | `candidate` | `active` | Profile selection, strict app boundary, native-import policy, and documented fallback/report behavior only. |
+| `metadata-stable` | `stable-candidate` | `candidate` | `active` | Only the explicitly listed form and placement grammar. |
+| `metadata-qualified` | `qualified-stable-candidate` | `candidate` | `active` | Only the form and environment named by each metadata entry. |
+| `metadata-experimental` | `experimental` | `experimental` | `active` | Stringly or advanced metadata excluded from stable admission. |
+| `haxe-metal-alias` | `stable-candidate` | `candidate` | `deprecated` | Deprecated compatibility alias for rustMetal. |
+| `metadata-reserved` | `excluded-internal` | `internal` | `reserved` | Rejected or compiler-owned metadata. |
+| `build-controls` | `stable-candidate` | `candidate` | `active` | Documented normal output/build/profile/report and structured Cargo controls. |
+| `build-qualified` | `qualified-stable-candidate` | `candidate` | `active` | Only the documented profile, runtime, module topology, target, or source-ownership domain. |
+| `build-experimental` | `experimental` | `experimental` | `active` | Escape, raw passthrough, runtime-feature, or preview control. |
+| `build-internal` | `excluded-internal` | `internal` | `active` | Repository enforcement, debug, deprecated/rejected selector, or compiler bootstrap detail. |
+| `report-json` | `qualified-stable-candidate` | `candidate` | `active` | Machine-readable JSON only; consumers must ignore unknown fields. Versioned schemas and compatibility baselines protect the admitted shape. |
+| `diagnostic-identifiers` | `stable-candidate` | `candidate` | `active` | Only identifiers explicitly listed in the diagnostic registry; unlisted compiler diagnostics are not admitted. |
+| `generated-crate` | `qualified-stable-candidate` | `candidate` | `active` | Documented default, nested, no-hxrt, custom-Cargo, extra-source, and cargo-execution boundaries. |
+| `generated-package` | `stable-candidate` | `candidate` | `active` | Published Haxelib-shaped package and installed-package workflow. |
+| `generated-private` | `excluded-internal` | `internal` | `active` | Generated helper/wrapper details not admitted as consumer API. |
 
-Inventory: 174 shipped Haxe types, 11 admitted member families, 18 metadata names, 55 defines, 4 JSON reports, and 6 generated-artifact contracts.
+Inventory: 311 shipped Haxe types, 1512 public operations, 18 metadata names, 55 defines, 4 JSON reports, 6 generated-artifact contracts, and 25 validated evidence records.
 <!-- END GENERATED PUBLIC COMPATIBILITY SUMMARY -->
 
-The current guard enumerates every non-private top-level type under `std/rust`, including secondary
-module types and `_std` overrides, plus compiler-owned target metadata and direct or indirect define
-lookups. A new, removed, duplicated, or unclassified surface inside that discovery boundary fails
-CI. It does **not yet** prove the complete packaged class path, operation/member signatures,
-constructors/defaults, transitive public types, or evidence-path existence; those are explicit
-stable-admission blockers rather than hidden assumptions.
+The guard enumerates no-package overrides, primary and secondary module types, direct `std/**`
+bridges, public `hxrt.*` handles/helpers, and shipped compiler declarations. Compiler and runtime
+helpers are explicitly classified `excluded-internal`; their presence in the package does not make
+them stable API, and Bead `haxe_rust-p6hs.3` owns sealing any importable internal boundary. A new,
+removed, duplicated, or unclassified type or operation; a changed signature/default/generic bound;
+a changed transitive shipped type; an unknown metadata/define grammar; a missing evidence target;
+or an invalid promotion/deprecation state fails CI.
+
+The scanner deliberately protects Haxe declaration shape rather than function bodies or generated
+Rust formatting. It runs without loading one conditional Haxe compilation, so all shipped lexical
+declarations are visible. Haxe typing plus semantic/failure fixtures remain the authority for
+behavior. After intentional public declaration changes, run
+`npm run docs:compatibility:refresh`, review the generated manifest diff, and attach migration and
+evidence changes in the same Bead.
 
 ## Important surface decisions
 
