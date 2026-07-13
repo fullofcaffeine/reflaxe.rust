@@ -17,6 +17,11 @@ runtime paths your application actually uses.
 
 ## Quick answer
 
+Independent review disposition (2026-07-13): **ready with bounded scope for controlled production;
+not ready for a stable `1.x` compatibility promise**. See the
+[production-readiness audit disposition](production-readiness-audit-2026-07-13.md) for the verified
+findings and dependency-ordered follow-up.
+
 Use `reflaxe.rust` in production when all of these are true:
 
 - your app fits the documented supported surface,
@@ -24,6 +29,11 @@ Use `reflaxe.rust` in production when all of these are true:
 - your app has smoke tests for its own file/process/network/TLS/DB/thread paths,
 - native Rust interop is behind typed wrappers,
 - `metal` is used deliberately instead of as a default escape hatch.
+
+Until the audit follow-up lands, do not treat broad dynamic `Type.*` reflection, useful native
+`CallStack` contents, same-handle native lock callback reentry, unproven async cancellation/shutdown,
+or untested normal OS-failure paths as production-stable behavior. Long-lived strong `HxRef` cycles
+must be avoided or explicitly broken.
 
 If those are not true yet, treat adoption as a pilot rather than broad rollout.
 
@@ -149,6 +159,7 @@ Current operational sources:
 - [Defines reference](defines-reference.md)
 - [Weekly CI Evidence](weekly-ci-evidence.md)
 - [Pre-1.0 Compatibility Review](pre-1.0-compatibility-review.md)
+- [2026-07-13 Production-readiness Audit Disposition](production-readiness-audit-2026-07-13.md)
 
 Historical closeout context:
 

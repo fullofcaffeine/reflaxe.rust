@@ -11,7 +11,7 @@ the latest immutable GitHub Release for the exact current version.
 - Common first questions: [FAQ](faq.md)
 - First generated app from this checkout: [Start Here](start-here.md#scaffold-a-new-app), [Workflow](workflow.md#new-project-scaffold--task-hxmls)
 - Installing into an existing app: [Install via lix](install-via-lix.md), [Workflow](workflow.md)
-- Evaluating production use: [Production Readiness](production-readiness.md), [Feature support matrix](feature-support-matrix.md), [Semantic confidence summary](semantic-confidence-summary.md)
+- Evaluating production use: [Production Readiness](production-readiness.md), [2026-07-13 independent audit disposition](production-readiness-audit-2026-07-13.md), [Feature support matrix](feature-support-matrix.md), [Semantic confidence summary](semantic-confidence-summary.md)
 - Portable-first application path: [Profiles](profiles.md), [Portable near-native guidance](portable-near-native-guidance.md), [Examples matrix](examples-matrix.md)
 - Metal-first path: [Metal profile](metal-profile.md) for current contract policy, [Metal haxified Rust roadmap](metal-haxified-rust-roadmap.md) for compiler/API direction, [Metal systems facades roadmap](metal-systems-facades-roadmap.md) for Rust-native file/process/socket/DB handle work, [Portable near-native guidance](portable-near-native-guidance.md), [Examples matrix](examples-matrix.md)
 - Release / operations path: [Production Readiness](production-readiness.md), [Semver and release posture](semver-release-posture.md), [Weekly CI Evidence](weekly-ci-evidence.md)
@@ -29,6 +29,7 @@ the latest immutable GitHub Release for the exact current version.
 - [Portable idiom adoption contract](reflaxe-std-adoption-contract.md): Rust-side boundary and migration rules for the shared `reflaxe.std` portable idiom layer (v1 starts with `Option`/`Result`).
 - [Portable idiom package extraction tracker](reflaxe-std-package-extraction-tracker.md): current cross-repo ownership, adapter, install, and public-guidance gates before app authors should depend on `reflaxe.std` by default.
 - [Semver and release posture](semver-release-posture.md): canonical current posture, structured release-state contract, and measurable graduation gate.
+- [2026-07-13 production-readiness audit disposition](production-readiness-audit-2026-07-13.md): independently reviewed bounded-production verdict, verified findings, release-evidence corrections, and dependency-ordered stable-major follow-up.
 - [Pre-1.0 compatibility review](pre-1.0-compatibility-review.md) and [public compatibility manifest](public-compatibility-manifest.json): exact stable-candidate, qualified, experimental, and excluded classes; machine-checked shipped-surface inventory; migration and major-1 blockers.
 - [Generated consumer contract](generated-consumer-contract.md), [machine manifest](generated-consumer-contract.json), and [report schemas](schemas/): versioned JSON report shapes, compatibility baseline, generated Cargo/package ownership, and private-detail exclusions.
 - [Diagnostic identifier contract](diagnostic-identifiers.md) and [machine registry](diagnostic-contract.json): stable `HXRS-*` identifiers, severities, triggers, and retirement rules for admitted compiler failures.

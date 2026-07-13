@@ -17,8 +17,7 @@
         "admitted semantics and defaults"
       ],
       "evidence": [
-        "docs/feature-support-matrix.md",
-        "test/upstream-stdlib-api-manifest.json"
+        "docs/feature-support-matrix.md"
       ],
       "exclusions": [
         "unlisted upstream modules or members",
@@ -1329,7 +1328,7 @@
     {
       "id": "portable-admitted-modules-and-members",
       "contract": "portable-core",
-      "owners": ["test/upstream-stdlib-api-manifest.json", "docs/feature-support-matrix.md"]
+      "owners": ["docs/feature-support-matrix.md"]
     },
     {
       "id": "portable-systems-operations",

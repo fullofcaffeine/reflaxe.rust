@@ -1,12 +1,21 @@
 # Pre-1.0 Compatibility Review
 
-Status: compatibility classification for `haxe_rust-ykls.6`.
+Status: first-generation compatibility classification for `haxe_rust-ykls.6`; operation-level
+completion is owned by `haxe_rust-p6hs.2`.
 
 This review identifies the surfaces that could form a stable contract. It does not approve
 `1.0.0`, widen the support matrix, or implicitly promote qualified and experimental surfaces. The
 Rust toolchain policy is now enforced separately. The machine-readable source of truth is
 [`public-compatibility-manifest.json`](public-compatibility-manifest.json); this page explains its
 policy and records its generated summary.
+
+The independent 2026-07-13 review confirmed that the four-class model is sound but found that this
+first-generation manifest is not yet sufficient for stable-major admission: discovery is centered
+on `std/rust`, member families are not full extracted signatures, transitive public types are not
+closed mechanically, and evidence paths are not validated. These limitations do not invalidate the
+current `0.x` classification work, but they mean no `stable-candidate` or
+`qualified-stable-candidate` row is implicitly admitted. See the
+[audit disposition](production-readiness-audit-2026-07-13.md) and Bead `haxe_rust-p6hs.2`.
 
 ## Exact compatibility classes
 
@@ -72,9 +81,12 @@ exact admitted surface.
 Inventory: 174 shipped Haxe types, 11 admitted member families, 18 metadata names, 55 defines, 4 JSON reports, and 6 generated-artifact contracts.
 <!-- END GENERATED PUBLIC COMPATIBILITY SUMMARY -->
 
-The guard enumerates every non-private top-level type shipped under `std/rust`, including secondary
+The current guard enumerates every non-private top-level type under `std/rust`, including secondary
 module types and `_std` overrides, plus compiler-owned target metadata and direct or indirect define
-lookups. A new, removed, duplicated, or unclassified surface fails CI.
+lookups. A new, removed, duplicated, or unclassified surface inside that discovery boundary fails
+CI. It does **not yet** prove the complete packaged class path, operation/member signatures,
+constructors/defaults, transitive public types, or evidence-path existence; those are explicit
+stable-admission blockers rather than hidden assumptions.
 
 ## Important surface decisions
 

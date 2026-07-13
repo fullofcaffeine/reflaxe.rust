@@ -1,8 +1,8 @@
 # Semver And Release Posture
 
-Current decision date: 2026-07-11
+Current decision date: 2026-07-13
 
-Current scope bead: `haxe_rust-ykls.7`
+Current scope bead: `haxe_rust-p6hs`
 
 Superseded decision: `haxe.rust-oo3.23.1` (2026-03-15)
 
@@ -30,6 +30,15 @@ This is a deliberate preview/stabilization line, not a statement that the compil
 or unusable. The distinction is about the size and maturity of the public compatibility promise.
 Here, pre-1.0 means the normal `0.x` line; it does not mean a hyphenated SemVer prerelease identifier
 or require GitHub's prerelease flag.
+
+The independent 2026-07-13 production-readiness audit reaffirmed this posture: current bounded
+production is `READY_WITH_BOUNDED_SCOPE`, while stable `1.0` remains `NOT_READY`. It found no
+credible Rust memory-unsafety or data-corruption blocker and independently confirmed the live
+release identity. It did find a smaller concrete stable-admission program: complete the public
+contract at operation/signature/transitive-type level, repair or exclude admitted normal-failure,
+reflection, lock/thread, and async lifecycle gaps, prove fresh dependency resolution at the Rust
+floor, and assemble exact frozen-RC evidence. The verified disposition and owners are recorded in
+[Production-readiness audit disposition](production-readiness-audit-2026-07-13.md).
 
 ## Why The July 2026 Decision Stayed On 0.x
 
@@ -143,7 +152,10 @@ release candidate:
    - and any release-blocking failure requires a root-cause fix plus regression coverage before
      later evidence is relied upon.
 4. **Semantic-proof classification**
+   - the complete packaged public surface is classified at operation/member/signature/default and
+     transitive-type level, not only by top-level type name,
    - every surface proposed for the stable contract is classified by runtime proof depth,
+   - cited evidence paths and levels are mechanically validated,
    - critical snapshot/smoke-only buckets are either deepened or explicitly excluded/qualified in
      the stable support matrix,
    - and compile inventory is never presented as blanket runtime parity.
@@ -156,7 +168,9 @@ release candidate:
    - the supported operating-system matrix is explicit,
    - unsupported or smoke-only platforms are named honestly,
    - a minimum supported Rust version or equivalent pinned-toolchain policy is documented and
-     enforced in CI.
+     enforced in CI,
+   - and representative dependency graphs resolve and build from an empty Cargo cache at that
+     declared floor under the published lock/constraint policy.
 7. **API and migration review**
    - public Haxe APIs, profiles, defines/metadata, generated-crate layout, runtime-facing contracts,
      and package/install workflow receive a compatibility review,
@@ -164,6 +178,10 @@ release candidate:
      excluded/internal implementation boundaries in
      [Pre-1.0 compatibility review](pre-1.0-compatibility-review.md),
    - intentional post-1.0 change policy and deprecation/migration rules are documented,
+   - every admitted normal OS/runtime failure is Haxe-visible rather than a raw Rust panic,
+   - accepted reflection paths contain no sentinel or reachable `todo!()` behavior,
+   - admitted lock/thread/async surfaces have explicit reentry, unwind, cancellation, and cleanup
+     contracts, while unproved breadth remains experimental,
    - and known defers remain visible rather than being hidden by the version bump.
 8. **Independent second pass**
    - the final go/no-go receives the repository's required `thinking:xhigh` review,
