@@ -314,6 +314,11 @@ object when `next()` runs. Passing or returning the nominal value through `Itera
 `KeyValueIterator<String,T>` uses a callback-backed structural bridge over the same cursor, so mutations
 made after construction remain visible. The key order is still unspecified, matching Haxe.
 
+The Unicode string iterator classes are also shipped as nominal Rust-target modules. They yield Unicode
+scalar code points, and the key/value form reports zero-based logical character positions—not Rust UTF-8
+byte offsets. Passing them through `Iterator<Int>` or `KeyValueIterator<Int,Int>` helpers keeps one shared
+cursor and evaluates each source expression once.
+
 ## How does `null` work?
 
 Haxe nullability is preserved where the active contract says it must be.

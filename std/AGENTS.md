@@ -23,6 +23,10 @@
   matching `hasNext` / `next` signatures. In particular, `DynamicAccess` iterators capture keys once but
   read values lazily from the live source; do not replace that contract with an eager array snapshot.
   Keep the Haxe override typed and let the compiler own any required nominal-to-structural adapter.
+- Unicode string iterator gotcha: portable Rust strings use Unicode-scalar indices for `String.length`
+  and `StringTools.fastCodeAt`. Preserve the upstream code-point/logical-character contract, but do not
+  copy a UTF-16 surrogate-pair walk into Rust-target overrides or expose UTF-8 byte offsets. Advance one
+  scalar index per item and let the compiler adapt nominal iterators at typed structural boundaries.
 - Some stdlib APIs are declared as `@:coreApi extern` in the eval stdlib (`std/eval/_std/**`). Target overrides must match these signatures exactly (including property accessor shapes like `var x(get, never)`), otherwise Haxe will error during typing.
 - Prefer stable, typed interop surfaces:
   - declare Cargo deps via `@:rustCargo(...)` on `std/` types that need external crates

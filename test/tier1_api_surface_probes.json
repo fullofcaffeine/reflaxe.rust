@@ -101,6 +101,16 @@
       ]
     },
     {
+      "id": "haxe_iterators_UnicodeStringIterators",
+      "body": [
+        "var values:Iterator<Int> = haxe.iterators.StringIteratorUnicode.unicodeIterator('Aé🙂');",
+        "var pairs:KeyValueIterator<Int, Int> = haxe.iterators.StringKeyValueIteratorUnicode.unicodeKeyValueIterator('Aé🙂');",
+        "var value = values.next();",
+        "var pair = pairs.next();",
+        "return value + pair.key + pair.value;"
+      ]
+    },
+    {
       "id": "sys_Http",
       "body": [
         "var http = new sys.Http('http://127.0.0.1:65535/');",

@@ -213,10 +213,22 @@
       "notes": "Cross-target override aligned to upstream stdlib API surface."
     },
     {
+      "path": "std/rust/_std/haxe/iterators/StringIteratorUnicode.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/iterators/StringIteratorUnicode.hx",
+      "notes": "Cross-target override aligned to upstream Unicode code-point iteration while using the Rust target's Unicode-scalar string index model."
+    },
+    {
       "path": "std/rust/_std/haxe/iterators/StringKeyValueIterator.hx",
       "provenanceKind": "upstream_std_sync",
       "upstreamOraclePath": "vendor/haxe/std/haxe/iterators/StringKeyValueIterator.hx",
       "notes": "Cross-target override aligned to upstream stdlib API surface."
+    },
+    {
+      "path": "std/rust/_std/haxe/iterators/StringKeyValueIteratorUnicode.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/iterators/StringKeyValueIteratorUnicode.hx",
+      "notes": "Cross-target override aligned to upstream logical-character keys and Unicode code points while using the Rust target's Unicode-scalar string index model."
     },
     {
       "path": "std/rust/_std/sys/FileStat.hx",

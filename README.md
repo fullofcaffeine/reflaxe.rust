@@ -72,6 +72,9 @@ networking, TLS, DB, processes, or threading, add app-specific smoke tests aroun
 - DynamicAccess value and key/value iterators also cross typed helpers while preserving their distinct
   lazy contract: keys are captured once, values are read from the live source at `next()`, aliases share
   one cursor, and key order remains unspecified.
+- Unicode string value and key/value iterators preserve Unicode scalar code points and logical character
+  keys across typed helpers; they never expose Rust UTF-8 byte offsets or split characters into UTF-16
+  surrogate halves.
 - CI evidence: snapshots, negative policy fixtures, runtime/optimizer plan reports, product-neutral
   benchmark candidates, and HXRT overhead tracking are all part of the default workflow.
 

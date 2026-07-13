@@ -82,8 +82,6 @@ haxe.iterators.ArrayKeyValueIterator
 haxe.iterators.HashMapKeyValueIterator
 haxe.iterators.RestIterator
 haxe.iterators.RestKeyValueIterator
-haxe.iterators.StringIteratorUnicode
-haxe.iterators.StringKeyValueIteratorUnicode
 haxe.macro.CompilationServer
 haxe.macro.Compiler
 haxe.macro.ComplexTypeTools

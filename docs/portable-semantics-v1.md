@@ -91,6 +91,11 @@ Conformance fixtures:
    boundaries without eager value materialization. Construction evaluates the source once and snapshots
    its keys; each `next()` reads the current value for its captured key. Aliases share one cursor, key
    order remains unspecified, and the explicitly dynamic collection lookup returns immediately to `T`.
+15. `haxe.iterators.StringIteratorUnicode` and `StringKeyValueIteratorUnicode` must iterate Unicode
+   scalar code points rather than UTF-8 bytes or UTF-16 surrogate halves. Key/value keys are zero-based
+   logical scalar positions. Nominal values must cross typed `Iterator<Int>` / `KeyValueIterator<Int,Int>`
+   argument and return boundaries with one source evaluation and one alias-shared cursor. The Rust target
+   must reuse its scalar-indexed string primitives rather than add a second runtime representation.
 
 Conformance fixtures:
 
@@ -104,6 +109,7 @@ Conformance fixtures:
 - `test/semantic_diff/iterator_helper_boundary`
 - `test/semantic_diff/array_key_value_iterator_boundary`
 - `test/semantic_diff/dynamic_access_iterator_boundary`
+- `test/semantic_diff/unicode_string_iterator_boundary`
 - `test/semantic_diff/field_compound_rhs_mutation`
 - `test/semantic_diff/polymorphic_field_updates`
 - `test/semantic_diff/static_field_updates`

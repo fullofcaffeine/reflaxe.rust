@@ -27,6 +27,7 @@ mod haxe_io_fp_helper;
 mod haxe_io_input;
 mod haxe_io_output;
 mod haxe_iterators_string_iterator;
+mod haxe_iterators_string_iterator_unicode;
 mod haxe_iterators_string_key_value_iterator;
 mod haxe_stack_item;
 mod int32_tools;

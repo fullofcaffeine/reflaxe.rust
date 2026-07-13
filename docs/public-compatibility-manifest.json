@@ -789,7 +789,15 @@
       "contract": "portable-core"
     },
     {
+      "name": "haxe.iterators.StringIteratorUnicode",
+      "contract": "portable-core"
+    },
+    {
       "name": "haxe.iterators.StringKeyValueIterator",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.iterators.StringKeyValueIteratorUnicode",
       "contract": "portable-core"
     },
     {

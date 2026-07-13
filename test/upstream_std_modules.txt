@@ -51,7 +51,9 @@ haxe.iterators.DynamicAccessIterator
 haxe.iterators.DynamicAccessKeyValueIterator
 haxe.iterators.MapKeyValueIterator
 haxe.iterators.StringIterator
+haxe.iterators.StringIteratorUnicode
 haxe.iterators.StringKeyValueIterator
+haxe.iterators.StringKeyValueIteratorUnicode
 haxe.xml.Access
 haxe.xml.Parser
 haxe.xml.Printer
