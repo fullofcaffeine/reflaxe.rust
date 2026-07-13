@@ -218,6 +218,10 @@ function checkConsumers(manifest) {
   if (!ci.includes('cargo check --manifest-path "$generated_smoke/Cargo.toml"')) {
     errors.push('current-stable CI must compile representative generated Rust')
   }
+  if (!ci.includes('test/snapshot/deny_warnings/intended/.')
+      || !ci.includes('cargo clippy --manifest-path "$generated_clippy/Cargo.toml" --all-targets -- -D warnings')) {
+    errors.push('current-stable CI must Clippy-check the representative generated output-quality contract')
+  }
   const releaseStart = ci.indexOf('\n  release:\n')
   if (releaseStart < 0 || !ci.slice(releaseStart).includes('toolchain: ${{ steps.rust-policy.outputs.release }}')
       || !ci.slice(releaseStart).includes('--github-output --activate release')) {

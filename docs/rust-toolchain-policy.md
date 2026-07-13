@@ -25,7 +25,9 @@ releases, and recurring evidence. The machine source is
   and same-tag repair. Release workflows explicitly activate it, which makes publication
   reproducible without pretending that only one patch release can consume generated crates.
 - The current-stable lane is deliberately rolling. It detects new compiler/lint incompatibilities
-  early, but does not replace the minimum lane or silently raise the consumer floor.
+  early, but does not replace the minimum lane or silently raise the consumer floor. In addition to
+  the workspace and a general generated smoke crate, it Clippy-checks a small generated output-quality
+  contract containing representative nullable and anonymous-record lowering shapes.
 - Rust edition 2021 is a language-edition choice, not evidence for a minimum compiler version.
 
 No Rust version older than the listed minimum is claimed. The initial floor was selected only after
@@ -52,10 +54,10 @@ compiler.
 ## Enforcement
 
 `npm run guard:rust-toolchain-policy` checks the structured policy, generated Haxe/TOML consumers,
-Cargo manifests, pinned workflow action refs, exact minimum/current/release lane binding, and weekly
-evidence. `npm run test:rust-toolchain-floor` compiles a real generated crate, checks both app and
-`hxrt` manifests, rejects an older actual compiler, and verifies Cargo supplies actionable guidance
-for an unmet floor.
+Cargo manifests, pinned workflow action refs, exact minimum/current/release lane binding, the bounded
+generated-current-Clippy contract, and weekly evidence. `npm run test:rust-toolchain-floor` compiles
+a real generated crate, checks both app and `hxrt` manifests, rejects an older actual compiler, and
+verifies Cargo supplies actionable guidance for an unmet floor.
 
 Use `npm run toolchain:sync` only after reviewing a policy change. Generated consumers must not be
 edited independently.

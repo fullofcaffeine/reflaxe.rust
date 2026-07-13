@@ -191,6 +191,14 @@ Agent policy:
   - Enum-match gotcha: avoid emitting wildcard `unreachable!()` arms when the match is already exhaustive (Rust warns with `unreachable_patterns`).
   - Return-lowering gotcha: never emit `return <expr>` when `<expr>` is statically diverging (`todo!()`, `panic!()`, `hxrt::exception::throw(...)`).
     Emit the diverging expression directly; `return <diverging expr>` triggers Rust `unreachable expression` warnings.
+  - Nullable-array indexing gotcha: indexing `Array<Null<T>>` through the checked Rust array API produces
+    `Option<Option<T>>`. Lower the Haxe-visible nullable result with typed `Option::flatten()` instead of a
+    manual `Some(v) => v, None => None` match; the native combinator is clearer and remains clean under
+    rolling-current Clippy.
+  - Empty-record gotcha: a zero-field anonymous object must allocate and return its `HxRef<Anon>` directly.
+    Do not acquire an empty `borrow_mut()` initialization guard; cleanup can turn the unused guard into
+    `let _ = value.borrow_mut()`, which is rejected by Clippy because synchronization guards must not be
+    silently discarded.
   - Dynamic-runtime gotcha: prefer typed `std/hxrt/*` extern wrappers over raw `untyped __rust__` for runtime APIs returning `Dynamic`
     (example: `haxe.Json.parse`, `sys.thread.Thread.readMessage`) to avoid unresolved monomorph warnings.
   - Unresolved-monomorph fallback policy:

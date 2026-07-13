@@ -1004,13 +1004,8 @@ impl Unserializer {
                     return hxrt::dynamic::Dynamic::null();
                 }
                 111 => {
-                    let o_3: crate::HxRef<hxrt::anon::Anon> = {
-                        let __o = crate::HxRef::new(hxrt::anon::Anon::new());
-                        {
-                            let _ = __o.borrow_mut();
-                        };
-                        __o
-                    };
+                    let o_3: crate::HxRef<hxrt::anon::Anon> =
+                        crate::HxRef::new(hxrt::anon::Anon::new());
                     ({
                         let __b = __hx_this.borrow();
                         __b.cache.clone()

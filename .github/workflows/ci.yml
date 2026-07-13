@@ -128,9 +128,12 @@ jobs:
           cargo clippy --workspace --all-targets --locked -- -D warnings
           cargo test --workspace --locked
           generated_smoke="$(mktemp -d)"
-          trap 'rm -rf "$generated_smoke"' EXIT
+          generated_clippy="$(mktemp -d)"
+          trap 'rm -rf "$generated_smoke" "$generated_clippy"' EXIT
           cp -R test/snapshot/v1_smoke/intended/. "$generated_smoke/"
           cargo check --manifest-path "$generated_smoke/Cargo.toml"
+          cp -R test/snapshot/deny_warnings/intended/. "$generated_clippy/"
+          cargo clippy --manifest-path "$generated_clippy/Cargo.toml" --all-targets -- -D warnings
 
   windows-smoke:
     name: Windows smoke (fmt + clippy + sys IO/net)

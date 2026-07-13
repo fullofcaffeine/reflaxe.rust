@@ -43,8 +43,10 @@ coverage. Purpose-built compiler runtime proof lives in this repository's E2E ex
 backend defect discovered through the consumer build receives a minimized regression here.
 
 Normal push/PR CI also has a required rolling current-stable Rust compatibility job. It catches new
-compiler or lint incompatibilities without silently changing the minimum supported version. See
-[Rust Toolchain Policy](rust-toolchain-policy.md).
+compiler or lint incompatibilities without silently changing the minimum supported version. That job
+also Clippy-checks a bounded committed generated crate so new rolling lints in representative compiler
+output are detected without duplicating the full snapshot harness. See [Rust Toolchain
+Policy](rust-toolchain-policy.md).
 
 ## PR CI harness topology
 

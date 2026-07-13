@@ -4,7 +4,13 @@ import rust.MutSliceTools;
 import rust.Option;
 import rust.Vec;
 
+typedef EmptyRecord = {};
+
 class Main {
+	static function nullableIndex(values:Array<Null<Int>>, index:Int):Null<Int> {
+		return values[index];
+	}
+
 	static function main() {
 		// Option/Result helper paths should compile without warnings.
 		var o:Option<Int> = Some(1);
@@ -53,5 +59,16 @@ class Main {
 		for (i in vec)
 			sum = sum + i;
 		trace(sum);
+
+		// Checked indexing of nullable elements should use Rust's native `Option::flatten()` and
+		// remain clean under rolling-current Clippy.
+		var seven:Null<Int> = 7;
+		var nullableValues:Array<Null<Int>> = [seven, null];
+		trace(nullableIndex(nullableValues, 0));
+		trace(nullableIndex(nullableValues, 1));
+
+		// A zero-field record has no initialization writes and must not acquire/discard a lock guard.
+		var empty:EmptyRecord = {};
+		trace(empty != null);
 	}
 }

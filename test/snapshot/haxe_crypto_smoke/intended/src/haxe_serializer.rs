@@ -1000,13 +1000,7 @@ impl Serializer {
                                             let __b = __hx_this.borrow();
                                             __b.buf.clone()
                                         }), {
-                                            let __hx_opt = {
-                                                let __hx_opt = b64.get((b1 >> 2) as usize);
-                                                match __hx_opt {
-                                                    Some(__v) => __v,
-                                                    None => None,
-                                                }
-                                            };
+                                            let __hx_opt = b64.get((b1 >> 2) as usize).flatten();
                                             match __hx_opt {
                                                 Some(__v) => __v,
                                                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
@@ -1016,13 +1010,7 @@ impl Serializer {
                                             let __b = __hx_this.borrow();
                                             __b.buf.clone()
                                         }), {
-                                            let __hx_opt = {
-                                                let __hx_opt = b64.get(((b1 << 4 | b2 >> 4) & 63) as usize);
-                                                match __hx_opt {
-                                                    Some(__v) => __v,
-                                                    None => None,
-                                                }
-                                            };
+                                            let __hx_opt = b64.get(((b1 << 4 | b2 >> 4) & 63) as usize).flatten();
                                             match __hx_opt {
                                                 Some(__v) => __v,
                                                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
@@ -1032,13 +1020,7 @@ impl Serializer {
                                             let __b = __hx_this.borrow();
                                             __b.buf.clone()
                                         }), {
-                                            let __hx_opt = {
-                                                let __hx_opt = b64.get(((b2 << 2 | b3 >> 6) & 63) as usize);
-                                                match __hx_opt {
-                                                    Some(__v) => __v,
-                                                    None => None,
-                                                }
-                                            };
+                                            let __hx_opt = b64.get(((b2 << 2 | b3 >> 6) & 63) as usize).flatten();
                                             match __hx_opt {
                                                 Some(__v) => __v,
                                                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
@@ -1048,13 +1030,7 @@ impl Serializer {
                                             let __b = __hx_this.borrow();
                                             __b.buf.clone()
                                         }), {
-                                            let __hx_opt = {
-                                                let __hx_opt = b64.get((b3 & 63) as usize);
-                                                match __hx_opt {
-                                                    Some(__v) => __v,
-                                                    None => None,
-                                                }
-                                            };
+                                            let __hx_opt = b64.get((b3 & 63) as usize).flatten();
                                             match __hx_opt {
                                                 Some(__v) => __v,
                                                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
@@ -1078,13 +1054,7 @@ impl Serializer {
                                             let __b = __hx_this.borrow();
                                             __b.buf.clone()
                                         }), {
-                                            let __hx_opt = {
-                                                let __hx_opt = b64.get((b1_2 >> 2) as usize);
-                                                match __hx_opt {
-                                                    Some(__v) => __v,
-                                                    None => None,
-                                                }
-                                            };
+                                            let __hx_opt = b64.get((b1_2 >> 2) as usize).flatten();
                                             match __hx_opt {
                                                 Some(__v) => __v,
                                                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
@@ -1094,13 +1064,7 @@ impl Serializer {
                                             let __b = __hx_this.borrow();
                                             __b.buf.clone()
                                         }), {
-                                            let __hx_opt = {
-                                                let __hx_opt = b64.get(((b1_2 << 4 | b2_2 >> 4) & 63) as usize);
-                                                match __hx_opt {
-                                                    Some(__v) => __v,
-                                                    None => None,
-                                                }
-                                            };
+                                            let __hx_opt = b64.get(((b1_2 << 4 | b2_2 >> 4) & 63) as usize).flatten();
                                             match __hx_opt {
                                                 Some(__v) => __v,
                                                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
@@ -1110,13 +1074,7 @@ impl Serializer {
                                             let __b = __hx_this.borrow();
                                             __b.buf.clone()
                                         }), {
-                                            let __hx_opt = {
-                                                let __hx_opt = b64.get((b2_2 << 2 & 63) as usize);
-                                                match __hx_opt {
-                                                    Some(__v) => __v,
-                                                    None => None,
-                                                }
-                                            };
+                                            let __hx_opt = b64.get((b2_2 << 2 & 63) as usize).flatten();
                                             match __hx_opt {
                                                 Some(__v) => __v,
                                                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
@@ -1135,13 +1093,7 @@ impl Serializer {
                                                 let __b = __hx_this.borrow();
                                                 __b.buf.clone()
                                             }), {
-                                                let __hx_opt = {
-                                                    let __hx_opt = b64.get((b1_3 >> 2) as usize);
-                                                    match __hx_opt {
-                                                        Some(__v) => __v,
-                                                        None => None,
-                                                    }
-                                                };
+                                                let __hx_opt = b64.get((b1_3 >> 2) as usize).flatten();
                                                 match __hx_opt {
                                                     Some(__v) => __v,
                                                     None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),
@@ -1151,13 +1103,7 @@ impl Serializer {
                                                 let __b = __hx_this.borrow();
                                                 __b.buf.clone()
                                             }), {
-                                                let __hx_opt = {
-                                                    let __hx_opt = b64.get((b1_3 << 4 & 63) as usize);
-                                                    match __hx_opt {
-                                                        Some(__v) => __v,
-                                                        None => None,
-                                                    }
-                                                };
+                                                let __hx_opt = b64.get((b1_3 << 4 & 63) as usize).flatten();
                                                 match __hx_opt {
                                                     Some(__v) => __v,
                                                     None => hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access"))),

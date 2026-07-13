@@ -9298,13 +9298,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						// by flattening the out-of-bounds `None` into the inner null (`None`).
 						var elem = arrayElementType(arr.t);
 						if (isNullOptionType(elem, e.pos)) {
-							return EBlock({
-								stmts: [RLet("__hx_opt", false, null, getCall)],
-								tail: EMatch(EPath("__hx_opt"), [
-									{pat: PTupleStruct("Some", [PBind("__v")]), expr: EPath("__v")},
-									{pat: PPath("None"), expr: EPath("None")}
-								])
-							});
+							// Why: `Array<Null<T>>.get(...)` produces `Option<Option<T>>`, while Haxe indexing
+							// exposes one nullable layer and treats both a missing index and a null element as null.
+							// What: collapse the outer bounds-check result with Rust's native `Option::flatten`.
+							// How: keep the transformation in typed Rust AST lowering so generated crates avoid a
+							// redundant `Some(v) => v, None => None` match and remain clean under current Clippy.
+							return ECall(EField(getCall, "flatten"), []);
 						}
 						getCall;
 					} else {
@@ -9666,26 +9665,32 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						return EPath("Option::<" + innerRust + ">::None");
 					}
 
-					var stmts:Array<RustStmt> = [];
-					var objName = "__o";
-
 					var newAnon = ECall(EPath("hxrt::anon::Anon::new"), []);
 					var newRef = ECall(EPath("crate::HxRef::new"), [newAnon]);
+					// Why: a zero-field record has nothing to initialize. Taking a write guard anyway is
+					// observable synchronization work and cleanup would reduce it to Clippy-invalid
+					// `let _ = value.borrow_mut()`.
+					// What: return the newly allocated handle directly for empty records.
+					// How: populated records retain their single-borrow initialization path below; empty
+					// records avoid both the guard and an otherwise redundant one-use local binding.
+					if (fields == null || fields.length == 0)
+						return newRef;
+
+					var stmts:Array<RustStmt> = [];
+					var objName = "__o";
 					stmts.push(RLet(objName, false, null, newRef));
 
 					var innerStmts:Array<RustStmt> = [];
 					innerStmts.push(RLet("__b", true, null, ECall(EField(EPath(objName), "borrow_mut"), [])));
-					if (fields != null) {
-						for (f in fields) {
-							var valueExpr = f.expr;
-							var compiledVal:RustExpr;
-							if (isNullConstExpr(valueExpr) && isNullOptionType(valueExpr.t, valueExpr.pos)) {
-								compiledVal = typedNoneForNull(valueExpr.t, valueExpr.pos);
-							} else {
-								compiledVal = maybeCloneForReuseValue(compileExpr(valueExpr), valueExpr);
-							}
-							innerStmts.push(RSemi(ECall(EField(EPath("__b"), "set"), [ELitString(f.name), compiledVal])));
+					for (f in fields) {
+						var valueExpr = f.expr;
+						var compiledVal:RustExpr;
+						if (isNullConstExpr(valueExpr) && isNullOptionType(valueExpr.t, valueExpr.pos)) {
+							compiledVal = typedNoneForNull(valueExpr.t, valueExpr.pos);
+						} else {
+							compiledVal = maybeCloneForReuseValue(compileExpr(valueExpr), valueExpr);
 						}
+						innerStmts.push(RSemi(ECall(EField(EPath("__b"), "set"), [ELitString(f.name), compiledVal])));
 					}
 					stmts.push(RSemi(EBlock({stmts: innerStmts, tail: null})));
 

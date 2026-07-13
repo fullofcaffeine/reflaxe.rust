@@ -63,6 +63,10 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
     }
 }
 
+fn nullable_index(values: hxrt::array::Array<Option<i32>>, index: i32) -> Option<i32> {
+    return values.get(index as usize).flatten();
+}
+
 fn main() {
     let o: Option<i32> = Option::Some(1);
     let v: i32 = match o {
@@ -113,4 +117,23 @@ fn main() {
         sum = sum + i;
     }
     println!("{}", hxrt::dynamic::from(sum));
+    let seven: Option<i32> = Some(7);
+    let nullable_values: hxrt::array::Array<Option<i32>> =
+        hxrt::array::Array::<Option<i32>>::from_vec(vec![seven, None]);
+    println!(
+        "{}",
+        hxrt::dynamic::from(nullable_index(nullable_values.clone(), 0))
+    );
+    println!(
+        "{}",
+        hxrt::dynamic::from(nullable_index(nullable_values.clone(), 1))
+    );
+    let empty: crate::HxRef<hxrt::anon::Anon> = crate::HxRef::new(hxrt::anon::Anon::new());
+    println!(
+        "{}",
+        hxrt::dynamic::from(!hxrt::hxref::ptr_eq(
+            &empty,
+            &crate::HxRef::<hxrt::anon::Anon>::null()
+        ))
+    );
 }
