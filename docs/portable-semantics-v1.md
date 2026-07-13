@@ -79,10 +79,13 @@ Conformance fixtures:
    record while satisfying Haxe's structural iterator protocol. Aliasing, function-field replacement,
    reference equality, manual calls, and `for` loops must agree with Haxe. Generated field reads must end
    their borrow before invoking the callback so callback-driven mutation of the same record is safe.
-13. The nominal `haxe.iterators.ArrayIterator<T>` value exposed by inline `Array.iterator()` must cross
-   typed `Iterator<T>` local, argument, and return boundaries without referencing an upstream std module
-   that is absent from the generated crate. The source expression evaluates once; passing a binding that
-   is read again preserves one shared cursor, while a proven last-use transfer remains clone-free.
+13. The nominal `haxe.iterators.ArrayIterator<T>` and `ArrayKeyValueIterator<T>` values exposed by inline
+   array APIs must cross typed `Iterator<T>` / `KeyValueIterator<Int,T>` local, argument, and return
+   boundaries without referencing upstream std modules absent from the generated crate. The source
+   expression evaluates once; key/value iteration yields ordered integer indices plus ordinary shared
+   `{key, value}` records. Reused bindings preserve one shared cursor, while proven last-use transfers
+   remain clone-free. When that record representation erases a source generic from the Rust parameter
+   type, the already-specialized Haxe call type supplies the explicit Rust type argument.
 
 Conformance fixtures:
 
@@ -94,6 +97,7 @@ Conformance fixtures:
 - `test/semantic_diff/anonymous_key_value_aliasing`
 - `test/semantic_diff/anonymous_iterator_aliasing`
 - `test/semantic_diff/iterator_helper_boundary`
+- `test/semantic_diff/array_key_value_iterator_boundary`
 - `test/semantic_diff/field_compound_rhs_mutation`
 - `test/semantic_diff/polymorphic_field_updates`
 - `test/semantic_diff/static_field_updates`

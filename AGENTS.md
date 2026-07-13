@@ -213,11 +213,15 @@ Agent policy:
     (`FMethod`); a mutable record with `FVar` callbacks named `hasNext` / `next` remains `HxRef<Anon>`.
     When reading a function-valued anonymous field, clone the typed callback in a bounded read scope and
     drop that guard before invocation so the callback may safely mutate the same record through an alias.
-  - Array-iterator boundary gotcha: inline `Array.iterator()` exposes a typed
-    `haxe.iterators.ArrayIterator<T>` constructor even though upstream std modules are not emitted.
-    Map that canonical class and constructor directly to `hxrt::iter::Iter<T>`; do not reference the
-    upstream module or misclassify it as `HxRef`. Iterator argument coercion must clone only when later
-    reads require shared cursor reuse, leaving proven last-use transfers clone-free.
+  - Array-backed iterator boundary gotcha: inline `Array.iterator()` and `Array.keyValueIterator()`
+    expose typed `haxe.iterators.ArrayIterator<T>` / `ArrayKeyValueIterator<T>` constructors even though
+    upstream std modules are not emitted. Classify those finite canonical classes by typed package/module/name
+    identity: values map to `hxrt::iter::Iter<T>`, while key/value items map to the ordinary shared
+    `HxRef<Anon>` record representation. Iterator argument coercion must clone only when later reads require
+    shared cursor reuse. If a source generic exists only inside a structural type whose Rust shape erases it,
+    recover the already-specialized Haxe call type and emit an explicit Rust generic argument; applied and
+    declaration type-parameter `ClassType` objects may be distinct references, so compare their stable typed
+    pack/module/name identity rather than object identity.
   - Dynamic-runtime gotcha: prefer typed `std/hxrt/*` extern wrappers over raw `untyped __rust__` for runtime APIs returning `Dynamic`
     (example: `haxe.Json.parse`, `sys.thread.Thread.readMessage`) to avoid unresolved monomorph warnings.
   - Unresolved-monomorph fallback policy:

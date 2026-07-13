@@ -46,12 +46,19 @@ Notes:
   because `Payload<T>` itself requires those bounds.
 - If codegen for a specific function requires bounds, specify them explicitly:
   - `@:rustGeneric("T: Clone") static function f<T>(x:T):T return x;`
+- Haxe may fully resolve a generic call even when the corresponding Rust argument shape intentionally
+  erases the source parameter. For example, `KeyValueIterator<Int,T>` yields shared anonymous records
+  and lowers to `Iter<HxRef<Anon>>`, so Rust cannot infer `T` from the argument alone. In that bounded
+  case the compiler recovers Haxe's already-specialized call type and emits an explicit Rust type
+  argument. This is compile-time lowering; it does not add a phantom payload or runtime type carrier.
 
 Evidence:
 
 - `test/snapshot/generic_function_type_params` keeps unconstrained `Option<T>` helpers bare.
 - `test/snapshot/generic_helper_payload_bounds` proves helper methods returning/reading a generated
   class payload propagate the payload bounds into the Rust helper signature.
+- `test/semantic_diff/array_key_value_iterator_boundary` proves an erased structural parameter still
+  preserves the concrete generic call specialization and runtime semantics.
 
 ### Generic interfaces (traits)
 

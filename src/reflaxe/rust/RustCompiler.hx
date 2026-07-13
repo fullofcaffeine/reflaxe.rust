@@ -85,6 +85,11 @@ private enum RustTestReturnKind {
 	TestBool;
 }
 
+private enum HaxeArrayIteratorKind {
+	ArrayIteratorValues;
+	ArrayIteratorKeyValues;
+}
+
 private typedef RustTestSpec = {
 	var classType:ClassType;
 	var field:ClassField;
@@ -9393,17 +9398,33 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var elemRust = toRustType(elem, e.pos);
 						return ECall(EPath("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new"), []);
 					}
-					// Why: Haxe inlines `Array.iterator()` to `new haxe.iterators.ArrayIterator(array)`.
-					// The upstream std class is typed but intentionally not emitted, while the public
-					// `Iterator<T>` boundary already maps to `hxrt::iter::Iter<T>`.
-					// What: materialize that known std iterator directly in the backend representation.
-					// How: clone the array elements once through its typed `to_vec()` primitive; the existing
-					// iterator adapter then preserves a shared cursor across Haxe aliases and helper calls.
-					if (isHaxeArrayIteratorClass(cls) && args != null && args.length == 1 && isArrayType(args[0].t)) {
-						var elem = typeParams != null && typeParams.length == 1 ? typeParams[0] : arrayElementType(args[0].t);
-						var elemRust = toRustType(elem, e.pos);
-						var values = ECall(EField(compileExpr(args[0]), "to_vec"), []);
-						return ECall(EPath("hxrt::iter::Iter::<" + rustTypeToString(elemRust) + ">::from_vec"), [values]);
+					// Why: Haxe inlines `Array.iterator()` and `Array.keyValueIterator()` to nominal
+					// classes under `haxe.iterators`. Those upstream std classes are typed but intentionally
+					// not emitted, while their public structural boundaries already map to `hxrt::iter::Iter`.
+					// What: materialize both canonical array-backed iterators directly in the matching backend
+					// representation without treating ordinary anonymous `{ key, value }` records specially.
+					// How: clone the array elements once through its typed `to_vec()` primitive. Value iteration
+					// consumes that vector directly; key-value iteration uses Rust's `enumerate`/`map` and the
+					// existing typed anonymous-record constructor. Both retain one shared cursor across aliases.
+					if (args != null && args.length == 1 && isArrayType(args[0].t)) {
+						switch (haxeArrayIteratorKind(cls)) {
+							case ArrayIteratorValues:
+								var elem = typeParams != null && typeParams.length == 1 ? typeParams[0] : arrayElementType(args[0].t);
+								var elemRust = toRustType(elem, e.pos);
+								var values = ECall(EField(compileExpr(args[0]), "to_vec"), []);
+								return ECall(EPath("hxrt::iter::Iter::<" + rustTypeToString(elemRust) + ">::from_vec"), [values]);
+							case ArrayIteratorKeyValues:
+								var values = ECall(EField(compileExpr(args[0]), "to_vec"), []);
+								var intoIter = ECall(EField(values, "into_iter"), []);
+								var enumerated = ECall(EField(intoIter, "enumerate"), []);
+								var record = ECall(EPath("hxrt::iter::key_value"), [ECast(EPath("__hx_key"), "i32"), EPath("__hx_value")]);
+								var mapped = ECall(EField(enumerated, "map"), [
+									EClosure(["(__hx_key, __hx_value)"], {stmts: [], tail: record}, false)
+								]);
+								var records = ECall(EField(mapped, "collect::<Vec<_>>"), []);
+								return ECall(EPath("hxrt::iter::Iter::<crate::HxRef<hxrt::anon::Anon>>::from_vec"), [records]);
+							case null:
+						}
 					}
 					if (cls != null && !cls.isExtern && isMainClass(cls)) {
 						return unsupported(e, "new main class");
@@ -10877,7 +10898,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// - structural `Iterator<T>` maps to `hxrt::iter::Iter<T>` with shared runtime storage.
 		// - general anonymous objects map to `crate::HxRef<hxrt::anon::Anon>`.
 		// - function values lower to shared `HxDynRef<dyn Fn...>` handles and must remain reusable.
-		return isArrayType(t) || isHaxeArrayIteratorType(t) || isHxRefValueType(t) || isRustHxRefType(t) || isStringType(t) || isIteratorStructType(t) || isAnonObjectType(t)
+		return isArrayType(t) || isHaxeArrayBackedIteratorType(t) || isHxRefValueType(t) || isRustHxRefType(t) || isStringType(t) || isIteratorStructType(t) || isAnonObjectType(t)
 			|| isDynamicType(t) || isFunctionValueType(t) || isEnumValueType(t);
 	}
 
@@ -11747,6 +11768,92 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				// call/local assignment lowering and prevents branch-only fallback moves.
 				maybeCloneForBranchReuseValue(compileExpr(e), e);
 		}
+	}
+
+	/**
+		Checks whether one function type parameter disappears from every lowered Rust argument type.
+
+		Why
+		- Rust infers function generics from argument types, but a valid Haxe structural boundary may
+		  deliberately erase a source parameter from its Rust representation.
+		- Looking for a type-parameter name in printed Rust is ambiguous and would turn typed lowering
+		  into a string heuristic.
+
+		What
+		- Returns `true` only when changing the selected Haxe type parameter between two distinct
+		  concrete types leaves every lowered Rust argument type unchanged.
+
+		How
+		- Applies Haxe's declaration-owned type parameters twice, using `Int` and `String` as typed
+		  probes, then compares the canonical Rust AST type renderings. Other function parameters stay
+		  symbolic, so the check isolates exactly one parameter and introduces no runtime representation.
+	**/
+	function isFunctionTypeParameterErasedFromRustArguments(field:ClassField, parameterIndex:Int,
+		arguments:Array<{name:String, t:Type, opt:Bool}>, pos:Position):Bool {
+		if (field == null
+			|| field.params == null
+			|| parameterIndex < 0
+			|| parameterIndex >= field.params.length)
+			return false;
+
+		var intProbe = Context.getType("Int");
+		var stringProbe = Context.getType("String");
+		var intTypes:Array<Type> = [];
+		var stringTypes:Array<Type> = [];
+		for (i in 0...field.params.length) {
+			intTypes.push(i == parameterIndex ? intProbe : field.params[i].t);
+			stringTypes.push(i == parameterIndex ? stringProbe : field.params[i].t);
+		}
+
+		for (argument in arguments) {
+			var withInt = TypeTools.applyTypeParameters(argument.t, field.params, intTypes);
+			var withString = TypeTools.applyTypeParameters(argument.t, field.params, stringTypes);
+			if (rustTypeToString(toRustType(withInt, pos)) != rustTypeToString(toRustType(withString, pos)))
+				return false;
+		}
+		return true;
+	}
+
+	/**
+		Recovers concrete Haxe type arguments from an already-specialized function call type.
+
+		Why
+		- Haxe resolves generic calls before backend lowering, so `callExpr.t` contains concrete types.
+		- Some valid public shapes intentionally erase a source generic from their Rust representation;
+		  for example, `KeyValueIterator<K,V>` yields shared anonymous records and therefore lowers to
+		  `Iter<HxRef<Anon>>` without mentioning `K` or `V`.
+		- Rust cannot infer a function type parameter that disappeared from every argument type.
+
+		What
+		- Matches the function declaration type against the specialized call-expression type and returns
+		  one concrete type for every declared function type parameter.
+
+		How
+		- Instantiates the declaration with fresh Haxe compiler monomorphs and asks Haxe's own typed
+		  unifier to match the specialized call expression. Unresolved or incompatible inference fails
+		  closed so ordinary Rust inference remains the fallback; no parallel type matcher, runtime type
+		  carrier, or generated phantom value is introduced.
+	**/
+	function inferAppliedFunctionTypeArguments(field:ClassField, appliedType:Type):Null<Array<Type>> {
+		if (field == null || field.params == null || field.params.length == 0)
+			return [];
+
+		var monomorphs:Array<Type> = [for (_ in field.params) Context.makeMonomorph()];
+		var declaration = TypeTools.applyTypeParameters(field.type, field.params, monomorphs);
+		if (!Context.unify(declaration, appliedType))
+			return null;
+
+		var result:Array<Type> = [];
+		for (monomorph in monomorphs) {
+			var resolved = TypeTools.follow(monomorph);
+			switch (resolved) {
+				case TMono(ref) if (ref.get() == null):
+				return null;
+				case _:
+					result.push(resolved);
+			}
+		}
+		return result;
 	}
 
 	function compileCall(callExpr:TypedExpr, args:Array<TypedExpr>, fullExpr:TypedExpr):RustExpr {
@@ -13346,6 +13453,42 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		var f = overrideArrayFn != null ? overrideArrayFn : compileExpr(callExpr);
 
+		// Haxe has already specialized generic call expressions. Preserve those type arguments explicitly
+		// only when at least one function generic disappeared from every lowered Rust argument type; in
+		// ordinary inferable calls we retain the existing compact Rust output.
+		switch (callExpr.expr) {
+			case TField(_, FStatic(classRef, fieldRef)):
+				var owner = classRef.get();
+				var field = fieldRef.get();
+				if (owner != null && field != null && !owner.isExtern && field.params != null && field.params.length > 0) {
+					var declaredArgs:Null<Array<{name:String, t:Type, opt:Bool}>> = switch (followType(field.type)) {
+						case TFun(params, _): params;
+						case _: null;
+					}
+					var needsExplicit = false;
+					if (declaredArgs != null) {
+						for (i in 0...field.params.length) {
+							if (isFunctionTypeParameterErasedFromRustArguments(field, i, declaredArgs, fullExpr.pos)) {
+								needsExplicit = true;
+								break;
+							}
+						}
+					}
+					if (needsExplicit) {
+						var applied = inferAppliedFunctionTypeArguments(field, callExpr.t);
+						if (applied != null && applied.length == field.params.length) {
+							var suffix = "::<" + [for (typeArg in applied) rustTypeToString(toRustType(typeArg, fullExpr.pos))].join(", ") + ">";
+							f = switch (f) {
+								case EPath(path): EPath(path + suffix);
+								case EField(receiver, name): EField(receiver, name + suffix);
+								case _: f;
+							}
+						}
+					}
+				}
+			case _:
+		}
+
 		var nullableFnInner = nullInnerType(callExpr.t);
 		var fnTypeForParams:Type = (nullableFnInner != null ? nullableFnInner : callExpr.t);
 		// Prefer the declared field type when available so we don't lose Rust-first ref-wrapper types
@@ -13587,10 +13730,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// Why: Haxe Iterator values are shared cursors. Passing one to a helper must not move the
 		// caller's binding when a later read remains, and cloned `hxrt::iter::Iter` values deliberately
 		// share the same cursor state.
-		// What: preserve the reusable-value contract for both the structural `Iterator<T>` type and
-		// the concrete `haxe.iterators.ArrayIterator<T>` typed-AST form.
+		// What: preserve the reusable-value contract for structural iterator types and both concrete
+		// array-backed iterator classes exposed by Haxe's typed AST.
 		// How: reuse the read-count-aware clone policy so a last-use transfer stays clone-free.
-		if (isIteratorStructType(argExpr.t) || isHaxeArrayIteratorType(argExpr.t)) {
+		if (isIteratorStructType(argExpr.t) || isHaxeArrayBackedIteratorType(argExpr.t)) {
 			compiled = maybeCloneForReuseValue(compiled, argExpr);
 		}
 
@@ -17422,9 +17565,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 			case TInst(clsRef, params): {
 					var cls = clsRef.get();
-					if (isHaxeArrayIteratorClass(cls) && params != null && params.length == 1) {
-						var item = toRustType(params[0], pos);
-						return RPath("hxrt::iter::Iter<" + rustTypeToString(item) + ">");
+					if (params != null && params.length == 1) {
+						switch (haxeArrayIteratorKind(cls)) {
+							case ArrayIteratorValues:
+								var item = toRustType(params[0], pos);
+								return RPath("hxrt::iter::Iter<" + rustTypeToString(item) + ">");
+							case ArrayIteratorKeyValues:
+								return RPath("hxrt::iter::Iter<crate::HxRef<hxrt::anon::Anon>>");
+							case null:
+						}
 					}
 					if (isRustAsyncFutureClass(cls)) {
 						if (params == null || params.length != 1) {
@@ -17547,38 +17696,44 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
-		Identifies Haxe's compiler-supplied array iterator class.
+		Classifies Haxe's compiler-supplied array-backed iterator classes.
 
 		Why
-		- `Array.iterator()` is inline and exposes `haxe.iterators.ArrayIterator<T>` in typed AST.
+		- `Array.iterator()` and `Array.keyValueIterator()` are inline and expose nominal std classes
+		  in typed AST.
 		- Upstream std modules are typed but are not generally emitted by this backend, so nominal
-		  constructor paths for this class cannot be referenced from generated crates.
+		  constructor paths for these classes cannot be referenced from generated crates.
 
 		What
-		- Matches only the canonical Haxe std class, not user classes with the same short name.
+		- Returns a closed representation kind for only the canonical Haxe std classes, never user
+		  classes with the same short names.
 
 		How
-		- Uses the typed package/module identity so construction and Rust type mapping share one
-		  product-neutral predicate.
+		- Uses typed package, module, and class identity so construction, Rust type mapping, reuse,
+		  and HxRef exclusion share one product-neutral classification.
 	**/
-	function isHaxeArrayIteratorClass(cls:Null<ClassType>):Bool {
-		return cls != null
-			&& cls.pack.join(".") == "haxe.iterators"
-			&& cls.module == "haxe.iterators.ArrayIterator"
-			&& cls.name == "ArrayIterator";
+	function haxeArrayIteratorKind(cls:Null<ClassType>):Null<HaxeArrayIteratorKind> {
+		if (cls == null || cls.pack.join(".") != "haxe.iterators")
+			return null;
+
+		return switch (cls.module + ":" + cls.name) {
+			case "haxe.iterators.ArrayIterator:ArrayIterator": ArrayIteratorValues;
+			case "haxe.iterators.ArrayKeyValueIterator:ArrayKeyValueIterator": ArrayIteratorKeyValues;
+			case _: null;
+		}
 	}
 
 	/**
-		Checks whether a typed value uses the canonical array-iterator representation.
+		Checks whether a typed value uses either canonical array-backed iterator representation.
 
 		Why / What / How
 		- Representation and reuse decisions receive `Type`, rather than a bare `ClassType`.
 		- This wrapper follows typedef/lazy layers and requires the one item type parameter before
-		  delegating identity to `isHaxeArrayIteratorClass`.
+		  delegating identity to `haxeArrayIteratorKind`.
 	**/
-	function isHaxeArrayIteratorType(t:Type):Bool {
+	function isHaxeArrayBackedIteratorType(t:Type):Bool {
 		return switch (followType(t)) {
-			case TInst(clsRef, params): isHaxeArrayIteratorClass(clsRef.get()) && params != null && params.length == 1;
+			case TInst(clsRef, params): haxeArrayIteratorKind(clsRef.get()) != null && params != null && params.length == 1;
 			case _: false;
 		}
 	}
@@ -17700,9 +17855,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					// Arrays are represented as `hxrt::array::Array<T>`, not `HxRef<_>`.
 					if (cls.pack.length == 0 && cls.module == "Array" && cls.name == "Array")
 						return false;
-					// The compiler-owned ArrayIterator adapter is likewise an `hxrt::iter::Iter<T>` value,
-					// even though its source Haxe type is a non-extern class.
-					if (isHaxeArrayIteratorClass(cls))
+					// Compiler-owned array-backed iterator adapters are `hxrt::iter::Iter<_>` values even
+					// though their source Haxe types are non-extern classes.
+					if (haxeArrayIteratorKind(cls) != null)
 						return false;
 					!cls.isExtern && !cls.isInterface
 					;

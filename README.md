@@ -66,8 +66,9 @@ networking, TLS, DB, processes, or threading, add app-specific smoke tests aroun
 - Typed anonymous records preserve Haxe aliasing while keeping field access typed; required fields,
   omitted `@:optional` fields, and mutable function-field records that implement the Haxe iterator
   protocol are covered by focused generated-Rust and semantic-differential fixtures.
-- Array iterators can cross typed `Iterator<T>` helper boundaries without emitting upstream-only
-  Haxe std classes; evaluation occurs once and reused iterator bindings share one cursor.
+- Array value and key/value iterators can cross typed helper boundaries without emitting upstream-only
+  Haxe std classes; evaluation occurs once, key/value items retain ordered typed records, and reused
+  iterator bindings share one cursor.
 - CI evidence: snapshots, negative policy fixtures, runtime/optimizer plan reports, product-neutral
   benchmark candidates, and HXRT overhead tracking are all part of the default workflow.
 
