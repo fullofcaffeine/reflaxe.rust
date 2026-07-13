@@ -213,6 +213,11 @@ Agent policy:
     (`FMethod`); a mutable record with `FVar` callbacks named `hasNext` / `next` remains `HxRef<Anon>`.
     When reading a function-valued anonymous field, clone the typed callback in a bounded read scope and
     drop that guard before invocation so the callback may safely mutate the same record through an alias.
+  - Array-iterator boundary gotcha: inline `Array.iterator()` exposes a typed
+    `haxe.iterators.ArrayIterator<T>` constructor even though upstream std modules are not emitted.
+    Map that canonical class and constructor directly to `hxrt::iter::Iter<T>`; do not reference the
+    upstream module or misclassify it as `HxRef`. Iterator argument coercion must clone only when later
+    reads require shared cursor reuse, leaving proven last-use transfers clone-free.
   - Dynamic-runtime gotcha: prefer typed `std/hxrt/*` extern wrappers over raw `untyped __rust__` for runtime APIs returning `Dynamic`
     (example: `haxe.Json.parse`, `sys.thread.Thread.readMessage`) to avoid unresolved monomorph warnings.
   - Unresolved-monomorph fallback policy:

@@ -9386,13 +9386,25 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				compileCall(callExpr, args, e);
 
 			case TNew(clsRef, typeParams, args): {
+					var cls = clsRef.get();
 					// `new Array<T>()` must lower to `hxrt::array::Array::<T>::new()` rather than an extern `Array::new()`.
 					if (isArrayType(e.t) && (args == null || args.length == 0)) {
 						var elem = arrayElementType(e.t);
 						var elemRust = toRustType(elem, e.pos);
 						return ECall(EPath("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new"), []);
 					}
-					var cls = clsRef.get();
+					// Why: Haxe inlines `Array.iterator()` to `new haxe.iterators.ArrayIterator(array)`.
+					// The upstream std class is typed but intentionally not emitted, while the public
+					// `Iterator<T>` boundary already maps to `hxrt::iter::Iter<T>`.
+					// What: materialize that known std iterator directly in the backend representation.
+					// How: clone the array elements once through its typed `to_vec()` primitive; the existing
+					// iterator adapter then preserves a shared cursor across Haxe aliases and helper calls.
+					if (isHaxeArrayIteratorClass(cls) && args != null && args.length == 1 && isArrayType(args[0].t)) {
+						var elem = typeParams != null && typeParams.length == 1 ? typeParams[0] : arrayElementType(args[0].t);
+						var elemRust = toRustType(elem, e.pos);
+						var values = ECall(EField(compileExpr(args[0]), "to_vec"), []);
+						return ECall(EPath("hxrt::iter::Iter::<" + rustTypeToString(elemRust) + ">::from_vec"), [values]);
+					}
 					if (cls != null && !cls.isExtern && isMainClass(cls)) {
 						return unsupported(e, "new main class");
 					}
@@ -10865,7 +10877,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// - structural `Iterator<T>` maps to `hxrt::iter::Iter<T>` with shared runtime storage.
 		// - general anonymous objects map to `crate::HxRef<hxrt::anon::Anon>`.
 		// - function values lower to shared `HxDynRef<dyn Fn...>` handles and must remain reusable.
-		return isArrayType(t) || isHxRefValueType(t) || isRustHxRefType(t) || isStringType(t) || isIteratorStructType(t) || isAnonObjectType(t)
+		return isArrayType(t) || isHaxeArrayIteratorType(t) || isHxRefValueType(t) || isRustHxRefType(t) || isStringType(t) || isIteratorStructType(t) || isAnonObjectType(t)
 			|| isDynamicType(t) || isFunctionValueType(t) || isEnumValueType(t);
 	}
 
@@ -13570,6 +13582,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				return wrapBorrowIfNeeded(ECall(EPath("Some"), [innerCoerced]), rustParamTy, argExpr);
 			}
 			return wrapBorrowIfNeeded(compiled, rustParamTy, argExpr);
+		}
+
+		// Why: Haxe Iterator values are shared cursors. Passing one to a helper must not move the
+		// caller's binding when a later read remains, and cloned `hxrt::iter::Iter` values deliberately
+		// share the same cursor state.
+		// What: preserve the reusable-value contract for both the structural `Iterator<T>` type and
+		// the concrete `haxe.iterators.ArrayIterator<T>` typed-AST form.
+		// How: reuse the read-count-aware clone policy so a last-use transfer stays clone-free.
+		if (isIteratorStructType(argExpr.t) || isHaxeArrayIteratorType(argExpr.t)) {
+			compiled = maybeCloneForReuseValue(compiled, argExpr);
 		}
 
 		if (isStringType(paramType)) {
@@ -17400,6 +17422,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 			case TInst(clsRef, params): {
 					var cls = clsRef.get();
+					if (isHaxeArrayIteratorClass(cls) && params != null && params.length == 1) {
+						var item = toRustType(params[0], pos);
+						return RPath("hxrt::iter::Iter<" + rustTypeToString(item) + ">");
+					}
 					if (isRustAsyncFutureClass(cls)) {
 						if (params == null || params.length != 1) {
 							#if eval
@@ -17520,6 +17546,43 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 	}
 
+	/**
+		Identifies Haxe's compiler-supplied array iterator class.
+
+		Why
+		- `Array.iterator()` is inline and exposes `haxe.iterators.ArrayIterator<T>` in typed AST.
+		- Upstream std modules are typed but are not generally emitted by this backend, so nominal
+		  constructor paths for this class cannot be referenced from generated crates.
+
+		What
+		- Matches only the canonical Haxe std class, not user classes with the same short name.
+
+		How
+		- Uses the typed package/module identity so construction and Rust type mapping share one
+		  product-neutral predicate.
+	**/
+	function isHaxeArrayIteratorClass(cls:Null<ClassType>):Bool {
+		return cls != null
+			&& cls.pack.join(".") == "haxe.iterators"
+			&& cls.module == "haxe.iterators.ArrayIterator"
+			&& cls.name == "ArrayIterator";
+	}
+
+	/**
+		Checks whether a typed value uses the canonical array-iterator representation.
+
+		Why / What / How
+		- Representation and reuse decisions receive `Type`, rather than a bare `ClassType`.
+		- This wrapper follows typedef/lazy layers and requires the one item type parameter before
+		  delegating identity to `isHaxeArrayIteratorClass`.
+	**/
+	function isHaxeArrayIteratorType(t:Type):Bool {
+		return switch (followType(t)) {
+			case TInst(clsRef, params): isHaxeArrayIteratorClass(clsRef.get()) && params != null && params.length == 1;
+			case _: false;
+		}
+	}
+
 	function isArrayType(t:Type):Bool {
 		var ft = followType(t);
 		return switch (ft) {
@@ -17636,6 +17699,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					}
 					// Arrays are represented as `hxrt::array::Array<T>`, not `HxRef<_>`.
 					if (cls.pack.length == 0 && cls.module == "Array" && cls.name == "Array")
+						return false;
+					// The compiler-owned ArrayIterator adapter is likewise an `hxrt::iter::Iter<T>` value,
+					// even though its source Haxe type is a non-extern class.
+					if (isHaxeArrayIteratorClass(cls))
 						return false;
 					!cls.isExtern && !cls.isInterface
 					;

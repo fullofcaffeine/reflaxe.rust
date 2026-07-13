@@ -300,6 +300,12 @@ can be aliased, have a function field replaced through either alias, retain refe
 used in `for` loops. Function-valued reads release the record borrow before invoking user code, so the
 callback may mutate the same record without deadlocking generated Rust.
 
+The compiler also handles the separate nominal form produced when Haxe inlines `Array.iterator()`.
+`haxe.iterators.ArrayIterator<T>` is adapted directly to the existing typed Rust iterator value rather
+than referenced as an upstream std module that is not shipped in the generated crate. The array
+expression is evaluated once, and passing or returning the resulting `Iterator<T>` through helpers
+preserves a shared cursor when the caller reuses the binding.
+
 ## How does `null` work?
 
 Haxe nullability is preserved where the active contract says it must be.
