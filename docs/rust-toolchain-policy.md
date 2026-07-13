@@ -26,8 +26,10 @@ releases, and recurring evidence. The machine source is
   reproducible without pretending that only one patch release can consume generated crates.
 - The current-stable lane is deliberately rolling. It detects new compiler/lint incompatibilities
   early, but does not replace the minimum lane or silently raise the consumer floor. In addition to
-  the workspace and a general generated smoke crate, it Clippy-checks a small generated output-quality
-  contract containing representative nullable and anonymous-record lowering shapes.
+  the workspace and a general generated smoke crate, it checks a small generated output-quality
+  contract against rolling-current Clippy's `correctness` and `suspicious` groups. Those required
+  groups catch semantic/lifecycle hazards without turning new style-only lints into silent compiler
+  compatibility policy.
 - Rust edition 2021 is a language-edition choice, not evidence for a minimum compiler version.
 
 No Rust version older than the listed minimum is claimed. The initial floor was selected only after

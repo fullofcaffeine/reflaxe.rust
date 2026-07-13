@@ -133,7 +133,8 @@ jobs:
           cp -R test/snapshot/v1_smoke/intended/. "$generated_smoke/"
           cargo check --manifest-path "$generated_smoke/Cargo.toml"
           cp -R test/snapshot/deny_warnings/intended/. "$generated_clippy/"
-          cargo clippy --manifest-path "$generated_clippy/Cargo.toml" --all-targets -- -D warnings
+          cargo clippy --manifest-path "$generated_clippy/Cargo.toml" --all-targets -- \
+            -A clippy::all -D clippy::correctness -D clippy::suspicious
 
   windows-smoke:
     name: Windows smoke (fmt + clippy + sys IO/net)

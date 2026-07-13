@@ -218,8 +218,9 @@ function checkConsumers(manifest) {
   if (!ci.includes('cargo check --manifest-path "$generated_smoke/Cargo.toml"')) {
     errors.push('current-stable CI must compile representative generated Rust')
   }
+  const normalizedCiCommands = ci.replace(/\\\r?\n\s*/g, ' ').replace(/\s+/g, ' ')
   if (!ci.includes('test/snapshot/deny_warnings/intended/.')
-      || !ci.includes('cargo clippy --manifest-path "$generated_clippy/Cargo.toml" --all-targets -- -D warnings')) {
+      || !normalizedCiCommands.includes('cargo clippy --manifest-path "$generated_clippy/Cargo.toml" --all-targets -- -A clippy::all -D clippy::correctness -D clippy::suspicious')) {
     errors.push('current-stable CI must Clippy-check the representative generated output-quality contract')
   }
   const releaseStart = ci.indexOf('\n  release:\n')

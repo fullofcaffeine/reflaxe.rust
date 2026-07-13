@@ -44,9 +44,10 @@ backend defect discovered through the consumer build receives a minimized regres
 
 Normal push/PR CI also has a required rolling current-stable Rust compatibility job. It catches new
 compiler or lint incompatibilities without silently changing the minimum supported version. That job
-also Clippy-checks a bounded committed generated crate so new rolling lints in representative compiler
-output are detected without duplicating the full snapshot harness. See [Rust Toolchain
-Policy](rust-toolchain-policy.md).
+also checks a bounded committed generated crate against rolling-current Clippy's `correctness` and
+`suspicious` groups, so new semantic/lifecycle lint findings in representative compiler output are
+detected without duplicating the full snapshot harness or promoting style-only churn to a compatibility
+failure. See [Rust Toolchain Policy](rust-toolchain-policy.md).
 
 ## PR CI harness topology
 
