@@ -69,7 +69,7 @@ exact admitted surface.
 | `generated-package` | `stable-candidate` | `active` | Published Haxelib-shaped package and installed-package workflow. |
 | `generated-private` | `excluded-internal` | `active` | Generated helper/wrapper details not admitted as consumer API. |
 
-Inventory: 170 shipped Haxe types, 11 admitted member families, 18 metadata names, 55 defines, 4 JSON reports, and 6 generated-artifact contracts.
+Inventory: 172 shipped Haxe types, 11 admitted member families, 18 metadata names, 55 defines, 4 JSON reports, and 6 generated-artifact contracts.
 <!-- END GENERATED PUBLIC COMPATIBILITY SUMMARY -->
 
 The guard enumerates every non-private top-level type shipped under `std/rust`, including secondary

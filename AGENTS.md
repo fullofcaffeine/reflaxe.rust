@@ -222,6 +222,14 @@ Agent policy:
     recover the already-specialized Haxe call type and emit an explicit Rust generic argument; applied and
     declaration type-parameter `ClassType` objects may be distinct references, so compare their stable typed
     pack/module/name identity rather than object identity.
+  - Lazy nominal-iterator boundary gotcha: do not generalize the finite array lowering into eager
+    collection for every class that structurally satisfies `Iterator<T>`. Canonical iterators such as
+    `DynamicAccessIterator<T>` snapshot keys but read live values in `next()`, so eager materialization
+    changes Haxe semantics. When a generated nominal iterator crosses the method-shaped structural ABI,
+    retain the same source object and use the narrow callback-backed `Iter<T>` path; keep ordinary
+    vector-backed iterators on the unboxed fast path. Haxe abstract/inlining may hide reusable locals
+    behind `TCast`, so ownership checks must peel transparent casts without globally reclassifying
+    unrelated expression-shape checks or adding needless last-use clones.
   - Dynamic-runtime gotcha: prefer typed `std/hxrt/*` extern wrappers over raw `untyped __rust__` for runtime APIs returning `Dynamic`
     (example: `haxe.Json.parse`, `sys.thread.Thread.readMessage`) to avoid unresolved monomorph warnings.
   - Unresolved-monomorph fallback policy:

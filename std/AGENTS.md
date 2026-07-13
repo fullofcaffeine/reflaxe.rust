@@ -19,6 +19,10 @@
   place a semantic app-facing operation there; give it a documented `rust.*` facade and classify it
   in `docs/public-compatibility-manifest.json` instead.
 - When overriding Haxe stdlib modules (e.g. `haxe.io.Bytes`, `Sys`, `sys.*`), keep their public signatures compatible so other std modules typecheck.
+- For upstream nominal iterator overrides, preserve the upstream evaluation model rather than merely
+  matching `hasNext` / `next` signatures. In particular, `DynamicAccess` iterators capture keys once but
+  read values lazily from the live source; do not replace that contract with an eager array snapshot.
+  Keep the Haxe override typed and let the compiler own any required nominal-to-structural adapter.
 - Some stdlib APIs are declared as `@:coreApi extern` in the eval stdlib (`std/eval/_std/**`). Target overrides must match these signatures exactly (including property accessor shapes like `var x(get, never)`), otherwise Haxe will error during typing.
 - Prefer stable, typed interop surfaces:
   - declare Cargo deps via `@:rustCargo(...)` on `std/` types that need external crates

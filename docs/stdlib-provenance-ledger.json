@@ -189,6 +189,18 @@
       "notes": "Cross-target override aligned to upstream stdlib API surface."
     },
     {
+      "path": "std/rust/_std/haxe/iterators/DynamicAccessIterator.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/iterators/DynamicAccessIterator.hx",
+      "notes": "Cross-target override aligned to upstream key-snapshot and lazy-value iterator semantics."
+    },
+    {
+      "path": "std/rust/_std/haxe/iterators/DynamicAccessKeyValueIterator.hx",
+      "provenanceKind": "upstream_std_sync",
+      "upstreamOraclePath": "vendor/haxe/std/haxe/iterators/DynamicAccessKeyValueIterator.hx",
+      "notes": "Cross-target override aligned to upstream key-snapshot and lazy-value iterator semantics."
+    },
+    {
       "path": "std/rust/_std/haxe/iterators/MapKeyValueIterator.hx",
       "provenanceKind": "upstream_std_sync",
       "upstreamOraclePath": "vendor/haxe/std/haxe/iterators/MapKeyValueIterator.hx",

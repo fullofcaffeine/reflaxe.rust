@@ -72,6 +72,8 @@
     "haxe.io.Input",
     "haxe.io.Output",
     "haxe.io.Path",
+    "haxe.iterators.DynamicAccessIterator",
+    "haxe.iterators.DynamicAccessKeyValueIterator",
     "haxe.iterators.MapKeyValueIterator",
     "haxe.iterators.StringIterator",
     "haxe.iterators.StringKeyValueIterator",

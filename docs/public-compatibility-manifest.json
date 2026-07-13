@@ -773,6 +773,14 @@
       "contract": "portable-core"
     },
     {
+      "name": "haxe.iterators.DynamicAccessIterator",
+      "contract": "portable-core"
+    },
+    {
+      "name": "haxe.iterators.DynamicAccessKeyValueIterator",
+      "contract": "portable-core"
+    },
+    {
       "name": "haxe.iterators.MapKeyValueIterator",
       "contract": "portable-core"
     },

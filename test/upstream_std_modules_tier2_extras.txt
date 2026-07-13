@@ -79,8 +79,6 @@ haxe.io.UInt32Array
 haxe.io.UInt8Array
 haxe.iterators.ArrayIterator
 haxe.iterators.ArrayKeyValueIterator
-haxe.iterators.DynamicAccessIterator
-haxe.iterators.DynamicAccessKeyValueIterator
 haxe.iterators.HashMapKeyValueIterator
 haxe.iterators.RestIterator
 haxe.iterators.RestKeyValueIterator

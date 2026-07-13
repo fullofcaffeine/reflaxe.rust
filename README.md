@@ -69,6 +69,9 @@ networking, TLS, DB, processes, or threading, add app-specific smoke tests aroun
 - Array value and key/value iterators can cross typed helper boundaries without emitting upstream-only
   Haxe std classes; evaluation occurs once, key/value items retain ordered typed records, and reused
   iterator bindings share one cursor.
+- DynamicAccess value and key/value iterators also cross typed helpers while preserving their distinct
+  lazy contract: keys are captured once, values are read from the live source at `next()`, aliases share
+  one cursor, and key order remains unspecified.
 - CI evidence: snapshots, negative policy fixtures, runtime/optimizer plan reports, product-neutral
   benchmark candidates, and HXRT overhead tracking are all part of the default workflow.
 

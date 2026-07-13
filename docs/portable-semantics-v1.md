@@ -86,6 +86,11 @@ Conformance fixtures:
    `{key, value}` records. Reused bindings preserve one shared cursor, while proven last-use transfers
    remain clone-free. When that record representation erases a source generic from the Rust parameter
    type, the already-specialized Haxe call type supplies the explicit Rust type argument.
+14. `haxe.DynamicAccess<T>.iterator()` and `keyValueIterator()` must preserve the upstream nominal
+   iterator classes and cross typed `Iterator<T>` / `KeyValueIterator<String,T>` argument and return
+   boundaries without eager value materialization. Construction evaluates the source once and snapshots
+   its keys; each `next()` reads the current value for its captured key. Aliases share one cursor, key
+   order remains unspecified, and the explicitly dynamic collection lookup returns immediately to `T`.
 
 Conformance fixtures:
 
@@ -98,6 +103,7 @@ Conformance fixtures:
 - `test/semantic_diff/anonymous_iterator_aliasing`
 - `test/semantic_diff/iterator_helper_boundary`
 - `test/semantic_diff/array_key_value_iterator_boundary`
+- `test/semantic_diff/dynamic_access_iterator_boundary`
 - `test/semantic_diff/field_compound_rhs_mutation`
 - `test/semantic_diff/polymorphic_field_updates`
 - `test/semantic_diff/static_field_updates`

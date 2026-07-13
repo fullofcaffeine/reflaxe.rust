@@ -76,6 +76,18 @@
       ]
     },
     {
+      "id": "haxe_iterators_DynamicAccessIterator",
+      "body": [
+        "var access = new haxe.DynamicAccess<Int>();",
+        "access['alpha'] = 1;",
+        "var values:Iterator<Int> = access.iterator();",
+        "var pairs:KeyValueIterator<String, Int> = access.keyValueIterator();",
+        "var value = values.next();",
+        "var pair = pairs.next();",
+        "return value + pair.value + pair.key.length;"
+      ]
+    },
+    {
       "id": "haxe_iterators_MapKeyValueIterator",
       "body": [
         "var map = ['a' => 1, 'b' => 2];",

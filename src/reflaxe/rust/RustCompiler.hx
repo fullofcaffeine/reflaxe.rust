@@ -220,6 +220,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var currentMutatedArgs:Null<Array<String>> = null;
 	var currentLocalReadCounts:Null<Map<Int, Int>> = null;
 	var currentLocalRemainingReads:Null<Map<Int, Int>> = null;
+	// `TThis` has no `TVar.id`, so its ownership-aware last-use accounting is tracked separately
+	// from named locals. This is used only for transparent cast wrappers that would otherwise hide
+	// `this` from the established direct-local clone policy.
+	var currentThisReadCount:Null<Int> = null;
+	var currentThisRemainingReads:Null<Int> = null;
 	var currentClosureCapturedReusableLocals:Null<Map<Int, Bool>> = null;
 	// Local ids that must be lowered through shared-cell storage (`crate::HxRef<T>`)
 	// because they are mutated and captured by nested function values.
@@ -7866,6 +7871,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var prevMutated = currentMutatedLocals;
 		var prevReadCounts = currentLocalReadCounts;
 		var prevRemainingReads = currentLocalRemainingReads;
+		var prevThisReadCount = currentThisReadCount;
+		var prevThisRemainingReads = currentThisRemainingReads;
 		var prevCapturedCellLocals = currentCapturedCellLocals;
 		var prevArgNames = currentArgNames;
 		var prevLocalNames = currentLocalNames;
@@ -7880,6 +7887,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		currentMutatedLocals = collectMutatedLocals(bodyExpr);
 		currentLocalReadCounts = collectLocalReadCounts(bodyExpr);
 		currentLocalRemainingReads = copyIntMap(currentLocalReadCounts);
+		currentThisReadCount = collectThisReadCount(bodyExpr);
+		currentThisRemainingReads = currentThisReadCount;
 		var capturedInThisFn = collectCapturedMutatedLocals(bodyExpr);
 		var mergedCaptured:Map<Int, Bool> = [];
 		if (prevCapturedCellLocals != null) {
@@ -7949,6 +7958,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		currentMutatedLocals = prevMutated;
 		currentLocalReadCounts = prevReadCounts;
 		currentLocalRemainingReads = prevRemainingReads;
+		currentThisReadCount = prevThisReadCount;
+		currentThisRemainingReads = prevThisRemainingReads;
 		currentCapturedCellLocals = prevCapturedCellLocals;
 		currentArgNames = prevArgNames;
 		currentLocalNames = prevLocalNames;
@@ -8877,6 +8888,54 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
+		Counts `this` reads for ownership-aware transparent-cast lowering.
+
+		Why
+		- `TThis` has no `TVar.id`, so the named-local read map cannot say whether a cast-wrapped
+		  `this` is transferred on its final use or must remain available later.
+		- Always cloning is safe but adds noise to ubiquitous inlined abstract last-use calls; never
+		  cloning creates Rust moves in methods that reuse the receiver.
+
+		What
+		- Counts receiver reads in the current typed function body, with the same conservative doubled
+		  loop accounting used for named locals.
+
+		How
+		- Walks typed children and recognizes the canonical `TConst(TThis)` node. Compilation consumes
+		  each read as it emits the corresponding Rust receiver expression.
+	**/
+	function collectThisReadCount(root:TypedExpr):Int {
+		var count = 0;
+
+		function scan(e:TypedExpr):Void {
+			switch (e.expr) {
+				case TWhile(cond, body, _):
+					{
+						scan(cond);
+						scan(cond);
+						scan(body);
+						scan(body);
+						return;
+					}
+				case TFor(_, iterable, body):
+					{
+						scan(iterable);
+						scan(body);
+						scan(body);
+						return;
+					}
+				case TConst(TThis):
+					count++;
+				case _:
+					TypedExprTools.iter(e, scan);
+			}
+		}
+
+		scan(root);
+		return count;
+	}
+
+	/**
 		Why
 		- Constructor allocation must build a complete Rust struct before the Haxe constructor body runs.
 		- For fields that the constructor body will assign, eagerly calling nested class constructors as
@@ -8989,6 +9048,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		currentLocalRemainingReads.set(v.id, remaining < 0 ? 0 : remaining);
 	}
 
+	function consumeThisRead():Void {
+		if (currentThisRemainingReads == null)
+			return;
+		currentThisRemainingReads = currentThisRemainingReads > 0 ? currentThisRemainingReads - 1 : 0;
+	}
+
 	function consumeLocalReadsLikeReadCounter(root:TypedExpr):Void {
 		function scan(e:TypedExpr):Void {
 			switch (e.expr) {
@@ -9030,6 +9095,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					}
 				case TLocal(v):
 					consumeLocalRead(v);
+				case TConst(TThis):
+					consumeThisRead();
 				case _:
 			}
 			TypedExprTools.iter(e, scan);
@@ -9041,6 +9108,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (currentLocalRemainingReads == null || !currentLocalRemainingReads.exists(localId))
 			return null;
 		return currentLocalRemainingReads.get(localId);
+	}
+
+	inline function remainingThisReads():Null<Int> {
+		return currentThisRemainingReads;
 	}
 
 	inline function isClosureCapturedReusableLocalId(localId:Int):Bool {
@@ -9136,7 +9207,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									ECall(EPath("Default::default"), []);
 							}
 						}
-					case TThis: EPath(currentThisIdent != null ? currentThisIdent : "self_");
+					case TThis:
+						consumeThisRead();
+						EPath(currentThisIdent != null ? currentThisIdent : "self_");
 					case _: unsupported(e, "const");
 				}
 
@@ -9385,7 +9458,28 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 
 			case TBlock(exprs):
-				EBlock(compileBlock(exprs));
+				// Why: inline expansion often wraps a representation-changing boundary in a typed
+				// expression block. For example, `DynamicAccess<T>.get()` becomes a block whose final
+				// `Reflect.field` call returns runtime `Dynamic`, while the block itself is `Null<T>`.
+				// Compiling the tail without the block's expected type lets that raw representation leak
+				// into later casts, which may then emit an invalid `Option::unwrap()` on `Dynamic`.
+				//
+				// What: make an expression block materialize the Rust representation promised by its own
+				// typed Haxe result only when the tail and block representations actually differ.
+				//
+				// How: compare the typed Rust shapes plus the Dynamic boundary before selecting the existing
+				// tail-coercion path. Statements and evaluation order remain unchanged, while equal HxString
+				// (and other already-materialized) tails avoid redundant identity wrappers.
+				var expectedTail:Null<Type> = null;
+				if (exprs.length > 0) {
+					var sourceTail = exprs[exprs.length - 1];
+					var blockRust = rustTypeToString(toRustType(e.t, e.pos));
+					var tailRust = rustTypeToString(toRustType(sourceTail.t, sourceTail.pos));
+					var dynamicBoundaryDiffers = mapsToRustDynamic(e.t, e.pos) != mapsToRustDynamic(sourceTail.t, sourceTail.pos);
+					if (blockRust != tailRust || dynamicBoundaryDiffers)
+						expectedTail = e.t;
+				}
+				EBlock(compileBlock(exprs, true, expectedTail));
 
 			case TCall(callExpr, args):
 				compileCall(callExpr, args, e);
@@ -9658,6 +9752,28 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						});
 					}
 
+					/**
+						Elides an `Option` unwrap when typed lowering has just proven the value present.
+
+						Why / What / How
+						- A typed expression block may materialize `Null<T>` as `Some(value)` immediately before
+						  an explicit Haxe `Null<T> -> T` cast.
+						- Emitting `Some(value).unwrap()` is correct but obscures the direct typed value and adds
+						  avoidable generated-Rust noise.
+						- Recognize only a literal `Some` tail, preserve every preceding block statement in order,
+						  and otherwise retain the normal runtime unwrap for genuinely nullable values.
+					**/
+					function unwrapKnownSome(value:RustExpr):Null<RustExpr> {
+						return switch (value) {
+							case ECall(EPath("Some"), [present]): present;
+							case EBlock(block) if (block.tail != null): {
+									var present = unwrapKnownSome(block.tail);
+									present == null ? null : EBlock({stmts: block.stmts, tail: present});
+								}
+							case _: null;
+						}
+					}
+
 					// Numeric casts (`Int` <-> `Float`) must be explicit in Rust.
 					if (!isNullType(e1.t)
 						&& !isNullType(e.t)
@@ -9681,8 +9797,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						inner;
 					} else if (isNullOptionType(e1.t, e1.pos) && !isNullOptionType(e.t, e.pos)) {
 						// Explicit casts from `Null<T>` to `T` are treated as "assert non-null".
-						// In Rust output, `Null<T>` is `Option<T>`, so unwrap.
-						ECall(EField(inner, "unwrap"), []);
+						// In Rust output, `Null<T>` is `Option<T>`, so unwrap unless typed block lowering
+						// has just constructed a statically present `Some(value)`.
+						var present = unwrapKnownSome(inner);
+						present != null ? present : ECall(EField(inner, "unwrap"), []);
 					} else if (!isNullOptionType(e1.t, e1.pos) && isNullOptionType(e.t, e.pos)) {
 						// Explicit casts from `T` to `Null<T>` are treated as "wrap into nullability".
 						ECall(EPath("Some"), [inner]);
@@ -10995,7 +11113,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				return expr;
 		}
 
-		if (isLocalExpr(valueExpr) && !isObviousTemporaryExpr(valueExpr) && isHaxeReusableValueType(valueExpr.t)) {
+		var castWrappedThis = isCastWrappedThisExpr(valueExpr);
+		if (castWrappedThis && currentClosureCapturedReusableLocals == null) {
+			var remainingThis = remainingThisReads();
+			if (remainingThis != null && remainingThis <= 0)
+				return expr;
+		}
+
+		if ((isLocalExpr(valueExpr) || isOwnershipLocalExpr(valueExpr) || castWrappedThis)
+			&& !isObviousTemporaryExpr(valueExpr)
+			&& isHaxeReusableValueType(valueExpr.t)) {
 			return ECall(EField(expr, "clone"), []);
 		}
 		return expr;
@@ -11008,7 +11135,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return expr;
 		if (isStringLiteralExpr(valueExpr) || isArrayLiteralExpr(valueExpr) || isNewExpr(valueExpr))
 			return expr;
-		if (isLocalExpr(valueExpr) && !isObviousTemporaryExpr(valueExpr) && isHaxeReusableValueType(valueExpr.t)) {
+		var castWrappedThis = isCastWrappedThisExpr(valueExpr);
+		if ((isLocalExpr(valueExpr) || isOwnershipLocalExpr(valueExpr) || castWrappedThis)
+			&& !isObviousTemporaryExpr(valueExpr)
+			&& isHaxeReusableValueType(valueExpr.t)) {
 			function unwrapToLocalId(e:TypedExpr):Null<Int> {
 				var cur = unwrapMetaParen(e);
 				while (true) {
@@ -11036,8 +11166,159 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				if (reads > 1)
 					return ECall(EField(expr, "clone"), []);
 			}
+			if (castWrappedThis) {
+				var remainingThis = remainingThisReads();
+				if (currentClosureCapturedReusableLocals != null || remainingThis == null || remainingThis > 0)
+					return ECall(EField(expr, "clone"), []);
+			}
 		}
 		return expr;
+	}
+
+	/**
+		Removes typed-expression wrappers that do not change a structural source value.
+
+		Why / What / How
+		- Haxe may wrap a concrete class in metadata, parentheses, or an implicit structural cast.
+		- Structural adapters still need the original expression shape to recover the emitted class.
+		- Peel only those compile-time wrappers; runtime expressions remain unchanged.
+	**/
+	function unwrapStructuralSourceExpr(expr:TypedExpr):TypedExpr {
+		var current = unwrapMetaParen(expr);
+		while (true) {
+			switch (current.expr) {
+				case TCast(inner, _):
+					current = unwrapMetaParen(inner);
+					continue;
+				case _:
+			}
+			break;
+		}
+		return current;
+	}
+
+	/**
+		Finds the concrete emitted class behind a structural source expression.
+
+		Why / What / How
+		- The Haxe typer may report an expected anonymous type even when `new Concrete()` is the source.
+		- Prefer the unwrapped constructor identity, then fall back to the followed static type.
+		- Returns `null` for genuinely anonymous, abstract, or otherwise non-class values.
+	**/
+	function concreteStructuralSourceClass(expr:TypedExpr):Null<ClassType> {
+		var source = unwrapStructuralSourceExpr(expr);
+		return switch (source.expr) {
+			case TNew(clsRef, _, _): clsRef.get();
+			case _:
+				switch (followType(source.t)) {
+					case TInst(clsRef, _): clsRef.get();
+					case _: null;
+				}
+		}
+	}
+
+	/**
+		Resolves a concrete instance method across the Haxe superclass chain.
+
+		Why / What / How
+		- Structural conformance can be satisfied by an inherited method.
+		- Search by the stable Haxe-facing name and accept only declared methods, never mutable fields.
+	**/
+	function findInstanceMethodInChain(start:ClassType, haxeName:String):Null<ClassField> {
+		var current:Null<ClassType> = start;
+		while (current != null) {
+			for (field in current.fields.get()) {
+				if (field.getHaxeName() != haxeName)
+					continue;
+				switch (field.kind) {
+					case FMethod(_):
+						return field;
+					case _:
+				}
+			}
+			current = current.superClass != null ? current.superClass.t.get() : null;
+		}
+		return null;
+	}
+
+	/**
+		Adapts an emitted nominal Haxe iterator to the structural iterator ABI.
+
+		Why
+		- Haxe classes satisfy `Iterator<T>` structurally through `hasNext()` and `next()`.
+		- The Rust backend represents structural iterators as `hxrt::iter::Iter<T>`, while an emitted
+		  class instance uses `HxRef<Concrete>`.
+		- Eagerly collecting the class would change iterators that read mutable source state lazily.
+
+		What
+		- Returns a callback-backed `Iter<T>` only when the expected type is the canonical method-shaped
+		  iterator protocol and the concrete Rust representation differs from that ABI.
+		- Leaves existing `Iter<T>` values, ordinary anonymous records, externs, and trait objects alone.
+
+		How
+		- Resolves both methods from typed class metadata, captures two handles to the same source object,
+		  and emits move closures that call the normal generated methods.
+		- `Iter::from_callbacks` owns the minimal runtime state required to preserve lazy evaluation and
+		  shared cursor aliases; no Dynamic payload or iterator-specific native helper is introduced.
+	**/
+	function coerceNominalIteratorToStructural(compiled:RustExpr, valueExpr:TypedExpr, expected:Type):Null<RustExpr> {
+		if (!isIteratorStructType(expected) || isIteratorStructType(valueExpr.t))
+			return null;
+
+		var expectedRust = rustTypeToString(toRustType(expected, valueExpr.pos));
+		var actualRust = rustTypeToString(toRustType(valueExpr.t, valueExpr.pos));
+		if (expectedRust == actualRust)
+			return null;
+
+		var actualClass = concreteStructuralSourceClass(valueExpr);
+		if (actualClass == null || actualClass.isExtern || actualClass.isInterface)
+			return null;
+
+		var hasNext = findInstanceMethodInChain(actualClass, "hasNext");
+		var next = findInstanceMethodInChain(actualClass, "next");
+		if (hasNext == null || next == null)
+			return null;
+
+		var expectedAnon = switch (followType(expected)) {
+			case TAnonymous(anonRef): anonRef.get();
+			case _: null;
+		}
+		if (expectedAnon == null || expectedAnon.fields == null)
+			return null;
+
+		var expectedNext:Null<ClassField> = null;
+		for (field in expectedAnon.fields) {
+			if (field.getHaxeName() == "next") {
+				expectedNext = field;
+				break;
+			}
+		}
+		if (expectedNext == null)
+			return null;
+
+		var itemType = switch (followType(expectedNext.type)) {
+			case TFun(_, result): result;
+			case _: expectedNext.type;
+		}
+		var itemRust = rustTypeToString(toRustType(itemType, valueExpr.pos));
+
+		function callMethod(receiver:String, field:ClassField):RustExpr {
+			var path = "crate::" + rustModulePathForClass(actualClass) + "::" + rustTypeNameForClass(actualClass) + "::"
+				+ rustMethodName(actualClass, field);
+			return ECall(EPath(path), [EUnary("&", EUnary("*", EPath(receiver)))]);
+		}
+
+		return EBlock({
+			stmts: [
+				RLet("__hx_iterator_src", false, null, maybeCloneForReuseValue(compiled, valueExpr)),
+				RLet("__hx_has_next_src", false, null, ECall(EField(EPath("__hx_iterator_src"), "clone"), [])),
+				RLet("__hx_next_src", false, null, EPath("__hx_iterator_src"))
+			],
+			tail: ECall(EPath("hxrt::iter::Iter::<" + itemRust + ">::from_callbacks"), [
+				EClosure([], {stmts: [], tail: callMethod("__hx_has_next_src", hasNext)}, true),
+				EClosure([], {stmts: [], tail: callMethod("__hx_next_src", next)}, true)
+			])
+		});
 	}
 
 	function coerceExprToExpected(compiled:RustExpr, valueExpr:TypedExpr, expected:Null<Type>):RustExpr {
@@ -11337,6 +11618,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			});
 		}
 
+		var iteratorAdapter = coerceNominalIteratorToStructural(compiled, valueExpr, expected);
+		if (iteratorAdapter != null)
+			return iteratorAdapter;
+
 		// Structural typing: allow assigning class instances to anonymous record typedefs
 		// by building an `hxrt::anon::Anon` adapter object.
 		//
@@ -11348,50 +11633,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			};
 
 			// Important: the Haxe typer may unify `new DefaultResolver()` to the expected typedef type,
-			// so `valueExpr.t` can appear *anonymous* even though the expression is a concrete class
-			// instance. Prefer the expression shape (`TNew`) when available.
-			function unwrapMetaParenCast(e:TypedExpr):TypedExpr {
-				var cur = unwrapMetaParen(e);
-				while (true) {
-					switch (cur.expr) {
-						case TCast(inner, _):
-							cur = unwrapMetaParen(inner);
-							continue;
-						case _:
-					}
-					break;
-				}
-				return cur;
-			}
-
-			var actualExpr = unwrapMetaParenCast(valueExpr);
-			var actualCls:Null<ClassType> = switch (actualExpr.expr) {
-				case TNew(clsRef, _, _): clsRef.get();
-				case _:
-					switch (followType(valueExpr.t)) {
-						case TInst(clsRef, _): clsRef.get();
-						case _: null;
-					}
-			};
+			// so recover the concrete class from the unwrapped source expression when possible.
+			var actualCls = concreteStructuralSourceClass(valueExpr);
 
 			if (expectedAnon != null && expectedAnon.fields != null && actualCls != null) {
-				function findInstanceMethodInChain(start:ClassType, haxeName:String):Null<ClassField> {
-					var cur:Null<ClassType> = start;
-					while (cur != null) {
-						for (f in cur.fields.get()) {
-							if (f.getHaxeName() != haxeName)
-								continue;
-							switch (f.kind) {
-								case FMethod(_):
-									return f;
-								case _:
-							}
-						}
-						cur = cur.superClass != null ? cur.superClass.t.get() : null;
-					}
-					return null;
-				}
-
 				var stmts:Array<RustStmt> = [];
 				stmts.push(RLet("__hx_src", false, null, maybeCloneForReuseValue(compiled, valueExpr)));
 				stmts.push(RLet("__hx_o", false, null, ECall(EPath("crate::HxRef::new"), [ECall(EPath("hxrt::anon::Anon::new"), [])])));
@@ -11589,6 +11834,72 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case TConst(TThis): true;
 			case _: false;
 		}
+	}
+
+	/**
+		Recognizes source locals through Haxe's transparent typed casts for Rust ownership decisions.
+
+		Why
+		- Abstract access and implicit conversions frequently wrap an existing local in `TCast`.
+		- The resulting Rust expression still reads the same named source binding. Treating it as a
+		  fresh temporary can move a shared Haxe handle and invalidate a later legal source read.
+		- Other shape checks use `isLocalExpr` deliberately and should not inherit ownership-specific
+		  behavior or add unrelated clones.
+
+		What
+		- Returns true for a named local with any number of metadata, parenthesis, or cast wrappers.
+		- Deliberately excludes cast-wrapped `this`: unlike `TLocal`, it has no tracked local-read
+		  identity, so conservatively cloning it would add noise to every inlined abstract last-use
+		  call (for example `Int64.toString()`). Direct, uncast `this` keeps the established
+		  `isLocalExpr` policy at call sites.
+
+		How
+		- Peels only transparent typed wrappers. Callers still apply copy/reference/read-count policy,
+		  so `this`, conversion results, calls, fields, and constructed temporaries remain non-local.
+	**/
+	function isOwnershipLocalExpr(e:TypedExpr):Bool {
+		var u = unwrapMetaParen(e);
+		while (true) {
+			switch (u.expr) {
+				case TCast(inner, _):
+					u = unwrapMetaParen(inner);
+					continue;
+				case _:
+			}
+			break;
+		}
+		return switch (u.expr) {
+			case TLocal(_): true;
+			case _: false;
+		}
+	}
+
+	/**
+		Recognizes `this` only when a transparent typed cast hides it from `isLocalExpr`.
+
+		Why / What / How
+		- Direct `this` already follows the backend's established conservative clone policy.
+		- Inlined abstracts can produce `TCast(TThis)`, which still names the same reusable receiver.
+		- Require at least one actual cast wrapper, then let receiver read accounting distinguish a
+		  final ownership transfer from a read that must preserve the receiver for later use.
+	**/
+	function isCastWrappedThisExpr(e:TypedExpr):Bool {
+		var u = unwrapMetaParen(e);
+		var sawCast = false;
+		while (true) {
+			switch (u.expr) {
+				case TCast(inner, _):
+					sawCast = true;
+					u = unwrapMetaParen(inner);
+					continue;
+				case _:
+			}
+			break;
+		}
+		return sawCast && switch (u.expr) {
+			case TConst(TThis): true;
+			case _: false;
+		};
 	}
 
 	function isObviousTemporaryExpr(e:TypedExpr):Bool {
@@ -13501,8 +13812,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				case TField(_, FStatic(_, fieldRef)):
 					{
 						var cf = fieldRef.get();
-						if (cf != null)
-							fnTypeForParams = cf.type;
+						if (cf != null) {
+							var specialized = cf.type;
+							// Why: generic Haxe calls are already specialized in `callExpr.t`, but the
+							// declaration preserves its method-owned type parameters. Argument coercion must
+							// see the same concrete types used by explicit Rust generic emission.
+							// What: apply the Haxe-unifier result to the declared parameter/return shape.
+							// How: reuse the fail-closed typed inference helper; unresolved calls retain the
+							// declaration and ordinary Rust inference behavior.
+							if (cf.params != null && cf.params.length > 0) {
+								var applied = inferAppliedFunctionTypeArguments(cf, callExpr.t);
+								if (applied != null && applied.length == cf.params.length) {
+									specialized = TypeTools.applyTypeParameters(specialized, cf.params, applied);
+								}
+							}
+							fnTypeForParams = specialized;
+						}
 					}
 				case TField(_, FAnon(cfRef)):
 					{
@@ -13756,23 +14081,32 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				case _: false;
 			}
 
-			// Haxe Arrays are reusable and behave like shared values; avoid Rust moves by cloning locals
-			// when we pass them by value.
-			if (!isByRef && isArrayType(argExpr.t) && isLocalExpr(argExpr) && !isObviousTemporaryExpr(argExpr)) {
-				compiled = ECall(EField(compiled, "clone"), []);
-			}
-			if (!isByRef && isEnumValueType(argExpr.t) && isLocalExpr(argExpr) && !isObviousTemporaryExpr(argExpr) && !isCloneExpr(compiled)) {
-				compiled = ECall(EField(compiled, "clone"), []);
-			}
-			if (!isByRef && isRcBackedType(argExpr.t) && isLocalExpr(argExpr) && !isObviousTemporaryExpr(argExpr)) {
-				compiled = ECall(EField(compiled, "clone"), []);
-			}
-			if (!isByRef
-				&& mapsToRustDynamic(argExpr.t, argExpr.pos)
-				&& isLocalExpr(argExpr)
-				&& !isObviousTemporaryExpr(argExpr)
-				&& !isCloneExpr(compiled)) {
-				compiled = ECall(EField(compiled, "clone"), []);
+			// Haxe arrays, enums, class/interface handles, anonymous objects, functions, and Dynamic
+			// values remain reusable after by-value calls.
+			var reusableByValueArg = isArrayType(argExpr.t)
+				|| isEnumValueType(argExpr.t)
+				|| isRcBackedType(argExpr.t)
+				|| mapsToRustDynamic(argExpr.t, argExpr.pos);
+			if (!isByRef && reusableByValueArg && !isCloneExpr(compiled) && !isObviousTemporaryExpr(argExpr)) {
+				if (isLocalExpr(argExpr)) {
+					// Preserve the established conservative policy for direct source locals.
+					compiled = ECall(EField(compiled, "clone"), []);
+				} else if (isOwnershipLocalExpr(argExpr)) {
+					// Why: an implicit Haxe cast can hide a local from the direct check above. Clone only
+					// when another syntactic read exists; otherwise an unrelated last-use cast would gain
+					// noisy output throughout generated std code.
+					// What/How: the local-read helper already peels casts and supplies the conservative
+					// fallback when tracking is unavailable.
+					var reads = localReadCount(argExpr);
+					if (reads == null || reads > 1)
+						compiled = ECall(EField(compiled, "clone"), []);
+				} else if (isCastWrappedThisExpr(argExpr)) {
+					// `this` has no local id, so use the receiver-specific remaining-read tracker. A
+					// function-value body remains conservative because its move closure may run repeatedly.
+					var remainingThis = remainingThisReads();
+					if (currentClosureCapturedReusableLocals != null || remainingThis == null || remainingThis > 0)
+						compiled = ECall(EField(compiled, "clone"), []);
+				}
 			}
 		}
 

@@ -308,6 +308,12 @@ are not shipped in the generated crate. Key/value iteration produces the ordinar
 and passing or returning either iterator through typed helpers preserves a shared cursor when the caller
 reuses the binding.
 
+`haxe.DynamicAccess<T>` has a different iterator contract and is not eagerly converted to an array.
+Its iterator captures the available keys at construction, then reads each value from the live dynamic
+object when `next()` runs. Passing or returning the nominal value through `Iterator<T>` or
+`KeyValueIterator<String,T>` uses a callback-backed structural bridge over the same cursor, so mutations
+made after construction remain visible. The key order is still unspecified, matching Haxe.
+
 ## How does `null` work?
 
 Haxe nullability is preserved where the active contract says it must be.
