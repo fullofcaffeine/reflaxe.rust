@@ -2885,9 +2885,11 @@ run_negative_case "test/negative/portable_native_typed_strict" 'portable contrac
 	'portable native-target strict mode rejects fully qualified typed rust.* usage' \
 	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : \[HXRS-NATIVE-IMPORT-ERROR\]'
 run_negative_case "test/negative/send_sync_borrow_capture" 'Rust concurrency contract violation: sys\.thread\.Thread\.create\(job\) captures `borrowed` with borrowed type `rust\.Ref<T>`' \
-	'spawn closure captures borrow-only value under rust_send_sync_strict'
+	'spawn closure captures borrow-only value under rust_send_sync_strict' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-SEND-SYNC-ERROR\] Rust concurrency contract violation:'
 run_negative_case "test/negative/send_sync_str_capture" 'Rust concurrency contract violation: sys\.thread\.Thread\.create\(job\) captures `borrowed` with borrowed type `rust\.Str`' \
-	'spawn closure captures borrowed Str under rust_send_sync_strict'
+	'spawn closure captures borrowed Str under rust_send_sync_strict' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-SEND-SYNC-ERROR\] Rust concurrency contract violation:'
 run_negative_case "test/negative/metal_ref_escape" 'Rust borrow region violation: rust\.Borrow\.withRef creates rust\.Ref<T> `borrowed` that must not escape its callback region\.' \
 	'metal borrow region rejects escaped rust.Ref token' \
 	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'

@@ -48,6 +48,7 @@ run_warning_case() {
   local id="$3"
   local trigger="$4"
   local label="$5"
+  local location="${6:-}"
   local log="$tmp_root/${label}.log"
   local out="$tmp_root/${label}-out"
   if ! (cd "$root_dir/$fixture" && "$haxe_bin" "$hxml" -D rust_no_build -D "rust_output=$out") >"$log" 2>&1; then
@@ -56,6 +57,10 @@ run_warning_case() {
   fi
   grep -Eq "Warning : \\[$id\\]" "$log" || { echo "error: missing warning severity/id $id for $label" >&2; exit 1; }
   grep -Eq "$trigger" "$log" || { echo "error: missing warning trigger for $label" >&2; exit 1; }
+  if [[ -n "$location" ]] && ! grep -Eq "$location" "$log"; then
+    echo "error: missing warning source anchor for $label" >&2
+    exit 1
+  fi
 }
 
 run_error_case test/negative/profile_removed_idiomatic compile.hxml HXRS-PROFILE-UNKNOWN 'Expected portable\|metal' profile-unknown
@@ -76,5 +81,7 @@ run_error_case test/negative/dynamic_field_assignop compile.hxml HXRS-DYNAMIC-FI
 run_error_case test/negative/dynamic_field_unop compile.hxml HXRS-DYNAMIC-FIELD-OPERATOR 'Decode the field to `Int`, `Float`, or `String`.*write it back explicitly' dynamic-field-unop
 run_error_case test/negative/type_create_enum_unsupported compile.hxml HXRS-REFLECTION-UNSUPPORTED 'Type\.createEnum is outside the admitted reflection contract' reflection-create-enum
 run_error_case test/negative/type_create_empty_instance_unsupported compile.hxml HXRS-REFLECTION-UNSUPPORTED 'Type\.createEmptyInstance is outside the admitted reflection contract' reflection-create-empty-instance
+run_error_case test/negative/send_sync_borrow_capture compile.hxml HXRS-SEND-SYNC-ERROR 'captures `borrowed` with borrowed type `rust\.Ref<T>`' send-sync-error
+run_warning_case test/negative/send_sync_borrow_capture compile.warn.hxml HXRS-SEND-SYNC-WARNING 'captures `borrowed` with borrowed type `rust\.Ref<T>`' send-sync-warning '^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : Warning : \[HXRS-SEND-SYNC-WARNING\]'
 
 echo "[diagnostic-contract-runtime] OK (identifier + severity + trigger fixtures)"

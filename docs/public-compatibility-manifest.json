@@ -87,6 +87,12 @@
       "level": "documentation"
     },
     {
+      "id": "file:docs/hxref-lifecycle.md",
+      "kind": "file",
+      "path": "docs/hxref-lifecycle.md",
+      "level": "documentation"
+    },
+    {
       "id": "file:docs/interop.md",
       "kind": "file",
       "path": "docs/interop.md",
@@ -163,6 +169,12 @@
       "kind": "file",
       "path": "std/rust/metal/Prelude.hx",
       "level": "source-contract"
+    },
+    {
+      "id": "test:hxref-lifecycle",
+      "kind": "npm-script",
+      "script": "test:hxref-lifecycle",
+      "level": "target-runtime"
     },
     {
       "id": "test:internal-helper-boundary",
@@ -478,20 +490,26 @@
       "id": "rust-hxref",
       "class": "qualified-stable-candidate",
       "status": "active",
-      "qualification": "Opaque shared Haxe-reference handle for APIs that expose rust.HxRef<T>; the representation is not contractual.",
+      "qualification": "Opaque shared Haxe-reference handle for APIs that expose rust.HxRef<T>; strong cycles are not tracing-collected, and thread crossing depends on the owning API and payload bounds.",
       "protectedContract": [
         "type name",
         "generic shape",
-        "null/shared-handle semantics needed by admitted APIs"
+        "null and shared-identity semantics",
+        "alias-visible mutation",
+        "release of acyclic payloads after the final strong owner"
       ],
       "exclusions": [
         "Arc/HxCell/RwLock representation",
-        "internal methods/layout"
+        "internal methods/layout",
+        "automatic tracing collection of strong cycles",
+        "blanket thread safety for arbitrary native payloads"
       ],
       "admission": "candidate",
       "evidenceIds": [
         "file:docs/concurrency-posture.md",
+        "file:docs/hxref-lifecycle.md",
         "file:std/rust/HxRef.hx",
+        "test:hxref-lifecycle",
         "test:public-compatibility"
       ]
     },
@@ -14545,6 +14563,28 @@
           "kind": "enum-value",
           "name": "BorrowRegion",
           "signature": "var BorrowRegion = \"HXRS-BORROW-REGION\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SendSyncWarning",
+          "kind": "enum-value",
+          "name": "SendSyncWarning",
+          "signature": "var SendSyncWarning = \"HXRS-SEND-SYNC-WARNING\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SendSyncError",
+          "kind": "enum-value",
+          "name": "SendSyncError",
+          "signature": "var SendSyncError = \"HXRS-SEND-SYNC-ERROR\"",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"

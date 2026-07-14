@@ -12,6 +12,10 @@ package rust;
  *
  * What
  * - A typing-only, qualified public handle carrying shared/null-capable Haxe-reference semantics.
+ * - Assignment or cloning preserves identity; mutation through one alias is visible through the
+ *   others. The last owner of an acyclic graph releases its payload.
+ * - Strong handle cycles are not tracing-collected. Long-lived cyclic graphs need an explicit edge
+ *   break or a deliberately Rust-shaped ownership model.
  * - It is not a promise that the generated Rust representation is `Arc`, `HxCell`, `RwLock`, or
  *   any other particular type or layout.
  *
@@ -19,8 +23,13 @@ package rust;
  * - The compiler lowers `HxRef<T>` to the active runtime/reference representation.
  * - `@:from` permits typed facade values to cross the Haxe declaration boundary; callers should
  *   use the owning facade rather than depending on handle internals.
+ * - The owning facade determines whether `T` must satisfy `Clone`, `Send`, `Sync`, or `'static`.
+ *   `HxRef<T>` is not blanket proof that an arbitrary native payload can cross a thread boundary.
  * - Compatibility protects the Haxe type name, generic shape, and documented facade behavior, not
  *   internal methods, memory layout, synchronization primitive, or generated alias path.
+ *
+ * See `docs/hxref-lifecycle.md` for the normative lifecycle, cycle, payload, and guard-scope
+ * qualifications.
  */
 @:coreType
 extern abstract HxRef<T> {

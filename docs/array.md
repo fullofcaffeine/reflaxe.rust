@@ -20,9 +20,11 @@ we immediately hit:
 ## Current state (today)
 
 `Array<T>` now maps to `hxrt::array::Array<T>` (a small runtime wrapper around `HxRef<Vec<T>>`).
-In the default runtime, `HxRef<T>` is implemented as `Arc<HxCell<T>>`, and `HxCell<T>` uses
-lock-backed interior mutability so arrays and other Haxe reference values can cross `sys.thread`
-boundaries safely.
+The current runtime implements `HxRef<T>` with shared ownership and lock-backed interior
+mutability so arrays and other admitted Haxe reference values can cross documented `sys.thread`
+boundaries safely. The exact `Arc`/`HxCell`/lock representation is not public API. Strong cycles of
+reference handles are not tracing-collected; see
+[HxRef Lifecycle and Payload Contract](hxref-lifecycle.md).
 
 In generated Rust:
 

@@ -43,6 +43,8 @@ enum abstract RustDiagnosticId(String) to String {
 	var AsyncAwaitContext = "HXRS-ASYNC-AWAIT-CONTEXT";
 	var AsyncBlockOnContext = "HXRS-ASYNC-BLOCK-ON-CONTEXT";
 	var BorrowRegion = "HXRS-BORROW-REGION";
+	var SendSyncWarning = "HXRS-SEND-SYNC-WARNING";
+	var SendSyncError = "HXRS-SEND-SYNC-ERROR";
 	var MetadataArity = "HXRS-METADATA-ARITY";
 	var MetadataValue = "HXRS-METADATA-VALUE";
 	var MetadataPlacement = "HXRS-METADATA-PLACEMENT";

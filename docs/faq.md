@@ -31,6 +31,8 @@ That means:
 
 From the Haxe side, you usually do not manually free memory. From the Rust side, the model should be
 read as Rust ownership plus explicit runtime handles where portable Haxe behavior needs them.
+The exact protected behavior, payload qualifications, and deterministic lifecycle evidence are in
+[HxRef Lifecycle and Payload Contract](hxref-lifecycle.md).
 
 ## How does memory management work?
 

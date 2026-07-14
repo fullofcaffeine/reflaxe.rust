@@ -154,7 +154,8 @@ control live in the [public compatibility manifest](public-compatibility-manifes
 - `reflaxe_rust_strict_examples`
   - Enforce strict policy in repo examples/snapshot paths.
 - `rust_send_sync_strict`
-  - Escalate Send/Sync spawn-boundary diagnostics to compile errors.
+  - Escalate `HXRS-SEND-SYNC-WARNING` spawn-boundary diagnostics to
+    `HXRS-SEND-SYNC-ERROR` compile errors.
   - Useful in CI to forbid capturing borrow-only (`rust.Ref`, `rust.MutRef`, slices, `rust.Str`)
     or `Dynamic` values in `Thread.create(...)` / `Tasks.spawn(...)` closures.
 

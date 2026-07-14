@@ -15,8 +15,9 @@ use std::sync::{Arc, Weak};
 ///
 /// How
 /// - `borrow()` yields a read guard, `borrow_mut()` yields a write guard.
-/// - Using a `RwLock` keeps repeated reads cheap-ish and avoids accidental self-deadlocks that would
-///   be easy to introduce with a plain mutex in generated expressions.
+/// - The current `RwLock` permits concurrent readers and thread-safe interior mutation. It does not
+///   make nested access to the same handle re-entrant; lowering must keep guards scoped and must not
+///   hold a conflicting guard across user work.
 pub type HxRc<T> = Arc<T>;
 
 #[derive(Debug, Default)]

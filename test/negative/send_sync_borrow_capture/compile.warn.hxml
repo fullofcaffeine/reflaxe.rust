@@ -1,0 +1,5 @@
+-cp .
+-lib reflaxe.rust
+-main Main
+-D rust_no_build
+-D rust_output=out_warn

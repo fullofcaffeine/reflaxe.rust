@@ -27,6 +27,9 @@ Notes:
     codegen typically uses `.clone()` for non-`Copy` data.
   - `Send + Sync` keeps generated Haxe reference values compatible with the thread-safe runtime
     handle model.
+  - These are generated portable class/interface bounds, not a claim that the opaque
+    `rust.HxRef<T>` name makes every possible native `T` thread-safe. `Dynamic` boxing and individual
+    native facades can impose additional documented bounds such as `'static`.
 - You can override bounds with `@:rustGeneric(...)` on the class:
   - `@:rustGeneric(["T: Clone + Send + Sync + std::fmt::Debug"]) class Box<T> { ... }`
 
@@ -59,6 +62,12 @@ Evidence:
   class payload propagate the payload bounds into the Rust helper signature.
 - `test/semantic_diff/array_key_value_iterator_boundary` proves an erased structural parameter still
   preserves the concrete generic call specialization and runtime semantics.
+
+At known thread/task spawn boundaries, the compiler reports borrow-only or dynamically unproven
+captures at their Haxe source position. The default `HXRS-SEND-SYNC-WARNING` is advisory;
+`-D rust_send_sync_strict` emits `HXRS-SEND-SYNC-ERROR`. This boundary check does not prohibit a
+typed non-`Send` native island that stays single-threaded. See
+[HxRef Lifecycle and Payload Contract](hxref-lifecycle.md).
 
 ### Generic interfaces (traits)
 

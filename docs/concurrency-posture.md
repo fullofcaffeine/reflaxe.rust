@@ -39,13 +39,16 @@ Stable posture:
 What that means:
 
 - real OS-thread execution exists,
-- the runtime heap model is thread-safe by construction,
+- admitted shared values use a thread-safe handle model when their owning API and payload bounds
+  permit crossing; `HxRef<T>` is not blanket proof for arbitrary native `T`,
 - message passing and synchronization primitives are implemented and used in CI-backed examples.
 
 Primary evidence:
 
 - `examples/sys_thread_smoke`
 - `examples/thread_pool_smoke`
+- `npm run test:hxref-lifecycle`
+- `docs/hxref-lifecycle.md`
 - Tier1/Tier2 stdlib sweep coverage
 - full harness / Windows smoke coverage
 

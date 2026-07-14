@@ -221,3 +221,4 @@
 {"id":"int-ad942387","kind":"field_change","created_at":"2026-07-14T00:14:29.218406Z","actor":"Marcelo Serpa","issue_id":"haxe_rust-p6hs.3","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}
 {"id":"int-bd9d3e37","kind":"field_change","created_at":"2026-07-14T02:05:16.073093Z","actor":"Marcelo Serpa","issue_id":"haxe_rust-p6hs.4","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}
 {"id":"int-8903d805","kind":"field_change","created_at":"2026-07-14T06:14:03.938269Z","actor":"Marcelo Serpa","issue_id":"haxe_rust-p6hs.5","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}
+{"id":"int-84ef6ba8","kind":"field_change","created_at":"2026-07-14T09:43:51.470292Z","actor":"Marcelo Serpa","issue_id":"haxe_rust-p6hs.6","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}

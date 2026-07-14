@@ -6,11 +6,14 @@ Haxe's `sys.thread.*` API implies **true parallel execution** of Haxe code. In m
 (HL, C++, JVM, etc), Haxe values can be shared between threads (directly or indirectly), and the runtime
 is responsible for making that safe.
 
-`reflaxe.rust` now models Haxe object identity with a thread-safe heap:
+`reflaxe.rust` currently models Haxe object identity with a thread-safe handle implementation:
 
-- `HxRef<T>` is backed by `Arc<...>` + locking (`runtime/hxrt/src/cell.rs`).
+- `HxRef<T>` is backed by `Arc<...>` + locking (`runtime/hxrt/src/cell.rs`); that representation is
+  an implementation detail rather than the public compatibility unit.
 
-This keeps Haxe class/reference semantics while allowing values to cross OS-thread boundaries safely.
+This keeps Haxe class/reference semantics while allowing admitted values to cross OS-thread
+boundaries when the owning API and payload bounds permit it. The opaque handle name alone is not a
+blanket `Send + Sync` promise; see [HxRef Lifecycle and Payload Contract](hxref-lifecycle.md).
 
 This document defines the intended production direction for `sys.thread` in `reflaxe.rust`.
 
@@ -61,12 +64,17 @@ runtime-dynamic values that cannot be proven `Send + Sync` safely at thread boun
 - `Dynamic`
 
 Use `-D rust_send_sync_strict` to turn those diagnostics into hard compile errors in CI or release gates.
+The stable identifiers are `HXRS-SEND-SYNC-WARNING` in advisory mode and
+`HXRS-SEND-SYNC-ERROR` in strict mode. They protect the trigger and severity while allowing the
+human guidance to improve. See [HxRef Lifecycle and Payload Contract](hxref-lifecycle.md) for the
+payload and cycle qualifications that sit below this crossing rule.
 
 ## Current Status
 
 As of 2026-02-09, `reflaxe.rust` has a minimal-but-correct threaded runtime model:
 
-- The heap model is thread-safe by construction (`HxRef<T>` is backed by `Arc<...>` + locking).
+- Admitted shared payloads use the current thread-safe handle implementation when their declared
+  bounds permit crossing; the representation is non-contractual.
 - `sys.thread.Thread.create` spawns real OS threads.
 - `Thread.sendMessage` / `Thread.readMessage` are implemented via per-thread message queues in `hxrt`.
 - The core synchronization primitives exist (`Lock`, `Mutex` (re-entrant), `Condition`, `Semaphore`, `Tls`).

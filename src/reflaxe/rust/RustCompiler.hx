@@ -961,9 +961,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var diagnostics = SendSyncAnalyzer.analyze(Context.getAllModuleTypes(), strict);
 		#if eval
 		for (warning in diagnostics.warnings)
-			Context.warning("Rust concurrency contract: " + warning.message, warning.pos);
+			RustDiagnostic.warning(RustDiagnosticId.SendSyncWarning, "Rust concurrency contract: " + warning.message, warning.pos);
 		for (error in diagnostics.errors)
-			Context.error("Rust concurrency contract violation: " + error.message, error.pos);
+			RustDiagnostic.error(RustDiagnosticId.SendSyncError, "Rust concurrency contract violation: " + error.message, error.pos);
 		#end
 	}
 

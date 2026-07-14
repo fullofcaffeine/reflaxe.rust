@@ -21,7 +21,7 @@ may improve without a SemVer break. A tool must not infer an identifier from Eng
 - Correcting a false-positive trigger to match the written contract is a bug fix; changing the
   written admitted trigger is a compatibility decision.
 
-This contract covers admitted profile, async/no-hxrt, borrow-region, native-import, public/internal
-helper-boundary, structured metadata, Cargo, and explicit Dynamic-field operator failures. Internal
-compiler assertions and experimental escape-hatch diagnostics remain outside the stable registry
-until explicitly admitted.
+This contract covers admitted profile, async/no-hxrt, borrow-region, Send/Sync crossing,
+native-import, public/internal helper-boundary, structured metadata, Cargo, explicit Dynamic-field
+operator, and qualified reflection failures. Internal compiler assertions and experimental
+escape-hatch diagnostics remain outside the stable registry until explicitly admitted.

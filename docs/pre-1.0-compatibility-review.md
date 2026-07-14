@@ -64,7 +64,7 @@ exact admitted surface.
 | `rust-values-core` | `stable-candidate` | `candidate` | `active` | Documented Option, Result, and tool operations only. |
 | `rust-values-qualified` | `qualified-stable-candidate` | `candidate` | `active` | Only individually documented operations; gaps in traits, borrowed entries, cloning, strings, OsString, and iteration remain visible. |
 | `rust-borrows` | `qualified-stable-candidate` | `candidate` | `active` | Documented lexical borrow regions, slice/string views, and scoped callbacks. |
-| `rust-hxref` | `qualified-stable-candidate` | `candidate` | `active` | Opaque shared Haxe-reference handle for APIs that expose rust.HxRef<T>; the representation is not contractual. |
+| `rust-hxref` | `qualified-stable-candidate` | `candidate` | `active` | Opaque shared Haxe-reference handle for APIs that expose rust.HxRef<T>; strong cycles are not tracing-collected, and thread crossing depends on the owning API and payload bounds. |
 | `rust-concurrency` | `qualified-stable-candidate` | `candidate` | `active` | Documented typed handle and scoped-guard subset with hxrt. |
 | `rust-async` | `qualified-stable-candidate` | `candidate` | `active` | Metal plus rust_async plus hxrt; synchronous main boundary. |
 | `rust-systems` | `qualified-stable-candidate` | `candidate` | `active` | Documented direct file, owned command/narrow child, and blocking localhost socket operations. |
@@ -88,7 +88,7 @@ exact admitted surface.
 | `generated-package` | `stable-candidate` | `candidate` | `active` | Published Haxelib-shaped package and installed-package workflow. |
 | `generated-private` | `excluded-internal` | `internal` | `active` | Generated helper/wrapper details not admitted as consumer API. |
 
-Inventory: 318 shipped Haxe types, 1539 public operations, 18 metadata names, 55 defines, 4 JSON reports, 6 generated-artifact contracts, and 29 validated evidence records.
+Inventory: 318 shipped Haxe types, 1541 public operations, 18 metadata names, 55 defines, 4 JSON reports, 6 generated-artifact contracts, and 31 validated evidence records.
 <!-- END GENERATED PUBLIC COMPATIBILITY SUMMARY -->
 
 The guard enumerates no-package overrides, primary and secondary module types, direct `std/**`
@@ -123,7 +123,10 @@ documented operations. Borrow and slice APIs are qualified to their lexical-regi
 
 `rust.HxRef<T>` is admitted only as an opaque qualified handle because concurrency and async APIs
 expose it directly. Its current `Arc<HxCell<T>>`/lock representation, layout, and internal methods
-are explicitly non-contractual.
+are explicitly non-contractual. Its protected behavior is nullability, shared identity, alias-visible
+mutation, and deterministic release of acyclic payloads after the last owner. Strong cycles are not
+tracing-collected and require an explicit break point; thread crossing remains qualified by the
+owning API and payload bounds in [the HxRef lifecycle contract](hxref-lifecycle.md).
 
 `rust.serde.SerdeJson`, `rust.tui.*`, `rust.test.*`, and
 `rust.adapters.ReflaxeStdAdapters` remain experimental. Compiler-owned `@:rustTest` is a separate

@@ -128,6 +128,14 @@ Agent policy:
   condition, and the Beads evidence beside the guard. Do not normalize a synchronization bandage into
   permanent architecture merely because it catches the current symptom.
 - Portable mode first; keep a single runtime abstraction point so backends can evolve (e.g., `HxRef<T>`).
+- `HxRef<T>` lifecycle gotcha: protect Haxe-visible nullability, shared identity, alias-visible mutation,
+  and deterministic cleanup of acyclic payloads, but never treat the current `Arc`/`HxCell`/lock
+  representation as API. Strong `HxRef` cycles are intentionally retained without a tracing GC;
+  prove that boundary with deterministic `Drop` counters plus weak observers, document explicit
+  cycle breaking, and do not add a collector without demonstrated workload evidence. Apply
+  `Clone`/`Send`/`Sync`/`'static` bounds only where generated semantics or a real thread/dynamic
+  crossing requires them; diagnose unsupported crossing at the Haxe source boundary rather than
+  globally banning typed single-thread native values.
 - Prefer `import` (and small local `typedef` aliases when appropriate) to avoid verbose fully-qualified type paths in compiler code
   (example: avoid `reflaxe.rust.ast.RustAST.RustMatchArm` when `import reflaxe.rust.ast.RustAST.RustMatchArm` lets you use `RustMatchArm`).
 - Prefer strong typing: avoid `Dynamic` in compiler/runtime/examples unless the upstream Haxe API forces it (for example `haxe.Json.parse`, cross-thread message payloads, exception catch-alls).
@@ -263,7 +271,8 @@ Agent policy:
   startup operation on those hosts. Do not "solve" this with a mutex that guards only hxrt calls;
   foreign/runtime readers do not share that lock. Prefer child-process-specific environment APIs in
   concurrent production code.
-- For class instance semantics, the runtime uses a thread-safe heap (`HxRef<T> = Arc<HxCell<T>>` with `RwLock` interior mutability):
+- For class instance semantics, the current runtime implementation uses a thread-safe heap
+  (`HxRef<T> = Arc<HxCell<T>>` with `RwLock` interior mutability); this representation is not public API:
   - concrete calls use `Class::method(&obj, ...)` where methods take `&HxCell<Class>`
   - polymorphic base/interface calls use trait objects (`HxDynRef<dyn ...>`) and `obj.method(...)` dispatch
 - For field assignment on `HxRef` (`obj.field = rhs`), evaluate `rhs` first, then take `borrow_mut()` (otherwise `RefCell` will panic at runtime when `rhs` reads other fields).
@@ -418,7 +427,9 @@ Agent policy:
 - `@:coreApi` gotcha: core types must match upstream public API exactly. Any extra helpers must be private.
   - Use `@:allow(...)`/`@:access(...)` to make private helpers usable by sibling std types.
   - Backend rule: private members in an `@:allow/@:access` class are emitted as `pub(crate)` in Rust so cross-module calls compile.
-- Threading (sys.thread): implemented with a thread-safe heap (`HxRef<T>` is `Arc<...>` + locking) so Haxe values can cross OS threads safely.
+- Threading (sys.thread): the current `HxRef<T>` implementation uses `Arc<...>` + locking so admitted
+  payloads can cross OS threads when their owning API and generated bounds permit it; the opaque
+  handle name is not blanket `Send + Sync` authority for arbitrary native values.
   - `sys.thread.Thread` + core primitives exist; `sys.thread.EventLoop` is runtime-backed. See `docs/threading.md`.
 
 ## Testing + CI
