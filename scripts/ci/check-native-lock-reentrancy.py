@@ -29,6 +29,8 @@ import subprocess
 import sys
 import tempfile
 
+from python_tool_commands import project_haxe_command
+
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = ROOT / "test" / "runtime_e2e" / "native_lock_reentrancy"
@@ -86,8 +88,7 @@ def main() -> int:
         temp_root = Path(temporary)
         generated = temp_root / "generated"
         target = temp_root / "target"
-        haxe_command = [
-            "haxe",
+        haxe_command = project_haxe_command(ROOT, [
             "-cp",
             str(FIXTURE),
             "-lib",
@@ -104,7 +105,7 @@ def main() -> int:
             f"rust_output={generated}",
             "-main",
             "Main",
-        ]
+        ])
         run_checked(haxe_command, cwd=ROOT)
 
         cargo_env = os.environ.copy()

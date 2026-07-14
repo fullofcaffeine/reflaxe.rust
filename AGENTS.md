@@ -205,6 +205,10 @@ Agent policy:
   where `set -e` is suppressed. Reuse `scripts/ci/timed-command.sh` and keep
   `npm run test:timed-command-failure-propagation` wired into hooks.
 - Reflaxe’s `Context.getMainExpr()` is only reliable when the consumer uses `-main <Class>` (don’t rely on a bare trailing `Main` line in `.hxml`).
+- Windows Python tool-launch gotcha: Lix installs Haxe as an extensionless Node shim. Git Bash can
+  execute it, but native Python `subprocess` cannot reliably resolve it as a Windows executable.
+  Python CI/E2E harnesses must use `scripts/ci/python_tool_commands.py` so the project-pinned
+  `node_modules/lix/bin/haxeshim.js` is launched explicitly through Node.
 - Use `BaseCompiler.setExtraFile()` for non-`.rs` outputs like `Cargo.toml` (the default OutputManager always appends `fileOutputExtension` for normal outputs).
 - Haxe “multi-type modules” behave like `haxe.macro.Expr.*`: types in `RustAST.hx` are addressed as `RustAST.RustExpr`, `RustAST.RustFile`, etc.
 - Keep generated Rust rustfmt-clean: avoid embedding extra trailing newlines in raw items and always end files with a final newline.
