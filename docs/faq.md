@@ -366,6 +366,12 @@ Use the documented async contract and add app-specific tests around task cancell
 thread crossing, IO, and shutdown paths. For Rust-native readers, the current model is explicit
 runtime adapter support rather than hidden async magic.
 
+For direct `sys.thread` use, terminated children no longer retain an addressable queue: a later send
+throws `HXRT-THREAD-NOT-ALIVE`. Uncaught Haxe callbacks terminate only that child and report
+`HXRT-THREAD-UNCAUGHT`. EventLoop repeats survive a caught callback throw unless explicitly
+cancelled, and `runPromised` without a matching `promise` throws
+`HXRT-EVENTLOOP-PROMISE-UNDERFLOW` before queueing the callback.
+
 See [Async contract](async-contract.md), [Async/Await guide](async-await.md), and
 [Concurrency posture](concurrency-posture.md).
 

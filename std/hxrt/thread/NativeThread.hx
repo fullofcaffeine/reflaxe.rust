@@ -35,6 +35,15 @@ extern class NativeThread {
 
 		Why
 		- Keeps `sys.thread.Thread.create(...)` fully typed at the Haxe boundary.
+
+		What
+		- The returned id remains live only for the spawned callback scope.
+		- An uncaught Haxe throw is reported with `HXRT-THREAD-UNCAUGHT`; later sends fail with
+		  `HXRT-THREAD-NOT-ALIVE`.
+
+		How
+		- HXRT owns registration through RAII and boxes runtime error strings as portable `HxString`
+		  values so `catch (message:String)` works in portable generated code.
 	**/
 	@:native("thread_spawn")
 	public static function spawn(job:() -> Void):Int;
@@ -44,12 +53,19 @@ extern class NativeThread {
 
 		Why
 		- Mirrors `Thread.createWithEventLoop(...)` without emitting raw injection snippets.
+
+		How
+		- Job and loop callbacks share the same unwind-safe registration and uncaught-error boundary.
 	**/
 	@:native("thread_spawn_with_event_loop")
 	public static function spawnWithEventLoop(job:() -> Void):Int;
 
 	/**
 		Sends a message payload to another thread queue.
+
+		Why: accepting messages for a removed registration would leak data indefinitely.
+		What: throws the catchable portable String prefix `HXRT-THREAD-NOT-ALIVE` after termination.
+		How: the runtime performs registry lookup and queue insertion as the native ownership boundary.
 	**/
 	@:native("thread_send_message")
 	public static function sendMessage(threadId:Int, message:ThreadMessage):Void;
@@ -63,6 +79,14 @@ extern class NativeThread {
 		Why
 		- These methods centralize the Rust runtime boundary in one typed extern API.
 		- `sys.thread.EventLoop` can then remain pure Haxe code with no raw `__rust__`.
+
+		What
+		- Repeats are rescheduled before callbacks, cancellation removes future runs, and promised work is
+		  counted without underflow.
+
+		How
+		- Callbacks execute outside the scheduler lock. `eventLoopRunPromised` throws
+		  `HXRT-EVENTLOOP-PROMISE-UNDERFLOW` before enqueue when no promise is outstanding.
 	**/
 	@:native("event_loop_repeat")
 	public static function eventLoopRepeat(threadId:Int, event:() -> Void, intervalMs:Int):Int;

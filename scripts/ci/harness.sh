@@ -415,6 +415,9 @@ run_conformance_group() {
   run_stage "native lock reentrancy contract" npm run test:native-lock-reentrancy
   intermediate_cleanup "native-lock-reentrancy"
 
+  run_stage "thread and EventLoop lifecycle contract" npm run test:thread-event-loop-lifecycle
+  intermediate_cleanup "thread-event-loop-lifecycle"
+
   run_stage "semantic diff (portable)" python3 test/run-semantic-diff.py
   intermediate_cleanup "semantic-diff"
 

@@ -251,6 +251,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
 - Class: `snapshot_or_smoke_only`
 - Scope: Direct `sys.thread.EventLoop`, thread-pool helpers, and narrower MainLoop proof on the Rust target
 - Evidence:
+  - `test/runtime_e2e/thread_event_loop_lifecycle`
   - `test/snapshot/sys_thread_event_loop`
   - `test/snapshot/sys_thread_event_loop_repeat_cancel`
   - `test/snapshot/sys_thread_deque_basic`
@@ -260,6 +261,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
   - `examples/sys_thread_smoke`
   - `examples/thread_pool_smoke`
 - Commands:
+  - `npm run test:thread-event-loop-lifecycle`
   - `bash test/run-snapshots.sh --case sys_thread_event_loop`
   - `bash test/run-snapshots.sh --case sys_thread_event_loop_repeat_cancel`
   - `bash test/run-snapshots.sh --case sys_thread_deque_basic`
@@ -268,7 +270,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
   - `bash test/run-snapshots.sh --case haxe_mainloop_entrypoint_thread_bridge`
   - `bash scripts/ci/windows-smoke.sh`
   - `npm run test:all`
-- Notes: Direct EventLoop ops now include repeating callback `repeat(...)/cancel(...)` proof, and `Deque`, `FixedThreadPool`, and `ElasticThreadPool` have Rust-target smoke proof. Read `docs/concurrency-posture.md` for the canonical stable/preview/caveat classification. Broader `haxe.MainLoop` / `haxe.EntryPoint` semantics are still not claimed as `--interp`-backed semantic parity.
+- Notes: Spawned-thread cleanup, dead-send rejection, repeat callback unwind/cancel state, and promise balance have isolated target-process proof. Direct EventLoop ops also include repeating callback `repeat(...)/cancel(...)` snapshots, and `Deque`, `FixedThreadPool`, and `ElasticThreadPool` have Rust-target smoke proof. Read `docs/concurrency-posture.md` for the canonical stable/preview/caveat classification. Broader `haxe.MainLoop` / `haxe.EntryPoint` semantics are still not claimed as `--interp`-backed semantic parity.
 
 ### Database/native-environment smoke coverage
 - Class: `snapshot_or_smoke_only`

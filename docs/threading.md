@@ -81,6 +81,12 @@ As of 2026-02-09, `reflaxe.rust` has a minimal-but-correct threaded runtime mode
   bounds permit crossing; the representation is non-contractual.
 - `sys.thread.Thread.create` spawns real OS threads.
 - `Thread.sendMessage` / `Thread.readMessage` are implemented via per-thread message queues in `hxrt`.
+- Spawned jobs and EventLoop callbacks share one unwind-safe registration scope. Normal return,
+  uncaught Haxe throw, and Rust unwind all remove the child registration; later sends fail with
+  `HXRT-THREAD-NOT-ALIVE` instead of accumulating unread messages.
+- Uncaught Haxe exceptions terminate only the child and emit a best-effort
+  `HXRT-THREAD-UNCAUGHT` diagnostic because the public API has no join/result channel. Exact payload
+  formatting is intentionally not stable.
 - The core synchronization primitives exist (`Lock`, `Mutex` (re-entrant), `Condition`, `Semaphore`, `Tls`).
 - `sys.thread.EventLoop` exists and is backed by `hxrt::thread` per-thread event state.
 - CI includes a deterministic smoke example: `examples/sys_thread_smoke`.
@@ -91,7 +97,10 @@ Known gaps (not yet parity with upstream targets):
    `sys.thread.EventLoop` operations (`run` / `promise` / `runPromised` / `progress` / `loop`) now have
    target-side smoke coverage (`test/snapshot/sys_thread_event_loop`), direct repeating-callback
    `repeat(...)/cancel(...)` behavior is now locked by
-   `test/snapshot/sys_thread_event_loop_repeat_cancel`, and higher-level scheduler proof now covers both:
+   `test/snapshot/sys_thread_event_loop_repeat_cancel`, and callback-unwind/promise balance is locked
+   by `npm run test:thread-event-loop-lifecycle`. Repeats are advanced before callbacks so a throw does
+   not silently delete them; unmatched `runPromised` calls fail before enqueue. Higher-level scheduler
+   proof now covers both:
    - the basic `haxe.MainLoop.add(...)` + `haxe.EntryPoint.run()` path
      (`test/snapshot/haxe_mainloop_entrypoint_basic`, expected output `second,first`)
    - the thread-bridge path using `haxe.MainLoop.addThread(...)` +
@@ -105,5 +114,7 @@ Tracking summary:
 - Thread-safe heap baseline is complete and validated in CI.
 - Core threading primitives are implemented.
 - Direct `sys.thread.EventLoop` plus `repeat(...)/cancel(...)` now have target-side proof.
+- Spawned-thread cleanup, callback-throw repeat state, cancel-then-throw, and promise underflow have
+  isolated target-process proof on Linux and the curated Windows lane.
 - `sys.thread.Deque`, `FixedThreadPool`, and `ElasticThreadPool` now have Rust-target smoke proof.
 - Broader `haxe.MainLoop` / `haxe.EntryPoint` scheduler semantics remain the main caveat-heavy follow-up.

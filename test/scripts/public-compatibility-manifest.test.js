@@ -89,6 +89,41 @@ function main() {
         `${type.name}.${entry.name} must own executable reentrancy evidence`)
     }
   }
+  const portableSysContract = canonical.contracts.find((entry) => entry.id === 'portable-sys-core')
+  assert(portableSysContract.evidenceIds.includes('test:thread-event-loop-lifecycle'),
+    'the portable thread/EventLoop contract must own executable lifecycle evidence')
+  assert(portableSysContract.protectedContract.some((value) => value.includes('HXRT-THREAD-NOT-ALIVE')),
+    'the portable thread contract must protect its dead-thread failure identifier')
+  assert(portableSysContract.protectedContract.some((value) => value.includes('HXRT-EVENTLOOP-PROMISE-UNDERFLOW')),
+    'the portable EventLoop contract must protect promise balance and its failure identifier')
+  const eventLoop = canonical.haxeTypes.find((entry) => entry.name === 'sys.thread.EventLoop')
+  const thread = canonical.haxeTypes.find((entry) => entry.name === 'sys.thread.Thread')
+  for (const type of [eventLoop, thread]) {
+    assert(type.evidenceIds.includes('test:thread-event-loop-lifecycle'),
+      `${type.name} must own executable lifecycle evidence`)
+  }
+  for (const operationId of [
+    'function:repeat',
+    'function:cancel',
+    'function:promise',
+    'function:run',
+    'function:runPromised',
+    'function:progress',
+    'function:loop'
+  ]) {
+    assert(operation(eventLoop, operationId).evidenceIds.includes('test:thread-event-loop-lifecycle'),
+      `sys.thread.EventLoop.${operationId} must own executable lifecycle evidence`)
+  }
+  for (const operationId of [
+    'function:sendMessage',
+    'function:current',
+    'function:create',
+    'function:createWithEventLoop',
+    'function:readMessageString'
+  ]) {
+    assert(operation(thread, operationId).evidenceIds.includes('test:thread-event-loop-lifecycle'),
+      `sys.thread.Thread.${operationId} must own executable lifecycle evidence`)
+  }
   const createMutex = operation(mutexes, 'function:create')
   assert(createMutex.typeReferences.includes('rust.HxRef'), 'operation references must resolve imported public types')
   assert(createMutex.typeReferences.includes('rust.concurrent.Mutex'), 'operation references must resolve same-package public types')

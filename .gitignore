@@ -29,6 +29,10 @@ dist/
 dump/
 **/dump/
 
+# Python harness caches
+__pycache__/
+*.py[cod]
+
 # Repomix bundles (local analysis artifacts)
 repomix-output*.xml
 

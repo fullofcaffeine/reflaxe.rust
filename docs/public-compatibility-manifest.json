@@ -189,6 +189,12 @@
       "level": "target-runtime"
     },
     {
+      "id": "test:thread-event-loop-lifecycle",
+      "kind": "npm-script",
+      "script": "test:thread-event-loop-lifecycle",
+      "level": "target-runtime"
+    },
+    {
       "id": "test:portable-sys-failures",
       "kind": "npm-script",
       "script": "test:portable-sys-failures",
@@ -299,16 +305,23 @@
       "qualification": "Linux full CI plus the specifically documented Windows smoke operations; macOS is local-only evidence.",
       "protectedContract": [
         "admitted Sys, filesystem, io, process, direct thread, EventLoop, Deque, and pool operations",
-        "documented failure/output behavior"
+        "documented failure/output behavior",
+        "spawned-thread registration cleanup after normal return, Haxe throw, and Rust unwind",
+        "HXRT-THREAD-NOT-ALIVE and HXRT-THREAD-UNCAUGHT identifiers and documented triggers",
+        "repeat rescheduling before callback execution, cancellation of later due work, and self-cancel behavior",
+        "balanced promise/runPromised state and HXRT-EVENTLOOP-PROMISE-UNDERFLOW rejection"
       ],
       "exclusions": [
-        "blanket platform parity"
+        "blanket platform parity",
+        "exact uncaught-exception payload formatting",
+        "scheduler fairness or blanket MainLoop parity"
       ],
       "admission": "candidate",
       "evidenceIds": [
         "file:docs/concurrency-posture.md",
         "file:docs/systems-environment-posture.md",
         "test:portable-sys-failures",
+        "test:thread-event-loop-lifecycle",
         "test:public-compatibility"
       ]
     },
@@ -25121,6 +25134,7 @@
       "signature": "@:coreApi @:allow (sys.thread.Thread) class EventLoop",
       "contract": "portable-sys-core",
       "evidenceIds": [
+        "test:thread-event-loop-lifecycle",
         "test:public-compatibility"
       ],
       "directTypeReferences": [
@@ -25154,6 +25168,7 @@
           "signature": "public function repeat (event : () -> Void, intervalMs : Int) : EventHandler",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:thread-event-loop-lifecycle",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -25167,6 +25182,7 @@
           "signature": "public function cancel (eventHandler : EventHandler) : Void",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:thread-event-loop-lifecycle",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -25180,6 +25196,7 @@
           "signature": "public function promise () : Void",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:thread-event-loop-lifecycle",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -25191,6 +25208,7 @@
           "signature": "public function run (event : () -> Void) : Void",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:thread-event-loop-lifecycle",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -25202,6 +25220,7 @@
           "signature": "public function runPromised (event : () -> Void) : Void",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:thread-event-loop-lifecycle",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -25213,6 +25232,7 @@
           "signature": "public function progress () : NextEventTime",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:thread-event-loop-lifecycle",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -25237,6 +25257,7 @@
           "signature": "public function loop () : Void",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:thread-event-loop-lifecycle",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -25648,6 +25669,7 @@
       "signature": "class Thread",
       "contract": "portable-sys-core",
       "evidenceIds": [
+        "test:thread-event-loop-lifecycle",
         "test:public-compatibility"
       ],
       "directTypeReferences": [
@@ -25682,6 +25704,7 @@
           "signature": "public function sendMessage (msg : ThreadMessage) : Void",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:thread-event-loop-lifecycle",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -25695,6 +25718,7 @@
           "signature": "public static function current () : Thread",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:thread-event-loop-lifecycle",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -25706,6 +25730,7 @@
           "signature": "public static function create (job : () -> Void) : Thread",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:thread-event-loop-lifecycle",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -25728,6 +25753,7 @@
           "signature": "public static function createWithEventLoop (job : () -> Void) : Thread",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:thread-event-loop-lifecycle",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -25763,6 +25789,7 @@
           "signature": "public static function readMessageString (block : Bool) : Null < String >",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:thread-event-loop-lifecycle",
             "test:public-compatibility"
           ],
           "typeReferences": []

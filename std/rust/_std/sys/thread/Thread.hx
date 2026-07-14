@@ -23,6 +23,11 @@ import sys.thread.Types.ThreadMessage;
 	  relying on Haxe static-field codegen (keeps the POC smaller).
 	- All runtime calls go through `hxrt.thread.NativeThread` extern bindings, so this class stays
 	  beginner-friendly Haxe code (no raw `__rust__` snippets in method bodies).
+	- A spawned thread owns its runtime registration through an unwind-safe scope. Normal return,
+	  an uncaught Haxe throw, or a Rust panic removes that registration before the thread ends.
+	- Because this API has no join/result channel, an uncaught Haxe exception terminates only the child
+	  and writes a best-effort diagnostic beginning with `HXRT-THREAD-UNCAUGHT`. Its exact payload prose
+	  is not a compatibility contract.
 **/
 class Thread {
 	final __id:Int;
@@ -44,26 +49,58 @@ class Thread {
 		return EventLoop.__fromThreadId(__id);
 	}
 
+	/**
+		Send a boundary payload to this thread.
+
+		Why: a dead thread must not accept data into a queue that no execution context can drain.
+		What: queues `msg` while the thread registration is live; afterward it throws a catchable String
+		beginning with `HXRT-THREAD-NOT-ALIVE`.
+		How: HXRT resolves the thread id under the registry lock before acquiring its message queue.
+	**/
 	public function sendMessage(msg:ThreadMessage):Void {
 		NativeThread.sendMessage(__id, msg);
 	}
 
+	/** Return a typed wrapper for the current runtime thread id. **/
 	public static function current():Thread {
 		var id:Int = NativeThread.currentId();
 		return new Thread(id);
 	}
 
+	/**
+		Spawn an OS thread for `job`.
+
+		Why: Haxe `sys.thread` promises real parallel execution rather than cooperative task emulation.
+		What: returns immediately with a message-capable handle. An uncaught Haxe exception ends only the
+		child, emits `HXRT-THREAD-UNCAUGHT`, and makes future sends fail with
+		`HXRT-THREAD-NOT-ALIVE`.
+		How: HXRT installs thread-local identity and an RAII registration guard around the callback.
+	**/
 	public static function create(job:() -> Void):Thread {
 		var id:Int = NativeThread.spawn(job);
 		return new Thread(id);
 	}
 
+	/**
+		Run `job` and then drain the current thread's event loop.
+
+		This is a direct Rust-target scheduler path; it does not imply blanket `haxe.MainLoop` parity.
+		Callback exceptions propagate to this caller because no new OS-thread boundary is created.
+	**/
 	public static function runWithEventLoop(job:() -> Void):Void {
 		job();
 		var id:Int = NativeThread.currentId();
 		NativeThread.eventLoopLoop(id);
 	}
 
+	/**
+		Spawn an OS thread that runs `job` and then its EventLoop.
+
+		Why: queued/promised/repeating work must share the spawned thread's liveness boundary.
+		What: an uncaught exception from either `job` or an EventLoop callback terminates only that child,
+		reports `HXRT-THREAD-UNCAUGHT`, and removes the registration.
+		How: both phases execute inside the same HXRT RAII registration scope.
+	**/
 	public static function createWithEventLoop(job:() -> Void):Thread {
 		var id:Int = NativeThread.spawnWithEventLoop(job);
 		return new Thread(id);

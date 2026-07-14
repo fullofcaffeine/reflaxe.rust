@@ -325,6 +325,16 @@ Agent policy:
     Inner `catch_unwind` frames can otherwise re-enable panic-hook output too early and leak noisy `Box<dyn Any>` lines
     even when throws are correctly caught by an outer frame (observed with socket `readLine` + server/client wrappers).
   - Current limitation: catch type matching is Rust `Any` downcast (exact Rust type), so catching a subclass from a base-typed trait object isn’t supported yet.
+  - Portable runtime error-string gotcha: portable Haxe `String` lowers to `hxrt::string::HxString`,
+    while metal may use native Rust `String`. A portable `hxrt` helper that throws a Haxe String must
+    box `HxString`; boxing native `String` makes `catch (message:String)` miss and rethrow the error.
+- Spawned-thread lifecycle gotcha: registry removal must be owned by an RAII guard covering both the
+  job and its optional EventLoop. Ordinary cleanup after a callback is skipped by Haxe throws and Rust
+  unwinds, leaving a dead thread addressable and leaking its queue.
+- EventLoop transition gotcha: advance/reinsert repeating timers before invoking callbacks, outside the
+  scheduler lock. A callback throw must not silently delete its repeat; self-cancel must still remove
+  the pre-rescheduled entry. `runPromised` must validate and consume exactly one prior `promise` before
+  enqueue, rejecting underflow without changing queue state.
 - Reflection registry gotcha: Haxe runtime names use `package + declaration name`; a secondary type's
   containing module is not part of its runtime name (`sample.Secondary`, not
   `sample.Primary.Secondary`). Keep admitted `Type.resolveClass` / `resolveEnum`, dynamic name lookup,

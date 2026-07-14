@@ -44,12 +44,12 @@ The repository verified the audit against the reviewed tree before creating foll
 
 | Area | Verified state | Owner |
 | --- | --- | --- |
-| Public compatibility authority | Schema v2 inventories 312 shipped/importable Haxe declarations and their public operations across the installed class-path sources. It protects normalized signatures, constructors, defaults, generic bounds, direct/transitive shipped types, metadata/define grammar, lifecycle state, and validated evidence IDs. The compiler-owned boundary now seals every internal helper root while preserving the explicitly classified public injection shim; admitted APIs cannot close over candidate, experimental, or internal transitive types. Candidate status remains distinct from stable admission. | `.2` and `.3` complete |
+| Public compatibility authority | Schema v2 inventories 318 shipped/importable Haxe declarations and 1,541 public operations across the installed class-path sources. It protects normalized signatures, constructors, defaults, generic bounds, direct/transitive shipped types, metadata/define grammar, lifecycle state, and validated evidence IDs. The compiler-owned boundary now seals every internal helper root while preserving the explicitly classified public injection shim; admitted APIs cannot close over candidate, experimental, or internal transitive types. Candidate status remains distinct from stable admission. | `.2` and `.3` complete |
 | Portable `Sys` and standard I/O failure behavior | Admitted core path/process failures now cross a catchable Haxe string boundary, standard-stream failures use typed `haxe.io.Error`, and stdin EOF remains distinct from read errors. `Sys.cpuTime()` throws explicitly and remains experimental until a real process CPU clock is implemented; non-Windows concurrent `Sys.putEnv` remains experimental rather than receiving a false safety promise. | `haxe_rust-p6hs.4` complete |
 | Reflection and call stacks | The selected closed-world `Type.*` name/resolve/constructor-list operations now use a deterministic compiler-generated registry with Haxe-oracle semantics and no `todo!()` or sentinel output. Dynamic construction is excluded: direct application calls receive `HXRS-REFLECTION-UNSUPPORTED`, while retained upstream `haxe.Unserializer` branches throw a Haxe-catchable operation-specific error. `CallStack` names/signatures are a qualified API-shape candidate; current empty contents, native frames, source mapping, and exact formatting are explicitly not admitted. The targeted contract, complete repository harness, package smoke, and independent application pressure test are green. | `haxe_rust-p6hs.5` complete |
-| `HxRef` lifecycle | The safe `Arc` plus lock design remains sound, but strong cycles are not tracing-collected and payload/guard qualifications need executable stable-contract evidence. | `haxe_rust-p6hs.6` |
-| Native lock callbacks | Mutex/RwLock callbacks execute while the same non-reentrant guard is held, so same-handle reentry can deadlock. | `haxe_rust-p6hs.7` |
-| Threads and EventLoop | Thread registration and scheduler transitions are not fully unwind-safe when a callback throws or panics. | `haxe_rust-p6hs.8` |
+| `HxRef` lifecycle | The safe representation remains opaque. Executable evidence now protects shared identity, alias-visible mutation, final-owner cleanup for acyclic values, deliberate strong-cycle retention and explicit break behavior, plus stable Send/Sync diagnostic identifiers at known thread crossings. Strong cycles remain outside tracing-GC guarantees; no collector or new runtime surface was added. | `haxe_rust-p6hs.6` complete |
+| Native lock callbacks | Same-handle mutex/RwLock callback reentry now throws the catchable `HXRT-LOCK-REENTRANCY` error before acquisition, including read/write upgrade shapes. The real guard remains held, different-handle nesting remains valid, and RAII clears the callback marker after normal return or unwind. | `haxe_rust-p6hs.7` complete |
+| Threads and EventLoop | Spawned jobs now own registry cleanup through RAII across normal return, Haxe throw, and Rust unwind. Detached uncaught Haxe errors terminate only the child; dead sends fail catchably. Repeats advance before callbacks, cancellation can suppress later due work, and unmatched promised delivery is rejected before enqueue. The isolated subprocess contract covers cleanup stress, callback throws, cancellation, and promise balance with hard timeouts. | `haxe_rust-p6hs.8` |
 | Async lifecycle | The current preview bridge does not yet own a complete cancellation, join/drop, panic, shutdown, nested-runtime, and adapter-scoping contract. It may remain experimental instead of blocking narrow `1.0`. | `haxe_rust-p6hs.9` |
 | Structured Cargo metadata | `@:rustCargo` does not yet reject extra arguments or unknown object fields as a closed stable grammar. | `haxe_rust-p6hs.10` |
 | Rust floor and dependency resolution | Exact-minimum CI proves the checked graph and generated `rust-version`, but not future empty-cache resolution across the representative feature graph. | `haxe_rust-p6hs.11` |
@@ -63,7 +63,7 @@ The repository verified the audit against the reviewed tree before creating foll
 - Broad runtime reflection remains experimental. Unsupported application-authored dynamic
   construction is a stable compile-time error, while unavoidable upstream generic branches remain
   compilable and fail catchably when reached; neither path emits sentinels or `todo!()` output.
-- `rust_async`, EventLoop/pool breadth, UDP, TLS, MySQL runtime, broad SQLite/network behavior,
+- `rust_async`, broader EventLoop/MainLoop/pool semantics, UDP, TLS, MySQL runtime, broad SQLite/network behavior,
   raw Rust, and custom Cargo ownership may remain experimental or narrowly qualified.
 - Empty `CallStack` contents may remain outside the stable promise if the API/content distinction is
   explicit. Full source mapping is an operability improvement, not automatically a narrow-`1.0`
@@ -106,8 +106,8 @@ Current production use remains appropriate when all of the following are true:
 - used language/std operations are inside the documented evidence-backed set;
 - every used file, process, network, TLS, DB, thread, or async edge has application-specific tests;
 - the application does not rely on dynamic class/enum construction, unlisted `Type.*` reflection,
-  useful native call stacks,
-  same-handle native lock callback reentry, or unproven async cancellation/shutdown;
+  useful native call stacks, successful same-handle native lock callback reentry (it is
+  deterministically rejected), broader scheduler parity, or unproven async cancellation/shutdown;
 - admitted core `Sys` and standard-stream failures are Haxe-catchable, while every additional file,
   process, network, TLS, DB, thread, or async failure path used by the application still has its own
   runtime evidence;
@@ -125,8 +125,9 @@ The active Beads graph is:
    (foundation implemented).
 2. `haxe_rust-p6hs.3` — package-wide public/internal boundary closure (foundation implemented).
 3. `haxe_rust-p6hs.4` — portable core `Sys`/standard-stream failure behavior (implemented); `.5` —
-   closed-world reflection and CallStack qualification (implemented); `.6` through `.10` — next:
-   fix or explicitly de-admit the selected lifecycle, async, and structured-metadata surfaces.
+   closed-world reflection and CallStack qualification (implemented); `.6` through `.8` — HxRef,
+   native-lock, and thread/EventLoop lifecycle contracts (implemented); `.9` and `.10` — next:
+   explicitly scope async and close the selected structured-metadata surface.
 4. `haxe_rust-p6hs.11` through `.13` — fresh MSRV resolution, CI input identity, vendor/license
    governance.
 5. `haxe_rust-p6hs.14` — exact frozen-RC evidence plus independent major-1 GO/NO-GO.

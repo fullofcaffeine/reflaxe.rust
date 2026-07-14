@@ -41,13 +41,19 @@ What that means:
 - real OS-thread execution exists,
 - admitted shared values use a thread-safe handle model when their owning API and payload bounds
   permit crossing; `HxRef<T>` is not blanket proof for arbitrary native `T`,
-- message passing and synchronization primitives are implemented and used in CI-backed examples.
+- message passing and synchronization primitives are implemented and used in CI-backed examples,
+- spawned-thread registrations are removed after normal return, an uncaught Haxe throw, or a Rust
+  unwind; sends after removal throw a catchable String beginning with `HXRT-THREAD-NOT-ALIVE`,
+- because `sys.thread.Thread` exposes no join/result channel, an uncaught Haxe callback terminates
+  only that child and writes a best-effort stderr diagnostic beginning with
+  `HXRT-THREAD-UNCAUGHT`. The identifier and trigger are protected; exact payload prose is not.
 
 Primary evidence:
 
 - `examples/sys_thread_smoke`
 - `examples/thread_pool_smoke`
 - `npm run test:hxref-lifecycle`
+- `npm run test:thread-event-loop-lifecycle`
 - `docs/hxref-lifecycle.md`
 - Tier1/Tier2 stdlib sweep coverage
 - full harness / Windows smoke coverage
@@ -66,6 +72,7 @@ Primary evidence:
 - `test/snapshot/sys_thread_event_loop`
 - `test/snapshot/sys_thread_event_loop_repeat_cancel`
 - `test/semantic_diff/sys_thread_event_loop`
+- `npm run test:thread-event-loop-lifecycle`
 - `examples/sys_thread_smoke`
 
 What is now included in that stable Rust-target proof:
@@ -73,7 +80,14 @@ What is now included in that stable Rust-target proof:
 - direct loop progression and queued work,
 - promised work scheduling,
 - repeating callback registration,
-- self-cancel-from-callback behavior for `repeat(...)/cancel(...)`.
+- self-cancel-from-callback behavior for `repeat(...)/cancel(...)`,
+- repeating callbacks are rescheduled before execution, so a caught callback throw does not
+  silently delete the repeat; cancel-then-throw remains cancelled,
+- `runPromised(...)` consumes exactly one prior `promise()` and otherwise throws the catchable
+  `HXRT-EVENTLOOP-PROMISE-UNDERFLOW` String before queueing anything.
+
+These guarantees do not promise scheduler fairness, blanket `haxe.MainLoop` parity, or exact
+uncaught-exception formatting.
 
 ### `sys.thread.Deque` and thread-pool helpers
 

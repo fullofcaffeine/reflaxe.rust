@@ -13,6 +13,8 @@ const weeklyPath = path.join(root, '.github', 'workflows', 'weekly-ci-evidence.y
 const portableSysScript = path.join(root, 'scripts', 'ci', 'check-portable-sys-failures.py')
 const lockReentrancyScript = path.join(root, 'scripts', 'ci', 'check-native-lock-reentrancy.py')
 const lockReentrancyFixture = path.join(root, 'test', 'runtime_e2e', 'native_lock_reentrancy', 'Main.hx')
+const threadLifecycleScript = path.join(root, 'scripts', 'ci', 'check-thread-event-loop-lifecycle.py')
+const threadLifecycleFixture = path.join(root, 'test', 'runtime_e2e', 'thread_event_loop_lifecycle', 'Main.hx')
 const pythonToolCommands = path.join(root, 'scripts', 'ci', 'python_tool_commands.py')
 const windowsSmokePath = path.join(root, 'scripts', 'ci', 'windows-smoke.sh')
 
@@ -54,10 +56,38 @@ const main = () => {
     /test:native-lock-reentrancy/,
     'the full compiler harness must execute the native lock reentrancy contract'
   )
+  assert(fs.existsSync(threadLifecycleScript), 'the thread/EventLoop lifecycle subprocess harness must exist')
+  assert(fs.existsSync(threadLifecycleFixture), 'the thread/EventLoop lifecycle Haxe fixture must exist')
+  requireMatch(
+    harness,
+    /test:thread-event-loop-lifecycle/,
+    'the full compiler harness must execute the thread/EventLoop lifecycle contract'
+  )
   const lockContract = fs.readFileSync(lockReentrancyScript, 'utf8')
   const portableSysContract = fs.readFileSync(portableSysScript, 'utf8')
   requireMatch(lockContract, /TIMEOUT_SECONDS\s*=\s*5/, 'native lock reentrancy cases require a hard process timeout')
   requireMatch(lockContract, /HXRT-LOCK-REENTRANCY/, 'native lock reentrancy must assert the stable runtime error identifier')
+  const threadLifecycleContract = fs.readFileSync(threadLifecycleScript, 'utf8')
+  requireMatch(
+    threadLifecycleContract,
+    /TIMEOUT_SECONDS\s*=\s*8/,
+    'thread/EventLoop lifecycle cases require a hard process timeout'
+  )
+  requireMatch(
+    threadLifecycleContract,
+    /HXRT-THREAD-NOT-ALIVE/,
+    'dead-thread sends must assert the stable runtime error identifier'
+  )
+  requireMatch(
+    threadLifecycleContract,
+    /HXRT-EVENTLOOP-PROMISE-UNDERFLOW/,
+    'unmatched runPromised must assert the stable runtime error identifier'
+  )
+  requireMatch(
+    threadLifecycleContract,
+    /project_haxe_command/,
+    'thread/EventLoop Windows Python must launch the project Haxe shim through the shared tool contract'
+  )
   requireMatch(
     lockContract,
     /project_haxe_command/,
@@ -76,6 +106,11 @@ const main = () => {
     windowsSmoke,
     /check-native-lock-reentrancy\.py/,
     'the curated Windows lane must execute the platform-independent native lock contract'
+  )
+  requireMatch(
+    windowsSmoke,
+    /check-thread-event-loop-lifecycle\.py/,
+    'the curated Windows lane must execute the platform-independent thread lifecycle contract'
   )
   const verifier = fs.readFileSync(verifierPath, 'utf8')
   requireMatch(

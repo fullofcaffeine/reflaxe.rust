@@ -360,6 +360,7 @@
       "label": "Thread/EventLoop/thread-pool scheduler proof",
       "scope": "Direct `sys.thread.EventLoop`, thread-pool helpers, and narrower MainLoop proof on the Rust target",
       "evidence": [
+        "test/runtime_e2e/thread_event_loop_lifecycle",
         "test/snapshot/sys_thread_event_loop",
         "test/snapshot/sys_thread_event_loop_repeat_cancel",
         "test/snapshot/sys_thread_deque_basic",
@@ -370,6 +371,7 @@
         "examples/thread_pool_smoke"
       ],
       "commands": [
+        "npm run test:thread-event-loop-lifecycle",
         "bash test/run-snapshots.sh --case sys_thread_event_loop",
         "bash test/run-snapshots.sh --case sys_thread_event_loop_repeat_cancel",
         "bash test/run-snapshots.sh --case sys_thread_deque_basic",
@@ -379,7 +381,7 @@
         "bash scripts/ci/windows-smoke.sh",
         "npm run test:all"
       ],
-      "notes": "Direct EventLoop ops now include repeating callback `repeat(...)/cancel(...)` proof, and `Deque`, `FixedThreadPool`, and `ElasticThreadPool` have Rust-target smoke proof. Read `docs/concurrency-posture.md` for the canonical stable/preview/caveat classification. Broader `haxe.MainLoop` / `haxe.EntryPoint` semantics are still not claimed as `--interp`-backed semantic parity."
+      "notes": "Spawned-thread cleanup, dead-send rejection, repeat callback unwind/cancel state, and promise balance have isolated target-process proof. Direct EventLoop ops also include repeating callback `repeat(...)/cancel(...)` snapshots, and `Deque`, `FixedThreadPool`, and `ElasticThreadPool` have Rust-target smoke proof. Read `docs/concurrency-posture.md` for the canonical stable/preview/caveat classification. Broader `haxe.MainLoop` / `haxe.EntryPoint` semantics are still not claimed as `--interp`-backed semantic parity."
     },
     {
       "id": "sys-db-native-environment",

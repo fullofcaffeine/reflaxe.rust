@@ -23,7 +23,8 @@ use crate::dynamic::Dynamic;
 use crate::{dynamic, exception};
 use parking_lot::{Condvar, Mutex as ParkMutex};
 use std::cell::Cell;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
+use std::io::Write;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, OnceLock};
@@ -31,8 +32,16 @@ use std::time::Duration;
 use std::time::Instant;
 
 fn throw_msg(msg: &str) -> ! {
-    exception::throw(dynamic::from(String::from(msg)))
+    exception::throw(dynamic::from(crate::string::HxString::from(msg)))
 }
+
+const THREAD_NOT_ALIVE_ERROR: &str = "HXRT-THREAD-NOT-ALIVE: thread is not alive";
+const THREAD_SPAWN_ERROR: &str = "HXRT-THREAD-SPAWN";
+const THREAD_UNCAUGHT_ERROR: &str = "HXRT-THREAD-UNCAUGHT";
+const EVENT_LOOP_PROMISE_UNDERFLOW_ERROR: &str =
+    "HXRT-EVENTLOOP-PROMISE-UNDERFLOW: runPromised requires one unmatched promise";
+const EVENT_LOOP_PROMISE_OVERFLOW_ERROR: &str =
+    "HXRT-EVENTLOOP-PROMISE-OVERFLOW: promise count exceeded the runtime limit";
 
 // ---- Threads + messages ----------------------------------------------------
 
@@ -96,6 +105,88 @@ fn remove_thread_state(id: i32) {
     map.remove(&id);
 }
 
+/// Own a spawned thread's registration for exactly the callback/event-loop lifetime.
+///
+/// Why
+/// - A Haxe `throw` and an unexpected Rust panic both unwind the spawned OS thread.
+/// - Ordinary cleanup after the callback is skipped during unwind, leaving a dead thread in the
+///   global registry and accepting messages that can never be read.
+///
+/// What
+/// - Removes one non-main thread id from the registry when the registered execution scope ends.
+///
+/// How
+/// - Rust drops this guard on normal return and during panic unwinding. It deliberately owns no
+///   callback or queue value, so cleanup cannot retain application state.
+struct ThreadRegistrationGuard {
+    id: i32,
+}
+
+impl ThreadRegistrationGuard {
+    fn new(id: i32) -> Self {
+        Self { id }
+    }
+}
+
+impl Drop for ThreadRegistrationGuard {
+    fn drop(&mut self) {
+        remove_thread_state(self.id);
+    }
+}
+
+/// Report an uncaught Haxe exception without converting a child-only failure into a Rust panic.
+///
+/// The public `Thread` API has no join/result channel, so an uncaught callback exception terminates
+/// only that child. Reporting is best-effort: a broken stderr must not panic while handling another
+/// failure. The identifier is stable; the payload's human-readable formatting is not.
+fn report_uncaught_thread_exception(error: &Dynamic) {
+    let stderr = std::io::stderr();
+    let mut handle = stderr.lock();
+    let _ = writeln!(handle, "[{THREAD_UNCAUGHT_ERROR}] {error}");
+}
+
+/// Run one registered spawned-thread lifecycle.
+///
+/// Why
+/// - Plain threads and event-loop threads need identical liveness and uncaught-exception behavior.
+///
+/// What
+/// - Installs the thread-local id, owns the registry guard, runs the job, optionally drains the
+///   thread EventLoop, and reports an uncaught Haxe exception.
+///
+/// How
+/// - `exception::catch_unwind` consumes only Haxe throw payloads. A non-Haxe Rust panic is resumed,
+///   while `ThreadRegistrationGuard` still removes the dead registration during unwind.
+/// - The guard scope ends before best-effort diagnostic I/O, so reporting cannot extend liveness.
+fn run_registered_thread(id: i32, job: HxRc<dyn Fn() + Send + Sync>, with_event_loop: bool) {
+    CURRENT_THREAD_ID.with(|current| current.set(id));
+    let outcome = {
+        let _registration = ThreadRegistrationGuard::new(id);
+        exception::catch_unwind(|| {
+            job();
+            if with_event_loop {
+                event_loop_loop(id);
+            }
+        })
+    };
+    if let Err(error) = outcome {
+        report_uncaught_thread_exception(&error);
+    }
+}
+
+fn spawn_registered_thread(job: HxRc<dyn Fn() + Send + Sync>, with_event_loop: bool) -> i32 {
+    let id = NEXT_THREAD_ID.fetch_add(1, Ordering::Relaxed);
+    let _ = ensure_thread_state(id);
+    let spawn = std::thread::Builder::new().spawn(move || {
+        run_registered_thread(id, job, with_event_loop);
+    });
+    if let Err(error) = spawn {
+        remove_thread_state(id);
+        throw_msg(&format!("{THREAD_SPAWN_ERROR}: {error}"));
+    }
+    id
+}
+
 pub fn thread_current_id() -> i32 {
     CURRENT_THREAD_ID.with(|c| c.get())
 }
@@ -105,15 +196,7 @@ pub fn thread_spawn(job: HxDynRef<dyn Fn() + Send + Sync>) -> i32 {
         Some(rc) => rc.clone(),
         None => throw_msg("Null Access"),
     };
-    let id = NEXT_THREAD_ID.fetch_add(1, Ordering::Relaxed);
-    let _ = ensure_thread_state(id);
-    let job2 = job.clone();
-    std::thread::spawn(move || {
-        CURRENT_THREAD_ID.with(|c| c.set(id));
-        job2();
-        remove_thread_state(id);
-    });
-    id
+    spawn_registered_thread(job, false)
 }
 
 pub fn thread_spawn_with_event_loop(job: HxDynRef<dyn Fn() + Send + Sync>) -> i32 {
@@ -121,16 +204,7 @@ pub fn thread_spawn_with_event_loop(job: HxDynRef<dyn Fn() + Send + Sync>) -> i3
         Some(rc) => rc.clone(),
         None => throw_msg("Null Access"),
     };
-    let id = NEXT_THREAD_ID.fetch_add(1, Ordering::Relaxed);
-    let _ = ensure_thread_state(id);
-    let job2 = job.clone();
-    std::thread::spawn(move || {
-        CURRENT_THREAD_ID.with(|c| c.set(id));
-        job2();
-        event_loop_loop(id);
-        remove_thread_state(id);
-    });
-    id
+    spawn_registered_thread(job, true)
 }
 
 pub fn thread_send_message(thread_id: i32, msg: Dynamic) {
@@ -139,7 +213,7 @@ pub fn thread_send_message(thread_id: i32, msg: Dynamic) {
         map.get(&thread_id).cloned()
     };
     let Some(state) = state else {
-        throw_msg("Thread is not alive");
+        throw_msg(THREAD_NOT_ALIVE_ERROR);
     };
     let mut q = state.queue.lock();
     q.push_back(msg);
@@ -177,9 +251,8 @@ struct RegularEvent {
 #[derive(Default)]
 struct EventLoopState {
     one_time: VecDeque<HxRc<dyn Fn() + Send + Sync>>,
-    promised: i32,
+    promised: u32,
     regular: Vec<RegularEvent>, // kept sorted by `next_run`
-    cancelled: HashSet<u64>,
 }
 
 fn with_thread_state_or_throw<R>(thread_id: i32, f: impl FnOnce(&Arc<ThreadState>) -> R) -> R {
@@ -188,7 +261,7 @@ fn with_thread_state_or_throw<R>(thread_id: i32, f: impl FnOnce(&Arc<ThreadState
         map.get(&thread_id).cloned()
     };
     let Some(state) = state else {
-        throw_msg("Thread is not alive");
+        throw_msg(THREAD_NOT_ALIVE_ERROR);
     };
     f(&state)
 }
@@ -196,7 +269,11 @@ fn with_thread_state_or_throw<R>(thread_id: i32, f: impl FnOnce(&Arc<ThreadState
 pub fn event_loop_promise(thread_id: i32) {
     with_thread_state_or_throw(thread_id, |state| {
         let mut st = state.events.lock();
-        st.promised += 1;
+        let Some(next) = st.promised.checked_add(1) else {
+            drop(st);
+            throw_msg(EVENT_LOOP_PROMISE_OVERFLOW_ERROR);
+        };
+        st.promised = next;
     });
 }
 
@@ -219,6 +296,10 @@ pub fn event_loop_run_promised(thread_id: i32, event: HxDynRef<dyn Fn() + Send +
     };
     with_thread_state_or_throw(thread_id, |state| {
         let mut st = state.events.lock();
+        if st.promised == 0 {
+            drop(st);
+            throw_msg(EVENT_LOOP_PROMISE_UNDERFLOW_ERROR);
+        }
         st.one_time.push_back(event);
         st.promised -= 1;
         state.events_cv.notify_one();
@@ -265,7 +346,7 @@ pub fn event_loop_cancel(thread_id: i32, event_id: i32) {
     with_thread_state_or_throw(thread_id, |state| {
         let mut st = state.events.lock();
         st.regular.retain(|e| e.id != id);
-        st.cancelled.insert(id);
+        state.events_cv.notify_one();
     });
 }
 
@@ -277,67 +358,64 @@ pub fn event_loop_cancel(thread_id: i32, event_id: i32) {
 /// - `-3.0` => AnyTime(null) (promised events exist, but no scheduled time)
 /// - `>= 0` => At(time) in seconds since program start
 pub fn event_loop_progress(thread_id: i32) -> f64 {
-    let mut to_run: Vec<HxRc<dyn Fn() + Send + Sync>> = Vec::new();
-    let mut due_regular: Vec<RegularEvent> = Vec::new();
+    let mut regular_to_run: Vec<(u64, HxRc<dyn Fn() + Send + Sync>)> = Vec::new();
     let mut next_at: f64 = -1.0;
-    let mut promised: i32 = 0;
+    let mut promised: u32 = 0;
     let now = now_seconds();
 
     with_thread_state_or_throw(thread_id, |state| {
         let mut st = state.events.lock();
 
-        // Drain regular events due.
-        while let Some(first) = st.regular.first() {
-            if first.next_run > now {
-                break;
-            }
-            let ev = st.regular.remove(0);
-            to_run.push(ev.callback.clone());
-            due_regular.push(ev);
+        // Advance every due repeat exactly once before callbacks run. This mirrors the upstream
+        // Haxe EventLoop transition: a callback throw propagates, but does not silently delete its
+        // repeating registration. Advancing from the prior deadline preserves cadence without
+        // running the same overdue event more than once in this progress pass.
+        let due_count = st
+            .regular
+            .iter()
+            .take_while(|event| event.next_run <= now)
+            .count();
+        for event in st.regular.iter_mut().take(due_count) {
+            regular_to_run.push((event.id, event.callback.clone()));
+            event.next_run += event.interval;
         }
-
-        // Drain one-time events.
-        while let Some(ev) = st.one_time.pop_front() {
-            to_run.push(ev);
-        }
-
-        promised = st.promised;
-        if let Some(first) = st.regular.first() {
-            next_at = first.next_run;
-        } else {
-            next_at = -1.0;
-        }
+        st.regular
+            .sort_by(|left, right| left.next_run.total_cmp(&right.next_run));
     });
 
-    for ev in to_run.iter() {
-        ev();
-    }
-
-    if !due_regular.is_empty() {
-        with_thread_state_or_throw(thread_id, |state| {
-            let mut st = state.events.lock();
-            let reschedule_at = now_seconds();
-            for mut ev in due_regular.drain(..) {
-                if st.cancelled.remove(&ev.id) {
-                    continue;
-                }
-                ev.next_run = reschedule_at + ev.interval;
-                let idx = st
-                    .regular
-                    .iter()
-                    .position(|x| ev.next_run < x.next_run)
-                    .unwrap_or(st.regular.len());
-                st.regular.insert(idx, ev);
-            }
-            if let Some(first) = st.regular.first() {
-                next_at = first.next_run;
-            } else {
-                next_at = -1.0;
-            }
+    for (event_id, event) in regular_to_run.iter() {
+        let still_registered = with_thread_state_or_throw(thread_id, |state| {
+            state
+                .events
+                .lock()
+                .regular
+                .iter()
+                .any(|candidate| candidate.id == *event_id)
         });
+        if still_registered {
+            event();
+        }
     }
 
-    if !to_run.is_empty() {
+    let mut one_time_to_run: Vec<HxRc<dyn Fn() + Send + Sync>> = Vec::new();
+    with_thread_state_or_throw(thread_id, |state| {
+        let mut st = state.events.lock();
+        while let Some(event) = st.one_time.pop_front() {
+            one_time_to_run.push(event);
+        }
+        promised = st.promised;
+        next_at = st
+            .regular
+            .first()
+            .map(|event| event.next_run)
+            .unwrap_or(-1.0);
+    });
+
+    for event in one_time_to_run.iter() {
+        event();
+    }
+
+    if !regular_to_run.is_empty() || !one_time_to_run.is_empty() {
         return -2.0;
     }
     if next_at >= 0.0 {
@@ -690,6 +768,31 @@ mod tests {
     use super::*;
     use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering as AtomicOrdering};
 
+    fn test_thread_id() -> i32 {
+        let id = NEXT_THREAD_ID.fetch_add(1, Ordering::Relaxed);
+        let _ = ensure_thread_state(id);
+        id
+    }
+
+    fn assert_haxe_error_prefix(error: Dynamic, prefix: &str) {
+        let message = error.to_haxe_string();
+        assert!(
+            message.starts_with(prefix),
+            "expected error prefix {prefix:?}, got {message:?}"
+        );
+    }
+
+    #[test]
+    fn thread_registration_guard_removes_state_on_rust_unwind() {
+        let id = test_thread_id();
+        let unwind = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _registration = ThreadRegistrationGuard::new(id);
+            panic!("injected child panic");
+        }));
+        assert!(unwind.is_err());
+        assert!(!threads().lock().contains_key(&id));
+    }
+
     #[test]
     fn thread_spawn_can_send_to_main_queue() {
         let job_rc: HxRc<dyn Fn() + Send + Sync> = HxRc::new(|| {
@@ -766,6 +869,108 @@ mod tests {
         assert_eq!(event_loop_progress(tid), -1.0);
         assert_eq!(hits.load(AtomicOrdering::SeqCst), 2);
 
+        remove_thread_state(tid);
+    }
+
+    #[test]
+    fn event_loop_repeat_survives_haxe_throw_and_can_cancel_next_run() {
+        let tid = test_thread_id();
+        let hits = HxRc::new(AtomicUsize::new(0));
+        let event_id = HxRef::new(None::<i32>);
+        let hits2 = hits.clone();
+        let event_id2 = event_id.clone();
+        let event_rc: HxRc<dyn Fn() + Send + Sync> = HxRc::new(move || {
+            let seen = hits2.fetch_add(1, AtomicOrdering::SeqCst) + 1;
+            if seen == 1 {
+                exception::throw(dynamic::from(String::from("repeat failure")));
+            }
+            let id = (*event_id2.borrow()).expect("repeat id must be initialized");
+            event_loop_cancel(tid, id);
+        });
+        let id = event_loop_repeat(tid, HxDynRef::new(event_rc), 1);
+        *event_id.borrow_mut() = Some(id);
+
+        std::thread::sleep(Duration::from_millis(5));
+        let first = exception::catch_unwind(|| event_loop_progress(tid));
+        assert_haxe_error_prefix(
+            first.expect_err("first repeat callback must throw"),
+            "repeat failure",
+        );
+
+        std::thread::sleep(Duration::from_millis(5));
+        assert_eq!(event_loop_progress(tid), -2.0);
+        assert_eq!(hits.load(AtomicOrdering::SeqCst), 2);
+        assert_eq!(event_loop_progress(tid), -1.0);
+        remove_thread_state(tid);
+    }
+
+    #[test]
+    fn event_loop_cancel_then_throw_leaves_no_regular_state() {
+        let tid = test_thread_id();
+        let event_id = HxRef::new(None::<i32>);
+        let event_id2 = event_id.clone();
+        let event_rc: HxRc<dyn Fn() + Send + Sync> = HxRc::new(move || {
+            let id = (*event_id2.borrow()).expect("repeat id must be initialized");
+            event_loop_cancel(tid, id);
+            exception::throw(dynamic::from(String::from("cancel failure")));
+        });
+        let id = event_loop_repeat(tid, HxDynRef::new(event_rc), 1);
+        *event_id.borrow_mut() = Some(id);
+
+        std::thread::sleep(Duration::from_millis(5));
+        let thrown = exception::catch_unwind(|| event_loop_progress(tid));
+        assert_haxe_error_prefix(
+            thrown.expect_err("cancel callback must throw"),
+            "cancel failure",
+        );
+        let state = ensure_thread_state(tid);
+        assert!(state.events.lock().regular.is_empty());
+        remove_thread_state(tid);
+    }
+
+    #[test]
+    fn event_loop_run_promised_rejects_underflow_without_queueing() {
+        let tid = test_thread_id();
+        let ran = HxRc::new(AtomicBool::new(false));
+        let ran2 = ran.clone();
+        let event_rc: HxRc<dyn Fn() + Send + Sync> = HxRc::new(move || {
+            ran2.store(true, AtomicOrdering::SeqCst);
+        });
+
+        let underflow = exception::catch_unwind(|| {
+            event_loop_run_promised(tid, HxDynRef::new(event_rc));
+        });
+        assert_haxe_error_prefix(
+            underflow.expect_err("unmatched runPromised must fail"),
+            "HXRT-EVENTLOOP-PROMISE-UNDERFLOW",
+        );
+        assert_eq!(event_loop_progress(tid), -1.0);
+        assert!(!ran.load(AtomicOrdering::SeqCst));
+        let state = ensure_thread_state(tid);
+        let events = state.events.lock();
+        assert_eq!(events.promised, 0);
+        assert!(events.one_time.is_empty());
+        drop(events);
+        remove_thread_state(tid);
+    }
+
+    #[test]
+    fn event_loop_promised_callback_throw_consumes_exactly_one_promise() {
+        let tid = test_thread_id();
+        event_loop_promise(tid);
+        let event_rc: HxRc<dyn Fn() + Send + Sync> = HxRc::new(move || {
+            exception::throw(dynamic::from(String::from("promised failure")));
+        });
+        event_loop_run_promised(tid, HxDynRef::new(event_rc));
+
+        let thrown = exception::catch_unwind(|| event_loop_progress(tid));
+        assert_haxe_error_prefix(
+            thrown.expect_err("promised callback must throw"),
+            "promised failure",
+        );
+        assert_eq!(event_loop_progress(tid), -1.0);
+        let state = ensure_thread_state(tid);
+        assert_eq!(state.events.lock().promised, 0);
         remove_thread_state(tid);
     }
 

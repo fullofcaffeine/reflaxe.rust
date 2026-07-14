@@ -83,6 +83,12 @@ If those are not true yet, treat adoption as a pilot rather than broad rollout.
    - For `rust.concurrent` callback locks, do not touch the same handle from its callback. HXRT now
      throws `HXRT-LOCK-REENTRANCY` instead of hanging, but applications that take multiple different
      handles across threads must still define and follow one consistent lock order.
+   - A spawned `sys.thread.Thread` that returns or throws is removed from the runtime registry;
+     sending afterward throws `HXRT-THREAD-NOT-ALIVE`. An uncaught Haxe callback terminates only that
+     child and emits the best-effort `HXRT-THREAD-UNCAUGHT` diagnostic.
+   - Keep each `EventLoop.runPromised(...)` paired with one earlier `promise()`. Underflow now throws
+     `HXRT-EVENTLOOP-PROMISE-UNDERFLOW` without queueing work. A repeating callback remains scheduled
+     after a caught throw unless it cancelled itself before throwing.
 5. Change control
    - Tie release decisions to documented readiness criteria plus green CI evidence.
 
