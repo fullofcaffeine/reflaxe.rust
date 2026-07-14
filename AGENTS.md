@@ -257,6 +257,12 @@ Agent policy:
   - Semantic-diff oracle gotcha: `haxe --interp` is not a valid oracle for threaded `sys.thread.EventLoop` / `haxe.EntryPoint` / `haxe.MainLoop` behavior on this target. Use Rust-target snapshot/example smoke for those contracts and downgrade docs accordingly instead of forcing a false semantic-diff parity claim.
 - The generated crate normally includes the bundled runtime crate at `./hxrt` and adds `hxrt = { path = "./hxrt" }` to `Cargo.toml`.
   The exception is proven `-D rust_no_hxrt` output, which must omit the bundled runtime and pass the no-runtime guard.
+- Process-environment mutation safety gotcha: Rust cannot generally make process-wide environment
+  mutation safe on non-Windows hosts after threads or foreign libraries may read the environment.
+  Keep `Sys.putEnv` experimental for stable admission and document it as a provably single-threaded
+  startup operation on those hosts. Do not "solve" this with a mutex that guards only hxrt calls;
+  foreign/runtime readers do not share that lock. Prefer child-process-specific environment APIs in
+  concurrent production code.
 - For class instance semantics, the runtime uses a thread-safe heap (`HxRef<T> = Arc<HxCell<T>>` with `RwLock` interior mutability):
   - concrete calls use `Class::method(&obj, ...)` where methods take `&HxCell<Class>`
   - polymorphic base/interface calls use trait objects (`HxDynRef<dyn ...>`) and `obj.method(...)` dispatch

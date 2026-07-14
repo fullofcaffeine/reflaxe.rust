@@ -165,6 +165,12 @@
       "level": "target-runtime"
     },
     {
+      "id": "test:portable-sys-failures",
+      "kind": "npm-script",
+      "script": "test:portable-sys-failures",
+      "level": "target-runtime"
+    },
+    {
       "id": "test:public-compatibility",
       "kind": "npm-script",
       "script": "test:public-compatibility",
@@ -226,6 +232,7 @@
       "evidenceIds": [
         "file:docs/concurrency-posture.md",
         "file:docs/systems-environment-posture.md",
+        "test:portable-sys-failures",
         "test:public-compatibility"
       ]
     },
@@ -6900,6 +6907,7 @@
           "signature": "@:native (\"set_cwd\") public static function setCwd (path : String) : Void",
           "contract": "internal-helper",
           "evidenceIds": [
+            "test:portable-sys-failures",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -6922,6 +6930,7 @@
           "signature": "@:native (\"command\") public static function command (cmd : String, args : Null < Array < String >>) : Int",
           "contract": "internal-helper",
           "evidenceIds": [
+            "test:portable-sys-failures",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -21257,6 +21266,7 @@
       "signature": "class Sys",
       "contract": "portable-sys-core",
       "evidenceIds": [
+        "test:portable-sys-failures",
         "test:public-compatibility"
       ],
       "directTypeReferences": [
@@ -21282,6 +21292,7 @@
           "signature": "public static function print (v : SysPrintValue) : Void",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:portable-sys-failures",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -21319,6 +21330,7 @@
           "signature": "public static function getEnv (s : String) : Null < String >",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:portable-sys-failures",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -21328,8 +21340,9 @@
           "kind": "function",
           "name": "putEnv",
           "signature": "public static function putEnv (s : String, v : Null < String >) : Void",
-          "contract": "portable-sys-core",
+          "contract": "public-experimental",
           "evidenceIds": [
+            "test:portable-sys-failures",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -21385,6 +21398,7 @@
           "signature": "public static function setCwd (path : String) : Void",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:portable-sys-failures",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -21407,6 +21421,7 @@
           "signature": "public static function command (cmd : String, ? args : Array < String >) : Int",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:portable-sys-failures",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -21438,8 +21453,9 @@
           "kind": "function",
           "name": "cpuTime",
           "signature": "public static function cpuTime () : Float",
-          "contract": "portable-sys-core",
+          "contract": "public-experimental",
           "evidenceIds": [
+            "test:portable-sys-failures",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -22861,6 +22877,7 @@
       "signature": "class Stderr extends haxe.io.Output",
       "contract": "portable-sys-core",
       "evidenceIds": [
+        "test:portable-sys-failures",
         "test:public-compatibility"
       ],
       "directTypeReferences": [
@@ -22905,6 +22922,7 @@
           "signature": "override public function writeBytes (s : Bytes, pos : Int, len : Int) : Int",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:portable-sys-failures",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -22918,6 +22936,7 @@
           "signature": "override public function flush () : Void",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:portable-sys-failures",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -22931,6 +22950,7 @@
       "signature": "class Stdin extends haxe.io.Input",
       "contract": "portable-sys-core",
       "evidenceIds": [
+        "test:portable-sys-failures",
         "test:public-compatibility"
       ],
       "directTypeReferences": [
@@ -22963,6 +22983,7 @@
           "signature": "override public function readByte () : Int",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:portable-sys-failures",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -22989,6 +23010,7 @@
       "signature": "class Stdout extends haxe.io.Output",
       "contract": "portable-sys-core",
       "evidenceIds": [
+        "test:portable-sys-failures",
         "test:public-compatibility"
       ],
       "directTypeReferences": [
@@ -23033,6 +23055,7 @@
           "signature": "override public function writeBytes (s : Bytes, pos : Int, len : Int) : Int",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:portable-sys-failures",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -23046,6 +23069,7 @@
           "signature": "override public function flush () : Void",
           "contract": "portable-sys-core",
           "evidenceIds": [
+            "test:portable-sys-failures",
             "test:public-compatibility"
           ],
           "typeReferences": []

@@ -293,6 +293,23 @@ const bucketDefinitions = [
       'Snapshot-backed generated-shape proof. Helper methods returning or reading generated class payloads propagate required class bounds, while unconstrained Option<T> helpers remain bare.'
   },
   {
+    id: 'portable-sys-failure-boundaries',
+    class: 'targeted_semantic_parity',
+    label: 'Portable Sys and standard-stream failure boundaries',
+    scope: 'Invalid cwd/environment input, direct-spawn failure, broken stdout/stderr, stdin error versus EOF, and explicit cpuTime non-admission',
+    evidence: [
+      'test/semantic_diff/sys_core_failure_paths',
+      'test/runtime_e2e/portable_sys_failures',
+      'runtime/hxrt/src/sys.rs'
+    ],
+    commands: [
+      'python3 test/run-semantic-diff.py --case sys_core_failure_paths',
+      'npm run test:portable-sys-failures'
+    ],
+    notes:
+      'Invalid cwd follows the Haxe oracle. Malformed environment input and direct executable spawn failure are documented Rust-target catchable errors. Real process descriptors prove that broken stdout/stderr are typed haxe.io.Error, stdin read errors are not EOF, and execution continues after each caught failure. Sys.cpuTime remains experimental until a real process CPU clock is implemented.'
+  },
+  {
     id: 'sys-process-failure-paths',
     class: 'targeted_semantic_parity',
     label: 'Process failure / exit behavior',

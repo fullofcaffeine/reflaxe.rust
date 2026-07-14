@@ -16,6 +16,7 @@ import hxrt.sys.NativeSys;
  * How
  * - Implements `writeByte`, `writeBytes`, and `flush` via typed runtime helpers in `hxrt::sys`.
  * - Performs bounds checks in Haxe to match `haxe.io.Output` contract.
+ * - Native write/flush failures throw typed `haxe.io.Error.Custom(...)` values.
  */
 class Stderr extends haxe.io.Output {
 	public function new() {}

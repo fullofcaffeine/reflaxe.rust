@@ -20,6 +20,9 @@ and evidence-backed.
 Production shorthand: use it for controlled production on validated lanes, not as a blanket promise
 that every arbitrary Haxe/std/sys edge behaves identically on every platform. If your app touches
 networking, TLS, DB, processes, or threading, add app-specific smoke tests around those paths.
+Portable core `Sys`/standard-stream failures are Haxe-catchable on the validated lane; `Sys.cpuTime`
+remains explicitly experimental rather than pretending wall time is CPU time, and `Sys.putEnv`
+remains experimental outside a provably single-threaded process-startup boundary on non-Windows.
 The independent 2026-07-13 review rates current bounded production
 `READY_WITH_BOUNDED_SCOPE` and stable `1.0` `NOT_READY`; the verified findings and narrow closure
 program are recorded in the

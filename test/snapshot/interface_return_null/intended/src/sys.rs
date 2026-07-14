@@ -88,7 +88,9 @@ impl Sys {
     }
 
     pub fn cpu_time() -> f64 {
-        return crate::sys::Sys::time();
+        hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(
+            "Sys.cpuTime is experimental on reflaxe.rust: process CPU time is not implemented",
+        )))
     }
 
     pub fn executable_path() -> hxrt::string::HxString {

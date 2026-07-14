@@ -69,7 +69,15 @@ If those are not true yet, treat adoption as a pilot rather than broad rollout.
 3. Boundary hygiene
    - Keep low-level Rust behind typed wrappers.
 4. Failure behavior
-   - Ensure expected IO/process/network failures are catchable and tested.
+   - Ensure expected IO/process/network failures are catchable and tested. The compiler-owned
+     portable `Sys` gate proves invalid cwd, missing direct executables, broken stdout, and the
+     stdin error-versus-EOF boundary; application-specific file/network/process cases remain the
+     adopter's responsibility.
+   - Do not use `Sys.cpuTime` for production measurements yet. It is explicitly experimental and
+     throws until a real process CPU clock is validated on the admitted platforms.
+   - Treat `Sys.putEnv` as startup-only experimental behavior on non-Windows. Once a process may be
+     concurrent, configure child environments through process-specific APIs instead of mutating the
+     process-global environment.
 5. Change control
    - Tie release decisions to documented readiness criteria plus green CI evidence.
 

@@ -31,12 +31,24 @@ Stable posture:
 - `sys.*` stays part of the portable contract on Rust-supported platforms
 - support claims remain explicit about proof depth instead of collapsing everything into a fake
   blanket semantic-parity story
+- admitted `Sys` path/process failures and standard-stream I/O failures cross the Haxe exception
+  boundary instead of terminating through Rust `unwrap()` panics
+- malformed environment names/values are validated before Rust's process-environment API can panic
+- `Sys.putEnv` is experimental rather than stable-candidate: Windows permits process-environment
+  mutation, but on non-Windows Rust cannot guarantee it after threads or foreign environment readers
+  exist; concurrent production code should use child-process-specific environment configuration
+- standard-input EOF remains distinct from a read error, and standard-stream failures use typed
+  `haxe.io.Error.Custom(...)` payloads
+- `Sys.cpuTime` is explicitly experimental and currently throws; it is not admitted until a real
+  process CPU clock is validated on every admitted platform
 
 Primary evidence:
 
 - `docs/feature-support-matrix.md`
 - `docs/semantic-confidence-summary.md`
 - Tier1/Tier2 sweep coverage
+- `test/semantic_diff/sys_core_failure_paths`
+- `npm run test:portable-sys-failures`
 
 ## Targeted parity plus smoke-backed today
 

@@ -40,12 +40,14 @@ std/rust/_std/sys/Http.hx:373
 test/negative/dynamic_field_assignop/Main.hx:3
 test/negative/dynamic_field_unop/Main.hx:3
 test/perf/json/Main.hx # FILE_SCOPE_JUSTIFICATION: Perf fixture intentionally round-trips through haxe.Json.parse Dynamic values to measure JSON runtime overhead.
+test/runtime_e2e/portable_sys_failures/Main.hx # FILE_SCOPE_JUSTIFICATION: Runtime failure fixture uses Dynamic only as the final exception catch-all to prove typed Sys and haxe.io.Error payloads are not replaced by another Haxe-visible value.
 test/semantic_diff/exception_dynamic_payload/Main.hx # FILE_SCOPE_JUSTIFICATION: Semantic diff fixture intentionally throws and catches Dynamic payloads to validate exception boundary behavior.
 test/semantic_diff/exceptions_typed_dynamic/Main.hx # FILE_SCOPE_JUSTIFICATION: Semantic diff fixture intentionally exercises typed and Dynamic exception catch paths.
 test/semantic_diff/json_stringify_replacer/Main.hx:2
 test/semantic_diff/json_stringify_replacer/Main.hx:15
 test/semantic_diff/json_stringify_replacer/Main.hx:20
 test/semantic_diff/reflect_dynamic_receivers/Main.hx # FILE_SCOPE_JUSTIFICATION: Semantic diff fixture intentionally exercises Reflect over Dynamic anon/JSON receivers.
+test/semantic_diff/sys_core_failure_paths/Main.hx # FILE_SCOPE_JUSTIFICATION: Semantic diff fixture uses the upstream-compatible Dynamic exception catch-all to compare recovery and continuation across Haxe and Rust targets.
 test/semantic_diff/sys_net_failure_paths/Main.hx # FILE_SCOPE_JUSTIFICATION: Semantic diff fixture intentionally uses Dynamic catch-all handling for socket failure boundary coverage.
 test/semantic_diff/sys_process_failure_paths/Main.hx # FILE_SCOPE_JUSTIFICATION: Semantic diff fixture intentionally uses Dynamic catch-all handling for process failure boundary coverage.
 test/semantic_diff/typed_catch_subclass/Main.hx # FILE_SCOPE_JUSTIFICATION: Semantic diff fixture intentionally mixes typed catches with Dynamic fallback at the exception boundary.

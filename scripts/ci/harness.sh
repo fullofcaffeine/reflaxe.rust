@@ -413,6 +413,9 @@ run_conformance_group() {
   run_stage "semantic diff (portable)" python3 test/run-semantic-diff.py
   intermediate_cleanup "semantic-diff"
 
+  run_stage "portable Sys failure boundaries" python3 scripts/ci/check-portable-sys-failures.py
+  intermediate_cleanup "portable-sys-failures"
+
   run_stage "semantic diff (lanes)" python3 test/run-semantic-diff.py --suite lanes
   intermediate_cleanup "semantic-diff-lanes"
 

@@ -21,6 +21,7 @@ import hxrt.sys.NativeSys;
  *   on the runtime `Bytes` buffer (`bytes.borrow().as_slice()`) without exposing raw injection
  *   boundaries at this stdlib layer.
  * - Bounds checks are performed in Haxe so behavior matches the `haxe.io.Output` contract.
+ * - Native write/flush failures throw typed `haxe.io.Error.Custom(...)` values.
  */
 class Stdout extends haxe.io.Output {
 	public function new() {}

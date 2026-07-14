@@ -371,6 +371,16 @@ Do not read "production-ready" as "every possible Haxe/std/sys edge is proven on
 support matrix, semantic-confidence evidence, and your own app tests define the real production
 surface.
 
+Core portable `Sys` and standard-stream failures now enter Haxe `try/catch`: invalid cwd and direct
+spawn failures are catchable, broken stdout is a typed `haxe.io.Error`, and stdin errors are not
+reported as EOF. `Sys.cpuTime` is the explicit exception: it remains experimental and throws rather
+than returning the incorrect wall-clock placeholder used by older releases.
+
+`Sys.putEnv` is also experimental for stable admission. It remains usable during single-threaded
+startup, and Windows permits concurrent process-environment mutation, but Rust cannot guarantee
+safe process-wide mutation on non-Windows hosts after threads or foreign environment readers exist.
+Use child-process-specific environment configuration in concurrent production programs.
+
 See [Production Readiness](production-readiness.md), [Feature support matrix](feature-support-matrix.md),
 and [Semantic confidence summary](semantic-confidence-summary.md).
 

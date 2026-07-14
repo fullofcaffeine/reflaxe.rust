@@ -16,6 +16,8 @@ import SysTypes.SysPrintValue;
 	- `@:native("hxrt::sys")` maps this class to the runtime module.
 	- Each function has a concrete Haxe signature so callers remain fully typed after crossing
 	  the unavoidable runtime boundary.
+	- Normal `Sys` errors become catchable Haxe strings; stdin/stdout/stderr errors become typed
+	  `haxe.io.Error.Custom` values. EOF remains a non-error sentinel consumed by `sys.io.Stdin`.
 **/
 @:native("hxrt::sys")
 extern class NativeSys {

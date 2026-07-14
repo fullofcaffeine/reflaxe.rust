@@ -19,10 +19,10 @@ import hxrt.sys.NativeSys;
  * - `readByte` delegates to `hxrt.sys.NativeSys.stdinReadByte()` and converts `-1` to `Eof`.
  * - `readBytes` delegates to `hxrt.sys.NativeSys.stdinReadBytes(...)`, which writes into
  *   runtime `Bytes` storage (`hxrt::bytes::write_from_slice`) and returns `0` on EOF.
+ * - Native read failures throw `haxe.io.Error.Custom(...)`; they are never collapsed into EOF.
  *
  * Notes
- * - This is intentionally minimal (v1 portability). Advanced features like non-blocking reads
- *   and proper error mapping to `haxe.io.Error` can be added later.
+ * - This remains a blocking portable stream. Non-blocking input is outside this contract.
  */
 class Stdin extends haxe.io.Input {
 	public function new() {}

@@ -24,11 +24,11 @@ This summary rolls up the current evidence buckets without pretending that Tier2
 - Portable candidate importable modules: `184`
 - Portable candidate covered in Tier2: `184`
 - Portable candidate missing from Tier2: `0`
-- Portable semantic-diff cases: `34`
+- Portable semantic-diff cases: `35`
 - Lane semantic-diff cases: `2`
 - Snapshot cases: `138`
 - Compile/inventory buckets: `2`
-- Targeted semantic/runtime buckets: `7`
+- Targeted semantic/runtime buckets: `8`
 - Snapshot/smoke-only buckets: `7`
 
 ## Portable Scope
@@ -145,6 +145,18 @@ This summary rolls up the current evidence buckets without pretending that Tier2
   - `npm run test:semantic-diff`
   - `bash test/run-snapshots.sh --case string_substring`
 - Notes: Focused runtime parity on stdlib families that recently moved from stubs/workarounds to real support. String.substring coverage is snapshot-backed generated Rust plus stdout proof for bounded ASCII and start/end swap behavior.
+
+### Portable Sys and standard-stream failure boundaries
+- Class: `targeted_semantic_parity`
+- Scope: Invalid cwd/environment input, direct-spawn failure, broken stdout/stderr, stdin error versus EOF, and explicit cpuTime non-admission
+- Evidence:
+  - `test/semantic_diff/sys_core_failure_paths`
+  - `test/runtime_e2e/portable_sys_failures`
+  - `runtime/hxrt/src/sys.rs`
+- Commands:
+  - `python3 test/run-semantic-diff.py --case sys_core_failure_paths`
+  - `npm run test:portable-sys-failures`
+- Notes: Invalid cwd follows the Haxe oracle. Malformed environment input and direct executable spawn failure are documented Rust-target catchable errors. Real process descriptors prove that broken stdout/stderr are typed haxe.io.Error, stdin read errors are not EOF, and execution continues after each caught failure. Sys.cpuTime remains experimental until a real process CPU clock is implemented.
 
 ### Process failure / exit behavior
 - Class: `targeted_semantic_parity`
@@ -277,7 +289,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
 
 ## Discovered Semantic-Diff Suites
 
-- Portable semantic-diff cases (34): `anonymous_iterator_aliasing`, `anonymous_key_value_aliasing`, `array_index_updates`, `array_key_value_iterator_boundary`, `array_string_element_append`, `bytes_extended_api`, `closure_capture_mutation`, `dynamic_access_iterator_boundary`, `exception_dynamic_payload`, `exceptions_typed_dynamic`, `field_compound_rhs_mutation`, `function_value_mutable_callbacks`, `generic_base_specialization`, `generic_interface_specialization`, `int64_parity`, `iterator_helper_boundary`, `json_stringify_replacer`, `map_key_value_iterator_manual`, `null_string_concat`, `nullable_array_literals`, `polymorphic_field_updates`, `portable_option_result_basics`, `reflect_dynamic_receivers`, `static_field_updates`, `static_property_updates`, `sys_getenv_null`, `sys_http_callback_contract`, `sys_net_failure_paths`, `sys_process_failure_paths`, `this_method_closure`, `typed_catch_interface`, `typed_catch_subclass`, `unicode_string_iterator_boundary`, `virtual_dispatch`
+- Portable semantic-diff cases (35): `anonymous_iterator_aliasing`, `anonymous_key_value_aliasing`, `array_index_updates`, `array_key_value_iterator_boundary`, `array_string_element_append`, `bytes_extended_api`, `closure_capture_mutation`, `dynamic_access_iterator_boundary`, `exception_dynamic_payload`, `exceptions_typed_dynamic`, `field_compound_rhs_mutation`, `function_value_mutable_callbacks`, `generic_base_specialization`, `generic_interface_specialization`, `int64_parity`, `iterator_helper_boundary`, `json_stringify_replacer`, `map_key_value_iterator_manual`, `null_string_concat`, `nullable_array_literals`, `polymorphic_field_updates`, `portable_option_result_basics`, `reflect_dynamic_receivers`, `static_field_updates`, `static_property_updates`, `sys_core_failure_paths`, `sys_getenv_null`, `sys_http_callback_contract`, `sys_net_failure_paths`, `sys_process_failure_paths`, `this_method_closure`, `typed_catch_interface`, `typed_catch_subclass`, `unicode_string_iterator_boundary`, `virtual_dispatch`
 - Lane semantic-diff cases (2): `lane_clean_arithmetic`, `lane_clean_dispatch`
 
 ## Interpretation Rule
