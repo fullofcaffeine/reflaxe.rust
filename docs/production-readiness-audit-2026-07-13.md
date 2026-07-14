@@ -45,7 +45,7 @@ The repository verified the audit against the reviewed tree before creating foll
 | Area | Verified state | Owner |
 | --- | --- | --- |
 | Public compatibility authority | Schema v2 inventories 312 shipped/importable Haxe declarations and their public operations across the installed class-path sources. It protects normalized signatures, constructors, defaults, generic bounds, direct/transitive shipped types, metadata/define grammar, lifecycle state, and validated evidence IDs. The compiler-owned boundary now seals every internal helper root while preserving the explicitly classified public injection shim; admitted APIs cannot close over candidate, experimental, or internal transitive types. Candidate status remains distinct from stable admission. | `.2` and `.3` complete |
-| Portable `Sys` and standard I/O failure behavior | Normal OS failures still reach Rust `unwrap` or are collapsed into EOF/zero in admitted paths. `Sys.cpuTime()` still returns wall-clock time. | `haxe_rust-p6hs.4` |
+| Portable `Sys` and standard I/O failure behavior | Admitted core path/process failures now cross a catchable Haxe string boundary, standard-stream failures use typed `haxe.io.Error`, and stdin EOF remains distinct from read errors. `Sys.cpuTime()` throws explicitly and remains experimental until a real process CPU clock is implemented; non-Windows concurrent `Sys.putEnv` remains experimental rather than receiving a false safety promise. | `haxe_rust-p6hs.4` complete |
 | Reflection and call stacks | Accepted `Type.*` paths still contain sentinel, empty, or reachable `todo!()` behavior. `CallStack` contents remain an explicitly minimal empty implementation. | `haxe_rust-p6hs.5` |
 | `HxRef` lifecycle | The safe `Arc` plus lock design remains sound, but strong cycles are not tracing-collected and payload/guard qualifications need executable stable-contract evidence. | `haxe_rust-p6hs.6` |
 | Native lock callbacks | Mutex/RwLock callbacks execute while the same non-reentrant guard is held, so same-handle reentry can deadlock. | `haxe_rust-p6hs.7` |
@@ -106,8 +106,9 @@ Current production use remains appropriate when all of the following are true:
 - every used file, process, network, TLS, DB, thread, or async edge has application-specific tests;
 - the application does not rely on broad dynamic `Type.*` reflection, useful native call stacks,
   same-handle native lock callback reentry, or unproven async cancellation/shutdown;
-- expected normal OS failures are either outside the used path or covered after the owning runtime
-  fix lands;
+- admitted core `Sys` and standard-stream failures are Haxe-catchable, while every additional file,
+  process, network, TLS, DB, thread, or async failure path used by the application still has its own
+  runtime evidence;
 - long-lived strong object cycles are avoided or explicitly broken;
 - Linux is the full-validation lane, Windows use is limited to named smoke coverage, and macOS is
   treated as local contributor validation only.
@@ -121,8 +122,9 @@ The active Beads graph is:
 1. `haxe_rust-p6hs.2` — package-complete operation/member/signature/transitive compatibility graph
    (foundation implemented).
 2. `haxe_rust-p6hs.3` — package-wide public/internal boundary closure (foundation implemented).
-3. `haxe_rust-p6hs.4` through `.10` — next: fix or explicitly de-admit the selected normal-failure,
-   reflection, lifecycle, async, and structured-metadata surfaces.
+3. `haxe_rust-p6hs.4` — portable core `Sys`/standard-stream failure behavior (implemented); `.5`
+   through `.10` — next: fix or explicitly de-admit the selected reflection, lifecycle, async, and
+   structured-metadata surfaces.
 4. `haxe_rust-p6hs.11` through `.13` — fresh MSRV resolution, CI input identity, vendor/license
    governance.
 5. `haxe_rust-p6hs.14` — exact frozen-RC evidence plus independent major-1 GO/NO-GO.
