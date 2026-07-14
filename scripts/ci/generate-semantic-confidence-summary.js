@@ -248,20 +248,25 @@ const bucketDefinitions = [
     scope: 'High-risk dynamic receiver, reflection, and thrown Dynamic payload paths',
     evidence: [
       'test/semantic_diff/reflect_dynamic_receivers',
+      'test/semantic_diff/type_reflection_registry',
       'test/semantic_diff/exception_dynamic_payload',
       'test/semantic_diff/typed_catch_interface',
       'test/semantic_diff/typed_catch_subclass',
       'test/snapshot/reflect_basic',
       'test/snapshot/reflect_compare_sort',
-      'test/snapshot/catch_dynamic'
+      'test/snapshot/catch_dynamic',
+      'test/runtime_e2e/reflection_framework_failure',
+      'test/negative/type_create_enum_unsupported',
+      'test/negative/type_create_empty_instance_unsupported'
     ],
     commands: [
       'npm run test:semantic-diff',
+      'npm run test:reflection-contract',
       'bash test/run-snapshots.sh --case reflect_basic',
       'bash test/run-snapshots.sh --case reflect_compare_sort',
       'bash test/run-snapshots.sh --case catch_dynamic'
     ],
-    notes: 'Targeted proof only. Emitted non-generic class and interface hierarchies now have subtype-aware typed catch parity; exact-type limits remain for generic classes and payloads without emitted subtype metadata.'
+    notes: 'Targeted proof only. The compiler-generated closed reflection registry covers admitted public non-extern class/enum name resolution, secondary-type runtime names, enum constructor order, null-on-missing, and single evaluation. Dynamic construction is excluded: direct application calls fail with a stable diagnostic and retained framework branches throw a Haxe-catchable operation-specific error. Emitted non-generic class and interface hierarchies have subtype-aware typed catch parity; exact-type limits remain for generic classes and payloads without emitted subtype metadata.'
   },
   {
     id: 'portable-stdlib-runtime-parity',

@@ -37,6 +37,7 @@
     "test:diagnostic-contract:runtime": "bash scripts/ci/check-diagnostic-contract.sh",
     "test:internal-helper-boundary": "REFLAXE_INTERNAL_HELPER_BOUNDARY_ONLY=1 bash scripts/ci/check-metal-policy.sh",
     "test:portable-sys-failures": "python3 scripts/ci/check-portable-sys-failures.py",
+    "test:reflection-contract": "bash scripts/ci/check-reflection-contract.sh",
     "test:rust-toolchain-policy": "node test/scripts/rust-toolchain-policy.test.js",
     "test:rust-toolchain-floor": "bash scripts/ci/check-rust-toolchain-floor.sh",
     "test:generated-report-contract": "bash scripts/ci/check-generated-report-contract.sh",

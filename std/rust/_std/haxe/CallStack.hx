@@ -3,8 +3,20 @@ package haxe;
 /**
 	Elements returned by `CallStack` methods.
 
-	Note: this target currently provides a minimal implementation to satisfy stdlib APIs. A richer
-	stack trace integration can be implemented later by wiring Rust backtraces into `hxrt`.
+	Why
+	- Haxe's public exception and diagnostics APIs expose this enum even when a target cannot yet
+	  recover useful native frames.
+
+	What
+	- The enum name, constructor names, and constructor payload signatures are compatibility
+	  candidates.
+	- The current target does not promise that any constructor will actually appear in captured stack
+	  contents.
+
+	How
+	- `CallStack.callStack()` and `exceptionStack()` currently return empty arrays.
+	- A future qualified backtrace implementation may begin returning these existing constructors;
+	  empty contents are experimental behavior, not a permanent SemVer promise.
 **/
 enum StackItem {
 	CFunction;
@@ -23,10 +35,15 @@ enum StackItem {
 
 	What
 	- Defines the `CallStack` abstract and the `StackItem` enum used by the stdlib.
+	- Protects the Haxe-visible API shape only; native frames, frame fidelity, source mapping, and exact
+	  formatting remain outside the stable candidate.
 
 	How
 	- For now, `callStack()` and `exceptionStack()` return empty arrays (no native stack integration).
-	- This keeps the public API stable while allowing future enhancement.
+	- `toString()` is correspondingly empty. Consumers must not use current emptiness as a capability
+	  signal or parse it as a durable machine format.
+	- Future non-empty frames are an enhancement inside this qualification, not a reason to freeze the
+	  placeholder behavior.
 **/
 @:allow(haxe.Exception)
 @:using(haxe.CallStack)

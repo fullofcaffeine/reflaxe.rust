@@ -29,6 +29,8 @@
     { "id": "HXRS-METADATA-PLACEMENT", "family": "metadata", "severity": "error", "trigger": "compiler-recognized Rust metadata is attached to an unsupported declaration or method shape", "introduced": "0.84.0", "status": "active", "replacement": null },
     { "id": "HXRS-CARGO-DEPENDENCY-CONFLICT", "family": "cargo", "severity": "error", "trigger": "structured rustCargo declarations provide incompatible values for one dependency field", "introduced": "0.84.0", "status": "active", "replacement": null },
     { "id": "HXRS-CARGO-INVOCATION", "family": "cargo", "severity": "error", "trigger": "the configured Cargo command or subcommand exits non-zero", "introduced": "0.84.0", "status": "active", "replacement": null },
-    { "id": "HXRS-DYNAMIC-FIELD-OPERATOR", "family": "dynamic", "severity": "error", "trigger": "compound assignment or prefix/postfix update targets a field on a Dynamic receiver", "introduced": "0.85.8", "status": "active", "replacement": null }
+    { "id": "HXRS-DYNAMIC-FIELD-OPERATOR", "family": "dynamic", "severity": "error", "trigger": "compound assignment or prefix/postfix update targets a field on a Dynamic receiver", "introduced": "0.85.8", "status": "active", "replacement": null },
+    { "id": "HXRS-REFLECTION-UNSUPPORTED", "family": "reflection", "severity": "error", "trigger": "application source calls a Type reflection operation outside the admitted closed-registry contract", "introduced": "0.85.21", "status": "active", "replacement": null },
+    { "id": "HXRS-REFLECTION-REGISTRY-COLLISION", "family": "reflection", "severity": "error", "trigger": "two compiled declarations cannot be represented unambiguously by the closed reflection registry", "introduced": "0.85.21", "status": "active", "replacement": null }
   ]
 }

@@ -107,10 +107,13 @@ fn main() {
         "{}",
         hxrt::dynamic::from(hxrt::string::HxString::from("--- Type names ---"))
     );
-    println!("{}", hxrt::dynamic::from(String::from("Main.Foo").clone()));
     println!(
         "{}",
-        hxrt::dynamic::from(String::from("Main.MyEnum").clone())
+        hxrt::dynamic::from(hxrt::string::HxString::from("Foo").clone())
+    );
+    println!(
+        "{}",
+        hxrt::dynamic::from(hxrt::string::HxString::from("MyEnum").clone())
     );
     println!(
         "{}",

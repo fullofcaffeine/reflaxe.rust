@@ -147,6 +147,12 @@
       "level": "documentation"
     },
     {
+      "id": "file:std/rust/_std/haxe/CallStack.hx",
+      "kind": "file",
+      "path": "std/rust/_std/haxe/CallStack.hx",
+      "level": "source-contract"
+    },
+    {
       "id": "file:std/rust/HxRef.hx",
       "kind": "file",
       "path": "std/rust/HxRef.hx",
@@ -175,6 +181,12 @@
       "kind": "npm-script",
       "script": "test:public-compatibility",
       "level": "structural"
+    },
+    {
+      "id": "test:reflection-contract",
+      "kind": "npm-script",
+      "script": "test:reflection-contract",
+      "level": "semantic-runtime"
     }
   ],
   "contracts": [
@@ -195,6 +207,52 @@
       "admission": "candidate",
       "evidenceIds": [
         "file:docs/feature-support-matrix.md",
+        "test:public-compatibility"
+      ]
+    },
+    {
+      "id": "portable-reflection-core",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "Only static class/enum names plus closed-world dynamic resolution, name lookup, and enum-constructor listing for public non-extern declarations known to the compilation.",
+      "protectedContract": [
+        "Type.getClassName and Type.getEnumName static and admitted dynamic behavior",
+        "Type.resolveClass and Type.resolveEnum exact Haxe runtime names and null-on-missing behavior",
+        "Type.getEnumConstructs declaration-order results",
+        "single evaluation of admitted reflection arguments"
+      ],
+      "exclusions": [
+        "Type.createEnum and Type.createEmptyInstance dynamic construction",
+        "private or extern declaration resolution",
+        "open-world runtime registration",
+        "unlisted Type and Reflect operations"
+      ],
+      "admission": "candidate",
+      "evidenceIds": [
+        "file:docs/feature-support-matrix.md",
+        "test:public-compatibility",
+        "test:reflection-contract"
+      ]
+    },
+    {
+      "id": "portable-call-stack-shape",
+      "class": "qualified-stable-candidate",
+      "status": "active",
+      "qualification": "The haxe.CallStack and StackItem API shape only; native frame capture and non-empty stack contents are not admitted.",
+      "protectedContract": [
+        "haxe.CallStack and StackItem names and signatures",
+        "haxe.Exception.stack type",
+        "existing StackItem constructor names and payload signatures"
+      ],
+      "exclusions": [
+        "native or Haxe source frame fidelity",
+        "non-empty stack contents",
+        "exact stack formatting",
+        "source maps and backtrace integration"
+      ],
+      "admission": "candidate",
+      "evidenceIds": [
+        "file:std/rust/_std/haxe/CallStack.hx",
         "test:public-compatibility"
       ]
     },
@@ -1330,8 +1388,9 @@
       "source": "std/rust/_std/haxe/CallStack.hx",
       "kind": "abstract",
       "signature": "@:allow (haxe.Exception) @:using (haxe.CallStack) abstract CallStack (Array < StackItem >) from Array < StackItem >",
-      "contract": "portable-core",
+      "contract": "portable-call-stack-shape",
       "evidenceIds": [
+        "file:std/rust/_std/haxe/CallStack.hx",
         "test:public-compatibility"
       ],
       "directTypeReferences": [
@@ -1348,8 +1407,9 @@
           "kind": "field",
           "name": "length",
           "signature": "public var length (get, never) : Int",
-          "contract": "portable-core",
+          "contract": "portable-call-stack-shape",
           "evidenceIds": [
+            "file:std/rust/_std/haxe/CallStack.hx",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -1359,8 +1419,9 @@
           "kind": "function",
           "name": "callStack",
           "signature": "public static function callStack () : Array < StackItem >",
-          "contract": "portable-core",
+          "contract": "portable-call-stack-shape",
           "evidenceIds": [
+            "file:std/rust/_std/haxe/CallStack.hx",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -1372,8 +1433,9 @@
           "kind": "function",
           "name": "exceptionStack",
           "signature": "public static function exceptionStack (_fullStack : Bool = false) : Array < StackItem >",
-          "contract": "portable-core",
+          "contract": "portable-call-stack-shape",
           "evidenceIds": [
+            "file:std/rust/_std/haxe/CallStack.hx",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -1385,8 +1447,9 @@
           "kind": "function",
           "name": "toString",
           "signature": "static public function toString (_stack : CallStack) : String",
-          "contract": "portable-core",
+          "contract": "portable-call-stack-shape",
           "evidenceIds": [
+            "file:std/rust/_std/haxe/CallStack.hx",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -1396,8 +1459,9 @@
           "kind": "function",
           "name": "subtract",
           "signature": "public function subtract (_stack : CallStack) : CallStack",
-          "contract": "portable-core",
+          "contract": "portable-call-stack-shape",
           "evidenceIds": [
+            "file:std/rust/_std/haxe/CallStack.hx",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -1407,8 +1471,9 @@
           "kind": "function",
           "name": "copy",
           "signature": "public inline function copy () : CallStack",
-          "contract": "portable-core",
+          "contract": "portable-call-stack-shape",
           "evidenceIds": [
+            "file:std/rust/_std/haxe/CallStack.hx",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -1418,8 +1483,9 @@
           "kind": "function",
           "name": "get",
           "signature": "@:arrayAccess public inline function get (index : Int) : StackItem",
-          "contract": "portable-core",
+          "contract": "portable-call-stack-shape",
           "evidenceIds": [
+            "file:std/rust/_std/haxe/CallStack.hx",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -1433,8 +1499,9 @@
       "source": "std/rust/_std/haxe/CallStack.hx",
       "kind": "enum",
       "signature": "enum StackItem",
-      "contract": "portable-core",
+      "contract": "portable-call-stack-shape",
       "evidenceIds": [
+        "file:std/rust/_std/haxe/CallStack.hx",
         "test:public-compatibility"
       ],
       "directTypeReferences": [],
@@ -1445,8 +1512,9 @@
           "kind": "enum-constructor",
           "name": "CFunction",
           "signature": "CFunction",
-          "contract": "portable-core",
+          "contract": "portable-call-stack-shape",
           "evidenceIds": [
+            "file:std/rust/_std/haxe/CallStack.hx",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -1456,8 +1524,9 @@
           "kind": "enum-constructor",
           "name": "Module",
           "signature": "Module (m : String)",
-          "contract": "portable-core",
+          "contract": "portable-call-stack-shape",
           "evidenceIds": [
+            "file:std/rust/_std/haxe/CallStack.hx",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -1467,8 +1536,9 @@
           "kind": "enum-constructor",
           "name": "FilePos",
           "signature": "FilePos (s : Null < StackItem >, file : String, line : Int, ? column : Int)",
-          "contract": "portable-core",
+          "contract": "portable-call-stack-shape",
           "evidenceIds": [
+            "file:std/rust/_std/haxe/CallStack.hx",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -1478,8 +1548,9 @@
           "kind": "enum-constructor",
           "name": "Method",
           "signature": "Method (classname : Null < String >, method : String)",
-          "contract": "portable-core",
+          "contract": "portable-call-stack-shape",
           "evidenceIds": [
+            "file:std/rust/_std/haxe/CallStack.hx",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -1489,8 +1560,9 @@
           "kind": "enum-constructor",
           "name": "LocalFunction",
           "signature": "LocalFunction (? v : Int)",
-          "contract": "portable-core",
+          "contract": "portable-call-stack-shape",
           "evidenceIds": [
+            "file:std/rust/_std/haxe/CallStack.hx",
             "test:public-compatibility"
           ],
           "typeReferences": []
@@ -2499,8 +2571,9 @@
           "kind": "field",
           "name": "stack",
           "signature": "public var stack (get, never) : CallStack",
-          "contract": "portable-core",
+          "contract": "portable-call-stack-shape",
           "evidenceIds": [
+            "file:std/rust/_std/haxe/CallStack.hx",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -8731,6 +8804,341 @@
       ]
     },
     {
+      "name": "reflaxe.rust.analyze.ReflectionRegistryPlan",
+      "source": "src/reflaxe/rust/analyze/ReflectionRegistryPlan.hx",
+      "kind": "class",
+      "signature": "class ReflectionRegistryPlan",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionRegistryPlanData"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionClassEntry",
+        "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionEnumEntry",
+        "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionRegistryIssue",
+        "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionRegistryIssueKind",
+        "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionRegistryPlanData"
+      ],
+      "operations": [
+        {
+          "id": "function:build",
+          "kind": "function",
+          "name": "build",
+          "signature": "public static function build (moduleTypes : Array < ModuleType >, stableIdForKey : String -> Int) : ReflectionRegistryPlanData",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionRegistryPlanData"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionClassEntry",
+      "source": "src/reflaxe/rust/analyze/ReflectionRegistryPlan.hx",
+      "kind": "typedef",
+      "signature": "typedef ReflectionClassEntry =",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "field:runtimeName",
+          "kind": "field",
+          "name": "runtimeName",
+          "signature": "var runtimeName : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:stableKey",
+          "kind": "field",
+          "name": "stableKey",
+          "signature": "var stableKey : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:stableId",
+          "kind": "field",
+          "name": "stableId",
+          "signature": "var stableId : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:sourceModule",
+          "kind": "field",
+          "name": "sourceModule",
+          "signature": "var sourceModule : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:pos",
+          "kind": "field",
+          "name": "pos",
+          "signature": "var pos : Position",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionEnumEntry",
+      "source": "src/reflaxe/rust/analyze/ReflectionRegistryPlan.hx",
+      "kind": "typedef",
+      "signature": "typedef ReflectionEnumEntry =",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "field:runtimeName",
+          "kind": "field",
+          "name": "runtimeName",
+          "signature": "var runtimeName : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:stableKey",
+          "kind": "field",
+          "name": "stableKey",
+          "signature": "var stableKey : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:stableId",
+          "kind": "field",
+          "name": "stableId",
+          "signature": "var stableId : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:sourceModule",
+          "kind": "field",
+          "name": "sourceModule",
+          "signature": "var sourceModule : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:constructors",
+          "kind": "field",
+          "name": "constructors",
+          "signature": "var constructors : Array < String >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:pos",
+          "kind": "field",
+          "name": "pos",
+          "signature": "var pos : Position",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionRegistryIssue",
+      "source": "src/reflaxe/rust/analyze/ReflectionRegistryPlan.hx",
+      "kind": "typedef",
+      "signature": "typedef ReflectionRegistryIssue =",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionRegistryIssueKind"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionRegistryIssueKind"
+      ],
+      "operations": [
+        {
+          "id": "field:kind",
+          "kind": "field",
+          "name": "kind",
+          "signature": "var kind : ReflectionRegistryIssueKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionRegistryIssueKind"
+          ]
+        },
+        {
+          "id": "field:message",
+          "kind": "field",
+          "name": "message",
+          "signature": "var message : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:pos",
+          "kind": "field",
+          "name": "pos",
+          "signature": "var pos : Position",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionRegistryIssueKind",
+      "source": "src/reflaxe/rust/analyze/ReflectionRegistryPlan.hx",
+      "kind": "enum",
+      "signature": "enum ReflectionRegistryIssueKind",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-constructor:DuplicateRuntimeName",
+          "kind": "enum-constructor",
+          "name": "DuplicateRuntimeName",
+          "signature": "DuplicateRuntimeName",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:DuplicateStableId",
+          "kind": "enum-constructor",
+          "name": "DuplicateStableId",
+          "signature": "DuplicateStableId",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionRegistryPlanData",
+      "source": "src/reflaxe/rust/analyze/ReflectionRegistryPlan.hx",
+      "kind": "typedef",
+      "signature": "typedef ReflectionRegistryPlanData =",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionClassEntry",
+        "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionEnumEntry",
+        "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionRegistryIssue"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionClassEntry",
+        "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionEnumEntry",
+        "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionRegistryIssue",
+        "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionRegistryIssueKind"
+      ],
+      "operations": [
+        {
+          "id": "field:classes",
+          "kind": "field",
+          "name": "classes",
+          "signature": "var classes : Array < ReflectionClassEntry >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionClassEntry"
+          ]
+        },
+        {
+          "id": "field:enums",
+          "kind": "field",
+          "name": "enums",
+          "signature": "var enums : Array < ReflectionEnumEntry >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionEnumEntry"
+          ]
+        },
+        {
+          "id": "field:issues",
+          "kind": "field",
+          "name": "issues",
+          "signature": "var issues : Array < ReflectionRegistryIssue >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionRegistryIssue"
+          ]
+        }
+      ]
+    },
+    {
       "name": "reflaxe.rust.analyze.RuntimeRequirementAnalyzer",
       "source": "src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx",
       "kind": "class",
@@ -14203,6 +14611,28 @@
           "kind": "enum-value",
           "name": "DynamicFieldOperator",
           "signature": "var DynamicFieldOperator = \"HXRS-DYNAMIC-FIELD-OPERATOR\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReflectionUnsupported",
+          "kind": "enum-value",
+          "name": "ReflectionUnsupported",
+          "signature": "var ReflectionUnsupported = \"HXRS-REFLECTION-UNSUPPORTED\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReflectionRegistryCollision",
+          "kind": "enum-value",
+          "name": "ReflectionRegistryCollision",
+          "signature": "var ReflectionRegistryCollision = \"HXRS-REFLECTION-REGISTRY-COLLISION\"",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"

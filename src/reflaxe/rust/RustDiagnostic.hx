@@ -49,6 +49,8 @@ enum abstract RustDiagnosticId(String) to String {
 	var CargoDependencyConflict = "HXRS-CARGO-DEPENDENCY-CONFLICT";
 	var CargoInvocation = "HXRS-CARGO-INVOCATION";
 	var DynamicFieldOperator = "HXRS-DYNAMIC-FIELD-OPERATOR";
+	var ReflectionUnsupported = "HXRS-REFLECTION-UNSUPPORTED";
+	var ReflectionRegistryCollision = "HXRS-REFLECTION-REGISTRY-COLLISION";
 }
 
 /**

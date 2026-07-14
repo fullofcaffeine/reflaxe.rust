@@ -17,19 +17,13 @@ impl DefaultResolver {
         _self_: &crate::HxRefCell<DefaultResolver>,
         name: hxrt::string::HxString,
     ) -> u32 {
-        return {
-            let _ = name;
-            0 as u32
-        };
+        return crate::__hx_resolve_class_name(name.as_str());
     }
 
     pub fn resolve_enum(
         _self_: &crate::HxRefCell<DefaultResolver>,
         name: hxrt::string::HxString,
     ) -> u32 {
-        return {
-            let _ = name;
-            0 as u32
-        };
+        return crate::__hx_resolve_enum_name(name.as_str());
     }
 }

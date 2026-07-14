@@ -74,5 +74,7 @@ run_error_case test/negative/rust_test_metadata_placement compile.hxml HXRS-META
 run_error_case test/negative/rust_cargo_structured_conflict compile.hxml HXRS-CARGO-DEPENDENCY-CONFLICT 'Conflicting `@:rustCargo` version' cargo-conflict
 run_error_case test/negative/dynamic_field_assignop compile.hxml HXRS-DYNAMIC-FIELD-OPERATOR 'Decode the field to `Int`, `Float`, or `String`.*write it back explicitly' dynamic-field-assignop
 run_error_case test/negative/dynamic_field_unop compile.hxml HXRS-DYNAMIC-FIELD-OPERATOR 'Decode the field to `Int`, `Float`, or `String`.*write it back explicitly' dynamic-field-unop
+run_error_case test/negative/type_create_enum_unsupported compile.hxml HXRS-REFLECTION-UNSUPPORTED 'Type\.createEnum is outside the admitted reflection contract' reflection-create-enum
+run_error_case test/negative/type_create_empty_instance_unsupported compile.hxml HXRS-REFLECTION-UNSUPPORTED 'Type\.createEmptyInstance is outside the admitted reflection contract' reflection-create-empty-instance
 
 echo "[diagnostic-contract-runtime] OK (identifier + severity + trigger fixtures)"

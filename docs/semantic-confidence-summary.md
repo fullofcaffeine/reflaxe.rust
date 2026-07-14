@@ -24,7 +24,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
 - Portable candidate importable modules: `184`
 - Portable candidate covered in Tier2: `184`
 - Portable candidate missing from Tier2: `0`
-- Portable semantic-diff cases: `35`
+- Portable semantic-diff cases: `36`
 - Lane semantic-diff cases: `2`
 - Snapshot cases: `138`
 - Compile/inventory buckets: `2`
@@ -119,18 +119,23 @@ This summary rolls up the current evidence buckets without pretending that Tier2
 - Scope: High-risk dynamic receiver, reflection, and thrown Dynamic payload paths
 - Evidence:
   - `test/semantic_diff/reflect_dynamic_receivers`
+  - `test/semantic_diff/type_reflection_registry`
   - `test/semantic_diff/exception_dynamic_payload`
   - `test/semantic_diff/typed_catch_interface`
   - `test/semantic_diff/typed_catch_subclass`
   - `test/snapshot/reflect_basic`
   - `test/snapshot/reflect_compare_sort`
   - `test/snapshot/catch_dynamic`
+  - `test/runtime_e2e/reflection_framework_failure`
+  - `test/negative/type_create_enum_unsupported`
+  - `test/negative/type_create_empty_instance_unsupported`
 - Commands:
   - `npm run test:semantic-diff`
+  - `npm run test:reflection-contract`
   - `bash test/run-snapshots.sh --case reflect_basic`
   - `bash test/run-snapshots.sh --case reflect_compare_sort`
   - `bash test/run-snapshots.sh --case catch_dynamic`
-- Notes: Targeted proof only. Emitted non-generic class and interface hierarchies now have subtype-aware typed catch parity; exact-type limits remain for generic classes and payloads without emitted subtype metadata.
+- Notes: Targeted proof only. The compiler-generated closed reflection registry covers admitted public non-extern class/enum name resolution, secondary-type runtime names, enum constructor order, null-on-missing, and single evaluation. Dynamic construction is excluded: direct application calls fail with a stable diagnostic and retained framework branches throw a Haxe-catchable operation-specific error. Emitted non-generic class and interface hierarchies have subtype-aware typed catch parity; exact-type limits remain for generic classes and payloads without emitted subtype metadata.
 
 ### Portable stdlib runtime hotspots
 - Class: `targeted_semantic_parity`
@@ -289,7 +294,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
 
 ## Discovered Semantic-Diff Suites
 
-- Portable semantic-diff cases (35): `anonymous_iterator_aliasing`, `anonymous_key_value_aliasing`, `array_index_updates`, `array_key_value_iterator_boundary`, `array_string_element_append`, `bytes_extended_api`, `closure_capture_mutation`, `dynamic_access_iterator_boundary`, `exception_dynamic_payload`, `exceptions_typed_dynamic`, `field_compound_rhs_mutation`, `function_value_mutable_callbacks`, `generic_base_specialization`, `generic_interface_specialization`, `int64_parity`, `iterator_helper_boundary`, `json_stringify_replacer`, `map_key_value_iterator_manual`, `null_string_concat`, `nullable_array_literals`, `polymorphic_field_updates`, `portable_option_result_basics`, `reflect_dynamic_receivers`, `static_field_updates`, `static_property_updates`, `sys_core_failure_paths`, `sys_getenv_null`, `sys_http_callback_contract`, `sys_net_failure_paths`, `sys_process_failure_paths`, `this_method_closure`, `typed_catch_interface`, `typed_catch_subclass`, `unicode_string_iterator_boundary`, `virtual_dispatch`
+- Portable semantic-diff cases (36): `anonymous_iterator_aliasing`, `anonymous_key_value_aliasing`, `array_index_updates`, `array_key_value_iterator_boundary`, `array_string_element_append`, `bytes_extended_api`, `closure_capture_mutation`, `dynamic_access_iterator_boundary`, `exception_dynamic_payload`, `exceptions_typed_dynamic`, `field_compound_rhs_mutation`, `function_value_mutable_callbacks`, `generic_base_specialization`, `generic_interface_specialization`, `int64_parity`, `iterator_helper_boundary`, `json_stringify_replacer`, `map_key_value_iterator_manual`, `null_string_concat`, `nullable_array_literals`, `polymorphic_field_updates`, `portable_option_result_basics`, `reflect_dynamic_receivers`, `static_field_updates`, `static_property_updates`, `sys_core_failure_paths`, `sys_getenv_null`, `sys_http_callback_contract`, `sys_net_failure_paths`, `sys_process_failure_paths`, `this_method_closure`, `type_reflection_registry`, `typed_catch_interface`, `typed_catch_subclass`, `unicode_string_iterator_boundary`, `virtual_dispatch`
 - Lane semantic-diff cases (2): `lane_clean_arithmetic`, `lane_clean_dispatch`
 
 ## Interpretation Rule

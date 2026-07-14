@@ -31,6 +31,7 @@ import reflaxe.rust.ast.RustAST.RustMatchArm;
 import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustStructLitField;
+import reflaxe.rust.ast.RustAST.RustType;
 import reflaxe.rust.ast.RustAST.RustVisibility;
 import reflaxe.helpers.TypeHelper;
 import reflaxe.rust.analyze.MetalIslandAnalyzer;
@@ -55,6 +56,8 @@ import reflaxe.rust.analyze.SurfaceContractRegistry.NativeRepresentationDecision
 import reflaxe.rust.analyze.SurfaceContractRegistry.SurfaceContract;
 import reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason;
 import reflaxe.rust.analyze.InternalHelperBoundary;
+import reflaxe.rust.analyze.ReflectionRegistryPlan;
+import reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionRegistryPlanData;
 import reflaxe.rust.analyze.BorrowRegionAnalyzer;
 import reflaxe.rust.analyze.SendSyncAnalyzer;
 import reflaxe.rust.analyze.TypeUsageAnalyzer;
@@ -258,6 +261,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var pendingOptimizerSkippedById:Map<String, Int> = [];
 	var metalIslandSnapshot:MetalIslandSnapshot = {modules: [], declarations: []};
 	var physicalVarFieldCache:Map<String, Bool> = [];
+	var cachedReflectionRegistryPlan:Null<ReflectionRegistryPlanData> = null;
+	var cachedNeedsReflectionSupport:Null<Bool> = null;
 
 	inline function wantsPreludeAliases():Bool {
 		// Always emit stable `crate::HxRc` / `crate::HxRefCell` / `crate::HxRef` aliases so:
@@ -2601,6 +2606,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			headerLines.push(emitSubtypeTypeIdRegistryFn());
 			if (headerLines.length > 0)
 				items.push(RRaw(headerLines.join("\n")));
+			if (needsReflectionSupport()) {
+				for (registryItem in emitReflectionRegistryFns())
+					items.push(registryItem);
+			}
 		} else if (classType.isInterface) {
 			var childModuleDecls = rustNestedChildModuleDeclLinesForSegments(rustModuleSegmentsForClass(classType));
 			if (childModuleDecls.length > 0)
@@ -4824,6 +4833,310 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		out.sort((a, b) -> compareStrings(classKey(a), classKey(b)));
 		return out;
+	}
+
+	/**
+		Reports whether this compilation needs the closed reflection registry.
+
+		Why
+		- Emitting lookup tables into every crate would add dead generated code to programs that never use
+		  dynamic reflection.
+		- Recording usage only while files are emitted is order-sensitive: a non-main module may be emitted
+		  after `main.rs`, where the crate-root helpers live.
+
+		What
+		- Detects runtime-handle forms of the admitted `Type` operations across the complete emitted-class
+		  graph before root emission.
+		- Static `TTypeExpr` name/constructor queries remain direct compiler constants and do not require a
+		  registry.
+
+		How
+		- Reuses the existing class-emission policy, then walks those initializers and field bodies with
+		  `TypedExprTools`; merely typing an unused upstream std helper cannot activate the registry.
+		- Caches the answer for the compilation so output order cannot change the generated contract.
+	**/
+	function needsReflectionSupport():Bool {
+		if (cachedNeedsReflectionSupport != null)
+			return cachedNeedsReflectionSupport;
+
+		function isRegistryCall(expr:TypedExpr):Bool {
+			return switch (expr.expr) {
+				case TCall(callTarget, args):
+					switch (callTarget.expr) {
+						case TField(_, FStatic(classRef, fieldRef)): {
+								var classType = classRef.get();
+								var field = fieldRef.get();
+								if (classType == null || field == null || classType.pack.length != 0 || classType.name != "Type")
+									false;
+								else switch (field.name) {
+									case "resolveClass" | "resolveEnum": true;
+									case "getClassName" | "getEnumName" | "getEnumConstructs":
+										args.length != 1 || switch (unwrapMetaParen(args[0]).expr) {
+											case TTypeExpr(_): false;
+											case _: true;
+										};
+									case "createEmptyInstance" | "createEnum": true;
+									case _: false;
+								}
+							}
+						case _: false;
+					}
+				case _: false;
+			}
+		}
+
+		function expressionNeedsRegistry(root:Null<TypedExpr>):Bool {
+			if (root == null)
+				return false;
+			var found = false;
+			function visit(expr:TypedExpr):Void {
+				if (found)
+					return;
+				if (isRegistryCall(expr)) {
+					found = true;
+					return;
+				}
+				TypedExprTools.iter(expr, visit);
+			}
+			visit(root);
+			return found;
+		}
+
+		function fieldNeedsRegistry(field:ClassField):Bool {
+			var expression:Null<TypedExpr> = null;
+			try
+				expression = field.expr()
+			catch (_:haxe.Exception) {}
+			return expressionNeedsRegistry(expression);
+		}
+
+		var found = false;
+		for (classType in getEmittedClassesForTypeIdRegistry()) {
+			if (found)
+				break;
+			if (expressionNeedsRegistry(classType.init)) {
+				found = true;
+				continue;
+			}
+			if (classType.constructor != null && fieldNeedsRegistry(classType.constructor.get())) {
+				found = true;
+				continue;
+			}
+			for (field in classType.fields.get().concat(classType.statics.get())) {
+				if (fieldNeedsRegistry(field)) {
+					found = true;
+					break;
+				}
+			}
+		}
+
+		cachedNeedsReflectionSupport = found;
+		return found;
+	}
+
+	/**
+		Returns the validated immutable reflection plan for this compilation.
+
+		Why
+		- Name and type-id ambiguity cannot be repaired at runtime without choosing a declaration
+		  nondeterministically.
+
+		What
+		- Reuses the compiler's existing FNV type identity and reports the first deterministic planning
+		  issue through the stable reflection diagnostic family.
+
+		How
+		- The pure planner owns inventory/name/constructor ordering; this method owns macro diagnostics.
+	**/
+	function getReflectionRegistryPlan():ReflectionRegistryPlanData {
+		if (cachedReflectionRegistryPlan == null) {
+			cachedReflectionRegistryPlan = ReflectionRegistryPlan.build(Context.getAllModuleTypes(), fnv1a32);
+			if (cachedReflectionRegistryPlan.issues.length > 0) {
+				var issue = cachedReflectionRegistryPlan.issues[0];
+				RustDiagnostic.error(RustDiagnosticId.ReflectionRegistryCollision, issue.message, issue.pos);
+			}
+		}
+		return cachedReflectionRegistryPlan;
+	}
+
+	inline function haxeRuntimeTypeName(pack:Array<String>, name:String):String {
+		return pack.length == 0 ? name : pack.join(".") + "." + name;
+	}
+
+	function reflectionStringArrayExpr(values:Array<String>):RustExpr {
+		var stringType = rustStringTypePath();
+		var elements = values.map(value -> stringLiteralExpr(value));
+		return ECall(EPath("hxrt::array::Array::<" + stringType + ">::from_vec"), [EMacroCall("vec", elements)]);
+	}
+
+	function enumConstructorNames(enumType:EnumType):Array<String> {
+		var fields:Array<{name:String, index:Int}> = [];
+		for (name in enumType.constructs.keys()) {
+			var field = enumType.constructs.get(name);
+			if (field != null)
+				fields.push({name: field.name, index: field.index});
+		}
+		fields.sort((left, right) -> left.index == right.index ? compareStrings(left.name, right.name) : left.index - right.index);
+		return fields.map(field -> field.name);
+	}
+
+	/**
+		Rejects an experimental dynamic-construction operation at an application callsite.
+
+		Why
+		- Accepting source and emitting `todo!()`, a fake null, or a partially initialized value turns an
+		  unsupported feature into a runtime process-panic or semantic corruption risk.
+		- Upstream `haxe.Unserializer` contains generic calls that must remain compilable while its dynamic
+		  class/enum-construction branches stay explicitly experimental.
+
+		What
+		- Application calls receive the stable reflection diagnostic at their own source position.
+		- Framework-owned calls continue to compilation and are lowered by
+		  `unsupportedReflectionRuntimeExpr(...)` to a Haxe-catchable error if reached.
+
+		How
+		- Uses the existing source-ownership boundary; it does not inspect or special-case application
+		  names, modules, or call syntax.
+	**/
+	function rejectApplicationReflectionOperation(operation:String, fullExpr:TypedExpr):Void {
+		var sourceFile = sourceFileForPosition(fullExpr.pos);
+		if (sourceFile != null && sourceFile.length > 0 && isUserProjectFile(sourceFile)) {
+			RustDiagnostic.error(RustDiagnosticId.ReflectionUnsupported,
+				operation + " is outside the admitted reflection contract. Use a typed constructor/direct enum constructor, or keep this dynamic path experimental.",
+				fullExpr.pos);
+		}
+	}
+
+	/**
+		Converts an accepted `Class<T>` / `Enum<T>` carrier into its compiler-owned type id.
+
+		Why
+		- Haxe's own standard library sometimes narrows a `Dynamic` value with `Std.isOfType(...)` and
+		  then passes that same value to `Type.getClassName(...)` or `Type.getEnumName(...)`.
+		- The Rust target represents typed class/enum carriers directly as `u32`, while a value whose
+		  Haxe static type remains `Dynamic` is an `hxrt::dynamic::Dynamic` box.
+		- Adding a general runtime reflection helper would duplicate a fact and representation already
+		  owned by compiler lowering.
+
+		What
+		- Leaves typed carriers as their direct `u32` expression.
+		- Downcasts a `Dynamic` carrier to `u32` exactly once and raises a Haxe-catchable error when the
+		  runtime value is not a class/enum handle.
+
+		How
+		- Uses typed Rust `let` and `match` AST nodes; no raw Rust fragment or new `hxrt` API is needed.
+	**/
+	function reflectionHandleExpr(value:TypedExpr, operation:String):RustExpr {
+		var compiled = compileExpr(value);
+		if (!mapsToRustDynamic(value.t, value.pos))
+			return compiled;
+
+		var handleName = "__hx_reflection_handle";
+		var typeIdName = "__hx_reflection_type_id";
+		var downcast = ECall(EField(EPath(handleName), "downcast_ref::<u32>"), []);
+		var invalidMessage = operation + " expected a Class or Enum handle";
+		return EBlock({
+			stmts: [RLet(handleName, false, null, compiled)],
+			tail: EMatch(downcast, [
+				{pat: PTupleStruct("Some", [PBind(typeIdName)]), expr: EUnary("*", EPath(typeIdName))},
+				{
+					pat: PPath("None"),
+					expr: ECall(EPath("crate::__hx_unsupported_reflection::<u32>"), [stringLiteralExpr(invalidMessage)])
+				}
+			])
+		});
+	}
+
+	function unsupportedReflectionRuntimeExpr(operation:String, args:Array<TypedExpr>, fullExpr:TypedExpr):RustExpr {
+		var statements:Array<RustStmt> = [];
+		for (arg in args)
+			statements.push(RLet("_", false, null, compileExpr(arg)));
+		var returnType = rustTypeToString(toRustType(fullExpr.t, fullExpr.pos));
+		var message = stringLiteralExpr(operation + " is unavailable in the current experimental dynamic-reflection path");
+		return EBlock({
+			stmts: statements,
+			tail: ECall(EPath("crate::__hx_unsupported_reflection::<" + returnType + ">"), [message])
+		});
+	}
+
+	/**
+		Emits typed crate-root helpers for the admitted closed reflection operations.
+
+		Why
+		- Runtime lookup is required only for string names and opaque `Class<T>` / `Enum<T>` ids.
+		- The registry is generated code, not runtime-owned state; it must remain deterministic and free of
+		  raw `todo!()`/sentinel implementations.
+
+		What
+		- Emits name-to-id, id-to-name, and enum-id-to-constructor-list functions.
+		- Unknown names map to the existing `0u32` nullable handle representation. Unknown ids return the
+		  target String null/default and unknown enum ids return an empty array; Haxe documents null-handle
+		  inputs to the corresponding name/constructor operations as unspecified.
+
+		How
+		- Uses typed Rust match AST nodes and the canonical String/Array lowering primitives.
+		- Public entries and constructor order come solely from `ReflectionRegistryPlan`.
+	**/
+	function emitReflectionRegistryFns():Array<RustItem> {
+		var plan = getReflectionRegistryPlan();
+		var stringType = rustStringTypePath();
+		var stringArrayType = "hxrt::array::Array<" + stringType + ">";
+
+		function reflectionFunctionItem(name:String, argName:String, argType:RustType, returnType:RustType,
+			arms:Array<RustMatchArm>, defaultExpr:RustExpr):RustItem {
+			arms.push({pat: PWildcard, expr: defaultExpr});
+			return RFn({
+				name: name,
+				isPub: false,
+				vis: VPubCrate,
+				args: [{name: argName, ty: argType}],
+				ret: returnType,
+				body: {stmts: [], tail: EMatch(EPath(argName), arms)}
+			});
+		}
+
+		var resolveClassArms:Array<RustMatchArm> = plan.classes.map(entry -> ({
+			pat: PLitString(entry.runtimeName),
+			expr: typeIdExprForKey(entry.stableKey)
+		} : RustMatchArm));
+		var resolveEnumArms:Array<RustMatchArm> = plan.enums.map(entry -> ({
+			pat: PLitString(entry.runtimeName),
+			expr: typeIdExprForKey(entry.stableKey)
+		} : RustMatchArm));
+		var classNameArms:Array<RustMatchArm> = plan.classes.map(entry -> ({
+			pat: PPath(typeIdLiteralForKey(entry.stableKey)),
+			expr: stringLiteralExpr(entry.runtimeName)
+		} : RustMatchArm));
+		var enumNameArms:Array<RustMatchArm> = plan.enums.map(entry -> ({
+			pat: PPath(typeIdLiteralForKey(entry.stableKey)),
+			expr: stringLiteralExpr(entry.runtimeName)
+		} : RustMatchArm));
+		var enumConstructArms:Array<RustMatchArm> = plan.enums.map(entry -> ({
+			pat: PPath(typeIdLiteralForKey(entry.stableKey)),
+			expr: reflectionStringArrayExpr(entry.constructors)
+		} : RustMatchArm));
+		var unsupportedReflection = RFn({
+			name: "__hx_unsupported_reflection",
+			isPub: false,
+			vis: VPubCrate,
+			generics: ["T"],
+			args: [{name: "operation", ty: RPath(rustStringTypePath())}],
+			ret: RPath("T"),
+			body: {
+				stmts: [],
+				tail: ECall(EPath("hxrt::exception::throw"), [ECall(EPath("hxrt::dynamic::from"), [EPath("operation")])])
+			}
+		});
+
+		return [
+			unsupportedReflection,
+			reflectionFunctionItem("__hx_resolve_class_name", "name", RRef(RPath("str"), false), RPath("u32"), resolveClassArms, ECast(ELitInt(0), "u32")),
+			reflectionFunctionItem("__hx_resolve_enum_name", "name", RRef(RPath("str"), false), RPath("u32"), resolveEnumArms, ECast(ELitInt(0), "u32")),
+			reflectionFunctionItem("__hx_class_name", "type_id", RPath("u32"), RPath(stringType), classNameArms, stringNullExpr()),
+			reflectionFunctionItem("__hx_enum_name", "type_id", RPath("u32"), RPath(stringType), enumNameArms, stringNullExpr()),
+			reflectionFunctionItem("__hx_enum_constructs", "type_id", RPath("u32"), RPath(stringArrayType), enumConstructArms,
+				ECall(EPath("hxrt::array::Array::<" + stringType + ">::new"), []))
+		];
 	}
 
 	/**
@@ -12837,25 +13150,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								var name = switch (t.expr) {
 									case TTypeExpr(TClassDecl(cls2Ref)): {
 											var c = cls2Ref.get();
-											var modulePath = c.module;
-											var parts = modulePath.split(".");
-											var modTail = parts.length > 0 ? parts[parts.length - 1] : modulePath;
-											modTail == c.name ? modulePath : (modulePath + "." + c.name);
+											haxeRuntimeTypeName(c.pack, c.name);
 										}
 									case _: null;
 								};
-								if (name != null) {
-									return ECall(EPath("String::from"), [ELitString(name)]);
-								}
-
-								// Runtime class handles (e.g. from `Type.typeof`) are not fully implemented yet.
-								// Keep compilation working for upstream stdlib code; throw/behavior is unspecified.
-								var stmts:Array<RustStmt> = [];
-								stmts.push(RLet("_", false, null, compileExpr(t)));
-								return EBlock({
-									stmts: stmts,
-									tail: ECall(EPath("String::from"), [ELitString("<unknown class>")])
-								});
+								if (name != null)
+									return stringLiteralExpr(name);
+								return ECall(EPath("crate::__hx_class_name"), [reflectionHandleExpr(t, "Type.getClassName")]);
 							}
 
 						case "getEnumName": {
@@ -12865,93 +13166,55 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								var name = switch (t.expr) {
 									case TTypeExpr(TEnumDecl(enRef)): {
 											var en = enRef.get();
-											var modulePath = en.module;
-											var parts = modulePath.split(".");
-											var modTail = parts.length > 0 ? parts[parts.length - 1] : modulePath;
-											modTail == en.name ? modulePath : (modulePath + "." + en.name);
+											haxeRuntimeTypeName(en.pack, en.name);
 										}
 									case _: null;
 								};
-								if (name != null) {
-									return ECall(EPath("String::from"), [ELitString(name)]);
-								}
-
-								var stmts:Array<RustStmt> = [];
-								stmts.push(RLet("_", false, null, compileExpr(t)));
-								return EBlock({
-									stmts: stmts,
-									tail: ECall(EPath("String::from"), [ELitString("<unknown enum>")])
-								});
+								if (name != null)
+									return stringLiteralExpr(name);
+								return ECall(EPath("crate::__hx_enum_name"), [reflectionHandleExpr(t, "Type.getEnumName")]);
 							}
 
 						case "resolveClass": {
 								if (args.length != 1)
 									return unsupported(fullExpr, "Type.resolveClass args");
-								var stmts:Array<RustStmt> = [];
-								stmts.push(RLet("_", false, null, compileExpr(args[0])));
-								return EBlock({stmts: stmts, tail: ECast(ELitInt(0), "u32")});
+								var name = compileExpr(args[0]);
+								return ECall(EPath("crate::__hx_resolve_class_name"), [ECall(EField(name, "as_str"), [])]);
 							}
 
 						case "resolveEnum": {
 								if (args.length != 1)
 									return unsupported(fullExpr, "Type.resolveEnum args");
-								var stmts:Array<RustStmt> = [];
-								stmts.push(RLet("_", false, null, compileExpr(args[0])));
-								return EBlock({stmts: stmts, tail: ECast(ELitInt(0), "u32")});
+								var name = compileExpr(args[0]);
+								return ECall(EPath("crate::__hx_resolve_enum_name"), [ECall(EField(name, "as_str"), [])]);
 							}
 
 						case "createEmptyInstance": {
 								if (args.length != 1)
 									return unsupported(fullExpr, "Type.createEmptyInstance args");
-								var stmts:Array<RustStmt> = [];
-								stmts.push(RLet("_", false, null, compileExpr(args[0])));
-								// `Type.createEmptyInstance` is used by upstream `haxe.Unserializer` to allocate an
-								// object that `unserializeObject(o:{})` can populate.
-								//
-								// For now we only support the `{}` shape by returning an empty runtime `Anon`.
-								// Full class-by-handle instantiation requires a type registry and is tracked separately.
-								if (isAnonObjectType(fullExpr.t)) {
-									return EBlock({
-										stmts: stmts,
-										tail: ECall(EPath("crate::HxRef::new"), [ECall(EPath("hxrt::anon::Anon::new"), [])])
-									});
-								}
-								if (mapsToRustDynamic(fullExpr.t, fullExpr.pos)) {
-									return EBlock({
-										stmts: stmts,
-										tail: rustDynamicNullExpr()
-									});
-								}
-								return EBlock({
-									stmts: stmts,
-									tail: ECall(EPath("hxrt::exception::throw"), [
-										ECall(EPath("hxrt::dynamic::from"), [
-											ECall(EPath("String::from"), [ELitString("Type.createEmptyInstance not supported")])
-										])
-									])
-								});
+								rejectApplicationReflectionOperation("Type.createEmptyInstance", fullExpr);
+								// Upstream `haxe.Unserializer` types this result as `{}` while the runtime value must
+								// retain the requested concrete class identity. Returning an empty `Anon` here would
+								// therefore be a silent semantic substitution, not a partial implementation.
+								return unsupportedReflectionRuntimeExpr("Type.createEmptyInstance", args, fullExpr);
 							}
 
 						case "getEnumConstructs": {
 								if (args.length != 1)
 									return unsupported(fullExpr, "Type.getEnumConstructs args");
-								var stmts:Array<RustStmt> = [];
-								stmts.push(RLet("_", false, null, compileExpr(args[0])));
-								return EBlock({
-									stmts: stmts,
-									tail: ECall(EPath("hxrt::array::Array::<String>::new"), [])
-								});
+								return switch (unwrapMetaParen(args[0]).expr) {
+									case TTypeExpr(TEnumDecl(enumRef)):
+										reflectionStringArrayExpr(enumConstructorNames(enumRef.get()));
+									case _:
+										ECall(EPath("crate::__hx_enum_constructs"), [reflectionHandleExpr(args[0], "Type.getEnumConstructs")]);
+								};
 							}
 
 						case "createEnum": {
-								// Full enum creation requires runtime type info; implement later.
-								// Keep upstream `haxe.Unserializer` compiling for non-enum payloads.
 								if (args.length < 2 || args.length > 3)
 									return unsupported(fullExpr, "Type.createEnum args");
-								var stmts:Array<RustStmt> = [];
-								for (a in args)
-									stmts.push(RLet("_", false, null, compileExpr(a)));
-								return EBlock({stmts: stmts, tail: ERaw("todo!()")});
+								rejectApplicationReflectionOperation("Type.createEnum", fullExpr);
+								return unsupportedReflectionRuntimeExpr("Type.createEnum", args, fullExpr);
 							}
 
 						case _:

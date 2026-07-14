@@ -50,6 +50,8 @@ exact admitted surface.
 | Contract | Class | Admission | Status | Qualification |
 | --- | --- | --- | --- | --- |
 | `portable-core` | `stable-candidate` | `candidate` | `active` | Only module/member behavior admitted by the versioned feature-support inventory; Haxe semantics are the oracle inside that set. |
+| `portable-reflection-core` | `qualified-stable-candidate` | `candidate` | `active` | Only static class/enum names plus closed-world dynamic resolution, name lookup, and enum-constructor listing for public non-extern declarations known to the compilation. |
+| `portable-call-stack-shape` | `qualified-stable-candidate` | `candidate` | `active` | The haxe.CallStack and StackItem API shape only; native frame capture and non-empty stack contents are not admitted. |
 | `portable-mainloop` | `qualified-stable-candidate` | `candidate` | `active` | Only the target-side MainLoop and EntryPoint paths documented in the concurrency posture. |
 | `portable-sys-core` | `qualified-stable-candidate` | `candidate` | `active` | Linux full CI plus the specifically documented Windows smoke operations; macOS is local-only evidence. |
 | `portable-http` | `qualified-stable-candidate` | `candidate` | `active` | Documented local-server status, body, error, and callback behavior. |
@@ -86,7 +88,7 @@ exact admitted surface.
 | `generated-package` | `stable-candidate` | `candidate` | `active` | Published Haxelib-shaped package and installed-package workflow. |
 | `generated-private` | `excluded-internal` | `internal` | `active` | Generated helper/wrapper details not admitted as consumer API. |
 
-Inventory: 312 shipped Haxe types, 1517 public operations, 18 metadata names, 55 defines, 4 JSON reports, 6 generated-artifact contracts, and 27 validated evidence records.
+Inventory: 318 shipped Haxe types, 1539 public operations, 18 metadata names, 55 defines, 4 JSON reports, 6 generated-artifact contracts, and 29 validated evidence records.
 <!-- END GENERATED PUBLIC COMPATIBILITY SUMMARY -->
 
 The guard enumerates no-package overrides, primary and secondary module types, direct `std/**`

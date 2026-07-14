@@ -379,11 +379,11 @@ impl Unserializer {
         }
         let mut nargs: i32 = crate::haxe_unserializer::Unserializer::read_digits(&*__hx_this);
         if nargs == 0 {
-            {
+            return {
                 let _ = edecl;
                 let _ = tag;
-                todo!()
-            }
+                crate::__hx_unsupported_reflection::<T>(hxrt::string::HxString::from("Type.createEnum is unavailable in the current experimental dynamic-reflection path"))
+            };
         }
         let args: hxrt::array::Array<hxrt::dynamic::Dynamic> =
             hxrt::array::Array::<hxrt::dynamic::Dynamic>::new();
@@ -396,12 +396,12 @@ impl Unserializer {
                 &*__hx_this,
             ));
         }
-        {
+        return {
             let _ = edecl;
             let _ = tag;
             let _ = args;
-            todo!()
-        }
+            crate::__hx_unsupported_reflection::<T>(hxrt::string::HxString::from("Type.createEnum is unavailable in the current experimental dynamic-reflection path"))
+        };
     }
 
     pub fn unserialize(self_: &crate::HxRefCell<Unserializer>) -> hxrt::dynamic::Dynamic {
@@ -557,7 +557,7 @@ impl Unserializer {
                     }
                     let o: hxrt::dynamic::Dynamic = {
                         let _ = cl_2;
-                        hxrt::dynamic::Dynamic::null()
+                        crate::__hx_unsupported_reflection::<hxrt::dynamic::Dynamic>(hxrt::string::HxString::from("Type.createEmptyInstance is unavailable in the current experimental dynamic-reflection path"))
                     };
                     ({
                         let __b = __hx_this.borrow();
@@ -861,7 +861,7 @@ impl Unserializer {
                     }
                     let o_2: crate::HxRef<hxrt::anon::Anon> = {
                         let _ = cl_3;
-                        crate::HxRef::new(hxrt::anon::Anon::new())
+                        crate::__hx_unsupported_reflection::<crate::HxRef<hxrt::anon::Anon>>(hxrt::string::HxString::from("Type.createEmptyInstance is unavailable in the current experimental dynamic-reflection path"))
                     };
                     ({
                         let __b = __hx_this.borrow();
@@ -938,11 +938,7 @@ impl Unserializer {
                     let index: i32 =
                         crate::haxe_unserializer::Unserializer::read_digits(&*__hx_this);
                     let tag: hxrt::string::HxString = hxrt::string::HxString::from(
-                        ({
-                            let _ = edecl;
-                            hxrt::array::Array::<String>::new()
-                        })
-                        .get_unchecked(index as usize),
+                        crate::__hx_enum_constructs(edecl).get_unchecked(index as usize),
                     );
                     if tag == hxrt::string::HxString::null() {
                         hxrt::exception::throw(hxrt::dynamic::from(hxrt::string::HxString::from(

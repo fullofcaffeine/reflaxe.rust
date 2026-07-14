@@ -46,7 +46,7 @@ The repository verified the audit against the reviewed tree before creating foll
 | --- | --- | --- |
 | Public compatibility authority | Schema v2 inventories 312 shipped/importable Haxe declarations and their public operations across the installed class-path sources. It protects normalized signatures, constructors, defaults, generic bounds, direct/transitive shipped types, metadata/define grammar, lifecycle state, and validated evidence IDs. The compiler-owned boundary now seals every internal helper root while preserving the explicitly classified public injection shim; admitted APIs cannot close over candidate, experimental, or internal transitive types. Candidate status remains distinct from stable admission. | `.2` and `.3` complete |
 | Portable `Sys` and standard I/O failure behavior | Admitted core path/process failures now cross a catchable Haxe string boundary, standard-stream failures use typed `haxe.io.Error`, and stdin EOF remains distinct from read errors. `Sys.cpuTime()` throws explicitly and remains experimental until a real process CPU clock is implemented; non-Windows concurrent `Sys.putEnv` remains experimental rather than receiving a false safety promise. | `haxe_rust-p6hs.4` complete |
-| Reflection and call stacks | Accepted `Type.*` paths still contain sentinel, empty, or reachable `todo!()` behavior. `CallStack` contents remain an explicitly minimal empty implementation. | `haxe_rust-p6hs.5` |
+| Reflection and call stacks | The selected closed-world `Type.*` name/resolve/constructor-list operations now use a deterministic compiler-generated registry with Haxe-oracle semantics and no `todo!()` or sentinel output. Dynamic construction is excluded: direct application calls receive `HXRS-REFLECTION-UNSUPPORTED`, while retained upstream `haxe.Unserializer` branches throw a Haxe-catchable operation-specific error. `CallStack` names/signatures are a qualified API-shape candidate; current empty contents, native frames, source mapping, and exact formatting are explicitly not admitted. The targeted contract, complete repository harness, package smoke, and independent application pressure test are green. | `haxe_rust-p6hs.5` complete |
 | `HxRef` lifecycle | The safe `Arc` plus lock design remains sound, but strong cycles are not tracing-collected and payload/guard qualifications need executable stable-contract evidence. | `haxe_rust-p6hs.6` |
 | Native lock callbacks | Mutex/RwLock callbacks execute while the same non-reentrant guard is held, so same-handle reentry can deadlock. | `haxe_rust-p6hs.7` |
 | Threads and EventLoop | Thread registration and scheduler transitions are not fully unwind-safe when a callback throws or panics. | `haxe_rust-p6hs.8` |
@@ -60,8 +60,9 @@ The repository verified the audit against the reviewed tree before creating foll
 
 - `HxRef` strong cycles may remain uncollected if the stable contract and production guidance state
   that limit and supply explicit cleanup evidence. A tracing GC is not a `1.0` requirement.
-- Broad runtime reflection may remain experimental if unsupported accepted calls become stable
-  compile-time errors rather than sentinels or `todo!()` output.
+- Broad runtime reflection remains experimental. Unsupported application-authored dynamic
+  construction is a stable compile-time error, while unavoidable upstream generic branches remain
+  compilable and fail catchably when reached; neither path emits sentinels or `todo!()` output.
 - `rust_async`, EventLoop/pool breadth, UDP, TLS, MySQL runtime, broad SQLite/network behavior,
   raw Rust, and custom Cargo ownership may remain experimental or narrowly qualified.
 - Empty `CallStack` contents may remain outside the stable promise if the API/content distinction is
@@ -104,7 +105,8 @@ Current production use remains appropriate when all of the following are true:
   Cargo lockfiles;
 - used language/std operations are inside the documented evidence-backed set;
 - every used file, process, network, TLS, DB, thread, or async edge has application-specific tests;
-- the application does not rely on broad dynamic `Type.*` reflection, useful native call stacks,
+- the application does not rely on dynamic class/enum construction, unlisted `Type.*` reflection,
+  useful native call stacks,
   same-handle native lock callback reentry, or unproven async cancellation/shutdown;
 - admitted core `Sys` and standard-stream failures are Haxe-catchable, while every additional file,
   process, network, TLS, DB, thread, or async failure path used by the application still has its own
@@ -122,9 +124,9 @@ The active Beads graph is:
 1. `haxe_rust-p6hs.2` — package-complete operation/member/signature/transitive compatibility graph
    (foundation implemented).
 2. `haxe_rust-p6hs.3` — package-wide public/internal boundary closure (foundation implemented).
-3. `haxe_rust-p6hs.4` — portable core `Sys`/standard-stream failure behavior (implemented); `.5`
-   through `.10` — next: fix or explicitly de-admit the selected reflection, lifecycle, async, and
-   structured-metadata surfaces.
+3. `haxe_rust-p6hs.4` — portable core `Sys`/standard-stream failure behavior (implemented); `.5` —
+   closed-world reflection and CallStack qualification (implemented); `.6` through `.10` — next:
+   fix or explicitly de-admit the selected lifecycle, async, and structured-metadata surfaces.
 4. `haxe_rust-p6hs.11` through `.13` — fresh MSRV resolution, CI input identity, vendor/license
    governance.
 5. `haxe_rust-p6hs.14` — exact frozen-RC evidence plus independent major-1 GO/NO-GO.

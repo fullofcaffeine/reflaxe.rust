@@ -70,6 +70,150 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
     }
 }
 
+pub(crate) fn __hx_unsupported_reflection<T>(operation: hxrt::string::HxString) -> T {
+    hxrt::exception::throw(hxrt::dynamic::from(operation))
+}
+
+pub(crate) fn __hx_resolve_class_name(name: &str) -> u32 {
+    match name {
+        "Date" => 0x0d3c0cadu32,
+        "Main" => 0xf2f82034u32,
+        "StringBuf" => 0x9ce3c7b1u32,
+        "StringTools" => 0x70f28bdfu32,
+        "Sys" => 0x71215cbau32,
+        "haxe.Exception" => 0xad5d98ceu32,
+        "haxe.IMap" => 0x44f4c432u32,
+        "haxe.Int64Helper" => 0xd8066f14u32,
+        "haxe.Json" => 0x9b8d53fbu32,
+        "haxe.Serializer" => 0x024a7531u32,
+        "haxe.Unserializer" => 0xb43e7e96u32,
+        "haxe.crypto.Base64" => 0x7122cdcdu32,
+        "haxe.crypto.BaseCode" => 0x8584eeaeu32,
+        "haxe.crypto.Sha256" => 0xfa1b3a4du32,
+        "haxe.ds.EnumValueMap" => 0x0cd85f36u32,
+        "haxe.ds.IntMap" => 0x39e0cd5bu32,
+        "haxe.ds.List" => 0xd0de220eu32,
+        "haxe.ds.ObjectMap" => 0xd7e07825u32,
+        "haxe.ds.StringMap" => 0x181f937bu32,
+        "haxe.io.BytesBuffer" => 0xaf52976eu32,
+        "haxe.io.Eof" => 0xaa32ee11u32,
+        "haxe.io.FPHelper" => 0x14156acfu32,
+        "haxe.io.Input" => 0xd50291cbu32,
+        "haxe.io.Output" => 0xe82620b4u32,
+        "haxe.iterators.StringIterator" => 0xee4111fdu32,
+        "haxe.iterators.StringKeyValueIterator" => 0x0a67ae35u32,
+        "sys.io.Stderr" => 0x163b1f5au32,
+        "sys.io.Stdin" => 0xfb16179cu32,
+        "sys.io.Stdout" => 0x9402c169u32,
+        _ => 0 as u32,
+    }
+}
+
+pub(crate) fn __hx_resolve_enum_name(name: &str) -> u32 {
+    match name {
+        "ValueType" => 0xb78f52beu32,
+        "haxe.StackItem" => 0xd7cb7b80u32,
+        "haxe.io.Encoding" => 0x95d6dcc0u32,
+        "haxe.io.Error" => 0x6666eea1u32,
+        "haxe.json.Value" => 0xad5df524u32,
+        "rust.Option" => 0x13d0bc46u32,
+        _ => 0 as u32,
+    }
+}
+
+pub(crate) fn __hx_class_name(type_id: u32) -> hxrt::string::HxString {
+    match type_id {
+        0x0d3c0cadu32 => hxrt::string::HxString::from("Date"),
+        0xf2f82034u32 => hxrt::string::HxString::from("Main"),
+        0x9ce3c7b1u32 => hxrt::string::HxString::from("StringBuf"),
+        0x70f28bdfu32 => hxrt::string::HxString::from("StringTools"),
+        0x71215cbau32 => hxrt::string::HxString::from("Sys"),
+        0xad5d98ceu32 => hxrt::string::HxString::from("haxe.Exception"),
+        0x44f4c432u32 => hxrt::string::HxString::from("haxe.IMap"),
+        0xd8066f14u32 => hxrt::string::HxString::from("haxe.Int64Helper"),
+        0x9b8d53fbu32 => hxrt::string::HxString::from("haxe.Json"),
+        0x024a7531u32 => hxrt::string::HxString::from("haxe.Serializer"),
+        0xb43e7e96u32 => hxrt::string::HxString::from("haxe.Unserializer"),
+        0x7122cdcdu32 => hxrt::string::HxString::from("haxe.crypto.Base64"),
+        0x8584eeaeu32 => hxrt::string::HxString::from("haxe.crypto.BaseCode"),
+        0xfa1b3a4du32 => hxrt::string::HxString::from("haxe.crypto.Sha256"),
+        0x0cd85f36u32 => hxrt::string::HxString::from("haxe.ds.EnumValueMap"),
+        0x39e0cd5bu32 => hxrt::string::HxString::from("haxe.ds.IntMap"),
+        0xd0de220eu32 => hxrt::string::HxString::from("haxe.ds.List"),
+        0xd7e07825u32 => hxrt::string::HxString::from("haxe.ds.ObjectMap"),
+        0x181f937bu32 => hxrt::string::HxString::from("haxe.ds.StringMap"),
+        0xaf52976eu32 => hxrt::string::HxString::from("haxe.io.BytesBuffer"),
+        0xaa32ee11u32 => hxrt::string::HxString::from("haxe.io.Eof"),
+        0x14156acfu32 => hxrt::string::HxString::from("haxe.io.FPHelper"),
+        0xd50291cbu32 => hxrt::string::HxString::from("haxe.io.Input"),
+        0xe82620b4u32 => hxrt::string::HxString::from("haxe.io.Output"),
+        0xee4111fdu32 => hxrt::string::HxString::from("haxe.iterators.StringIterator"),
+        0x0a67ae35u32 => hxrt::string::HxString::from("haxe.iterators.StringKeyValueIterator"),
+        0x163b1f5au32 => hxrt::string::HxString::from("sys.io.Stderr"),
+        0xfb16179cu32 => hxrt::string::HxString::from("sys.io.Stdin"),
+        0x9402c169u32 => hxrt::string::HxString::from("sys.io.Stdout"),
+        _ => hxrt::string::HxString::null(),
+    }
+}
+
+pub(crate) fn __hx_enum_name(type_id: u32) -> hxrt::string::HxString {
+    match type_id {
+        0xb78f52beu32 => hxrt::string::HxString::from("ValueType"),
+        0xd7cb7b80u32 => hxrt::string::HxString::from("haxe.StackItem"),
+        0x95d6dcc0u32 => hxrt::string::HxString::from("haxe.io.Encoding"),
+        0x6666eea1u32 => hxrt::string::HxString::from("haxe.io.Error"),
+        0xad5df524u32 => hxrt::string::HxString::from("haxe.json.Value"),
+        0x13d0bc46u32 => hxrt::string::HxString::from("rust.Option"),
+        _ => hxrt::string::HxString::null(),
+    }
+}
+
+pub(crate) fn __hx_enum_constructs(type_id: u32) -> hxrt::array::Array<hxrt::string::HxString> {
+    match type_id {
+        0xb78f52beu32 => hxrt::array::Array::<hxrt::string::HxString>::from_vec(vec![
+            hxrt::string::HxString::from("TNull"),
+            hxrt::string::HxString::from("TInt"),
+            hxrt::string::HxString::from("TFloat"),
+            hxrt::string::HxString::from("TBool"),
+            hxrt::string::HxString::from("TObject"),
+            hxrt::string::HxString::from("TFunction"),
+            hxrt::string::HxString::from("TClass"),
+            hxrt::string::HxString::from("TEnum"),
+            hxrt::string::HxString::from("TUnknown"),
+        ]),
+        0xd7cb7b80u32 => hxrt::array::Array::<hxrt::string::HxString>::from_vec(vec![
+            hxrt::string::HxString::from("CFunction"),
+            hxrt::string::HxString::from("Module"),
+            hxrt::string::HxString::from("FilePos"),
+            hxrt::string::HxString::from("Method"),
+            hxrt::string::HxString::from("LocalFunction"),
+        ]),
+        0x95d6dcc0u32 => hxrt::array::Array::<hxrt::string::HxString>::from_vec(vec![
+            hxrt::string::HxString::from("UTF8"),
+            hxrt::string::HxString::from("RawNative"),
+        ]),
+        0x6666eea1u32 => hxrt::array::Array::<hxrt::string::HxString>::from_vec(vec![
+            hxrt::string::HxString::from("Blocked"),
+            hxrt::string::HxString::from("Overflow"),
+            hxrt::string::HxString::from("OutsideBounds"),
+            hxrt::string::HxString::from("Custom"),
+        ]),
+        0xad5df524u32 => hxrt::array::Array::<hxrt::string::HxString>::from_vec(vec![
+            hxrt::string::HxString::from("JNull"),
+            hxrt::string::HxString::from("JBool"),
+            hxrt::string::HxString::from("JNumber"),
+            hxrt::string::HxString::from("JString"),
+            hxrt::string::HxString::from("JObject"),
+            hxrt::string::HxString::from("JArray"),
+        ]),
+        0x13d0bc46u32 => hxrt::array::Array::<hxrt::string::HxString>::from_vec(vec![
+            hxrt::string::HxString::from("Some"),
+            hxrt::string::HxString::from("None"),
+        ]),
+        _ => hxrt::array::Array::<hxrt::string::HxString>::new(),
+    }
+}
+
 fn main() {
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",

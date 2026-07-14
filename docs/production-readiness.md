@@ -30,10 +30,12 @@ Use `reflaxe.rust` in production when all of these are true:
 - native Rust interop is behind typed wrappers,
 - `metal` is used deliberately instead of as a default escape hatch.
 
-Until the audit follow-up lands, do not treat broad dynamic `Type.*` reflection, useful native
+Do not treat dynamic class/enum construction, unlisted `Type.*` reflection, useful native
 `CallStack` contents, same-handle native lock callback reentry, unproven async cancellation/shutdown,
-or untested normal OS-failure paths as production-stable behavior. Long-lived strong `HxRef` cycles
-must be avoided or explicitly broken.
+or application-specific OS-failure paths without their own tests as production-stable behavior.
+The admitted closed-world reflection subset and core `Sys` failure boundary are narrower documented
+contracts, not blanket reflection/sys claims. Long-lived strong `HxRef` cycles must be avoided or
+explicitly broken.
 
 If those are not true yet, treat adoption as a pilot rather than broad rollout.
 

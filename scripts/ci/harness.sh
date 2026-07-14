@@ -439,6 +439,9 @@ run_policy_group() {
   run_stage "stable diagnostic identifier contract" bash scripts/ci/check-diagnostic-contract.sh
   intermediate_cleanup "diagnostic-contract"
 
+  run_stage "portable reflection registry and rejection contract" bash scripts/ci/check-reflection-contract.sh
+  intermediate_cleanup "reflection-contract"
+
   run_stage "metal boundary policy" bash scripts/ci/check-metal-policy.sh
   intermediate_cleanup "metal-policy"
 

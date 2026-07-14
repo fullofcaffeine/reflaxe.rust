@@ -393,10 +393,18 @@ impl Serializer {
                 }
                 crate::value_type::ValueType::TObject => {
                     if false {
-                        let class_name: hxrt::string::HxString = hxrt::string::HxString::from({
-                            let _ = v;
-                            String::from("<unknown class>")
-                        });
+                        let class_name: hxrt::string::HxString =
+                            hxrt::string::HxString::from(crate::__hx_class_name({
+                                let __hx_reflection_handle = v;
+                                match __hx_reflection_handle.downcast_ref::<u32>() {
+                                    Some(__hx_reflection_type_id) => *__hx_reflection_type_id,
+                                    None => crate::__hx_unsupported_reflection::<u32>(
+                                        hxrt::string::HxString::from(
+                                            "Type.getClassName expected a Class or Enum handle",
+                                        ),
+                                    ),
+                                }
+                            }));
                         crate::string_buf::StringBuf::add(
                             &*({
                                 let __b = __hx_this.borrow();
@@ -419,10 +427,17 @@ impl Serializer {
                             );
                             crate::haxe_serializer::Serializer::serialize_string(
                                 &*__hx_this,
-                                hxrt::string::HxString::from({
-                                    let _ = v;
-                                    String::from("<unknown enum>")
-                                }),
+                                hxrt::string::HxString::from(crate::__hx_enum_name({
+                                    let __hx_reflection_handle = v;
+                                    match __hx_reflection_handle.downcast_ref::<u32>() {
+                                        Some(__hx_reflection_type_id) => *__hx_reflection_type_id,
+                                        None => crate::__hx_unsupported_reflection::<u32>(
+                                            hxrt::string::HxString::from(
+                                                "Type.getEnumName expected a Class or Enum handle",
+                                            ),
+                                        ),
+                                    }
+                                })),
                             );
                         } else {
                             if ({
@@ -1132,10 +1147,7 @@ impl Serializer {
                                             let __b = __hx_this.borrow();
                                             __b.buf.clone()
                                         }), hxrt::dynamic::from(hxrt::string::HxString::from("C")));
-                                                                crate::haxe_serializer::Serializer::serialize_string(&*__hx_this, hxrt::string::HxString::from({
-                                            let _ = c;
-                                            String::from("<unknown class>")
-                                        }));
+                                                                crate::haxe_serializer::Serializer::serialize_string(&*__hx_this, hxrt::string::HxString::from(crate::__hx_class_name(c)));
                                                                 if {
                                                                     let __b = __hx_this.borrow();
                                                                     __b.use_cache
@@ -1181,10 +1193,7 @@ impl Serializer {
                                             let __b = __hx_this.borrow();
                                             __b.buf.clone()
                                         }), hxrt::dynamic::from(hxrt::string::HxString::from("c")));
-                                                                crate::haxe_serializer::Serializer::serialize_string(&*__hx_this, hxrt::string::HxString::from({
-                                            let _ = c;
-                                            String::from("<unknown class>")
-                                        }));
+                                                                crate::haxe_serializer::Serializer::serialize_string(&*__hx_this, hxrt::string::HxString::from(crate::__hx_class_name(c)));
                                                                 if {
                                                                     let __b = __hx_this.borrow();
                                                                     __b.use_cache
@@ -1249,10 +1258,7 @@ impl Serializer {
                             );
                             crate::haxe_serializer::Serializer::serialize_string(
                                 &*__hx_this,
-                                hxrt::string::HxString::from({
-                                    let _ = e;
-                                    String::from("<unknown enum>")
-                                }),
+                                hxrt::string::HxString::from(crate::__hx_enum_name(e)),
                             );
                             if {
                                 let __b = __hx_this.borrow();

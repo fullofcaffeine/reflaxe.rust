@@ -305,6 +305,17 @@ Agent policy:
     Inner `catch_unwind` frames can otherwise re-enable panic-hook output too early and leak noisy `Box<dyn Any>` lines
     even when throws are correctly caught by an outer frame (observed with socket `readLine` + server/client wrappers).
   - Current limitation: catch type matching is Rust `Any` downcast (exact Rust type), so catching a subclass from a base-typed trait object isn’t supported yet.
+- Reflection registry gotcha: Haxe runtime names use `package + declaration name`; a secondary type's
+  containing module is not part of its runtime name (`sample.Secondary`, not
+  `sample.Primary.Secondary`). Keep admitted `Type.resolveClass` / `resolveEnum`, dynamic name lookup,
+  and enum-constructor listing in a deterministic compiler-generated closed registry. Do not add an
+  open-world reflection VM/registry to `hxrt` for declarations the typed compilation already knows.
+  Activate the generated registry only when an emitted class body actually uses an admitted dynamic
+  lookup; typing an unused upstream std helper must not add dead registry tables to unrelated crates.
+  `Class<T>` / `Enum<T>` carriers lower to `u32`; when upstream std keeps such a carrier statically
+  typed as `Dynamic`, compiler lowering must downcast the existing box exactly once. Unsupported
+  dynamic construction must be rejected at application callsites or throw catchably from retained
+  framework branches—never emit `todo!()`, a fake null, or an anonymous-object substitute.
 - To include external crates and hand-written Rust modules for demos/interop, use `-D rust_cargo_deps_file=...` + `-D rust_extra_src=...` (the compiler copies `*.rs` into `out/src/` and emits `mod <file>;` in `main.rs`).
 - Prefer framework-driven metadata over `.hxml` wiring when possible:
   - `@:rustCargo(...)` declares Cargo deps from Haxe types.
