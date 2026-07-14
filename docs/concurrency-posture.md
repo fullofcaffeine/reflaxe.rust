@@ -96,6 +96,30 @@ Primary evidence:
 - `examples/thread_pool_smoke`
 - Tier1/Tier2 stdlib sweep coverage
 
+## Qualified Rust-first lock surface
+
+The metal + HXRT `rust.concurrent.Mutexes` and `rust.concurrent.RwLocks` operations are qualified
+stable candidates. Their protected callback boundary is:
+
+- the actual Rust mutex/RwLock guard remains held for the callback's complete duration;
+- returning or storing a callback borrow token is rejected before Rust codegen;
+- every operation on that same handle during the callback throws a catchable String beginning with
+  `HXRT-LOCK-REENTRANCY` before lock acquisition, including RwLock read-to-write upgrades;
+- normal callback return and Haxe throw both release the guard and runtime marker;
+- nested use of a different handle remains valid.
+
+This qualification does not promise reentrant locks, arbitrary multi-lock deadlock prevention,
+fairness, or no-HXRT operation. Applications that acquire multiple handles across threads own a
+consistent global lock order.
+
+Primary evidence:
+
+- `npm run test:native-lock-reentrancy`
+- `scripts/ci/windows-smoke.sh` runs the same subprocess contract on the curated Windows lane
+- `test/positive/metal_raii_guard_scoped`
+- `test/negative/metal_raii_guard_escape`
+- `docs/raii-guard-lifetime-islands.md`
+
 ## Stable today
 
 ### `rust_async`

@@ -136,6 +136,13 @@ Agent policy:
   `Clone`/`Send`/`Sync`/`'static` bounds only where generated semantics or a real thread/dynamic
   crossing requires them; diagnose unsupported crossing at the Haxe source boundary rather than
   globally banning typed single-thread native values.
+- Native lock callback gotcha: `rust.concurrent.Mutexes` / `RwLocks` callback helpers intentionally
+  hold the real Rust guard for the callback's complete duration. Never unlock around the callback to
+  avoid a deadlock; that silently removes atomicity. Because the compiler cannot know a callback's
+  dynamic handle identity, HXRT must reject every same-handle operation before lock acquisition with
+  the catchable `HXRT-LOCK-REENTRANCY` String prefix, using an unwind-safe scoped marker. Different
+  handles may nest, but applications own one consistent cross-thread lock order. Keep the subprocess
+  matrix in `npm run test:native-lock-reentrancy` exhaustive over public lock operations.
 - Prefer `import` (and small local `typedef` aliases when appropriate) to avoid verbose fully-qualified type paths in compiler code
   (example: avoid `reflaxe.rust.ast.RustAST.RustMatchArm` when `import reflaxe.rust.ast.RustAST.RustMatchArm` lets you use `RustMatchArm`).
 - Prefer strong typing: avoid `Dynamic` in compiler/runtime/examples unless the upstream Haxe API forces it (for example `haxe.Json.parse`, cross-thread message payloads, exception catch-alls).

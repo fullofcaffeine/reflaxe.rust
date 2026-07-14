@@ -65,7 +65,7 @@ exact admitted surface.
 | `rust-values-qualified` | `qualified-stable-candidate` | `candidate` | `active` | Only individually documented operations; gaps in traits, borrowed entries, cloning, strings, OsString, and iteration remain visible. |
 | `rust-borrows` | `qualified-stable-candidate` | `candidate` | `active` | Documented lexical borrow regions, slice/string views, and scoped callbacks. |
 | `rust-hxref` | `qualified-stable-candidate` | `candidate` | `active` | Opaque shared Haxe-reference handle for APIs that expose rust.HxRef<T>; strong cycles are not tracing-collected, and thread crossing depends on the owning API and payload bounds. |
-| `rust-concurrency` | `qualified-stable-candidate` | `candidate` | `active` | Documented typed handle and scoped-guard subset with hxrt. |
+| `rust-concurrency` | `qualified-stable-candidate` | `candidate` | `active` | Metal plus hxrt typed handle/value/scoped-callback subset; callbacks retain the Rust guard, and every same-handle operation throws HXRT-LOCK-REENTRANCY before acquisition. |
 | `rust-async` | `qualified-stable-candidate` | `candidate` | `active` | Metal plus rust_async plus hxrt; synchronous main boundary. |
 | `rust-systems` | `qualified-stable-candidate` | `candidate` | `active` | Documented direct file, owned command/narrow child, and blocking localhost socket operations. |
 | `rust-prelude` | `qualified-stable-candidate` | `candidate` | `active` | Metal-only import hub; exported alias module path is protected. |
@@ -88,7 +88,7 @@ exact admitted surface.
 | `generated-package` | `stable-candidate` | `candidate` | `active` | Published Haxelib-shaped package and installed-package workflow. |
 | `generated-private` | `excluded-internal` | `internal` | `active` | Generated helper/wrapper details not admitted as consumer API. |
 
-Inventory: 318 shipped Haxe types, 1541 public operations, 18 metadata names, 55 defines, 4 JSON reports, 6 generated-artifact contracts, and 31 validated evidence records.
+Inventory: 318 shipped Haxe types, 1541 public operations, 18 metadata names, 55 defines, 4 JSON reports, 6 generated-artifact contracts, and 32 validated evidence records.
 <!-- END GENERATED PUBLIC COMPATIBILITY SUMMARY -->
 
 The guard enumerates no-package overrides, primary and secondary module types, direct `std/**`

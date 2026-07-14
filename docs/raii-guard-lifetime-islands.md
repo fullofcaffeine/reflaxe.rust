@@ -43,6 +43,17 @@ The Rust runtime keeps the actual RAII guard inside `hxrt::concurrent`. The Haxe
 borrow token (`rust.Ref<T>` or `rust.MutRef<T>`), and the typed borrow-region analyzer rejects
 returning, storing, wrapping, throwing, or otherwise escaping that token.
 
+The guard remains held for the callback's complete duration; these operations are atomic at that
+lock boundary. Calling any `Mutexes`/`RwLocks` operation on that same handle from inside the callback
+is not supported. HXRT detects the dynamic handle identity before lock acquisition and throws a
+catchable String beginning with `HXRT-LOCK-REENTRANCY`, including read-to-write RwLock upgrades.
+The marker and Rust guard are both released when the callback returns or throws.
+
+Callbacks may access a different handle. That does not make arbitrary multi-lock code deadlock-free:
+when multiple threads take multiple handles, the application must choose and consistently follow one
+global lock order. HXRT deliberately does not unlock before a callback, because doing so would change
+the documented atomic update/guard contract.
+
 Accepted:
 
 ```haxe
@@ -76,6 +87,8 @@ surface should return owned results and should not expose a storable Rust guard 
 - `test/positive/metal_raii_guard_scoped`: scoped mutex/RwLock guards return owned values.
 - `test/negative/metal_raii_guard_escape`: returning the scoped guard token is rejected before Rust
   codegen.
+- `npm run test:native-lock-reentrancy`: subprocess proof for every public mutex/RwLock access,
+  every callback shape, read-to-write upgrades, unwind cleanup, and valid different-handle nesting.
 - `runtime/hxrt/src/concurrent.rs`: owns the concrete Rust guard lifetimes for lock helpers.
 - `docs/extern-lifetime-island-cookbook.md`: shows the broader extern-island pattern for APIs that
   should not become Haxe-level lifetime signatures.

@@ -412,6 +412,9 @@ run_snapshots_group() {
 run_conformance_group() {
   run_stage "HxRef lifecycle contract" npm run test:hxref-lifecycle
 
+  run_stage "native lock reentrancy contract" npm run test:native-lock-reentrancy
+  intermediate_cleanup "native-lock-reentrancy"
+
   run_stage "semantic diff (portable)" python3 test/run-semantic-diff.py
   intermediate_cleanup "semantic-diff"
 

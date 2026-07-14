@@ -15,12 +15,20 @@ import rust.Ref;
 	- `create(...)`, `get(...)`, `set(...)`, `replace(...)`, `update(...)`.
 	- `withRef(...)` and `withMut(...)` expose the lock as a scoped borrow token for code that
 	  needs read/write access without cloning the protected value.
+	- `update(...)`, `withRef(...)`, and `withMut(...)` keep one atomic critical section for the
+	  complete callback.
 
 	How
 	- This is an extern binding to `hxrt::concurrent`; no wrapper class is emitted.
 	- The Rust runtime keeps the actual `MutexGuard` inside the helper and drops it when the callback
 	  returns. The Haxe callback receives `rust.Ref<T>` / `rust.MutRef<T>`, so the typed borrow-region
 	  analyzer rejects attempts to return, store, or wrap the guard token.
+	- The compiler cannot know which shared handle arbitrary callback code will touch. The runtime
+	  therefore checks the handle identity before every mutex operation. Accessing the same handle
+	  while its callback owns the guard throws a catchable String beginning with
+	  `HXRT-LOCK-REENTRANCY` instead of deadlocking; callback throws unwind and clear this scope.
+	- Nested access to a different handle is allowed. Code that takes multiple locks across threads
+	  must still use one consistent application-owned lock order.
 **/
 @:native("hxrt::concurrent")
 extern class Mutexes {

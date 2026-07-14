@@ -80,6 +80,9 @@ If those are not true yet, treat adoption as a pilot rather than broad rollout.
    - Treat `Sys.putEnv` as startup-only experimental behavior on non-Windows. Once a process may be
      concurrent, configure child environments through process-specific APIs instead of mutating the
      process-global environment.
+   - For `rust.concurrent` callback locks, do not touch the same handle from its callback. HXRT now
+     throws `HXRT-LOCK-REENTRANCY` instead of hanging, but applications that take multiple different
+     handles across threads must still define and follow one consistent lock order.
 5. Change control
    - Tie release decisions to documented readiness criteria plus green CI evidence.
 
@@ -92,7 +95,8 @@ For each production app, add focused tests for the runtime edges it actually rel
 - Network behavior: connection refused, timeouts, local loopback success/failure.
 - TLS/HTTP behavior: certificate setup, request/response callbacks, error routing.
 - DB behavior: driver availability, connection failure, transaction rollback.
-- Threading behavior: message passing, event-loop scheduling, shutdown/cleanup.
+- Threading behavior: message passing, event-loop scheduling, callback throws, multi-lock ordering,
+  and shutdown/cleanup.
 
 This is intentionally narrower than "prove the whole stdlib." It turns the broad support matrix into
 evidence for your real deployment shape.

@@ -75,6 +75,20 @@ function main() {
   operation(resultType, 'enum-constructor:Err')
 
   const mutexes = canonical.haxeTypes.find((entry) => entry.name === 'rust.concurrent.Mutexes')
+  const rwLocks = canonical.haxeTypes.find((entry) => entry.name === 'rust.concurrent.RwLocks')
+  const concurrencyContract = canonical.contracts.find((entry) => entry.id === 'rust-concurrency')
+  assert(concurrencyContract.evidenceIds.includes('test:native-lock-reentrancy'),
+    'the qualified Rust lock contract must own executable reentrancy evidence')
+  assert.match(concurrencyContract.qualification, /HXRT-LOCK-REENTRANCY/,
+    'the qualified Rust lock contract must name its same-handle failure boundary')
+  for (const type of [mutexes, rwLocks]) {
+    assert(type.evidenceIds.includes('test:native-lock-reentrancy'),
+      `${type.name} must own executable reentrancy evidence`)
+    for (const entry of type.operations) {
+      assert(entry.evidenceIds.includes('test:native-lock-reentrancy'),
+        `${type.name}.${entry.name} must own executable reentrancy evidence`)
+    }
+  }
   const createMutex = operation(mutexes, 'function:create')
   assert(createMutex.typeReferences.includes('rust.HxRef'), 'operation references must resolve imported public types')
   assert(createMutex.typeReferences.includes('rust.concurrent.Mutex'), 'operation references must resolve same-package public types')

@@ -108,6 +108,7 @@ log "snapshots"
 export SNAP_CARGO_QUIET="${SNAP_CARGO_QUIET:-0}"
 run_step "snapshot hello_trace" bash test/run-snapshots.sh --case hello_trace --no-diff
 run_step "snapshot sys_io" bash test/run-snapshots.sh --case sys_io --no-diff
+run_step "native lock reentrancy" python3 scripts/ci/check-native-lock-reentrancy.py
 
 if [[ -z "${CARGO_TARGET_DIR:-}" ]]; then
   export CARGO_TARGET_DIR="$root_dir/.cache/examples-target-windows-smoke"

@@ -10,6 +10,9 @@ const verifierPath = path.join(root, 'scripts', 'ci', 'verify-required-rust-test
 const exampleDir = path.join(root, 'examples', 'profile_storyboard')
 const requiredTestsPath = path.join(exampleDir, 'required-rust-tests.txt')
 const weeklyPath = path.join(root, '.github', 'workflows', 'weekly-ci-evidence.yml')
+const lockReentrancyScript = path.join(root, 'scripts', 'ci', 'check-native-lock-reentrancy.py')
+const lockReentrancyFixture = path.join(root, 'test', 'runtime_e2e', 'native_lock_reentrancy', 'Main.hx')
+const windowsSmokePath = path.join(root, 'scripts', 'ci', 'windows-smoke.sh')
 
 const requireMatch = (text, pattern, message) => {
   assert(pattern.test(text), message)
@@ -40,6 +43,23 @@ const main = () => {
     'the compiler harness must enforce required generated Rust test inventories'
   )
   assert(fs.existsSync(verifierPath), 'the generated Rust test inventory verifier must exist')
+
+  assert(fs.existsSync(lockReentrancyScript), 'the native lock reentrancy subprocess harness must exist')
+  assert(fs.existsSync(lockReentrancyFixture), 'the native lock reentrancy Haxe fixture must exist')
+  requireMatch(
+    harness,
+    /test:native-lock-reentrancy/,
+    'the full compiler harness must execute the native lock reentrancy contract'
+  )
+  const lockContract = fs.readFileSync(lockReentrancyScript, 'utf8')
+  requireMatch(lockContract, /TIMEOUT_SECONDS\s*=\s*5/, 'native lock reentrancy cases require a hard process timeout')
+  requireMatch(lockContract, /HXRT-LOCK-REENTRANCY/, 'native lock reentrancy must assert the stable runtime error identifier')
+  const windowsSmoke = fs.readFileSync(windowsSmokePath, 'utf8')
+  requireMatch(
+    windowsSmoke,
+    /check-native-lock-reentrancy\.py/,
+    'the curated Windows lane must execute the platform-independent native lock contract'
+  )
   const verifier = fs.readFileSync(verifierPath, 'utf8')
   requireMatch(
     verifier,

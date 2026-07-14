@@ -15,12 +15,20 @@ import rust.Ref;
 	- `create(...)`, `read(...)`, `write(...)`, `replace(...)`, `update(...)`.
 	- `withRead(...)` and `withWrite(...)` expose read/write lock guards as scoped borrow tokens for
 	  non-cloning access.
+	- `update(...)`, `withRead(...)`, and `withWrite(...)` keep one atomic critical section for the
+	  complete callback.
 
 	How
 	- This is an extern binding to `hxrt::concurrent`; no wrapper class is emitted.
 	- The Rust runtime keeps the actual `RwLockReadGuard` / `RwLockWriteGuard` inside the helper and
 	  drops it when the callback returns. The Haxe callback receives `rust.Ref<T>` / `rust.MutRef<T>`,
 	  so escaped guard tokens are diagnosed by the borrow-region analyzer before Rust codegen.
+	- The compiler cannot know which shared handle arbitrary callback code will touch. The runtime
+	  therefore checks the handle identity before every RwLock operation. Reading, writing, upgrading,
+	  or otherwise accessing the same handle while its callback owns a guard throws a catchable String
+	  beginning with `HXRT-LOCK-REENTRANCY` instead of deadlocking; callback throws clear the scope.
+	- Nested access to a different handle is allowed. Code that takes multiple locks across threads
+	  must still use one consistent application-owned lock order.
 **/
 @:native("hxrt::concurrent")
 extern class RwLocks {

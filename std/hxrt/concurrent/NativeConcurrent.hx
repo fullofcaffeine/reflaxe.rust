@@ -21,6 +21,10 @@ import rust.Ref;
 	- Lock APIs either use value-copy/update operations or scoped callback guards. In both cases the
 	  Rust RAII guard lifetime stays inside runtime Rust code; Haxe receives only owned values or
 	  callback-scoped borrow tokens.
+	- Callback helpers preserve atomicity by retaining the guard. Because the compiler cannot know a
+	  callback's dynamic handle identity, HXRT rejects any operation on that same handle with the
+	  catchable `HXRT-LOCK-REENTRANCY` String prefix before another lock acquisition. The scoped marker
+	  is unwind-safe, and different-handle nesting remains available under caller-owned lock ordering.
 **/
 @:native("hxrt::concurrent")
 extern class NativeConcurrent {

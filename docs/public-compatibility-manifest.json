@@ -183,6 +183,12 @@
       "level": "target-runtime"
     },
     {
+      "id": "test:native-lock-reentrancy",
+      "kind": "npm-script",
+      "script": "test:native-lock-reentrancy",
+      "level": "target-runtime"
+    },
+    {
       "id": "test:portable-sys-failures",
       "kind": "npm-script",
       "script": "test:portable-sys-failures",
@@ -517,18 +523,25 @@
       "id": "rust-concurrency",
       "class": "qualified-stable-candidate",
       "status": "active",
-      "qualification": "Documented typed handle and scoped-guard subset with hxrt.",
+      "qualification": "Metal plus hxrt typed handle/value/scoped-callback subset; callbacks retain the Rust guard, and every same-handle operation throws HXRT-LOCK-REENTRANCY before acquisition.",
       "protectedContract": [
         "listed names/signatures",
-        "documented handle and callback behavior"
+        "atomic callback guard duration",
+        "HXRT-LOCK-REENTRANCY identifier and same-handle trigger",
+        "unwind cleanup after callback throws",
+        "documented different-handle nesting behavior"
       ],
       "exclusions": [
         "unlisted concurrency primitives",
+        "reentrant same-handle access",
+        "arbitrary cross-thread multi-lock deadlock prevention or fairness",
         "no-hxrt"
       ],
       "admission": "candidate",
       "evidenceIds": [
         "file:docs/concurrency-posture.md",
+        "file:docs/raii-guard-lifetime-islands.md",
+        "test:native-lock-reentrancy",
         "test:public-compatibility"
       ]
     },
@@ -15933,6 +15946,7 @@
       "signature": "typedef Mutex < T > = hxrt.concurrent.MutexHandle < T >",
       "contract": "rust-concurrency",
       "evidenceIds": [
+        "test:native-lock-reentrancy",
         "test:public-compatibility"
       ],
       "directTypeReferences": [
@@ -15950,6 +15964,7 @@
       "signature": "@:native (\"hxrt::concurrent\") extern class Mutexes",
       "contract": "rust-concurrency",
       "evidenceIds": [
+        "test:native-lock-reentrancy",
         "test:public-compatibility"
       ],
       "directTypeReferences": [
@@ -15973,6 +15988,7 @@
           "signature": "@:native (\"mutex_new\") public static function create < T > (value : T) : HxRef < Mutex < T >>",
           "contract": "rust-concurrency",
           "evidenceIds": [
+            "test:native-lock-reentrancy",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -15987,6 +16003,7 @@
           "signature": "@:native (\"mutex_get\") public static function get < T > (mutex : Ref < HxRef < Mutex < T >>>) : T",
           "contract": "rust-concurrency",
           "evidenceIds": [
+            "test:native-lock-reentrancy",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -16002,6 +16019,7 @@
           "signature": "@:native (\"mutex_set\") public static function set < T > (mutex : Ref < HxRef < Mutex < T >>>, value : T) : Void",
           "contract": "rust-concurrency",
           "evidenceIds": [
+            "test:native-lock-reentrancy",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -16017,6 +16035,7 @@
           "signature": "@:native (\"mutex_replace\") public static function replace < T > (mutex : Ref < HxRef < Mutex < T >>>, value : T) : T",
           "contract": "rust-concurrency",
           "evidenceIds": [
+            "test:native-lock-reentrancy",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -16032,6 +16051,7 @@
           "signature": "@:native (\"mutex_update\") public static function update < T > (mutex : Ref < HxRef < Mutex < T >>>, callback : (T) -> T) : T",
           "contract": "rust-concurrency",
           "evidenceIds": [
+            "test:native-lock-reentrancy",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -16047,6 +16067,7 @@
           "signature": "@:native (\"mutex_with_ref\") public static function withRef < T, R > (mutex : Ref < HxRef < Mutex < T >>>, callback : (Ref < T >) -> R) : R",
           "contract": "rust-concurrency",
           "evidenceIds": [
+            "test:native-lock-reentrancy",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -16062,6 +16083,7 @@
           "signature": "@:native (\"mutex_with_mut\") public static function withMut < T, R > (mutex : Ref < HxRef < Mutex < T >>>, callback : (MutRef < T >) -> R) : R",
           "contract": "rust-concurrency",
           "evidenceIds": [
+            "test:native-lock-reentrancy",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -16080,6 +16102,7 @@
       "signature": "typedef RwLock < T > = hxrt.concurrent.RwLockHandle < T >",
       "contract": "rust-concurrency",
       "evidenceIds": [
+        "test:native-lock-reentrancy",
         "test:public-compatibility"
       ],
       "directTypeReferences": [
@@ -16097,6 +16120,7 @@
       "signature": "@:native (\"hxrt::concurrent\") extern class RwLocks",
       "contract": "rust-concurrency",
       "evidenceIds": [
+        "test:native-lock-reentrancy",
         "test:public-compatibility"
       ],
       "directTypeReferences": [
@@ -16120,6 +16144,7 @@
           "signature": "@:native (\"rw_lock_new\") public static function create < T > (value : T) : HxRef < RwLock < T >>",
           "contract": "rust-concurrency",
           "evidenceIds": [
+            "test:native-lock-reentrancy",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -16134,6 +16159,7 @@
           "signature": "@:native (\"rw_lock_read\") public static function read < T > (lock : Ref < HxRef < RwLock < T >>>) : T",
           "contract": "rust-concurrency",
           "evidenceIds": [
+            "test:native-lock-reentrancy",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -16149,6 +16175,7 @@
           "signature": "@:native (\"rw_lock_write\") public static function write < T > (lock : Ref < HxRef < RwLock < T >>>, value : T) : Void",
           "contract": "rust-concurrency",
           "evidenceIds": [
+            "test:native-lock-reentrancy",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -16164,6 +16191,7 @@
           "signature": "@:native (\"rw_lock_replace\") public static function replace < T > (lock : Ref < HxRef < RwLock < T >>>, value : T) : T",
           "contract": "rust-concurrency",
           "evidenceIds": [
+            "test:native-lock-reentrancy",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -16179,6 +16207,7 @@
           "signature": "@:native (\"rw_lock_update\") public static function update < T > (lock : Ref < HxRef < RwLock < T >>>, callback : (T) -> T) : T",
           "contract": "rust-concurrency",
           "evidenceIds": [
+            "test:native-lock-reentrancy",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -16194,6 +16223,7 @@
           "signature": "@:native (\"rw_lock_with_read\") public static function withRead < T, R > (lock : Ref < HxRef < RwLock < T >>>, callback : (Ref < T >) -> R) : R",
           "contract": "rust-concurrency",
           "evidenceIds": [
+            "test:native-lock-reentrancy",
             "test:public-compatibility"
           ],
           "typeReferences": [
@@ -16209,6 +16239,7 @@
           "signature": "@:native (\"rw_lock_with_write\") public static function withWrite < T, R > (lock : Ref < HxRef < RwLock < T >>>, callback : (MutRef < T >) -> R) : R",
           "contract": "rust-concurrency",
           "evidenceIds": [
+            "test:native-lock-reentrancy",
             "test:public-compatibility"
           ],
           "typeReferences": [

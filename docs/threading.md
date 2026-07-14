@@ -52,6 +52,10 @@ These APIs route through `hxrt::concurrent` so application/example code stays in
 The scoped guard helpers keep Rust lock guards inside HXRT and expose only callback-scoped
 `rust.Ref<T>` / `rust.MutRef<T>` tokens; see
 [RAII guard and lifetime-island rules](raii-guard-lifetime-islands.md).
+The guard remains held across the callback. Same-handle nested access is rejected before acquisition
+with the catchable `HXRT-LOCK-REENTRANCY` String prefix; callback throws release the guard and marker.
+Different-handle nesting is supported, but applications remain responsible for a consistent
+cross-thread lock order.
 
 ### Send/Sync boundary diagnostics
 

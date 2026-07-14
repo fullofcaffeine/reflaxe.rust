@@ -1,0 +1,8 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_profile=metal
+-D reflaxe_rust_strict_examples
+-D rust_no_build
+-D rust_crate=native_lock_reentrancy_contract
+-D rust_output=out
+-main Main

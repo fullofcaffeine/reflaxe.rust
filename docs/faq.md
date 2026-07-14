@@ -269,6 +269,11 @@ Returning or storing that token is rejected by the borrow-region analyzer. File,
 transaction, parser, or `unsafe` guard APIs should usually use a small typed extern facade that
 returns owned values.
 
+Do not access that same mutex/RwLock handle from inside its callback. The guard stays held to preserve
+atomicity, and HXRT turns same-handle reads, writes, updates, nested callbacks, and RwLock upgrades into
+a catchable `HXRT-LOCK-REENTRANCY` String instead of a deadlock. Accessing another handle is allowed,
+but multi-threaded code must still follow a consistent global lock order.
+
 See [RAII guard and lifetime-island rules](raii-guard-lifetime-islands.md).
 
 ## Can I use Rust crates from Haxe?

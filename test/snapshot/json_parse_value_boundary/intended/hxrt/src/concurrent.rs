@@ -18,10 +18,90 @@
 use crate::cell::{HxDynRef, HxRc, HxRef};
 use crate::{dynamic, exception};
 use parking_lot::{Mutex as ParkMutex, RwLock as ParkRwLock};
+use std::cell::RefCell;
 use std::sync::mpsc;
+use std::sync::Arc;
 
 fn throw_msg(msg: &str) -> ! {
     exception::throw(dynamic::from(String::from(msg)))
+}
+
+const LOCK_REENTRANCY_ERROR: &str =
+    "HXRT-LOCK-REENTRANCY: same-handle lock access from a rust.concurrent callback is not allowed";
+
+thread_local! {
+    static ACTIVE_LOCK_CALLBACKS: RefCell<Vec<*const ()>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Return the allocation identity used to recognize one shared native lock handle.
+///
+/// Why
+/// - Callback helpers hold a non-reentrant Rust guard while arbitrary Haxe code runs.
+/// - The compiler cannot know the callback's dynamic call graph or which shared handle it will
+///   touch, so compile-time lowering cannot safely reject same-handle access.
+///
+/// What
+/// - The opaque `HxRef` allocation address is used only as a scoped equality token.
+/// - No target layout, payload address, or pointer arithmetic is exposed to generated code.
+///
+/// How
+/// - The owning `HxRef` remains alive throughout every helper call, so allocation reuse cannot
+///   alias an active token.
+fn lock_identity<T>(handle: &HxRef<T>) -> *const () {
+    match handle.as_arc_opt() {
+        Some(reference) => Arc::as_ptr(reference).cast::<()>(),
+        None => throw_msg("Null Access"),
+    }
+}
+
+fn ensure_lock_access_allowed<T>(handle: &HxRef<T>) -> *const () {
+    let identity = lock_identity(handle);
+    let is_active = ACTIVE_LOCK_CALLBACKS.with(|active| active.borrow().contains(&identity));
+    if is_active {
+        throw_msg(LOCK_REENTRANCY_ERROR);
+    }
+    identity
+}
+
+/// Unwind-safe marker for a callback that currently owns one native lock guard.
+///
+/// Why
+/// - Re-entering the same `parking_lot` mutex/RwLock can block the current thread forever.
+/// - Releasing the guard before invoking the callback would silently remove the helper's atomicity.
+///
+/// What
+/// - Same-thread access to any handle already present in the active callback stack throws the
+///   stable Haxe-visible `HXRT-LOCK-REENTRANCY` error before lock acquisition.
+/// - Different handles remain usable; applications still own a consistent cross-thread lock order.
+///
+/// How
+/// - A thread-local stack permits nested callbacks on different handles.
+/// - `Drop` removes the marker during normal return, Haxe throw, or Rust unwind, before control
+///   reaches the surrounding Haxe catch boundary.
+struct LockCallbackScope {
+    identity: *const (),
+}
+
+impl LockCallbackScope {
+    fn enter<T>(handle: &HxRef<T>) -> Self {
+        let identity = ensure_lock_access_allowed(handle);
+        ACTIVE_LOCK_CALLBACKS.with(|active| active.borrow_mut().push(identity));
+        Self { identity }
+    }
+}
+
+impl Drop for LockCallbackScope {
+    fn drop(&mut self) {
+        ACTIVE_LOCK_CALLBACKS.with(|active| {
+            let mut active = active.borrow_mut();
+            if let Some(index) = active
+                .iter()
+                .rposition(|identity| *identity == self.identity)
+            {
+                active.remove(index);
+            }
+        });
+    }
 }
 
 /// Typed multi-producer, single-consumer channel handle.
@@ -133,18 +213,21 @@ pub fn mutex_get<T>(mutex: &HxRef<MutexHandle<T>>) -> T
 where
     T: Clone,
 {
+    ensure_lock_access_allowed(mutex);
     let mutex_borrow = mutex.borrow();
     let guard = mutex_borrow.value.lock();
     guard.clone()
 }
 
 pub fn mutex_set<T>(mutex: &HxRef<MutexHandle<T>>, value: T) {
+    ensure_lock_access_allowed(mutex);
     let mutex_borrow = mutex.borrow();
     let mut guard = mutex_borrow.value.lock();
     *guard = value;
 }
 
 pub fn mutex_replace<T>(mutex: &HxRef<MutexHandle<T>>, value: T) -> T {
+    ensure_lock_access_allowed(mutex);
     let mutex_borrow = mutex.borrow();
     let mut guard = mutex_borrow.value.lock();
     std::mem::replace(&mut *guard, value)
@@ -161,6 +244,7 @@ where
         Some(rc) => rc.clone(),
         None => throw_msg("Null Access"),
     };
+    let _callback_scope = LockCallbackScope::enter(mutex);
     let mutex_borrow = mutex.borrow();
     let mut guard = mutex_borrow.value.lock();
     let next = callback(guard.clone());
@@ -176,6 +260,7 @@ pub fn mutex_with_ref<T, R>(
         Some(rc) => rc.clone(),
         None => throw_msg("Null Access"),
     };
+    let _callback_scope = LockCallbackScope::enter(mutex);
     let mutex_borrow = mutex.borrow();
     let guard = mutex_borrow.value.lock();
     callback(&*guard)
@@ -189,6 +274,7 @@ pub fn mutex_with_mut<T, R>(
         Some(rc) => rc.clone(),
         None => throw_msg("Null Access"),
     };
+    let _callback_scope = LockCallbackScope::enter(mutex);
     let mutex_borrow = mutex.borrow();
     let mut guard = mutex_borrow.value.lock();
     callback(&mut *guard)
@@ -207,6 +293,7 @@ pub fn rw_lock_read<T>(lock: &HxRef<RwLockHandle<T>>) -> T
 where
     T: Clone + Send + Sync,
 {
+    ensure_lock_access_allowed(lock);
     let lock_borrow = lock.borrow();
     let guard = lock_borrow.value.read();
     guard.clone()
@@ -216,6 +303,7 @@ pub fn rw_lock_write<T>(lock: &HxRef<RwLockHandle<T>>, value: T)
 where
     T: Send + Sync,
 {
+    ensure_lock_access_allowed(lock);
     let lock_borrow = lock.borrow();
     let mut guard = lock_borrow.value.write();
     *guard = value;
@@ -225,6 +313,7 @@ pub fn rw_lock_replace<T>(lock: &HxRef<RwLockHandle<T>>, value: T) -> T
 where
     T: Send + Sync,
 {
+    ensure_lock_access_allowed(lock);
     let lock_borrow = lock.borrow();
     let mut guard = lock_borrow.value.write();
     std::mem::replace(&mut *guard, value)
@@ -241,6 +330,7 @@ where
         Some(rc) => rc.clone(),
         None => throw_msg("Null Access"),
     };
+    let _callback_scope = LockCallbackScope::enter(lock);
     let lock_borrow = lock.borrow();
     let mut guard = lock_borrow.value.write();
     let next = callback(guard.clone());
@@ -259,6 +349,7 @@ where
         Some(rc) => rc.clone(),
         None => throw_msg("Null Access"),
     };
+    let _callback_scope = LockCallbackScope::enter(lock);
     let lock_borrow = lock.borrow();
     let guard = lock_borrow.value.read();
     callback(&*guard)
@@ -275,6 +366,7 @@ where
         Some(rc) => rc.clone(),
         None => throw_msg("Null Access"),
     };
+    let _callback_scope = LockCallbackScope::enter(lock);
     let lock_borrow = lock.borrow();
     let mut guard = lock_borrow.value.write();
     callback(&mut *guard)

@@ -36,6 +36,7 @@
     "test:diagnostic-contract": "node test/scripts/diagnostic-contract.test.js",
     "test:diagnostic-contract:runtime": "bash scripts/ci/check-diagnostic-contract.sh",
     "test:hxref-lifecycle": "cargo test --locked -p hxrt hxref_contract_",
+    "test:native-lock-reentrancy": "python3 scripts/ci/check-native-lock-reentrancy.py",
     "test:internal-helper-boundary": "REFLAXE_INTERNAL_HELPER_BOUNDARY_ONLY=1 bash scripts/ci/check-metal-policy.sh",
     "test:portable-sys-failures": "python3 scripts/ci/check-portable-sys-failures.py",
     "test:reflection-contract": "bash scripts/ci/check-reflection-contract.sh",
