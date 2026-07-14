@@ -86,13 +86,14 @@ exact admitted surface.
 | `generated-package` | `stable-candidate` | `candidate` | `active` | Published Haxelib-shaped package and installed-package workflow. |
 | `generated-private` | `excluded-internal` | `internal` | `active` | Generated helper/wrapper details not admitted as consumer API. |
 
-Inventory: 311 shipped Haxe types, 1512 public operations, 18 metadata names, 55 defines, 4 JSON reports, 6 generated-artifact contracts, and 25 validated evidence records.
+Inventory: 312 shipped Haxe types, 1517 public operations, 18 metadata names, 55 defines, 4 JSON reports, 6 generated-artifact contracts, and 26 validated evidence records.
 <!-- END GENERATED PUBLIC COMPATIBILITY SUMMARY -->
 
 The guard enumerates no-package overrides, primary and secondary module types, direct `std/**`
-bridges, public `hxrt.*` handles/helpers, and shipped compiler declarations. Compiler and runtime
-helpers are explicitly classified `excluded-internal`; their presence in the package does not make
-them stable API, and Bead `haxe_rust-p6hs.3` owns sealing any importable internal boundary. A new,
+bridges, importable `hxrt.*` implementation declarations, and shipped compiler declarations.
+Compiler/runtime helpers are explicitly classified `excluded-internal`; their presence in the
+package does not make them stable API. Bead `haxe_rust-p6hs.3` sealed those namespaces while keeping
+the documented injection shim as an explicit public experimental exception. A new,
 removed, duplicated, or unclassified type or operation; a changed signature/default/generic bound;
 a changed transitive shipped type; an unknown metadata/define grammar; a missing evidence target;
 or an invalid promotion/deprecation state fails CI.
@@ -139,8 +140,12 @@ Native-helper manifest classifications are implementation-lifecycle labels, not 
 classes. A helper file, class, module path, or implementation may change without a public break
 when the admitted facade and explicitly listed generated artifacts remain compatible. Conversely,
 a stable facade remains protected whether implemented by lowering, a native helper, or `hxrt`.
-The helper boundary is now enforced: shared framework declarations live under `rust._internal.*`,
-application imports fail, and semantic operations use documented public facades.
+The package-wide helper boundary is now enforced from one compiler-owned namespace policy:
+`haxe.BoundaryTypes.*`, `hxrt.*`, `reflaxe.rust.*`, and `rust._internal.*` are implementation-only
+for application source. Direct imports and fully qualified references fail with
+`HXRS-INTERNAL-HELPER-IMPORT`; followed/transitive helper types behind a public facade remain legal.
+The exact `reflaxe.rust.macros.RustInjection` path is an explicit `raw-experimental` exception,
+not an accidental hole in the namespace rule.
 
 ## Defines and metadata
 

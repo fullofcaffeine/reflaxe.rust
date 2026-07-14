@@ -67,6 +67,7 @@ run_error_case test/negative/async_main_boundary compile.hxml HXRS-ASYNC-MAIN-SY
 run_error_case test/negative/metal_ref_alias_return_escape compile.hxml HXRS-BORROW-REGION 'returned borrow-only alias' borrow-region
 run_warning_case test/negative/portable_native_import_strict compile.warn.hxml HXRS-NATIVE-IMPORT-WARNING 'portable contract imported native target modules' native-import-warning
 run_error_case test/negative/portable_native_import_strict compile.hxml HXRS-NATIVE-IMPORT-ERROR 'portable contract imported native target modules' native-import-error
+run_error_case test/negative/internal_hxrt_helper_import compile.hxml HXRS-INTERNAL-HELPER-IMPORT 'application code cannot import internal framework helper' internal-helper-import
 run_error_case test/negative/rust_cargo_metadata_arity compile.hxml HXRS-METADATA-ARITY '`@:rustCargo` requires a single parameter' metadata-arity
 run_error_case test/negative/rust_generic_metadata_value compile.hxml HXRS-METADATA-VALUE '`@:rustGeneric` must be a string or array of strings' metadata-value
 run_error_case test/negative/rust_test_metadata_placement compile.hxml HXRS-METADATA-PLACEMENT 'must live in non-main classes' metadata-placement

@@ -99,6 +99,54 @@ run_negative_case() {
 	finish_policy_case "$failure_label" "$case_start"
 }
 
+run_positive_compile_case() {
+	local fixture_rel="$1"
+	local success_label="$2"
+	local case_start="$SECONDS"
+	local fixture_dir="$root_dir/$fixture_rel"
+	local log_file="$fixture_dir/.compile.log"
+	echo "[metal-policy] case: ${success_label}"
+
+	rm -rf "$fixture_dir/out"
+	rm -f "$log_file"
+
+	if ! (cd "$fixture_dir" && haxe compile.hxml) >"$log_file" 2>&1; then
+		echo "[metal-policy] error: expected compile success for ${success_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+
+	rm -f "$log_file"
+	rm -rf "$fixture_dir/out"
+	finish_policy_case "$success_label" "$case_start"
+}
+
+run_internal_helper_boundary_cases() {
+	run_negative_case "test/negative/internal_rust_helper_import" '\[HXRS-INTERNAL-HELPER-IMPORT\] application code cannot import internal framework helper `rust\._internal\.MapStorageTools`' \
+		'internal Rust helper import rejection' '^Main\.hx:'
+	run_negative_case "test/negative/internal_hxrt_helper_import" '\[HXRS-INTERNAL-HELPER-IMPORT\] application code cannot import internal framework helper `hxrt\.sys\.NativeSys`' \
+		'internal hxrt helper import rejection' '^Main\.hx:'
+	run_negative_case "test/negative/internal_hxrt_helper_typed" '\[HXRS-INTERNAL-HELPER-IMPORT\] application code cannot import internal framework helper `hxrt\.sys\.NativeSys`' \
+		'internal hxrt fully qualified reference rejection' '^Main\.hx:'
+	run_negative_case "test/negative/internal_hxrt_helper_interpolation" '\[HXRS-INTERNAL-HELPER-IMPORT\] application code cannot import internal framework helper `hxrt\.sys\.NativeSys`' \
+		'internal hxrt string-interpolation reference rejection' '^Main\.hx:'
+	run_negative_case "test/negative/internal_compiler_helper_import" '\[HXRS-INTERNAL-HELPER-IMPORT\] application code cannot import internal framework helper `reflaxe\.rust\.RustProfile`' \
+		'internal compiler helper import rejection' '^Main\.hx:'
+	run_negative_case "test/negative/internal_compiler_helper_spaced" '\[HXRS-INTERNAL-HELPER-IMPORT\] application code cannot import internal framework helper `reflaxe\.rust\.RustProfile`' \
+		'internal compiler helper whitespace/comment bypass rejection' '^Main\.hx:'
+	run_negative_case "test/negative/internal_boundary_alias_import" '\[HXRS-INTERNAL-HELPER-IMPORT\] application code cannot import internal framework helper `haxe\.BoundaryTypes\.JsonValue`' \
+		'internal boundary alias import rejection' '^Main\.hx:'
+	run_positive_compile_case "test/positive/internal_helper_public_facades" \
+		'public facades may retain internal transitive implementation types'
+	run_positive_compile_case "test/positive/internal_helper_public_exception" \
+		'public experimental helper exception permits fully qualified members'
+}
+
+if [[ "${REFLAXE_INTERNAL_HELPER_BOUNDARY_ONLY:-0}" == "1" ]]; then
+	run_internal_helper_boundary_cases
+	exit 0
+fi
+
 match_count() {
 	local pattern="$1"
 	local file="$2"
@@ -2829,8 +2877,7 @@ run_negative_case "test/negative/profile_removed_rusty" 'Unknown `-D reflaxe_rus
 	'rusty profile selector removed'
 run_negative_case "test/negative/native_wrapper_reserved_metadata" '`@:rustNativeWrapper` is reserved for the native wrapper facility spike and is not enabled as product metadata\.' \
 	'reserved native wrapper metadata is rejected'
-run_negative_case "test/negative/internal_rust_helper_import" 'application code cannot import internal Rust helper `rust\._internal\.MapStorageTools`' \
-	'internal Rust helper import rejection' '^Main\.hx:'
+run_internal_helper_boundary_cases
 run_negative_case "test/negative/portable_native_import_strict" 'portable contract imported native target modules: rust\.Option' \
 	'portable native-target import strict mode rejects rust.* imports' \
 	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : \[HXRS-NATIVE-IMPORT-ERROR\]'

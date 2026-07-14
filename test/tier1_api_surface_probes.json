@@ -16,7 +16,7 @@
     {
       "id": "haxe_Json",
       "body": [
-        "var parsed:haxe.BoundaryTypes.JsonValue = haxe.Json.parse('{\"k\":1,\"arr\":[1,2]}');",
+        "var parsed = haxe.Json.parse('{\"k\":1,\"arr\":[1,2]}');",
         "var text = haxe.Json.stringify({ k: 1, arr: [1, 2] });",
         "var replaced = haxe.Json.stringify({ title: 'sunset' }, function(key:Dynamic, value:Dynamic):Dynamic {",
         "  return Std.string(key) == 'title' ? 'SUNSET' : value;",

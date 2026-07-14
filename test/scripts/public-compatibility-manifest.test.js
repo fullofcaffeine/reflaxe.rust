@@ -57,6 +57,17 @@ function main() {
   const compilerType = canonical.haxeTypes.find((entry) => entry.name === 'reflaxe.rust.RustCompiler')
   assert(compilerType, 'package discovery must include shipped compiler declarations')
   assert.strictEqual(compilerType.contract, 'internal-helper')
+  assert.deepStrictEqual(checkerModule.internalHelperRoots(), [
+    'haxe.BoundaryTypes',
+    'hxrt',
+    'reflaxe.rust',
+    'rust._internal'
+  ], 'the graph guard must consume the compiler-owned internal namespace policy')
+  assert.deepStrictEqual(checkerModule.internalHelperExceptions(), [
+    'reflaxe.rust.macros.RustInjection'
+  ], 'mixed namespaces must expose only explicitly classified public exceptions')
+  const rustInjection = canonical.haxeTypes.find((entry) => entry.name === 'reflaxe.rust.macros.RustInjection')
+  assert.strictEqual(rustInjection.contract, 'raw-experimental', 'the documented injection shim must remain explicitly public and experimental')
 
   const resultType = canonical.haxeTypes.find((entry) => entry.name === 'rust.Result')
   assert.match(resultType.signature, /E = String/, 'type signatures must preserve generic defaults')
@@ -175,6 +186,18 @@ function main() {
     writeJson(changedTransitiveTypePath, changedTransitiveType)
     expectFailure(run(['--manifest', changedTransitiveTypePath, '--skip-doc']), /transitive type-reference drift.*rust\.concurrent\.Mutexes/s)
 
+    const publicizedInternal = structuredClone(manifest)
+    publicizedInternal.haxeTypes.find((entry) => entry.name === 'hxrt.sys.NativeSys').contract = 'portable-sys-core'
+    const publicizedInternalPath = path.join(root, 'publicized-internal.json')
+    writeJson(publicizedInternalPath, publicizedInternal)
+    expectFailure(run(['--manifest', publicizedInternalPath, '--skip-doc']), /internal application namespace.*internal-helper.*hxrt\.sys\.NativeSys/s)
+
+    const unsealedInternal = structuredClone(manifest)
+    unsealedInternal.haxeTypes.find((entry) => entry.name === 'Sys').contract = 'internal-helper'
+    const unsealedInternalPath = path.join(root, 'unsealed-internal.json')
+    writeJson(unsealedInternalPath, unsealedInternal)
+    expectFailure(run(['--manifest', unsealedInternalPath, '--skip-doc']), /internal-helper type is not sealed.*Sys/s)
+
     const missingEvidence = structuredClone(manifest)
     missingEvidence.evidence.find((entry) => entry.kind === 'file').path = 'test/does-not-exist.compatibility-evidence'
     const missingEvidencePath = path.join(root, 'missing-evidence.json')
@@ -208,6 +231,33 @@ function main() {
     const familyOnlyAdmissionPath = path.join(root, 'family-only-admission.json')
     writeJson(familyOnlyAdmissionPath, familyOnlyAdmission)
     expectFailure(run(['--manifest', familyOnlyAdmissionPath, '--skip-doc']), /operation rust\.(?:Option|Result).*lacks operation-specific executable evidence/s)
+
+    const leakingAdmission = structuredClone(manifest)
+    leakingAdmission.evidence.push({
+      id: 'test:synthetic-transitive-admission',
+      kind: 'npm-script',
+      script: 'test:public-compatibility',
+      level: 'target-runtime'
+    })
+    leakingAdmission.evidence.push({
+      id: 'bead:haxe_rust-p6hs.3',
+      kind: 'bead',
+      bead: 'haxe_rust-p6hs.3',
+      level: 'review-record'
+    })
+    const admittedConcurrency = leakingAdmission.contracts.find((entry) => entry.id === 'rust-concurrency')
+    admittedConcurrency.admission = 'admitted'
+    admittedConcurrency.admissionRecord = 'bead:haxe_rust-p6hs.3'
+    admittedConcurrency.evidenceIds.push('test:synthetic-transitive-admission')
+    for (const type of leakingAdmission.haxeTypes.filter((entry) => entry.contract === 'rust-concurrency')) {
+      type.evidenceIds.push('test:synthetic-transitive-admission')
+      for (const member of type.operations.filter((entry) => entry.contract === 'rust-concurrency')) {
+        member.evidenceIds.push('test:synthetic-transitive-admission')
+      }
+    }
+    const leakingAdmissionPath = path.join(root, 'leaking-admission.json')
+    writeJson(leakingAdmissionPath, leakingAdmission)
+    expectFailure(run(['--manifest', leakingAdmissionPath, '--skip-doc']), /admitted (?:type|operation).*transitive public type.*hxrt\.concurrent\..*internal/s)
 
     const invalidDeprecation = structuredClone(manifest)
     delete invalidDeprecation.contracts.find((entry) => entry.id === 'haxe-metal-alias').deprecation.replacement

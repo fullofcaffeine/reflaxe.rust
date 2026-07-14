@@ -10,6 +10,7 @@ const reviewPath = path.join(repoRoot, 'docs', 'pre-1.0-compatibility-review.md'
 const sourceRoots = ['src/reflaxe/rust', 'std']
 const sourceRoot = path.join(repoRoot, 'src', 'reflaxe', 'rust')
 const stdRoot = path.join(repoRoot, 'std')
+const internalHelperPolicyPath = path.join(sourceRoot, 'analyze', 'InternalHelperBoundary.hx')
 const classes = new Set([
   'stable-candidate',
   'qualified-stable-candidate',
@@ -179,6 +180,40 @@ function requireStringArray(errors, owner, field, allowEmpty = false) {
 
 function sameStringArray(left, right) {
   return Array.isArray(left) && Array.isArray(right) && left.length === right.length && left.every((value, index) => value === right[index])
+}
+
+/**
+ * Reads the compiler-owned namespace list that enforces application/helper separation.
+ *
+ * The Haxe declaration is deliberately a simple string array so the compiler and this package graph
+ * share one policy owner without introducing a release-time JSON dependency into user compilation.
+ */
+function stringArrayFromInternalPolicy(source, field) {
+  const expression = new RegExp(`${field}\\s*:\\s*Array<String>\\s*=\\s*\\[([\\s\\S]*?)\\]\\s*;`)
+  const match = source.match(expression)
+  if (match == null) throw new Error(`cannot read ${field} from InternalHelperBoundary.hx`)
+  const values = Array.from(match[1].matchAll(/"([A-Za-z_][A-Za-z0-9_.]*)"/g), (entry) => entry[1])
+  if (new Set(values).size !== values.length) throw new Error(`InternalHelperBoundary.${field} contains duplicates`)
+  const sorted = [...values].sort()
+  if (!sameStringArray(values, sorted)) throw new Error(`InternalHelperBoundary.${field} must be sorted`)
+  return values
+}
+
+function internalHelperRoots() {
+  const source = fs.readFileSync(internalHelperPolicyPath, 'utf8')
+  const roots = stringArrayFromInternalPolicy(source, 'applicationInternalRoots')
+  if (roots.length === 0) throw new Error('InternalHelperBoundary.applicationInternalRoots must not be empty')
+  return roots
+}
+
+function internalHelperExceptions() {
+  const source = fs.readFileSync(internalHelperPolicyPath, 'utf8')
+  return stringArrayFromInternalPolicy(source, 'applicationPublicExceptions')
+}
+
+function belongsToInternalHelperRoot(name, roots, exceptions = []) {
+  if (exceptions.some((publicPath) => name === publicPath || name.startsWith(`${publicPath}.`))) return false
+  return roots.some((root) => name === root || name.startsWith(`${root}.`))
 }
 
 function issueIds() {
@@ -358,6 +393,74 @@ function validateSurfaceGraph(errors, manifest, discovered, contractsById, evide
   }
 }
 
+function validateInternalHelperBoundary(errors, manifest, contractsById, roots, exceptions) {
+  for (const type of manifest.haxeTypes || []) {
+    const contract = contractsById.get(type.contract)
+    const internalContract = contract?.class === 'excluded-internal' && contract?.admission === 'internal'
+    const sealedPath = belongsToInternalHelperRoot(type.name, roots, exceptions)
+    if (sealedPath && !internalContract) {
+      fail(errors, `type in internal application namespace must use an internal-helper contract: ${type.name} uses ${type.contract}`)
+    }
+    if (internalContract && !sealedPath) {
+      fail(errors, `internal-helper type is not sealed by InternalHelperBoundary.applicationInternalRoots: ${type.name}`)
+    }
+  }
+  for (const publicPath of exceptions) {
+    const type = (manifest.haxeTypes || []).find((entry) => entry.name === publicPath)
+    if (type == null) fail(errors, `internal-helper public exception does not resolve to a shipped Haxe type: ${publicPath}`)
+    else if (contractsById.get(type.contract)?.admission === 'internal') {
+      fail(errors, `internal-helper public exception must have an explicit public compatibility contract: ${publicPath}`)
+    }
+  }
+}
+
+function transitiveReferencesFor(referenceNames, typesByName) {
+  const seen = new Set()
+  const pending = [...referenceNames]
+  while (pending.length > 0) {
+    const name = pending.shift()
+    if (seen.has(name)) continue
+    seen.add(name)
+    const referenced = typesByName.get(name)
+    for (const child of referenced?.directTypeReferences || []) {
+      if (!seen.has(child)) pending.push(child)
+    }
+  }
+  return Array.from(seen).sort()
+}
+
+function validateAdmittedReferenceClosure(errors, manifest, contractsById) {
+  const typesByName = new Map((manifest.haxeTypes || []).map((entry) => [entry.name, entry]))
+
+  function validate(ownerLabel, references) {
+    for (const reference of transitiveReferencesFor(references, typesByName)) {
+      const type = typesByName.get(reference)
+      if (type == null) {
+        fail(errors, `${ownerLabel} has unresolved transitive public type ${reference}`)
+        continue
+      }
+      const contract = contractsById.get(type.contract)
+      if (contract?.admission !== 'admitted'
+        || (contract.class !== 'stable-candidate' && contract.class !== 'qualified-stable-candidate')) {
+        fail(errors, `${ownerLabel} has transitive public type ${reference} governed by ${contract?.admission || 'unknown'} contract ${type.contract}`)
+      }
+    }
+  }
+
+  for (const type of manifest.haxeTypes || []) {
+    const typeContract = contractsById.get(type.contract)
+    if (typeContract?.admission === 'admitted') {
+      validate(`admitted type ${type.name}`, type.directTypeReferences || [])
+    }
+    for (const operation of type.operations || []) {
+      const operationContract = contractsById.get(operation.contract)
+      if (operationContract?.admission === 'admitted') {
+        validate(`admitted operation ${type.name}#${operation.id}`, operation.typeReferences || [])
+      }
+    }
+  }
+}
+
 function loadAndValidate(manifestPath) {
   const errors = []
   let manifest = null
@@ -389,12 +492,22 @@ function loadAndValidate(manifestPath) {
   }
 
   let discovered = []
+  let helperRoots = []
+  let helperExceptions = []
+  try {
+    helperRoots = internalHelperRoots()
+    helperExceptions = internalHelperExceptions()
+  } catch (error) {
+    fail(errors, `cannot load internal-helper boundary policy: ${error.message}`)
+  }
   try {
     discovered = discoverHaxeSurface()
   } catch (error) {
     fail(errors, `cannot discover package Haxe surface: ${error.message}`)
   }
   validateSurfaceGraph(errors, manifest, discovered, contractsById, evidenceById)
+  validateInternalHelperBoundary(errors, manifest, contractsById, helperRoots, helperExceptions)
+  validateAdmittedReferenceClosure(errors, manifest, contractsById)
   validateNamedInventory(errors, 'metadata', discoverMetadata(), manifest.metadata)
   validateNamedInventory(errors, 'defines', discoverDefines(), manifest.defines)
 
@@ -421,12 +534,6 @@ function loadAndValidate(manifestPath) {
       }
     }
   }
-  for (const entry of manifest.haxeTypes || []) {
-    const owner = contractsById.get(entry.contract)
-    if (owner != null && owner.class === 'excluded-internal' && entry.name.startsWith('rust.') && !entry.name.startsWith('rust._internal.')) {
-      fail(errors, `internal Rust helper must be private or live under rust._internal: ${entry.name}`)
-    }
-  }
   return { errors, manifest }
 }
 
@@ -442,8 +549,21 @@ function evidenceLevel(reference) {
   return 'review-record'
 }
 
+function boundaryOwnedContract(name) {
+  if (internalHelperExceptions().includes(name)) {
+    const exceptions = {
+      'reflaxe.rust.macros.RustInjection': 'raw-experimental'
+    }
+    if (exceptions[name] == null) throw new Error(`public internal-root exception requires explicit compatibility classification: ${name}`)
+    return exceptions[name]
+  }
+  if (belongsToInternalHelperRoot(name, internalHelperRoots())) return 'internal-helper'
+  return null
+}
+
 function classifyNewType(name) {
-  if (name.startsWith('reflaxe.rust.') || name.startsWith('hxrt.')) return 'internal-helper'
+  const boundaryContract = boundaryOwnedContract(name)
+  if (boundaryContract != null) return boundaryContract
   const exact = {
     ArrayTools: 'portable-core',
     Date: 'portable-core',
@@ -509,7 +629,7 @@ function refreshManifest(manifest) {
   const discovered = discoverHaxeSurface()
   const haxeTypes = discovered.map((type) => {
     const previous = previousTypes.get(type.name)
-    const contract = previous?.contract || classifyNewType(type.name)
+    const contract = boundaryOwnedContract(type.name) || previous?.contract || classifyNewType(type.name)
     if (contract == null) throw new Error(`new Haxe type requires explicit compatibility classification: ${type.name}`)
     const previousOperations = new Map((previous?.operations || []).map((entry) => [entry.id, entry]))
     return {
@@ -657,6 +777,8 @@ module.exports = {
   discoverHaxeSurface,
   discoverHaxeTypes,
   discoverMetadata,
+  internalHelperExceptions,
+  internalHelperRoots,
   loadAndValidate,
   refreshManifest,
   renderSummary

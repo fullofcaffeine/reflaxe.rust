@@ -159,6 +159,12 @@
       "level": "source-contract"
     },
     {
+      "id": "test:internal-helper-boundary",
+      "kind": "npm-script",
+      "script": "test:internal-helper-boundary",
+      "level": "target-runtime"
+    },
+    {
       "id": "test:public-compatibility",
       "kind": "npm-script",
       "script": "test:public-compatibility",
@@ -554,6 +560,7 @@
       "admission": "internal",
       "evidenceIds": [
         "file:docs/native-facade-policy.md",
+        "test:internal-helper-boundary",
         "test:public-compatibility"
       ]
     },
@@ -7727,6 +7734,64 @@
       ]
     },
     {
+      "name": "reflaxe.rust.analyze.InternalHelperBoundary",
+      "source": "src/reflaxe/rust/analyze/InternalHelperBoundary.hx",
+      "kind": "class",
+      "signature": "class InternalHelperBoundary",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "field:applicationInternalRoots",
+          "kind": "field",
+          "name": "applicationInternalRoots",
+          "signature": "public static final applicationInternalRoots : Array < String > = [\"haxe.BoundaryTypes\", \"hxrt\", \"reflaxe.rust\", \"rust._internal\"]",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:applicationPublicExceptions",
+          "kind": "field",
+          "name": "applicationPublicExceptions",
+          "signature": "public static final applicationPublicExceptions : Array < String > = [\"reflaxe.rust.macros.RustInjection\"]",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:isInternalPath",
+          "kind": "function",
+          "name": "isInternalPath",
+          "signature": "public static function isInternalPath (modulePath : String) : Bool",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:collectDirectReferences",
+          "kind": "function",
+          "name": "collectDirectReferences",
+          "signature": "public static function collectDirectReferences (source : String) : Array < String >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
       "name": "reflaxe.rust.analyze.MetalIslandAnalyzer",
       "source": "src/reflaxe/rust/analyze/MetalIslandAnalyzer.hx",
       "kind": "class",
@@ -12578,7 +12643,7 @@
       "source": "src/reflaxe/rust/macros/RustInjection.hx",
       "kind": "class",
       "signature": "class RustInjection",
-      "contract": "internal-helper",
+      "contract": "raw-experimental",
       "evidenceIds": [
         "test:public-compatibility"
       ],
@@ -13887,6 +13952,17 @@
           "kind": "enum-value",
           "name": "NativeImportError",
           "signature": "var NativeImportError = \"HXRS-NATIVE-IMPORT-ERROR\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:InternalHelperImport",
+          "kind": "enum-value",
+          "name": "InternalHelperImport",
+          "signature": "var InternalHelperImport = \"HXRS-INTERNAL-HELPER-IMPORT\"",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"

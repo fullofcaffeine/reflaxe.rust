@@ -27,6 +27,7 @@ enum abstract RustDiagnosticId(String) to String {
 	var ProfileContractError = "HXRS-PROFILE-CONTRACT-ERROR";
 	var NativeImportWarning = "HXRS-NATIVE-IMPORT-WARNING";
 	var NativeImportError = "HXRS-NATIVE-IMPORT-ERROR";
+	var InternalHelperImport = "HXRS-INTERNAL-HELPER-IMPORT";
 	var NoHxrtRequiresMetal = "HXRS-NO-HXRT-REQUIRES-METAL";
 	var NoHxrtFeatureConflict = "HXRS-NO-HXRT-FEATURE-CONFLICT";
 	var NoHxrtNullableString = "HXRS-NO-HXRT-NULLABLE-STRING";

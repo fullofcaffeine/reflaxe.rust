@@ -54,6 +54,7 @@ import reflaxe.rust.analyze.SurfaceContractRegistry;
 import reflaxe.rust.analyze.SurfaceContractRegistry.NativeRepresentationDecision;
 import reflaxe.rust.analyze.SurfaceContractRegistry.SurfaceContract;
 import reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason;
+import reflaxe.rust.analyze.InternalHelperBoundary;
 import reflaxe.rust.analyze.BorrowRegionAnalyzer;
 import reflaxe.rust.analyze.SendSyncAnalyzer;
 import reflaxe.rust.analyze.TypeUsageAnalyzer;
@@ -802,24 +803,25 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
-		Rejects application use of framework-owned `rust._internal.*` helper modules.
+		Rejects application use of framework-owned implementation helper modules.
 
 		Why
-		- Haxe package naming alone does not make an `_internal` module inaccessible.
-		- Native helper declarations shared by several std overrides sometimes must remain in their own
-		  module, but exposing those declarations to applications would accidentally create public API.
+		- Haxe package naming alone does not make compiler, `hxrt`, or boundary-alias modules inaccessible.
+		- Framework helpers must remain available to compiler macros and std overrides without becoming
+		  application API merely because the installed Haxelib contains their declarations.
 
 		What
-		- Rejects explicit application `import`/`using` declarations for `rust._internal.*`.
-		- Also checks typed user-module usage so fully qualified references cannot bypass the import guard.
+		- Rejects user-authored references to every namespace owned by `InternalHelperBoundary`.
+		- Covers imports, using declarations, fully qualified types, and fully qualified value references.
 
 		How
-		- Reuses framework source ownership to inspect only user project modules.
-		- Anchors explicit-import diagnostics to the importing user module.
-		- Keeps the rule namespace-based so future internal helpers inherit the boundary without another
-		  one-off denylist.
+		- Scans only user project source after removing comments and literal bodies.
+		- Uses source spelling rather than followed typed aliases: public facades such as
+		  `rust.concurrent.Task<T>` deliberately resolve to private `hxrt` handles internally and must not
+		  be rejected when application source names only the public facade.
+		- Anchors the stable diagnostic to the user module that contains the forbidden reference.
 	**/
-	function enforceInternalRustHelperBoundary():Void {
+	function enforceInternalFrameworkHelperBoundary():Void {
 		var hits:Array<{modulePath:String, pos:haxe.macro.Expr.Position}> = [];
 		var seenFiles:Map<String, Bool> = [];
 		var seenPaths:Map<String, Bool> = [];
@@ -829,7 +831,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			if (file == null || file.length == 0 || seenFiles.exists(file) || !isUserProjectFile(file) || !FileSystem.exists(file))
 				continue;
 			seenFiles.set(file, true);
-			for (modulePath in collectInternalRustHelperImportsFromSource(File.getContent(file))) {
+			for (modulePath in InternalHelperBoundary.collectDirectReferences(File.getContent(file))) {
 				if (seenPaths.exists(modulePath))
 					continue;
 				seenPaths.set(modulePath, true);
@@ -837,44 +839,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 
-		var fallbackPos = profileContractDiagnosticPos("", profileContractModulePosIndex());
-		for (modulePath in snapshotUserUsedModulePaths()) {
-			if (!isInternalRustHelperPath(modulePath) || seenPaths.exists(modulePath))
-				continue;
-			seenPaths.set(modulePath, true);
-			hits.push({modulePath: modulePath, pos: fallbackPos});
-		}
-
 		hits.sort((a, b) -> compareStrings(a.modulePath, b.modulePath));
 		#if eval
 		if (hits.length > 0) {
 			var first = hits[0];
-			Context.error("application code cannot import internal Rust helper `"
+			RustDiagnostic.error(RustDiagnosticId.InternalHelperImport, "application code cannot import internal framework helper `"
 				+ first.modulePath
-				+ "`; use a documented rust.* facade instead",
+				+ "`; use the documented Haxe/std or rust.* facade instead",
 				first.pos);
 		}
 		#end
-	}
-
-	function collectInternalRustHelperImportsFromSource(source:String):Array<String> {
-		var out:Array<String> = [];
-		if (source == null || source.length == 0)
-			return out;
-		var importPattern = ~/^\s*(import|using)\s+([A-Za-z0-9_.]+)\s*;/;
-		for (line in source.split("\n")) {
-			if (!importPattern.match(line))
-				continue;
-			var modulePath = importPattern.matched(2);
-			if (isInternalRustHelperPath(modulePath) && !out.contains(modulePath))
-				out.push(modulePath);
-		}
-		out.sort(compareStrings);
-		return out;
-	}
-
-	inline function isInternalRustHelperPath(modulePath:String):Bool {
-		return modulePath != null && (modulePath == "rust._internal" || StringTools.startsWith(modulePath, "rust._internal."));
 	}
 
 	function collectNativeImportsFromSource(source:String):Array<String> {
@@ -1189,7 +1163,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	override public function onCompileEnd() {
-		enforceInternalRustHelperBoundary();
+		enforceInternalFrameworkHelperBoundary();
 		enforceNoHxrtEligibility();
 		enforceProfileContracts();
 		enforceBorrowRegionContracts();

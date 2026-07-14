@@ -11,7 +11,8 @@ Prefer this order:
    function APIs.
 2. Typed metadata/macros that feed compiler-owned structure, such as `@:native`, `@:rustCargo`,
    `@:rustExtraSrc`, `@:rustImpl`, and future typed trait/bound metadata.
-3. Typed Rust-native facades under `rust.*`, `hxrt.*`, or a documented `std/` wrapper.
+3. Typed Rust-native facades under `rust.*` or a documented Haxe/std wrapper. `hxrt.*` is
+   framework implementation and is not an application import surface.
 4. A narrow DSL only when Haxe syntax cannot express the Rust concept cleanly.
 5. `rust.metal.Code` only as a scoped raw bridge while a real typed surface is missing.
 

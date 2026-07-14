@@ -146,6 +146,19 @@ islands, but it is not the default Haxe compatibility path.
 
 See [Defines Reference](defines-reference.md#contracts-and-semantics).
 
+## Should application code import `hxrt.*` directly?
+
+No. `hxrt` is the compiler's typed semantic-runtime implementation, not an application API. Use the
+ordinary Haxe/std surface for portable semantics or a documented `rust.*` facade for Rust-native
+ownership and metal behavior. Those public APIs may use `hxrt` internally without exposing its
+handle/module layout as a compatibility promise.
+
+The same rule applies to compiler implementation modules under `reflaxe.rust.*`, boundary aliases
+under `haxe.BoundaryTypes.*`, and helpers under `rust._internal.*`. A direct import or fully qualified
+reference fails with `HXRS-INTERNAL-HELPER-IMPORT`. The explicitly documented
+`reflaxe.rust.macros.RustInjection` shim is the sole current exception and remains experimental raw
+authority; normal application code should prefer typed facades and `rust.metal.Code`'s scoped rules.
+
 ## Are `std/rust/native/*.rs` helpers a second runtime?
 
 No. They are allowed only as narrow typed helper islands behind documented Haxe facades.

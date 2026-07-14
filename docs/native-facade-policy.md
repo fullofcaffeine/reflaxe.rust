@@ -73,6 +73,25 @@ when a tracked helper lacks a manifest entry, when a manifest entry points at a 
 code references imports/dependency prefixes outside the declared allowlist, when a `no-hxrt` helper
 references `hxrt`, or when helper code grows beyond its review budget.
 
+## Haxe Package Boundary
+
+Native Rust helpers and Haxe extern bindings have different visibility mechanisms. A helper can be
+private in Rust while its Haxe binding still appears importable from the installed class path.
+Application code must use the documented Haxe/std or `rust.*` facade, never its `hxrt.*`, compiler,
+boundary-alias, or `rust._internal.*` backing declaration.
+
+`reflaxe.rust.analyze.InternalHelperBoundary` owns the four sealed namespace roots. The compiler
+checks user-authored source spelling—imports and fully qualified references—rather than followed
+typedef representations. That distinction is intentional: a public facade such as
+`rust.concurrent.Task<T>` may resolve transitively to an `hxrt` handle without exposing that handle
+as application API. Direct helper references fail with stable diagnostic
+`HXRS-INTERNAL-HELPER-IMPORT`.
+
+Mixed namespaces require an exact public exception plus a non-internal compatibility class. The
+only current exception is `reflaxe.rust.macros.RustInjection`, retained as an explicitly
+`raw-experimental` escape hatch. New exceptions require compatibility-manifest review and focused
+positive/negative fixtures; do not widen an entire internal namespace for one callable surface.
+
 ## Current Inventory
 
 The authoritative inventory now lives in

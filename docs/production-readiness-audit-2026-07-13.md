@@ -44,7 +44,7 @@ The repository verified the audit against the reviewed tree before creating foll
 
 | Area | Verified state | Owner |
 | --- | --- | --- |
-| Public compatibility authority | Schema v2 inventories 311 shipped/importable Haxe declarations and their public operations across the installed class-path sources. It protects normalized signatures, constructors, defaults, generic bounds, direct/transitive shipped types, metadata/define grammar, lifecycle state, and validated evidence IDs. Candidate status remains distinct from stable admission. | `.2` complete; `haxe_rust-p6hs.3` owns sealing internal boundaries |
+| Public compatibility authority | Schema v2 inventories 312 shipped/importable Haxe declarations and their public operations across the installed class-path sources. It protects normalized signatures, constructors, defaults, generic bounds, direct/transitive shipped types, metadata/define grammar, lifecycle state, and validated evidence IDs. The compiler-owned boundary now seals every internal helper root while preserving the explicitly classified public injection shim; admitted APIs cannot close over candidate, experimental, or internal transitive types. Candidate status remains distinct from stable admission. | `.2` and `.3` complete |
 | Portable `Sys` and standard I/O failure behavior | Normal OS failures still reach Rust `unwrap` or are collapsed into EOF/zero in admitted paths. `Sys.cpuTime()` still returns wall-clock time. | `haxe_rust-p6hs.4` |
 | Reflection and call stacks | Accepted `Type.*` paths still contain sentinel, empty, or reachable `todo!()` behavior. `CallStack` contents remain an explicitly minimal empty implementation. | `haxe_rust-p6hs.5` |
 | `HxRef` lifecycle | The safe `Arc` plus lock design remains sound, but strong cycles are not tracing-collected and payload/guard qualifications need executable stable-contract evidence. | `haxe_rust-p6hs.6` |
@@ -120,8 +120,8 @@ The active Beads graph is:
 
 1. `haxe_rust-p6hs.2` — package-complete operation/member/signature/transitive compatibility graph
    (foundation implemented).
-2. `haxe_rust-p6hs.3` — package-wide public/internal boundary closure (next dependency).
-3. `haxe_rust-p6hs.4` through `.10` — fix or explicitly de-admit the selected normal-failure,
+2. `haxe_rust-p6hs.3` — package-wide public/internal boundary closure (foundation implemented).
+3. `haxe_rust-p6hs.4` through `.10` — next: fix or explicitly de-admit the selected normal-failure,
    reflection, lifecycle, async, and structured-metadata surfaces.
 4. `haxe_rust-p6hs.11` through `.13` — fresh MSRV resolution, CI input identity, vendor/license
    governance.
