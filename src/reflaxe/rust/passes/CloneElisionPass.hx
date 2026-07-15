@@ -7,6 +7,8 @@ import reflaxe.rust.ast.RustAST.RustFile;
 import reflaxe.rust.ast.RustAST.RustFunction;
 import reflaxe.rust.ast.RustAST.RustItem;
 import reflaxe.rust.ast.RustAST.RustMatchArm;
+import reflaxe.rust.ast.RustAST.RustPath;
+import reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustStructLitField;
 
@@ -132,7 +134,7 @@ class CloneElisionPass implements RustPass {
 
 	function rewriteExpr(expr:RustExpr, disableLastUseElision:Bool):RustExpr {
 		var rewritten = switch (expr) {
-			case ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 			case ECall(func, args):
 				ECall(rewriteExpr(func, disableLastUseElision), [for (arg in args) rewriteExpr(arg, disableLastUseElision)]);
@@ -207,7 +209,7 @@ class CloneElisionPass implements RustPass {
 
 	function isAlwaysCloneSafeExpr(expr:RustExpr):Bool {
 		return switch (expr) {
-			case ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
+			case ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				true;
 			case EUnary(_, inner):
 				isAlwaysCloneSafeExpr(inner);
@@ -251,8 +253,6 @@ class CloneElisionPass implements RustPass {
 				return "missing_local_binding";
 			if (!movableLocals.get(name))
 				return "non_movable_or_reference_typed";
-			if (!isSimpleLocalPath(name))
-				return "non_simple_local_path";
 			if (countPathUsesInExpr(ownerExpr, name) != 1)
 				return "multiple_uses_in_expr";
 			if (hasPathUseAfter(stmts, tail, index, name))
@@ -269,8 +269,6 @@ class CloneElisionPass implements RustPass {
 				return "missing_local_binding";
 			if (!movableLocals.get(name))
 				return "non_movable_or_reference_typed";
-			if (!isSimpleLocalPath(name))
-				return "non_simple_local_path";
 			if (countPathUsesInExpr(ownerExpr, name) != 1)
 				return "multiple_uses_in_expr";
 			return null;
@@ -335,16 +333,19 @@ class CloneElisionPass implements RustPass {
 	**/
 	function rewriteLastUseCloneSites(expr:RustExpr, localMoveSkipReason:String->Null<String>):RustExpr {
 		return switch (expr) {
-			case ECall(EPath("hxrt::dynamic::from"), [ECall(EField(EPath(localName), "clone"), [])]):
+			case ECall(EPath(dynamicPath), [ECall(EField(EPath(localPath), "clone"), [])])
+				if (isDynamicFromPath(dynamicPath) && localPath.plainRelativeIdentifierName() != null):
+				var localName = localPath.plainRelativeIdentifierName();
 				var skipReason = localMoveSkipReason(localName);
 				if (skipReason == null) {
 					recordApplied("clone_elision.applied.last_use_dynamic_from");
-					ECall(EPath("hxrt::dynamic::from"), [EPath(localName)]);
+					ECall(EPath(dynamicPath), [EPath(localPath)]);
 				} else {
 					recordSkipped("clone_elision.skipped.last_use_dynamic_from." + skipReason);
 					expr;
 				}
-			case EMatch(ECall(EField(EPath(localName), "clone"), []), arms):
+			case EMatch(ECall(EField(EPath(localPath), "clone"), []), arms) if (localPath.plainRelativeIdentifierName() != null):
+				var localName = localPath.plainRelativeIdentifierName();
 				var skipReason = localMoveSkipReason(localName);
 				var rewrittenArms = [
 					for (arm in arms)
@@ -355,10 +356,10 @@ class CloneElisionPass implements RustPass {
 				];
 				if (skipReason == null) {
 					recordApplied("clone_elision.applied.last_use_match_scrutinee");
-					EMatch(EPath(localName), rewrittenArms);
+					EMatch(EPath(localPath), rewrittenArms);
 				} else {
 					recordSkipped("clone_elision.skipped.last_use_match_scrutinee." + skipReason);
-					EMatch(ECall(EField(EPath(localName), "clone"), []), rewrittenArms);
+					EMatch(ECall(EField(EPath(localPath), "clone"), []), rewrittenArms);
 				}
 			case ECall(func, args):
 				var rewrittenFunc = rewriteLastUseCloneSites(func, localMoveSkipReason);
@@ -404,7 +405,7 @@ class CloneElisionPass implements RustPass {
 				EAssign(rewriteLastUseCloneSites(lhs, localMoveSkipReason), rewriteLastUseCloneSites(rhs, localMoveSkipReason));
 			case EField(recv, field):
 				EField(rewriteLastUseCloneSites(recv, localMoveSkipReason), field);
-			case EClosure(_, _, _) | EPinAsyncMove(_) | EAwait(_) | ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case EClosure(_, _, _) | EPinAsyncMove(_) | EAwait(_) | ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 		};
 	}
@@ -440,10 +441,6 @@ class CloneElisionPass implements RustPass {
 		if (tail != null && countPathUsesInExpr(tail, pathName) > 0)
 			return true;
 		return false;
-	}
-
-	function isSimpleLocalPath(path:String):Bool {
-		return path.indexOf("::") == -1;
 	}
 
 	function countPathUsesInStmt(stmt:RustStmt, pathName:String):Int {
@@ -483,7 +480,7 @@ class CloneElisionPass implements RustPass {
 	function countPathUsesInExpr(expr:RustExpr, pathName:String):Int {
 		return switch (expr) {
 			case EPath(p):
-				p == pathName ? 1 : 0;
+				p.plainRelativeIdentifierName() == pathName ? 1 : 0;
 			case ECall(func, args):
 				var total = countPathUsesInExpr(func, pathName);
 				for (arg in args)
@@ -540,7 +537,7 @@ class CloneElisionPass implements RustPass {
 				if (body.tail != null)
 					total += countPathUsesInExpr(body.tail, pathName);
 				total;
-			case ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
+			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				0;
 		};
 	}
@@ -590,7 +587,8 @@ class CloneElisionPass implements RustPass {
 
 	function countDynamicFromCloneCandidatesInExpr(expr:RustExpr):Int {
 		return switch (expr) {
-			case ECall(EPath("hxrt::dynamic::from"), [ECall(EField(EPath(_), "clone"), [])]):
+			case ECall(EPath(dynamicPath), [ECall(EField(EPath(localPath), "clone"), [])])
+				if (isDynamicFromPath(dynamicPath) && localPath.plainRelativeIdentifierName() != null):
 				1;
 			case ECall(func, args):
 				var total = countDynamicFromCloneCandidatesInExpr(func);
@@ -648,7 +646,7 @@ class CloneElisionPass implements RustPass {
 				if (body.tail != null)
 					total += countDynamicFromCloneCandidatesInExpr(body.tail);
 				total;
-			case ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				0;
 		};
 	}
@@ -657,6 +655,18 @@ class CloneElisionPass implements RustPass {
 		if (metricId == null || metricId.length == 0 || count <= 0)
 			return;
 		appliedMetrics.set(metricId, (appliedMetrics.exists(metricId) ? appliedMetrics.get(metricId) : 0) + count);
+	}
+
+	static function isDynamicFromPath(path:RustPath):Bool {
+		if (path == null || !path.isRelative() || path.segmentCount != 3)
+			return false;
+		var expected = ["hxrt", "dynamic", "from"];
+		for (index in 0...expected.length) {
+			var segment = path.segmentAt(index);
+			if (segment.identifier.name != expected[index] || segment.argumentStyle != PathArgumentsNone)
+				return false;
+		}
+		return true;
 	}
 
 	inline function recordSkipped(reasonId:String, count:Int = 1):Void {

@@ -456,6 +456,7 @@ class RustASTPrinter {
 		return switch (e) {
 			case ERaw(fragment): fragment.code;
 			case ELitInt(v): Std.string(v);
+			case ELitUInt32(bits): "0x" + StringTools.hex(bits, 8).toLowerCase() + "u32";
 			case ELitFloat(v): {
 					// Rust requires a decimal point for float literals in some contexts (e.g. `1.`).
 					var s = Std.string(v);
@@ -465,7 +466,7 @@ class RustASTPrinter {
 				}
 			case ELitBool(v): v ? "true" : "false";
 			case ELitString(v): '"' + escapeStringLiteral(v) + '"';
-			case EPath(path): path;
+			case EPath(path): printExpressionPath(path);
 			case EPinAsyncMove(body): {
 					var out = "Box::pin(async move " + printBlock(body, indent) + ")";
 					wrapIfNeeded(out, PREC_PRIMARY, ctxPrec);
@@ -536,14 +537,14 @@ class RustASTPrinter {
 				}
 			case ECast(expr, ty): {
 					var inner = printExprPrec(expr, indent, PREC_CAST);
-					var out = inner + " as " + ty;
+					var out = inner + " as " + printType(ty);
 					wrapIfNeeded(out, PREC_CAST, ctxPrec);
 				}
 			case EIndex(recv, index):
 				wrapIfNeeded(printExprPrec(recv, indent, PREC_POSTFIX) + "[" + printExprPrec(index, indent, PREC_LOWEST) + "]", PREC_POSTFIX, ctxPrec);
 			case EStructLit(path, fields): {
 					var parts = fields.map(f -> f.name + ": " + printExprPrec(f.expr, indent, PREC_LOWEST)).join(", ");
-					var out = path + " { " + parts + " }";
+					var out = printExpressionPath(path) + " { " + parts + " }";
 					wrapIfNeeded(out, PREC_PRIMARY, ctxPrec);
 				}
 			case EAssign(lhs, rhs): {
@@ -616,11 +617,12 @@ class RustASTPrinter {
 			case PWildcard: "_";
 			case PBind(name): name;
 			case PAlias(name, pattern): name + " @ " + printPattern(pattern);
-			case PPath(path): path;
+			case PPath(path): printPatternPath(path);
 			case PLitInt(v): Std.string(v);
+			case PLitUInt32(bits): "0x" + StringTools.hex(bits, 8).toLowerCase() + "u32";
 			case PLitBool(v): v ? "true" : "false";
 			case PLitString(v): '"' + escapeStringLiteral(v) + '"';
-			case PTupleStruct(path, fields): path + "(" + fields.map(printPattern).join(", ") + ")";
+			case PTupleStruct(path, fields): printPatternPath(path) + "(" + fields.map(printPattern).join(", ") + ")";
 			case POr(patterns): patterns.map(printPattern).join(" | ");
 		}
 	}

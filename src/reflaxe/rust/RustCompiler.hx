@@ -353,6 +353,150 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
+		Builds an expression read from one compiler-known Rust identifier.
+
+		Why
+		- Local reads and one-segment constants previously entered `EPath` as unchecked strings.
+		- Validating the identifier here keeps target punctuation out of local-shaped expression paths.
+
+		What
+		- Produces a one-segment relative `RustPath` and wraps it in `EPath`.
+
+		How
+		- Use only when the compiler already owns one identifier. Qualified paths must use
+		  `rustRelativeExpr` or `rustCrateExpr` with pre-separated segments.
+	**/
+	inline function rustSingleExpr(name:String):RustExpr {
+		return EPath(RustPath.single(name));
+	}
+
+	/** Builds a structural relative expression path from compiler-owned segments. */
+	function rustRelativeExpr(names:Array<String>, ?arguments:Array<RustGenericArgument>):RustExpr {
+		return EPath(rustRelativePath(names, arguments));
+	}
+
+	/** Builds a structural crate-rooted expression path from compiler-owned segments. */
+	function rustCrateExpr(names:Array<String>, ?arguments:Array<RustGenericArgument>):RustExpr {
+		return EPath(rustCratePath(names, arguments));
+	}
+
+	/**
+		Builds a relative associated-item expression whose owner carries generic arguments.
+
+		Why
+		- Rust expression syntax places turbofish on the owner and, independently, on a generic method:
+		  `Array::<T>::from_vec` and `Factory::make::<U>`.
+		- Concatenating printed types into those paths hides both attachment points from AST passes.
+
+		What
+		- Attaches `ownerArguments` to the final owner segment and optional `memberArguments` to the
+		  associated member segment.
+
+		How
+		- Pass owner module/type names as separate identifiers and one member identifier. The printer
+		  owns both turbofish delimiters.
+	**/
+	function rustRelativeMemberExpr(ownerNames:Array<String>, ownerArguments:Array<RustGenericArgument>, memberName:String,
+			?memberArguments:Array<RustGenericArgument>):RustExpr {
+		var segments = rustPathSegments(ownerNames, ownerArguments);
+		segments.push(memberArguments != null && memberArguments.length > 0 ? RustPathSegment.angle(memberName, memberArguments) : RustPathSegment.plain(memberName));
+		return EPath(RustPath.relative(segments));
+	}
+
+	/** Crate-rooted counterpart of `rustRelativeMemberExpr`. */
+	function rustCrateMemberExpr(ownerNames:Array<String>, ownerArguments:Array<RustGenericArgument>, memberName:String,
+			?memberArguments:Array<RustGenericArgument>):RustExpr {
+		var segments = rustPathSegments(ownerNames, ownerArguments);
+		segments.push(memberArguments != null && memberArguments.length > 0 ? RustPathSegment.angle(memberName, memberArguments) : RustPathSegment.plain(memberName));
+		return EPath(RustPath.cratePath(segments));
+	}
+
+	/**
+		Builds an associated expression on the configured reference-counted pointer type.
+
+		Why
+		- Portable aliases and the direct standard-library carrier have different roots but one ownership
+		  contract.
+
+		What
+		- Selects `crate::HxRc` or `std::rc::Rc` and attaches optional owner types structurally.
+
+		How
+		- Callers provide the associated member only; this helper owns profile-sensitive path selection.
+	**/
+	function rustRcMemberExpr(memberName:String, ?ownerTypes:Array<RustType>):RustExpr {
+		var arguments = rustTypeArguments(ownerTypes);
+		return wantsPreludeAliases() ? rustCrateMemberExpr(["HxRc"], arguments, memberName) : rustRelativeMemberExpr(["std", "rc", "Rc"], arguments,
+			memberName);
+	}
+
+	/**
+		Builds an associated expression on the configured dynamic-reference carrier.
+
+		Why
+		- `HxDynRef` follows the same alias/direct-runtime split as other reference carriers.
+
+		What
+		- Selects the configured owner, attaches optional typed arguments, and appends one associated item.
+
+		How
+		- Delegates turbofish placement to the structural member-path builders.
+	**/
+	function rustDynRefMemberExpr(memberName:String, ?ownerTypes:Array<RustType>):RustExpr {
+		var arguments = rustTypeArguments(ownerTypes);
+		return wantsPreludeAliases() ? rustCrateMemberExpr(["HxDynRef"], arguments, memberName) : rustRelativeMemberExpr(["hxrt", "cell", "HxDynRef"],
+			arguments, memberName);
+	}
+
+	/**
+		Builds an associated expression on `crate::HxRef<T>`.
+
+		Why
+		- Null/new operations recur at typed reference boundaries and must retain `T` as analyzable IR.
+
+		What
+		- Places `T` on the `HxRef` owner and appends the requested associated item.
+
+		How
+		- The expression printer supplies Rust's owner turbofish punctuation.
+	**/
+	function rustHxRefMemberExpr(inner:RustType, memberName:String):RustExpr {
+		return rustCrateMemberExpr(["HxRef"], [GenericType(inner)], memberName);
+	}
+
+	/**
+		Builds an associated expression on `hxrt::array::Array<T>`.
+
+		Why
+		- Array construction/null paths are widespread and previously interpolated printed element types.
+
+		What
+		- Retains the element type structurally on the `Array` owner.
+
+		How
+		- Appends the associated operation as its own validated segment.
+	**/
+	function rustArrayMemberExpr(inner:RustType, memberName:String):RustExpr {
+		return rustRelativeMemberExpr(["hxrt", "array", "Array"], [GenericType(inner)], memberName);
+	}
+
+	/**
+		Builds an associated expression on `hxrt::iter::Iter<T>`.
+
+		Why
+		- Iterator adapters need specialized item types without embedding printed types in call paths.
+
+		What
+		- Retains the item type as an owner generic and the constructor as a separate member.
+
+		How
+		- Uses the same structural turbofish path contract as arrays and reference carriers.
+	**/
+	function rustIterMemberExpr(inner:RustType, memberName:String):RustExpr {
+		return rustRelativeMemberExpr(["hxrt", "iter", "Iter"], [GenericType(inner)], memberName);
+	}
+
+	/**
 		Attaches structural generic arguments to a metadata-owned path's final segment.
 
 		Why
@@ -743,10 +887,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return Context.defined("rust_async");
 	}
 
-	inline function rustStringTypePath():String {
-		return StringLowering.rustStringTypePath(useNullableStringRepresentation());
-	}
-
 	function rustStringType():RustType {
 		return useNullableStringRepresentation() ? rustRelativeType(["hxrt", "string", "HxString"]) : RString;
 	}
@@ -850,7 +990,33 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	inline function rustDynamicNullExpr():RustExpr {
-		return ECall(EPath(rustDynamicNullPath()), []);
+		return ECall(rustRelativeExpr(["hxrt", "dynamic", dynamicBoundaryTypeName(), "null"]), []);
+	}
+
+	/**
+		Selects the structural runtime constructor used to box one Dynamic payload.
+
+		Why
+		- Ordinary values and reference-backed values use distinct runtime ownership contracts, with
+		  parallel variants that attach compiler-owned type IDs.
+		- Keeping those four paths as strings previously duplicated delimiter-bearing choices in throw
+		  and coercion lowering.
+
+		What
+		- Returns one of `from`, `from_ref`, `from_with_type_id`, or `from_ref_with_type_id` under
+		  `hxrt::dynamic` as a typed expression path.
+
+		How
+		- The two booleans encode representation and metadata facts already established by typed lowering;
+		  the printer alone owns path delimiters.
+	**/
+	function rustDynamicBoxFunctionExpr(byReference:Bool, withTypeId:Bool):RustExpr {
+		var member = if (byReference) {
+			withTypeId ? "from_ref_with_type_id" : "from_ref";
+		} else {
+			withTypeId ? "from_with_type_id" : "from";
+		};
+		return rustRelativeExpr(["hxrt", "dynamic", member]);
 	}
 
 	inline function compareStrings(a:String, b:String):Int {
@@ -4139,6 +4305,28 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return rustModuleSegmentsForBase(enumType.pack, enumType.name);
 	}
 
+	/**
+		Builds a generated class associated-item expression without rendering its module path.
+
+		Why
+		- Main-class items live in the crate root while every other generated class lives in its
+		  package-shaped module. String-returning `classNameFromClass` hid that distinction from IR.
+
+		What
+		- Produces `Type::member` for the main class and `crate::<modules>::Type::member` otherwise.
+
+		How
+		- Reuses the same module-segment and type-name authorities as declaration emission.
+	**/
+	function rustGeneratedClassMemberExpr(classType:ClassType, memberName:String):RustExpr {
+		if (isMainClass(classType))
+			return rustRelativeExpr([rustTypeNameForClass(classType), memberName]);
+		var names = rustModuleSegmentsForClass(classType);
+		names.push(rustTypeNameForClass(classType));
+		names.push(memberName);
+		return rustCrateExpr(names);
+	}
+
 	function rustOutputDirForSegments(segments:Array<String>):String {
 		if (!nestedModuleOutputEnabled() || segments.length <= 1)
 			return "src";
@@ -4368,6 +4556,27 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (mainClassKey != null && classKey(owner) == mainClassKey)
 			return "crate::" + helperName;
 		return "crate::" + rustModulePathForClass(owner) + "::" + helperName;
+	}
+
+	/**
+		Builds the structural callable path for a generated static-field helper.
+
+		Why
+		- Raw declaration generation still needs the legacy printable helper path, while expression
+		  lowering must preserve root/module boundaries for passes.
+
+		What
+		- Produces `crate::<helper>` for the main class and `crate::<modules>::<helper>` otherwise.
+
+		How
+		- Mirrors `staticVarHelperPath` from the same module-segment authority without reparsing it.
+	**/
+	function staticVarHelperExpr(owner:ClassType, helperName:String):RustExpr {
+		if (mainClassKey != null && classKey(owner) == mainClassKey)
+			return rustCrateExpr([helperName]);
+		var names = rustModuleSegmentsForClass(owner);
+		names.push(helperName);
+		return rustCrateExpr(names);
 	}
 
 	/**
@@ -4878,20 +5087,20 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function compileRustSocketAddrLocalhostCall(portExpr:TypedExpr, detailed:Bool):RustExpr {
 		var portValue = "__hx_socket_port_value";
 		var port = "__hx_socket_port";
-		var portRead = EPath(portValue);
-		var stdAddr = ECall(EField(ECall(EPath("std::net::SocketAddrV4::new"), [
-			EPath("std::net::Ipv4Addr::LOCALHOST"),
-			EPath(port)
+		var portRead = rustSingleExpr(portValue);
+		var stdAddr = ECall(EField(ECall(rustRelativeExpr(["std", "net", "SocketAddrV4", "new"]), [
+			rustRelativeExpr(["std", "net", "Ipv4Addr", "LOCALHOST"]),
+			rustSingleExpr(port)
 		]), "into"), []);
-		var okValue = ECall(EPath("crate::native_socket_addr_tools::SocketAddr::from_std"), [stdAddr]);
+		var okValue = ECall(rustCrateExpr(["native_socket_addr_tools", "SocketAddr", "from_std"]), [stdAddr]);
 		var errMessage = EMacroCall("format", [ELitString("socket port out of range: {}"), portRead]);
-		var errValue = detailed ? ECall(EPath("crate::native_socket_error_tools::SocketError::invalid_input"), [errMessage]) : errMessage;
+		var errValue = detailed ? ECall(rustCrateExpr(["native_socket_error_tools", "SocketError", "invalid_input"]), [errMessage]) : errMessage;
 
 		return EBlock({
 			stmts: [RLet(portValue, false, RI32, compileExpr(portExpr))],
-			tail: EMatch(ECall(EPath("u16::try_from"), [portRead]), [
-				{pat: PTupleStruct("Result::Ok", [PBind(port)]), expr: ECall(EPath("Result::Ok"), [okValue])},
-				{pat: PTupleStruct("Result::Err", [PWildcard]), expr: ECall(EPath("Result::Err"), [errValue])}
+			tail: EMatch(ECall(rustRelativeExpr(["u16", "try_from"]), [portRead]), [
+				{pat: PTupleStruct(rustRelativePath(["Result", "Ok"]), [PBind(port)]), expr: ECall(rustRelativeExpr(["Result", "Ok"]), [okValue])},
+				{pat: PTupleStruct(rustRelativePath(["Result", "Err"]), [PWildcard]), expr: ECall(rustRelativeExpr(["Result", "Err"]), [errValue])}
 			])
 		});
 	}
@@ -4914,10 +5123,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	**/
 	function compileRustSocketAddrPortCall(receiver:TypedExpr):RustExpr {
 		var recvName = "__hx_socket_addr";
-		var portRead = ECall(EField(ECall(EField(EPath(recvName), "as_std"), []), "port"), []);
+		var portRead = ECall(EField(ECall(EField(rustSingleExpr(recvName), "as_std"), []), "port"), []);
 		return EBlock({
 			stmts: [RLet(recvName, false, null, compileExpr(receiver))],
-			tail: ECall(EPath("i32::from"), [portRead])
+			tail: ECall(rustRelativeExpr(["i32", "from"]), [portRead])
 		});
 	}
 
@@ -5330,9 +5539,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function reflectionStringArrayExpr(values:Array<String>):RustExpr {
-		var stringType = rustStringTypePath();
+		var stringType = rustStringType();
 		var elements = values.map(value -> stringLiteralExpr(value));
-		return ECall(EPath("hxrt::array::Array::<" + stringType + ">::from_vec"), [EMacroCall("vec", elements)]);
+		return ECall(rustRelativeMemberExpr(["hxrt", "array", "Array"], [GenericType(stringType)], "from_vec"), [EMacroCall("vec", elements)]);
 	}
 
 	function enumConstructorNames(enumType:EnumType):Array<String> {
@@ -5399,15 +5608,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		var handleName = "__hx_reflection_handle";
 		var typeIdName = "__hx_reflection_type_id";
-		var downcast = ECall(EField(EPath(handleName), "downcast_ref::<u32>"), []);
+		var downcast = ECall(EField(rustSingleExpr(handleName), "downcast_ref::<u32>"), []);
 		var invalidMessage = operation + " expected a Class or Enum handle";
 		return EBlock({
 			stmts: [RLet(handleName, false, null, compiled)],
 			tail: EMatch(downcast, [
-				{pat: PTupleStruct("Some", [PBind(typeIdName)]), expr: EUnary("*", EPath(typeIdName))},
+				{pat: PTupleStruct(RustPath.single("Some"), [PBind(typeIdName)]), expr: EUnary("*", rustSingleExpr(typeIdName))},
 				{
-					pat: PPath("None"),
-					expr: ECall(EPath("crate::__hx_unsupported_reflection::<u32>"), [stringLiteralExpr(invalidMessage)])
+					pat: PPath(RustPath.single("None")),
+					expr: ECall(rustCrateExpr(["__hx_unsupported_reflection"], [GenericType(rustNamedType("u32"))]), [stringLiteralExpr(invalidMessage)])
 				}
 			])
 		});
@@ -5417,11 +5626,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var statements:Array<RustStmt> = [];
 		for (arg in args)
 			statements.push(RLet("_", false, null, compileExpr(arg)));
-		var returnType = rustTypeToString(toRustType(fullExpr.t, fullExpr.pos));
+		var returnType = toRustType(fullExpr.t, fullExpr.pos);
 		var message = stringLiteralExpr(operation + " is unavailable in the current experimental dynamic-reflection path");
 		return EBlock({
 			stmts: statements,
-			tail: ECall(EPath("crate::__hx_unsupported_reflection::<" + returnType + ">"), [message])
+			tail: ECall(rustCrateExpr(["__hx_unsupported_reflection"], [GenericType(returnType)]), [message])
 		});
 	}
 
@@ -5458,7 +5667,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				generics: RustGenericParameters.empty(),
 				args: [{name: argName, ty: argType}],
 				ret: returnType,
-				body: {stmts: [], tail: EMatch(EPath(argName), arms)}
+				body: {stmts: [], tail: EMatch(rustSingleExpr(argName), arms)}
 			});
 		}
 
@@ -5471,15 +5680,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			expr: typeIdExprForKey(entry.stableKey)
 		} : RustMatchArm));
 		var classNameArms:Array<RustMatchArm> = plan.classes.map(entry -> ({
-			pat: PPath(typeIdLiteralForKey(entry.stableKey)),
+			pat: PLitUInt32(fnv1a32(entry.stableKey)),
 			expr: stringLiteralExpr(entry.runtimeName)
 		} : RustMatchArm));
 		var enumNameArms:Array<RustMatchArm> = plan.enums.map(entry -> ({
-			pat: PPath(typeIdLiteralForKey(entry.stableKey)),
+			pat: PLitUInt32(fnv1a32(entry.stableKey)),
 			expr: stringLiteralExpr(entry.runtimeName)
 		} : RustMatchArm));
 		var enumConstructArms:Array<RustMatchArm> = plan.enums.map(entry -> ({
-			pat: PPath(typeIdLiteralForKey(entry.stableKey)),
+			pat: PLitUInt32(fnv1a32(entry.stableKey)),
 			expr: reflectionStringArrayExpr(entry.constructors)
 		} : RustMatchArm));
 		var unsupportedReflection = RFn({
@@ -5491,20 +5700,20 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			ret: rustNamedType("T"),
 			body: {
 				stmts: [],
-				tail: ECall(EPath("hxrt::exception::throw"), [ECall(EPath("hxrt::dynamic::from"), [EPath("operation")])])
+				tail: ECall(rustRelativeExpr(["hxrt", "exception", "throw"]), [ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [rustSingleExpr("operation")])])
 			}
 		});
 
 		return [
 			unsupportedReflection,
 			reflectionFunctionItem("__hx_resolve_class_name", "name", RBorrow(rustNamedType("str"), false, null), rustNamedType("u32"), resolveClassArms,
-				ECast(ELitInt(0), "u32")),
+				ECast(ELitInt(0), rustNamedType("u32"))),
 			reflectionFunctionItem("__hx_resolve_enum_name", "name", RBorrow(rustNamedType("str"), false, null), rustNamedType("u32"), resolveEnumArms,
-				ECast(ELitInt(0), "u32")),
+				ECast(ELitInt(0), rustNamedType("u32"))),
 			reflectionFunctionItem("__hx_class_name", "type_id", rustNamedType("u32"), stringType, classNameArms, stringNullExpr()),
 			reflectionFunctionItem("__hx_enum_name", "type_id", rustNamedType("u32"), stringType, enumNameArms, stringNullExpr()),
 			reflectionFunctionItem("__hx_enum_constructs", "type_id", rustNamedType("u32"), stringArrayType, enumConstructArms,
-				ECall(EPath("hxrt::array::Array::<" + rustTypeToString(stringType) + ">::new"), []))
+				ECall(rustArrayMemberExpr(stringType, "new"), []))
 		];
 	}
 
@@ -5882,24 +6091,24 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							return rustDynamicNullExpr();
 						}
 						if (rustTypeIsNullableStringCarrier(inner)) {
-							return ECall(EPath("hxrt::string::HxString::null"), []);
+							return ECall(rustRelativeExpr(["hxrt", "string", "HxString", "null"]), []);
 						}
 						// Core `Class<T>` / `Enum<T>` handles are represented as `u32` ids with `0u32` as null sentinel.
 						if (isCoreClassOrEnumHandleType(innerType)) {
-							return ECast(ELitInt(0), "u32");
+							return ECast(ELitInt(0), rustNamedType("u32"));
 						}
 						if (rustTypeIsHxRef(inner) && carrierInner != null) {
-							return ECall(EPath("crate::HxRef::<" + rustTypeToString(carrierInner) + ">::null"), []);
+							return ECall(rustHxRefMemberExpr(carrierInner, "null"), []);
 						}
 						if (rustTypeIsArrayCarrier(inner) && carrierInner != null) {
-							return ECall(EPath("hxrt::array::Array::<" + rustTypeToString(carrierInner) + ">::null"), []);
+							return ECall(rustArrayMemberExpr(carrierInner, "null"), []);
 						}
 						if (rustTypeIsDynRefCarrier(inner) && carrierInner != null) {
-							return ECall(EPath(dynRefBasePath() + "::<" + rustTypeToString(carrierInner) + ">::null"), []);
+							return ECall(rustDynRefMemberExpr("null", [carrierInner]), []);
 						}
 
 						// Fallback: `Null<T>` is represented as `Option<T>`.
-						return EPath("None");
+						return rustSingleExpr("None");
 					}
 				}
 			case _:
@@ -5922,8 +6131,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						{stmts: [], tail: defaultValueExprForType(ret, pos)};
 					}
 					var closure = EClosure(argNames, closureBody, true);
-					var rcExpr = ECall(EPath(rcBasePath() + "::new"), [closure]);
-					return ECall(EPath(dynRefBasePath() + "::new"), [rcExpr]);
+					var rcExpr = ECall(rustRcMemberExpr("new"), [closure]);
+					return ECall(rustDynRefMemberExpr("new"), [rcExpr]);
 				}
 			case _:
 		}
@@ -5939,21 +6148,21 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (isDynamicType(t))
 			return rustDynamicNullExpr();
 		if (isRustVecType(t))
-			return ECall(EPath("Vec::new"), []);
+			return ECall(rustRelativeExpr(["Vec", "new"]), []);
 		if (isRustHashMapType(t))
-			return ECall(EPath("std::collections::HashMap::new"), []);
+			return ECall(rustRelativeExpr(["std", "collections", "HashMap", "new"]), []);
 		if (isArrayType(t)) {
 			var elem = arrayElementType(t);
 			var elemRust = toRustType(elem, pos);
-			return ECall(EPath("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new"), []);
+			return ECall(rustArrayMemberExpr(elemRust, "new"), []);
 		}
 		if (traitObjectRustInnerPath(t, pos) != null) {
 			// Bare interface / polymorphic class values lower to non-null `HxRc<dyn Trait>`.
 			// When Haxe source supplies `null` in that slot, `Default::default()` is invalid
 			// because Rust trait objects do not implement `Default`; emit a typed diverging
 			// null access instead so the generated function remains well-typed.
-			return ECall(EPath("hxrt::exception::throw"), [
-				ECall(EPath("hxrt::dynamic::from"), [ECall(EPath("String::from"), [ELitString("Null Access")])])
+			return ECall(rustRelativeExpr(["hxrt", "exception", "throw"]), [
+				ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [ECall(rustRelativeExpr(["String", "from"]), [ELitString("Null Access")])])
 			]);
 		}
 		if (canUseNullClassReferenceDefault(t)) {
@@ -5980,18 +6189,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								case _:
 							}
 
-							var modName = rustModulePathForClass(cls);
 							var typeName = rustTypeNameForClass(cls);
-							var typeParams = params != null
-								&& params.length > 0 ? ("::<" + [for (p in params) rustTypeToString(toRustType(p, pos))].join(", ") + ">") : "";
-							return ECall(EPath("crate::" + modName + "::" + typeName + typeParams + "::new"), ctorArgs);
+							var ownerNames = rustModuleSegmentsForClass(cls);
+							ownerNames.push(typeName);
+							var ownerArguments = params == null ? [] : rustTypeArguments([for (p in params) toRustType(p, pos)]);
+							return ECall(rustCrateMemberExpr(ownerNames, ownerArguments, "new"), ctorArgs);
 						}
 					}
 				}
 			case _:
 		}
 
-		return ECall(EPath("Default::default"), []);
+		return ECall(rustRelativeExpr(["Default", "default"]), []);
 	}
 
 	function defaultValueForType(t:Type, pos:haxe.macro.Expr.Position):String {
@@ -6081,23 +6290,23 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							return rustDynamicNullExpr();
 						}
 						if (rustTypeIsNullableStringCarrier(inner)) {
-							return ECall(EPath("hxrt::string::HxString::null"), []);
+							return ECall(rustRelativeExpr(["hxrt", "string", "HxString", "null"]), []);
 						}
 						// Core `Class<T>` / `Enum<T>` handles are represented as `u32` ids with `0u32` as null sentinel.
 						if (isCoreClassOrEnumHandleType(innerType)) {
-							return ECast(ELitInt(0), "u32");
+							return ECast(ELitInt(0), rustNamedType("u32"));
 						}
 						if (rustTypeIsHxRef(inner) && carrierInner != null) {
-							return ECall(EPath("crate::HxRef::<" + rustTypeToString(carrierInner) + ">::null"), []);
+							return ECall(rustHxRefMemberExpr(carrierInner, "null"), []);
 						}
 						if (rustTypeIsArrayCarrier(inner) && carrierInner != null) {
-							return ECall(EPath("hxrt::array::Array::<" + rustTypeToString(carrierInner) + ">::null"), []);
+							return ECall(rustArrayMemberExpr(carrierInner, "null"), []);
 						}
 						if (rustTypeIsDynRefCarrier(inner) && carrierInner != null) {
-							return ECall(EPath(dynRefBasePath() + "::<" + rustTypeToString(carrierInner) + ">::null"), []);
+							return ECall(rustDynRefMemberExpr("null", [carrierInner]), []);
 						}
 
-						return EPath("None");
+						return rustSingleExpr("None");
 					}
 				}
 			case _:
@@ -6117,18 +6326,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (isArrayType(t)) {
 			var elem = arrayElementType(t);
 			var elemRust = toRustType(elem, pos);
-			return ECall(EPath("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::null"), []);
+			return ECall(rustArrayMemberExpr(elemRust, "null"), []);
 		}
 
 		// Concrete class/Bytes/anon-object values are represented as `HxRef<_>` and can be null.
 		if (isBytesType(t) || isHxRefValueType(t) || isRustHxRefType(t) || isAnonObjectType(t)) {
-			return ECall(EPath("crate::HxRef::null"), []);
+			return ECall(rustCrateExpr(["HxRef", "null"]), []);
 		}
 
 		// For types that don't have a null representation today (enums, trait objects, etc.),
 		// fall back to throwing when/if an out-of-bounds write requires a fill value.
-		return ECall(EPath("hxrt::exception::throw"), [
-			ECall(EPath("hxrt::dynamic::from"), [ECall(EPath("String::from"), [ELitString("Null Access")])])
+		return ECall(rustRelativeExpr(["hxrt", "exception", "throw"]), [
+			ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [ECall(rustRelativeExpr(["String", "from"]), [ELitString("Null Access")])])
 		]);
 	}
 
@@ -6260,10 +6469,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 																	function coerceLiftedFieldRhs(source:TypedExpr, compiled:RustExpr):RustExpr {
 																		if (wantsOptionWrap) {
 																			if (isNullConstExpr(source))
-																				return EPath("None");
+																				return rustSingleExpr("None");
 																			var inner = shouldCoerceLiftedFieldRhs(source) ? coerceExprToExpected(compiled,
 																				source, haxeFieldType) : compiled;
-																			return ECall(EPath("Some"), [inner]);
+																			return ECall(rustSingleExpr("Some"), [inner]);
 																		}
 																		return shouldCoerceLiftedFieldRhs(source) ? coerceExprToExpected(compiled, source,
 																			haxeFieldType) : compiled;
@@ -6352,7 +6561,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 																						continue;
 																					if (!isCopyType(a.type)) {
 																						var rustName = rustArgIdent(n);
-																						subst.set(n, ECall(EField(EPath(rustName), "clone"), []));
+																						subst.set(n, ECall(EField(rustSingleExpr(rustName), "clone"), []));
 																					}
 																				}
 																				inlineLocalSubstitutions = subst;
@@ -6420,7 +6629,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						});
 					} else {
 						var defExpr = if (shouldOptionWrapStructFieldType(fieldType)) {
-							EPath("None");
+							rustSingleExpr("None");
 						} else if (ctorAssignedFields.exists(haxeName) && canUseNullClassReferenceDefault(fieldType)) {
 							nullFillExprForType(fieldType, cf.pos);
 						} else {
@@ -6443,15 +6652,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				if (classNeedsPhantomForUnusedTypeParams(classType)) {
 					fieldInits.push({
 						name: "__hx_phantom",
-						expr: EPath("std::marker::PhantomData")
+						expr: rustRelativeExpr(["std", "marker", "PhantomData"])
 					});
 				}
-				var structInitExpr = EStructLit(rustSelfType, fieldInits);
-				stmts.push(RLet("self_", false, selfRefTy, ECall(EPath("crate::HxRef::new"), [structInitExpr])));
+				var structInitExpr = EStructLit(RustPath.single(rustSelfType), fieldInits);
+				stmts.push(RLet("self_", false, selfRefTy, ECall(rustCrateExpr(["HxRef", "new"]), [structInitExpr])));
 				for (spec in getAllInstanceDynamicMethodFieldSpecsForStorage(classType)) {
 					var cf = spec.field;
 					var fieldType = specializeAncestorType(classType, spec.owner, cf.type);
-					var recvExpr = EPath("self_");
+					var recvExpr = rustSingleExpr("self_");
 					var recvName = "__hx_dyn_recv_" + rustMethodName(classType, cf);
 					var fieldName = rustDynamicMethodFieldName(classType, cf);
 					var defaultName = rustDynamicMethodDefaultName(classType, cf);
@@ -6468,18 +6677,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var p = fnInfo.params[i];
 						var argName = "a" + i;
 						argParts.push(argName + ": " + rustTypeToString(toRustType(p.t, cf.pos)));
-						callArgs.push(EPath(argName));
+						callArgs.push(rustSingleExpr(argName));
 					}
 
-					var defaultPath = classNameFromClass(classType) + "::" + defaultName;
-					var defaultCallArgs:Array<RustExpr> = [EUnary("&", EUnary("*", EPath(recvName)))];
+					var defaultPath = rustGeneratedClassMemberExpr(classType, defaultName);
+					var defaultCallArgs:Array<RustExpr> = [EUnary("&", EUnary("*", rustSingleExpr(recvName)))];
 					for (a in callArgs)
 						defaultCallArgs.push(a);
 
 					var closureBody:RustBlock = if (TypeHelper.isVoid(fnInfo.ret)) {
-						{stmts: [RSemi(ECall(EPath(defaultPath), defaultCallArgs))], tail: null};
+						{stmts: [RSemi(ECall(defaultPath, defaultCallArgs))], tail: null};
 					} else {
-						{stmts: [], tail: ECall(EPath(defaultPath), defaultCallArgs)};
+						{stmts: [], tail: ECall(defaultPath, defaultCallArgs)};
 					};
 
 					var fnTraitType = rustFunctionTraitObjectType([for (p in fnInfo.params) toRustType(p.t, cf.pos)],
@@ -6489,9 +6698,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						stmts: [
 							RLet(recvName, false, null, ECall(EField(recvExpr, "clone"), [])),
 							RLet("__hx_dyn_rc", false, rustRcType(fnTraitType),
-								ECall(EPath(rcBasePath() + "::new"), [EClosure(argParts, closureBody, true)])),
+								ECall(rustRcMemberExpr("new"), [EClosure(argParts, closureBody, true)])),
 							RSemi(EAssign(EField(ECall(EField(recvExpr, "borrow_mut"), []), fieldName),
-								ECall(EPath(dynRefBasePath() + "::new"), [EPath("__hx_dyn_rc")])))
+								ECall(rustDynRefMemberExpr("new"), [rustSingleExpr("__hx_dyn_rc")])))
 						],
 						tail: null
 					})));
@@ -6563,7 +6772,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								var actualRust = toRustType(a.t, a.pos);
 								if (rustTypeIsNullableStringCarrier(expectedRust) && rustTypesEqual(actualRust, expectedRust)) {
 									compiled = switch (compiled) {
-										case ECall(EPath("hxrt::string::HxString::from"), [inner]): inner;
+									case ECall(EPath(path), [inner]) if (rustPathIsRelative(path, ["hxrt", "string", "HxString", "from"])): inner;
 										case _: compiled;
 									}
 								}
@@ -6608,7 +6817,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var tmp = allocTemp("__hx_super_" + depth + "_" + i);
 						stmts.push(RLet(tmp, false, toRustType(p.t, f.field.pos), rust));
 
-						var byValue = EPath(tmp);
+						var byValue = rustSingleExpr(tmp);
 						var useExpr = isCopyType(p.t) ? byValue : ECall(EField(byValue, "clone"), []);
 						subst.set(p.name, useExpr);
 					}
@@ -6699,7 +6908,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				if (bodyBlock.tail != null)
 					stmts.push(RSemi(bodyBlock.tail));
 
-				stmts.push(RReturn(EPath("self_")));
+				stmts.push(RReturn(rustSingleExpr("self_")));
 			});
 		}
 
@@ -6754,7 +6963,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				var prefix:Array<RustStmt> = [];
 				if (selfName == "self_") {
 					var thisTy = rustHxRefClassInstType(classType);
-					prefix.push(RLet("__hx_this", false, thisTy, ECall(EField(EPath(selfName), "self_ref"), [])));
+					prefix.push(RLet("__hx_this", false, thisTy, ECall(EField(rustSingleExpr(selfName), "self_ref"), [])));
 				}
 				body = {
 					stmts: prefix.concat([RReturn(EPinAsyncMove(innerBody))]),
@@ -6764,7 +6973,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				body = compileFunctionBody(f.expr, f.ret, true);
 				if (selfName == "self_") {
 					var thisTy = rustHxRefClassInstType(classType);
-					body.stmts.unshift(RLet("__hx_this", false, thisTy, ECall(EField(EPath(selfName), "self_ref"), [])));
+					body.stmts.unshift(RLet("__hx_this", false, thisTy, ECall(EField(rustSingleExpr(selfName), "self_ref"), [])));
 				}
 			}
 			currentThisIdent = prevThisIdent;
@@ -6805,7 +7014,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				continue;
 			if (arg.name == "self_" || arg.name == "_self_")
 				continue;
-			prefix.push(RLet("_", false, null, EUnary("&", EPath(arg.name))));
+			prefix.push(RLet("_", false, null, EUnary("&", rustSingleExpr(arg.name))));
 		}
 		if (prefix.length > 0) {
 			fn.body = {
@@ -6825,12 +7034,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		for (a in f.args) {
 			var argName = rustArgIdent(a.getName());
 			args.push({name: argName, ty: toRustType(a.type, f.field.pos)});
-			callArgs.push(EPath(argName));
+			callArgs.push(rustSingleExpr(argName));
 		}
 
 		var fieldName = rustDynamicMethodFieldName(classType, f.field);
-		var invoke = ECall(EPath("__hx_dyn"), callArgs);
-		var dynValue = ECall(EField(EField(ECall(EField(EPath("self_"), "borrow"), []), fieldName), "clone"), []);
+		var invoke = ECall(rustSingleExpr("__hx_dyn"), callArgs);
+		var dynValue = ECall(EField(EField(ECall(EField(rustSingleExpr("self_"), "borrow"), []), fieldName), "clone"), []);
 		var body:RustBlock = {
 			stmts: [RLet("__hx_dyn", false, null, dynValue)],
 			tail: null
@@ -7012,7 +7221,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			body = compileFunctionBody(bodyExpr, sig.ret, true);
 			if (selfName == "self_") {
 				var thisTy = rustHxRefClassInstType(classType);
-				body.stmts.unshift(RLet("__hx_this", false, thisTy, ECall(EField(EPath(selfName), "self_ref"), [])));
+				body.stmts.unshift(RLet("__hx_this", false, thisTy, ECall(EField(rustSingleExpr(selfName), "self_ref"), [])));
 			}
 			currentThisIdent = prevThisIdent;
 		});
@@ -7514,7 +7723,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					continue;
 				if (a == "_" || a == "self_" || a == "_self_")
 					continue;
-				prefix.push(RLet(a, true, null, EPath(a)));
+				prefix.push(RLet(a, true, null, rustSingleExpr(a)));
 			}
 			if (prefix.length > 0) {
 				out = {stmts: prefix.concat(out.stmts), tail: out.tail};
@@ -7801,7 +8010,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case ECall(func, _):
 				switch (func) {
 					case EPath(path):
-						path == "hxrt::exception::throw";
+						rustPathIsRelative(path, ["hxrt", "exception", "throw"]);
 					case _:
 						false;
 				}
@@ -8344,7 +8553,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						// outer scopes. Keep the local binding immutable and mutate through `borrow_mut()`.
 						var boxedInit = initExpr != null ? initExpr : ERaw(RustRawCode.compilerAt(defaultValueForType(v.t, e.pos), RawDefaultValueFallback,
 							e.pos));
-						initExpr = ECall(EPath("crate::HxRef::new"), [boxedInit]);
+						initExpr = ECall(rustCrateExpr(["HxRef", "new"]), [boxedInit]);
 					}
 					var mutable = !cellBackedLocal && currentMutatedLocals != null && currentMutatedLocals.exists(v.id);
 					var readCount = currentLocalReadCounts != null
@@ -8504,13 +8713,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									// reads stay coherent.
 									RExpr(EBlock({
 										stmts: [
-											RLet("__b", true, null, ECall(EField(EPath(name), "borrow_mut"), [])),
-											RSemi(EAssign(EUnary("*", EPath("__b")), EBinary(binop, EUnary("*", EPath("__b")), delta)))
+											RLet("__b", true, null, ECall(EField(rustSingleExpr(name), "borrow_mut"), [])),
+											RSemi(EAssign(EUnary("*", rustSingleExpr("__b")), EBinary(binop, EUnary("*", rustSingleExpr("__b")), delta)))
 										],
 										tail: null
 									}), false);
 								} else {
-									RSemi(EAssign(EPath(name), EBinary(binop, EPath(name), delta)));
+									RSemi(EAssign(rustSingleExpr(name), EBinary(binop, rustSingleExpr(name), delta)));
 								}
 							}
 						case _:
@@ -8529,8 +8738,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						case TLocal(_): {
 								var lhsExpr = compileExpr(lhs);
 								var rhsExpr = maybeCloneForReuseValue(compileExpr(rhs), rhs);
-								var rhsStr:RustExpr = isStringType(followType(rhs.t)) ? EPath("__tmp") : ECall(EField(ECall(EPath("hxrt::dynamic::from"),
-									[EPath("__tmp")]), "to_haxe_string"), []);
+								var rhsStr:RustExpr = isStringType(followType(rhs.t)) ? rustSingleExpr("__tmp") : ECall(EField(ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]),
+									[rustSingleExpr("__tmp")]), "to_haxe_string"), []);
 
 								RExpr(EBlock({
 									stmts: [
@@ -9855,7 +10064,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					case TBool(b): ELitBool(b);
 					case TNull:
 						if (isNullOptionType(e.t, e.pos)) {
-							EPath("None");
+							rustSingleExpr("None");
 						} else if (isStringType(e.t)) {
 							failMetalStringNull(e.pos);
 							stringNullExpr();
@@ -9865,36 +10074,36 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							// Core `Class<T>` / `Enum<T>` handles are represented as `u32` ids.
 							// Use `0u32` as the null sentinel (matches `Type.resolveClass`/`resolveEnum` stubs today).
 							if (isCoreClassOrEnumHandleType(e.t)) {
-								return ECast(ELitInt(0), "u32");
+								return ECast(ELitInt(0), rustNamedType("u32"));
 							}
 
 							var rt = toRustType(e.t, e.pos);
 							var carrierInner = rustTypeSingleGenericArgument(rt);
 							if (rustTypeIsHxRef(rt) && carrierInner != null) {
-								ECall(EPath("crate::HxRef::<" + rustTypeToString(carrierInner) + ">::null"), []);
+								ECall(rustHxRefMemberExpr(carrierInner, "null"), []);
 							} else if (rustTypeIsRcTraitObject(rt)) {
 									// Non-null interface / polymorphic class values lower to Rust trait-object
 									// handles. Trait objects have no default value, so a source `null` at this
 									// boundary must become the same diverging null access used by other
 									// non-nullable Rust representations.
-									ECall(EPath("hxrt::exception::throw"), [
-										ECall(EPath("hxrt::dynamic::from"), [ECall(EPath("String::from"), [ELitString("Null Access")])])
+									ECall(rustRelativeExpr(["hxrt", "exception", "throw"]), [
+										ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [ECall(rustRelativeExpr(["String", "from"]), [ELitString("Null Access")])])
 									]);
 							} else if (rustTypeIsArrayCarrier(rt) && carrierInner != null) {
-								ECall(EPath("hxrt::array::Array::<" + rustTypeToString(carrierInner) + ">::null"), []);
+								ECall(rustArrayMemberExpr(carrierInner, "null"), []);
 							} else if (rustTypeIsDynRefCarrier(rt) && carrierInner != null) {
-								ECall(EPath(dynRefBasePath() + "::<" + rustTypeToString(carrierInner) + ">::null"), []);
+								ECall(rustDynRefMemberExpr("null", [carrierInner]), []);
 							} else switch (rt) {
 								case RString:
 									failMetalStringNull(e.pos);
 									stringNullExpr();
 								case _:
-									ECall(EPath("Default::default"), []);
+									ECall(rustRelativeExpr(["Default", "default"]), []);
 							}
 						}
 					case TThis:
 						consumeThisRead();
-						EPath(currentThisIdent != null ? currentThisIdent : "self_");
+						rustSingleExpr(currentThisIdent != null ? currentThisIdent : "self_");
 					case _: unsupported(e, "const");
 				}
 
@@ -9903,7 +10112,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					if (values.length == 0) {
 						var elem = arrayElementType(e.t);
 						var elemRust = toRustType(elem, e.pos);
-						ECall(EPath("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new"), []);
+						ECall(rustArrayMemberExpr(elemRust, "new"), []);
 					} else {
 						var elem = arrayElementType(e.t);
 						var elemRust = toRustType(elem, e.pos);
@@ -9927,7 +10136,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							vecValues.push(materializedHxStringLocal ? compiled : coerceExprToExpected(compiled, value, elem));
 						}
 						var vecExpr = EMacroCall("vec", vecValues);
-						ECall(EPath("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::from_vec"), [vecExpr]);
+						ECall(rustArrayMemberExpr(elemRust, "from_vec"), [vecExpr]);
 					}
 				}
 
@@ -9939,8 +10148,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var idxT = followType(index.t);
 
 						function nullAccessThrow():RustExpr {
-							return ECall(EPath("hxrt::exception::throw"), [
-								ECall(EPath("hxrt::dynamic::from"), [ECall(EPath("String::from"), [ELitString("Null Access")])])
+							return ECall(rustRelativeExpr(["hxrt", "exception", "throw"]), [
+								ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [ECall(rustRelativeExpr(["String", "from"]), [ELitString("Null Access")])])
 							]);
 						}
 
@@ -9951,7 +10160,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									{
 										var abs = absRef.get();
 										if (abs != null && abs.module == "StdTypes" && (abs.name == "Class" || abs.name == "Enum")) {
-											return ECast(ELitInt(0), "u32");
+											return ECast(ELitInt(0), rustNamedType("u32"));
 										}
 									}
 								case _:
@@ -9960,21 +10169,21 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							var rt = toRustType(t, e.pos);
 							var carrierInner = rustTypeSingleGenericArgument(rt);
 							if (rustTypeIsHxRef(rt) && carrierInner != null)
-								return ECall(EPath("crate::HxRef::<" + rustTypeToString(carrierInner) + ">::null"), []);
+								return ECall(rustHxRefMemberExpr(carrierInner, "null"), []);
 							if (rustTypeIsArrayCarrier(rt) && carrierInner != null)
-								return ECall(EPath("hxrt::array::Array::<" + rustTypeToString(carrierInner) + ">::null"), []);
+								return ECall(rustArrayMemberExpr(carrierInner, "null"), []);
 							if (rustTypeIsDynRefCarrier(rt) && carrierInner != null)
-								return ECall(EPath(dynRefBasePath() + "::<" + rustTypeToString(carrierInner) + ">::null"), []);
-							return ECall(EPath("Default::default"), []);
+								return ECall(rustDynRefMemberExpr("null", [carrierInner]), []);
+							return ECall(rustRelativeExpr(["Default", "default"]), []);
 						}
 
 						function dynDowncastNonNull(expected:Type):RustExpr {
 							if (isStringType(expected)) {
-								var downStr = ECall(EField(EPath("__hx_dyn"), "downcast_ref::<String>"), []);
+								var downStr = ECall(EField(rustSingleExpr("__hx_dyn"), "downcast_ref::<String>"), []);
 								var hasStr = ECall(EField(downStr, "is_some"), []);
 								var strExpr = wrapRustStringExpr(ECall(EField(ECall(EField(downStr, "unwrap"), []), "clone"), []));
 
-								var downHxStr = ECall(EField(EPath("__hx_dyn"), "downcast_ref::<hxrt::string::HxString>"), []);
+								var downHxStr = ECall(EField(rustSingleExpr("__hx_dyn"), "downcast_ref::<hxrt::string::HxString>"), []);
 								var hasHxStr = ECall(EField(downHxStr, "is_some"), []);
 								var hxStrExpr = useNullableStringRepresentation() ? ECall(EField(ECall(EField(downHxStr, "unwrap"), []), "clone"),
 									[]) : ECall(EField(ECall(EField(downHxStr, "unwrap"), []), "to_haxe_string"), []);
@@ -10002,8 +10211,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								var innerIsDyn = mapsToRustDynamic(inner, e.pos);
 								return EBlock({
 									stmts: [RLet("__hx_dyn", false, null, dynExpr)],
-									tail: EIf(ECall(EField(EPath("__hx_dyn"), "is_null"), []), EPath("None"),
-										ECall(EPath("Some"), [innerIsDyn ? EPath("__hx_dyn") : dynDowncastNonNull(inner)]))
+									tail: EIf(ECall(EField(rustSingleExpr("__hx_dyn"), "is_null"), []), rustSingleExpr("None"),
+										ECall(rustSingleExpr("Some"), [innerIsDyn ? rustSingleExpr("__hx_dyn") : dynDowncastNonNull(inner)]))
 								});
 							}
 
@@ -10013,7 +10222,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								|| rustTypeIsDynRefCarrier(expectedRust);
 							return EBlock({
 								stmts: [RLet("__hx_dyn", false, null, dynExpr)],
-								tail: EIf(ECall(EField(EPath("__hx_dyn"), "is_null"), []),
+								tail: EIf(ECall(EField(rustSingleExpr("__hx_dyn"), "is_null"), []),
 									isStringType(e.t) ? (useNullableStringRepresentation() ? stringNullExpr() : nullAccessThrow()) : (isNullableRef ? nullExprForExpected(e.t) : nullAccessThrow()),
 									dynDowncastNonNull(e.t))
 							});
@@ -10038,16 +10247,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						if (isStringType(idxUncastT)) {
 							var key = compileExpr(idxUncast);
 							var asStr = ECall(EField(key, "as_str"), []);
-							return coerceDynToExpected(ECall(EPath("hxrt::dynamic::index_get_str"), [EUnary("&", recv), asStr]));
+							return coerceDynToExpected(ECall(rustRelativeExpr(["hxrt", "dynamic", "index_get_str"]), [EUnary("&", recv), asStr]));
 						}
 
 						if (TypeHelper.isInt(idxT)) {
-							return coerceDynToExpected(ECall(EPath("hxrt::dynamic::index_get_i32"), [EUnary("&", recv), compileExpr(index)]));
+							return coerceDynToExpected(ECall(rustRelativeExpr(["hxrt", "dynamic", "index_get_i32"]), [EUnary("&", recv), compileExpr(index)]));
 						}
 						if (isStringType(idxT)) {
 							var key = compileExpr(index);
 							var asStr = ECall(EField(key, "as_str"), []);
-							return coerceDynToExpected(ECall(EPath("hxrt::dynamic::index_get_str"), [EUnary("&", recv), asStr]));
+							return coerceDynToExpected(ECall(rustRelativeExpr(["hxrt", "dynamic", "index_get_str"]), [EUnary("&", recv), asStr]));
 						}
 
 						// Fallback: dynamic index expression.
@@ -10059,18 +10268,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								case TCast(inner, _) if (!isDynamicType(followType(inner.t))): {
 										var innerExpr = compileExpr(inner);
 										innerExpr = maybeCloneForReuseValue(innerExpr, inner);
-										idxExpr = ECall(EPath("hxrt::dynamic::from"), [innerExpr]);
+										idxExpr = ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [innerExpr]);
 									}
 								case _:
 							}
 						} else if (!isDynamicType(idxT)) {
 							var boxed = maybeCloneForReuseValue(idxExpr, index);
-							idxExpr = ECall(EPath("hxrt::dynamic::from"), [boxed]);
+							idxExpr = ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [boxed]);
 						}
-						return coerceDynToExpected(ECall(EPath("hxrt::dynamic::index_get_dyn"), [EUnary("&", recv), EUnary("&", idxExpr)]));
+						return coerceDynToExpected(ECall(rustRelativeExpr(["hxrt", "dynamic", "index_get_dyn"]), [EUnary("&", recv), EUnary("&", idxExpr)]));
 					}
 
-					var idx = ECast(compileExpr(index), "usize");
+					var idx = ECast(compileExpr(index), rustNamedType("usize"));
 					// If the expression is typed as `Null<T>`, represent array access as `Option<T>`.
 					// This avoids Rust panics on out-of-bounds and matches Haxe’s “nullable access” typing.
 					if (isNullOptionType(e.t, e.pos)) {
@@ -10100,10 +10309,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				var localName = rustLocalRefIdent(v);
 				var cellBackedLocal = isCapturedCellLocal(v) || isCapturedCellLocalName(localName);
 				if (cellBackedLocal) {
-					var borrowed = ECall(EField(EPath(localName), "borrow"), []);
+					var borrowed = ECall(EField(rustSingleExpr(localName), "borrow"), []);
 					return isCopyType(v.t) ? EUnary("*", borrowed) : ECall(EField(borrowed, "clone"), []);
 				}
-				EPath(localName);
+				rustSingleExpr(localName);
 
 			case TBinop(op, e1, e2):
 				compileBinop(op, e1, e2, e);
@@ -10163,7 +10372,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					if (isArrayType(e.t) && (args == null || args.length == 0)) {
 						var elem = arrayElementType(e.t);
 						var elemRust = toRustType(elem, e.pos);
-						return ECall(EPath("hxrt::array::Array::<" + rustTypeToString(elemRust) + ">::new"), []);
+						return ECall(rustArrayMemberExpr(elemRust, "new"), []);
 					}
 					// Why: Haxe inlines `Array.iterator()` and `Array.keyValueIterator()` to nominal
 					// classes under `haxe.iterators`. Those upstream std classes are typed but intentionally
@@ -10179,38 +10388,34 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								var elem = typeParams != null && typeParams.length == 1 ? typeParams[0] : arrayElementType(args[0].t);
 								var elemRust = toRustType(elem, e.pos);
 								var values = ECall(EField(compileExpr(args[0]), "to_vec"), []);
-								return ECall(EPath("hxrt::iter::Iter::<" + rustTypeToString(elemRust) + ">::from_vec"), [values]);
+								return ECall(rustIterMemberExpr(elemRust, "from_vec"), [values]);
 							case ArrayIteratorKeyValues:
 								var values = ECall(EField(compileExpr(args[0]), "to_vec"), []);
 								var intoIter = ECall(EField(values, "into_iter"), []);
 								var enumerated = ECall(EField(intoIter, "enumerate"), []);
-								var record = ECall(EPath("hxrt::iter::key_value"), [ECast(EPath("__hx_key"), "i32"), EPath("__hx_value")]);
+								var record = ECall(rustRelativeExpr(["hxrt", "iter", "key_value"]), [ECast(rustSingleExpr("__hx_key"), RI32), rustSingleExpr("__hx_value")]);
 								var mapped = ECall(EField(enumerated, "map"), [
 									EClosure(["(__hx_key, __hx_value)"], {stmts: [], tail: record}, false)
 								]);
 								var records = ECall(EField(mapped, "collect::<Vec<_>>"), []);
-								return ECall(EPath("hxrt::iter::Iter::<crate::HxRef<hxrt::anon::Anon>>::from_vec"), [records]);
+								return ECall(rustIterMemberExpr(rustHxRefType(rustRelativeType(["hxrt", "anon", "Anon"])), "from_vec"), [records]);
 							case null:
 						}
 					}
 					if (cls != null && !cls.isExtern && isMainClass(cls)) {
 						return unsupported(e, "new main class");
 					}
-					var ctorPath = (cls != null && cls.isExtern ? rustExternBasePath(cls) : null);
-					var ctorBase = if (ctorPath != null) {
-						ctorPath;
-					} else if (cls != null && cls.isExtern) {
-						cls.name;
-					} else if (cls != null) {
-						"crate::" + rustModulePathForClass(cls) + "::" + rustTypeNameForClass(cls);
+					if (cls == null)
+						return unsupported(e, "constructor without class type");
+					var ctorOwner = if (cls.isExtern) {
+						rustExternStructuralPath(cls);
 					} else {
-						"todo!()";
-					}
-					var ctorParams = "";
-					if (typeParams != null && typeParams.length > 0) {
-						var rustParams = [for (p in typeParams) rustTypeToString(toRustType(p, e.pos))];
-						ctorParams = "::<" + rustParams.join(", ") + ">";
-					}
+						var names = rustModuleSegmentsForClass(cls);
+						names.push(rustTypeNameForClass(cls));
+						rustCratePath(names);
+					};
+					var ctorArguments = typeParams == null ? [] : rustTypeArguments([for (parameter in typeParams) toRustType(parameter, e.pos)]);
+					ctorOwner = rustPathWithFinalArguments(ctorOwner, ctorArguments);
 
 					// Constructors can have optional parameters and `Null<T>` parameters.
 					// Mirror `compileCall(...)` behavior: coerce provided args and fill omitted optional args.
@@ -10261,7 +10466,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						outArgs = [for (x in args) compileExpr(x)];
 					}
 
-					ECall(EPath(ctorBase + ctorParams + "::new"), outArgs);
+					ECall(EPath(ctorOwner.append(RustPathSegment.plain("new"))), outArgs);
 				}
 
 			case TTypeExpr(mt):
@@ -10369,15 +10574,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						TypeHelper.isVoid(fn.t) ? null : toRustType(fn.t, e.pos));
 
 					var rcTy:RustType = rustRcType(fnTraitType);
-					var rcExpr:RustExpr = ECall(EPath(rcBasePath() + "::new"), [EClosure(argParts, body, true)]);
+					var rcExpr:RustExpr = ECall(rustRcMemberExpr("new"), [EClosure(argParts, body, true)]);
 					var preStmts:Array<RustStmt> = [];
 					for (captured in capturedCloneLocals) {
-						preStmts.push(RLet(captured.name, false, null, ECall(EField(EPath(captured.name), "clone"), [])));
+						preStmts.push(RLet(captured.name, false, null, ECall(EField(rustSingleExpr(captured.name), "clone"), [])));
 					}
 					preStmts.push(RLet("__rc", false, rcTy, rcExpr));
 					EBlock({
 						stmts: preStmts,
-						tail: ECall(EPath(dynRefBasePath() + "::new"), [EPath("__rc")])
+						tail: ECall(rustDynRefMemberExpr("new"), [rustSingleExpr("__rc")])
 					});
 				}
 
@@ -10391,8 +10596,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var toIsDyn = mapsToRustDynamic(toT, e.pos);
 
 					function nullAccessThrow():RustExpr {
-						return ECall(EPath("hxrt::exception::throw"), [
-							ECall(EPath("hxrt::dynamic::from"), [ECall(EPath("String::from"), [ELitString("Null Access")])])
+						return ECall(rustRelativeExpr(["hxrt", "exception", "throw"]), [
+							ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [ECall(rustRelativeExpr(["String", "from"]), [ELitString("Null Access")])])
 						]);
 					}
 
@@ -10404,20 +10609,20 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							var stmts:Array<RustStmt> = [];
 							stmts.push(RLet("__hx_dyn", false, null, dynExpr));
 							// `null` dynamic -> `None`
-							var isNull = ECall(EField(EPath("__hx_dyn"), "is_null"), []);
-							stmts.push(RLet("__hx_opt", false, null, ECall(EField(EPath("__hx_dyn"), "downcast_ref::<" + optTyStr + ">"), [])));
-							var hasOpt = ECall(EField(EPath("__hx_opt"), "is_some"), []);
-							var thenExpr = ECall(EField(ECall(EField(EPath("__hx_opt"), "unwrap"), []), "clone"), []);
-							var downInner = ECall(EField(EPath("__hx_dyn"), "downcast_ref::<" + innerRust + ">"), []);
+							var isNull = ECall(EField(rustSingleExpr("__hx_dyn"), "is_null"), []);
+							stmts.push(RLet("__hx_opt", false, null, ECall(EField(rustSingleExpr("__hx_dyn"), "downcast_ref::<" + optTyStr + ">"), [])));
+							var hasOpt = ECall(EField(rustSingleExpr("__hx_opt"), "is_some"), []);
+							var thenExpr = ECall(EField(ECall(EField(rustSingleExpr("__hx_opt"), "unwrap"), []), "clone"), []);
+							var downInner = ECall(EField(rustSingleExpr("__hx_dyn"), "downcast_ref::<" + innerRust + ">"), []);
 							var innerRef = ECall(EField(downInner, "unwrap"), []);
-							var elseExpr = ECall(EPath("Some"), [ECall(EField(innerRef, "clone"), [])]);
-							return EBlock({stmts: stmts, tail: EIf(isNull, EPath("None"), EIf(hasOpt, thenExpr, elseExpr))});
+							var elseExpr = ECall(rustSingleExpr("Some"), [ECall(EField(innerRef, "clone"), [])]);
+							return EBlock({stmts: stmts, tail: EIf(isNull, rustSingleExpr("None"), EIf(hasOpt, thenExpr, elseExpr))});
 						}
 
 						var tyStr = rustTypeToString(toRustType(target, pos));
 						return EBlock({
 							stmts: [RLet("__hx_dyn", false, null, dynExpr)],
-							tail: EIf(ECall(EField(EPath("__hx_dyn"), "is_null"), []), nullAccessThrow(), dynamicDowncastCloneExpr("__hx_dyn", tyStr))
+							tail: EIf(ECall(EField(rustSingleExpr("__hx_dyn"), "is_null"), []), nullAccessThrow(), dynamicDowncastCloneExpr("__hx_dyn", tyStr))
 						});
 					}
 
@@ -10434,7 +10639,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					**/
 					function unwrapKnownSome(value:RustExpr):Null<RustExpr> {
 						return switch (value) {
-							case ECall(EPath("Some"), [present]): present;
+							case ECall(EPath(path), [present]) if (rustPathIsRelative(path, ["Some"])): present;
 							case EBlock(block) if (block.tail != null): {
 									var present = unwrapKnownSome(block.tail);
 									present == null ? null : EBlock({stmts: block.stmts, tail: present});
@@ -10448,7 +10653,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						&& !isNullType(e.t)
 						&& (TypeHelper.isInt(fromT) || TypeHelper.isFloat(fromT))
 						&& (TypeHelper.isInt(toT) || TypeHelper.isFloat(toT))) {
-						var target = rustTypeToString(toRustType(toT, e.pos));
+						var target = toRustType(toT, e.pos);
 						ECast(inner, target);
 					} else if (rustRefKind(e.t) != null) {
 						// Casts introduced by `rust.Ref<T>` / `rust.MutRef<T>` `@:from` conversions are
@@ -10472,7 +10677,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						present != null ? present : ECall(EField(inner, "unwrap"), []);
 					} else if (!isNullOptionType(e1.t, e1.pos) && isNullOptionType(e.t, e.pos)) {
 						// Explicit casts from `T` to `Null<T>` are treated as "wrap into nullability".
-						ECall(EPath("Some"), [inner]);
+						ECall(rustSingleExpr("Some"), [inner]);
 					} else {
 						inner;
 					}
@@ -10492,13 +10697,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					function typedNoneForNull(t:Type, pos:haxe.macro.Expr.Position):RustExpr {
 						var inner = nullOptionInnerType(t, pos);
 						if (inner == null)
-							return EPath("None");
-						var innerRust = rustTypeToString(toRustType(inner, pos));
-						return EPath("Option::<" + innerRust + ">::None");
+							return rustSingleExpr("None");
+						var innerRust = toRustType(inner, pos);
+						return rustRelativeMemberExpr(["Option"], [GenericType(innerRust)], "None");
 					}
 
-					var newAnon = ECall(EPath("hxrt::anon::Anon::new"), []);
-					var newRef = ECall(EPath("crate::HxRef::new"), [newAnon]);
+					var newAnon = ECall(rustRelativeExpr(["hxrt", "anon", "Anon", "new"]), []);
+					var newRef = ECall(rustCrateExpr(["HxRef", "new"]), [newAnon]);
 					// Why: a zero-field record has nothing to initialize. Taking a write guard anyway is
 					// observable synchronization work and cleanup would reduce it to Clippy-invalid
 					// `let _ = value.borrow_mut()`.
@@ -10513,7 +10718,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					stmts.push(RLet(objName, false, null, newRef));
 
 					var innerStmts:Array<RustStmt> = [];
-					innerStmts.push(RLet("__b", true, null, ECall(EField(EPath(objName), "borrow_mut"), [])));
+					innerStmts.push(RLet("__b", true, null, ECall(EField(rustSingleExpr(objName), "borrow_mut"), [])));
 					for (f in fields) {
 						var valueExpr = f.expr;
 						var compiledVal:RustExpr;
@@ -10522,11 +10727,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						} else {
 							compiledVal = maybeCloneForReuseValue(compileExpr(valueExpr), valueExpr);
 						}
-						innerStmts.push(RSemi(ECall(EField(EPath("__b"), "set"), [ELitString(f.name), compiledVal])));
+						innerStmts.push(RSemi(ECall(EField(rustSingleExpr("__b"), "set"), [ELitString(f.name), compiledVal])));
 					}
 					stmts.push(RSemi(EBlock({stmts: innerStmts, tail: null})));
 
-					return EBlock({stmts: stmts, tail: EPath(objName)});
+					return EBlock({stmts: stmts, tail: rustSingleExpr(objName)});
 				}
 
 			default:
@@ -10586,7 +10791,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function compileThrow(thrown:TypedExpr, pos:haxe.macro.Expr.Position):RustExpr {
 		var compiled = compileExpr(thrown);
 		var payload = mapsToRustDynamic(thrown.t, pos) ? compiled : boxThrownDynamicPayload(compiled, thrown.t, pos);
-		return ECall(EPath("hxrt::exception::throw"), [payload]);
+		return ECall(rustRelativeExpr(["hxrt", "exception", "throw"]), [payload]);
 	}
 
 	/**
@@ -10616,7 +10821,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case TInst(clsRef, _): {
 					var cls = clsRef.get();
 					if (cls != null && !cls.isExtern && (cls.isInterface || isPolymorphicClassType(valueType)))
-						ECall(EField(EPath("__hx_box"), "__hx_type_id"), [])
+						ECall(EField(rustSingleExpr("__hx_box"), "__hx_type_id"), [])
 					else
 						null;
 				}
@@ -10625,13 +10830,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		};
 
 		if (runtimeTypeId != null) {
-			var boxFn = byRef ? "hxrt::dynamic::from_ref_with_type_id" : "hxrt::dynamic::from_with_type_id";
+			var boxFn = rustDynamicBoxFunctionExpr(byRef, true);
 			return EBlock({
 				stmts: [
 					RLet("__hx_box", false, null, value),
 					RLet("__hx_box_type_id", false, null, runtimeTypeId)
 				],
-				tail: ECall(EPath(boxFn), [EPath("__hx_box"), EPath("__hx_box_type_id")])
+				tail: ECall(boxFn, [rustSingleExpr("__hx_box"), rustSingleExpr("__hx_box_type_id")])
 			});
 		}
 
@@ -10648,25 +10853,23 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				null;
 		};
 		if (staticTypeId != null) {
-			var typedBoxFn = byRef ? "hxrt::dynamic::from_ref_with_type_id" : "hxrt::dynamic::from_with_type_id";
-			return ECall(EPath(typedBoxFn), [value, staticTypeId]);
+			return ECall(rustDynamicBoxFunctionExpr(byRef, true), [value, staticTypeId]);
 		}
 
-		var plainBoxFn = byRef ? "hxrt::dynamic::from_ref" : "hxrt::dynamic::from";
-		return ECall(EPath(plainBoxFn), [value]);
+		return ECall(rustDynamicBoxFunctionExpr(byRef, false), [value]);
 	}
 
 	function compileTry(tryExpr:TypedExpr, catches:Array<{v:TVar, expr:TypedExpr}>, fullExpr:TypedExpr):RustExpr {
 		var expectedReturn = fullExpr.t;
 		var tryBlock = compileExprToBlock(tryExpr, expectedReturn);
-		var attempt = ECall(EPath("hxrt::exception::catch_unwind"), [EClosure([], tryBlock, false)]);
+		var attempt = ECall(rustRelativeExpr(["hxrt", "exception", "catch_unwind"]), [EClosure([], tryBlock, false)]);
 
 		var okName = "__hx_ok";
 		var exName = "__hx_ex";
 
 		var arms:Array<RustMatchArm> = [
-			{pat: PTupleStruct("Ok", [PBind(okName)]), expr: EPath(okName)},
-			{pat: PTupleStruct("Err", [PBind(exName)]), expr: compileCatchDispatch(exName, catches, expectedReturn)}
+			{pat: PTupleStruct(RustPath.single("Ok"), [PBind(okName)]), expr: rustSingleExpr(okName)},
+			{pat: PTupleStruct(RustPath.single("Err"), [PBind(exName)]), expr: compileCatchDispatch(exName, catches, expectedReturn)}
 		];
 
 		return EMatch(attempt, arms);
@@ -10691,7 +10894,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function compileCatchDispatch(exVarName:String, catches:Array<{v:TVar, expr:TypedExpr}>, expectedReturn:Type):RustExpr {
 		if (catches.length == 0) {
-			return ECall(EPath("hxrt::exception::rethrow"), [EPath(exVarName)]);
+			return ECall(rustRelativeExpr(["hxrt", "exception", "rethrow"]), [rustSingleExpr(exVarName)]);
 		}
 
 		var c = catches[0];
@@ -10704,10 +10907,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			if (needsVar) {
 				var name = rustLocalDeclIdent(c.v);
 				var mutable = currentMutatedLocals != null && currentMutatedLocals.exists(c.v.id);
-				stmts.unshift(RLet(name, mutable, toRustType(c.v.t, c.expr.pos), EPath(exVarName)));
+				stmts.unshift(RLet(name, mutable, toRustType(c.v.t, c.expr.pos), rustSingleExpr(exVarName)));
 			} else {
 				// Ensure we "use" the bound exception variable to avoid an unused-variable warning.
-				stmts.unshift(RLet("_", false, null, EPath(exVarName)));
+				stmts.unshift(RLet("_", false, null, rustSingleExpr(exVarName)));
 			}
 			return EBlock({stmts: stmts, tail: body.tail});
 		}
@@ -10723,7 +10926,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		var rustTy = toRustType(c.v.t, c.expr.pos);
-		var downcast = ECall(EField(EPath(exVarName), "downcast::<" + rustTypeToString(rustTy) + ">"), []);
+		var downcast = ECall(EField(rustSingleExpr(exVarName), "downcast::<" + rustTypeToString(rustTy) + ">"), []);
 
 		var okBody = compileExprToBlock(c.expr, expectedReturn);
 		var okStmts = okBody.stmts.copy();
@@ -10732,15 +10935,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (needsVar) {
 			var name = rustLocalDeclIdent(c.v);
 			var mutable = currentMutatedLocals != null && currentMutatedLocals.exists(c.v.id);
-			okStmts.unshift(RLet(name, mutable, rustTy, EUnary("*", EPath("__hx_box"))));
+			okStmts.unshift(RLet(name, mutable, rustTy, EUnary("*", rustSingleExpr("__hx_box"))));
 		}
 		var okExpr:RustExpr = EBlock({stmts: okStmts, tail: okBody.tail});
 
 		var errExpr = compileCatchDispatch(exVarName, rest, expectedReturn);
 
 		return EMatch(downcast, [
-			{pat: PTupleStruct("Ok", [boxedPat]), expr: okExpr},
-			{pat: PTupleStruct("Err", [PBind(exVarName)]), expr: errExpr}
+			{pat: PTupleStruct(RustPath.single("Ok"), [boxedPat]), expr: okExpr},
+			{pat: PTupleStruct(RustPath.single("Err"), [PBind(exVarName)]), expr: errExpr}
 		]);
 	}
 
@@ -10762,15 +10965,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (!(isInterfaceType(expectedType) || isPolymorphicClassType(expectedType)))
 			return concreteExpr;
 
-		var opt = ECall(EField(EPath("__tmp"), "as_arc_opt"), []);
+		var opt = ECall(EField(rustSingleExpr("__tmp"), "as_arc_opt"), []);
 		function nullAccessThrowExpr():RustExpr {
-			return ECall(EPath("hxrt::exception::throw"), [
-				ECall(EPath("hxrt::dynamic::from"), [ECall(EPath("String::from"), [ELitString("Null Access")])])
+			return ECall(rustRelativeExpr(["hxrt", "exception", "throw"]), [
+				ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [ECall(rustRelativeExpr(["String", "from"]), [ELitString("Null Access")])])
 			]);
 		}
 		var arms:Array<RustMatchArm> = [
-			{pat: PTupleStruct("Some", [PBind("__rc")]), expr: ECall(EField(EPath("__rc"), "clone"), [])},
-			{pat: PPath("None"), expr: nullAccessThrowExpr()}
+			{pat: PTupleStruct(RustPath.single("Some"), [PBind("__rc")]), expr: ECall(EField(rustSingleExpr("__rc"), "clone"), [])},
+			{pat: PPath(RustPath.single("None")), expr: nullAccessThrowExpr()}
 		];
 
 		return EBlock({
@@ -10778,7 +10981,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				RLet("__tmp", false, null, concreteExpr),
 				RLet("__up", false, expectedRustTy, EMatch(opt, arms))
 			],
-			tail: EPath("__up")
+			tail: rustSingleExpr("__up")
 		});
 	}
 
@@ -10847,26 +11050,26 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			if (!rustTypeIsHxRef(concreteRustTy))
 				continue;
 
-			var downcast = ECall(EField(EPath(exVarName), "downcast::<" + rustTypeToString(concreteRustTy) + ">"), []);
+			var downcast = ECall(EField(rustSingleExpr(exVarName), "downcast::<" + rustTypeToString(concreteRustTy) + ">"), []);
 			var okBody = compileExprToBlock(c.expr, expectedReturn);
 			var okStmts = okBody.stmts.copy();
 			var needsVar = localIdUsedInExpr(c.v.id, c.expr);
 			if (needsVar) {
 				var name = rustLocalDeclIdent(c.v);
 				var mutable = currentMutatedLocals != null && currentMutatedLocals.exists(c.v.id);
-				var concreteValue = EUnary("*", EPath("__hx_box"));
+				var concreteValue = EUnary("*", rustSingleExpr("__hx_box"));
 				var boundValue = upcastConcreteClassRefExpr(concreteValue, c.v.t, c.expr.pos);
 				okStmts.unshift(RLet(name, mutable, rustTy, boundValue));
 			}
 			var okExpr:RustExpr = EBlock({stmts: okStmts, tail: okBody.tail});
 			var downcastMatch = EMatch(downcast, [
-				{pat: PTupleStruct("Ok", [needsVar ? PBind("__hx_box") : PWildcard]), expr: okExpr},
-				{pat: PTupleStruct("Err", [PBind(exVarName)]), expr: exactFallback}
+				{pat: PTupleStruct(RustPath.single("Ok"), [needsVar ? PBind("__hx_box") : PWildcard]), expr: okExpr},
+				{pat: PTupleStruct(RustPath.single("Err"), [PBind(exVarName)]), expr: exactFallback}
 			]);
 
 			candidateArms.push({
 				pat: PWildcard,
-				expr: EIf(EBinary("==", EPath("__actual_type_id"), typeIdExprForClass(cls)), downcastMatch, null)
+				expr: EIf(EBinary("==", rustSingleExpr("__actual_type_id"), typeIdExprForClass(cls)), downcastMatch, null)
 			});
 		}
 
@@ -10882,12 +11085,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 
-		return EMatch(ECall(EField(EPath(exVarName), "type_id"), []), [
+		return EMatch(ECall(EField(rustSingleExpr(exVarName), "type_id"), []), [
 			{
-				pat: PTupleStruct("Some", [PBind("__actual_type_id")]),
-				expr: EIf(ECall(EPath("crate::__hx_is_subtype_type_id"), [EPath("__actual_type_id"), typeIdExprForClass(expectedClass)]), subtypeChain, errExpr)
+				pat: PTupleStruct(RustPath.single("Some"), [PBind("__actual_type_id")]),
+				expr: EIf(ECall(rustCrateExpr(["__hx_is_subtype_type_id"]), [rustSingleExpr("__actual_type_id"), typeIdExprForClass(expectedClass)]), subtypeChain, errExpr)
 			},
-			{pat: PPath("None"), expr: exactFallback}
+			{pat: PPath(RustPath.single("None")), expr: exactFallback}
 		]);
 	}
 
@@ -10902,7 +11105,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	**/
 	function compileExactTypedCatchDispatch(exVarName:String, c:{v:TVar, expr:TypedExpr}, rest:Array<{v:TVar, expr:TypedExpr}>, expectedReturn:Type):RustExpr {
 		var rustTy = toRustType(c.v.t, c.expr.pos);
-		var downcast = ECall(EField(EPath(exVarName), "downcast::<" + rustTypeToString(rustTy) + ">"), []);
+		var downcast = ECall(EField(rustSingleExpr(exVarName), "downcast::<" + rustTypeToString(rustTy) + ">"), []);
 
 		var okBody = compileExprToBlock(c.expr, expectedReturn);
 		var okStmts = okBody.stmts.copy();
@@ -10911,15 +11114,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (needsVar) {
 			var name = rustLocalDeclIdent(c.v);
 			var mutable = currentMutatedLocals != null && currentMutatedLocals.exists(c.v.id);
-			okStmts.unshift(RLet(name, mutable, rustTy, EUnary("*", EPath("__hx_box"))));
+			okStmts.unshift(RLet(name, mutable, rustTy, EUnary("*", rustSingleExpr("__hx_box"))));
 		}
 		var okExpr:RustExpr = EBlock({stmts: okStmts, tail: okBody.tail});
 
 		var errExpr = compileCatchDispatch(exVarName, rest, expectedReturn);
 
 		return EMatch(downcast, [
-			{pat: PTupleStruct("Ok", [boxedPat]), expr: okExpr},
-			{pat: PTupleStruct("Err", [PBind(exVarName)]), expr: errExpr}
+			{pat: PTupleStruct(RustPath.single("Ok"), [boxedPat]), expr: okExpr},
+			{pat: PTupleStruct(RustPath.single("Err"), [PBind(exVarName)]), expr: errExpr}
 		]);
 	}
 
@@ -10936,7 +11139,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		  That preserves the same runtime behavior while removing avoidable raw-expression fallback.
 	**/
 	function dynamicDowncastCloneExpr(dynamicVarName:String, typePath:String):RustExpr {
-		var downcastRef = ECall(EField(EPath(dynamicVarName), "downcast_ref::<" + typePath + ">"), []);
+		var downcastRef = ECall(EField(rustSingleExpr(dynamicVarName), "downcast_ref::<" + typePath + ">"), []);
 		var unwrapCall = ECall(EField(downcastRef, "unwrap"), []);
 		return ECall(EField(unwrapCall, "clone"), []);
 	}
@@ -10968,7 +11171,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 				var cond:Null<RustExpr> = null;
 				for (v in c.values) {
-					var eq = EBinary("==", EPath("__s"), compileMatchScrutinee(v));
+					var eq = EBinary("==", rustSingleExpr("__s"), compileMatchScrutinee(v));
 					cond = cond == null ? eq : EBinary("||", cond, eq);
 				}
 				if (cond == null)
@@ -11017,12 +11220,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		function aliasWholeScrutineeArmExpr(armExpr:RustExpr, pathName:String, aliasName:String):Null<RustExpr> {
 			return switch (armExpr) {
-				case EPath(path) if (path == pathName):
-					EPath(aliasName);
+				case EPath(path) if (path.plainRelativeIdentifierName() == pathName):
+					rustSingleExpr(aliasName);
 				case EBlock(block):
 					switch (block.tail) {
-						case EPath(path) if (path == pathName):
-							EPath(aliasName);
+						case EPath(path) if (path.plainRelativeIdentifierName() == pathName):
+							rustSingleExpr(aliasName);
 						case _:
 							null;
 					}
@@ -11041,7 +11244,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					POr([for (p in patterns) erasePatternBindings(p)]);
 				case PAlias(name, inner):
 					PAlias(name, erasePatternBindings(inner));
-				case PWildcard | PPath(_) | PLitInt(_) | PLitBool(_) | PLitString(_):
+				case PWildcard | PPath(_) | PLitInt(_) | PLitUInt32(_) | PLitBool(_) | PLitString(_):
 					pattern;
 			}
 		}
@@ -11073,7 +11276,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				case POr(patterns):
 					POr([for (p in patterns) optionWrapNullableCasePattern(p)]);
 				case _:
-					PTupleStruct("Some", [pattern]);
+					PTupleStruct(RustPath.single("Some"), [pattern]);
 			}
 		}
 
@@ -11200,12 +11403,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		function aliasWholeScrutineeArmExpr(armExpr:RustExpr, pathName:String, aliasName:String):Null<RustExpr> {
 			return switch (armExpr) {
-				case EPath(path) if (path == pathName):
-					EPath(aliasName);
+				case EPath(path) if (path.plainRelativeIdentifierName() == pathName):
+					rustSingleExpr(aliasName);
 				case EBlock(block):
 					switch (block.tail) {
-						case EPath(path) if (path == pathName):
-							EPath(aliasName);
+						case EPath(path) if (path.plainRelativeIdentifierName() == pathName):
+							rustSingleExpr(aliasName);
 						case _:
 							null;
 					}
@@ -11224,7 +11427,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					POr([for (p in patterns) erasePatternBindings(p)]);
 				case PAlias(name, inner):
 					PAlias(name, erasePatternBindings(inner));
-				case PWildcard | PPath(_) | PLitInt(_) | PLitBool(_) | PLitString(_):
+				case PWildcard | PPath(_) | PLitInt(_) | PLitUInt32(_) | PLitBool(_) | PLitString(_):
 					pattern;
 			}
 		}
@@ -11249,7 +11452,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				case POr(patterns):
 					POr([for (p in patterns) optionWrapNullableEnumIndexPattern(p)]);
 				case _:
-					PTupleStruct("Some", [pattern]);
+					PTupleStruct(RustPath.single("Some"), [pattern]);
 			}
 		}
 
@@ -11961,21 +12164,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case TFun(_, result): result;
 			case _: expectedNext.type;
 		}
-		var itemRust = rustTypeToString(toRustType(itemType, valueExpr.pos));
+		var itemRust = toRustType(itemType, valueExpr.pos);
 
 		function callMethod(receiver:String, field:ClassField):RustExpr {
-			var path = "crate::" + rustModulePathForClass(actualClass) + "::" + rustTypeNameForClass(actualClass) + "::"
-				+ rustMethodName(actualClass, field);
-			return ECall(EPath(path), [EUnary("&", EUnary("*", EPath(receiver)))]);
+			var names = rustModuleSegmentsForClass(actualClass);
+			names.push(rustTypeNameForClass(actualClass));
+			names.push(rustMethodName(actualClass, field));
+			return ECall(rustCrateExpr(names), [EUnary("&", EUnary("*", rustSingleExpr(receiver)))]);
 		}
 
 		return EBlock({
 			stmts: [
 				RLet("__hx_iterator_src", false, null, maybeCloneForReuseValue(compiled, valueExpr)),
-				RLet("__hx_has_next_src", false, null, ECall(EField(EPath("__hx_iterator_src"), "clone"), [])),
-				RLet("__hx_next_src", false, null, EPath("__hx_iterator_src"))
+				RLet("__hx_has_next_src", false, null, ECall(EField(rustSingleExpr("__hx_iterator_src"), "clone"), [])),
+				RLet("__hx_next_src", false, null, rustSingleExpr("__hx_iterator_src"))
 			],
-			tail: ECall(EPath("hxrt::iter::Iter::<" + itemRust + ">::from_callbacks"), [
+			tail: ECall(rustIterMemberExpr(itemRust, "from_callbacks"), [
 				EClosure([], {stmts: [], tail: callMethod("__hx_has_next_src", hasNext)}, true),
 				EClosure([], {stmts: [], tail: callMethod("__hx_next_src", next)}, true)
 			])
@@ -11989,22 +12193,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return compiled;
 
 		function nullAccessThrow():RustExpr {
-			return ECall(EPath("hxrt::exception::throw"), [
-				ECall(EPath("hxrt::dynamic::from"), [ECall(EPath("String::from"), [ELitString("Null Access")])])
+			return ECall(rustRelativeExpr(["hxrt", "exception", "throw"]), [
+				ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [ECall(rustRelativeExpr(["String", "from"]), [ELitString("Null Access")])])
 			]);
 		}
 
 		function isDefaultDefaultCall(expr:RustExpr):Bool {
 			return switch (expr) {
-				case ECall(EPath("Default::default"), []): true;
+				case ECall(EPath(path), []) if (rustPathIsRelative(path, ["Default", "default"])): true;
 				case _: false;
 			}
 		}
 
 		function isAlreadyHxStringExpr(expr:RustExpr):Bool {
 			return switch (expr) {
-				case ECall(EPath("hxrt::string::HxString::null"), []): true;
-				case ECall(EPath("hxrt::string::HxString::from"), [_]): true;
+				case ECall(EPath(path), []) if (rustPathIsRelative(path, ["hxrt", "string", "HxString", "null"])): true;
+				case ECall(EPath(path), [_]) if (rustPathIsRelative(path, ["hxrt", "string", "HxString", "from"])): true;
 				case _: false;
 			}
 		}
@@ -12038,7 +12242,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 			if (!isNullType(valueExpr.t) && !isNullConstExpr(valueExpr)) {
 				var innerCoerced = coerceExprToExpected(compiled, valueExpr, innerType);
-				return ECall(EPath("Some"), [innerCoerced]);
+				return ECall(rustSingleExpr("Some"), [innerCoerced]);
 			}
 			return compiled;
 		}
@@ -12058,12 +12262,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			&& rustTypeContainsTraitObject(actualRust)) {
 			return EBlock({
 				stmts: [RLet("__hx_dyn_ref", false, null, maybeCloneForReuseValue(compiled, valueExpr))],
-				tail: EMatch(ECall(EField(EPath("__hx_dyn_ref"), "as_arc_opt"), []), [
+				tail: EMatch(ECall(EField(rustSingleExpr("__hx_dyn_ref"), "as_arc_opt"), []), [
 					{
-						pat: PTupleStruct("Some", [PBind("__rc")]),
-						expr: ECall(EField(EPath("__rc"), "clone"), [])
+						pat: PTupleStruct(RustPath.single("Some"), [PBind("__rc")]),
+						expr: ECall(EField(rustSingleExpr("__rc"), "clone"), [])
 					},
-					{pat: PPath("None"), expr: nullAccessThrow()}
+					{pat: PPath(RustPath.single("None")), expr: nullAccessThrow()}
 				])
 			});
 		}
@@ -12086,16 +12290,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 			var unwrapped = EBlock({
 				stmts: [RLet("__hx_opt", false, null, optExpr)],
-				tail: EMatch(innerIsCopy ? EPath("__hx_opt") : EUnary("&", EPath("__hx_opt")), [
-					{pat: PTupleStruct("Some", [PBind("__v")]), expr: innerIsCopy ? EPath("__v") : ECall(EField(EPath("__v"), "clone"), [])},
+				tail: EMatch(innerIsCopy ? rustSingleExpr("__hx_opt") : EUnary("&", rustSingleExpr("__hx_opt")), [
+					{pat: PTupleStruct(RustPath.single("Some"), [PBind("__v")]), expr: innerIsCopy ? rustSingleExpr("__v") : ECall(EField(rustSingleExpr("__v"), "clone"), [])},
 					{
-						pat: PPath("None"),
+						pat: PPath(RustPath.single("None")),
 						expr: isStringType(expected) ? (useNullableStringRepresentation() ? stringNullExpr() : nullAccessThrow()) : nullAccessThrow()
 					}
 				])
 			});
 			if (TypeHelper.isFloat(followType(expected)) && TypeHelper.isInt(followType(actualNullInner))) {
-				return ECast(unwrapped, "f64");
+				return ECast(unwrapped, RF64);
 			}
 			return unwrapped;
 		}
@@ -12103,7 +12307,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// Numeric widening: Haxe allows `Int` values where `Float` is expected.
 		// Rust requires an explicit cast.
 		if (TypeHelper.isFloat(followType(expected)) && TypeHelper.isInt(followType(valueExpr.t))) {
-			return ECast(compiled, "f64");
+			return ECast(compiled, RF64);
 		}
 
 		// String representation bridge (`String` <-> `HxString`) for nullable-string mode.
@@ -12196,26 +12400,24 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		**/
 		function boxDynamicBoundaryValue(value:RustExpr, valueType:Type):RustExpr {
 			var byRef = isArrayType(valueType) || isRcBackedType(valueType);
-			var runtimeTypeId = runtimeDynamicBoundaryTypeIdExpr(EPath("__hx_box"), valueType);
+			var runtimeTypeId = runtimeDynamicBoundaryTypeIdExpr(rustSingleExpr("__hx_box"), valueType);
 			if (runtimeTypeId != null) {
-				var boxFn = byRef ? "hxrt::dynamic::from_ref_with_type_id" : "hxrt::dynamic::from_with_type_id";
+				var boxFn = rustDynamicBoxFunctionExpr(byRef, true);
 				return EBlock({
 					stmts: [
 						RLet("__hx_box", false, null, value),
 						RLet("__hx_box_type_id", false, null, runtimeTypeId)
 					],
-					tail: ECall(EPath(boxFn), [EPath("__hx_box"), EPath("__hx_box_type_id")])
+					tail: ECall(boxFn, [rustSingleExpr("__hx_box"), rustSingleExpr("__hx_box_type_id")])
 				});
 			}
 
 			var staticTypeId = staticDynamicBoundaryTypeIdExpr(valueType);
 			if (staticTypeId != null) {
-				var typedBoxFn = byRef ? "hxrt::dynamic::from_ref_with_type_id" : "hxrt::dynamic::from_with_type_id";
-				return ECall(EPath(typedBoxFn), [value, staticTypeId]);
+				return ECall(rustDynamicBoxFunctionExpr(byRef, true), [value, staticTypeId]);
 			}
 
-			var plainBoxFn = byRef ? "hxrt::dynamic::from_ref" : "hxrt::dynamic::from";
-			return ECall(EPath(plainBoxFn), [value]);
+			return ECall(rustDynamicBoxFunctionExpr(byRef, false), [value]);
 		}
 
 		// Boxing to `Dynamic`.
@@ -12232,16 +12434,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				var optExpr = maybeCloneForReuseValue(compiled, valueExpr);
 				var someExpr:RustExpr;
 				if (mapsToRustDynamic(innerType, valueExpr.pos)) {
-					someExpr = EPath("__v");
+					someExpr = rustSingleExpr("__v");
 				} else {
-					someExpr = boxDynamicBoundaryValue(EPath("__v"), innerType);
+					someExpr = boxDynamicBoundaryValue(rustSingleExpr("__v"), innerType);
 				}
 
 				return EBlock({
 					stmts: [RLet("__hx_opt", false, null, optExpr)],
-					tail: EMatch(EPath("__hx_opt"), [
-						{pat: PTupleStruct("Some", [PBind("__v")]), expr: someExpr},
-						{pat: PPath("None"), expr: rustDynamicNullExpr()}
+					tail: EMatch(rustSingleExpr("__hx_opt"), [
+						{pat: PTupleStruct(RustPath.single("Some"), [PBind("__v")]), expr: someExpr},
+						{pat: PPath(RustPath.single("None")), expr: rustDynamicNullExpr()}
 					])
 				});
 			}
@@ -12255,13 +12457,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			// `Dynamic -> String` must also accept `HxString` (nullable-string wrapper) when boxed.
 			if (isStringType(expected)) {
 				var stmts:Array<RustStmt> = [RLet("__hx_dyn", false, null, compiled)];
-				var isNull = ECall(EField(EPath("__hx_dyn"), "is_null"), []);
+				var isNull = ECall(EField(rustSingleExpr("__hx_dyn"), "is_null"), []);
 
-				var downStr = ECall(EField(EPath("__hx_dyn"), "downcast_ref::<String>"), []);
+				var downStr = ECall(EField(rustSingleExpr("__hx_dyn"), "downcast_ref::<String>"), []);
 				var hasStr = ECall(EField(downStr, "is_some"), []);
 				var strExpr = wrapRustStringExpr(ECall(EField(ECall(EField(downStr, "unwrap"), []), "clone"), []));
 
-				var downHxStr = ECall(EField(EPath("__hx_dyn"), "downcast_ref::<hxrt::string::HxString>"), []);
+				var downHxStr = ECall(EField(rustSingleExpr("__hx_dyn"), "downcast_ref::<hxrt::string::HxString>"), []);
 				var hasHxStr = ECall(EField(downHxStr, "is_some"), []);
 				var hxStrExpr = useNullableStringRepresentation() ? ECall(EField(ECall(EField(downHxStr, "unwrap"), []), "clone"),
 					[]) : ECall(EField(ECall(EField(downHxStr, "unwrap"), []), "to_haxe_string"), []);
@@ -12276,7 +12478,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var tyStr = rustTypeToString(toRustType(expected, valueExpr.pos));
 			return EBlock({
 				stmts: [RLet("__hx_dyn", false, null, compiled)],
-				tail: EIf(ECall(EField(EPath("__hx_dyn"), "is_null"), []), nullAccessThrow(), dynamicDowncastCloneExpr("__hx_dyn", tyStr))
+				tail: EIf(ECall(EField(rustSingleExpr("__hx_dyn"), "is_null"), []), nullAccessThrow(), dynamicDowncastCloneExpr("__hx_dyn", tyStr))
 			});
 		}
 
@@ -12301,8 +12503,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			if (expectedAnon != null && expectedAnon.fields != null && actualCls != null) {
 				var stmts:Array<RustStmt> = [];
 				stmts.push(RLet("__hx_src", false, null, maybeCloneForReuseValue(compiled, valueExpr)));
-				stmts.push(RLet("__hx_o", false, null, ECall(EPath("crate::HxRef::new"), [ECall(EPath("hxrt::anon::Anon::new"), [])])));
-				stmts.push(RLet("__b", true, null, ECall(EField(EPath("__hx_o"), "borrow_mut"), [])));
+				stmts.push(RLet("__hx_o", false, null, ECall(rustCrateExpr(["HxRef", "new"]), [ECall(rustRelativeExpr(["hxrt", "anon", "Anon", "new"]), [])])));
+				stmts.push(RLet("__b", true, null, ECall(EField(rustSingleExpr("__hx_o"), "borrow_mut"), [])));
 
 				for (req in expectedAnon.fields) {
 					var haxeName = req.getHaxeName();
@@ -12326,7 +12528,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					}
 
 					var recvName = "__recv";
-					var recvExpr = ECall(EField(EPath("__hx_src"), "clone"), []);
+					var recvExpr = ECall(EField(rustSingleExpr("__hx_src"), "clone"), []);
 
 					var argParts:Array<String> = [];
 					var callArgs:Array<RustExpr> = [];
@@ -12334,17 +12536,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var p = sig.params[i];
 						var name = "a" + i;
 						argParts.push(name + ": " + rustTypeToString(toRustType(p.t, valueExpr.pos)));
-						callArgs.push(EPath(name));
+						callArgs.push(rustSingleExpr(name));
 					}
 
 					var call:RustExpr = if (isExternInstanceType(valueExpr.t)) {
-						ECall(EField(EPath(recvName), rustExternFieldName(actualMethod)), callArgs);
+						ECall(EField(rustSingleExpr(recvName), rustExternFieldName(actualMethod)), callArgs);
 					} else if (isInterfaceType(valueExpr.t) || isPolymorphicClassType(valueExpr.t)) {
-						ECall(EField(EPath(recvName), rustMethodName(actualCls, actualMethod)), callArgs);
+						ECall(EField(rustSingleExpr(recvName), rustMethodName(actualCls, actualMethod)), callArgs);
 					} else {
-						var modName = rustModulePathForClass(actualCls);
-						var path = "crate::" + modName + "::" + rustTypeNameForClass(actualCls) + "::" + rustMethodName(actualCls, actualMethod);
-						ECall(EPath(path), [EUnary("&", EUnary("*", EPath(recvName)))].concat(callArgs));
+						var path = rustGeneratedClassMemberExpr(actualCls, rustMethodName(actualCls, actualMethod));
+						ECall(path, [EUnary("&", EUnary("*", rustSingleExpr(recvName)))].concat(callArgs));
 					};
 
 					var isVoid = TypeHelper.isVoid(sig.ret);
@@ -12354,19 +12555,19 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						TypeHelper.isVoid(sig.ret) ? null : toRustType(sig.ret, valueExpr.pos));
 
 					var rcTy:RustType = rustRcType(fnTraitType);
-					var rcExpr:RustExpr = ECall(EPath(rcBasePath() + "::new"), [EClosure(argParts, body, true)]);
+					var rcExpr:RustExpr = ECall(rustRcMemberExpr("new"), [EClosure(argParts, body, true)]);
 					var fnVal:RustExpr = EBlock({
 						stmts: [RLet(recvName, false, null, recvExpr), RLet("__rc", false, rcTy, rcExpr)],
-						tail: ECall(EPath(dynRefBasePath() + "::new"), [EPath("__rc")])
+						tail: ECall(rustDynRefMemberExpr("new"), [rustSingleExpr("__rc")])
 					});
 
-					var setCall = ECall(EField(EPath("__b"), "set"), [ELitString(haxeName), fnVal]);
+					var setCall = ECall(EField(rustSingleExpr("__b"), "set"), [ELitString(haxeName), fnVal]);
 					stmts.push(RSemi(setCall));
 				}
 
 				// Drop the borrow before returning the wrapper.
-				stmts.push(RSemi(ECall(EPath("drop"), [EPath("__b")])));
-				return EBlock({stmts: stmts, tail: EPath("__hx_o")});
+				stmts.push(RSemi(ECall(rustSingleExpr("drop"), [rustSingleExpr("__b")])));
+				return EBlock({stmts: stmts, tail: rustSingleExpr("__hx_o")});
 			}
 		}
 
@@ -12415,20 +12616,20 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				// A syntactic `new Concrete()` cannot be null, so do not emit a per-site nullable
 				// match/throw branch for its trait-object upcast. The unwrap documents the compiler
 				// invariant while keeping non-fresh HxRef values on the null-preserving path below.
-				var unwrappedFresh = ECall(EField(ECall(EField(EPath("__tmp"), "as_arc_opt"), []), "unwrap"), []);
+				var unwrappedFresh = ECall(EField(ECall(EField(rustSingleExpr("__tmp"), "as_arc_opt"), []), "unwrap"), []);
 				var freshClone = ECall(EField(unwrappedFresh, "clone"), []);
-				var freshUp:RustExpr = expectedIsDynRef ? ECall(EPath(dynRefBasePath() + "::new"), [freshClone]) : freshClone;
+				var freshUp:RustExpr = expectedIsDynRef ? ECall(rustDynRefMemberExpr("new"), [freshClone]) : freshClone;
 				return EBlock({
 					stmts: [
 						RLet("__tmp", false, null, compiled),
 						RLet("__up", false, expectedRustTy, freshUp)
 					],
-					tail: EPath("__up")
+					tail: rustSingleExpr("__up")
 				});
 			}
 
-			var someExpr:RustExpr = expectedIsDynRef ? ECall(EPath(dynRefBasePath() + "::new"),
-				[ECall(EField(EPath("__rc"), "clone"), [])]) : ECall(EField(EPath("__rc"), "clone"), []);
+			var someExpr:RustExpr = expectedIsDynRef ? ECall(rustDynRefMemberExpr("new"),
+				[ECall(EField(rustSingleExpr("__rc"), "clone"), [])]) : ECall(EField(rustSingleExpr("__rc"), "clone"), []);
 			var noneExpr:RustExpr = if (expectedIsDynRef) {
 				var nullExpr = dynRefNullExprForTraitObject(expectedTraitObjectType, valueExpr.pos);
 				nullExpr != null ? nullExpr : nullAccessThrow();
@@ -12436,10 +12637,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				nullAccessThrow();
 			}
 
-			var opt = ECall(EField(EPath("__tmp"), "as_arc_opt"), []);
+			var opt = ECall(EField(rustSingleExpr("__tmp"), "as_arc_opt"), []);
 			var arms:Array<RustMatchArm> = [
-				{pat: PTupleStruct("Some", [PBind("__rc")]), expr: someExpr},
-				{pat: PPath("None"), expr: noneExpr}
+				{pat: PTupleStruct(RustPath.single("Some"), [PBind("__rc")]), expr: someExpr},
+				{pat: PPath(RustPath.single("None")), expr: noneExpr}
 			];
 
 			return EBlock({
@@ -12447,7 +12648,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					RLet("__tmp", false, null, compiled),
 					RLet("__up", false, expectedRustTy, EMatch(opt, arms))
 				],
-				tail: EPath("__up")
+				tail: rustSingleExpr("__up")
 			});
 		}
 		return compiled;
@@ -12585,19 +12786,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 	}
 
-	function rustEnumVariantPath(en:EnumType, variant:String):String {
+	function rustEnumVariantPath(en:EnumType, variant:String):RustPath {
 		return switch (enumKey(en)) {
 			case "haxe.ds.Option" | "reflaxe.std.Option" | "rust.Option":
-				"Option::" + variant;
+				rustRelativePath(["Option", variant]);
 			case "reflaxe.std.Result" | "rust.Result":
-				"Result::" + variant;
+				rustRelativePath(["Result", variant]);
 			// Map Haxe's `Result.Error` to Rust's `Result.Err`.
 			case "haxe.functional.Result":
-				"Result::" + (variant == "Error" ? "Err" : variant);
+				rustRelativePath(["Result", variant == "Error" ? "Err" : variant]);
 			case "haxe.io.Error":
-				"hxrt::io::Error::" + variant;
+				rustRelativePath(["hxrt", "io", "Error", variant]);
 			case _:
-				"crate::" + rustModulePathForEnum(en) + "::" + rustTypeNameForEnum(en) + "::" + variant;
+				var names = rustModuleSegmentsForEnum(en);
+				names.push(rustTypeNameForEnum(en));
+				names.push(variant);
+				rustCratePath(names);
 		}
 	}
 
@@ -12672,7 +12876,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				{
 					var key = v.id + ":" + ef.name + ":" + index;
 					if (currentEnumParamBinds.exists(key)) {
-						return EPath(currentEnumParamBinds.get(key));
+						return rustSingleExpr(currentEnumParamBinds.get(key));
 					}
 				}
 			case _:
@@ -12703,7 +12907,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var scrutinee = ECall(EField(compileExpr(e1), "clone"), []);
 		var pat = PTupleStruct(rustEnumVariantPath(en, ef.name), fields);
 
-		var arms:Array<RustMatchArm> = [{pat: pat, expr: EPath(bindName)}];
+		var arms:Array<RustMatchArm> = [{pat: pat, expr: rustSingleExpr(bindName)}];
 
 		// If the enum only has a single constructor, this match is exhaustive and we should not emit a
 		// wildcard arm (it becomes statically unreachable and triggers `unreachable_patterns` warnings).
@@ -12880,13 +13084,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			if (rustTypeIsDynamicCarrier(rust))
 				return rustDynamicNullExpr();
 			if (isCoreClassOrEnumHandleType(t))
-				return ECast(ELitInt(0), "u32");
+				return ECast(ELitInt(0), rustNamedType("u32"));
 			if (rustTypeIsHxRef(rust))
-				return ECall(EPath("crate::HxRef::null"), []);
+				return ECall(rustCrateExpr(["HxRef", "null"]), []);
 			if (rustTypeIsArrayCarrier(rust))
-				return ECall(EPath("hxrt::array::Array::null"), []);
+				return ECall(rustRelativeExpr(["hxrt", "array", "Array", "null"]), []);
 			if (rustTypeIsDynRefCarrier(rust))
-				return ECall(EPath(dynRefBasePath() + "::null"), []);
+				return ECall(rustDynRefMemberExpr("null"), []);
 			return null;
 		}
 
@@ -12929,9 +13133,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 			return EBlock({
 				stmts: [RLet("__hx_opt", false, null, call)],
-				tail: EMatch(EPath("__hx_opt"), [
-					{pat: PTupleStruct("Some", [PBind("__v")]), expr: EPath("__v")},
-					{pat: PPath("None"), expr: nullExpr}
+				tail: EMatch(rustSingleExpr("__hx_opt"), [
+					{pat: PTupleStruct(RustPath.single("Some"), [PBind("__v")]), expr: rustSingleExpr("__v")},
+					{pat: PPath(RustPath.single("None")), expr: nullExpr}
 				])
 			});
 		}
@@ -12998,23 +13202,23 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 										"`Async.blockOn(...)` is not allowed inside async functions. Use `await` instead.", fullExpr.pos);
 									#end
 								}
-								return ECall(EPath("hxrt::async_::block_on"), [compileExpr(args[0])]);
+								return ECall(rustRelativeExpr(["hxrt", "async_", "block_on"]), [compileExpr(args[0])]);
 							}
 						case "ready": {
 								if (args.length != 1)
 									return unsupported(fullExpr, "Async.ready args");
 								var v = maybeCloneForReuseValue(compileExpr(args[0]), args[0]);
-								return ECall(EPath("hxrt::async_::ready"), [v]);
+								return ECall(rustRelativeExpr(["hxrt", "async_", "ready"]), [v]);
 							}
 						case "sleepMs": {
 								if (args.length != 1)
 									return unsupported(fullExpr, "Async.sleepMs args");
-								return ECall(EPath("hxrt::async_::sleep_ms"), [compileExpr(args[0])]);
+								return ECall(rustRelativeExpr(["hxrt", "async_", "sleep_ms"]), [compileExpr(args[0])]);
 							}
 						case "sleep": {
 								if (args.length != 1)
 									return unsupported(fullExpr, "Async.sleep args");
-								return ECall(EPath("hxrt::async_::sleep"), [compileExpr(args[0])]);
+								return ECall(rustRelativeExpr(["hxrt", "async_", "sleep"]), [compileExpr(args[0])]);
 							}
 						case "await_haxe": {
 								if (args.length != 1)
@@ -13036,12 +13240,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 										"`Async.blockOn(...)` is not allowed inside async functions. Use `await` instead.", fullExpr.pos);
 									#end
 								}
-								return ECall(EPath("hxrt::async_::block_on"), [compileExpr(args[0])]);
+								return ECall(rustRelativeExpr(["hxrt", "async_", "block_on"]), [compileExpr(args[0])]);
 							}
 						case "sleep_ms": {
 								if (args.length != 1)
 									return unsupported(fullExpr, "Async.sleepMs args");
-								return ECall(EPath("hxrt::async_::sleep_ms"), [compileExpr(args[0])]);
+								return ECall(rustRelativeExpr(["hxrt", "async_", "sleep_ms"]), [compileExpr(args[0])]);
 							}
 						case _:
 					}
@@ -13082,7 +13286,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								// Rust float-to-int casts do exactly that.
 								if (args.length != 1)
 									return unsupported(fullExpr, "Std.int args");
-								return ECast(compileExpr(args[0]), "i32");
+								return ECast(compileExpr(args[0]), RI32);
 							}
 
 						case "isOfType": {
@@ -13144,20 +13348,20 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									stmts.push(RLet("__dyn", false, null, maybeCloneForReuseValue(compileExpr(valueExpr), valueExpr)));
 
 									function dynamicTypeIdPredicate(expectedTypeId:RustExpr, allowSubtypes:Bool):RustExpr {
-										return EMatch(ECall(EField(EPath("__dyn"), "type_id"), []), [
+										return EMatch(ECall(EField(rustSingleExpr("__dyn"), "type_id"), []), [
 											{
-												pat: PTupleStruct("Some", [PBind("__actual_type_id")]),
-												expr: allowSubtypes ? ECall(EPath("crate::__hx_is_subtype_type_id"),
-													[EPath("__actual_type_id"), expectedTypeId]) : EBinary("==", EPath("__actual_type_id"), expectedTypeId)
+												pat: PTupleStruct(RustPath.single("Some"), [PBind("__actual_type_id")]),
+												expr: allowSubtypes ? ECall(rustCrateExpr(["__hx_is_subtype_type_id"]),
+													[rustSingleExpr("__actual_type_id"), expectedTypeId]) : EBinary("==", rustSingleExpr("__actual_type_id"), expectedTypeId)
 											},
-											{pat: PPath("None"), expr: ELitBool(false)}
+											{pat: PPath(RustPath.single("None")), expr: ELitBool(false)}
 										]);
 									}
 
 									// `String` is a core API with multiple runtime representations (`String` and `HxString`).
 									if (expectedClass != null && expectedClass.pack.length == 0 && expectedClass.name == "String") {
-										var isString = ECall(EField(ECall(EField(EPath("__dyn"), "downcast_ref::<String>"), []), "is_some"), []);
-										var isHxString = ECall(EField(ECall(EField(EPath("__dyn"), "downcast_ref::<hxrt::string::HxString>"), []), "is_some"),
+										var isString = ECall(EField(ECall(EField(rustSingleExpr("__dyn"), "downcast_ref::<String>"), []), "is_some"), []);
+										var isHxString = ECall(EField(ECall(EField(rustSingleExpr("__dyn"), "downcast_ref::<hxrt::string::HxString>"), []), "is_some"),
 											[]);
 										return EBlock({stmts: stmts, tail: EBinary("||", isString, isHxString)});
 									}
@@ -13165,15 +13369,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									if (expectedPrimitive != null) {
 										switch (expectedPrimitive) {
 											case "Bool": {
-													var isBool = ECall(EField(ECall(EField(EPath("__dyn"), "downcast_ref::<bool>"), []), "is_some"), []);
+													var isBool = ECall(EField(ECall(EField(rustSingleExpr("__dyn"), "downcast_ref::<bool>"), []), "is_some"), []);
 													return EBlock({stmts: stmts, tail: isBool});
 												}
 											case "Int": {
-													var isInt = ECall(EField(ECall(EField(EPath("__dyn"), "downcast_ref::<i32>"), []), "is_some"), []);
+													var isInt = ECall(EField(ECall(EField(rustSingleExpr("__dyn"), "downcast_ref::<i32>"), []), "is_some"), []);
 													return EBlock({stmts: stmts, tail: isInt});
 												}
 											case "Float": {
-													var isFloat = ECall(EField(ECall(EField(EPath("__dyn"), "downcast_ref::<f64>"), []), "is_some"), []);
+													var isFloat = ECall(EField(ECall(EField(rustSingleExpr("__dyn"), "downcast_ref::<f64>"), []), "is_some"), []);
 													return EBlock({stmts: stmts, tail: isFloat});
 												}
 											case _:
@@ -13196,7 +13400,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								// Route class/interface checks through the same subtype helper used by Dynamic boundaries.
 								if (expectedClass != null && (isPolymorphicClassType(valueExpr.t) || isInterfaceType(valueExpr.t))) {
 									var actualId = ECall(EField(compileExpr(valueExpr), "__hx_type_id"), []);
-									return ECall(EPath("crate::__hx_is_subtype_type_id"), [actualId, compileExpr(typeExpr)]);
+									return ECall(rustCrateExpr(["__hx_is_subtype_type_id"]), [actualId, compileExpr(typeExpr)]);
 								}
 
 								return ELitBool(false);
@@ -13282,7 +13486,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									}
 									// Route through the runtime so `Std.string`, `trace`, and `Sys.println`
 									// converge on the same formatting rules.
-									return wrapRustStringExpr(ECall(EField(ECall(EPath("hxrt::dynamic::from"), [compiled]), "to_haxe_string"), []));
+									return wrapRustStringExpr(ECall(EField(ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [compiled]), "to_haxe_string"), []));
 								}
 							}
 
@@ -13291,7 +13495,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									return unsupported(fullExpr, "Std.parseFloat args");
 								var s = args[0];
 								var asStr = ECall(EField(compileExpr(s), "as_str"), []);
-								return ECall(EPath("hxrt::string::parse_float"), [asStr]);
+								return ECall(rustRelativeExpr(["hxrt", "string", "parse_float"]), [asStr]);
 							}
 
 						case "parseInt": {
@@ -13299,7 +13503,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									return unsupported(fullExpr, "Std.parseInt args");
 								var s = args[0];
 								var asStr = ECall(EField(compileExpr(s), "as_str"), []);
-								return ECall(EPath("hxrt::string::parse_int"), [asStr]);
+								return ECall(rustRelativeExpr(["hxrt", "string", "parse_int"]), [asStr]);
 							}
 
 						case _:
@@ -13316,7 +13520,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				if (cls.pack.length == 0 && cls.name == "String" && field.name == "fromCharCode") {
 					if (args.length != 1)
 						return unsupported(fullExpr, "String.fromCharCode args");
-					return wrapRustStringExpr(ECall(EPath("hxrt::string::from_char_code"), [compileExpr(args[0])]));
+					return wrapRustStringExpr(ECall(rustRelativeExpr(["hxrt", "string", "from_char_code"]), [compileExpr(args[0])]));
 				}
 			case _:
 		}
@@ -13340,12 +13544,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					}
 
 					function compileSubstringCall():RustExpr {
-						var s = EPath("__hx_s");
+						var s = rustSingleExpr("__hx_s");
 						function sAsStr():RustExpr {
 							return ECall(EField(s, "as_str"), []);
 						}
 						function assign(name:String, value:RustExpr):RustStmt {
-							return RSemi(EAssign(EPath(name), value));
+							return RSemi(EAssign(rustSingleExpr(name), value));
 						}
 						function ifStmt(cond:RustExpr, stmt:RustStmt):RustStmt {
 							return RExpr(EIf(cond, EBlock({stmts: [stmt], tail: null}), null), false);
@@ -13354,20 +13558,20 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var stmts:Array<RustStmt> = [];
 						var recvForBlock = isLocalExpr(obj) ? ECall(EField(recv, "clone"), []) : maybeCloneForReuseValue(recv, obj);
 						stmts.push(RLet("__hx_s", false, null, recvForBlock));
-						stmts.push(RLet("__hx_total", false, RI32, ECall(EPath("hxrt::string::len"), [sAsStr()])));
+						stmts.push(RLet("__hx_total", false, RI32, ECall(rustRelativeExpr(["hxrt", "string", "len"]), [sAsStr()])));
 						stmts.push(RLet("__hx_start", true, RI32, compiledArgs[0]));
-						stmts.push(RLet("__hx_end", true, RI32, ECall(EField(compiledArgs[1], "unwrap_or"), [EPath("__hx_total")])));
-						stmts.push(ifStmt(EBinary("<", EPath("__hx_start"), ELitInt(0)), assign("__hx_start", ELitInt(0))));
-						stmts.push(ifStmt(EBinary("<", EPath("__hx_end"), ELitInt(0)), assign("__hx_end", ELitInt(0))));
-						stmts.push(ifStmt(EBinary(">", EPath("__hx_start"), EPath("__hx_total")), assign("__hx_start", EPath("__hx_total"))));
-						stmts.push(ifStmt(EBinary(">", EPath("__hx_end"), EPath("__hx_total")), assign("__hx_end", EPath("__hx_total"))));
-						stmts.push(ifStmt(EBinary(">", EPath("__hx_start"), EPath("__hx_end")),
-							RSemi(ECall(EPath("std::mem::swap"), [EUnary("&mut ", EPath("__hx_start")), EUnary("&mut ", EPath("__hx_end"))]))));
+						stmts.push(RLet("__hx_end", true, RI32, ECall(EField(compiledArgs[1], "unwrap_or"), [rustSingleExpr("__hx_total")])));
+						stmts.push(ifStmt(EBinary("<", rustSingleExpr("__hx_start"), ELitInt(0)), assign("__hx_start", ELitInt(0))));
+						stmts.push(ifStmt(EBinary("<", rustSingleExpr("__hx_end"), ELitInt(0)), assign("__hx_end", ELitInt(0))));
+						stmts.push(ifStmt(EBinary(">", rustSingleExpr("__hx_start"), rustSingleExpr("__hx_total")), assign("__hx_start", rustSingleExpr("__hx_total"))));
+						stmts.push(ifStmt(EBinary(">", rustSingleExpr("__hx_end"), rustSingleExpr("__hx_total")), assign("__hx_end", rustSingleExpr("__hx_total"))));
+						stmts.push(ifStmt(EBinary(">", rustSingleExpr("__hx_start"), rustSingleExpr("__hx_end")),
+							RSemi(ECall(rustRelativeExpr(["std", "mem", "swap"]), [EUnary("&mut ", rustSingleExpr("__hx_start")), EUnary("&mut ", rustSingleExpr("__hx_end"))]))));
 
-						var lenExpr = EBinary("-", EPath("__hx_end"), EPath("__hx_start"));
+						var lenExpr = EBinary("-", rustSingleExpr("__hx_end"), rustSingleExpr("__hx_start"));
 						return EBlock({
 							stmts: stmts,
-							tail: wrapRustStringExpr(ECall(EPath("hxrt::string::substr"), [sAsStr(), EPath("__hx_start"), ECall(EPath("Some"), [lenExpr])]))
+							tail: wrapRustStringExpr(ECall(rustRelativeExpr(["hxrt", "string", "substr"]), [sAsStr(), rustSingleExpr("__hx_start"), ECall(rustSingleExpr("Some"), [lenExpr])]))
 						});
 					}
 
@@ -13375,19 +13579,19 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						case "toLowerCase":
 							if (compiledArgs.length != 0)
 								return unsupported(fullExpr, "String.toLowerCase args");
-							return wrapRustStringExpr(ECall(EPath("hxrt::string::to_lower_case"), [asStr]));
+							return wrapRustStringExpr(ECall(rustRelativeExpr(["hxrt", "string", "to_lower_case"]), [asStr]));
 						case "charCodeAt":
 							if (compiledArgs.length != 1)
 								return unsupported(fullExpr, "String.charCodeAt args");
-							return ECall(EPath("hxrt::string::char_code_at"), [asStr, compiledArgs[0]]);
+							return ECall(rustRelativeExpr(["hxrt", "string", "char_code_at"]), [asStr, compiledArgs[0]]);
 						case "charAt":
 							if (compiledArgs.length != 1)
 								return unsupported(fullExpr, "String.charAt args");
-							return wrapRustStringExpr(ECall(EPath("hxrt::string::char_at"), [asStr, compiledArgs[0]]));
+							return wrapRustStringExpr(ECall(rustRelativeExpr(["hxrt", "string", "char_at"]), [asStr, compiledArgs[0]]));
 						case "substr":
 							if (compiledArgs.length != 2)
 								return unsupported(fullExpr, "String.substr args");
-							return wrapRustStringExpr(ECall(EPath("hxrt::string::substr"), [asStr, compiledArgs[0], compiledArgs[1]]));
+							return wrapRustStringExpr(ECall(rustRelativeExpr(["hxrt", "string", "substr"]), [asStr, compiledArgs[0], compiledArgs[1]]));
 						case "substring":
 							if (compiledArgs.length != 2)
 								return unsupported(fullExpr, "String.substring args");
@@ -13395,16 +13599,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						case "indexOf":
 							if (compiledArgs.length != 2)
 								return unsupported(fullExpr, "String.indexOf args");
-							return ECall(EPath("hxrt::string::index_of"), [asStr, argAsStr(0), compiledArgs[1]]);
+							return ECall(rustRelativeExpr(["hxrt", "string", "index_of"]), [asStr, argAsStr(0), compiledArgs[1]]);
 						case "lastIndexOf":
 							if (compiledArgs.length != 2)
 								return unsupported(fullExpr, "String.lastIndexOf args");
-							return ECall(EPath("hxrt::string::last_index_of"), [asStr, argAsStr(0), compiledArgs[1]]);
+							return ECall(rustRelativeExpr(["hxrt", "string", "last_index_of"]), [asStr, argAsStr(0), compiledArgs[1]]);
 						case "split":
 							if (compiledArgs.length != 1)
 								return unsupported(fullExpr, "String.split args");
-							return useNullableStringRepresentation() ? ECall(EPath("hxrt::string::split_hx"),
-								[asStr, argAsStr(0)]) : ECall(EPath("hxrt::string::split"), [asStr, argAsStr(0)]);
+							return useNullableStringRepresentation() ? ECall(rustRelativeExpr(["hxrt", "string", "split_hx"]),
+								[asStr, argAsStr(0)]) : ECall(rustRelativeExpr(["hxrt", "string", "split"]), [asStr, argAsStr(0)]);
 						case _:
 					}
 				}
@@ -13422,7 +13626,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								if (args.length != 1)
 									return unsupported(fullExpr, "Path.directory args");
 								var asStr = ECall(EField(compileExpr(args[0]), "as_str"), []);
-								return wrapRustStringExpr(ECall(EPath("hxrt::path::directory"), [asStr]));
+								return wrapRustStringExpr(ECall(rustRelativeExpr(["hxrt", "path", "directory"]), [asStr]));
 							}
 						case _:
 					}
@@ -13455,7 +13659,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						case "floor": {
 								if (args.length != 1)
 									return unsupported(fullExpr, "Math.floor args");
-								return ECast(ECall(EField(compileExpr(args[0]), "floor"), []), "i32");
+								return ECast(ECall(EField(compileExpr(args[0]), "floor"), []), RI32);
 							}
 						case _:
 					}
@@ -13478,15 +13682,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								var stmts:Array<RustStmt> = [];
 								stmts.push(RLet("__v", false, null, maybeCloneForReuseValue(compileExpr(valueExpr), valueExpr)));
 
-								var dynRecv:RustExpr = isDynamicType(valueExpr.t) ? EPath("__v") : ECall(EPath("hxrt::dynamic::from"), [EPath("__v")]);
+								var dynRecv:RustExpr = isDynamicType(valueExpr.t) ? rustSingleExpr("__v") : ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [rustSingleExpr("__v")]);
 								stmts.push(RLet("__dyn", false, null, dynRecv));
 
 								function dynIs(rustTy:String):RustExpr {
-									var down = ECall(EField(EPath("__dyn"), "downcast_ref::<" + rustTy + ">"), []);
+									var down = ECall(EField(rustSingleExpr("__dyn"), "downcast_ref::<" + rustTy + ">"), []);
 									return ECall(EField(down, "is_some"), []);
 								}
 
-								var isNull = ECall(EField(EPath("__dyn"), "is_null"), []);
+								var isNull = ECall(EField(rustSingleExpr("__dyn"), "is_null"), []);
 								var isInt = dynIs("i32");
 								var isFloat = dynIs("f64");
 								var isBool = dynIs("bool");
@@ -13496,12 +13700,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 								var stringClassId = typeIdExprForKey(".String");
 
-								var out:RustExpr = EIf(isNull, EPath("crate::value_type::ValueType::TNull"),
-									EIf(isInt, EPath("crate::value_type::ValueType::TInt"),
-										EIf(isFloat, EPath("crate::value_type::ValueType::TFloat"),
-											EIf(isBool, EPath("crate::value_type::ValueType::TBool"),
-												EIf(isAnyString, ECall(EPath("crate::value_type::ValueType::TClass"), [stringClassId]),
-													EPath("crate::value_type::ValueType::TObject"))))));
+								var out:RustExpr = EIf(isNull, rustCrateExpr(["value_type", "ValueType", "TNull"]),
+									EIf(isInt, rustCrateExpr(["value_type", "ValueType", "TInt"]),
+										EIf(isFloat, rustCrateExpr(["value_type", "ValueType", "TFloat"]),
+											EIf(isBool, rustCrateExpr(["value_type", "ValueType", "TBool"]),
+												EIf(isAnyString, ECall(rustCrateExpr(["value_type", "ValueType", "TClass"]), [stringClassId]),
+													rustCrateExpr(["value_type", "ValueType", "TObject"]))))));
 
 								return EBlock({stmts: stmts, tail: out});
 							}
@@ -13519,7 +13723,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								};
 								if (name != null)
 									return stringLiteralExpr(name);
-								return ECall(EPath("crate::__hx_class_name"), [reflectionHandleExpr(t, "Type.getClassName")]);
+								return ECall(rustCrateExpr(["__hx_class_name"]), [reflectionHandleExpr(t, "Type.getClassName")]);
 							}
 
 						case "getEnumName": {
@@ -13535,21 +13739,21 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								};
 								if (name != null)
 									return stringLiteralExpr(name);
-								return ECall(EPath("crate::__hx_enum_name"), [reflectionHandleExpr(t, "Type.getEnumName")]);
+								return ECall(rustCrateExpr(["__hx_enum_name"]), [reflectionHandleExpr(t, "Type.getEnumName")]);
 							}
 
 						case "resolveClass": {
 								if (args.length != 1)
 									return unsupported(fullExpr, "Type.resolveClass args");
 								var name = compileExpr(args[0]);
-								return ECall(EPath("crate::__hx_resolve_class_name"), [ECall(EField(name, "as_str"), [])]);
+								return ECall(rustCrateExpr(["__hx_resolve_class_name"]), [ECall(EField(name, "as_str"), [])]);
 							}
 
 						case "resolveEnum": {
 								if (args.length != 1)
 									return unsupported(fullExpr, "Type.resolveEnum args");
 								var name = compileExpr(args[0]);
-								return ECall(EPath("crate::__hx_resolve_enum_name"), [ECall(EField(name, "as_str"), [])]);
+								return ECall(rustCrateExpr(["__hx_resolve_enum_name"]), [ECall(EField(name, "as_str"), [])]);
 							}
 
 						case "createEmptyInstance": {
@@ -13569,7 +13773,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									case TTypeExpr(TEnumDecl(enumRef)):
 										reflectionStringArrayExpr(enumConstructorNames(enumRef.get()));
 									case _:
-										ECall(EPath("crate::__hx_enum_constructs"), [reflectionHandleExpr(args[0], "Type.getEnumConstructs")]);
+										ECall(rustCrateExpr(["__hx_enum_constructs"]), [reflectionHandleExpr(args[0], "Type.getEnumConstructs")]);
 								};
 							}
 
@@ -13601,9 +13805,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								var stmts:Array<RustStmt> = [];
 								stmts.push(RLet("__obj", false, null, maybeCloneForReuseValue(compileExpr(obj), obj)));
 								var dynRecv:RustExpr = mapsToRustDynamic(obj.t,
-									obj.pos) ? EPath("__obj") : ECall(EPath("hxrt::dynamic::from"), [EPath("__obj")]);
+									obj.pos) ? rustSingleExpr("__obj") : ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [rustSingleExpr("__obj")]);
 								stmts.push(RLet("__dyn", false, null, dynRecv));
-								var keys = ECall(EPath("hxrt::dynamic::field_names"), [EUnary("&", EPath("__dyn"))]);
+								var keys = ECall(rustRelativeExpr(["hxrt", "dynamic", "field_names"]), [EUnary("&", rustSingleExpr("__dyn"))]);
 								return EBlock({stmts: stmts, tail: keys});
 							}
 
@@ -13625,10 +13829,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									stmts.push(RLet("__obj", false, null, recvExpr));
 									stmts.push(RLet("__name", false, null, maybeCloneForReuseValue(compileExpr(nameExpr), nameExpr)));
 									var dynRecv:RustExpr = mapsToRustDynamic(obj.t,
-										obj.pos) ? EPath("__obj") : ECall(EPath("hxrt::dynamic::from"), [EPath("__obj")]);
+										obj.pos) ? rustSingleExpr("__obj") : ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [rustSingleExpr("__obj")]);
 									stmts.push(RLet("__dyn", false, null, dynRecv));
-									var asStr = ECall(EField(EPath("__name"), "as_str"), []);
-									var getCall = ECall(EPath("hxrt::dynamic::field_get"), [EUnary("&", EPath("__dyn")), asStr]);
+									var asStr = ECall(EField(rustSingleExpr("__name"), "as_str"), []);
+									var getCall = ECall(rustRelativeExpr(["hxrt", "dynamic", "field_get"]), [EUnary("&", rustSingleExpr("__dyn")), asStr]);
 									return EBlock({stmts: stmts, tail: getCall});
 								}
 
@@ -13648,7 +13852,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 													switch (cf.kind) {
 														case FVar(_, _): {
 																var value = compileInstanceFieldRead(obj, owner, cf, fullExpr);
-																return ECall(EPath("hxrt::dynamic::from"), [value]);
+																return ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [value]);
 															}
 														case _:
 													}
@@ -13683,7 +13887,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 															value = ECall(EField(value, "clone"), []);
 														}
 													}
-													return ECall(EPath("hxrt::dynamic::from"), [value]);
+													return ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [value]);
 												}
 											}
 										}
@@ -13696,7 +13900,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									var stmts:Array<RustStmt> = [];
 									var recvExpr = maybeCloneForReuseValue(compileExpr(obj), obj);
 									stmts.push(RLet("__obj", false, null, recvExpr));
-									var getCall = ECall(EPath("hxrt::dynamic::field_get"), [EUnary("&", EPath("__obj")), ELitString(fieldName)]);
+									var getCall = ECall(rustRelativeExpr(["hxrt", "dynamic", "field_get"]), [EUnary("&", rustSingleExpr("__obj")), ELitString(fieldName)]);
 									return EBlock({stmts: stmts, tail: getCall});
 								}
 
@@ -13722,16 +13926,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									nameRust = coerceExprToExpected(nameRust, nameExpr, Context.getType("String"));
 									stmts.push(RLet("__name", false, null, nameRust));
 									var dynRecv:RustExpr = mapsToRustDynamic(obj.t,
-										obj.pos) ? EPath("__obj") : ECall(EPath("hxrt::dynamic::from"), [EPath("__obj")]);
+										obj.pos) ? rustSingleExpr("__obj") : ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [rustSingleExpr("__obj")]);
 									stmts.push(RLet("__dyn", false, null, dynRecv));
 
 									var rhsExpr = maybeCloneForReuseValue(compileExpr(valueExpr), valueExpr);
 									var dynVal:RustExpr = mapsToRustDynamic(valueExpr.t,
-										valueExpr.pos) ? rhsExpr : ECall(EPath("hxrt::dynamic::from"), [rhsExpr]);
+										valueExpr.pos) ? rhsExpr : ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [rhsExpr]);
 									stmts.push(RLet("__val", false, null, dynVal));
 
-									var asStr = ECall(EField(EPath("__name"), "as_str"), []);
-									var setCall = ECall(EPath("hxrt::dynamic::field_set"), [EUnary("&", EPath("__dyn")), asStr, EPath("__val")]);
+									var asStr = ECall(EField(rustSingleExpr("__name"), "as_str"), []);
+									var setCall = ECall(rustRelativeExpr(["hxrt", "dynamic", "field_set"]), [EUnary("&", rustSingleExpr("__dyn")), asStr, rustSingleExpr("__val")]);
 									stmts.push(RSemi(setCall));
 									return EBlock({stmts: stmts, tail: null});
 								}
@@ -13745,16 +13949,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 										var optTyStr = "Option<" + innerRust + ">";
 										var optTry = "__opt";
 										var stmts:Array<RustStmt> = [];
-										stmts.push(RLet(optTry, false, null, ECall(EField(EPath(dynVar), "downcast_ref::<" + optTyStr + ">"), [])));
-										var hasOpt = ECall(EField(EPath(optTry), "is_some"), []);
-										var thenExpr = ECall(EField(ECall(EField(EPath(optTry), "unwrap"), []), "clone"), []);
-										var innerExpr = ECall(EField(ECall(EField(EPath(dynVar), "downcast_ref::<" + innerRust + ">"), []), "unwrap"), []);
-										var elseExpr = ECall(EPath("Some"), [ECall(EField(innerExpr, "clone"), [])]);
+										stmts.push(RLet(optTry, false, null, ECall(EField(rustSingleExpr(dynVar), "downcast_ref::<" + optTyStr + ">"), [])));
+										var hasOpt = ECall(EField(rustSingleExpr(optTry), "is_some"), []);
+										var thenExpr = ECall(EField(ECall(EField(rustSingleExpr(optTry), "unwrap"), []), "clone"), []);
+										var innerExpr = ECall(EField(ECall(EField(rustSingleExpr(dynVar), "downcast_ref::<" + innerRust + ">"), []), "unwrap"), []);
+										var elseExpr = ECall(rustSingleExpr("Some"), [ECall(EField(innerExpr, "clone"), [])]);
 										return EBlock({stmts: stmts, tail: EIf(hasOpt, thenExpr, elseExpr)});
 									}
 
 									var tyStr = rustTypeToString(toRustType(target, pos));
-									var down = ECall(EField(EPath(dynVar), "downcast_ref::<" + tyStr + ">"), []);
+									var down = ECall(EField(rustSingleExpr(dynVar), "downcast_ref::<" + tyStr + ">"), []);
 									var unwrapped = ECall(EField(down, "unwrap"), []);
 									return ECall(EField(unwrapped, "clone"), []);
 								}
@@ -13788,8 +13992,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 																	stmts.push(RLet("__val", false, null, coerceExprToExpected(rhsExpr, valueExpr, cf.type)));
 																}
 
-																var access = EField(ECall(EField(EPath("__obj"), "borrow_mut"), []), rustFieldName(owner, cf));
-																stmts.push(RSemi(EAssign(access, EPath("__val"))));
+																var access = EField(ECall(EField(rustSingleExpr("__obj"), "borrow_mut"), []), rustFieldName(owner, cf));
+																stmts.push(RSemi(EAssign(access, rustSingleExpr("__val"))));
 																return EBlock({stmts: stmts, tail: null});
 															}
 														case _:
@@ -13822,8 +14026,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 													} else {
 														stmts.push(RLet("__val", false, null, coerceExprToExpected(rhsExpr, valueExpr, cf.type)));
 													}
-													var setCall = ECall(EField(ECall(EField(EPath("__obj"), "borrow_mut"), []), "set"),
-														[ELitString(cf.getHaxeName()), EPath("__val")]);
+													var setCall = ECall(EField(ECall(EField(rustSingleExpr("__obj"), "borrow_mut"), []), "set"),
+														[ELitString(cf.getHaxeName()), rustSingleExpr("__val")]);
 													stmts.push(RSemi(setCall));
 													return EBlock({stmts: stmts, tail: null});
 												}
@@ -13840,11 +14044,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 									var rhsExpr = maybeCloneForReuseValue(compileExpr(valueExpr), valueExpr);
 									var dynVal:RustExpr = mapsToRustDynamic(valueExpr.t,
-										valueExpr.pos) ? rhsExpr : ECall(EPath("hxrt::dynamic::from"), [rhsExpr]);
+										valueExpr.pos) ? rhsExpr : ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [rhsExpr]);
 									stmts.push(RLet("__val", false, null, dynVal));
 
-									var setCall = ECall(EPath("hxrt::dynamic::field_set"),
-										[EUnary("&", EPath("__obj")), ELitString(fieldName), EPath("__val")]);
+									var setCall = ECall(rustRelativeExpr(["hxrt", "dynamic", "field_set"]),
+										[EUnary("&", rustSingleExpr("__obj")), ELitString(fieldName), rustSingleExpr("__val")]);
 									stmts.push(RSemi(setCall));
 									return EBlock({stmts: stmts, tail: null});
 								}
@@ -13902,7 +14106,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									var stmts:Array<RustStmt> = [];
 									var recvExpr = maybeCloneForReuseValue(compileExpr(obj), obj);
 									stmts.push(RLet("__obj", false, null, recvExpr));
-									var hasCall = ECall(EPath("hxrt::dynamic::field_has"), [EUnary("&", EPath("__obj")), ELitString(fieldName)]);
+									var hasCall = ECall(rustRelativeExpr(["hxrt", "dynamic", "field_has"]), [EUnary("&", rustSingleExpr("__obj")), ELitString(fieldName)]);
 									return EBlock({stmts: stmts, tail: hasCall});
 								}
 
@@ -13929,8 +14133,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									rhs = coerceExprToExpected(rhs, args[1], floatTy);
 								}
 
-								var equal = EBinary("==", EPath("__lhs"), EPath("__rhs"));
-								var greater = EBinary(">", EPath("__lhs"), EPath("__rhs"));
+								var equal = EBinary("==", rustSingleExpr("__lhs"), rustSingleExpr("__rhs"));
+								var greater = EBinary(">", rustSingleExpr("__lhs"), rustSingleExpr("__rhs"));
 								return EBlock({
 									stmts: [RLet("__lhs", false, null, lhs), RLet("__rhs", false, null, rhs)],
 									tail: EIf(equal, ELitInt(0), EIf(greater, ELitInt(1), ELitInt(-1)))
@@ -13953,9 +14157,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						case "alloc": {
 								if (args.length != 1)
 									return unsupported(fullExpr, "Bytes.alloc args");
-								var size = ECast(compileExpr(args[0]), "usize");
-								var inner = ECall(EPath("hxrt::bytes::Bytes::alloc"), [size]);
-								return ECall(EPath("crate::HxRef::new"), [inner]);
+								var size = ECast(compileExpr(args[0]), rustNamedType("usize"));
+								var inner = ECall(rustRelativeExpr(["hxrt", "bytes", "Bytes", "alloc"]), [size]);
+								return ECall(rustCrateExpr(["HxRef", "new"]), [inner]);
 							}
 						case "ofString": {
 								// Ignore optional encoding arg for now (must be null / omitted).
@@ -13968,20 +14172,20 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									var enc = compileExpr(args[1]);
 									// `{ let _ = enc; HxRef::new(Bytes::of_string(...)) }`
 									var asStr = ECall(EField(compileExpr(s), "as_str"), []);
-									var inner = ECall(EPath("hxrt::bytes::Bytes::of_string"), [asStr]);
-									var wrapped = ECall(EPath("crate::HxRef::new"), [inner]);
+									var inner = ECall(rustRelativeExpr(["hxrt", "bytes", "Bytes", "of_string"]), [asStr]);
+									var wrapped = ECall(rustCrateExpr(["HxRef", "new"]), [inner]);
 									return EBlock({stmts: [RLet("_", false, null, enc)], tail: wrapped});
 								}
 								var asStr = ECall(EField(compileExpr(s), "as_str"), []);
-								var inner = ECall(EPath("hxrt::bytes::Bytes::of_string"), [asStr]);
-								return ECall(EPath("crate::HxRef::new"), [inner]);
+								var inner = ECall(rustRelativeExpr(["hxrt", "bytes", "Bytes", "of_string"]), [asStr]);
+								return ECall(rustCrateExpr(["HxRef", "new"]), [inner]);
 							}
 						case "ofHex": {
 								if (args.length != 1)
 									return unsupported(fullExpr, "Bytes.ofHex args");
 								var asStr = ECall(EField(compileExpr(args[0]), "as_str"), []);
-								var inner = ECall(EPath("hxrt::bytes::of_hex"), [asStr]);
-								return ECall(EPath("crate::HxRef::new"), [inner]);
+								var inner = ECall(rustRelativeExpr(["hxrt", "bytes", "of_hex"]), [asStr]);
+								return ECall(rustCrateExpr(["HxRef", "new"]), [inner]);
 							}
 						case _:
 					}
@@ -14033,15 +14237,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							return unsupported(fullExpr, "super method call (no class context)");
 						var thunk = noteSuperThunk(owner, cf);
 
-						var clsName = classNameFromClass(currentClassType);
-						var callArgs:Array<RustExpr> = [EUnary("&", EUnary("*", EPath("self_")))];
+						var callArgs:Array<RustExpr> = [EUnary("&", EUnary("*", rustSingleExpr("self_")))];
 						var paramDefs:Null<Array<{name:String, t:Type, opt:Bool}>> = switch (TypeTools.follow(cf.type)) {
 							case TFun(params, _): params;
 							case _: null;
 						};
 						for (x in compilePositionalArgsFor(paramDefs))
 							callArgs.push(x);
-						return ECall(EPath(clsName + "::" + thunk), callArgs);
+						return ECall(rustGeneratedClassMemberExpr(currentClassType, thunk), callArgs);
 					}
 					if (isBytesType(obj.t)) {
 						switch (cf.getHaxeName()) {
@@ -14065,12 +14268,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									var pos = compileExpr(args[0]);
 									var srcpos = compileExpr(args[2]);
 									var len = compileExpr(args[3]);
-									return ECall(EPath("hxrt::bytes::blit"), [EUnary("&", dst), pos, EUnary("&", src), srcpos, len]);
+									return ECall(rustRelativeExpr(["hxrt", "bytes", "blit"]), [EUnary("&", dst), pos, EUnary("&", src), srcpos, len]);
 								}
 							case "fill": {
 									if (args.length != 3)
 										return unsupported(fullExpr, "Bytes.fill args");
-									return ECall(EPath("hxrt::bytes::fill"), [
+									return ECall(rustRelativeExpr(["hxrt", "bytes", "fill"]), [
 										EUnary("&", compileExpr(obj)),
 										compileExpr(args[0]),
 										compileExpr(args[1]),
@@ -14080,14 +14283,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							case "compare": {
 									if (args.length != 1)
 										return unsupported(fullExpr, "Bytes.compare args");
-									return ECall(EPath("hxrt::bytes::compare"), [EUnary("&", compileExpr(obj)), EUnary("&", compileExpr(args[0]))]);
+									return ECall(rustRelativeExpr(["hxrt", "bytes", "compare"]), [EUnary("&", compileExpr(obj)), EUnary("&", compileExpr(args[0]))]);
 								}
 							case "sub": {
 									if (args.length != 2)
 										return unsupported(fullExpr, "Bytes.sub args");
 									var borrowed = ECall(EField(compileExpr(obj), "borrow"), []);
 									var inner = ECall(EField(borrowed, "sub"), [compileExpr(args[0]), compileExpr(args[1])]);
-									return ECall(EPath("crate::HxRef::new"), [inner]);
+									return ECall(rustCrateExpr(["HxRef", "new"]), [inner]);
 								}
 							case "getString": {
 									// Ignore optional encoding arg for now (must be null / omitted).
@@ -14110,47 +14313,47 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							case "toHex": {
 									if (args.length != 0)
 										return unsupported(fullExpr, "Bytes.toHex args");
-									return ECall(EPath("hxrt::bytes::to_hex"), [EUnary("&", compileExpr(obj))]);
+									return ECall(rustRelativeExpr(["hxrt", "bytes", "to_hex"]), [EUnary("&", compileExpr(obj))]);
 								}
 							case "getUInt16": {
 									if (args.length != 1)
 										return unsupported(fullExpr, "Bytes.getUInt16 args");
-									return ECall(EPath("hxrt::bytes::get_u16"), [EUnary("&", compileExpr(obj)), compileExpr(args[0])]);
+									return ECall(rustRelativeExpr(["hxrt", "bytes", "get_u16"]), [EUnary("&", compileExpr(obj)), compileExpr(args[0])]);
 								}
 							case "setUInt16": {
 									if (args.length != 2)
 										return unsupported(fullExpr, "Bytes.setUInt16 args");
-									return ECall(EPath("hxrt::bytes::set_u16"), [EUnary("&", compileExpr(obj)), compileExpr(args[0]), compileExpr(args[1])]);
+									return ECall(rustRelativeExpr(["hxrt", "bytes", "set_u16"]), [EUnary("&", compileExpr(obj)), compileExpr(args[0]), compileExpr(args[1])]);
 								}
 							case "getInt32": {
 									if (args.length != 1)
 										return unsupported(fullExpr, "Bytes.getInt32 args");
-									return ECall(EPath("hxrt::bytes::get_i32"), [EUnary("&", compileExpr(obj)), compileExpr(args[0])]);
+									return ECall(rustRelativeExpr(["hxrt", "bytes", "get_i32"]), [EUnary("&", compileExpr(obj)), compileExpr(args[0])]);
 								}
 							case "setInt32": {
 									if (args.length != 2)
 										return unsupported(fullExpr, "Bytes.setInt32 args");
-									return ECall(EPath("hxrt::bytes::set_i32"), [EUnary("&", compileExpr(obj)), compileExpr(args[0]), compileExpr(args[1])]);
+									return ECall(rustRelativeExpr(["hxrt", "bytes", "set_i32"]), [EUnary("&", compileExpr(obj)), compileExpr(args[0]), compileExpr(args[1])]);
 								}
 							case "getFloat": {
 									if (args.length != 1)
 										return unsupported(fullExpr, "Bytes.getFloat args");
-									return ECall(EPath("hxrt::bytes::get_float"), [EUnary("&", compileExpr(obj)), compileExpr(args[0])]);
+									return ECall(rustRelativeExpr(["hxrt", "bytes", "get_float"]), [EUnary("&", compileExpr(obj)), compileExpr(args[0])]);
 								}
 							case "setFloat": {
 									if (args.length != 2)
 										return unsupported(fullExpr, "Bytes.setFloat args");
-									return ECall(EPath("hxrt::bytes::set_float"), [EUnary("&", compileExpr(obj)), compileExpr(args[0]), compileExpr(args[1])]);
+									return ECall(rustRelativeExpr(["hxrt", "bytes", "set_float"]), [EUnary("&", compileExpr(obj)), compileExpr(args[0]), compileExpr(args[1])]);
 								}
 							case "getDouble": {
 									if (args.length != 1)
 										return unsupported(fullExpr, "Bytes.getDouble args");
-									return ECall(EPath("hxrt::bytes::get_double"), [EUnary("&", compileExpr(obj)), compileExpr(args[0])]);
+									return ECall(rustRelativeExpr(["hxrt", "bytes", "get_double"]), [EUnary("&", compileExpr(obj)), compileExpr(args[0])]);
 								}
 							case "setDouble": {
 									if (args.length != 2)
 										return unsupported(fullExpr, "Bytes.setDouble args");
-									return ECall(EPath("hxrt::bytes::set_double"), [EUnary("&", compileExpr(obj)), compileExpr(args[0]), compileExpr(args[1])]);
+									return ECall(rustRelativeExpr(["hxrt", "bytes", "set_double"]), [EUnary("&", compileExpr(obj)), compileExpr(args[0]), compileExpr(args[1])]);
 								}
 							case "getInt64": {
 									if (args.length != 1)
@@ -14161,11 +14364,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 										stmts: [
 											RLet("__bytes", false, null, bytesExpr),
 											RLet("__pos", false, null, posExpr),
-											RLet("__low", false, null, ECall(EPath("hxrt::bytes::get_i32"), [EUnary("&", EPath("__bytes")), EPath("__pos")])),
+											RLet("__low", false, null, ECall(rustRelativeExpr(["hxrt", "bytes", "get_i32"]), [EUnary("&", rustSingleExpr("__bytes")), rustSingleExpr("__pos")])),
 											RLet("__high", false, null,
-												ECall(EPath("hxrt::bytes::get_i32"), [EUnary("&", EPath("__bytes")), EBinary("+", EPath("__pos"), ELitInt(4))]))
+												ECall(rustRelativeExpr(["hxrt", "bytes", "get_i32"]), [EUnary("&", rustSingleExpr("__bytes")), EBinary("+", rustSingleExpr("__pos"), ELitInt(4))]))
 										],
-										tail: ECall(EPath("crate::haxe_int64_int64::Int64::new"), [EPath("__high"), EPath("__low")])
+										tail: ECall(rustCrateExpr(["haxe_int64_int64", "Int64", "new"]), [rustSingleExpr("__high"), rustSingleExpr("__low")])
 									});
 								}
 							case "setInt64": {
@@ -14179,15 +14382,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 											RLet("__bytes", false, null, bytesExpr),
 											RLet("__pos", false, null, posExpr),
 											RLet("__value", false, null, valueExpr),
-											RLet("__value_b", false, null, ECall(EField(EPath("__value"), "borrow"), [])),
-											RExpr(ECall(EPath("hxrt::bytes::set_i32"),
-												[EUnary("&", EPath("__bytes")), EPath("__pos"), EField(EPath("__value_b"), "low")]),
+											RLet("__value_b", false, null, ECall(EField(rustSingleExpr("__value"), "borrow"), [])),
+											RExpr(ECall(rustRelativeExpr(["hxrt", "bytes", "set_i32"]),
+												[EUnary("&", rustSingleExpr("__bytes")), rustSingleExpr("__pos"), EField(rustSingleExpr("__value_b"), "low")]),
 												true)
 										],
-										tail: ECall(EPath("hxrt::bytes::set_i32"), [
-											EUnary("&", EPath("__bytes")),
-											EBinary("+", EPath("__pos"), ELitInt(4)),
-											EField(EPath("__value_b"), "high")
+										tail: ECall(rustRelativeExpr(["hxrt", "bytes", "set_i32"]), [
+											EUnary("&", rustSingleExpr("__bytes")),
+											EBinary("+", rustSingleExpr("__pos"), ELitInt(4)),
+											EField(rustSingleExpr("__value_b"), "high")
 										])
 									});
 								}
@@ -14245,7 +14448,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									return ECall(EField(recv, rustMethodName(owner, cf)), compilePositionalArgsFor(paramDefs));
 								}
 
-								var clsName = classNameFromType(obj.t);
 								var objCls:Null<ClassType> = switch (followType(obj.t)) {
 									case TInst(objClsRef, _): objClsRef.get();
 									case _: null;
@@ -14260,10 +14462,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								// When compiling `B.speak` as a shim for `A.speak`, we still need `this.sound()` to
 								// call `B::sound`, and we must avoid attempting `A::sound(&self_: &RefCell<B>)`.
 								if (isThisExpr(obj) && currentClassType != null) {
-									clsName = classNameFromClass(currentClassType);
 									objCls = currentClassType;
 								}
-								if (clsName == null)
+								if (objCls == null)
 									return unsupported(fullExpr, "instance method call");
 								var recvExpr = compileExpr(obj);
 								var callArgs:Array<RustExpr> = [EUnary("&", EUnary("*", recvExpr))];
@@ -14273,8 +14474,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								};
 								for (x in compilePositionalArgsFor(paramDefs))
 									callArgs.push(x);
-								var rustName = rustMethodName(objCls != null ? objCls : owner, cf);
-								var call = ECall(EPath(clsName + "::" + rustName), callArgs);
+								var rustName = rustMethodName(objCls, cf);
+								var call = ECall(rustGeneratedClassMemberExpr(objCls, rustName), callArgs);
 
 								// Haxe often treats `Null<Dynamic>` (and similar reference-nullable values) as `Dynamic`
 								// at use sites. When an instance method returns `Null<Dynamic>` (lowered to
@@ -14303,9 +14504,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 										if (inner != null && mapsToRustDynamic(inner, fullExpr.pos)) {
 											call = EBlock({
 												stmts: [RLet("__hx_opt", false, null, call)],
-												tail: EMatch(EPath("__hx_opt"), [
-													{pat: PTupleStruct("Some", [PBind("__v")]), expr: EPath("__v")},
-													{pat: PPath("None"), expr: rustDynamicNullExpr()}
+												tail: EMatch(rustSingleExpr("__hx_opt"), [
+													{pat: PTupleStruct(RustPath.single("Some"), [PBind("__v")]), expr: rustSingleExpr("__v")},
+													{pat: PPath(RustPath.single("None")), expr: rustDynamicNullExpr()}
 												])
 											});
 										}
@@ -14388,10 +14589,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					if (needsExplicit) {
 						var applied = inferAppliedFunctionTypeArguments(field, callExpr.t);
 						if (applied != null && applied.length == field.params.length) {
-							var suffix = "::<" + [for (typeArg in applied) rustTypeToString(toRustType(typeArg, fullExpr.pos))].join(", ") + ">";
+							var appliedArguments = [for (typeArg in applied) GenericType(toRustType(typeArg, fullExpr.pos))];
 							f = switch (f) {
-								case EPath(path): EPath(path + suffix);
-								case EField(receiver, name): EField(receiver, name + suffix);
+								case EPath(path): EPath(rustPathWithFinalArguments(path, appliedArguments));
+								case EField(receiver, name):
+									var suffix = "::<" + [for (typeArg in applied) rustTypeToString(toRustType(typeArg, fullExpr.pos))].join(", ") + ">";
+									EField(receiver, name + suffix);
 								case _: f;
 							}
 						}
@@ -14584,8 +14787,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// Lower to a runtime downcast to our function-value representation (`HxDynRef<dyn Fn...>`).
 		if (mapsToRustDynamic(callExpr.t, fullExpr.pos)) {
 			function throwMsg(msg:String):RustExpr {
-				return ECall(EPath("hxrt::exception::throw"), [
-					ECall(EPath("hxrt::dynamic::from"), [ECall(EPath("String::from"), [ELitString(msg)])])
+				return ECall(rustRelativeExpr(["hxrt", "exception", "throw"]), [
+					ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [ECall(rustRelativeExpr(["String", "from"]), [ELitString(msg)])])
 				]);
 			}
 
@@ -14597,17 +14800,17 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			fnSig += " + Send + Sync";
 			var fnTyStr = dynRefBasePath() + "<" + fnSig + ">";
 
-			var down = ECall(EField(EPath("__hx_dyn"), "downcast_ref::<" + fnTyStr + ">"), []);
+			var down = ECall(EField(rustSingleExpr("__hx_dyn"), "downcast_ref::<" + fnTyStr + ">"), []);
 			// Dynamic calls do not have a typed function signature at the callsite, so we can't
 			// use `coerceArgForParam(...)`. Still preserve Haxe "reusable value" semantics by
 			// cloning locals before passing them by value, preventing Rust moves.
 			var callArgs = [for (arg in args) maybeCloneForReuseValue(compileExpr(arg), arg)];
-			var call = ECall(ECall(EField(ECall(EField(EPath("__hx_f"), "unwrap"), []), "clone"), []), callArgs);
+			var call = ECall(ECall(EField(ECall(EField(rustSingleExpr("__hx_f"), "unwrap"), []), "clone"), []), callArgs);
 
 			return EBlock({
 				stmts: [RLet("__hx_dyn", false, null, f), RLet("__hx_f", false, null, down),],
-				tail: EIf(ECall(EField(EPath("__hx_dyn"), "is_null"), []), throwMsg("Null Access"),
-					EIf(ECall(EField(EPath("__hx_f"), "is_some"), []), call, throwMsg(dynamicBoundaryTypeName() + " call on non-function value")))
+				tail: EIf(ECall(EField(rustSingleExpr("__hx_dyn"), "is_null"), []), throwMsg("Null Access"),
+					EIf(ECall(EField(rustSingleExpr("__hx_f"), "is_some"), []), call, throwMsg(dynamicBoundaryTypeName() + " call on non-function value")))
 			});
 		}
 		return ECall(f, a);
@@ -14647,7 +14850,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (nullInner != null) {
 			if (!isNullType(argExpr.t) && !isNullConstExpr(argExpr)) {
 				var innerCoerced = coerceArgForParam(compiled, argExpr, nullInner);
-				return wrapBorrowIfNeeded(ECall(EPath("Some"), [innerCoerced]), rustParamTy, argExpr);
+				return wrapBorrowIfNeeded(ECall(rustSingleExpr("Some"), [innerCoerced]), rustParamTy, argExpr);
 			}
 			return wrapBorrowIfNeeded(compiled, rustParamTy, argExpr);
 		}
@@ -14743,7 +14946,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							break;
 						}
 						return switch (cur) {
-							case ECall(EPath(p), _) if (p == dynRefBasePath() + "::new"): true;
+							case ECall(EPath(path), _)
+								if (rustPathIsCrate(path, ["HxDynRef", "new"]) || rustPathIsRelative(path, ["hxrt", "cell", "HxDynRef", "new"])): true;
 							case _: false;
 						};
 					}
@@ -14784,10 +14988,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							TypeHelper.isVoid(sig.ret) ? null : toRustType(sig.ret, argExpr.pos));
 
 						var rcTy:RustType = rustRcType(fnTraitType);
-						var rcExpr:RustExpr = ECall(EPath(rcBasePath() + "::new"), [compiled]);
+						var rcExpr:RustExpr = ECall(rustRcMemberExpr("new"), [compiled]);
 						compiled = EBlock({
 							stmts: [RLet("__rc", false, rcTy, rcExpr)],
-							tail: ECall(EPath(dynRefBasePath() + "::new"), [EPath("__rc")])
+							tail: ECall(rustDynRefMemberExpr("new"), [rustSingleExpr("__rc")])
 						});
 					}
 				}
@@ -14887,7 +15091,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case EPath(_): true;
 			case EField(_, _): true;
 			case ECall(EField(_, "clone"), []): true;
-			case ECall(EPath(path), _) if (path == "hxrt::string::HxString::from"): true;
+			case ECall(EPath(path), _) if (rustPathIsRelative(path, ["hxrt", "string", "HxString", "from"])): true;
 			case _:
 				false;
 		}
@@ -15001,7 +15205,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (needsClone) {
 			compiled = ECall(EField(compiled, "clone"), []);
 		}
-		return EMacroCall("println", [ELitString("{}"), ECall(EPath("hxrt::dynamic::from"), [compiled])]);
+		return EMacroCall("println", [ELitString("{}"), ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [compiled])]);
 	}
 
 	function exprUsesThis(e:TypedExpr):Bool {
@@ -15079,10 +15283,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var tyStr = rustTypeToString(toRustType(cf.type, pos));
 		var getter = "get::<" + tyStr + ">";
 		var fieldName = cf.getHaxeName();
-		var read = ECall(EField(EPath("__b"), getter), [ELitString(fieldName)]);
+		var read = ECall(EField(rustSingleExpr("__b"), getter), [ELitString(fieldName)]);
 		var optional = isOptionalAnonField(cf);
 		var value = if (optional) {
-			var hasField = ECall(EField(EPath("__b"), "has_key"), [ELitString(fieldName)]);
+			var hasField = ECall(EField(rustSingleExpr("__b"), "has_key"), [ELitString(fieldName)]);
 			EIf(hasField, read, nullFillExprForType(cf.type, pos));
 		} else {
 			read;
@@ -15101,7 +15305,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return ECall(EField(borrowed, getter), [ELitString(fieldName)]);
 		return EBlock({
 			stmts: [RLet("__b", false, null, borrowed), RLet("__hx_value", false, null, value)],
-			tail: EPath("__hx_value")
+			tail: rustSingleExpr("__hx_value")
 		});
 	}
 
@@ -15112,7 +15316,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function currentThisPathExpr():RustExpr {
-		return EPath((currentFunctionIsAsync && currentThisIdent != null) ? currentThisIdent : "self_");
+		return rustSingleExpr((currentFunctionIsAsync && currentThisIdent != null) ? currentThisIdent : "self_");
 	}
 
 	function compileField(obj:TypedExpr, fa:FieldAccess, fullExpr:TypedExpr):RustExpr {
@@ -15126,21 +15330,20 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					if (cls.pack.length == 0 && cls.name == "Math") {
 						switch (cf.getHaxeName()) {
 							case "PI":
-								return EPath("std::f64::consts::PI");
+								return rustRelativeExpr(["std", "f64", "consts", "PI"]);
 							case "NEGATIVE_INFINITY":
-								return EPath("f64::NEG_INFINITY");
+								return rustRelativeExpr(["f64", "NEG_INFINITY"]);
 							case "POSITIVE_INFINITY":
-								return EPath("f64::INFINITY");
+								return rustRelativeExpr(["f64", "INFINITY"]);
 							case "NaN":
-								return EPath("f64::NAN");
+								return rustRelativeExpr(["f64", "NAN"]);
 							case _:
 						}
 					}
 
 					// Extern static access maps to a Rust path, optionally overridden via `@:native(...)`.
 					if (cls.isExtern) {
-						var base = rustExternBasePath(cls);
-						return EPath((base != null ? base : cls.name) + "::" + rustExternFieldName(cf));
+						return EPath(rustExternFieldPath(cls, cf));
 					}
 
 					var inlineStatic = staticReadOnlyConstantExpr(cf);
@@ -15154,16 +15357,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						case FVar(_, _): {
 								var rustName = rustMethodName(cls, cf);
 								var getterFn = rustStaticVarHelperName("__hx_static_get", rustName);
-								return ECall(EPath(staticVarHelperPath(cls, getterFn)), []);
+							return ECall(staticVarHelperExpr(cls, getterFn), []);
 							}
 						case _:
 					}
 
 					if (mainClassKey != null && currentClassKey != null && key == currentClassKey && key == mainClassKey) {
-						EPath(rustMethodName(cls, cf));
+						rustSingleExpr(rustMethodName(cls, cf));
 					} else {
-						var modName = rustModulePathForClass(cls);
-						EPath("crate::" + modName + "::" + rustTypeNameForClass(cls) + "::" + rustMethodName(cls, cf));
+						rustGeneratedClassMemberExpr(cls, rustMethodName(cls, cf));
 					}
 				}
 			case FEnum(enumRef, efRef): {
@@ -15224,16 +15426,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 										if (getter == null)
 											return unsupported(fullExpr, "super property read (missing getter)");
 										var thunk = noteSuperThunk(owner, getter);
-										var clsName = classNameFromClass(currentClassType);
-										return ECall(EPath(clsName + "::" + thunk), [EUnary("&", EUnary("*", EPath("self_")))]);
+									return ECall(rustGeneratedClassMemberExpr(currentClassType, thunk), [EUnary("&", EUnary("*", rustSingleExpr("self_")))]);
 									}
 								}
 							case _:
 						}
 
-						var recv = EPath("self_");
+						var recv = rustSingleExpr("self_");
 						var fieldName = rustFieldName(currentClassType != null ? currentClassType : owner, cf);
-						var access = EField(EPath("__b"), fieldName);
+						var access = EField(rustSingleExpr("__b"), fieldName);
 						var tail = (!TypeHelper.isBool(fullExpr.t) && !TypeHelper.isInt(fullExpr.t) && !TypeHelper.isFloat(fullExpr.t)) ? ECall(EField(access,
 							"clone"), []) : access;
 						return EBlock({
@@ -15251,14 +15452,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					// Haxe Array length: `arr.length` -> `arr.len() as i32`
 					if (isArrayType(obj.t) && cf.getHaxeName() == "length") {
 						var lenCall = ECall(EField(compileExpr(obj), "len"), []);
-						return ECast(lenCall, "i32");
+						return ECast(lenCall, RI32);
 					}
 
 					// Haxe String length: `s.length` -> `hxrt::string::len(s.as_str())`
 					if (isStringType(obj.t) && cf.getHaxeName() == "length") {
 						var recv = compileExpr(obj);
 						var asStr = ECall(EField(recv, "as_str"), []);
-						return ECall(EPath("hxrt::string::len"), [asStr]);
+						return ECall(rustRelativeExpr(["hxrt", "string", "len"]), [asStr]);
 					}
 
 					switch (cf.kind) {
@@ -15283,7 +15484,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					// Haxe expects runtime string-keyed lookup. Lower to a runtime helper that understands
 					// `Dynamic` receivers (notably `sys.db` rows).
 					var recv = compileExpr(obj);
-					ECall(EPath("hxrt::dynamic::field_get"), [EUnary("&", recv), ELitString(name)]);
+					ECall(rustRelativeExpr(["hxrt", "dynamic", "field_get"]), [EUnary("&", recv), ELitString(name)]);
 				}
 			case _: unsupported(fullExpr, "field");
 		}
@@ -15298,9 +15499,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return EBlock({
 				stmts: [
 					RLet(recvName, false, null, recvExpr),
-					RLet("__hx_dyn", false, null, ECall(EField(EField(ECall(EField(EPath(recvName), "borrow"), []), fieldName), "clone"), []))
+					RLet("__hx_dyn", false, null, ECall(EField(EField(ECall(EField(rustSingleExpr(recvName), "borrow"), []), fieldName), "clone"), []))
 				],
-				tail: EPath("__hx_dyn")
+				tail: rustSingleExpr("__hx_dyn")
 			});
 		}
 
@@ -15324,18 +15525,17 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var p = sig.params[i];
 			var name = "a" + i;
 			argParts.push(name + ": " + rustTypeToString(toRustType(p.t, fullExpr.pos)));
-			callArgs.push(EPath(name));
+			callArgs.push(rustSingleExpr(name));
 		}
 
 		var call:RustExpr = if (isExternInstanceType(obj.t)) {
-			ECall(EField(EPath(recvName), rustExternFieldName(cf)), callArgs);
+			ECall(EField(rustSingleExpr(recvName), rustExternFieldName(cf)), callArgs);
 		} else if ((isInterfaceType(obj.t) || isPolymorphicClassType(obj.t)) && !isThisExpr(obj)) {
-			ECall(EField(EPath(recvName), rustMethodName(owner, cf)), callArgs);
+			ECall(EField(rustSingleExpr(recvName), rustMethodName(owner, cf)), callArgs);
 		} else {
 			var recvOwner = if (isThisExpr(obj) && currentClassType != null) currentClassType else owner;
-			var modName = rustModulePathForClass(recvOwner);
-			var path = "crate::" + modName + "::" + rustTypeNameForClass(recvOwner) + "::" + rustMethodName(recvOwner, cf);
-			ECall(EPath(path), [EUnary("&", EUnary("*", EPath(recvName)))].concat(callArgs));
+			var path = rustGeneratedClassMemberExpr(recvOwner, rustMethodName(recvOwner, cf));
+			ECall(path, [EUnary("&", EUnary("*", rustSingleExpr(recvName)))].concat(callArgs));
 		};
 
 		var isVoid = TypeHelper.isVoid(sig.ret);
@@ -15345,10 +15545,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			TypeHelper.isVoid(sig.ret) ? null : toRustType(sig.ret, fullExpr.pos));
 
 		var rcTy:RustType = rustRcType(fnTraitType);
-		var rcExpr:RustExpr = ECall(EPath(rcBasePath() + "::new"), [EClosure(argParts, body, true)]);
+		var rcExpr:RustExpr = ECall(rustRcMemberExpr("new"), [EClosure(argParts, body, true)]);
 		return EBlock({
 			stmts: [RLet(recvName, false, null, recvExpr), RLet("__rc", false, rcTy, rcExpr)],
-			tail: ECall(EPath(dynRefBasePath() + "::new"), [EPath("__rc")])
+			tail: ECall(rustDynRefMemberExpr("new"), [rustSingleExpr("__rc")])
 		});
 	}
 
@@ -15408,9 +15608,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								return ECall(EField(compileExpr(obj), rustMethodName(recvCls, getter)), []);
 							}
 
-							var modName = rustModulePathForClass(recvCls);
-							var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, getter);
-							return ECall(EPath(path), [EUnary("&", EUnary("*", compileExpr(obj)))]);
+							var path = rustGeneratedClassMemberExpr(recvCls, rustMethodName(recvCls, getter));
+							return ECall(path, [EUnary("&", EUnary("*", compileExpr(obj)))]);
 						}
 					}
 				}
@@ -15438,11 +15637,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var borrowRecv:RustExpr = recv;
 		if (!isStableBorrowReceiver(recv)) {
 			stmts.push(RLet("__hx_recv", false, null, recv));
-			borrowRecv = EPath("__hx_recv");
+			borrowRecv = rustSingleExpr("__hx_recv");
 		}
 
 		var fieldName = rustFieldName(owner, cf);
-		var access = EField(EPath("__b"), fieldName);
+		var access = EField(rustSingleExpr("__b"), fieldName);
 
 		// Some struct fields are stored as `Option<Rc<dyn Trait>>` for allocation/defaultability
 		// reasons. Unwrap them on read to preserve the non-Option surface type.
@@ -15511,12 +15710,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			stmts.push(RLet("__tmp", false, null, rhsExpr));
 
 			// Clamp negative lengths to 0 (Haxe behavior is "unspecified", but 0 is a safe baseline).
-			var clamped = EIf(EBinary("<", EPath("__tmp"), ELitInt(0)), ELitInt(0), EPath("__tmp"));
-			var lenUsize = ECast(clamped, "usize");
+			var clamped = EIf(EBinary("<", rustSingleExpr("__tmp"), ELitInt(0)), ELitInt(0), rustSingleExpr("__tmp"));
+			var lenUsize = ECast(clamped, rustNamedType("usize"));
 			var fillClosure = EClosure([], {stmts: [], tail: fillExpr}, true);
 
 			stmts.push(RSemi(ECall(EField(compileExpr(obj), "set_length_haxe"), [lenUsize, fillClosure])));
-			return EBlock({stmts: stmts, tail: EPath("__tmp")});
+			return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 		}
 
 		// Property writes (`var x(..., set)`) compile to `set_x(v)` and return the setter's return value.
@@ -15554,8 +15753,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								if (currentClassType == null)
 									return unsupported(rhs, "super property write (no class context)");
 								var thunk = noteSuperThunk(owner, setter);
-								var clsName = classNameFromClass(currentClassType);
-								return ECall(EPath(clsName + "::" + thunk), [EUnary("&", EUnary("*", EPath("self_"))), rhsCompiled]);
+								return ECall(rustGeneratedClassMemberExpr(currentClassType, thunk), [EUnary("&", EUnary("*", rustSingleExpr("self_"))), rhsCompiled]);
 							}
 
 							// Polymorphic receivers call through the trait object.
@@ -15563,9 +15761,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								return ECall(EField(compileExpr(obj), rustMethodName(recvCls, setter)), [rhsCompiled]);
 							}
 
-							var modName = rustModulePathForClass(recvCls);
-							var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, setter);
-							return ECall(EPath(path), [EUnary("&", EUnary("*", compileExpr(obj))), rhsCompiled]);
+							var path = rustGeneratedClassMemberExpr(recvCls, rustMethodName(recvCls, setter));
+							return ECall(path, [EUnary("&", EUnary("*", compileExpr(obj))), rhsCompiled]);
 						}
 					}
 				}
@@ -15585,14 +15782,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			rhsExpr = maybeCloneForReuseValue(rhsExpr, rhs);
 			stmts.push(RLet("__tmp", false, null, rhsExpr));
 
-			var borrowed = ECall(EField(EPath("self_"), "borrow_mut"), []);
+			var borrowed = ECall(EField(rustSingleExpr("self_"), "borrow_mut"), []);
 			var access = EField(borrowed, rustFieldName(currentClassType != null ? currentClassType : owner, cf));
-			var rhsVal:RustExpr = isCopyType(rhs.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
-			var assigned = fieldIsOptionWrapped ? (rhsIsNullish ? EPath("None") : ECall(EPath("Some"),
-				[rhsVal])) : ((fieldIsNullOpt && !rhsIsNullish) ? ECall(EPath("Some"), [rhsVal]) : rhsVal);
+			var rhsVal:RustExpr = isCopyType(rhs.t) ? rustSingleExpr("__tmp") : ECall(EField(rustSingleExpr("__tmp"), "clone"), []);
+			var assigned = fieldIsOptionWrapped ? (rhsIsNullish ? rustSingleExpr("None") : ECall(rustSingleExpr("Some"),
+				[rhsVal])) : ((fieldIsNullOpt && !rhsIsNullish) ? ECall(rustSingleExpr("Some"), [rhsVal]) : rhsVal);
 			stmts.push(RSemi(EAssign(access, assigned)));
 
-			return EBlock({stmts: stmts, tail: EPath("__tmp")});
+			return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 		}
 
 		if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
@@ -15603,7 +15800,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			rhsExpr = maybeCloneForReuseValue(rhsExpr, rhs);
 			stmts.push(RLet("__tmp", false, null, rhsExpr));
 
-			var rhsVal:RustExpr = isCopyType(rhs.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
+			var rhsVal:RustExpr = isCopyType(rhs.t) ? rustSingleExpr("__tmp") : ECall(EField(rustSingleExpr("__tmp"), "clone"), []);
 			if (!rhsIsNullish) {
 				var coerceExpected:Type = cf.type;
 				if (fieldIsNullOpt) {
@@ -15615,10 +15812,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 			// Note: setters expose the *surface* type, not the storage type. Storage-level
 			// `Option<...>` wrapping (for trait objects) is handled inside the setter impl.
-			var assigned = (fieldIsNullOpt && !rhsIsNullish) ? ECall(EPath("Some"), [rhsVal]) : rhsVal;
+			var assigned = (fieldIsNullOpt && !rhsIsNullish) ? ECall(rustSingleExpr("Some"), [rhsVal]) : rhsVal;
 			stmts.push(RSemi(ECall(EField(compileExpr(obj), rustSetterName(owner, cf)), [assigned])));
 
-			return EBlock({stmts: stmts, tail: EPath("__tmp")});
+			return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 		}
 
 		// Important: evaluate RHS before taking a mutable borrow to avoid RefCell borrow panics.
@@ -15632,7 +15829,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var recv = compileExpr(obj);
 		var borrowed = ECall(EField(recv, "borrow_mut"), []);
 		var access = EField(borrowed, rustFieldName(owner, cf));
-		var rhsVal:RustExpr = isCopyType(rhs.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
+		var rhsVal:RustExpr = isCopyType(rhs.t) ? rustSingleExpr("__tmp") : ECall(EField(rustSingleExpr("__tmp"), "clone"), []);
 		if (!rhsIsNullish) {
 			var coerceExpected:Type = cf.type;
 			if (fieldIsNullOpt) {
@@ -15642,13 +15839,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 			rhsVal = coerceExprToExpected(rhsVal, rhs, coerceExpected);
 		}
-		var assigned = fieldIsOptionWrapped ? (rhsIsNullish ? EPath("None") : ECall(EPath("Some"),
-			[rhsVal])) : ((fieldIsNullOpt && !rhsIsNullish) ? ECall(EPath("Some"), [rhsVal]) : rhsVal);
+		var assigned = fieldIsOptionWrapped ? (rhsIsNullish ? rustSingleExpr("None") : ECall(rustSingleExpr("Some"),
+			[rhsVal])) : ((fieldIsNullOpt && !rhsIsNullish) ? ECall(rustSingleExpr("Some"), [rhsVal]) : rhsVal);
 		stmts.push(RSemi(EAssign(access, assigned)));
 
 		return EBlock({
 			stmts: stmts,
-			tail: EPath("__tmp")
+			tail: rustSingleExpr("__tmp")
 		});
 	}
 
@@ -15660,13 +15857,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		rhsExpr = maybeCloneForReuseValue(rhsExpr, rhs);
 		stmts.push(RLet("__tmp", false, null, rhsExpr));
 
-		var idx = ECast(compileExpr(index), "usize");
-		var rhsVal:RustExpr = isCopyType(rhs.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
+		var idx = ECast(compileExpr(index), rustNamedType("usize"));
+		var rhsVal:RustExpr = isCopyType(rhs.t) ? rustSingleExpr("__tmp") : ECall(EField(rustSingleExpr("__tmp"), "clone"), []);
 		var fill = nullFillExprForType(arrayElementType(arr.t), rhs.pos);
 		var fillFn = EClosure([], {stmts: [], tail: fill}, true);
 		stmts.push(RSemi(ECall(EField(compileExpr(arr), "set_haxe"), [idx, rhsVal, fillFn])));
 
-		return EBlock({stmts: stmts, tail: EPath("__tmp")});
+		return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 	}
 
 	function classNameFromType(t:Type):Null<String> {
@@ -15722,6 +15919,72 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				return path;
 		}
 		return null;
+	}
+
+	/**
+		Parses the target path owned by an extern declaration exactly once at the metadata boundary.
+
+		Why
+		- `@:native` is intentionally a target-shaped string boundary, but downstream expression and type
+		  lowering must not keep concatenating or inspecting that text.
+
+		What
+		- Returns the structural metadata path, or the Haxe extern type name when no override exists.
+		- Reports malformed metadata at the extern declaration and preserves a deterministic fallback.
+
+		How
+		- Delegates Rust syntax validation to `RustMetadataSyntax`; compiler-owned type arguments and
+		  associated members are attached structurally after this helper returns.
+	**/
+	function rustExternStructuralPath(cls:ClassType):RustPath {
+		var base = rustExternBasePath(cls);
+		if (base == null)
+			return RustPath.single(cls.name);
+		try {
+			return RustMetadataSyntax.parsePath(base);
+		} catch (message:String) {
+			#if eval
+			RustDiagnostic.error(RustDiagnosticId.MetadataValue, "Invalid extern Rust path syntax: " + message, cls.pos);
+			#end
+			return RustPath.single(cls.name);
+		}
+	}
+
+	/**
+		Appends a metadata-owned extern field path to its structural extern owner path.
+
+		Why
+		- Both type- and field-level `@:native` values are legitimate target-syntax boundaries, but their
+		  combination must become typed IR before normal lowering continues.
+
+		What
+		- Parses the field suffix, requires a relative root, and appends each validated segment.
+
+		How
+		- Diagnostics point at the field metadata; malformed input falls back deterministically after the
+		  compile-time error is recorded.
+	**/
+	function rustExternFieldPath(cls:ClassType, cf:ClassField):RustPath {
+		var owner = rustExternStructuralPath(cls);
+		var fieldText = rustExternFieldName(cf);
+		try {
+			var suffix = RustMetadataSyntax.parsePath(fieldText);
+			switch (suffix.root) {
+				case PathRelative:
+					for (segment in suffix)
+						owner = owner.append(segment);
+				case _:
+					#if eval
+					RustDiagnostic.error(RustDiagnosticId.MetadataValue, "Extern field path must be relative to its extern owner.", cf.pos);
+					#end
+			}
+		} catch (message:String) {
+			#if eval
+			RustDiagnostic.error(RustDiagnosticId.MetadataValue, "Invalid extern Rust field path syntax: " + message, cf.pos);
+			#end
+			owner = owner.append(RustPathSegment.plain(cf.name));
+		}
+		return owner;
 	}
 
 	function rustExternFieldName(cf:ClassField):String {
@@ -16352,7 +16615,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function typeIdExprForKey(key:String):RustExpr {
-		return EPath(typeIdLiteralForKey(key));
+		return ELitUInt32(fnv1a32(key));
 	}
 
 	function typeIdLiteralForKey(key:String):String {
@@ -16586,8 +16849,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var updatedName = "__tmp";
 		var stmts:Array<RustStmt> = [
 			RLet(arrayName, false, null, maybeCloneForReuseValue(compileExpr(arrayExpr), arrayExpr)),
-			RLet(indexName, false, null, ECast(compileExpr(indexExpr), "usize")),
-			RLet(currentName, false, null, ECall(EField(EPath(arrayName), "get_unchecked"), [EPath(indexName)]))
+			RLet(indexName, false, null, ECast(compileExpr(indexExpr), rustNamedType("usize"))),
+			RLet(currentName, false, null, ECall(EField(rustSingleExpr(arrayName), "get_unchecked"), [rustSingleExpr(indexName)]))
 		];
 
 		var compiledRhs = stringy ? maybeCloneForReuseValue(compileExpr(rhsExpr), rhsExpr) : compileExpr(rhsExpr);
@@ -16595,17 +16858,17 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		var updated:RustExpr;
 		if (stringy) {
-			var rhsString:RustExpr = isStringType(followType(rhsExpr.t)) ? EPath(rhsName) : ECall(EField(ECall(EPath("hxrt::dynamic::from"),
-				[EPath(rhsName)]), "to_haxe_string"), []);
-			updated = wrapRustStringExpr(EMacroCall("format", [ELitString("{}{}"), EPath(currentName), rhsString]));
+			var rhsString:RustExpr = isStringType(followType(rhsExpr.t)) ? rustSingleExpr(rhsName) : ECall(EField(ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]),
+				[rustSingleExpr(rhsName)]), "to_haxe_string"), []);
+			updated = wrapRustStringExpr(EMacroCall("format", [ELitString("{}{}"), rustSingleExpr(currentName), rhsString]));
 		} else {
-			updated = EBinary(opStr, EPath(currentName), EPath(rhsName));
+			updated = EBinary(opStr, rustSingleExpr(currentName), rustSingleExpr(rhsName));
 		}
 		stmts.push(RLet(updatedName, false, null, updated));
 
-		var storedValue:RustExpr = stringy && preserveResult ? ECall(EField(EPath(updatedName), "clone"), []) : EPath(updatedName);
-		stmts.push(RSemi(ECall(EField(EPath(arrayName), "set"), [EPath(indexName), storedValue])));
-		return EBlock({stmts: stmts, tail: preserveResult ? EPath(updatedName) : null});
+		var storedValue:RustExpr = stringy && preserveResult ? ECall(EField(rustSingleExpr(updatedName), "clone"), []) : rustSingleExpr(updatedName);
+		stmts.push(RSemi(ECall(EField(rustSingleExpr(arrayName), "set"), [rustSingleExpr(indexName), storedValue])));
+		return EBlock({stmts: stmts, tail: preserveResult ? rustSingleExpr(updatedName) : null});
 	}
 
 	function compileBinop(op:Binop, e1:TypedExpr, e2:TypedExpr, fullExpr:TypedExpr):RustExpr {
@@ -16652,29 +16915,29 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				if (writesNullOption) {
 					var stmts:Array<RustStmt> = [];
 					stmts.push(RLet("__tmp", false, null, compileExpr(e2)));
-					var rhsVal:RustExpr = isCopyType(e2.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
-					var wrapped = ECall(EPath("Some"), [rhsVal]);
+					var rhsVal:RustExpr = isCopyType(e2.t) ? rustSingleExpr("__tmp") : ECall(EField(rustSingleExpr("__tmp"), "clone"), []);
+					var wrapped = ECall(rustSingleExpr("Some"), [rhsVal]);
 					if (cellBackedLocal) {
-						var cellWrite = EUnary("*", ECall(EField(EPath(localName), "borrow_mut"), []));
+						var cellWrite = EUnary("*", ECall(EField(rustSingleExpr(localName), "borrow_mut"), []));
 						stmts.push(RSemi(EAssign(cellWrite, wrapped)));
 					} else {
-						stmts.push(RSemi(EAssign(EPath(localName), wrapped)));
+						stmts.push(RSemi(EAssign(rustSingleExpr(localName), wrapped)));
 					}
-					return EBlock({stmts: stmts, tail: EPath("__tmp")});
+					return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 				}
 
 				var rhsExpr = compileExpr(e2);
 				rhsExpr = maybeCloneForReuseValue(rhsExpr, e2);
 				rhsExpr = coerceExprToExpected(rhsExpr, e2, e1.t);
 				if (!cellBackedLocal)
-					return EAssign(EPath(localName), rhsExpr);
+					return EAssign(rustSingleExpr(localName), rhsExpr);
 
 				var stmts:Array<RustStmt> = [];
 				stmts.push(RLet("__tmp", false, null, rhsExpr));
-				var writeVal = isCopyType(e2.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
-				var cellWrite = EUnary("*", ECall(EField(EPath(localName), "borrow_mut"), []));
+				var writeVal = isCopyType(e2.t) ? rustSingleExpr("__tmp") : ECall(EField(rustSingleExpr("__tmp"), "clone"), []);
+				var cellWrite = EUnary("*", ECall(EField(rustSingleExpr(localName), "borrow_mut"), []));
 				stmts.push(RSemi(EAssign(cellWrite, writeVal)));
-				return EBlock({stmts: stmts, tail: EPath("__tmp")});
+				return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 			}
 		}
 
@@ -16705,16 +16968,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							var stmts:Array<RustStmt> = [];
 							stmts.push(RLet("__tmp", false, null, compileExpr(e2)));
 
-							var rhsVal:RustExpr = isCopyType(e2.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
-							var wrapped = ECall(EPath("Some"), [rhsVal]);
+							var rhsVal:RustExpr = isCopyType(e2.t) ? rustSingleExpr("__tmp") : ECall(EField(rustSingleExpr("__tmp"), "clone"), []);
+							var wrapped = ECall(rustSingleExpr("Some"), [rhsVal]);
 							if (cellBackedLocal) {
-								var cellWrite = EUnary("*", ECall(EField(EPath(localName), "borrow_mut"), []));
+								var cellWrite = EUnary("*", ECall(EField(rustSingleExpr(localName), "borrow_mut"), []));
 								stmts.push(RSemi(EAssign(cellWrite, wrapped)));
 							} else {
 								stmts.push(RSemi(EAssign(compileExpr(e1), wrapped)));
 							}
 
-							return EBlock({stmts: stmts, tail: EPath("__tmp")});
+							return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 						}
 					case TLocal(v): {
 							// Assignment into a local: coerce the RHS into the local's storage type.
@@ -16729,10 +16992,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 							var stmts:Array<RustStmt> = [];
 							stmts.push(RLet("__tmp", false, null, rhsExpr));
-							var writeVal = isCopyType(e2.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
-							var cellWrite = EUnary("*", ECall(EField(EPath(localName), "borrow_mut"), []));
+							var writeVal = isCopyType(e2.t) ? rustSingleExpr("__tmp") : ECall(EField(rustSingleExpr("__tmp"), "clone"), []);
+							var cellWrite = EUnary("*", ECall(EField(rustSingleExpr(localName), "borrow_mut"), []));
 							stmts.push(RSemi(EAssign(cellWrite, writeVal)));
-							return EBlock({stmts: stmts, tail: EPath("__tmp")});
+							return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 						}
 					case TArray(arr, index): {
 							compileArrayIndexAssign(arr, index, e2);
@@ -16758,9 +17021,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							function typedNoneForNull(t:Type, pos:haxe.macro.Expr.Position):RustExpr {
 								var inner = nullOptionInnerType(t, pos);
 								if (inner == null)
-									return EPath("None");
-								var innerRust = rustTypeToString(toRustType(inner, pos));
-								return EPath("Option::<" + innerRust + ">::None");
+									return rustSingleExpr("None");
+								var innerRust = toRustType(inner, pos);
+								return rustRelativeMemberExpr(["Option"], [GenericType(innerRust)], "None");
 							}
 
 							var stmts:Array<RustStmt> = [];
@@ -16773,14 +17036,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								e2.pos) else maybeCloneForReuseValue(compileExpr(e2), e2);
 							stmts.push(RLet("__tmp", false, null, rhsExpr));
 
-							var rhsVal:RustExpr = isCopyType(e2.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
-							var assigned = (fieldIsNullOpt && !rhsIsNullish) ? ECall(EPath("Some"), [rhsVal]) : rhsVal;
+							var rhsVal:RustExpr = isCopyType(e2.t) ? rustSingleExpr("__tmp") : ECall(EField(rustSingleExpr("__tmp"), "clone"), []);
+							var assigned = (fieldIsNullOpt && !rhsIsNullish) ? ECall(rustSingleExpr("Some"), [rhsVal]) : rhsVal;
 
-							var borrowed = ECall(EField(EPath("__obj"), "borrow_mut"), []);
+							var borrowed = ECall(EField(rustSingleExpr("__obj"), "borrow_mut"), []);
 							var setCall = ECall(EField(borrowed, "set"), [ELitString(cf.getHaxeName()), assigned]);
 							stmts.push(RSemi(setCall));
 
-							return EBlock({stmts: stmts, tail: EPath("__tmp")});
+							return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 						}
 					case TField(_, FStatic(clsRef, cfRef)): {
 							// Assignment into static vars:
@@ -16801,11 +17064,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 										var rustName = rustMethodName(owner, cf);
 										var setterFn = rustStaticVarHelperName("__hx_static_set", rustName);
-										var setter = staticVarHelperPath(owner, setterFn);
+									var setter = staticVarHelperExpr(owner, setterFn);
 
-										var argVal:RustExpr = isCopyType(e2.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
-										stmts.push(RSemi(ECall(EPath(setter), [argVal])));
-										return EBlock({stmts: stmts, tail: EPath("__tmp")});
+										var argVal:RustExpr = isCopyType(e2.t) ? rustSingleExpr("__tmp") : ECall(EField(rustSingleExpr("__tmp"), "clone"), []);
+									stmts.push(RSemi(ECall(setter, [argVal])));
+										return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 									}
 								case _:
 									// Fall back to plain assignment (likely invalid), but keep behavior explicit.
@@ -16824,17 +17087,17 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							var rhsExpr:RustExpr = maybeCloneForReuseValue(compileExpr(e2), e2);
 							stmts.push(RLet("__tmp", false, null, rhsExpr));
 
-							var rhsVal:RustExpr = isCopyType(e2.t) ? EPath("__tmp") : ECall(EField(EPath("__tmp"), "clone"), []);
+							var rhsVal:RustExpr = isCopyType(e2.t) ? rustSingleExpr("__tmp") : ECall(EField(rustSingleExpr("__tmp"), "clone"), []);
 							var boxed:RustExpr = if (mapsToRustDynamic(e2.t, e2.pos)) {
 								rhsVal;
 							} else if (isNullConstExpr(e2)) {
 								rustDynamicNullExpr();
 							} else {
-								ECall(EPath("hxrt::dynamic::from"), [rhsVal]);
+								ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [rhsVal]);
 							}
 
-							stmts.push(RSemi(ECall(EPath("hxrt::dynamic::field_set"), [EUnary("&", EPath("__obj")), ELitString(name), boxed])));
-							return EBlock({stmts: stmts, tail: EPath("__tmp")});
+							stmts.push(RSemi(ECall(rustRelativeExpr(["hxrt", "dynamic", "field_set"]), [EUnary("&", rustSingleExpr("__obj")), ELitString(name), boxed])));
+							return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 						}
 					case TField(obj, FInstance(clsRef, _, cfRef)): {
 							var owner = clsRef.get();
@@ -16848,7 +17111,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 										}
 										var recvCls = if (isThisExpr(obj) && currentClassType != null) currentClassType else owner;
 										var recvName = "__hx_obj";
-										var recvExpr:RustExpr = isThisExpr(obj) ? currentThisPathExpr() : EPath(recvName);
+										var recvExpr:RustExpr = isThisExpr(obj) ? currentThisPathExpr() : rustSingleExpr(recvName);
 										var fieldName = rustDynamicMethodFieldName(recvCls, cf);
 										var stmts:Array<RustStmt> = [];
 										if (!isThisExpr(obj))
@@ -16856,8 +17119,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 										var rhsExpr = maybeCloneForReuseValue(compileExpr(e2), e2);
 										stmts.push(RLet("__tmp", false, null, rhsExpr));
 										stmts.push(RSemi(EAssign(EField(ECall(EField(recvExpr, "borrow_mut"), []), fieldName),
-											ECall(EField(EPath("__tmp"), "clone"), []))));
-										return EBlock({stmts: stmts, tail: EPath("__tmp")});
+											ECall(EField(rustSingleExpr("__tmp"), "clone"), []))));
+										return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 									}
 								case _:
 									EAssign(compileExpr(e1), compileExpr(e2));
@@ -16919,7 +17182,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							// Rust's `format!` requires `Display`, which `Option<T>` and many runtime types do not
 							// implement. Route through `hxrt::dynamic::Dynamic::to_haxe_string()` for stability.
 							var v = maybeCloneForReuseValue(compileExpr(p), p);
-							return ECall(EField(ECall(EPath("hxrt::dynamic::from"), [v]), "to_haxe_string"), []);
+							return ECall(EField(ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [v]), "to_haxe_string"), []);
 						}
 
 						function unwrapPortableDisplayExpr(expr:RustExpr):RustExpr {
@@ -16927,7 +17190,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								return expr;
 							}
 							return switch (expr) {
-								case ECall(EPath("hxrt::string::HxString::from"), [inner]):
+								case ECall(EPath(path), [inner]) if (rustPathIsRelative(path, ["hxrt", "string", "HxString", "from"])):
 									inner;
 								case _:
 									expr;
@@ -17045,9 +17308,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case OpUShr: {
 					// Unsigned shift-right (`>>>`) uses `u32` then casts back to `i32`.
 					// This matches Haxe's `Int` semantics for `>>>` (logical shift).
-					var lhs = ECast(compileExpr(e1), "u32");
-					var rhs = ECast(compileExpr(e2), "u32");
-					ECast(EBinary(">>", lhs, rhs), "i32");
+					var lhs = ECast(compileExpr(e1), rustNamedType("u32"));
+					var rhs = ECast(compileExpr(e2), rustNamedType("u32"));
+					ECast(EBinary(">>", lhs, rhs), RI32);
 				}
 
 			case OpEq: {
@@ -17074,7 +17337,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								case TAbstract(absRef, _): {
 										var abs = absRef.get();
 										if (abs != null && abs.module == "StdTypes" && (abs.name == "Class" || abs.name == "Enum")) {
-											return EBinary("==", lhs, ECast(ELitInt(0), "u32"));
+											return EBinary("==", lhs, ECast(ELitInt(0), rustNamedType("u32")));
 										}
 									}
 								case _:
@@ -17090,7 +17353,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								case TAbstract(absRef, _): {
 										var abs = absRef.get();
 										if (abs != null && abs.module == "StdTypes" && (abs.name == "Class" || abs.name == "Enum")) {
-											return EBinary("==", rhs, ECast(ELitInt(0), "u32"));
+											return EBinary("==", rhs, ECast(ELitInt(0), rustNamedType("u32")));
 										}
 									}
 								case _:
@@ -17103,13 +17366,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var rhs = maybeCloneForReuseValue(compileExpr(e2), e2);
 						if (inner != null)
 							rhs = coerceExprToExpected(rhs, e2, inner);
-						EBinary("==", compileExpr(e1), ECall(EPath("Some"), [rhs]));
+						EBinary("==", compileExpr(e1), ECall(rustSingleExpr("Some"), [rhs]));
 					} else if (e2NullOpt && !isNullType(e1.t) && !isNullConstExpr(e1)) {
 						var inner = nullOptionInnerType(e2.t, e2.pos);
 						var lhs = maybeCloneForReuseValue(compileExpr(e1), e1);
 						if (inner != null)
 							lhs = coerceExprToExpected(lhs, e1, inner);
-						EBinary("==", ECall(EPath("Some"), [lhs]), compileExpr(e2));
+						EBinary("==", ECall(rustSingleExpr("Some"), [lhs]), compileExpr(e2));
 					} else {
 						var ft1 = followType(e1.t);
 						var ft2 = followType(e2.t);
@@ -17133,15 +17396,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								}
 								var lhs = toDynamic(e1, compileExpr(e1));
 								var rhs = toDynamic(e2, compileExpr(e2));
-								return ECall(EPath("hxrt::dynamic::eq"), [EUnary("&", lhs), EUnary("&", rhs)]);
+								return ECall(rustRelativeExpr(["hxrt", "dynamic", "eq"]), [EUnary("&", lhs), EUnary("&", rhs)]);
 							}
 
 							// Mixed numeric equality: Haxe allows comparing `Int` and `Float` freely.
 							// Coerce the `Int` side to `f64` when the other side is `Float`.
 							if (TypeHelper.isFloat(ft1) && TypeHelper.isInt(ft2)) {
-								return EBinary("==", compileExpr(e1), ECast(compileExpr(e2), "f64"));
+								return EBinary("==", compileExpr(e1), ECast(compileExpr(e2), RF64));
 							} else if (TypeHelper.isInt(ft1) && TypeHelper.isFloat(ft2)) {
-								return EBinary("==", ECast(compileExpr(e1), "f64"), compileExpr(e2));
+								return EBinary("==", ECast(compileExpr(e1), RF64), compileExpr(e2));
 							}
 
 							// Interface/polymorphic values lower to non-null trait-object `HxRc` handles once
@@ -17157,7 +17420,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							if (isArrayType(ft1) && isArrayType(ft2)) {
 								ECall(EField(compileExpr(e1), "ptr_eq"), [EUnary("&", compileExpr(e2))]);
 							} else if (isRcBackedType(ft1) && isRcBackedType(ft2)) {
-								ECall(EPath("hxrt::hxref::ptr_eq"), [EUnary("&", compileExpr(e1)), EUnary("&", compileExpr(e2))]);
+								ECall(rustRelativeExpr(["hxrt", "hxref", "ptr_eq"]), [EUnary("&", compileExpr(e1)), EUnary("&", compileExpr(e2))]);
 							} else {
 								EBinary("==", compileExpr(e1), compileExpr(e2));
 							}
@@ -17182,7 +17445,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								case TAbstract(absRef, _): {
 										var abs = absRef.get();
 										if (abs != null && abs.module == "StdTypes" && (abs.name == "Class" || abs.name == "Enum")) {
-											return EBinary("!=", lhs, ECast(ELitInt(0), "u32"));
+											return EBinary("!=", lhs, ECast(ELitInt(0), rustNamedType("u32")));
 										}
 									}
 								case _:
@@ -17198,7 +17461,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								case TAbstract(absRef, _): {
 										var abs = absRef.get();
 										if (abs != null && abs.module == "StdTypes" && (abs.name == "Class" || abs.name == "Enum")) {
-											return EBinary("!=", rhs, ECast(ELitInt(0), "u32"));
+											return EBinary("!=", rhs, ECast(ELitInt(0), rustNamedType("u32")));
 										}
 									}
 								case _:
@@ -17210,13 +17473,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var rhs = maybeCloneForReuseValue(compileExpr(e2), e2);
 						if (inner != null)
 							rhs = coerceExprToExpected(rhs, e2, inner);
-						EBinary("!=", compileExpr(e1), ECall(EPath("Some"), [rhs]));
+						EBinary("!=", compileExpr(e1), ECall(rustSingleExpr("Some"), [rhs]));
 					} else if (e2NullOpt && !isNullType(e1.t) && !isNullConstExpr(e1)) {
 						var inner = nullOptionInnerType(e2.t, e2.pos);
 						var lhs = maybeCloneForReuseValue(compileExpr(e1), e1);
 						if (inner != null)
 							lhs = coerceExprToExpected(lhs, e1, inner);
-						EBinary("!=", ECall(EPath("Some"), [lhs]), compileExpr(e2));
+						EBinary("!=", ECall(rustSingleExpr("Some"), [lhs]), compileExpr(e2));
 					} else {
 						var ft1 = followType(e1.t);
 						var ft2 = followType(e2.t);
@@ -17237,15 +17500,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								}
 								var lhs = toDynamic(e1, compileExpr(e1));
 								var rhs = toDynamic(e2, compileExpr(e2));
-								return EUnary("!", ECall(EPath("hxrt::dynamic::eq"), [EUnary("&", lhs), EUnary("&", rhs)]));
+								return EUnary("!", ECall(rustRelativeExpr(["hxrt", "dynamic", "eq"]), [EUnary("&", lhs), EUnary("&", rhs)]));
 							}
 
 							// Mixed numeric inequality: Haxe allows comparing `Int` and `Float` freely.
 							// Coerce the `Int` side to `f64` when the other side is `Float`.
 							if (TypeHelper.isFloat(ft1) && TypeHelper.isInt(ft2)) {
-								return EBinary("!=", compileExpr(e1), ECast(compileExpr(e2), "f64"));
+								return EBinary("!=", compileExpr(e1), ECast(compileExpr(e2), RF64));
 							} else if (TypeHelper.isInt(ft1) && TypeHelper.isFloat(ft2)) {
-								return EBinary("!=", ECast(compileExpr(e1), "f64"), compileExpr(e2));
+								return EBinary("!=", ECast(compileExpr(e1), RF64), compileExpr(e2));
 							}
 
 							if ((isInterfaceType(ft1) || isPolymorphicClassType(ft1)) && isNullConstExpr(e2)) {
@@ -17257,7 +17520,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							if (isArrayType(ft1) && isArrayType(ft2)) {
 								EUnary("!", ECall(EField(compileExpr(e1), "ptr_eq"), [EUnary("&", compileExpr(e2))]));
 							} else if (isRcBackedType(ft1) && isRcBackedType(ft2)) {
-								EUnary("!", ECall(EPath("hxrt::hxref::ptr_eq"), [EUnary("&", compileExpr(e1)), EUnary("&", compileExpr(e2))]));
+								EUnary("!", ECall(rustRelativeExpr(["hxrt", "hxref", "ptr_eq"]), [EUnary("&", compileExpr(e1)), EUnary("&", compileExpr(e2))]));
 							} else {
 								EBinary("!=", compileExpr(e1), compileExpr(e2));
 							}
@@ -17289,18 +17552,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						if (!innerNumeric || !plainNumeric)
 							return null;
 
-						var optValue:RustExpr = EPath("__v");
-						var plainValue:RustExpr = EPath("__hx_plain");
+						var optValue:RustExpr = rustSingleExpr("__v");
+						var plainValue:RustExpr = rustSingleExpr("__hx_plain");
 						if (TypeHelper.isInt(innerFt) && TypeHelper.isFloat(plainFt)) {
-							optValue = ECast(optValue, "f64");
+							optValue = ECast(optValue, RF64);
 						} else if (TypeHelper.isFloat(innerFt) && TypeHelper.isInt(plainFt)) {
-							plainValue = ECast(plainValue, "f64");
+							plainValue = ECast(plainValue, RF64);
 						}
 
 						var comparison = optionOnLeft ? EBinary(opStr, optValue, plainValue) : EBinary(opStr, plainValue, optValue);
 						var arms:Array<RustMatchArm> = [
-							{pat: PTupleStruct("Some", [PBind("__v")]), expr: comparison},
-							{pat: PPath("None"), expr: ELitBool(false)}
+							{pat: PTupleStruct(RustPath.single("Some"), [PBind("__v")]), expr: comparison},
+							{pat: PPath(RustPath.single("None")), expr: ELitBool(false)}
 						];
 						var stmts:Array<RustStmt> = [];
 						if (optionOnLeft) {
@@ -17310,7 +17573,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							stmts.push(RLet("__hx_plain", false, null, compileExpr(plainExpr)));
 							stmts.push(RLet("__hx_opt", false, null, compileExpr(optExpr)));
 						}
-						return EBlock({stmts: stmts, tail: EMatch(EPath("__hx_opt"), arms)});
+						return EBlock({stmts: stmts, tail: EMatch(rustSingleExpr("__hx_opt"), arms)});
 					}
 
 					var nullableCmp:Null<RustExpr> = null;
@@ -17322,9 +17585,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					if (nullableCmp != null) {
 						nullableCmp;
 					} else if (TypeHelper.isFloat(ft1) && TypeHelper.isInt(ft2)) {
-						EBinary(opStr, compileExpr(e1), ECast(compileExpr(e2), "f64"));
+						EBinary(opStr, compileExpr(e1), ECast(compileExpr(e2), RF64));
 					} else if (TypeHelper.isInt(ft1) && TypeHelper.isFloat(ft2)) {
-						EBinary(opStr, ECast(compileExpr(e1), "f64"), compileExpr(e2));
+						EBinary(opStr, ECast(compileExpr(e1), RF64), compileExpr(e2));
 					} else {
 						EBinary(opStr, compileExpr(e1), compileExpr(e2));
 					}
@@ -17371,32 +17634,32 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 										|| isStringType(followType(e2.t)));
 								if (cellBackedLocal) {
 									if (stringy) {
-										var rhsStr:RustExpr = isStringType(followType(e2.t)) ? EPath("__tmp") : ECall(EField(ECall(EPath("hxrt::dynamic::from"),
-											[EPath("__tmp")]), "to_haxe_string"), []);
+										var rhsStr:RustExpr = isStringType(followType(e2.t)) ? rustSingleExpr("__tmp") : ECall(EField(ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]),
+											[rustSingleExpr("__tmp")]), "to_haxe_string"), []);
 										return EBlock({
 											stmts: [
 												RLet("__tmp", false, null, rhsExpr),
-												RLet("__b", true, null, ECall(EField(EPath(localName), "borrow_mut"), [])),
-												RSemi(EAssign(EUnary("*", EPath("__b")),
-													wrapRustStringExpr(EMacroCall("format", [ELitString("{}{}"), EUnary("*", EPath("__b")), rhsStr]))))
+												RLet("__b", true, null, ECall(EField(rustSingleExpr(localName), "borrow_mut"), [])),
+												RSemi(EAssign(EUnary("*", rustSingleExpr("__b")),
+													wrapRustStringExpr(EMacroCall("format", [ELitString("{}{}"), EUnary("*", rustSingleExpr("__b")), rhsStr]))))
 											],
-											tail: ECall(EField(EUnary("*", EPath("__b")), "clone"), [])
+											tail: ECall(EField(EUnary("*", rustSingleExpr("__b")), "clone"), [])
 										});
 									}
 									var rhs = compileExpr(e2);
 									return EBlock({
 										stmts: [
 											RLet("__rhs", false, null, rhs),
-											RLet("__b", true, null, ECall(EField(EPath(localName), "borrow_mut"), [])),
-											RSemi(EAssign(EUnary("*", EPath("__b")), EBinary(opStr, EUnary("*", EPath("__b")), EPath("__rhs"))))
+											RLet("__b", true, null, ECall(EField(rustSingleExpr(localName), "borrow_mut"), [])),
+											RSemi(EAssign(EUnary("*", rustSingleExpr("__b")), EBinary(opStr, EUnary("*", rustSingleExpr("__b")), rustSingleExpr("__rhs"))))
 										],
-										tail: isCopyType(e1.t) ? EUnary("*", EPath("__b")) : ECall(EField(EUnary("*", EPath("__b")), "clone"), [])
+										tail: isCopyType(e1.t) ? EUnary("*", rustSingleExpr("__b")) : ECall(EField(EUnary("*", rustSingleExpr("__b")), "clone"), [])
 									});
 								}
 								var lhs = compileExpr(e1);
 								if (stringy) {
-									var rhsStr:RustExpr = isStringType(followType(e2.t)) ? EPath("__tmp") : ECall(EField(ECall(EPath("hxrt::dynamic::from"),
-										[EPath("__tmp")]), "to_haxe_string"), []);
+									var rhsStr:RustExpr = isStringType(followType(e2.t)) ? rustSingleExpr("__tmp") : ECall(EField(ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]),
+										[rustSingleExpr("__tmp")]), "to_haxe_string"), []);
 									EBlock({
 										stmts: [
 											RLet("__tmp", false, null, rhsExpr),
@@ -17437,25 +17700,25 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								// How: capture the current value before the RHS can mutate the same static, then call the
 								// existing typed setter with the computed result.
 								var rustName = rustMethodName(owner, cf);
-								var getter = staticVarHelperPath(owner, rustStaticVarHelperName("__hx_static_get", rustName));
-								var setter = staticVarHelperPath(owner, rustStaticVarHelperName("__hx_static_set", rustName));
+								var getter = staticVarHelperExpr(owner, rustStaticVarHelperName("__hx_static_get", rustName));
+								var setter = staticVarHelperExpr(owner, rustStaticVarHelperName("__hx_static_set", rustName));
 								var rhsExpr = maybeCloneForReuseValue(compileExpr(e2), e2);
 								var stmts:Array<RustStmt> = [
-									RLet("__current", false, null, ECall(EPath(getter), [])),
+									RLet("__current", false, null, ECall(getter, [])),
 									RLet("__rhs", false, null, rhsExpr)
 								];
 								var updated:RustExpr;
 								if (stringy) {
-									var rhsStr:RustExpr = isStringType(followType(e2.t)) ? EPath("__rhs") : ECall(EField(ECall(EPath("hxrt::dynamic::from"),
-										[EPath("__rhs")]), "to_haxe_string"), []);
-									updated = wrapRustStringExpr(EMacroCall("format", [ELitString("{}{}"), EPath("__current"), rhsStr]));
+									var rhsStr:RustExpr = isStringType(followType(e2.t)) ? rustSingleExpr("__rhs") : ECall(EField(ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]),
+										[rustSingleExpr("__rhs")]), "to_haxe_string"), []);
+									updated = wrapRustStringExpr(EMacroCall("format", [ELitString("{}{}"), rustSingleExpr("__current"), rhsStr]));
 								} else {
-									updated = EBinary(opStr, EPath("__current"), EPath("__rhs"));
+									updated = EBinary(opStr, rustSingleExpr("__current"), rustSingleExpr("__rhs"));
 								}
 								stmts.push(RLet("__tmp", false, null, updated));
-								var setterValue:RustExpr = stringy ? ECall(EField(EPath("__tmp"), "clone"), []) : EPath("__tmp");
-								stmts.push(RSemi(ECall(EPath(setter), [setterValue])));
-								return EBlock({stmts: stmts, tail: EPath("__tmp")});
+								var setterValue:RustExpr = stringy ? ECall(EField(rustSingleExpr("__tmp"), "clone"), []) : rustSingleExpr("__tmp");
+								stmts.push(RSemi(ECall(setter, [setterValue])));
+								return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 							}
 						case TArray(arr, index): {
 								compileArrayElementAssignOp(inner, opStr, e1, arr, index, e2, fullExpr, true);
@@ -17525,9 +17788,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 												if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
 													return ECall(EField(recvExpr, rustMethodName(recvCls, getter)), []);
 												}
-												var modName = rustModulePathForClass(recvCls);
-												var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, getter);
-												return ECall(EPath(path), [EUnary("&", recvExpr)]);
+										var path = rustGeneratedClassMemberExpr(recvCls, rustMethodName(recvCls, getter));
+										return ECall(path, [EUnary("&", recvExpr)]);
 											}
 
 											function setterCall(recvCls:ClassType, recvExpr:RustExpr, value:RustExpr):RustExpr {
@@ -17540,13 +17802,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 												if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
 													return ECall(EField(recvExpr, rustMethodName(recvCls, setter)), [value]);
 												}
-												var modName = rustModulePathForClass(recvCls);
-												var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, setter);
-												return ECall(EPath(path), [EUnary("&", recvExpr), value]);
+										var path = rustGeneratedClassMemberExpr(recvCls, rustMethodName(recvCls, setter));
+										return ECall(path, [EUnary("&", recvExpr), value]);
 											}
 
 											var recvName = "__hx_obj";
-											var recvExpr:RustExpr = isThisExpr(obj) ? currentThisPathExpr() : EPath(recvName);
+											var recvExpr:RustExpr = isThisExpr(obj) ? currentThisPathExpr() : rustSingleExpr(recvName);
 
 											var fieldName = rustFieldName(owner, cf);
 											var currentName = "__current";
@@ -17561,8 +17822,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 											}
 
 											function stringAssignOpValue(currentValue:RustExpr):RustExpr {
-												var rhsStr:RustExpr = isStringType(followType(e2.t)) ? EPath(rhsName) : ECall(EField(ECall(EPath("hxrt::dynamic::from"),
-													[EPath(rhsName)]), "to_haxe_string"), []);
+												var rhsStr:RustExpr = isStringType(followType(e2.t)) ? rustSingleExpr(rhsName) : ECall(EField(ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]),
+													[rustSingleExpr(rhsName)]), "to_haxe_string"), []);
 												return wrapRustStringExpr(EMacroCall("format", [ELitString("{}{}"), currentValue, rhsStr]));
 											}
 
@@ -17603,7 +17864,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 												stmts.push(RLet(rhsName, false, null, rhsExpr));
 												var borrowedUpdate = EBlock({
 													stmts: [RLet("__b", false, null, ECall(EField(recvExpr, "borrow"), []))],
-													tail: stringAssignOpValue(EUnary("&", EField(EPath("__b"), fieldName)))
+													tail: stringAssignOpValue(EUnary("&", EField(rustSingleExpr("__b"), fieldName)))
 												});
 												stmts.push(RLet(tmpName, false, null, borrowedUpdate));
 											} else {
@@ -17615,7 +17876,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 												} else if (polymorphicField) {
 													currentValue = ECall(EField(recvExpr, rustGetterName(owner, cf)), []);
 												} else {
-													var rawField = EField(EPath("__b"), fieldName);
+													var rawField = EField(rustSingleExpr("__b"), fieldName);
 													var ownedField:RustExpr = stringy ? ECall(EField(rawField, "clone"), []) : rawField;
 													currentValue = EBlock({
 														stmts: [RLet("__b", false, null, ECall(EField(recvExpr, "borrow"), []))],
@@ -17624,29 +17885,29 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 												}
 												stmts.push(RLet(currentName, false, null, currentValue));
 												stmts.push(RLet(rhsName, false, null, rhsExpr));
-												var tmpExpr:RustExpr = stringy ? stringAssignOpValue(EPath(currentName)) : EBinary(opStr, EPath(currentName), EPath(rhsName));
+												var tmpExpr:RustExpr = stringy ? stringAssignOpValue(rustSingleExpr(currentName)) : EBinary(opStr, rustSingleExpr(currentName), rustSingleExpr(rhsName));
 												stmts.push(RLet(tmpName, false, null, tmpExpr));
 											}
 
 											if (usesAccessors) {
-												var setterValue:RustExpr = stringy ? ECall(EField(EPath(tmpName), "clone"), []) : EPath(tmpName);
+												var setterValue:RustExpr = stringy ? ECall(EField(rustSingleExpr(tmpName), "clone"), []) : rustSingleExpr(tmpName);
 												var assigned = if (write == AccCall) setterCall(recvCls, recvExpr, setterValue) else if (polymorphicField) EBlock({
 													stmts: [RSemi(ECall(EField(recvExpr, rustSetterName(owner, cf)), [setterValue]))],
-													tail: EPath(tmpName)
+													tail: rustSingleExpr(tmpName)
 												}) else EBlock({
 													stmts: [
 														RSemi(EAssign(EField(ECall(EField(recvExpr, "borrow_mut"), []), fieldName), setterValue))
 													],
-													tail: EPath(tmpName)
+													tail: rustSingleExpr(tmpName)
 												});
 												stmts.push(RLet("__assigned", false, null, assigned));
-												return EBlock({stmts: stmts, tail: EPath("__assigned")});
+												return EBlock({stmts: stmts, tail: rustSingleExpr("__assigned")});
 											} else {
 												var writeField = EField(ECall(EField(recvExpr, "borrow_mut"), []), fieldName);
-												var writeValue:RustExpr = stringy ? ECall(EField(EPath(tmpName), "clone"), []) : EPath(tmpName);
+												var writeValue:RustExpr = stringy ? ECall(EField(rustSingleExpr(tmpName), "clone"), []) : rustSingleExpr(tmpName);
 												stmts.push(RSemi(EAssign(writeField, writeValue)));
 
-												return EBlock({stmts: stmts, tail: EPath(tmpName)});
+												return EBlock({stmts: stmts, tail: rustSingleExpr(tmpName)});
 											}
 										}
 									case _:
@@ -17678,18 +17939,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								stmts.push(RLet(recvName, false, null, maybeCloneForReuseValue(compileExpr(obj), obj)));
 
 								var tyStr = rustTypeToString(toRustType(cf.type, fullExpr.pos));
-								var borrowRead = ECall(EField(EPath(recvName), "borrow"), []);
+								var borrowRead = ECall(EField(rustSingleExpr(recvName), "borrow"), []);
 								var getter = "get::<" + tyStr + ">";
 								var read = ECall(EField(borrowRead, getter), [ELitString(fieldName)]);
 								stmts.push(RLet("__current", false, null, read));
 								stmts.push(RLet(rhsName, false, null, compileExpr(e2)));
-								stmts.push(RLet(tmpName, false, null, EBinary(opStr, EPath("__current"), EPath(rhsName))));
+								stmts.push(RLet(tmpName, false, null, EBinary(opStr, rustSingleExpr("__current"), rustSingleExpr(rhsName))));
 
-								var borrowWrite = ECall(EField(EPath(recvName), "borrow_mut"), []);
-								var setCall = ECall(EField(borrowWrite, "set"), [ELitString(fieldName), EPath(tmpName)]);
+								var borrowWrite = ECall(EField(rustSingleExpr(recvName), "borrow_mut"), []);
+								var setCall = ECall(EField(borrowWrite, "set"), [ELitString(fieldName), rustSingleExpr(tmpName)]);
 								stmts.push(RSemi(setCall));
 
-								EBlock({stmts: stmts, tail: EPath(tmpName)});
+								EBlock({stmts: stmts, tail: rustSingleExpr(tmpName)});
 							}
 						case _:
 							unsupported(fullExpr, "assignop lvalue");
@@ -17716,32 +17977,32 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							if (postFix) {
 								return EBlock({
 									stmts: [
-										RLet("__b", true, null, ECall(EField(EPath(name), "borrow_mut"), [])),
-										RLet("__old", false, null, EUnary("*", EPath("__b"))),
-										RSemi(EAssign(EUnary("*", EPath("__b")), EBinary(binop, EPath("__old"), delta)))
+										RLet("__b", true, null, ECall(EField(rustSingleExpr(name), "borrow_mut"), [])),
+										RLet("__old", false, null, EUnary("*", rustSingleExpr("__b"))),
+										RSemi(EAssign(EUnary("*", rustSingleExpr("__b")), EBinary(binop, rustSingleExpr("__old"), delta)))
 									],
-									tail: EPath("__old")
+									tail: rustSingleExpr("__old")
 								});
 							}
 							return EBlock({
 								stmts: [
-									RLet("__b", true, null, ECall(EField(EPath(name), "borrow_mut"), [])),
-									RSemi(EAssign(EUnary("*", EPath("__b")), EBinary(binop, EUnary("*", EPath("__b")), delta)))
+									RLet("__b", true, null, ECall(EField(rustSingleExpr(name), "borrow_mut"), [])),
+									RSemi(EAssign(EUnary("*", rustSingleExpr("__b")), EBinary(binop, EUnary("*", rustSingleExpr("__b")), delta)))
 								],
-								tail: EUnary("*", EPath("__b"))
+								tail: EUnary("*", rustSingleExpr("__b"))
 							});
 						}
 						if (postFix) {
 							EBlock({
-								stmts: [RLet("__next", false, null, EBinary(binop, EPath(name), delta))],
+								stmts: [RLet("__next", false, null, EBinary(binop, rustSingleExpr(name), delta))],
 								// Use `std::mem::replace` for postfix locals to avoid Rust
 								// `unused_assignments` warnings when the incremented value is not read later.
-								tail: ECall(EPath("std::mem::replace"), [EUnary("&mut ", EPath(name)), EPath("__next")])
+								tail: ECall(rustRelativeExpr(["std", "mem", "replace"]), [EUnary("&mut ", rustSingleExpr(name)), rustSingleExpr("__next")])
 							});
 						} else {
 							EBlock({
-								stmts: [RSemi(EAssign(EPath(name), EBinary(binop, EPath(name), delta)))],
-								tail: EPath(name)
+								stmts: [RSemi(EAssign(rustSingleExpr(name), EBinary(binop, rustSingleExpr(name), delta)))],
+								tail: rustSingleExpr(name)
 							});
 						}
 					}
@@ -17761,20 +18022,20 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						// What: preserve Haxe's old-value postfix and new-value prefix results.
 						// How: read once through the getter, compute directly, and write once through the setter.
 						var rustName = rustMethodName(owner, cf);
-						var getter = staticVarHelperPath(owner, rustStaticVarHelperName("__hx_static_get", rustName));
-						var setter = staticVarHelperPath(owner, rustStaticVarHelperName("__hx_static_set", rustName));
+						var getter = staticVarHelperExpr(owner, rustStaticVarHelperName("__hx_static_get", rustName));
+						var setter = staticVarHelperExpr(owner, rustStaticVarHelperName("__hx_static_set", rustName));
 						var delta:RustExpr = TypeHelper.isFloat(expr.t) ? ELitFloat(1.0) : ELitInt(1);
 						var binop = (op == OpIncrement) ? "+" : "-";
 						var stmts:Array<RustStmt> = [];
 						if (postFix) {
-							stmts.push(RLet("__old", false, null, ECall(EPath(getter), [])));
-							stmts.push(RLet("__new", false, null, EBinary(binop, EPath("__old"), delta)));
-							stmts.push(RSemi(ECall(EPath(setter), [EPath("__new")])));
-							return EBlock({stmts: stmts, tail: EPath("__old")});
+							stmts.push(RLet("__old", false, null, ECall(getter, [])));
+							stmts.push(RLet("__new", false, null, EBinary(binop, rustSingleExpr("__old"), delta)));
+							stmts.push(RSemi(ECall(setter, [rustSingleExpr("__new")])));
+							return EBlock({stmts: stmts, tail: rustSingleExpr("__old")});
 						}
-						stmts.push(RLet("__new", false, null, EBinary(binop, ECall(EPath(getter), []), delta)));
-						stmts.push(RSemi(ECall(EPath(setter), [EPath("__new")])));
-						return EBlock({stmts: stmts, tail: EPath("__new")});
+						stmts.push(RLet("__new", false, null, EBinary(binop, ECall(getter, []), delta)));
+						stmts.push(RSemi(ECall(setter, [rustSingleExpr("__new")])));
+						return EBlock({stmts: stmts, tail: rustSingleExpr("__new")});
 					}
 
 				case TArray(arr, index): {
@@ -17790,18 +18051,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var binop = (op == OpIncrement) ? "+" : "-";
 						var stmts:Array<RustStmt> = [
 							RLet(arrName, false, null, maybeCloneForReuseValue(compileExpr(arr), arr)),
-							RLet(idxName, false, null, ECast(compileExpr(index), "usize"))
+							RLet(idxName, false, null, ECast(compileExpr(index), rustNamedType("usize")))
 						];
-						var read = ECall(EField(EPath(arrName), "get_unchecked"), [EPath(idxName)]);
+						var read = ECall(EField(rustSingleExpr(arrName), "get_unchecked"), [rustSingleExpr(idxName)]);
 						if (postFix) {
 							stmts.push(RLet("__old", false, null, read));
-							stmts.push(RLet("__new", false, null, EBinary(binop, EPath("__old"), delta)));
-							stmts.push(RSemi(ECall(EField(EPath(arrName), "set"), [EPath(idxName), EPath("__new")])));
-							return EBlock({stmts: stmts, tail: EPath("__old")});
+							stmts.push(RLet("__new", false, null, EBinary(binop, rustSingleExpr("__old"), delta)));
+							stmts.push(RSemi(ECall(EField(rustSingleExpr(arrName), "set"), [rustSingleExpr(idxName), rustSingleExpr("__new")])));
+							return EBlock({stmts: stmts, tail: rustSingleExpr("__old")});
 						}
 						stmts.push(RLet("__new", false, null, EBinary(binop, read, delta)));
-						stmts.push(RSemi(ECall(EField(EPath(arrName), "set"), [EPath(idxName), EPath("__new")])));
-						return EBlock({stmts: stmts, tail: EPath("__new")});
+						stmts.push(RSemi(ECall(EField(rustSingleExpr(arrName), "set"), [rustSingleExpr(idxName), rustSingleExpr("__new")])));
+						return EBlock({stmts: stmts, tail: rustSingleExpr("__new")});
 					}
 
 				case TField(obj, FInstance(clsRef, _, cfRef)): {
@@ -17859,9 +18120,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 											if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
 												return ECall(EField(recvExpr, rustMethodName(recvCls, getter)), []);
 											}
-											var modName = rustModulePathForClass(recvCls);
-											var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, getter);
-											return ECall(EPath(path), [EUnary("&", recvExpr)]);
+										var path = rustGeneratedClassMemberExpr(recvCls, rustMethodName(recvCls, getter));
+										return ECall(path, [EUnary("&", recvExpr)]);
 										}
 										if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
 											return ECall(EField(recvExpr, rustGetterName(owner, cf)), []);
@@ -17881,9 +18141,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 											if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
 												return ECall(EField(recvExpr, rustMethodName(recvCls, setter)), [value]);
 											}
-											var modName = rustModulePathForClass(recvCls);
-											var path = "crate::" + modName + "::" + rustTypeNameForClass(recvCls) + "::" + rustMethodName(recvCls, setter);
-											return ECall(EPath(path), [EUnary("&", recvExpr), value]);
+										var path = rustGeneratedClassMemberExpr(recvCls, rustMethodName(recvCls, setter));
+										return ECall(path, [EUnary("&", recvExpr), value]);
 										}
 										if (!isThisExpr(obj) && isPolymorphicClassType(obj.t)) {
 											return EBlock({
@@ -17908,7 +18167,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 										var recvCls = receiverClassForField(obj, owner);
 										var recvName = "__hx_obj";
-										var recvExpr:RustExpr = isThisExpr(obj) ? currentThisPathExpr() : EPath(recvName);
+										var recvExpr:RustExpr = isThisExpr(obj) ? currentThisPathExpr() : rustSingleExpr(recvName);
 										var delta:RustExpr = TypeHelper.isFloat(expr.t) ? ELitFloat(1.0) : ELitInt(1);
 										var binop = (op == OpIncrement) ? "+" : "-";
 
@@ -17920,13 +18179,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 										if (postFix) {
 											stmts.push(RLet("__tmp", false, null, readValue(recvCls, recvExpr)));
-											stmts.push(RLet("__new", false, null, EBinary(binop, EPath("__tmp"), delta)));
-											stmts.push(RLet("_", false, null, writeValue(recvCls, recvExpr, EPath("__new"))));
-											return EBlock({stmts: stmts, tail: EPath("__tmp")});
+											stmts.push(RLet("__new", false, null, EBinary(binop, rustSingleExpr("__tmp"), delta)));
+											stmts.push(RLet("_", false, null, writeValue(recvCls, recvExpr, rustSingleExpr("__new"))));
+											return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 										} else {
 											stmts.push(RLet("__new", false, null, EBinary(binop, readValue(recvCls, recvExpr), delta)));
-											stmts.push(RLet("__tmp", false, null, writeValue(recvCls, recvExpr, EPath("__new"))));
-											return EBlock({stmts: stmts, tail: EPath("__tmp")});
+											stmts.push(RLet("__tmp", false, null, writeValue(recvCls, recvExpr, rustSingleExpr("__new"))));
+											return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 										}
 									}
 
@@ -17939,9 +18198,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 									var recvName = "__hx_obj";
 									var recvExpr:RustExpr = if (isThisExpr(obj)) {
-										EPath("self_");
+										rustSingleExpr("self_");
 									} else {
-										EPath(recvName);
+										rustSingleExpr(recvName);
 									}
 
 									var fieldName = rustFieldName(owner, cf);
@@ -17962,14 +18221,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 										stmts.push(RLet("__tmp", false, null, readField));
 										var borrowWrite = ECall(EField(recvExpr, "borrow_mut"), []);
 										var writeField = EField(borrowWrite, fieldName);
-										stmts.push(RSemi(EAssign(writeField, EBinary(binop, EPath("__tmp"), delta))));
-										return EBlock({stmts: stmts, tail: EPath("__tmp")});
+										stmts.push(RSemi(EAssign(writeField, EBinary(binop, rustSingleExpr("__tmp"), delta))));
+										return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 									} else {
 										stmts.push(RLet("__tmp", false, null, EBinary(binop, readField, delta)));
 										var borrowWrite = ECall(EField(recvExpr, "borrow_mut"), []);
 										var writeField = EField(borrowWrite, fieldName);
-										stmts.push(RSemi(EAssign(writeField, EPath("__tmp"))));
-										return EBlock({stmts: stmts, tail: EPath("__tmp")});
+										stmts.push(RSemi(EAssign(writeField, rustSingleExpr("__tmp"))));
+										return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 									}
 								}
 							case _:
@@ -18004,24 +18263,24 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						stmts.push(RLet(recvName, false, null, maybeCloneForReuseValue(compileExpr(obj), obj)));
 
 						function readField():RustExpr {
-							var borrowRead = ECall(EField(EPath(recvName), "borrow"), []);
+							var borrowRead = ECall(EField(rustSingleExpr(recvName), "borrow"), []);
 							return ECall(EField(borrowRead, getter), [ELitString(fieldName)]);
 						}
 
 						function writeField(value:RustExpr):RustStmt {
-							var borrowWrite = ECall(EField(EPath(recvName), "borrow_mut"), []);
+							var borrowWrite = ECall(EField(rustSingleExpr(recvName), "borrow_mut"), []);
 							return RSemi(ECall(EField(borrowWrite, "set"), [ELitString(fieldName), value]));
 						}
 
 						if (postFix) {
 							stmts.push(RLet("__tmp", false, null, readField()));
-							stmts.push(RLet("__new", false, null, EBinary(binop, EPath("__tmp"), delta)));
-							stmts.push(writeField(EPath("__new")));
-							return EBlock({stmts: stmts, tail: EPath("__tmp")});
+							stmts.push(RLet("__new", false, null, EBinary(binop, rustSingleExpr("__tmp"), delta)));
+							stmts.push(writeField(rustSingleExpr("__new")));
+							return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 						} else {
 							stmts.push(RLet("__tmp", false, null, EBinary(binop, readField(), delta)));
-							stmts.push(writeField(EPath("__tmp")));
-							return EBlock({stmts: stmts, tail: EPath("__tmp")});
+							stmts.push(writeField(rustSingleExpr("__tmp")));
+							return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 						}
 					}
 
@@ -18171,8 +18430,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function dynRefNullExprForTraitObject(t:Type, pos:haxe.macro.Expr.Position):Null<RustExpr> {
-		var inner = traitObjectRustInnerPath(t, pos);
-		return inner == null ? null : ECall(EPath(dynRefBasePath() + "::<" + inner + ">::null"), []);
+		var inner = traitObjectRustType(t, pos);
+		return inner == null ? null : ECall(rustDynRefMemberExpr("null", [inner]), []);
 	}
 
 	function nullableTraitObjectInnerType(t:Type, pos:haxe.macro.Expr.Position):Null<Type> {
@@ -18512,19 +18771,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						return rustHxRefType(rustRelativeType(["hxrt", "bytes", "Bytes"]));
 					}
 					if (cls.isExtern) {
-						var base = rustExternBasePath(cls);
-						var path = if (base == null) {
-							RustPath.single(cls.name);
-						} else {
-							try {
-								RustMetadataSyntax.parsePath(base);
-							} catch (message:String) {
-								#if eval
-								RustDiagnostic.error(RustDiagnosticId.MetadataValue, "Invalid extern Rust path syntax: " + message, cls.pos);
-								#end
-								RustPath.single(cls.name);
-							}
-						};
+						var path = rustExternStructuralPath(cls);
 						var arguments = params == null ? [] : rustTypeArguments([for (parameter in params) toRustType(parameter, pos)]);
 						return RNamed(rustPathWithFinalArguments(path, arguments));
 					}

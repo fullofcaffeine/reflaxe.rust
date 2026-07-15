@@ -93,7 +93,7 @@ class RustPassTools {
 
 	public static function mapExprDeep(e:RustExpr, mapExpr:RustExpr->RustExpr):RustExpr {
 		var deep:RustExpr = switch (e) {
-			case ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				e;
 			case ECall(func, args):
 				ECall(mapExprDeep(func, mapExpr), [for (arg in args) mapExprDeep(arg, mapExpr)]);

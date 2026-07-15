@@ -114,7 +114,7 @@ class MutInferencePass implements RustPass {
 
 	function rewriteExpr(expr:RustExpr):RustExpr {
 		return switch (expr) {
-			case ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 			case ECall(func, args):
 				ECall(rewriteExpr(func), [for (arg in args) rewriteExpr(arg)]);
@@ -218,10 +218,13 @@ class MutInferencePass implements RustPass {
 					visitExpr(right);
 				case EUnary(op, inner):
 					switch (inner) {
-						case EPath(name):
+						case EPath(path):
 							if (StringTools.startsWith(op, "&mut")) {
-								out.set(name, true);
-								hardMutable.set(name, true);
+								var name = path.plainRelativeIdentifierName();
+								if (name != null) {
+									out.set(name, true);
+									hardMutable.set(name, true);
+								}
 							}
 						case _:
 					}
@@ -254,7 +257,7 @@ class MutInferencePass implements RustPass {
 					visitBlock(body);
 				case EAwait(inner):
 					visitExpr(inner);
-				case ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+				case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 			}
 		};
 
@@ -371,7 +374,7 @@ class MutInferencePass implements RustPass {
 			case EPinAsyncMove(_) | EAwait(_):
 				// Async bodies are rewritten as their own nested blocks before this block is normalized.
 				0;
-			case ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				0;
 		}
 	}
@@ -385,8 +388,8 @@ class MutInferencePass implements RustPass {
 
 	function directAssignsTarget(lhs:RustExpr, target:String):Bool {
 		return switch (lhs) {
-			case EPath(name):
-				name == target;
+			case EPath(path):
+				path.plainRelativeIdentifierName() == target;
 			case _:
 				false;
 		}
@@ -403,8 +406,10 @@ class MutInferencePass implements RustPass {
 
 	function markAssignmentTarget(lhs:RustExpr, out:Map<String, Bool>):Void {
 		switch (lhs) {
-			case EPath(name):
-				out.set(name, true);
+			case EPath(path):
+				var name = path.plainRelativeIdentifierName();
+				if (name != null)
+					out.set(name, true);
 			case EIndex(recv, _):
 				markAssignmentTarget(recv, out);
 			case EField(_, _):

@@ -138,7 +138,7 @@ class BorrowScopeTighteningPass implements RustPass {
 
 	function rewriteExpr(expr:RustExpr, inLoopContext:Bool):RustExpr {
 		var rewritten = switch (expr) {
-			case ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 			case ECall(func, args):
 				ECall(rewriteExpr(func, inLoopContext), [for (arg in args) rewriteExpr(arg, inLoopContext)]);
@@ -326,8 +326,8 @@ class BorrowScopeTighteningPass implements RustPass {
 	function countPathUsesInExpr(expr:RustExpr, pathName:String):Int {
 		return switch (expr) {
 			case EPath(path):
-				path == pathName ? 1 : 0;
-			case ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
+				path.plainRelativeIdentifierName() == pathName ? 1 : 0;
+			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				0;
 			case ECall(func, args):
 				var total = countPathUsesInExpr(func, pathName);
@@ -411,7 +411,7 @@ class BorrowScopeTighteningPass implements RustPass {
 		return switch (expr) {
 			case EClosure(_, _, _) | EPinAsyncMove(_):
 				true;
-			case ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				false;
 			case ECall(func, args):
 				if (containsClosureExpr(func)) true else {
@@ -495,8 +495,8 @@ class BorrowScopeTighteningPass implements RustPass {
 	function replacePathInExpr(expr:RustExpr, pathName:String, replacement:RustExpr):RustExpr {
 		return switch (expr) {
 			case EPath(path):
-				path == pathName ? replacement : expr;
-			case ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
+				path.plainRelativeIdentifierName() == pathName ? replacement : expr;
+			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				expr;
 			case ECall(func, args):
 				ECall(replacePathInExpr(func, pathName, replacement), [for (arg in args) replacePathInExpr(arg, pathName, replacement)]);

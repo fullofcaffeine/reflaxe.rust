@@ -797,6 +797,28 @@ class RustPath {
 		return segments.length == 0 ? null : segments[0].identifier.name;
 	}
 
+	/**
+		Returns the identifier carried by a plain one-segment relative path.
+
+		Why
+		- Ownership and cleanup passes must distinguish a local binding read from a qualified target
+		  path without parsing `::` delimiters from printer output.
+
+		What
+		- Admits only `PathRelative` with exactly one argument-free segment.
+		- Returns `null` for qualified, rooted, multi-segment, generic, or function-trait paths.
+
+		How
+		- Compare the returned name with a known binding table; a one-segment path is syntactically
+		  local-shaped but only the owning analysis knows whether that identifier is a binding.
+	**/
+	public function plainRelativeIdentifierName():Null<String> {
+		if (!isRelative() || segments.length != 1)
+			return null;
+		var segment = segments[0];
+		return segment.argumentStyle == PathArgumentsNone ? segment.identifier.name : null;
+	}
+
 	static function validateSegments(values:Array<RustPathSegment>):Array<RustPathSegment> {
 		if (values == null)
 			throw "Rust path segments cannot be null";
@@ -911,11 +933,25 @@ enum RustPattern {
 	PWildcard;
 	PBind(name:String);
 	PAlias(name:String, pattern:RustPattern);
-	PPath(path:String);
+	PPath(path:RustPath);
 	PLitInt(v:Int);
+	/**
+		Carries a stable `u32` pattern without target-literal text.
+
+		Why
+		- Compiler-generated type IDs may set the high bit and therefore cannot be represented as a
+		  positive Haxe `Int` or a Rust signed pattern.
+
+		What
+		- Stores the exact 32 bits in Haxe's signed `Int` representation.
+
+		How
+		- The printer renders canonical eight-digit hexadecimal plus the `u32` suffix.
+	**/
+	PLitUInt32(bits:Int);
 	PLitBool(v:Bool);
 	PLitString(v:String);
-	PTupleStruct(path:String, fields:Array<RustPattern>);
+	PTupleStruct(path:RustPath, fields:Array<RustPattern>);
 	POr(patterns:Array<RustPattern>);
 }
 
@@ -936,19 +972,33 @@ enum RustStmt {
 enum RustExpr {
 	ERaw(fragment:RustRawCode);
 	ELitInt(v:Int);
+	/**
+		Carries a stable `u32` expression literal without disguising it as a path or raw fragment.
+
+		Why
+		- Compiler-generated type IDs need all 32 bits, including values above signed `i32::MAX`.
+
+		What
+		- Stores the exact bit pattern in Haxe's signed `Int` representation.
+
+		How
+		- The printer owns hexadecimal/suffix syntax; passes may safely recognize the node as a copyable
+		  literal.
+	**/
+	ELitUInt32(bits:Int);
 	ELitFloat(v:Float);
 	ELitBool(v:Bool);
 	ELitString(v:String);
-	EPath(path:String);
+	EPath(path:RustPath);
 	ECall(func:RustExpr, args:Array<RustExpr>);
 	EMacroCall(name:String, args:Array<RustExpr>);
 	EClosure(args:Array<String>, body:RustBlock, isMove:Bool);
 	EBinary(op:String, left:RustExpr, right:RustExpr);
 	EUnary(op:String, expr:RustExpr);
 	ERange(start:RustExpr, end:RustExpr);
-	ECast(expr:RustExpr, ty:String);
+	ECast(expr:RustExpr, ty:RustType);
 	EIndex(recv:RustExpr, index:RustExpr);
-	EStructLit(path:String, fields:Array<RustStructLitField>);
+	EStructLit(path:RustPath, fields:Array<RustStructLitField>);
 	EBlock(b:RustBlock);
 	EIf(cond:RustExpr, thenExpr:RustExpr, elseExpr:Null<RustExpr>);
 	EMatch(scrutinee:RustExpr, arms:Array<RustMatchArm>);

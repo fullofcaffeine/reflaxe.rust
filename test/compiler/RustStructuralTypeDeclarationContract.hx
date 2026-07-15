@@ -82,7 +82,7 @@ class RustStructuralTypeDeclarationContract {
 						{name: "_callback", ty: callbackType}
 					],
 					ret: optionT,
-					body: {stmts: [], tail: EPath("None")}
+					body: {stmts: [], tail: EPath(RustPath.single("None"))}
 				}]
 			})
 		];

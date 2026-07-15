@@ -107,7 +107,7 @@ class StatementCleanupPass implements RustPass {
 
 	function rewriteExpr(expr:RustExpr):RustExpr {
 		return switch (expr) {
-			case ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 			case ECall(func, args):
 				ECall(rewriteExpr(func), [for (arg in args) rewriteExpr(arg)]);
@@ -204,9 +204,10 @@ class StatementCleanupPass implements RustPass {
 			}
 
 			var collapsed = switch (stmt) {
-				case RSemi(EAssign(EPath(name), rhs)) | RExpr(EAssign(EPath(name), rhs), true):
-					var pending = findPendingDecl(name);
-					if (pending != null) {
+				case RSemi(EAssign(EPath(path), rhs)) | RExpr(EAssign(EPath(path), rhs), true):
+					var name = path.plainRelativeIdentifierName();
+					var pending = name == null ? null : findPendingDecl(name);
+					if (name != null && pending != null) {
 						pendingDecls = [for (decl in pendingDecls) if (decl.name != name) decl];
 						var mutable = hasDirectAssignmentAfter(stmts, tail, i + 1, name);
 						RLet(name, mutable, pending.ty, rhs);
@@ -254,8 +255,9 @@ class StatementCleanupPass implements RustPass {
 
 		var lastStmt = block.stmts[block.stmts.length - 1];
 		var assignment = switch (lastStmt) {
-			case RSemi(EAssign(EPath(name), rhs)) | RExpr(EAssign(EPath(name), rhs), true):
-				{name: name, rhs: rhs};
+			case RSemi(EAssign(EPath(path), rhs)) | RExpr(EAssign(EPath(path), rhs), true):
+				var name = path.plainRelativeIdentifierName();
+				name == null ? null : {name: name, rhs: rhs};
 			case _:
 				null;
 		};
@@ -320,7 +322,7 @@ class StatementCleanupPass implements RustPass {
 
 	function exprHasDirectAssignmentToName(expr:RustExpr, name:String):Bool {
 		return switch (expr) {
-			case EAssign(EPath(lhs), rhs): lhs == name || exprHasDirectAssignmentToName(rhs, name);
+			case EAssign(EPath(lhs), rhs): lhs.plainRelativeIdentifierName() == name || exprHasDirectAssignmentToName(rhs, name);
 			case EAssign(lhs, rhs): exprHasDirectAssignmentToName(lhs, name) || exprHasDirectAssignmentToName(rhs, name);
 			case ECall(func, args): exprHasDirectAssignmentToName(func, name) || anyExprHasDirectAssignmentToName(args, name);
 			case EMacroCall(_, args):
@@ -344,7 +346,7 @@ class StatementCleanupPass implements RustPass {
 				exprHasDirectAssignmentToName(recv, name);
 			case EPinAsyncMove(body):
 				blockHasDirectAssignmentToName(body, name);
-			case ERaw(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				false;
 		};
 	}
@@ -390,7 +392,7 @@ class StatementCleanupPass implements RustPass {
 	function exprMentionsName(expr:RustExpr, name:String):Bool {
 		return switch (expr) {
 			case EPath(path):
-				path == name;
+				path.plainRelativeIdentifierName() == name;
 			case ECall(func, args): exprMentionsName(func, name) || anyExprMentionsName(args, name);
 			case EMacroCall(_, args):
 				anyExprMentionsName(args, name);
@@ -414,7 +416,7 @@ class StatementCleanupPass implements RustPass {
 				blockMentionsNameInBlock(body, name);
 			case ERaw(raw):
 				rawMentionsName(raw.code, name);
-			case ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
+			case ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				false;
 		};
 	}
@@ -456,7 +458,7 @@ class StatementCleanupPass implements RustPass {
 
 	function isPureExpr(expr:RustExpr):Bool {
 		return switch (expr) {
-			case EPath(_) | ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
+			case EPath(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				true;
 			case EField(recv, _):
 				isPureExpr(recv);

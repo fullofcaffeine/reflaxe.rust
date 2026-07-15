@@ -58,13 +58,6 @@ class NoHxrtPass implements RustPass {
 				samples.push(sample);
 		}
 
-		inline function recordPath(kind:String, path:String):Void {
-			if (path == null)
-				return;
-			if (isHxrtPath(path))
-				record(kind + " `" + path + "`");
-		}
-
 		var scanType:RustType->Void = null;
 		var scanPath:(RustPath, String)->Void = null;
 		var scanConstArgument:(RustConstArgument, String)->Void = null;
@@ -167,9 +160,9 @@ class NoHxrtPass implements RustPass {
 		scanPattern = function(pat:RustPattern):Void {
 			switch (pat) {
 				case PPath(path):
-					recordPath("pattern", path);
+					scanPath(path, "pattern");
 				case PTupleStruct(path, fields):
-					recordPath("pattern", path);
+					scanPath(path, "pattern");
 					for (field in fields)
 						scanPattern(field);
 				case POr(patterns):
@@ -218,7 +211,7 @@ class NoHxrtPass implements RustPass {
 					if (containsHxrt(raw.code))
 						record("raw expression [" + raw.authorityId() + ":" + raw.reasonId() + "] containing `hxrt::`");
 				case EPath(path):
-					recordPath("path", path);
+					scanPath(path, "path");
 				case ECall(func, args):
 					scanExpr(func);
 					for (arg in args)
@@ -238,12 +231,12 @@ class NoHxrtPass implements RustPass {
 					scanExpr(end);
 				case ECast(value, ty):
 					scanExpr(value);
-					recordPath("cast", ty);
+					scanType(ty);
 				case EIndex(recv, index):
 					scanExpr(recv);
 					scanExpr(index);
 				case EStructLit(path, fields):
-					recordPath("struct", path);
+					scanPath(path, "struct");
 					for (field in fields)
 						scanExpr(field.expr);
 				case EBlock(block):
@@ -268,7 +261,7 @@ class NoHxrtPass implements RustPass {
 					scanBlock(body);
 				case EAwait(value):
 					scanExpr(value);
-				case ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
+				case ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 			}
 		};
 
@@ -339,10 +332,6 @@ class NoHxrtPass implements RustPass {
 		}
 
 		return file;
-	}
-
-	static inline function isHxrtPath(path:String):Bool {
-		return containsHxrt(path);
 	}
 
 	static inline function containsHxrt(value:String):Bool {

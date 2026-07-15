@@ -10787,8 +10787,10 @@
       "directTypeReferences": [
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustRawCode",
-        "reflaxe.rust.ast.RustAST.RustStructLitField"
+        "reflaxe.rust.ast.RustAST.RustStructLitField",
+        "reflaxe.rust.ast.RustAST.RustType"
       ],
       "transitiveTypeReferences": [
         "reflaxe.rust.ast.RustAST.RustBlock",
@@ -10843,6 +10845,17 @@
           "typeReferences": []
         },
         {
+          "id": "enum-constructor:ELitUInt32",
+          "kind": "enum-constructor",
+          "name": "ELitUInt32",
+          "signature": "ELitUInt32 (bits : Int)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
           "id": "enum-constructor:ELitFloat",
           "kind": "enum-constructor",
           "name": "ELitFloat",
@@ -10879,12 +10892,14 @@
           "id": "enum-constructor:EPath",
           "kind": "enum-constructor",
           "name": "EPath",
-          "signature": "EPath (path : String)",
+          "signature": "EPath (path : RustPath)",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
           ],
-          "typeReferences": []
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
         },
         {
           "id": "enum-constructor:ECall",
@@ -10958,12 +10973,14 @@
           "id": "enum-constructor:ECast",
           "kind": "enum-constructor",
           "name": "ECast",
-          "signature": "ECast (expr : RustExpr, ty : String)",
+          "signature": "ECast (expr : RustExpr, ty : RustType)",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
           ],
-          "typeReferences": []
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustType"
+          ]
         },
         {
           "id": "enum-constructor:EIndex",
@@ -10980,12 +10997,13 @@
           "id": "enum-constructor:EStructLit",
           "kind": "enum-constructor",
           "name": "EStructLit",
-          "signature": "EStructLit (path : String, fields : Array < RustStructLitField >)",
+          "signature": "EStructLit (path : RustPath, fields : Array < RustStructLitField >)",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
           ],
           "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath",
             "reflaxe.rust.ast.RustAST.RustStructLitField"
           ]
         },
@@ -12411,6 +12429,17 @@
             "test:public-compatibility"
           ],
           "typeReferences": []
+        },
+        {
+          "id": "function:plainRelativeIdentifierName",
+          "kind": "function",
+          "name": "plainRelativeIdentifierName",
+          "signature": "public function plainRelativeIdentifierName () : Null < String >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
         }
       ]
     },
@@ -12765,8 +12794,25 @@
       "evidenceIds": [
         "test:public-compatibility"
       ],
-      "directTypeReferences": [],
-      "transitiveTypeReferences": [],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustPath"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType"
+      ],
       "operations": [
         {
           "id": "enum-constructor:PWildcard",
@@ -12805,7 +12851,20 @@
           "id": "enum-constructor:PPath",
           "kind": "enum-constructor",
           "name": "PPath",
-          "signature": "PPath (path : String)",
+          "signature": "PPath (path : RustPath)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        },
+        {
+          "id": "enum-constructor:PLitInt",
+          "kind": "enum-constructor",
+          "name": "PLitInt",
+          "signature": "PLitInt (v : Int)",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
@@ -12813,10 +12872,10 @@
           "typeReferences": []
         },
         {
-          "id": "enum-constructor:PLitInt",
+          "id": "enum-constructor:PLitUInt32",
           "kind": "enum-constructor",
-          "name": "PLitInt",
-          "signature": "PLitInt (v : Int)",
+          "name": "PLitUInt32",
+          "signature": "PLitUInt32 (bits : Int)",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
@@ -12849,12 +12908,14 @@
           "id": "enum-constructor:PTupleStruct",
           "kind": "enum-constructor",
           "name": "PTupleStruct",
-          "signature": "PTupleStruct (path : String, fields : Array < RustPattern >)",
+          "signature": "PTupleStruct (path : RustPath, fields : Array < RustPattern >)",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
           ],
-          "typeReferences": []
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
         },
         {
           "id": "enum-constructor:POr",
@@ -14887,17 +14948,6 @@
         "reflaxe.rust.ast.RustAST.RustType"
       ],
       "operations": [
-        {
-          "id": "function:rustStringTypePath",
-          "kind": "function",
-          "name": "rustStringTypePath",
-          "signature": "public static inline function rustStringTypePath (nullableStrings : Bool) : String",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
         {
           "id": "function:stringLiteralExpr",
           "kind": "function",

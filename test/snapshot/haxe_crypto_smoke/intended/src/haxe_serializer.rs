@@ -528,7 +528,7 @@ impl Serializer {
                             }
                             {
                                 let __s = c.clone();
-                                if __s == 0x22689edau32.clone() {
+                                if __s == 0x22689edau32 {
                                     let mut ucount: i32 = 0;
                                     crate::string_buf::StringBuf::add(
                                         &*({
@@ -637,7 +637,7 @@ impl Serializer {
                                         hxrt::dynamic::from(hxrt::string::HxString::from("h")),
                                     );
                                 } else {
-                                    if __s == 0x0d3c0cadu32.clone() {
+                                    if __s == 0x0d3c0cadu32 {
                                         let d: crate::HxRef<crate::date::Date> = {
                                             let __hx_dyn = v.clone();
                                             if __hx_dyn.is_null() {
@@ -663,7 +663,7 @@ impl Serializer {
                                             hxrt::dynamic::from(crate::date::Date::get_time(&*d)),
                                         );
                                     } else {
-                                        if __s == 0x39e0cd5bu32.clone() {
+                                        if __s == 0x39e0cd5bu32 {
                                             crate::string_buf::StringBuf::add(
                                                 &*({
                                                     let __b = __hx_this.borrow();
@@ -736,7 +736,7 @@ impl Serializer {
                                                 )),
                                             );
                                         } else {
-                                            if __s == 0xd0de220eu32.clone() {
+                                            if __s == 0xd0de220eu32 {
                                                 crate::string_buf::StringBuf::add(
                                                     &*({
                                                         let __b = __hx_this.borrow();
@@ -786,7 +786,7 @@ impl Serializer {
                                                     ),
                                                 );
                                             } else {
-                                                if __s == 0xd7e07825u32.clone() {
+                                                if __s == 0xd7e07825u32 {
                                                     crate::string_buf::StringBuf::add(
                                                         &*({
                                                             let __b = __hx_this.borrow();
@@ -837,7 +837,7 @@ impl Serializer {
                                                         ),
                                                     );
                                                 } else {
-                                                    if __s == 0x181f937bu32.clone() {
+                                                    if __s == 0x181f937bu32 {
                                                         crate::string_buf::StringBuf::add(
                                                             &*({
                                                                 let __b = __hx_this.borrow();
@@ -883,7 +883,7 @@ impl Serializer {
                                                             ),
                                                         );
                                                     } else {
-                                                        if __s == 0xc3d25954u32.clone() {
+                                                        if __s == 0xc3d25954u32 {
                                                             let v_4: crate::HxRef<
                                                                 hxrt::bytes::Bytes,
                                                             > = {
