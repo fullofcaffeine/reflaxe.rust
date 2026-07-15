@@ -409,6 +409,7 @@ run_snapshots_group() {
   run_stage "structural Rust path IR contract" npm run test:rust-structural-path-ir
   run_stage "structural Rust type declaration contract" npm run test:rust-structural-type-declarations
   run_stage "structural Rust expression path contract" npm run test:rust-structural-expression-paths
+  run_stage "structural Rust pass analysis contract" npm run test:rust-structural-pass-analysis
   run_stage "snapshots" run_snapshots
   intermediate_cleanup "snapshots"
 }

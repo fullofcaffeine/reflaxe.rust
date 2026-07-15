@@ -7,10 +7,9 @@ import reflaxe.rust.ast.RustAST.RustFile;
 import reflaxe.rust.ast.RustAST.RustFunction;
 import reflaxe.rust.ast.RustAST.RustItem;
 import reflaxe.rust.ast.RustAST.RustMatchArm;
-import reflaxe.rust.ast.RustAST.RustPath;
-import reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustStructLitField;
+import reflaxe.rust.ast.RustPathAnalysis;
 
 /**
 	CloneElisionPass
@@ -334,8 +333,9 @@ class CloneElisionPass implements RustPass {
 	function rewriteLastUseCloneSites(expr:RustExpr, localMoveSkipReason:String->Null<String>):RustExpr {
 		return switch (expr) {
 			case ECall(EPath(dynamicPath), [ECall(EField(EPath(localPath), "clone"), [])])
-				if (isDynamicFromPath(dynamicPath) && localPath.plainRelativeIdentifierName() != null):
-				var localName = localPath.plainRelativeIdentifierName();
+				if (RustPathAnalysis.matchesPlainRelative(dynamicPath, ["hxrt", "dynamic", "from"])
+					&& RustPathAnalysis.localIdentifierName(localPath) != null):
+				var localName = RustPathAnalysis.localIdentifierName(localPath);
 				var skipReason = localMoveSkipReason(localName);
 				if (skipReason == null) {
 					recordApplied("clone_elision.applied.last_use_dynamic_from");
@@ -344,8 +344,8 @@ class CloneElisionPass implements RustPass {
 					recordSkipped("clone_elision.skipped.last_use_dynamic_from." + skipReason);
 					expr;
 				}
-			case EMatch(ECall(EField(EPath(localPath), "clone"), []), arms) if (localPath.plainRelativeIdentifierName() != null):
-				var localName = localPath.plainRelativeIdentifierName();
+			case EMatch(ECall(EField(EPath(localPath), "clone"), []), arms) if (RustPathAnalysis.localIdentifierName(localPath) != null):
+				var localName = RustPathAnalysis.localIdentifierName(localPath);
 				var skipReason = localMoveSkipReason(localName);
 				var rewrittenArms = [
 					for (arm in arms)
@@ -480,7 +480,7 @@ class CloneElisionPass implements RustPass {
 	function countPathUsesInExpr(expr:RustExpr, pathName:String):Int {
 		return switch (expr) {
 			case EPath(p):
-				p.plainRelativeIdentifierName() == pathName ? 1 : 0;
+				RustPathAnalysis.localIdentifierName(p) == pathName ? 1 : 0;
 			case ECall(func, args):
 				var total = countPathUsesInExpr(func, pathName);
 				for (arg in args)
@@ -588,7 +588,8 @@ class CloneElisionPass implements RustPass {
 	function countDynamicFromCloneCandidatesInExpr(expr:RustExpr):Int {
 		return switch (expr) {
 			case ECall(EPath(dynamicPath), [ECall(EField(EPath(localPath), "clone"), [])])
-				if (isDynamicFromPath(dynamicPath) && localPath.plainRelativeIdentifierName() != null):
+				if (RustPathAnalysis.matchesPlainRelative(dynamicPath, ["hxrt", "dynamic", "from"])
+					&& RustPathAnalysis.localIdentifierName(localPath) != null):
 				1;
 			case ECall(func, args):
 				var total = countDynamicFromCloneCandidatesInExpr(func);
@@ -655,18 +656,6 @@ class CloneElisionPass implements RustPass {
 		if (metricId == null || metricId.length == 0 || count <= 0)
 			return;
 		appliedMetrics.set(metricId, (appliedMetrics.exists(metricId) ? appliedMetrics.get(metricId) : 0) + count);
-	}
-
-	static function isDynamicFromPath(path:RustPath):Bool {
-		if (path == null || !path.isRelative() || path.segmentCount != 3)
-			return false;
-		var expected = ["hxrt", "dynamic", "from"];
-		for (index in 0...expected.length) {
-			var segment = path.segmentAt(index);
-			if (segment.identifier.name != expected[index] || segment.argumentStyle != PathArgumentsNone)
-				return false;
-		}
-		return true;
 	}
 
 	inline function recordSkipped(reasonId:String, count:Int = 1):Void {

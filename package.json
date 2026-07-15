@@ -35,6 +35,7 @@
     "test:rust-structural-path-ir": "node test/scripts/rust-structural-path-ir.test.js && bash test/run-snapshots.sh --case hello_trace --no-diff",
     "test:rust-structural-type-declarations": "node test/scripts/rust-structural-type-declarations.test.js && bash test/run-snapshots.sh --case hello_trace --no-diff",
     "test:rust-structural-expression-paths": "node test/scripts/rust-structural-expression-paths.test.js && bash test/run-snapshots.sh --case hello_trace --no-diff",
+    "test:rust-structural-pass-analysis": "node test/scripts/rust-structural-pass-analysis.test.js && bash test/run-snapshots.sh --case hello_trace --no-diff",
     "test:architecture-capability": "node test/scripts/architecture-capability-manifest.test.js",
     "test:public-compatibility": "node test/scripts/public-compatibility-manifest.test.js",
     "test:generated-consumer-contract": "node test/scripts/generated-consumer-contract.test.js",

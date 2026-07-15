@@ -254,6 +254,13 @@ Agent policy:
   validated segments and typed type/const/lifetime arguments at the lowering boundary; the printer
   alone owns `::`, `<...>`, and expression/pattern turbofish punctuation. The same structural path
   intentionally prints `Vec<T>` in type position and `Vec::<T>` in expression position.
+- Structural Rust-path analysis gotcha: ownership, mutation, cleanup, clone, metal, and no-hxrt
+  passes must use `RustPathAnalysis` for local identity, exact target matching, namespace ownership,
+  and recursive traversal. Policy-relevant paths can live inside qualified self/trait roots, nested
+  type arguments, const paths, function-trait inputs/outputs, trait bounds, declaration defaults,
+  and compound patterns including every `PAlias` wrapper; never inspect printer text or maintain a
+  pass-local segment matcher. String scanning is reserved for explicitly classified raw fragments
+  whose syntax is unavailable structurally.
 - Rust identifier keyword gotcha: `RustNaming.isKeyword` includes backend-reserved legal identifiers
   (`std`, `core`, and `alloc`) for source-name allocation. Grammar validation must use
   `RustNaming.isRustKeyword` so structural paths accept those real crate segments while rejecting the

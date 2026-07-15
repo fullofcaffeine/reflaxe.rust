@@ -9,6 +9,7 @@ import reflaxe.rust.ast.RustAST.RustItem;
 import reflaxe.rust.ast.RustAST.RustMatchArm;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustStructLitField;
+import reflaxe.rust.ast.RustPathAnalysis;
 
 /**
 	BorrowScopeTighteningPass
@@ -326,7 +327,7 @@ class BorrowScopeTighteningPass implements RustPass {
 	function countPathUsesInExpr(expr:RustExpr, pathName:String):Int {
 		return switch (expr) {
 			case EPath(path):
-				path.plainRelativeIdentifierName() == pathName ? 1 : 0;
+				RustPathAnalysis.localIdentifierName(path) == pathName ? 1 : 0;
 			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				0;
 			case ECall(func, args):
@@ -495,7 +496,7 @@ class BorrowScopeTighteningPass implements RustPass {
 	function replacePathInExpr(expr:RustExpr, pathName:String, replacement:RustExpr):RustExpr {
 		return switch (expr) {
 			case EPath(path):
-				path.plainRelativeIdentifierName() == pathName ? replacement : expr;
+				RustPathAnalysis.localIdentifierName(path) == pathName ? replacement : expr;
 			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				expr;
 			case ECall(func, args):

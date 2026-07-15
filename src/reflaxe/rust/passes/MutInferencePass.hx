@@ -9,6 +9,7 @@ import reflaxe.rust.ast.RustAST.RustItem;
 import reflaxe.rust.ast.RustAST.RustMatchArm;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustStructLitField;
+import reflaxe.rust.ast.RustPathAnalysis;
 
 /**
 	MutInferencePass
@@ -220,7 +221,7 @@ class MutInferencePass implements RustPass {
 					switch (inner) {
 						case EPath(path):
 							if (StringTools.startsWith(op, "&mut")) {
-								var name = path.plainRelativeIdentifierName();
+								var name = RustPathAnalysis.localIdentifierName(path);
 								if (name != null) {
 									out.set(name, true);
 									hardMutable.set(name, true);
@@ -389,7 +390,7 @@ class MutInferencePass implements RustPass {
 	function directAssignsTarget(lhs:RustExpr, target:String):Bool {
 		return switch (lhs) {
 			case EPath(path):
-				path.plainRelativeIdentifierName() == target;
+				RustPathAnalysis.localIdentifierName(path) == target;
 			case _:
 				false;
 		}
@@ -407,7 +408,7 @@ class MutInferencePass implements RustPass {
 	function markAssignmentTarget(lhs:RustExpr, out:Map<String, Bool>):Void {
 		switch (lhs) {
 			case EPath(path):
-				var name = path.plainRelativeIdentifierName();
+				var name = RustPathAnalysis.localIdentifierName(path);
 				if (name != null)
 					out.set(name, true);
 			case EIndex(recv, _):

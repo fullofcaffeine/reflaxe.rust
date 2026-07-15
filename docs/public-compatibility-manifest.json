@@ -14025,6 +14025,137 @@
       ]
     },
     {
+      "name": "reflaxe.rust.ast.RustPathAnalysis",
+      "source": "src/reflaxe/rust/ast/RustPathAnalysis.hx",
+      "kind": "class",
+      "signature": "class RustPathAnalysis",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustGenericParameters",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustType"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustGenericParameter",
+        "reflaxe.rust.ast.RustAST.RustGenericParameters",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType"
+      ],
+      "operations": [
+        {
+          "id": "function:localIdentifierName",
+          "kind": "function",
+          "name": "localIdentifierName",
+          "signature": "public static function localIdentifierName (path : RustPath) : Null < String >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        },
+        {
+          "id": "function:matchesPlainRelative",
+          "kind": "function",
+          "name": "matchesPlainRelative",
+          "signature": "public static function matchesPlainRelative (path : RustPath, expectedNames : Array < String >) : Bool",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        },
+        {
+          "id": "function:belongsToNamespace",
+          "kind": "function",
+          "name": "belongsToNamespace",
+          "signature": "public static function belongsToNamespace (path : RustPath, namespace : String) : Bool",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        },
+        {
+          "id": "function:visitPathTree",
+          "kind": "function",
+          "name": "visitPathTree",
+          "signature": "public static function visitPathTree (path : RustPath, visitor : RustPath -> Void) : Void",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        },
+        {
+          "id": "function:visitTypeTree",
+          "kind": "function",
+          "name": "visitTypeTree",
+          "signature": "public static function visitTypeTree (type : RustType, visitor : RustPath -> Void) : Void",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath",
+            "reflaxe.rust.ast.RustAST.RustType"
+          ]
+        },
+        {
+          "id": "function:visitPatternTree",
+          "kind": "function",
+          "name": "visitPatternTree",
+          "signature": "public static function visitPatternTree (pattern : RustPattern, visitor : RustPath -> Void) : Void",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath",
+            "reflaxe.rust.ast.RustAST.RustPattern"
+          ]
+        },
+        {
+          "id": "function:visitGenericParameters",
+          "kind": "function",
+          "name": "visitGenericParameters",
+          "signature": "public static function visitGenericParameters (parameters : RustGenericParameters, visitor : RustPath -> Void) : Void",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustGenericParameters",
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        }
+      ]
+    },
+    {
       "name": "reflaxe.rust.CompilationContext",
       "source": "src/reflaxe/rust/CompilationContext.hx",
       "kind": "class",

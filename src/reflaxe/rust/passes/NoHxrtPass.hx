@@ -5,7 +5,6 @@ import reflaxe.rust.CompilationContext;
 import reflaxe.rust.RustDiagnostic;
 import reflaxe.rust.RustDiagnostic.RustDiagnosticId;
 import reflaxe.rust.ast.RustAST.RustBlock;
-import reflaxe.rust.ast.RustAST.RustConstArgument;
 import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustFile;
 import reflaxe.rust.ast.RustAST.RustGenericParameters;
@@ -15,6 +14,7 @@ import reflaxe.rust.ast.RustAST.RustRawCode;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustType;
 import reflaxe.rust.ast.RustASTPrinter;
+import reflaxe.rust.ast.RustPathAnalysis;
 
 /**
 	NoHxrtPass
@@ -60,116 +60,32 @@ class NoHxrtPass implements RustPass {
 
 		var scanType:RustType->Void = null;
 		var scanPath:(RustPath, String)->Void = null;
-		var scanConstArgument:(RustConstArgument, String)->Void = null;
 		var scanPattern:RustPattern->Void = null;
 		var scanBlock:RustBlock->Void = null;
 		var scanStmt:RustStmt->Void = null;
 		var scanExpr:RustExpr->Void = null;
 		var scanGenericParameters:RustGenericParameters->Void = null;
 
-		scanPath = function(path:RustPath, kind:String):Void {
-			if (path == null)
-				return;
-			// Semantic detection reads the validated leading segment. Printing is diagnostic display only.
-			if (path.firstIdentifierName() == "hxrt")
+		var recordHxrtPath = function(path:RustPath, kind:String):Void {
+			// Printing remains diagnostic display only; namespace identity comes from validated segments.
+			if (RustPathAnalysis.belongsToNamespace(path, "hxrt"))
 				record(kind + " `" + RustASTPrinter.printTypePath(path) + "`");
-			switch (path.root) {
-				case PathQualified(selfType, traitPath):
-					scanType(selfType);
-					if (traitPath != null)
-						scanPath(traitPath, kind);
-				case _:
-			}
-			for (segment in path) {
-				switch (segment.argumentStyle) {
-					case PathArgumentsAngle:
-						for (index in 0...segment.genericArgumentCount) {
-							switch (segment.genericArgumentAt(index)) {
-								case GenericType(type): scanType(type);
-								case GenericConst(argument): scanConstArgument(argument, kind);
-								case GenericLifetime(_):
-							}
-						}
-					case PathArgumentsParenthesized:
-						for (index in 0...segment.inputTypeCount)
-							scanType(segment.inputTypeAt(index));
-						if (segment.outputType != null)
-							scanType(segment.outputType);
-					case PathArgumentsNone:
-				}
-			}
 		};
 
-		scanConstArgument = function(argument:RustConstArgument, kind:String):Void {
-			if (argument == null)
-				return;
-			switch (argument.kind) {
-				case ConstPath:
-					if (argument.pathValue != null)
-						scanPath(argument.pathValue, kind);
-				case ConstInteger | ConstBoolean:
-			}
+		scanPath = function(path:RustPath, kind:String):Void {
+			RustPathAnalysis.visitPathTree(path, candidate -> recordHxrtPath(candidate, kind));
 		};
 
 		scanType = function(ty:RustType):Void {
-			switch (ty) {
-				case RNamed(path):
-					scanPath(path, "type");
-				case RBorrow(inner, _, _):
-					scanType(inner);
-				case RTuple(elements):
-					for (element in elements)
-						scanType(element);
-				case RSlice(element):
-					scanType(element);
-				case RArray(element, length):
-					scanType(element);
-					scanConstArgument(length, "type");
-				case RTraitObject(object):
-					for (bound in object) {
-						switch (bound) {
-							case GenericTraitBound(path, _): scanPath(path, "trait bound");
-							case GenericLifetimeBound(_):
-						}
-					}
-				case _:
-			}
+			RustPathAnalysis.visitTypeTree(ty, candidate -> recordHxrtPath(candidate, "type"));
 		};
 
 		scanGenericParameters = function(parameters:RustGenericParameters):Void {
-			for (parameter in parameters) {
-				switch (parameter) {
-					case GenericLifetimeParam(_, _):
-					case GenericTypeParam(_, bounds, defaultType):
-						for (bound in bounds) {
-							switch (bound) {
-								case GenericTraitBound(path, _): scanPath(path, "generic bound");
-								case GenericLifetimeBound(_):
-							}
-						}
-						if (defaultType != null)
-							scanType(defaultType);
-					case GenericConstParam(_, type, defaultValue):
-						scanType(type);
-						if (defaultValue != null)
-							scanConstArgument(defaultValue, "generic const default");
-				}
-			}
+			RustPathAnalysis.visitGenericParameters(parameters, candidate -> recordHxrtPath(candidate, "generic declaration"));
 		};
 
 		scanPattern = function(pat:RustPattern):Void {
-			switch (pat) {
-				case PPath(path):
-					scanPath(path, "pattern");
-				case PTupleStruct(path, fields):
-					scanPath(path, "pattern");
-					for (field in fields)
-						scanPattern(field);
-				case POr(patterns):
-					for (entry in patterns)
-						scanPattern(entry);
-				case _:
-			}
+			RustPathAnalysis.visitPatternTree(pat, candidate -> recordHxrtPath(candidate, "pattern"));
 		};
 
 		scanBlock = function(block:RustBlock):Void {
