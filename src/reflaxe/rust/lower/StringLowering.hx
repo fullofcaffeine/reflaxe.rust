@@ -53,8 +53,4 @@ class StringLowering {
 	public static inline function wrapRustStringExpr(nullableStrings:Bool, value:RustExpr):RustExpr {
 		return nullableStrings ? ECall(EPath(path(["hxrt", "string", "HxString", "from"])), [value]) : value;
 	}
-
-	public static inline function stringNullDefaultValue(nullableStrings:Bool):String {
-		return nullableStrings ? "hxrt::string::HxString::null()" : "String::new()";
-	}
 }

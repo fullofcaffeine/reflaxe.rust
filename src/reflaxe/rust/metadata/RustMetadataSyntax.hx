@@ -346,6 +346,8 @@ private class RustMetadataSyntaxParser {
 
 	function parseGenericArgument():RustGenericArgument {
 		skipWhitespace();
+		if (consumeKeyword("_"))
+			return GenericInfer;
 		if (peek("'"))
 			return GenericLifetime(parseLifetime());
 		if (isDigit(peekChar()) || matchesKeyword("true") || matchesKeyword("false"))

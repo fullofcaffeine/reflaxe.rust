@@ -7,6 +7,7 @@ import reflaxe.rust.ast.RustAST.RustFile;
 import reflaxe.rust.ast.RustAST.RustFunction;
 import reflaxe.rust.ast.RustAST.RustItem;
 import reflaxe.rust.ast.RustAST.RustMatchArm;
+import reflaxe.rust.ast.RustAST.RustMember;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustStructLitField;
 import reflaxe.rust.ast.RustPathAnalysis;
@@ -26,6 +27,10 @@ import reflaxe.rust.ast.RustPathAnalysis;
 
 	How
 	- Runs after expression lowering on the Rust AST.
+	- Compares `borrow` / `borrow_mut` as validated plain members and treats closure parameters,
+	  match-arm patterns, sequential `let` bindings, and `for` binders as lexical shadows when counting
+	  or replacing alias uses. Initializers and iterables are visited before their new binder enters
+	  scope.
 	- Only rewrites when all of the following hold:
 	  - borrow alias is a plain `let` (non-`mut`) binding,
 	  - alias is consumed exactly once,
@@ -231,11 +236,40 @@ class BorrowScopeTighteningPass implements RustPass {
 		return out;
 	}
 
+	/**
+		Reports whether an immediate borrow consumer is followed by another use of its outer alias.
+
+		Why
+		- A later same-named `let` initializer still sees the alias, but its following siblings and the
+		  block tail resolve to the new binding. Counting them as outer uses needlessly retains the borrow
+		  alias and defeats the scope-tightening contract.
+
+		What
+		- Scans in evaluation order, checking each initializer before treating its binder as a terminating
+		  shadow boundary.
+
+		How
+		- `fromIndex` names the already-rewritten consumer. The current-statement guard keeps this helper
+		  correct if another structural consumer form later admits a same-named `let` initializer.
+	**/
 	function hasPathUseAfter(stmts:Array<RustStmt>, tail:Null<RustExpr>, fromIndex:Int, pathName:String):Bool {
+		if (fromIndex >= 0 && fromIndex < stmts.length) {
+			switch (stmts[fromIndex]) {
+				case RLet(name, _, _, _) if (name == pathName):
+					return false;
+				case _:
+			}
+		}
 		var i = fromIndex + 1;
 		while (i < stmts.length) {
-			if (countPathUsesInStmt(stmts[i], pathName) > 0)
+			var stmt = stmts[i];
+			if (countPathUsesInStmt(stmt, pathName) > 0)
 				return true;
+			switch (stmt) {
+				case RLet(name, _, _, _) if (name == pathName):
+					return false;
+				case _:
+			}
 			i += 1;
 		}
 		if (tail != null && countPathUsesInExpr(tail, pathName) > 0)
@@ -243,7 +277,7 @@ class BorrowScopeTighteningPass implements RustPass {
 		return false;
 	}
 
-	function rewriteConsumerStmt(stmt:RustStmt, aliasName:String, target:RustExpr, method:String):Null<RustStmt> {
+	function rewriteConsumerStmt(stmt:RustStmt, aliasName:String, target:RustExpr, method:RustMember):Null<RustStmt> {
 		var replacement = borrowCall(target, method);
 		return switch (stmt) {
 			case RSemi(expr):
@@ -294,7 +328,7 @@ class BorrowScopeTighteningPass implements RustPass {
 		};
 	}
 
-	function extractBorrowAlias(stmt:RustStmt):Null<{name:String, target:RustExpr, method:String}> {
+	function extractBorrowAlias(stmt:RustStmt):Null<{name:String, target:RustExpr, method:RustMember}> {
 		return switch (stmt) {
 			case RLet(name, mutable, _, expr):
 				if (mutable || expr == null) {
@@ -302,7 +336,8 @@ class BorrowScopeTighteningPass implements RustPass {
 				} else {
 					switch (expr) {
 						case ECall(EField(target, method), []):
-							if (method != "borrow" && method != "borrow_mut") {
+							if (!RustPathAnalysis.matchesPlainMember(method, "borrow")
+								&& !RustPathAnalysis.matchesPlainMember(method, "borrow_mut")) {
 								null;
 							} else {
 								{
@@ -320,7 +355,7 @@ class BorrowScopeTighteningPass implements RustPass {
 		};
 	}
 
-	inline function borrowCall(target:RustExpr, method:String):RustExpr {
+	inline function borrowCall(target:RustExpr, method:RustMember):RustExpr {
 		return ECall(EField(target, method), []);
 	}
 
@@ -340,8 +375,8 @@ class BorrowScopeTighteningPass implements RustPass {
 				for (arg in args)
 					total += countPathUsesInExpr(arg, pathName);
 				total;
-			case EClosure(_, body, _):
-				countPathUsesInBlock(body, pathName);
+			case EClosure(args, body, _):
+				RustPathAnalysis.closureParametersBindName(args, pathName) ? 0 : countPathUsesInBlock(body, pathName);
 			case EBinary(_, left, right):
 				countPathUsesInExpr(left, pathName) + countPathUsesInExpr(right, pathName);
 			case EUnary(_, inner):
@@ -364,8 +399,10 @@ class BorrowScopeTighteningPass implements RustPass {
 					pathName) + countPathUsesInExpr(thenExpr, pathName) + (elseExpr == null ? 0 : countPathUsesInExpr(elseExpr, pathName));
 			case EMatch(scrutinee, arms):
 				var total = countPathUsesInExpr(scrutinee, pathName);
-				for (arm in arms)
-					total += countPathUsesInExpr(arm.expr, pathName);
+				for (arm in arms) {
+					if (!RustPathAnalysis.patternBindsName(arm.pat, pathName))
+						total += countPathUsesInExpr(arm.expr, pathName);
+				}
 				total;
 			case EAssign(lhs, rhs):
 				countPathUsesInExpr(lhs, pathName) + countPathUsesInExpr(rhs, pathName);
@@ -380,9 +417,18 @@ class BorrowScopeTighteningPass implements RustPass {
 
 	function countPathUsesInBlock(block:RustBlock, pathName:String):Int {
 		var total = 0;
-		for (stmt in block.stmts)
+		var shadowed = false;
+		for (stmt in block.stmts) {
+			if (shadowed)
+				break;
 			total += countPathUsesInStmt(stmt, pathName);
-		if (block.tail != null)
+			switch (stmt) {
+				case RLet(name, _, _, _) if (name == pathName):
+					shadowed = true;
+				case _:
+			}
+		}
+		if (!shadowed && block.tail != null)
 			total += countPathUsesInExpr(block.tail, pathName);
 		return total;
 	}
@@ -401,8 +447,8 @@ class BorrowScopeTighteningPass implements RustPass {
 				countPathUsesInExpr(cond, pathName) + countPathUsesInBlock(body, pathName);
 			case RLoop(body):
 				countPathUsesInBlock(body, pathName);
-			case RFor(_, iter, body):
-				countPathUsesInExpr(iter, pathName) + countPathUsesInBlock(body, pathName);
+			case RFor(name, iter, body):
+				countPathUsesInExpr(iter, pathName) + (name == pathName ? 0 : countPathUsesInBlock(body, pathName));
 			case RBreak | RContinue:
 				0;
 		};
@@ -504,7 +550,11 @@ class BorrowScopeTighteningPass implements RustPass {
 			case EMacroCall(name, args):
 				EMacroCall(name, [for (arg in args) replacePathInExpr(arg, pathName, replacement)]);
 			case EClosure(args, body, isMove):
-				EClosure(args, replacePathInBlock(body, pathName, replacement), isMove);
+				if (RustPathAnalysis.closureParametersBindName(args, pathName)) {
+					expr;
+				} else {
+					EClosure(args, replacePathInBlock(body, pathName, replacement), isMove);
+				}
 			case EBinary(op, left, right):
 				EBinary(op, replacePathInExpr(left, pathName, replacement), replacePathInExpr(right, pathName, replacement));
 			case EUnary(op, inner):
@@ -533,7 +583,7 @@ class BorrowScopeTighteningPass implements RustPass {
 					for (arm in arms)
 						{
 							pat: arm.pat,
-							expr: replacePathInExpr(arm.expr, pathName, replacement)
+							expr: RustPathAnalysis.patternBindsName(arm.pat, pathName) ? arm.expr : replacePathInExpr(arm.expr, pathName, replacement)
 						}
 				]);
 			case EAssign(lhs, rhs):
@@ -548,9 +598,23 @@ class BorrowScopeTighteningPass implements RustPass {
 	}
 
 	function replacePathInBlock(block:RustBlock, pathName:String, replacement:RustExpr):RustBlock {
+		var shadowed = false;
+		var stmts:Array<RustStmt> = [];
+		for (stmt in block.stmts) {
+			if (shadowed) {
+				stmts.push(stmt);
+				continue;
+			}
+			stmts.push(replacePathInStmt(stmt, pathName, replacement));
+			switch (stmt) {
+				case RLet(name, _, _, _) if (name == pathName):
+					shadowed = true;
+				case _:
+			}
+		}
 		return {
-			stmts: [for (stmt in block.stmts) replacePathInStmt(stmt, pathName, replacement)],
-			tail: block.tail == null ? null : replacePathInExpr(block.tail, pathName, replacement)
+			stmts: stmts,
+			tail: block.tail == null || shadowed ? block.tail : replacePathInExpr(block.tail, pathName, replacement)
 		};
 	}
 
@@ -569,7 +633,8 @@ class BorrowScopeTighteningPass implements RustPass {
 			case RLoop(body):
 				RLoop(replacePathInBlock(body, pathName, replacement));
 			case RFor(name, iter, body):
-				RFor(name, replacePathInExpr(iter, pathName, replacement), replacePathInBlock(body, pathName, replacement));
+				RFor(name, replacePathInExpr(iter, pathName, replacement),
+					name == pathName ? body : replacePathInBlock(body, pathName, replacement));
 			case RBreak | RContinue:
 				stmt;
 		};

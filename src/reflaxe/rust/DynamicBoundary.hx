@@ -10,20 +10,16 @@ package reflaxe.rust;
 	  makes boundary audits harder.
 
 	What
-	- Centralized constants/helpers for the unavoidable Haxe dynamic boundary type name.
+	- Centralizes the unavoidable Haxe dynamic boundary type name.
 
 	How
 	- Keep exactly one canonical `Dynamic` literal here.
-	- Callers use `typeName()` and `runtimeNamespace()` instead of hardcoding their own strings.
+	- Callers use `typeName()` instead of hardcoding their own strings. Rust runtime paths remain
+	  structural AST values owned by lowering code, never delimiter-bearing boundary strings.
 **/
 class DynamicBoundary {
 	/** Canonical Haxe type name for dynamic boundary lookups. */
 	public static inline function typeName():String {
 		return "Dynamic";
-	}
-
-	/** Canonical Rust runtime namespace backing the dynamic boundary carrier. */
-	public static inline function runtimeNamespace():String {
-		return "hxrt::dynamic::" + typeName();
 	}
 }

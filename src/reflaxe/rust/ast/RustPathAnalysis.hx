@@ -1,8 +1,11 @@
 package reflaxe.rust.ast;
 
 import reflaxe.rust.ast.RustAST.RustConstArgument;
+import reflaxe.rust.ast.RustAST.RustClosureParameter;
+import reflaxe.rust.ast.RustAST.RustGenericArgument;
 import reflaxe.rust.ast.RustAST.RustGenericParameters;
 import reflaxe.rust.ast.RustAST.RustIdentifier;
+import reflaxe.rust.ast.RustAST.RustMember;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustType;
@@ -60,19 +63,122 @@ class RustPathAnalysis {
 		  validated before comparison so punctuation cannot cross this boundary.
 	**/
 	public static function matchesPlainRelative(path:RustPath, expectedNames:Array<String>):Bool {
-		if (path == null
-			|| expectedNames == null
-			|| expectedNames.length == 0
-			|| !path.isRelative()
-			|| path.segmentCount != expectedNames.length)
+		if (path == null || !path.isRelative())
+			return false;
+		return matchesPlainSegments(path, expectedNames);
+	}
+
+	/**
+		Compares a path with one compiler-owned plain crate-rooted target path.
+
+		Why
+		- Metadata-backed native helpers can use `crate::...`; recognizing those targets needs the same
+		  exact segment rules as relative target matching without a compiler-local duplicate.
+
+		What
+		- Requires a crate root, exact segment count and identifier spellings, and no generic or
+		  parenthesized arguments.
+
+		How
+		- Pass bare compiler-owned identifier tokens. A relative path with the same tail does not match.
+	**/
+	public static function matchesPlainCrate(path:RustPath, expectedNames:Array<String>):Bool {
+		if (path == null)
+			return false;
+		switch (path.root) {
+			case PathCrate:
+			case _:
+				return false;
+		}
+		return matchesPlainSegments(path, expectedNames);
+	}
+
+	static function matchesPlainSegments(path:RustPath, expectedNames:Array<String>):Bool {
+		if (expectedNames == null || expectedNames.length == 0 || path.segmentCount != expectedNames.length)
 			return false;
 		for (index in 0...expectedNames.length) {
 			var expected = RustIdentifier.named(expectedNames[index]);
 			var segment = path.segmentAt(index);
-			if (segment.identifier.name != expected.name || segment.argumentStyle != PathArgumentsNone)
+			if (!segment.identifier.equals(expected) || segment.argumentStyle != PathArgumentsNone)
 				return false;
 		}
 		return true;
+	}
+
+	/**
+		Compares a receiver member with one compiler-owned plain member name.
+
+		Why
+		- Optimization passes must distinguish an exact `.clone()` or `.borrow()` call from a generic
+		  member with the same identifier without parsing a rendered suffix.
+
+		What
+		- Requires an argument-free member and the exact validated identifier spelling.
+
+		How
+		- Pass a bare compiler-owned identifier token. Generic members are intentionally rejected.
+	**/
+	public static function matchesPlainMember(member:RustMember, expectedName:String):Bool {
+		if (member == null)
+			return false;
+		var expected = RustIdentifier.named(expectedName);
+		return member.isPlain() && member.identifier.equals(expected);
+	}
+
+	/**
+		Reports whether a structural pattern introduces one exact binding name.
+
+		Why
+		- Closure-aware ownership and cleanup passes must respect tuple/alias shadowing without scanning
+		  rendered parameter strings.
+
+		What
+		- Recurses through aliases, tuple/tuple-struct patterns, and alternatives. Literals, paths, and
+		  wildcards introduce no bindings.
+
+		How
+		- Supply the compiler-owned local name already present in the lexical binding table.
+	**/
+	public static function patternBindsName(pattern:RustPattern, name:String):Bool {
+		if (pattern == null || name == null)
+			return false;
+		return switch (pattern) {
+			case PBind(binding): binding == name;
+			case PAlias(binding, inner): binding == name || patternBindsName(inner, name);
+			case PTuple(fields) | PTupleStruct(_, fields) | POr(fields): {
+					var found = false;
+					for (field in fields) {
+						if (patternBindsName(field, name)) {
+							found = true;
+							break;
+						}
+					}
+					found;
+				}
+			case PWildcard | PPath(_) | PLitInt(_) | PLitUInt32(_) | PLitBool(_) | PLitString(_): false;
+		};
+	}
+
+	/**
+		Reports whether any structural closure parameter shadows one local name.
+
+		Why
+		- Borrow, clone, mutation, and cleanup passes need the same lexical-boundary rule.
+
+		What
+		- Applies `patternBindsName` to each parameter pattern and ignores its type annotation.
+
+		How
+		- Use this before traversing or rewriting a closure body for an outer binding.
+	**/
+	public static function closureParametersBindName(parameters:Array<RustClosureParameter>, name:String):Bool {
+		if (parameters == null || name == null)
+			return false;
+		for (parameter in parameters) {
+			if (parameter != null && patternBindsName(parameter.patternValue, name))
+				return true;
+		}
+		return false;
 	}
 
 	/**
@@ -119,6 +225,29 @@ class RustPathAnalysis {
 	}
 
 	/**
+		Visits every structural path reachable from one receiver member's generic arguments.
+
+		Why
+		- Runtime and ownership policy must see paths inside `receiver.method::<Type>()` just as it sees
+		  paths inside ordinary expression paths.
+
+		What
+		- Expands type and const arguments in source order. Plain members and inferred/lifetime arguments
+		  contain no paths.
+
+		How
+		- The member identifier itself is not a path and does not trigger the callback.
+	**/
+	public static function visitMemberTree(member:RustMember, visitor:RustPath->Void):Void {
+		if (member == null)
+			throw "Cannot visit a null Rust member";
+		if (visitor == null)
+			throw "Rust path visitor cannot be null";
+		for (index in 0...member.genericArgumentCount)
+			visitGenericArgumentInternal(member.genericArgumentAt(index), visitor);
+	}
+
+	/**
 		Visits every structural path reachable from a Rust type.
 
 		Why
@@ -161,6 +290,29 @@ class RustPathAnalysis {
 		if (visitor == null)
 			throw "Rust path visitor cannot be null";
 		visitPatternTreeInternal(pattern, visitor);
+	}
+
+	/**
+		Visits every structural path reachable from one closure parameter.
+
+		Why
+		- Tuple-struct patterns and explicit parameter types are policy-relevant syntax even when the
+		  closure body never mentions them.
+
+		What
+		- Traverses the parameter pattern first, then its optional type annotation.
+
+		How
+		- Use this from expression visitors instead of maintaining separate pattern/type special cases.
+	**/
+	public static function visitClosureParameterTree(parameter:RustClosureParameter, visitor:RustPath->Void):Void {
+		if (parameter == null)
+			throw "Cannot visit a null Rust closure parameter";
+		if (visitor == null)
+			throw "Rust path visitor cannot be null";
+		visitPatternTreeInternal(parameter.patternValue, visitor);
+		if (parameter.ty != null)
+			visitTypeTreeInternal(parameter.ty, visitor);
 	}
 
 	/**
@@ -222,13 +374,8 @@ class RustPathAnalysis {
 		for (segment in path) {
 			switch (segment.argumentStyle) {
 				case PathArgumentsAngle:
-					for (index in 0...segment.genericArgumentCount) {
-						switch (segment.genericArgumentAt(index)) {
-							case GenericType(type): visitTypeTreeInternal(type, visitor);
-							case GenericConst(argument): visitConstArgumentInternal(argument, visitor);
-							case GenericLifetime(_):
-						}
-					}
+					for (index in 0...segment.genericArgumentCount)
+						visitGenericArgumentInternal(segment.genericArgumentAt(index), visitor);
 				case PathArgumentsParenthesized:
 					for (index in 0...segment.inputTypeCount)
 						visitTypeTreeInternal(segment.inputTypeAt(index), visitor);
@@ -270,6 +417,9 @@ class RustPathAnalysis {
 				visitPatternTreeInternal(inner, visitor);
 			case PPath(path):
 				visitPathTreeInternal(path, visitor);
+			case PTuple(fields):
+				for (field in fields)
+					visitPatternTreeInternal(field, visitor);
 			case PTupleStruct(path, fields):
 				visitPathTreeInternal(path, visitor);
 				for (field in fields)
@@ -278,6 +428,14 @@ class RustPathAnalysis {
 				for (entry in patterns)
 					visitPatternTreeInternal(entry, visitor);
 			case PWildcard | PBind(_) | PLitInt(_) | PLitUInt32(_) | PLitBool(_) | PLitString(_):
+		}
+	}
+
+	static function visitGenericArgumentInternal(argument:RustGenericArgument, visitor:RustPath->Void):Void {
+		switch (argument) {
+			case GenericType(type): visitTypeTreeInternal(type, visitor);
+			case GenericConst(value): visitConstArgumentInternal(value, visitor);
+			case GenericLifetime(_) | GenericInfer:
 		}
 	}
 

@@ -35,6 +35,8 @@ import reflaxe.rust.ast.RustPathAnalysis;
 	- Name-usage checks treat `ERaw` as a typed blind spot and conservatively scan its text for
 	  identifier references, because some std/native fallback boundaries still emit raw Rust that can
 	  mention local bindings.
+	- Closure parameters and match-arm patterns are inspected structurally, so a same-named inner
+	  binding shadows rather than falsely retaining an unused outer local.
 	- The pass stays intentionally conservative: it only collapses direct local assignments and only
 	  removes discarded expressions when they are side-effect-free.
 **/
@@ -193,14 +195,28 @@ class StatementCleanupPass implements RustPass {
 			pendingDecls = [];
 		}
 
+		function flushPendingShadowedBy(name:String):Void {
+			var pending = findPendingDecl(name);
+			if (pending == null)
+				return;
+			pendingDecls = [for (decl in pendingDecls) if (decl.name != name) decl];
+			out.push(RLet(pending.name, false, pending.ty, null));
+		}
+
 		var i = 0;
 		while (i < stmts.length) {
 			var stmt = stmts[i];
 			switch (stmt) {
 				case RLet(name, _, ty, null):
+					flushPendingShadowedBy(name);
 					pendingDecls.push({name: name, ty: ty});
 					i++;
 					continue;
+				case RLet(name, _, _, _):
+					// A same-block declaration starts a new lexical binding after its initializer. Emit any
+					// pending outer declaration before this statement so later assignments cannot attach to
+					// the wrong binding or reorder the shadow relationship.
+					flushPendingShadowedBy(name);
 				case _:
 			}
 
@@ -276,8 +292,17 @@ class StatementCleanupPass implements RustPass {
 			return null;
 
 		for (j in 0...block.stmts.length - 1) {
-			if (stmtMentionsName(block.stmts[j], assignment.name))
-				return null;
+			var stmt = block.stmts[j];
+			switch (stmt) {
+				case RLet(bindName, _, _, initializer):
+					if (initializer != null && exprMentionsName(initializer, assignment.name))
+						return null;
+					if (bindName == assignment.name)
+						return null;
+				case _:
+					if (stmtMentionsName(stmt, assignment.name))
+						return null;
+			}
 		}
 
 		var mutable = hasDirectAssignmentAfter(stmts, tail, currentIndex + 1, assignment.name);
@@ -293,9 +318,42 @@ class StatementCleanupPass implements RustPass {
 	}
 
 	function hasDirectAssignmentAfter(stmts:Array<RustStmt>, tail:Null<RustExpr>, startIndex:Int, name:String):Bool {
+		return statementsHaveDirectAssignmentToName(stmts, tail, startIndex, name);
+	}
+
+	/**
+		Scans one lexical block for assignments to an already-declared outer local.
+
+		Why
+		- A nested `let value = initializer` does not shadow the outer `value` inside its initializer,
+		  but it does shadow that spelling in every following sibling statement and in the block tail.
+		- Treating a block as an unordered collection lets writes to the inner binding make the outer
+		  collapsed declaration spuriously mutable, which becomes an `unused_mut` error under the
+		  generated crate's warning policy.
+
+		What
+		- Visits statements in Rust evaluation order, admitting initializer evidence before applying the
+		  new binding as a scope boundary.
+		- Stops the scan when a same-named `let` enters scope; nested blocks perform the same analysis
+		  independently and therefore cannot hide the outer binding after their own scope ends.
+
+		How
+		- `startIndex` supports the existing post-collapse scan without slicing or copying the statement
+		  array.
+		- Non-`let` statements delegate to the structural expression/statement traversal below.
+	**/
+	function statementsHaveDirectAssignmentToName(stmts:Array<RustStmt>, tail:Null<RustExpr>, startIndex:Int, name:String):Bool {
 		for (i in startIndex...stmts.length) {
-			if (stmtHasDirectAssignmentToName(stmts[i], name))
-				return true;
+			switch (stmts[i]) {
+				case RLet(bindName, _, _, initializer):
+					if (initializer != null && exprHasDirectAssignmentToName(initializer, name))
+						return true;
+					if (bindName == name)
+						return false;
+				case stmt:
+					if (stmtHasDirectAssignmentToName(stmt, name))
+						return true;
+			}
 		}
 		return tail != null && exprHasDirectAssignmentToName(tail, name);
 	}
@@ -307,18 +365,15 @@ class StatementCleanupPass implements RustPass {
 			case RWhile(cond, body): exprHasDirectAssignmentToName(cond, name) || blockHasDirectAssignmentToName(body, name);
 			case RLoop(body):
 				blockHasDirectAssignmentToName(body, name);
-			case RFor(_, iter, body): exprHasDirectAssignmentToName(iter, name) || blockHasDirectAssignmentToName(body, name);
+			case RFor(bindName, iter, body):
+				exprHasDirectAssignmentToName(iter, name) || (bindName != name && blockHasDirectAssignmentToName(body, name));
 			case RBreak | RContinue:
 				false;
 		};
 	}
 
 	function blockHasDirectAssignmentToName(block:RustBlock, name:String):Bool {
-		for (stmt in block.stmts) {
-			if (stmtHasDirectAssignmentToName(stmt, name))
-				return true;
-		}
-		return block.tail != null && exprHasDirectAssignmentToName(block.tail, name);
+		return statementsHaveDirectAssignmentToName(block.stmts, block.tail, 0, name);
 	}
 
 	function exprHasDirectAssignmentToName(expr:RustExpr, name:String):Bool {
@@ -328,8 +383,8 @@ class StatementCleanupPass implements RustPass {
 			case ECall(func, args): exprHasDirectAssignmentToName(func, name) || anyExprHasDirectAssignmentToName(args, name);
 			case EMacroCall(_, args):
 				anyExprHasDirectAssignmentToName(args, name);
-			case EClosure(_, body, _):
-				blockHasDirectAssignmentToName(body, name);
+			case EClosure(parameters, body, _):
+				!RustPathAnalysis.closureParametersBindName(parameters, name) && blockHasDirectAssignmentToName(body, name);
 			case EBinary(_, left, right): exprHasDirectAssignmentToName(left, name) || exprHasDirectAssignmentToName(right, name);
 			case EUnary(_, inner) | ECast(inner, _) | EAwait(inner):
 				exprHasDirectAssignmentToName(inner, name);
@@ -366,21 +421,51 @@ class StatementCleanupPass implements RustPass {
 	}
 
 	function blockMentionsNameAfter(stmts:Array<RustStmt>, tail:Null<RustExpr>, startIndex:Int, name:String):Bool {
+		return statementsMentionName(stmts, tail, startIndex, name);
+	}
+
+	/**
+		Scans one lexical block for uses of an outer local without mistaking shadow binders for uses.
+
+		Why
+		- Binding a nested `value` is not itself a read of an outer `value`; only the new binding's
+		  initializer can still refer to the outer local.
+		- False uses prevent unused compiler temporaries from becoming `let _ = ...`, leaving generated
+		  crates with warning-producing names even though the nested scope uses a different binding.
+
+		What
+		- Mirrors `statementsHaveDirectAssignmentToName`: initializer first, then a same-named `let`
+		  terminates the scan for the rest of that lexical block.
+
+		How
+		- Nested expressions delegate back through `exprMentionsName`; a nested block owns its own stop
+		  boundary, while scanning resumes normally after that block in the enclosing scope.
+	**/
+	function statementsMentionName(stmts:Array<RustStmt>, tail:Null<RustExpr>, startIndex:Int, name:String):Bool {
 		for (i in startIndex...stmts.length) {
-			if (stmtMentionsName(stmts[i], name))
-				return true;
+			switch (stmts[i]) {
+				case RLet(bindName, _, _, initializer):
+					if (initializer != null && exprMentionsName(initializer, name))
+						return true;
+					if (bindName == name)
+						return false;
+				case stmt:
+					if (stmtMentionsName(stmt, name))
+						return true;
+			}
 		}
 		return tail != null && exprMentionsName(tail, name);
 	}
 
 	function stmtMentionsName(stmt:RustStmt, name:String):Bool {
 		return switch (stmt) {
-			case RLet(bindName, _, _, expr): bindName == name || (expr != null && exprMentionsName(expr, name));
+			case RLet(_, _, _, expr): expr != null && exprMentionsName(expr, name);
 			case RSemi(expr) | RExpr(expr, _) | RReturn(expr): expr != null && exprMentionsName(expr, name);
 			case RWhile(cond, body): exprMentionsName(cond, name) || blockMentionsNameInBlock(body, name);
 			case RLoop(body):
 				blockMentionsNameInBlock(body, name);
-			case RFor(bindName, iter, body): bindName == name || exprMentionsName(iter, name) || blockMentionsNameInBlock(body, name);
+			case RFor(bindName, iter, body):
+				exprMentionsName(iter, name) || (bindName != name && blockMentionsNameInBlock(body, name));
 			case RBreak | RContinue:
 				false;
 		};
@@ -397,7 +482,8 @@ class StatementCleanupPass implements RustPass {
 			case ECall(func, args): exprMentionsName(func, name) || anyExprMentionsName(args, name);
 			case EMacroCall(_, args):
 				anyExprMentionsName(args, name);
-			case EClosure(args, body, _): arrayHasString(args, name) || blockMentionsNameInBlock(body, name);
+			case EClosure(parameters, body, _):
+				!RustPathAnalysis.closureParametersBindName(parameters, name) && blockMentionsNameInBlock(body, name);
 			case EBinary(_, left, right): exprMentionsName(left, name) || exprMentionsName(right, name);
 			case EUnary(_, inner) | ECast(inner, _) | EAwait(inner):
 				exprMentionsName(inner, name);
@@ -521,7 +607,7 @@ class StatementCleanupPass implements RustPass {
 
 	function anyArmHasDirectAssignmentToName(arms:Array<RustMatchArm>, name:String):Bool {
 		for (arm in arms) {
-			if (exprHasDirectAssignmentToName(arm.expr, name))
+			if (!RustPathAnalysis.patternBindsName(arm.pat, name) && exprHasDirectAssignmentToName(arm.expr, name))
 				return true;
 		}
 		return false;
@@ -545,17 +631,10 @@ class StatementCleanupPass implements RustPass {
 
 	function anyArmMentionsName(arms:Array<RustMatchArm>, name:String):Bool {
 		for (arm in arms) {
-			if (exprMentionsName(arm.expr, name))
+			if (!RustPathAnalysis.patternBindsName(arm.pat, name) && exprMentionsName(arm.expr, name))
 				return true;
 		}
 		return false;
 	}
 
-	function arrayHasString(values:Array<String>, name:String):Bool {
-		for (value in values) {
-			if (value == name)
-				return true;
-		}
-		return false;
-	}
 }

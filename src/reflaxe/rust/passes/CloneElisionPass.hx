@@ -27,6 +27,10 @@ import reflaxe.rust.ast.RustPathAnalysis;
 
 	How
 	- Recursively rewrites Rust AST items/functions/blocks/expressions.
+	- Recognizes only an argument-free structural `clone` member; a generic member with the same name
+	  is not an optimization candidate.
+	- Excludes paths shadowed by closure parameters, match-arm patterns, sequential `let` bindings, or
+	  `for` binders from outer-local use counts and rewrite evidence.
 	- Restricts last-use elision to top-level statement expressions where the move site is explicit
 	  and the local is not used later (`match` scrutinees, `hxrt::dynamic::from(...)`).
 	- Disables last-use elision inside loops and closure/async-closure bodies to avoid move-safety drift.
@@ -188,15 +192,15 @@ class CloneElisionPass implements RustPass {
 
 	function simplifyCloneExpr(expr:RustExpr):RustExpr {
 		return switch (expr) {
-			case ECall(EField(target, "clone"), []):
+			case ECall(EField(target, member), []) if (RustPathAnalysis.matchesPlainMember(member, "clone")):
 				if (isAlwaysCloneSafeExpr(target)) {
 					recordApplied("clone_elision.applied.literal_clone");
 					target;
 				} else {
 					switch (target) {
-						case ECall(EField(inner, "clone"), []):
+						case ECall(EField(inner, innerMember), []) if (RustPathAnalysis.matchesPlainMember(innerMember, "clone")):
 							recordApplied("clone_elision.applied.nested_clone");
-							ECall(EField(inner, "clone"), []);
+							ECall(EField(inner, innerMember), []);
 						case _:
 							expr;
 					}
@@ -332,8 +336,9 @@ class CloneElisionPass implements RustPass {
 	**/
 	function rewriteLastUseCloneSites(expr:RustExpr, localMoveSkipReason:String->Null<String>):RustExpr {
 		return switch (expr) {
-			case ECall(EPath(dynamicPath), [ECall(EField(EPath(localPath), "clone"), [])])
+			case ECall(EPath(dynamicPath), [ECall(EField(EPath(localPath), member), [])])
 				if (RustPathAnalysis.matchesPlainRelative(dynamicPath, ["hxrt", "dynamic", "from"])
+					&& RustPathAnalysis.matchesPlainMember(member, "clone")
 					&& RustPathAnalysis.localIdentifierName(localPath) != null):
 				var localName = RustPathAnalysis.localIdentifierName(localPath);
 				var skipReason = localMoveSkipReason(localName);
@@ -344,14 +349,15 @@ class CloneElisionPass implements RustPass {
 					recordSkipped("clone_elision.skipped.last_use_dynamic_from." + skipReason);
 					expr;
 				}
-			case EMatch(ECall(EField(EPath(localPath), "clone"), []), arms) if (RustPathAnalysis.localIdentifierName(localPath) != null):
+			case EMatch(ECall(EField(EPath(localPath), member), []), arms)
+				if (RustPathAnalysis.matchesPlainMember(member, "clone") && RustPathAnalysis.localIdentifierName(localPath) != null):
 				var localName = RustPathAnalysis.localIdentifierName(localPath);
 				var skipReason = localMoveSkipReason(localName);
 				var rewrittenArms = [
 					for (arm in arms)
 						{
 							pat: arm.pat,
-							expr: rewriteLastUseCloneSites(arm.expr, localMoveSkipReason)
+							expr: rewriteLastUseCloneSites(arm.expr, matchArmMoveSkipReason(arm, localMoveSkipReason))
 						}
 				];
 				if (skipReason == null) {
@@ -359,7 +365,7 @@ class CloneElisionPass implements RustPass {
 					EMatch(EPath(localPath), rewrittenArms);
 				} else {
 					recordSkipped("clone_elision.skipped.last_use_match_scrutinee." + skipReason);
-					EMatch(ECall(EField(EPath(localPath), "clone"), []), rewrittenArms);
+					EMatch(ECall(EField(EPath(localPath), member), []), rewrittenArms);
 				}
 			case ECall(func, args):
 				var rewrittenFunc = rewriteLastUseCloneSites(func, localMoveSkipReason);
@@ -386,10 +392,7 @@ class CloneElisionPass implements RustPass {
 						}
 				]);
 			case EBlock(block):
-				EBlock({
-					stmts: [for (stmt in block.stmts) rewriteLastUseCloneStmt(stmt, localMoveSkipReason)],
-					tail: block.tail == null ? null : rewriteLastUseCloneSites(block.tail, localMoveSkipReason)
-				});
+				EBlock(rewriteLastUseCloneBlock(block, localMoveSkipReason));
 			case EIf(cond, thenExpr, elseExpr):
 				EIf(rewriteLastUseCloneSites(cond, localMoveSkipReason), rewriteLastUseCloneSites(thenExpr, localMoveSkipReason),
 					elseExpr == null ? null : rewriteLastUseCloneSites(elseExpr, localMoveSkipReason));
@@ -398,7 +401,7 @@ class CloneElisionPass implements RustPass {
 					for (arm in arms)
 						{
 							pat: arm.pat,
-							expr: rewriteLastUseCloneSites(arm.expr, localMoveSkipReason)
+							expr: rewriteLastUseCloneSites(arm.expr, matchArmMoveSkipReason(arm, localMoveSkipReason))
 						}
 				]);
 			case EAssign(lhs, rhs):
@@ -408,6 +411,76 @@ class CloneElisionPass implements RustPass {
 			case EClosure(_, _, _) | EPinAsyncMove(_) | EAwait(_) | ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 		};
+	}
+
+	/**
+		Rewrites a nested block without carrying outer-binding evidence through a new `let`.
+
+		Why
+		- Rust evaluates a `let` initializer in the old scope and introduces the new binding only for
+		  later statements and the block tail.
+		- Reusing the spelling of an outer movable local for a reference-typed inner local can make clone
+		  removal change the resulting type, so name-only evidence must stop at the lexical boundary.
+
+		What
+		- Rewrites each initializer with the current predicate, then rejects outer evidence for the newly
+		  bound spelling while rewriting subsequent siblings and the tail.
+
+		How
+		- Advances an immutable predicate chain after each non-wildcard `RLet`; the original predicate is
+		  still used for the initializer because the chain advances only after that statement is visited.
+	**/
+	function rewriteLastUseCloneBlock(block:RustBlock, outerSkipReason:String->Null<String>):RustBlock {
+		var currentSkipReason = outerSkipReason;
+		var rewrittenStmts:Array<RustStmt> = [];
+		for (stmt in block.stmts) {
+			rewrittenStmts.push(rewriteLastUseCloneStmt(stmt, currentSkipReason));
+			switch (stmt) {
+				case RLet(name, _, _, _) if (name != "_"):
+					currentSkipReason = bindingMoveSkipReason(name, currentSkipReason);
+				case _:
+			}
+		}
+		return {
+			stmts: rewrittenStmts,
+			tail: block.tail == null ? null : rewriteLastUseCloneSites(block.tail, currentSkipReason)
+		};
+	}
+
+	/**
+		Protects match-arm bindings from outer-local move evidence.
+
+		Why
+		- A path inside an arm can spell the same name as a movable local outside the match while
+		  resolving to the arm pattern's new binding.
+
+		What
+		- Returns a deterministic `shadowed_binding` rejection for names introduced by the arm pattern.
+
+		How
+		- Uses structural pattern binding analysis before delegating every unshadowed name to the
+		  enclosing move-safety predicate.
+	**/
+	function matchArmMoveSkipReason(arm:RustMatchArm, outerSkipReason:String->Null<String>):String->Null<String> {
+		return localName -> RustPathAnalysis.patternBindsName(arm.pat, localName) ? "shadowed_binding" : outerSkipReason(localName);
+	}
+
+	/**
+		Builds the move-safety predicate after one lexical binding enters scope.
+
+		Why
+		- The outer predicate owns type and last-use facts for a different binding even when its name is
+		  reused, so delegating the reused spelling would apply evidence to the wrong Rust value.
+
+		What
+		- Rejects the newly bound spelling deterministically and delegates every other local unchanged.
+
+		How
+		- `rewriteLastUseCloneBlock` installs the returned predicate only after rewriting the binding's
+		  initializer, matching Rust's lexical evaluation order.
+	**/
+	function bindingMoveSkipReason(bindingName:String, outerSkipReason:String->Null<String>):String->Null<String> {
+		return localName -> localName == bindingName ? "shadowed_binding" : outerSkipReason(localName);
 	}
 
 	function rewriteLastUseCloneStmt(stmt:RustStmt, localMoveSkipReason:String->Null<String>):RustStmt {
@@ -420,22 +493,55 @@ class CloneElisionPass implements RustPass {
 				RExpr(rewriteLastUseCloneSites(expr, localMoveSkipReason), needsSemicolon);
 			case RReturn(expr):
 				RReturn(expr == null ? null : rewriteLastUseCloneSites(expr, localMoveSkipReason));
-			case RWhile(cond, body):
-				RWhile(cond, body);
-			case RLoop(body):
-				RLoop(body);
-			case RFor(name, iter, body):
-				RFor(name, iter, body);
+			// Loop statements remain opaque here because their bodies may execute repeatedly. Their lexical
+			// binders are nevertheless modeled by use counting, so they cannot create false outer last-use
+			// evidence for a later rewrite site in the same owning expression.
+			case RWhile(_, _) | RLoop(_) | RFor(_, _, _):
+				stmt;
 			case RBreak | RContinue:
 				stmt;
 		};
 	}
 
+	/**
+		Reports whether a clone candidate has a later use in the same outer binding scope.
+
+		Why
+		- Last-use elision is valid across a later same-named shadow, but not across a use in that shadow's
+		  initializer because the initializer still executes in the outer scope.
+		- A candidate can itself be inside the shadowing `let` initializer, after which every sibling and
+		  the tail belongs to the new binding.
+
+		What
+		- Handles both the current-statement binder and later binders while preserving initializer-first
+		  Rust evaluation order.
+
+		How
+		- Expression-local multiplicity is checked by the caller. This helper checks only later statements
+		  and the tail, stopping after a same-named initializer reports no outer use.
+	**/
 	function hasPathUseAfter(stmts:Array<RustStmt>, tail:Null<RustExpr>, fromIndex:Int, pathName:String):Bool {
+		// A candidate inside a same-named `let` initializer is the final outer-scope use: the binding
+		// enters scope immediately after that statement, before any following sibling or the tail.
+		if (fromIndex >= 0 && fromIndex < stmts.length) {
+			switch (stmts[fromIndex]) {
+				case RLet(name, _, _, _) if (name == pathName):
+					return false;
+				case _:
+			}
+		}
 		var i = fromIndex + 1;
 		while (i < stmts.length) {
-			if (countPathUsesInStmt(stmts[i], pathName) > 0)
+			var stmt = stmts[i];
+			if (countPathUsesInStmt(stmt, pathName) > 0)
 				return true;
+			// The initializer above was evaluated in the outer scope. Only after it reports no use may
+			// the new binding terminate the scan for later siblings and the block tail.
+			switch (stmt) {
+				case RLet(name, _, _, _) if (name == pathName):
+					return false;
+				case _:
+			}
 			i += 1;
 		}
 		if (tail != null && countPathUsesInExpr(tail, pathName) > 0)
@@ -452,29 +558,50 @@ class CloneElisionPass implements RustPass {
 			case RReturn(expr):
 				expr == null ? 0 : countPathUsesInExpr(expr, pathName);
 			case RWhile(cond, body):
-				var total = countPathUsesInExpr(cond, pathName);
-				for (inner in body.stmts)
-					total += countPathUsesInStmt(inner, pathName);
-				if (body.tail != null)
-					total += countPathUsesInExpr(body.tail, pathName);
-				total;
+				countPathUsesInExpr(cond, pathName) + countPathUsesInBlock(body, pathName);
 			case RLoop(body):
-				var total = 0;
-				for (inner in body.stmts)
-					total += countPathUsesInStmt(inner, pathName);
-				if (body.tail != null)
-					total += countPathUsesInExpr(body.tail, pathName);
-				total;
-			case RFor(_, iter, body):
+				countPathUsesInBlock(body, pathName);
+			case RFor(name, iter, body):
 				var total = countPathUsesInExpr(iter, pathName);
-				for (inner in body.stmts)
-					total += countPathUsesInStmt(inner, pathName);
-				if (body.tail != null)
-					total += countPathUsesInExpr(body.tail, pathName);
+				if (name != pathName)
+					total += countPathUsesInBlock(body, pathName);
 				total;
 			case RBreak | RContinue:
 				0;
 		};
+	}
+
+	/**
+		Counts uses of one outer binding across a lexical Rust block.
+
+		Why
+		- Counting every same-spelled path in a nested block mistakes inner `let` and `for` bindings for
+		  later uses of the outer local, producing both missed optimizations and unsafe move evidence.
+
+		What
+		- Counts a shadowing `let` initializer in the outer scope, then stops at that binding for all later
+		  siblings and the tail. Statement-specific recursion handles a `for` iterable before its binder.
+
+		How
+		- Walks statements in source order and flips a local shadow flag only after visiting the matching
+		  `RLet`, mirroring `rewriteLastUseCloneBlock` exactly.
+	**/
+	function countPathUsesInBlock(block:RustBlock, pathName:String):Int {
+		var total = 0;
+		var shadowed = false;
+		for (stmt in block.stmts) {
+			if (shadowed)
+				break;
+			total += countPathUsesInStmt(stmt, pathName);
+			switch (stmt) {
+				case RLet(name, _, _, _) if (name == pathName):
+					shadowed = true;
+				case _:
+			}
+		}
+		if (!shadowed && block.tail != null)
+			total += countPathUsesInExpr(block.tail, pathName);
+		return total;
 	}
 
 	function countPathUsesInExpr(expr:RustExpr, pathName:String):Int {
@@ -491,13 +618,12 @@ class CloneElisionPass implements RustPass {
 				for (arg in args)
 					total += countPathUsesInExpr(arg, pathName);
 				total;
-			case EClosure(_, body, _):
-				var total = 0;
-				for (stmt in body.stmts)
-					total += countPathUsesInStmt(stmt, pathName);
-				if (body.tail != null)
-					total += countPathUsesInExpr(body.tail, pathName);
-				total;
+			case EClosure(args, body, _):
+				if (RustPathAnalysis.closureParametersBindName(args, pathName)) {
+					0;
+				} else {
+					countPathUsesInBlock(body, pathName);
+				}
 			case EBinary(_, left, right):
 				countPathUsesInExpr(left, pathName) + countPathUsesInExpr(right, pathName);
 			case EUnary(_, inner) | ECast(inner, _) | EAwait(inner):
@@ -512,31 +638,23 @@ class CloneElisionPass implements RustPass {
 					total += countPathUsesInExpr(field.expr, pathName);
 				total;
 			case EBlock(block):
-				var total = 0;
-				for (stmt in block.stmts)
-					total += countPathUsesInStmt(stmt, pathName);
-				if (block.tail != null)
-					total += countPathUsesInExpr(block.tail, pathName);
-				total;
+				countPathUsesInBlock(block, pathName);
 			case EIf(cond, thenExpr, elseExpr):
 				countPathUsesInExpr(cond,
 					pathName) + countPathUsesInExpr(thenExpr, pathName) + (elseExpr == null ? 0 : countPathUsesInExpr(elseExpr, pathName));
 			case EMatch(scrutinee, arms):
 				var total = countPathUsesInExpr(scrutinee, pathName);
-				for (arm in arms)
-					total += countPathUsesInExpr(arm.expr, pathName);
+				for (arm in arms) {
+					if (!RustPathAnalysis.patternBindsName(arm.pat, pathName))
+						total += countPathUsesInExpr(arm.expr, pathName);
+				}
 				total;
 			case EAssign(lhs, rhs):
 				countPathUsesInExpr(lhs, pathName) + countPathUsesInExpr(rhs, pathName);
 			case EField(recv, _):
 				countPathUsesInExpr(recv, pathName);
 			case EPinAsyncMove(body):
-				var total = 0;
-				for (stmt in body.stmts)
-					total += countPathUsesInStmt(stmt, pathName);
-				if (body.tail != null)
-					total += countPathUsesInExpr(body.tail, pathName);
-				total;
+				countPathUsesInBlock(body, pathName);
 			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				0;
 		};
@@ -587,8 +705,9 @@ class CloneElisionPass implements RustPass {
 
 	function countDynamicFromCloneCandidatesInExpr(expr:RustExpr):Int {
 		return switch (expr) {
-			case ECall(EPath(dynamicPath), [ECall(EField(EPath(localPath), "clone"), [])])
+			case ECall(EPath(dynamicPath), [ECall(EField(EPath(localPath), member), [])])
 				if (RustPathAnalysis.matchesPlainRelative(dynamicPath, ["hxrt", "dynamic", "from"])
+					&& RustPathAnalysis.matchesPlainMember(member, "clone")
 					&& RustPathAnalysis.localIdentifierName(localPath) != null):
 				1;
 			case ECall(func, args):

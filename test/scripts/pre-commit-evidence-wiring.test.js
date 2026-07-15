@@ -27,6 +27,7 @@ requireFragment('test:rust-structural-path-ir', 'structural Rust path IR contrac
 requireFragment('test:rust-structural-type-declarations', 'structural Rust type declaration contract')
 requireFragment('test:rust-structural-expression-paths', 'structural Rust expression path contract')
 requireFragment('test:rust-structural-pass-analysis', 'structural Rust pass analysis contract')
+requireFragment('test:rust-structural-member-closures', 'structural Rust member and closure contract')
 requireFragment('END REFLAXE.RUST REPOSITORY PRE-COMMIT', 'explicit repository-hook boundary')
 requireFragment('cmp -s "$ROOT_DIR/scripts/hooks/pre-commit"', 'installed-hook freshness check')
 requireFragment('npm run hooks:install', 'installed-hook refresh guidance')

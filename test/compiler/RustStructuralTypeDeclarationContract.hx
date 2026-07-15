@@ -34,6 +34,17 @@ class RustStructuralTypeDeclarationContract {
 			])
 		]));
 		var optionT = RustMetadataSyntax.parseType("Option<T>");
+		var inferredVec = RustMetadataSyntax.parseType("Vec<_>");
+		var carriesGenericInfer = switch (inferredVec) {
+			case RNamed(path) if (path.segmentCount == 1 && path.segmentAt(0).genericArgumentCount == 1):
+				switch (path.segmentAt(0).genericArgumentAt(0)) {
+					case GenericInfer: true;
+					case _: false;
+				}
+			case _: false;
+		};
+		if (!carriesGenericInfer)
+			throw "metadata inference placeholders must remain structural generic arguments";
 
 		var callbackTrait = RustTraitObject.of([
 			GenericTraitBound(RustPath.relative([

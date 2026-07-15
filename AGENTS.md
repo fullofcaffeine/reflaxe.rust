@@ -261,6 +261,18 @@ Agent policy:
   and compound patterns including every `PAlias` wrapper; never inspect printer text or maintain a
   pass-local segment matcher. String scanning is reserved for explicitly classified raw fragments
   whose syntax is unavailable structurally.
+- Structural member/closure gotcha: receiver members carry `RustMember`, including typed turbofish
+  arguments, and closure parameters carry `RustClosureParameter` with structural patterns/types.
+  Never embed `::<...>`, typed bindings, or tuple destructuring in member/parameter strings. Every
+  analysis that both counts and rewrites local uses must apply the same lexical shadow boundary:
+  match-arm/closure-parameter patterns plus nested `let`/`for` bindings can reuse an outer local's
+  spelling, so outer evidence must be rejected after the nested binder enters scope while a `let`
+  initializer or `for` iterable still sees the outer binding. Haxe's ignored closure argument `_`
+  lowers to structural `PWildcard`, not an identifier. The printer must parenthesize closure-top-level
+  or-patterns and or-patterns nested below aliases; raw `|`/`@` precedence never belongs in callers.
+  A binder occurrence is not a liveness use, but it is still a hard barrier for pending-declaration
+  collapse: retire a pending outer declaration before a same-block shadow, and never attach a nested
+  shadow's assignment to that outer declaration.
 - Rust identifier keyword gotcha: `RustNaming.isKeyword` includes backend-reserved legal identifiers
   (`std`, `core`, and `alloc`) for source-name allocation. Grammar validation must use
   `RustNaming.isRustKeyword` so structural paths accept those real crate segments while rejecting the

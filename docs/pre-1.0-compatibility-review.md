@@ -88,7 +88,7 @@ exact admitted surface.
 | `generated-package` | `stable-candidate` | `candidate` | `active` | Published Haxelib-shaped package and installed-package workflow. |
 | `generated-private` | `excluded-internal` | `internal` | `active` | Generated helper/wrapper details not admitted as consumer API. |
 
-Inventory: 341 shipped Haxe types, 1678 public operations, 18 metadata names, 55 defines, 4 JSON reports, 6 generated-artifact contracts, and 33 validated evidence records.
+Inventory: 343 shipped Haxe types, 1697 public operations, 18 metadata names, 55 defines, 4 JSON reports, 6 generated-artifact contracts, and 33 validated evidence records.
 <!-- END GENERATED PUBLIC COMPATIBILITY SUMMARY -->
 
 The guard enumerates no-package overrides, primary and secondary module types, direct `std/**`

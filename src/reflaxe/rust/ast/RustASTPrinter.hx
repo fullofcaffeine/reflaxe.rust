@@ -351,6 +351,7 @@ class RustASTPrinter {
 			case GenericType(type): printType(type);
 			case GenericConst(value): printConstArgument(value);
 			case GenericLifetime(lifetime): printLifetime(lifetime);
+			case GenericInfer: "_";
 		};
 	}
 
@@ -478,7 +479,7 @@ class RustASTPrinter {
 				}
 			case EField(recv, field): {
 					var recvStr = printExprPrec(recv, indent, PREC_POSTFIX);
-					var out = recvStr + "." + field;
+					var out = recvStr + "." + printPathSegment(field.asPathSegment(), true);
 					wrapIfNeeded(out, PREC_POSTFIX, ctxPrec);
 				}
 			case ECall(func, args): {
@@ -488,7 +489,7 @@ class RustASTPrinter {
 					wrapIfNeeded(out, PREC_POSTFIX, ctxPrec);
 				}
 			case EClosure(args, body, isMove): {
-					var a = args.join(", ");
+					var a = args.map(printClosureParameter).join(", ");
 					var out = (isMove ? "move " : "") + "|" + a + "| " + printBlock(body, indent);
 					wrapIfNeeded(out, PREC_LOWEST, ctxPrec);
 				}
@@ -612,19 +613,45 @@ class RustASTPrinter {
 		}
 	}
 
-	static function printPattern(p:RustAST.RustPattern):String {
+	static function printPattern(p:RustAST.RustPattern, parenthesizeOr:Bool = false):String {
 		return switch (p) {
 			case PWildcard: "_";
 			case PBind(name): name;
-			case PAlias(name, pattern): name + " @ " + printPattern(pattern);
+			case PAlias(name, pattern): name + " @ " + printPattern(pattern, true);
 			case PPath(path): printPatternPath(path);
 			case PLitInt(v): Std.string(v);
 			case PLitUInt32(bits): "0x" + StringTools.hex(bits, 8).toLowerCase() + "u32";
 			case PLitBool(v): v ? "true" : "false";
 			case PLitString(v): '"' + escapeStringLiteral(v) + '"';
-			case PTupleStruct(path, fields): printPatternPath(path) + "(" + fields.map(printPattern).join(", ") + ")";
-			case POr(patterns): patterns.map(printPattern).join(" | ");
+			case PTuple(fields): {
+					if (fields.length == 0) {
+						"()";
+					} else if (fields.length == 1) {
+						"(" + printPattern(fields[0], true) + ",)";
+					} else {
+						"(" + fields.map(field -> printPattern(field, true)).join(", ") + ")";
+					}
+				}
+			case PTupleStruct(path, fields):
+				printPatternPath(path) + "(" + fields.map(field -> printPattern(field, true)).join(", ") + ")";
+			case POr(patterns): {
+					if (patterns == null || patterns.length < 2)
+						throw "Rust or-pattern requires at least two alternatives";
+					var rendered = patterns.map(pattern -> printPattern(pattern, true)).join(" | ");
+					parenthesizeOr ? "(" + rendered + ")" : rendered;
+				}
 		}
+	}
+
+	static function printClosureParameter(parameter:RustAST.RustClosureParameter):String {
+		if (parameter == null)
+			throw "Cannot print a null Rust closure parameter";
+		// Closure `|` delimiters are ambiguous with a top-level or-pattern. Nested aliases and tuple
+		// fields use the same structural precedence rule above.
+		var out = printPattern(parameter.patternValue, true);
+		if (parameter.ty != null)
+			out += ": " + printType(parameter.ty);
+		return out;
 	}
 
 	static function printIfBranch(e:RustAST.RustExpr, indent:Int):String {

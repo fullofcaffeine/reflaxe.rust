@@ -385,11 +385,24 @@ class RustConstArgument {
 	}
 }
 
-/** A type, const, or lifetime argument inside a Rust path segment's angle arguments. */
+/** A type, const, lifetime, or inference argument inside a Rust path segment's angle arguments. */
 enum RustGenericArgument {
 	GenericType(type:RustType);
 	GenericConst(argument:RustConstArgument);
 	GenericLifetime(lifetime:RustLifetime);
+	/**
+		Rust's inferred generic placeholder.
+
+		Why
+		- Expressions such as `collect::<Vec<_>>()` need inference without disguising `_` as a named type.
+
+		What
+		- Represents the closed Rust placeholder form independently from type, const, and lifetime values.
+
+		How
+		- Metadata/lowering select this constructor; the printer alone emits `_`.
+	**/
+	GenericInfer;
 }
 
 /** Expresses whether a trait bound is ordinary (`Trait`) or relaxed (`?Trait`). */
@@ -651,6 +664,7 @@ class RustPathSegment {
 				case GenericLifetime(lifetime):
 					if (lifetime == null)
 						throw "Rust generic lifetime argument cannot be null";
+				case GenericInfer:
 			}
 		}
 		return new RustPathSegment(identifier, PathArgumentsAngle, arguments, [], null);
@@ -680,6 +694,75 @@ class RustPathSegment {
 
 	public function inputTypeAt(index:Int):RustType {
 		return inputTypes[index];
+	}
+}
+
+/**
+	A validated Rust receiver member with optional structural generic arguments.
+
+	Why
+	- Method and field access used to store the complete suffix as `String`, allowing target syntax
+	  such as `downcast_ref::<T>` to bypass path traversal and runtime-policy analysis.
+	- A receiver member is narrower than a general path segment: Rust does not permit the
+	  parenthesized function-trait form after `receiver.`.
+
+	What
+	- Wraps exactly one plain or angle-generic `RustPathSegment` and exposes its identifier and generic
+	  arguments without exposing printer punctuation.
+	- Construction defensively inherits the segment's copied generic-argument storage.
+
+	How
+	- Use `plain` for ordinary fields/methods and `generic` for method turbofish arguments.
+	- Use the identifier factories only when the caller already owns a validated raw identifier.
+	- The expression printer alone decides that angle arguments after a receiver require `::<...>`.
+**/
+class RustMember {
+	final segment:RustPathSegment;
+	public var identifier(get, never):RustIdentifier;
+	public var genericArgumentCount(get, never):Int;
+
+	private function new(segment:RustPathSegment) {
+		if (segment == null)
+			throw "Rust receiver member cannot be null";
+		if (segment.argumentStyle == PathArgumentsParenthesized)
+			throw "Rust receiver members cannot use parenthesized path arguments";
+		this.segment = segment;
+	}
+
+	public static function plain(name:String):RustMember {
+		return plainIdentifier(RustIdentifier.named(name));
+	}
+
+	public static function plainIdentifier(identifier:RustIdentifier):RustMember {
+		return new RustMember(RustPathSegment.plainIdentifier(identifier));
+	}
+
+	public static function generic(name:String, arguments:Array<RustGenericArgument>):RustMember {
+		return genericIdentifier(RustIdentifier.named(name), arguments);
+	}
+
+	public static function genericIdentifier(identifier:RustIdentifier, arguments:Array<RustGenericArgument>):RustMember {
+		return new RustMember(RustPathSegment.angleIdentifier(identifier, arguments));
+	}
+
+	function get_identifier():RustIdentifier {
+		return segment.identifier;
+	}
+
+	function get_genericArgumentCount():Int {
+		return segment.genericArgumentCount;
+	}
+
+	public function genericArgumentAt(index:Int):RustGenericArgument {
+		return segment.genericArgumentAt(index);
+	}
+
+	public function isPlain():Bool {
+		return segment.argumentStyle == PathArgumentsNone;
+	}
+
+	public function asPathSegment():RustPathSegment {
+		return segment;
 	}
 }
 
@@ -791,10 +874,6 @@ class RustPath {
 
 	public function isRelative():Bool {
 		return root == PathRelative;
-	}
-
-	public function firstIdentifierName():Null<String> {
-		return segments.length == 0 ? null : segments[0].identifier.name;
 	}
 
 	/**
@@ -951,8 +1030,126 @@ enum RustPattern {
 	PLitUInt32(bits:Int);
 	PLitBool(v:Bool);
 	PLitString(v:String);
+	/**
+		A structural tuple pattern.
+
+		Why
+		- Closure destructuring such as `|(key, value)|` must expose lexical bindings to ownership passes.
+
+		What
+		- Stores child patterns in source order without rendered parentheses or commas.
+
+		How
+		- The printer owns tuple punctuation, including the required comma for a single-element tuple.
+	**/
+	PTuple(fields:Array<RustPattern>);
 	PTupleStruct(path:RustPath, fields:Array<RustPattern>);
+	/**
+		A Rust or-pattern with at least two alternatives when admitted by a validated AST boundary.
+
+		Why
+		- Or-pattern precedence is lower than aliases and nested pattern positions, so the printer must
+		  own the required parentheses instead of callers embedding them in strings.
+
+		What
+		- Stores alternatives without `|` tokens or parentheses.
+
+		How
+		- Compiler lowering constructs this only for two or more alternatives. Validating wrappers such
+		  as `RustClosureParameter` reject shorter lists; the printer also fails closed for direct AST use.
+	**/
 	POr(patterns:Array<RustPattern>);
+}
+
+/**
+	One structural Rust closure parameter.
+
+	Why
+	- Rendered parameter strings hid typed bindings and tuple destructuring from shadowing, ownership,
+	  and no-runtime analysis.
+	- Closure parameters need patterns, while function declarations intentionally retain their simpler
+	  named-argument contract.
+
+	What
+	- Couples one `RustPattern` with an optional structural `RustType` annotation.
+	- Binding factories validate that a bare name contains no punctuation, type syntax, or Rust keyword.
+
+	How
+	- Use `binding` / `typedBinding` for the common named forms.
+	- Use `pattern` / `typedPattern` for tuple, alias, or other already-structural patterns.
+	- The printer owns `:`, tuple punctuation, and closure delimiters.
+	- Validation covers the supplied tree at construction time. `RustPattern` remains shared mutable AST;
+	  callers must not mutate compound-pattern arrays after wrapping them.
+**/
+class RustClosureParameter {
+	public final patternValue:RustPattern;
+	public final ty:Null<RustType>;
+
+	private function new(pattern:RustPattern, ty:Null<RustType>) {
+		if (pattern == null)
+			throw "Rust closure parameter pattern cannot be null";
+		validatePattern(pattern);
+		this.patternValue = pattern;
+		this.ty = ty;
+	}
+
+	public static function binding(name:String):RustClosureParameter {
+		return pattern(PBind(validBindingName(name)));
+	}
+
+	public static function typedBinding(name:String, ty:RustType):RustClosureParameter {
+		return typedPattern(PBind(validBindingName(name)), ty);
+	}
+
+	public static function pattern(value:RustPattern):RustClosureParameter {
+		return new RustClosureParameter(value, null);
+	}
+
+	public static function typedPattern(value:RustPattern, ty:RustType):RustClosureParameter {
+		if (ty == null)
+			throw "Typed Rust closure parameter requires a type";
+		return new RustClosureParameter(value, ty);
+	}
+
+	static function validBindingName(name:String):String {
+		return RustIdentifier.named(name).name;
+	}
+
+	static function validatePattern(value:RustPattern):Void {
+		switch (value) {
+			case PBind(name):
+				validBindingName(name);
+			case PAlias(name, inner):
+				validBindingName(name);
+				if (inner == null)
+					throw "Rust closure alias pattern cannot contain a null pattern";
+				validatePattern(inner);
+			case PPath(path):
+				if (path == null)
+					throw "Rust closure path pattern cannot be null";
+			case PTupleStruct(path, fields):
+				if (path == null)
+					throw "Rust closure tuple-struct pattern path cannot be null";
+				validatePatternFields(fields);
+			case PTuple(fields):
+				validatePatternFields(fields);
+			case POr(fields):
+				if (fields == null || fields.length < 2)
+					throw "Rust closure or-pattern requires at least two alternatives";
+				validatePatternFields(fields);
+			case PWildcard | PLitInt(_) | PLitUInt32(_) | PLitBool(_) | PLitString(_):
+		}
+	}
+
+	static function validatePatternFields(fields:Array<RustPattern>):Void {
+		if (fields == null)
+			throw "Rust closure compound pattern fields cannot be null";
+		for (field in fields) {
+			if (field == null)
+				throw "Rust closure compound pattern cannot contain a null field";
+			validatePattern(field);
+		}
+	}
 }
 
 enum RustStmt {
@@ -992,7 +1189,7 @@ enum RustExpr {
 	EPath(path:RustPath);
 	ECall(func:RustExpr, args:Array<RustExpr>);
 	EMacroCall(name:String, args:Array<RustExpr>);
-	EClosure(args:Array<String>, body:RustBlock, isMove:Bool);
+	EClosure(args:Array<RustClosureParameter>, body:RustBlock, isMove:Bool);
 	EBinary(op:String, left:RustExpr, right:RustExpr);
 	EUnary(op:String, expr:RustExpr);
 	ERange(start:RustExpr, end:RustExpr);
@@ -1003,7 +1200,7 @@ enum RustExpr {
 	EIf(cond:RustExpr, thenExpr:RustExpr, elseExpr:Null<RustExpr>);
 	EMatch(scrutinee:RustExpr, arms:Array<RustMatchArm>);
 	EAssign(lhs:RustExpr, rhs:RustExpr);
-	EField(recv:RustExpr, field:String);
+	EField(recv:RustExpr, field:RustMember);
 	// Typed async wrapper used for `@:rustAsync` lowering.
 	//
 	// Why

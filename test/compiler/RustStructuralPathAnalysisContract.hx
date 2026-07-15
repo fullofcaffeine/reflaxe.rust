@@ -35,6 +35,11 @@ class RustStructuralPathAnalysisContract {
 		return counts.exists(name) ? counts.get(name) : 0;
 	}
 
+	static function incrementFirstPathIdentifier(counts:Map<String, Int>, candidate:RustPath):Void {
+		if (candidate.segmentCount > 0)
+			increment(counts, candidate.segmentAt(0).identifier.name);
+	}
+
 	static function main():Void {
 		var local = RustPath.single("value");
 		expect(RustPathAnalysis.localIdentifierName(local) == "value",
@@ -64,6 +69,14 @@ class RustStructuralPathAnalysisContract {
 			RustPathSegment.plain("dynamic"),
 			RustPathSegment.angle("from", [GenericType(named("T"))])
 		]), ["hxrt", "dynamic", "from"]), "generic segments must not masquerade as plain target paths");
+		var nativeSocket = RustPath.cratePath([
+			RustPathSegment.plain("native_socket_addr_tools"),
+			RustPathSegment.plain("SocketAddr")
+		]);
+		expect(RustPathAnalysis.matchesPlainCrate(nativeSocket, ["native_socket_addr_tools", "SocketAddr"]),
+			"crate-rooted compiler targets must match through the shared structural authority");
+		expect(!RustPathAnalysis.matchesPlainCrate(path(["native_socket_addr_tools", "SocketAddr"]),
+			["native_socket_addr_tools", "SocketAddr"]), "crate matching must preserve root identity");
 
 		expect(RustPathAnalysis.belongsToNamespace(path(["hxrt", "dynamic"]), "hxrt"),
 			"an exact leading plain segment must own its namespace");
@@ -101,7 +114,7 @@ class RustStructuralPathAnalysisContract {
 		]);
 
 		var visited:Map<String, Int> = [];
-		RustPathAnalysis.visitPathTree(qualified, candidate -> increment(visited, candidate.firstIdentifierName()));
+		RustPathAnalysis.visitPathTree(qualified, candidate -> incrementFirstPathIdentifier(visited, candidate));
 		expect(count(visited, "make") == 1, "the associated-item path must be visited");
 		expect(count(visited, "Outer") == 1, "the qualified self type must be visited");
 		expect(count(visited, "hxrt") == 1, "nested generic type paths must be visited once");
@@ -117,7 +130,7 @@ class RustStructuralPathAnalysisContract {
 			PTupleStruct(path(["Envelope"]), [
 				PAlias("payload", PPath(hxrtPayload))
 			])
-		])), candidate -> increment(patternPaths, candidate.firstIdentifierName()));
+		])), candidate -> incrementFirstPathIdentifier(patternPaths, candidate));
 		expect(count(patternPaths, "Envelope") == 1,
 			"tuple-struct paths nested below alias/or patterns must be visited");
 		expect(count(patternPaths, "hxrt") == 1 && count(patternPaths, "Payload") == 1,
@@ -134,7 +147,7 @@ class RustStructuralPathAnalysisContract {
 				RustConstArgument.path(path(["hxrt", "limits", "DEFAULT_N"])))
 		]);
 		var parameterPaths:Map<String, Int> = [];
-		RustPathAnalysis.visitGenericParameters(parameters, candidate -> increment(parameterPaths, candidate.firstIdentifierName()));
+		RustPathAnalysis.visitGenericParameters(parameters, candidate -> incrementFirstPathIdentifier(parameterPaths, candidate));
 		expect(count(parameterPaths, "Bound") == 1, "generic trait bounds must be visited");
 		expect(count(parameterPaths, "hxrt") == 2, "nested type and const defaults must expose exact runtime namespaces");
 		expect(count(parameterPaths, "Payload") == 1 && count(parameterPaths, "limits") == 1,

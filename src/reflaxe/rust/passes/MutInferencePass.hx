@@ -7,6 +7,7 @@ import reflaxe.rust.ast.RustAST.RustFile;
 import reflaxe.rust.ast.RustAST.RustFunction;
 import reflaxe.rust.ast.RustAST.RustItem;
 import reflaxe.rust.ast.RustAST.RustMatchArm;
+import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustStructLitField;
 import reflaxe.rust.ast.RustPathAnalysis;
@@ -28,6 +29,10 @@ import reflaxe.rust.ast.RustPathAnalysis;
 
 	How
 	- Recursively rewrites nested blocks first (`EBlock`, closures, async move bodies, loop bodies).
+	- Tracks structural closure/match patterns plus nested `let` and `for` bindings while walking
+	  expressions, evaluating initializers/iterables before each new lexical shadow enters scope.
+	- Counts captured closure and async-move writes as repeated mutation evidence so declaration-only
+	  initialization cannot erase required outer mutability.
 	- After a block is rewritten, collect mutable-binding requirements from that block and its nested
 	  expressions, then normalize only that block's own `RLet` statements.
 	- Existing `mutable = true` flags are preserved because the typed compiler pass knows about source
@@ -36,7 +41,7 @@ import reflaxe.rust.ast.RustPathAnalysis;
 	  - direct assignment (`name = ...`)
 	  - index-root assignment (`name[..] = ...`)
 	  - explicit mutable reference use (`&mut name`)
-	  - bindings initialized from `borrow_mut()` guards
+	  - bindings initialized from an exact, argument-free `borrow_mut()` member call
 **/
 class MutInferencePass implements RustPass {
 	public function new() {}
@@ -171,8 +176,22 @@ class MutInferencePass implements RustPass {
 		var hardMutable:Map<String, Bool> = [];
 		var declarationOnly:Map<String, Bool> = [];
 		var visitExpr:RustExpr->Void = null;
-		var visitStmt:RustStmt->Void = null;
-		var visitBlock:RustBlock->Void = null;
+		var visitStmt:RustStmt->Bool->Void = null;
+		var visitBlock:RustBlock->Bool->Void = null;
+		var shadowPatterns:Array<RustPattern> = [];
+		var shadowNames:Array<String> = [];
+
+		function isLexicallyShadowed(name:String):Bool {
+			for (shadowName in shadowNames) {
+				if (shadowName == name)
+					return true;
+			}
+			for (pattern in shadowPatterns) {
+				if (RustPathAnalysis.patternBindsName(pattern, name))
+					return true;
+			}
+			return false;
+		}
 
 		/**
 			Why
@@ -203,7 +222,7 @@ class MutInferencePass implements RustPass {
 		visitExpr = function(expr:RustExpr):Void {
 			switch (expr) {
 				case EAssign(lhs, rhs):
-					markAssignmentTarget(lhs, out);
+					markAssignmentTarget(lhs, out, isLexicallyShadowed);
 					visitExpr(rhs);
 				case ECall(func, args):
 					visitExpr(func);
@@ -212,8 +231,12 @@ class MutInferencePass implements RustPass {
 				case EMacroCall(_, args):
 					for (arg in args)
 						visitExpr(arg);
-				case EClosure(_, body, _):
-					visitBlock(body);
+				case EClosure(parameters, body, _):
+					for (parameter in parameters)
+						shadowPatterns.push(parameter.patternValue);
+					visitBlock(body, false);
+					for (_ in parameters)
+						shadowPatterns.pop();
 				case EBinary(_, left, right):
 					visitExpr(left);
 					visitExpr(right);
@@ -222,7 +245,7 @@ class MutInferencePass implements RustPass {
 						case EPath(path):
 							if (StringTools.startsWith(op, "&mut")) {
 								var name = RustPathAnalysis.localIdentifierName(path);
-								if (name != null) {
+								if (name != null && !isLexicallyShadowed(name)) {
 									out.set(name, true);
 									hardMutable.set(name, true);
 								}
@@ -242,7 +265,7 @@ class MutInferencePass implements RustPass {
 					for (field in fields)
 						visitExpr(field.expr);
 				case EBlock(innerBlock):
-					visitBlock(innerBlock);
+					visitBlock(innerBlock, false);
 				case EIf(cond, thenExpr, elseExpr):
 					visitExpr(cond);
 					visitExpr(thenExpr);
@@ -250,23 +273,26 @@ class MutInferencePass implements RustPass {
 						visitExpr(elseExpr);
 				case EMatch(scrutinee, arms):
 					visitExpr(scrutinee);
-					for (arm in arms)
+					for (arm in arms) {
+						shadowPatterns.push(arm.pat);
 						visitExpr(arm.expr);
+						shadowPatterns.pop();
+					}
 				case EField(recv, _):
 					visitExpr(recv);
 				case EPinAsyncMove(body):
-					visitBlock(body);
+					visitBlock(body, false);
 				case EAwait(inner):
 					visitExpr(inner);
 				case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 			}
 		};
 
-		visitStmt = function(stmt:RustStmt):Void {
+		visitStmt = function(stmt:RustStmt, collectOwnLetEvidence:Bool):Void {
 			switch (stmt) {
 				case RLet(name, _, _, expr):
 					if (expr != null) {
-						if (exprProducesMutableGuard(expr)) {
+						if (collectOwnLetEvidence && exprProducesMutableGuard(expr) && !isLexicallyShadowed(name)) {
 							out.set(name, true);
 							hardMutable.set(name, true);
 						}
@@ -279,36 +305,87 @@ class MutInferencePass implements RustPass {
 						visitExpr(expr);
 				case RWhile(cond, body):
 					visitExpr(cond);
-					visitBlock(body);
+					visitBlock(body, false);
 				case RLoop(body):
-					visitBlock(body);
-				case RFor(_, iter, body):
+					visitBlock(body, false);
+				case RFor(name, iter, body):
 					visitExpr(iter);
-					visitBlock(body);
+					var shadows = name != "_";
+					if (shadows)
+						shadowNames.push(name);
+					visitBlock(body, false);
+					if (shadows)
+						shadowNames.pop();
 				case RBreak | RContinue:
 			}
 		};
 
-		visitBlock = function(innerBlock:RustBlock):Void {
-			for (stmt in innerBlock.stmts)
-				visitStmt(stmt);
+		visitBlock = function(innerBlock:RustBlock, isRootBlock:Bool):Void {
+			var localShadowCount = 0;
+			for (stmt in innerBlock.stmts) {
+				// A Rust let initializer is evaluated before its new binding enters scope. The fresh nested
+				// block has already been rewritten independently, so only the root collector owns direct
+				// borrow-guard evidence for the let itself.
+				visitStmt(stmt, isRootBlock);
+				if (!isRootBlock) {
+					switch (stmt) {
+						case RLet(name, _, _, _) if (name != "_"):
+							shadowNames.push(name);
+							localShadowCount++;
+						case _:
+					}
+				}
+			}
 			if (innerBlock.tail != null)
 				visitExpr(innerBlock.tail);
+			for (_ in 0...localShadowCount)
+				shadowNames.pop();
 		};
 
-		visitBlock(block);
+		visitBlock(block, true);
 		for (name in declarationOnly.keys()) {
-			if (out.exists(name) && !hardMutable.exists(name) && maxDirectWritesOnPathInBlock(block, name) <= 1)
+			if (out.exists(name) && !hardMutable.exists(name) && maxDirectWritesOnPathInBlock(block, name, true) <= 1)
 				out.remove(name);
 		}
 		return out;
 	}
 
-	function maxDirectWritesOnPathInBlock(block:RustBlock, target:String):Int {
+	/**
+		Counts writes to one binding along the busiest control-flow path while respecting nested binders.
+
+		Why
+		- Declaration-only `let x;` needs no `mut` for one initialization, but a later closure/async
+		  capture or repeated path write does.
+		- A nested `let x`, `for x`, closure parameter, or match pattern changes which declaration that
+		  spelling denotes; counting by text without its lexical boundary creates false evidence.
+
+		What
+		- Preserves the first declaration-only root binding when requested, visits a nested `let`
+		  initializer before installing its shadow, and stops counting that nested name afterward.
+
+		How
+		- Root callers pass `preserveDeclarationOnlyRoot = true`; every recursive block passes `false`.
+		- Any captured write in a closure or async-move body is conservatively worth two writes because
+		  Rust requires the captured source binding to be mutable and the body may execute later/repeatedly.
+	**/
+	function maxDirectWritesOnPathInBlock(block:RustBlock, target:String, preserveDeclarationOnlyRoot:Bool):Int {
 		var total = 0;
-		for (stmt in block.stmts)
+		var targetShadowed = false;
+		var preservedRootDeclaration = false;
+		for (stmt in block.stmts) {
+			if (targetShadowed)
+				break;
 			total += maxDirectWritesOnPathInStmt(stmt, target);
-		if (block.tail != null)
+			switch (stmt) {
+				case RLet(name, _, _, expr) if (name == target):
+					if (preserveDeclarationOnlyRoot && !preservedRootDeclaration && expr == null)
+						preservedRootDeclaration = true;
+					else
+						targetShadowed = true;
+				case _:
+			}
+		}
+		if (!targetShadowed && block.tail != null)
 			total += maxDirectWritesOnPathInExpr(block.tail, target);
 		return total;
 	}
@@ -322,11 +399,13 @@ class MutInferencePass implements RustPass {
 			case RReturn(expr):
 				expr == null ? 0 : maxDirectWritesOnPathInExpr(expr, target);
 			case RWhile(cond, body):
-				(maxDirectWritesOnPathInExpr(cond, target) > 0 || maxDirectWritesOnPathInBlock(body, target) > 0) ? 2 : 0;
+				(maxDirectWritesOnPathInExpr(cond, target) > 0 || maxDirectWritesOnPathInBlock(body, target, false) > 0) ? 2 : 0;
 			case RLoop(body):
-				maxDirectWritesOnPathInBlock(body, target) > 0 ? 2 : 0;
-			case RFor(_, iter, body):
-				(maxDirectWritesOnPathInExpr(iter, target) > 0 || maxDirectWritesOnPathInBlock(body, target) > 0) ? 2 : 0;
+				maxDirectWritesOnPathInBlock(body, target, false) > 0 ? 2 : 0;
+			case RFor(name, iter, body):
+				var iterWrites = maxDirectWritesOnPathInExpr(iter, target);
+				var bodyWrites = name == target ? 0 : maxDirectWritesOnPathInBlock(body, target, false);
+				(iterWrites > 0 || bodyWrites > 0) ? 2 : 0;
 			case RBreak | RContinue:
 				0;
 		}
@@ -340,8 +419,12 @@ class MutInferencePass implements RustPass {
 				maxDirectWritesOnPathInExpr(func, target) + sumMaxExprWrites(args, target);
 			case EMacroCall(_, args):
 				sumMaxExprWrites(args, target);
-			case EClosure(_, _, _):
-				0;
+			case EClosure(parameters, body, _):
+				if (RustPathAnalysis.closureParametersBindName(parameters, target)) {
+					0;
+				} else {
+					maxDirectWritesOnPathInBlock(body, target, false) > 0 ? 2 : 0;
+				}
 			case EBinary(_, left, right):
 				maxDirectWritesOnPathInExpr(left, target) + maxDirectWritesOnPathInExpr(right, target);
 			case EUnary(_, inner):
@@ -358,23 +441,24 @@ class MutInferencePass implements RustPass {
 					total += maxDirectWritesOnPathInExpr(field.expr, target);
 				total;
 			case EBlock(innerBlock):
-				maxDirectWritesOnPathInBlock(innerBlock, target);
+				maxDirectWritesOnPathInBlock(innerBlock, target, false);
 			case EIf(cond, thenExpr, elseExpr):
 				var elseWrites = elseExpr == null ? 0 : maxDirectWritesOnPathInExpr(elseExpr, target);
 				maxDirectWritesOnPathInExpr(cond, target) + Std.int(Math.max(maxDirectWritesOnPathInExpr(thenExpr, target), elseWrites));
 			case EMatch(scrutinee, arms):
 				var armMax = 0;
 				for (arm in arms) {
-					var writes = maxDirectWritesOnPathInExpr(arm.expr, target);
+					var writes = RustPathAnalysis.patternBindsName(arm.pat, target) ? 0 : maxDirectWritesOnPathInExpr(arm.expr, target);
 					if (writes > armMax)
 						armMax = writes;
 				}
 				maxDirectWritesOnPathInExpr(scrutinee, target) + armMax;
 			case EField(recv, _):
 				maxDirectWritesOnPathInExpr(recv, target);
-			case EPinAsyncMove(_) | EAwait(_):
-				// Async bodies are rewritten as their own nested blocks before this block is normalized.
-				0;
+			case EPinAsyncMove(body):
+				maxDirectWritesOnPathInBlock(body, target, false) > 0 ? 2 : 0;
+			case EAwait(inner):
+				maxDirectWritesOnPathInExpr(inner, target);
 			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				0;
 		}
@@ -398,21 +482,21 @@ class MutInferencePass implements RustPass {
 
 	function exprProducesMutableGuard(expr:RustExpr):Bool {
 		return switch (expr) {
-			case ECall(EField(_, "borrow_mut"), []):
+			case ECall(EField(_, member), []) if (RustPathAnalysis.matchesPlainMember(member, "borrow_mut")):
 				true;
 			case _:
 				false;
 		};
 	}
 
-	function markAssignmentTarget(lhs:RustExpr, out:Map<String, Bool>):Void {
+	function markAssignmentTarget(lhs:RustExpr, out:Map<String, Bool>, isShadowed:String->Bool):Void {
 		switch (lhs) {
 			case EPath(path):
 				var name = RustPathAnalysis.localIdentifierName(path);
-				if (name != null)
+				if (name != null && !isShadowed(name))
 					out.set(name, true);
 			case EIndex(recv, _):
-				markAssignmentTarget(recv, out);
+				markAssignmentTarget(recv, out, isShadowed);
 			case EField(_, _):
 			case _:
 		}

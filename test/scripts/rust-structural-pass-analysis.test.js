@@ -58,6 +58,16 @@ function main() {
     'ownership and cleanup passes must share the central structural local-identity predicate'
   )
   assert.match(ownershipPasses, /RustPathAnalysis\.localIdentifierName\s*\(/)
+  assert.match(ownershipPasses, /RustPathAnalysis\.matchesPlainMember\s*\(/,
+    'ownership passes must compare receiver members structurally')
+  assert.match(ownershipPasses, /RustPathAnalysis\.closureParametersBindName\s*\(/,
+    'ownership passes must share structural closure-shadowing analysis')
+
+  const compiler = fs.readFileSync(path.join(repoRoot, 'src', 'reflaxe', 'rust', 'RustCompiler.hx'), 'utf8')
+  assert.match(compiler, /RustPathAnalysis\.matchesPlainCrate\s*\(/,
+    'compiler crate-target recognition must use the shared structural matcher')
+  assert.doesNotMatch(compiler, /function\s+rustPathMatchesPlainCrate\s*\(/,
+    'compiler lowering must not own a second crate-path matcher')
 
   const clonePass = readPass('CloneElisionPass.hx')
   assert.doesNotMatch(clonePass, /function\s+isDynamicFromPath\s*\(/,
@@ -74,6 +84,10 @@ function main() {
     'no-hxrt analysis must recursively traverse alias and compound patterns')
   assert.match(noHxrtPass, /RustPathAnalysis\.visitGenericParameters\s*\(/,
     'no-hxrt analysis must recursively traverse declaration generics')
+  assert.match(noHxrtPass, /RustPathAnalysis\.visitMemberTree\s*\(/,
+    'no-hxrt analysis must recursively traverse receiver-member generic arguments')
+  assert.match(noHxrtPass, /RustPathAnalysis\.visitClosureParameterTree\s*\(/,
+    'no-hxrt analysis must recursively traverse closure parameter patterns and types')
   assert.match(noHxrtPass, /RustPathAnalysis\.belongsToNamespace\s*\([^,]+,\s*"hxrt"\s*\)/,
     'no-hxrt analysis must use exact structural namespace ownership')
   assert.doesNotMatch(noHxrtPass, /firstIdentifierName\s*\(\)\s*==\s*"hxrt"/,

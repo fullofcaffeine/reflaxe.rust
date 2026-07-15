@@ -26,7 +26,7 @@ import reflaxe.rust.ast.RustPathAnalysis;
 
 	What
 	- Scans emitted Rust AST nodes and detects any `hxrt` path usage in types, expressions, patterns,
-	  and raw code items.
+	  receiver-member generic arguments, closure parameters, and raw code items.
 	- Emits a single actionable compile error per module when violations are found.
 
 	How
@@ -135,7 +135,10 @@ class NoHxrtPass implements RustPass {
 				case EMacroCall(_, args):
 					for (arg in args)
 						scanExpr(arg);
-				case EClosure(_, body, _):
+				case EClosure(parameters, body, _):
+					for (parameter in parameters)
+						RustPathAnalysis.visitClosureParameterTree(parameter,
+							candidate -> recordHxrtPath(candidate, "closure parameter"));
 					scanBlock(body);
 				case EBinary(_, left, right):
 					scanExpr(left);
@@ -171,8 +174,9 @@ class NoHxrtPass implements RustPass {
 				case EAssign(lhs, rhs):
 					scanExpr(lhs);
 					scanExpr(rhs);
-				case EField(recv, _):
+				case EField(recv, member):
 					scanExpr(recv);
+					RustPathAnalysis.visitMemberTree(member, candidate -> recordHxrtPath(candidate, "member"));
 				case EPinAsyncMove(body):
 					scanBlock(body);
 				case EAwait(value):

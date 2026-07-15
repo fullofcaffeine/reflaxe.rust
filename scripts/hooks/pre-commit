@@ -86,6 +86,11 @@ if grep -Eq '^(package\.json$|scripts/(ci/harness\.sh|hooks/pre-commit)$|src/ref
   npm --prefix "$ROOT_DIR" run test:rust-structural-pass-analysis
 fi
 
+if grep -Eq '^(package\.json$|scripts/(ci/harness\.sh|hooks/pre-commit)$|src/reflaxe/rust/(RustCompiler|ast/(RustAST|RustASTPrinter|RustPathAnalysis)|passes/[^/]+)\.hx$|test/compiler/Rust(BorrowScopeShadowing|CloneShadowing|MutInferenceShadowing|StatementCleanupShadowing|StructuralMemberClosure)Contract\.hx$|test/scripts/(pre-commit-evidence-wiring|rust-structural-member-closures)\.test\.js$)' <<<"$STAGED_FILES"; then
+  echo "[pre-commit] Running structural Rust member and closure contract..."
+  npm --prefix "$ROOT_DIR" run test:rust-structural-member-closures
+fi
+
 echo "[pre-commit] OK"
 
 # The Beads-managed integration is appended below this boundary by
