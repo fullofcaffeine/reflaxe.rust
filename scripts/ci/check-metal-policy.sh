@@ -193,6 +193,7 @@ run_warning_case() {
 	local failure_label="$5"
 	local expected_location_regex="${6:-}"
 	local extra_define="${7:-}"
+	local expected_second_location_regex="${8:-}"
 	local case_start="$SECONDS"
 	local fixture_dir="$root_dir/$fixture_rel"
 	local out_dir="$fixture_dir/out_policy_warning"
@@ -233,6 +234,12 @@ run_warning_case() {
 	if [[ -n "$expected_location_regex" ]] && ! match_regex "$expected_location_regex" "$log_file"; then
 		echo "[metal-policy] error: expected warning source-position diagnostic was not found for ${failure_label}."
 		echo "[metal-policy] expected location regex: ${expected_location_regex}"
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+	if [[ -n "$expected_second_location_regex" ]] && ! match_regex "$expected_second_location_regex" "$log_file"; then
+		echo "[metal-policy] error: expected second warning source-position diagnostic was not found for ${failure_label}."
+		echo "[metal-policy] expected second location regex: ${expected_second_location_regex}"
 		sed "s|$root_dir|.|g" "$log_file"
 		exit 1
 	fi
@@ -2955,10 +2962,11 @@ run_negative_case "test/negative/metal_mut_region_sibling_overlap" 'Rust borrow 
 	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_warning_case "test/negative/metal_dynamic_access" "compile.fallback.hxml" '\[HXRS-PROFILE-CONTRACT-WARNING\] metal profile forbids haxe\.DynamicAccess runtime map semantics' \
 	'1' 'haxe.DynamicAccess warning in explicit metal fallback mode'
-run_warning_case "test/snapshot/metal_typed_injection" "compile.hxml" 'metal raw expr \[Main\]' \
-	'2' 'metal raw debug warnings include source location' \
-	'^Main\.hx:[0-9]+: lines [0-9]+-[0-9]+ : Warning : metal raw expr \[Main\]' \
-	'rust_debug_metal_raw'
+run_warning_case "test/snapshot/metal_typed_injection" "compile.hxml" '^Main\.hx:(6|7): (characters [0-9]+-[0-9]+|lines [0-9]+-[0-9]+) : Warning : metal raw expr \[Main\] \[source-owned:target-code-injection\]' \
+	'2' 'metal raw debug warnings include typed authority, reason, and source location' \
+	'^Main\.hx:6: (characters [0-9]+-[0-9]+|lines [0-9]+-[0-9]+) : Warning : metal raw expr \[Main\] \[source-owned:target-code-injection\]' \
+	'rust_debug_metal_raw' \
+	'^Main\.hx:7: (characters [0-9]+-[0-9]+|lines [0-9]+-[0-9]+) : Warning : metal raw expr \[Main\] \[source-owned:target-code-injection\]'
 run_warning_case "test/negative/portable_native_import_strict" "compile.warn.hxml" '\[HXRS-NATIVE-IMPORT-WARNING\] portable contract imported native target modules: rust\.Option' \
 	'1' 'portable profile warns when app code imports target-specific module surface'
 run_warning_case "test/negative/metal_dynamic_access" "compile.viability.hxml" 'Metal viability: overall score [0-9]+/100, modules=[0-9]+, ready=[0-9]+, blockers=[0-9]+\.' \

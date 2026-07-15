@@ -70,7 +70,10 @@ control live in the [public compatibility manifest](public-compatibility-manifes
 - `rust_debug_metal_raw`
   - Debug-only hotspot tracer for metal fallback forensics.
   - When enabled, `MetalRestrictionsPass` prints one warning per encountered raw `ERaw` snippet
-    with module attribution (`metal raw expr [<module>] ...`) to help root-cause remaining fallback paths.
+    with module plus typed authority/reason attribution
+    (`metal raw expr [<module>] [<authority>:<reason>] ...`) to help root-cause remaining fallback
+    paths without guessing ownership from the Rust text. Source-backed fragments anchor the warning
+    at their exact Haxe origin; compiler-generated fragments fall back to their owning module.
 - `rust_metal_allow_fallback`
   - In `metal`, downgrades contract violations (including `ERaw` fallback detection) from errors to warnings.
 - `rust_metal_contract_hard_error`

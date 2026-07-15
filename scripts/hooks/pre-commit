@@ -3,6 +3,17 @@ set -euo pipefail
 
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 
+installed_repo_hook="$ROOT_DIR/.git/hooks/pre-commit"
+if [[ -f "$installed_repo_hook" ]] \
+  && grep -q 'pre-commit\.old' "$installed_repo_hook" \
+  && grep -Eq 'bd sync --flush-only|bd hook pre-commit|beads pre-commit hook' "$installed_repo_hook"; then
+  installed_repo_hook="$ROOT_DIR/.git/hooks/pre-commit.old"
+fi
+if [[ -f "$installed_repo_hook" ]] && ! cmp -s "$ROOT_DIR/scripts/hooks/pre-commit" "$installed_repo_hook"; then
+  echo "[pre-commit] ERROR: installed repository hook is stale; run npm run hooks:install and retry." >&2
+  exit 1
+fi
+
 echo "[pre-commit] Running local path guard on staged changes..."
 bash "$ROOT_DIR/scripts/lint/local_path_guard_staged.sh"
 
@@ -26,12 +37,12 @@ echo "[pre-commit] Running Dynamic usage guard..."
 "$ROOT_DIR/scripts/lint/dynamic_usage_guard.sh"
 
 STAGED_FILES="$(git diff --cached --name-only --diff-filter=ACMR || true)"
-if printf '%s\n' "$STAGED_FILES" | grep -Eq '^(docs/|README\.md$|\.beads/issues\.jsonl$|scripts/docs/)'; then
+if grep -Eq '^(docs/|README\.md$|\.beads/issues\.jsonl$|scripts/docs/)' <<<"$STAGED_FILES"; then
   echo "[pre-commit] Running docs progress-tracker drift check..."
   "$ROOT_DIR/scripts/docs/check-progress-tracker.sh"
 fi
 
-if printf '%s\n' "$STAGED_FILES" | grep -Eq '^(test/semantic_diff/|test/semantic_diff_lanes/|test/snapshot/|scripts/ci/generate-semantic-confidence-summary\.js$|docs/semantic-confidence-summary\.(json|md)$)'; then
+if grep -Eq '^(test/semantic_diff/|test/semantic_diff_lanes/|test/snapshot/|scripts/ci/generate-semantic-confidence-summary\.js$|docs/semantic-confidence-summary\.(json|md)$)' <<<"$STAGED_FILES"; then
   echo "[pre-commit] Running semantic-confidence evidence drift check..."
   for artifact in docs/semantic-confidence-summary.json docs/semantic-confidence-summary.md; do
     if ! git diff --quiet -- "$artifact"; then
@@ -42,7 +53,7 @@ if printf '%s\n' "$STAGED_FILES" | grep -Eq '^(test/semantic_diff/|test/semantic
   "$ROOT_DIR/scripts/ci/check-semantic-confidence-summary.sh"
 fi
 
-if printf '%s\n' "$STAGED_FILES" | grep -Eq '^(README\.md$|docs/faq\.md$|docs/architecture-capability(-manifest\.json|\.md)$|scripts/ci/architecture-capability-manifest\.js$|test/scripts/architecture-capability-manifest\.test\.js$)'; then
+if grep -Eq '^(README\.md$|docs/faq\.md$|docs/architecture-capability(-manifest\.json|\.md)$|scripts/ci/architecture-capability-manifest\.js$|test/scripts/architecture-capability-manifest\.test\.js$)' <<<"$STAGED_FILES"; then
   echo "[pre-commit] Running architecture capability claim drift check..."
   for artifact in docs/architecture-capability-manifest.json README.md docs/faq.md docs/architecture-capability.md; do
     if ! git diff --quiet -- "$artifact"; then
@@ -51,6 +62,16 @@ if printf '%s\n' "$STAGED_FILES" | grep -Eq '^(README\.md$|docs/faq\.md$|docs/ar
     fi
   done
   node "$ROOT_DIR/scripts/ci/architecture-capability-manifest.js" --check
+fi
+
+if grep -Eq '^(scripts/hooks/pre-commit$|test/scripts/pre-commit-evidence-wiring\.test\.js$)' <<<"$STAGED_FILES"; then
+  echo "[pre-commit] Verifying evidence-gate wiring..."
+  npm --prefix "$ROOT_DIR" run test:pre-commit-evidence-wiring
+fi
+
+if grep -Eq '^(package\.json$|scripts/(ci/harness\.sh|hooks/pre-commit)$|src/reflaxe/rust/(RustCompiler|ast/RustAST|ast/RustASTPrinter|macros/RustInjection|passes/(NormalizePass|MetalRestrictionsPass|NoHxrtPass|StatementCleanupPass))\.hx$|std/rust/metal/Code\.hx$|test/compiler/RustRawAuthorityContract\.hx$|test/scripts/(pre-commit-evidence-wiring|rust-raw-authority)\.test\.js$)' <<<"$STAGED_FILES"; then
+  echo "[pre-commit] Running typed raw-Rust authority contract..."
+  npm --prefix "$ROOT_DIR" run test:rust-raw-authority
 fi
 
 echo "[pre-commit] OK"

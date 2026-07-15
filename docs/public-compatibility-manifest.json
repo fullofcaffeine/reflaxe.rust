@@ -10205,9 +10205,15 @@
         "reflaxe.rust.ast.RustAST.RustStmt"
       ],
       "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustType"
@@ -10238,6 +10244,185 @@
           "typeReferences": [
             "reflaxe.rust.ast.RustAST.RustExpr"
           ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "enum",
+      "signature": "enum RustCompilerRawReason",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-constructor:RawGeneratedFileMarker",
+          "kind": "enum-constructor",
+          "name": "RawGeneratedFileMarker",
+          "signature": "RawGeneratedFileMarker",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:RawStaticStorage",
+          "kind": "enum-constructor",
+          "name": "RawStaticStorage",
+          "signature": "RawStaticStorage",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:RawCrateHeader",
+          "kind": "enum-constructor",
+          "name": "RawCrateHeader",
+          "signature": "RawCrateHeader",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:RawNestedModuleDeclarations",
+          "kind": "enum-constructor",
+          "name": "RawNestedModuleDeclarations",
+          "signature": "RawNestedModuleDeclarations",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:RawInterfaceTraitDeclaration",
+          "kind": "enum-constructor",
+          "name": "RawInterfaceTraitDeclaration",
+          "signature": "RawInterfaceTraitDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:RawBaseTraitImport",
+          "kind": "enum-constructor",
+          "name": "RawBaseTraitImport",
+          "signature": "RawBaseTraitImport",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:RawTypeIdConstant",
+          "kind": "enum-constructor",
+          "name": "RawTypeIdConstant",
+          "signature": "RawTypeIdConstant",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:RawDeriveAttribute",
+          "kind": "enum-constructor",
+          "name": "RawDeriveAttribute",
+          "signature": "RawDeriveAttribute",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:RawClassTraitDeclaration",
+          "kind": "enum-constructor",
+          "name": "RawClassTraitDeclaration",
+          "signature": "RawClassTraitDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:RawClassTraitImplementation",
+          "kind": "enum-constructor",
+          "name": "RawClassTraitImplementation",
+          "signature": "RawClassTraitImplementation",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:RawBaseTraitImplementation",
+          "kind": "enum-constructor",
+          "name": "RawBaseTraitImplementation",
+          "signature": "RawBaseTraitImplementation",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:RawInterfaceTraitImplementation",
+          "kind": "enum-constructor",
+          "name": "RawInterfaceTraitImplementation",
+          "signature": "RawInterfaceTraitImplementation",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:RawGeneratedTestModule",
+          "kind": "enum-constructor",
+          "name": "RawGeneratedTestModule",
+          "signature": "RawGeneratedTestModule",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:RawDefaultValueFallback",
+          "kind": "enum-constructor",
+          "name": "RawDefaultValueFallback",
+          "signature": "RawDefaultValueFallback",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:RawUnsupportedFallback",
+          "kind": "enum-constructor",
+          "name": "RawUnsupportedFallback",
+          "signature": "RawUnsupportedFallback",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
         }
       ]
     },
@@ -10386,12 +10571,19 @@
       "directTypeReferences": [
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
         "reflaxe.rust.ast.RustAST.RustStructLitField"
       ],
       "transitiveTypeReferences": [
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustType"
@@ -10401,12 +10593,14 @@
           "id": "enum-constructor:ERaw",
           "kind": "enum-constructor",
           "name": "ERaw",
-          "signature": "ERaw (s : String)",
+          "signature": "ERaw (fragment : RustRawCode)",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
           ],
-          "typeReferences": []
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustRawCode"
+          ]
         },
         {
           "id": "enum-constructor:ELitInt",
@@ -10665,6 +10859,7 @@
       ],
       "transitiveTypeReferences": [
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
@@ -10673,7 +10868,12 @@
         "reflaxe.rust.ast.RustAST.RustImpl",
         "reflaxe.rust.ast.RustAST.RustItem",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
@@ -10756,10 +10956,16 @@
       ],
       "transitiveTypeReferences": [
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustType",
@@ -10878,11 +11084,17 @@
       ],
       "transitiveTypeReferences": [
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustType",
@@ -10939,10 +11151,12 @@
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustImpl",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
         "reflaxe.rust.ast.RustAST.RustStruct"
       ],
       "transitiveTypeReferences": [
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
@@ -10950,7 +11164,12 @@
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustImpl",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
@@ -11015,12 +11234,14 @@
           "id": "enum-constructor:RRaw",
           "kind": "enum-constructor",
           "name": "RRaw",
-          "signature": "RRaw (s : String)",
+          "signature": "RRaw (fragment : RustRawCode)",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
           ],
-          "typeReferences": []
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustRawCode"
+          ]
         }
       ]
     },
@@ -11039,8 +11260,14 @@
       ],
       "transitiveTypeReferences": [
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustType"
@@ -11071,6 +11298,67 @@
           "typeReferences": [
             "reflaxe.rust.ast.RustAST.RustExpr"
           ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "enum",
+      "signature": "enum RustMetadataRawReason",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-constructor:RawTraitImplementation",
+          "kind": "enum-constructor",
+          "name": "RawTraitImplementation",
+          "signature": "RawTraitImplementation",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustOrigin",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "enum",
+      "signature": "enum RustOrigin",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-constructor:OriginHaxeSource",
+          "kind": "enum-constructor",
+          "name": "OriginHaxeSource",
+          "signature": "OriginHaxeSource (pos : Position)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:OriginCompilerGenerated",
+          "kind": "enum-constructor",
+          "name": "OriginCompilerGenerated",
+          "signature": "OriginCompilerGenerated",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
         }
       ]
     },
@@ -11188,6 +11476,240 @@
       ]
     },
     {
+      "name": "reflaxe.rust.ast.RustAST.RustRawAuthority",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "enum",
+      "signature": "enum RustRawAuthority",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason"
+      ],
+      "operations": [
+        {
+          "id": "enum-constructor:RawCompilerOwned",
+          "kind": "enum-constructor",
+          "name": "RawCompilerOwned",
+          "signature": "RawCompilerOwned (reason : RustCompilerRawReason)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustCompilerRawReason"
+          ]
+        },
+        {
+          "id": "enum-constructor:RawMetadataOwned",
+          "kind": "enum-constructor",
+          "name": "RawMetadataOwned",
+          "signature": "RawMetadataOwned (reason : RustMetadataRawReason)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustMetadataRawReason"
+          ]
+        },
+        {
+          "id": "enum-constructor:RawSourceOwned",
+          "kind": "enum-constructor",
+          "name": "RawSourceOwned",
+          "signature": "RawSourceOwned (reason : RustSourceRawReason)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustSourceRawReason"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustRawCode",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustRawCode",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason"
+      ],
+      "operations": [
+        {
+          "id": "field:code",
+          "kind": "field",
+          "name": "code",
+          "signature": "public final code : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:authority",
+          "kind": "field",
+          "name": "authority",
+          "signature": "public final authority : RustRawAuthority",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustRawAuthority"
+          ]
+        },
+        {
+          "id": "field:origin",
+          "kind": "field",
+          "name": "origin",
+          "signature": "public final origin : RustOrigin",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustOrigin"
+          ]
+        },
+        {
+          "id": "function:compilerGenerated",
+          "kind": "function",
+          "name": "compilerGenerated",
+          "signature": "public static function compilerGenerated (code : String, reason : RustCompilerRawReason) : RustRawCode",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustCompilerRawReason"
+          ]
+        },
+        {
+          "id": "function:compilerAt",
+          "kind": "function",
+          "name": "compilerAt",
+          "signature": "public static function compilerAt (code : String, reason : RustCompilerRawReason, pos : Position) : RustRawCode",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustCompilerRawReason"
+          ]
+        },
+        {
+          "id": "function:metadataAt",
+          "kind": "function",
+          "name": "metadataAt",
+          "signature": "public static function metadataAt (code : String, reason : RustMetadataRawReason, pos : Position) : RustRawCode",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustMetadataRawReason"
+          ]
+        },
+        {
+          "id": "function:sourceAt",
+          "kind": "function",
+          "name": "sourceAt",
+          "signature": "public static function sourceAt (code : String, reason : RustSourceRawReason, pos : Position) : RustRawCode",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustSourceRawReason"
+          ]
+        },
+        {
+          "id": "function:withCode",
+          "kind": "function",
+          "name": "withCode",
+          "signature": "public function withCode (nextCode : String) : RustRawCode",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:authorityId",
+          "kind": "function",
+          "name": "authorityId",
+          "signature": "public function authorityId () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:reasonId",
+          "kind": "function",
+          "name": "reasonId",
+          "signature": "public function reasonId () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "enum",
+      "signature": "enum RustSourceRawReason",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-constructor:RawTargetCodeInjection",
+          "kind": "enum-constructor",
+          "name": "RawTargetCodeInjection",
+          "signature": "RawTargetCodeInjection",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
       "name": "reflaxe.rust.ast.RustAST.RustStmt",
       "source": "src/reflaxe/rust/ast/RustAST.hx",
       "kind": "enum",
@@ -11203,9 +11725,15 @@
       ],
       "transitiveTypeReferences": [
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustType"
       ],
@@ -11490,9 +12018,15 @@
       ],
       "transitiveTypeReferences": [
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustType"
       ],
@@ -12633,9 +13167,15 @@
       ],
       "transitiveTypeReferences": [
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustType"
@@ -13281,6 +13821,7 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
@@ -13290,7 +13831,12 @@
         "reflaxe.rust.ast.RustAST.RustImpl",
         "reflaxe.rust.ast.RustAST.RustItem",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
@@ -13363,6 +13909,7 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
@@ -13372,7 +13919,12 @@
         "reflaxe.rust.ast.RustAST.RustImpl",
         "reflaxe.rust.ast.RustAST.RustItem",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
@@ -13445,6 +13997,7 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
@@ -13454,7 +14007,12 @@
         "reflaxe.rust.ast.RustAST.RustImpl",
         "reflaxe.rust.ast.RustAST.RustItem",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
@@ -13527,6 +14085,7 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
@@ -13536,7 +14095,12 @@
         "reflaxe.rust.ast.RustAST.RustImpl",
         "reflaxe.rust.ast.RustAST.RustItem",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
@@ -13609,6 +14173,7 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
@@ -13618,7 +14183,12 @@
         "reflaxe.rust.ast.RustAST.RustImpl",
         "reflaxe.rust.ast.RustAST.RustItem",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
@@ -13691,6 +14261,7 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
@@ -13700,7 +14271,12 @@
         "reflaxe.rust.ast.RustAST.RustImpl",
         "reflaxe.rust.ast.RustAST.RustItem",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
@@ -13772,6 +14348,7 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
@@ -13781,7 +14358,12 @@
         "reflaxe.rust.ast.RustAST.RustImpl",
         "reflaxe.rust.ast.RustAST.RustItem",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
@@ -13830,6 +14412,7 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
@@ -13839,7 +14422,12 @@
         "reflaxe.rust.ast.RustAST.RustImpl",
         "reflaxe.rust.ast.RustAST.RustItem",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
@@ -13894,6 +14482,7 @@
       ],
       "transitiveTypeReferences": [
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
@@ -13903,7 +14492,12 @@
         "reflaxe.rust.ast.RustAST.RustImpl",
         "reflaxe.rust.ast.RustAST.RustItem",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
@@ -14010,6 +14604,7 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
@@ -14019,7 +14614,12 @@
         "reflaxe.rust.ast.RustAST.RustImpl",
         "reflaxe.rust.ast.RustAST.RustItem",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
@@ -14136,6 +14736,7 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
@@ -14145,7 +14746,12 @@
         "reflaxe.rust.ast.RustAST.RustImpl",
         "reflaxe.rust.ast.RustAST.RustItem",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
@@ -14736,6 +15342,7 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
         "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
@@ -14745,7 +15352,12 @@
         "reflaxe.rust.ast.RustAST.RustImpl",
         "reflaxe.rust.ast.RustAST.RustItem",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",

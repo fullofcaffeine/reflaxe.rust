@@ -34,8 +34,8 @@ class NormalizePass implements RustPass {
 
 	function normalizeItem(item:RustItem):RustItem {
 		return switch (item) {
-			case RRaw(s):
-				RRaw(normalizeRaw(s));
+			case RRaw(fragment):
+				RRaw(fragment.withCode(normalizeRaw(fragment.code)));
 			case _:
 				item;
 		}

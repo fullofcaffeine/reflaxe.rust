@@ -27,28 +27,36 @@ import StringTools as HaxeStringTools;
  *
  * How
  * - This macro delegates to the framework-owned `RustInjection.__rust__` shim.
+ * - Both helpers forward the caller's source position through their generated expression so compiler
+ *   policy diagnostics identify the owning Haxe callsite rather than a macro implementation file.
  * - Keeping the boundary in `std/rust/metal/*` provides a single documented surface for metal interop.
  * - Callers should keep snippets minimal and prefer dedicated typed `std/` APIs when available.
  */
 class Code {
 	public static macro function expr(code:String, args:Array<Expr>):Expr {
+		var callerPos = Context.currentPos();
 		if (code == null || code.length == 0) {
-			Context.error("`rust.metal.Code.expr` requires a non-empty Rust snippet.", Context.currentPos());
+			Context.error("`rust.metal.Code.expr` requires a non-empty Rust snippet.", callerPos);
 		}
 		enforceScopedAuthority("expr");
 		var callArgs = [macro $v{code}].concat(args);
-		return macro reflaxe.rust.macros.RustInjection.__rust__($a{callArgs});
+		var injected = macro @:pos(callerPos) reflaxe.rust.macros.RustInjection.__rust__($a{callArgs});
+		injected.pos = callerPos;
+		return injected;
 	}
 
 	public static macro function stmt(code:String, args:Array<Expr>):Expr {
+		var callerPos = Context.currentPos();
 		if (code == null || code.length == 0) {
-			Context.error("`rust.metal.Code.stmt` requires a non-empty Rust snippet.", Context.currentPos());
+			Context.error("`rust.metal.Code.stmt` requires a non-empty Rust snippet.", callerPos);
 		}
 		enforceScopedAuthority("stmt");
 		var callArgs = [macro $v{code}].concat(args);
-		return macro {
-			reflaxe.rust.macros.RustInjection.__rust__($a{callArgs});
-		};
+		var injected = macro @:pos(callerPos) reflaxe.rust.macros.RustInjection.__rust__($a{callArgs});
+		injected.pos = callerPos;
+		var block = macro {$e{injected};};
+		block.pos = callerPos;
+		return block;
 	}
 
 	#if macro

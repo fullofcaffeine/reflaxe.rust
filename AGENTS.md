@@ -211,6 +211,14 @@ Agent policy:
   wrapped command's exact status, including when the wrapper is called from `if` / `if !` contexts
   where `set -e` is suppressed. Reuse `scripts/ci/timed-command.sh` and keep
   `npm run test:timed-command-failure-propagation` wired into hooks.
+- Pre-commit trigger gotcha: under `set -o pipefail`, `printf ... | grep -q` can report failure after a
+  real match when `grep -q` exits early and the producer receives `SIGPIPE`. Match the captured staged
+  file list with a here-string (`grep -Eq PATTERN <<<"$STAGED_FILES"`) so evidence gates cannot be
+  skipped nondeterministically.
+- Installed-hook freshness gotcha: `npm run hooks:install` copies `scripts/hooks/pre-commit` into
+  `.git/hooks` (or the Beads wrapper's `pre-commit.old`), so editing the tracked source does not update
+  the active hook automatically. Keep the hook's fail-closed byte comparison and reinstall before
+  committing a hook change.
 - Cargo MSRV-resolution gotcha: generated crates remain edition 2021 but must select resolver 3 from
   `rust-toolchain-policy.json`. Its MSRV-aware fallback is only a preference for dependencies that
   publish `rust-version`; it does not replace exact-minimum compilation. Application `Cargo.lock`
@@ -231,6 +239,11 @@ Agent policy:
   `node_modules/lix/bin/haxeshim.js` is launched explicitly through Node.
 - Use `BaseCompiler.setExtraFile()` for non-`.rs` outputs like `Cargo.toml` (the default OutputManager always appends `fileOutputExtension` for normal outputs).
 - Haxe “multi-type modules” behave like `haxe.macro.Expr.*`: types in `RustAST.hx` are addressed as `RustAST.RustExpr`, `RustAST.RustFile`, etc.
+- Haxe enum-constructor namespace gotcha: importing a type from a multi-type module can also make that
+  module's enum constructors participate in unqualified name resolution and shadow an imported type
+  with the same name. Prefix internal cross-cutting enum constructors (for example `Raw*` and
+  `Origin*`) and alias an external type when needed; do not rely on enum-type qualification alone to
+  prevent the collision.
 - Keep generated Rust rustfmt-clean: avoid embedding extra trailing newlines in raw items and always end files with a final newline.
 - Lint hygiene policy (default): snake_case all emitted members + locals/args, trim code after diverging ops (`throw/return/break/continue`), omit unused catch vars / unused `self_` params, and add crate-level `#![allow(dead_code)]` to keep `cargo build` warning-free.
   - Rust lint gotcha: emit `loop { ... }` instead of `while true { ... }` to stay warning-free under `#![deny(warnings)]` (`while_true`).
@@ -318,6 +331,11 @@ Agent policy:
   - keeps a typed callable surface (no `untyped` at callsites)
   - supports Reflaxe `{0}` placeholder interpolation with varargs (`RustInjection.__rust__("foo({0})", arg0)`)
 - Reflaxe injection gotcha: `TargetCodeInjection.checkTargetCodeInjectionGeneric` returns an empty list when the injected string has no `{0}` placeholders. The compiler must treat that case as “literal injection string”.
+- Macro-injection provenance gotcha: a macro that returns another injection macro call must forward the
+  user callsite through every expansion layer with Haxe's special `@:pos(callerPos)` metadata. Assigning
+  only `Expr.pos` is insufficient for the nested macro invocation and can leave typed `__rust__` nodes
+  anchored in `src/reflaxe/rust/macros`. Keep the exact `rust.metal.Code.expr/stmt` line assertions in
+  the metal-policy harness when changing either macro layer.
 - `rust.Ref<T>` / `rust.MutRef<T>` use `@:from` (typically lowered to `cast`) so Haxe typing can pass `T` where refs are expected; codegen must still emit `&` / `&mut` even when the typed expression becomes `TCast(...)`.
   - Ref-arg coercion gotcha: `Dynamic -> Ref<Dynamic>` must not route through a runtime downcast to
     `&Dynamic`; the call-argument layer should borrow the original `Dynamic`. For `Ref<String>`,

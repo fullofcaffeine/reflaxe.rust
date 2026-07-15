@@ -1,6 +1,7 @@
 package reflaxe.rust.macros;
 
 #if macro
+import haxe.macro.Context;
 import haxe.macro.Expr;
 #end
 
@@ -21,6 +22,8 @@ import haxe.macro.Expr;
  *   Example:
  *   - `RustInjection.__rust__("std::mem::take(&mut {0})", v)`
  * - If there are no placeholders, `code` is treated as a literal injection.
+ * - The expansion explicitly preserves `Context.currentPos()` so policy diagnostics and raw-node
+ *   provenance point to the caller rather than this macro implementation.
  *
  * Important:
  * - Treat this as an escape hatch. Apps/examples should not call `__rust__` directly; instead,
@@ -32,7 +35,10 @@ import haxe.macro.Expr;
  */
 class RustInjection {
 	public static macro function __rust__(code: String, args: Array<Expr>): Expr {
+		var callerPos = Context.currentPos();
 		var callArgs = [macro $v{code}].concat(args);
-		return macro untyped __rust__($a{callArgs});
+		var injected = macro @:pos(callerPos) untyped __rust__($a{callArgs});
+		injected.pos = callerPos;
+		return injected;
 	}
 }

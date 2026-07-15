@@ -142,6 +142,9 @@ fixtures, or runtime fallback reasons before they can be treated as native Rust 
 - New negative fixtures must fail before implementation unless they document an already-existing rejection.
 - Positive snapshots may start as compile-only contracts, but they must still run through rustfmt and cargo build.
 - A metal-clean fixture must not pass by enabling `rust_metal_allow_fallback` unless the fixture name and acceptance text explicitly make fallback the behavior under test.
+- Raw IR fragments carry a closed compiler-, metadata-, or source-owned reason plus an explicit Haxe
+  or compiler-generated origin. That classification makes migration debt auditable; it does not make
+  an `ERaw` expression metal-clean, and every `ERaw` still counts toward the fallback budget.
 - Increases in ERaw fallback counts, generated hxrt use in no-hxrt fixtures, Dynamic usage, or borrow-guard bloat are regressions unless the owning bead updates a deterministic baseline with rationale.
 - Runtime semantic-diff is required only when Haxe interp is a valid oracle. Rust-native ownership, borrow, no-hxrt, and extern-island contracts should prefer generated Rust shape plus cargo/rustfmt/policy gates.
 

@@ -413,7 +413,7 @@ class StatementCleanupPass implements RustPass {
 			case EPinAsyncMove(body):
 				blockMentionsNameInBlock(body, name);
 			case ERaw(raw):
-				rawMentionsName(raw, name);
+				rawMentionsName(raw.code, name);
 			case ELitInt(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				false;
 		};

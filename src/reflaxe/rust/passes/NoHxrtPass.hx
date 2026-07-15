@@ -8,6 +8,7 @@ import reflaxe.rust.ast.RustAST.RustBlock;
 import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustFile;
 import reflaxe.rust.ast.RustAST.RustPattern;
+import reflaxe.rust.ast.RustAST.RustRawCode;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustType;
 
@@ -127,8 +128,8 @@ class NoHxrtPass implements RustPass {
 		scanExpr = function(expr:RustExpr):Void {
 			switch (expr) {
 				case ERaw(raw):
-					if (containsHxrt(raw))
-						record("raw expression containing `hxrt::`");
+					if (containsHxrt(raw.code))
+						record("raw expression [" + raw.authorityId() + ":" + raw.reasonId() + "] containing `hxrt::`");
 				case EPath(path):
 					recordPath("path", path);
 				case ECall(func, args):
@@ -184,17 +185,17 @@ class NoHxrtPass implements RustPass {
 			}
 		};
 
-		function scanRawItem(raw:String):Void {
-			if (raw == null || raw.length == 0)
+		function scanRawItem(raw:RustRawCode):Void {
+			if (raw == null || raw.code.length == 0)
 				return;
-			for (line in raw.split("\n")) {
+			for (line in raw.code.split("\n")) {
 				var trimmed = StringTools.trim(line);
 				if (trimmed.length == 0)
 					continue;
 				if (StringTools.startsWith(trimmed, "//"))
 					continue;
 				if (containsHxrt(trimmed)) {
-					record("raw item `" + clip(trimmed, 88) + "`");
+					record("raw item [" + raw.authorityId() + ":" + raw.reasonId() + "] `" + clip(trimmed, 88) + "`");
 				}
 			}
 		}

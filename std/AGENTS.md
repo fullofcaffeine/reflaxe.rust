@@ -56,3 +56,6 @@
 
 - `__rust__` in `std/`:
   - Avoid `inline` functions that contain `untyped __rust__(...)`. Inlining can leak the injection into unrelated stdlib modules (including macro/eval typing) and break compilation or violate the “apps are pure” boundary rule.
+  - When a typed std macro delegates to another injection macro, preserve `Context.currentPos()` with
+    `@:pos(callerPos)` on the generated nested call. Setting only the returned `Expr.pos` does not
+    preserve the user position through the next macro expansion.

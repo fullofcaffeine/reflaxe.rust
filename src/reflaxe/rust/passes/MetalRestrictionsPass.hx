@@ -7,6 +7,7 @@ import StringTools;
 import reflaxe.rust.CompilationContext;
 import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustFile;
+import reflaxe.rust.ast.RustAST.RustOrigin;
 
 /**
 	MetalRestrictionsPass
@@ -24,6 +25,8 @@ import reflaxe.rust.ast.RustAST.RustFile;
 
 	How
 	- Walks the file and counts `ERaw(...)` expression nodes.
+	- Anchors raw debug warnings at `OriginHaxeSource`; compiler-generated fragments fall back to the
+	  owning module position because they have no honest source span.
 	- Records per-module counts into `CompilationContext` for an end-of-compile summary.
 	- Escalates to compile error when the metal contract hard-error policy is enabled.
 **/
@@ -47,12 +50,18 @@ class MetalRestrictionsPass implements RustPass {
 
 		var rawExprCount = 0;
 		RustPassTools.mapFile(file, s -> s, e -> {
-			switch (e) {
+				switch (e) {
 				case ERaw(raw):
 					rawExprCount++;
 					#if eval
-					if (Context.defined("rust_debug_metal_raw"))
-						Context.warning("metal raw expr [" + moduleLabel + "] " + debugSnippet(raw), diagPos);
+					if (Context.defined("rust_debug_metal_raw")) {
+						var warningPos = switch (raw.origin) {
+							case OriginHaxeSource(pos): pos;
+							case OriginCompilerGenerated: diagPos;
+						};
+						Context.warning("metal raw expr [" + moduleLabel + "] [" + raw.authorityId() + ":" + raw.reasonId() + "] "
+							+ debugSnippet(raw.code), warningPos);
+					}
 					#end
 				case _:
 			}

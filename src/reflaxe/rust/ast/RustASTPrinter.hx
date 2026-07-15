@@ -60,7 +60,7 @@ class RustASTPrinter {
 			case RStruct(s): printStruct(s);
 			case REnum(e): printEnum(e);
 			case RImpl(i): printImpl(i);
-			case RRaw(s): s;
+			case RRaw(fragment): fragment.code;
 		}
 	}
 
@@ -241,7 +241,7 @@ class RustASTPrinter {
 
 	static function printExprPrec(e:RustAST.RustExpr, indent:Int, ctxPrec:Int):String {
 		return switch (e) {
-			case ERaw(s): s;
+			case ERaw(fragment): fragment.code;
 			case ELitInt(v): Std.string(v);
 			case ELitFloat(v): {
 					// Rust requires a decimal point for float literals in some contexts (e.g. `1.`).

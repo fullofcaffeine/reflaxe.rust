@@ -405,6 +405,7 @@ harness_stage_selected() {
 }
 
 run_snapshots_group() {
+  run_stage "typed raw-Rust authority contract" npm run test:rust-raw-authority
   run_stage "snapshots" run_snapshots
   intermediate_cleanup "snapshots"
 }
