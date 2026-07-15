@@ -406,6 +406,7 @@ harness_stage_selected() {
 
 run_snapshots_group() {
   run_stage "typed raw-Rust authority contract" npm run test:rust-raw-authority
+  run_stage "structural Rust path IR contract" npm run test:rust-structural-path-ir
   run_stage "snapshots" run_snapshots
   intermediate_cleanup "snapshots"
 }
@@ -439,6 +440,8 @@ run_conformance_group() {
 }
 
 run_policy_group() {
+  run_stage "Git hook installation and recursion contract" npm run test:git-hook-installation
+
   run_stage "Rust toolchain minimum and generated Cargo contract" bash scripts/ci/check-rust-toolchain-floor.sh
   intermediate_cleanup "rust-toolchain-floor"
 

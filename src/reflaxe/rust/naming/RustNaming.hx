@@ -8,8 +8,8 @@ package reflaxe.rust.naming;
  * Keep this deterministic: same input -> same output within a compilation.
  */
 class RustNaming {
-	// Rust keywords (2021 edition + reserved).
-	static final KEYWORDS:Map<String, Bool> = [
+	// Rust keywords (2021 edition + reserved-for-future-use words).
+	static final RUST_KEYWORDS:Map<String, Bool> = [
 		"as" => true,
 		"break" => true,
 		"box" => true,
@@ -49,16 +49,51 @@ class RustNaming {
 		"async" => true,
 		"await" => true,
 		"dyn" => true,
-		// Reserved keywords not currently used in stable syntax, but still reserved.
+		// Reserved keywords not currently used in stable syntax, but still reserved in Rust 2021.
+		"abstract" => true,
+		"become" => true,
+		"do" => true,
+		"final" => true,
+		"macro" => true,
+		"override" => true,
+		"priv" => true,
+		"try" => true,
 		"typeof" => true,
+		"unsized" => true,
+		"virtual" => true,
+		"yield" => true,
+	];
+
+	// These are legal Rust identifiers but are reserved by this backend's source-name allocator.
+	static final CODEGEN_RESERVED_NAMES:Map<String, Bool> = [
 		// Not keywords, but reserved in this codegen to avoid shadowing common Rust crates.
 		"std" => true,
 		"core" => true,
 		"alloc" => true,
 	];
 
+	/**
+		Reports whether a token is a real Rust 2021 keyword.
+
+		Why
+		- Structural Rust IR must reject a keyword as a normal identifier while still accepting legal
+		  path segments such as `std`, `core`, and `alloc`.
+		- The source-name allocator additionally reserves those crate names, so its older `isKeyword`
+		  contract is intentionally broader than Rust's grammar.
+
+		What
+		- Returns true only for strict, edition, or reserved-for-future-use Rust 2021 keywords.
+
+		How
+		- `RustIdentifier` uses this grammar-level query.
+		- Existing name allocation continues to use `isKeyword`, preserving its collision policy.
+	**/
+	public static function isRustKeyword(name:String):Bool {
+		return RUST_KEYWORDS.exists(name);
+	}
+
 	public static function isKeyword(name:String):Bool {
-		return KEYWORDS.exists(name);
+		return RUST_KEYWORDS.exists(name) || CODEGEN_RESERVED_NAMES.exists(name);
 	}
 
 	public static function isValidIdent(name:String):Bool {

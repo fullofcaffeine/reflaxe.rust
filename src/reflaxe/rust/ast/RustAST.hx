@@ -1,6 +1,7 @@
 package reflaxe.rust.ast;
 
 import haxe.macro.Expr.Position;
+import reflaxe.rust.naming.RustNaming;
 
 /**
  * Minimal Rust AST for the reflaxe.rust compiler.
@@ -207,6 +208,544 @@ class RustRawCode {
 	}
 }
 
+/**
+	A validated Rust identifier stored without target punctuation.
+
+	Why
+	- A path held as one `String` hides module boundaries, generic arguments, and local identity from
+	  compiler passes.
+	- Splitting a path is only safe if each segment is already known to be a legal identifier; letting
+	  `::`, `<...>`, or a keyword enter this value would recreate raw target syntax one string lower.
+
+	What
+	- Stores the ASCII identifier subset emitted by this backend and whether it must print as a Rust
+	  raw identifier (`r#name`).
+	- Rust path keywords (`crate`, `self`, `super`, and `Self`) are represented by `RustPathRoot`, not
+	  by pretending they are ordinary identifiers.
+
+	How
+	- Use `named` for an ordinary identifier and `raw` for an intentional raw identifier.
+	- Construction is private; both factories validate the spelling and keyword contract.
+	- The printer, not this type, owns the `r#` prefix.
+**/
+class RustIdentifier {
+	public final name:String;
+	public final isRaw:Bool;
+
+	private function new(name:String, isRaw:Bool) {
+		this.name = name;
+		this.isRaw = isRaw;
+	}
+
+	public static function named(name:String):RustIdentifier {
+		validateSpelling(name);
+		if (RustNaming.isRustKeyword(name))
+			throw 'Rust keyword `$name` requires an explicit raw identifier or structural path root';
+		return new RustIdentifier(name, false);
+	}
+
+	public static function raw(name:String):RustIdentifier {
+		validateSpelling(name);
+		if (name == "crate" || name == "self" || name == "super" || name == "Self")
+			throw 'Rust path keyword `$name` cannot be used as a raw identifier';
+		return new RustIdentifier(name, true);
+	}
+
+	public function equals(other:RustIdentifier):Bool {
+		return other != null && name == other.name && isRaw == other.isRaw;
+	}
+
+	static function validateSpelling(name:String):Void {
+		if (name == null || name.length == 0)
+			throw "Rust identifier cannot be empty";
+		if (name == "_" || !RustNaming.isValidIdent(name))
+			throw 'Invalid Rust identifier `$name`; target punctuation belongs in structural IR';
+	}
+}
+
+/** Identifies which closed form a `RustLifetime` carries. */
+enum RustLifetimeKind {
+	LifetimeNamed;
+	LifetimeStatic;
+	LifetimeInferred;
+}
+
+/**
+	A Rust lifetime stored independently from its leading apostrophe.
+
+	Why
+	- Lifetimes participate in references, generic arguments, bounds, and declarations. A rendered
+	  token such as `'a` cannot tell those roles apart and encourages string concatenation.
+
+	What
+	- Represents a validated named lifetime, the special `'static` lifetime, or the inferred `'_`
+	  lifetime as closed alternatives.
+
+	How
+	- `named` accepts the bare identifier (`a`, not `'a`).
+	- Use `staticLifetime` and `inferred` for Rust's special lifetime forms.
+	- The printer owns the apostrophe.
+**/
+class RustLifetime {
+	public final kind:RustLifetimeKind;
+	public final name:Null<RustIdentifier>;
+
+	private function new(kind:RustLifetimeKind, name:Null<RustIdentifier>) {
+		this.kind = kind;
+		this.name = name;
+	}
+
+	public static function named(name:String):RustLifetime {
+		return new RustLifetime(LifetimeNamed, RustIdentifier.named(name));
+	}
+
+	public static function staticLifetime():RustLifetime {
+		return new RustLifetime(LifetimeStatic, null);
+	}
+
+	public static function inferred():RustLifetime {
+		return new RustLifetime(LifetimeInferred, null);
+	}
+
+	public function isNamed():Bool {
+		return kind == LifetimeNamed;
+	}
+}
+
+/** Identifies the payload carried by a structural Rust const argument. */
+enum RustConstArgumentKind {
+	ConstInteger;
+	ConstBoolean;
+	ConstPath;
+}
+
+/**
+	A closed const-generic argument that cannot contain rendered Rust syntax.
+
+	Why
+	- Const arguments share `<...>` with types and lifetimes but have different semantics. Storing all
+	  three as strings prevents traversal and can make punctuation ambiguous.
+
+	What
+	- Covers non-negative integer literals, booleans, and structural const paths, which are the closed
+	  forms needed by the current compiler roadmap.
+
+	How
+	- Use the validating factories below. More complex const expressions must gain a typed AST node;
+	  callers must not smuggle them through a string fallback.
+**/
+class RustConstArgument {
+	public final kind:RustConstArgumentKind;
+	public final integerDigits:Null<String>;
+	public final boolValue:Null<Bool>;
+	public final pathValue:Null<RustPath>;
+
+	private function new(kind:RustConstArgumentKind, integerDigits:Null<String>, boolValue:Null<Bool>, pathValue:Null<RustPath>) {
+		this.kind = kind;
+		this.integerDigits = integerDigits;
+		this.boolValue = boolValue;
+		this.pathValue = pathValue;
+	}
+
+	public static function integer(value:Int):RustConstArgument {
+		if (value < 0)
+			throw "Negative const arguments require a future typed const-expression node";
+		return decimalInteger(Std.string(value));
+	}
+
+	/**
+		Constructs an arbitrarily wide non-negative decimal const integer.
+
+		Why
+		- Haxe `Int` is not wide enough for Rust `u64`/`usize` const arguments.
+
+		What
+		- Accepts decimal digits only and canonicalizes leading zeroes.
+
+		How
+		- This is a validated literal-token boundary, not a general Rust-expression string escape.
+	**/
+	public static function decimalInteger(digits:String):RustConstArgument {
+		if (digits == null || digits.length == 0 || !~/^[0-9]+$/.match(digits))
+			throw 'Invalid Rust decimal const integer `$digits`';
+		var firstNonZero = 0;
+		while (firstNonZero < digits.length - 1 && digits.charAt(firstNonZero) == "0")
+			firstNonZero++;
+		return new RustConstArgument(ConstInteger, digits.substr(firstNonZero), null, null);
+	}
+
+	public static function boolean(value:Bool):RustConstArgument {
+		return new RustConstArgument(ConstBoolean, null, value, null);
+	}
+
+	public static function path(value:RustPath):RustConstArgument {
+		if (value == null)
+			throw "Rust const path cannot be null";
+		return new RustConstArgument(ConstPath, null, null, value);
+	}
+}
+
+/** A type, const, or lifetime argument inside a Rust path segment's angle arguments. */
+enum RustGenericArgument {
+	GenericType(type:RustType);
+	GenericConst(argument:RustConstArgument);
+	GenericLifetime(lifetime:RustLifetime);
+}
+
+/** Expresses whether a trait bound is ordinary (`Trait`) or relaxed (`?Trait`). */
+enum RustTraitBoundModifier {
+	TraitBoundRequired;
+	TraitBoundOptional;
+}
+
+/** A trait or lifetime bound attached to a Rust type parameter. */
+enum RustGenericBound {
+	GenericTraitBound(path:RustPath, modifier:RustTraitBoundModifier);
+	GenericLifetimeBound(lifetime:RustLifetime);
+}
+
+/**
+	A structural declaration parameter for a Rust item or function.
+
+	Why
+	- Declaration strings such as `T: Clone + Send + 'static` hide which bounds are traits and which
+	  are lifetimes, preventing ownership and thread-crossing analysis.
+
+	What
+	- Separates lifetime, type, and const parameter declarations with typed bounds and defaults.
+
+	How
+	- Names are already validated `RustIdentifier` values.
+	- Wrap arrays of these declarations in `RustGenericParameters` to validate ordering and duplicate
+	  names before attaching them to an AST declaration.
+**/
+enum RustGenericParameter {
+	GenericLifetimeParam(name:RustIdentifier, bounds:Array<RustLifetime>);
+	GenericTypeParam(name:RustIdentifier, bounds:Array<RustGenericBound>, defaultType:Null<RustType>);
+	GenericConstParam(name:RustIdentifier, type:RustType, defaultValue:Null<RustConstArgument>);
+}
+
+/**
+	An ordered, validated list of Rust declaration generic parameters.
+
+	Why
+	- Rust requires lifetime parameters to precede type and const parameters. Plain arrays permit an
+	  invalid ordering and duplicate declarations to reach the printer.
+
+	What
+	- Owns a defensive copy of structural generic parameters and exposes read-only traversal methods.
+
+	How
+	- Construct with `of`; malformed order and duplicate names fail immediately at the AST boundary.
+	- The printer consumes `count`, `at`, or `iterator` and owns delimiters and commas.
+**/
+class RustGenericParameters {
+	final parameters:Array<RustGenericParameter>;
+	public var count(get, never):Int;
+
+	private function new(parameters:Array<RustGenericParameter>) {
+		this.parameters = parameters;
+	}
+
+	public static function of(values:Array<RustGenericParameter>):RustGenericParameters {
+		if (values == null)
+			throw "Rust generic parameter list cannot be null";
+		var copy = values.copy();
+		var sawTypeOrConst = false;
+		var lifetimeNames:Map<String, Bool> = [];
+		var valueNames:Map<String, Bool> = [];
+		for (parameter in copy) {
+			if (parameter == null)
+				throw "Rust generic parameter cannot be null";
+			switch (parameter) {
+				case GenericLifetimeParam(name, bounds):
+					if (name == null || bounds == null)
+						throw "Rust lifetime parameter requires a name and bounds list";
+					for (bound in bounds) {
+						if (bound == null)
+							throw "Rust lifetime parameter bound cannot be null";
+					}
+					if (sawTypeOrConst)
+						throw "Rust lifetime parameters must precede type and const parameters";
+					if (lifetimeNames.exists(name.name))
+						throw 'Duplicate Rust lifetime parameter `${name.name}`';
+					lifetimeNames.set(name.name, true);
+				case GenericTypeParam(name, bounds, _):
+					if (name == null || bounds == null)
+						throw "Rust type parameter requires a name and bounds list";
+					for (bound in bounds) {
+						if (bound == null)
+							throw "Rust type parameter bound cannot be null";
+						switch (bound) {
+							case GenericTraitBound(path, modifier):
+								if (path == null || modifier == null)
+									throw "Rust trait bound requires a path and modifier";
+							case GenericLifetimeBound(lifetime):
+								if (lifetime == null)
+									throw "Rust lifetime bound cannot be null";
+						}
+					}
+					sawTypeOrConst = true;
+					if (valueNames.exists(name.name))
+						throw 'Duplicate Rust generic parameter `${name.name}`';
+					valueNames.set(name.name, true);
+				case GenericConstParam(name, type, _):
+					if (name == null || type == null)
+						throw "Rust const parameter requires a name and type";
+					sawTypeOrConst = true;
+					if (valueNames.exists(name.name))
+						throw 'Duplicate Rust generic parameter `${name.name}`';
+					valueNames.set(name.name, true);
+			}
+		}
+		return new RustGenericParameters(copy);
+	}
+
+	public static function empty():RustGenericParameters {
+		return new RustGenericParameters([]);
+	}
+
+	function get_count():Int {
+		return parameters.length;
+	}
+
+	public function at(index:Int):RustGenericParameter {
+		return parameters[index];
+	}
+
+	public function iterator():Iterator<RustGenericParameter> {
+		return parameters.iterator();
+	}
+}
+
+/** Distinguishes ordinary, angle-generic, and function-trait path segments. */
+enum RustPathSegmentArgumentStyle {
+	PathArgumentsNone;
+	PathArgumentsAngle;
+	PathArgumentsParenthesized;
+}
+
+/**
+	One validated segment of a structural Rust path.
+
+	Why
+	- Generic arguments belong to a particular segment (`Array<T>::Item`), and expression paths need
+	  turbofish punctuation (`Array::<T>::new`) while type paths do not.
+
+	What
+	- Couples one `RustIdentifier` with either no arguments, typed angle arguments, or typed
+	  parenthesized function-trait inputs and output.
+
+	How
+	- Use `plain`, `angle`, or `parenthesized`; every factory copies its input arrays.
+	- The printer selects type-path versus expression-path punctuation from context.
+**/
+class RustPathSegment {
+	public final identifier:RustIdentifier;
+	public final argumentStyle:RustPathSegmentArgumentStyle;
+	public final outputType:Null<RustType>;
+	final angleArguments:Array<RustGenericArgument>;
+	final inputTypes:Array<RustType>;
+	public var genericArgumentCount(get, never):Int;
+	public var inputTypeCount(get, never):Int;
+
+	private function new(identifier:RustIdentifier, argumentStyle:RustPathSegmentArgumentStyle, angleArguments:Array<RustGenericArgument>,
+		inputTypes:Array<RustType>, outputType:Null<RustType>) {
+		if (identifier == null)
+			throw "Rust path segment identifier cannot be null";
+		this.identifier = identifier;
+		this.argumentStyle = argumentStyle;
+		this.angleArguments = angleArguments.copy();
+		this.inputTypes = inputTypes.copy();
+		this.outputType = outputType;
+	}
+
+	public static function plain(name:String):RustPathSegment {
+		return plainIdentifier(RustIdentifier.named(name));
+	}
+
+	public static function plainIdentifier(identifier:RustIdentifier):RustPathSegment {
+		return new RustPathSegment(identifier, PathArgumentsNone, [], [], null);
+	}
+
+	public static function angle(name:String, arguments:Array<RustGenericArgument>):RustPathSegment {
+		return angleIdentifier(RustIdentifier.named(name), arguments);
+	}
+
+	public static function angleIdentifier(identifier:RustIdentifier, arguments:Array<RustGenericArgument>):RustPathSegment {
+		if (arguments == null || arguments.length == 0)
+			throw "Rust angle argument list cannot be empty";
+		for (argument in arguments) {
+			if (argument == null)
+				throw "Rust generic argument cannot be null";
+			switch (argument) {
+				case GenericType(type):
+					if (type == null)
+						throw "Rust generic type argument cannot be null";
+				case GenericConst(value):
+					if (value == null)
+						throw "Rust generic const argument cannot be null";
+				case GenericLifetime(lifetime):
+					if (lifetime == null)
+						throw "Rust generic lifetime argument cannot be null";
+			}
+		}
+		return new RustPathSegment(identifier, PathArgumentsAngle, arguments, [], null);
+	}
+
+	public static function parenthesized(name:String, inputs:Array<RustType>, output:Null<RustType>):RustPathSegment {
+		if (inputs == null)
+			throw "Rust parenthesized path inputs cannot be null";
+		for (input in inputs) {
+			if (input == null)
+				throw "Rust parenthesized path input cannot be null";
+		}
+		return new RustPathSegment(RustIdentifier.named(name), PathArgumentsParenthesized, [], inputs, output);
+	}
+
+	function get_genericArgumentCount():Int {
+		return angleArguments.length;
+	}
+
+	function get_inputTypeCount():Int {
+		return inputTypes.length;
+	}
+
+	public function genericArgumentAt(index:Int):RustGenericArgument {
+		return angleArguments[index];
+	}
+
+	public function inputTypeAt(index:Int):RustType {
+		return inputTypes[index];
+	}
+}
+
+/** The closed roots supported by a structural Rust path. */
+enum RustPathRoot {
+	PathRelative;
+	PathAbsolute;
+	PathCrate;
+	PathSelfModule;
+	PathSuper(depth:Int);
+	PathTypeSelf;
+	PathQualified(selfType:RustType, traitPath:Null<RustPath>);
+}
+
+/**
+	A structural Rust path with a closed root and validated segments.
+
+	Why
+	- Paths drive ownership checks, runtime policy, type identity, and diagnostics. Treating
+	  `crate::HxRef<T>` as an opaque string forces semantic passes to parse printer output.
+
+	What
+	- Represents relative, absolute, crate, module-self, super, type-`Self`, and qualified associated
+	  paths such as `<T as Iterator>::Item`.
+	- Each segment owns typed generic arguments; no factory accepts a complete rendered path.
+
+	How
+	- Select the root-specific factory and supply validated segments.
+	- `single` is the convenience boundary for one compiler-known identifier, not a path parser.
+	- Traversal uses `segmentCount`, `segmentAt`, and `iterator`; append returns a new path.
+**/
+class RustPath {
+	public final root:RustPathRoot;
+	final segments:Array<RustPathSegment>;
+	public var segmentCount(get, never):Int;
+
+	private function new(root:RustPathRoot, segments:Array<RustPathSegment>) {
+		this.root = root;
+		this.segments = validateSegments(segments);
+	}
+
+	public static function single(name:String):RustPath {
+		return relative([RustPathSegment.plain(name)]);
+	}
+
+	public static function relative(segments:Array<RustPathSegment>):RustPath {
+		if (segments == null || segments.length == 0)
+			throw "Relative Rust path requires at least one segment";
+		return new RustPath(PathRelative, segments);
+	}
+
+	public static function absolute(segments:Array<RustPathSegment>):RustPath {
+		if (segments == null || segments.length == 0)
+			throw "Absolute Rust path requires at least one segment";
+		return new RustPath(PathAbsolute, segments);
+	}
+
+	public static function cratePath(segments:Array<RustPathSegment>):RustPath {
+		if (segments == null || segments.length == 0)
+			throw "Rust crate path requires at least one segment";
+		return new RustPath(PathCrate, segments);
+	}
+
+	public static function selfModule(segments:Array<RustPathSegment>):RustPath {
+		if (segments == null || segments.length == 0)
+			throw "Rust module-self path requires at least one segment";
+		return new RustPath(PathSelfModule, segments);
+	}
+
+	public static function superPath(depth:Int, segments:Array<RustPathSegment>):RustPath {
+		if (depth < 1)
+			throw "Rust super path depth must be at least one";
+		if (segments == null || segments.length == 0)
+			throw "Rust super path requires at least one segment";
+		return new RustPath(PathSuper(depth), segments);
+	}
+
+	public static function typeSelf(segments:Array<RustPathSegment>):RustPath {
+		return new RustPath(PathTypeSelf, segments);
+	}
+
+	public static function qualified(selfType:RustType, traitPath:Null<RustPath>, segments:Array<RustPathSegment>):RustPath {
+		if (selfType == null)
+			throw "Qualified Rust path requires a self type";
+		if (segments == null || segments.length == 0)
+			throw "Qualified Rust path requires an associated segment";
+		return new RustPath(PathQualified(selfType, traitPath), segments);
+	}
+
+	function get_segmentCount():Int {
+		return segments.length;
+	}
+
+	public function segmentAt(index:Int):RustPathSegment {
+		return segments[index];
+	}
+
+	public function iterator():Iterator<RustPathSegment> {
+		return segments.iterator();
+	}
+
+	public function append(segment:RustPathSegment):RustPath {
+		if (segment == null)
+			throw "Appended Rust path segment cannot be null";
+		var next = segments.copy();
+		next.push(segment);
+		return new RustPath(root, next);
+	}
+
+	public function isRelative():Bool {
+		return root == PathRelative;
+	}
+
+	public function firstIdentifierName():Null<String> {
+		return segments.length == 0 ? null : segments[0].identifier.name;
+	}
+
+	static function validateSegments(values:Array<RustPathSegment>):Array<RustPathSegment> {
+		if (values == null)
+			throw "Rust path segments cannot be null";
+		var copy = values.copy();
+		for (segment in copy) {
+			if (segment == null)
+				throw "Rust path segment cannot be null";
+		}
+		return copy;
+	}
+}
+
 enum RustVisibility {
 	VPrivate;
 	VPub;
@@ -282,8 +821,15 @@ enum RustType {
 	RI32;
 	RF64;
 	RString;
+	// Legacy string-backed reference and path nodes remain only until haxe.rust-oo3.98.2.2.2
+	// migrates their production constructors. New typed IR must use the structural alternatives.
 	RRef(inner:RustType, mutable:Bool);
 	RPath(path:String);
+	RNamed(path:RustPath);
+	RBorrow(inner:RustType, mutable:Bool, lifetime:Null<RustLifetime>);
+	RTuple(elements:Array<RustType>);
+	RSlice(element:RustType);
+	RArray(element:RustType, length:RustConstArgument);
 }
 
 typedef RustBlock = {

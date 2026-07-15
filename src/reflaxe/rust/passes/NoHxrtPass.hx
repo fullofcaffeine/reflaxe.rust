@@ -5,12 +5,15 @@ import reflaxe.rust.CompilationContext;
 import reflaxe.rust.RustDiagnostic;
 import reflaxe.rust.RustDiagnostic.RustDiagnosticId;
 import reflaxe.rust.ast.RustAST.RustBlock;
+import reflaxe.rust.ast.RustAST.RustConstArgument;
 import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustFile;
+import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustRawCode;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustType;
+import reflaxe.rust.ast.RustASTPrinter;
 
 /**
 	NoHxrtPass
@@ -62,10 +65,56 @@ class NoHxrtPass implements RustPass {
 		}
 
 		var scanType:RustType->Void = null;
+		var scanPath:(RustPath, String)->Void = null;
+		var scanConstArgument:(RustConstArgument, String)->Void = null;
 		var scanPattern:RustPattern->Void = null;
 		var scanBlock:RustBlock->Void = null;
 		var scanStmt:RustStmt->Void = null;
 		var scanExpr:RustExpr->Void = null;
+
+		scanPath = function(path:RustPath, kind:String):Void {
+			if (path == null)
+				return;
+			// Semantic detection reads the validated leading segment. Printing is diagnostic display only.
+			if (path.firstIdentifierName() == "hxrt")
+				record(kind + " `" + RustASTPrinter.printTypePath(path) + "`");
+			switch (path.root) {
+				case PathQualified(selfType, traitPath):
+					scanType(selfType);
+					if (traitPath != null)
+						scanPath(traitPath, kind);
+				case _:
+			}
+			for (segment in path) {
+				switch (segment.argumentStyle) {
+					case PathArgumentsAngle:
+						for (index in 0...segment.genericArgumentCount) {
+							switch (segment.genericArgumentAt(index)) {
+								case GenericType(type): scanType(type);
+								case GenericConst(argument): scanConstArgument(argument, kind);
+								case GenericLifetime(_):
+							}
+						}
+					case PathArgumentsParenthesized:
+						for (index in 0...segment.inputTypeCount)
+							scanType(segment.inputTypeAt(index));
+						if (segment.outputType != null)
+							scanType(segment.outputType);
+					case PathArgumentsNone:
+				}
+			}
+		};
+
+		scanConstArgument = function(argument:RustConstArgument, kind:String):Void {
+			if (argument == null)
+				return;
+			switch (argument.kind) {
+				case ConstPath:
+					if (argument.pathValue != null)
+						scanPath(argument.pathValue, kind);
+				case ConstInteger | ConstBoolean:
+			}
+		};
 
 		scanType = function(ty:RustType):Void {
 			switch (ty) {
@@ -73,6 +122,18 @@ class NoHxrtPass implements RustPass {
 					scanType(inner);
 				case RPath(path):
 					recordPath("type", path);
+				case RNamed(path):
+					scanPath(path, "type");
+				case RBorrow(inner, _, _):
+					scanType(inner);
+				case RTuple(elements):
+					for (element in elements)
+						scanType(element);
+				case RSlice(element):
+					scanType(element);
+				case RArray(element, length):
+					scanType(element);
+					scanConstArgument(length, "type");
 				case _:
 			}
 		};

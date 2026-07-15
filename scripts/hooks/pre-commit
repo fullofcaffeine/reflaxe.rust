@@ -5,24 +5,14 @@ ROOT_DIR="$(git rev-parse --show-toplevel)"
 
 installed_repo_hook="$ROOT_DIR/.git/hooks/pre-commit"
 if [[ -f "$installed_repo_hook" ]] \
-  && grep -q 'pre-commit\.old' "$installed_repo_hook" \
-  && grep -Eq 'bd sync --flush-only|bd hook pre-commit|beads pre-commit hook' "$installed_repo_hook"; then
-  installed_repo_hook="$ROOT_DIR/.git/hooks/pre-commit.old"
-fi
-if [[ -f "$installed_repo_hook" ]] && ! cmp -s "$ROOT_DIR/scripts/hooks/pre-commit" "$installed_repo_hook"; then
+  && ! cmp -s "$ROOT_DIR/scripts/hooks/pre-commit" \
+    <(sed -n '1,/^# --- END REFLAXE\.RUST REPOSITORY PRE-COMMIT ---$/p' "$installed_repo_hook"); then
   echo "[pre-commit] ERROR: installed repository hook is stale; run npm run hooks:install and retry." >&2
   exit 1
 fi
 
 echo "[pre-commit] Running local path guard on staged changes..."
 bash "$ROOT_DIR/scripts/lint/local_path_guard_staged.sh"
-
-if command -v bd >/dev/null 2>&1; then
-  echo "[pre-commit] Running bd pre-commit hook (beads flush/staleness)..."
-  bd hooks run pre-commit
-else
-  echo "[pre-commit] WARN: bd not found; skipping beads hook."
-fi
 
 echo "[pre-commit] Running gitleaks on staged changes..."
 bash "$ROOT_DIR/scripts/security/run-gitleaks.sh" --staged
@@ -64,8 +54,10 @@ if grep -Eq '^(README\.md$|docs/faq\.md$|docs/architecture-capability(-manifest\
   node "$ROOT_DIR/scripts/ci/architecture-capability-manifest.js" --check
 fi
 
-if grep -Eq '^(scripts/hooks/pre-commit$|test/scripts/pre-commit-evidence-wiring\.test\.js$)' <<<"$STAGED_FILES"; then
+if grep -Eq '^(scripts/(install-git-hooks\.sh|dev/sync-template-hook-installer\.js|hooks/pre-commit)$|templates/basic/scripts/(install-git-hooks\.sh|hooks/pre-commit)$|test/scripts/(git-hook-installation|pre-commit-evidence-wiring)\.test\.js$)' <<<"$STAGED_FILES"; then
   echo "[pre-commit] Verifying evidence-gate wiring..."
+  npm --prefix "$ROOT_DIR" run hooks:check-template
+  npm --prefix "$ROOT_DIR" run test:git-hook-installation
   npm --prefix "$ROOT_DIR" run test:pre-commit-evidence-wiring
 fi
 
@@ -74,4 +66,17 @@ if grep -Eq '^(package\.json$|scripts/(ci/harness\.sh|hooks/pre-commit)$|src/ref
   npm --prefix "$ROOT_DIR" run test:rust-raw-authority
 fi
 
+if grep -Eq '^(package\.json$|scripts/(ci/harness\.sh|hooks/pre-commit)$|src/reflaxe/rust/(naming/RustNaming|ast/RustAST|ast/RustASTPrinter)\.hx$|test/compiler/RustStructuralPathContract\.hx$|test/scripts/(pre-commit-evidence-wiring|rust-structural-path-ir)\.test\.js$)' <<<"$STAGED_FILES"; then
+  echo "[pre-commit] Running structural Rust path IR contract..."
+  npm --prefix "$ROOT_DIR" run test:rust-structural-path-ir
+fi
+
 echo "[pre-commit] OK"
+
+# The Beads-managed integration is appended below this boundary by
+# scripts/install-git-hooks.sh. It is the sole owner of `bd hooks run`; keeping
+# repository validation inside this bounded prefix prevents recursive chains.
+# Disable errexit so Beads' generated timeout/status handling can observe and
+# normalize its command status before deciding whether the hook should fail.
+set +e
+# --- END REFLAXE.RUST REPOSITORY PRE-COMMIT ---

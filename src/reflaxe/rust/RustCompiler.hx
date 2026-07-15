@@ -18532,6 +18532,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case RString: rustStringTypePath();
 			case RRef(inner, mutable): "&" + (mutable ? "mut " : "") + rustTypeToString(inner);
 			case RPath(path): path;
+			case RNamed(_) | RBorrow(_, _, _) | RTuple(_) | RSlice(_) | RArray(_, _):
+				reflaxe.rust.ast.RustASTPrinter.printTypeSyntax(t);
 		}
 	}
 }

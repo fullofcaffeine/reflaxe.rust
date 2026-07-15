@@ -301,11 +301,11 @@ class CloneElisionPass implements RustPass {
 
 	function looksReferenceType(ty:reflaxe.rust.ast.RustAST.RustType):Bool {
 		return switch (ty) {
-			case RRef(_, _):
+			case RRef(_, _) | RBorrow(_, _, _):
 				true;
 			case RPath(path):
 				StringTools.startsWith(StringTools.trim(path), "&");
-			case RUnit | RBool | RI32 | RF64 | RString:
+			case RUnit | RBool | RI32 | RF64 | RString | RNamed(_) | RTuple(_) | RSlice(_) | RArray(_, _):
 				false;
 		};
 	}

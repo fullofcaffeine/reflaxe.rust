@@ -54,6 +54,73 @@ class RustASTPrinter {
 		return printExprPrec(e, 0, PREC_LOWEST);
 	}
 
+	/**
+		Prints a structural path in Rust type position.
+
+		Why
+		- Type paths use `Vec<T>` while expression paths require `Vec::<T>` for the same typed segment.
+		- Keeping this choice in the printer prevents callers from embedding turbofish punctuation in
+		  identifiers or generic arguments.
+
+		What
+		- Renders roots, qualified paths, path separators, identifiers, and all segment arguments.
+
+		How
+		- Pass a validated `RustPath`; complete rendered strings are intentionally not accepted.
+	**/
+	public static function printTypePath(path:RustAST.RustPath):String {
+		return printPath(path, false);
+	}
+
+	/** Prints a structural path in expression position, including required turbofish punctuation. */
+	public static function printExpressionPath(path:RustAST.RustPath):String {
+		return printPath(path, true);
+	}
+
+	/** Prints a structural path in pattern position using Rust's expression-path generic syntax. */
+	public static function printPatternPath(path:RustAST.RustPath):String {
+		return printPath(path, true);
+	}
+
+	/**
+		Prints one structural Rust type without declaration context.
+
+		Why
+		- Generic arguments, qualified paths, const arrays, and regression contracts need the exact
+		  same type printer as fields and function signatures.
+
+		What
+		- Exposes the canonical type printer while keeping all punctuation decisions centralized here.
+
+		How
+		- Callers provide a typed `RustType`; no target-syntax string is parsed or accepted.
+	**/
+	public static function printTypeSyntax(type:RustAST.RustType):String {
+		return printType(type);
+	}
+
+	/**
+		Prints a validated generic declaration list including its angle delimiters.
+
+		Why
+		- Bounds, defaults, lifetimes, commas, and `const` markers previously arrived as opaque strings.
+
+		What
+		- Returns an empty string for an empty list or `<...>` for a non-empty structural list.
+
+		How
+		- Ordering and duplicate validation happens in `RustGenericParameters.of`; this method only owns
+		  deterministic Rust syntax.
+	**/
+	public static function printGenericParameters(parameters:RustAST.RustGenericParameters):String {
+		if (parameters == null || parameters.count == 0)
+			return "";
+		var parts:Array<String> = [];
+		for (parameter in parameters)
+			parts.push(printGenericParameter(parameter));
+		return "<" + parts.join(", ") + ">";
+	}
+
 	static function printItem(item:RustAST.RustItem):String {
 		return switch (item) {
 			case RFn(f): printFunction(f, 0);
@@ -174,7 +241,161 @@ class RustASTPrinter {
 			case RString: "String";
 			case RRef(inner, mutable): "&" + (mutable ? "mut " : "") + printType(inner);
 			case RPath(path): path;
+			case RNamed(path): printTypePath(path);
+			case RBorrow(inner, mutable, lifetime): {
+					var prefix = "&";
+					if (lifetime != null)
+						prefix += printLifetime(lifetime) + " ";
+					if (mutable)
+						prefix += "mut ";
+					prefix + printType(inner);
+				}
+			case RTuple(elements): {
+					if (elements.length == 0) {
+						"()";
+					} else if (elements.length == 1) {
+						"(" + printType(elements[0]) + ",)";
+					} else {
+						"(" + elements.map(printType).join(", ") + ")";
+					}
+				}
+			case RSlice(element): "[" + printType(element) + "]";
+			case RArray(element, length): "[" + printType(element) + "; " + printConstArgument(length) + "]";
 		}
+	}
+
+	static function printPath(path:RustAST.RustPath, expressionContext:Bool):String {
+		if (path == null)
+			throw "Cannot print a null Rust path";
+		var renderedSegments:Array<String> = [];
+		for (segment in path)
+			renderedSegments.push(printPathSegment(segment, expressionContext));
+		var tail = renderedSegments.join("::");
+		return switch (path.root) {
+			case PathRelative: tail;
+			case PathAbsolute: "::" + tail;
+			case PathCrate: tail.length == 0 ? "crate" : "crate::" + tail;
+			case PathSelfModule: tail.length == 0 ? "self" : "self::" + tail;
+			case PathSuper(depth): {
+					var roots:Array<String> = [];
+					for (_ in 0...depth)
+						roots.push("super");
+					var prefix = roots.join("::");
+					tail.length == 0 ? prefix : prefix + "::" + tail;
+				}
+			case PathTypeSelf: tail.length == 0 ? "Self" : "Self::" + tail;
+			case PathQualified(selfType, traitPath): {
+					var head = "<" + printType(selfType);
+					if (traitPath != null)
+						head += " as " + printTypePath(traitPath);
+					head += ">";
+					head + "::" + tail;
+				}
+		};
+	}
+
+	static function printPathSegment(segment:RustAST.RustPathSegment, expressionContext:Bool):String {
+		if (segment == null)
+			throw "Cannot print a null Rust path segment";
+		var out = printIdentifier(segment.identifier);
+		switch (segment.argumentStyle) {
+			case PathArgumentsNone:
+			case PathArgumentsAngle:
+				var arguments:Array<String> = [];
+				for (index in 0...segment.genericArgumentCount)
+					arguments.push(printGenericArgument(segment.genericArgumentAt(index)));
+				out += (expressionContext ? "::<" : "<") + arguments.join(", ") + ">";
+			case PathArgumentsParenthesized:
+				var inputs:Array<String> = [];
+				for (index in 0...segment.inputTypeCount)
+					inputs.push(printType(segment.inputTypeAt(index)));
+				out += "(" + inputs.join(", ") + ")";
+				if (segment.outputType != null)
+					out += " -> " + printType(segment.outputType);
+		}
+		return out;
+	}
+
+	static function printIdentifier(identifier:RustAST.RustIdentifier):String {
+		if (identifier == null)
+			throw "Cannot print a null Rust identifier";
+		return (identifier.isRaw ? "r#" : "") + identifier.name;
+	}
+
+	static function printLifetime(lifetime:RustAST.RustLifetime):String {
+		if (lifetime == null)
+			throw "Cannot print a null Rust lifetime";
+		return switch (lifetime.kind) {
+			case LifetimeNamed:
+				if (lifetime.name == null)
+					throw "Named Rust lifetime is missing its identifier";
+				"'" + printIdentifier(lifetime.name);
+			case LifetimeStatic: "'static";
+			case LifetimeInferred: "'_";
+		};
+	}
+
+	static function printConstArgument(argument:RustAST.RustConstArgument):String {
+		if (argument == null)
+			throw "Cannot print a null Rust const argument";
+		return switch (argument.kind) {
+			case ConstInteger:
+				if (argument.integerDigits == null)
+					throw "Integer const argument is missing its value";
+				argument.integerDigits;
+			case ConstBoolean:
+				if (argument.boolValue == null)
+					throw "Boolean const argument is missing its value";
+				argument.boolValue ? "true" : "false";
+			case ConstPath:
+				if (argument.pathValue == null)
+					throw "Path const argument is missing its path";
+				printExpressionPath(argument.pathValue);
+		};
+	}
+
+	static function printGenericArgument(argument:RustAST.RustGenericArgument):String {
+		return switch (argument) {
+			case GenericType(type): printType(type);
+			case GenericConst(value): printConstArgument(value);
+			case GenericLifetime(lifetime): printLifetime(lifetime);
+		};
+	}
+
+	static function printGenericBound(bound:RustAST.RustGenericBound):String {
+		return switch (bound) {
+			case GenericTraitBound(path, modifier):
+				(switch (modifier) {
+					case TraitBoundRequired: "";
+					case TraitBoundOptional: "?";
+				}) + printTypePath(path);
+			case GenericLifetimeBound(lifetime): printLifetime(lifetime);
+		};
+	}
+
+	static function printGenericParameter(parameter:RustAST.RustGenericParameter):String {
+		return switch (parameter) {
+			case GenericLifetimeParam(name, bounds): {
+					var out = "'" + printIdentifier(name);
+					if (bounds.length > 0)
+						out += ": " + bounds.map(printLifetime).join(" + ");
+					out;
+				}
+			case GenericTypeParam(name, bounds, defaultType): {
+					var out = printIdentifier(name);
+					if (bounds.length > 0)
+						out += ": " + bounds.map(printGenericBound).join(" + ");
+					if (defaultType != null)
+						out += " = " + printType(defaultType);
+					out;
+				}
+			case GenericConstParam(name, type, defaultValue): {
+					var out = "const " + printIdentifier(name) + ": " + printType(type);
+					if (defaultValue != null)
+						out += " = " + printConstArgument(defaultValue);
+					out;
+				}
+		};
 	}
 
 	static function printBlock(b:RustAST.RustBlock, indent:Int):String {

@@ -10,3 +10,11 @@ echo "[pre-commit] Running gitleaks on staged changes..."
 bash "$ROOT_DIR/scripts/security/run-gitleaks.sh" --staged
 
 echo "[pre-commit] OK"
+
+# The Beads-managed integration is appended below this boundary by
+# scripts/install-git-hooks.sh. It is the sole owner of `bd hooks run`; keeping
+# repository validation inside this bounded prefix prevents recursive chains.
+# Disable errexit so Beads' generated timeout/status handling can observe and
+# normalize its command status before deciding whether the hook should fail.
+set +e
+# --- END REFLAXE.RUST REPOSITORY PRE-COMMIT ---

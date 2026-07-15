@@ -216,9 +216,15 @@ Agent policy:
   file list with a here-string (`grep -Eq PATTERN <<<"$STAGED_FILES"`) so evidence gates cannot be
   skipped nondeterministically.
 - Installed-hook freshness gotcha: `npm run hooks:install` copies `scripts/hooks/pre-commit` into
-  `.git/hooks` (or the Beads wrapper's `pre-commit.old`), so editing the tracked source does not update
-  the active hook automatically. Keep the hook's fail-closed byte comparison and reinstall before
-  committing a hook change.
+  `.git/hooks/pre-commit`, then lets modern Beads append its explicitly marked integration section.
+  Editing the tracked source does not update the active hook automatically. Keep the hook's
+  fail-closed bounded-prefix comparison and reinstall before committing a hook change.
+- Beads hook ownership gotcha: the tracked repository hook must never call `bd hooks run pre-commit`.
+  That command belongs only to the Beads-managed outer section, which already invokes any chained
+  hook content; calling it from repository validation creates an infinite `pre-commit` /
+  `pre-commit.old` cycle. Use explicit managed markers, remove only positively identified legacy
+  repository chains, keep `npm run test:git-hook-installation` wired into hooks/CI, and generate the
+  template installer from the root source with `npm run hooks:sync-template`.
 - Cargo MSRV-resolution gotcha: generated crates remain edition 2021 but must select resolver 3 from
   `rust-toolchain-policy.json`. Its MSRV-aware fallback is only a preference for dependencies that
   publish `rust-version`; it does not replace exact-minimum compilation. Application `Cargo.lock`
@@ -244,6 +250,14 @@ Agent policy:
   with the same name. Prefix internal cross-cutting enum constructors (for example `Raw*` and
   `Origin*`) and alias an external type when needed; do not rely on enum-type qualification alone to
   prevent the collision.
+- Structural Rust-path gotcha: never add a whole-path string parser/factory to `RustPath`. Build
+  validated segments and typed type/const/lifetime arguments at the lowering boundary; the printer
+  alone owns `::`, `<...>`, and expression/pattern turbofish punctuation. The same structural path
+  intentionally prints `Vec<T>` in type position and `Vec::<T>` in expression position.
+- Rust identifier keyword gotcha: `RustNaming.isKeyword` includes backend-reserved legal identifiers
+  (`std`, `core`, and `alloc`) for source-name allocation. Grammar validation must use
+  `RustNaming.isRustKeyword` so structural paths accept those real crate segments while rejecting the
+  complete Rust 2021 strict/edition/future-reserved keyword set.
 - Keep generated Rust rustfmt-clean: avoid embedding extra trailing newlines in raw items and always end files with a final newline.
 - Lint hygiene policy (default): snake_case all emitted members + locals/args, trim code after diverging ops (`throw/return/break/continue`), omit unused catch vars / unused `self_` params, and add crate-level `#![allow(dead_code)]` to keep `cargo build` warning-free.
   - Rust lint gotcha: emit `loop { ... }` instead of `while true { ... }` to stay warning-free under `#![deny(warnings)]` (`while_true`).
@@ -549,7 +563,9 @@ Agent policy:
     normalized HXML contents match exactly after removing `-D rust_output=...`.
     Keep CI-specific semantic flags (`*_headless`, explicit profiles, native-mode defines, etc.) distinct so those variants still compile separately.
     The harness runs snapshot clippy as a separate curated serial pass so `--case` does not accidentally clippy every snapshot.
-- Install the repo pre-commit hook (gitleaks + guards + beads flush): run `bd hooks install` then `npm run hooks:install` (requires `gitleaks` installed)
+- Install the repo pre-commit hook (gitleaks + guards + Beads integration): run `npm run hooks:install`
+  (requires `gitleaks` installed). The installer delegates the marked Beads section to
+  `bd hooks install --chain` when the checkout has a Beads workspace.
 - Canonical gitleaks entrypoint: use `scripts/security/run-gitleaks.sh` (`npm run security:gitleaks`, `npm run security:gitleaks:staged`).
   Keep pre-commit + CI wired to this shared script to avoid drift in flags/version behavior.
 - Local-path leak policy: run `scripts/lint/local_path_guard_staged.sh` in pre-commit and `scripts/lint/local_path_guard_repo.sh`

@@ -23,9 +23,17 @@ requireFragment('docs/architecture-capability-manifest.json', 'architecture capa
 requireFragment('docs/architecture-capability.md', 'architecture capability generated-page staging check')
 requireFragment('scripts/ci/architecture-capability-manifest.js', 'architecture capability drift check')
 requireFragment('test:rust-raw-authority', 'typed raw-Rust authority contract')
-requireFragment('cmp -s "$ROOT_DIR/scripts/hooks/pre-commit" "$installed_repo_hook"', 'installed-hook freshness check')
-requireFragment('pre-commit.old', 'Beads chained-hook freshness target')
+requireFragment('test:rust-structural-path-ir', 'structural Rust path IR contract')
+requireFragment('END REFLAXE.RUST REPOSITORY PRE-COMMIT', 'explicit repository-hook boundary')
+requireFragment('cmp -s "$ROOT_DIR/scripts/hooks/pre-commit"', 'installed-hook freshness check')
 requireFragment('npm run hooks:install', 'installed-hook refresh guidance')
+
+if (hook.includes('bd hooks run pre-commit')) {
+  throw new Error('the repository hook must not invoke the outer Beads pre-commit shim')
+}
+if (hook.includes('pre-commit.old')) {
+  throw new Error('the repository hook must not select a legacy chained hook by filename')
+}
 
 const unsafeStagedPipe = `printf '%s\\n' "$STAGED_FILES" | grep -Eq`
 if (hook.includes(unsafeStagedPipe)) {
