@@ -156,6 +156,61 @@ function toolVersion(command, label) {
   return match[1]
 }
 
+/**
+ * Why:
+ * Rustup chooses a toolchain from the command's working directory. The repository can therefore
+ * select its pinned compiler while an isolated Cargo fixture outside the repository silently uses
+ * the user's rolling default toolchain.
+ *
+ * What:
+ * Resolves Cargo and rustc to the concrete binaries in the sysroot selected while the process is
+ * still rooted in this repository. Explicit CARGO_BIN/RUSTC_BIN overrides remain authoritative.
+ *
+ * How:
+ * rustc reports its selected sysroot; the sibling binaries are then passed through every temporary
+ * resolution workspace. Missing siblings fail closed so a probe can never report one compiler and
+ * execute another.
+ */
+function selectToolchainCommands(options = {}) {
+  const rustcCommand = options.rustcCommand || rustcBin
+  const cargoCommand = options.cargoCommand || cargoBin
+  const rustcExplicit = options.rustcExplicit == null ? process.env.RUSTC_BIN != null : options.rustcExplicit
+  const cargoExplicit = options.cargoExplicit == null ? process.env.CARGO_BIN != null : options.cargoExplicit
+  if (rustcExplicit && cargoExplicit) return { rustc: rustcCommand, cargo: cargoCommand }
+
+  const readRustcSysroot = options.readRustcSysroot || (() => {
+    const result = runCommand(rustcCommand, ['--print', 'sysroot'], { label: 'selected rustc sysroot' })
+    return result.stdout.trim()
+  })
+  const pathExists = options.pathExists || fs.existsSync
+  const platform = options.platform || process.platform
+  const executableSuffix = platform === 'win32' ? '.exe' : ''
+  const sysroot = readRustcSysroot()
+  if (typeof sysroot !== 'string' || sysroot.trim().length === 0) fail('selected rustc returned an empty sysroot')
+
+  const selectedRustc = path.join(sysroot, 'bin', `rustc${executableSuffix}`)
+  const selectedCargo = path.join(sysroot, 'bin', `cargo${executableSuffix}`)
+  if (!rustcExplicit && !pathExists(selectedRustc)) {
+    fail(`selected Rust sysroot does not contain rustc at ${selectedRustc}`)
+  }
+  if (!cargoExplicit && !pathExists(selectedCargo)) {
+    fail(`selected Rust sysroot does not contain cargo at ${selectedCargo}; set CARGO_BIN explicitly`)
+  }
+  return {
+    rustc: rustcExplicit ? rustcCommand : selectedRustc,
+    cargo: cargoExplicit ? cargoCommand : selectedCargo
+  }
+}
+
+function loadSelectedToolchain() {
+  const commands = selectToolchainCommands()
+  return {
+    ...commands,
+    rustcVersion: canonicalVersion(toolVersion(commands.rustc, 'rustc')),
+    cargoVersion: canonicalVersion(toolVersion(commands.cargo, 'cargo'))
+  }
+}
+
 function stablePackageKey(pkg) {
   return `${pkg.name}@${pkg.version}${pkg.source == null ? ':path' : `:${pkg.source}`}`
 }
@@ -255,18 +310,19 @@ function normalizeMetadata(raw, entry, policy) {
   }
 }
 
-function cargoEnvironment(cargoHome, targetDir) {
+function cargoEnvironment(cargoHome, targetDir, toolchain) {
   return {
     ...process.env,
     CARGO_HOME: cargoHome,
     CARGO_TARGET_DIR: targetDir,
     CARGO_TERM_COLOR: 'never',
     CARGO_NET_RETRY: process.env.CARGO_NET_RETRY || '10',
-    CARGO_HTTP_MULTIPLEXING: process.env.CARGO_HTTP_MULTIPLEXING || 'false'
+    CARGO_HTTP_MULTIPLEXING: process.env.CARGO_HTTP_MULTIPLEXING || 'false',
+    RUSTC: toolchain.rustc
   }
 }
 
-function runResolutionPass(policy, passIndex, buildAndTest) {
+function runResolutionPass(policy, passIndex, buildAndTest, toolchain) {
   const passRoot = fs.mkdtempSync(path.join(os.tmpdir(), `reflaxe-rust-fresh-resolution-${passIndex}-`))
   const artifacts = new Map()
   try {
@@ -280,16 +336,16 @@ function runResolutionPass(policy, passIndex, buildAndTest) {
       fs.mkdirSync(cargoHome, { recursive: true })
       if (fs.readdirSync(cargoHome).length !== 0) fail(`${entry.id} Cargo home was not empty before resolution`)
       const targetDir = path.join(passRoot, 'targets', entry.id)
-      const env = cargoEnvironment(cargoHome, targetDir)
+      const env = cargoEnvironment(cargoHome, targetDir, toolchain)
       const replacements = [[passRoot, '<fresh-resolution>'], [repoRoot, '<repo>']]
 
-      runCommand(cargoBin, ['generate-lockfile', '--quiet'], {
+      runCommand(toolchain.cargo, ['generate-lockfile', '--quiet'], {
         cwd: caseRoot,
         env,
         label: `${entry.id} lockfile generation`,
         replacements
       })
-      const metadataResult = runCommand(cargoBin, ['metadata', '--locked', '--format-version', '1'], {
+      const metadataResult = runCommand(toolchain.cargo, ['metadata', '--locked', '--format-version', '1'], {
         cwd: caseRoot,
         env,
         label: `${entry.id} Cargo metadata`,
@@ -297,13 +353,13 @@ function runResolutionPass(policy, passIndex, buildAndTest) {
       })
       const metadata = normalizeMetadata(JSON.parse(metadataResult.stdout), entry, policy)
       if (buildAndTest) {
-        runCommand(cargoBin, ['check', '--locked', '--quiet'], {
+        runCommand(toolchain.cargo, ['check', '--locked', '--quiet'], {
           cwd: caseRoot,
           env,
           label: `${entry.id} cargo check --locked`,
           replacements
         })
-        runCommand(cargoBin, ['test', '--locked', '--quiet'], {
+        runCommand(toolchain.cargo, ['test', '--locked', '--quiet'], {
           cwd: caseRoot,
           env,
           label: `${entry.id} cargo test --locked`,
@@ -469,8 +525,9 @@ function writeEvidence(policy, artifacts, lane, actualRustc, actualCargo, outDir
   fs.writeFileSync(path.join(outDir, 'summary.json'), jsonBytes(summary))
 }
 
-function runMutationProbe(policy) {
-  const actualRustc = canonicalVersion(toolVersion(rustcBin, 'rustc'))
+function runMutationProbe(policy, selectedToolchain = null) {
+  const toolchain = selectedToolchain || loadSelectedToolchain()
+  const actualRustc = toolchain.rustcVersion
   if (compareRustVersions(actualRustc, policy.minimumSupportedRust) < 0) {
     fail(`mutation probe requires rustc ${policy.minimumSupportedRust} or newer; found ${actualRustc}`)
   }
@@ -484,15 +541,15 @@ function runMutationProbe(policy) {
     fs.writeFileSync(path.join(root, 'msrv-probe', 'Cargo.toml'), `[package]\nname = "msrv_probe"\nversion = "1.1.0"\nedition = "2021"\nrust-version = "${unsupported}"\n\n[lib]\npath = "src/lib.rs"\n`)
     fs.writeFileSync(path.join(root, 'msrv-probe', 'src', 'lib.rs'), 'pub fn value() -> i32 { 1 }\n')
     const cargoHome = path.join(root, 'cargo-home')
-    const env = cargoEnvironment(cargoHome, path.join(root, 'target'))
+    const env = cargoEnvironment(cargoHome, path.join(root, 'target'), toolchain)
     const replacements = [[root, '<msrv-mutation>'], [repoRoot, '<repo>']]
-    runCommand(cargoBin, ['generate-lockfile', '--quiet'], {
+    runCommand(toolchain.cargo, ['generate-lockfile', '--quiet'], {
       cwd: root,
       env,
       label: 'MSRV mutation lockfile generation',
       replacements
     })
-    const result = runCommand(cargoBin, ['check', '--locked', '--quiet'], {
+    const result = runCommand(toolchain.cargo, ['check', '--locked', '--quiet'], {
       cwd: root,
       env,
       label: 'MSRV mutation cargo check',
@@ -521,8 +578,9 @@ function runFull(policy, args) {
   if (refreshBaseline && lane !== 'minimum') {
     fail('--refresh-baseline is allowed only on the exact minimum lane')
   }
-  const actualRustc = canonicalVersion(toolVersion(rustcBin, 'rustc'))
-  const actualCargo = canonicalVersion(toolVersion(cargoBin, 'cargo'))
+  const toolchain = loadSelectedToolchain()
+  const actualRustc = toolchain.rustcVersion
+  const actualCargo = toolchain.cargoVersion
   if (lane === 'minimum' && actualRustc !== policy.minimumSupportedRust) {
     fail(`minimum lane resolved rustc ${actualRustc}; expected exact ${policy.minimumSupportedRust}`)
   }
@@ -533,11 +591,11 @@ function runFull(policy, args) {
 
   let resolved = null
   for (let passIndex = 1; passIndex <= policy.dependencyResolution.repeatRuns; passIndex += 1) {
-    const candidate = runResolutionPass(policy, passIndex, passIndex === 1)
+    const candidate = runResolutionPass(policy, passIndex, passIndex === 1, toolchain)
     if (resolved == null) resolved = candidate
     else comparePasses(policy, resolved, candidate, passIndex)
   }
-  runMutationProbe(policy)
+  runMutationProbe(policy, toolchain)
 
   if (refreshBaseline) {
     writeBaseline(policy, resolved)
@@ -580,5 +638,6 @@ module.exports = {
   checkBaseline,
   compareRustVersions,
   normalizeMetadata,
-  safeOutputDirectory
+  safeOutputDirectory,
+  selectToolchainCommands
 }

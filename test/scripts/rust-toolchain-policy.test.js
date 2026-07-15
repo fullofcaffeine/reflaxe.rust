@@ -95,6 +95,38 @@ function main() {
   assert(fs.existsSync(freshResolutionChecker), 'fresh Cargo resolution checker must exist')
   assert(fs.existsSync(freshResolutionBaselinePath), 'fresh Cargo resolution baseline manifest must exist')
 
+  assert.strictEqual(
+    typeof freshResolutionApi.selectToolchainCommands,
+    'function',
+    'fresh-resolution probes must resolve one paired Cargo/rustc toolchain before entering temporary directories'
+  )
+  const selectedToolchain = freshResolutionApi.selectToolchainCommands({
+    rustcCommand: 'rustc-proxy',
+    cargoCommand: 'cargo-proxy',
+    rustcExplicit: false,
+    cargoExplicit: false,
+    platform: 'linux',
+    readRustcSysroot: () => '/toolchains/1.96.0',
+    pathExists: (candidate) => candidate === '/toolchains/1.96.0/bin/rustc'
+      || candidate === '/toolchains/1.96.0/bin/cargo'
+  })
+  assert.deepStrictEqual(selectedToolchain, {
+    rustc: '/toolchains/1.96.0/bin/rustc',
+    cargo: '/toolchains/1.96.0/bin/cargo'
+  }, 'temporary Cargo workspaces must not let rustup switch away from the repository-selected toolchain')
+  assert.deepStrictEqual(freshResolutionApi.selectToolchainCommands({
+    rustcCommand: '/custom/rustc',
+    cargoCommand: '/custom/cargo',
+    rustcExplicit: true,
+    cargoExplicit: true,
+    platform: 'linux',
+    readRustcSysroot: () => '/toolchains/ignored',
+    pathExists: () => true
+  }), {
+    rustc: '/custom/rustc',
+    cargo: '/custom/cargo'
+  }, 'explicit tool command overrides must remain authoritative')
+
   const freshContract = runFreshResolution(['--contract-only'])
   assert.strictEqual(freshContract.status, 0, freshContract.stderr || freshContract.stdout)
 

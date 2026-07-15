@@ -218,6 +218,12 @@ Agent policy:
   builds. Compiler evidence uses the two-pass, per-case-empty Cargo homes and reviewed
   locks/normalized metadata under `test/compatibility-baselines/fresh-cargo-resolution`; refresh that
   baseline only on exact Rust 1.96 after reviewing all graph changes.
+- Rustup temp-workspace gotcha: rustup selects a toolchain from each command's working directory.
+  A probe can report the repository-pinned `rustc` and then silently execute Cargo or rustc from the
+  rolling default toolchain after moving to a temporary fixture outside the repository. Before
+  leaving the repository, resolve the concrete Cargo and rustc binaries from the selected rustc
+  sysroot and pass both through every temporary build; keep explicit `CARGO_BIN` / `RUSTC_BIN`
+  overrides authoritative.
 - Reflaxe’s `Context.getMainExpr()` is only reliable when the consumer uses `-main <Class>` (don’t rely on a bare trailing `Main` line in `.hxml`).
 - Windows Python tool-launch gotcha: Lix installs Haxe as an extensionless Node shim. Git Bash can
   execute it, but native Python `subprocess` cannot reliably resolve it as a Windows executable.
