@@ -24,6 +24,7 @@ requireFragment('docs/architecture-capability.md', 'architecture capability gene
 requireFragment('scripts/ci/architecture-capability-manifest.js', 'architecture capability drift check')
 requireFragment('test:rust-raw-authority', 'typed raw-Rust authority contract')
 requireFragment('test:rust-structural-path-ir', 'structural Rust path IR contract')
+requireFragment('test:rust-structural-type-declarations', 'structural Rust type declaration contract')
 requireFragment('END REFLAXE.RUST REPOSITORY PRE-COMMIT', 'explicit repository-hook boundary')
 requireFragment('cmp -s "$ROOT_DIR/scripts/hooks/pre-commit"', 'installed-hook freshness check')
 requireFragment('npm run hooks:install', 'installed-hook refresh guidance')

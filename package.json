@@ -33,6 +33,7 @@
     "test:runtime-e2e-contract": "node test/scripts/runtime-e2e-contract.test.js",
     "test:rust-raw-authority": "node test/scripts/rust-raw-authority.test.js && bash test/run-snapshots.sh --case hello_trace --no-diff",
     "test:rust-structural-path-ir": "node test/scripts/rust-structural-path-ir.test.js && bash test/run-snapshots.sh --case hello_trace --no-diff",
+    "test:rust-structural-type-declarations": "node test/scripts/rust-structural-type-declarations.test.js && bash test/run-snapshots.sh --case hello_trace --no-diff",
     "test:architecture-capability": "node test/scripts/architecture-capability-manifest.test.js",
     "test:public-compatibility": "node test/scripts/public-compatibility-manifest.test.js",
     "test:generated-consumer-contract": "node test/scripts/generated-consumer-contract.test.js",

@@ -8,6 +8,7 @@ import reflaxe.rust.ast.RustAST.RustBlock;
 import reflaxe.rust.ast.RustAST.RustConstArgument;
 import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustFile;
+import reflaxe.rust.ast.RustAST.RustGenericParameters;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustRawCode;
@@ -71,6 +72,7 @@ class NoHxrtPass implements RustPass {
 		var scanBlock:RustBlock->Void = null;
 		var scanStmt:RustStmt->Void = null;
 		var scanExpr:RustExpr->Void = null;
+		var scanGenericParameters:RustGenericParameters->Void = null;
 
 		scanPath = function(path:RustPath, kind:String):Void {
 			if (path == null)
@@ -118,10 +120,6 @@ class NoHxrtPass implements RustPass {
 
 		scanType = function(ty:RustType):Void {
 			switch (ty) {
-				case RRef(inner, _):
-					scanType(inner);
-				case RPath(path):
-					recordPath("type", path);
 				case RNamed(path):
 					scanPath(path, "type");
 				case RBorrow(inner, _, _):
@@ -134,7 +132,35 @@ class NoHxrtPass implements RustPass {
 				case RArray(element, length):
 					scanType(element);
 					scanConstArgument(length, "type");
+				case RTraitObject(object):
+					for (bound in object) {
+						switch (bound) {
+							case GenericTraitBound(path, _): scanPath(path, "trait bound");
+							case GenericLifetimeBound(_):
+						}
+					}
 				case _:
+			}
+		};
+
+		scanGenericParameters = function(parameters:RustGenericParameters):Void {
+			for (parameter in parameters) {
+				switch (parameter) {
+					case GenericLifetimeParam(_, _):
+					case GenericTypeParam(_, bounds, defaultType):
+						for (bound in bounds) {
+							switch (bound) {
+								case GenericTraitBound(path, _): scanPath(path, "generic bound");
+								case GenericLifetimeBound(_):
+							}
+						}
+						if (defaultType != null)
+							scanType(defaultType);
+					case GenericConstParam(_, type, defaultValue):
+						scanType(type);
+						if (defaultValue != null)
+							scanConstArgument(defaultValue, "generic const default");
+				}
 			}
 		};
 
@@ -264,21 +290,26 @@ class NoHxrtPass implements RustPass {
 		for (item in file.items) {
 			switch (item) {
 				case RFn(f):
+					scanGenericParameters(f.generics);
 					for (arg in f.args)
 						scanType(arg.ty);
 					scanType(f.ret);
 					scanBlock(f.body);
 				case RStruct(s):
+					scanGenericParameters(s.generics);
 					for (field in s.fields)
 						scanType(field.ty);
 				case REnum(e):
+					scanGenericParameters(e.generics);
 					for (variant in e.variants) {
 						for (arg in variant.args)
 							scanType(arg);
 					}
 				case RImpl(i):
-					recordPath("impl", i.forType);
+					scanGenericParameters(i.generics);
+					scanType(i.forType);
 					for (fn in i.functions) {
+						scanGenericParameters(fn.generics);
 						for (arg in fn.args)
 							scanType(arg.ty);
 						scanType(fn.ret);

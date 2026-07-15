@@ -407,6 +407,7 @@ harness_stage_selected() {
 run_snapshots_group() {
   run_stage "typed raw-Rust authority contract" npm run test:rust-raw-authority
   run_stage "structural Rust path IR contract" npm run test:rust-structural-path-ir
+  run_stage "structural Rust type declaration contract" npm run test:rust-structural-type-declarations
   run_stage "snapshots" run_snapshots
   intermediate_cleanup "snapshots"
 }

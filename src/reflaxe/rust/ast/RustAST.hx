@@ -518,6 +518,69 @@ class RustGenericParameters {
 	}
 }
 
+/**
+	A validated structural Rust trait object (`dyn Trait + Send + 'a`).
+
+	Why
+	- Function values, interfaces, and polymorphic classes use trait objects in generated Rust.
+	- Hiding `dyn`, auto-trait bounds, or lifetimes inside `RPath(String)` prevents ownership and
+	  thread-safety passes from inspecting the actual contract.
+
+	What
+	- Owns a non-empty, defensively copied list of required trait and lifetime bounds.
+	- Rejects relaxed `?Trait` bounds because Rust does not admit them in trait-object syntax.
+
+	How
+	- Build paths (including parenthesized `Fn(...) -> ...`) structurally, wrap them in
+	  `RustGenericBound`, then call `of`.
+	- `RTraitObject` stores this value; the printer alone emits `dyn` and `+` punctuation.
+**/
+class RustTraitObject {
+	final bounds:Array<RustGenericBound>;
+	public var count(get, never):Int;
+
+	private function new(bounds:Array<RustGenericBound>) {
+		this.bounds = bounds;
+	}
+
+	public static function of(values:Array<RustGenericBound>):RustTraitObject {
+		if (values == null || values.length == 0)
+			throw "Rust trait object requires at least one bound";
+		var copy = values.copy();
+		var hasTrait = false;
+		for (bound in copy) {
+			if (bound == null)
+				throw "Rust trait object bound cannot be null";
+			switch (bound) {
+				case GenericTraitBound(path, modifier):
+					if (path == null || modifier == null)
+						throw "Rust trait object bound requires a path and modifier";
+					if (modifier == TraitBoundOptional)
+						throw "Rust trait objects cannot contain relaxed ?Trait bounds";
+					hasTrait = true;
+				case GenericLifetimeBound(lifetime):
+					if (lifetime == null)
+						throw "Rust trait object lifetime bound cannot be null";
+			}
+		}
+		if (!hasTrait)
+			throw "Rust trait object requires at least one trait bound";
+		return new RustTraitObject(copy);
+	}
+
+	function get_count():Int {
+		return bounds.length;
+	}
+
+	public function at(index:Int):RustGenericBound {
+		return bounds[index];
+	}
+
+	public function iterator():Iterator<RustGenericBound> {
+		return bounds.iterator();
+	}
+}
+
 /** Distinguishes ordinary, angle-generic, and function-trait path segments. */
 enum RustPathSegmentArgumentStyle {
 	PathArgumentsNone;
@@ -768,7 +831,7 @@ typedef RustStruct = {
 	var name:String;
 	var isPub:Bool;
 	@:optional var vis:RustVisibility;
-	@:optional var generics:Array<String>;
+	var generics:RustGenericParameters;
 	var fields:Array<RustStructField>;
 }
 
@@ -783,7 +846,7 @@ typedef RustEnum = {
 	var name:String;
 	var isPub:Bool;
 	@:optional var vis:RustVisibility;
-	@:optional var generics:Array<String>;
+	var generics:RustGenericParameters;
 	var derives:Array<String>;
 	var variants:Array<RustEnumVariant>;
 }
@@ -794,8 +857,8 @@ typedef RustEnumVariant = {
 }
 
 typedef RustImpl = {
-	@:optional var generics:Array<String>;
-	var forType:String;
+	var generics:RustGenericParameters;
+	var forType:RustType;
 	var functions:Array<RustFunction>;
 }
 
@@ -804,7 +867,7 @@ typedef RustFunction = {
 	var isPub:Bool;
 	@:optional var vis:RustVisibility;
 	@:optional var isAsync:Bool;
-	@:optional var generics:Array<String>;
+	var generics:RustGenericParameters;
 	var args:Array<RustFnArg>;
 	var ret:RustType;
 	var body:RustBlock;
@@ -821,15 +884,12 @@ enum RustType {
 	RI32;
 	RF64;
 	RString;
-	// Legacy string-backed reference and path nodes remain only until haxe.rust-oo3.98.2.2.2
-	// migrates their production constructors. New typed IR must use the structural alternatives.
-	RRef(inner:RustType, mutable:Bool);
-	RPath(path:String);
 	RNamed(path:RustPath);
 	RBorrow(inner:RustType, mutable:Bool, lifetime:Null<RustLifetime>);
 	RTuple(elements:Array<RustType>);
 	RSlice(element:RustType);
 	RArray(element:RustType, length:RustConstArgument);
+	RTraitObject(object:RustTraitObject);
 }
 
 typedef RustBlock = {

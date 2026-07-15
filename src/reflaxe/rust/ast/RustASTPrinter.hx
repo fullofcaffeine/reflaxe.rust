@@ -146,10 +146,7 @@ class RustASTPrinter {
 	}
 
 	static function printStruct(s:RustAST.RustStruct):String {
-		var head = visibilityPrefix(s.vis, s.isPub) + "struct " + s.name;
-		if (s.generics != null && s.generics.length > 0) {
-			head += "<" + s.generics.join(", ") + ">";
-		}
+		var head = visibilityPrefix(s.vis, s.isPub) + "struct " + s.name + printGenericParameters(s.generics);
 		if (s.fields.length == 0) {
 			return head + " { }";
 		}
@@ -168,10 +165,7 @@ class RustASTPrinter {
 			parts.push("#[derive(" + e.derives.join(", ") + ")]");
 		}
 
-		var head = visibilityPrefix(e.vis, e.isPub) + "enum " + e.name;
-		if (e.generics != null && e.generics.length > 0) {
-			head += "<" + e.generics.join(", ") + ">";
-		}
+		var head = visibilityPrefix(e.vis, e.isPub) + "enum " + e.name + printGenericParameters(e.generics);
 		if (e.variants.length == 0) {
 			parts.push(head + " { }");
 			return parts.join("\n");
@@ -191,11 +185,8 @@ class RustASTPrinter {
 	}
 
 	static function printImpl(i:RustAST.RustImpl):String {
-		var head = "impl";
-		if (i.generics != null && i.generics.length > 0) {
-			head += "<" + i.generics.join(", ") + ">";
-		}
-		head += " " + i.forType;
+		var head = "impl" + printGenericParameters(i.generics);
+		head += " " + printType(i.forType);
 		if (i.functions.length == 0) {
 			return head + " { }";
 		}
@@ -216,10 +207,7 @@ class RustASTPrinter {
 		if (f.isAsync == true)
 			sigParts.push("async");
 		sigParts.push("fn");
-		var name = f.name;
-		if (f.generics != null && f.generics.length > 0) {
-			name += "<" + f.generics.join(", ") + ">";
-		}
+		var name = f.name + printGenericParameters(f.generics);
 		sigParts.push(name);
 
 		var args = f.args.map(a -> '${a.name}: ${printType(a.ty)}').join(", ");
@@ -239,8 +227,6 @@ class RustASTPrinter {
 			case RI32: "i32";
 			case RF64: "f64";
 			case RString: "String";
-			case RRef(inner, mutable): "&" + (mutable ? "mut " : "") + printType(inner);
-			case RPath(path): path;
 			case RNamed(path): printTypePath(path);
 			case RBorrow(inner, mutable, lifetime): {
 					var prefix = "&";
@@ -261,6 +247,12 @@ class RustASTPrinter {
 				}
 			case RSlice(element): "[" + printType(element) + "]";
 			case RArray(element, length): "[" + printType(element) + "; " + printConstArgument(length) + "]";
+			case RTraitObject(object): {
+					var bounds:Array<String> = [];
+					for (bound in object)
+						bounds.push(printGenericBound(bound));
+					"dyn " + bounds.join(" + ");
+				}
 		}
 	}
 

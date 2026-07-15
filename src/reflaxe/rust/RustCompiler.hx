@@ -26,8 +26,16 @@ import reflaxe.rust.ast.RustAST;
 import reflaxe.rust.ast.RustAST.RustBlock;
 import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustFile;
+import reflaxe.rust.ast.RustAST.RustGenericArgument;
+import reflaxe.rust.ast.RustAST.RustGenericBound;
+import reflaxe.rust.ast.RustAST.RustGenericParameter;
+import reflaxe.rust.ast.RustAST.RustGenericParameters;
+import reflaxe.rust.ast.RustAST.RustIdentifier;
 import reflaxe.rust.ast.RustAST.RustItem;
+import reflaxe.rust.ast.RustAST.RustLifetime;
 import reflaxe.rust.ast.RustAST.RustMatchArm;
+import reflaxe.rust.ast.RustAST.RustPath;
+import reflaxe.rust.ast.RustAST.RustPathSegment;
 import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustCompilerRawReason;
 import reflaxe.rust.ast.RustAST.RustMetadataRawReason;
@@ -35,6 +43,8 @@ import reflaxe.rust.ast.RustAST.RustRawCode;
 import reflaxe.rust.ast.RustAST.RustSourceRawReason;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustStructLitField;
+import reflaxe.rust.ast.RustAST.RustTraitBoundModifier;
+import reflaxe.rust.ast.RustAST.RustTraitObject;
 import reflaxe.rust.ast.RustAST.RustType;
 import reflaxe.rust.ast.RustAST.RustVisibility;
 import reflaxe.helpers.TypeHelper;
@@ -67,6 +77,7 @@ import reflaxe.rust.analyze.SendSyncAnalyzer;
 import reflaxe.rust.analyze.TypeUsageAnalyzer;
 import reflaxe.rust.macros.CargoMetaRegistry;
 import reflaxe.rust.macros.RustExtraSrcRegistry;
+import reflaxe.rust.metadata.RustMetadataSyntax;
 import reflaxe.rust.naming.RustNaming;
 import reflaxe.rust.ProfileResolver;
 import reflaxe.rust.RustProfile;
@@ -301,6 +312,342 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
+		Builds validated path segments from compiler-owned identifiers.
+
+		Why
+		- Type lowering already knows module and nominal-type boundaries; joining them into one string
+		  would throw away exactly the information structural IR is meant to preserve.
+
+		What
+		- Converts each already-separated identifier into one `RustPathSegment` and attaches optional
+		  generic arguments only to the final segment.
+
+		How
+		- Callers must pass module/type names as separate array entries. Source metadata paths go through
+		  `RustMetadataSyntax` instead.
+	**/
+	function rustPathSegments(names:Array<String>, ?lastArguments:Array<RustGenericArgument>):Array<RustPathSegment> {
+		if (names == null || names.length == 0)
+			throw "Compiler-owned Rust path requires at least one segment";
+		var out:Array<RustPathSegment> = [];
+		for (index in 0...names.length) {
+			var isLast = index == names.length - 1;
+			if (isLast && lastArguments != null && lastArguments.length > 0)
+				out.push(RustPathSegment.angle(names[index], lastArguments));
+			else
+				out.push(RustPathSegment.plain(names[index]));
+		}
+		return out;
+	}
+
+	function rustTypeArguments(types:Array<RustType>):Array<RustGenericArgument> {
+		return types == null ? [] : [for (type in types) GenericType(type)];
+	}
+
+	function rustRelativePath(names:Array<String>, ?arguments:Array<RustGenericArgument>):RustPath {
+		return RustPath.relative(rustPathSegments(names, arguments));
+	}
+
+	function rustCratePath(names:Array<String>, ?arguments:Array<RustGenericArgument>):RustPath {
+		return RustPath.cratePath(rustPathSegments(names, arguments));
+	}
+
+	/**
+		Attaches structural generic arguments to a metadata-owned path's final segment.
+
+		Why
+		- Extern metadata supplies the nominal path, while Haxe's typed AST supplies the applied type
+		  arguments. Rendering both halves and reparsing the result would make compiler-owned types
+		  depend on printer syntax again.
+
+		What
+		- Rebuilds the immutable path with the same root and prefix segments, replacing only the final
+		  plain segment with an angle-argument segment.
+
+		How
+		- Metadata text is parsed once by `RustMetadataSyntax`; typed arguments remain structural from
+		  `toRustType` through the printer.
+	**/
+	function rustPathWithFinalArguments(path:RustPath, arguments:Array<RustGenericArgument>):RustPath {
+		if (path == null)
+			throw "Rust path cannot be null";
+		if (arguments == null || arguments.length == 0)
+			return path;
+		var segments = [for (segment in path) segment];
+		var finalSegment = segments[segments.length - 1];
+		if (finalSegment.argumentStyle != PathArgumentsNone)
+			throw "Extern Rust path already owns generic arguments";
+		segments[segments.length - 1] = RustPathSegment.angleIdentifier(finalSegment.identifier, arguments);
+		return switch (path.root) {
+			case PathRelative: RustPath.relative(segments);
+			case PathAbsolute: RustPath.absolute(segments);
+			case PathCrate: RustPath.cratePath(segments);
+			case PathSelfModule: RustPath.selfModule(segments);
+			case PathSuper(depth): RustPath.superPath(depth, segments);
+			case PathTypeSelf: RustPath.typeSelf(segments);
+			case PathQualified(selfType, traitPath): RustPath.qualified(selfType, traitPath, segments);
+		};
+	}
+
+	function rustRelativeType(names:Array<String>, ?typeArguments:Array<RustType>):RustType {
+		return RNamed(rustRelativePath(names, rustTypeArguments(typeArguments)));
+	}
+
+	function rustCrateType(names:Array<String>, ?typeArguments:Array<RustType>):RustType {
+		return RNamed(rustCratePath(names, rustTypeArguments(typeArguments)));
+	}
+
+	inline function rustNamedType(name:String):RustType {
+		return RNamed(RustPath.single(name));
+	}
+
+	inline function rustOptionType(inner:RustType):RustType {
+		return rustRelativeType(["Option"], [inner]);
+	}
+
+	inline function rustBoxType(inner:RustType):RustType {
+		return rustRelativeType(["Box"], [inner]);
+	}
+
+	inline function rustHxRefType(inner:RustType):RustType {
+		return rustCrateType(["HxRef"], [inner]);
+	}
+
+	function rustRcType(inner:RustType):RustType {
+		return wantsPreludeAliases() ? rustCrateType(["HxRc"], [inner]) : rustRelativeType(["std", "rc", "Rc"], [inner]);
+	}
+
+	function rustDynRefType(inner:RustType):RustType {
+		return wantsPreludeAliases() ? rustCrateType(["HxDynRef"], [inner]) : rustRelativeType(["hxrt", "cell", "HxDynRef"], [inner]);
+	}
+
+	function rustRefCellType(inner:RustType):RustType {
+		return wantsPreludeAliases() ? rustCrateType(["HxRefCell"], [inner]) : rustRelativeType(["std", "cell", "RefCell"], [inner]);
+	}
+
+	function rustCrateNominalType(moduleSegments:Array<String>, typeName:String, ?typeArguments:Array<RustType>):RustType {
+		var names = moduleSegments.copy();
+		names.push(typeName);
+		return rustCrateType(names, typeArguments);
+	}
+
+	function rustPathHasNames(path:RustPath, names:Array<String>):Bool {
+		if (path == null || names == null || path.segmentCount != names.length)
+			return false;
+		for (index in 0...names.length) {
+			if (path.segmentAt(index).identifier.name != names[index])
+				return false;
+		}
+		return true;
+	}
+
+	function rustPathIsRelative(path:RustPath, names:Array<String>):Bool {
+		return path != null && path.isRelative() && rustPathHasNames(path, names);
+	}
+
+	function rustPathIsCrate(path:RustPath, names:Array<String>):Bool {
+		return path != null && switch (path.root) {
+			case PathCrate: rustPathHasNames(path, names);
+			case _: false;
+		};
+	}
+
+	function rustTypeIsRelativePath(type:RustType, names:Array<String>):Bool {
+		return switch (type) {
+			case RNamed(path): rustPathIsRelative(path, names);
+			case _: false;
+		};
+	}
+
+	function rustTypeIsCratePath(type:RustType, names:Array<String>):Bool {
+		return switch (type) {
+			case RNamed(path): rustPathIsCrate(path, names);
+			case _: false;
+		};
+	}
+
+	inline function rustTypeIsHxRef(type:RustType):Bool {
+		return rustTypeIsCratePath(type, ["HxRef"]);
+	}
+
+	inline function rustTypeIsArrayCarrier(type:RustType):Bool {
+		return rustTypeIsRelativePath(type, ["hxrt", "array", "Array"]);
+	}
+
+	function rustTypeIsRcCarrier(type:RustType):Bool {
+		return rustTypeIsCratePath(type, ["HxRc"]) || rustTypeIsRelativePath(type, ["std", "rc", "Rc"]);
+	}
+
+	function rustTypeIsDynRefCarrier(type:RustType):Bool {
+		return rustTypeIsCratePath(type, ["HxDynRef"]) || rustTypeIsRelativePath(type, ["hxrt", "cell", "HxDynRef"]);
+	}
+
+	inline function rustTypeIsNullableStringCarrier(type:RustType):Bool {
+		return rustTypeIsRelativePath(type, ["hxrt", "string", "HxString"]);
+	}
+
+	inline function rustTypeIsDynamicCarrier(type:RustType):Bool {
+		return rustTypeIsRelativePath(type, ["hxrt", "dynamic", dynamicBoundaryTypeName()]);
+	}
+
+	inline function rustTypeIsRcTraitObject(type:RustType):Bool {
+		return rustTypeIsRcCarrier(type) && rustTypeContainsTraitObject(type);
+	}
+
+	function rustTypeSingleGenericArgument(type:RustType):Null<RustType> {
+		return switch (type) {
+			case RNamed(path) if (path.segmentCount > 0): {
+					var segment = path.segmentAt(path.segmentCount - 1);
+					if (segment.genericArgumentCount != 1) {
+						null;
+					} else {
+						switch (segment.genericArgumentAt(0)) {
+							case GenericType(inner): inner;
+							case _: null;
+						}
+					}
+				}
+			case _: null;
+		};
+	}
+
+	function rustTypeContainsTraitObject(type:RustType):Bool {
+		return switch (type) {
+			case RTraitObject(_): true;
+			case RNamed(path): {
+					var found = false;
+					for (segment in path) {
+						for (index in 0...segment.genericArgumentCount) {
+							switch (segment.genericArgumentAt(index)) {
+								case GenericType(inner) if (rustTypeContainsTraitObject(inner)): found = true;
+								case _:
+							}
+						}
+					}
+					found;
+				}
+			case RBorrow(inner, _, _): rustTypeContainsTraitObject(inner);
+			case RTuple(elements): {
+					var found = false;
+					for (element in elements)
+						if (rustTypeContainsTraitObject(element)) found = true;
+					found;
+				}
+			case RSlice(element) | RArray(element, _): rustTypeContainsTraitObject(element);
+			case RUnit | RBool | RI32 | RF64 | RString: false;
+		};
+	}
+
+	function rustLifetimesEqual(left:RustLifetime, right:RustLifetime):Bool {
+		if (left == null || right == null || left.kind != right.kind)
+			return false;
+		if (left.name == null || right.name == null)
+			return left.name == null && right.name == null;
+		return left.name.equals(right.name);
+	}
+
+	function rustConstArgumentsEqual(left:reflaxe.rust.ast.RustAST.RustConstArgument,
+		right:reflaxe.rust.ast.RustAST.RustConstArgument):Bool {
+		if (left == null || right == null || left.kind != right.kind)
+			return false;
+		return switch (left.kind) {
+			case ConstInteger: left.integerDigits == right.integerDigits;
+			case ConstBoolean: left.boolValue == right.boolValue;
+			case ConstPath:
+				left.pathValue != null && right.pathValue != null && rustPathsEqual(left.pathValue, right.pathValue);
+		};
+	}
+
+	function rustGenericArgumentsEqual(left:RustGenericArgument, right:RustGenericArgument):Bool {
+		return switch [left, right] {
+			case [GenericType(leftType), GenericType(rightType)]: rustTypesEqual(leftType, rightType);
+			case [GenericConst(leftConst), GenericConst(rightConst)]: rustConstArgumentsEqual(leftConst, rightConst);
+			case [GenericLifetime(leftLifetime), GenericLifetime(rightLifetime)]: rustLifetimesEqual(leftLifetime, rightLifetime);
+			case _: false;
+		};
+	}
+
+	function rustPathSegmentsEqual(left:RustPathSegment, right:RustPathSegment):Bool {
+		if (left == null || right == null || !left.identifier.equals(right.identifier) || left.argumentStyle != right.argumentStyle)
+			return false;
+		if (left.genericArgumentCount != right.genericArgumentCount || left.inputTypeCount != right.inputTypeCount)
+			return false;
+		for (index in 0...left.genericArgumentCount)
+			if (!rustGenericArgumentsEqual(left.genericArgumentAt(index), right.genericArgumentAt(index))) return false;
+		for (index in 0...left.inputTypeCount)
+			if (!rustTypesEqual(left.inputTypeAt(index), right.inputTypeAt(index))) return false;
+		if (left.outputType == null || right.outputType == null)
+			return left.outputType == null && right.outputType == null;
+		return rustTypesEqual(left.outputType, right.outputType);
+	}
+
+	function rustPathsEqual(left:RustPath, right:RustPath):Bool {
+		if (left == null || right == null || left.segmentCount != right.segmentCount)
+			return false;
+		var rootsEqual = switch [left.root, right.root] {
+			case [PathRelative, PathRelative]
+				| [PathAbsolute, PathAbsolute]
+				| [PathCrate, PathCrate]
+				| [PathSelfModule, PathSelfModule]
+				| [PathTypeSelf, PathTypeSelf]: true;
+			case [PathSuper(leftDepth), PathSuper(rightDepth)]: leftDepth == rightDepth;
+			case [PathQualified(leftSelf, leftTrait), PathQualified(rightSelf, rightTrait)]:
+				rustTypesEqual(leftSelf, rightSelf)
+					&& ((leftTrait == null && rightTrait == null)
+						|| (leftTrait != null && rightTrait != null && rustPathsEqual(leftTrait, rightTrait)));
+			case _: false;
+		};
+		if (!rootsEqual)
+			return false;
+		for (index in 0...left.segmentCount)
+			if (!rustPathSegmentsEqual(left.segmentAt(index), right.segmentAt(index))) return false;
+		return true;
+	}
+
+	function rustGenericBoundsEqual(left:RustGenericBound, right:RustGenericBound):Bool {
+		return switch [left, right] {
+			case [GenericTraitBound(leftPath, leftModifier), GenericTraitBound(rightPath, rightModifier)]:
+				leftModifier == rightModifier && rustPathsEqual(leftPath, rightPath);
+			case [GenericLifetimeBound(leftLifetime), GenericLifetimeBound(rightLifetime)]: rustLifetimesEqual(leftLifetime, rightLifetime);
+			case _: false;
+		};
+	}
+
+	function rustTraitObjectsEqual(left:RustTraitObject, right:RustTraitObject):Bool {
+		if (left == null || right == null || left.count != right.count)
+			return false;
+		for (index in 0...left.count)
+			if (!rustGenericBoundsEqual(left.at(index), right.at(index))) return false;
+		return true;
+	}
+
+	function rustTypesEqual(left:RustType, right:RustType):Bool {
+		return switch [left, right] {
+			case [RUnit, RUnit] | [RBool, RBool] | [RI32, RI32] | [RF64, RF64] | [RString, RString]: true;
+			case [RNamed(leftPath), RNamed(rightPath)]: rustPathsEqual(leftPath, rightPath);
+			case [RBorrow(leftInner, leftMutable, leftLifetime), RBorrow(rightInner, rightMutable, rightLifetime)]:
+				leftMutable == rightMutable
+					&& rustTypesEqual(leftInner, rightInner)
+					&& ((leftLifetime == null && rightLifetime == null)
+						|| (leftLifetime != null && rightLifetime != null && rustLifetimesEqual(leftLifetime, rightLifetime)));
+			case [RTuple(leftElements), RTuple(rightElements)]:
+				if (leftElements.length != rightElements.length) {
+					false;
+				} else {
+					var equal = true;
+					for (index in 0...leftElements.length)
+						if (!rustTypesEqual(leftElements[index], rightElements[index])) equal = false;
+					equal;
+				}
+			case [RSlice(leftElement), RSlice(rightElement)]: rustTypesEqual(leftElement, rightElement);
+			case [RArray(leftElement, leftLength), RArray(rightElement, rightLength)]:
+				rustTypesEqual(leftElement, rightElement) && rustConstArgumentsEqual(leftLength, rightLength);
+			case [RTraitObject(leftObject), RTraitObject(rightObject)]: rustTraitObjectsEqual(leftObject, rightObject);
+			case _: false;
+		};
+	}
+
+	/**
 		Records a loop optimization metric in the shared compilation context.
 
 		Why
@@ -400,6 +747,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return StringLowering.rustStringTypePath(useNullableStringRepresentation());
 	}
 
+	function rustStringType():RustType {
+		return useNullableStringRepresentation() ? rustRelativeType(["hxrt", "string", "HxString"]) : RString;
+	}
+
 	inline function stringLiteralExpr(value:String):RustExpr {
 		return StringLowering.stringLiteralExpr(useNullableStringRepresentation(), value);
 	}
@@ -479,6 +830,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return DynamicBoundary.runtimeNamespace();
 	}
 
+	function rustDynamicType():RustType {
+		return rustRelativeType(["hxrt", "dynamic", dynamicBoundaryTypeName()]);
+	}
+
 	/**
 		Returns the fully-qualified Rust path to `Dynamic::null`.
 
@@ -500,10 +855,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	inline function compareStrings(a:String, b:String):Int {
 		return a < b ? -1 : (a > b ? 1 : 0);
-	}
-
-	inline function isRustDynamicPath(path:String):Bool {
-		return path == rustDynamicPath();
 	}
 
 	public function new() {
@@ -2626,7 +2977,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 			var traitLines:Array<String> = [];
 			var traitGenerics = classGenericDecls;
-			var traitGenericSuffix = traitGenerics.length > 0 ? "<" + traitGenerics.join(", ") + ">" : "";
+			var traitGenericSuffix = reflaxe.rust.ast.RustASTPrinter.printGenericParameters(traitGenerics);
 			traitLines.push("pub trait " + rustSelfType + traitGenericSuffix + ": Send + Sync {");
 			for (f in funcFields) {
 				if (f.isStatic)
@@ -2730,8 +3081,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 				// Trait objects (`dyn ...`) do not implement `Debug` by default, so auto-deriving `Debug`
 				// for any struct that contains them would fail to compile.
-				var tyStr = rustTypeToString(toRustType(fieldType, cf.pos));
-				if (tyStr.indexOf("dyn ") != -1) {
+				if (rustTypeContainsTraitObject(toRustType(fieldType, cf.pos))) {
 					canDeriveDebug = false;
 					break;
 				}
@@ -2740,8 +3090,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				for (spec in getAllInstanceDynamicMethodFieldSpecsForStorage(classType)) {
 					var cf = spec.field;
 					var fieldType = specializeAncestorType(classType, spec.owner, cf.type);
-					var tyStr = rustTypeToString(toRustType(fieldType, cf.pos));
-					if (tyStr.indexOf("dyn ") != -1) {
+					if (rustTypeContainsTraitObject(toRustType(fieldType, cf.pos))) {
 						canDeriveDebug = false;
 						break;
 					}
@@ -2759,7 +3108,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				var fieldType = specializeAncestorType(classType, spec.owner, cf.type);
 				var ty = toRustType(fieldType, cf.pos);
 				if (shouldOptionWrapStructFieldType(fieldType)) {
-					ty = RPath("Option<" + rustTypeToString(ty) + ">");
+					ty = rustOptionType(ty);
 				}
 				structFields.push({
 					name: rustFieldName(classType, cf),
@@ -2778,12 +3127,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				});
 			}
 			if (classNeedsPhantomForUnusedTypeParams(classType)) {
-				var decls = rustGenericDeclsForClass(classType);
-				var names = rustGenericNamesFromDecls(decls);
-				var phantomTy = names.length == 1 ? ("std::marker::PhantomData<" + names[0] + ">") : ("std::marker::PhantomData<(" + names.join(", ") + ")>");
+				var phantomTypes = [for (parameter in classType.params) rustNamedType(parameter.name)];
+				var phantomPayload = phantomTypes.length == 1 ? phantomTypes[0] : RTuple(phantomTypes);
 				structFields.push({
 					name: "__hx_phantom",
-					ty: RPath(phantomTy),
+					ty: rustRelativeType(["std", "marker", "PhantomData"], [phantomPayload]),
 					isPub: false
 				});
 			}
@@ -2861,14 +3209,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 			items.push(RImpl({
 				generics: classGenericDecls,
-				forType: rustSelfTypeInst,
+				forType: rustClassTypeInstType(classType),
 				functions: implFunctions
 			}));
 
 			// Extra Rust trait impls declared via `@:rustImpl(...)` metadata.
 			var rustImpls = rustImplsFromMeta(classType.meta);
 			for (spec in rustImpls) {
-				items.push(RRaw(RustRawCode.metadataAt(renderRustImplBlock(spec, classGenericDecls, rustSelfTypeInst), RawTraitImplementation, spec.pos)));
+				items.push(RRaw(RustRawCode.metadataAt(renderRustImplBlock(spec, classGenericDecls, rustClassTypeInstType(classType)), RawTraitImplementation,
+					spec.pos)));
 			}
 
 			// Base-class polymorphism: if this class has subclasses, emit a trait for it.
@@ -2900,7 +3249,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				var ifaceTypeParams = ifaceTarget.params != null ? ifaceTarget.params : [];
 				var ifaceTypeArgs = ifaceTypeParams.length > 0 ? ("<"
 					+ [for (p in ifaceTypeParams) rustTypeToString(toRustType(p, classType.pos))].join(", ") + ">") : "";
-				var implGenerics = classGenericDecls.length > 0 ? "<" + classGenericDecls.join(", ") + ">" : "";
+				var implGenerics = reflaxe.rust.ast.RustASTPrinter.printGenericParameters(classGenericDecls);
 				var implGenericNames = rustGenericNamesFromDecls(classGenericDecls);
 				var implTurbofish = implGenericNames.length > 0 ? ("::<" + implGenericNames.join(", ") + ">") : "";
 
@@ -3037,6 +3386,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			items.push(RFn({
 				name: "main",
 				isPub: false,
+				generics: RustGenericParameters.empty(),
 				args: [],
 				ret: RUnit,
 				body: body
@@ -3076,17 +3426,21 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			enumType.pos)));
 
 		var variants:Array<reflaxe.rust.ast.RustAST.RustEnumVariant> = [];
-		var enumGenericNames = rustGenericNamesForEnum(enumType);
+		var enumGenerics = rustGenericParametersForEnum(enumType);
 		var enumTypeName = rustTypeNameForEnum(enumType);
-		var enumTypeInst = enumGenericNames.length > 0 ? enumTypeName + "<" + enumGenericNames.join(", ") + ">" : enumTypeName;
-		var enumTypePathInst = "crate::" + rustModulePathForEnum(enumType) + "::" + enumTypeInst;
+		var enumArguments = rustGenericArgumentsFromDecls(enumGenerics);
+		var enumTypeInstType:RustType = RNamed(rustRelativePath([enumTypeName], enumArguments));
+		var enumTypePathInstType:RustType = RNamed(rustCratePath(rustModuleSegmentsForEnum(enumType).concat([enumTypeName]), enumArguments));
+		var enumTypeInst = rustTypeToString(enumTypeInstType);
 
 		function boxRecursiveEnumArg(rt:reflaxe.rust.ast.RustAST.RustType):reflaxe.rust.ast.RustAST.RustType {
-			var s = rustTypeToString(rt);
-			if (s == enumTypeName || s == enumTypeInst || s == enumTypePathInst)
-				return RPath("Box<" + enumTypeInst + ">");
-			if (s == "Option<" + enumTypeName + ">" || s == "Option<" + enumTypeInst + ">" || s == "Option<" + enumTypePathInst + ">")
-				return RPath("Option<Box<" + enumTypeInst + ">>");
+			if (rustTypesEqual(rt, enumTypeInstType) || rustTypesEqual(rt, enumTypePathInstType))
+				return rustBoxType(enumTypeInstType);
+			var optionInner = rustTypeSingleGenericArgument(rt);
+			if (rustTypeIsRelativePath(rt, ["Option"])
+				&& optionInner != null
+				&& (rustTypesEqual(optionInner, enumTypeInstType) || rustTypesEqual(optionInner, enumTypePathInstType)))
+				return rustOptionType(rustBoxType(enumTypeInstType));
 			return rt;
 		}
 
@@ -3103,14 +3457,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		items.push(REnum({
 			name: enumTypeName,
 			isPub: true,
-			generics: enumGenericNames,
+			generics: enumGenerics,
 			derives: derives,
 			variants: variants
 		}));
 
 		var rustImpls = rustImplsFromMeta(enumType.meta);
 		for (spec in rustImpls) {
-			items.push(RRaw(RustRawCode.metadataAt(renderRustImplBlock(spec, enumGenericNames, enumTypeInst), RawTraitImplementation, spec.pos)));
+			items.push(RRaw(RustRawCode.metadataAt(renderRustImplBlock(spec, enumGenerics, enumTypeInstType), RawTraitImplementation, spec.pos)));
 		}
 
 		return {items: items};
@@ -3881,10 +4235,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return RustNaming.typeIdent(enumType.name);
 	}
 
-	function rustGenericNamesForEnum(enumType:EnumType):Array<String> {
+	function rustGenericParametersForEnum(enumType:EnumType):RustGenericParameters {
 		if (enumType.params == null || enumType.params.length == 0)
-			return [];
-		return [for (p in enumType.params) p.name];
+			return RustGenericParameters.empty();
+		return RustGenericParameters.of([
+			for (parameter in enumType.params)
+				GenericTypeParam(RustIdentifier.named(parameter.name), [], null)
+		]);
 	}
 
 	function isValidRustIdent(name:String):Bool {
@@ -5088,8 +5445,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	**/
 	function emitReflectionRegistryFns():Array<RustItem> {
 		var plan = getReflectionRegistryPlan();
-		var stringType = rustStringTypePath();
-		var stringArrayType = "hxrt::array::Array<" + stringType + ">";
+		var stringType = rustStringType();
+		var stringArrayType = rustRelativeType(["hxrt", "array", "Array"], [stringType]);
 
 		function reflectionFunctionItem(name:String, argName:String, argType:RustType, returnType:RustType,
 			arms:Array<RustMatchArm>, defaultExpr:RustExpr):RustItem {
@@ -5098,6 +5455,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				name: name,
 				isPub: false,
 				vis: VPubCrate,
+				generics: RustGenericParameters.empty(),
 				args: [{name: argName, ty: argType}],
 				ret: returnType,
 				body: {stmts: [], tail: EMatch(EPath(argName), arms)}
@@ -5128,9 +5486,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			name: "__hx_unsupported_reflection",
 			isPub: false,
 			vis: VPubCrate,
-			generics: ["T"],
-			args: [{name: "operation", ty: RPath(rustStringTypePath())}],
-			ret: RPath("T"),
+			generics: RustGenericParameters.of([GenericTypeParam(RustIdentifier.named("T"), [], null)]),
+			args: [{name: "operation", ty: stringType}],
+			ret: rustNamedType("T"),
 			body: {
 				stmts: [],
 				tail: ECall(EPath("hxrt::exception::throw"), [ECall(EPath("hxrt::dynamic::from"), [EPath("operation")])])
@@ -5139,12 +5497,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		return [
 			unsupportedReflection,
-			reflectionFunctionItem("__hx_resolve_class_name", "name", RRef(RPath("str"), false), RPath("u32"), resolveClassArms, ECast(ELitInt(0), "u32")),
-			reflectionFunctionItem("__hx_resolve_enum_name", "name", RRef(RPath("str"), false), RPath("u32"), resolveEnumArms, ECast(ELitInt(0), "u32")),
-			reflectionFunctionItem("__hx_class_name", "type_id", RPath("u32"), RPath(stringType), classNameArms, stringNullExpr()),
-			reflectionFunctionItem("__hx_enum_name", "type_id", RPath("u32"), RPath(stringType), enumNameArms, stringNullExpr()),
-			reflectionFunctionItem("__hx_enum_constructs", "type_id", RPath("u32"), RPath(stringArrayType), enumConstructArms,
-				ECall(EPath("hxrt::array::Array::<" + stringType + ">::new"), []))
+			reflectionFunctionItem("__hx_resolve_class_name", "name", RBorrow(rustNamedType("str"), false, null), rustNamedType("u32"), resolveClassArms,
+				ECast(ELitInt(0), "u32")),
+			reflectionFunctionItem("__hx_resolve_enum_name", "name", RBorrow(rustNamedType("str"), false, null), rustNamedType("u32"), resolveEnumArms,
+				ECast(ELitInt(0), "u32")),
+			reflectionFunctionItem("__hx_class_name", "type_id", rustNamedType("u32"), stringType, classNameArms, stringNullExpr()),
+			reflectionFunctionItem("__hx_enum_name", "type_id", rustNamedType("u32"), stringType, enumNameArms, stringNullExpr()),
+			reflectionFunctionItem("__hx_enum_constructs", "type_id", rustNamedType("u32"), stringArrayType, enumConstructArms,
+				ECall(EPath("hxrt::array::Array::<" + rustTypeToString(stringType) + ">::new"), []))
 		];
 	}
 
@@ -5510,7 +5870,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						}
 
 						var inner = toRustType(innerType, pos);
-						var innerStr = rustTypeToString(inner);
+						var carrierInner = rustTypeSingleGenericArgument(inner);
 
 						var dynRefTraitObjectNull = dynRefNullExprForTraitObject(innerType, pos);
 						if (dynRefTraitObjectNull != null) {
@@ -5518,30 +5878,24 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						}
 
 						// Some Rust representations already have an explicit null value (no extra `Option<...>` needed).
-						if (isRustDynamicPath(innerStr)) {
+						if (rustTypeIsDynamicCarrier(inner)) {
 							return rustDynamicNullExpr();
 						}
-						if (innerStr == "hxrt::string::HxString") {
+						if (rustTypeIsNullableStringCarrier(inner)) {
 							return ECall(EPath("hxrt::string::HxString::null"), []);
 						}
 						// Core `Class<T>` / `Enum<T>` handles are represented as `u32` ids with `0u32` as null sentinel.
 						if (isCoreClassOrEnumHandleType(innerType)) {
 							return ECast(ELitInt(0), "u32");
 						}
-						if (StringTools.startsWith(innerStr, "crate::HxRef<")) {
-							var prefix = "crate::HxRef<";
-							var innerPath = innerStr.substr(prefix.length, innerStr.length - prefix.length - 1);
-							return ECall(EPath("crate::HxRef::<" + innerPath + ">::null"), []);
+						if (rustTypeIsHxRef(inner) && carrierInner != null) {
+							return ECall(EPath("crate::HxRef::<" + rustTypeToString(carrierInner) + ">::null"), []);
 						}
-						if (StringTools.startsWith(innerStr, "hxrt::array::Array<")) {
-							var prefix = "hxrt::array::Array<";
-							var innerPath = innerStr.substr(prefix.length, innerStr.length - prefix.length - 1);
-							return ECall(EPath("hxrt::array::Array::<" + innerPath + ">::null"), []);
+						if (rustTypeIsArrayCarrier(inner) && carrierInner != null) {
+							return ECall(EPath("hxrt::array::Array::<" + rustTypeToString(carrierInner) + ">::null"), []);
 						}
-						if (StringTools.startsWith(innerStr, dynRefBasePath() + "<")) {
-							var prefix = dynRefBasePath() + "<";
-							var innerPath = innerStr.substr(prefix.length, innerStr.length - prefix.length - 1);
-							return ECall(EPath(dynRefBasePath() + "::<" + innerPath + ">::null"), []);
+						if (rustTypeIsDynRefCarrier(inner) && carrierInner != null) {
+							return ECall(EPath(dynRefBasePath() + "::<" + rustTypeToString(carrierInner) + ">::null"), []);
 						}
 
 						// Fallback: `Null<T>` is represented as `Option<T>`.
@@ -5715,7 +6069,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						}
 
 						var inner = toRustType(innerType, pos);
-						var innerStr = rustTypeToString(inner);
+						var carrierInner = rustTypeSingleGenericArgument(inner);
 
 						var dynRefTraitObjectNull = dynRefNullExprForTraitObject(innerType, pos);
 						if (dynRefTraitObjectNull != null) {
@@ -5723,30 +6077,24 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						}
 
 						// Some Rust representations already have an explicit null value (no extra `Option<...>` needed).
-						if (isRustDynamicPath(innerStr)) {
+						if (rustTypeIsDynamicCarrier(inner)) {
 							return rustDynamicNullExpr();
 						}
-						if (innerStr == "hxrt::string::HxString") {
+						if (rustTypeIsNullableStringCarrier(inner)) {
 							return ECall(EPath("hxrt::string::HxString::null"), []);
 						}
 						// Core `Class<T>` / `Enum<T>` handles are represented as `u32` ids with `0u32` as null sentinel.
 						if (isCoreClassOrEnumHandleType(innerType)) {
 							return ECast(ELitInt(0), "u32");
 						}
-						if (StringTools.startsWith(innerStr, "crate::HxRef<")) {
-							var prefix = "crate::HxRef<";
-							var innerPath = innerStr.substr(prefix.length, innerStr.length - prefix.length - 1);
-							return ECall(EPath("crate::HxRef::<" + innerPath + ">::null"), []);
+						if (rustTypeIsHxRef(inner) && carrierInner != null) {
+							return ECall(EPath("crate::HxRef::<" + rustTypeToString(carrierInner) + ">::null"), []);
 						}
-						if (StringTools.startsWith(innerStr, "hxrt::array::Array<")) {
-							var prefix = "hxrt::array::Array<";
-							var innerPath = innerStr.substr(prefix.length, innerStr.length - prefix.length - 1);
-							return ECall(EPath("hxrt::array::Array::<" + innerPath + ">::null"), []);
+						if (rustTypeIsArrayCarrier(inner) && carrierInner != null) {
+							return ECall(EPath("hxrt::array::Array::<" + rustTypeToString(carrierInner) + ">::null"), []);
 						}
-						if (StringTools.startsWith(innerStr, dynRefBasePath() + "<")) {
-							var prefix = dynRefBasePath() + "<";
-							var innerPath = innerStr.substr(prefix.length, innerStr.length - prefix.length - 1);
-							return ECall(EPath(dynRefBasePath() + "::<" + innerPath + ">::null"), []);
+						if (rustTypeIsDynRefCarrier(inner) && carrierInner != null) {
+							return ECall(EPath(dynRefBasePath() + "::<" + rustTypeToString(carrierInner) + ">::null"), []);
 						}
 
 						return EPath("None");
@@ -5793,9 +6141,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			#end
 		}
 		var args:Array<reflaxe.rust.ast.RustAST.RustFnArg> = [];
-		var modName = rustModulePathForClass(classType);
 		var rustSelfType = rustTypeNameForClass(classType);
-		var selfRefTy = RPath("crate::HxRef<crate::" + modName + "::" + rustClassTypeInst(classType) + ">");
+		var selfRefTy = rustHxRefClassInstType(classType);
 
 		var stmts:Array<RustStmt> = [];
 		if (f.expr != null) {
@@ -5906,9 +6253,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 																			return true;
 																		if (nullOptionInnerType(source.t, source.pos) != null)
 																			return true;
-																		var expectedRust = rustTypeToString(toRustType(haxeFieldType, source.pos));
-																		var actualRust = rustTypeToString(toRustType(source.t, source.pos));
-																		return expectedRust != actualRust;
+																				var expectedRust = toRustType(haxeFieldType, source.pos);
+																				var actualRust = toRustType(source.t, source.pos);
+																				return !rustTypesEqual(expectedRust, actualRust);
 																	}
 																	function coerceLiftedFieldRhs(source:TypedExpr, compiled:RustExpr):RustExpr {
 																		if (wantsOptionWrap) {
@@ -6135,15 +6482,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						{stmts: [], tail: ECall(EPath(defaultPath), defaultCallArgs)};
 					};
 
-					var fnSig = "dyn Fn(" + [for (p in fnInfo.params) rustTypeToString(toRustType(p.t, cf.pos))].join(", ") + ")";
-					if (!TypeHelper.isVoid(fnInfo.ret))
-						fnSig += " -> " + rustTypeToString(toRustType(fnInfo.ret, cf.pos));
-					fnSig += " + Send + Sync";
+					var fnTraitType = rustFunctionTraitObjectType([for (p in fnInfo.params) toRustType(p.t, cf.pos)],
+						TypeHelper.isVoid(fnInfo.ret) ? null : toRustType(fnInfo.ret, cf.pos));
 
 					stmts.push(RSemi(EBlock({
 						stmts: [
 							RLet(recvName, false, null, ECall(EField(recvExpr, "clone"), [])),
-							RLet("__hx_dyn_rc", false, RPath(rcBasePath() + "<" + fnSig + ">"),
+							RLet("__hx_dyn_rc", false, rustRcType(fnTraitType),
 								ECall(EPath(rcBasePath() + "::new"), [EClosure(argParts, closureBody, true)])),
 							RSemi(EAssign(EField(ECall(EField(recvExpr, "borrow_mut"), []), fieldName),
 								ECall(EPath(dynRefBasePath() + "::new"), [EPath("__hx_dyn_rc")])))
@@ -6214,9 +6559,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							// Remove only that direct identity wrapper at this generic constructor edge;
 							// literals/native String expressions retain the ordinary bridge.
 							if (owner.params != null && owner.params.length > 0 && isLocalExpr(a)) {
-								var expectedRust = rustTypeToString(toRustType(p.t, a.pos));
-								var actualRust = rustTypeToString(toRustType(a.t, a.pos));
-								if (expectedRust == "hxrt::string::HxString" && actualRust == expectedRust) {
+								var expectedRust = toRustType(p.t, a.pos);
+								var actualRust = toRustType(a.t, a.pos);
+								if (rustTypeIsNullableStringCarrier(expectedRust) && rustTypesEqual(actualRust, expectedRust)) {
 									compiled = switch (compiled) {
 										case ECall(EPath("hxrt::string::HxString::from"), [inner]): inner;
 										case _: compiled;
@@ -6361,6 +6706,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return {
 			name: "new",
 			isPub: true,
+			generics: RustGenericParameters.empty(),
 			args: args,
 			ret: selfRefTy,
 			body: {stmts: stmts, tail: null}
@@ -6386,7 +6732,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var selfName = exprUsesThis(f.expr) ? "self_" : "_self_";
 		args.push({
 			name: selfName,
-			ty: RPath("&" + refCellBasePath() + "<" + rustClassTypeInst(classType) + ">")
+			ty: rustBorrowedRefCellClassInstType(classType)
 		});
 		var body = {stmts: [], tail: null};
 		var prevOwner = currentMethodOwnerType;
@@ -6407,8 +6753,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				var innerBody = compileFunctionBody(f.expr, asyncInnerRet, true);
 				var prefix:Array<RustStmt> = [];
 				if (selfName == "self_") {
-					var modName = rustModulePathForClass(classType);
-					var thisTy = RPath("crate::HxRef<crate::" + modName + "::" + rustClassTypeInst(classType) + ">");
+					var thisTy = rustHxRefClassInstType(classType);
 					prefix.push(RLet("__hx_this", false, thisTy, ECall(EField(EPath(selfName), "self_ref"), [])));
 				}
 				body = {
@@ -6418,8 +6763,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			} else {
 				body = compileFunctionBody(f.expr, f.ret, true);
 				if (selfName == "self_") {
-					var modName = rustModulePathForClass(classType);
-					var thisTy = RPath("crate::HxRef<crate::" + modName + "::" + rustClassTypeInst(classType) + ">");
+					var thisTy = rustHxRefClassInstType(classType);
 					body.stmts.unshift(RLet("__hx_this", false, thisTy, ECall(EField(EPath(selfName), "self_ref"), [])));
 				}
 			}
@@ -6474,7 +6818,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function compileDynamicInstanceMethodWrapper(classType:ClassType, f:ClassFuncData):reflaxe.rust.ast.RustAST.RustFunction {
 		var args:Array<reflaxe.rust.ast.RustAST.RustFnArg> = [];
-		var selfTy = RPath("&" + refCellBasePath() + "<" + rustClassTypeInst(classType) + ">");
+		var selfTy = rustBorrowedRefCellClassInstType(classType);
 		args.push({name: "self_", ty: selfTy});
 
 		var callArgs:Array<RustExpr> = [];
@@ -6553,7 +6897,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		- Returns a typed shape that callers can wrap either as an impl method or a top-level helper.
 	**/
 	function compileStaticFunctionShape(f:ClassFuncData):{
-		generics:Array<String>,
+		generics:RustGenericParameters,
 		args:Array<reflaxe.rust.ast.RustAST.RustFnArg>,
 		ret:reflaxe.rust.ast.RustAST.RustType,
 		body:reflaxe.rust.ast.RustAST.RustBlock
@@ -6610,10 +6954,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return {
 				name: superThunkName(owner, cf),
 				isPub: false,
+				generics: RustGenericParameters.empty(),
 				args: [
-					{name: "_self_", ty: RPath("&" + refCellBasePath() + "<" + rustClassTypeInst(classType) + ">")}
+					{name: "_self_", ty: rustBorrowedRefCellClassInstType(classType)}
 				],
-				ret: RPath("()"),
+				ret: RUnit,
 				body: {stmts: [RSemi(ERaw(RustRawCode.compilerAt("todo!()", RawUnsupportedFallback, cf.pos)))], tail: null}
 			};
 		}
@@ -6627,10 +6972,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return {
 				name: superThunkName(owner, cf),
 				isPub: false,
+				generics: RustGenericParameters.empty(),
 				args: [
-					{name: "_self_", ty: RPath("&" + refCellBasePath() + "<" + rustClassTypeInst(classType) + ">")}
+					{name: "_self_", ty: rustBorrowedRefCellClassInstType(classType)}
 				],
-				ret: RPath("()"),
+				ret: RUnit,
 				body: {stmts: [RSemi(ERaw(RustRawCode.compilerAt("todo!()", RawUnsupportedFallback, cf.pos)))], tail: null}
 			};
 		}
@@ -6639,7 +6985,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var args:Array<reflaxe.rust.ast.RustAST.RustFnArg> = [];
 		args.push({
 			name: selfName,
-			ty: RPath("&" + refCellBasePath() + "<" + rustClassTypeInst(classType) + ">")
+			ty: rustBorrowedRefCellClassInstType(classType)
 		});
 
 		var argNames:Array<String> = [];
@@ -6665,8 +7011,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				currentThisIdent = "__hx_this";
 			body = compileFunctionBody(bodyExpr, sig.ret, true);
 			if (selfName == "self_") {
-				var modName = rustModulePathForClass(classType);
-				var thisTy = RPath("crate::HxRef<crate::" + modName + "::" + rustClassTypeInst(classType) + ">");
+				var thisTy = rustHxRefClassInstType(classType);
 				body.stmts.unshift(RLet("__hx_this", false, thisTy, ECall(EField(EPath(selfName), "self_ref"), [])));
 			}
 			currentThisIdent = prevThisIdent;
@@ -6684,7 +7029,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		};
 	}
 
-	function rustGenericParamsForFunction(f:ClassFuncData):Array<String> {
+	function rustGenericParamsForFunction(f:ClassFuncData):RustGenericParameters {
 		return rustGenericParamsForFieldSignature(f.field, [for (a in f.args) a.type], f.ret);
 	}
 
@@ -6713,30 +7058,30 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		  maps the class parameter declaration (`T: Clone + Send + Sync`) onto the method's actual
 		  type parameter (`T`) and merges duplicate trait fragments deterministically.
 	**/
-	function rustGenericParamsForFieldSignature(field:ClassField, argTypes:Array<Type>, ret:Type):Array<String> {
+	function rustGenericParamsForFieldSignature(field:ClassField, argTypes:Array<Type>, ret:Type):RustGenericParameters {
 		var fallback = [for (p in field.params) p.name];
 		var explicit = rustGenericParamsFromFieldMetaExplicit(field.meta);
 		if (explicit != null)
 			return explicit;
 		if (fallback.length == 0)
-			return [];
+			return RustGenericParameters.empty();
 
 		var paramSet:Map<String, Bool> = [];
 		for (name in fallback)
 			paramSet.set(name, true);
 
-		var bounds:Map<String, Array<String>> = [];
+		var bounds:Map<String, Array<RustGenericBound>> = [];
 		for (t in argTypes)
 			inferFunctionGenericBoundsFromType(t, paramSet, bounds);
 		inferFunctionGenericBoundsFromType(ret, paramSet, bounds);
 
-		return [
+		return RustGenericParameters.of([
 			for (name in fallback)
-				if (bounds.exists(name) && bounds.get(name).length > 0) name + ": " + bounds.get(name).join(" + ") else name
-		];
+				GenericTypeParam(RustIdentifier.named(name), bounds.exists(name) ? bounds.get(name) : [], null)
+		]);
 	}
 
-	function inferFunctionGenericBoundsFromType(t:Type, methodParams:Map<String, Bool>, bounds:Map<String, Array<String>>):Void {
+	function inferFunctionGenericBoundsFromType(t:Type, methodParams:Map<String, Bool>, bounds:Map<String, Array<RustGenericBound>>):Void {
 		var ft = followType(t);
 		switch (ft) {
 			case TInst(clsRef, params):
@@ -6748,15 +7093,20 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							case _:
 								if (shouldEmitClass(cls, isMainClass(cls))) {
 									var classDecls = rustGenericDeclsForClass(cls);
-									var max = params.length < classDecls.length ? params.length : classDecls.length;
+									var max = params.length < classDecls.count ? params.length : classDecls.count;
 									for (i in 0...max) {
-										var classBound = rustGenericBoundFromDecl(classDecls[i]);
-										if (classBound == null || StringTools.trim(classBound).length == 0)
+										var classBounds:Array<RustGenericBound> = switch (classDecls.at(i)) {
+											case GenericTypeParam(_, declaredBounds, _): declaredBounds;
+											case _: [];
+										};
+										if (classBounds.length == 0)
 											continue;
 										var usedMethodParams:Map<String, Bool> = [];
 										collectMethodTypeParamsInType(params[i], methodParams, usedMethodParams);
-										for (name in usedMethodParams.keys())
-											addRustGenericBound(bounds, name, classBound);
+										for (name in usedMethodParams.keys()) {
+											for (classBound in classBounds)
+												addRustGenericBound(bounds, name, classBound);
+										}
 									}
 								}
 						}
@@ -6826,37 +7176,25 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 	}
 
-	function rustGenericBoundFromDecl(decl:String):Null<String> {
-		var colon = decl.indexOf(":");
-		if (colon < 0)
-			return null;
-		return StringTools.trim(decl.substr(colon + 1));
-	}
-
-	function addRustGenericBound(bounds:Map<String, Array<String>>, name:String, bound:String):Void {
-		var parts = bound.split("+");
+	function addRustGenericBound(bounds:Map<String, Array<RustGenericBound>>, name:String, bound:RustGenericBound):Void {
 		var existing = bounds.exists(name) ? bounds.get(name) : [];
-		var seen:Map<String, Bool> = [];
-		for (b in existing)
-			seen.set(b, true);
-		for (part in parts) {
-			var piece = StringTools.trim(part);
-			if (piece.length == 0 || seen.exists(piece))
-				continue;
-			existing.push(piece);
-			seen.set(piece, true);
-		}
+		for (current in existing)
+			if (rustGenericBoundsEqual(current, bound)) return;
+		existing.push(bound);
 		bounds.set(name, existing);
 	}
 
-	function rustGenericParamsFromFieldMetaExplicit(meta:haxe.macro.Type.MetaAccess):Null<Array<String>> {
+	function rustGenericParamsFromFieldMetaExplicit(meta:haxe.macro.Type.MetaAccess):Null<RustGenericParameters> {
 		var out:Array<String> = [];
 		var found = false;
+		var metadataPos:Null<haxe.macro.Expr.Position> = null;
 
 		for (entry in meta.get()) {
 			if (entry.name != ":rustGeneric")
 				continue;
 			found = true;
+			if (metadataPos == null)
+				metadataPos = entry.pos;
 
 			if (entry.params == null || entry.params.length == 0) {
 				#if eval
@@ -6890,10 +7228,19 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 
-		return found ? out : null;
+		if (!found)
+			return null;
+		try {
+			return RustMetadataSyntax.parseGenericParameterFragments(out);
+		} catch (message:String) {
+			#if eval
+			RustDiagnostic.error(RustDiagnosticId.MetadataValue, "Invalid `@:rustGeneric` syntax: " + message, metadataPos);
+			#end
+			return RustGenericParameters.empty();
+		}
 	}
 
-	function rustGenericParamsFromFieldMeta(meta:haxe.macro.Type.MetaAccess, fallback:Array<String>):Array<String> {
+	function rustGenericParamsFromFieldMeta(meta:haxe.macro.Type.MetaAccess, fallback:RustGenericParameters):RustGenericParameters {
 		var explicit = rustGenericParamsFromFieldMetaExplicit(meta);
 		return explicit != null ? explicit : fallback;
 	}
@@ -6910,7 +7257,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 			return switch (entry.params[0].expr) {
 				case EConst(CString(s, _)):
-					RPath(s);
+					try {
+						RustMetadataSyntax.parseType(s);
+					} catch (message:String) {
+						#if eval
+						RustDiagnostic.error(RustDiagnosticId.MetadataValue, "Invalid `@:rustReturn` type syntax: " + message, entry.pos);
+						#end
+						RUnit;
+					}
 				case _:
 					#if eval
 					Context.error("`@:rustReturn` must be a compile-time string.", entry.pos);
@@ -6926,32 +7280,40 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return overrideTy != null ? overrideTy : toRustType(haxeRet, pos);
 	}
 
-	function rustGenericNamesFromDecls(decls:Array<String>):Array<String> {
+	function rustGenericNamesFromDecls(decls:RustGenericParameters):Array<String> {
 		var out:Array<String> = [];
-		for (d in decls) {
-			var s = StringTools.trim(d);
-			if (s.length == 0)
-				continue;
-			var colon = s.indexOf(":");
-			var name = colon >= 0 ? s.substr(0, colon) : s;
-			name = StringTools.trim(name);
-			// Be defensive: `T where ...` isn't valid in Rust generics, but avoid generating garbage names.
-			var space = name.indexOf(" ");
-			if (space >= 0)
-				name = name.substr(0, space);
-			out.push(name);
+		for (parameter in decls) {
+			switch (parameter) {
+				case GenericLifetimeParam(name, _): out.push("'" + name.name);
+				case GenericTypeParam(name, _, _) | GenericConstParam(name, _, _): out.push(name.name);
+			}
 		}
 		return out;
 	}
 
-	function rustGenericDeclsForClass(classType:ClassType):Array<String> {
+	function rustGenericArgumentsFromDecls(decls:RustGenericParameters):Array<RustGenericArgument> {
+		var out:Array<RustGenericArgument> = [];
+		for (parameter in decls) {
+			switch (parameter) {
+				case GenericLifetimeParam(name, _): out.push(GenericLifetime(RustLifetime.named(name.name)));
+				case GenericTypeParam(name, _, _): out.push(GenericType(rustNamedType(name.name)));
+				case GenericConstParam(name, _, _): out.push(GenericConst(reflaxe.rust.ast.RustAST.RustConstArgument.path(RustPath.single(name.name))));
+			}
+		}
+		return out;
+	}
+
+	function rustGenericDeclsForClass(classType:ClassType):RustGenericParameters {
 		var out:Array<String> = [];
 		var found = false;
+		var metadataPos:Null<haxe.macro.Expr.Position> = null;
 
 		for (entry in classType.meta.get()) {
 			if (entry.name != ":rustGeneric")
 				continue;
 			found = true;
+			if (metadataPos == null)
+				metadataPos = entry.pos;
 
 			if (entry.params == null || entry.params.length == 0) {
 				#if eval
@@ -6985,25 +7347,54 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 		}
 
-		if (found)
-			return out;
+		if (found) {
+			try {
+				return RustMetadataSyntax.parseGenericParameterFragments(out);
+			} catch (message:String) {
+				#if eval
+				RustDiagnostic.error(RustDiagnosticId.MetadataValue, "Invalid class `@:rustGeneric` syntax: " + message, metadataPos);
+				#end
+				return RustGenericParameters.empty();
+			}
+		}
 
 		// Default bounds policy for class-level generics:
 		//
 		// Class instances are interior-mutable (`HxRef<_>`) and methods commonly need to return
 		// values by value while borrowing `self`. To preserve Haxe's "values are reusable" semantics,
 		// codegen often clones non-`Copy` fields/values, so we default to `T: Clone` for class params.
-		var bounded:Array<String> = [];
-		for (p in classType.params)
-			bounded.push(p.name + ": Clone + Send + Sync");
-		return bounded;
+		var defaultBounds:Array<RustGenericBound> = [
+			GenericTraitBound(RustPath.single("Clone"), TraitBoundRequired),
+			GenericTraitBound(RustPath.single("Send"), TraitBoundRequired),
+			GenericTraitBound(RustPath.single("Sync"), TraitBoundRequired)
+		];
+		return RustGenericParameters.of([
+			for (parameter in classType.params)
+				GenericTypeParam(RustIdentifier.named(parameter.name), defaultBounds.copy(), null)
+		]);
+	}
+
+	function rustClassTypeInstType(classType:ClassType):RustType {
+		var decls = rustGenericDeclsForClass(classType);
+		return RNamed(rustRelativePath([rustTypeNameForClass(classType)], rustGenericArgumentsFromDecls(decls)));
+	}
+
+	function rustCrateClassInstType(classType:ClassType):RustType {
+		var names = rustModuleSegmentsForClass(classType);
+		names.push(rustTypeNameForClass(classType));
+		return RNamed(rustCratePath(names, rustGenericArgumentsFromDecls(rustGenericDeclsForClass(classType))));
+	}
+
+	function rustHxRefClassInstType(classType:ClassType):RustType {
+		return rustHxRefType(rustCrateClassInstType(classType));
+	}
+
+	function rustBorrowedRefCellClassInstType(classType:ClassType):RustType {
+		return RBorrow(rustRefCellType(rustClassTypeInstType(classType)), false, null);
 	}
 
 	function rustClassTypeInst(classType:ClassType):String {
-		var base = rustTypeNameForClass(classType);
-		var decls = rustGenericDeclsForClass(classType);
-		var names = rustGenericNamesFromDecls(decls);
-		return names.length > 0 ? (base + "<" + names.join(", ") + ">") : base;
+		return rustTypeToString(rustClassTypeInstType(classType));
 	}
 
 	function haxeTypeContainsClassTypeParam(t:Type, typeParamNames:Map<String, Bool>):Bool {
@@ -7184,7 +7575,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								#if eval
 								if (Context.defined("rust_debug_string_types")
 									&& useNullableStringRepresentation()
-									&& rustTypeToString(rustTy) == "String") {
+									&& rustTypesEqual(rustTy, RString)) {
 									var vt = TypeTools.toString(v.t);
 									var it = init != null ? TypeTools.toString(init.t) : "<none>";
 									Context.warning("rust_debug_string_types nullable-init TVar `" + name + "`: v.t=" + vt + ", init.t=" + it, e.pos);
@@ -7279,7 +7670,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								#if eval
 								if (Context.defined("rust_debug_string_types")
 									&& useNullableStringRepresentation()
-									&& rustTypeToString(rustTy) == "String") {
+									&& rustTypesEqual(rustTy, RString)) {
 									var vt = TypeTools.toString(v.t);
 									var it = init != null ? TypeTools.toString(init.t) : "<none>";
 									Context.warning("rust_debug_string_types move-opt TVar `" + name + "`: v.t=" + vt + ", init.t=" + it, e.pos);
@@ -7910,11 +8301,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var name = rustLocalDeclIdent(v);
 					var rustTy = toRustType(v.t, e.pos);
 					var cellBackedLocal = isCapturedCellLocal(v);
-					var localStorageTy:RustType = cellBackedLocal ? RPath("crate::HxRef<" + rustTypeToString(rustTy) + ">") : rustTy;
+					var localStorageTy:RustType = cellBackedLocal ? rustHxRefType(rustTy) : rustTy;
 					#if eval
 					if (Context.defined("rust_debug_string_types")
 						&& useNullableStringRepresentation()
-						&& rustTypeToString(rustTy) == "String") {
+						&& rustTypesEqual(rustTy, RString)) {
 						var vt = TypeTools.toString(v.t);
 						var it = init != null ? TypeTools.toString(init.t) : "<none>";
 						Context.warning("rust_debug_string_types TVar `" + name + "`: v.t=" + vt + ", init.t=" + it, e.pos);
@@ -9478,29 +9869,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							}
 
 							var rt = toRustType(e.t, e.pos);
-							switch (rt) {
-								case RPath(p) if (StringTools.startsWith(p, "crate::HxRef<")): {
-										var inner = p.substr("crate::HxRef<".length, p.length - "crate::HxRef<".length - 1);
-										ECall(EPath("crate::HxRef::<" + inner + ">::null"), []);
-									}
-								case RPath(p) if (StringTools.startsWith(p, rcBasePath() + "<dyn ")): {
-										// Non-null interface / polymorphic class values lower to Rust trait-object
-										// handles. Trait objects have no default value, so a source `null` at this
-										// boundary must become the same diverging null access used by other
-										// non-nullable Rust representations.
-										ECall(EPath("hxrt::exception::throw"), [
-											ECall(EPath("hxrt::dynamic::from"), [ECall(EPath("String::from"), [ELitString("Null Access")])])
-										]);
-									}
-								case RPath(p) if (StringTools.startsWith(p, "hxrt::array::Array<")): {
-										var inner = p.substr("hxrt::array::Array<".length, p.length - "hxrt::array::Array<".length - 1);
-										ECall(EPath("hxrt::array::Array::<" + inner + ">::null"), []);
-									}
-								case RPath(p) if (StringTools.startsWith(p, dynRefBasePath() + "<")): {
-										var prefix = dynRefBasePath() + "<";
-										var inner = p.substr(prefix.length, p.length - prefix.length - 1);
-										ECall(EPath(dynRefBasePath() + "::<" + inner + ">::null"), []);
-									}
+							var carrierInner = rustTypeSingleGenericArgument(rt);
+							if (rustTypeIsHxRef(rt) && carrierInner != null) {
+								ECall(EPath("crate::HxRef::<" + rustTypeToString(carrierInner) + ">::null"), []);
+							} else if (rustTypeIsRcTraitObject(rt)) {
+									// Non-null interface / polymorphic class values lower to Rust trait-object
+									// handles. Trait objects have no default value, so a source `null` at this
+									// boundary must become the same diverging null access used by other
+									// non-nullable Rust representations.
+									ECall(EPath("hxrt::exception::throw"), [
+										ECall(EPath("hxrt::dynamic::from"), [ECall(EPath("String::from"), [ELitString("Null Access")])])
+									]);
+							} else if (rustTypeIsArrayCarrier(rt) && carrierInner != null) {
+								ECall(EPath("hxrt::array::Array::<" + rustTypeToString(carrierInner) + ">::null"), []);
+							} else if (rustTypeIsDynRefCarrier(rt) && carrierInner != null) {
+								ECall(EPath(dynRefBasePath() + "::<" + rustTypeToString(carrierInner) + ">::null"), []);
+							} else switch (rt) {
 								case RString:
 									failMetalStringNull(e.pos);
 									stringNullExpr();
@@ -9536,10 +9920,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							// A typed local String has already crossed the compiler's String -> HxString
 							// boundary at its declaration. Avoid adding an identity wrapper here; literal,
 							// call, field, nullable, and other element forms still use the full coercion path.
-							var sourceRust = rustTypeToString(toRustType(value.t, value.pos));
+							var sourceRustType = toRustType(value.t, value.pos);
 							var materializedHxStringLocal = isLocalExpr(value)
-								&& rustTypeToString(elemRust) == "hxrt::string::HxString"
-								&& sourceRust == "hxrt::string::HxString";
+								&& rustTypeIsNullableStringCarrier(elemRust)
+								&& rustTypeIsNullableStringCarrier(sourceRustType);
 							vecValues.push(materializedHxStringLocal ? compiled : coerceExprToExpected(compiled, value, elem));
 						}
 						var vecExpr = EMacroCall("vec", vecValues);
@@ -9574,26 +9958,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							}
 
 							var rt = toRustType(t, e.pos);
-							switch (rt) {
-								case RPath(p) if (StringTools.startsWith(p, "crate::HxRef<")):
-									{
-										var inner = p.substr("crate::HxRef<".length, p.length - "crate::HxRef<".length - 1);
-										return ECall(EPath("crate::HxRef::<" + inner + ">::null"), []);
-									}
-								case RPath(p) if (StringTools.startsWith(p, "hxrt::array::Array<")):
-									{
-										var inner = p.substr("hxrt::array::Array<".length, p.length - "hxrt::array::Array<".length - 1);
-										return ECall(EPath("hxrt::array::Array::<" + inner + ">::null"), []);
-									}
-								case RPath(p) if (StringTools.startsWith(p, dynRefBasePath() + "<")):
-									{
-										var prefix = dynRefBasePath() + "<";
-										var inner = p.substr(prefix.length, p.length - prefix.length - 1);
-										return ECall(EPath(dynRefBasePath() + "::<" + inner + ">::null"), []);
-									}
-								case _:
-									return ECall(EPath("Default::default"), []);
-							}
+							var carrierInner = rustTypeSingleGenericArgument(rt);
+							if (rustTypeIsHxRef(rt) && carrierInner != null)
+								return ECall(EPath("crate::HxRef::<" + rustTypeToString(carrierInner) + ">::null"), []);
+							if (rustTypeIsArrayCarrier(rt) && carrierInner != null)
+								return ECall(EPath("hxrt::array::Array::<" + rustTypeToString(carrierInner) + ">::null"), []);
+							if (rustTypeIsDynRefCarrier(rt) && carrierInner != null)
+								return ECall(EPath(dynRefBasePath() + "::<" + rustTypeToString(carrierInner) + ">::null"), []);
+							return ECall(EPath("Default::default"), []);
 						}
 
 						function dynDowncastNonNull(expected:Type):RustExpr {
@@ -9635,10 +10007,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								});
 							}
 
-							var expectedRust = rustTypeToString(toRustType(e.t, e.pos));
-							var isNullableRef = StringTools.startsWith(expectedRust, "crate::HxRef<")
-								|| StringTools.startsWith(expectedRust, "hxrt::array::Array<")
-								|| StringTools.startsWith(expectedRust, dynRefBasePath() + "<");
+							var expectedRust = toRustType(e.t, e.pos);
+							var isNullableRef = rustTypeIsHxRef(expectedRust)
+								|| rustTypeIsArrayCarrier(expectedRust)
+								|| rustTypeIsDynRefCarrier(expectedRust);
 							return EBlock({
 								stmts: [RLet("__hx_dyn", false, null, dynExpr)],
 								tail: EIf(ECall(EField(EPath("__hx_dyn"), "is_null"), []),
@@ -9774,10 +10146,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				var expectedTail:Null<Type> = null;
 				if (exprs.length > 0) {
 					var sourceTail = exprs[exprs.length - 1];
-					var blockRust = rustTypeToString(toRustType(e.t, e.pos));
-					var tailRust = rustTypeToString(toRustType(sourceTail.t, sourceTail.pos));
+					var blockRust = toRustType(e.t, e.pos);
+					var tailRust = toRustType(sourceTail.t, sourceTail.pos);
 					var dynamicBoundaryDiffers = mapsToRustDynamic(e.t, e.pos) != mapsToRustDynamic(sourceTail.t, sourceTail.pos);
-					if (blockRust != tailRust || dynamicBoundaryDiffers)
+					if (!rustTypesEqual(blockRust, tailRust) || dynamicBoundaryDiffers)
 						expectedTail = e.t;
 				}
 				EBlock(compileBlock(exprs, true, expectedTail));
@@ -9993,14 +10365,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						currentClosureCapturedReusableLocals = prevClosureCapturedReusableLocals;
 					});
 
-					var argTys = [for (a in fn.args) rustTypeToString(toRustType(a.v.t, e.pos))];
-					var sig = "dyn Fn(" + argTys.join(", ") + ")";
-					if (!TypeHelper.isVoid(fn.t)) {
-						sig += " -> " + rustTypeToString(toRustType(fn.t, e.pos));
-					}
-					sig += " + Send + Sync";
+					var fnTraitType = rustFunctionTraitObjectType([for (a in fn.args) toRustType(a.v.t, e.pos)],
+						TypeHelper.isVoid(fn.t) ? null : toRustType(fn.t, e.pos));
 
-					var rcTy:RustType = RPath(rcBasePath() + "<" + sig + ">");
+					var rcTy:RustType = rustRcType(fnTraitType);
 					var rcExpr:RustExpr = ECall(EPath(rcBasePath() + "::new"), [EClosure(argParts, body, true)]);
 					var preStmts:Array<RustStmt> = [];
 					for (captured in capturedCloneLocals) {
@@ -10376,13 +10744,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		]);
 	}
 
-	function rustTypeIsHxRef(rt:RustType):Bool {
-		return switch (rt) {
-			case RPath(p): StringTools.startsWith(p, "crate::HxRef<");
-			case _: false;
-		}
-	}
-
 	/**
 		Upcasts a concrete `HxRef<Sub>` into the base/interface Rust type expected by a typed catch binding.
 
@@ -10482,7 +10843,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		var candidateArms:Array<RustMatchArm> = [];
 		for (cls in candidates) {
-			var concreteRustTy = RPath("crate::HxRef<crate::" + rustModulePathForClass(cls) + "::" + rustTypeNameForClass(cls) + ">");
+			var concreteRustTy = rustHxRefType(rustCrateNominalType(rustModuleSegmentsForClass(cls), rustTypeNameForClass(cls)));
 			if (!rustTypeIsHxRef(concreteRustTy))
 				continue;
 
@@ -11177,12 +11538,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		// Some Rust representations already have an explicit null value (no extra `Option<...>` needed).
-		var innerRust = rustTypeToString(toRustType(innerType, pos));
+		var innerRust = toRustType(innerType, pos);
 		// `Dynamic` already carries its own null sentinel (`Dynamic::null()`).
-		if (isRustDynamicPath(innerRust))
+		if (rustTypeIsDynamicCarrier(innerRust))
 			return null;
 		// Portable `String` uses `HxString` with an internal null sentinel.
-		if (innerRust == "hxrt::string::HxString")
+		if (rustTypeIsNullableStringCarrier(innerRust))
 			return null;
 
 		// Core `Class<T>` / `Enum<T>` handles are represented as `u32` ids with `0u32` as null sentinel.
@@ -11191,14 +11552,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		// Nullable interface / polymorphic class values lower to `HxDynRef<dyn Trait>`, which carries
 		// its own null sentinel.
-		if (traitObjectRustInnerPath(innerType, pos) != null)
+		if (traitObjectRustType(innerType, pos) != null)
 			return null;
 
-		if (StringTools.startsWith(innerRust, "crate::HxRef<"))
-			return null;
-		if (StringTools.startsWith(innerRust, "hxrt::array::Array<"))
-			return null;
-		if (StringTools.startsWith(innerRust, dynRefBasePath() + "<"))
+		if (rustTypeIsHxRef(innerRust) || rustTypeIsArrayCarrier(innerRust) || rustTypeIsDynRefCarrier(innerRust))
 			return null;
 		return innerType;
 	}
@@ -11569,9 +11926,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (!isIteratorStructType(expected) || isIteratorStructType(valueExpr.t))
 			return null;
 
-		var expectedRust = rustTypeToString(toRustType(expected, valueExpr.pos));
-		var actualRust = rustTypeToString(toRustType(valueExpr.t, valueExpr.pos));
-		if (expectedRust == actualRust)
+		var expectedRust = toRustType(expected, valueExpr.pos);
+		var actualRust = toRustType(valueExpr.t, valueExpr.pos);
+		if (rustTypesEqual(expectedRust, actualRust))
 			return null;
 
 		var actualClass = concreteStructuralSourceClass(valueExpr);
@@ -11686,8 +12043,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return compiled;
 		}
 
-		var expectedRust = rustTypeToString(toRustType(expected, valueExpr.pos));
-		var actualRust = rustTypeToString(toRustType(valueExpr.t, valueExpr.pos));
+		var expectedRust = toRustType(expected, valueExpr.pos);
+		var actualRust = toRustType(valueExpr.t, valueExpr.pos);
 
 		var expectedIsDyn = mapsToRustDynamic(expected, valueExpr.pos);
 		var actualIsDyn = mapsToRustDynamic(valueExpr.t, valueExpr.pos);
@@ -11696,8 +12053,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// trait-object wrapper (`HxDynRef<dyn Trait>`). When a callee expects the non-null
 		// `HxRc<dyn Trait>` representation, unwrap once at the typed call boundary and keep the
 		// callee body non-null.
-		if (StringTools.startsWith(expectedRust, rcBasePath() + "<dyn ")
-			&& StringTools.startsWith(actualRust, dynRefBasePath() + "<dyn ")) {
+		if (rustTypeIsRcTraitObject(expectedRust)
+			&& rustTypeIsDynRefCarrier(actualRust)
+			&& rustTypeContainsTraitObject(actualRust)) {
 			return EBlock({
 				stmts: [RLet("__hx_dyn_ref", false, null, maybeCloneForReuseValue(compiled, valueExpr))],
 				tail: EMatch(ECall(EField(EPath("__hx_dyn_ref"), "as_arc_opt"), []), [
@@ -11751,7 +12109,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// String representation bridge (`String` <-> `HxString`) for nullable-string mode.
 		//
 		// We intentionally do this after `Null<T>` unwrapping so `Option<String>` can unwrap first.
-		if (expectedRust == "hxrt::string::HxString" && !actualIsDyn) {
+		if (rustTypeIsNullableStringCarrier(expectedRust) && !actualIsDyn) {
 			// Preserve already-wrapped HxString values to avoid noisy `HxString::from(HxString::null())`
 			// output while still bridging plain `String`/`&str` expressions.
 			if (isDefaultDefaultCall(compiled)
@@ -11760,7 +12118,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				return compiled;
 			return wrapRustStringExpr(compiled);
 		}
-		if (expectedRust == "String" && actualRust == "hxrt::string::HxString") {
+		if (rustTypesEqual(expectedRust, RString) && rustTypeIsNullableStringCarrier(actualRust)) {
 			return ECall(EField(compiled, "to_haxe_string"), []);
 		}
 
@@ -11992,14 +12350,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var isVoid = TypeHelper.isVoid(sig.ret);
 					var body:RustBlock = isVoid ? {stmts: [RSemi(call)], tail: null} : {stmts: [], tail: call};
 
-					var argTys = [for (p in sig.params) rustTypeToString(toRustType(p.t, valueExpr.pos))];
-					var fnSig = "dyn Fn(" + argTys.join(", ") + ")";
-					if (!TypeHelper.isVoid(sig.ret)) {
-						fnSig += " -> " + rustTypeToString(toRustType(sig.ret, valueExpr.pos));
-					}
-					fnSig += " + Send + Sync";
+					var fnTraitType = rustFunctionTraitObjectType([for (p in sig.params) toRustType(p.t, valueExpr.pos)],
+						TypeHelper.isVoid(sig.ret) ? null : toRustType(sig.ret, valueExpr.pos));
 
-					var rcTy:RustType = RPath(rcBasePath() + "<" + fnSig + ">");
+					var rcTy:RustType = rustRcType(fnTraitType);
 					var rcExpr:RustExpr = ECall(EPath(rcBasePath() + "::new"), [EClosure(argParts, body, true)]);
 					var fnVal:RustExpr = EBlock({
 						stmts: [RLet(recvName, false, null, recvExpr), RLet("__rc", false, rcTy, rcExpr)],
@@ -12025,13 +12379,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var expectedNullableTraitObjectInner = nullableTraitObjectInnerType(expected, valueExpr.pos);
 		var expectedTraitObjectType = expectedNullableTraitObjectInner != null ? expectedNullableTraitObjectInner : expected;
 		if (!isNullConstExpr(valueExpr) && (isInterfaceType(expectedTraitObjectType) || isPolymorphicClassType(expectedTraitObjectType))) {
-			function rustTypeIsHxRef(rt:RustType):Bool {
-				return switch (rt) {
-					case RPath(p): StringTools.startsWith(p, "crate::HxRef<");
-					case _: false;
-				}
-			}
-
 			function unwrapMetaParenCast(e:TypedExpr):TypedExpr {
 				var cur = unwrapMetaParen(e);
 				while (true) {
@@ -12063,8 +12410,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				return compiled;
 
 			var expectedRustTy = toRustType(expected, valueExpr.pos);
-			var expectedRustStr = rustTypeToString(expectedRustTy);
-			var expectedIsDynRef = StringTools.startsWith(expectedRustStr, dynRefBasePath() + "<");
+			var expectedIsDynRef = rustTypeIsDynRefCarrier(expectedRustTy);
 			if (actualIsFreshNew) {
 				// A syntactic `new Concrete()` cannot be null, so do not emit a per-site nullable
 				// match/throw branch for its trait-object upcast. The unwrap documents the compiler
@@ -12400,7 +12746,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		How
 		- Applies Haxe's declaration-owned type parameters twice, using `Int` and `String` as typed
-		  probes, then compares the canonical Rust AST type renderings. Other function parameters stay
+		  probes, then compares the canonical structural Rust types. Other function parameters stay
 		  symbolic, so the check isolates exactly one parameter and introduces no runtime representation.
 	**/
 	function isFunctionTypeParameterErasedFromRustArguments(field:ClassField, parameterIndex:Int,
@@ -12423,7 +12769,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		for (argument in arguments) {
 			var withInt = TypeTools.applyTypeParameters(argument.t, field.params, intTypes);
 			var withString = TypeTools.applyTypeParameters(argument.t, field.params, stringTypes);
-			if (rustTypeToString(toRustType(withInt, pos)) != rustTypeToString(toRustType(withString, pos)))
+			if (!rustTypesEqual(toRustType(withInt, pos), toRustType(withString, pos)))
 				return false;
 		}
 		return true;
@@ -12530,16 +12876,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		function explicitNullExprForExpected(t:Type, pos:haxe.macro.Expr.Position):Null<RustExpr> {
-			var rust = rustTypeToString(toRustType(t, pos));
-			if (isRustDynamicPath(rust))
+			var rust = toRustType(t, pos);
+			if (rustTypeIsDynamicCarrier(rust))
 				return rustDynamicNullExpr();
 			if (isCoreClassOrEnumHandleType(t))
 				return ECast(ELitInt(0), "u32");
-			if (StringTools.startsWith(rust, "crate::HxRef<"))
+			if (rustTypeIsHxRef(rust))
 				return ECall(EPath("crate::HxRef::null"), []);
-			if (StringTools.startsWith(rust, "hxrt::array::Array<"))
+			if (rustTypeIsArrayCarrier(rust))
 				return ECall(EPath("hxrt::array::Array::null"), []);
-			if (StringTools.startsWith(rust, dynRefBasePath() + "<"))
+			if (rustTypeIsDynRefCarrier(rust))
 				return ECall(EPath(dynRefBasePath() + "::null"), []);
 			return null;
 		}
@@ -14331,7 +14677,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			// Haxe reference types are reusable references. When passed by value to Rust functions,
 			// clone the `Rc` so the original local remains usable.
 			var isByRef = switch (rustParamTy) {
-				case RRef(_, _): true;
+				case RBorrow(_, _, _): true;
 				case _: false;
 			}
 
@@ -14434,14 +14780,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							argParts.push(name + ": " + rustTypeToString(toRustType(p.t, argExpr.pos)));
 						}
 
-						var argTys = [for (p in sig.params) rustTypeToString(toRustType(p.t, argExpr.pos))];
-						var fnSig = "dyn Fn(" + argTys.join(", ") + ")";
-						if (!TypeHelper.isVoid(sig.ret)) {
-							fnSig += " -> " + rustTypeToString(toRustType(sig.ret, argExpr.pos));
-						}
-						fnSig += " + Send + Sync";
+						var fnTraitType = rustFunctionTraitObjectType([for (p in sig.params) toRustType(p.t, argExpr.pos)],
+							TypeHelper.isVoid(sig.ret) ? null : toRustType(sig.ret, argExpr.pos));
 
-						var rcTy:RustType = RPath(rcBasePath() + "<" + fnSig + ">");
+						var rcTy:RustType = rustRcType(fnTraitType);
 						var rcExpr:RustExpr = ECall(EPath(rcBasePath() + "::new"), [compiled]);
 						compiled = EBlock({
 							stmts: [RLet("__rc", false, rcTy, rcExpr)],
@@ -14469,7 +14811,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function wrapBorrowIfNeeded(expr:RustExpr, ty:RustType, valueExpr:TypedExpr):RustExpr {
 		return switch (ty) {
-			case RRef(_, mutable):
+			case RBorrow(_, mutable, _):
 				// Avoid borrowing values that are already references, but *do* borrow when the "ref"
 				// is introduced via an implicit `@:from` conversion (typically lowered to a cast).
 				if (isDirectRustRefValue(valueExpr)) {
@@ -14538,8 +14880,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function shouldSkipBorrowedStringInnerCoercion(expr:RustExpr, source:TypedExpr, expectedInner:Type):Bool {
 		if (!isStringType(expectedInner) || !isStringType(source.t))
 			return false;
-		var sourceRust = rustTypeToString(toRustType(source.t, source.pos));
-		if (sourceRust != "hxrt::string::HxString")
+		var sourceRust = toRustType(source.t, source.pos);
+		if (!rustTypeIsNullableStringCarrier(sourceRust))
 			return false;
 		return switch (expr) {
 			case EPath(_): true;
@@ -14999,14 +15341,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var isVoid = TypeHelper.isVoid(sig.ret);
 		var body:RustBlock = isVoid ? {stmts: [RSemi(call)], tail: null} : {stmts: [], tail: call};
 
-		var argTys = [for (p in sig.params) rustTypeToString(toRustType(p.t, fullExpr.pos))];
-		var fnSig = "dyn Fn(" + argTys.join(", ") + ")";
-		if (!TypeHelper.isVoid(sig.ret)) {
-			fnSig += " -> " + rustTypeToString(toRustType(sig.ret, fullExpr.pos));
-		}
-		fnSig += " + Send + Sync";
+		var fnTraitType = rustFunctionTraitObjectType([for (p in sig.params) toRustType(p.t, fullExpr.pos)],
+			TypeHelper.isVoid(sig.ret) ? null : toRustType(sig.ret, fullExpr.pos));
 
-		var rcTy:RustType = RPath(rcBasePath() + "<" + fnSig + ">");
+		var rcTy:RustType = rustRcType(fnTraitType);
 		var rcExpr:RustExpr = ECall(EPath(rcBasePath() + "::new"), [EClosure(argParts, body, true)]);
 		return EBlock({
 			stmts: [RLet(recvName, false, null, recvExpr), RLet("__rc", false, rcTy, rcExpr)],
@@ -15587,11 +15925,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return out;
 	}
 
-	function renderRustImplBlock(spec:RustImplSpec, implGenerics:Array<String>, forType:String):String {
-		var header = "impl";
-		if (implGenerics != null && implGenerics.length > 0)
-			header += "<" + implGenerics.join(", ") + ">";
-		header += " " + spec.traitPath + " for " + (spec.forType != null ? spec.forType : forType) + " {";
+	function renderRustImplBlock(spec:RustImplSpec, implGenerics:RustGenericParameters, forType:RustType):String {
+		var header = "impl" + reflaxe.rust.ast.RustASTPrinter.printGenericParameters(implGenerics);
+		header += " " + spec.traitPath + " for " + (spec.forType != null ? spec.forType : rustTypeToString(forType)) + " {";
 
 		var lines:Array<String> = [header];
 		var body = spec.body;
@@ -15687,7 +16023,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function emitClassTrait(classType:ClassType, funcFields:Array<ClassFuncData>):String {
 		var traitName = rustTypeNameForClass(classType) + "Trait";
 		var generics = rustGenericDeclsForClass(classType);
-		var genericSuffix = generics.length > 0 ? "<" + generics.join(", ") + ">" : "";
+		var genericSuffix = reflaxe.rust.ast.RustASTPrinter.printGenericParameters(generics);
 		var lines:Array<String> = [];
 		lines.push("pub trait " + traitName + genericSuffix + ": Send + Sync {");
 
@@ -15734,7 +16070,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var genericNames = rustGenericNamesFromDecls(generics);
 		var turbofish = genericNames.length > 0 ? ("::<" + genericNames.join(", ") + ">") : "";
 		var traitArgs = genericNames.length > 0 ? "<" + genericNames.join(", ") + ">" : "";
-		var implGenerics = generics.length > 0 ? "<" + generics.join(", ") + ">" : "";
+		var implGenerics = reflaxe.rust.ast.RustASTPrinter.printGenericParameters(generics);
 
 		var lines:Array<String> = [];
 		lines.push("impl" + implGenerics + " " + traitPathBase + traitArgs + " for " + refCellBasePath() + "<" + rustSelfInst + "> {");
@@ -15805,7 +16141,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var subGenerics = rustGenericDeclsForClass(subType);
 		var subGenericNames = rustGenericNamesFromDecls(subGenerics);
 		var subTurbofish = subGenericNames.length > 0 ? ("::<" + subGenericNames.join(", ") + ">") : "";
-		var subImplGenerics = subGenerics.length > 0 ? "<" + subGenerics.join(", ") + ">" : "";
+		var subImplGenerics = reflaxe.rust.ast.RustASTPrinter.printGenericParameters(subGenerics);
 
 		var resolvedBaseArgs = resolvedAncestorTypeArgs(subType, baseType);
 		var baseArgs = resolvedBaseArgs != null ? resolvedBaseArgs : [];
@@ -15950,13 +16286,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						}
 						var overrideFunc = implFunc;
 						var call = rustSubType + subTurbofish + "::" + rustMethodName(subType, overrideFunc.field) + "(" + callArgs.join(", ") + ")";
-
-						function rustTypeIsHxRef(rt:RustType):Bool {
-							return switch (rt) {
-								case RPath(p): StringTools.startsWith(p, "crate::HxRef<");
-								case _: false;
-							}
-						}
 
 						var baseRetIsTrait = isInterfaceType(retTy) || isPolymorphicClassType(retTy);
 						var overrideRetRust = toRustType(overrideFunc.ret, overrideFunc.field.pos);
@@ -17790,33 +18119,40 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return ERaw(RustRawCode.compilerAt("todo!()", RawUnsupportedFallback, e.pos));
 	}
 
-	function traitObjectRustInnerPath(t:Type, pos:haxe.macro.Expr.Position):Null<String> {
+	function rustTraitObjectType(primaryTrait:RustPath, ?extraLifetime:RustLifetime):RustType {
+		var bounds:Array<RustGenericBound> = [
+			GenericTraitBound(primaryTrait, TraitBoundRequired),
+			GenericTraitBound(RustPath.single("Send"), TraitBoundRequired),
+			GenericTraitBound(RustPath.single("Sync"), TraitBoundRequired)
+		];
+		if (extraLifetime != null)
+			bounds.push(GenericLifetimeBound(extraLifetime));
+		return RTraitObject(RustTraitObject.of(bounds));
+	}
+
+	function rustFunctionTraitObjectType(argumentTypes:Array<RustType>, returnType:Null<RustType>, ?extraLifetime:RustLifetime):RustType {
+		var fnPath = RustPath.relative([RustPathSegment.parenthesized("Fn", argumentTypes, returnType)]);
+		return rustTraitObjectType(fnPath, extraLifetime);
+	}
+
+	function traitObjectRustType(t:Type, pos:haxe.macro.Expr.Position):Null<RustType> {
 		return switch (followType(t)) {
 			case TInst(clsRef, params): {
 					var cls = clsRef.get();
 					if (cls == null || cls.isExtern) {
 						null;
 					} else {
-						var typeParams = params != null
-							&& params.length > 0 ? ("<" + [for (p in params) rustTypeToString(toRustType(p, pos))].join(", ") + ">") : "";
-						if (cls.isInterface) {var modName = rustModulePathForClass(cls);
-							"dyn crate::"
-							+ modName
-							+ "::"
-							+ rustTypeNameForClass(cls)
-							+ typeParams
-							+ " + Send + Sync";
-						} else if (classHasSubclasses(cls)) {var modName = rustModulePathForClass(cls);
-							"dyn crate::"
-							+ modName
-							+ "::"
-							+ rustTypeNameForClass(cls)
-							+ "Trait"
-							+ typeParams
-							+ " + Send + Sync";
+						var traitName = if (cls.isInterface) {
+							rustTypeNameForClass(cls);
+						} else if (classHasSubclasses(cls)) {
+							rustTypeNameForClass(cls) + "Trait";
 						} else {
-							null;
+							return null;
 						}
+						var names = rustModuleSegmentsForClass(cls);
+						names.push(traitName);
+						var arguments = params == null ? [] : rustTypeArguments([for (parameter in params) toRustType(parameter, pos)]);
+						rustTraitObjectType(rustCratePath(names, arguments));
 					}
 				}
 			case _:
@@ -17824,9 +18160,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 	}
 
+	function traitObjectRustInnerPath(t:Type, pos:haxe.macro.Expr.Position):Null<String> {
+		var type = traitObjectRustType(t, pos);
+		return type == null ? null : rustTypeToString(type);
+	}
+
 	function dynRefTraitObjectRustType(t:Type, pos:haxe.macro.Expr.Position):Null<RustType> {
-		var inner = traitObjectRustInnerPath(t, pos);
-		return inner == null ? null : RPath(dynRefBasePath() + "<" + inner + ">");
+		var inner = traitObjectRustType(t, pos);
+		return inner == null ? null : rustDynRefType(inner);
 	}
 
 	function dynRefNullExprForTraitObject(t:Type, pos:haxe.macro.Expr.Position):Null<RustExpr> {
@@ -17873,7 +18214,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							innerType = n;
 						}
 						var inner = toRustType(innerType, pos);
-						var innerStr = rustTypeToString(inner);
 
 						// Interface and polymorphic class trait objects need an explicit null sentinel
 						// when the Haxe type is `Null<T>`. A bare `HxRc<dyn Trait>` cannot represent
@@ -17885,24 +18225,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 						// Some Rust representations already have an explicit null value (no extra `Option<...>` needed).
 						// `Dynamic` already carries its own null sentinel (`Dynamic::null()`).
-						if (isRustDynamicPath(innerStr)) {
+						if (rustTypeIsDynamicCarrier(inner)) {
 							return inner;
 						}
 						// Portable `String` uses `HxString`, which already models null.
-						if (innerStr == "hxrt::string::HxString") {
+						if (rustTypeIsNullableStringCarrier(inner)) {
 							return inner;
 						}
 						// Core `Class<T>` / `Enum<T>` handles are represented as `u32` ids with `0u32` as null sentinel.
 						if (isCoreClassOrEnumHandleType(innerType)) {
 							return inner;
 						}
-						if (StringTools.startsWith(innerStr, "crate::HxRef<")
-							|| StringTools.startsWith(innerStr, "hxrt::array::Array<")
-							|| StringTools.startsWith(innerStr, dynRefBasePath() + "<")) {
+						if (rustTypeIsHxRef(inner) || rustTypeIsArrayCarrier(inner) || rustTypeIsDynRefCarrier(inner)) {
 							return inner;
 						}
 
-						return RPath("Option<" + innerStr + ">");
+						return rustOptionType(inner);
 					}
 				}
 			case _:
@@ -17935,7 +18273,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (TypeHelper.isFloat(t))
 			return RF64;
 		if (isStringType(base)) {
-			return useNullableStringRepresentation() ? RPath(rustStringTypePath()) : RString;
+			return rustStringType();
 		}
 
 		var ft = followType(base);
@@ -17966,28 +18304,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						Context.warning("Rust backend: unresolved monomorph, lowering to runtime dynamic carrier.", pos);
 					}
 					#end
-					return RPath(rustDynamicPath());
+					return rustDynamicType();
 				}
 			case _:
 		}
 
 		switch (ft) {
 			case TDynamic(_):
-				return RPath(rustDynamicPath());
+				return rustDynamicType();
 			case _:
 		}
 
 		switch (ft) {
 			case TFun(params, ret):
 				{
-					var argTys = [for (p in params) rustTypeToString(toRustType(p.t, pos))];
-					var retTy = toRustType(ret, pos);
-					var sig = "dyn Fn(" + argTys.join(", ") + ")";
-					if (!TypeHelper.isVoid(ret)) {
-						sig += " -> " + rustTypeToString(retTy);
-					}
-					sig += " + Send + Sync";
-					return RPath(dynRefBasePath() + "<" + sig + ">");
+					var retTy = TypeHelper.isVoid(ret) ? null : toRustType(ret, pos);
+					return rustDynRefType(rustFunctionTraitObjectType([for (parameter in params) toRustType(parameter.t, pos)], retTy));
 				}
 			case _:
 		}
@@ -17999,24 +18331,24 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var key = abs.pack.join(".") + "." + abs.name;
 					if (key == "rust.HxRef" && params.length == 1) {
 						var inner = toRustType(params[0], pos);
-						return RPath("crate::HxRef<" + rustTypeToString(inner) + ">");
+						return rustHxRefType(inner);
 					}
 					if (key == "rust.Ref" && params.length == 1) {
-						return RRef(toRustType(params[0], pos), false);
+						return RBorrow(toRustType(params[0], pos), false, null);
 					}
 					if (key == "rust.MutRef" && params.length == 1) {
-						return RRef(toRustType(params[0], pos), true);
+						return RBorrow(toRustType(params[0], pos), true, null);
 					}
 					if (key == "rust.Str" && params.length == 0) {
-						return RRef(RPath("str"), false);
+						return RBorrow(rustNamedType("str"), false, null);
 					}
 					if (key == "rust.Slice" && params.length == 1) {
 						var inner = toRustType(params[0], pos);
-						return RRef(RPath("[" + rustTypeToString(inner) + "]"), false);
+						return RBorrow(RSlice(inner), false, null);
 					}
 					if (key == "rust.MutSlice" && params.length == 1) {
 						var inner = toRustType(params[0], pos);
-						return RRef(RPath("[" + rustTypeToString(inner) + "]"), true);
+						return RBorrow(RSlice(inner), true, null);
 					}
 
 					// `@:coreType` abstracts have no Haxe-level "underlying type" that is safe to follow.
@@ -18043,18 +18375,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							case ".Class":
 								// `Class<T>` values are runtime handles and can appear in `Type.typeof` / `ValueType`.
 								// For now we represent them as a numeric id. (A richer handle type can be added later.)
-								return RPath("u32");
+								return rustNamedType("u32");
 							case ".Enum":
 								// Same representation strategy as `Class<T>`.
-								return RPath("u32");
+								return rustNamedType("u32");
 							case _ if (key == dynamicCoreTypeKey):
-								return RPath(rustDynamicPath());
+								return rustDynamicType();
 							case _:
 						}
 						if (key == "haxe.io.BytesData") {
 							// Target-private storage type backing `haxe.io.Bytes`.
 							// For Rust we treat it as a plain byte vector.
-							return RPath("Vec<u8>");
+							return rustRelativeType(["Vec"], [rustNamedType("u8")]);
 						}
 
 						#if eval
@@ -18068,7 +18400,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							Context.warning('Rust backend: unmapped @:coreType abstract `' + key + '`, lowering to runtime dynamic carrier for now.', pos);
 						}
 						#end
-						return RPath(rustDynamicPath());
+					return rustDynamicType();
 					}
 
 					// General abstract fallback: treat as its underlying type.
@@ -18112,13 +18444,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								case _: next.type;
 							}
 							var item = toRustType(nextRet, pos);
-							return RPath("hxrt::iter::Iter<" + rustTypeToString(item) + ">");
+							return rustRelativeType(["hxrt", "iter", "Iter"], [item]);
 						}
 					}
 
 					// General anonymous object / structural record.
 					// Represent as a reference value to preserve Haxe aliasing + mutability semantics.
-					return RPath("crate::HxRef<hxrt::anon::Anon>");
+					return rustHxRefType(rustRelativeType(["hxrt", "anon", "Anon"]));
 				}
 			case _:
 		}
@@ -18126,7 +18458,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (isArrayType(ft)) {
 			var elem = arrayElementType(ft);
 			var elemRust = toRustType(elem, pos);
-			return RPath("hxrt::array::Array<" + rustTypeToString(elemRust) + ">");
+			return rustRelativeType(["hxrt", "array", "Array"], [elemRust]);
 		}
 
 		return switch (ft) {
@@ -18135,20 +18467,17 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var key = en.pack.join(".") + "." + en.name;
 					if ((key == "haxe.ds.Option" || key == "reflaxe.std.Option" || key == "rust.Option") && params.length == 1) {
 						var t = toRustType(params[0], pos);
-						RPath("Option<" + rustTypeToString(t) + ">");
+						rustOptionType(t);
 					} else if ((key == "haxe.functional.Result" || key == "reflaxe.std.Result" || key == "rust.Result")
 						&& params.length >= 1) {
 						var okT = toRustType(params[0], pos);
-						var errT = params.length >= 2 ? toRustType(params[1],
-							pos) : (useNullableStringRepresentation() ? RPath(rustStringTypePath()) : RString);
-						RPath("Result<" + rustTypeToString(okT) + ", " + rustTypeToString(errT) + ">");
+						var errT = params.length >= 2 ? toRustType(params[1], pos) : rustStringType();
+						rustRelativeType(["Result"], [okT, errT]);
 					} else if (key == "haxe.io.Error") {
-						RPath("hxrt::io::Error");
+						rustRelativeType(["hxrt", "io", "Error"]);
 					} else {
-						var modName = rustModulePathForEnum(en);
-						var typeParams = params != null
-							&& params.length > 0 ? ("<" + [for (p in params) rustTypeToString(toRustType(p, pos))].join(", ") + ">") : "";
-						RPath("crate::" + modName + "::" + rustTypeNameForEnum(en) + typeParams);
+						rustCrateNominalType(rustModuleSegmentsForEnum(en), rustTypeNameForEnum(en),
+							params == null ? [] : [for (parameter in params) toRustType(parameter, pos)]);
 					}
 				}
 			case TInst(clsRef, params): {
@@ -18157,9 +18486,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						switch (haxeArrayIteratorKind(cls)) {
 							case ArrayIteratorValues:
 								var item = toRustType(params[0], pos);
-								return RPath("hxrt::iter::Iter<" + rustTypeToString(item) + ">");
+								return rustRelativeType(["hxrt", "iter", "Iter"], [item]);
 							case ArrayIteratorKeyValues:
-								return RPath("hxrt::iter::Iter<crate::HxRef<hxrt::anon::Anon>>");
+								return rustRelativeType(["hxrt", "iter", "Iter"],
+									[rustHxRefType(rustRelativeType(["hxrt", "anon", "Anon"]))]);
 							case null:
 						}
 					}
@@ -18168,37 +18498,45 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							#if eval
 							RustDiagnostic.error(RustDiagnosticId.AsyncFutureShape, "`rust.async.Future<T>` requires exactly one type parameter.", pos);
 							#end
-							return RPath("hxrt::async_::HxFuture<()>");
+							return rustRelativeType(["hxrt", "async_", "HxFuture"], [RUnit]);
 						}
 						var inner = toRustType(params[0], pos);
-						return RPath("hxrt::async_::HxFuture<" + rustTypeToString(inner) + ">");
+						return rustRelativeType(["hxrt", "async_", "HxFuture"], [inner]);
 					}
 					switch (cls.kind) {
 						case KTypeParameter(_):
-							return RPath(cls.name);
+							return rustNamedType(cls.name);
 						case _:
 					}
 					if (isBytesClass(cls)) {
-						return RPath("crate::HxRef<hxrt::bytes::Bytes>");
+						return rustHxRefType(rustRelativeType(["hxrt", "bytes", "Bytes"]));
 					}
 					if (cls.isExtern) {
 						var base = rustExternBasePath(cls);
-						var path = base != null ? base : cls.name;
-						if (params.length > 0) {
-							var rustParams = [for (p in params) rustTypeToString(toRustType(p, pos))];
-							path = path + "<" + rustParams.join(", ") + ">";
-						}
-						return RPath(path);
+						var path = if (base == null) {
+							RustPath.single(cls.name);
+						} else {
+							try {
+								RustMetadataSyntax.parsePath(base);
+							} catch (message:String) {
+								#if eval
+								RustDiagnostic.error(RustDiagnosticId.MetadataValue, "Invalid extern Rust path syntax: " + message, cls.pos);
+								#end
+								RustPath.single(cls.name);
+							}
+						};
+						var arguments = params == null ? [] : rustTypeArguments([for (parameter in params) toRustType(parameter, pos)]);
+						return RNamed(rustPathWithFinalArguments(path, arguments));
 					}
-					var typeParams = params != null
-						&& params.length > 0 ? ("<" + [for (p in params) rustTypeToString(toRustType(p, pos))].join(", ") + ">") : "";
 					if (cls.isInterface) {
-						RPath(rcBasePath() + "<" + traitObjectRustInnerPath(t, pos) + ">");
+						var traitObject = traitObjectRustType(t, pos);
+						traitObject == null ? RUnit : rustRcType(traitObject);
 					} else if (classHasSubclasses(cls)) {
-						RPath(rcBasePath() + "<" + traitObjectRustInnerPath(t, pos) + ">");
+						var traitObject = traitObjectRustType(t, pos);
+						traitObject == null ? RUnit : rustRcType(traitObject);
 					} else {
-						var modName = rustModulePathForClass(cls);
-						RPath("crate::HxRef<crate::" + modName + "::" + rustTypeNameForClass(cls) + typeParams + ">");
+						rustHxRefType(rustCrateNominalType(rustModuleSegmentsForClass(cls), rustTypeNameForClass(cls),
+							params == null ? [] : [for (parameter in params) toRustType(parameter, pos)]));
 					}
 				}
 			case _: {
@@ -18266,10 +18604,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function mapsToRustDynamic(t:Type, pos:haxe.macro.Expr.Position):Bool {
 		if (isDynamicType(t))
 			return true;
-		return switch (toRustType(t, pos)) {
-			case RPath(p): isRustDynamicPath(p);
-			case _: false;
-		}
+		return rustTypeIsDynamicCarrier(toRustType(t, pos));
 	}
 
 	function isBytesClass(cls:ClassType):Bool {
@@ -18524,17 +18859,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function rustTypeToString(t:reflaxe.rust.ast.RustAST.RustType):String {
-		return switch (t) {
-			case RUnit: "()";
-			case RBool: "bool";
-			case RI32: "i32";
-			case RF64: "f64";
-			case RString: rustStringTypePath();
-			case RRef(inner, mutable): "&" + (mutable ? "mut " : "") + rustTypeToString(inner);
-			case RPath(path): path;
-			case RNamed(_) | RBorrow(_, _, _) | RTuple(_) | RSlice(_) | RArray(_, _):
-				reflaxe.rust.ast.RustASTPrinter.printTypeSyntax(t);
-		}
+		return reflaxe.rust.ast.RustASTPrinter.printTypeSyntax(t);
 	}
 }
 
