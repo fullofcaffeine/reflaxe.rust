@@ -6,4 +6,4 @@ exclude = [
   ".cache",
   "tools/hx",
 ]
-resolver = "2"
+resolver = "3"

@@ -272,6 +272,8 @@
         "Cargo.toml and src/main.rs are emitted at the generated crate root",
         "the default output is a Rust 2021 binary crate",
         "default generated app and hxrt manifests declare the minimum supported rust-version from rust-toolchain-policy.json",
+        "default generated app and hxrt manifests select Cargo resolver 3 from rust-toolchain-policy.json",
+        "the application Cargo.lock is project-owned, preserved across regeneration, committed after review, and consumed with --locked in CI and release builds",
         "rust_crate controls the generated Cargo package name",
         "the default runtime-backed crate includes ./hxrt and its path dependency",
         "documented Cargo subcommands and flags are forwarded and non-zero Cargo status fails Haxe compilation",
@@ -280,12 +282,14 @@
       "evidenceFiles": [
         "test/snapshot/portable_profile_smoke/intended/Cargo.toml",
         "rust-toolchain-policy.json",
+        "test/compatibility-baselines/fresh-cargo-resolution/manifest.json",
         "test/snapshot/portable_profile_smoke/intended/src/main.rs",
         "scripts/ci/check-cargo-failure-propagation.sh"
       ],
       "validationCommands": [
         "npm run test -- --case portable_profile_smoke",
         "npm run test:rust-toolchain-floor",
+        "npm run test:fresh-cargo-resolution",
         "npm run test:cargo-failure-propagation"
       ],
       "exclusions": [

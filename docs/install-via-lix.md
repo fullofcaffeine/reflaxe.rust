@@ -115,8 +115,10 @@ bash scripts/ci/local.sh
 Before using a generated or existing app in production:
 
 1. Keep `portable` as the default profile unless a path has a measured Rust-first need.
-2. Pin the release tag and commit the generated lockfiles.
-3. Use locked Cargo builds in CI when practical (`-D rust_cargo_locked`).
+2. Pin the release tag and commit each generated application's `Cargo.lock`; it is app-owned and is
+   preserved when the compiler regenerates the crate.
+3. Use `-D rust_cargo_locked` for CI and release builds. Resolver 3 prefers dependencies compatible
+   with the declared Rust floor, while the committed lock makes the reviewed choice reproducible.
 4. Add smoke tests for the specific file/process/network/TLS/DB/thread behavior your app uses.
 5. Keep native Rust interop behind typed wrappers.
 

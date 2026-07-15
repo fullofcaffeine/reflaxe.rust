@@ -1258,6 +1258,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			'version = "0.0.1"',
 			'edition = "2021"',
 			'rust-version = "' + RustToolchainPolicy.GENERATED_CARGO_RUST_VERSION + '"',
+			'resolver = "' + RustToolchainPolicy.GENERATED_CARGO_RESOLVER_VERSION + '"',
 			"",
 			"[dependencies]",
 			deps

@@ -55,6 +55,7 @@ seed_caches() {
     "$tmp_root/.cache/template-smoke-target/debug" \
     "$tmp_root/.cache/template-smoke-root-hx-target/debug" \
     "$tmp_root/.cache/perf-hxrt/results" \
+    "$tmp_root/.cache/fresh-cargo-resolution/minimum" \
     "$tmp_root/.cache/portable-native-import-diagnostics/out_json" \
     "$tmp_root/test/.cache/semantic-diff-target" \
     "$tmp_root/.cache/preserved-cache" \
@@ -73,6 +74,7 @@ seed_caches() {
     "$tmp_root/.cache/template-smoke-target/debug/artifact" \
     "$tmp_root/.cache/template-smoke-root-hx-target/debug/artifact" \
     "$tmp_root/.cache/perf-hxrt/results/current.json" \
+    "$tmp_root/.cache/fresh-cargo-resolution/minimum/summary.json" \
     "$tmp_root/.cache/portable-native-import-diagnostics/out_json/Cargo.toml" \
     "$tmp_root/test/.cache/semantic-diff-target/artifact" \
     "$tmp_root/.cache/preserved-cache/artifact" \
@@ -116,6 +118,7 @@ assert_caches_absent() {
   assert_absent ".cache/template-smoke-target"
   assert_absent ".cache/template-smoke-root-hx-target"
   assert_absent ".cache/perf-hxrt"
+  assert_absent ".cache/fresh-cargo-resolution"
   assert_absent ".cache/portable-native-import-diagnostics"
   assert_absent "test/.cache"
 }

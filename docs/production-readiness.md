@@ -50,8 +50,11 @@ If those are not true yet, treat adoption as a pilot rather than broad rollout.
 ### Stage 2: Controlled production
 
 - Use the supported Rust floor and repository/release pin from
-  [Rust Toolchain Policy](rust-toolchain-policy.md), and commit Cargo lockfiles.
-- Add explicit build defines in CI (`rust_cargo_locked`, target triple if required).
+  [Rust Toolchain Policy](rust-toolchain-policy.md), and commit the app-owned Cargo lockfile after
+  reviewing resolution on the supported minimum toolchain.
+- Add explicit build defines in CI (`rust_cargo_locked`, target triple if required). Resolver 3 is
+  the first-resolution preference; the committed lock plus exact-minimum checks are the reproducible
+  production contract.
 - Validate runtime paths for file, process, net, and thread behavior your app uses.
 
 ### Stage 3: Broad production rollout

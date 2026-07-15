@@ -14861,6 +14861,17 @@
             "test:public-compatibility"
           ],
           "typeReferences": []
+        },
+        {
+          "id": "field:GENERATED_CARGO_RESOLVER_VERSION",
+          "kind": "field",
+          "name": "GENERATED_CARGO_RESOLVER_VERSION",
+          "signature": "public static inline final GENERATED_CARGO_RESOLVER_VERSION : String = \"3\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
         }
       ]
     },

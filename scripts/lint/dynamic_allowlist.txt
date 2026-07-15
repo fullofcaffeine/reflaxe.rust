@@ -5,12 +5,12 @@
 
 # Rust compiler dynamic bridge points (line-scoped; see docs/dynamic-boundaries.md)
 src/reflaxe/rust/DynamicBoundary.hx:22
-src/reflaxe/rust/RustCompiler.hx:1532
 src/reflaxe/rust/RustCompiler.hx:1533
-src/reflaxe/rust/RustCompiler.hx:1540
-src/reflaxe/rust/RustCompiler.hx:1543
-src/reflaxe/rust/RustCompiler.hx:1551
-src/reflaxe/rust/RustCompiler.hx:17769
+src/reflaxe/rust/RustCompiler.hx:1534
+src/reflaxe/rust/RustCompiler.hx:1541
+src/reflaxe/rust/RustCompiler.hx:1544
+src/reflaxe/rust/RustCompiler.hx:1552
+src/reflaxe/rust/RustCompiler.hx:17770
 src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:103
 src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:106
 src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:115

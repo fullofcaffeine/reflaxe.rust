@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "minimumSupportedRust": "1.96.0",
   "releaseToolchain": "1.96.1",
   "currentStableLane": "stable",
@@ -11,5 +11,40 @@
   "components": [
     "rustfmt",
     "clippy"
-  ]
+  ],
+  "dependencyResolution": {
+    "resolverVersion": "3",
+    "incompatibleRustVersions": "fallback",
+    "applicationLockfile": "commit",
+    "ciMode": "locked",
+    "evidenceBaseline": "test/compatibility-baselines/fresh-cargo-resolution",
+    "repeatRuns": 2,
+    "cases": [
+      {
+        "id": "minimal",
+        "contract": "minimal generated crate",
+        "fixture": "test/snapshot/hello_trace/intended"
+      },
+      {
+        "id": "portable",
+        "contract": "portable generated crate",
+        "fixture": "test/snapshot/v1_smoke/intended"
+      },
+      {
+        "id": "systems",
+        "contract": "systems and TLS generated crate",
+        "fixture": "test/snapshot/sys_ssl_sni/intended"
+      },
+      {
+        "id": "async-feature",
+        "contract": "experimental async Tokio generated crate",
+        "fixture": "test/snapshot/rust_async_tasks/intended_tokio"
+      },
+      {
+        "id": "metal",
+        "contract": "metal generated crate",
+        "fixture": "test/snapshot/metal_v1_smoke/intended_metal"
+      }
+    ]
+  }
 }

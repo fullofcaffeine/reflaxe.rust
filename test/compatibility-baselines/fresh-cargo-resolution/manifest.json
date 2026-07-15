@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "policySchemaVersion": 2,
+  "minimumSupportedRust": "1.96.0",
+  "resolverVersion": "3",
+  "incompatibleRustVersions": "fallback",
+  "applicationLockfile": "commit",
+  "ciMode": "locked",
+  "emptyCargoHomePerCase": true,
+  "repeatRuns": 2,
+  "cases": [
+    {
+      "id": "minimal",
+      "contract": "minimal generated crate",
+      "fixture": "test/snapshot/hello_trace/intended",
+      "lockSha256": "aee393a0c53c7b1c3b20b4d0d3e7bbc24ebcf0aec064f7e86307f910145a465c",
+      "metadataSha256": "4f6f756a21112e6c7347ae640220312fb0d3db16d865555b29c99047b8315ea9"
+    },
+    {
+      "id": "portable",
+      "contract": "portable generated crate",
+      "fixture": "test/snapshot/v1_smoke/intended",
+      "lockSha256": "aee393a0c53c7b1c3b20b4d0d3e7bbc24ebcf0aec064f7e86307f910145a465c",
+      "metadataSha256": "e47b962e5588d75e2dc0e05f3ee1b82a13cffd34ca0fc7ec801c19d7b9323708"
+    },
+    {
+      "id": "systems",
+      "contract": "systems and TLS generated crate",
+      "fixture": "test/snapshot/sys_ssl_sni/intended",
+      "lockSha256": "75c9456f13a5dc450ad9a449d70ab183f624ca81f4d0c5c2fb847fd63062f467",
+      "metadataSha256": "a1a102a0eec01c628146d75a2f4c1c7badb2f3b90c3744c2f4e40fa21fcb366e"
+    },
+    {
+      "id": "async-feature",
+      "contract": "experimental async Tokio generated crate",
+      "fixture": "test/snapshot/rust_async_tasks/intended_tokio",
+      "lockSha256": "22832a4a0602858c087a923a21ec79e0676df3e154a39b4a0ddbec48e740e1e1",
+      "metadataSha256": "2d96763eb8bb8a7fb208385ae2fde75c0b1bcfe5243c18827ed5a6dd69d7d4b9"
+    },
+    {
+      "id": "metal",
+      "contract": "metal generated crate",
+      "fixture": "test/snapshot/metal_v1_smoke/intended_metal",
+      "lockSha256": "aee393a0c53c7b1c3b20b4d0d3e7bbc24ebcf0aec064f7e86307f910145a465c",
+      "metadataSha256": "8f1d80f1260df9eefd6e461281854826361f60b5084964af7a66da628713ef13"
+    }
+  ]
+}

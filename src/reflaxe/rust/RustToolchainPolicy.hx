@@ -12,6 +12,9 @@ package reflaxe.rust;
 	What
 	- MINIMUM_SUPPORTED_RUST is the oldest rustc version in the supported consumer contract.
 	- GENERATED_CARGO_RUST_VERSION is written to the Cargo rust-version field.
+	- GENERATED_CARGO_RESOLVER_VERSION selects Cargo resolver 3, whose MSRV-aware fallback prefers
+	  releases aligned with that floor when compatible choices publish rust-version. Exact-minimum
+	  Cargo checks remain authoritative when requirements are absent or no compatible release exists.
 
 	How
 	- Run npm run toolchain:sync after reviewing a policy change.
@@ -20,4 +23,5 @@ package reflaxe.rust;
 class RustToolchainPolicy {
 	public static inline final MINIMUM_SUPPORTED_RUST:String = "1.96.0";
 	public static inline final GENERATED_CARGO_RUST_VERSION:String = "1.96.0";
+	public static inline final GENERATED_CARGO_RESOLVER_VERSION:String = "3";
 }

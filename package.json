@@ -43,6 +43,8 @@
     "test:reflection-contract": "bash scripts/ci/check-reflection-contract.sh",
     "test:rust-toolchain-policy": "node test/scripts/rust-toolchain-policy.test.js",
     "test:rust-toolchain-floor": "bash scripts/ci/check-rust-toolchain-floor.sh",
+    "test:fresh-cargo-resolution": "node scripts/ci/fresh-cargo-resolution.js --lane minimum --check-baseline --out-dir .cache/fresh-cargo-resolution/minimum",
+    "fresh-cargo-resolution:refresh": "node scripts/ci/fresh-cargo-resolution.js --lane minimum --refresh-baseline --out-dir .cache/fresh-cargo-resolution/minimum",
     "test:generated-report-contract": "bash scripts/ci/check-generated-report-contract.sh",
     "test:generated-artifact-contract": "bash scripts/ci/check-generated-artifact-contract.sh",
     "test:release": "npm run test:release-policy && npm run test:release-notes && npm run test:release-artifact && npm run test:release-provenance && npm run test:release-workflow && npm run test:release-lifecycle",

@@ -34,7 +34,7 @@ the latest immutable GitHub Release for the exact current version.
 - [Generated consumer contract](generated-consumer-contract.md), [machine manifest](generated-consumer-contract.json), and [report schemas](schemas/): versioned JSON report shapes, compatibility baseline, generated Cargo/package ownership, and private-detail exclusions.
 - [Diagnostic identifier contract](diagnostic-identifiers.md) and [machine registry](diagnostic-contract.json): stable `HXRS-*` identifiers, severities, triggers, and retirement rules for admitted compiler failures.
 - [HxRef lifecycle and payload contract](hxref-lifecycle.md): opaque shared identity, acyclic cleanup, explicit strong-cycle retention, and thread-boundary payload qualifications.
-- [Rust toolchain policy](rust-toolchain-policy.md) and [machine policy](../rust-toolchain-policy.json): minimum consumer rustc, reproducible release pin, current-stable compatibility lane, and reviewed floor-update rules.
+- [Rust toolchain policy](rust-toolchain-policy.md) and [machine policy](../rust-toolchain-policy.json): minimum consumer rustc, resolver/lock strategy, deterministic fresh-resolution evidence, reproducible release pin, current-stable compatibility lane, and reviewed floor-update rules.
 - [GA decision record](ga-decision-record.md): historical Milestone 28 gate outcome that led to the semver/public-packaging follow-up.
 - [GA caveat classification](ga-caveat-classification.md): historical blocker/defer/non-issue input used by the Milestone 28 gate.
 - [Examples matrix](examples-matrix.md): scenario coverage, profile entrypoints, and native-parity quick check (`profile_storyboard`).

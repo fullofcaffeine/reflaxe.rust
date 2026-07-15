@@ -88,7 +88,7 @@ exact admitted surface.
 | `generated-package` | `stable-candidate` | `candidate` | `active` | Published Haxelib-shaped package and installed-package workflow. |
 | `generated-private` | `excluded-internal` | `internal` | `active` | Generated helper/wrapper details not admitted as consumer API. |
 
-Inventory: 318 shipped Haxe types, 1541 public operations, 18 metadata names, 55 defines, 4 JSON reports, 6 generated-artifact contracts, and 33 validated evidence records.
+Inventory: 318 shipped Haxe types, 1542 public operations, 18 metadata names, 55 defines, 4 JSON reports, 6 generated-artifact contracts, and 33 validated evidence records.
 <!-- END GENERATED PUBLIC COMPATIBILITY SUMMARY -->
 
 The guard enumerates no-package overrides, primary and secondary module types, direct `std/**`
@@ -217,7 +217,11 @@ Migration evidence is required but cannot turn an incompatible change into a non
 - Haxe is pinned to `4.3.7`.
 - Repository/release automation uses Node `22.14.0` under the declared engine range.
 - Generated crates use Rust edition 2021.
-- Generated crates require Rust `1.96.0` or newer, and exact-minimum CI validates that floor.
+- Generated crates require Rust `1.96.0` or newer and use Cargo resolver 3. Required CI performs
+  repeat empty-cache resolution, normalized metadata review, check, and test for minimal, portable,
+  systems, async-feature, and metal crates on the exact minimum and current stable.
+- Application `Cargo.lock` files are app-owned, committed, preserved across regeneration, and used
+  with `--locked` in CI/release builds; compiler evidence locks are not consumer templates.
 - `rust-toolchain.toml` defaults repository work to the exact minimum. Release automation
   explicitly activates its reviewed patch toolchain, and a separate required lane validates
   rolling current stable.

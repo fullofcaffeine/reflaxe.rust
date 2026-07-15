@@ -136,6 +136,8 @@ control live in the [public compatibility manifest](public-compatibility-manifes
 - `rust_cargo_all_features`
 - `rust_cargo_jobs=<n>`
 - `rust_cargo_locked`
+  - Adds Cargo `--locked`. Generated applications should commit their app-owned `Cargo.lock` and
+    enable this in CI/release builds so the reviewed resolver-3 graph cannot drift implicitly.
 - `rust_cargo_offline`
 - `rust_cargo_quiet`
 - `rust_cargo_toml=<path>`

@@ -204,6 +204,13 @@ Agent policy:
   wrapped command's exact status, including when the wrapper is called from `if` / `if !` contexts
   where `set -e` is suppressed. Reuse `scripts/ci/timed-command.sh` and keep
   `npm run test:timed-command-failure-propagation` wired into hooks.
+- Cargo MSRV-resolution gotcha: generated crates remain edition 2021 but must select resolver 3 from
+  `rust-toolchain-policy.json`. Its MSRV-aware fallback is only a preference for dependencies that
+  publish `rust-version`; it does not replace exact-minimum compilation. Application `Cargo.lock`
+  files are app-owned, preserved, committed after review, and consumed with `--locked` in CI/release
+  builds. Compiler evidence uses the two-pass, per-case-empty Cargo homes and reviewed
+  locks/normalized metadata under `test/compatibility-baselines/fresh-cargo-resolution`; refresh that
+  baseline only on exact Rust 1.96 after reviewing all graph changes.
 - Reflaxe’s `Context.getMainExpr()` is only reliable when the consumer uses `-main <Class>` (don’t rely on a bare trailing `Main` line in `.hxml`).
 - Windows Python tool-launch gotcha: Lix installs Haxe as an extensionless Node shim. Git Bash can
   execute it, but native Python `subprocess` cannot reliably resolve it as a Windows executable.

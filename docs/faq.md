@@ -292,6 +292,21 @@ For lifetime-heavy, HRTB, const-generic, macro-heavy, or `unsafe` Rust APIs, use
 [Extern and lifetime-island cookbook](extern-lifetime-island-cookbook.md) pattern: put the Rust-only
 complexity in a tiny Rust module and expose a typed Haxe facade.
 
+## Should I commit the generated `Cargo.lock`?
+
+Yes, for an application. The lockfile belongs to the generated app, the compiler preserves it across
+regeneration, and CI/release builds should pass `-D rust_cargo_locked` so Cargo fails if the manifest
+and reviewed lock disagree.
+
+Generated manifests use Cargo resolver 3 and declare Rust `1.96.0`. That makes first resolution
+prefer semver-compatible dependency versions whose published Rust requirements fit the floor, but it
+cannot protect crates that omit `rust-version` or a graph with no compatible release. Resolve
+intentional dependency updates on the supported minimum Rust, review and test the lock diff, then
+commit it. The locks in the compiler's compatibility baseline are evidence for its representative
+test graphs and must not be copied into an application.
+
+See [Rust Toolchain Policy](rust-toolchain-policy.md) for the exact resolution and refresh contract.
+
 ## Does Haxe `Dynamic` work?
 
 Portable supports intentional dynamic boundaries, but `Dynamic` is not free and should not be used as

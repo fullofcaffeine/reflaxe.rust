@@ -11,6 +11,7 @@ cleanup() {
 trap cleanup EXIT
 
 minimum="$(node "$policy_script" --print minimum)"
+resolver="$(node "$policy_script" --print resolver)"
 actual="$(rustc --version | sed -n 's/^rustc \([^ ]*\).*/\1/p')"
 
 if ! node "$policy_script" --assert-supported "$actual"; then
@@ -39,7 +40,21 @@ for manifest in "$out_dir/Cargo.toml" "$out_dir/hxrt/Cargo.toml"; do
     echo "[rust-toolchain-floor] ERROR: generated manifest does not declare rust-version $minimum: $manifest" >&2
     exit 1
   fi
+  if ! grep -Fxq "resolver = \"$resolver\"" "$manifest"; then
+    echo "[rust-toolchain-floor] ERROR: generated manifest does not declare Cargo resolver $resolver: $manifest" >&2
+    exit 1
+  fi
 done
+
+# A generated application owns its Cargo.lock. Recompilation may replace compiler-owned source and
+# manifests, but it must not silently rewrite or delete the reviewed dependency selection.
+printf '# application-owned lock sentinel\n' > "$out_dir/Cargo.lock"
+cp "$out_dir/Cargo.lock" "$tmp_root/expected-Cargo.lock"
+(cd "$root_dir/test/snapshot/v1_smoke" && "$haxe_bin" compile.hxml -D rust_no_build -D "rust_output=$out_dir")
+if ! cmp -s "$tmp_root/expected-Cargo.lock" "$out_dir/Cargo.lock"; then
+  echo "[rust-toolchain-floor] ERROR: generated crate regeneration did not preserve application Cargo.lock bytes." >&2
+  exit 1
+fi
 
 if [[ "$actual" == "$minimum" ]]; then
   unsupported="$(node -e 'const m=/^([0-9]+)\.([0-9]+)\.([0-9]+)$/.exec(process.argv[1]); console.log(`${m[1]}.${BigInt(m[2]) + 1n}.0`)' "$minimum")"
@@ -63,4 +78,4 @@ if [[ "$actual" == "$minimum" ]]; then
   fi
 fi
 
-echo "[rust-toolchain-floor] OK (minimum=$minimum actual=$actual generated Cargo metadata enforced)"
+echo "[rust-toolchain-floor] OK (minimum=$minimum actual=$actual resolver=$resolver generated Cargo metadata and application lock preservation enforced)"

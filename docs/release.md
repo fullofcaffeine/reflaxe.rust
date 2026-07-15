@@ -148,6 +148,10 @@ make normal publication convenient.
 Use the supported Node `22.14.x` toolchain (CI pins `22.14.0`). `rust-toolchain.toml` selects the
 tested Rust minimum for ordinary repository checks; release and repair workflows explicitly
 activate the exact release patch from [Rust Toolchain Policy](rust-toolchain-policy.md).
+The compiler package does not ship one universal application `Cargo.lock`: generated applications
+own and commit their reviewed lock, then use `-D rust_cargo_locked` for CI and release builds.
+Resolver 3 guides first resolution toward the declared floor; the app lock makes that selection
+reproducible.
 
 ```bash
 npm run guard:release-policy

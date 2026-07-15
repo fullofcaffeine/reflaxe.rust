@@ -73,7 +73,12 @@ cargo hx --project examples/chat_loopback --profile metal --action build --relea
 
 - Use Rust `1.96.0` or newer. Default generated Cargo manifests declare this floor; see
   [Rust Toolchain Policy](rust-toolchain-policy.md) for the release pin and update cadence.
-- Keep `Cargo.lock` committed in your project (and use `-D rust_cargo_locked` in CI) for reproducibility.
+- Keep the generated application's `Cargo.lock` committed. The compiler preserves it across
+  regeneration; use `-D rust_cargo_locked` in CI and release builds so dependency drift fails rather
+  than silently rewriting the reviewed graph.
+- Generated manifests use Cargo resolver 3 for MSRV-aware dependency selection. For an intentional
+  dependency update, resolve with the supported minimum Rust, review the lock diff, rerun application
+  checks/tests, and commit the new lock. Do not reuse compiler test-baseline locks in an application.
 - Prefer declaring Rust deps via Haxe metadata (framework-first):
   - `@:rustCargo({ name: "dep", version: "1.2", features: ["x"] })`
   - avoid requiring users to pass `-D rust_cargo_deps_file=...`

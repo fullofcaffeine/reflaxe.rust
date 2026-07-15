@@ -47,7 +47,10 @@ compiler or lint incompatibilities without silently changing the minimum support
 also checks a bounded committed generated crate against rolling-current Clippy's `correctness` and
 `suspicious` groups, so new semantic/lifecycle lint findings in representative compiler output are
 detected without duplicating the full snapshot harness or promoting style-only churn to a compatibility
-failure. See [Rust Toolchain Policy](rust-toolchain-policy.md).
+failure. The exact-minimum and current-stable jobs each repeat fresh resolution with an empty Cargo
+home per minimal, portable, systems/TLS, async-feature, and metal case; compare normalized metadata
+and locks with the reviewed baseline; and archive the lane evidence. See
+[Rust Toolchain Policy](rust-toolchain-policy.md).
 
 ## PR CI harness topology
 

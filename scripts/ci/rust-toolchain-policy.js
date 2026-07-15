@@ -31,9 +31,98 @@ function compareRustVersions(left, right) {
   return 0
 }
 
+function isRepositoryRelativePath(value) {
+  if (typeof value !== 'string' || value.length === 0 || path.isAbsolute(value)) return false
+  const resolved = path.resolve(repoRoot, value)
+  const relative = path.relative(repoRoot, resolved)
+  return relative.length > 0 && !relative.startsWith('..') && !path.isAbsolute(relative)
+}
+
+function validateKnownKeys(value, allowedKeys, owner, errors) {
+  for (const key of Object.keys(value)) {
+    if (!allowedKeys.includes(key)) errors.push(`${owner} contains unknown field: ${key}`)
+  }
+}
+
+function validateDependencyResolution(manifest, errors) {
+  const policy = manifest.dependencyResolution
+  if (policy == null || typeof policy !== 'object' || Array.isArray(policy)) {
+    errors.push('dependencyResolution must be an object')
+    return
+  }
+  validateKnownKeys(policy, [
+    'resolverVersion',
+    'incompatibleRustVersions',
+    'applicationLockfile',
+    'ciMode',
+    'evidenceBaseline',
+    'repeatRuns',
+    'cases'
+  ], 'dependencyResolution', errors)
+  if (policy.resolverVersion !== '3') errors.push('dependencyResolution.resolverVersion must be 3')
+  if (policy.incompatibleRustVersions !== 'fallback') {
+    errors.push('dependencyResolution.incompatibleRustVersions must be fallback')
+  }
+  if (policy.applicationLockfile !== 'commit') {
+    errors.push('dependencyResolution.applicationLockfile must be commit')
+  }
+  if (policy.ciMode !== 'locked') errors.push('dependencyResolution.ciMode must be locked')
+  if (!isRepositoryRelativePath(policy.evidenceBaseline)) {
+    errors.push('dependencyResolution.evidenceBaseline must be a repository-relative path')
+  }
+  if (!Number.isInteger(policy.repeatRuns) || policy.repeatRuns < 2) {
+    errors.push('dependencyResolution.repeatRuns must be at least 2')
+  }
+  if (!Array.isArray(policy.cases) || policy.cases.length === 0) {
+    errors.push('dependencyResolution.cases must be a non-empty array')
+    return
+  }
+  const ids = new Set()
+  for (const entry of policy.cases) {
+    if (entry == null || typeof entry !== 'object' || Array.isArray(entry)) {
+      errors.push('dependencyResolution.cases entries must be objects')
+      continue
+    }
+    validateKnownKeys(entry, ['id', 'contract', 'fixture'], 'dependencyResolution case', errors)
+    if (!/^[a-z][a-z0-9-]*$/.test(entry.id || '')) {
+      errors.push(`dependencyResolution case id must be lowercase kebab-case: ${entry.id || '<missing>'}`)
+    } else if (ids.has(entry.id)) {
+      errors.push(`dependencyResolution contains duplicate case id: ${entry.id}`)
+    } else {
+      ids.add(entry.id)
+    }
+    if (typeof entry.contract !== 'string' || entry.contract.trim().length === 0) {
+      errors.push(`dependencyResolution case ${entry.id || '<missing>'} must name its contract`)
+    }
+    if (!isRepositoryRelativePath(entry.fixture)) {
+      errors.push(`dependencyResolution case ${entry.id || '<missing>'} fixture must be repository-relative`)
+      continue
+    }
+    if (!fs.existsSync(path.join(repoRoot, entry.fixture, 'Cargo.toml'))) {
+      errors.push(`dependencyResolution case ${entry.id || '<missing>'} fixture is missing Cargo.toml`)
+    }
+  }
+}
+
 function validateManifest(manifest) {
   const errors = []
-  if (manifest.schemaVersion !== 1) errors.push('schemaVersion must be 1')
+  if (manifest == null || typeof manifest !== 'object' || Array.isArray(manifest)) {
+    return ['manifest must be an object']
+  }
+  validateKnownKeys(manifest, [
+    'schemaVersion',
+    'minimumSupportedRust',
+    'releaseToolchain',
+    'currentStableLane',
+    'generatedCargoRustVersion',
+    'reviewCadenceWeeks',
+    'minimumFloorRaiseNoticeDays',
+    'floorRaiseRelease',
+    'setupActionCommit',
+    'components',
+    'dependencyResolution'
+  ], 'manifest', errors)
+  if (manifest.schemaVersion !== 2) errors.push('schemaVersion must be 2')
   for (const field of ['minimumSupportedRust', 'releaseToolchain', 'generatedCargoRustVersion']) {
     if (parseRustVersion(manifest[field]) == null) errors.push(`${field} must be canonical major.minor.patch Rust SemVer`)
   }
@@ -56,6 +145,7 @@ function validateManifest(manifest) {
   if (!Array.isArray(manifest.components) || manifest.components.join(',') !== 'rustfmt,clippy') {
     errors.push('components must be exactly rustfmt and clippy')
   }
+  validateDependencyResolution(manifest, errors)
   return errors
 }
 
@@ -74,6 +164,9 @@ function renderHaxe(manifest) {
 \tWhat
 \t- MINIMUM_SUPPORTED_RUST is the oldest rustc version in the supported consumer contract.
 \t- GENERATED_CARGO_RUST_VERSION is written to the Cargo rust-version field.
+\t- GENERATED_CARGO_RESOLVER_VERSION selects Cargo resolver 3, whose MSRV-aware fallback prefers
+\t  releases aligned with that floor when compatible choices publish rust-version. Exact-minimum
+\t  Cargo checks remain authoritative when requirements are absent or no compatible release exists.
 
 \tHow
 \t- Run npm run toolchain:sync after reviewing a policy change.
@@ -82,6 +175,7 @@ function renderHaxe(manifest) {
 class RustToolchainPolicy {
 \tpublic static inline final MINIMUM_SUPPORTED_RUST:String = "${manifest.minimumSupportedRust}";
 \tpublic static inline final GENERATED_CARGO_RUST_VERSION:String = "${manifest.generatedCargoRustVersion}";
+\tpublic static inline final GENERATED_CARGO_RESOLVER_VERSION:String = "${manifest.dependencyResolution.resolverVersion}";
 }
 `
 }
@@ -98,10 +192,14 @@ components = ["${manifest.components.join('", "')}"]
 
 function renderDocs(manifest) {
   return `${docsBegin}
+- Policy schema: \`${manifest.schemaVersion}\`
 - Minimum supported Rust: \`${manifest.minimumSupportedRust}\`
 - Reproducible release toolchain: \`${manifest.releaseToolchain}\`
 - Compatibility lane: Rust \`${manifest.currentStableLane}\`
 - Generated Cargo \`rust-version\`: \`${manifest.generatedCargoRustVersion}\`
+- Generated Cargo resolver: \`${manifest.dependencyResolution.resolverVersion}\` (\`${manifest.dependencyResolution.incompatibleRustVersions}\` for incompatible dependency Rust versions)
+- Generated application lockfile policy: \`${manifest.dependencyResolution.applicationLockfile}\`; CI mode: \`${manifest.dependencyResolution.ciMode}\`
+- Fresh-resolution evidence cases: ${manifest.dependencyResolution.cases.map((entry) => `\`${entry.id}\``).join(', ')}
 - Toolchain/floor review cadence: every ${manifest.reviewCadenceWeeks} weeks
 - Minimum notice before a floor raise: ${manifest.minimumFloorRaiseNoticeDays} days
 - Earliest project release carrying a floor raise: \`${manifest.floorRaiseRelease}\`
@@ -165,6 +263,13 @@ function checkConsumers(manifest) {
     if (exactField(source, 'rust-version') !== manifest.generatedCargoRustVersion) {
       errors.push(`${relative} rust-version must be ${manifest.generatedCargoRustVersion}`)
     }
+    if (exactField(source, 'resolver') !== manifest.dependencyResolution.resolverVersion) {
+      errors.push(`${relative} resolver must be ${manifest.dependencyResolution.resolverVersion}`)
+    }
+  }
+  const workspaceManifest = fs.readFileSync(path.join(repoRoot, 'Cargo.toml'), 'utf8')
+  if (exactField(workspaceManifest, 'resolver') !== manifest.dependencyResolution.resolverVersion) {
+    errors.push(`Cargo.toml resolver must be ${manifest.dependencyResolution.resolverVersion}`)
   }
   for (const cargoPath of filesUnder(path.join(repoRoot, 'test', 'snapshot'), 'Cargo.toml')) {
     const relative = path.relative(repoRoot, cargoPath)
@@ -172,11 +277,17 @@ function checkConsumers(manifest) {
     if (exactField(fs.readFileSync(cargoPath, 'utf8'), 'rust-version') !== manifest.generatedCargoRustVersion) {
       errors.push(`${relative} rust-version must be ${manifest.generatedCargoRustVersion}`)
     }
+    if (exactField(fs.readFileSync(cargoPath, 'utf8'), 'resolver') !== manifest.dependencyResolution.resolverVersion) {
+      errors.push(`${relative} resolver must be ${manifest.dependencyResolution.resolverVersion}`)
+    }
   }
 
   const compiler = fs.readFileSync(path.join(repoRoot, 'src', 'reflaxe', 'rust', 'RustCompiler.hx'), 'utf8')
   if (!compiler.includes("'rust-version = \"' + RustToolchainPolicy.GENERATED_CARGO_RUST_VERSION + '\"'")) {
     errors.push('RustCompiler must emit Cargo rust-version from RustToolchainPolicy')
+  }
+  if (!compiler.includes("'resolver = \"' + RustToolchainPolicy.GENERATED_CARGO_RESOLVER_VERSION + '\"'")) {
+    errors.push('RustCompiler must emit Cargo resolver from RustToolchainPolicy')
   }
 
   const workflowPaths = [
@@ -215,6 +326,20 @@ function checkConsumers(manifest) {
     errors.push('all normal CI Rust jobs must explicitly activate the minimum Rust lane')
   }
   if (!ci.includes('--github-output --activate current')) errors.push('current-stable CI must explicitly activate its Rust lane')
+  if ((ci.match(/fresh-cargo-resolution\.js --lane minimum --check-baseline/g) || []).length < 1) {
+    errors.push('minimum CI must run fresh Cargo resolution against the tracked baseline')
+  }
+  if ((ci.match(/fresh-cargo-resolution\.js --lane current --check-baseline/g) || []).length < 1) {
+    errors.push('current-stable CI must run fresh Cargo resolution against the tracked baseline')
+  }
+  if (!ci.includes('name: fresh-cargo-resolution-minimum')
+      || !ci.includes('path: .cache/fresh-cargo-resolution/minimum')) {
+    errors.push('CI must archive minimum fresh Cargo resolution evidence')
+  }
+  if (!ci.includes('name: fresh-cargo-resolution-current')
+      || !ci.includes('path: .cache/fresh-cargo-resolution/current')) {
+    errors.push('CI must archive current-stable fresh Cargo resolution evidence')
+  }
   if (!ci.includes('cargo check --manifest-path "$generated_smoke/Cargo.toml"')) {
     errors.push('current-stable CI must compile representative generated Rust')
   }
@@ -246,9 +371,17 @@ function checkConsumers(manifest) {
   if (!rustsec.includes('toolchain: ${{ steps.rust-policy.outputs.release }}')
       || !rustsec.includes('--github-output --activate release')) errors.push('RustSec must use the release toolchain')
 
-  for (const relative of ['README.md', 'docs/install-via-lix.md', 'docs/workflow.md']) {
+  const harness = fs.readFileSync(path.join(repoRoot, 'scripts', 'ci', 'harness.sh'), 'utf8')
+  if (!harness.includes('npm run test:fresh-cargo-resolution')) {
+    errors.push('the full policy harness must run fresh Cargo resolution at the Rust floor')
+  }
+
+  for (const relative of ['README.md', 'docs/install-via-lix.md', 'docs/workflow.md', 'docs/faq.md']) {
     const source = fs.readFileSync(path.join(repoRoot, relative), 'utf8')
     if (!source.includes(manifest.minimumSupportedRust)) errors.push(`${relative} must name the minimum supported Rust version`)
+    if (!source.includes('Cargo.lock')) errors.push(`${relative} must state the generated application lockfile policy`)
+    if (!source.includes('rust_cargo_locked')) errors.push(`${relative} must state the locked application CI contract`)
+    if (!/resolver 3/i.test(source)) errors.push(`${relative} must state the generated Cargo resolver contract`)
   }
   return errors
 }
@@ -303,13 +436,14 @@ function main() {
 
   const printLane = argumentValue(args, '--print', null)
   if (printLane != null) {
-    const laneVersions = {
+    const printableValues = {
       minimum: manifest.minimumSupportedRust,
       release: manifest.releaseToolchain,
-      current: manifest.currentStableLane
+      current: manifest.currentStableLane,
+      resolver: manifest.dependencyResolution.resolverVersion
     }
-    if (!Object.hasOwn(laneVersions, printLane)) return reportErrors([`unknown print lane: ${printLane}`])
-    process.stdout.write(`${laneVersions[printLane]}\n`)
+    if (!Object.hasOwn(printableValues, printLane)) return reportErrors([`unknown print value: ${printLane}`])
+    process.stdout.write(`${printableValues[printLane]}\n`)
     return
   }
 
@@ -357,4 +491,13 @@ function main() {
 
 if (require.main === module) main()
 
-module.exports = { checkConsumers, compareRustVersions, parseRustVersion, renderDocs, renderHaxe, renderToml, validateManifest }
+module.exports = {
+  checkConsumers,
+  compareRustVersions,
+  parseRustVersion,
+  renderDocs,
+  renderHaxe,
+  renderToml,
+  validateDependencyResolution,
+  validateManifest
+}

@@ -124,6 +124,11 @@ Prerequisites include Rust `1.96.0` or newer. `rust-toolchain.toml` makes that s
 repository default; release automation separately pins its reviewed patch toolchain. See the
 [Rust toolchain policy](docs/rust-toolchain-policy.md).
 
+For an application, keep the generated `Cargo.lock` under version control and pass
+`-D rust_cargo_locked` in CI/release builds. Generated manifests use Cargo resolver 3 to prefer
+dependencies compatible with the declared Rust floor; the committed application lock is what keeps
+that reviewed resolution reproducible.
+
 1. Install dependencies (the Haxe toolchain is pinned via lix):
 
 ```bash

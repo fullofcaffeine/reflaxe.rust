@@ -146,6 +146,7 @@ if [[ "$clean_cache" -eq 1 ]]; then
     -o -name 'package-smoke*' \
     -o -name 'template-smoke*' \
     -o -name 'perf-hxrt' \
+    -o -name 'fresh-cargo-resolution' \
     -o -name 'portable-native-import-diagnostics' \
   \) -print0 2>/dev/null || true)
 

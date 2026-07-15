@@ -5,10 +5,14 @@ releases, and recurring evidence. The machine source is
 [`rust-toolchain-policy.json`](../rust-toolchain-policy.json).
 
 <!-- BEGIN GENERATED RUST TOOLCHAIN POLICY -->
+- Policy schema: `2`
 - Minimum supported Rust: `1.96.0`
 - Reproducible release toolchain: `1.96.1`
 - Compatibility lane: Rust `stable`
 - Generated Cargo `rust-version`: `1.96.0`
+- Generated Cargo resolver: `3` (`fallback` for incompatible dependency Rust versions)
+- Generated application lockfile policy: `commit`; CI mode: `locked`
+- Fresh-resolution evidence cases: `minimal`, `portable`, `systems`, `async-feature`, `metal`
 - Toolchain/floor review cadence: every 12 weeks
 - Minimum notice before a floor raise: 30 days
 - Earliest project release carrying a floor raise: `minor`
@@ -36,6 +40,29 @@ No Rust version older than the listed minimum is claimed. The initial floor was 
 the complete compiler policy suite and representative generated applications passed on that exact
 compiler.
 
+## Dependency resolution and application locks
+
+Generated crates use Cargo resolver 3 while remaining Rust edition 2021 crates. Resolver 3 uses the
+root package's `rust-version` when choosing among semver-compatible dependency releases that declare
+their own Rust requirement. That preference reduces accidental floor drift, but it is not sufficient
+proof by itself: a dependency may omit `rust-version`, or no compatible release may exist. The exact
+Rust `1.96.0` lane therefore still resolves, checks, and tests the selected graph.
+
+`Cargo.lock` belongs to each generated application:
+
+- keep and commit the application's generated lockfile after reviewing its first resolution;
+- use `-D rust_cargo_locked` (Cargo `--locked`) in application CI and release builds;
+- update dependencies deliberately with the supported minimum toolchain, rerun application tests,
+  review the lock diff, and commit it as one change;
+- do not copy the compiler evidence lockfiles into an application. User metadata, features, target
+  choices, and custom manifests can produce a different valid graph.
+
+The compiler preserves an existing application `Cargo.lock` during regeneration. The haxelib does
+not ship one universal consumer lockfile because the complete application dependency graph is not
+known until compilation. The tracked locks under
+`test/compatibility-baselines/fresh-cargo-resolution/` are review evidence for the five compiler
+matrix cases, not install artifacts.
+
 ## Update and compatibility rules
 
 - Review the release pin and floor on the generated cadence; a review does not require a change.
@@ -57,9 +84,20 @@ compiler.
 
 `npm run guard:rust-toolchain-policy` checks the structured policy, generated Haxe/TOML consumers,
 Cargo manifests, pinned workflow action refs, exact minimum/current/release lane binding, the bounded
-generated-current-Clippy contract, and weekly evidence. `npm run test:rust-toolchain-floor` compiles
-a real generated crate, checks both app and `hxrt` manifests, rejects an older actual compiler, and
-verifies Cargo supplies actionable guidance for an unmet floor.
+generated-current-Clippy contract, fresh-resolution CI, and archived evidence wiring.
+`npm run test:rust-toolchain-floor` compiles a real generated crate, checks the app and `hxrt`
+`rust-version` plus resolver, rejects an older actual compiler, and verifies Cargo supplies
+actionable guidance for an unmet floor.
+
+`npm run test:fresh-cargo-resolution` creates an empty Cargo home for every case in two independent
+passes, removes pre-existing locks, resolves metadata, compares both passes byte-for-byte, checks and
+tests the first pass on exact Rust `1.96.0`, compares the result with the reviewed locks/metadata, and
+proves that an incompatible dependency requirement is rejected. Required CI repeats the same
+reviewed graph on current stable and archives each lane's summary, locks, and normalized metadata.
+
+When a deliberate dependency-policy update changes the selected graph, run
+`npm run fresh-cargo-resolution:refresh` on exact Rust `1.96.0`, review every lock and normalized
+metadata diff, then rerun the minimum and current lanes before accepting the new baseline.
 
 Use `npm run toolchain:sync` only after reviewing a policy change. Generated consumers must not be
 edited independently.
