@@ -189,12 +189,6 @@
       "level": "target-runtime"
     },
     {
-      "id": "test:thread-event-loop-lifecycle",
-      "kind": "npm-script",
-      "script": "test:thread-event-loop-lifecycle",
-      "level": "target-runtime"
-    },
-    {
       "id": "test:portable-sys-failures",
       "kind": "npm-script",
       "script": "test:portable-sys-failures",
@@ -211,6 +205,12 @@
       "kind": "npm-script",
       "script": "test:reflection-contract",
       "level": "semantic-runtime"
+    },
+    {
+      "id": "test:thread-event-loop-lifecycle",
+      "kind": "npm-script",
+      "script": "test:thread-event-loop-lifecycle",
+      "level": "target-runtime"
     }
   ],
   "contracts": [
@@ -321,8 +321,8 @@
         "file:docs/concurrency-posture.md",
         "file:docs/systems-environment-posture.md",
         "test:portable-sys-failures",
-        "test:thread-event-loop-lifecycle",
-        "test:public-compatibility"
+        "test:public-compatibility",
+        "test:thread-event-loop-lifecycle"
       ]
     },
     {
@@ -560,18 +560,24 @@
     },
     {
       "id": "rust-async",
-      "class": "qualified-stable-candidate",
+      "class": "experimental",
       "status": "active",
-      "qualification": "Metal plus rust_async plus hxrt; synchronous main boundary.",
+      "qualification": "Typed 0.x preview for metal plus rust_async plus hxrt with a synchronous main boundary; excluded from stable-major admission until task lifecycle ownership is explicit.",
       "protectedContract": [
-        "async/await metadata aliases",
-        "Async.await/blockOn and documented Future/Task operations"
+        "current async/await metadata and define grammar for migration",
+        "current typed Async/Future/Task preview shape"
       ],
       "exclusions": [
+        "stable-major compatibility admission",
+        "task panic and Haxe-throw mapping",
+        "cancellation, join, drop, shutdown, and resource release",
+        "bounded worker and thread ownership",
+        "nested runtime behavior",
+        "runtime-adapter isolation",
         "rust_no_hxrt",
         "general async networking"
       ],
-      "admission": "candidate",
+      "admission": "experimental",
       "evidenceIds": [
         "file:docs/async-contract.md",
         "test:public-compatibility"
@@ -25889,7 +25895,7 @@
   "metadata": [
     {
       "name": "async",
-      "contract": "metadata-qualified",
+      "contract": "metadata-experimental",
       "grammar": "marker on an eligible function; no arguments",
       "default": "absent",
       "evidenceIds": [
@@ -25898,7 +25904,7 @@
     },
     {
       "name": "await",
-      "contract": "metadata-qualified",
+      "contract": "metadata-experimental",
       "grammar": "marker on an eligible expression/function boundary; no arguments",
       "default": "absent",
       "evidenceIds": [
@@ -25925,7 +25931,7 @@
     },
     {
       "name": "rustAsync",
-      "contract": "metadata-qualified",
+      "contract": "metadata-experimental",
       "grammar": "marker on an eligible function; no arguments",
       "default": "absent",
       "evidenceIds": [
@@ -25934,7 +25940,7 @@
     },
     {
       "name": "rustAwait",
-      "contract": "metadata-qualified",
+      "contract": "metadata-experimental",
       "grammar": "marker on an eligible expression/function boundary; no arguments",
       "default": "absent",
       "evidenceIds": [
@@ -26135,7 +26141,7 @@
     },
     {
       "name": "rust_async",
-      "contract": "build-qualified",
+      "contract": "build-experimental",
       "valueGrammar": "presence flag",
       "default": "disabled",
       "evidenceIds": [

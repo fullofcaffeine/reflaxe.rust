@@ -22,6 +22,9 @@ import rust.Option;
  * How:
  * - Most methods bind directly to `hxrt::async_::*`.
  * - `await(...)` is treated as a compiler intrinsic and lowered to Rust `.await`.
+ * - This is an experimental `0.x` preview, not an admitted stable-major API. The current bridge
+ *   does not promise task panic/throw mapping, cancellation/join/drop, resource release, shutdown,
+ *   bounded worker ownership, nested-runtime behavior, or runtime-adapter isolation.
  */
 @:native("hxrt::async_")
 extern class Async {
@@ -45,7 +48,7 @@ extern class Async {
 	 *
 	 * What:
 	 * - `blockOn(...)` is the canonical sync -> async boundary helper.
-	 * - The supported entry pattern today is: sync `main()`, async helper returns `Future<T>`,
+	 * - The implemented preview entry pattern today is: sync `main()`, async helper returns `Future<T>`,
 	 *   `Async.blockOn(...)` bridges the two.
 	 *
 	 * How:
@@ -83,6 +86,8 @@ extern class Async {
 	 * - Runtime behavior depends on adapter configuration:
 	 *   - default: lightweight thread-backed bridge
 	 *   - tokio adapter enabled: tokio-backed execution path
+	 * - Dropping or timing out the returned future does not currently carry a cancellation or join
+	 *   guarantee; applications must own lifecycle and shutdown tests where that matters.
 	 */
 	public static function spawn<T>(future:Future<T>):Future<T>;
 
@@ -93,7 +98,7 @@ extern class Async {
 	 * - Rust-first async code often needs "first responder wins" control-flow without dropping to
 	 *   raw runtime calls.
 	 * - Keeping this typed at the Haxe layer avoids ad-hoc injection and keeps adapter switching
-	 *   (`pollster`/`futures` vs tokio) behind one stable API boundary.
+	 *   (`pollster`/`futures` vs tokio) behind one typed preview boundary.
 	 *
 	 * How:
 	 * - Binds to `hxrt::async_::select_first`.
@@ -109,6 +114,7 @@ extern class Async {
 	 * Returns:
 	 * - `Some(value)` if `future` resolves before timeout.
 	 * - `None` if timeout elapses first.
+	 * - `None` does not promise cancellation of independently spawned backing work.
 	 */
 	@:native("timeout_ms")
 	public static function timeoutMs<T>(future:Future<T>, ms:Int):Future<Option<T>>;
@@ -119,6 +125,7 @@ extern class Async {
 	 * Returns:
 	 * - `Some(value)` if `future` resolves before timeout.
 	 * - `None` if timeout elapses first.
+	 * - `None` does not promise cancellation of independently spawned backing work.
 	 */
 	public static function timeout<T>(future:Future<T>, duration:Duration):Future<Option<T>>;
 }

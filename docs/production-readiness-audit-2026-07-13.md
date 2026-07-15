@@ -50,7 +50,7 @@ The repository verified the audit against the reviewed tree before creating foll
 | `HxRef` lifecycle | The safe representation remains opaque. Executable evidence now protects shared identity, alias-visible mutation, final-owner cleanup for acyclic values, deliberate strong-cycle retention and explicit break behavior, plus stable Send/Sync diagnostic identifiers at known thread crossings. Strong cycles remain outside tracing-GC guarantees; no collector or new runtime surface was added. | `haxe_rust-p6hs.6` complete |
 | Native lock callbacks | Same-handle mutex/RwLock callback reentry now throws the catchable `HXRT-LOCK-REENTRANCY` error before acquisition, including read/write upgrade shapes. The real guard remains held, different-handle nesting remains valid, and RAII clears the callback marker after normal return or unwind. | `haxe_rust-p6hs.7` complete |
 | Threads and EventLoop | Spawned jobs now own registry cleanup through RAII across normal return, Haxe throw, and Rust unwind. Detached uncaught Haxe errors terminate only the child; dead sends fail catchably. Repeats advance before callbacks, cancellation can suppress later due work, and unmatched promised delivery is rejected before enqueue. The isolated subprocess contract covers cleanup stress, callback throws, cancellation, and promise balance with hard timeouts. | `haxe_rust-p6hs.8` |
-| Async lifecycle | The current preview bridge does not yet own a complete cancellation, join/drop, panic, shutdown, nested-runtime, and adapter-scoping contract. It may remain experimental instead of blocking narrow `1.0`. | `haxe_rust-p6hs.9` |
+| Async lifecycle | The typed/codegen-backed surface remains usable as a pinned `0.x` preview, but the operation graph, five `rust.async.*` types, four metadata aliases, and `rust_async` define now classify it as experimental and exclude it from stable-major admission. Task panic/Haxe-throw mapping, cancellation/join/drop, resource release, shutdown, bounded-worker ownership, nested runtimes, and process-global adapter isolation remain explicit non-promises. No broad executor/task redesign was added; the Tokio timeout path is Rust-1.96 all-features Clippy-clean. | `haxe_rust-p6hs.9` |
 | Structured Cargo metadata | `@:rustCargo` does not yet reject extra arguments or unknown object fields as a closed stable grammar. | `haxe_rust-p6hs.10` |
 | Rust floor and dependency resolution | Exact-minimum CI proves the checked graph and generated `rust-version`, but not future empty-cache resolution across the representative feature graph. | `haxe_rust-p6hs.11` |
 | CI supply-chain inputs | Material action/tool identities are not all commit/digest pinned. | `haxe_rust-p6hs.12` |
@@ -63,8 +63,9 @@ The repository verified the audit against the reviewed tree before creating foll
 - Broad runtime reflection remains experimental. Unsupported application-authored dynamic
   construction is a stable compile-time error, while unavoidable upstream generic branches remain
   compilable and fail catchably when reached; neither path emits sentinels or `todo!()` output.
-- `rust_async`, broader EventLoop/MainLoop/pool semantics, UDP, TLS, MySQL runtime, broad SQLite/network behavior,
-  raw Rust, and custom Cargo ownership may remain experimental or narrowly qualified.
+- `rust_async` remains experimental; broader EventLoop/MainLoop/pool semantics, UDP, TLS, MySQL
+  runtime, broad SQLite/network behavior, raw Rust, and custom Cargo ownership may remain
+  experimental or narrowly qualified.
 - Empty `CallStack` contents may remain outside the stable promise if the API/content distinction is
   explicit. Full source mapping is an operability improvement, not automatically a narrow-`1.0`
   blocker.

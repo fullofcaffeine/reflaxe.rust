@@ -53,7 +53,7 @@ the latest immutable GitHub Release for the exact current version.
 - [Metal capability fixture plan](metal-capability-fixtures.md): contract-first positive/negative fixture matrix for the haxified Rust milestone.
 - [Metal type surface gap matrix](metal-type-surface-gap-matrix.md): Rust-native type/facade support audit for metal and portable-facade lowering work.
 - [Concurrency posture](concurrency-posture.md): canonical status record for async/threading, including what is stable, what is still narrow by contract, and what remains caveat-heavy.
-- [Async contract](async-contract.md): canonical supported/unsupported contract for `-D rust_async`.
+- [Async contract](async-contract.md): canonical implemented/unsupported boundary and lifecycle gaps for the experimental `-D rust_async` preview.
 - [Systems and environment posture](systems-environment-posture.md): canonical status record for `sys.Http`, `sys.ssl.*`, `sys.db.*`, and platform-sensitive proof depth.
 - [Metal profile](metal-profile.md): Rust-first performance profile and boundary policy.
 - [Lifetime encoding design](lifetime-encoding.md): what lifetime-like guarantees are possible in Haxe and where extern Rust is still required.

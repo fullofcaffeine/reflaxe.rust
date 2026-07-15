@@ -4,8 +4,8 @@ This page explains the current async/await support in plain language.
 
 Canonical status note:
 
-- for the current stable/preview/caveat classification, read [Concurrency Posture](concurrency-posture.md)
-- for the exact supported/unsupported async contract, read [Async Contract](async-contract.md)
+- for the current stable/experimental/caveat classification, read [Concurrency Posture](concurrency-posture.md)
+- for the exact implemented/unsupported preview boundary, read [Async Contract](async-contract.md)
 
 ## Who this is for
 
@@ -85,8 +85,11 @@ This example is also the canonical entry-boundary shape:
 - Async functions must return `rust.async.Future<T>`.
 - `@:rustAwait` / `Async.await(...)` is only valid inside async functions.
 - Keep `main` synchronous and use `Async.blockOn(...)` at the boundary.
-- The supported entry shape is sync `main()` -> async helper -> `Async.blockOn(...)`.
+- The implemented preview entry shape is sync `main()` -> async helper -> `Async.blockOn(...)`.
 - `Async.blockOn(...)` is forbidden inside async functions.
+- Timing out or dropping spawned work does not currently carry a stable cancellation/join guarantee.
+- Applications own runtime tests for task panic/throw propagation, resource release, shutdown,
+  nested-runtime use, and adapter selection wherever those properties matter.
 
 ## Mental model
 
@@ -101,8 +104,11 @@ This example is also the canonical entry-boundary shape:
 
 ## Current status
 
-This is a supported Rust-first async subset for metal-profile projects. It is fully typed and
-codegen-backed, but still intentionally constrained so behavior remains predictable.
+This is an experimental Rust-first async preview for metal-profile projects. It is fully typed and
+codegen-backed, so pinned `0.x` applications can use it with application-specific lifecycle tests.
+It is not part of the proposed `1.x` compatibility promise: cancellation, join/drop, panic/throw
+mapping, shutdown/resource release, bounded worker ownership, nested runtimes, and process-global
+adapter selection remain deliberately unowned.
 
 For the canonical current posture and evidence summary, see [Concurrency Posture](concurrency-posture.md).
 For the exact current contract edges, see [Async Contract](async-contract.md).
@@ -119,7 +125,9 @@ import rust.async.TokioRuntime;
 TokioRuntime.enable();
 ```
 
-This keeps app code typed while letting Cargo/dependency planning include tokio through metadata and feature inference.
+This keeps app code typed while letting Cargo/dependency planning include tokio through metadata and
+feature inference. Adapter selection is currently process-global and remains part of the
+experimental lifecycle boundary.
 
 ## Related docs
 

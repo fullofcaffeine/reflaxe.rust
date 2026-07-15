@@ -23,6 +23,8 @@ package rust.async;
 	- Keep adapter control in typed code. Do not use raw target injection for runtime switching.
 	- `enable()` intentionally exists only when `hxrt` is compiled with `async_tokio`; this makes
 	  missing feature wiring fail at compile time instead of panicking later at runtime.
+	- Adapter selection is currently process-global and belongs to the experimental `rust_async`
+	  lifecycle boundary; concurrent isolation and nested-runtime behavior are not stable promises.
 **/
 @:rustCargo({name: "tokio", version: "1", features: ["rt", "time"]})
 @:native("hxrt::async_")

@@ -34,9 +34,12 @@ control live in the [public compatibility manifest](public-compatibility-manifes
 - `reflaxe_rust_profile=portable|metal`
   - Main profile switch.
 - `rust_async`
-  - Enable async/await surfaces (`rust.async.Future`, `rust.async.Async.*`).
+  - Enable the experimental async/await preview (`rust.async.Future`, `rust.async.Async.*`).
   - Requires `reflaxe_rust_profile=metal`.
-  - Current posture is a supported Rust-first async subset: see `docs/async-contract.md`, `docs/async-await.md`, and `docs/concurrency-posture.md`.
+  - The surface is typed and codegen-backed but excluded from stable-major admission until task
+    failure, cancellation/join/drop, shutdown/resource release, bounded-worker, nested-runtime, and
+    adapter-isolation semantics are owned. See `docs/async-contract.md`, `docs/async-await.md`, and
+    `docs/concurrency-posture.md`.
 - `rust_async_preview`
   - Removed legacy define retained only as a migration error trigger.
   - The compiler reports an explicit error and instructs to use `rust_async`.

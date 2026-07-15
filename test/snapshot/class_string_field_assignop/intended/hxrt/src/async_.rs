@@ -197,12 +197,7 @@ where
 {
     #[cfg(feature = "async_tokio")]
     if use_tokio_runtime() {
-        return Box::pin(async move {
-            match tokio::time::timeout(duration, future).await {
-                Ok(value) => Some(value),
-                Err(_) => None,
-            }
-        });
+        return Box::pin(async move { tokio::time::timeout(duration, future).await.ok() });
     }
 
     Box::pin(async move {

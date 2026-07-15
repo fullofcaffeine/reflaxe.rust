@@ -164,6 +164,37 @@ function main() {
   assert.strictEqual(hxRefContract.class, 'qualified-stable-candidate')
   assert(hxRefContract.exclusions.some((value) => value.includes('Arc/HxCell')), 'HxRef representation must remain non-contractual')
 
+  const rustAsyncContract = canonical.contracts.find((entry) => entry.id === 'rust-async')
+  assert.strictEqual(rustAsyncContract.class, 'experimental',
+    'rust_async must remain outside the stable-major contract until task lifecycle semantics are owned')
+  assert.strictEqual(rustAsyncContract.admission, 'experimental',
+    'rust_async must not become a stable-admission candidate from codegen coverage alone')
+  for (const excludedLifecycle of [
+    'task panic and Haxe-throw mapping',
+    'cancellation, join, drop, shutdown, and resource release',
+    'bounded worker and thread ownership',
+    'nested runtime behavior',
+    'runtime-adapter isolation'
+  ]) {
+    assert(rustAsyncContract.exclusions.includes(excludedLifecycle),
+      `the experimental rust_async contract must name the unowned lifecycle boundary: ${excludedLifecycle}`)
+  }
+  const rustAsyncTypes = canonical.haxeTypes.filter((entry) => entry.contract === 'rust-async')
+  assert.deepStrictEqual(rustAsyncTypes.map((entry) => entry.name), [
+    'rust.async.Async',
+    'rust.async.Future',
+    'rust.async.Task',
+    'rust.async.Tasks',
+    'rust.async.TokioRuntime'
+  ], 'every shipped rust.async type must stay under the experimental family contract')
+  for (const metadataName of ['async', 'await', 'rustAsync', 'rustAwait']) {
+    const metadata = canonical.metadata.find((entry) => entry.name === metadataName)
+    assert.strictEqual(metadata.contract, 'metadata-experimental',
+      `@:${metadataName} must stay experimental with the async lifecycle it enables`)
+  }
+  assert.strictEqual(canonical.defines.find((entry) => entry.name === 'rust_async').contract, 'build-experimental',
+    'the rust_async build switch must stay experimental with the surface it enables')
+
   const rustMetal = canonical.metadata.find((entry) => entry.name === 'rustMetal')
   assert.strictEqual(rustMetal.contract, 'metadata-stable', '@:rustMetal must be the canonical stable metal-island metadata')
   const haxeMetal = canonical.metadata.find((entry) => entry.name === 'haxeMetal')

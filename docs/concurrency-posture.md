@@ -134,14 +134,15 @@ Primary evidence:
 - `test/negative/metal_raii_guard_escape`
 - `docs/raii-guard-lifetime-islands.md`
 
-## Stable today
+## Experimental today
 
 ### `rust_async`
 
 Current posture:
 
 - `rust_async` is real, typed, and codegen-backed
-- it is supported on an explicitly narrow Rust-first subset
+- its implemented shapes are useful as a pinned `0.x` Rust-first preview
+- it is excluded from stable-major admission until task lifecycle ownership is explicit
 
 Current constraints called out in repo docs:
 
@@ -151,6 +152,15 @@ Current constraints called out in repo docs:
 - sync `main` + `Async.blockOn(...)` is the supported entry boundary today
 - canonical shape: sync `main()`, async helper returning `Future<T>`, `Async.blockOn(...)` in `main`
 - explicit `Future<T>`/await model rather than a blanket async lowering story
+
+Lifecycle behavior not currently promised:
+
+- task-panic and Haxe-throw mapping
+- cancellation, join/drop, shutdown, and resource release
+- bounded worker/thread ownership
+- nested-runtime behavior
+- isolation of runtime-adapter selection, which is currently process-global
+- general async networking
 
 Primary evidence:
 
@@ -163,10 +173,9 @@ Primary evidence:
 - `test/negative/async_constructor_contract`
 - negative define guard: `test/negative/async_preview_removed`
 
-Stable here should be read as:
-
-- supported on its documented subset,
-- not a blanket claim that every async entry/runtime/profile shape is supported.
+This evidence proves that the listed source shapes compile and run. It does not prove the lifecycle
+properties above, so it cannot by itself promote the feature into the `1.x` compatibility contract.
+Pinned `0.x` applications may use it with application-specific lifecycle and shutdown tests.
 
 Canonical contract source:
 
@@ -227,8 +236,8 @@ Use these practical rules:
 4. If your correctness argument depends on full `haxe.MainLoop` / `haxe.EntryPoint` parity, treat
    that as caveat-heavy and verify against the target-side evidence (`test/snapshot/haxe_mainloop_entrypoint_basic`,
    `test/snapshot/haxe_mainloop_entrypoint_thread_bridge`, `test/snapshot/sys_thread_event_loop`), not `--interp`.
-5. If you need async/await, use `rust_async` as a supported Rust-first subset with explicit
-   documented constraints from `docs/async-contract.md`.
+5. If you need async/await, treat `rust_async` as an experimental Rust-first preview and apply the
+   lifecycle constraints from `docs/async-contract.md`.
 
 ## What this page does not claim
 
@@ -236,7 +245,7 @@ This page does **not** claim:
 
 - blanket cross-target concurrency parity,
 - blanket `--interp` equivalence for threaded scheduler semantics,
-- or fully general stable async support outside the documented `rust_async` subset.
+- or stable async lifecycle support for `rust_async`.
 
 ## Read next
 

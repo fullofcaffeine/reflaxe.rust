@@ -276,7 +276,7 @@ Historical closeout records:
 - `-D rust_build_release` / `-D rust_release` - release build mode
 - `-D rust_target=<triple>` - pass target triple to Cargo
 - `-D reflaxe_rust_profile=portable|metal` - select profile contract
-- `-D rust_async` - enable Rust-first async/await support (`docs/async-await.md`)
+- `-D rust_async` - enable the experimental Rust-first async/await preview (`docs/async-await.md`)
 - `-D rustfmt` - run `cargo fmt` on generated output (best effort)
 
 Full list: [Defines reference](docs/defines-reference.md).

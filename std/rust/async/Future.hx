@@ -14,6 +14,8 @@ package rust.async;
  * How:
  * - This extern maps to `hxrt::async_::HxFuture<T>` in runtime Rust code.
  * - The runtime representation is boxed/pinned so all `Future<T>` values share one concrete Rust type.
+ * - The surface is an experimental `0.x` preview. Its current representation and task
+ *   cancellation/join/drop behavior are not admitted stable-major contracts.
  *
  * Usage:
  * - Return `Future<T>` from `@:rustAsync` / `@:async` functions.

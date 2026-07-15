@@ -359,12 +359,14 @@ See [Null option](null-option.md).
 
 ## Does async/concurrency work?
 
-There is a supported Rust-first async subset, but it is not a blanket promise that every Haxe async
-or threading pattern maps to every runtime mode.
+There is a typed, codegen-backed Rust-first async preview, but it is experimental and excluded from
+the proposed `1.x` compatibility promise. It is not a blanket promise that every Haxe async or
+threading pattern maps to every runtime mode.
 
-Use the documented async contract and add app-specific tests around task cancellation, joining,
-thread crossing, IO, and shutdown paths. For Rust-native readers, the current model is explicit
-runtime adapter support rather than hidden async magic.
+Pinned `0.x` applications can use the documented shapes, but must add app-specific tests around task
+panic/throw propagation, cancellation, joining/drop, resource release, thread crossing, IO,
+shutdown, nested runtimes, and process-global adapter selection. For Rust-native readers, the
+current model is an explicit preview runtime adapter rather than hidden async magic.
 
 For direct `sys.thread` use, terminated children no longer retain an addressable queue: a later send
 throws `HXRT-THREAD-NOT-ALIVE`. Uncaught Haxe callbacks terminate only that child and report

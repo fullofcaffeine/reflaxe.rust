@@ -66,7 +66,7 @@ exact admitted surface.
 | `rust-borrows` | `qualified-stable-candidate` | `candidate` | `active` | Documented lexical borrow regions, slice/string views, and scoped callbacks. |
 | `rust-hxref` | `qualified-stable-candidate` | `candidate` | `active` | Opaque shared Haxe-reference handle for APIs that expose rust.HxRef<T>; strong cycles are not tracing-collected, and thread crossing depends on the owning API and payload bounds. |
 | `rust-concurrency` | `qualified-stable-candidate` | `candidate` | `active` | Metal plus hxrt typed handle/value/scoped-callback subset; callbacks retain the Rust guard, and every same-handle operation throws HXRT-LOCK-REENTRANCY before acquisition. |
-| `rust-async` | `qualified-stable-candidate` | `candidate` | `active` | Metal plus rust_async plus hxrt; synchronous main boundary. |
+| `rust-async` | `experimental` | `experimental` | `active` | Typed 0.x preview for metal plus rust_async plus hxrt with a synchronous main boundary; excluded from stable-major admission until task lifecycle ownership is explicit. |
 | `rust-systems` | `qualified-stable-candidate` | `candidate` | `active` | Documented direct file, owned command/narrow child, and blocking localhost socket operations. |
 | `rust-prelude` | `qualified-stable-candidate` | `candidate` | `active` | Metal-only import hub; exported alias module path is protected. |
 | `public-experimental` | `experimental` | `experimental` | `active` | Public preview/tooling surface excluded from stable-major admission until explicitly promoted. |
@@ -158,10 +158,11 @@ The manifest, not the prose-only Defines reference, is the canonical compatibili
 includes indirect controls such as `async_tokio_adapter` and the three `rust_hxrt_*` controls.
 
 - normal output/build/report controls and structured object `@:rustCargo` are stable candidates;
-- `rust_async`, `rust_no_hxrt`, `rust_nested_modules`, and target/source ownership controls are
-  qualified candidates;
-- unresolved-monomorph/core-type escapes, metal fallback, `rust_hxrt_*`,
-  `async_tokio_adapter`, raw Cargo/dependency passthroughs, and `rust_emit_upstream_std` are
+- `rust_no_hxrt`, `rust_nested_modules`, and target/source ownership controls are qualified
+  candidates;
+- `rust_async` and its async/await metadata aliases remain experimental with the task lifecycle
+  they enable; unresolved-monomorph/core-type escapes, metal fallback, `rust_hxrt_*`,
+  `async_tokio_adapter`, raw Cargo/dependency passthroughs, and `rust_emit_upstream_std` are also
   experimental;
 - debug, repository-only enforcement, and removed selector controls are excluded/internal;
 - raw `rust_cargo_toml` may promise literal copy/substitution only if that precise ownership rule is
@@ -254,8 +255,8 @@ After stable admission:
   removal occurs no earlier than the next major;
 - migration aliases state introduction, deprecation, replacement, and earliest-removal major.
 
-Admitted profile, async/no-hxrt, borrow-region, native-import, structured-metadata, and Cargo
-failures now use the typed `HXRS-*` registry in
+Admitted profile/no-hxrt, borrow-region, native-import, structured-metadata, and Cargo failures, plus
+the experimental async preview's enforced boundary failures, now use the typed `HXRS-*` registry in
 [`diagnostic-contract.json`](diagnostic-contract.json). Their identifier, severity, and documented
 trigger are protected contract units; exact diagnostic prose and Haxe's source-position formatting
 remain free to improve. Diagnostics outside that explicit registry remain unadmitted.

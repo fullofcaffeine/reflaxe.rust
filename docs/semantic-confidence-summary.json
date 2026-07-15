@@ -333,8 +333,8 @@
     {
       "id": "rust-async-subset",
       "class": "snapshot_or_smoke_only",
-      "label": "Rust-first async subset",
-      "scope": "Documented `metal` + `hxrt` async contract (`Async.blockOn`, async helpers, generated-class instance methods)",
+      "label": "Experimental Rust-first async preview",
+      "scope": "Implemented `metal` + `hxrt` preview shapes (`Async.blockOn`, async helpers, generated-class instance methods)",
       "evidence": [
         "test/snapshot/async_entry_boundary",
         "test/snapshot/async_instance_method",
@@ -352,7 +352,7 @@
         "bash test/run-snapshots.sh --case rust_async_tasks",
         "bash scripts/ci/check-metal-policy.sh"
       ],
-      "notes": "Backed by dedicated entry-boundary and receiver-shape fixtures plus negative contract guards. This is a stable Rust-first subset, not a blanket async claim across profiles/runtime modes."
+      "notes": "Backed by dedicated entry-boundary and receiver-shape fixtures plus negative boundary guards. This proves the listed codegen shapes, not task panic/throw mapping, cancellation/join/drop, resource release, shutdown, bounded-worker ownership, nested-runtime behavior, or adapter isolation. The surface remains experimental and outside stable-major admission."
     },
     {
       "id": "sys-thread-eventloop-and-mainloop",

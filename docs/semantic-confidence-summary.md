@@ -227,9 +227,9 @@ This summary rolls up the current evidence buckets without pretending that Tier2
   - `bash test/run-snapshots.sh --case sys_ssl_sni`
 - Notes: Snapshot-backed smoke confidence for the generated/buildable SNI certificate-selection path. Not blanket TLS parity.
 
-### Rust-first async subset
+### Experimental Rust-first async preview
 - Class: `snapshot_or_smoke_only`
-- Scope: Documented `metal` + `hxrt` async contract (`Async.blockOn`, async helpers, generated-class instance methods)
+- Scope: Implemented `metal` + `hxrt` preview shapes (`Async.blockOn`, async helpers, generated-class instance methods)
 - Evidence:
   - `test/snapshot/async_entry_boundary`
   - `test/snapshot/async_instance_method`
@@ -245,7 +245,7 @@ This summary rolls up the current evidence buckets without pretending that Tier2
   - `bash test/run-snapshots.sh --case async_instance_method`
   - `bash test/run-snapshots.sh --case rust_async_tasks`
   - `bash scripts/ci/check-metal-policy.sh`
-- Notes: Backed by dedicated entry-boundary and receiver-shape fixtures plus negative contract guards. This is a stable Rust-first subset, not a blanket async claim across profiles/runtime modes.
+- Notes: Backed by dedicated entry-boundary and receiver-shape fixtures plus negative boundary guards. This proves the listed codegen shapes, not task panic/throw mapping, cancellation/join/drop, resource release, shutdown, bounded-worker ownership, nested-runtime behavior, or adapter isolation. The surface remains experimental and outside stable-major admission.
 
 ### Thread/EventLoop/thread-pool scheduler proof
 - Class: `snapshot_or_smoke_only`

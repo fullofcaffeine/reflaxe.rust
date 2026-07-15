@@ -16,6 +16,8 @@ import rust.Ref;
 	How
 	- Binds directly to `hxrt::async_` helper functions (`task_spawn` / `task_join`).
 	- Runtime bridge performs `Future<T> -> T` boundary via `block_on` inside the spawned task.
+	- This is an experimental `0.x` preview. Callers must not infer cancellation, structured
+	  shutdown, or stable panic/throw mapping beyond behavior they test in their own application.
 **/
 @:native("hxrt::async_")
 extern class Tasks {

@@ -335,6 +335,13 @@ Agent policy:
   scheduler lock. A callback throw must not silently delete its repeat; self-cancel must still remove
   the pre-rescheduled entry. `runPromised` must validate and consume exactly one prior `promise` before
   enqueue, rejecting underflow without changing queue state.
+- Async admission gotcha: typed lowering, successful snapshots, and working examples establish a
+  usable preview shape, not an owned task lifecycle. Keep `rust_async`, its metadata aliases, and its
+  build switch experimental until task panic/Haxe-throw mapping, cancellation/join/drop, resource
+  release, shutdown, bounded-worker ownership, nested-runtime behavior, and runtime-adapter isolation
+  are explicitly designed and tested. Do not grow an executor/framework merely to claim stability;
+  either prove the narrow lifecycle contract a real workload needs or keep the surface out of the
+  stable-major admission set.
 - Reflection registry gotcha: Haxe runtime names use `package + declaration name`; a secondary type's
   containing module is not part of its runtime name (`sample.Secondary`, not
   `sample.Primary.Secondary`). Keep admitted `Type.resolveClass` / `resolveEnum`, dynamic name lookup,
