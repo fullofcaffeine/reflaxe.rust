@@ -165,6 +165,13 @@ Agent policy:
   or evidence changes, update the closest relevant docs in the same pass. Check whether `README.md`
   and `docs/faq.md` need a public-facing note; if they do not, record why in the final response or
   Beads evidence rather than silently letting entrypoint docs drift.
+- Architecture-claim aggregation gotcha: `docs/architecture-capability-manifest.json` is the source
+  for the generated claim review and README/FAQ summary blocks; run
+  `npm run docs:sync:architecture-capability` instead of hand-editing those consumers. An old
+  impossibility objection may have a closed narrow counterexample while the unqualified broad
+  product claim remains open. Do not collapse that mixed state to the worst linked status and call
+  the objection simply open; render both facts (for example, “refuted as a necessity; broad closure
+  open”). A closed status proves only the exact claim wording, not every neighboring capability.
 - Fix/test policy: after each fix, update tests and/or add a regression test (snapshots, runtime tests, or example test harness), unless an existing test update already covers the behavior change.
 - Contract-first TDD policy (strict): for non-trivial compiler/runtime/std behavior changes, start by adding/updating the expected test contract first (snapshot, negative fixture, policy/harness assertion), confirm failure, then implement and re-run targeted checks plus full harness.
   For deterministic report/artifact features, include repeatability assertions (run twice, compare outputs byte-for-byte) in CI guards.

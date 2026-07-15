@@ -1,0 +1,716 @@
+{
+  "schemaVersion": 1,
+  "contract": "architecture-capability-claims",
+  "publicAnswer": {
+    "headline": "The implemented architecture disproves the old claim that a usable Haxe-to-Rust backend is impossible without either a tracing GC or lifetime annotations everywhere, but the evidence still supports bounded, qualified claims rather than universal parity.",
+    "allowed": "We have a working Haxe-to-Rust compiler with two explicit contracts: portable Haxe semantics use targeted Rust-owned runtime representations where semantics require them, while metal can expose typed Rust-native and fail-closed no-hxrt paths. Scoped borrows and small lifetime islands cover useful Rust interop without turning ordinary Haxe into lifetime-annotated pseudo-Rust.",
+    "notAllowed": "The compiler has solved every Haxe-to-Rust program, automatically collects every cyclic object graph, reproduces Rust's complete borrow checker in Haxe, supports every lifetime-heavy crate directly, or always emits code equal to expert hand-written Rust.",
+    "upgradeGate": "Close the typed Rust IR, representation planning, borrow provenance and diagnostic mapping, real-crate interop, admitted std semantics, class-heavy cost, workload performance, and cyclic-graph decision tracks, then complete the independent claim review in haxe.rust-oo3.98.10.",
+    "releaseBoundary": "This capability roadmap is separate from stable-major authorization. A claim can become stronger here without silently adding every related API or platform to the 1.x compatibility promise."
+  },
+  "objections": [
+    {
+      "id": "gc-required",
+      "statement": "A useful Haxe-to-Rust compiler must implement a tracing GC, losing Rust's benefits.",
+      "claimIds": [
+        "memory.no-universal-tracing-gc",
+        "memory.portable-reference-semantics",
+        "runtime.fail-closed-no-hxrt",
+        "maturity.bounded-production",
+        "maturity.unqualified-objection-closure"
+      ]
+    },
+    {
+      "id": "runtime-interop-friction",
+      "statement": "Rust libraries and externs must cross a universal GC/runtime representation and will therefore be janky.",
+      "claimIds": [
+        "runtime.fail-closed-no-hxrt",
+        "interop.lifetime-islands",
+        "interop.typed-rust-crates",
+        "output.handwritten-rust-quality",
+        "maturity.bounded-production",
+        "maturity.unqualified-objection-closure"
+      ]
+    },
+    {
+      "id": "duplicate-borrow-checker",
+      "statement": "The Haxe compiler must reproduce Rust's exact borrow checker before it can emit safe Rust.",
+      "claimIds": [
+        "ownership.no-duplicate-rust-borrow-checker",
+        "ownership.scoped-borrow-safety",
+        "interop.lifetime-islands",
+        "maturity.bounded-production",
+        "maturity.unqualified-objection-closure"
+      ]
+    },
+    {
+      "id": "lifetime-annotated-source-and-stdlib",
+      "statement": "Haxe source and a replacement stdlib need Rust lifetime annotations everywhere, so the result is no longer Haxe.",
+      "claimIds": [
+        "ownership.no-duplicate-rust-borrow-checker",
+        "interop.lifetime-islands",
+        "interop.typed-rust-crates",
+        "stdlib.portable-contract",
+        "output.handwritten-rust-quality",
+        "maturity.bounded-production",
+        "maturity.unqualified-objection-closure"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "test:hxref-lifecycle",
+      "label": "HxRef lifecycle contracts",
+      "evidenceClass": "executable",
+      "description": "Rust Drop counters and weak observers prove alias-visible identity and deterministic cleanup for admitted acyclic HxRef payloads while preserving the explicit strong-cycle boundary.",
+      "paths": [
+        "runtime/hxrt/src/hxref.rs",
+        "docs/hxref-lifecycle.md"
+      ],
+      "commands": [
+        "npm run test:hxref-lifecycle"
+      ]
+    },
+    {
+      "id": "test:metal-policy",
+      "label": "Metal, borrow, and no-hxrt policy matrix",
+      "evidenceClass": "executable",
+      "description": "Positive and negative compiler fixtures exercise fail-closed no-hxrt eligibility, emitted-runtime rejection, scoped borrow escape checks, overlap checks, typed native facades, and warning-clean Cargo builds.",
+      "paths": [
+        "scripts/ci/check-metal-policy.sh",
+        "test/positive/metal_no_hxrt_minimal",
+        "test/negative/metal_no_hxrt_runtime_boundary",
+        "test/positive/borrow_mut_disjoint_scopes",
+        "test/negative/metal_ref_alias_return_escape"
+      ],
+      "commands": [
+        "bash scripts/ci/check-metal-policy.sh"
+      ]
+    },
+    {
+      "id": "test:diagnostic-contract",
+      "label": "Stable compiler diagnostic contract",
+      "evidenceClass": "executable",
+      "description": "The diagnostic registry and runtime fixture check keep borrow, no-hxrt, metadata, Cargo, dynamic, and reflection failures source-facing and versioned.",
+      "paths": [
+        "docs/diagnostic-contract.json",
+        "scripts/ci/diagnostic-contract-check.js",
+        "scripts/ci/check-diagnostic-contract.sh"
+      ],
+      "commands": [
+        "npm run test:diagnostic-contract",
+        "npm run test:diagnostic-contract:runtime"
+      ]
+    },
+    {
+      "id": "test:snapshots-and-clippy",
+      "label": "Generated Rust snapshots and Clippy",
+      "evidenceClass": "executable",
+      "description": "Characterized Rust output, Cargo builds, rustfmt expectations, deny-warnings coverage, and curated Clippy checks detect output-shape regressions.",
+      "paths": [
+        "test/run-snapshots.sh",
+        "test/snapshot/deny_warnings",
+        "test/snapshot/metal_extern_lifetime_island",
+        "test/snapshot/metal_trait_impl_bounds"
+      ],
+      "commands": [
+        "npm test",
+        "bash test/run-snapshots.sh --clippy"
+      ]
+    },
+    {
+      "id": "test:semantic-differential",
+      "label": "Haxe semantic differential suite",
+      "evidenceClass": "executable",
+      "description": "Haxe and generated Rust are compared on curated semantic oracles; the generated confidence report separately classifies semantic, compile-inventory, and smoke-only proof.",
+      "paths": [
+        "test/run-semantic-diff.py",
+        "test/semantic_diff",
+        "docs/semantic-confidence-summary.json",
+        "docs/semantic-confidence-summary.md"
+      ],
+      "commands": [
+        "npm run test:semantic-diff",
+        "npm run docs:check:evidence"
+      ]
+    },
+    {
+      "id": "contract:public-compatibility",
+      "label": "Public compatibility graph",
+      "evidenceClass": "generated",
+      "description": "The generated installed-Haxelib type and operation graph classifies stable-candidate, qualified, experimental, and excluded public surfaces without pretending structural inventory is semantic proof.",
+      "paths": [
+        "docs/public-compatibility-manifest.json",
+        "docs/pre-1.0-compatibility-review.md",
+        "scripts/ci/public-compatibility-manifest-check.js"
+      ],
+      "commands": [
+        "npm run guard:public-compatibility",
+        "npm run test:public-compatibility"
+      ]
+    },
+    {
+      "id": "contract:native-facades",
+      "label": "Native facade helper manifest",
+      "evidenceClass": "generated",
+      "description": "Every shipped Rust helper island declares its Haxe owner, no-hxrt or hxrt-bridge contract, lowering rationale, dependencies, forbidden growth, evidence owner, and line budget.",
+      "paths": [
+        "docs/native-facade-manifest.json",
+        "docs/native-facade-policy.md",
+        "scripts/ci/native-facade-manifest-check.js"
+      ],
+      "commands": [
+        "npm run guard:native-facade-manifest"
+      ]
+    },
+    {
+      "id": "test:hxrt-performance",
+      "label": "HXRT and no-hxrt performance protocol",
+      "evidenceClass": "executable",
+      "description": "The benchmark protocol tracks size, startup, throughput, and selected output-shape counters, including a metal no-hxrt lower-bound signal.",
+      "paths": [
+        "scripts/ci/perf-hxrt-overhead.sh",
+        "docs/perf-hxrt-overhead.md",
+        "test/perf/hot_loop_no_hxrt"
+      ],
+      "commands": [
+        "npm run test:perf:hxrt"
+      ]
+    },
+    {
+      "id": "test:full-harness",
+      "label": "Full repository harness",
+      "evidenceClass": "executable",
+      "description": "The repository harness composes snapshots, semantic oracles, lifecycle, toolchain, report, diagnostics, metal policy, package/template, examples, and native parity gates.",
+      "paths": [
+        "scripts/ci/harness.sh"
+      ],
+      "commands": [
+        "npm run test:all"
+      ]
+    },
+    {
+      "id": "test:independent-consumer",
+      "label": "Independent codex-hxrust application",
+      "evidenceClass": "independent",
+      "description": "The sibling application runs its normal portable and metal commands as app-level pressure without becoming a compiler-owned fixture or receiving compiler-specific behavior.",
+      "paths": [
+        "scripts/ci/check-codex-hxrust-smoke.sh"
+      ],
+      "commands": [
+        "npm run test:codex-hxrust"
+      ]
+    },
+    {
+      "id": "test:fresh-cargo-resolution",
+      "label": "Fresh Cargo dependency resolution",
+      "evidenceClass": "executable",
+      "description": "Representative portable and metal dependency graphs resolve twice from an empty Cargo cache on the supported minimum Rust and match immutable baselines.",
+      "paths": [
+        "scripts/ci/fresh-cargo-resolution.js",
+        "test/compatibility-baselines/fresh-cargo-resolution",
+        "docs/rust-toolchain-policy.md"
+      ],
+      "commands": [
+        "npm run test:fresh-cargo-resolution"
+      ]
+    },
+    {
+      "id": "docs:lifetime-boundary",
+      "label": "Lifetime and extern-island design",
+      "evidenceClass": "documentary",
+      "description": "The design documents define which lexical borrows are modeled in typed Haxe and when lifetimes, HRTB, const generics, macros, layout, or unsafe remain inside a typed Rust implementation island.",
+      "paths": [
+        "docs/lifetime-encoding.md",
+        "docs/extern-lifetime-island-cookbook.md",
+        "docs/raii-guard-lifetime-islands.md"
+      ],
+      "commands": []
+    },
+    {
+      "id": "audit:bounded-production",
+      "label": "Independent bounded-production audit disposition",
+      "evidenceClass": "independent",
+      "description": "The reviewed disposition separates bounded production readiness from stable 1.0 and records verified architecture, evidence, provenance, and release gaps.",
+      "paths": [
+        "docs/production-readiness-audit-2026-07-13.md",
+        "docs/oracle-gpt-5.6-production-readiness-review.md"
+      ],
+      "commands": []
+    }
+  ],
+  "claims": [
+    {
+      "id": "memory.no-universal-tracing-gc",
+      "question": "Does compiling useful Haxe to Rust require an always-on tracing garbage collector?",
+      "status": "closed",
+      "verdict": "No. The backend uses ordinary Rust-owned values where possible and explicit reference/runtime representations only where the selected Haxe contract needs identity, aliasing, nullability, mutation, dynamic behavior, exceptions, or platform state.",
+      "objectionIds": [
+        "gc-required"
+      ],
+      "mechanisms": [
+        "Scalar, enum, owned metal, and admitted portable value paths lower to ordinary Rust values.",
+        "Portable Haxe reference identity is isolated behind opaque HxRef handles rather than a universal tracer.",
+        "Metal no-hxrt builds prove that selected Rust-first programs omit the semantic runtime entirely."
+      ],
+      "counterexamples": [
+        "The metal_no_hxrt_minimal fixture Cargo-builds with no hxrt dependency, copied runtime crate, or hxrt path in emitted Rust.",
+        "HxRef lifecycle tests use Rust Drop and weak observers, not a tracing collector, for admitted acyclic payload cleanup."
+      ],
+      "evidenceIds": [
+        "test:hxref-lifecycle",
+        "test:metal-policy",
+        "test:full-harness"
+      ],
+      "qualifications": [],
+      "doesNotMean": [
+        "Portable reference-heavy programs have zero runtime or synchronization cost.",
+        "Strong HxRef cycles are automatically reclaimed.",
+        "Every Haxe value can be represented as an unboxed Rust value without changing Haxe semantics."
+      ],
+      "ownerBeads": [
+        "haxe.rust-oo3.98.1"
+      ],
+      "blockingBeads": [],
+      "remainingGapBeads": [
+        "haxe.rust-oo3.98.9"
+      ]
+    },
+    {
+      "id": "memory.portable-reference-semantics",
+      "question": "Can portable Haxe references preserve observable Haxe behavior without a tracing GC?",
+      "status": "qualified",
+      "verdict": "Yes for the admitted acyclic lifecycle, alias-visible identity, nullability, mutation, and documented crossing contracts. The current opaque HxRef implementation uses Rust shared ownership and interior mutability; strong cycles remain retained until explicitly broken.",
+      "objectionIds": [
+        "gc-required"
+      ],
+      "mechanisms": [
+        "HxRef protects shared identity, alias-visible mutation, nullable reference defaults, and deterministic acyclic cleanup.",
+        "Typed semantic fixtures compare reference behavior between Haxe and generated Rust.",
+        "The representation is not public API, allowing future planner-driven owned or single-thread specializations when semantics prove them safe."
+      ],
+      "counterexamples": [
+        "Class assignment and mutation can preserve Haxe aliases through reference-counted Rust primitives without tracing the entire heap.",
+        "Weak-observer lifecycle tests distinguish deterministic acyclic release from intentionally retained strong cycles."
+      ],
+      "evidenceIds": [
+        "test:hxref-lifecycle",
+        "test:semantic-differential",
+        "test:hxrt-performance"
+      ],
+      "qualifications": [
+        "Strong HxRef cycles are retained; applications currently need explicit cycle breaking or a Rust-shaped graph model.",
+        "The current portable class path can pay Arc, lock, clone, allocation, and broad generic-bound costs that are not yet proved on class-heavy workloads.",
+        "Send, Sync, and static requirements are proven at known crossings but the representation/crossing plan is not yet the single source for every emitted bound."
+      ],
+      "doesNotMean": [
+        "The current Arc/RwLock representation is part of the public API.",
+        "Cyclic graph behavior is silently equivalent to tracing-GC Haxe targets.",
+        "Reference-heavy portable code already matches hand-written Rust cost on every workload."
+      ],
+      "ownerBeads": [
+        "haxe.rust-oo3.98.3",
+        "haxe.rust-oo3.98.4",
+        "haxe.rust-oo3.98.9"
+      ],
+      "blockingBeads": [],
+      "remainingGapBeads": [
+        "haxe.rust-oo3.98.3",
+        "haxe.rust-oo3.98.4",
+        "haxe.rust-oo3.98.9"
+      ]
+    },
+    {
+      "id": "runtime.fail-closed-no-hxrt",
+      "question": "Can Rust-first Haxe code interoperate without carrying the Haxe semantic runtime?",
+      "status": "closed",
+      "verdict": "Yes for the explicitly eligible metal subset. rust_no_hxrt omits hxrt and fails both before emission and after emission if typed semantics or generated Rust still require the runtime.",
+      "objectionIds": [
+        "gc-required",
+        "runtime-interop-friction"
+      ],
+      "mechanisms": [
+        "NoHxrtEligibilityAnalyzer rejects known Dynamic, reflection, anonymous-object, nullable-string, async, and portable platform requirements.",
+        "The emitted-code guard rejects residual hxrt dependencies, copied runtime sources, and hxrt paths.",
+        "Typed rust.fs, rust.process, and rust.net facade fixtures own native Rust resources without a universal Haxe runtime boundary."
+      ],
+      "counterexamples": [
+        "Minimal, owned command, file, TCP, and UDP metal fixtures Cargo-build with rust_no_hxrt.",
+        "Negative fixtures demonstrate that unsupported semantics fail with stable HXRS-NO-HXRT diagnostics rather than silently restoring hxrt."
+      ],
+      "evidenceIds": [
+        "test:metal-policy",
+        "test:diagnostic-contract",
+        "contract:native-facades",
+        "test:hxrt-performance"
+      ],
+      "qualifications": [],
+      "doesNotMean": [
+        "Portable Haxe compatibility can currently omit hxrt.",
+        "Every native crate shape is directly expressible through current Haxe types or metadata.",
+        "No-hxrt is a vague optimization switch; it is a strict metal contract."
+      ],
+      "ownerBeads": [
+        "haxe.rust-oo3.98.1"
+      ],
+      "blockingBeads": [],
+      "remainingGapBeads": [
+        "haxe.rust-oo3.98.6"
+      ]
+    },
+    {
+      "id": "ownership.no-duplicate-rust-borrow-checker",
+      "question": "Must the Haxe compiler reproduce Rust's exact borrow checker and lifetime system?",
+      "status": "closed",
+      "verdict": "No. The backend performs conservative source-level checks for compiler-created scoped borrow contracts, then emits Rust and leaves the complete Rust ownership and lifetime proof to rustc.",
+      "objectionIds": [
+        "duplicate-borrow-checker",
+        "lifetime-annotated-source-and-stdlib"
+      ],
+      "mechanisms": [
+        "Typed borrow-region analysis diagnoses escapes and known mutable overlaps for rust.Ref, rust.MutRef, slices, and rust.Str tokens.",
+        "Owned derivations and sequential scoped borrows remain ordinary typed Haxe.",
+        "rustc remains the final authority for generated Rust and external crate lifetime relationships."
+      ],
+      "counterexamples": [
+        "Positive scoped-borrow fixtures compile without Rust lifetime parameters in Haxe source.",
+        "Negative escape and overlap fixtures fail at the Haxe source boundary, while more complex lifetime constraints remain rustc's job."
+      ],
+      "evidenceIds": [
+        "test:metal-policy",
+        "test:diagnostic-contract",
+        "test:snapshots-and-clippy",
+        "docs:lifetime-boundary"
+      ],
+      "qualifications": [],
+      "doesNotMean": [
+        "The current Haxe diagnostics cover every provenance or lifetime relation rustc can express.",
+        "rustc diagnostics are already mapped perfectly back to originating Haxe expressions.",
+        "Arbitrary borrowed values can be stored or returned from Haxe without a typed boundary design."
+      ],
+      "ownerBeads": [
+        "haxe.rust-oo3.98.1"
+      ],
+      "blockingBeads": [],
+      "remainingGapBeads": [
+        "haxe.rust-oo3.98.5"
+      ]
+    },
+    {
+      "id": "ownership.scoped-borrow-safety",
+      "question": "Are the compiler's current borrow-shaped Haxe APIs sound and complete enough for useful work?",
+      "status": "qualified",
+      "verdict": "They are useful and fail closed for the admitted lexical region model, including direct and first-wave alias, wrapper, storage, throw, overlap, and spawn-capture cases. Provenance and diagnostic attribution remain incomplete beyond that model.",
+      "objectionIds": [
+        "duplicate-borrow-checker"
+      ],
+      "mechanisms": [
+        "Borrow.withRef and Borrow.withMut create callback-scoped borrow-only tokens.",
+        "SliceTools, MutSliceTools, and StrTools expose borrowed Rust views without materializing owned clones where their contracts permit it.",
+        "The analyzer unwraps typed wrappers and local aliases for admitted escape and overlap checks."
+      ],
+      "counterexamples": [
+        "Owned values derived from a borrow return normally, while returning, storing, throwing, or closure-capturing the token is rejected.",
+        "Sequential mutable borrows compile and overlapping same-local mutable regions fail before Rust emission."
+      ],
+      "evidenceIds": [
+        "test:metal-policy",
+        "test:diagnostic-contract",
+        "test:snapshots-and-clippy",
+        "docs:lifetime-boundary"
+      ],
+      "qualifications": [
+        "Unknown closure variables and helper-call side effects need richer provenance analysis.",
+        "Field and static source identity and source-equivalence checks are narrower than local-variable analysis.",
+        "Residual rustc diagnostics do not yet reliably map generated spans back to the originating Haxe expression."
+      ],
+      "doesNotMean": [
+        "The compiler implements Rust's undocumented or complete borrow-checker semantics.",
+        "Lifetime-heavy APIs should be forced through increasingly clever callback syntax.",
+        "A green Haxe analysis can bypass rustc's final validation."
+      ],
+      "ownerBeads": [
+        "haxe.rust-oo3.98.5"
+      ],
+      "blockingBeads": [],
+      "remainingGapBeads": [
+        "haxe.rust-oo3.98.5"
+      ]
+    },
+    {
+      "id": "interop.lifetime-islands",
+      "question": "Can Haxe use lifetime-heavy or RAII-heavy Rust APIs without adding lifetime annotations throughout normal Haxe code?",
+      "status": "qualified",
+      "verdict": "Yes through two bounded patterns: scoped callbacks for simple lexical guards and small typed extern/native implementation islands for lifetimes, HRTB, const generics, macros, layout, partial moves, or contained unsafe that Haxe cannot express cleanly.",
+      "objectionIds": [
+        "runtime-interop-friction",
+        "duplicate-borrow-checker",
+        "lifetime-annotated-source-and-stdlib"
+      ],
+      "mechanisms": [
+        "Simple guards keep the real Rust guard alive for the callback and expose only a scoped typed token.",
+        "Complex Rust-only relationships stay in a narrow .rs module behind a typed Haxe extern or rust.* facade.",
+        "The native-facade manifest prevents helper islands from growing into a dynamic shadow runtime."
+      ],
+      "counterexamples": [
+        "The metal_extern_lifetime_island fixture compiles a typed Haxe facade over a Rust module without lifetime syntax in application Haxe.",
+        "Mutex and RwLock callback APIs preserve the real guard lifetime and reject same-handle reentrancy rather than simulating a guard in Haxe."
+      ],
+      "evidenceIds": [
+        "test:snapshots-and-clippy",
+        "test:metal-policy",
+        "contract:native-facades",
+        "docs:lifetime-boundary"
+      ],
+      "qualifications": [
+        "There is not yet a real-crate conformance matrix across borrowing returns, callbacks, RAII, traits, const generics, macros, and contained unsafe.",
+        "Every helper island still needs an explicit reason that compiler lowering is insufficient.",
+        "Haxe does not and should not pretend to expose arbitrary Rust lifetime parameter syntax one-to-one."
+      ],
+      "doesNotMean": [
+        "Every Rust crate API can be represented directly as an ordinary Haxe declaration.",
+        "Extern islands may use Dynamic, broad handles, untyped application APIs, or catch-all helper modules.",
+        "The boundary removes the need for Rust expertise when designing a lifetime-heavy wrapper."
+      ],
+      "ownerBeads": [
+        "haxe.rust-oo3.98.6"
+      ],
+      "blockingBeads": [],
+      "remainingGapBeads": [
+        "haxe.rust-oo3.98.6"
+      ]
+    },
+    {
+      "id": "interop.typed-rust-crates",
+      "question": "Can Rust developers use real crates and native resources without a universal dynamic or GC-shaped ABI?",
+      "status": "qualified",
+      "verdict": "Yes for existing typed externs, metadata-driven Cargo dependencies, owned native facades, fail-closed no-hxrt fixtures, and documented implementation islands. Breadth across advanced trait and lifetime patterns is not yet sufficient for an unqualified interop claim.",
+      "objectionIds": [
+        "runtime-interop-friction",
+        "lifetime-annotated-source-and-stdlib"
+      ],
+      "mechanisms": [
+        "Typed Haxe externs and metadata add Cargo dependencies and preserve native module ownership.",
+        "Rust-native facades own files, commands, child processes, sockets, paths, errors, and RAII resources through typed public Haxe surfaces.",
+        "No-hxrt fixtures prove selected crate/native paths do not pass through HxRef or Dynamic."
+      ],
+      "counterexamples": [
+        "Owned file, command, TCP, and UDP operations compile and run behind typed rust.* facades with no bundled hxrt.",
+        "Fresh dependency resolution and Cargo builds exercise actual Rust dependency graphs rather than mocked extern declarations."
+      ],
+      "evidenceIds": [
+        "test:metal-policy",
+        "contract:native-facades",
+        "test:fresh-cargo-resolution",
+        "test:snapshots-and-clippy"
+      ],
+      "qualifications": [
+        "The @:rustCargo grammar still needs a structured stable contract before broad third-party dependency admission.",
+        "Where clauses, associated types, object safety, orphan diagnostics, HRTB, const generics, macro-heavy setup, and contained unsafe need a representative real-crate matrix.",
+        "Some helpers remain classified as lowering candidates or hxrt bridges and must not be presented as zero-cost native values."
+      ],
+      "doesNotMean": [
+        "Every crate on crates.io has a ready-made Haxe binding.",
+        "All extern calls are zero-copy or no-allocation.",
+        "Raw Rust snippets in application code are a supported substitute for typed interop."
+      ],
+      "ownerBeads": [
+        "haxe_rust-p6hs.10",
+        "haxe.rust-oo3.98.6"
+      ],
+      "blockingBeads": [],
+      "remainingGapBeads": [
+        "haxe_rust-p6hs.10",
+        "haxe.rust-oo3.98.2",
+        "haxe.rust-oo3.98.6"
+      ]
+    },
+    {
+      "id": "stdlib.portable-contract",
+      "question": "Does Haxe need a lifetime-annotated Rust-shaped replacement stdlib before ordinary programs can compile?",
+      "status": "qualified",
+      "verdict": "No lifetime-annotated source stdlib is required for the admitted portable surface. The backend uses Haxe std overrides, typed lowering, thin runtime primitives where semantics require them, and separate rust.* facades for native ownership; proof depth is still tiered by operation.",
+      "objectionIds": [
+        "lifetime-annotated-source-and-stdlib"
+      ],
+      "mechanisms": [
+        "Portable Haxe APIs remain Haxe-shaped while compiler lowering selects direct Rust or narrow hxrt behavior.",
+        "The public compatibility graph inventories the installed Haxelib surface and the semantic-confidence report keeps compile coverage separate from runtime parity.",
+        "Rust-native ownership surfaces live under rust.* rather than weakening portable sys.* semantics."
+      ],
+      "counterexamples": [
+        "Tiered upstream stdlib sweeps compile ordinary Haxe modules without adding Rust lifetime syntax to those modules.",
+        "Semantic-differential and failure/lifecycle fixtures prove selected std operations against Haxe behavior while the remaining smoke-only buckets stay labeled."
+      ],
+      "evidenceIds": [
+        "test:semantic-differential",
+        "contract:public-compatibility",
+        "test:full-harness"
+      ],
+      "qualifications": [
+        "Structural compile inventory is not blanket semantic parity.",
+        "High-risk reference, exception, reflection, IO, process, network, DB, TLS, concurrency, platform, and failure paths require the strongest applicable evidence class before stable promotion.",
+        "Environment-sensitive and platform-sensitive operations remain explicitly qualified."
+      ],
+      "doesNotMean": [
+        "Every upstream Haxe std module or operation is stable and semantically proven.",
+        "Portable sys.* APIs should be rewritten as direct Rust handles when Haxe compatibility needs runtime state.",
+        "A green Tier2 sweep proves failure, lifecycle, or host behavior."
+      ],
+      "ownerBeads": [
+        "haxe.rust-oo3.98.7"
+      ],
+      "blockingBeads": [],
+      "remainingGapBeads": [
+        "haxe.rust-oo3.98.7"
+      ]
+    },
+    {
+      "id": "output.handwritten-rust-quality",
+      "question": "Does typeful Haxe already emit readable, idiomatic, warning-clean Rust with hand-written-Rust-like cost?",
+      "status": "qualified",
+      "verdict": "Readable, rustfmt-friendly, warning-clean output is an enforced product requirement and is proved on curated fixtures. Equivalent cost and idiom are demonstrated on bounded paths, especially metal/no-hxrt, but not yet across class-heavy and sustained mixed workloads.",
+      "objectionIds": [
+        "runtime-interop-friction",
+        "lifetime-annotated-source-and-stdlib"
+      ],
+      "mechanisms": [
+        "AST-first lowering, snapshots, rustfmt, deny-warnings, curated Clippy, metal idiom counters, and runtime-plan reports make emitted shape reviewable.",
+        "Compiler-only lowering is preferred when typed AST information gives a closed answer.",
+        "Native helpers and hxrt additions have manifests and austerity rules so convenience wrappers cannot silently define output quality."
+      ],
+      "counterexamples": [
+        "Metal no-hxrt hot-loop output and typed owned facades compile as ordinary Rust without a semantic runtime.",
+        "Snapshot and warning gates catch clone, borrow, diverging-expression, iterator, nullable, and raw-emission regressions in generated Rust."
+      ],
+      "evidenceIds": [
+        "test:snapshots-and-clippy",
+        "test:metal-policy",
+        "test:hxrt-performance",
+        "contract:native-facades"
+      ],
+      "qualifications": [
+        "RustCompiler and parts of RustAST still hide analysis-relevant syntax in raw strings, limiting structural optimization and source mapping.",
+        "Portable class/reference workloads have not yet established allocation, clone, lock, dispatch, binary-size, and lifecycle budgets against hand-written Rust models.",
+        "The current performance suite is microcase-oriented and does not yet prove tail latency, sustained RSS trend, or mixed-workload operability."
+      ],
+      "doesNotMean": [
+        "All generated Rust is indistinguishable from expert hand-written Rust.",
+        "A warning-clean build proves optimal allocation, ownership, or dispatch behavior.",
+        "Users should contort Haxe source around current lowering artifacts."
+      ],
+      "ownerBeads": [
+        "haxe.rust-oo3.98.2",
+        "haxe.rust-oo3.98.3",
+        "haxe.rust-oo3.98.4",
+        "haxe.rust-oo3.98.8"
+      ],
+      "blockingBeads": [],
+      "remainingGapBeads": [
+        "haxe.rust-oo3.98.2",
+        "haxe.rust-oo3.98.3",
+        "haxe.rust-oo3.98.4",
+        "haxe.rust-oo3.98.8"
+      ]
+    },
+    {
+      "id": "maturity.bounded-production",
+      "question": "Is the compiler usable by Haxe and Rust developers for real production work today?",
+      "status": "qualified",
+      "verdict": "Yes for controlled production on validated lanes with app-specific tests around the runtime, native, platform, and failure paths the application actually uses. The independent audit does not authorize stable 1.0 or universal Haxe/std/sys parity.",
+      "objectionIds": [
+        "gc-required",
+        "runtime-interop-friction",
+        "duplicate-borrow-checker",
+        "lifetime-annotated-source-and-stdlib"
+      ],
+      "mechanisms": [
+        "The full harness composes compiler, runtime, semantic, lifecycle, toolchain, report, diagnostics, packaging, example, native, and release evidence.",
+        "The independent codex-hxrust application pressure-tests the normal portable and metal workflows without compiler-specific scenarios.",
+        "Public compatibility and production-readiness documents distinguish stable candidates, qualifications, experiments, exclusions, and release blockers."
+      ],
+      "counterexamples": [
+        "The compiler builds and tests a separate application through its normal documented commands rather than only compiling toy fixtures.",
+        "The independent audit found a credible bounded-production posture while explicitly rejecting stable 1.0 at the reviewed evidence point."
+      ],
+      "evidenceIds": [
+        "test:full-harness",
+        "test:independent-consumer",
+        "contract:public-compatibility",
+        "audit:bounded-production"
+      ],
+      "qualifications": [
+        "Applications must validate the exact networking, TLS, DB, process, threading, platform, dynamic, exception, and native-crate paths they use.",
+        "Broad workload performance, advanced interop breadth, complete source-mapped diagnostics, and operation-level std semantic admission remain open capability tracks.",
+        "Stable-major release authorization has separate provenance, dependency-resolution, and final-review gates."
+      ],
+      "doesNotMean": [
+        "Every arbitrary Haxe program is production-ready on every host.",
+        "A green local harness alone proves a specific application or dependency graph.",
+        "Bounded production readiness is stable 1.0 authorization."
+      ],
+      "ownerBeads": [
+        "haxe.rust-oo3.98.7",
+        "haxe.rust-oo3.98.8",
+        "haxe.rust-oo3.98.10"
+      ],
+      "blockingBeads": [],
+      "remainingGapBeads": [
+        "haxe.rust-oo3.98.7",
+        "haxe.rust-oo3.98.8",
+        "haxe.rust-oo3.98.10"
+      ]
+    },
+    {
+      "id": "maturity.unqualified-objection-closure",
+      "question": "Can the project publicly claim that it has completely solved Haxe-to-Rust and all four historical objections?",
+      "status": "open",
+      "verdict": "Not yet. The architecture defeats the claimed impossibility and several narrow mechanisms are closed, but the remaining qualified claims need their dependency-ordered evidence and an independent claim-by-claim authorization.",
+      "objectionIds": [
+        "gc-required",
+        "runtime-interop-friction",
+        "duplicate-borrow-checker",
+        "lifetime-annotated-source-and-stdlib"
+      ],
+      "mechanisms": [
+        "This manifest separates exact closed mechanisms from qualified product claims and one open broad claim.",
+        "The capability epic orders typed IR, representation, memory, borrow, interop, std, workload, cycle, and independent-review work.",
+        "The final decision requires an inventory-verified evidence bundle rather than confidence inferred from implementation volume."
+      ],
+      "counterexamples": [
+        "No-hxrt, scoped borrows, typed extern islands, portable std sweeps, and independent consumer builds already contradict the claim that the compiler is impossible.",
+        "Open class-heavy, advanced interop, source-mapping, operation-semantic, workload, and cycle decisions prevent those counterexamples from becoming a universal claim."
+      ],
+      "evidenceIds": [
+        "test:full-harness",
+        "test:independent-consumer",
+        "audit:bounded-production"
+      ],
+      "qualifications": [
+        "The allowed statement is the bounded wording in publicAnswer.allowed, not a universal solved claim."
+      ],
+      "doesNotMean": [
+        "The current compiler is a failed proof of concept.",
+        "Every remaining item is a prerequisite for all production use.",
+        "Completing this capability review automatically authorizes stable 1.0."
+      ],
+      "ownerBeads": [
+        "haxe.rust-oo3.98.10"
+      ],
+      "blockingBeads": [
+        "haxe.rust-oo3.98.10"
+      ],
+      "remainingGapBeads": [
+        "haxe.rust-oo3.98.2",
+        "haxe.rust-oo3.98.3",
+        "haxe.rust-oo3.98.4",
+        "haxe.rust-oo3.98.5",
+        "haxe.rust-oo3.98.6",
+        "haxe.rust-oo3.98.7",
+        "haxe.rust-oo3.98.8",
+        "haxe.rust-oo3.98.9",
+        "haxe.rust-oo3.98.10"
+      ]
+    }
+  ]
+}

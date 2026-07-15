@@ -9,6 +9,12 @@ This FAQ is for two audiences at once:
 For the full contract model, read [Profiles](profiles.md). For adoption posture, read
 [Production Readiness](production-readiness.md).
 
+<!-- BEGIN GENERATED ARCHITECTURE CAPABILITY SUMMARY -->
+Architecture-claim status: **3 closed**, **7 qualified**, **1 open**.
+The implemented architecture disproves the old claim that a usable Haxe-to-Rust backend is impossible without either a tracing GC or lifetime annotations everywhere, but the evidence still supports bounded, qualified claims rather than universal parity.
+Review the exact evidence, exclusions, and blocking Beads in the [generated architecture capability claims](architecture-capability.md); this summary does not authorize stable 1.0 or an unqualified “all Haxe to handwritten-quality Rust” claim.
+<!-- END GENERATED ARCHITECTURE CAPABILITY SUMMARY -->
+
 ## Is there garbage collection support?
 
 There is no always-on tracing garbage collector in the normal generated Rust output.

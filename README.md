@@ -28,6 +28,12 @@ The independent 2026-07-13 review rates current bounded production
 program are recorded in the
 [production-readiness audit disposition](docs/production-readiness-audit-2026-07-13.md).
 
+<!-- BEGIN GENERATED ARCHITECTURE CAPABILITY SUMMARY -->
+Architecture-claim status: **3 closed**, **7 qualified**, **1 open**.
+The implemented architecture disproves the old claim that a usable Haxe-to-Rust backend is impossible without either a tracing GC or lifetime annotations everywhere, but the evidence still supports bounded, qualified claims rather than universal parity.
+Review the exact evidence, exclusions, and blocking Beads in the [generated architecture capability claims](docs/architecture-capability.md); this summary does not authorize stable 1.0 or an unqualified “all Haxe to handwritten-quality Rust” claim.
+<!-- END GENERATED ARCHITECTURE CAPABILITY SUMMARY -->
+
 ## Why reflaxe.rust
 
 - `portable` contract (default): Haxe-first semantics with portability-oriented behavior and predictable stdlib/runtime integration.

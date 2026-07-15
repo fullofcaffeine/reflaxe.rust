@@ -185,6 +185,7 @@ Metal-first:
 Release / operations:
 
 - [Production Readiness](production-readiness.md)
+- [Architecture capability claims](architecture-capability.md)
 - [Feature support matrix](feature-support-matrix.md)
 - [Semantic confidence summary](semantic-confidence-summary.md)
 - [Semver and release posture](semver-release-posture.md)

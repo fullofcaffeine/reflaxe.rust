@@ -32,6 +32,7 @@ const entrypointRules = [
       'docs/examples-matrix.md',
       'docs/production-readiness.md',
       'docs/feature-support-matrix.md',
+      'docs/architecture-capability.md',
     ],
   },
   {
@@ -44,6 +45,7 @@ const entrypointRules = [
       'examples-matrix.md',
       'production-readiness.md',
       'feature-support-matrix.md',
+      'architecture-capability.md',
       'semantic-confidence-summary.md',
       'semver-release-posture.md',
     ],
@@ -59,6 +61,7 @@ const entrypointRules = [
       'examples-matrix.md',
       'production-readiness.md',
       'feature-support-matrix.md',
+      'architecture-capability.md',
       'semantic-confidence-summary.md',
       'semver-release-posture.md',
       'weekly-ci-evidence.md',

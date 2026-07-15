@@ -42,4 +42,15 @@ if printf '%s\n' "$STAGED_FILES" | grep -Eq '^(test/semantic_diff/|test/semantic
   "$ROOT_DIR/scripts/ci/check-semantic-confidence-summary.sh"
 fi
 
+if printf '%s\n' "$STAGED_FILES" | grep -Eq '^(README\.md$|docs/faq\.md$|docs/architecture-capability(-manifest\.json|\.md)$|scripts/ci/architecture-capability-manifest\.js$|test/scripts/architecture-capability-manifest\.test\.js$)'; then
+  echo "[pre-commit] Running architecture capability claim drift check..."
+  for artifact in docs/architecture-capability-manifest.json README.md docs/faq.md docs/architecture-capability.md; do
+    if ! git diff --quiet -- "$artifact"; then
+      echo "[pre-commit] ERROR: ${artifact} has unstaged changes; regenerate and stage all architecture capability consumers." >&2
+      exit 1
+    fi
+  done
+  node "$ROOT_DIR/scripts/ci/architecture-capability-manifest.js" --check
+fi
+
 echo "[pre-commit] OK"
