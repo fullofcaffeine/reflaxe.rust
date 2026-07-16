@@ -34,8 +34,8 @@
       "id": "async-feature",
       "contract": "experimental async Tokio generated crate",
       "fixture": "test/snapshot/rust_async_tasks/intended_tokio",
-      "lockSha256": "0c07fe0e3707b9f7d3965f77e6d8958555337e6faa06f11d01d367cf4602302a",
-      "metadataSha256": "256f0c96c445234ae72052632fdda67780fa3ae9e5df76538013e25f70874bb3"
+      "lockSha256": "4cbdeb80ec9109882e72a6d0f30ed2cac533fe9ba02858958951957ded9b9a00",
+      "metadataSha256": "d4769ec37793a987cd8e3249858421c04cc42d527bfc8513f7aca94af285c078"
     },
     {
       "id": "metal",
