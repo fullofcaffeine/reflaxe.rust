@@ -1,6 +1,7 @@
 package reflaxe.rust.passes;
 
 import reflaxe.rust.CompilationContext;
+import reflaxe.rust.ast.RustAST.RustAssociatedItem;
 import reflaxe.rust.ast.RustAST.RustFile;
 import reflaxe.rust.ast.RustAST.RustItem;
 
@@ -14,10 +15,11 @@ import reflaxe.rust.ast.RustAST.RustItem;
 	What
 	- Trims trailing whitespace in `RRaw` items.
 	- Collapses repeated blank lines in `RRaw` blocks.
+	- Applies the same normalization to the metadata-owned raw body inside a structural trait impl.
 
 	How
-	- Leaves structured AST nodes untouched.
-	- Applies string-level normalization only to literal raw chunks.
+	- Recurses through attributed items, inline modules, traits, and impls without changing typed syntax.
+	- Applies string-level normalization only to classified raw chunks, including `AssocRaw`.
 **/
 class NormalizePass implements RustPass {
 	public function new() {}
@@ -41,11 +43,22 @@ class NormalizePass implements RustPass {
 					item;
 				else
 					RModule(declaration.withItems([for (child in declaration) normalizeItem(child)]));
+			case RTrait(declaration):
+				RTrait(declaration.withItems([for (associated in declaration) normalizeAssociatedItem(associated)]));
+			case RImpl(declaration):
+				RImpl(declaration.withItems([for (associated in declaration) normalizeAssociatedItem(associated)]));
 			case RRaw(fragment):
 				RRaw(fragment.withCode(normalizeRaw(fragment.code)));
 			case _:
 				item;
 		}
+	}
+
+	function normalizeAssociatedItem(item:RustAssociatedItem):RustAssociatedItem {
+		return switch (item) {
+			case AssocRaw(fragment): AssocRaw(fragment.withCode(normalizeRaw(fragment.code)));
+			case AssocFunction(_) | AssocType(_) | AssocConst(_): item;
+		};
 	}
 
 	function normalizeRaw(s:String):String {

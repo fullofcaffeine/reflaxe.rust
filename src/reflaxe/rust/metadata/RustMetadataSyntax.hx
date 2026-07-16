@@ -15,7 +15,8 @@ import reflaxe.rust.ast.RustAST.RustTraitObject;
 import reflaxe.rust.ast.RustAST.RustType;
 
 /**
-	Parses the deliberately string-shaped `@:rustGeneric` and `@:rustReturn` metadata boundary.
+	Parses deliberately string-shaped Rust syntax at metadata boundaries such as `@:rustGeneric`,
+	`@:rustReturn`, extern paths, and `@:rustImpl` headers.
 
 	Why
 	- Those stable metadata APIs necessarily arrive as target-syntax strings, but keeping the strings
@@ -30,8 +31,8 @@ import reflaxe.rust.ast.RustAST.RustType;
 
 	How
 	- Call `parseGenericParameters` for one metadata string (which may contain comma-separated
-	  declarations), `parseGenericParameterFragments` for metadata arrays, and `parseType` for
-	  `@:rustReturn`.
+	  declarations), `parseGenericParameterFragments` for metadata arrays, `parseType` for
+	  `@:rustReturn` / `@:rustImpl.forType`, and `parsePath` for extern or `@:rustImpl` trait paths.
 	- Never feed compiler-rendered Rust back into this parser. Compiler lowering already owns typed
 	  Haxe information and must construct nodes directly.
 **/
@@ -55,9 +56,9 @@ class RustMetadataSyntax {
 		Parses one metadata-owned nominal or qualified Rust path.
 
 		Why / What / How
-		- Extern metadata may name absolute, crate, self, super, type-`Self`, or qualified paths. Parse
-		  that authority exactly once, then attach Haxe-derived generic arguments structurally rather
-		  than concatenating target syntax in compiler lowering.
+		- Extern and `@:rustImpl` metadata may name absolute, crate, self, super, type-`Self`, or qualified
+		  paths. Parse that authority exactly once, then attach Haxe-derived generic arguments
+		  structurally rather than concatenating target syntax in compiler lowering.
 	**/
 	public static function parsePath(code:String):RustPath {
 		var parser = new RustMetadataSyntaxParser(code);

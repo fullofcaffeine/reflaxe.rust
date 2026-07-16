@@ -1,6 +1,7 @@
 package reflaxe.rust.passes;
 
 import reflaxe.rust.ast.RustAST;
+import reflaxe.rust.ast.RustAST.RustAssociatedItem;
 import reflaxe.rust.ast.RustAST.RustBlock;
 import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustFile;
@@ -47,15 +48,24 @@ class RustPassTools {
 				RStatic(declaration.withValue(mapExprDeep(declaration.value, mapExpr)));
 			case RFn(f):
 				RFn(mapFunction(f, mapStmt, mapExpr));
+			case RTrait(declaration):
+				RTrait(declaration.withItems([for (associated in declaration) mapAssociatedItem(associated, mapStmt, mapExpr)]));
 			case RImpl(i):
-				RImpl({
-					generics: i.generics,
-					forType: i.forType,
-					functions: [for (f in i.functions) mapFunction(f, mapStmt, mapExpr)]
-				});
+				RImpl(i.withItems([for (associated in i) mapAssociatedItem(associated, mapStmt, mapExpr)]));
 			case RInnerAttribute(_) | RComment(_) | RUse(_) | RTypeAlias(_) | RStruct(_) | REnum(_) | RRaw(_):
 				item;
 		}
+	}
+
+	static function mapAssociatedItem(item:RustAssociatedItem, mapStmt:RustStmt->RustStmt, mapExpr:RustExpr->RustExpr):RustAssociatedItem {
+		return switch (item) {
+			case AssocFunction(method):
+				method.body == null ? item : AssocFunction(method.withBody(mapBlock(method.body, mapStmt, mapExpr)));
+			case AssocConst(declaration):
+				declaration.value == null ? item : AssocConst(declaration.withValue(mapExprDeep(declaration.value, mapExpr)));
+			case AssocType(_) | AssocRaw(_):
+				item;
+		};
 	}
 
 	public static function mapFunction(f:RustFunction, mapStmt:RustStmt->RustStmt, mapExpr:RustExpr->RustExpr):RustFunction {
@@ -104,7 +114,7 @@ class RustPassTools {
 
 	public static function mapExprDeep(e:RustExpr, mapExpr:RustExpr->RustExpr):RustExpr {
 		var deep:RustExpr = switch (e) {
-			case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ESelf | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				e;
 			case ECall(func, args):
 				ECall(mapExprDeep(func, mapExpr), [for (arg in args) mapExprDeep(arg, mapExpr)]);

@@ -96,6 +96,11 @@ if grep -Eq '^(package\.json$|scripts/(ci/harness\.sh|hooks/pre-commit)$|src/ref
   npm --prefix "$ROOT_DIR" run test:rust-structural-items
 fi
 
+if grep -Eq '^(package\.json$|scripts/(ci/harness\.sh|hooks/pre-commit)$|src/reflaxe/rust/(RustCompiler|ast/(RustAST|RustASTPrinter|RustPathAnalysis)|metadata/RustMetadataSyntax|passes/[^/]+)\.hx$|test/compiler/RustStructuralTraitImpl(Pass)?Contract\.hx$|test/scripts/(pre-commit-evidence-wiring|rust-structural-trait-impls)\.test\.js$)' <<<"$STAGED_FILES"; then
+  echo "[pre-commit] Running structural Rust trait and impl contract..."
+  npm --prefix "$ROOT_DIR" run test:rust-structural-trait-impls
+fi
+
 echo "[pre-commit] OK"
 
 # The Beads-managed integration is appended below this boundary by

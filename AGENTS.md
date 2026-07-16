@@ -291,6 +291,12 @@ Agent policy:
   attributed targets, and files/modules must share one item-separator authority. Keep `mod x;`
   distinct from `mod x { }`, validate attribute/use paths before printing, and use `ELitUnit` for the
   Rust value `()` instead of disguising it as an empty block expression.
+- Structural trait/impl gotcha: generated traits and impls must use `RTrait` / `RImpl` with typed
+  generics, trait paths, target types, where predicates, receivers, signatures, and associated items.
+  Every body-transforming pass must recurse into trait defaults and impl methods, while declaration
+  policy must traverse paths through `RustPathAnalysis`. For `@:rustImpl`, parse the metadata trait
+  path and optional target type immediately; only the explicitly supplied inner body may remain a
+  metadata-owned `AssocRaw` fragment. Never rebuild an impl header with a compiler mini-printer.
 - Rust identifier keyword gotcha: `RustNaming.isKeyword` includes backend-reserved legal identifiers
   (`std`, `core`, and `alloc`) for source-name allocation. Grammar validation must use
   `RustNaming.isRustKeyword` so structural paths accept those real crate segments while rejecting the

@@ -38,6 +38,7 @@
     "test:rust-structural-pass-analysis": "node test/scripts/rust-structural-pass-analysis.test.js && bash test/run-snapshots.sh --case hello_trace --no-diff",
     "test:rust-structural-member-closures": "node test/scripts/rust-structural-member-closures.test.js && bash test/run-snapshots.sh --case hello_trace --no-diff",
     "test:rust-structural-items": "node test/scripts/rust-structural-items.test.js && bash test/run-snapshots.sh --case hello_trace --no-diff",
+    "test:rust-structural-trait-impls": "node test/scripts/rust-structural-trait-impls.test.js && bash test/run-snapshots.sh --case generics_interface --no-diff && bash test/run-snapshots.sh --case inheritance_override --no-diff && bash test/run-snapshots.sh --case rust_impl_meta --no-diff",
     "test:architecture-capability": "node test/scripts/architecture-capability-manifest.test.js",
     "test:public-compatibility": "node test/scripts/public-compatibility-manifest.test.js",
     "test:generated-consumer-contract": "node test/scripts/generated-consumer-contract.test.js",

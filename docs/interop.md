@@ -111,6 +111,11 @@ Supported forms:
 - `@:rustImpl({ trait: "path::Trait", body: "fn ...", forType: "SomeType" })` (advanced)
   - `forType` overrides the Rust type name used on the right-hand side of `for ...`
 
+The strings that identify the trait and optional target type are parsed at the metadata boundary.
+After that, the compiler keeps the impl header as typed Rust structure, so analysis can see its paths
+and generic arguments. When a body string is supplied, only that inner body remains raw metadata;
+the surrounding `impl Trait for Type { ... }` syntax is still compiler-owned and structurally printed.
+
 Limitations:
 
 - Rust orphan rules still apply. In practice, this is primarily useful for implementing external traits

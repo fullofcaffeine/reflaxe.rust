@@ -172,6 +172,7 @@ class RustASTPrinter {
 			case RFn(f): printFunction(f, 0);
 			case RStruct(s): printStruct(s);
 			case REnum(e): printEnum(e);
+			case RTrait(declaration): printTrait(declaration);
 			case RImpl(i): printImpl(i);
 			case RRaw(fragment): fragment.code;
 		}
@@ -347,19 +348,172 @@ class RustASTPrinter {
 		return parts.join("\n");
 	}
 
-	static function printImpl(i:RustAST.RustImpl):String {
-		var head = "impl" + printGenericParameters(i.generics);
-		head += " " + printType(i.forType);
-		if (i.functions.length == 0) {
+	/** Prints one complete structural trait declaration and its associated-item surface. */
+	static function printTrait(declaration:RustAST.RustTraitDeclaration):String {
+		if (declaration == null)
+			throw "Cannot print a null Rust trait declaration";
+		var head = visibilityPrefix(declaration.visibility, false)
+			+ "trait "
+			+ printIdentifier(declaration.name)
+			+ printGenericParameters(declaration.generics);
+		var supertraits:Array<String> = [];
+		for (bound in declaration.supertraitIterator())
+			supertraits.push(printGenericBound(bound));
+		if (supertraits.length > 0)
+			head += ": " + supertraits.join(" + ");
+		head += printWhereClause(declaration.whereClause);
+		if (declaration.itemCount == 0)
 			return head + " { }";
-		}
+		var parts:Array<String> = [];
+		for (item in declaration)
+			parts.push(printAssociatedItem(item, 1));
+		return head + " {\n" + parts.join("\n") + "\n}";
+	}
+
+	/**
+		Prints an inherent or trait impl without consulting rendered type/path text.
+
+		Why / What / How
+		- `traitPath == null` is the validated inherent form; otherwise the path prints before `for`.
+		- Inherent methods retain the historical blank separator, while trait-associated items remain
+		  adjacent like rustfmt's trait-impl layout. Marker impls use the compact empty-body form.
+	**/
+	static function printImpl(i:RustAST.RustImpl):String {
+		if (i == null)
+			throw "Cannot print a null Rust impl declaration";
+		var head = "impl" + printGenericParameters(i.generics) + " ";
+		if (i.traitPath != null)
+			head += printTypePath(i.traitPath) + " for ";
+		head += printType(i.forType) + printWhereClause(i.whereClause);
+		if (i.itemCount == 0)
+			return head + " { }";
 
 		var parts:Array<String> = [];
-		for (f in i.functions) {
-			parts.push(printFunction(f, 1));
-		}
-		var body = parts.filter(p -> StringTools.trim(p).length > 0).join("\n\n");
-		return head + " {\n" + body + "\n}";
+		for (item in i)
+			parts.push(printAssociatedItem(item, 1));
+		var separator = i.isTraitImpl ? "\n" : "\n\n";
+		return head + " {\n" + parts.join(separator) + "\n}";
+	}
+
+	/** Prints one structural associated function, type, constant, or admitted raw metadata body. */
+	static function printAssociatedItem(item:RustAST.RustAssociatedItem, indent:Int):String {
+		if (item == null)
+			throw "Cannot print a null Rust associated item";
+		return switch (item) {
+			case AssocFunction(method): printAssociatedFunction(method, indent);
+			case AssocType(declaration): printAssociatedType(declaration, indent);
+			case AssocConst(declaration): printAssociatedConstant(declaration, indent);
+			case AssocRaw(fragment): indentRawAssociated(fragment, indent);
+		};
+	}
+
+	static function printAssociatedFunction(method:RustAST.RustAssociatedFunction, indent:Int):String {
+		if (method == null)
+			throw "Cannot print a null Rust associated function";
+		var signature:Array<String> = [];
+		var visibility = visibilityToken(method.visibility, false);
+		if (visibility != null)
+			signature.push(visibility);
+		if (method.isAsync)
+			signature.push("async");
+		signature.push("fn");
+		signature.push(printIdentifier(method.name) + printGenericParameters(method.generics));
+
+		var parameters:Array<String> = [];
+		if (method.receiver != null)
+			parameters.push(printSelfReceiver(method.receiver));
+		for (parameter in method)
+			parameters.push(printIdentifier(parameter.name) + ": " + printType(parameter.type));
+		var out = indentString(indent) + signature.join(" ") + "(" + parameters.join(", ") + ")";
+		if (method.returnType != null)
+			out += " -> " + printType(method.returnType);
+		out += printWhereClause(method.whereClause);
+		return method.body == null ? out + ";" : out + " " + printBlock(method.body, indent);
+	}
+
+	static function printSelfReceiver(receiver:RustAST.RustSelfReceiver):String {
+		return switch (receiver) {
+			case ReceiverValue(mutable): (mutable ? "mut " : "") + "self";
+			case ReceiverBorrowed(mutable, lifetime): {
+					var out = "&";
+					if (lifetime != null)
+						out += printLifetime(lifetime) + " ";
+					if (mutable)
+						out += "mut ";
+					out + "self";
+				}
+			case ReceiverTyped(type): "self: " + printType(type);
+		};
+	}
+
+	static function printAssociatedType(declaration:RustAST.RustAssociatedTypeDeclaration, indent:Int):String {
+		if (declaration == null)
+			throw "Cannot print a null Rust associated type";
+		var out = indentString(indent) + "type " + printIdentifier(declaration.name) + printGenericParameters(declaration.generics);
+		var bounds:Array<String> = [];
+		for (bound in declaration)
+			bounds.push(printGenericBound(bound));
+		if (bounds.length > 0)
+			out += ": " + bounds.join(" + ");
+		out += printWhereClause(declaration.whereClause);
+		if (declaration.value != null)
+			out += " = " + printType(declaration.value);
+		return out + ";";
+	}
+
+	static function printAssociatedConstant(declaration:RustAST.RustAssociatedConstantDeclaration, indent:Int):String {
+		if (declaration == null)
+			throw "Cannot print a null Rust associated constant";
+		var out = indentString(indent)
+			+ visibilityPrefix(declaration.visibility, false)
+			+ "const "
+			+ printIdentifier(declaration.name)
+			+ ": "
+			+ printType(declaration.type);
+		if (declaration.value != null)
+			out += " = " + printExpr(declaration.value, indent);
+		return out + ";";
+	}
+
+	static function indentRawAssociated(fragment:RustAST.RustRawCode, indent:Int):String {
+		if (fragment == null)
+			throw "Cannot print a null raw associated body";
+		var prefix = indentString(indent);
+		return [for (line in fragment.code.split("\n")) prefix + line].join("\n");
+	}
+
+	static function printWhereClause(clause:RustAST.RustWhereClause):String {
+		if (clause == null)
+			throw "Cannot print a null Rust where clause";
+		if (clause.predicateCount == 0)
+			return "";
+		var predicates:Array<String> = [];
+		for (predicate in clause)
+			predicates.push(printWherePredicate(predicate));
+		return " where " + predicates.join(", ");
+	}
+
+	static function printWherePredicate(predicate:RustAST.RustWherePredicate):String {
+		if (predicate == null)
+			throw "Cannot print a null Rust where predicate";
+		return switch (predicate.kind) {
+			case WhereTypeBounds: {
+					if (predicate.typeValue == null)
+						throw "Rust type where-predicate is missing its type";
+					var bounds:Array<String> = [];
+					for (bound in predicate.genericBoundIterator())
+						bounds.push(printGenericBound(bound));
+					printType(predicate.typeValue) + ": " + bounds.join(" + ");
+				}
+			case WhereLifetimeBounds: {
+					if (predicate.lifetimeValue == null)
+						throw "Rust lifetime where-predicate is missing its lifetime";
+					var bounds:Array<String> = [];
+					for (bound in predicate.lifetimeBoundIterator())
+						bounds.push(printLifetime(bound));
+					printLifetime(predicate.lifetimeValue) + ": " + bounds.join(" + ");
+				}
+		};
 	}
 
 	static function printFunction(f:RustAST.RustFunction, indent:Int):String {
@@ -619,6 +773,7 @@ class RustASTPrinter {
 	static function printExprPrec(e:RustAST.RustExpr, indent:Int, ctxPrec:Int):String {
 		return switch (e) {
 			case ERaw(fragment): fragment.code;
+			case ESelf: "self";
 			case ELitUnit: "()";
 			case ELitInt(v): Std.string(v);
 			case ELitUInt32(bits): "0x" + StringTools.hex(bits, 8).toLowerCase() + "u32";

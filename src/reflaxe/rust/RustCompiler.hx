@@ -26,17 +26,21 @@ import reflaxe.rust.ast.RustAST;
 import reflaxe.rust.ast.RustAST.RustBlock;
 import reflaxe.rust.ast.RustAST.RustAttribute;
 import reflaxe.rust.ast.RustAST.RustAttributedItem;
+import reflaxe.rust.ast.RustAST.RustAssociatedFunction;
+import reflaxe.rust.ast.RustAST.RustAssociatedItem;
 import reflaxe.rust.ast.RustAST.RustClosureParameter;
 import reflaxe.rust.ast.RustAST.RustComment;
 import reflaxe.rust.ast.RustAST.RustConstantDeclaration;
 import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustFile;
+import reflaxe.rust.ast.RustAST.RustFunctionParameter;
 import reflaxe.rust.ast.RustAST.RustGenericArgument;
 import reflaxe.rust.ast.RustAST.RustGenericBound;
 import reflaxe.rust.ast.RustAST.RustGenericParameter;
 import reflaxe.rust.ast.RustAST.RustGenericParameters;
 import reflaxe.rust.ast.RustAST.RustIdentifier;
 import reflaxe.rust.ast.RustAST.RustItem;
+import reflaxe.rust.ast.RustAST.RustImpl;
 import reflaxe.rust.ast.RustAST.RustLifetime;
 import reflaxe.rust.ast.RustAST.RustMatchArm;
 import reflaxe.rust.ast.RustAST.RustMember;
@@ -48,16 +52,19 @@ import reflaxe.rust.ast.RustAST.RustCompilerRawReason;
 import reflaxe.rust.ast.RustAST.RustMetadataRawReason;
 import reflaxe.rust.ast.RustAST.RustRawCode;
 import reflaxe.rust.ast.RustAST.RustSourceRawReason;
+import reflaxe.rust.ast.RustAST.RustSelfReceiver;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustStaticDeclaration;
 import reflaxe.rust.ast.RustAST.RustStructLitField;
 import reflaxe.rust.ast.RustAST.RustTraitBoundModifier;
+import reflaxe.rust.ast.RustAST.RustTraitDeclaration;
 import reflaxe.rust.ast.RustAST.RustTraitObject;
 import reflaxe.rust.ast.RustAST.RustType;
 import reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration;
 import reflaxe.rust.ast.RustAST.RustUseDeclaration;
 import reflaxe.rust.ast.RustAST.RustUseMember;
 import reflaxe.rust.ast.RustAST.RustVisibility;
+import reflaxe.rust.ast.RustAST.RustWhereClause;
 import reflaxe.rust.ast.RustPathAnalysis;
 import reflaxe.helpers.TypeHelper;
 import reflaxe.rust.analyze.MetalIslandAnalyzer;
@@ -105,11 +112,21 @@ using reflaxe.helpers.BaseTypeHelper;
 using reflaxe.helpers.ClassFieldHelper;
 using reflaxe.helpers.ModuleTypeHelper;
 
-private typedef RustImplSpec = {
+/** Text accepted only while decoding one `@:rustImpl` metadata entry. */
+private typedef RustImplMetadataInput = {
 	var traitPath:String;
 	var pos:haxe.macro.Expr.Position;
 	@:optional var forType:String;
 	@:optional var body:String;
+};
+
+/** The fully typed `@:rustImpl` boundary consumed by ordinary compiler lowering. */
+private typedef RustImplSpec = {
+	var traitPath:RustPath;
+	var sortKey:String;
+	var pos:haxe.macro.Expr.Position;
+	@:optional var forType:RustType;
+	@:optional var body:RustRawCode;
 };
 
 private enum RustTestReturnKind {
@@ -3160,34 +3177,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			// Interfaces compile to Rust traits (no struct allocation).
 			items.push(RComment(RustComment.line("Haxe interface -> Rust trait")));
 
-			var traitLines:Array<String> = [];
-			var traitGenerics = classGenericDecls;
-			var traitGenericSuffix = reflaxe.rust.ast.RustASTPrinter.printGenericParameters(traitGenerics);
-			traitLines.push("pub trait " + rustSelfType + traitGenericSuffix + ": Send + Sync {");
-			for (f in funcFields) {
-				if (f.isStatic)
-					continue;
-				if (f.expr != null)
-					continue;
-
-				var args:Array<String> = [];
-				args.push("&self");
-				var usedArgNames:Map<String, Bool> = [];
-				for (a in f.args) {
-					var baseName = a.getName();
-					if (baseName == null || baseName.length == 0)
-						baseName = "a";
-					var argName = RustNaming.stableUnique(RustNaming.snakeIdent(baseName), usedArgNames);
-					args.push(argName + ": " + rustTypeToString(toRustType(a.type, f.field.pos)));
-				}
-
-				var ret = rustTypeToString(rustReturnTypeForField(f.field, f.ret, f.field.pos));
-				var sig = "\tfn " + rustMethodName(classType, f.field) + "(" + args.join(", ") + ") -> " + ret + ";";
-				traitLines.push(sig);
-			}
-			traitLines.push("\tfn __hx_type_id(&self) -> u32;");
-			traitLines.push("}");
-			items.push(RRaw(RustRawCode.compilerAt(traitLines.join("\n"), RawInterfaceTraitDeclaration, classType.pos)));
+			items.push(RTrait(emitInterfaceTrait(classType, funcFields, classGenericDecls)));
 		} else {
 			var childModuleDecls = rustNestedChildModuleDeclItemsForSegments(rustModuleSegmentsForClass(classType));
 			if (childModuleDecls.length > 0)
@@ -3396,31 +3386,25 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 			}
 
-			items.push(RImpl({
-				generics: classGenericDecls,
-				forType: rustClassTypeInstType(classType),
-				functions: implFunctions
-			}));
+			items.push(RImpl(RustImpl.inherent(classGenericDecls, rustClassTypeInstType(classType), implFunctions)));
 
 			// Extra Rust trait impls declared via `@:rustImpl(...)` metadata.
 			var rustImpls = rustImplsFromMeta(classType.meta);
 			for (spec in rustImpls) {
-				items.push(RRaw(RustRawCode.metadataAt(renderRustImplBlock(spec, classGenericDecls, rustClassTypeInstType(classType)), RawTraitImplementation,
-					spec.pos)));
+				items.push(RImpl(structuralRustImplFromMetadata(spec, classGenericDecls, rustClassTypeInstType(classType))));
 			}
 
 			// Base-class polymorphism: if this class has subclasses, emit a trait for it.
 			if (classHasSubclasses(classType)) {
-				items.push(RRaw(RustRawCode.compilerAt(emitClassTrait(classType, effectiveFuncFields), RawClassTraitDeclaration, classType.pos)));
-				items.push(RRaw(RustRawCode.compilerAt(emitClassTraitImplForSelf(classType, effectiveFuncFields), RawClassTraitImplementation, classType.pos)));
+				items.push(RTrait(emitClassTrait(classType, effectiveFuncFields)));
+				items.push(RImpl(emitClassTraitImplForSelf(classType, effectiveFuncFields)));
 			}
 
 			// If this class has polymorphic base classes, implement their traits for this type.
 			var base = classType.superClass != null ? classType.superClass.t.get() : null;
 			while (base != null) {
 				if (classHasSubclasses(base)) {
-					items.push(RRaw(RustRawCode.compilerAt(emitBaseTraitImplForSubclass(base, classType, effectiveFuncFields), RawBaseTraitImplementation,
-						classType.pos)));
+					items.push(RImpl(emitBaseTraitImplForSubclass(base, classType, effectiveFuncFields)));
 				}
 				base = base.superClass != null ? base.superClass.t.get() : null;
 			}
@@ -3433,104 +3417,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				if (!shouldEmitClass(ifaceType, false))
 					continue;
 
-				var ifaceMod = rustModulePathForClass(ifaceType);
-				var traitPath = "crate::" + ifaceMod + "::" + rustTypeNameForClass(ifaceType);
 				var ifaceTypeParams = ifaceTarget.params != null ? ifaceTarget.params : [];
-				var ifaceTypeArgs = ifaceTypeParams.length > 0 ? ("<"
-					+ [for (p in ifaceTypeParams) rustTypeToString(toRustType(p, classType.pos))].join(", ") + ">") : "";
-				var implGenerics = reflaxe.rust.ast.RustASTPrinter.printGenericParameters(classGenericDecls);
-				var implGenericNames = rustGenericNamesFromDecls(classGenericDecls);
-				var implTurbofish = implGenericNames.length > 0 ? ("::<" + implGenericNames.join(", ") + ">") : "";
-
-				var implLines:Array<String> = [];
-				implLines.push("impl" + implGenerics + " " + traitPath + ifaceTypeArgs + " for " + refCellBasePath() + "<" + rustSelfTypeInst + "> {");
-				// Build a lookup of class methods by name/arity so we can implement the interface
-				// using the interface's signature (Rust traits require exact signature matches).
-				var classByKey:Map<String, ClassFuncData> = [];
-				for (f in effectiveFuncFields) {
-					if (f.isStatic)
-						continue;
-					if (f.field.getHaxeName() == "new")
-						continue;
-					if (f.expr == null)
-						continue;
-					var argc = f.args != null ? f.args.length : 0;
-					classByKey.set(f.field.getHaxeName() + "/" + argc, f);
-				}
-
-				for (ifaceField in ifaceType.fields.get()) {
-					// Only methods participate in interface traits.
-					switch (ifaceField.kind) {
-						case FMethod(_):
-						case _:
-							continue;
-					}
-
-					var ifaceSig = followType(ifaceField.type);
-					var ifaceMethodParams:Array<{name:String, t:Type, opt:Bool}> = [];
-					var ifaceRet:Type = ifaceField.type;
-					switch (ifaceSig) {
-						case TFun(params, ret):
-							ifaceMethodParams = params;
-							ifaceRet = ret;
-						case _:
-					}
-
-					// Apply the interface type arguments from `implements IFace<...>` to the raw interface
-					// method signature (so `K`/`V` type parameters become concrete types like `i32` / `T`).
-					function applyIfaceParams(t:Type):Type {
-						if (ifaceTypeParams.length == 0)
-							return t;
-						if (ifaceType.params == null || ifaceType.params.length == 0)
-							return t;
-						return TypeTools.applyTypeParameters(t, ifaceType.params, ifaceTypeParams);
-					}
-
-					var key = ifaceField.getHaxeName() + "/" + ifaceMethodParams.length;
-					if (!classByKey.exists(key))
-						continue;
-					var f = classByKey.get(key);
-
-					var sigArgs:Array<String> = ["&self"];
-					var callArgs:Array<String> = ["self"];
-					var usedArgNames:Map<String, Bool> = [];
-					for (i in 0...ifaceMethodParams.length) {
-						var p = ifaceMethodParams[i];
-						var baseName = p.name != null && p.name.length > 0 ? p.name : ("a" + i);
-						var argName = RustNaming.stableUnique(RustNaming.snakeIdent(baseName), usedArgNames);
-						var pt = applyIfaceParams(p.t);
-						sigArgs.push(argName + ": " + rustTypeToString(toRustType(pt, ifaceField.pos)));
-						callArgs.push(argName);
-					}
-
-					// IMPORTANT: use the interface return type, not the class method's return type.
-					// Haxe allows covariant returns; Rust trait impls do not.
-					var expectedRet = applyIfaceParams(ifaceRet);
-					var ret = rustTypeToString(rustReturnTypeForField(ifaceField, expectedRet, ifaceField.pos));
-					var ifaceRustName = rustMethodName(ifaceType, ifaceField);
-					var implRustName = rustMethodName(classType, f.field);
-					var call = rustSelfType + implTurbofish + "::" + implRustName + "(" + callArgs.join(", ") + ")";
-					implLines.push("\tfn " + ifaceRustName + "(" + sigArgs.join(", ") + ") -> " + ret + " {");
-					var needsTraitUpcast = (isInterfaceType(expectedRet) || isPolymorphicClassType(expectedRet))
-						&& isHxRefValueType(f.ret)
-						&& !isPolymorphicClassType(f.ret);
-					if (needsTraitUpcast) {
-						implLines.push("\t\tlet __tmp = " + call + ";");
-						implLines.push("\t\tlet __up: " + ret + " = match __tmp.as_arc_opt() {");
-						implLines.push("\t\t\tSome(__rc) => __rc.clone(),");
-						implLines.push("\t\t\tNone => hxrt::exception::throw(hxrt::dynamic::from(String::from(\"Null Access\"))),");
-						implLines.push("\t\t};");
-						implLines.push("\t\t__up");
-					} else {
-						implLines.push("\t\t" + call);
-					}
-					implLines.push("\t}");
-				}
-				implLines.push("\tfn __hx_type_id(&self) -> u32 {");
-				implLines.push("\t\tcrate::" + rustModulePathForClass(classType) + "::__HX_TYPE_ID");
-				implLines.push("\t}");
-				implLines.push("}");
-				items.push(RRaw(RustRawCode.compilerAt(implLines.join("\n"), RawInterfaceTraitImplementation, classType.pos)));
+				items.push(RImpl(emitInterfaceTraitImplementation(classType, effectiveFuncFields, ifaceType, ifaceTypeParams,
+					classGenericDecls)));
 			}
 		}
 
@@ -3658,7 +3547,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		var rustImpls = rustImplsFromMeta(enumType.meta);
 		for (spec in rustImpls) {
-			items.push(RRaw(RustRawCode.metadataAt(renderRustImplBlock(spec, enumGenerics, enumTypeInstType), RawTraitImplementation, spec.pos)));
+			items.push(RImpl(structuralRustImplFromMetadata(spec, enumGenerics, enumTypeInstType)));
 		}
 
 		return {items: items};
@@ -16123,6 +16012,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return derives;
 	}
 
+	/**
+		Decodes `@:rustImpl` into structural impl-header data.
+
+		Why / What / How
+		- Metadata necessarily arrives as strings, but trait and target paths must not remain opaque after
+		  that boundary. This function validates each supported metadata form, parses trait paths and
+		  optional target types immediately, and wraps only a non-empty inner body in metadata authority.
+		- The original trimmed trait spelling is retained solely as a deterministic sort key; no later
+		  analysis or printing depends on it.
+	**/
 	function rustImplsFromMeta(meta:haxe.macro.Type.MetaAccess):Array<RustImplSpec> {
 		var out:Array<RustImplSpec> = [];
 
@@ -16153,13 +16052,39 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				continue;
 			}
 
-			function addSpec(spec:RustImplSpec):Void {
-				if (spec.traitPath == null || StringTools.trim(spec.traitPath).length == 0) {
+			function addSpec(input:RustImplMetadataInput):Void {
+				if (input.traitPath == null || StringTools.trim(input.traitPath).length == 0) {
 					#if eval
 					Context.error("`@:rustImpl` trait path must be a non-empty string.", pos);
 					#end
 					return;
 				}
+				var traitPath:RustPath;
+				try {
+					traitPath = RustMetadataSyntax.parsePath(input.traitPath);
+				} catch (message:String) {
+					#if eval
+					RustDiagnostic.error(RustDiagnosticId.MetadataValue, "Invalid `@:rustImpl` trait path syntax: " + message, input.pos);
+					#end
+					return;
+				}
+				var spec:RustImplSpec = {
+					traitPath: traitPath,
+					sortKey: StringTools.trim(input.traitPath),
+					pos: input.pos
+				};
+				if (input.forType != null) {
+					try {
+						spec.forType = RustMetadataSyntax.parseType(input.forType);
+					} catch (message:String) {
+						#if eval
+						RustDiagnostic.error(RustDiagnosticId.MetadataValue, "Invalid `@:rustImpl` `forType` syntax: " + message, input.pos);
+						#end
+						return;
+					}
+				}
+				if (input.body != null && StringTools.trim(input.body).length > 0)
+					spec.body = RustRawCode.metadataAt(input.body, RawTraitImplementation, input.pos);
 				out.push(spec);
 			}
 
@@ -16207,7 +16132,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						}
 
 						if (traitPath != null) {
-							var spec:RustImplSpec = {traitPath: traitPath, pos: pos};
+							var spec:RustImplMetadataInput = {traitPath: traitPath, pos: pos};
 							if (forType != null)
 								spec.forType = forType;
 							if (body != null)
@@ -16230,7 +16155,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				traitPath = stringConst(entry.params[0]);
 				body = stringConst(entry.params[1]);
 				if (traitPath != null) {
-					var spec:RustImplSpec = {traitPath: traitPath, pos: pos};
+					var spec:RustImplMetadataInput = {traitPath: traitPath, pos: pos};
 					if (body != null)
 						spec.body = body;
 					addSpec(spec);
@@ -16242,7 +16167,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					#end
 					continue;
 				}
-				var spec:RustImplSpec = {traitPath: traitPath, pos: pos};
+				var spec:RustImplMetadataInput = {traitPath: traitPath, pos: pos};
 				if (body != null)
 					spec.body = body;
 				addSpec(spec);
@@ -16251,25 +16176,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		// Stable ordering for snapshots.
-		out.sort((a, b) -> compareStrings(a.traitPath, b.traitPath));
+		out.sort((a, b) -> compareStrings(a.sortKey, b.sortKey));
 		return out;
 	}
 
-	function renderRustImplBlock(spec:RustImplSpec, implGenerics:RustGenericParameters, forType:RustType):String {
-		var header = "impl" + reflaxe.rust.ast.RustASTPrinter.printGenericParameters(implGenerics);
-		header += " " + spec.traitPath + " for " + (spec.forType != null ? spec.forType : rustTypeToString(forType)) + " {";
+	/**
+		Builds the final trait impl around one decoded metadata entry.
 
-		var lines:Array<String> = [header];
-		var body = spec.body;
-		if (body != null) {
-			var trimmed = StringTools.trim(body);
-			if (trimmed.length > 0) {
-				for (l in body.split("\n"))
-					lines.push("\t" + l);
-			}
-		}
-		lines.push("}");
-		return lines.join("\n");
+		Why / What / How
+		- The compiler owns the impl header even when a user owns its inner body. The default generated
+		  target type or parsed override is stored structurally, and `AssocRaw` is added only when the
+		  decoder retained a non-empty metadata body.
+	**/
+	function structuralRustImplFromMetadata(spec:RustImplSpec, implGenerics:RustGenericParameters, defaultForType:RustType):RustImpl {
+		var target = spec.forType != null ? spec.forType : defaultForType;
+		var associated:Array<RustAssociatedItem> = spec.body == null ? [] : [AssocRaw(spec.body)];
+		return RustImpl.traitImplementation(implGenerics, spec.traitPath, target, RustWhereClause.empty(), associated);
 	}
 
 	function mergeUniqueRustPaths(base:Array<RustPath>, extra:Array<RustPath>):Array<RustPath> {
@@ -16345,132 +16267,289 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return classHasSubclass != null && classHasSubclass.exists(classKey(cls));
 	}
 
-	function emitClassTrait(classType:ClassType, funcFields:Array<ClassFuncData>):String {
-		var traitName = rustTypeNameForClass(classType) + "Trait";
-		var generics = rustGenericDeclsForClass(classType);
-		var genericSuffix = reflaxe.rust.ast.RustASTPrinter.printGenericParameters(generics);
-		var lines:Array<String> = [];
-		lines.push("pub trait " + traitName + genericSuffix + ": Send + Sync {");
+	/**
+		Builds one ordinary `&self` trait method without target-syntax strings.
 
-		for (spec in getAllInstanceVarFieldSpecsForStruct(classType)) {
-			var cf = spec.field;
-			var fieldType = specializeAncestorType(classType, spec.owner, cf.type);
-			var ty = rustTypeToString(toRustType(fieldType, cf.pos));
-			lines.push("\tfn " + rustGetterName(classType, cf) + "(&self) -> " + ty + ";");
-			lines.push("\tfn " + rustSetterName(classType, cf) + "(&self, v: " + ty + ");");
-		}
-
-		for (f in funcFields) {
-			if (f.isStatic)
-				continue;
-			if (f.field.getHaxeName() == "new")
-				continue;
-			if (f.expr == null)
-				continue;
-
-			var sigArgs:Array<String> = ["&self"];
-			var usedArgNames:Map<String, Bool> = [];
-			for (a in f.args) {
-				var baseName = a.getName();
-				if (baseName == null || baseName.length == 0)
-					baseName = "a";
-				var argName = RustNaming.stableUnique(RustNaming.snakeIdent(baseName), usedArgNames);
-				sigArgs.push(argName + ": " + rustTypeToString(toRustType(a.type, f.field.pos)));
-			}
-			var ret = rustTypeToString(toRustType(f.ret, f.field.pos));
-			lines.push("\tfn " + rustMethodName(classType, f.field) + "(" + sigArgs.join(", ") + ") -> " + ret + ";");
-		}
-
-		lines.push("\tfn __hx_type_id(&self) -> u32;");
-		lines.push("}");
-		return lines.join("\n");
+		Why / What / How
+		- Class/interface trait lowering repeats the same receiver, visibility, generic, and where-clause
+		  contract. Keeping that shape here prevents a later emitter from quietly rebuilding signatures
+		  as text. Callers provide typed parameters, an optional explicit return annotation, and either a
+		  typed body or `null` for a trait signature.
+	**/
+	function borrowedAssociatedMethod(name:String, parameters:Array<RustFunctionParameter>, returnType:Null<RustType>,
+			body:Null<RustBlock>):RustAssociatedItem {
+		return AssocFunction(RustAssociatedFunction.declaration(VPrivate, name, false, RustGenericParameters.empty(), ReceiverBorrowed(false, null),
+			parameters, returnType, RustWhereClause.empty(), body));
 	}
 
-	function emitClassTraitImplForSelf(classType:ClassType, funcFields:Array<ClassFuncData>):String {
-		var modName = rustModulePathForClass(classType);
-		var traitPathBase = "crate::" + modName + "::" + rustTypeNameForClass(classType) + "Trait";
-		var rustSelfType = rustTypeNameForClass(classType);
-		var rustSelfInst = rustClassTypeInst(classType);
-		var generics = rustGenericDeclsForClass(classType);
-		var genericNames = rustGenericNamesFromDecls(generics);
-		var turbofish = genericNames.length > 0 ? ("::<" + genericNames.join(", ") + ">") : "";
-		var traitArgs = genericNames.length > 0 ? "<" + genericNames.join(", ") + ">" : "";
-		var implGenerics = reflaxe.rust.ast.RustASTPrinter.printGenericParameters(generics);
+	/**
+		Allocates the parameter names shared by a trait signature and its forwarding call.
 
-		var lines:Array<String> = [];
-		lines.push("impl" + implGenerics + " " + traitPathBase + traitArgs + " for " + refCellBasePath() + "<" + rustSelfInst + "> {");
-
-		for (spec in getAllInstanceVarFieldSpecsForStruct(classType)) {
-			var cf = spec.field;
-			var fieldType = specializeAncestorType(classType, spec.owner, cf.type);
-			var ty = rustTypeToString(toRustType(fieldType, cf.pos));
-
-			lines.push("\tfn " + rustGetterName(classType, cf) + "(&self) -> " + ty + " {");
-			if (shouldOptionWrapStructFieldType(fieldType)) {
-				lines.push("\t\tself.borrow()." + rustFieldName(classType, cf) + ".as_ref().unwrap().clone()");
-			} else if (isCopyType(fieldType)) {
-				lines.push("\t\tself.borrow()." + rustFieldName(classType, cf));
-			} else {
-				lines.push("\t\tself.borrow()." + rustFieldName(classType, cf) + ".clone()");
-			}
-			lines.push("\t}");
-
-			lines.push("\tfn " + rustSetterName(classType, cf) + "(&self, v: " + ty + ") {");
-			if (shouldOptionWrapStructFieldType(fieldType)) {
-				lines.push("\t\tself.borrow_mut()." + rustFieldName(classType, cf) + " = Some(v);");
-			} else {
-				lines.push("\t\tself.borrow_mut()." + rustFieldName(classType, cf) + " = v;");
-			}
-			lines.push("\t}");
+		Why / What / How
+		- Name collision handling must happen once or a generated signature can disagree with its body.
+		  Each Haxe argument becomes a typed associated parameter and a matching local-read expression;
+		  the returned call list starts with structural `ESelf`.
+	**/
+	function structuralClassMethodArguments(f:ClassFuncData):{parameters:Array<RustFunctionParameter>, callArguments:Array<RustExpr>} {
+		var parameters:Array<RustFunctionParameter> = [];
+		var callArguments:Array<RustExpr> = [ESelf];
+		var usedArgNames:Map<String, Bool> = [];
+		for (argument in f.args) {
+			var baseName = argument.getName();
+			if (baseName == null || baseName.length == 0)
+				baseName = "a";
+			var argumentName = RustNaming.stableUnique(RustNaming.snakeIdent(baseName), usedArgNames);
+			parameters.push(RustFunctionParameter.named(argumentName, toRustType(argument.type, f.field.pos)));
+			callArguments.push(rustSingleExpr(argumentName));
 		}
+		return {parameters: parameters, callArguments: callArguments};
+	}
 
+	/** Returns the compiler-owned `Send + Sync` supertrait contract as typed bounds. */
+	function generatedTraitSupertraits():Array<RustGenericBound> {
+		return [
+			GenericTraitBound(RustPath.single("Send"), TraitBoundRequired),
+			GenericTraitBound(RustPath.single("Sync"), TraitBoundRequired)
+		];
+	}
+
+	/**
+		Lowers one Haxe interface declaration to a structural Rust trait.
+
+		Why / What / How
+		- Interface method signatures and runtime type identity participate in dispatch and no-runtime
+		  analysis. Abstract instance methods become body-less associated functions, and the existing
+		  `Send + Sync` contract remains explicit typed supertraits.
+	**/
+	function emitInterfaceTrait(classType:ClassType, funcFields:Array<ClassFuncData>, generics:RustGenericParameters):RustTraitDeclaration {
+		var associated:Array<RustAssociatedItem> = [];
 		for (f in funcFields) {
-			if (f.isStatic)
+			if (f.isStatic || f.expr != null)
 				continue;
-			if (f.field.getHaxeName() == "new")
-				continue;
-			if (f.expr == null)
-				continue;
+			var arguments = structuralClassMethodArguments(f);
+			associated.push(borrowedAssociatedMethod(rustMethodName(classType, f.field), arguments.parameters,
+				rustReturnTypeForField(f.field, f.ret, f.field.pos), null));
+		}
+		associated.push(borrowedAssociatedMethod("__hx_type_id", [], rustNamedType("u32"), null));
+		return RustTraitDeclaration.named(VPub, rustTypeNameForClass(classType), generics, generatedTraitSupertraits(), RustWhereClause.empty(),
+			associated);
+	}
 
-			var sigArgs:Array<String> = ["&self"];
-			var callArgs:Array<String> = ["self"];
-			var usedArgNames:Map<String, Bool> = [];
-			for (a in f.args) {
-				var baseName = a.getName();
-				if (baseName == null || baseName.length == 0)
-					baseName = "a";
-				var argName = RustNaming.stableUnique(RustNaming.snakeIdent(baseName), usedArgNames);
-				sigArgs.push(argName + ": " + rustTypeToString(toRustType(a.type, f.field.pos)));
-				callArgs.push(argName);
-			}
-			var ret = rustTypeToString(toRustType(f.ret, f.field.pos));
+	/**
+		Lowers the polymorphic surface of one Haxe class to a structural Rust trait.
+
+		Why / What / How
+		- Generated field accessors, callable methods, and type identity must remain one exact surface for
+		  self, subclass, and base-trait implementations. This builder emits typed signatures only; bodies
+		  are supplied by the corresponding impl builders.
+	**/
+	function emitClassTrait(classType:ClassType, funcFields:Array<ClassFuncData>):RustTraitDeclaration {
+		var associated:Array<RustAssociatedItem> = [];
+		for (spec in getAllInstanceVarFieldSpecsForStruct(classType)) {
+			var field = spec.field;
+			var fieldType = specializeAncestorType(classType, spec.owner, field.type);
+			var rustType = toRustType(fieldType, field.pos);
+			associated.push(borrowedAssociatedMethod(rustGetterName(classType, field), [], rustType, null));
+			associated.push(borrowedAssociatedMethod(rustSetterName(classType, field), [RustFunctionParameter.named("v", rustType)], null, null));
+		}
+		for (f in funcFields) {
+			if (f.isStatic || f.field.getHaxeName() == "new" || f.expr == null)
+				continue;
+			var arguments = structuralClassMethodArguments(f);
+			associated.push(borrowedAssociatedMethod(rustMethodName(classType, f.field), arguments.parameters, toRustType(f.ret, f.field.pos), null));
+		}
+		associated.push(borrowedAssociatedMethod("__hx_type_id", [], rustNamedType("u32"), null));
+		return RustTraitDeclaration.named(VPub, rustTypeNameForClass(classType) + "Trait", rustGenericDeclsForClass(classType),
+			generatedTraitSupertraits(), RustWhereClause.empty(), associated);
+	}
+
+	/** Builds the typed field-read chain used by generated trait accessor implementations. */
+	function structuralFieldGetter(receiverType:ClassType, field:ClassField, fieldType:Type):RustExpr {
+		var value = rustField(ECall(rustField(ESelf, "borrow"), []), rustFieldName(receiverType, field));
+		if (shouldOptionWrapStructFieldType(fieldType))
+			return ECall(rustField(ECall(rustField(value, "as_ref"), []), "unwrap"), []);
+		if (isCopyType(fieldType))
+			return value;
+		return ECall(rustField(value, "clone"), []);
+	}
+
+	/** Adds the required clone after unwrapping an option-backed polymorphic field. */
+	function structuralFieldGetterWithClone(receiverType:ClassType, field:ClassField, fieldType:Type):RustExpr {
+		var value = structuralFieldGetter(receiverType, field, fieldType);
+		return shouldOptionWrapStructFieldType(fieldType) ? ECall(rustField(value, "clone"), []) : value;
+	}
+
+	/** Builds one typed borrow-mutate-and-assign accessor body, including option wrapping. */
+	function structuralFieldSetter(receiverType:ClassType, field:ClassField, fieldType:Type):RustBlock {
+		var target = rustField(ECall(rustField(ESelf, "borrow_mut"), []), rustFieldName(receiverType, field));
+		var value = shouldOptionWrapStructFieldType(fieldType) ? ECall(rustSingleExpr("Some"), [rustSingleExpr("v")]) : rustSingleExpr("v");
+		return {stmts: [RSemi(EAssign(target, value))], tail: null};
+	}
+
+	/**
+		Implements a generated class's own polymorphism trait on its physical reference cell.
+
+		Why / What / How
+		- Rust has no implicit Haxe class dispatch. Each accessor/method forwards through typed expressions,
+		  generic arguments remain on structural paths, and `__hx_type_id` points at the owning module's
+		  constant without rendering a path string.
+	**/
+	function emitClassTraitImplForSelf(classType:ClassType, funcFields:Array<ClassFuncData>):RustImpl {
+		var generics = rustGenericDeclsForClass(classType);
+		var genericArguments = rustGenericArgumentsFromDecls(generics);
+		var associated:Array<RustAssociatedItem> = [];
+		for (spec in getAllInstanceVarFieldSpecsForStruct(classType)) {
+			var field = spec.field;
+			var fieldType = specializeAncestorType(classType, spec.owner, field.type);
+			var rustType = toRustType(fieldType, field.pos);
+			associated.push(borrowedAssociatedMethod(rustGetterName(classType, field), [], rustType,
+				{stmts: [], tail: structuralFieldGetterWithClone(classType, field, fieldType)}));
+			associated.push(borrowedAssociatedMethod(rustSetterName(classType, field), [RustFunctionParameter.named("v", rustType)], null,
+				structuralFieldSetter(classType, field, fieldType)));
+		}
+		for (f in funcFields) {
+			if (f.isStatic || f.field.getHaxeName() == "new" || f.expr == null)
+				continue;
+			var arguments = structuralClassMethodArguments(f);
 			var rustName = rustMethodName(classType, f.field);
-			lines.push("\tfn " + rustName + "(" + sigArgs.join(", ") + ") -> " + ret + " {");
-			lines.push("\t\t" + rustSelfType + turbofish + "::" + rustName + "(" + callArgs.join(", ") + ")");
-			lines.push("\t}");
+			var call = ECall(rustRelativeMemberExpr([rustTypeNameForClass(classType)], genericArguments, rustName), arguments.callArguments);
+			associated.push(borrowedAssociatedMethod(rustName, arguments.parameters, toRustType(f.ret, f.field.pos), {stmts: [], tail: call}));
 		}
-
-		lines.push("\tfn __hx_type_id(&self) -> u32 {");
-		lines.push("\t\tcrate::" + modName + "::__HX_TYPE_ID");
-		lines.push("\t}");
-
-		lines.push("}");
-		return lines.join("\n");
+		var typeIdPath = rustModuleSegmentsForClass(classType);
+		typeIdPath.push("__HX_TYPE_ID");
+		associated.push(borrowedAssociatedMethod("__hx_type_id", [], rustNamedType("u32"), {stmts: [], tail: rustCrateExpr(typeIdPath)}));
+		var traitPathNames = rustModuleSegmentsForClass(classType);
+		traitPathNames.push(rustTypeNameForClass(classType) + "Trait");
+		return RustImpl.traitImplementation(generics, rustCratePath(traitPathNames, genericArguments),
+			rustRefCellType(rustClassTypeInstType(classType)), RustWhereClause.empty(), associated);
 	}
 
-	function emitBaseTraitImplForSubclass(baseType:ClassType, subType:ClassType, subFuncFields:Array<ClassFuncData>):String {
-		var baseMod = rustModulePathForClass(baseType);
-		var baseTraitPathBase = "crate::" + baseMod + "::" + rustTypeNameForClass(baseType) + "Trait";
-		var rustSubType = rustTypeNameForClass(subType);
-		var rustSubInst = rustClassTypeInst(subType);
+	/** Builds the catchable Haxe null-access throw used by typed covariant upcasts. */
+	function structuralNullAccessThrow():RustExpr {
+		return ECall(rustRelativeExpr(["hxrt", "exception", "throw"]), [
+			ECall(rustRelativeExpr(["hxrt", "dynamic", "from"]), [ECall(rustRelativeExpr(["String", "from"]), [ELitString("Null Access")])])
+		]);
+	}
+
+	/**
+		Builds the typed concrete-reference to trait-object upcast block.
+
+		Why / What / How
+		- Haxe permits a concrete covariant return where Rust requires the trait's exact object type. The
+		  block binds the concrete result once, matches its optional Arc, clones the successful handle,
+		  and preserves the existing catchable null-access failure.
+	**/
+	function structuralCovariantUpcast(call:RustExpr, expectedType:RustType):RustBlock {
+		var optionalArc = ECall(rustField(rustSingleExpr("__tmp"), "as_arc_opt"), []);
+		return {
+			stmts: [
+				RLet("__tmp", false, null, call),
+				RLet("__up", false, expectedType, EMatch(optionalArc, [
+					{pat: PTupleStruct(RustPath.single("Some"), [PBind("__rc")]), expr: ECall(rustField(rustSingleExpr("__rc"), "clone"), [])},
+					{pat: PPath(RustPath.single("None")), expr: structuralNullAccessThrow()}
+				]))
+			],
+			tail: rustSingleExpr("__up")
+		};
+	}
+
+	/**
+		Implements one resolved Haxe interface on a concrete generated class cell.
+
+		Why / What / How
+		- Rust requires an exact signature for every trait method, including resolved interface type
+		  arguments and covariant returns. This builder specializes the interface signature, pairs it with
+		  the concrete method by name/arity, and emits typed forwarding or upcast bodies.
+	**/
+	function emitInterfaceTraitImplementation(classType:ClassType, effectiveFuncFields:Array<ClassFuncData>, ifaceType:ClassType,
+			ifaceTypeParams:Array<Type>, classGenerics:RustGenericParameters):RustImpl {
+		var classByKey:Map<String, ClassFuncData> = [];
+		for (f in effectiveFuncFields) {
+			if (f.isStatic || f.field.getHaxeName() == "new" || f.expr == null)
+				continue;
+			var argumentCount = f.args != null ? f.args.length : 0;
+			classByKey.set(f.field.getHaxeName() + "/" + argumentCount, f);
+		}
+
+		function applyInterfaceParameters(type:Type):Type {
+			if (ifaceTypeParams.length == 0 || ifaceType.params == null || ifaceType.params.length == 0)
+				return type;
+			return TypeTools.applyTypeParameters(type, ifaceType.params, ifaceTypeParams);
+		}
+
+		var associated:Array<RustAssociatedItem> = [];
+		var classGenericArguments = rustGenericArgumentsFromDecls(classGenerics);
+		for (ifaceField in ifaceType.fields.get()) {
+			switch (ifaceField.kind) {
+				case FMethod(_):
+				case _:
+					continue;
+			}
+
+			var ifaceMethodParams:Array<{name:String, t:Type, opt:Bool}> = [];
+			var ifaceReturn:Type = ifaceField.type;
+			switch (followType(ifaceField.type)) {
+				case TFun(parameters, returnType):
+					ifaceMethodParams = parameters;
+					ifaceReturn = returnType;
+				case _:
+			}
+			var key = ifaceField.getHaxeName() + "/" + ifaceMethodParams.length;
+			if (!classByKey.exists(key))
+				continue;
+			var implementation = classByKey.get(key);
+
+			var parameters:Array<RustFunctionParameter> = [];
+			var callArguments:Array<RustExpr> = [ESelf];
+			var usedArgNames:Map<String, Bool> = [];
+			for (index in 0...ifaceMethodParams.length) {
+				var parameter = ifaceMethodParams[index];
+				var baseName = parameter.name != null && parameter.name.length > 0 ? parameter.name : ("a" + index);
+				var argumentName = RustNaming.stableUnique(RustNaming.snakeIdent(baseName), usedArgNames);
+				parameters.push(RustFunctionParameter.named(argumentName, toRustType(applyInterfaceParameters(parameter.t), ifaceField.pos)));
+				callArguments.push(rustSingleExpr(argumentName));
+			}
+
+			// Rust trait impls require the interface's exact return type even when Haxe accepts a
+			// covariant concrete return on the implementing class.
+			var expectedReturn = applyInterfaceParameters(ifaceReturn);
+			var rustReturnType = rustReturnTypeForField(ifaceField, expectedReturn, ifaceField.pos);
+			var call = ECall(rustRelativeMemberExpr([rustTypeNameForClass(classType)], classGenericArguments,
+				rustMethodName(classType, implementation.field)), callArguments);
+			var needsTraitUpcast = (isInterfaceType(expectedReturn) || isPolymorphicClassType(expectedReturn))
+				&& isHxRefValueType(implementation.ret)
+				&& !isPolymorphicClassType(implementation.ret);
+			var body = needsTraitUpcast ? structuralCovariantUpcast(call, rustReturnType) : {stmts: [], tail: call};
+			associated.push(borrowedAssociatedMethod(rustMethodName(ifaceType, ifaceField), parameters, rustReturnType, body));
+		}
+
+		var typeIdPath = rustModuleSegmentsForClass(classType);
+		typeIdPath.push("__HX_TYPE_ID");
+		associated.push(borrowedAssociatedMethod("__hx_type_id", [], rustNamedType("u32"), {stmts: [], tail: rustCrateExpr(typeIdPath)}));
+		var traitPathNames = rustModuleSegmentsForClass(ifaceType);
+		traitPathNames.push(rustTypeNameForClass(ifaceType));
+		var traitArguments:Array<RustGenericArgument> = [
+			for (parameter in ifaceTypeParams) GenericType(toRustType(parameter, classType.pos))
+		];
+		return RustImpl.traitImplementation(classGenerics, rustCratePath(traitPathNames, traitArguments),
+			rustRefCellType(rustClassTypeInstType(classType)), RustWhereClause.empty(), associated);
+	}
+
+	/**
+		Implements an ancestor class trait on a subclass's physical Rust cell.
+
+		Why / What / How
+		- Rust does not inherit impls across distinct `HxRefCell<Base>` / `HxRefCell<Sub>` types. The method
+		  reuses the ancestor trait surface, resolves generic arguments in the subclass context, forwards to
+		  concrete/inherited subclass shims, and performs typed covariant upcasts when required.
+	**/
+	function emitBaseTraitImplForSubclass(baseType:ClassType, subType:ClassType, subFuncFields:Array<ClassFuncData>):RustImpl {
 		var subGenerics = rustGenericDeclsForClass(subType);
-		var subGenericNames = rustGenericNamesFromDecls(subGenerics);
-		var subTurbofish = subGenericNames.length > 0 ? ("::<" + subGenericNames.join(", ") + ">") : "";
-		var subImplGenerics = reflaxe.rust.ast.RustASTPrinter.printGenericParameters(subGenerics);
+		var subGenericArguments = rustGenericArgumentsFromDecls(subGenerics);
 
 		var resolvedBaseArgs = resolvedAncestorTypeArgs(subType, baseType);
 		var baseArgs = resolvedBaseArgs != null ? resolvedBaseArgs : [];
-		var baseTraitArgs = baseArgs.length > 0 ? ("<" + [for (p in baseArgs) rustTypeToString(toRustType(p, subType.pos))].join(", ") + ">") : "";
+		var baseTraitArguments:Array<RustGenericArgument> = [for (parameter in baseArgs) GenericType(toRustType(parameter, subType.pos))];
 
 		var subMethodsByKey = new Map<String, ClassFuncData>();
 		for (f in subFuncFields) {
@@ -16483,40 +16562,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			subMethodsByKey.set(f.field.getHaxeName() + "/" + f.args.length, f);
 		}
 
-		var lines:Array<String> = [];
-		lines.push("impl"
-			+ subImplGenerics
-			+ " "
-			+ baseTraitPathBase
-			+ baseTraitArgs
-			+ " for "
-			+ refCellBasePath()
-			+ "<"
-			+ rustSubInst
-			+ "> {");
+		var associated:Array<RustAssociatedItem> = [];
 
 		for (spec in getAllInstanceVarFieldSpecsForStruct(baseType)) {
-			var cf = spec.field;
-			var fieldType = specializeAncestorType(subType, spec.owner, cf.type);
-			var ty = rustTypeToString(toRustType(fieldType, cf.pos));
-
-			lines.push("\tfn " + rustGetterName(baseType, cf) + "(&self) -> " + ty + " {");
-			if (shouldOptionWrapStructFieldType(fieldType)) {
-				lines.push("\t\tself.borrow()." + rustFieldName(subType, cf) + ".as_ref().unwrap().clone()");
-			} else if (isCopyType(fieldType)) {
-				lines.push("\t\tself.borrow()." + rustFieldName(subType, cf));
-			} else {
-				lines.push("\t\tself.borrow()." + rustFieldName(subType, cf) + ".clone()");
-			}
-			lines.push("\t}");
-
-			lines.push("\tfn " + rustSetterName(baseType, cf) + "(&self, v: " + ty + ") {");
-			if (shouldOptionWrapStructFieldType(fieldType)) {
-				lines.push("\t\tself.borrow_mut()." + rustFieldName(subType, cf) + " = Some(v);");
-			} else {
-				lines.push("\t\tself.borrow_mut()." + rustFieldName(subType, cf) + " = v;");
-			}
-			lines.push("\t}");
+			var field = spec.field;
+			var fieldType = specializeAncestorType(subType, spec.owner, field.type);
+			var rustType = toRustType(fieldType, field.pos);
+			associated.push(borrowedAssociatedMethod(rustGetterName(baseType, field), [], rustType,
+				{stmts: [], tail: structuralFieldGetterWithClone(subType, field, fieldType)}));
+			associated.push(borrowedAssociatedMethod(rustSetterName(baseType, field), [RustFunctionParameter.named("v", rustType)], null,
+				structuralFieldSetter(subType, field, fieldType)));
 		}
 
 		// Base traits include inherited methods (see `emitClassTrait` using `effectiveFuncFields`).
@@ -16577,24 +16632,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							case _: [];
 						}
 
-						var sigArgs:Array<String> = ["&self"];
-						var callArgs:Array<String> = ["self"];
+						var parameters:Array<RustFunctionParameter> = [];
+						var callArguments:Array<RustExpr> = [ESelf];
 						var usedArgNames:Map<String, Bool> = [];
 						for (i in 0...args.length) {
 							var a = args[i];
 							var argName = a.name != null && a.name.length > 0 ? a.name : ("a" + i);
 							var rustArgName = RustNaming.stableUnique(RustNaming.snakeIdent(argName), usedArgNames);
-							sigArgs.push(rustArgName + ": " + rustTypeToString(toRustType(a.t, cf.pos)));
-							callArgs.push(rustArgName);
+							parameters.push(RustFunctionParameter.named(rustArgName, toRustType(a.t, cf.pos)));
+							callArguments.push(rustSingleExpr(rustArgName));
 						}
 
 						var retTy = switch (ft) {
 							case TFun(_, r): r;
 							case _: Context.getType("Void");
 						}
-						var ret = rustTypeToString(toRustType(retTy, cf.pos));
-
-						lines.push("\tfn " + rustMethodName(baseType, cf) + "(" + sigArgs.join(", ") + ") -> " + ret + " {");
+						var rustReturnType = toRustType(retTy, cf.pos);
 						var key = cf.getHaxeName() + "/" + args.length;
 						var implFunc = subMethodsByKey.get(key);
 						if (implFunc == null) {
@@ -16610,7 +16663,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								cf.pos);
 						}
 						var overrideFunc = implFunc;
-						var call = rustSubType + subTurbofish + "::" + rustMethodName(subType, overrideFunc.field) + "(" + callArgs.join(", ") + ")";
+						var call = ECall(rustRelativeMemberExpr([rustTypeNameForClass(subType)], subGenericArguments,
+							rustMethodName(subType, overrideFunc.field)), callArguments);
 
 						var baseRetIsTrait = isInterfaceType(retTy) || isPolymorphicClassType(retTy);
 						var overrideRetRust = toRustType(overrideFunc.ret, overrideFunc.field.pos);
@@ -16618,31 +16672,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 						// Covariant return types: base trait returns `HxRc<dyn BaseTrait>`, override may return
 						// a concrete `HxRef<Sub>`. Upcast via `as_arc_opt()` when needed.
-						if (baseRetIsTrait && overrideRetIsHxRef) {
-							lines.push("\t\t{");
-							lines.push("\t\t\tlet __tmp = " + call + ";");
-							lines.push("\t\t\tlet __up: " + ret + " = match __tmp.as_arc_opt() {");
-							lines.push("\t\t\t\tSome(__rc) => __rc.clone(),");
-							lines.push("\t\t\t\tNone => { hxrt::exception::throw(hxrt::dynamic::from(String::from(\"Null Access\"))) }");
-							lines.push("\t\t\t};");
-							lines.push("\t\t\t__up");
-							lines.push("\t\t}");
-						} else {
-							lines.push("\t\t" + call);
-						}
-						lines.push("\t}");
+						var body:RustBlock = baseRetIsTrait && overrideRetIsHxRef ?
+							{stmts: [], tail: EBlock(structuralCovariantUpcast(call, rustReturnType))} :
+							{stmts: [], tail: call};
+						associated.push(borrowedAssociatedMethod(rustMethodName(baseType, cf), parameters, rustReturnType, body));
 					}
 				case _:
 			}
 		}
 
-		var subMod = rustModulePathForClass(subType);
-		lines.push("\tfn __hx_type_id(&self) -> u32 {");
-		lines.push("\t\tcrate::" + subMod + "::__HX_TYPE_ID");
-		lines.push("\t}");
-
-		lines.push("}");
-		return lines.join("\n");
+		var typeIdPath = rustModuleSegmentsForClass(subType);
+		typeIdPath.push("__HX_TYPE_ID");
+		associated.push(borrowedAssociatedMethod("__hx_type_id", [], rustNamedType("u32"), {stmts: [], tail: rustCrateExpr(typeIdPath)}));
+		var traitPathNames = rustModuleSegmentsForClass(baseType);
+		traitPathNames.push(rustTypeNameForClass(baseType) + "Trait");
+		return RustImpl.traitImplementation(subGenerics, rustCratePath(traitPathNames, baseTraitArguments),
+			rustRefCellType(rustClassTypeInstType(subType)), RustWhereClause.empty(), associated);
 	}
 
 	/**

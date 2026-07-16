@@ -5,6 +5,7 @@ import reflaxe.rust.CompilationContext;
 import reflaxe.rust.RustDiagnostic;
 import reflaxe.rust.RustDiagnostic.RustDiagnosticId;
 import reflaxe.rust.ast.RustAST.RustBlock;
+import reflaxe.rust.ast.RustAST.RustAssociatedItem;
 import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustFile;
 import reflaxe.rust.ast.RustAST.RustGenericParameters;
@@ -66,6 +67,7 @@ class NoHxrtPass implements RustPass {
 		var scanStmt:RustStmt->Void = null;
 		var scanExpr:RustExpr->Void = null;
 		var scanGenericParameters:RustGenericParameters->Void = null;
+		var scanAssociatedBody:RustAssociatedItem->Void = null;
 		var scanItem:RustItem->Void = null;
 
 		var recordHxrtPath = function(path:RustPath, kind:String):Void {
@@ -183,7 +185,7 @@ class NoHxrtPass implements RustPass {
 					scanBlock(body);
 				case EAwait(value):
 					scanExpr(value);
-				case ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
+				case ESelf | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 			}
 		};
 
@@ -201,6 +203,20 @@ class NoHxrtPass implements RustPass {
 				}
 			}
 		}
+
+		scanAssociatedBody = function(item:RustAssociatedItem):Void {
+			switch (item) {
+				case AssocFunction(method):
+					if (method.body != null)
+						scanBlock(method.body);
+				case AssocConst(declaration):
+					if (declaration.value != null)
+						scanExpr(declaration.value);
+				case AssocRaw(raw):
+					scanRawItem(raw);
+				case AssocType(_):
+			}
+		};
 
 		scanItem = function(item:RustItem):Void {
 			switch (item) {
@@ -246,16 +262,16 @@ class NoHxrtPass implements RustPass {
 						for (arg in variant.args)
 							scanType(arg);
 					}
-				case RImpl(i):
-					scanGenericParameters(i.generics);
-					scanType(i.forType);
-					for (fn in i.functions) {
-						scanGenericParameters(fn.generics);
-						for (arg in fn.args)
-							scanType(arg.ty);
-						scanType(fn.ret);
-						scanBlock(fn.body);
-					}
+				case RTrait(declaration):
+					RustPathAnalysis.visitTraitTree(declaration,
+						candidate -> recordHxrtPath(candidate, "trait declaration"));
+					for (associated in declaration)
+						scanAssociatedBody(associated);
+				case RImpl(declaration):
+					RustPathAnalysis.visitImplTree(declaration,
+						candidate -> recordHxrtPath(candidate, "impl declaration"));
+					for (associated in declaration)
+						scanAssociatedBody(associated);
 				case RRaw(raw):
 					scanRawItem(raw);
 			}

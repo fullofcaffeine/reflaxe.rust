@@ -1,6 +1,7 @@
 package reflaxe.rust.passes;
 
 import reflaxe.rust.CompilationContext;
+import reflaxe.rust.ast.RustAST.RustAssociatedItem;
 import reflaxe.rust.ast.RustAST.RustBlock;
 import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustFile;
@@ -66,14 +67,20 @@ class StatementCleanupPass implements RustPass {
 					RModule(declaration.withItems([for (child in declaration) rewriteItem(child)]));
 			case RFn(f):
 				RFn(rewriteFunction(f));
+			case RTrait(declaration):
+				RTrait(declaration.withItems([for (associated in declaration) rewriteAssociatedItem(associated)]));
 			case RImpl(i):
-				RImpl({
-					generics: i.generics,
-					forType: i.forType,
-					functions: [for (f in i.functions) rewriteFunction(f)]
-				});
+				RImpl(i.withItems([for (associated in i) rewriteAssociatedItem(associated)]));
 			case RInnerAttribute(_) | RComment(_) | RUse(_) | RConst(_) | RStatic(_) | RTypeAlias(_) | RStruct(_) | REnum(_) | RRaw(_):
 				item;
+		};
+	}
+
+	function rewriteAssociatedItem(item:RustAssociatedItem):RustAssociatedItem {
+		return switch (item) {
+			case AssocFunction(method):
+				method.body == null ? item : AssocFunction(method.withBody(rewriteBlock(method.body)));
+			case AssocType(_) | AssocConst(_) | AssocRaw(_): item;
 		};
 	}
 
@@ -119,7 +126,7 @@ class StatementCleanupPass implements RustPass {
 
 	function rewriteExpr(expr:RustExpr):RustExpr {
 		return switch (expr) {
-			case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ESelf | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 			case ECall(func, args):
 				ECall(rewriteExpr(func), [for (arg in args) rewriteExpr(arg)]);
@@ -411,7 +418,7 @@ class StatementCleanupPass implements RustPass {
 				exprHasDirectAssignmentToName(recv, name);
 			case EPinAsyncMove(body):
 				blockHasDirectAssignmentToName(body, name);
-			case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ESelf | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				false;
 		};
 	}
@@ -522,7 +529,7 @@ class StatementCleanupPass implements RustPass {
 				blockMentionsNameInBlock(body, name);
 			case ERaw(raw):
 				rawMentionsName(raw.code, name);
-			case ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
+			case ESelf | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				false;
 		};
 	}
@@ -564,7 +571,7 @@ class StatementCleanupPass implements RustPass {
 
 	function isPureExpr(expr:RustExpr):Bool {
 		return switch (expr) {
-			case EPath(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
+			case ESelf | EPath(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				true;
 			case EField(recv, _):
 				isPureExpr(recv);

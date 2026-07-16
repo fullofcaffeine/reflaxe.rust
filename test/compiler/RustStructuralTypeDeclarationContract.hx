@@ -4,6 +4,7 @@ import reflaxe.rust.ast.RustAST.RustGenericBound;
 import reflaxe.rust.ast.RustAST.RustGenericParameter;
 import reflaxe.rust.ast.RustAST.RustGenericParameters;
 import reflaxe.rust.ast.RustAST.RustItem;
+import reflaxe.rust.ast.RustAST.RustImpl;
 import reflaxe.rust.ast.RustAST.RustLifetime;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPathSegment;
@@ -80,10 +81,7 @@ class RustStructuralTypeDeclarationContract {
 				generics: RustMetadataSyntax.parseGenericParameters("T"),
 				variants: [{name: "Value", args: [optionT]}]
 			}),
-			RImpl({
-				generics: declarationGenerics,
-				forType: holderType,
-				functions: [{
+			RImpl(RustImpl.inherent(declarationGenerics, holderType, [{
 					name: "call",
 					isPub: false,
 					generics: methodGenerics,
@@ -93,8 +91,7 @@ class RustStructuralTypeDeclarationContract {
 					],
 					ret: optionT,
 					body: {stmts: [], tail: EPath(RustPath.single("None"))}
-				}]
-			})
+				}]))
 		];
 
 		Sys.print(RustASTPrinter.printFile({items: items}));

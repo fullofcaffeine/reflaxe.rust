@@ -2,15 +2,21 @@ package reflaxe.rust.ast;
 
 import reflaxe.rust.ast.RustAST.RustConstArgument;
 import reflaxe.rust.ast.RustAST.RustAttribute;
+import reflaxe.rust.ast.RustAST.RustAssociatedFunction;
+import reflaxe.rust.ast.RustAST.RustAssociatedItem;
 import reflaxe.rust.ast.RustAST.RustClosureParameter;
 import reflaxe.rust.ast.RustAST.RustGenericArgument;
+import reflaxe.rust.ast.RustAST.RustGenericBound;
 import reflaxe.rust.ast.RustAST.RustGenericParameters;
 import reflaxe.rust.ast.RustAST.RustIdentifier;
+import reflaxe.rust.ast.RustAST.RustImpl;
 import reflaxe.rust.ast.RustAST.RustMember;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPattern;
+import reflaxe.rust.ast.RustAST.RustTraitDeclaration;
 import reflaxe.rust.ast.RustAST.RustType;
 import reflaxe.rust.ast.RustAST.RustUseDeclaration;
+import reflaxe.rust.ast.RustAST.RustWhereClause;
 
 /**
 	Shared semantic queries and traversal for structural Rust paths.
@@ -386,12 +392,8 @@ class RustPathAnalysis {
 			switch (parameter) {
 				case GenericLifetimeParam(_, _):
 				case GenericTypeParam(_, bounds, defaultType):
-					for (bound in bounds) {
-						switch (bound) {
-							case GenericTraitBound(path, _): visitPathTreeInternal(path, visitor);
-							case GenericLifetimeBound(_):
-						}
-					}
+					for (bound in bounds)
+						visitGenericBoundInternal(bound, visitor);
 					if (defaultType != null)
 						visitTypeTreeInternal(defaultType, visitor);
 				case GenericConstParam(_, type, defaultValue):
@@ -399,6 +401,115 @@ class RustPathAnalysis {
 					if (defaultValue != null)
 						visitConstArgumentInternal(defaultValue, visitor);
 			}
+		}
+	}
+
+	/**
+		Visits every path carried by one explicit where clause.
+
+		Why / What / How
+		- Type predicates can hide paths in both the constrained type and its trait bounds. Lifetime-only
+		  predicates contain no paths but remain part of the closed traversal switch. Callers use this
+		  helper for trait, impl, associated-function, and associated-type clauses so policy cannot drift.
+	**/
+	public static function visitWhereClause(clause:RustWhereClause, visitor:RustPath->Void):Void {
+		if (clause == null)
+			throw "Cannot visit a null Rust where clause";
+		if (visitor == null)
+			throw "Rust path visitor cannot be null";
+		for (predicate in clause) {
+			switch (predicate.kind) {
+				case WhereTypeBounds:
+					if (predicate.typeValue == null)
+						throw "Rust type where-predicate is missing its type";
+					visitTypeTreeInternal(predicate.typeValue, visitor);
+					for (bound in predicate.genericBoundIterator())
+						visitGenericBoundInternal(bound, visitor);
+				case WhereLifetimeBounds:
+					// Lifetimes are already structural and contain no paths.
+			}
+		}
+	}
+
+	/**
+		Visits the complete declaration surface of one Rust trait.
+
+		Why / What / How
+		- Dispatch and no-runtime policy depend on generic defaults, supertraits, where predicates,
+		  associated signatures, and associated type/const declarations. This method deliberately visits
+		  declaration paths only; expression/body traversal remains owned by AST passes.
+	**/
+	public static function visitTraitTree(declaration:RustTraitDeclaration, visitor:RustPath->Void):Void {
+		if (declaration == null)
+			throw "Cannot visit a null Rust trait declaration";
+		if (visitor == null)
+			throw "Rust path visitor cannot be null";
+		visitGenericParameters(declaration.generics, visitor);
+		for (bound in declaration.supertraitIterator())
+			visitGenericBoundInternal(bound, visitor);
+		visitWhereClause(declaration.whereClause, visitor);
+		for (item in declaration)
+			visitAssociatedDeclarationInternal(item, visitor);
+	}
+
+	/** Structural declaration-path counterpart for inherent and trait impls. */
+	public static function visitImplTree(declaration:RustImpl, visitor:RustPath->Void):Void {
+		if (declaration == null)
+			throw "Cannot visit a null Rust impl declaration";
+		if (visitor == null)
+			throw "Rust path visitor cannot be null";
+		visitGenericParameters(declaration.generics, visitor);
+		if (declaration.traitPath != null)
+			visitPathTreeInternal(declaration.traitPath, visitor);
+		visitTypeTreeInternal(declaration.forType, visitor);
+		visitWhereClause(declaration.whereClause, visitor);
+		for (item in declaration)
+			visitAssociatedDeclarationInternal(item, visitor);
+	}
+
+	static function visitAssociatedDeclarationInternal(item:RustAssociatedItem, visitor:RustPath->Void):Void {
+		if (item == null)
+			throw "Cannot visit a null Rust associated item";
+		switch (item) {
+			case AssocFunction(method):
+				visitAssociatedFunctionInternal(method, visitor);
+			case AssocType(declaration):
+				visitGenericParameters(declaration.generics, visitor);
+				for (bound in declaration)
+					visitGenericBoundInternal(bound, visitor);
+				visitWhereClause(declaration.whereClause, visitor);
+				if (declaration.value != null)
+					visitTypeTreeInternal(declaration.value, visitor);
+			case AssocConst(declaration):
+				visitTypeTreeInternal(declaration.type, visitor);
+			case AssocRaw(_):
+				// Raw metadata bodies are scanned under their explicit authority by policy passes.
+		}
+	}
+
+	static function visitAssociatedFunctionInternal(method:RustAssociatedFunction, visitor:RustPath->Void):Void {
+		if (method == null)
+			throw "Cannot visit a null Rust associated function";
+		visitGenericParameters(method.generics, visitor);
+		if (method.receiver != null) {
+			switch (method.receiver) {
+				case ReceiverTyped(type): visitTypeTreeInternal(type, visitor);
+				case ReceiverValue(_) | ReceiverBorrowed(_, _):
+			}
+		}
+		for (parameter in method)
+			visitTypeTreeInternal(parameter.type, visitor);
+		if (method.returnType != null)
+			visitTypeTreeInternal(method.returnType, visitor);
+		visitWhereClause(method.whereClause, visitor);
+	}
+
+	static function visitGenericBoundInternal(bound:RustGenericBound, visitor:RustPath->Void):Void {
+		if (bound == null)
+			throw "Cannot visit a null Rust generic bound";
+		switch (bound) {
+			case GenericTraitBound(path, _): visitPathTreeInternal(path, visitor);
+			case GenericLifetimeBound(_):
 		}
 	}
 

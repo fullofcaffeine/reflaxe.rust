@@ -1,6 +1,7 @@
 package reflaxe.rust.passes;
 
 import reflaxe.rust.CompilationContext;
+import reflaxe.rust.ast.RustAST.RustAssociatedItem;
 import reflaxe.rust.ast.RustAST.RustBlock;
 import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustFile;
@@ -67,14 +68,20 @@ class MutInferencePass implements RustPass {
 					RModule(declaration.withItems([for (child in declaration) rewriteItem(child)]));
 			case RFn(f):
 				RFn(rewriteFunction(f));
+			case RTrait(declaration):
+				RTrait(declaration.withItems([for (associated in declaration) rewriteAssociatedItem(associated)]));
 			case RImpl(i):
-				RImpl({
-					generics: i.generics,
-					forType: i.forType,
-					functions: [for (f in i.functions) rewriteFunction(f)]
-				});
+				RImpl(i.withItems([for (associated in i) rewriteAssociatedItem(associated)]));
 			case RInnerAttribute(_) | RComment(_) | RUse(_) | RConst(_) | RStatic(_) | RTypeAlias(_) | RStruct(_) | REnum(_) | RRaw(_):
 				item;
+		};
+	}
+
+	function rewriteAssociatedItem(item:RustAssociatedItem):RustAssociatedItem {
+		return switch (item) {
+			case AssocFunction(method):
+				method.body == null ? item : AssocFunction(method.withBody(rewriteBlock(method.body)));
+			case AssocType(_) | AssocConst(_) | AssocRaw(_): item;
 		};
 	}
 
@@ -127,7 +134,7 @@ class MutInferencePass implements RustPass {
 
 	function rewriteExpr(expr:RustExpr):RustExpr {
 		return switch (expr) {
-			case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ESelf | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 			case ECall(func, args):
 				ECall(rewriteExpr(func), [for (arg in args) rewriteExpr(arg)]);
@@ -291,7 +298,7 @@ class MutInferencePass implements RustPass {
 					visitBlock(body, false);
 				case EAwait(inner):
 					visitExpr(inner);
-				case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+				case ERaw(_) | ESelf | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 			}
 		};
 
@@ -466,7 +473,7 @@ class MutInferencePass implements RustPass {
 				maxDirectWritesOnPathInBlock(body, target, false) > 0 ? 2 : 0;
 			case EAwait(inner):
 				maxDirectWritesOnPathInExpr(inner, target);
-			case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ESelf | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				0;
 		}
 	}

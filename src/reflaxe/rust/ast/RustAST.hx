@@ -50,11 +50,6 @@ enum RustOrigin {
 **/
 enum RustCompilerRawReason {
 	RawStaticStorage;
-	RawInterfaceTraitDeclaration;
-	RawClassTraitDeclaration;
-	RawClassTraitImplementation;
-	RawBaseTraitImplementation;
-	RawInterfaceTraitImplementation;
 	RawDefaultValueFallback;
 	RawUnsupportedFallback;
 }
@@ -176,11 +171,6 @@ class RustRawCode {
 		return switch (authority) {
 			case RawCompilerOwned(reason): switch (reason) {
 					case RawStaticStorage: "static-storage";
-					case RawInterfaceTraitDeclaration: "interface-trait-declaration";
-					case RawClassTraitDeclaration: "class-trait-declaration";
-					case RawClassTraitImplementation: "class-trait-implementation";
-					case RawBaseTraitImplementation: "base-trait-implementation";
-					case RawInterfaceTraitImplementation: "interface-trait-implementation";
 					case RawDefaultValueFallback: "default-value-fallback";
 					case RawUnsupportedFallback: "unsupported-fallback";
 				}
@@ -918,6 +908,7 @@ enum RustItem {
 	RFn(f:RustFunction);
 	RStruct(s:RustStruct);
 	REnum(e:RustEnum);
+	RTrait(declaration:RustTraitDeclaration);
 	RImpl(i:RustImpl);
 	RRaw(fragment:RustRawCode);
 }
@@ -1414,10 +1405,593 @@ typedef RustEnumVariant = {
 	var args:Array<RustType>;
 }
 
-typedef RustImpl = {
-	var generics:RustGenericParameters;
-	var forType:RustType;
-	var functions:Array<RustFunction>;
+/**
+	The closed forms of a structural Rust `self` receiver.
+
+	Why / What / How
+	- `self`, `mut self`, `&self`, `&'a mut self`, and `self: Type` have semantic ownership and
+	  lifetime differences that cannot live in a parameter-name string.
+	- Each constructor stores only the role-specific typed payload; an omitted borrowed lifetime means
+	  Rust's ordinary elided receiver lifetime.
+	- Put at most one receiver on `RustAssociatedFunction`; the printer owns every `&`, lifetime,
+	  `mut`, `self`, and `:` token.
+**/
+enum RustSelfReceiver {
+	ReceiverValue(mutable:Bool);
+	ReceiverBorrowed(mutable:Bool, lifetime:Null<RustLifetime>);
+	ReceiverTyped(type:RustType);
+}
+
+/**
+	One validated named parameter on a structural associated function.
+
+	Why / What / How
+	- Associated methods need the same typed parameter visibility as ordinary functions, but their
+	  receiver is modeled separately so `self` cannot be confused with a normal binding.
+	- `named` validates the identifier immediately and requires a structural `RustType`; callers never
+	  embed `name: Type` punctuation in either value.
+**/
+class RustFunctionParameter {
+	public final name:RustIdentifier;
+	public final type:RustType;
+
+	private function new(name:String, type:RustType) {
+		if (type == null)
+			throw "Rust function parameter requires a type";
+		this.name = RustIdentifier.named(name);
+		this.type = type;
+	}
+
+	public static function named(name:String, type:RustType):RustFunctionParameter {
+		return new RustFunctionParameter(name, type);
+	}
+}
+
+/** Distinguishes the two stable predicate families represented by `RustWherePredicate`. */
+enum RustWherePredicateKind {
+	WhereTypeBounds;
+	WhereLifetimeBounds;
+}
+
+/**
+	One validated Rust where-clause predicate.
+
+	Why
+	- A rendered clause such as `T: Clone + 'a` hides which pieces are types, traits, and lifetimes.
+	- Empty predicates are invalid Rust but are easy to create when bounds are assembled incrementally.
+
+	What
+	- Represents either a structural type with one or more generic bounds or a lifetime with one or
+	  more outlives bounds.
+	- Owns defensive copies so later source-array mutation cannot change declaration meaning.
+
+	How
+	- Construct with `typeBounds` or `lifetimeBounds`, then wrap one or more predicates in
+	  `RustWhereClause.of`. The printer alone owns `where`, `:`, `+`, and comma punctuation.
+**/
+class RustWherePredicate {
+	public final kind:RustWherePredicateKind;
+	public final typeValue:Null<RustType>;
+	public final lifetimeValue:Null<RustLifetime>;
+	final genericBounds:Array<RustGenericBound>;
+	final lifetimeBoundsValue:Array<RustLifetime>;
+	public var boundCount(get, never):Int;
+
+	private function new(kind:RustWherePredicateKind, typeValue:Null<RustType>, lifetimeValue:Null<RustLifetime>,
+			genericBounds:Array<RustGenericBound>, lifetimeBoundsValue:Array<RustLifetime>) {
+		this.kind = kind;
+		this.typeValue = typeValue;
+		this.lifetimeValue = lifetimeValue;
+		this.genericBounds = genericBounds;
+		this.lifetimeBoundsValue = lifetimeBoundsValue;
+	}
+
+	public static function typeBounds(type:RustType, bounds:Array<RustGenericBound>):RustWherePredicate {
+		if (type == null)
+			throw "Rust type where-predicate requires a type";
+		var copy = validateGenericBounds(bounds, "Rust type where-predicate");
+		if (copy.length == 0)
+			throw "Rust type where-predicate requires at least one bound";
+		return new RustWherePredicate(WhereTypeBounds, type, null, copy, []);
+	}
+
+	public static function lifetimeBounds(lifetime:RustLifetime, bounds:Array<RustLifetime>):RustWherePredicate {
+		if (lifetime == null)
+			throw "Rust lifetime where-predicate requires a lifetime";
+		if (bounds == null || bounds.length == 0)
+			throw "Rust lifetime where-predicate requires at least one bound";
+		var copy = bounds.copy();
+		for (bound in copy) {
+			if (bound == null)
+				throw "Rust lifetime where-predicate cannot contain a null bound";
+		}
+		return new RustWherePredicate(WhereLifetimeBounds, null, lifetime, [], copy);
+	}
+
+	public static function validateGenericBounds(bounds:Array<RustGenericBound>, label:String):Array<RustGenericBound> {
+		if (bounds == null)
+			throw '$label bounds cannot be null';
+		var copy = bounds.copy();
+		for (bound in copy) {
+			if (bound == null)
+				throw '$label cannot contain a null bound';
+			switch (bound) {
+				case GenericTraitBound(path, modifier):
+					if (path == null || modifier == null)
+						throw '$label trait bound requires a path and modifier';
+				case GenericLifetimeBound(lifetime):
+					if (lifetime == null)
+						throw '$label lifetime bound cannot be null';
+			}
+		}
+		return copy;
+	}
+
+	function get_boundCount():Int {
+		return kind == WhereTypeBounds ? genericBounds.length : lifetimeBoundsValue.length;
+	}
+
+	public function genericBoundIterator():Iterator<RustGenericBound> {
+		return genericBounds.iterator();
+	}
+
+	public function lifetimeBoundIterator():Iterator<RustLifetime> {
+		return lifetimeBoundsValue.iterator();
+	}
+}
+
+/**
+	An explicit, validated Rust where clause.
+
+	Why / What / How
+	- Declaration passes must distinguish no clause from a non-empty set of predicates without using
+	  null or a pre-rendered suffix. Use `empty` when no clause exists and `of` for one or more typed
+	  predicates. The class owns a defensive copy and exposes deterministic indexed/iterator access.
+**/
+class RustWhereClause {
+	final predicates:Array<RustWherePredicate>;
+	public var predicateCount(get, never):Int;
+
+	private function new(predicates:Array<RustWherePredicate>) {
+		this.predicates = predicates;
+	}
+
+	public static function empty():RustWhereClause {
+		return new RustWhereClause([]);
+	}
+
+	public static function of(values:Array<RustWherePredicate>):RustWhereClause {
+		if (values == null || values.length == 0)
+			throw "Explicit Rust where clause requires at least one predicate";
+		var copy = values.copy();
+		for (predicate in copy) {
+			if (predicate == null)
+				throw "Rust where clause cannot contain a null predicate";
+		}
+		return new RustWhereClause(copy);
+	}
+
+	function get_predicateCount():Int {
+		return predicates.length;
+	}
+
+	public function predicateAt(index:Int):RustWherePredicate {
+		if (index < 0 || index >= predicates.length)
+			throw 'Rust where predicate index out of bounds: $index';
+		return predicates[index];
+	}
+
+	public function iterator():Iterator<RustWherePredicate> {
+		return predicates.iterator();
+	}
+}
+
+/**
+	A structural associated function signature with an optional typed body.
+
+	Why
+	- Trait methods need receiver syntax (`&self`) that ordinary named function arguments cannot model.
+	- A unit return written as `-> ()` is observably different output from an omitted return annotation,
+	  so `returnType` is nullable instead of overloading `RUnit`.
+
+	What
+	- Owns visibility, async state, validated name, generics, optional receiver, named parameters,
+	  optional explicit return type, function-level where clause, and optional typed body.
+
+	How
+	- `declaration` is the complete constructor. A null body is a trait signature; impl validation
+	  requires bodies. `fromFunction` adapts already-typed inherent methods without changing output.
+**/
+class RustAssociatedFunction {
+	public final visibility:RustVisibility;
+	public final name:RustIdentifier;
+	public final isAsync:Bool;
+	public final generics:RustGenericParameters;
+	public final receiver:Null<RustSelfReceiver>;
+	final parameters:Array<RustFunctionParameter>;
+	public final returnType:Null<RustType>;
+	public final whereClause:RustWhereClause;
+	public final body:Null<RustBlock>;
+	public var parameterCount(get, never):Int;
+
+	private function new(visibility:RustVisibility, name:String, isAsync:Bool, generics:RustGenericParameters,
+			receiver:Null<RustSelfReceiver>, parameters:Array<RustFunctionParameter>, returnType:Null<RustType>,
+			whereClause:RustWhereClause, body:Null<RustBlock>) {
+		if (visibility == null || generics == null || whereClause == null)
+			throw "Rust associated function requires visibility, generics, and a where clause";
+		this.visibility = visibility;
+		this.name = RustIdentifier.named(name);
+		this.isAsync = isAsync;
+		this.generics = generics;
+		this.receiver = validateReceiver(receiver);
+		this.parameters = validateParameters(parameters);
+		this.returnType = returnType;
+		this.whereClause = whereClause;
+		this.body = body;
+	}
+
+	public static function declaration(visibility:RustVisibility, name:String, isAsync:Bool, generics:RustGenericParameters,
+			receiver:Null<RustSelfReceiver>, parameters:Array<RustFunctionParameter>, returnType:Null<RustType>,
+			whereClause:RustWhereClause, body:Null<RustBlock>):RustAssociatedFunction {
+		return new RustAssociatedFunction(visibility, name, isAsync, generics, receiver, parameters, returnType, whereClause, body);
+	}
+
+	public static function fromFunction(source:RustFunction):RustAssociatedFunction {
+		if (source == null || source.body == null)
+			throw "Cannot adapt a null or body-less Rust function";
+		var visibility = source.vis != null ? source.vis : (source.isPub ? VPub : VPrivate);
+		return declaration(visibility, source.name, source.isAsync == true, source.generics, null, [
+			for (argument in source.args) RustFunctionParameter.named(argument.name, argument.ty)
+		], source.ret == RUnit ? null : source.ret, RustWhereClause.empty(), source.body);
+	}
+
+	static function validateReceiver(receiver:Null<RustSelfReceiver>):Null<RustSelfReceiver> {
+		if (receiver == null)
+			return null;
+		switch (receiver) {
+			case ReceiverTyped(type):
+				if (type == null)
+					throw "Typed Rust self receiver requires a type";
+			case ReceiverBorrowed(_, _):
+				// A null lifetime is the explicit, valid elided receiver-lifetime shape.
+			case ReceiverValue(_):
+		}
+		return receiver;
+	}
+
+	static function validateParameters(values:Array<RustFunctionParameter>):Array<RustFunctionParameter> {
+		if (values == null)
+			throw "Rust associated-function parameters cannot be null";
+		var copy = values.copy();
+		var seen:Map<String, Bool> = [];
+		for (parameter in copy) {
+			if (parameter == null)
+				throw "Rust associated function cannot contain a null parameter";
+			if (seen.exists(parameter.name.name))
+				throw 'Duplicate Rust associated-function parameter `${parameter.name.name}`';
+			seen.set(parameter.name.name, true);
+		}
+		return copy;
+	}
+
+	function get_parameterCount():Int {
+		return parameters.length;
+	}
+
+	public function parameterAt(index:Int):RustFunctionParameter {
+		if (index < 0 || index >= parameters.length)
+			throw 'Rust associated-function parameter index out of bounds: $index';
+		return parameters[index];
+	}
+
+	public function iterator():Iterator<RustFunctionParameter> {
+		return parameters.iterator();
+	}
+
+	public function withBody(next:RustBlock):RustAssociatedFunction {
+		if (next == null)
+			throw "Rust associated-function body replacement cannot be null";
+		return declaration(visibility, name.name, isAsync, generics, receiver, parameters, returnType, whereClause, next);
+	}
+}
+
+/**
+	A structural associated type signature, default, or trait-impl definition.
+
+	Why / What / How
+	- Associated types can carry their own generics, bounds, where predicates, and optional value; raw
+	  text would hide every one of those paths from policy analysis.
+	- `named` validates and defensively stores the declaration surface. A null `value` is a trait
+	  signature, while `RustImpl` requires a value in trait implementations.
+**/
+class RustAssociatedTypeDeclaration {
+	public final name:RustIdentifier;
+	public final generics:RustGenericParameters;
+	final bounds:Array<RustGenericBound>;
+	public final whereClause:RustWhereClause;
+	public final value:Null<RustType>;
+	public var boundCount(get, never):Int;
+
+	private function new(name:String, generics:RustGenericParameters, bounds:Array<RustGenericBound>, whereClause:RustWhereClause,
+			value:Null<RustType>) {
+		if (generics == null || whereClause == null)
+			throw "Rust associated type requires generics and a where clause";
+		this.name = RustIdentifier.named(name);
+		this.generics = generics;
+		this.bounds = RustWherePredicate.validateGenericBounds(bounds, "Rust associated type");
+		this.whereClause = whereClause;
+		this.value = value;
+	}
+
+	public static function named(name:String, generics:RustGenericParameters, bounds:Array<RustGenericBound>, whereClause:RustWhereClause,
+			value:Null<RustType>):RustAssociatedTypeDeclaration {
+		return new RustAssociatedTypeDeclaration(name, generics, bounds, whereClause, value);
+	}
+
+	function get_boundCount():Int {
+		return bounds.length;
+	}
+
+	public function iterator():Iterator<RustGenericBound> {
+		return bounds.iterator();
+	}
+}
+
+/**
+	A structural associated constant signature, default, or trait-impl definition.
+
+	Why / What / How
+	- The constant type and optional initializer must remain traversable by no-runtime and expression
+	  passes instead of being hidden in an impl-body string.
+	- Visibility is structural because inherent impls may expose `pub` / `pub(crate)` constants, while
+	  trait declarations and trait impls reject any visibility qualifier.
+	- A null value is admitted for trait signatures; `RustImpl` requires an initializer. Construct with
+	  `named` and use `withValue` when an expression mapper replaces that initializer.
+**/
+class RustAssociatedConstantDeclaration {
+	public final visibility:RustVisibility;
+	public final name:RustIdentifier;
+	public final type:RustType;
+	public final value:Null<RustExpr>;
+
+	private function new(visibility:RustVisibility, name:String, type:RustType, value:Null<RustExpr>) {
+		if (visibility == null || type == null)
+			throw "Rust associated constant requires visibility and a type";
+		this.visibility = visibility;
+		this.name = RustIdentifier.named(name);
+		this.type = type;
+		this.value = value;
+	}
+
+	public static function named(visibility:RustVisibility, name:String, type:RustType, value:Null<RustExpr>):RustAssociatedConstantDeclaration {
+		return new RustAssociatedConstantDeclaration(visibility, name, type, value);
+	}
+
+	public function withValue(next:RustExpr):RustAssociatedConstantDeclaration {
+		if (next == null)
+			throw "Rust associated-constant value replacement cannot be null";
+		return named(visibility, name.name, type, next);
+	}
+}
+
+/**
+	Every associated item currently admitted inside a structural Rust trait or impl.
+
+	Why / What / How
+	- A closed enum makes every pass handle functions, types, constants, and the one remaining raw
+	  metadata boundary explicitly.
+	- `AssocRaw` is not general compiler authority: `RustTraitDeclaration` rejects it, and `RustImpl`
+	  admits it only when the fragment is metadata-owned inside a trait impl.
+**/
+enum RustAssociatedItem {
+	AssocFunction(method:RustAssociatedFunction);
+	AssocType(declaration:RustAssociatedTypeDeclaration);
+	AssocConst(declaration:RustAssociatedConstantDeclaration);
+	AssocRaw(fragment:RustRawCode);
+}
+
+/**
+	A validated structural Rust trait declaration.
+
+	Why / What / How
+	- Trait identity, generic bounds, supertraits, where predicates, and associated items all affect
+	  dispatch and object safety. `named` stores each component structurally, rejects visibility on
+	  trait-associated functions, rejects raw children, and defensively owns both bounds and items.
+**/
+class RustTraitDeclaration {
+	public final visibility:RustVisibility;
+	public final name:RustIdentifier;
+	public final generics:RustGenericParameters;
+	final supertraits:Array<RustGenericBound>;
+	public final whereClause:RustWhereClause;
+	final items:Array<RustAssociatedItem>;
+	public var supertraitCount(get, never):Int;
+	public var itemCount(get, never):Int;
+
+	private function new(visibility:RustVisibility, name:String, generics:RustGenericParameters, supertraits:Array<RustGenericBound>,
+			whereClause:RustWhereClause, items:Array<RustAssociatedItem>) {
+		if (visibility == null || generics == null || whereClause == null)
+			throw "Rust trait requires visibility, generics, and a where clause";
+		this.visibility = visibility;
+		this.name = RustIdentifier.named(name);
+		this.generics = generics;
+		this.supertraits = RustWherePredicate.validateGenericBounds(supertraits, "Rust trait supertrait list");
+		this.whereClause = whereClause;
+		this.items = validateItems(items);
+	}
+
+	public static function named(visibility:RustVisibility, name:String, generics:RustGenericParameters,
+			supertraits:Array<RustGenericBound>, whereClause:RustWhereClause, items:Array<RustAssociatedItem>):RustTraitDeclaration {
+		return new RustTraitDeclaration(visibility, name, generics, supertraits, whereClause, items);
+	}
+
+	static function validateItems(values:Array<RustAssociatedItem>):Array<RustAssociatedItem> {
+		if (values == null)
+			throw "Rust trait associated items cannot be null";
+		var copy = values.copy();
+		for (item in copy) {
+			if (item == null)
+				throw "Rust trait cannot contain a null associated item";
+			switch (item) {
+				case AssocFunction(method):
+					if (method == null)
+						throw "Rust trait associated function cannot be null";
+					if (method.visibility != VPrivate)
+						throw "Rust trait associated functions cannot declare visibility";
+				case AssocType(declaration):
+					if (declaration == null)
+						throw "Rust trait associated type cannot be null";
+				case AssocConst(declaration):
+					if (declaration == null)
+						throw "Rust trait associated constant cannot be null";
+					if (declaration.visibility != VPrivate)
+						throw "Rust trait associated constants cannot declare visibility";
+				case AssocRaw(_):
+					throw "Rust trait declarations cannot contain raw associated items";
+			}
+		}
+		return copy;
+	}
+
+	function get_supertraitCount():Int {
+		return supertraits.length;
+	}
+
+	function get_itemCount():Int {
+		return items.length;
+	}
+
+	public function supertraitIterator():Iterator<RustGenericBound> {
+		return supertraits.iterator();
+	}
+
+	public function itemAt(index:Int):RustAssociatedItem {
+		if (index < 0 || index >= items.length)
+			throw 'Rust trait associated-item index out of bounds: $index';
+		return items[index];
+	}
+
+	public function iterator():Iterator<RustAssociatedItem> {
+		return items.iterator();
+	}
+
+	public function withItems(next:Array<RustAssociatedItem>):RustTraitDeclaration {
+		return named(visibility, name.name, generics, supertraits, whereClause, next);
+	}
+}
+
+/**
+	A validated inherent or trait Rust impl declaration.
+
+	Why
+	- A rendered impl header hides the implemented trait, target type, and where predicates from
+	  ownership and policy analysis.
+	- Inherent and trait impls admit different associated-item rules; one nullable string cannot enforce
+	  them safely.
+
+	What
+	- Stores typed generics, an optional trait path, target type, where clause, and associated items.
+	- Marker impls are represented by an empty item list. Metadata body text is permitted only as a
+	  metadata-owned `AssocRaw` child under an otherwise structural trait impl.
+
+	How
+	- Use `inherent` to adapt existing typed functions, `inherentItems` for structural associated
+	  constants/functions, and `traitImplementation` for a typed trait reference.
+**/
+class RustImpl {
+	public final generics:RustGenericParameters;
+	public final traitPath:Null<RustPath>;
+	public final forType:RustType;
+	public final whereClause:RustWhereClause;
+	final items:Array<RustAssociatedItem>;
+	public var itemCount(get, never):Int;
+	public var isTraitImpl(get, never):Bool;
+
+	private function new(generics:RustGenericParameters, traitPath:Null<RustPath>, forType:RustType, whereClause:RustWhereClause,
+			items:Array<RustAssociatedItem>) {
+		if (generics == null || forType == null || whereClause == null)
+			throw "Rust impl requires generics, a target type, and a where clause";
+		this.generics = generics;
+		this.traitPath = traitPath;
+		this.forType = forType;
+		this.whereClause = whereClause;
+		this.items = validateItems(traitPath != null, items);
+	}
+
+	public static function inherent(generics:RustGenericParameters, forType:RustType, functions:Array<RustFunction>):RustImpl {
+		if (functions == null)
+			throw "Rust inherent impl functions cannot be null";
+		return inherentItems(generics, forType, RustWhereClause.empty(), [
+			for (source in functions) AssocFunction(RustAssociatedFunction.fromFunction(source))
+		]);
+	}
+
+	public static function inherentItems(generics:RustGenericParameters, forType:RustType, whereClause:RustWhereClause,
+			items:Array<RustAssociatedItem>):RustImpl {
+		return new RustImpl(generics, null, forType, whereClause, items);
+	}
+
+	public static function traitImplementation(generics:RustGenericParameters, traitPath:RustPath, forType:RustType,
+			whereClause:RustWhereClause, items:Array<RustAssociatedItem>):RustImpl {
+		if (traitPath == null)
+			throw "Rust trait impl requires a trait path";
+		return new RustImpl(generics, traitPath, forType, whereClause, items);
+	}
+
+	static function validateItems(traitImpl:Bool, values:Array<RustAssociatedItem>):Array<RustAssociatedItem> {
+		if (values == null)
+			throw "Rust impl associated items cannot be null";
+		var copy = values.copy();
+		for (item in copy) {
+			if (item == null)
+				throw "Rust impl cannot contain a null associated item";
+			switch (item) {
+				case AssocFunction(method):
+					if (method == null || method.body == null)
+						throw "Rust impl associated functions require typed bodies";
+					if (traitImpl && method.visibility != VPrivate)
+						throw "Rust trait impl associated functions cannot declare visibility";
+				case AssocType(declaration):
+					if (!traitImpl)
+						throw "Rust inherent impls cannot contain associated type declarations";
+					if (declaration == null || declaration.value == null)
+						throw "Rust trait impl associated types require values";
+				case AssocConst(declaration):
+					if (declaration == null || declaration.value == null)
+						throw "Rust impl associated constants require values";
+					if (traitImpl && declaration.visibility != VPrivate)
+						throw "Rust trait impl associated constants cannot declare visibility";
+				case AssocRaw(fragment):
+					if (!traitImpl)
+						throw "Raw associated bodies are admitted only for trait impl metadata";
+					if (fragment == null || fragment.authorityId() != "metadata-owned")
+						throw "Raw trait impl bodies must retain metadata authority";
+			}
+		}
+		return copy;
+	}
+
+	function get_itemCount():Int {
+		return items.length;
+	}
+
+	function get_isTraitImpl():Bool {
+		return traitPath != null;
+	}
+
+	public function itemAt(index:Int):RustAssociatedItem {
+		if (index < 0 || index >= items.length)
+			throw 'Rust impl associated-item index out of bounds: $index';
+		return items[index];
+	}
+
+	public function iterator():Iterator<RustAssociatedItem> {
+		return items.iterator();
+	}
+
+	public function withItems(next:Array<RustAssociatedItem>):RustImpl {
+		return traitPath == null ? inherentItems(generics, forType, whereClause, next) : traitImplementation(generics, traitPath, forType, whereClause, next);
+	}
 }
 
 typedef RustFunction = {
@@ -1625,6 +2199,15 @@ enum RustStmt {
 
 enum RustExpr {
 	ERaw(fragment:RustRawCode);
+	/**
+		The structural Rust value receiver keyword used inside associated method bodies.
+
+		Why / What / How
+		- `self` is a Rust keyword expression, not a relative identifier path. Keeping it distinct prevents
+		  callers from weakening `RustIdentifier` validation just to print receiver reads.
+		- Expression passes treat this node as a leaf and the printer emits the keyword exactly once.
+	**/
+	ESelf;
 	/**
 		The Rust unit value `()`.
 

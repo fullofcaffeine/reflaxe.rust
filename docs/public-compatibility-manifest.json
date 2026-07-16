@@ -10192,6 +10192,975 @@
       "operations": []
     },
     {
+      "name": "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustAssociatedConstantDeclaration",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustVisibility"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMember",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStmt",
+        "reflaxe.rust.ast.RustAST.RustStructLitField",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustVisibility"
+      ],
+      "operations": [
+        {
+          "id": "field:visibility",
+          "kind": "field",
+          "name": "visibility",
+          "signature": "public final visibility : RustVisibility",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustVisibility"
+          ]
+        },
+        {
+          "id": "field:name",
+          "kind": "field",
+          "name": "name",
+          "signature": "public final name : RustIdentifier",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustIdentifier"
+          ]
+        },
+        {
+          "id": "field:type",
+          "kind": "field",
+          "name": "type",
+          "signature": "public final type : RustType",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustType"
+          ]
+        },
+        {
+          "id": "field:value",
+          "kind": "field",
+          "name": "value",
+          "signature": "public final value : Null < RustExpr >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustExpr"
+          ]
+        },
+        {
+          "id": "function:named",
+          "kind": "function",
+          "name": "named",
+          "signature": "public static function named (visibility : RustVisibility, name : String, type : RustType, value : Null < RustExpr >) : RustAssociatedConstantDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustExpr",
+            "reflaxe.rust.ast.RustAST.RustType",
+            "reflaxe.rust.ast.RustAST.RustVisibility"
+          ]
+        },
+        {
+          "id": "function:withValue",
+          "kind": "function",
+          "name": "withValue",
+          "signature": "public function withValue (next : RustExpr) : RustAssociatedConstantDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustExpr"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustAssociatedFunction",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGenericParameters",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustFnArg",
+        "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustGenericParameter",
+        "reflaxe.rust.ast.RustAST.RustGenericParameters",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMember",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStmt",
+        "reflaxe.rust.ast.RustAST.RustStructLitField",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind"
+      ],
+      "operations": [
+        {
+          "id": "field:visibility",
+          "kind": "field",
+          "name": "visibility",
+          "signature": "public final visibility : RustVisibility",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustVisibility"
+          ]
+        },
+        {
+          "id": "field:name",
+          "kind": "field",
+          "name": "name",
+          "signature": "public final name : RustIdentifier",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustIdentifier"
+          ]
+        },
+        {
+          "id": "field:isAsync",
+          "kind": "field",
+          "name": "isAsync",
+          "signature": "public final isAsync : Bool",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:generics",
+          "kind": "field",
+          "name": "generics",
+          "signature": "public final generics : RustGenericParameters",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustGenericParameters"
+          ]
+        },
+        {
+          "id": "field:receiver",
+          "kind": "field",
+          "name": "receiver",
+          "signature": "public final receiver : Null < RustSelfReceiver >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustSelfReceiver"
+          ]
+        },
+        {
+          "id": "field:returnType",
+          "kind": "field",
+          "name": "returnType",
+          "signature": "public final returnType : Null < RustType >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustType"
+          ]
+        },
+        {
+          "id": "field:whereClause",
+          "kind": "field",
+          "name": "whereClause",
+          "signature": "public final whereClause : RustWhereClause",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustWhereClause"
+          ]
+        },
+        {
+          "id": "field:body",
+          "kind": "field",
+          "name": "body",
+          "signature": "public final body : Null < RustBlock >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustBlock"
+          ]
+        },
+        {
+          "id": "field:parameterCount",
+          "kind": "field",
+          "name": "parameterCount",
+          "signature": "public var parameterCount (get, never) : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:declaration",
+          "kind": "function",
+          "name": "declaration",
+          "signature": "public static function declaration (visibility : RustVisibility, name : String, isAsync : Bool, generics : RustGenericParameters, receiver : Null < RustSelfReceiver >, parameters : Array < RustFunctionParameter >, returnType : Null < RustType >, whereClause : RustWhereClause, body : Null < RustBlock >) : RustAssociatedFunction",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustBlock",
+            "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+            "reflaxe.rust.ast.RustAST.RustGenericParameters",
+            "reflaxe.rust.ast.RustAST.RustSelfReceiver",
+            "reflaxe.rust.ast.RustAST.RustType",
+            "reflaxe.rust.ast.RustAST.RustVisibility",
+            "reflaxe.rust.ast.RustAST.RustWhereClause"
+          ]
+        },
+        {
+          "id": "function:fromFunction",
+          "kind": "function",
+          "name": "fromFunction",
+          "signature": "public static function fromFunction (source : RustFunction) : RustAssociatedFunction",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustFunction"
+          ]
+        },
+        {
+          "id": "function:parameterAt",
+          "kind": "function",
+          "name": "parameterAt",
+          "signature": "public function parameterAt (index : Int) : RustFunctionParameter",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustFunctionParameter"
+          ]
+        },
+        {
+          "id": "function:iterator",
+          "kind": "function",
+          "name": "iterator",
+          "signature": "public function iterator () : Iterator < RustFunctionParameter >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustFunctionParameter"
+          ]
+        },
+        {
+          "id": "function:withBody",
+          "kind": "function",
+          "name": "withBody",
+          "signature": "public function withBody (next : RustBlock) : RustAssociatedFunction",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustBlock"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "enum",
+      "signature": "enum RustAssociatedItem",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustRawCode"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustFnArg",
+        "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustGenericParameter",
+        "reflaxe.rust.ast.RustAST.RustGenericParameters",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMember",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStmt",
+        "reflaxe.rust.ast.RustAST.RustStructLitField",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind"
+      ],
+      "operations": [
+        {
+          "id": "enum-constructor:AssocFunction",
+          "kind": "enum-constructor",
+          "name": "AssocFunction",
+          "signature": "AssocFunction (method : RustAssociatedFunction)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAssociatedFunction"
+          ]
+        },
+        {
+          "id": "enum-constructor:AssocType",
+          "kind": "enum-constructor",
+          "name": "AssocType",
+          "signature": "AssocType (declaration : RustAssociatedTypeDeclaration)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration"
+          ]
+        },
+        {
+          "id": "enum-constructor:AssocConst",
+          "kind": "enum-constructor",
+          "name": "AssocConst",
+          "signature": "AssocConst (declaration : RustAssociatedConstantDeclaration)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration"
+          ]
+        },
+        {
+          "id": "enum-constructor:AssocRaw",
+          "kind": "enum-constructor",
+          "name": "AssocRaw",
+          "signature": "AssocRaw (fragment : RustRawCode)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustRawCode"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustAssociatedTypeDeclaration",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustGenericParameters",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustWhereClause"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustGenericParameter",
+        "reflaxe.rust.ast.RustAST.RustGenericParameters",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind"
+      ],
+      "operations": [
+        {
+          "id": "field:name",
+          "kind": "field",
+          "name": "name",
+          "signature": "public final name : RustIdentifier",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustIdentifier"
+          ]
+        },
+        {
+          "id": "field:generics",
+          "kind": "field",
+          "name": "generics",
+          "signature": "public final generics : RustGenericParameters",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustGenericParameters"
+          ]
+        },
+        {
+          "id": "field:whereClause",
+          "kind": "field",
+          "name": "whereClause",
+          "signature": "public final whereClause : RustWhereClause",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustWhereClause"
+          ]
+        },
+        {
+          "id": "field:value",
+          "kind": "field",
+          "name": "value",
+          "signature": "public final value : Null < RustType >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustType"
+          ]
+        },
+        {
+          "id": "field:boundCount",
+          "kind": "field",
+          "name": "boundCount",
+          "signature": "public var boundCount (get, never) : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:named",
+          "kind": "function",
+          "name": "named",
+          "signature": "public static function named (name : String, generics : RustGenericParameters, bounds : Array < RustGenericBound >, whereClause : RustWhereClause, value : Null < RustType >) : RustAssociatedTypeDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustGenericBound",
+            "reflaxe.rust.ast.RustAST.RustGenericParameters",
+            "reflaxe.rust.ast.RustAST.RustType",
+            "reflaxe.rust.ast.RustAST.RustWhereClause"
+          ]
+        },
+        {
+          "id": "function:iterator",
+          "kind": "function",
+          "name": "iterator",
+          "signature": "public function iterator () : Iterator < RustGenericBound >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustGenericBound"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustAttribute",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustAttribute",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustPath"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType"
+      ],
+      "operations": [
+        {
+          "id": "field:path",
+          "kind": "field",
+          "name": "path",
+          "signature": "public final path : RustPath",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        },
+        {
+          "id": "field:inputKind",
+          "kind": "field",
+          "name": "inputKind",
+          "signature": "public final inputKind : RustAttributeInputKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAttributeInputKind"
+          ]
+        },
+        {
+          "id": "field:stringPayload",
+          "kind": "field",
+          "name": "stringPayload",
+          "signature": "public final stringPayload : Null < String >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:argumentCount",
+          "kind": "field",
+          "name": "argumentCount",
+          "signature": "public var argumentCount (get, never) : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:bare",
+          "kind": "function",
+          "name": "bare",
+          "signature": "public static function bare (path : RustPath) : RustAttribute",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        },
+        {
+          "id": "function:pathList",
+          "kind": "function",
+          "name": "pathList",
+          "signature": "public static function pathList (path : RustPath, arguments : Array < RustPath >) : RustAttribute",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        },
+        {
+          "id": "function:stringValue",
+          "kind": "function",
+          "name": "stringValue",
+          "signature": "public static function stringValue (path : RustPath, value : String) : RustAttribute",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        },
+        {
+          "id": "function:argumentAt",
+          "kind": "function",
+          "name": "argumentAt",
+          "signature": "public function argumentAt (index : Int) : RustPath",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        },
+        {
+          "id": "function:iterator",
+          "kind": "function",
+          "name": "iterator",
+          "signature": "public function iterator () : Iterator < RustPath >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustAttributedItem",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustAttributedItem",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustItem"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustComment",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustEnum",
+        "reflaxe.rust.ast.RustAST.RustEnumVariant",
+        "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustFnArg",
+        "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustGenericParameter",
+        "reflaxe.rust.ast.RustAST.RustGenericParameters",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustImpl",
+        "reflaxe.rust.ast.RustAST.RustItem",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMember",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
+        "reflaxe.rust.ast.RustAST.RustStmt",
+        "reflaxe.rust.ast.RustAST.RustStruct",
+        "reflaxe.rust.ast.RustAST.RustStructField",
+        "reflaxe.rust.ast.RustAST.RustStructLitField",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
+        "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind"
+      ],
+      "operations": [
+        {
+          "id": "field:target",
+          "kind": "field",
+          "name": "target",
+          "signature": "public final target : RustItem",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustItem"
+          ]
+        },
+        {
+          "id": "field:attributeCount",
+          "kind": "field",
+          "name": "attributeCount",
+          "signature": "public var attributeCount (get, never) : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:of",
+          "kind": "function",
+          "name": "of",
+          "signature": "public static function of (attributes : Array < RustAttribute >, target : RustItem) : RustAttributedItem",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAttribute",
+            "reflaxe.rust.ast.RustAST.RustItem"
+          ]
+        },
+        {
+          "id": "function:attributeAt",
+          "kind": "function",
+          "name": "attributeAt",
+          "signature": "public function attributeAt (index : Int) : RustAttribute",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAttribute"
+          ]
+        },
+        {
+          "id": "function:iterator",
+          "kind": "function",
+          "name": "iterator",
+          "signature": "public function iterator () : Iterator < RustAttribute >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAttribute"
+          ]
+        },
+        {
+          "id": "function:withTarget",
+          "kind": "function",
+          "name": "withTarget",
+          "signature": "public function withTarget (next : RustItem) : RustAttributedItem",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustItem"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "enum",
+      "signature": "enum RustAttributeInputKind",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-constructor:AttributeBare",
+          "kind": "enum-constructor",
+          "name": "AttributeBare",
+          "signature": "AttributeBare",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:AttributePathList",
+          "kind": "enum-constructor",
+          "name": "AttributePathList",
+          "signature": "AttributePathList",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:AttributeStringValue",
+          "kind": "enum-constructor",
+          "name": "AttributeStringValue",
+          "signature": "AttributeStringValue",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
       "name": "reflaxe.rust.ast.RustAST.RustBlock",
       "source": "src/reflaxe/rust/ast/RustAST.hx",
       "kind": "typedef",
@@ -10373,6 +11342,53 @@
       ]
     },
     {
+      "name": "reflaxe.rust.ast.RustAST.RustComment",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustComment",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "field:text",
+          "kind": "field",
+          "name": "text",
+          "signature": "public final text : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:line",
+          "kind": "function",
+          "name": "line",
+          "signature": "public static function line (text : String) : RustComment",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:generatedFileMarker",
+          "kind": "function",
+          "name": "generatedFileMarker",
+          "signature": "public static function generatedFileMarker () : RustComment",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
       "name": "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
       "source": "src/reflaxe/rust/ast/RustAST.hx",
       "kind": "enum",
@@ -10385,142 +11401,10 @@
       "transitiveTypeReferences": [],
       "operations": [
         {
-          "id": "enum-constructor:RawGeneratedFileMarker",
-          "kind": "enum-constructor",
-          "name": "RawGeneratedFileMarker",
-          "signature": "RawGeneratedFileMarker",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
           "id": "enum-constructor:RawStaticStorage",
           "kind": "enum-constructor",
           "name": "RawStaticStorage",
           "signature": "RawStaticStorage",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-constructor:RawCrateHeader",
-          "kind": "enum-constructor",
-          "name": "RawCrateHeader",
-          "signature": "RawCrateHeader",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-constructor:RawNestedModuleDeclarations",
-          "kind": "enum-constructor",
-          "name": "RawNestedModuleDeclarations",
-          "signature": "RawNestedModuleDeclarations",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-constructor:RawInterfaceTraitDeclaration",
-          "kind": "enum-constructor",
-          "name": "RawInterfaceTraitDeclaration",
-          "signature": "RawInterfaceTraitDeclaration",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-constructor:RawBaseTraitImport",
-          "kind": "enum-constructor",
-          "name": "RawBaseTraitImport",
-          "signature": "RawBaseTraitImport",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-constructor:RawTypeIdConstant",
-          "kind": "enum-constructor",
-          "name": "RawTypeIdConstant",
-          "signature": "RawTypeIdConstant",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-constructor:RawDeriveAttribute",
-          "kind": "enum-constructor",
-          "name": "RawDeriveAttribute",
-          "signature": "RawDeriveAttribute",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-constructor:RawClassTraitDeclaration",
-          "kind": "enum-constructor",
-          "name": "RawClassTraitDeclaration",
-          "signature": "RawClassTraitDeclaration",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-constructor:RawClassTraitImplementation",
-          "kind": "enum-constructor",
-          "name": "RawClassTraitImplementation",
-          "signature": "RawClassTraitImplementation",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-constructor:RawBaseTraitImplementation",
-          "kind": "enum-constructor",
-          "name": "RawBaseTraitImplementation",
-          "signature": "RawBaseTraitImplementation",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-constructor:RawInterfaceTraitImplementation",
-          "kind": "enum-constructor",
-          "name": "RawInterfaceTraitImplementation",
-          "signature": "RawInterfaceTraitImplementation",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-constructor:RawGeneratedTestModule",
-          "kind": "enum-constructor",
-          "name": "RawGeneratedTestModule",
-          "signature": "RawGeneratedTestModule",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
@@ -10548,6 +11432,135 @@
             "test:public-compatibility"
           ],
           "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustConstantDeclaration",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustVisibility"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMember",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStmt",
+        "reflaxe.rust.ast.RustAST.RustStructLitField",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustVisibility"
+      ],
+      "operations": [
+        {
+          "id": "field:visibility",
+          "kind": "field",
+          "name": "visibility",
+          "signature": "public final visibility : RustVisibility",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustVisibility"
+          ]
+        },
+        {
+          "id": "field:name",
+          "kind": "field",
+          "name": "name",
+          "signature": "public final name : RustIdentifier",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustIdentifier"
+          ]
+        },
+        {
+          "id": "field:type",
+          "kind": "field",
+          "name": "type",
+          "signature": "public final type : RustType",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustType"
+          ]
+        },
+        {
+          "id": "field:value",
+          "kind": "field",
+          "name": "value",
+          "signature": "public final value : RustExpr",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustExpr"
+          ]
+        },
+        {
+          "id": "function:named",
+          "kind": "function",
+          "name": "named",
+          "signature": "public static function named (visibility : RustVisibility, name : String, type : RustType, value : RustExpr) : RustConstantDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustExpr",
+            "reflaxe.rust.ast.RustAST.RustType",
+            "reflaxe.rust.ast.RustAST.RustVisibility"
+          ]
+        },
+        {
+          "id": "function:withValue",
+          "kind": "function",
+          "name": "withValue",
+          "signature": "public function withValue (next : RustExpr) : RustConstantDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustExpr"
+          ]
         }
       ]
     },
@@ -10807,17 +11820,6 @@
           ]
         },
         {
-          "id": "field:derives",
-          "kind": "field",
-          "name": "derives",
-          "signature": "var derives : Array < String >",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
           "id": "field:variants",
           "kind": "field",
           "name": "variants",
@@ -10948,6 +11950,28 @@
           "typeReferences": [
             "reflaxe.rust.ast.RustAST.RustRawCode"
           ]
+        },
+        {
+          "id": "enum-constructor:ESelf",
+          "kind": "enum-constructor",
+          "name": "ESelf",
+          "signature": "ESelf",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:ELitUnit",
+          "kind": "enum-constructor",
+          "name": "ELitUnit",
+          "signature": "ELitUnit",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
         },
         {
           "id": "enum-constructor:ELitInt",
@@ -11224,16 +12248,26 @@
         "reflaxe.rust.ast.RustAST.RustItem"
       ],
       "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustAttributedItem",
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustComment",
         "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -11246,6 +12280,7 @@
         "reflaxe.rust.ast.RustAST.RustMatchArm",
         "reflaxe.rust.ast.RustAST.RustMember",
         "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
         "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustPathRoot",
@@ -11254,15 +12289,26 @@
         "reflaxe.rust.ast.RustAST.RustPattern",
         "reflaxe.rust.ast.RustAST.RustRawAuthority",
         "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
         "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
         "reflaxe.rust.ast.RustAST.RustTraitObject",
         "reflaxe.rust.ast.RustAST.RustType",
-        "reflaxe.rust.ast.RustAST.RustVisibility"
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
+        "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind"
       ],
       "operations": [
         {
@@ -11482,6 +12528,77 @@
           ],
           "typeReferences": [
             "reflaxe.rust.ast.RustAST.RustBlock"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustFunctionParameter",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustType"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType"
+      ],
+      "operations": [
+        {
+          "id": "field:name",
+          "kind": "field",
+          "name": "name",
+          "signature": "public final name : RustIdentifier",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustIdentifier"
+          ]
+        },
+        {
+          "id": "field:type",
+          "kind": "field",
+          "name": "type",
+          "signature": "public final type : RustType",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustType"
+          ]
+        },
+        {
+          "id": "function:named",
+          "kind": "function",
+          "name": "named",
+          "signature": "public static function named (name : String, type : RustType) : RustFunctionParameter",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustType"
           ]
         }
       ]
@@ -11871,18 +12988,25 @@
     {
       "name": "reflaxe.rust.ast.RustAST.RustImpl",
       "source": "src/reflaxe/rust/ast/RustAST.hx",
-      "kind": "typedef",
-      "signature": "typedef RustImpl =",
+      "kind": "class",
+      "signature": "class RustImpl",
       "contract": "internal-helper",
       "evidenceIds": [
         "test:public-compatibility"
       ],
       "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustGenericParameters",
-        "reflaxe.rust.ast.RustAST.RustType"
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustWhereClause"
       ],
       "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
         "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
@@ -11891,6 +13015,7 @@
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -11909,20 +13034,24 @@
         "reflaxe.rust.ast.RustAST.RustPattern",
         "reflaxe.rust.ast.RustAST.RustRawAuthority",
         "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
         "reflaxe.rust.ast.RustAST.RustSourceRawReason",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
         "reflaxe.rust.ast.RustAST.RustTraitObject",
         "reflaxe.rust.ast.RustAST.RustType",
-        "reflaxe.rust.ast.RustAST.RustVisibility"
+        "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind"
       ],
       "operations": [
         {
           "id": "field:generics",
           "kind": "field",
           "name": "generics",
-          "signature": "var generics : RustGenericParameters",
+          "signature": "public final generics : RustGenericParameters",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
@@ -11932,10 +13061,23 @@
           ]
         },
         {
+          "id": "field:traitPath",
+          "kind": "field",
+          "name": "traitPath",
+          "signature": "public final traitPath : Null < RustPath >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        },
+        {
           "id": "field:forType",
           "kind": "field",
           "name": "forType",
-          "signature": "var forType : RustType",
+          "signature": "public final forType : RustType",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
@@ -11945,16 +13087,125 @@
           ]
         },
         {
-          "id": "field:functions",
+          "id": "field:whereClause",
           "kind": "field",
-          "name": "functions",
-          "signature": "var functions : Array < RustFunction >",
+          "name": "whereClause",
+          "signature": "public final whereClause : RustWhereClause",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
           ],
           "typeReferences": [
-            "reflaxe.rust.ast.RustAST.RustFunction"
+            "reflaxe.rust.ast.RustAST.RustWhereClause"
+          ]
+        },
+        {
+          "id": "field:itemCount",
+          "kind": "field",
+          "name": "itemCount",
+          "signature": "public var itemCount (get, never) : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:isTraitImpl",
+          "kind": "field",
+          "name": "isTraitImpl",
+          "signature": "public var isTraitImpl (get, never) : Bool",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:inherent",
+          "kind": "function",
+          "name": "inherent",
+          "signature": "public static function inherent (generics : RustGenericParameters, forType : RustType, functions : Array < RustFunction >) : RustImpl",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustFunction",
+            "reflaxe.rust.ast.RustAST.RustGenericParameters",
+            "reflaxe.rust.ast.RustAST.RustType"
+          ]
+        },
+        {
+          "id": "function:inherentItems",
+          "kind": "function",
+          "name": "inherentItems",
+          "signature": "public static function inherentItems (generics : RustGenericParameters, forType : RustType, whereClause : RustWhereClause, items : Array < RustAssociatedItem >) : RustImpl",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+            "reflaxe.rust.ast.RustAST.RustGenericParameters",
+            "reflaxe.rust.ast.RustAST.RustType",
+            "reflaxe.rust.ast.RustAST.RustWhereClause"
+          ]
+        },
+        {
+          "id": "function:traitImplementation",
+          "kind": "function",
+          "name": "traitImplementation",
+          "signature": "public static function traitImplementation (generics : RustGenericParameters, traitPath : RustPath, forType : RustType, whereClause : RustWhereClause, items : Array < RustAssociatedItem >) : RustImpl",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+            "reflaxe.rust.ast.RustAST.RustGenericParameters",
+            "reflaxe.rust.ast.RustAST.RustPath",
+            "reflaxe.rust.ast.RustAST.RustType",
+            "reflaxe.rust.ast.RustAST.RustWhereClause"
+          ]
+        },
+        {
+          "id": "function:itemAt",
+          "kind": "function",
+          "name": "itemAt",
+          "signature": "public function itemAt (index : Int) : RustAssociatedItem",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAssociatedItem"
+          ]
+        },
+        {
+          "id": "function:iterator",
+          "kind": "function",
+          "name": "iterator",
+          "signature": "public function iterator () : Iterator < RustAssociatedItem >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAssociatedItem"
+          ]
+        },
+        {
+          "id": "function:withItems",
+          "kind": "function",
+          "name": "withItems",
+          "signature": "public function withItems (next : Array < RustAssociatedItem >) : RustImpl",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAssociatedItem"
           ]
         }
       ]
@@ -11969,23 +13220,42 @@
         "test:public-compatibility"
       ],
       "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributedItem",
+        "reflaxe.rust.ast.RustAST.RustComment",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustImpl",
+        "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
         "reflaxe.rust.ast.RustAST.RustRawCode",
-        "reflaxe.rust.ast.RustAST.RustStruct"
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
+        "reflaxe.rust.ast.RustAST.RustStruct",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration"
       ],
       "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustAttributedItem",
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustComment",
         "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -11997,6 +13267,7 @@
         "reflaxe.rust.ast.RustAST.RustMatchArm",
         "reflaxe.rust.ast.RustAST.RustMember",
         "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
         "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustPathRoot",
@@ -12005,17 +13276,132 @@
         "reflaxe.rust.ast.RustAST.RustPattern",
         "reflaxe.rust.ast.RustAST.RustRawAuthority",
         "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
         "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
         "reflaxe.rust.ast.RustAST.RustTraitObject",
         "reflaxe.rust.ast.RustAST.RustType",
-        "reflaxe.rust.ast.RustAST.RustVisibility"
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
+        "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind"
       ],
       "operations": [
+        {
+          "id": "enum-constructor:RAttributed",
+          "kind": "enum-constructor",
+          "name": "RAttributed",
+          "signature": "RAttributed (value : RustAttributedItem)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAttributedItem"
+          ]
+        },
+        {
+          "id": "enum-constructor:RInnerAttribute",
+          "kind": "enum-constructor",
+          "name": "RInnerAttribute",
+          "signature": "RInnerAttribute (attribute : RustAttribute)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAttribute"
+          ]
+        },
+        {
+          "id": "enum-constructor:RComment",
+          "kind": "enum-constructor",
+          "name": "RComment",
+          "signature": "RComment (comment : RustComment)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustComment"
+          ]
+        },
+        {
+          "id": "enum-constructor:RUse",
+          "kind": "enum-constructor",
+          "name": "RUse",
+          "signature": "RUse (declaration : RustUseDeclaration)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustUseDeclaration"
+          ]
+        },
+        {
+          "id": "enum-constructor:RModule",
+          "kind": "enum-constructor",
+          "name": "RModule",
+          "signature": "RModule (declaration : RustModuleDeclaration)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustModuleDeclaration"
+          ]
+        },
+        {
+          "id": "enum-constructor:RConst",
+          "kind": "enum-constructor",
+          "name": "RConst",
+          "signature": "RConst (declaration : RustConstantDeclaration)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustConstantDeclaration"
+          ]
+        },
+        {
+          "id": "enum-constructor:RStatic",
+          "kind": "enum-constructor",
+          "name": "RStatic",
+          "signature": "RStatic (declaration : RustStaticDeclaration)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustStaticDeclaration"
+          ]
+        },
+        {
+          "id": "enum-constructor:RTypeAlias",
+          "kind": "enum-constructor",
+          "name": "RTypeAlias",
+          "signature": "RTypeAlias (declaration : RustTypeAliasDeclaration)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration"
+          ]
+        },
         {
           "id": "enum-constructor:RFn",
           "kind": "enum-constructor",
@@ -12053,6 +13439,19 @@
           ],
           "typeReferences": [
             "reflaxe.rust.ast.RustAST.RustEnum"
+          ]
+        },
+        {
+          "id": "enum-constructor:RTrait",
+          "kind": "enum-constructor",
+          "name": "RTrait",
+          "signature": "RTrait (declaration : RustTraitDeclaration)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustTraitDeclaration"
           ]
         },
         {
@@ -12458,6 +13857,199 @@
             "test:public-compatibility"
           ],
           "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustModuleDeclaration",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustItem",
+        "reflaxe.rust.ast.RustAST.RustVisibility"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustAttributedItem",
+        "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustComment",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustEnum",
+        "reflaxe.rust.ast.RustAST.RustEnumVariant",
+        "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustFnArg",
+        "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustGenericParameter",
+        "reflaxe.rust.ast.RustAST.RustGenericParameters",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustImpl",
+        "reflaxe.rust.ast.RustAST.RustItem",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMember",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
+        "reflaxe.rust.ast.RustAST.RustStmt",
+        "reflaxe.rust.ast.RustAST.RustStruct",
+        "reflaxe.rust.ast.RustAST.RustStructField",
+        "reflaxe.rust.ast.RustAST.RustStructLitField",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
+        "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind"
+      ],
+      "operations": [
+        {
+          "id": "field:visibility",
+          "kind": "field",
+          "name": "visibility",
+          "signature": "public final visibility : RustVisibility",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustVisibility"
+          ]
+        },
+        {
+          "id": "field:name",
+          "kind": "field",
+          "name": "name",
+          "signature": "public final name : RustIdentifier",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustIdentifier"
+          ]
+        },
+        {
+          "id": "field:isInline",
+          "kind": "field",
+          "name": "isInline",
+          "signature": "public final isInline : Bool",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:itemCount",
+          "kind": "field",
+          "name": "itemCount",
+          "signature": "public var itemCount (get, never) : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:external",
+          "kind": "function",
+          "name": "external",
+          "signature": "public static function external (visibility : RustVisibility, name : String) : RustModuleDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustVisibility"
+          ]
+        },
+        {
+          "id": "function:inlineModule",
+          "kind": "function",
+          "name": "inlineModule",
+          "signature": "public static function inlineModule (visibility : RustVisibility, name : String, items : Array < RustItem >) : RustModuleDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustItem",
+            "reflaxe.rust.ast.RustAST.RustVisibility"
+          ]
+        },
+        {
+          "id": "function:itemAt",
+          "kind": "function",
+          "name": "itemAt",
+          "signature": "public function itemAt (index : Int) : RustItem",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustItem"
+          ]
+        },
+        {
+          "id": "function:iterator",
+          "kind": "function",
+          "name": "iterator",
+          "signature": "public function iterator () : Iterator < RustItem >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustItem"
+          ]
+        },
+        {
+          "id": "function:withItems",
+          "kind": "function",
+          "name": "withItems",
+          "signature": "public function withItems (next : Array < RustItem >) : RustModuleDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustItem"
+          ]
         }
       ]
     },
@@ -13425,6 +15017,75 @@
       ]
     },
     {
+      "name": "reflaxe.rust.ast.RustAST.RustSelfReceiver",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "enum",
+      "signature": "enum RustSelfReceiver",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustType"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType"
+      ],
+      "operations": [
+        {
+          "id": "enum-constructor:ReceiverValue",
+          "kind": "enum-constructor",
+          "name": "ReceiverValue",
+          "signature": "ReceiverValue (mutable : Bool)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:ReceiverBorrowed",
+          "kind": "enum-constructor",
+          "name": "ReceiverBorrowed",
+          "signature": "ReceiverBorrowed (mutable : Bool, lifetime : Null < RustLifetime >)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustLifetime"
+          ]
+        },
+        {
+          "id": "enum-constructor:ReceiverTyped",
+          "kind": "enum-constructor",
+          "name": "ReceiverTyped",
+          "signature": "ReceiverTyped (type : RustType)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustType"
+          ]
+        }
+      ]
+    },
+    {
       "name": "reflaxe.rust.ast.RustAST.RustSourceRawReason",
       "source": "src/reflaxe/rust/ast/RustAST.hx",
       "kind": "enum",
@@ -13446,6 +15107,135 @@
             "test:public-compatibility"
           ],
           "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustStaticDeclaration",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustVisibility"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMember",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStmt",
+        "reflaxe.rust.ast.RustAST.RustStructLitField",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustVisibility"
+      ],
+      "operations": [
+        {
+          "id": "field:visibility",
+          "kind": "field",
+          "name": "visibility",
+          "signature": "public final visibility : RustVisibility",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustVisibility"
+          ]
+        },
+        {
+          "id": "field:name",
+          "kind": "field",
+          "name": "name",
+          "signature": "public final name : RustIdentifier",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustIdentifier"
+          ]
+        },
+        {
+          "id": "field:type",
+          "kind": "field",
+          "name": "type",
+          "signature": "public final type : RustType",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustType"
+          ]
+        },
+        {
+          "id": "field:value",
+          "kind": "field",
+          "name": "value",
+          "signature": "public final value : RustExpr",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustExpr"
+          ]
+        },
+        {
+          "id": "function:named",
+          "kind": "function",
+          "name": "named",
+          "signature": "public static function named (visibility : RustVisibility, name : String, type : RustType, value : RustExpr) : RustStaticDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustExpr",
+            "reflaxe.rust.ast.RustAST.RustType",
+            "reflaxe.rust.ast.RustAST.RustVisibility"
+          ]
+        },
+        {
+          "id": "function:withValue",
+          "kind": "function",
+          "name": "withValue",
+          "signature": "public function withValue (next : RustExpr) : RustStaticDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustExpr"
+          ]
         }
       ]
     },
@@ -13895,6 +15685,213 @@
       ]
     },
     {
+      "name": "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustTraitDeclaration",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustGenericParameters",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustFnArg",
+        "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustGenericParameter",
+        "reflaxe.rust.ast.RustAST.RustGenericParameters",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMember",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStmt",
+        "reflaxe.rust.ast.RustAST.RustStructLitField",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind"
+      ],
+      "operations": [
+        {
+          "id": "field:visibility",
+          "kind": "field",
+          "name": "visibility",
+          "signature": "public final visibility : RustVisibility",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustVisibility"
+          ]
+        },
+        {
+          "id": "field:name",
+          "kind": "field",
+          "name": "name",
+          "signature": "public final name : RustIdentifier",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustIdentifier"
+          ]
+        },
+        {
+          "id": "field:generics",
+          "kind": "field",
+          "name": "generics",
+          "signature": "public final generics : RustGenericParameters",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustGenericParameters"
+          ]
+        },
+        {
+          "id": "field:whereClause",
+          "kind": "field",
+          "name": "whereClause",
+          "signature": "public final whereClause : RustWhereClause",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustWhereClause"
+          ]
+        },
+        {
+          "id": "field:supertraitCount",
+          "kind": "field",
+          "name": "supertraitCount",
+          "signature": "public var supertraitCount (get, never) : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:itemCount",
+          "kind": "field",
+          "name": "itemCount",
+          "signature": "public var itemCount (get, never) : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:named",
+          "kind": "function",
+          "name": "named",
+          "signature": "public static function named (visibility : RustVisibility, name : String, generics : RustGenericParameters, supertraits : Array < RustGenericBound >, whereClause : RustWhereClause, items : Array < RustAssociatedItem >) : RustTraitDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+            "reflaxe.rust.ast.RustAST.RustGenericBound",
+            "reflaxe.rust.ast.RustAST.RustGenericParameters",
+            "reflaxe.rust.ast.RustAST.RustVisibility",
+            "reflaxe.rust.ast.RustAST.RustWhereClause"
+          ]
+        },
+        {
+          "id": "function:supertraitIterator",
+          "kind": "function",
+          "name": "supertraitIterator",
+          "signature": "public function supertraitIterator () : Iterator < RustGenericBound >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustGenericBound"
+          ]
+        },
+        {
+          "id": "function:itemAt",
+          "kind": "function",
+          "name": "itemAt",
+          "signature": "public function itemAt (index : Int) : RustAssociatedItem",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAssociatedItem"
+          ]
+        },
+        {
+          "id": "function:iterator",
+          "kind": "function",
+          "name": "iterator",
+          "signature": "public function iterator () : Iterator < RustAssociatedItem >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAssociatedItem"
+          ]
+        },
+        {
+          "id": "function:withItems",
+          "kind": "function",
+          "name": "withItems",
+          "signature": "public function withItems (next : Array < RustAssociatedItem >) : RustTraitDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAssociatedItem"
+          ]
+        }
+      ]
+    },
+    {
       "name": "reflaxe.rust.ast.RustAST.RustTraitObject",
       "source": "src/reflaxe/rust/ast/RustAST.hx",
       "kind": "class",
@@ -14137,6 +16134,483 @@
       ]
     },
     {
+      "name": "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustTypeAliasDeclaration",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustGenericParameters",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustVisibility"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustGenericParameter",
+        "reflaxe.rust.ast.RustAST.RustGenericParameters",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustVisibility"
+      ],
+      "operations": [
+        {
+          "id": "field:visibility",
+          "kind": "field",
+          "name": "visibility",
+          "signature": "public final visibility : RustVisibility",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustVisibility"
+          ]
+        },
+        {
+          "id": "field:name",
+          "kind": "field",
+          "name": "name",
+          "signature": "public final name : RustIdentifier",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustIdentifier"
+          ]
+        },
+        {
+          "id": "field:generics",
+          "kind": "field",
+          "name": "generics",
+          "signature": "public final generics : RustGenericParameters",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustGenericParameters"
+          ]
+        },
+        {
+          "id": "field:type",
+          "kind": "field",
+          "name": "type",
+          "signature": "public final type : RustType",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustType"
+          ]
+        },
+        {
+          "id": "function:named",
+          "kind": "function",
+          "name": "named",
+          "signature": "public static function named (visibility : RustVisibility, name : String, generics : RustGenericParameters, type : RustType) : RustTypeAliasDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustGenericParameters",
+            "reflaxe.rust.ast.RustAST.RustType",
+            "reflaxe.rust.ast.RustAST.RustVisibility"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustUseDeclaration",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustVisibility"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
+        "reflaxe.rust.ast.RustAST.RustVisibility"
+      ],
+      "operations": [
+        {
+          "id": "field:visibility",
+          "kind": "field",
+          "name": "visibility",
+          "signature": "public final visibility : RustVisibility",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustVisibility"
+          ]
+        },
+        {
+          "id": "field:kind",
+          "kind": "field",
+          "name": "kind",
+          "signature": "public final kind : RustUseKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustUseKind"
+          ]
+        },
+        {
+          "id": "field:prefix",
+          "kind": "field",
+          "name": "prefix",
+          "signature": "public final prefix : RustPath",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        },
+        {
+          "id": "field:alias",
+          "kind": "field",
+          "name": "alias",
+          "signature": "public final alias : Null < RustIdentifier >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustIdentifier"
+          ]
+        },
+        {
+          "id": "field:memberCount",
+          "kind": "field",
+          "name": "memberCount",
+          "signature": "public var memberCount (get, never) : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:exact",
+          "kind": "function",
+          "name": "exact",
+          "signature": "public static function exact (visibility : RustVisibility, path : RustPath, ? alias : String) : RustUseDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath",
+            "reflaxe.rust.ast.RustAST.RustVisibility"
+          ]
+        },
+        {
+          "id": "function:glob",
+          "kind": "function",
+          "name": "glob",
+          "signature": "public static function glob (visibility : RustVisibility, prefix : RustPath) : RustUseDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath",
+            "reflaxe.rust.ast.RustAST.RustVisibility"
+          ]
+        },
+        {
+          "id": "function:group",
+          "kind": "function",
+          "name": "group",
+          "signature": "public static function group (visibility : RustVisibility, prefix : RustPath, members : Array < RustUseMember >) : RustUseDeclaration",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath",
+            "reflaxe.rust.ast.RustAST.RustUseMember",
+            "reflaxe.rust.ast.RustAST.RustVisibility"
+          ]
+        },
+        {
+          "id": "function:memberAt",
+          "kind": "function",
+          "name": "memberAt",
+          "signature": "public function memberAt (index : Int) : RustUseMember",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustUseMember"
+          ]
+        },
+        {
+          "id": "function:iterator",
+          "kind": "function",
+          "name": "iterator",
+          "signature": "public function iterator () : Iterator < RustUseMember >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustUseMember"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustUseKind",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "enum",
+      "signature": "enum RustUseKind",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-constructor:UseExact",
+          "kind": "enum-constructor",
+          "name": "UseExact",
+          "signature": "UseExact",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:UseGlob",
+          "kind": "enum-constructor",
+          "name": "UseGlob",
+          "signature": "UseGlob",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:UseGroup",
+          "kind": "enum-constructor",
+          "name": "UseGroup",
+          "signature": "UseGroup",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustUseMember",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustUseMember",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind"
+      ],
+      "operations": [
+        {
+          "id": "field:kind",
+          "kind": "field",
+          "name": "kind",
+          "signature": "public final kind : RustUseMemberKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustUseMemberKind"
+          ]
+        },
+        {
+          "id": "field:pathValue",
+          "kind": "field",
+          "name": "pathValue",
+          "signature": "public final pathValue : Null < RustPath >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        },
+        {
+          "id": "field:alias",
+          "kind": "field",
+          "name": "alias",
+          "signature": "public final alias : Null < RustIdentifier >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustIdentifier"
+          ]
+        },
+        {
+          "id": "function:path",
+          "kind": "function",
+          "name": "path",
+          "signature": "public static function path (path : RustPath, ? alias : String) : RustUseMember",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        },
+        {
+          "id": "function:selfImport",
+          "kind": "function",
+          "name": "selfImport",
+          "signature": "public static function selfImport (? alias : String) : RustUseMember",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:glob",
+          "kind": "function",
+          "name": "glob",
+          "signature": "public static function glob () : RustUseMember",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustUseMemberKind",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "enum",
+      "signature": "enum RustUseMemberKind",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-constructor:UseMemberPath",
+          "kind": "enum-constructor",
+          "name": "UseMemberPath",
+          "signature": "UseMemberPath",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:UseMemberSelf",
+          "kind": "enum-constructor",
+          "name": "UseMemberSelf",
+          "signature": "UseMemberSelf",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:UseMemberGlob",
+          "kind": "enum-constructor",
+          "name": "UseMemberGlob",
+          "signature": "UseMemberGlob",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
       "name": "reflaxe.rust.ast.RustAST.RustVisibility",
       "source": "src/reflaxe/rust/ast/RustAST.hx",
       "kind": "enum",
@@ -14175,6 +16649,287 @@
           "kind": "enum-constructor",
           "name": "VPubCrate",
           "signature": "VPubCrate",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustWhereClause",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustWhereClause",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustWherePredicate"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind"
+      ],
+      "operations": [
+        {
+          "id": "field:predicateCount",
+          "kind": "field",
+          "name": "predicateCount",
+          "signature": "public var predicateCount (get, never) : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:empty",
+          "kind": "function",
+          "name": "empty",
+          "signature": "public static function empty () : RustWhereClause",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:of",
+          "kind": "function",
+          "name": "of",
+          "signature": "public static function of (values : Array < RustWherePredicate >) : RustWhereClause",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustWherePredicate"
+          ]
+        },
+        {
+          "id": "function:predicateAt",
+          "kind": "function",
+          "name": "predicateAt",
+          "signature": "public function predicateAt (index : Int) : RustWherePredicate",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustWherePredicate"
+          ]
+        },
+        {
+          "id": "function:iterator",
+          "kind": "function",
+          "name": "iterator",
+          "signature": "public function iterator () : Iterator < RustWherePredicate >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustWherePredicate"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustWherePredicate",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustWherePredicate",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind"
+      ],
+      "operations": [
+        {
+          "id": "field:kind",
+          "kind": "field",
+          "name": "kind",
+          "signature": "public final kind : RustWherePredicateKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustWherePredicateKind"
+          ]
+        },
+        {
+          "id": "field:typeValue",
+          "kind": "field",
+          "name": "typeValue",
+          "signature": "public final typeValue : Null < RustType >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustType"
+          ]
+        },
+        {
+          "id": "field:lifetimeValue",
+          "kind": "field",
+          "name": "lifetimeValue",
+          "signature": "public final lifetimeValue : Null < RustLifetime >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustLifetime"
+          ]
+        },
+        {
+          "id": "field:boundCount",
+          "kind": "field",
+          "name": "boundCount",
+          "signature": "public var boundCount (get, never) : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:typeBounds",
+          "kind": "function",
+          "name": "typeBounds",
+          "signature": "public static function typeBounds (type : RustType, bounds : Array < RustGenericBound >) : RustWherePredicate",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustGenericBound",
+            "reflaxe.rust.ast.RustAST.RustType"
+          ]
+        },
+        {
+          "id": "function:lifetimeBounds",
+          "kind": "function",
+          "name": "lifetimeBounds",
+          "signature": "public static function lifetimeBounds (lifetime : RustLifetime, bounds : Array < RustLifetime >) : RustWherePredicate",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustLifetime"
+          ]
+        },
+        {
+          "id": "function:validateGenericBounds",
+          "kind": "function",
+          "name": "validateGenericBounds",
+          "signature": "public static function validateGenericBounds (bounds : Array < RustGenericBound >, label : String) : Array < RustGenericBound >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustGenericBound"
+          ]
+        },
+        {
+          "id": "function:genericBoundIterator",
+          "kind": "function",
+          "name": "genericBoundIterator",
+          "signature": "public function genericBoundIterator () : Iterator < RustGenericBound >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustGenericBound"
+          ]
+        },
+        {
+          "id": "function:lifetimeBoundIterator",
+          "kind": "function",
+          "name": "lifetimeBoundIterator",
+          "signature": "public function lifetimeBoundIterator () : Iterator < RustLifetime >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustLifetime"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustWherePredicateKind",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "enum",
+      "signature": "enum RustWherePredicateKind",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-constructor:WhereTypeBounds",
+          "kind": "enum-constructor",
+          "name": "WhereTypeBounds",
+          "signature": "WhereTypeBounds",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:WhereLifetimeBounds",
+          "kind": "enum-constructor",
+          "name": "WhereLifetimeBounds",
+          "signature": "WhereLifetimeBounds",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
@@ -14323,33 +17078,69 @@
         "test:public-compatibility"
       ],
       "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAttribute",
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
         "reflaxe.rust.ast.RustAST.RustGenericParameters",
+        "reflaxe.rust.ast.RustAST.RustImpl",
         "reflaxe.rust.ast.RustAST.RustMember",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustPattern",
-        "reflaxe.rust.ast.RustAST.RustType"
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustWhereClause"
       ],
       "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustFnArg",
+        "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
         "reflaxe.rust.ast.RustAST.RustGenericParameters",
         "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustImpl",
         "reflaxe.rust.ast.RustAST.RustLifetime",
         "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustMatchArm",
         "reflaxe.rust.ast.RustAST.RustMember",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustPathRoot",
         "reflaxe.rust.ast.RustAST.RustPathSegment",
         "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStmt",
+        "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
         "reflaxe.rust.ast.RustAST.RustTraitObject",
-        "reflaxe.rust.ast.RustAST.RustType"
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
+        "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind"
       ],
       "operations": [
         {
@@ -14471,6 +17262,34 @@
           ]
         },
         {
+          "id": "function:visitAttributeTree",
+          "kind": "function",
+          "name": "visitAttributeTree",
+          "signature": "public static function visitAttributeTree (attribute : RustAttribute, visitor : RustPath -> Void) : Void",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustAttribute",
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        },
+        {
+          "id": "function:visitUseTree",
+          "kind": "function",
+          "name": "visitUseTree",
+          "signature": "public static function visitUseTree (declaration : RustUseDeclaration, visitor : RustPath -> Void) : Void",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath",
+            "reflaxe.rust.ast.RustAST.RustUseDeclaration"
+          ]
+        },
+        {
           "id": "function:visitTypeTree",
           "kind": "function",
           "name": "visitTypeTree",
@@ -14523,6 +17342,48 @@
           ],
           "typeReferences": [
             "reflaxe.rust.ast.RustAST.RustGenericParameters",
+            "reflaxe.rust.ast.RustAST.RustPath"
+          ]
+        },
+        {
+          "id": "function:visitWhereClause",
+          "kind": "function",
+          "name": "visitWhereClause",
+          "signature": "public static function visitWhereClause (clause : RustWhereClause, visitor : RustPath -> Void) : Void",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath",
+            "reflaxe.rust.ast.RustAST.RustWhereClause"
+          ]
+        },
+        {
+          "id": "function:visitTraitTree",
+          "kind": "function",
+          "name": "visitTraitTree",
+          "signature": "public static function visitTraitTree (declaration : RustTraitDeclaration, visitor : RustPath -> Void) : Void",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPath",
+            "reflaxe.rust.ast.RustAST.RustTraitDeclaration"
+          ]
+        },
+        {
+          "id": "function:visitImplTree",
+          "kind": "function",
+          "name": "visitImplTree",
+          "signature": "public static function visitImplTree (declaration : RustImpl, visitor : RustPath -> Void) : Void",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustImpl",
             "reflaxe.rust.ast.RustAST.RustPath"
           ]
         }
@@ -16147,17 +19008,27 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustAttributedItem",
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustComment",
         "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFile",
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -16170,6 +19041,7 @@
         "reflaxe.rust.ast.RustAST.RustMatchArm",
         "reflaxe.rust.ast.RustAST.RustMember",
         "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
         "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustPathRoot",
@@ -16178,15 +19050,26 @@
         "reflaxe.rust.ast.RustAST.RustPattern",
         "reflaxe.rust.ast.RustAST.RustRawAuthority",
         "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
         "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
         "reflaxe.rust.ast.RustAST.RustTraitObject",
         "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
         "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind",
         "reflaxe.rust.compiler.RustBuildContext",
         "reflaxe.rust.passes.RustPass"
       ],
@@ -16252,17 +19135,27 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustAttributedItem",
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustComment",
         "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFile",
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -16275,6 +19168,7 @@
         "reflaxe.rust.ast.RustAST.RustMatchArm",
         "reflaxe.rust.ast.RustAST.RustMember",
         "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
         "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustPathRoot",
@@ -16283,15 +19177,26 @@
         "reflaxe.rust.ast.RustAST.RustPattern",
         "reflaxe.rust.ast.RustAST.RustRawAuthority",
         "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
         "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
         "reflaxe.rust.ast.RustAST.RustTraitObject",
         "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
         "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind",
         "reflaxe.rust.compiler.RustBuildContext",
         "reflaxe.rust.passes.RustPass"
       ],
@@ -16357,17 +19262,27 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustAttributedItem",
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustComment",
         "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFile",
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -16380,6 +19295,7 @@
         "reflaxe.rust.ast.RustAST.RustMatchArm",
         "reflaxe.rust.ast.RustAST.RustMember",
         "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
         "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustPathRoot",
@@ -16388,15 +19304,26 @@
         "reflaxe.rust.ast.RustAST.RustPattern",
         "reflaxe.rust.ast.RustAST.RustRawAuthority",
         "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
         "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
         "reflaxe.rust.ast.RustAST.RustTraitObject",
         "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
         "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind",
         "reflaxe.rust.compiler.RustBuildContext",
         "reflaxe.rust.passes.RustPass"
       ],
@@ -16462,17 +19389,27 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustAttributedItem",
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustComment",
         "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFile",
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -16485,6 +19422,7 @@
         "reflaxe.rust.ast.RustAST.RustMatchArm",
         "reflaxe.rust.ast.RustAST.RustMember",
         "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
         "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustPathRoot",
@@ -16493,15 +19431,26 @@
         "reflaxe.rust.ast.RustAST.RustPattern",
         "reflaxe.rust.ast.RustAST.RustRawAuthority",
         "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
         "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
         "reflaxe.rust.ast.RustAST.RustTraitObject",
         "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
         "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind",
         "reflaxe.rust.compiler.RustBuildContext",
         "reflaxe.rust.passes.RustPass"
       ],
@@ -16567,17 +19516,27 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustAttributedItem",
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustComment",
         "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFile",
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -16590,6 +19549,7 @@
         "reflaxe.rust.ast.RustAST.RustMatchArm",
         "reflaxe.rust.ast.RustAST.RustMember",
         "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
         "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustPathRoot",
@@ -16598,15 +19558,26 @@
         "reflaxe.rust.ast.RustAST.RustPattern",
         "reflaxe.rust.ast.RustAST.RustRawAuthority",
         "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
         "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
         "reflaxe.rust.ast.RustAST.RustTraitObject",
         "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
         "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind",
         "reflaxe.rust.compiler.RustBuildContext",
         "reflaxe.rust.passes.RustPass"
       ],
@@ -16672,17 +19643,27 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustAttributedItem",
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustComment",
         "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFile",
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -16695,6 +19676,7 @@
         "reflaxe.rust.ast.RustAST.RustMatchArm",
         "reflaxe.rust.ast.RustAST.RustMember",
         "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
         "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustPathRoot",
@@ -16703,15 +19685,26 @@
         "reflaxe.rust.ast.RustAST.RustPattern",
         "reflaxe.rust.ast.RustAST.RustRawAuthority",
         "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
         "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
         "reflaxe.rust.ast.RustAST.RustTraitObject",
         "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
         "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind",
         "reflaxe.rust.compiler.RustBuildContext",
         "reflaxe.rust.passes.RustPass"
       ],
@@ -16776,17 +19769,27 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustAttributedItem",
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustComment",
         "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFile",
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -16799,6 +19802,7 @@
         "reflaxe.rust.ast.RustAST.RustMatchArm",
         "reflaxe.rust.ast.RustAST.RustMember",
         "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
         "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustPathRoot",
@@ -16807,15 +19811,26 @@
         "reflaxe.rust.ast.RustAST.RustPattern",
         "reflaxe.rust.ast.RustAST.RustRawAuthority",
         "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
         "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
         "reflaxe.rust.ast.RustAST.RustTraitObject",
         "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
         "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind",
         "reflaxe.rust.compiler.RustBuildContext"
       ],
       "operations": [
@@ -16857,17 +19872,27 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustAttributedItem",
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustComment",
         "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFile",
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -16880,6 +19905,7 @@
         "reflaxe.rust.ast.RustAST.RustMatchArm",
         "reflaxe.rust.ast.RustAST.RustMember",
         "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
         "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustPathRoot",
@@ -16888,15 +19914,26 @@
         "reflaxe.rust.ast.RustAST.RustPattern",
         "reflaxe.rust.ast.RustAST.RustRawAuthority",
         "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
         "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
         "reflaxe.rust.ast.RustAST.RustTraitObject",
         "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
         "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind",
         "reflaxe.rust.compiler.RustBuildContext"
       ],
       "operations": [
@@ -16944,17 +19981,27 @@
         "reflaxe.rust.ast.RustAST.RustStmt"
       ],
       "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustAttributedItem",
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustComment",
         "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFile",
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -16967,6 +20014,7 @@
         "reflaxe.rust.ast.RustAST.RustMatchArm",
         "reflaxe.rust.ast.RustAST.RustMember",
         "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
         "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustPathRoot",
@@ -16975,15 +20023,26 @@
         "reflaxe.rust.ast.RustAST.RustPattern",
         "reflaxe.rust.ast.RustAST.RustRawAuthority",
         "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
         "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
         "reflaxe.rust.ast.RustAST.RustTraitObject",
         "reflaxe.rust.ast.RustAST.RustType",
-        "reflaxe.rust.ast.RustAST.RustVisibility"
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
+        "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind"
       ],
       "operations": [
         {
@@ -17083,17 +20142,27 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustAttributedItem",
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustComment",
         "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFile",
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -17106,6 +20175,7 @@
         "reflaxe.rust.ast.RustAST.RustMatchArm",
         "reflaxe.rust.ast.RustAST.RustMember",
         "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
         "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustPathRoot",
@@ -17114,15 +20184,26 @@
         "reflaxe.rust.ast.RustAST.RustPattern",
         "reflaxe.rust.ast.RustAST.RustRawAuthority",
         "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
         "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
         "reflaxe.rust.ast.RustAST.RustTraitObject",
         "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
         "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind",
         "reflaxe.rust.compiler.RustBuildContext",
         "reflaxe.rust.passes.RustPass"
       ],
@@ -17232,17 +20313,27 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustAttributedItem",
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustComment",
         "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFile",
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -17255,6 +20346,7 @@
         "reflaxe.rust.ast.RustAST.RustMatchArm",
         "reflaxe.rust.ast.RustAST.RustMember",
         "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
         "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustPathRoot",
@@ -17263,15 +20355,26 @@
         "reflaxe.rust.ast.RustAST.RustPattern",
         "reflaxe.rust.ast.RustAST.RustRawAuthority",
         "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
         "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
         "reflaxe.rust.ast.RustAST.RustTraitObject",
         "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
         "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind",
         "reflaxe.rust.compiler.RustBuildContext"
       ],
       "operations": [
@@ -17855,17 +20958,27 @@
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustAttributedItem",
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustComment",
         "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
         "reflaxe.rust.ast.RustAST.RustEnum",
         "reflaxe.rust.ast.RustAST.RustEnumVariant",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFile",
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -17878,6 +20991,7 @@
         "reflaxe.rust.ast.RustAST.RustMatchArm",
         "reflaxe.rust.ast.RustAST.RustMember",
         "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
         "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustPathRoot",
@@ -17886,15 +21000,26 @@
         "reflaxe.rust.ast.RustAST.RustPattern",
         "reflaxe.rust.ast.RustAST.RustRawAuthority",
         "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
         "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
         "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustStruct",
         "reflaxe.rust.ast.RustAST.RustStructField",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
         "reflaxe.rust.ast.RustAST.RustTraitBoundModifier",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
         "reflaxe.rust.ast.RustAST.RustTraitObject",
         "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
         "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind",
         "reflaxe.rust.compiler.RustBuildContext"
       ],
       "operations": [

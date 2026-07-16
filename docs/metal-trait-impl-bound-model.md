@@ -1,7 +1,8 @@
 # Metal Trait, Impl, And Bound Model
 
-This page defines the current `metal` contract for Rust trait-facing surfaces and the next compiler
-shapes that should replace raw impl snippets over time.
+This page defines the current `metal` contract for Rust trait-facing surfaces. The compiler now keeps
+generated traits, impl headers, receivers, where clauses, and associated items as structural Rust IR;
+the remaining roadmap here is mainly about safe, typed Haxe-facing authoring APIs.
 
 ## Current Surfaces
 
@@ -41,12 +42,30 @@ Use these rules before adding a new trait-facing API:
 - Do not hide Rust trait requirements behind `Dynamic`, broad `Any` payloads, app-side `__rust__`,
   or stringly mini-DSLs.
 
-## Missing Typed Shapes
+## Compiler IR Boundary
 
-These are not full compiler-owned surfaces yet:
+Generated Haxe interfaces, class-polymorphism traits, base/interface impls, and inherent impls use
+typed `RTrait` / `RImpl` declarations. Their trait paths, target types, generics, supertraits,
+receivers, parameters, return types, where predicates, and associated functions/types/constants are
+therefore visible to compiler passes. Ownership and no-`hxrt` policy use the shared structural path
+visitor instead of scanning printed Rust.
 
-- `where` clauses distinct from inline generic declarations,
-- associated types and associated consts,
+`@:rustImpl` remains a real metadata boundary, but it is narrower than before:
+
+- the trait string is parsed immediately into a structural `RustPath`;
+- an optional `forType` string is parsed immediately into `RustType`;
+- the compiler owns and prints the `impl ... for ...` header;
+- only a non-empty user-supplied inner body remains `metadata-owned:trait-implementation` raw text.
+
+This internal support does not by itself create a new public Haxe syntax for associated types or
+where clauses. It makes those future surfaces possible without another printer-string migration.
+
+## Missing Haxe-Facing Typed Surfaces
+
+These are not full source-authoring surfaces yet:
+
+- public typed metadata/macros for `where` clauses distinct from inline generic declarations,
+- public typed metadata/macros for associated types and associated consts,
 - trait object bounds beyond the generated Haxe-interface path,
 - blanket impls and negative impls,
 - derive helpers beyond current `@:rustDerive(...)` strings,
@@ -61,6 +80,11 @@ Rust-only trait systems.
 ## Fixture Evidence
 
 Current contract fixtures:
+
+- `test/compiler/RustStructuralTraitImplContract.hx` and
+  `test/scripts/rust-structural-trait-impls.test.js`
+  prove structural traits/impls, where predicates, associated items, deterministic printing,
+  rustc-clean output, pass traversal, and fail-closed no-`hxrt` analysis.
 
 - `test/snapshot/rust_impl_meta`
   proves the baseline `@:rustImpl(...)` metadata output.
