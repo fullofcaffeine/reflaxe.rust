@@ -57,6 +57,15 @@ visitor instead of scanning printed Rust.
 - the compiler owns and prints the `impl ... for ...` header;
 - only a non-empty user-supplied inner body remains `metadata-owned:trait-implementation` raw text.
 
+The structural factories also enforce the context Rust assigns to each form. Trait associated types
+are declarations without defaults on stable Rust, while trait-impl associated types are definitions
+with a value and no declaration bounds. Generic associated-type definitions print `where` after their
+value so warning-denied builds use Rust's preferred syntax. Relaxing an implicit size requirement is
+represented only as `?Sized`, and only type parameters or associated-type declarations admit it; the
+IR cannot construct a generalized `?Clone`, a relaxed supertrait, or an unproven relaxed where bound.
+Executable passes treat associated constant initializers as bodies, alongside trait defaults and impl
+methods, so cleanup and ownership rewrites do not stop at the associated-item boundary.
+
 This internal support does not by itself create a new public Haxe syntax for associated types or
 where clauses. It makes those future surfaces possible without another printer-string migration.
 

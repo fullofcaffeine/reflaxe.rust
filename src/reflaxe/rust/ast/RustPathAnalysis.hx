@@ -493,7 +493,7 @@ class RustPathAnalysis {
 		visitGenericParameters(method.generics, visitor);
 		if (method.receiver != null) {
 			switch (method.receiver) {
-				case ReceiverTyped(type): visitTypeTreeInternal(type, visitor);
+				case ReceiverTyped(type, _): visitTypeTreeInternal(type, visitor);
 				case ReceiverValue(_) | ReceiverBorrowed(_, _):
 			}
 		}
@@ -508,8 +508,8 @@ class RustPathAnalysis {
 		if (bound == null)
 			throw "Cannot visit a null Rust generic bound";
 		switch (bound) {
-			case GenericTraitBound(path, _): visitPathTreeInternal(path, visitor);
-			case GenericLifetimeBound(_):
+			case GenericTraitBound(path): visitPathTreeInternal(path, visitor);
+			case GenericRelaxedSized | GenericLifetimeBound(_):
 		}
 	}
 
@@ -561,8 +561,8 @@ class RustPathAnalysis {
 			case RTraitObject(object):
 				for (bound in object) {
 					switch (bound) {
-						case GenericTraitBound(path, _): visitPathTreeInternal(path, visitor);
-						case GenericLifetimeBound(_):
+						case GenericTraitBound(path): visitPathTreeInternal(path, visitor);
+						case GenericRelaxedSized | GenericLifetimeBound(_):
 					}
 				}
 			case RUnit | RBool | RI32 | RF64 | RString:

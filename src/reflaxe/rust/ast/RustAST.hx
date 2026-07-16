@@ -303,7 +303,7 @@ enum RustConstArgumentKind {
 	  three as strings prevents traversal and can make punctuation ambiguous.
 
 	What
-	- Covers non-negative integer literals, booleans, and structural const paths, which are the closed
+	- Covers signed decimal integer literals, booleans, and structural const paths, which are the closed
 	  forms needed by the current compiler roadmap.
 
 	How
@@ -313,20 +313,21 @@ enum RustConstArgumentKind {
 class RustConstArgument {
 	public final kind:RustConstArgumentKind;
 	public final integerDigits:Null<String>;
+	public final integerNegative:Bool;
 	public final boolValue:Null<Bool>;
 	public final pathValue:Null<RustPath>;
 
-	private function new(kind:RustConstArgumentKind, integerDigits:Null<String>, boolValue:Null<Bool>, pathValue:Null<RustPath>) {
+	private function new(kind:RustConstArgumentKind, integerDigits:Null<String>, integerNegative:Bool, boolValue:Null<Bool>,
+			pathValue:Null<RustPath>) {
 		this.kind = kind;
 		this.integerDigits = integerDigits;
+		this.integerNegative = integerNegative;
 		this.boolValue = boolValue;
 		this.pathValue = pathValue;
 	}
 
 	public static function integer(value:Int):RustConstArgument {
-		if (value < 0)
-			throw "Negative const arguments require a future typed const-expression node";
-		return decimalInteger(Std.string(value));
+		return decimalSignedInteger(Std.string(value));
 	}
 
 	/**
@@ -344,20 +345,37 @@ class RustConstArgument {
 	public static function decimalInteger(digits:String):RustConstArgument {
 		if (digits == null || digits.length == 0 || !~/^[0-9]+$/.match(digits))
 			throw 'Invalid Rust decimal const integer `$digits`';
+		return decimalSignedInteger(digits);
+	}
+
+	/**
+		Constructs an arbitrarily wide signed decimal const integer.
+
+		Why / What / How
+		- Rust marker-trait paths may use signed const arguments such as `Marker<-1>`.
+		- Accepts an optional leading minus and decimal digits only, canonicalizes leading zeroes, and
+		  normalizes negative zero to ordinary zero. The printer owns the minus token.
+	**/
+	public static function decimalSignedInteger(value:String):RustConstArgument {
+		if (value == null || value.length == 0 || !~/^-?[0-9]+$/.match(value))
+			throw 'Invalid Rust signed decimal const integer `$value`';
+		var negative = StringTools.startsWith(value, "-");
+		var digits = negative ? value.substr(1) : value;
 		var firstNonZero = 0;
 		while (firstNonZero < digits.length - 1 && digits.charAt(firstNonZero) == "0")
 			firstNonZero++;
-		return new RustConstArgument(ConstInteger, digits.substr(firstNonZero), null, null);
+		var canonical = digits.substr(firstNonZero);
+		return new RustConstArgument(ConstInteger, canonical, negative && canonical != "0", null, null);
 	}
 
 	public static function boolean(value:Bool):RustConstArgument {
-		return new RustConstArgument(ConstBoolean, null, value, null);
+		return new RustConstArgument(ConstBoolean, null, false, value, null);
 	}
 
 	public static function path(value:RustPath):RustConstArgument {
 		if (value == null)
 			throw "Rust const path cannot be null";
-		return new RustConstArgument(ConstPath, null, null, value);
+		return new RustConstArgument(ConstPath, null, false, null, value);
 	}
 }
 
@@ -381,16 +399,69 @@ enum RustGenericArgument {
 	GenericInfer;
 }
 
-/** Expresses whether a trait bound is ordinary (`Trait`) or relaxed (`?Trait`). */
-enum RustTraitBoundModifier {
-	TraitBoundRequired;
-	TraitBoundOptional;
+/**
+	A closed structural Rust generic bound.
+
+	Why
+	- Rust's `?` is not a general "optional trait" modifier. `?Sized` only removes the implicit
+	  `Sized` requirement in declaration contexts where Rust permits that relaxation.
+	- Modeling `?Clone` and `?Sized` with one modifier lets invalid bounds leak into supertraits,
+	  trait objects, and arbitrary where predicates.
+
+	What
+	- Separates ordinary required trait paths, the single relaxed-size state, and lifetime bounds.
+
+	How
+	- Use `GenericTraitBound` for every required trait and `GenericRelaxedSized` only for a generic type
+	  parameter or associated-type declaration. Context-owning factories reject the relaxed state
+	  everywhere else, and the printer alone emits `?Sized`.
+**/
+enum RustGenericBound {
+	GenericTraitBound(path:RustPath);
+	GenericRelaxedSized;
+	GenericLifetimeBound(lifetime:RustLifetime);
 }
 
-/** A trait or lifetime bound attached to a Rust type parameter. */
-enum RustGenericBound {
-	GenericTraitBound(path:RustPath, modifier:RustTraitBoundModifier);
-	GenericLifetimeBound(lifetime:RustLifetime);
+/**
+	Validates and owns generic-bound arrays for one exact Rust grammar context.
+
+	Why / What / How
+	- Several declarations share bound syntax but differ on whether they may relax implicit sizing.
+	- `copyValidated` defensively owns the array, checks every payload, rejects contradictory
+	  `Sized + ?Sized`, and requires the caller to state whether its declaration context admits
+	  `GenericRelaxedSized`.
+**/
+private class RustGenericBoundSyntax {
+	public static function copyValidated(values:Array<RustGenericBound>, label:String, allowRelaxedSized:Bool):Array<RustGenericBound> {
+		if (values == null)
+			throw '$label bounds cannot be null';
+		var copy = values.copy();
+		var sawRelaxedSized = false;
+		var sawRequiredSized = false;
+		for (bound in copy) {
+			if (bound == null)
+				throw '$label cannot contain a null bound';
+			switch (bound) {
+				case GenericTraitBound(path):
+					if (path == null)
+						throw '$label trait bound requires a path';
+					if (path.plainRelativeIdentifierName() == "Sized")
+						sawRequiredSized = true;
+				case GenericRelaxedSized:
+					if (!allowRelaxedSized)
+						throw '$label cannot relax the implicit Sized bound';
+					if (sawRelaxedSized)
+						throw '$label cannot repeat the relaxed Sized bound';
+					sawRelaxedSized = true;
+				case GenericLifetimeBound(lifetime):
+					if (lifetime == null)
+						throw '$label lifetime bound cannot be null';
+			}
+		}
+		if (sawRelaxedSized && sawRequiredSized)
+			throw '$label cannot require and relax Sized at the same time';
+		return copy;
+	}
 }
 
 /**
@@ -425,7 +496,8 @@ enum RustGenericParameter {
 	- Owns a defensive copy of structural generic parameters and exposes read-only traversal methods.
 
 	How
-	- Construct with `of`; malformed order and duplicate names fail immediately at the AST boundary.
+	- Construct with `of`; malformed order and duplicate names fail immediately at the AST boundary,
+	  and nested lifetime/type-bound arrays are copied so callers cannot mutate an existing declaration.
 	- The printer consumes `count`, `at`, or `iterator` and owns delimiters and commas.
 **/
 class RustGenericParameters {
@@ -439,18 +511,19 @@ class RustGenericParameters {
 	public static function of(values:Array<RustGenericParameter>):RustGenericParameters {
 		if (values == null)
 			throw "Rust generic parameter list cannot be null";
-		var copy = values.copy();
+		var copy:Array<RustGenericParameter> = [];
 		var sawTypeOrConst = false;
 		var lifetimeNames:Map<String, Bool> = [];
 		var valueNames:Map<String, Bool> = [];
-		for (parameter in copy) {
+		for (parameter in values) {
 			if (parameter == null)
 				throw "Rust generic parameter cannot be null";
 			switch (parameter) {
 				case GenericLifetimeParam(name, bounds):
 					if (name == null || bounds == null)
 						throw "Rust lifetime parameter requires a name and bounds list";
-					for (bound in bounds) {
+					var ownedBounds = bounds.copy();
+					for (bound in ownedBounds) {
 						if (bound == null)
 							throw "Rust lifetime parameter bound cannot be null";
 					}
@@ -459,32 +532,24 @@ class RustGenericParameters {
 					if (lifetimeNames.exists(name.name))
 						throw 'Duplicate Rust lifetime parameter `${name.name}`';
 					lifetimeNames.set(name.name, true);
-				case GenericTypeParam(name, bounds, _):
+					copy.push(GenericLifetimeParam(name, ownedBounds));
+				case GenericTypeParam(name, bounds, defaultType):
 					if (name == null || bounds == null)
 						throw "Rust type parameter requires a name and bounds list";
-					for (bound in bounds) {
-						if (bound == null)
-							throw "Rust type parameter bound cannot be null";
-						switch (bound) {
-							case GenericTraitBound(path, modifier):
-								if (path == null || modifier == null)
-									throw "Rust trait bound requires a path and modifier";
-							case GenericLifetimeBound(lifetime):
-								if (lifetime == null)
-									throw "Rust lifetime bound cannot be null";
-						}
-					}
+					var ownedBounds = RustGenericBoundSyntax.copyValidated(bounds, "Rust type parameter", true);
 					sawTypeOrConst = true;
 					if (valueNames.exists(name.name))
 						throw 'Duplicate Rust generic parameter `${name.name}`';
 					valueNames.set(name.name, true);
-				case GenericConstParam(name, type, _):
+					copy.push(GenericTypeParam(name, ownedBounds, defaultType));
+				case GenericConstParam(name, type, defaultValue):
 					if (name == null || type == null)
 						throw "Rust const parameter requires a name and type";
 					sawTypeOrConst = true;
 					if (valueNames.exists(name.name))
 						throw 'Duplicate Rust generic parameter `${name.name}`';
 					valueNames.set(name.name, true);
+					copy.push(GenericConstParam(name, type, defaultValue));
 			}
 		}
 		return new RustGenericParameters(copy);
@@ -535,21 +600,13 @@ class RustTraitObject {
 	public static function of(values:Array<RustGenericBound>):RustTraitObject {
 		if (values == null || values.length == 0)
 			throw "Rust trait object requires at least one bound";
-		var copy = values.copy();
+		var copy = RustGenericBoundSyntax.copyValidated(values, "Rust trait object", false);
 		var hasTrait = false;
 		for (bound in copy) {
-			if (bound == null)
-				throw "Rust trait object bound cannot be null";
 			switch (bound) {
-				case GenericTraitBound(path, modifier):
-					if (path == null || modifier == null)
-						throw "Rust trait object bound requires a path and modifier";
-					if (modifier == TraitBoundOptional)
-						throw "Rust trait objects cannot contain relaxed ?Trait bounds";
+				case GenericTraitBound(_):
 					hasTrait = true;
-				case GenericLifetimeBound(lifetime):
-					if (lifetime == null)
-						throw "Rust trait object lifetime bound cannot be null";
+				case GenericRelaxedSized | GenericLifetimeBound(_):
 			}
 		}
 		if (!hasTrait)
@@ -1409,7 +1466,7 @@ typedef RustEnumVariant = {
 	The closed forms of a structural Rust `self` receiver.
 
 	Why / What / How
-	- `self`, `mut self`, `&self`, `&'a mut self`, and `self: Type` have semantic ownership and
+	- `self`, `mut self`, `&self`, `&'a mut self`, `self: Type`, and `mut self: Type` have semantic ownership and
 	  lifetime differences that cannot live in a parameter-name string.
 	- Each constructor stores only the role-specific typed payload; an omitted borrowed lifetime means
 	  Rust's ordinary elided receiver lifetime.
@@ -1419,7 +1476,7 @@ typedef RustEnumVariant = {
 enum RustSelfReceiver {
 	ReceiverValue(mutable:Bool);
 	ReceiverBorrowed(mutable:Bool, lifetime:Null<RustLifetime>);
-	ReceiverTyped(type:RustType);
+	ReceiverTyped(type:RustType, mutable:Bool);
 }
 
 /**
@@ -1508,23 +1565,9 @@ class RustWherePredicate {
 		return new RustWherePredicate(WhereLifetimeBounds, null, lifetime, [], copy);
 	}
 
-	public static function validateGenericBounds(bounds:Array<RustGenericBound>, label:String):Array<RustGenericBound> {
-		if (bounds == null)
-			throw '$label bounds cannot be null';
-		var copy = bounds.copy();
-		for (bound in copy) {
-			if (bound == null)
-				throw '$label cannot contain a null bound';
-			switch (bound) {
-				case GenericTraitBound(path, modifier):
-					if (path == null || modifier == null)
-						throw '$label trait bound requires a path and modifier';
-				case GenericLifetimeBound(lifetime):
-					if (lifetime == null)
-						throw '$label lifetime bound cannot be null';
-			}
-		}
-		return copy;
+	public static function validateGenericBounds(bounds:Array<RustGenericBound>, label:String,
+			?allowRelaxedSized:Bool = false):Array<RustGenericBound> {
+		return RustGenericBoundSyntax.copyValidated(bounds, label, allowRelaxedSized);
 	}
 
 	function get_boundCount():Int {
@@ -1600,7 +1643,9 @@ class RustWhereClause {
 
 	How
 	- `declaration` is the complete constructor. A null body is a trait signature; impl validation
-	  requires bodies. `fromFunction` adapts already-typed inherent methods without changing output.
+	  requires bodies. Typed receivers admit named/aliased Self-rooted shapes (and borrows of them),
+	  while definitely invalid primitives and compound non-receiver types fail at construction.
+	  `fromFunction` adapts already-typed inherent methods without changing output.
 **/
 class RustAssociatedFunction {
 	public final visibility:RustVisibility;
@@ -1649,14 +1694,28 @@ class RustAssociatedFunction {
 		if (receiver == null)
 			return null;
 		switch (receiver) {
-			case ReceiverTyped(type):
+			case ReceiverTyped(type, _):
 				if (type == null)
 					throw "Typed Rust self receiver requires a type";
+				if (!couldResolveToSelfReceiver(type))
+					throw "Typed Rust self receiver must be a named/aliased Self-rooted type or a borrow of one";
 			case ReceiverBorrowed(_, _):
 				// A null lifetime is the explicit, valid elided receiver-lifetime shape.
 			case ReceiverValue(_):
 		}
 		return receiver;
+	}
+
+	static function couldResolveToSelfReceiver(type:RustType):Bool {
+		return switch (type) {
+			case RNamed(_): true;
+			case RBorrow(inner, _, _):
+				switch (inner) {
+					case RNamed(_): true;
+					case _: false;
+				}
+			case RUnit | RBool | RI32 | RF64 | RString | RTuple(_) | RSlice(_) | RArray(_, _) | RTraitObject(_): false;
+		};
 	}
 
 	static function validateParameters(values:Array<RustFunctionParameter>):Array<RustFunctionParameter> {
@@ -1702,7 +1761,9 @@ class RustAssociatedFunction {
 	- Associated types can carry their own generics, bounds, where predicates, and optional value; raw
 	  text would hide every one of those paths from policy analysis.
 	- `named` validates and defensively stores the declaration surface. A null `value` is a trait
-	  signature, while `RustImpl` requires a value in trait implementations.
+	  declaration, while `RustTraitDeclaration` rejects values and `RustImpl` requires a value with no
+	  declaration bounds. The printer places a definition's where clause after its value to avoid
+	  Rust's deprecated pre-`=` GAT spelling.
 **/
 class RustAssociatedTypeDeclaration {
 	public final name:RustIdentifier;
@@ -1718,7 +1779,7 @@ class RustAssociatedTypeDeclaration {
 			throw "Rust associated type requires generics and a where clause";
 		this.name = RustIdentifier.named(name);
 		this.generics = generics;
-		this.bounds = RustWherePredicate.validateGenericBounds(bounds, "Rust associated type");
+		this.bounds = RustWherePredicate.validateGenericBounds(bounds, "Rust associated type", true);
 		this.whereClause = whereClause;
 		this.value = value;
 	}
@@ -1829,6 +1890,13 @@ class RustTraitDeclaration {
 		if (values == null)
 			throw "Rust trait associated items cannot be null";
 		var copy = values.copy();
+		var typeNames:Map<String, Bool> = [];
+		var valueNames:Map<String, Bool> = [];
+		function claim(names:Map<String, Bool>, name:String, namespace:String):Void {
+			if (names.exists(name))
+				throw 'Duplicate Rust trait associated $namespace name `$name`';
+			names.set(name, true);
+		}
 		for (item in copy) {
 			if (item == null)
 				throw "Rust trait cannot contain a null associated item";
@@ -1838,14 +1906,19 @@ class RustTraitDeclaration {
 						throw "Rust trait associated function cannot be null";
 					if (method.visibility != VPrivate)
 						throw "Rust trait associated functions cannot declare visibility";
+					claim(valueNames, method.name.name, "value-namespace");
 				case AssocType(declaration):
 					if (declaration == null)
 						throw "Rust trait associated type cannot be null";
+					if (declaration.value != null)
+						throw "Stable Rust trait associated types cannot declare default values";
+					claim(typeNames, declaration.name.name, "type-namespace");
 				case AssocConst(declaration):
 					if (declaration == null)
 						throw "Rust trait associated constant cannot be null";
 					if (declaration.visibility != VPrivate)
 						throw "Rust trait associated constants cannot declare visibility";
+					claim(valueNames, declaration.name.name, "value-namespace");
 				case AssocRaw(_):
 					throw "Rust trait declarations cannot contain raw associated items";
 			}
@@ -1942,6 +2015,13 @@ class RustImpl {
 		if (values == null)
 			throw "Rust impl associated items cannot be null";
 		var copy = values.copy();
+		var typeNames:Map<String, Bool> = [];
+		var valueNames:Map<String, Bool> = [];
+		function claim(names:Map<String, Bool>, name:String, namespace:String):Void {
+			if (names.exists(name))
+				throw 'Duplicate Rust impl associated $namespace name `$name`';
+			names.set(name, true);
+		}
 		for (item in copy) {
 			if (item == null)
 				throw "Rust impl cannot contain a null associated item";
@@ -1951,16 +2031,21 @@ class RustImpl {
 						throw "Rust impl associated functions require typed bodies";
 					if (traitImpl && method.visibility != VPrivate)
 						throw "Rust trait impl associated functions cannot declare visibility";
+					claim(valueNames, method.name.name, "value-namespace");
 				case AssocType(declaration):
 					if (!traitImpl)
 						throw "Rust inherent impls cannot contain associated type declarations";
 					if (declaration == null || declaration.value == null)
 						throw "Rust trait impl associated types require values";
+					if (declaration.boundCount != 0)
+						throw "Rust trait impl associated type definitions cannot declare bounds";
+					claim(typeNames, declaration.name.name, "type-namespace");
 				case AssocConst(declaration):
 					if (declaration == null || declaration.value == null)
 						throw "Rust impl associated constants require values";
 					if (traitImpl && declaration.visibility != VPrivate)
 						throw "Rust trait impl associated constants cannot declare visibility";
+					claim(valueNames, declaration.name.name, "value-namespace");
 				case AssocRaw(fragment):
 					if (!traitImpl)
 						throw "Raw associated bodies are admitted only for trait impl metadata";

@@ -56,7 +56,6 @@ import reflaxe.rust.ast.RustAST.RustSelfReceiver;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustStaticDeclaration;
 import reflaxe.rust.ast.RustAST.RustStructLitField;
-import reflaxe.rust.ast.RustAST.RustTraitBoundModifier;
 import reflaxe.rust.ast.RustAST.RustTraitDeclaration;
 import reflaxe.rust.ast.RustAST.RustTraitObject;
 import reflaxe.rust.ast.RustAST.RustType;
@@ -754,7 +753,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (left == null || right == null || left.kind != right.kind)
 			return false;
 		return switch (left.kind) {
-			case ConstInteger: left.integerDigits == right.integerDigits;
+			case ConstInteger:
+				left.integerDigits == right.integerDigits && left.integerNegative == right.integerNegative;
 			case ConstBoolean: left.boolValue == right.boolValue;
 			case ConstPath:
 				left.pathValue != null && right.pathValue != null && rustPathsEqual(left.pathValue, right.pathValue);
@@ -810,8 +810,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function rustGenericBoundsEqual(left:RustGenericBound, right:RustGenericBound):Bool {
 		return switch [left, right] {
-			case [GenericTraitBound(leftPath, leftModifier), GenericTraitBound(rightPath, rightModifier)]:
-				leftModifier == rightModifier && rustPathsEqual(leftPath, rightPath);
+			case [GenericTraitBound(leftPath), GenericTraitBound(rightPath)]: rustPathsEqual(leftPath, rightPath);
+			case [GenericRelaxedSized, GenericRelaxedSized]: true;
 			case [GenericLifetimeBound(leftLifetime), GenericLifetimeBound(rightLifetime)]: rustLifetimesEqual(leftLifetime, rightLifetime);
 			case _: false;
 		};
@@ -924,9 +924,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			GenericTypeParam(RustIdentifier.named("T"), [], null)
 		]);
 		var maybeSizedGenerics = RustGenericParameters.of([
-			GenericTypeParam(RustIdentifier.named("T"), [
-				GenericTraitBound(rustRelativePath(["Sized"]), TraitBoundOptional)
-			], null)
+			GenericTypeParam(RustIdentifier.named("T"), [GenericRelaxedSized], null)
 		]);
 
 		function alias(name:String, generics:RustGenericParameters, target:RustType):RustItem {
@@ -7488,9 +7486,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// values by value while borrowing `self`. To preserve Haxe's "values are reusable" semantics,
 		// codegen often clones non-`Copy` fields/values, so we default to `T: Clone` for class params.
 		var defaultBounds:Array<RustGenericBound> = [
-			GenericTraitBound(RustPath.single("Clone"), TraitBoundRequired),
-			GenericTraitBound(RustPath.single("Send"), TraitBoundRequired),
-			GenericTraitBound(RustPath.single("Sync"), TraitBoundRequired)
+			GenericTraitBound(RustPath.single("Clone")),
+			GenericTraitBound(RustPath.single("Send")),
+			GenericTraitBound(RustPath.single("Sync"))
 		];
 		return RustGenericParameters.of([
 			for (parameter in classType.params)
@@ -16047,7 +16045,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var pos = entry.pos;
 			if (entry.params == null || entry.params.length == 0) {
 				#if eval
-				Context.error("`@:rustImpl` requires at least one parameter.", pos);
+				RustDiagnostic.error(RustDiagnosticId.MetadataArity,
+					"`@:rustImpl` accepts one marker/object parameter or exactly two string parameters", pos);
 				#end
 				continue;
 			}
@@ -16149,30 +16148,31 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				continue;
 			}
 
-			if (entry.params.length >= 2) {
-				var traitPath:Null<String> = null;
-				var body:Null<String> = null;
-				traitPath = stringConst(entry.params[0]);
-				body = stringConst(entry.params[1]);
-				if (traitPath != null) {
-					var spec:RustImplMetadataInput = {traitPath: traitPath, pos: pos};
-					if (body != null)
-						spec.body = body;
-					addSpec(spec);
-					continue;
-				}
-				if (traitPath == null) {
-					#if eval
-					Context.error("`@:rustImpl` first parameter must be a compile-time string trait path.", pos);
-					#end
-					continue;
-				}
-				var spec:RustImplMetadataInput = {traitPath: traitPath, pos: pos};
-				if (body != null)
-					spec.body = body;
-				addSpec(spec);
+			if (entry.params.length != 2) {
+				#if eval
+				RustDiagnostic.error(RustDiagnosticId.MetadataArity,
+					"`@:rustImpl` accepts one marker/object parameter or exactly two string parameters", pos);
+				#end
 				continue;
 			}
+
+			var traitPath = stringConst(entry.params[0]);
+			if (traitPath == null) {
+				#if eval
+				RustDiagnostic.error(RustDiagnosticId.MetadataValue,
+					"`@:rustImpl` first parameter must be a compile-time string trait path", pos);
+				#end
+				continue;
+			}
+			var body = stringConst(entry.params[1]);
+			if (body == null) {
+				#if eval
+				RustDiagnostic.error(RustDiagnosticId.MetadataValue,
+					"`@:rustImpl` second parameter must be a compile-time string body", pos);
+				#end
+				continue;
+			}
+			addSpec({traitPath: traitPath, body: body, pos: pos});
 		}
 
 		// Stable ordering for snapshots.
@@ -16308,8 +16308,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	/** Returns the compiler-owned `Send + Sync` supertrait contract as typed bounds. */
 	function generatedTraitSupertraits():Array<RustGenericBound> {
 		return [
-			GenericTraitBound(RustPath.single("Send"), TraitBoundRequired),
-			GenericTraitBound(RustPath.single("Sync"), TraitBoundRequired)
+			GenericTraitBound(RustPath.single("Send")),
+			GenericTraitBound(RustPath.single("Sync"))
 		];
 	}
 
@@ -18470,9 +18470,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function rustTraitObjectType(primaryTrait:RustPath, ?extraLifetime:RustLifetime):RustType {
 		var bounds:Array<RustGenericBound> = [
-			GenericTraitBound(primaryTrait, TraitBoundRequired),
-			GenericTraitBound(RustPath.single("Send"), TraitBoundRequired),
-			GenericTraitBound(RustPath.single("Sync"), TraitBoundRequired)
+			GenericTraitBound(primaryTrait),
+			GenericTraitBound(RustPath.single("Send")),
+			GenericTraitBound(RustPath.single("Sync"))
 		];
 		if (extraLifetime != null)
 			bounds.push(GenericLifetimeBound(extraLifetime));

@@ -29,7 +29,8 @@ import reflaxe.rust.ast.RustPathAnalysis;
 	  lowering.
 
 	How
-	- Recursively rewrites nested blocks first (`EBlock`, closures, async move bodies, loop bodies).
+	- Recursively rewrites nested blocks first (`EBlock`, closures, async move bodies, loop bodies),
+	  whether they live in ordinary functions, trait defaults, or associated constant initializers.
 	- Tracks structural closure/match patterns plus nested `let` and `for` bindings while walking
 	  expressions, evaluating initializers/iterables before each new lexical shadow enters scope.
 	- Counts captured closure and async-move writes as repeated mutation evidence so declaration-only
@@ -81,7 +82,9 @@ class MutInferencePass implements RustPass {
 		return switch (item) {
 			case AssocFunction(method):
 				method.body == null ? item : AssocFunction(method.withBody(rewriteBlock(method.body)));
-			case AssocType(_) | AssocConst(_) | AssocRaw(_): item;
+			case AssocConst(declaration):
+				declaration.value == null ? item : AssocConst(declaration.withValue(rewriteExpr(declaration.value)));
+			case AssocType(_) | AssocRaw(_): item;
 		};
 	}
 

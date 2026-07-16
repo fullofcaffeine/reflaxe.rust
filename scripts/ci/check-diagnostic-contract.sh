@@ -77,6 +77,8 @@ run_error_case test/negative/rust_cargo_metadata_arity compile.hxml HXRS-METADAT
 run_error_case test/negative/rust_generic_metadata_value compile.hxml HXRS-METADATA-VALUE '`@:rustGeneric` must be a string or array of strings' metadata-value
 run_error_case test/negative/rust_impl_invalid_trait_path compile.hxml HXRS-METADATA-VALUE 'Invalid `@:rustImpl` trait path syntax' rust-impl-trait-path
 run_error_case test/negative/rust_impl_invalid_for_type compile.hxml HXRS-METADATA-VALUE 'Invalid `@:rustImpl` `forType` syntax' rust-impl-for-type
+run_error_case test/negative/rust_impl_invalid_body_value compile.hxml HXRS-METADATA-VALUE '`@:rustImpl` second parameter must be a compile-time string body' rust-impl-body-value
+run_error_case test/negative/rust_impl_invalid_arity compile.hxml HXRS-METADATA-ARITY '`@:rustImpl` accepts one marker/object parameter or exactly two string parameters' rust-impl-arity
 run_error_case test/negative/rust_test_metadata_placement compile.hxml HXRS-METADATA-PLACEMENT 'must live in non-main classes' metadata-placement
 run_error_case test/negative/rust_cargo_structured_conflict compile.hxml HXRS-CARGO-DEPENDENCY-CONFLICT 'Conflicting `@:rustCargo` version' cargo-conflict
 run_error_case test/negative/dynamic_field_assignop compile.hxml HXRS-DYNAMIC-FIELD-OPERATOR 'Decode the field to `Int`, `Float`, or `String`.*write it back explicitly' dynamic-field-assignop

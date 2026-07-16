@@ -13,10 +13,11 @@ const compilerPath = path.join(repoRoot, 'src', 'reflaxe', 'rust', 'RustCompiler
 const pathAnalysisPath = path.join(repoRoot, 'src', 'reflaxe', 'rust', 'ast', 'RustPathAnalysis.hx')
 const passDir = path.join(repoRoot, 'src', 'reflaxe', 'rust', 'passes')
 const harnessPath = path.join(repoRoot, 'scripts', 'ci', 'harness.sh')
+const pathCompatFixture = path.join(repoRoot, 'test', 'positive', 'rust_impl_path_compat')
 
-function runHaxe(args) {
+function runHaxe(args, cwd = repoRoot) {
   return cp.spawnSync(process.execPath, [haxeShim, ...args], {
-    cwd: repoRoot,
+    cwd,
     encoding: 'utf8'
   })
 }
@@ -93,12 +94,16 @@ function main() {
     '',
     "pub trait Processor<'a, T>: Send + Sync where T: Clone + 'a, 'a: 'static {",
     '    type Output: Clone;',
+    "    type Lender<'item> where Self: 'item;",
+    '    type Maybe: ?Sized;',
     '    const LIMIT: usize;',
     "    fn process<U: core::fmt::Debug>(&self, value: T, _other: U) -> Self::Output where U: Send;",
     '}',
     '',
     "impl<'a, T> Processor<'a, T> for Worker<T> where T: Clone + Send + Sync + 'a, 'a: 'static {",
     '    type Output = T;',
+    "    type Lender<'item> = &'item T where Self: 'item;",
+    '    type Maybe = str;',
     '    const LIMIT: usize = 4;',
     "    fn process<U: core::fmt::Debug>(&self, value: T, _other: U) -> Self::Output where U: Send {",
     '        value',
@@ -108,7 +113,7 @@ function main() {
     'impl<T> Worker<T> {',
     '    pub const DEFAULT_LIMIT: usize = 8;',
     '',
-    '    fn take(self) { }',
+    '    fn take(self) -> () { }',
     '',
     '    fn reset(mut self) {',
     '        let _slot = &mut self.value;',
@@ -116,7 +121,15 @@ function main() {
     '',
     "    fn borrow<'b>(&'b mut self) { }",
     '',
+    '    fn borrow_mut(&mut self) { }',
+    '',
+    "    fn borrow_ref<'c>(&'c self) { }",
+    '',
     '    fn boxed(self: Box<Self>) { }',
+    '',
+    '    fn boxed_mut(mut self: Box<Self>) {',
+    '        let _boxed = &mut self;',
+    '    }',
     '}',
     ''
   ].join('\n')
@@ -156,6 +169,19 @@ class Main {
     assert.notStrictEqual(legacy.status, 0, 'legacy object-literal impls must be rejected')
     assert.match(output(legacy), /RustImpl|functions/,
       'legacy impl rejection must identify the removed declaration shape')
+
+    const compatOut = path.join(tempDir, 'rust-impl-path-compat')
+    const compat = runHaxe(['compile.hxml', '-D', `rust_output=${compatOut}`], pathCompatFixture)
+    assert.strictEqual(compat.status, 0, output(compat))
+    const targetSource = fs.readFileSync(path.join(compatOut, 'src', 'target.rs'), 'utf8')
+    assert.match(targetSource, /impl crate::marker::Marker<-1> for Target \{ \}/,
+      'marker-only rustImpl must accept trailing generic commas and negative const arguments')
+    const compatBuild = cp.spawnSync('cargo', ['build', '--quiet'], {
+      cwd: compatOut,
+      encoding: 'utf8',
+      env: {...process.env, RUSTFLAGS: '-D warnings'}
+    })
+    assert.strictEqual(compatBuild.status, 0, output(compatBuild))
   } finally {
     fs.rmSync(tempDir, {recursive: true, force: true})
   }
@@ -216,6 +242,17 @@ class Main {
       `${passName} must recurse through structural trait default bodies`)
     assert.match(source, /case RImpl\s*\(/,
       `${passName} must recurse through structural impl bodies`)
+  }
+
+  for (const passName of [
+    'BorrowScopeTighteningPass.hx',
+    'CloneElisionPass.hx',
+    'MutInferencePass.hx',
+    'StatementCleanupPass.hx'
+  ]) {
+    const source = fs.readFileSync(path.join(passDir, passName), 'utf8')
+    assert.match(source, /case AssocConst\s*\(declaration\)/,
+      `${passName} must recurse through associated constant initializers`)
   }
 
   const noHxrt = fs.readFileSync(path.join(passDir, 'NoHxrtPass.hx'), 'utf8')

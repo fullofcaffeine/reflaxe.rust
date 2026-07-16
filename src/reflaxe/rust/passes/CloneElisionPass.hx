@@ -27,7 +27,8 @@ import reflaxe.rust.ast.RustPathAnalysis;
 	  - last-use local `path.clone()` boxed via `hxrt::dynamic::from(...)` (outside loop/closure contexts).
 
 	How
-	- Recursively rewrites Rust AST items/functions/blocks/expressions.
+	- Recursively rewrites Rust AST items/functions/blocks/expressions, including trait default bodies
+	  and associated constant initializers.
 	- Recognizes only an argument-free structural `clone` member; a generic member with the same name
 	  is not an optimization candidate.
 	- Excludes paths shadowed by closure parameters, match-arm patterns, sequential `let` bindings, or
@@ -94,7 +95,17 @@ class CloneElisionPass implements RustPass {
 					currentMovableBindings = previous;
 					AssocFunction(method.withBody(body));
 				}
-			case AssocType(_) | AssocConst(_) | AssocRaw(_): item;
+			case AssocConst(declaration):
+				if (declaration.value == null) {
+					item;
+				} else {
+					var previous = currentMovableBindings;
+					currentMovableBindings = [];
+					var value = rewriteExpr(declaration.value, false);
+					currentMovableBindings = previous;
+					AssocConst(declaration.withValue(value));
+				}
+			case AssocType(_) | AssocRaw(_): item;
 		};
 	}
 

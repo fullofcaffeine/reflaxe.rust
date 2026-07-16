@@ -10,7 +10,6 @@ import reflaxe.rust.ast.RustAST.RustMember;
 import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPathSegment;
-import reflaxe.rust.ast.RustAST.RustTraitBoundModifier;
 import reflaxe.rust.ast.RustAST.RustTraitObject;
 import reflaxe.rust.ast.RustAST.RustType;
 import reflaxe.rust.ast.RustASTPrinter;
@@ -97,7 +96,7 @@ class RustStructuralMemberClosureContract {
 					{
 						name: "value",
 						ty: RBorrow(RTraitObject(RustTraitObject.of([
-							GenericTraitBound(path(["std", "any", "Any"]), TraitBoundRequired)
+							GenericTraitBound(path(["std", "any", "Any"]))
 						])), false, null)
 					},
 					{name: "iter", ty: genericType("Vec", [GenericType(RI32)])}

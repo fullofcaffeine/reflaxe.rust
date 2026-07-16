@@ -27,7 +27,8 @@ import reflaxe.rust.ast.RustPathAnalysis;
 	- Supports immediate next-statement usage and block-tail usage.
 
 	How
-	- Runs after expression lowering on the Rust AST.
+	- Runs after expression lowering on the Rust AST, including trait default bodies and associated
+	  constant initializers.
 	- Compares `borrow` / `borrow_mut` as validated plain members and treats closure parameters,
 	  match-arm patterns, sequential `let` bindings, and `for` binders as lexical shadows when counting
 	  or replacing alias uses. Initializers and iterables are visited before their new binder enters
@@ -84,7 +85,9 @@ class BorrowScopeTighteningPass implements RustPass {
 		return switch (item) {
 			case AssocFunction(method):
 				method.body == null ? item : AssocFunction(method.withBody(rewriteBlock(method.body, false)));
-			case AssocType(_) | AssocConst(_) | AssocRaw(_): item;
+			case AssocConst(declaration):
+				declaration.value == null ? item : AssocConst(declaration.withValue(rewriteExpr(declaration.value, false)));
+			case AssocType(_) | AssocRaw(_): item;
 		};
 	}
 

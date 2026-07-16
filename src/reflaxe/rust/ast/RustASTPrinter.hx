@@ -442,7 +442,7 @@ class RustASTPrinter {
 						out += "mut ";
 					out + "self";
 				}
-			case ReceiverTyped(type): "self: " + printType(type);
+			case ReceiverTyped(type, mutable): (mutable ? "mut " : "") + "self: " + printType(type);
 		};
 	}
 
@@ -455,9 +455,12 @@ class RustASTPrinter {
 			bounds.push(printGenericBound(bound));
 		if (bounds.length > 0)
 			out += ": " + bounds.join(" + ");
-		out += printWhereClause(declaration.whereClause);
-		if (declaration.value != null)
+		if (declaration.value == null) {
+			out += printWhereClause(declaration.whereClause);
+		} else {
 			out += " = " + printType(declaration.value);
+			out += printWhereClause(declaration.whereClause);
+		}
 		return out + ";";
 	}
 
@@ -651,7 +654,7 @@ class RustASTPrinter {
 			case ConstInteger:
 				if (argument.integerDigits == null)
 					throw "Integer const argument is missing its value";
-				argument.integerDigits;
+				(argument.integerNegative ? "-" : "") + argument.integerDigits;
 			case ConstBoolean:
 				if (argument.boolValue == null)
 					throw "Boolean const argument is missing its value";
@@ -674,11 +677,8 @@ class RustASTPrinter {
 
 	static function printGenericBound(bound:RustAST.RustGenericBound):String {
 		return switch (bound) {
-			case GenericTraitBound(path, modifier):
-				(switch (modifier) {
-					case TraitBoundRequired: "";
-					case TraitBoundOptional: "?";
-				}) + printTypePath(path);
+			case GenericTraitBound(path): printTypePath(path);
+			case GenericRelaxedSized: "?Sized";
 			case GenericLifetimeBound(lifetime): printLifetime(lifetime);
 		};
 	}

@@ -8,7 +8,6 @@ import reflaxe.rust.ast.RustAST.RustItem;
 import reflaxe.rust.ast.RustAST.RustLifetime;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPathSegment;
-import reflaxe.rust.ast.RustAST.RustTraitBoundModifier;
 import reflaxe.rust.ast.RustAST.RustType;
 import reflaxe.rust.ast.RustASTPrinter;
 
@@ -60,7 +59,7 @@ class RustStructuralExpressionPathContract {
 			GenericTypeParam(RustIdentifier.named("U"), [], null),
 			GenericConstParam(RustIdentifier.named("N"), named("usize"), null),
 			GenericTypeParam(RustIdentifier.named("T"), [
-				GenericTraitBound(factoryPath, TraitBoundRequired)
+				GenericTraitBound(factoryPath)
 			], null)
 		]);
 

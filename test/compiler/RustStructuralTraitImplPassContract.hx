@@ -2,6 +2,7 @@
 import haxe.macro.Context;
 import reflaxe.rust.CompilationContext;
 import reflaxe.rust.RustProfile;
+import reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration;
 import reflaxe.rust.ast.RustAST.RustAssociatedFunction;
 import reflaxe.rust.ast.RustAST.RustAssociatedItem;
 import reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration;
@@ -139,6 +140,20 @@ class RustStructuralTraitImplPassContract {
 
 	public static function run():Void {
 		var raw = RustRawCode.metadataAt("first();  \n\n\nsecond(); \t", RawTraitImplementation, Context.currentPos());
+		var constantInitializer = EBlock({
+			stmts: [
+				RLet("const_alias", false, null,
+					ECall(EField(local("constant_owner"), reflaxe.rust.ast.RustAST.RustMember.plain("borrow")), [])),
+				RSemi(call("consume", local("const_alias"))),
+				RSemi(call("consume", ECall(EField(ELitString("constant"), reflaxe.rust.ast.RustAST.RustMember.plain("clone")), []))),
+				RLet("const_mutated", false, null, ELitInt(0)),
+				RSemi(EAssign(local("const_mutated"), ELitInt(1))),
+				RLet("const_staged", false, RI32, null),
+				RSemi(EAssign(local("const_staged"), ELitInt(7))),
+				RSemi(call("consume", local("const_staged")))
+			],
+			tail: local("const_mutated")
+		});
 		var associated:Array<RustAssociatedItem> = [
 			method("borrow_nested", [
 				RLet("alias", false, null, ECall(EField(local("owner"), reflaxe.rust.ast.RustAST.RustMember.plain("borrow")), [])),
@@ -157,11 +172,20 @@ class RustStructuralTraitImplPassContract {
 				RSemi(EAssign(local("staged"), ELitInt(7))),
 				RSemi(call("consume", local("staged")))
 			]),
+			AssocConst(RustAssociatedConstantDeclaration.named(VPrivate, "TRANSFORMED", RI32, constantInitializer)),
 			AssocRaw(raw)
+		];
+		var defaultItems:Array<RustAssociatedItem> = [
+			method("trait_default", [
+				RLet("default_mutated", false, null, ELitInt(0)),
+				RSemi(EAssign(local("default_mutated"), ELitInt(1))),
+				RSemi(call("consume", local("default_mutated")))
+			])
 		];
 		var nested = RAttributed(RustAttributedItem.of([
 			RustAttribute.pathList(path(["cfg"]), [path(["test"])])
 		], RModule(RustModuleDeclaration.inlineModule(VPrivate, "outer", [
+			RTrait(RustTraitDeclaration.named(VPrivate, "Defaulted", RustGenericParameters.empty(), [], RustWhereClause.empty(), defaultItems)),
 			RImpl(RustImpl.traitImplementation(RustGenericParameters.empty(), path(["Marker"]), named("Target"), RustWhereClause.empty(),
 				associated))
 		]))));
@@ -183,6 +207,18 @@ class RustStructuralTraitImplPassContract {
 		var cleanupOutput = printFunction(transformed, "cleanup_nested");
 		expect(cleanupOutput.indexOf("let staged: i32 = 7;") != -1,
 			"statement cleanup did not reach a structural impl method");
+		var defaultOutput = printFunction(transformed, "trait_default");
+		expect(defaultOutput.indexOf("let mut default_mutated = 0;") != -1,
+			"production passes did not reach a structural trait default body");
+		var constantOutput = RustASTPrinter.printFile(transformed);
+		expect(constantOutput.indexOf("let const_alias") == -1 && constantOutput.indexOf("consume(constant_owner.borrow());") != -1,
+			"borrow tightening did not reach an associated constant initializer");
+		expect(constantOutput.indexOf("\"constant\".clone()") == -1,
+			"clone elision did not reach an associated constant initializer");
+		expect(constantOutput.indexOf("let mut const_mutated = 0;") != -1,
+			"mutation inference did not reach an associated constant initializer");
+		expect(constantOutput.indexOf("let const_staged: i32 = 7;") != -1,
+			"statement cleanup did not reach an associated constant initializer");
 
 		var normalized:Null<RustRawCode> = null;
 		for (item in transformed.items) {
@@ -199,19 +235,20 @@ class RustStructuralTraitImplPassContract {
 	public static function rejectNestedHxrt():Void {
 		var hxrtType = name -> RNamed(path(["hxrt", name]));
 		var impl = RustImpl.traitImplementation(RustGenericParameters.empty(), path(["hxrt", "Trait"]), hxrtType("Target"), RustWhereClause.of([
-			RustWherePredicate.typeBounds(named("T"), [GenericTraitBound(path(["hxrt", "ImplWhere"]), TraitBoundRequired)])
+			RustWherePredicate.typeBounds(named("T"), [GenericTraitBound(path(["hxrt", "ImplWhere"]))])
 		]), [
+			AssocType(RustAssociatedTypeDeclaration.named("Output", RustGenericParameters.empty(), [], RustWhereClause.empty(), hxrtType("TypeValue"))),
 			AssocRaw(RustRawCode.metadataAt("fn raw() { hxrt::raw(); }", RawTraitImplementation, Context.currentPos()))
 		]);
 		var trait = RustTraitDeclaration.named(VPrivate, "Surface", RustGenericParameters.empty(), [
-			GenericTraitBound(path(["hxrt", "Super"]), TraitBoundRequired)
+			GenericTraitBound(path(["hxrt", "Super"]))
 		], RustWhereClause.of([
-			RustWherePredicate.typeBounds(named("T"), [GenericTraitBound(path(["hxrt", "TraitWhere"]), TraitBoundRequired)])
+			RustWherePredicate.typeBounds(named("T"), [GenericTraitBound(path(["hxrt", "TraitWhere"]))])
 		]), [
 			AssocFunction(RustAssociatedFunction.declaration(VPrivate, "inspect", false, RustGenericParameters.empty(), ReceiverBorrowed(false, null), [
 				RustFunctionParameter.named("value", hxrtType("Parameter"))
 			], null, RustWhereClause.empty(), null)),
-			AssocType(RustAssociatedTypeDeclaration.named("Output", RustGenericParameters.empty(), [], RustWhereClause.empty(), hxrtType("TypeValue")))
+			AssocType(RustAssociatedTypeDeclaration.named("Output", RustGenericParameters.empty(), [], RustWhereClause.empty(), null))
 		]);
 		RustASTTransformer.transform({items: [RImpl(impl), RTrait(trait)]}, context(true));
 		throw "NoHxrtPass accepted runtime paths hidden inside structural trait and impl declarations";

@@ -7,9 +7,9 @@ import reflaxe.rust.ast.RustAST.RustIdentifier;
 import reflaxe.rust.ast.RustAST.RustLifetime;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPathSegment;
-import reflaxe.rust.ast.RustAST.RustTraitBoundModifier;
 import reflaxe.rust.ast.RustAST.RustType;
 import reflaxe.rust.ast.RustASTPrinter;
+import reflaxe.rust.metadata.RustMetadataSyntax;
 
 class RustStructuralPathContract {
 	static function expect(condition:Bool, message:String):Void {
@@ -62,6 +62,9 @@ class RustStructuralPathContract {
 		]);
 		expect(RustASTPrinter.printTypePath(wideConstPath) == "Capacity<18446744073709551615>",
 			"const integer syntax must not be limited by Haxe Int width");
+		var signedConstPath = RustMetadataSyntax.parsePath("Marker<-0001,>");
+		expect(RustASTPrinter.printTypePath(signedConstPath) == "Marker<-1>",
+			"signed const arguments and trailing commas must parse into canonical structural syntax");
 
 		var turbofish = RustPath.relative([
 			RustPathSegment.plain("hxrt"),
@@ -105,8 +108,8 @@ class RustStructuralPathContract {
 		var parameters = RustGenericParameters.of([
 			GenericLifetimeParam(RustIdentifier.named("a"), [RustLifetime.staticLifetime()]),
 			GenericTypeParam(RustIdentifier.named("T"), [
-				GenericTraitBound(RustPath.single("Clone"), TraitBoundRequired),
-				GenericTraitBound(RustPath.single("Send"), TraitBoundRequired),
+				GenericTraitBound(RustPath.single("Clone")),
+				GenericTraitBound(RustPath.single("Send")),
 				GenericLifetimeBound(lifetimeA)
 			], null),
 			GenericConstParam(RustIdentifier.named("N"), namedType("usize"), RustConstArgument.integer(32))
@@ -115,11 +118,13 @@ class RustStructuralPathContract {
 			"generic declaration parameters must own bounds, lifetimes, and const defaults");
 		var relaxedParameters = RustGenericParameters.of([
 			GenericTypeParam(RustIdentifier.named("T"), [
-				GenericTraitBound(RustPath.single("Sized"), TraitBoundOptional)
+				GenericRelaxedSized
 			], null)
 		]);
 		expect(RustASTPrinter.printGenericParameters(relaxedParameters) == "<T: ?Sized>",
-			"optional trait bounds must use a closed modifier instead of a Boolean convention");
+			"relaxed Sized must use its dedicated closed bound variant");
+		expectThrows(() -> RustMetadataSyntax.parseGenericParameters("T: ?Clone"),
+			"metadata must reject generalized optional trait bounds");
 
 		expectThrows(() -> RustIdentifier.named("not::one"), "target punctuation must not enter an identifier");
 		expectThrows(() -> RustIdentifier.named("type"), "Rust keywords must require explicit raw-identifier authority");

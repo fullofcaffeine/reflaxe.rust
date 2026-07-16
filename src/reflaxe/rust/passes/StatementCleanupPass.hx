@@ -31,8 +31,8 @@ import reflaxe.rust.ast.RustPathAnalysis;
 	  3) pure discarded statements like `x;` or `123;` -> removed
 
 	How
-	- Recursively rewrites nested blocks/expressions first, then applies block-local cleanup to the
-	  rewritten statement list.
+	- Recursively rewrites nested blocks/expressions first, including trait defaults and associated
+	  constant initializers, then applies block-local cleanup to the rewritten statement list.
 	- Name-usage checks treat `ERaw` as a typed blind spot and conservatively scan its text for
 	  identifier references, because some std/native fallback boundaries still emit raw Rust that can
 	  mention local bindings.
@@ -80,7 +80,9 @@ class StatementCleanupPass implements RustPass {
 		return switch (item) {
 			case AssocFunction(method):
 				method.body == null ? item : AssocFunction(method.withBody(rewriteBlock(method.body)));
-			case AssocType(_) | AssocConst(_) | AssocRaw(_): item;
+			case AssocConst(declaration):
+				declaration.value == null ? item : AssocConst(declaration.withValue(rewriteExpr(declaration.value)));
+			case AssocType(_) | AssocRaw(_): item;
 		};
 	}
 

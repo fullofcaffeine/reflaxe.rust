@@ -293,10 +293,18 @@ Agent policy:
   Rust value `()` instead of disguising it as an empty block expression.
 - Structural trait/impl gotcha: generated traits and impls must use `RTrait` / `RImpl` with typed
   generics, trait paths, target types, where predicates, receivers, signatures, and associated items.
-  Every body-transforming pass must recurse into trait defaults and impl methods, while declaration
-  policy must traverse paths through `RustPathAnalysis`. For `@:rustImpl`, parse the metadata trait
-  path and optional target type immediately; only the explicitly supplied inner body may remain a
-  metadata-owned `AssocRaw` fragment. Never rebuild an impl header with a compiler mini-printer.
+  Every body-transforming pass must recurse into trait defaults, impl methods, and non-null associated
+  constant initializers, while declaration policy must traverse paths through `RustPathAnalysis`.
+  Trait associated types are declarations and cannot have defaults on stable Rust; trait-impl
+  associated types are definitions and therefore require a value but reject declaration bounds.
+  Print a definition's `where` clause after `= Value` so `-D warnings` does not reject deprecated GAT
+  syntax. Model relaxed sizing as the dedicated `GenericRelaxedSized` state: only type-parameter and
+  associated-type declaration bounds admit `?Sized`; never generalize it to `?Trait`, supertraits,
+  trait objects, or unproven where-clause subjects. For `@:rustImpl`, parse the metadata trait path
+  and optional target type immediately; only the explicitly supplied inner body may remain a
+  metadata-owned `AssocRaw` fragment. Its positional form accepts exactly one marker string or two
+  strings, and the closed path parser must preserve stable forms such as trailing generic/input
+  commas and signed decimal const arguments. Never rebuild an impl header with a compiler mini-printer.
 - Rust identifier keyword gotcha: `RustNaming.isKeyword` includes backend-reserved legal identifiers
   (`std`, `core`, and `alloc`) for source-name allocation. Grammar validation must use
   `RustNaming.isRustKeyword` so structural paths accept those real crate segments while rejecting the

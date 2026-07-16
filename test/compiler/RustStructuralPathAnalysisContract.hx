@@ -7,7 +7,6 @@ import reflaxe.rust.ast.RustAST.RustLifetime;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPathSegment;
 import reflaxe.rust.ast.RustAST.RustPattern;
-import reflaxe.rust.ast.RustAST.RustTraitBoundModifier;
 import reflaxe.rust.ast.RustAST.RustType;
 import reflaxe.rust.ast.RustPathAnalysis;
 
@@ -141,7 +140,7 @@ class RustStructuralPathAnalysisContract {
 			GenericTypeParam(RustIdentifier.named("T"), [
 				GenericTraitBound(RustPath.relative([
 					RustPathSegment.angle("Bound", [GenericType(RNamed(hxrtPayload))])
-				]), TraitBoundRequired)
+				]))
 			], named("DefaultValue")),
 			GenericConstParam(RustIdentifier.named("N"), named("usize"),
 				RustConstArgument.path(path(["hxrt", "limits", "DEFAULT_N"])))

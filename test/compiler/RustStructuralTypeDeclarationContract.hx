@@ -8,7 +8,6 @@ import reflaxe.rust.ast.RustAST.RustImpl;
 import reflaxe.rust.ast.RustAST.RustLifetime;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPathSegment;
-import reflaxe.rust.ast.RustAST.RustTraitBoundModifier;
 import reflaxe.rust.ast.RustAST.RustTraitObject;
 import reflaxe.rust.ast.RustAST.RustType;
 import reflaxe.rust.ast.RustASTPrinter;
@@ -50,9 +49,9 @@ class RustStructuralTypeDeclarationContract {
 		var callbackTrait = RustTraitObject.of([
 			GenericTraitBound(RustPath.relative([
 				RustPathSegment.parenthesized("Fn", [named("U")], named("T"))
-			]), TraitBoundRequired),
-			GenericTraitBound(RustPath.single("Send"), TraitBoundRequired),
-			GenericTraitBound(RustPath.single("Sync"), TraitBoundRequired),
+			])),
+			GenericTraitBound(RustPath.single("Send")),
+			GenericTraitBound(RustPath.single("Sync")),
 			GenericLifetimeBound(lifetime)
 		]);
 		var callbackType = RNamed(RustPath.cratePath([
@@ -64,7 +63,7 @@ class RustStructuralTypeDeclarationContract {
 					RustPathSegment.plain("core"),
 					RustPathSegment.plain("fmt"),
 					RustPathSegment.plain("Debug")
-				]), TraitBoundRequired)
+				]))
 			], null)
 		]);
 

@@ -10,7 +10,6 @@ import reflaxe.rust.ast.RustAST.RustLifetime;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPathRoot;
 import reflaxe.rust.ast.RustAST.RustPathSegment;
-import reflaxe.rust.ast.RustAST.RustTraitBoundModifier;
 import reflaxe.rust.ast.RustAST.RustTraitObject;
 import reflaxe.rust.ast.RustAST.RustType;
 
@@ -106,7 +105,9 @@ class RustMetadataSyntax {
 
 	What
 	- Implements only the closed forms represented by `RustType`, `RustPath`, generic declarations,
-	  trait bounds, lifetimes, and const arguments. Unsupported tokens fail with a stable source offset.
+	  trait bounds, lifetimes, and const arguments. It accepts trailing commas in angle/function-trait
+	  argument lists and signed decimal const literals, then canonicalizes them through typed nodes.
+	  Braced const expressions remain outside this IR and fail with a stable source offset.
 
 	How
 	- Recursive descent owns delimiter nesting; structural AST factories remain the final validators.
@@ -194,8 +195,13 @@ private class RustMetadataSyntaxParser {
 		skipWhitespace();
 		if (peek("'"))
 			return GenericLifetimeBound(parseLifetime());
-		var modifier = consume("?") ? TraitBoundOptional : TraitBoundRequired;
-		return GenericTraitBound(parsePath(), modifier);
+		if (consume("?")) {
+			var relaxed = parsePath();
+			if (relaxed.plainRelativeIdentifierName() != "Sized")
+				fail("Rust only permits `?Sized` as a relaxed generic bound");
+			return GenericRelaxedSized;
+		}
+		return GenericTraitBound(parsePath());
 	}
 
 	public function parseType():RustType {
@@ -319,22 +325,32 @@ private class RustMetadataSyntaxParser {
 		skipWhitespace();
 		if (consume("<")) {
 			var arguments:Array<RustGenericArgument> = [];
-			do {
+			while (true) {
 				arguments.push(parseGenericArgument());
 				skipWhitespace();
-			} while (consume(","));
-			require(">");
+				if (!consume(",")) {
+					require(">");
+					break;
+				}
+				if (consume(">"))
+					break;
+			}
 			return RustPathSegment.angleIdentifier(identifier, arguments);
 		}
 		if (consume("(")) {
 			var inputs:Array<RustType> = [];
 			skipWhitespace();
 			if (!consume(")")) {
-				do {
+				while (true) {
 					inputs.push(parseType());
 					skipWhitespace();
-				} while (consume(","));
-				require(")");
+					if (!consume(",")) {
+						require(")");
+						break;
+					}
+					if (consume(")"))
+						break;
+				}
 			}
 			var output:Null<RustType> = null;
 			skipWhitespace();
@@ -351,7 +367,7 @@ private class RustMetadataSyntaxParser {
 			return GenericInfer;
 		if (peek("'"))
 			return GenericLifetime(parseLifetime());
-		if (isDigit(peekChar()) || matchesKeyword("true") || matchesKeyword("false"))
+		if (isDigit(peekChar()) || (peek("-") && isDigit(source.charAt(index + 1))) || matchesKeyword("true") || matchesKeyword("false"))
 			return GenericConst(parseConstArgument());
 		return GenericType(parseType());
 	}
@@ -362,11 +378,13 @@ private class RustMetadataSyntaxParser {
 			return RustConstArgument.boolean(true);
 		if (consumeKeyword("false"))
 			return RustConstArgument.boolean(false);
-		if (isDigit(peekChar())) {
+		if (isDigit(peekChar()) || (peek("-") && isDigit(source.charAt(index + 1)))) {
 			var start = index;
+			if (peek("-"))
+				index++;
 			while (isDigit(peekChar()))
 				index++;
-			return RustConstArgument.decimalInteger(source.substring(start, index));
+			return RustConstArgument.decimalSignedInteger(source.substring(start, index));
 		}
 		return RustConstArgument.path(parsePath());
 	}

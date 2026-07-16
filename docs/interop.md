@@ -115,12 +115,20 @@ The strings that identify the trait and optional target type are parsed at the m
 After that, the compiler keeps the impl header as typed Rust structure, so analysis can see its paths
 and generic arguments. When a body string is supplied, only that inner body remains raw metadata;
 the surrounding `impl Trait for Type { ... }` syntax is still compiler-owned and structurally printed.
+The positional form is intentionally strict: use exactly one string for a marker impl or exactly two
+strings for an impl with a body. Extra arguments and non-string bodies are reported at compile time
+instead of being ignored or silently reinterpreted as marker impls.
 
 Limitations:
 
 - Rust orphan rules still apply. In practice, this is primarily useful for implementing external traits
   for **local types** (types emitted by this compiler). If both the trait and the target type are
   external, Rust will reject the impl.
+- Trait paths use the compiler's closed structural metadata grammar. It accepts stable path forms used
+  by current fixtures, including trailing commas in generic/function-trait argument lists and signed
+  decimal const arguments such as `Marker<-1,>`. Braced const expressions such as `Marker<{ N + 1 }>`
+  are not modeled yet; use a named const path or a typed extern/native island instead of hiding that
+  expression in compiler-owned syntax.
 - Impl body strings are a narrow metadata escape hatch, not the long-term app authoring model for
   common Rust trait patterns. See [Metal trait, impl, and bound model](metal-trait-impl-bound-model.md)
   for the current contract and planned typed surfaces.
