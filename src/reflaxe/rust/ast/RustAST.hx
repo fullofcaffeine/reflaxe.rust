@@ -12,6 +12,52 @@ import reflaxe.rust.naming.RustNaming;
 class RustAST {}
 
 /**
+	A closed, stable explanation for Rust syntax that has no honest single Haxe source position.
+
+	Why
+	- Writing only "compiler generated" is too vague for a diagnostic: users need to know whether a
+	  span is module scaffolding, a cleanup rewrite, or a still-raw fallback.
+	- Free-form reason strings would drift between lowering, transformation, source-map artifacts, and
+	  future rustc diagnostic rendering.
+
+	What
+	- Each value is both a typed compiler choice and the kebab-case identifier serialized into the
+	  deterministic source map.
+	- The list contains only reasons emitted by current lowering/raw boundaries; adding speculative
+	  pass names would expand the artifact vocabulary without an honest generated node.
+
+	How
+	- Pass a value to `RustOriginTools.generatedItem`, `generatedStatement`, or
+	  `generatedExpression`.
+	- Additions are schema changes and therefore require source-map contract and documentation review.
+**/
+enum abstract RustGeneratedOriginReason(String) to String {
+	var GeneratedFileMarker = "generated-file-marker";
+	var ModuleScaffolding = "module-scaffolding";
+	var LoweringScaffolding = "lowering-scaffolding";
+	var StaticStorage = "static-storage";
+	var DefaultValueFallback = "default-value-fallback";
+	var UnsupportedFallback = "unsupported-fallback";
+
+	public inline function id():String {
+		return this;
+	}
+
+	/** Rebuilds a validated reason at serialization boundaries; arbitrary abstract casts fail closed. */
+	public static function fromId(value:String):RustGeneratedOriginReason {
+		return switch (value) {
+			case "generated-file-marker": GeneratedFileMarker;
+			case "module-scaffolding": ModuleScaffolding;
+			case "lowering-scaffolding": LoweringScaffolding;
+			case "static-storage": StaticStorage;
+			case "default-value-fallback": DefaultValueFallback;
+			case "unsupported-fallback": UnsupportedFallback;
+			case _: throw 'Unsupported compiler-generated Rust origin reason: $value';
+		};
+	}
+}
+
+/**
 	Describes whether a Rust IR node came from Haxe source or was synthesized by the backend.
 
 	Why
@@ -22,7 +68,8 @@ class RustAST {}
 
 	What
 	- `OriginHaxeSource` retains the exact typed-AST position supplied by Haxe.
-	- `OriginCompilerGenerated` marks syntax with no single honest Haxe source position.
+	- `OriginCompilerGenerated` marks syntax with no single honest Haxe source position and requires a
+	  closed reason suitable for diagnostics.
 
 	How
 	- Raw-fragment factories require one of these origins today. Later typed IR nodes can reuse the
@@ -30,7 +77,7 @@ class RustAST {}
 **/
 enum RustOrigin {
 	OriginHaxeSource(pos:Position);
-	OriginCompilerGenerated;
+	OriginCompilerGenerated(reason:RustGeneratedOriginReason);
 }
 
 /**
@@ -140,7 +187,7 @@ class RustRawCode {
 	}
 
 	public static function compilerGenerated(code:String, reason:RustCompilerRawReason):RustRawCode {
-		return new RustRawCode(code, RawCompilerOwned(reason), OriginCompilerGenerated);
+		return new RustRawCode(code, RawCompilerOwned(reason), OriginCompilerGenerated(generatedReason(reason)));
 	}
 
 	public static function compilerAt(code:String, reason:RustCompilerRawReason, pos:Position):RustRawCode {
@@ -180,6 +227,14 @@ class RustRawCode {
 			case RawSourceOwned(reason): switch (reason) {
 					case RawTargetCodeInjection: "target-code-injection";
 				}
+		};
+	}
+
+	static function generatedReason(reason:RustCompilerRawReason):RustGeneratedOriginReason {
+		return switch (reason) {
+			case RawStaticStorage: RustGeneratedOriginReason.StaticStorage;
+			case RawDefaultValueFallback: RustGeneratedOriginReason.DefaultValueFallback;
+			case RawUnsupportedFallback: RustGeneratedOriginReason.UnsupportedFallback;
 		};
 	}
 }
@@ -954,6 +1009,7 @@ typedef RustFile = {
 }
 
 enum RustItem {
+	ROrigin(origin:RustOrigin, item:RustItem);
 	RAttributed(value:RustAttributedItem);
 	RInnerAttribute(attribute:RustAttribute);
 	RComment(comment:RustComment);
@@ -1079,7 +1135,9 @@ class RustAttributedItem {
 		}
 		if (target == null)
 			throw "Rust attributed item target cannot be null";
-		switch (target) {
+		// Provenance is transparent to Rust grammar. Validate the concrete target below any number of
+		// origin wrappers so a caller cannot disguise an annotation-only node as a declaration.
+		switch (RustOriginTools.withoutItemOrigin(target)) {
 			case RAttributed(_) | RInnerAttribute(_) | RComment(_):
 				throw "Rust outer attributes require one concrete declaration target";
 			case _:
@@ -2269,6 +2327,7 @@ class RustClosureParameter {
 }
 
 enum RustStmt {
+	SOrigin(origin:RustOrigin, statement:RustStmt);
 	RLet(name:String, mutable:Bool, ty:Null<RustType>, expr:Null<RustExpr>);
 	RSemi(e:RustExpr);
 	// Like `RSemi`, but allows emitting statement-like expressions without a trailing semicolon
@@ -2283,6 +2342,7 @@ enum RustStmt {
 }
 
 enum RustExpr {
+	EOrigin(origin:RustOrigin, expression:RustExpr);
 	ERaw(fragment:RustRawCode);
 	/**
 		The structural Rust value receiver keyword used inside associated method bodies.
@@ -2349,4 +2409,133 @@ enum RustExpr {
 	// - Printer renders this constructor directly; traversal passes recurse into `body`.
 	EPinAsyncMove(body:RustBlock);
 	EAwait(expr:RustExpr);
+}
+
+/**
+	Constructs and inspects provenance wrappers without changing the wrapped Rust syntax.
+
+	Why
+	- Origin metadata must travel with the node it describes. A side table keyed by object identity
+	  becomes stale as soon as an immutable transformation rebuilds an enum value.
+	- Callers also need one transparent unwrapping authority for structural analyses; ad-hoc wrapper
+	  handling would recreate the same pass-recursion drift source maps are meant to eliminate.
+
+	What
+	- Source factories require an exact Haxe `Position`.
+	- Generated factories require a closed `RustGeneratedOriginReason`.
+	- `without*Origin` removes any number of nested wrappers for read-only structural inspection.
+
+	How
+	- Lowering wraps the outer item, statement, or expression that corresponds to a typed Haxe node.
+	- Rewriting passes match a wrapper, transform its child, then rebuild the same wrapper unchanged.
+	- The printer ignores the wrapper for Rust text and records its generated span only in mapping mode.
+**/
+class RustOriginTools {
+	public static function sourceItem(item:RustItem, pos:Position):RustItem {
+		return ROrigin(OriginHaxeSource(requirePosition(pos)), requireItem(item));
+	}
+
+	public static function generatedItem(item:RustItem, reason:RustGeneratedOriginReason):RustItem {
+		return ROrigin(OriginCompilerGenerated(requireReason(reason)), requireItem(item));
+	}
+
+	public static function sourceStatement(statement:RustStmt, pos:Position):RustStmt {
+		return SOrigin(OriginHaxeSource(requirePosition(pos)), requireStatement(statement));
+	}
+
+	public static function generatedStatement(statement:RustStmt, reason:RustGeneratedOriginReason):RustStmt {
+		return SOrigin(OriginCompilerGenerated(requireReason(reason)), requireStatement(statement));
+	}
+
+	public static function sourceExpression(expression:RustExpr, pos:Position):RustExpr {
+		return EOrigin(OriginHaxeSource(requirePosition(pos)), requireExpression(expression));
+	}
+
+	public static function generatedExpression(expression:RustExpr, reason:RustGeneratedOriginReason):RustExpr {
+		return EOrigin(OriginCompilerGenerated(requireReason(reason)), requireExpression(expression));
+	}
+
+	public static function withoutItemOrigin(item:RustItem):RustItem {
+		var current = requireItem(item);
+		while (true) {
+			switch (current) {
+				case ROrigin(_, inner): current = requireItem(inner);
+				case _: return current;
+			}
+		}
+	}
+
+	public static function withoutStatementOrigin(statement:RustStmt):RustStmt {
+		var current = requireStatement(statement);
+		while (true) {
+			switch (current) {
+				case SOrigin(_, inner): current = requireStatement(inner);
+				case _: return current;
+			}
+		}
+	}
+
+	public static function withoutExpressionOrigin(expression:RustExpr):RustExpr {
+		var current = requireExpression(expression);
+		while (true) {
+			switch (current) {
+				case EOrigin(_, inner): current = requireExpression(inner);
+				case _: return current;
+			}
+		}
+	}
+
+	/** Rebuilds `replacement` under the complete item-origin chain carried by `original`. */
+	public static function replaceItemPreservingOrigins(original:RustItem, replacement:RustItem):RustItem {
+		return switch (requireItem(original)) {
+			case ROrigin(origin, inner): ROrigin(origin, replaceItemPreservingOrigins(inner, replacement));
+			case _: requireItem(replacement);
+		};
+	}
+
+	/** Rebuilds `replacement` under the complete statement-origin chain carried by `original`. */
+	public static function replaceStatementPreservingOrigins(original:RustStmt, replacement:RustStmt):RustStmt {
+		return switch (requireStatement(original)) {
+			case SOrigin(origin, inner): SOrigin(origin, replaceStatementPreservingOrigins(inner, replacement));
+			case _: requireStatement(replacement);
+		};
+	}
+
+	/** Rebuilds `replacement` under the complete expression-origin chain carried by `original`. */
+	public static function replaceExpressionPreservingOrigins(original:RustExpr, replacement:RustExpr):RustExpr {
+		return switch (requireExpression(original)) {
+			case EOrigin(origin, inner): EOrigin(origin, replaceExpressionPreservingOrigins(inner, replacement));
+			case _: requireExpression(replacement);
+		};
+	}
+
+	static function requirePosition(pos:Position):Position {
+		if (pos == null)
+			throw "Rust source origin requires a Haxe position";
+		return pos;
+	}
+
+	static function requireReason(reason:RustGeneratedOriginReason):RustGeneratedOriginReason {
+		if (reason == null || reason.id().length == 0)
+			throw "Rust compiler-generated origin requires a reason";
+		return RustGeneratedOriginReason.fromId(reason.id());
+	}
+
+	static function requireItem(item:RustItem):RustItem {
+		if (item == null)
+			throw "Rust origin cannot wrap a null item";
+		return item;
+	}
+
+	static function requireStatement(statement:RustStmt):RustStmt {
+		if (statement == null)
+			throw "Rust origin cannot wrap a null statement";
+		return statement;
+	}
+
+	static function requireExpression(expression:RustExpr):RustExpr {
+		if (expression == null)
+			throw "Rust origin cannot wrap a null expression";
+		return expression;
+	}
 }

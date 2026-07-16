@@ -64,6 +64,15 @@ The generated-crate contract protects:
 - metadata/define-owned extra Rust source copying and module inclusion;
 - documented Cargo command/flag forwarding and non-zero failure propagation;
 - the four report filenames when their emission controls are enabled.
+- the always-emitted `rust-source-map.json` filename and its exact, path-private,
+  content-hash-guarded origin lookup contract.
+
+The source-map version-1 shape is documented separately in
+[`rust-source-map-v1.schema.json`](schemas/rust-source-map-v1.schema.json) and
+[Rust-to-Haxe source maps](rust-source-maps.md). Unlike the four opt-in report schemas, it is an
+internal diagnostic bridge for the still-open rustc-presentation work. Consumers must check its
+`schemaVersion`, `generator`, exact generated filename, and content hash and must expect lookup to
+fail after rustfmt or any manual generated-source edit.
 
 Exact whitespace, rustfmt output, temporary order, private generated helper names, internal `hxrt`
 layout, and the `__hx_tests` wrapper name/layout remain private. The public `@:rustTest` metadata

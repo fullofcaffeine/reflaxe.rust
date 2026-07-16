@@ -8,6 +8,8 @@ import reflaxe.rust.ast.RustAST.RustFile;
 import reflaxe.rust.ast.RustAST.RustFunction;
 import reflaxe.rust.ast.RustAST.RustItem;
 import reflaxe.rust.ast.RustAST.RustMatchArm;
+import reflaxe.rust.ast.RustAST.RustOriginTools;
+import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustStructLitField;
 import reflaxe.rust.ast.RustPathAnalysis;
@@ -29,6 +31,8 @@ import reflaxe.rust.ast.RustPathAnalysis;
 	How
 	- Recursively rewrites Rust AST items/functions/blocks/expressions, including trait default bodies
 	  and associated constant initializers.
+	- Treats item, statement, and expression origin wrappers as transparent for ownership and lexical
+	  shadow decisions, then rebuilds those wrappers around every retained or rewritten node.
 	- Recognizes only an argument-free structural `clone` member; a generic member with the same name
 	  is not an optimization candidate.
 	- Excludes paths shadowed by closure parameters, match-arm patterns, sequential `let` bindings, or
@@ -61,6 +65,7 @@ class CloneElisionPass implements RustPass {
 
 	function rewriteItem(item:RustItem):RustItem {
 		return switch (item) {
+			case ROrigin(origin, inner): ROrigin(origin, rewriteItem(inner));
 			case RAttributed(value):
 				RAttributed(value.withTarget(rewriteItem(value.target)));
 			case RModule(declaration):
@@ -153,6 +158,7 @@ class CloneElisionPass implements RustPass {
 
 	function rewriteStmt(stmt:RustStmt, disableLastUseElision:Bool):RustStmt {
 		return switch (stmt) {
+			case SOrigin(origin, inner): SOrigin(origin, rewriteStmt(inner, disableLastUseElision));
 			case RLet(name, mutable, ty, expr):
 				RLet(name, mutable, ty, expr == null ? null : rewriteExpr(expr, disableLastUseElision));
 			case RSemi(expr):
@@ -174,6 +180,7 @@ class CloneElisionPass implements RustPass {
 
 	function rewriteExpr(expr:RustExpr, disableLastUseElision:Bool):RustExpr {
 		var rewritten = switch (expr) {
+			case EOrigin(origin, inner): EOrigin(origin, rewriteExpr(inner, disableLastUseElision));
 			case ERaw(_) | ESelf | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 			case ECall(func, args):
@@ -228,27 +235,61 @@ class CloneElisionPass implements RustPass {
 	}
 
 	function simplifyCloneExpr(expr:RustExpr):RustExpr {
-		return switch (expr) {
-			case ECall(EField(target, member), []) if (RustPathAnalysis.matchesPlainMember(member, "clone")):
-				if (isAlwaysCloneSafeExpr(target)) {
-					recordApplied("clone_elision.applied.literal_clone");
-					target;
-				} else {
-					switch (target) {
-						case ECall(EField(inner, innerMember), []) if (RustPathAnalysis.matchesPlainMember(innerMember, "clone")):
-							recordApplied("clone_elision.applied.nested_clone");
-							ECall(EField(inner, innerMember), []);
-						case _:
-							expr;
-					}
+		var candidate = cloneCandidate(expr);
+		if (candidate == null)
+			return expr;
+		if (isAlwaysCloneSafeExpr(candidate.receiver)) {
+			recordApplied("clone_elision.applied.literal_clone");
+			return cloneReplacement(expr, candidate);
+		}
+		if (cloneCandidate(candidate.receiver) != null) {
+			recordApplied("clone_elision.applied.nested_clone");
+			return cloneReplacement(expr, {receiver: candidate.receiver, functionExpression: candidate.functionExpression});
+		}
+		return expr;
+	}
+
+	/** Finds a `.clone()` call through provenance wrappers without discarding those wrappers. */
+	function cloneCandidate(expr:RustExpr):Null<{receiver:RustExpr, functionExpression:RustExpr}> {
+		return switch (RustOriginTools.withoutExpressionOrigin(expr)) {
+			case ECall(functionExpression, []):
+				switch (RustOriginTools.withoutExpressionOrigin(functionExpression)) {
+					case EField(receiver, member) if (RustPathAnalysis.matchesPlainMember(member, "clone")):
+						{receiver: receiver, functionExpression: functionExpression};
+					case _: null;
 				}
-			case _:
-				expr;
+			case _: null;
+		};
+	}
+
+	/** Removes clone syntax while retaining origins attached to the call and member expression. */
+	function cloneReplacement(expr:RustExpr, candidate:{receiver:RustExpr, functionExpression:RustExpr}):RustExpr {
+		var memberOrigins = RustOriginTools.replaceExpressionPreservingOrigins(candidate.functionExpression, candidate.receiver);
+		return RustOriginTools.replaceExpressionPreservingOrigins(expr, memberOrigins);
+	}
+
+	function localCloneCandidate(expr:RustExpr):Null<{localName:String, candidate:{receiver:RustExpr, functionExpression:RustExpr}}> {
+		var candidate = cloneCandidate(expr);
+		if (candidate == null)
+			return null;
+		return switch (RustOriginTools.withoutExpressionOrigin(candidate.receiver)) {
+			case EPath(path):
+				var localName = RustPathAnalysis.localIdentifierName(path);
+				localName == null ? null : {localName: localName, candidate: candidate};
+			case _: null;
+		};
+	}
+
+	/** Extracts a structural path through origins; target identity remains owned by RustPathAnalysis. */
+	function pathFromExpression(expr:RustExpr):Null<RustPath> {
+		return switch (RustOriginTools.withoutExpressionOrigin(expr)) {
+			case EPath(path): path;
+			case _: null;
 		};
 	}
 
 	function isAlwaysCloneSafeExpr(expr:RustExpr):Bool {
-		return switch (expr) {
+		return switch (RustOriginTools.withoutExpressionOrigin(expr)) {
 			case ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				true;
 			case EUnary(_, inner):
@@ -273,6 +314,7 @@ class CloneElisionPass implements RustPass {
 
 	function rewriteStmtCallCloneArgs(stmt:RustStmt, index:Int, stmts:Array<RustStmt>, tail:Null<RustExpr>):RustStmt {
 		return switch (stmt) {
+			case SOrigin(origin, inner): SOrigin(origin, rewriteStmtCallCloneArgs(inner, index, stmts, tail));
 			case RLet(name, mutable, ty, expr):
 				RLet(name, mutable, ty, expr == null ? null : rewriteCallCloneArgs(expr, index, stmts, tail));
 			case RSemi(expr):
@@ -324,7 +366,7 @@ class CloneElisionPass implements RustPass {
 			}
 		}
 		for (i in 0...index) {
-			switch (stmts[i]) {
+			switch (RustOriginTools.withoutStatementOrigin(stmts[i])) {
 				case RLet(name, _, ty, _):
 					if (ty == null) {
 						out.set(name, false);
@@ -373,23 +415,27 @@ class CloneElisionPass implements RustPass {
 	**/
 	function rewriteLastUseCloneSites(expr:RustExpr, localMoveSkipReason:String->Null<String>):RustExpr {
 		return switch (expr) {
-			case ECall(EPath(dynamicPath), [ECall(EField(EPath(localPath), member), [])])
-				if (RustPathAnalysis.matchesPlainRelative(dynamicPath, ["hxrt", "dynamic", "from"])
-					&& RustPathAnalysis.matchesPlainMember(member, "clone")
-					&& RustPathAnalysis.localIdentifierName(localPath) != null):
-				var localName = RustPathAnalysis.localIdentifierName(localPath);
-				var skipReason = localMoveSkipReason(localName);
-				if (skipReason == null) {
-					recordApplied("clone_elision.applied.last_use_dynamic_from");
-					ECall(EPath(dynamicPath), [EPath(localPath)]);
+			case EOrigin(origin, inner): EOrigin(origin, rewriteLastUseCloneSites(inner, localMoveSkipReason));
+			case ECall(func, args):
+				var dynamicPath = pathFromExpression(func);
+				var candidate = args.length == 1 && dynamicPath != null
+					&& RustPathAnalysis.matchesPlainRelative(dynamicPath, ["hxrt", "dynamic", "from"]) ? localCloneCandidate(args[0]) : null;
+				if (candidate == null) {
+					var rewrittenFunc = rewriteLastUseCloneSites(func, localMoveSkipReason);
+					var rewrittenArgs = [for (arg in args) rewriteLastUseCloneSites(arg, localMoveSkipReason)];
+					ECall(rewrittenFunc, rewrittenArgs);
 				} else {
-					recordSkipped("clone_elision.skipped.last_use_dynamic_from." + skipReason);
-					expr;
+					var skipReason = localMoveSkipReason(candidate.localName);
+					if (skipReason == null) {
+						recordApplied("clone_elision.applied.last_use_dynamic_from");
+						ECall(func, [cloneReplacement(args[0], candidate.candidate)]);
+					} else {
+						recordSkipped("clone_elision.skipped.last_use_dynamic_from." + skipReason);
+						expr;
+					}
 				}
-			case EMatch(ECall(EField(EPath(localPath), member), []), arms)
-				if (RustPathAnalysis.matchesPlainMember(member, "clone") && RustPathAnalysis.localIdentifierName(localPath) != null):
-				var localName = RustPathAnalysis.localIdentifierName(localPath);
-				var skipReason = localMoveSkipReason(localName);
+			case EMatch(scrutinee, arms):
+				var candidate = localCloneCandidate(scrutinee);
 				var rewrittenArms = [
 					for (arm in arms)
 						{
@@ -397,17 +443,18 @@ class CloneElisionPass implements RustPass {
 							expr: rewriteLastUseCloneSites(arm.expr, matchArmMoveSkipReason(arm, localMoveSkipReason))
 						}
 				];
-				if (skipReason == null) {
-					recordApplied("clone_elision.applied.last_use_match_scrutinee");
-					EMatch(EPath(localPath), rewrittenArms);
+				if (candidate == null) {
+					EMatch(rewriteLastUseCloneSites(scrutinee, localMoveSkipReason), rewrittenArms);
 				} else {
-					recordSkipped("clone_elision.skipped.last_use_match_scrutinee." + skipReason);
-					EMatch(ECall(EField(EPath(localPath), member), []), rewrittenArms);
+					var skipReason = localMoveSkipReason(candidate.localName);
+					if (skipReason == null) {
+						recordApplied("clone_elision.applied.last_use_match_scrutinee");
+						EMatch(cloneReplacement(scrutinee, candidate.candidate), rewrittenArms);
+					} else {
+						recordSkipped("clone_elision.skipped.last_use_match_scrutinee." + skipReason);
+						EMatch(scrutinee, rewrittenArms);
+					}
 				}
-			case ECall(func, args):
-				var rewrittenFunc = rewriteLastUseCloneSites(func, localMoveSkipReason);
-				var rewrittenArgs = [for (arg in args) rewriteLastUseCloneSites(arg, localMoveSkipReason)];
-				ECall(rewrittenFunc, rewrittenArgs);
 			case EMacroCall(name, args):
 				EMacroCall(name, [for (arg in args) rewriteLastUseCloneSites(arg, localMoveSkipReason)]);
 			case EBinary(op, left, right):
@@ -433,14 +480,6 @@ class CloneElisionPass implements RustPass {
 			case EIf(cond, thenExpr, elseExpr):
 				EIf(rewriteLastUseCloneSites(cond, localMoveSkipReason), rewriteLastUseCloneSites(thenExpr, localMoveSkipReason),
 					elseExpr == null ? null : rewriteLastUseCloneSites(elseExpr, localMoveSkipReason));
-			case EMatch(scrutinee, arms):
-				EMatch(rewriteLastUseCloneSites(scrutinee, localMoveSkipReason), [
-					for (arm in arms)
-						{
-							pat: arm.pat,
-							expr: rewriteLastUseCloneSites(arm.expr, matchArmMoveSkipReason(arm, localMoveSkipReason))
-						}
-				]);
 			case EAssign(lhs, rhs):
 				EAssign(rewriteLastUseCloneSites(lhs, localMoveSkipReason), rewriteLastUseCloneSites(rhs, localMoveSkipReason));
 			case EField(recv, field):
@@ -472,7 +511,7 @@ class CloneElisionPass implements RustPass {
 		var rewrittenStmts:Array<RustStmt> = [];
 		for (stmt in block.stmts) {
 			rewrittenStmts.push(rewriteLastUseCloneStmt(stmt, currentSkipReason));
-			switch (stmt) {
+			switch (RustOriginTools.withoutStatementOrigin(stmt)) {
 				case RLet(name, _, _, _) if (name != "_"):
 					currentSkipReason = bindingMoveSkipReason(name, currentSkipReason);
 				case _:
@@ -522,6 +561,7 @@ class CloneElisionPass implements RustPass {
 
 	function rewriteLastUseCloneStmt(stmt:RustStmt, localMoveSkipReason:String->Null<String>):RustStmt {
 		return switch (stmt) {
+			case SOrigin(origin, inner): SOrigin(origin, rewriteLastUseCloneStmt(inner, localMoveSkipReason));
 			case RLet(name, mutable, ty, expr):
 				RLet(name, mutable, ty, expr == null ? null : rewriteLastUseCloneSites(expr, localMoveSkipReason));
 			case RSemi(expr):
@@ -561,7 +601,7 @@ class CloneElisionPass implements RustPass {
 		// A candidate inside a same-named `let` initializer is the final outer-scope use: the binding
 		// enters scope immediately after that statement, before any following sibling or the tail.
 		if (fromIndex >= 0 && fromIndex < stmts.length) {
-			switch (stmts[fromIndex]) {
+			switch (RustOriginTools.withoutStatementOrigin(stmts[fromIndex])) {
 				case RLet(name, _, _, _) if (name == pathName):
 					return false;
 				case _:
@@ -574,7 +614,7 @@ class CloneElisionPass implements RustPass {
 				return true;
 			// The initializer above was evaluated in the outer scope. Only after it reports no use may
 			// the new binding terminate the scan for later siblings and the block tail.
-			switch (stmt) {
+			switch (RustOriginTools.withoutStatementOrigin(stmt)) {
 				case RLet(name, _, _, _) if (name == pathName):
 					return false;
 				case _:
@@ -588,6 +628,7 @@ class CloneElisionPass implements RustPass {
 
 	function countPathUsesInStmt(stmt:RustStmt, pathName:String):Int {
 		return switch (stmt) {
+			case SOrigin(_, inner): countPathUsesInStmt(inner, pathName);
 			case RLet(_, _, _, expr):
 				expr == null ? 0 : countPathUsesInExpr(expr, pathName);
 			case RSemi(expr) | RExpr(expr, _):
@@ -630,7 +671,7 @@ class CloneElisionPass implements RustPass {
 			if (shadowed)
 				break;
 			total += countPathUsesInStmt(stmt, pathName);
-			switch (stmt) {
+			switch (RustOriginTools.withoutStatementOrigin(stmt)) {
 				case RLet(name, _, _, _) if (name == pathName):
 					shadowed = true;
 				case _:
@@ -643,6 +684,7 @@ class CloneElisionPass implements RustPass {
 
 	function countPathUsesInExpr(expr:RustExpr, pathName:String):Int {
 		return switch (expr) {
+			case EOrigin(_, inner): countPathUsesInExpr(inner, pathName);
 			case EPath(p):
 				RustPathAnalysis.localIdentifierName(p) == pathName ? 1 : 0;
 			case ECall(func, args):
@@ -708,6 +750,7 @@ class CloneElisionPass implements RustPass {
 
 	function countDynamicFromCloneCandidatesInStmt(stmt:RustStmt):Int {
 		return switch (stmt) {
+			case SOrigin(_, inner): countDynamicFromCloneCandidatesInStmt(inner);
 			case RLet(_, _, _, expr):
 				expr == null ? 0 : countDynamicFromCloneCandidatesInExpr(expr);
 			case RSemi(expr) | RExpr(expr, _):
@@ -742,16 +785,18 @@ class CloneElisionPass implements RustPass {
 
 	function countDynamicFromCloneCandidatesInExpr(expr:RustExpr):Int {
 		return switch (expr) {
-			case ECall(EPath(dynamicPath), [ECall(EField(EPath(localPath), member), [])])
-				if (RustPathAnalysis.matchesPlainRelative(dynamicPath, ["hxrt", "dynamic", "from"])
-					&& RustPathAnalysis.matchesPlainMember(member, "clone")
-					&& RustPathAnalysis.localIdentifierName(localPath) != null):
-				1;
+			case EOrigin(_, inner): countDynamicFromCloneCandidatesInExpr(inner);
 			case ECall(func, args):
-				var total = countDynamicFromCloneCandidatesInExpr(func);
-				for (arg in args)
-					total += countDynamicFromCloneCandidatesInExpr(arg);
-				total;
+				var dynamicPath = pathFromExpression(func);
+				if (args.length == 1 && dynamicPath != null
+					&& RustPathAnalysis.matchesPlainRelative(dynamicPath, ["hxrt", "dynamic", "from"]) && localCloneCandidate(args[0]) != null) {
+					1;
+				} else {
+					var total = countDynamicFromCloneCandidatesInExpr(func);
+					for (arg in args)
+						total += countDynamicFromCloneCandidatesInExpr(arg);
+					total;
+				}
 			case EMacroCall(_, args):
 				var total = 0;
 				for (arg in args)

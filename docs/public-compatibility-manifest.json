@@ -10213,6 +10213,7 @@
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
         "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustIdentifier",
@@ -10349,6 +10350,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -10593,6 +10595,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -10986,6 +10989,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -11173,6 +11177,7 @@
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
         "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustIdentifier",
@@ -11449,6 +11454,7 @@
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
         "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustIdentifier",
@@ -11913,6 +11919,7 @@
         "reflaxe.rust.ast.RustAST.RustClosureParameter",
         "reflaxe.rust.ast.RustAST.RustMatchArm",
         "reflaxe.rust.ast.RustAST.RustMember",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustRawCode",
         "reflaxe.rust.ast.RustAST.RustStructLitField",
@@ -11924,6 +11931,7 @@
         "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustIdentifier",
@@ -11947,6 +11955,19 @@
         "reflaxe.rust.ast.RustAST.RustType"
       ],
       "operations": [
+        {
+          "id": "enum-constructor:EOrigin",
+          "kind": "enum-constructor",
+          "name": "EOrigin",
+          "signature": "EOrigin (origin : RustOrigin, expression : RustExpr)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustOrigin"
+          ]
+        },
         {
           "id": "enum-constructor:ERaw",
           "kind": "enum-constructor",
@@ -12277,6 +12298,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -12412,6 +12434,7 @@
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustFnArg",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -12605,6 +12628,108 @@
           "typeReferences": [
             "reflaxe.rust.ast.RustAST.RustType"
           ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract RustGeneratedOriginReason (String) to String",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:GeneratedFileMarker",
+          "kind": "enum-value",
+          "name": "GeneratedFileMarker",
+          "signature": "var GeneratedFileMarker = \"generated-file-marker\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ModuleScaffolding",
+          "kind": "enum-value",
+          "name": "ModuleScaffolding",
+          "signature": "var ModuleScaffolding = \"module-scaffolding\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:LoweringScaffolding",
+          "kind": "enum-value",
+          "name": "LoweringScaffolding",
+          "signature": "var LoweringScaffolding = \"lowering-scaffolding\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:StaticStorage",
+          "kind": "enum-value",
+          "name": "StaticStorage",
+          "signature": "var StaticStorage = \"static-storage\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:DefaultValueFallback",
+          "kind": "enum-value",
+          "name": "DefaultValueFallback",
+          "signature": "var DefaultValueFallback = \"default-value-fallback\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:UnsupportedFallback",
+          "kind": "enum-value",
+          "name": "UnsupportedFallback",
+          "signature": "var UnsupportedFallback = \"unsupported-fallback\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:id",
+          "kind": "function",
+          "name": "id",
+          "signature": "public inline function id () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:fromId",
+          "kind": "function",
+          "name": "fromId",
+          "signature": "public static function fromId (value : String) : RustGeneratedOriginReason",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
         }
       ]
     },
@@ -13026,6 +13151,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -13237,6 +13363,7 @@
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustImpl",
         "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustRawCode",
         "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
         "reflaxe.rust.ast.RustAST.RustStruct",
@@ -13265,6 +13392,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -13306,6 +13434,19 @@
         "reflaxe.rust.ast.RustAST.RustWherePredicateKind"
       ],
       "operations": [
+        {
+          "id": "enum-constructor:ROrigin",
+          "kind": "enum-constructor",
+          "name": "ROrigin",
+          "signature": "ROrigin (origin : RustOrigin, item : RustItem)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustOrigin"
+          ]
+        },
         {
           "id": "enum-constructor:RAttributed",
           "kind": "enum-constructor",
@@ -13647,6 +13788,7 @@
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
         "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustIdentifier",
@@ -13901,6 +14043,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -14067,8 +14210,12 @@
       "evidenceIds": [
         "test:public-compatibility"
       ],
-      "directTypeReferences": [],
-      "transitiveTypeReferences": [],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason"
+      ],
       "operations": [
         {
           "id": "enum-constructor:OriginHaxeSource",
@@ -14085,12 +14232,254 @@
           "id": "enum-constructor:OriginCompilerGenerated",
           "kind": "enum-constructor",
           "name": "OriginCompilerGenerated",
-          "signature": "OriginCompilerGenerated",
+          "signature": "OriginCompilerGenerated (reason : RustGeneratedOriginReason)",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
           ],
-          "typeReferences": []
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.ast.RustAST.RustOriginTools",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "kind": "class",
+      "signature": "class RustOriginTools",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
+        "reflaxe.rust.ast.RustAST.RustItem",
+        "reflaxe.rust.ast.RustAST.RustStmt"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.ast.RustAST.RustAssociatedConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAssociatedFunction",
+        "reflaxe.rust.ast.RustAST.RustAssociatedItem",
+        "reflaxe.rust.ast.RustAST.RustAssociatedTypeDeclaration",
+        "reflaxe.rust.ast.RustAST.RustAttribute",
+        "reflaxe.rust.ast.RustAST.RustAttributeInputKind",
+        "reflaxe.rust.ast.RustAST.RustAttributedItem",
+        "reflaxe.rust.ast.RustAST.RustBlock",
+        "reflaxe.rust.ast.RustAST.RustClosureParameter",
+        "reflaxe.rust.ast.RustAST.RustComment",
+        "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
+        "reflaxe.rust.ast.RustAST.RustConstArgument",
+        "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
+        "reflaxe.rust.ast.RustAST.RustConstantDeclaration",
+        "reflaxe.rust.ast.RustAST.RustEnum",
+        "reflaxe.rust.ast.RustAST.RustEnumVariant",
+        "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustFnArg",
+        "reflaxe.rust.ast.RustAST.RustFunction",
+        "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
+        "reflaxe.rust.ast.RustAST.RustGenericArgument",
+        "reflaxe.rust.ast.RustAST.RustGenericBound",
+        "reflaxe.rust.ast.RustAST.RustGenericParameter",
+        "reflaxe.rust.ast.RustAST.RustGenericParameters",
+        "reflaxe.rust.ast.RustAST.RustIdentifier",
+        "reflaxe.rust.ast.RustAST.RustImpl",
+        "reflaxe.rust.ast.RustAST.RustItem",
+        "reflaxe.rust.ast.RustAST.RustLifetime",
+        "reflaxe.rust.ast.RustAST.RustLifetimeKind",
+        "reflaxe.rust.ast.RustAST.RustMatchArm",
+        "reflaxe.rust.ast.RustAST.RustMember",
+        "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
+        "reflaxe.rust.ast.RustAST.RustModuleDeclaration",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
+        "reflaxe.rust.ast.RustAST.RustPath",
+        "reflaxe.rust.ast.RustAST.RustPathRoot",
+        "reflaxe.rust.ast.RustAST.RustPathSegment",
+        "reflaxe.rust.ast.RustAST.RustPathSegmentArgumentStyle",
+        "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustRawAuthority",
+        "reflaxe.rust.ast.RustAST.RustRawCode",
+        "reflaxe.rust.ast.RustAST.RustSelfReceiver",
+        "reflaxe.rust.ast.RustAST.RustSourceRawReason",
+        "reflaxe.rust.ast.RustAST.RustStaticDeclaration",
+        "reflaxe.rust.ast.RustAST.RustStmt",
+        "reflaxe.rust.ast.RustAST.RustStruct",
+        "reflaxe.rust.ast.RustAST.RustStructField",
+        "reflaxe.rust.ast.RustAST.RustStructLitField",
+        "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
+        "reflaxe.rust.ast.RustAST.RustTraitObject",
+        "reflaxe.rust.ast.RustAST.RustType",
+        "reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseDeclaration",
+        "reflaxe.rust.ast.RustAST.RustUseKind",
+        "reflaxe.rust.ast.RustAST.RustUseMember",
+        "reflaxe.rust.ast.RustAST.RustUseMemberKind",
+        "reflaxe.rust.ast.RustAST.RustVisibility",
+        "reflaxe.rust.ast.RustAST.RustWhereClause",
+        "reflaxe.rust.ast.RustAST.RustWherePredicate",
+        "reflaxe.rust.ast.RustAST.RustWherePredicateKind"
+      ],
+      "operations": [
+        {
+          "id": "function:sourceItem",
+          "kind": "function",
+          "name": "sourceItem",
+          "signature": "public static function sourceItem (item : RustItem, pos : Position) : RustItem",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustItem"
+          ]
+        },
+        {
+          "id": "function:generatedItem",
+          "kind": "function",
+          "name": "generatedItem",
+          "signature": "public static function generatedItem (item : RustItem, reason : RustGeneratedOriginReason) : RustItem",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
+            "reflaxe.rust.ast.RustAST.RustItem"
+          ]
+        },
+        {
+          "id": "function:sourceStatement",
+          "kind": "function",
+          "name": "sourceStatement",
+          "signature": "public static function sourceStatement (statement : RustStmt, pos : Position) : RustStmt",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustStmt"
+          ]
+        },
+        {
+          "id": "function:generatedStatement",
+          "kind": "function",
+          "name": "generatedStatement",
+          "signature": "public static function generatedStatement (statement : RustStmt, reason : RustGeneratedOriginReason) : RustStmt",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
+            "reflaxe.rust.ast.RustAST.RustStmt"
+          ]
+        },
+        {
+          "id": "function:sourceExpression",
+          "kind": "function",
+          "name": "sourceExpression",
+          "signature": "public static function sourceExpression (expression : RustExpr, pos : Position) : RustExpr",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustExpr"
+          ]
+        },
+        {
+          "id": "function:generatedExpression",
+          "kind": "function",
+          "name": "generatedExpression",
+          "signature": "public static function generatedExpression (expression : RustExpr, reason : RustGeneratedOriginReason) : RustExpr",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustExpr",
+            "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason"
+          ]
+        },
+        {
+          "id": "function:withoutItemOrigin",
+          "kind": "function",
+          "name": "withoutItemOrigin",
+          "signature": "public static function withoutItemOrigin (item : RustItem) : RustItem",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustItem"
+          ]
+        },
+        {
+          "id": "function:withoutStatementOrigin",
+          "kind": "function",
+          "name": "withoutStatementOrigin",
+          "signature": "public static function withoutStatementOrigin (statement : RustStmt) : RustStmt",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustStmt"
+          ]
+        },
+        {
+          "id": "function:withoutExpressionOrigin",
+          "kind": "function",
+          "name": "withoutExpressionOrigin",
+          "signature": "public static function withoutExpressionOrigin (expression : RustExpr) : RustExpr",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustExpr"
+          ]
+        },
+        {
+          "id": "function:replaceItemPreservingOrigins",
+          "kind": "function",
+          "name": "replaceItemPreservingOrigins",
+          "signature": "public static function replaceItemPreservingOrigins (original : RustItem, replacement : RustItem) : RustItem",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustItem"
+          ]
+        },
+        {
+          "id": "function:replaceStatementPreservingOrigins",
+          "kind": "function",
+          "name": "replaceStatementPreservingOrigins",
+          "signature": "public static function replaceStatementPreservingOrigins (original : RustStmt, replacement : RustStmt) : RustStmt",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustStmt"
+          ]
+        },
+        {
+          "id": "function:replaceExpressionPreservingOrigins",
+          "kind": "function",
+          "name": "replaceExpressionPreservingOrigins",
+          "signature": "public static function replaceExpressionPreservingOrigins (original : RustExpr, replacement : RustExpr) : RustExpr",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustExpr"
+          ]
         }
       ]
     },
@@ -14887,6 +15276,7 @@
       ],
       "transitiveTypeReferences": [
         "reflaxe.rust.ast.RustAST.RustCompilerRawReason",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustMetadataRawReason",
         "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustRawAuthority",
@@ -15132,6 +15522,7 @@
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
         "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustIdentifier",
@@ -15250,6 +15641,7 @@
       "directTypeReferences": [
         "reflaxe.rust.ast.RustAST.RustBlock",
         "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustType"
       ],
       "transitiveTypeReferences": [
@@ -15259,6 +15651,7 @@
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
         "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustIdentifier",
@@ -15281,6 +15674,19 @@
         "reflaxe.rust.ast.RustAST.RustType"
       ],
       "operations": [
+        {
+          "id": "enum-constructor:SOrigin",
+          "kind": "enum-constructor",
+          "name": "SOrigin",
+          "signature": "SOrigin (origin : RustOrigin, statement : RustStmt)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustOrigin"
+          ]
+        },
         {
           "id": "enum-constructor:RLet",
           "kind": "enum-constructor",
@@ -15595,6 +16001,7 @@
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
         "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustIdentifier",
@@ -15674,6 +16081,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -16898,8 +17306,16 @@
       "evidenceIds": [
         "test:public-compatibility"
       ],
-      "directTypeReferences": [],
-      "transitiveTypeReferences": [],
+      "directTypeReferences": [
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin"
+      ],
       "operations": [
         {
           "id": "function:printFile",
@@ -16911,6 +17327,19 @@
             "test:public-compatibility"
           ],
           "typeReferences": []
+        },
+        {
+          "id": "function:printFileWithSourceMap",
+          "kind": "function",
+          "name": "printFileWithSourceMap",
+          "signature": "public static function printFileWithSourceMap (file : RustAST.RustFile, generatedFile : String) : RustPrintedSourceFile",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustPrintedSourceFile"
+          ]
         },
         {
           "id": "function:printExprForInjection",
@@ -16995,12 +17424,17 @@
       "transitiveTypeReferences": [
         "reflaxe.rust.CompilationContext",
         "reflaxe.rust.RustProfile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
         "reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalIssueClassSummary",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.compiler.RustBuildContext"
       ],
       "operations": [
@@ -17057,6 +17491,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -17350,6 +17785,7 @@
       ],
       "directTypeReferences": [
         "reflaxe.rust.RustProfile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
         "reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
@@ -17357,12 +17793,17 @@
       ],
       "transitiveTypeReferences": [
         "reflaxe.rust.RustProfile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
         "reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalIssueClassSummary",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilityBlocker",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalViabilitySnapshot",
         "reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.compiler.RustBuildContext"
       ],
       "operations": [
@@ -17690,6 +18131,32 @@
             "test:public-compatibility"
           ],
           "typeReferences": []
+        },
+        {
+          "id": "function:recordSourceMapFile",
+          "kind": "function",
+          "name": "recordSourceMapFile",
+          "signature": "public function recordSourceMapFile (file : RustPrintedSourceFile) : Void",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustPrintedSourceFile"
+          ]
+        },
+        {
+          "id": "function:sourceMapFileSnapshot",
+          "kind": "function",
+          "name": "sourceMapFileSnapshot",
+          "signature": "public function sourceMapFileSnapshot () : Array < RustPrintedSourceFile >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustPrintedSourceFile"
+          ]
         }
       ]
     },
@@ -18219,6 +18686,7 @@
         "reflaxe.rust.ast.RustAST.RustConstArgument",
         "reflaxe.rust.ast.RustAST.RustConstArgumentKind",
         "reflaxe.rust.ast.RustAST.RustExpr",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustIdentifier",
@@ -18950,6 +19418,9 @@
       "transitiveTypeReferences": [
         "reflaxe.rust.CompilationContext",
         "reflaxe.rust.RustProfile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
         "reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalIssueClassSummary",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability",
@@ -18977,6 +19448,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -19076,6 +19548,9 @@
       "transitiveTypeReferences": [
         "reflaxe.rust.CompilationContext",
         "reflaxe.rust.RustProfile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
         "reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalIssueClassSummary",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability",
@@ -19103,6 +19578,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -19202,6 +19678,9 @@
       "transitiveTypeReferences": [
         "reflaxe.rust.CompilationContext",
         "reflaxe.rust.RustProfile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
         "reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalIssueClassSummary",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability",
@@ -19229,6 +19708,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -19328,6 +19808,9 @@
       "transitiveTypeReferences": [
         "reflaxe.rust.CompilationContext",
         "reflaxe.rust.RustProfile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
         "reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalIssueClassSummary",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability",
@@ -19355,6 +19838,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -19454,6 +19938,9 @@
       "transitiveTypeReferences": [
         "reflaxe.rust.CompilationContext",
         "reflaxe.rust.RustProfile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
         "reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalIssueClassSummary",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability",
@@ -19481,6 +19968,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -19580,6 +20068,9 @@
       "transitiveTypeReferences": [
         "reflaxe.rust.CompilationContext",
         "reflaxe.rust.RustProfile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
         "reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalIssueClassSummary",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability",
@@ -19607,6 +20098,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -19705,6 +20197,9 @@
       "transitiveTypeReferences": [
         "reflaxe.rust.CompilationContext",
         "reflaxe.rust.RustProfile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
         "reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalIssueClassSummary",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability",
@@ -19732,6 +20227,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -19807,6 +20303,9 @@
       "transitiveTypeReferences": [
         "reflaxe.rust.CompilationContext",
         "reflaxe.rust.RustProfile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
         "reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalIssueClassSummary",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability",
@@ -19834,6 +20333,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -19942,6 +20442,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -20075,6 +20576,9 @@
       "transitiveTypeReferences": [
         "reflaxe.rust.CompilationContext",
         "reflaxe.rust.RustProfile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
         "reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalIssueClassSummary",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability",
@@ -20102,6 +20606,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -20245,6 +20750,9 @@
       "transitiveTypeReferences": [
         "reflaxe.rust.CompilationContext",
         "reflaxe.rust.RustProfile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
         "reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalIssueClassSummary",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability",
@@ -20272,6 +20780,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -20889,6 +21398,9 @@
         "reflaxe.rust.CompilationContext",
         "reflaxe.rust.RustCompiler",
         "reflaxe.rust.RustProfile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
         "reflaxe.rust.analyze.HxrtFeatureAnalyzer.HxrtFeatureReason",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalIssueClassSummary",
         "reflaxe.rust.analyze.MetalViabilityAnalyzer.MetalModuleViability",
@@ -20916,6 +21428,7 @@
         "reflaxe.rust.ast.RustAST.RustFnArg",
         "reflaxe.rust.ast.RustAST.RustFunction",
         "reflaxe.rust.ast.RustAST.RustFunctionParameter",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustGenericArgument",
         "reflaxe.rust.ast.RustAST.RustGenericBound",
         "reflaxe.rust.ast.RustAST.RustGenericParameter",
@@ -21029,6 +21542,936 @@
             "test:public-compatibility"
           ],
           "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.RustSourceMap",
+      "source": "src/reflaxe/rust/RustSourceMap.hx",
+      "kind": "class",
+      "signature": "class RustSourceMap",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustSourceMapDocument",
+        "reflaxe.rust.RustSourceMap.RustSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustcGeneratedSpan"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.RustSourceMap.RustGeneratedSourceSpan",
+        "reflaxe.rust.RustSourceMap.RustHaxeSourceSpan",
+        "reflaxe.rust.RustSourceMap.RustMappedOrigin",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapDocument",
+        "reflaxe.rust.RustSourceMap.RustSourceMapFile",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
+        "reflaxe.rust.RustSourceMap.RustSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustcGeneratedSpan",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin"
+      ],
+      "operations": [
+        {
+          "id": "field:SCHEMA_VERSION",
+          "kind": "field",
+          "name": "SCHEMA_VERSION",
+          "signature": "public static inline var SCHEMA_VERSION : Int = 1",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:GENERATOR",
+          "kind": "field",
+          "name": "GENERATOR",
+          "signature": "public static inline var GENERATOR : String = \"reflaxe.rust\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:encode",
+          "kind": "function",
+          "name": "encode",
+          "signature": "public static function encode (printedFiles : Array < RustPrintedSourceFile >, sourceRoot : String) : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustPrintedSourceFile"
+          ]
+        },
+        {
+          "id": "function:decode",
+          "kind": "function",
+          "name": "decode",
+          "signature": "public static function decode (encoded : String) : RustSourceMapDocument",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustSourceMapDocument"
+          ]
+        },
+        {
+          "id": "function:lookup",
+          "kind": "function",
+          "name": "lookup",
+          "signature": "public static function lookup (document : RustSourceMapDocument, span : RustcGeneratedSpan, generatedContent : String) : Null < RustSourceMapping >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustSourceMapDocument",
+            "reflaxe.rust.RustSourceMap.RustSourceMapping",
+            "reflaxe.rust.RustSourceMap.RustcGeneratedSpan"
+          ]
+        },
+        {
+          "id": "function:requireRelativePath",
+          "kind": "function",
+          "name": "requireRelativePath",
+          "signature": "public static function requireRelativePath (value : String, label : String) : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.RustSourceMap.RustcGeneratedSpan",
+      "source": "src/reflaxe/rust/RustSourceMap.hx",
+      "kind": "class",
+      "signature": "class RustcGeneratedSpan",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "field:generatedFile",
+          "kind": "field",
+          "name": "generatedFile",
+          "signature": "public final generatedFile : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:startByte",
+          "kind": "field",
+          "name": "startByte",
+          "signature": "public final startByte : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:endByte",
+          "kind": "field",
+          "name": "endByte",
+          "signature": "public final endByte : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:at",
+          "kind": "function",
+          "name": "at",
+          "signature": "public static function at (generatedFile : String, startByte : Int, endByte : Int) : RustcGeneratedSpan",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.RustSourceMap.RustGeneratedSourceSpan",
+      "source": "src/reflaxe/rust/RustSourceMap.hx",
+      "kind": "class",
+      "signature": "class RustGeneratedSourceSpan",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "field:startByte",
+          "kind": "field",
+          "name": "startByte",
+          "signature": "public final startByte : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:endByte",
+          "kind": "field",
+          "name": "endByte",
+          "signature": "public final endByte : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:startLine",
+          "kind": "field",
+          "name": "startLine",
+          "signature": "public final startLine : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:startColumn",
+          "kind": "field",
+          "name": "startColumn",
+          "signature": "public final startColumn : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:endLine",
+          "kind": "field",
+          "name": "endLine",
+          "signature": "public final endLine : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:endColumn",
+          "kind": "field",
+          "name": "endColumn",
+          "signature": "public final endColumn : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:at",
+          "kind": "function",
+          "name": "at",
+          "signature": "public static function at (startByte : Int, endByte : Int, startLine : Int, startColumn : Int, endLine : Int, endColumn : Int) : RustGeneratedSourceSpan",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.RustSourceMap.RustHaxeSourceSpan",
+      "source": "src/reflaxe/rust/RustSourceMap.hx",
+      "kind": "class",
+      "signature": "class RustHaxeSourceSpan",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "field:file",
+          "kind": "field",
+          "name": "file",
+          "signature": "public final file : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:startByte",
+          "kind": "field",
+          "name": "startByte",
+          "signature": "public final startByte : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:endByte",
+          "kind": "field",
+          "name": "endByte",
+          "signature": "public final endByte : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:startLine",
+          "kind": "field",
+          "name": "startLine",
+          "signature": "public final startLine : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:startColumn",
+          "kind": "field",
+          "name": "startColumn",
+          "signature": "public final startColumn : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:endLine",
+          "kind": "field",
+          "name": "endLine",
+          "signature": "public final endLine : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:endColumn",
+          "kind": "field",
+          "name": "endColumn",
+          "signature": "public final endColumn : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:at",
+          "kind": "function",
+          "name": "at",
+          "signature": "public static function at (file : String, startByte : Int, endByte : Int, startLine : Int, startColumn : Int, endLine : Int, endColumn : Int) : RustHaxeSourceSpan",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.RustSourceMap.RustMappedOrigin",
+      "source": "src/reflaxe/rust/RustSourceMap.hx",
+      "kind": "enum",
+      "signature": "enum RustMappedOrigin",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.RustSourceMap.RustHaxeSourceSpan",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.RustSourceMap.RustHaxeSourceSpan",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason"
+      ],
+      "operations": [
+        {
+          "id": "enum-constructor:MappedHaxeSource",
+          "kind": "enum-constructor",
+          "name": "MappedHaxeSource",
+          "signature": "MappedHaxeSource (source : RustHaxeSourceSpan)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustHaxeSourceSpan"
+          ]
+        },
+        {
+          "id": "enum-constructor:MappedCompilerGenerated",
+          "kind": "enum-constructor",
+          "name": "MappedCompilerGenerated",
+          "signature": "MappedCompilerGenerated (reason : RustGeneratedOriginReason)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+      "source": "src/reflaxe/rust/RustSourceMap.hx",
+      "kind": "class",
+      "signature": "class RustPrintedSourceFile",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin"
+      ],
+      "operations": [
+        {
+          "id": "field:generatedFile",
+          "kind": "field",
+          "name": "generatedFile",
+          "signature": "public final generatedFile : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:code",
+          "kind": "field",
+          "name": "code",
+          "signature": "public final code : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:mappingCount",
+          "kind": "field",
+          "name": "mappingCount",
+          "signature": "public var mappingCount (get, never) : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:of",
+          "kind": "function",
+          "name": "of",
+          "signature": "public static function of (generatedFile : String, code : String, mappings : Array < RustPrintedSourceMapping >) : RustPrintedSourceFile",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping"
+          ]
+        },
+        {
+          "id": "function:mappingAt",
+          "kind": "function",
+          "name": "mappingAt",
+          "signature": "public function mappingAt (index : Int) : RustPrintedSourceMapping",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping"
+          ]
+        },
+        {
+          "id": "function:iterator",
+          "kind": "function",
+          "name": "iterator",
+          "signature": "public function iterator () : Iterator < RustPrintedSourceMapping >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+      "source": "src/reflaxe/rust/RustSourceMap.hx",
+      "kind": "class",
+      "signature": "class RustPrintedSourceMapping",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
+        "reflaxe.rust.ast.RustAST.RustOrigin"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin"
+      ],
+      "operations": [
+        {
+          "id": "field:nodeKind",
+          "kind": "field",
+          "name": "nodeKind",
+          "signature": "public final nodeKind : RustSourceMapNodeKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind"
+          ]
+        },
+        {
+          "id": "field:origin",
+          "kind": "field",
+          "name": "origin",
+          "signature": "public final origin : RustOrigin",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustOrigin"
+          ]
+        },
+        {
+          "id": "field:originDepth",
+          "kind": "field",
+          "name": "originDepth",
+          "signature": "public final originDepth : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:startByte",
+          "kind": "field",
+          "name": "startByte",
+          "signature": "public final startByte : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:endByte",
+          "kind": "field",
+          "name": "endByte",
+          "signature": "public final endByte : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:at",
+          "kind": "function",
+          "name": "at",
+          "signature": "public static function at (nodeKind : RustSourceMapNodeKind, origin : RustOrigin, originDepth : Int, startByte : Int, endByte : Int) : RustPrintedSourceMapping",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
+            "reflaxe.rust.ast.RustAST.RustOrigin"
+          ]
+        },
+        {
+          "id": "function:shifted",
+          "kind": "function",
+          "name": "shifted",
+          "signature": "public function shifted (byteDelta : Int) : RustPrintedSourceMapping",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.RustSourceMap.RustSourceMapDocument",
+      "source": "src/reflaxe/rust/RustSourceMap.hx",
+      "kind": "class",
+      "signature": "@:allow (reflaxe.rust.RustSourceMap) class RustSourceMapDocument",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.RustSourceMap",
+        "reflaxe.rust.RustSourceMap.RustSourceMapFile"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.RustSourceMap",
+        "reflaxe.rust.RustSourceMap.RustGeneratedSourceSpan",
+        "reflaxe.rust.RustSourceMap.RustHaxeSourceSpan",
+        "reflaxe.rust.RustSourceMap.RustMappedOrigin",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapFile",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
+        "reflaxe.rust.RustSourceMap.RustSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustcGeneratedSpan",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin"
+      ],
+      "operations": [
+        {
+          "id": "field:schemaVersion",
+          "kind": "field",
+          "name": "schemaVersion",
+          "signature": "public final schemaVersion : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:generator",
+          "kind": "field",
+          "name": "generator",
+          "signature": "public final generator : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:fileCount",
+          "kind": "field",
+          "name": "fileCount",
+          "signature": "public var fileCount (get, never) : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:fileAt",
+          "kind": "function",
+          "name": "fileAt",
+          "signature": "public function fileAt (index : Int) : RustSourceMapFile",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustSourceMapFile"
+          ]
+        },
+        {
+          "id": "function:iterator",
+          "kind": "function",
+          "name": "iterator",
+          "signature": "public function iterator () : Iterator < RustSourceMapFile >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustSourceMapFile"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.RustSourceMap.RustSourceMapFile",
+      "source": "src/reflaxe/rust/RustSourceMap.hx",
+      "kind": "class",
+      "signature": "@:allow (reflaxe.rust.RustSourceMap) class RustSourceMapFile",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.RustSourceMap",
+        "reflaxe.rust.RustSourceMap.RustSourceMapping"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.RustSourceMap",
+        "reflaxe.rust.RustSourceMap.RustGeneratedSourceSpan",
+        "reflaxe.rust.RustSourceMap.RustHaxeSourceSpan",
+        "reflaxe.rust.RustSourceMap.RustMappedOrigin",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapDocument",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
+        "reflaxe.rust.RustSourceMap.RustSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustcGeneratedSpan",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin"
+      ],
+      "operations": [
+        {
+          "id": "field:generatedFile",
+          "kind": "field",
+          "name": "generatedFile",
+          "signature": "public final generatedFile : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:byteLength",
+          "kind": "field",
+          "name": "byteLength",
+          "signature": "public final byteLength : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:lineCount",
+          "kind": "field",
+          "name": "lineCount",
+          "signature": "public final lineCount : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:contentHash",
+          "kind": "field",
+          "name": "contentHash",
+          "signature": "public final contentHash : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:mappingCount",
+          "kind": "field",
+          "name": "mappingCount",
+          "signature": "public var mappingCount (get, never) : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:mappingAt",
+          "kind": "function",
+          "name": "mappingAt",
+          "signature": "public function mappingAt (index : Int) : RustSourceMapping",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustSourceMapping"
+          ]
+        },
+        {
+          "id": "function:iterator",
+          "kind": "function",
+          "name": "iterator",
+          "signature": "public function iterator () : Iterator < RustSourceMapping >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustSourceMapping"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
+      "source": "src/reflaxe/rust/RustSourceMap.hx",
+      "kind": "enum",
+      "signature": "enum RustSourceMapNodeKind",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-constructor:Item",
+          "kind": "enum-constructor",
+          "name": "Item",
+          "signature": "Item",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:Statement",
+          "kind": "enum-constructor",
+          "name": "Statement",
+          "signature": "Statement",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:Expression",
+          "kind": "enum-constructor",
+          "name": "Expression",
+          "signature": "Expression",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.RustSourceMap.RustSourceMapping",
+      "source": "src/reflaxe/rust/RustSourceMap.hx",
+      "kind": "class",
+      "signature": "@:allow (reflaxe.rust.RustSourceMap) class RustSourceMapping",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.RustSourceMap",
+        "reflaxe.rust.RustSourceMap.RustGeneratedSourceSpan",
+        "reflaxe.rust.RustSourceMap.RustMappedOrigin",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.RustSourceMap",
+        "reflaxe.rust.RustSourceMap.RustGeneratedSourceSpan",
+        "reflaxe.rust.RustSourceMap.RustHaxeSourceSpan",
+        "reflaxe.rust.RustSourceMap.RustMappedOrigin",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceFile",
+        "reflaxe.rust.RustSourceMap.RustPrintedSourceMapping",
+        "reflaxe.rust.RustSourceMap.RustSourceMapDocument",
+        "reflaxe.rust.RustSourceMap.RustSourceMapFile",
+        "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind",
+        "reflaxe.rust.RustSourceMap.RustcGeneratedSpan",
+        "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
+        "reflaxe.rust.ast.RustAST.RustOrigin"
+      ],
+      "operations": [
+        {
+          "id": "field:nodeKind",
+          "kind": "field",
+          "name": "nodeKind",
+          "signature": "public final nodeKind : RustSourceMapNodeKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustSourceMapNodeKind"
+          ]
+        },
+        {
+          "id": "field:originDepth",
+          "kind": "field",
+          "name": "originDepth",
+          "signature": "public final originDepth : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:generated",
+          "kind": "field",
+          "name": "generated",
+          "signature": "public final generated : RustGeneratedSourceSpan",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustGeneratedSourceSpan"
+          ]
+        },
+        {
+          "id": "field:origin",
+          "kind": "field",
+          "name": "origin",
+          "signature": "public final origin : RustMappedOrigin",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourceMap.RustMappedOrigin"
+          ]
         }
       ]
     },

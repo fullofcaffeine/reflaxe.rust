@@ -283,6 +283,9 @@ Historical closeout records:
 ## Defines (Common)
 
 - `-D rust_output=out` - output directory for the generated Cargo project
+- Every generated crate includes a deterministic `rust-source-map.json` that ties exact emitted
+  Rust bytes back to Haxe positions or explicit compiler-generated reasons; see
+  [Rust-to-Haxe source maps](docs/rust-source-maps.md).
 - `-D rust_no_build` / `-D rust_codegen_only` - codegen only, skip Cargo build
 - `-D rust_build_release` / `-D rust_release` - release build mode
 - `-D rust_target=<triple>` - pass target triple to Cargo

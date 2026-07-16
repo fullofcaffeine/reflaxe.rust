@@ -642,6 +642,13 @@ Agent policy:
   It also fails on stale naming artifacts (`idiomatic_profile`, `async_preview_retry`, `profile_contract.*`, `hxrt_plan.*`)
   to enforce hard-cutover naming.
 - Runtime gotcha: snapshots embed `runtime/hxrt/**` into `test/snapshot/**/intended/hxrt/`, so any change under `runtime/hxrt/` requires `bash test/run-snapshots.sh --update` to keep goldens in sync.
+- Source-map freshness gotcha: `rust-source-map.json` describes the compiler-emitted UTF-8 bytes and
+  is guarded by the complete generated filename, byte length, and SHA-256. `cargo fmt`, `-D rustfmt`,
+  or a manual `.rs` edit intentionally makes exact lookup fail. Never repair this by basename/line
+  guessing; consume diagnostics before formatting or regenerate the crate.
+  Hash the same `haxe.io.Bytes` used for offsets with `Sha256.make(bytes).toHex()`; the string
+  convenience hash is not a byte-contract substitute and diverges from standard UTF-8 SHA-256 for
+  non-ASCII generated source on the macro target.
 - Snapshot runner gotcha: many snapshot crates share the same crate name (`hx_app`), so `test/run-snapshots.sh` must isolate `CARGO_TARGET_DIR` per case/variant
   (using a shared base cache) to avoid binary collisions and incorrect `stdout.txt` comparisons.
 - `cargo hx` wrapper gotcha: when a smoke/test run compiles both the repo wrapper tool (`tools/hx`) and generated-template wrappers with a shared `CARGO_TARGET_DIR`,

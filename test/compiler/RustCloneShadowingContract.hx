@@ -1,6 +1,8 @@
 #if macro
 import reflaxe.rust.ast.RustAST.RustExpr;
+import reflaxe.rust.ast.RustAST.RustGeneratedOriginReason;
 import reflaxe.rust.ast.RustAST.RustMember;
+import reflaxe.rust.ast.RustAST.RustOriginTools;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustStmt;
@@ -69,7 +71,8 @@ class RustCloneShadowingContract {
 
 		var sequential:RustExpr = EBlock({
 			stmts: [
-				RLet("value", false, RBorrow(RI32, false, null), dynamicFromClone("value")),
+				RustOriginTools.generatedStatement(RLet("value", false, RBorrow(RI32, false, null), dynamicFromClone("value")),
+					RustGeneratedOriginReason.LoweringScaffolding),
 				RSemi(dynamicFromClone("value"))
 			],
 			tail: local("value")

@@ -57,12 +57,13 @@ class Main {
     fs.mkdirSync(privateConstructorDir, { recursive: true })
     fs.writeFileSync(path.join(privateConstructorDir, 'Main.hx'), `
 import reflaxe.rust.ast.RustAST.RustCompilerRawReason;
+import reflaxe.rust.ast.RustAST.RustGeneratedOriginReason;
 import reflaxe.rust.ast.RustAST.RustOrigin;
 import reflaxe.rust.ast.RustAST.RustRawAuthority;
 import reflaxe.rust.ast.RustAST.RustRawCode;
 class Main {
   static function main():Void {
-    var fragment = new RustRawCode("unclassified", RawCompilerOwned(RawStaticStorage), OriginCompilerGenerated);
+    var fragment = new RustRawCode("unclassified", RawCompilerOwned(RawStaticStorage), OriginCompilerGenerated(RustGeneratedOriginReason.StaticStorage));
   }
 }
 `)

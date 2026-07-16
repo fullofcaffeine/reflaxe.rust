@@ -413,6 +413,7 @@ run_snapshots_group() {
   run_stage "structural Rust member and closure contract" npm run test:rust-structural-member-closures
   run_stage "structural Rust item contract" npm run test:rust-structural-items
   run_stage "structural Rust trait and impl contract" npm run test:rust-structural-trait-impls
+  run_stage "deterministic Rust source-map contract" npm run test:rust-source-map
   run_stage "snapshots" run_snapshots
   intermediate_cleanup "snapshots"
 }

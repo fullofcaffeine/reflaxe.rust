@@ -1,5 +1,6 @@
 import reflaxe.rust.ast.RustAST.RustCompilerRawReason;
 import reflaxe.rust.ast.RustAST.RustItem;
+import reflaxe.rust.ast.RustAST.RustGeneratedOriginReason;
 import reflaxe.rust.ast.RustAST.RustOrigin;
 import reflaxe.rust.ast.RustAST.RustRawAuthority;
 import reflaxe.rust.ast.RustAST.RustRawCode;
@@ -23,7 +24,8 @@ class RustRawAuthorityContract {
 			case _: throw "normalization changed raw authority";
 		}
 		switch (normalized.origin) {
-			case OriginCompilerGenerated:
+			case OriginCompilerGenerated(RustGeneratedOriginReason.StaticStorage):
+			case OriginCompilerGenerated(_): throw "normalization changed compiler-generated reason";
 			case OriginHaxeSource(_): throw "normalization changed compiler-generated origin";
 		}
 		expect(RustASTPrinter.printFile({items: [RRaw(normalized)]}) == "fn generated() { }\n", "typed metadata must not alter Rust output");

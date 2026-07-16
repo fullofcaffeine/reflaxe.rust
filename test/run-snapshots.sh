@@ -263,8 +263,12 @@ for case_dir in "$SNAP_DIR"/*; do
     if [[ "$update_intended" == "1" ]]; then
       rm -rf "$intended_dir"
       mkdir -p "$intended_dir"
+      # Source-map bytes and lookup semantics have their own repeatability/adversarial contract.
+      # Keeping that generated diagnostic artifact out of 138 Rust golden trees avoids duplicating
+      # the same schema evidence while ordinary snapshots continue to own printable Rust bytes.
       rsync -a --delete \
         --exclude "_GeneratedFiles.json" \
+        --exclude "rust-source-map.json" \
         --exclude "Cargo.lock" \
         --exclude "stdout.txt" \
         --exclude "target" \
@@ -307,6 +311,7 @@ for case_dir in "$SNAP_DIR"/*; do
       if ! run_timed_step "diff: $case_name/$out_base" \
         diff -ru \
           -x "_GeneratedFiles.json" \
+          -x "rust-source-map.json" \
           -x "Cargo.lock" \
           -x "stdout.txt" \
           -x "target" \

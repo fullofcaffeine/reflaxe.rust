@@ -35,6 +35,8 @@ class RustPassTools {
 
 	static function mapItem(item:RustItem, mapStmt:RustStmt->RustStmt, mapExpr:RustExpr->RustExpr):RustItem {
 		return switch (item) {
+			case ROrigin(origin, inner):
+				ROrigin(origin, mapItem(inner, mapStmt, mapExpr));
 			case RAttributed(value):
 				RAttributed(value.withTarget(mapItem(value.target, mapStmt, mapExpr)));
 			case RModule(declaration):
@@ -89,7 +91,13 @@ class RustPassTools {
 	}
 
 	public static function mapStmtDeep(s:RustStmt, mapStmt:RustStmt->RustStmt, mapExpr:RustExpr->RustExpr):RustStmt {
+		switch (s) {
+			case SOrigin(origin, inner):
+				return SOrigin(origin, mapStmtDeep(inner, mapStmt, mapExpr));
+			case _:
+		}
 		var deep:RustStmt = switch (s) {
+			case SOrigin(_, _): throw "unreachable nested Rust statement origin";
 			case RLet(name, mutable, ty, expr):
 				RLet(name, mutable, ty, expr == null ? null : mapExprDeep(expr, mapExpr));
 			case RSemi(e):
@@ -113,7 +121,13 @@ class RustPassTools {
 	}
 
 	public static function mapExprDeep(e:RustExpr, mapExpr:RustExpr->RustExpr):RustExpr {
+		switch (e) {
+			case EOrigin(origin, inner):
+				return EOrigin(origin, mapExprDeep(inner, mapExpr));
+			case _:
+		}
 		var deep:RustExpr = switch (e) {
+			case EOrigin(_, _): throw "unreachable nested Rust expression origin";
 			case ERaw(_) | ESelf | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				e;
 			case ECall(func, args):

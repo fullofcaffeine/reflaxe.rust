@@ -41,6 +41,19 @@ This document is the source of truth for intentional `Dynamic` usage in `reflaxe
 - Exit criteria: replace this boundary with a typed JSON decoder or generated codec that can parse
   the pin schema without raw `Dynamic`.
 
+### `src/reflaxe/rust/RustSourceMap.hx` source-map decoder (line-scoped)
+
+- Why: `haxe.Json.parse` necessarily returns one untyped value before an internal diagnostic
+  consumer can validate `rust-source-map.json`.
+- Current narrowing:
+  - one documented `RustSourceMapJsonValue` alias owns the parser result;
+  - object, array, string, and integer helpers validate every field immediately;
+  - only typed source-map documents, files, mappings, origins, and spans reach lookup logic.
+- Guardrail: path safety, the closed generated-reason vocabulary, deterministic mapping order, and
+  content hashes are revalidated after parsing; no untyped value escapes the codec section.
+- Exit criteria: replace the alias if Haxe gains a typed JSON decoder that can construct the
+  versioned source-map schema without an untyped parser result.
+
 ### File-scoped entries
 
 - None currently.

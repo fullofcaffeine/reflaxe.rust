@@ -38,6 +38,7 @@ import reflaxe.rust.ast.RustAST.RustGenericArgument;
 import reflaxe.rust.ast.RustAST.RustGenericBound;
 import reflaxe.rust.ast.RustAST.RustGenericParameter;
 import reflaxe.rust.ast.RustAST.RustGenericParameters;
+import reflaxe.rust.ast.RustAST.RustGeneratedOriginReason;
 import reflaxe.rust.ast.RustAST.RustIdentifier;
 import reflaxe.rust.ast.RustAST.RustItem;
 import reflaxe.rust.ast.RustAST.RustImpl;
@@ -45,6 +46,7 @@ import reflaxe.rust.ast.RustAST.RustLifetime;
 import reflaxe.rust.ast.RustAST.RustMatchArm;
 import reflaxe.rust.ast.RustAST.RustMember;
 import reflaxe.rust.ast.RustAST.RustModuleDeclaration;
+import reflaxe.rust.ast.RustAST.RustOriginTools;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPathSegment;
 import reflaxe.rust.ast.RustAST.RustPattern;
@@ -3479,7 +3481,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		currentClassContext = null;
 		currentMethodOwnerType = null;
 		currentNeededSuperThunks = null;
-		return {items: items};
+		return {items: attachTopLevelOrigins(items, classType.pos)};
 	}
 
 	public function compileEnumImpl(enumType:EnumType, options:Array<EnumOptionData>):Null<RustFile> {
@@ -3548,7 +3550,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			items.push(RImpl(structuralRustImplFromMetadata(spec, enumGenerics, enumTypeInstType)));
 		}
 
-		return {items: items};
+		return {items: attachTopLevelOrigins(items, enumType.pos)};
 	}
 
 	override public function compileTypedefImpl(typedefType:DefType):Null<RustFile> {
@@ -3564,7 +3566,34 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	public function compileExpressionImpl(expr:TypedExpr, topLevel:Bool):Null<RustExpr> {
-		return compileExpr(expr);
+		var compiled = compileExpr(expr);
+		return switch (compiled) {
+			// Classified raw expressions already require and retain the exact source origin themselves.
+			case ERaw(_): compiled;
+			case _: RustOriginTools.sourceExpression(compiled, expr.pos);
+		};
+	}
+
+	/**
+		Attaches an honest outer origin to every emitted top-level item.
+
+		Why / What / How
+		- Class/enum declarations are the stable Haxe source fallback for structural declarations, while
+		  file markers and module plumbing have no single source syntax and require generated reasons.
+		- Classified raw items already carry their more precise authority position and reuse it.
+		- Existing wrappers are retained so specialized lowering can provide a narrower origin later.
+	**/
+	function attachTopLevelOrigins(items:Array<RustItem>, declarationPos:haxe.macro.Expr.Position):Array<RustItem> {
+		return [for (item in items) switch (item) {
+			case ROrigin(_, _): item;
+			// Classified raw items already carry mandatory source/generated provenance on the fragment.
+			case RRaw(_): item;
+			case RComment(_): RustOriginTools.generatedItem(item, RustGeneratedOriginReason.GeneratedFileMarker);
+			case RInnerAttribute(_) | RUse(_) | RModule(_) | RTypeAlias(_):
+				RustOriginTools.generatedItem(item, RustGeneratedOriginReason.ModuleScaffolding);
+			case _:
+				RustOriginTools.sourceItem(item, declarationPos);
+		}];
 	}
 
 	function isMainClass(classType:ClassType):Bool {
@@ -7620,7 +7649,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					// Single-expression function body. Non-void expression bodies must remain tails so
 					// value expressions such as `try/catch` lower to the function return value.
 					if (allowTail && canUseAsTailExpr(e, expectedReturn))
-						{stmts: [], tail: coerceExprToExpected(compileExpr(e), e, expectedReturn)} else {stmts: [compileStmt(e)], tail: null};
+						{stmts: [], tail: RustOriginTools.sourceExpression(coerceExprToExpected(compileExpr(e), e, expectedReturn), e.pos)} else {stmts: [compileStmt(e)], tail: null};
 				}
 		};
 
@@ -7655,7 +7684,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var isLast = (i == exprs.length - 1);
 
 			if (allowTail && isLast && canUseAsTailExpr(e, expectedTail)) {
-				tail = coerceExprToExpected(compileExpr(e), e, expectedTail);
+				tail = RustOriginTools.sourceExpression(coerceExprToExpected(compileExpr(e), e, expectedTail), e.pos);
 				break;
 			}
 
@@ -7739,7 +7768,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								// Rust allows `let x; x = value;` without `mut` (the first assignment is initialization).
 								// Only require `mut` if we see multiple assignments (or `++/--`).
 								var mutable = assignCount > 1;
-								stmts.push(RLet(name, mutable, rustTy, null));
+								stmts.push(RustOriginTools.sourceStatement(RLet(name, mutable, rustTy, null), e.pos));
 								handled = true;
 							} else {
 								// fall through to default
@@ -7800,7 +7829,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								#end
 								var initExpr = wrapBorrowIfNeeded(compileExpr(init), rustTy, init);
 								var mutable = currentMutatedLocals != null && currentMutatedLocals.exists(v.id);
-								stmts.push(RLet(name, mutable, rustTy, initExpr));
+								stmts.push(RustOriginTools.sourceStatement(RLet(name, mutable, rustTy, initExpr), e.pos));
 								handled = true;
 							}
 						}
@@ -7896,6 +7925,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	**/
 	function rustStmtAlwaysDiverges(s:RustStmt):Bool {
 		return switch (s) {
+			case SOrigin(_, inner):
+				rustStmtAlwaysDiverges(inner);
 			case RReturn(_):
 				true;
 			case RSemi(e):
@@ -7918,10 +7949,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	**/
 	function rustExprAlwaysDiverges(e:RustExpr):Bool {
 		return switch (e) {
+			case EOrigin(_, inner): rustExprAlwaysDiverges(inner);
 			case ERaw(fragment): var raw = StringTools.trim(fragment.code); raw == "todo!()" || raw == "unreachable!()" || StringTools.startsWith(raw, "panic!(");
 			case EMacroCall(name, _): name == "todo" || name == "unreachable" || name == "panic";
 			case ECall(func, _):
-				switch (func) {
+				switch (RustOriginTools.withoutExpressionOrigin(func)) {
 					case EPath(path):
 						rustPathIsRelative(path, ["hxrt", "exception", "throw"]);
 					case _:
@@ -7955,6 +7987,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function compileStmt(e:TypedExpr):RustStmt {
+		return RustOriginTools.sourceStatement(compileStmtWithoutOrigin(e), e.pos);
+	}
+
+	function compileStmtWithoutOrigin(e:TypedExpr):RustStmt {
 		function unwrapMetaParenCast(expr:TypedExpr):TypedExpr {
 			var u = unwrapMetaParen(expr);
 			return switch (u.expr) {
@@ -10698,7 +10734,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				compileBlock(exprs, allowTail);
 			case _:
 				if (allowTail && !isStmtOnlyExpr(e)) {
-					{stmts: [], tail: compileExpr(e)};
+					{stmts: [], tail: RustOriginTools.sourceExpression(compileExpr(e), e.pos)};
 				} else {
 					{stmts: [compileStmt(e)], tail: null};
 				}
@@ -11061,6 +11097,77 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return ECall(rustField(unwrapCall, "clone"), []);
 	}
 
+	/**
+		Reuses an owned match value through a Rust alias pattern without losing source provenance.
+
+		Why
+		- Haxe permits a switch arm to return the whole value being matched. Rust cannot both consume that
+		  value as the match scrutinee and refer to its old local name inside the arm.
+		- Cloning the scrutinee would add artificial `Clone` bounds to generic enums such as `Option<T>`.
+		- Source-map origins may wrap either the complete arm or its block tail and must remain attached to
+		  the replacement expression.
+
+		What
+		- Recognizes a direct whole-scrutinee arm or a binding-scaffolding block whose tail is that local.
+		- Replaces the complete arm with the alias consumed by a `name @ Pattern` arm, which also removes
+		  payload-binding statements made obsolete when the pattern bindings are erased.
+
+		How
+		- Origin wrappers are transparent for recognition and are rebuilt around the alias expression.
+		- Generic and enum-index switches share this one helper so their ownership behavior cannot drift.
+	**/
+	function aliasWholeScrutineeArmExpr(armExpr:RustExpr, pathName:String, aliasName:String):Null<RustExpr> {
+		return switch (RustOriginTools.withoutExpressionOrigin(armExpr)) {
+			case EPath(path) if (RustPathAnalysis.localIdentifierName(path) == pathName):
+				RustOriginTools.replaceExpressionPreservingOrigins(armExpr, rustSingleExpr(aliasName));
+			case EBlock(block):
+				if (block.tail == null) {
+					null;
+				} else {
+					switch (RustOriginTools.withoutExpressionOrigin(block.tail)) {
+						case EPath(path) if (RustPathAnalysis.localIdentifierName(path) == pathName):
+							var aliasedTail = RustOriginTools.replaceExpressionPreservingOrigins(block.tail, rustSingleExpr(aliasName));
+							RustOriginTools.replaceExpressionPreservingOrigins(armExpr, aliasedTail);
+						case _:
+							null;
+					}
+				}
+			case _:
+				null;
+		}
+	}
+
+	/**
+		Erases payload bindings when a whole-value alias owns the matched Rust value.
+
+		Why
+		- Once an arm returns the `name @ Pattern` alias, its compiler-generated payload locals and their
+		  binding block are removed. Leaving `PBind` nodes behind would create unused Rust variables.
+
+		What
+		- Replaces every payload binding with `_` while retaining constructor, tuple, OR, and nested alias
+		  structure.
+
+		How
+		- Recurses over the closed `RustPattern` variants and returns literal/path/wildcard leaves exactly.
+	**/
+	function erasePatternBindings(pattern:RustPattern):RustPattern {
+		return switch (pattern) {
+			case PBind(_):
+				PWildcard;
+			case PTuple(fields):
+				PTuple([for (field in fields) erasePatternBindings(field)]);
+			case PTupleStruct(path, fields):
+				PTupleStruct(path, [for (field in fields) erasePatternBindings(field)]);
+			case POr(patterns):
+				POr([for (p in patterns) erasePatternBindings(p)]);
+			case PAlias(name, inner):
+				PAlias(name, erasePatternBindings(inner));
+			case PWildcard | PPath(_) | PLitInt(_) | PLitUInt32(_) | PLitBool(_) | PLitString(_):
+				pattern;
+		}
+	}
+
 	function compileGenericSwitch(switchExpr:TypedExpr, cases:Array<{values:Array<TypedExpr>, expr:TypedExpr}>, edef:Null<TypedExpr>,
 			expectedReturn:Type):RustExpr {
 		function isSimpleSwitchValue(e:TypedExpr):Bool {
@@ -11133,39 +11240,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var out = fn();
 			currentEnumParamBinds = prev;
 			return out;
-		}
-
-		function aliasWholeScrutineeArmExpr(armExpr:RustExpr, pathName:String, aliasName:String):Null<RustExpr> {
-			return switch (armExpr) {
-				case EPath(path) if (RustPathAnalysis.localIdentifierName(path) == pathName):
-					rustSingleExpr(aliasName);
-				case EBlock(block):
-					switch (block.tail) {
-						case EPath(path) if (RustPathAnalysis.localIdentifierName(path) == pathName):
-							rustSingleExpr(aliasName);
-						case _:
-							null;
-					}
-				case _:
-					null;
-			}
-		}
-
-		function erasePatternBindings(pattern:RustPattern):RustPattern {
-			return switch (pattern) {
-				case PBind(_):
-					PWildcard;
-				case PTuple(fields):
-					PTuple([for (field in fields) erasePatternBindings(field)]);
-				case PTupleStruct(path, fields):
-					PTupleStruct(path, [for (field in fields) erasePatternBindings(field)]);
-				case POr(patterns):
-					POr([for (p in patterns) erasePatternBindings(p)]);
-				case PAlias(name, inner):
-					PAlias(name, erasePatternBindings(inner));
-				case PWildcard | PPath(_) | PLitInt(_) | PLitUInt32(_) | PLitBool(_) | PLitString(_):
-					pattern;
-			}
 		}
 
 		/**
@@ -11318,39 +11392,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var out = fn();
 			currentEnumParamBinds = prev;
 			return out;
-		}
-
-		function aliasWholeScrutineeArmExpr(armExpr:RustExpr, pathName:String, aliasName:String):Null<RustExpr> {
-			return switch (armExpr) {
-				case EPath(path) if (RustPathAnalysis.localIdentifierName(path) == pathName):
-					rustSingleExpr(aliasName);
-				case EBlock(block):
-					switch (block.tail) {
-						case EPath(path) if (RustPathAnalysis.localIdentifierName(path) == pathName):
-							rustSingleExpr(aliasName);
-						case _:
-							null;
-					}
-				case _:
-					null;
-			}
-		}
-
-		function erasePatternBindings(pattern:RustPattern):RustPattern {
-			return switch (pattern) {
-				case PBind(_):
-					PWildcard;
-				case PTuple(fields):
-					PTuple([for (field in fields) erasePatternBindings(field)]);
-				case PTupleStruct(path, fields):
-					PTupleStruct(path, [for (field in fields) erasePatternBindings(field)]);
-				case POr(patterns):
-					POr([for (p in patterns) erasePatternBindings(p)]);
-				case PAlias(name, inner):
-					PAlias(name, erasePatternBindings(inner));
-				case PWildcard | PPath(_) | PLitInt(_) | PLitUInt32(_) | PLitBool(_) | PLitString(_):
-					pattern;
-			}
 		}
 
 		/**

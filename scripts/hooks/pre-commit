@@ -101,6 +101,11 @@ if grep -Eq '^(package\.json$|scripts/(ci/harness\.sh|hooks/pre-commit)$|src/ref
   npm --prefix "$ROOT_DIR" run test:rust-structural-trait-impls
 fi
 
+if grep -Eq '^(package\.json$|docs/(rust-source-maps\.md|schemas/rust-source-map-v1\.schema\.json)$|scripts/(ci/harness\.sh|hooks/pre-commit)$|src/reflaxe/rust/(CompilationContext|RustCompiler|RustOutputIterator|RustSourceMap|ast/(RustAST|RustASTPrinter|RustPathAnalysis)|passes/[^/]+)\.hx$|test/(run-snapshots\.sh|compiler/RustSourceMapContract\.hx|positive/rust_source_map/[^/]+|scripts/(pre-commit-evidence-wiring|rust-source-map)\.test\.js)$)' <<<"$STAGED_FILES"; then
+  echo "[pre-commit] Running deterministic Rust source-map contract..."
+  npm --prefix "$ROOT_DIR" run test:rust-source-map
+fi
+
 echo "[pre-commit] OK"
 
 # The Beads-managed integration is appended below this boundary by

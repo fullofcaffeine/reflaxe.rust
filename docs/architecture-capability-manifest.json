@@ -103,6 +103,21 @@
       ]
     },
     {
+      "id": "test:rust-source-map",
+      "label": "Deterministic Rust-to-Haxe source-map contract",
+      "evidenceClass": "executable",
+      "description": "Origin-wrapped Rust items, statements, expressions, and classified raw fragments survive the production pass pipeline and emit a repeatable, path-private, content-hashed map with exact typed lookup and no basename fallback.",
+      "paths": [
+        "src/reflaxe/rust/RustSourceMap.hx",
+        "docs/rust-source-maps.md",
+        "docs/schemas/rust-source-map-v1.schema.json",
+        "test/scripts/rust-source-map.test.js"
+      ],
+      "commands": [
+        "npm run test:rust-source-map"
+      ]
+    },
+    {
       "id": "test:snapshots-and-clippy",
       "label": "Generated Rust snapshots and Clippy",
       "evidenceClass": "executable",
@@ -379,13 +394,14 @@
       "evidenceIds": [
         "test:metal-policy",
         "test:diagnostic-contract",
+        "test:rust-source-map",
         "test:snapshots-and-clippy",
         "docs:lifetime-boundary"
       ],
       "qualifications": [],
       "doesNotMean": [
         "The current Haxe diagnostics cover every provenance or lifetime relation rustc can express.",
-        "rustc diagnostics are already mapped perfectly back to originating Haxe expressions.",
+        "The source-map foundation means every rustc diagnostic is already presented automatically as a polished Haxe diagnostic.",
         "Arbitrary borrowed values can be stored or returned from Haxe without a typed boundary design."
       ],
       "ownerBeads": [
@@ -416,13 +432,14 @@
       "evidenceIds": [
         "test:metal-policy",
         "test:diagnostic-contract",
+        "test:rust-source-map",
         "test:snapshots-and-clippy",
         "docs:lifetime-boundary"
       ],
       "qualifications": [
         "Unknown closure variables and helper-call side effects need richer provenance analysis.",
         "Field and static source identity and source-equivalence checks are narrower than local-variable analysis.",
-        "Residual rustc diagnostics do not yet reliably map generated spans back to the originating Haxe expression."
+        "Residual rustc spans now have an exact content-hashed mapping foundation for origin-wrapped nodes, but Cargo JSON presentation and richer field/static/helper provenance remain open."
       ],
       "doesNotMean": [
         "The compiler implements Rust's undocumented or complete borrow-checker semantics.",
@@ -590,7 +607,7 @@
         "contract:native-facades"
       ],
       "qualifications": [
-        "RustCompiler and parts of RustAST still hide analysis-relevant syntax in raw strings, limiting structural optimization and source mapping.",
+        "Remaining explicitly classified raw-authority fragments can only map as whole fragments, limiting expression-level attribution and structural optimization inside their text.",
         "Portable class/reference workloads have not yet established allocation, clone, lock, dispatch, binary-size, and lifecycle budgets against hand-written Rust models.",
         "The current performance suite is microcase-oriented and does not yet prove tail latency, sustained RSS trend, or mixed-workload operability."
       ],

@@ -57,7 +57,7 @@ class MetalRestrictionsPass implements RustPass {
 					if (Context.defined("rust_debug_metal_raw")) {
 						var warningPos = switch (raw.origin) {
 							case OriginHaxeSource(pos): pos;
-							case OriginCompilerGenerated: diagPos;
+							case OriginCompilerGenerated(_): diagPos;
 						};
 						Context.warning("metal raw expr [" + moduleLabel + "] [" + raw.authorityId() + ":" + raw.reasonId() + "] "
 							+ debugSnippet(raw.code), warningPos);
