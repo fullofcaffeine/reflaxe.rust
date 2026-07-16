@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x019ad7a1u32;
 
 #[derive(Debug)]
-
 pub struct ArrayBorrow {}
 
 impl ArrayBorrow {

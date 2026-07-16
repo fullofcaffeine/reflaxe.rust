@@ -85,7 +85,6 @@ class RustStructuralMemberClosureContract {
 				name: "Choice",
 				isPub: false,
 				generics: RustGenericParameters.empty(),
-				derives: [],
 				variants: [
 					{name: "First", args: [RI32]},
 					{name: "Second", args: [RI32]}

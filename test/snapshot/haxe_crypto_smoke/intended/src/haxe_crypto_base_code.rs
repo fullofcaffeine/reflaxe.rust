@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x8584eeaeu32;
 
 #[derive(Debug)]
-
 pub struct BaseCode {
     base: crate::HxRef<hxrt::bytes::Bytes>,
     nbits: i32,

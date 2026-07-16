@@ -19,7 +19,6 @@ pub(crate) fn __hx_static_set_pending(value: crate::HxRef<crate::haxe_main_event
 pub const __HX_TYPE_ID: u32 = 0xefcba29eu32;
 
 #[derive(Debug)]
-
 pub struct MainLoop {}
 
 impl MainLoop {

@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x4cca5cccu32;
 
 #[derive(Debug)]
-
 pub struct MysqlResultSet {
     res: crate::HxRef<hxrt::db::QueryResult>,
 }

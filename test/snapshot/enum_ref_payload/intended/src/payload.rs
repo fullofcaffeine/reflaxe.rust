@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xc5e84041u32;
 
 #[derive(Debug)]
-
 pub struct Payload {
     pub name: hxrt::string::HxString,
 }

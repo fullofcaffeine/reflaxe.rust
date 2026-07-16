@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xb840ae5fu32;
 
 #[derive(Debug)]
-
 pub struct Counter {
     pub n: i32,
 }

@@ -78,7 +78,6 @@ class RustStructuralTypeDeclarationContract {
 				name: "Message",
 				isPub: false,
 				generics: RustMetadataSyntax.parseGenericParameters("T"),
-				derives: [],
 				variants: [{name: "Value", args: [optionT]}]
 			}),
 			RImpl({

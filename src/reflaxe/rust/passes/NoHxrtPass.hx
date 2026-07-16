@@ -8,6 +8,7 @@ import reflaxe.rust.ast.RustAST.RustBlock;
 import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustFile;
 import reflaxe.rust.ast.RustAST.RustGenericParameters;
+import reflaxe.rust.ast.RustAST.RustItem;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustRawCode;
@@ -65,6 +66,7 @@ class NoHxrtPass implements RustPass {
 		var scanStmt:RustStmt->Void = null;
 		var scanExpr:RustExpr->Void = null;
 		var scanGenericParameters:RustGenericParameters->Void = null;
+		var scanItem:RustItem->Void = null;
 
 		var recordHxrtPath = function(path:RustPath, kind:String):Void {
 			// Printing remains diagnostic display only; namespace identity comes from validated segments.
@@ -181,7 +183,7 @@ class NoHxrtPass implements RustPass {
 					scanBlock(body);
 				case EAwait(value):
 					scanExpr(value);
-				case ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
+				case ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 			}
 		};
 
@@ -200,8 +202,34 @@ class NoHxrtPass implements RustPass {
 			}
 		}
 
-		for (item in file.items) {
+		scanItem = function(item:RustItem):Void {
 			switch (item) {
+				case RAttributed(value):
+					for (attribute in value)
+						RustPathAnalysis.visitAttributeTree(attribute,
+							candidate -> recordHxrtPath(candidate, "attribute"));
+					scanItem(value.target);
+				case RInnerAttribute(attribute):
+					RustPathAnalysis.visitAttributeTree(attribute,
+						candidate -> recordHxrtPath(candidate, "inner attribute"));
+				case RComment(_):
+				case RUse(declaration):
+					RustPathAnalysis.visitUseTree(declaration,
+						candidate -> recordHxrtPath(candidate, "use"));
+				case RModule(declaration):
+					if (declaration.isInline) {
+						for (child in declaration)
+							scanItem(child);
+					}
+				case RConst(declaration):
+					scanType(declaration.type);
+					scanExpr(declaration.value);
+				case RStatic(declaration):
+					scanType(declaration.type);
+					scanExpr(declaration.value);
+				case RTypeAlias(declaration):
+					scanGenericParameters(declaration.generics);
+					scanType(declaration.type);
 				case RFn(f):
 					scanGenericParameters(f.generics);
 					for (arg in f.args)
@@ -231,7 +259,10 @@ class NoHxrtPass implements RustPass {
 				case RRaw(raw):
 					scanRawItem(raw);
 			}
-		}
+		};
+
+		for (item in file.items)
+			scanItem(item);
 
 		if (violationCount > 0) {
 			var moduleLabel = context.currentModuleLabel != null ? context.currentModuleLabel : "<unknown>";

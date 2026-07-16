@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xe82620b4u32;
 
 #[derive(Debug)]
-
 pub struct Output {
     pub big_endian: bool,
 }

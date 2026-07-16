@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x0d3c0cadu32;
 
 #[derive(Debug)]
-
 pub struct Date {
     ms: f64,
 }

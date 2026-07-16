@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x28dbf374u32;
 
 #[derive(Debug)]
-
 pub struct DefaultResolver {}
 
 impl DefaultResolver {

@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x308de7d5u32;
 
 #[derive(Debug)]
-
 pub struct ArrayIterator<T: Clone + Send + Sync> {
     __hx_phantom: std::marker::PhantomData<T>,
 }

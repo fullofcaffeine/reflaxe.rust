@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x149415d4u32;
 
 #[derive(Debug)]
-
 pub struct EnumValueImpl { }
 
 impl EnumValueImpl { }

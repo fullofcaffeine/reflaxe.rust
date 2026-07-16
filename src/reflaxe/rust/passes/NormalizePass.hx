@@ -34,6 +34,13 @@ class NormalizePass implements RustPass {
 
 	function normalizeItem(item:RustItem):RustItem {
 		return switch (item) {
+			case RAttributed(value):
+				RAttributed(value.withTarget(normalizeItem(value.target)));
+			case RModule(declaration):
+				if (!declaration.isInline)
+					item;
+				else
+					RModule(declaration.withItems([for (child in declaration) normalizeItem(child)]));
 			case RRaw(fragment):
 				RRaw(fragment.withCode(normalizeRaw(fragment.code)));
 			case _:

@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xbc62c7dcu32;
 
 #[derive(Debug)]
-
 pub struct Base<T: Clone + Send + Sync> {
     __hx_phantom: std::marker::PhantomData<T>,
 }

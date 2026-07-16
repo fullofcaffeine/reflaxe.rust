@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x041993fcu32;
 
 #[derive(Debug)]
-
 pub struct FileInput {
     pub big_endian: bool,
     handle: crate::HxRef<hxrt::fs::FileHandle>,

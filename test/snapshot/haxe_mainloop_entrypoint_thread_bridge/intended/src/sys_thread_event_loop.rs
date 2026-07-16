@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x8c46fc34u32;
 
 #[derive(Debug)]
-
 pub struct EventLoop {
     _thread_id: i32,
 }

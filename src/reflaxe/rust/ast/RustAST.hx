@@ -49,19 +49,12 @@ enum RustOrigin {
 	  requires updating the exhaustive mapping and reviewing the new authority explicitly.
 **/
 enum RustCompilerRawReason {
-	RawGeneratedFileMarker;
 	RawStaticStorage;
-	RawCrateHeader;
-	RawNestedModuleDeclarations;
 	RawInterfaceTraitDeclaration;
-	RawBaseTraitImport;
-	RawTypeIdConstant;
-	RawDeriveAttribute;
 	RawClassTraitDeclaration;
 	RawClassTraitImplementation;
 	RawBaseTraitImplementation;
 	RawInterfaceTraitImplementation;
-	RawGeneratedTestModule;
 	RawDefaultValueFallback;
 	RawUnsupportedFallback;
 }
@@ -182,19 +175,12 @@ class RustRawCode {
 	public function reasonId():String {
 		return switch (authority) {
 			case RawCompilerOwned(reason): switch (reason) {
-					case RawGeneratedFileMarker: "generated-file-marker";
 					case RawStaticStorage: "static-storage";
-					case RawCrateHeader: "crate-header";
-					case RawNestedModuleDeclarations: "nested-module-declarations";
 					case RawInterfaceTraitDeclaration: "interface-trait-declaration";
-					case RawBaseTraitImport: "base-trait-import";
-					case RawTypeIdConstant: "type-id-constant";
-					case RawDeriveAttribute: "derive-attribute";
 					case RawClassTraitDeclaration: "class-trait-declaration";
 					case RawClassTraitImplementation: "class-trait-implementation";
 					case RawBaseTraitImplementation: "base-trait-implementation";
 					case RawInterfaceTraitImplementation: "interface-trait-implementation";
-					case RawGeneratedTestModule: "generated-test-module";
 					case RawDefaultValueFallback: "default-value-fallback";
 					case RawUnsupportedFallback: "unsupported-fallback";
 				}
@@ -921,11 +907,483 @@ typedef RustFile = {
 }
 
 enum RustItem {
+	RAttributed(value:RustAttributedItem);
+	RInnerAttribute(attribute:RustAttribute);
+	RComment(comment:RustComment);
+	RUse(declaration:RustUseDeclaration);
+	RModule(declaration:RustModuleDeclaration);
+	RConst(declaration:RustConstantDeclaration);
+	RStatic(declaration:RustStaticDeclaration);
+	RTypeAlias(declaration:RustTypeAliasDeclaration);
 	RFn(f:RustFunction);
 	RStruct(s:RustStruct);
 	REnum(e:RustEnum);
 	RImpl(i:RustImpl);
 	RRaw(fragment:RustRawCode);
+}
+
+/** Identifies the closed payload form carried by one structural Rust attribute. */
+enum RustAttributeInputKind {
+	AttributeBare;
+	AttributePathList;
+	AttributeStringValue;
+}
+
+/**
+	A structural Rust attribute without its outer/inner attachment punctuation.
+
+	Why
+	- Attribute paths and arguments participate in name resolution and no-runtime policy. A rendered
+	  string such as `#[derive(Clone)]` hides both from analysis and can be detached from its target.
+	- Metadata-backed derive paths are a legitimate input boundary, but they must become structural
+	  immediately instead of remaining target text throughout lowering.
+
+	What
+	- Represents a bare attribute, a non-empty list of simple-path arguments, or a string value.
+	- Stores only relative, argument-free paths; generic/function/qualified syntax is rejected.
+
+	How
+	- Use `bare`, `pathList`, or `stringValue`, then attach outer attributes with
+	  `RustAttributedItem.of` or emit an enclosing-item attribute with `RInnerAttribute`.
+	- The printer owns `#`, `!`, brackets, parentheses, commas, `=`, and string escaping.
+**/
+class RustAttribute {
+	public final path:RustPath;
+	public final inputKind:RustAttributeInputKind;
+	final arguments:Array<RustPath>;
+	public final stringPayload:Null<String>;
+	public var argumentCount(get, never):Int;
+
+	private function new(path:RustPath, inputKind:RustAttributeInputKind, arguments:Array<RustPath>, stringPayload:Null<String>) {
+		this.path = RustItemSyntax.requireSimpleRelativePath(path, "Rust attribute path");
+		this.inputKind = inputKind;
+		this.arguments = arguments;
+		this.stringPayload = stringPayload;
+	}
+
+	public static function bare(path:RustPath):RustAttribute {
+		return new RustAttribute(path, AttributeBare, [], null);
+	}
+
+	public static function pathList(path:RustPath, arguments:Array<RustPath>):RustAttribute {
+		if (arguments == null || arguments.length == 0)
+			throw "Rust attribute path list requires at least one argument";
+		var copy = arguments.copy();
+		for (argument in copy)
+			RustItemSyntax.requireSimpleRelativePath(argument, "Rust attribute argument");
+		return new RustAttribute(path, AttributePathList, copy, null);
+	}
+
+	public static function stringValue(path:RustPath, value:String):RustAttribute {
+		if (value == null)
+			throw "Rust attribute string value cannot be null";
+		return new RustAttribute(path, AttributeStringValue, [], value);
+	}
+
+	function get_argumentCount():Int {
+		return arguments.length;
+	}
+
+	public function argumentAt(index:Int):RustPath {
+		if (index < 0 || index >= arguments.length)
+			throw 'Rust attribute argument index out of bounds: $index';
+		return arguments[index];
+	}
+
+	public function iterator():Iterator<RustPath> {
+		return arguments.iterator();
+	}
+}
+
+/**
+	A non-empty outer-attribute list attached to exactly one Rust item.
+
+	Why
+	- Free-standing outer attributes can silently retarget after a pass inserts, removes, or reorders
+	  items. Attribute ownership must survive transformation as part of the same node.
+
+	What
+	- Owns a defensive copy of one or more attributes and one non-annotation target item.
+	- Rejects nested wrappers, inner attributes, and comments as targets so attachment is unambiguous.
+
+	How
+	- Construct with `of`; recursive passes must transform `target` while retaining the attributes.
+	- Inner crate/module attributes remain explicit `RInnerAttribute` items because their target is the
+	  enclosing item rather than the following declaration.
+**/
+class RustAttributedItem {
+	final attributes:Array<RustAttribute>;
+	public final target:RustItem;
+	public var attributeCount(get, never):Int;
+
+	private function new(attributes:Array<RustAttribute>, target:RustItem) {
+		this.attributes = attributes;
+		this.target = target;
+	}
+
+	public static function of(attributes:Array<RustAttribute>, target:RustItem):RustAttributedItem {
+		if (attributes == null || attributes.length == 0)
+			throw "Rust attributed item requires at least one outer attribute";
+		var copy = attributes.copy();
+		for (attribute in copy) {
+			if (attribute == null)
+				throw "Rust outer attribute cannot be null";
+		}
+		if (target == null)
+			throw "Rust attributed item target cannot be null";
+		switch (target) {
+			case RAttributed(_) | RInnerAttribute(_) | RComment(_):
+				throw "Rust outer attributes require one concrete declaration target";
+			case _:
+		}
+		return new RustAttributedItem(copy, target);
+	}
+
+	function get_attributeCount():Int {
+		return attributes.length;
+	}
+
+	public function attributeAt(index:Int):RustAttribute {
+		if (index < 0 || index >= attributes.length)
+			throw 'Rust outer attribute index out of bounds: $index';
+		return attributes[index];
+	}
+
+	public function iterator():Iterator<RustAttribute> {
+		return attributes.iterator();
+	}
+
+	public function withTarget(next:RustItem):RustAttributedItem {
+		return of(attributes, next);
+	}
+}
+
+/**
+	One generated Rust line comment stored without target punctuation.
+
+	Why
+	- Generated markers are compiler-owned declarations of provenance, not raw Rust authority.
+	- Allowing embedded newlines would let one comment node smuggle arbitrary target items.
+
+	What
+	- Stores one line of comment text, including the empty line when needed.
+
+	How
+	- `line` rejects carriage returns and line feeds; the printer owns the `//` prefix.
+**/
+class RustComment {
+	public final text:String;
+
+	private function new(text:String) {
+		this.text = text;
+	}
+
+	public static function line(text:String):RustComment {
+		if (text == null)
+			throw "Rust line comment cannot be null";
+		if (text.indexOf("\n") != -1 || text.indexOf("\r") != -1)
+			throw "Rust line comment cannot contain a line delimiter";
+		return new RustComment(text);
+	}
+
+	public static function generatedFileMarker():RustComment {
+		return line("Generated by reflaxe.rust");
+	}
+}
+
+/** Identifies one relative member of a structural grouped Rust use declaration. */
+enum RustUseMemberKind {
+	UseMemberPath;
+	UseMemberSelf;
+	UseMemberGlob;
+}
+
+/**
+	One member inside a grouped Rust `use` tree.
+
+	Why / What / How
+	- Group punctuation, aliases, `self`, and globs must remain distinguishable without parsing text.
+	- `path` accepts only an argument-free relative path and validates an optional alias identifier.
+	- `selfImport` and `glob` represent the two keyword members without pretending they are paths.
+**/
+class RustUseMember {
+	public final kind:RustUseMemberKind;
+	public final pathValue:Null<RustPath>;
+	public final alias:Null<RustIdentifier>;
+
+	private function new(kind:RustUseMemberKind, pathValue:Null<RustPath>, alias:Null<RustIdentifier>) {
+		this.kind = kind;
+		this.pathValue = pathValue;
+		this.alias = alias;
+	}
+
+	public static function path(path:RustPath, ?alias:String):RustUseMember {
+		return new RustUseMember(UseMemberPath, RustItemSyntax.requireSimpleRelativePath(path, "Rust grouped-use member"),
+			alias == null ? null : RustIdentifier.named(alias));
+	}
+
+	public static function selfImport(?alias:String):RustUseMember {
+		return new RustUseMember(UseMemberSelf, null, alias == null ? null : RustIdentifier.named(alias));
+	}
+
+	public static function glob():RustUseMember {
+		return new RustUseMember(UseMemberGlob, null, null);
+	}
+}
+
+/** Identifies the closed shape of one structural Rust use declaration. */
+enum RustUseKind {
+	UseExact;
+	UseGlob;
+	UseGroup;
+}
+
+/**
+	A structural Rust `use` declaration.
+
+	Why
+	- Imports affect trait method resolution and runtime namespace policy. Rendered `use` strings hide
+	  roots, group entries, aliases, and glob authority from compiler analysis.
+
+	What
+	- Represents an exact optional-rename import, a prefix glob, or a non-empty grouped import.
+	- Uses one explicit `RustVisibility`; no legacy boolean visibility is retained.
+
+	How
+	- Construct with `exact`, `glob`, or `group`. Paths are validated as argument-free use paths and
+	  group arrays are defensively copied. The printer owns every delimiter and keyword.
+**/
+class RustUseDeclaration {
+	public final visibility:RustVisibility;
+	public final kind:RustUseKind;
+	public final prefix:RustPath;
+	public final alias:Null<RustIdentifier>;
+	final members:Array<RustUseMember>;
+	public var memberCount(get, never):Int;
+
+	private function new(visibility:RustVisibility, kind:RustUseKind, prefix:RustPath, alias:Null<RustIdentifier>, members:Array<RustUseMember>) {
+		if (visibility == null)
+			throw "Rust use visibility cannot be null";
+		this.visibility = visibility;
+		this.kind = kind;
+		this.prefix = RustItemSyntax.requireUsePath(prefix, "Rust use path");
+		this.alias = alias;
+		this.members = members;
+	}
+
+	public static function exact(visibility:RustVisibility, path:RustPath, ?alias:String):RustUseDeclaration {
+		return new RustUseDeclaration(visibility, UseExact, path, alias == null ? null : RustIdentifier.named(alias), []);
+	}
+
+	public static function glob(visibility:RustVisibility, prefix:RustPath):RustUseDeclaration {
+		return new RustUseDeclaration(visibility, UseGlob, prefix, null, []);
+	}
+
+	public static function group(visibility:RustVisibility, prefix:RustPath, members:Array<RustUseMember>):RustUseDeclaration {
+		if (members == null || members.length == 0)
+			throw "Rust grouped use requires at least one member";
+		var copy = members.copy();
+		for (member in copy) {
+			if (member == null)
+				throw "Rust grouped-use member cannot be null";
+		}
+		return new RustUseDeclaration(visibility, UseGroup, prefix, null, copy);
+	}
+
+	function get_memberCount():Int {
+		return members.length;
+	}
+
+	public function memberAt(index:Int):RustUseMember {
+		if (index < 0 || index >= members.length)
+			throw 'Rust grouped-use member index out of bounds: $index';
+		return members[index];
+	}
+
+	public function iterator():Iterator<RustUseMember> {
+		return members.iterator();
+	}
+}
+
+/**
+	An external or recursively inline Rust module declaration.
+
+	Why
+	- `mod child;` and `mod child { }` have different filesystem and ownership semantics; null/empty
+	  arrays must not blur that distinction.
+
+	What
+	- Stores a validated module identifier, explicit visibility, and either external or inline shape.
+	- Inline children are defensively copied and exposed through bounded accessors.
+
+	How
+	- Use `external` for file-backed modules and `inlineModule` for an inline body, including an empty
+	  body. Recursive passes rebuild inline nodes with `withItems`.
+**/
+class RustModuleDeclaration {
+	public final visibility:RustVisibility;
+	public final name:RustIdentifier;
+	public final isInline:Bool;
+	final items:Array<RustItem>;
+	public var itemCount(get, never):Int;
+
+	private function new(visibility:RustVisibility, name:String, isInline:Bool, items:Array<RustItem>) {
+		if (visibility == null)
+			throw "Rust module visibility cannot be null";
+		this.visibility = visibility;
+		this.name = RustIdentifier.named(name);
+		this.isInline = isInline;
+		this.items = items;
+	}
+
+	public static function external(visibility:RustVisibility, name:String):RustModuleDeclaration {
+		return new RustModuleDeclaration(visibility, name, false, []);
+	}
+
+	public static function inlineModule(visibility:RustVisibility, name:String, items:Array<RustItem>):RustModuleDeclaration {
+		if (items == null)
+			throw "Rust inline module items cannot be null";
+		var copy = items.copy();
+		for (item in copy) {
+			if (item == null)
+				throw "Rust inline module item cannot be null";
+		}
+		return new RustModuleDeclaration(visibility, name, true, copy);
+	}
+
+	function get_itemCount():Int {
+		return items.length;
+	}
+
+	public function itemAt(index:Int):RustItem {
+		if (index < 0 || index >= items.length)
+			throw 'Rust module item index out of bounds: $index';
+		return items[index];
+	}
+
+	public function iterator():Iterator<RustItem> {
+		return items.iterator();
+	}
+
+	public function withItems(next:Array<RustItem>):RustModuleDeclaration {
+		if (!isInline)
+			throw "External Rust module cannot acquire inline items";
+		return inlineModule(visibility, name.name, next);
+	}
+}
+
+/** A typed Rust constant declaration with a structural type and initializer expression. */
+class RustConstantDeclaration {
+	public final visibility:RustVisibility;
+	public final name:RustIdentifier;
+	public final type:RustType;
+	public final value:RustExpr;
+
+	private function new(visibility:RustVisibility, name:String, type:RustType, value:RustExpr) {
+		if (visibility == null || type == null || value == null)
+			throw "Rust constant requires visibility, type, and initializer";
+		this.visibility = visibility;
+		this.name = RustIdentifier.named(name);
+		this.type = type;
+		this.value = value;
+	}
+
+	public static function named(visibility:RustVisibility, name:String, type:RustType, value:RustExpr):RustConstantDeclaration {
+		return new RustConstantDeclaration(visibility, name, type, value);
+	}
+
+	public function withValue(next:RustExpr):RustConstantDeclaration {
+		return named(visibility, name.name, type, next);
+	}
+}
+
+/**
+	A typed module-scope Rust static declaration.
+
+	Why / What / How
+	- Generated test synchronization needs a stable process-wide cell, which is runtime state rather
+	  than a `const`; representing it structurally avoids retaining an otherwise fully raw test module.
+	- Stores explicit visibility, validated name, type, and initializer. Use `withValue` from mappers.
+**/
+class RustStaticDeclaration {
+	public final visibility:RustVisibility;
+	public final name:RustIdentifier;
+	public final type:RustType;
+	public final value:RustExpr;
+
+	private function new(visibility:RustVisibility, name:String, type:RustType, value:RustExpr) {
+		if (visibility == null || type == null || value == null)
+			throw "Rust static requires visibility, type, and initializer";
+		this.visibility = visibility;
+		this.name = RustIdentifier.named(name);
+		this.type = type;
+		this.value = value;
+	}
+
+	public static function named(visibility:RustVisibility, name:String, type:RustType, value:RustExpr):RustStaticDeclaration {
+		return new RustStaticDeclaration(visibility, name, type, value);
+	}
+
+	public function withValue(next:RustExpr):RustStaticDeclaration {
+		return named(visibility, name.name, type, next);
+	}
+}
+
+/**
+	A structural Rust type alias declaration.
+
+	Why / What / How
+	- Crate prelude aliases are compiler-owned item syntax and cannot stay inside a mixed raw header if
+	  modules and attributes are to be structurally complete. This node reuses typed generic parameters
+	  and `RustType`, validates its identifier/visibility, and lets the printer own `type`, `=`, and `;`.
+**/
+class RustTypeAliasDeclaration {
+	public final visibility:RustVisibility;
+	public final name:RustIdentifier;
+	public final generics:RustGenericParameters;
+	public final type:RustType;
+
+	private function new(visibility:RustVisibility, name:String, generics:RustGenericParameters, type:RustType) {
+		if (visibility == null || generics == null || type == null)
+			throw "Rust type alias requires visibility, generics, and target type";
+		this.visibility = visibility;
+		this.name = RustIdentifier.named(name);
+		this.generics = generics;
+		this.type = type;
+	}
+
+	public static function named(visibility:RustVisibility, name:String, generics:RustGenericParameters, type:RustType):RustTypeAliasDeclaration {
+		return new RustTypeAliasDeclaration(visibility, name, generics, type);
+	}
+}
+
+private class RustItemSyntax {
+	public static function requireSimpleRelativePath(path:RustPath, label:String):RustPath {
+		if (path == null || !path.isRelative())
+			throw '$label must be a relative simple path';
+		return requireArgumentFree(path, label);
+	}
+
+	public static function requireUsePath(path:RustPath, label:String):RustPath {
+		if (path == null)
+			throw '$label cannot be null';
+		switch (path.root) {
+			case PathQualified(_, _):
+				throw '$label cannot use a qualified type root';
+			case PathTypeSelf:
+				throw '$label cannot use the type-Self root';
+			case _:
+		}
+		return requireArgumentFree(path, label);
+	}
+
+	static function requireArgumentFree(path:RustPath, label:String):RustPath {
+		for (segment in path) {
+			if (segment.argumentStyle != PathArgumentsNone)
+				throw '$label cannot contain generic or function arguments';
+		}
+		return path;
+	}
 }
 
 typedef RustStruct = {
@@ -948,7 +1406,6 @@ typedef RustEnum = {
 	var isPub:Bool;
 	@:optional var vis:RustVisibility;
 	var generics:RustGenericParameters;
-	var derives:Array<String>;
 	var variants:Array<RustEnumVariant>;
 }
 
@@ -1168,6 +1625,15 @@ enum RustStmt {
 
 enum RustExpr {
 	ERaw(fragment:RustRawCode);
+	/**
+		The Rust unit value `()`.
+
+		Why / What / How
+		- An empty block also evaluates to unit, but printing `{ }` as a call argument is noisier and
+		  falsely suggests a scoped computation. `ELitUnit` preserves the exact value shape a Rust
+		  developer would write and lets expression passes classify it as a pure literal.
+	**/
+	ELitUnit;
 	ELitInt(v:Int);
 	/**
 		Carries a stable `u32` expression literal without disguising it as a path or raw fragment.

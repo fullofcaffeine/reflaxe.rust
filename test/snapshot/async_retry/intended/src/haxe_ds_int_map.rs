@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x39e0cd5bu32;
 
 #[derive(Debug)]
-
 pub struct IntMap<T: Clone + Send + Sync + 'static + std::fmt::Debug> {
     pub h: std::collections::HashMap<i32, T>,
 }

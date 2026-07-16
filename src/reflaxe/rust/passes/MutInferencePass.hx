@@ -58,6 +58,13 @@ class MutInferencePass implements RustPass {
 
 	function rewriteItem(item:RustItem):RustItem {
 		return switch (item) {
+			case RAttributed(value):
+				RAttributed(value.withTarget(rewriteItem(value.target)));
+			case RModule(declaration):
+				if (!declaration.isInline)
+					item;
+				else
+					RModule(declaration.withItems([for (child in declaration) rewriteItem(child)]));
 			case RFn(f):
 				RFn(rewriteFunction(f));
 			case RImpl(i):
@@ -66,7 +73,7 @@ class MutInferencePass implements RustPass {
 					forType: i.forType,
 					functions: [for (f in i.functions) rewriteFunction(f)]
 				});
-			case RStruct(_) | REnum(_) | RRaw(_):
+			case RInnerAttribute(_) | RComment(_) | RUse(_) | RConst(_) | RStatic(_) | RTypeAlias(_) | RStruct(_) | REnum(_) | RRaw(_):
 				item;
 		};
 	}
@@ -120,7 +127,7 @@ class MutInferencePass implements RustPass {
 
 	function rewriteExpr(expr:RustExpr):RustExpr {
 		return switch (expr) {
-			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 			case ECall(func, args):
 				ECall(rewriteExpr(func), [for (arg in args) rewriteExpr(arg)]);
@@ -284,7 +291,7 @@ class MutInferencePass implements RustPass {
 					visitBlock(body, false);
 				case EAwait(inner):
 					visitExpr(inner);
-				case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+				case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 			}
 		};
 
@@ -459,7 +466,7 @@ class MutInferencePass implements RustPass {
 				maxDirectWritesOnPathInBlock(body, target, false) > 0 ? 2 : 0;
 			case EAwait(inner):
 				maxDirectWritesOnPathInExpr(inner, target);
-			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				0;
 		}
 	}

@@ -5,7 +5,6 @@ pub mod widget;
 pub const __HX_TYPE_ID: u32 = 0xc79c28b4u32;
 
 #[derive(Debug)]
-
 pub struct Domain {}
 
 impl Domain {

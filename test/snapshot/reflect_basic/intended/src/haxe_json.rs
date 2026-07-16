@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x9b8d53fbu32;
 
 #[derive(Debug)]
-
 pub struct Json {}
 
 impl Json {

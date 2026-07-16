@@ -59,6 +59,13 @@ class CloneElisionPass implements RustPass {
 
 	function rewriteItem(item:RustItem):RustItem {
 		return switch (item) {
+			case RAttributed(value):
+				RAttributed(value.withTarget(rewriteItem(value.target)));
+			case RModule(declaration):
+				if (!declaration.isInline)
+					item;
+				else
+					RModule(declaration.withItems([for (child in declaration) rewriteItem(child)]));
 			case RFn(f):
 				RFn(rewriteFunction(f));
 			case RImpl(i):
@@ -67,7 +74,7 @@ class CloneElisionPass implements RustPass {
 					forType: i.forType,
 					functions: [for (f in i.functions) rewriteFunction(f)]
 				});
-			case RStruct(_) | REnum(_) | RRaw(_):
+			case RInnerAttribute(_) | RComment(_) | RUse(_) | RConst(_) | RStatic(_) | RTypeAlias(_) | RStruct(_) | REnum(_) | RRaw(_):
 				item;
 		};
 	}
@@ -137,7 +144,7 @@ class CloneElisionPass implements RustPass {
 
 	function rewriteExpr(expr:RustExpr, disableLastUseElision:Bool):RustExpr {
 		var rewritten = switch (expr) {
-			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 			case ECall(func, args):
 				ECall(rewriteExpr(func, disableLastUseElision), [for (arg in args) rewriteExpr(arg, disableLastUseElision)]);
@@ -212,7 +219,7 @@ class CloneElisionPass implements RustPass {
 
 	function isAlwaysCloneSafeExpr(expr:RustExpr):Bool {
 		return switch (expr) {
-			case ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
+			case ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				true;
 			case EUnary(_, inner):
 				isAlwaysCloneSafeExpr(inner);
@@ -408,7 +415,7 @@ class CloneElisionPass implements RustPass {
 				EAssign(rewriteLastUseCloneSites(lhs, localMoveSkipReason), rewriteLastUseCloneSites(rhs, localMoveSkipReason));
 			case EField(recv, field):
 				EField(rewriteLastUseCloneSites(recv, localMoveSkipReason), field);
-			case EClosure(_, _, _) | EPinAsyncMove(_) | EAwait(_) | ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case EClosure(_, _, _) | EPinAsyncMove(_) | EAwait(_) | ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 		};
 	}
@@ -655,7 +662,7 @@ class CloneElisionPass implements RustPass {
 				countPathUsesInExpr(recv, pathName);
 			case EPinAsyncMove(body):
 				countPathUsesInBlock(body, pathName);
-			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
+			case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				0;
 		};
 	}
@@ -766,7 +773,7 @@ class CloneElisionPass implements RustPass {
 				if (body.tail != null)
 					total += countDynamicFromCloneCandidatesInExpr(body.tail);
 				total;
-			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				0;
 		};
 	}

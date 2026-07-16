@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x447725aau32;
 
 #[derive(Debug)]
-
 pub struct Deque<T: Clone + Send + Sync> {
     _mutex: crate::HxRef<crate::sys_thread_mutex::Mutex>,
     _available: crate::HxRef<crate::sys_thread_lock::Lock>,

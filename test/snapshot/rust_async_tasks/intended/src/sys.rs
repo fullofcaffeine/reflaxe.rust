@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x71215cbau32;
 
 #[derive(Debug)]
-
 pub struct Sys {}
 
 impl Sys {

@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xcbc1e64fu32;
 
 #[derive(Debug)]
-
 pub struct MapImpl { }
 
 impl MapImpl { }

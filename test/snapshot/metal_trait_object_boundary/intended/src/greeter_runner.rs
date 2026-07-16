@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xc6e4ba7fu32;
 
 #[derive(Debug)]
-
 pub struct GreeterRunner {}
 
 impl GreeterRunner {

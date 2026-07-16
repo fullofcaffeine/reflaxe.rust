@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x6fc4364eu32;
 
 #[derive(Debug)]
-
 pub struct PersonGreeter {
     pub name: String,
 }

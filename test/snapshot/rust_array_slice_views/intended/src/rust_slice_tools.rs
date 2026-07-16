@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x5c58bfdau32;
 
 #[derive(Debug)]
-
 pub struct SliceTools {}
 
 impl SliceTools {

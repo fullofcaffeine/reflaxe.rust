@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xad9a8cc0u32;
 
 #[derive(Debug)]
-
 pub struct Task {
     pub text: hxrt::string::HxString,
     pub done: bool,

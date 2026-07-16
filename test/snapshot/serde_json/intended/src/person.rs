@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x1d340e64u32;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
-
 pub struct Person {
     pub name: hxrt::string::HxString,
     pub age: i32,

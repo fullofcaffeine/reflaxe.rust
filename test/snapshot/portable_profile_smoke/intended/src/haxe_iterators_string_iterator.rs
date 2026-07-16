@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xee4111fdu32;
 
 #[derive(Debug)]
-
 pub struct StringIterator {
     offset: i32,
     s: hxrt::string::HxString,

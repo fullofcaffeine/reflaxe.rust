@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x6002daa5u32;
 
 #[derive(Debug)]
-
 pub struct Dog {}
 
 impl Dog {

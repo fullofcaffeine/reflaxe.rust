@@ -49,14 +49,14 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
         return true;
     }
     match actual {
-        0x4b86a385u32 => matches!(expected, 0xf37438f4u32),
-        0x0cd85f36u32 => matches!(expected, 0x44f4c432u32),
-        0x39e0cd5bu32 => matches!(expected, 0x44f4c432u32),
-        0xd7e07825u32 => matches!(expected, 0x44f4c432u32),
-        0x181f937bu32 => matches!(expected, 0x44f4c432u32),
-        0x163b1f5au32 => matches!(expected, 0xe82620b4u32),
-        0xfb16179cu32 => matches!(expected, 0xd50291cbu32),
-        0x9402c169u32 => matches!(expected, 0xe82620b4u32),
+        0x4b86a385u32 => expected == 0xf37438f4u32,
+        0x0cd85f36u32 => expected == 0x44f4c432u32,
+        0x39e0cd5bu32 => expected == 0x44f4c432u32,
+        0xd7e07825u32 => expected == 0x44f4c432u32,
+        0x181f937bu32 => expected == 0x44f4c432u32,
+        0x163b1f5au32 => expected == 0xe82620b4u32,
+        0xfb16179cu32 => expected == 0xd50291cbu32,
+        0x9402c169u32 => expected == 0xe82620b4u32,
         _ => false,
     }
 }

@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x88e7a6fdu32;
 
 #[derive(Debug)]
-
 pub struct StrTools {}
 
 impl StrTools {}

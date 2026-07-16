@@ -36,7 +36,6 @@ pub(crate) fn __hx_static_set_bytes(value: crate::HxRef<hxrt::bytes::Bytes>) {
 pub const __HX_TYPE_ID: u32 = 0x7122cdcdu32;
 
 #[derive(Debug)]
-
 pub struct Base64 {}
 
 impl Base64 {

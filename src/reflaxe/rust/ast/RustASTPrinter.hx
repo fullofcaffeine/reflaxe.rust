@@ -37,12 +37,50 @@ class RustASTPrinter {
 	}
 
 	public static function printFile(file:RustAST.RustFile):String {
-		var parts:Array<String> = [];
-		for (item in file.items) {
-			parts.push(printItem(item));
-		}
-		var out = parts.filter(p -> StringTools.trim(p).length > 0).join("\n\n");
+		var out = printItemSequence(file.items);
 		return out.length > 0 ? (out + "\n") : "";
+	}
+
+	/**
+		Prints an ordered item list with compact separators for declaration families Rust groups naturally.
+
+		Why
+		- Raw header/module blocks historically kept consecutive attributes, aliases, imports, and module
+		  declarations adjacent. Treating every structural node as a paragraph would add thousands of
+		  blank lines and make otherwise hand-written-quality output harder to scan.
+
+		What
+		- Uses one newline between consecutive inner attributes, uses, type aliases, or modules.
+		- Uses one blank line for every other item boundary; outer attributes remain inside `RAttributed`
+		  and therefore cannot be detached by separator logic.
+
+		How
+		- Both files and recursively inline modules call this same function so formatting cannot drift.
+	**/
+	static function printItemSequence(items:Array<RustAST.RustItem>):String {
+		var present:Array<{item:RustAST.RustItem, text:String}> = [];
+		for (item in items) {
+			var text = printItem(item);
+			if (StringTools.trim(text).length > 0)
+				present.push({item: item, text: text});
+		}
+		var out = new StringBuf();
+		for (index in 0...present.length) {
+			if (index > 0)
+				out.add(compactItemBoundary(present[index - 1].item, present[index].item) ? "\n" : "\n\n");
+			out.add(present[index].text);
+		}
+		return out.toString();
+	}
+
+	static function compactItemBoundary(left:RustAST.RustItem, right:RustAST.RustItem):Bool {
+		return switch [left, right] {
+			case [RInnerAttribute(_), RInnerAttribute(_)]: true;
+			case [RUse(_), RUse(_)]: true;
+			case [RTypeAlias(_), RTypeAlias(_)]: true;
+			case [RModule(_), RModule(_)]: true;
+			case _: false;
+		}
 	}
 
 	/**
@@ -123,12 +161,141 @@ class RustASTPrinter {
 
 	static function printItem(item:RustAST.RustItem):String {
 		return switch (item) {
+			case RAttributed(value): printAttributedItem(value);
+			case RInnerAttribute(attribute): printAttribute(attribute, true);
+			case RComment(comment): printComment(comment);
+			case RUse(declaration): printUse(declaration);
+			case RModule(declaration): printModule(declaration);
+			case RConst(declaration): printConstant(declaration);
+			case RStatic(declaration): printStatic(declaration);
+			case RTypeAlias(declaration): printTypeAlias(declaration);
 			case RFn(f): printFunction(f, 0);
 			case RStruct(s): printStruct(s);
 			case REnum(e): printEnum(e);
 			case RImpl(i): printImpl(i);
 			case RRaw(fragment): fragment.code;
 		}
+	}
+
+	/** Prints outer attributes immediately adjacent to their structurally owned target item. */
+	static function printAttributedItem(value:RustAST.RustAttributedItem):String {
+		if (value == null)
+			throw "Cannot print a null Rust attributed item";
+		var parts:Array<String> = [];
+		for (attribute in value)
+			parts.push(printAttribute(attribute, false));
+		parts.push(printItem(value.target));
+		return parts.join("\n");
+	}
+
+	/**
+		Prints one structural Rust attribute.
+
+		Why / What / How
+		- Attachment chooses `#[...]` versus `#![...]`; the attribute owns only its validated path and
+		  closed input form. Exact single-line `doc` string attributes use idiomatic `///` / `//!` sugar;
+		  every other string value reuses Rust literal escaping. Paths always use the canonical
+		  type-position printer, so target punctuation never leaks into lowering.
+	**/
+	static function printAttribute(attribute:RustAST.RustAttribute, inner:Bool):String {
+		if (attribute == null)
+			throw "Cannot print a null Rust attribute";
+		if (attribute.inputKind == AttributeStringValue
+			&& attribute.path.plainRelativeIdentifierName() == "doc"
+			&& attribute.stringPayload != null
+			&& attribute.stringPayload.indexOf("\n") == -1
+			&& attribute.stringPayload.indexOf("\r") == -1) {
+			var prefix = inner ? "//!" : "///";
+			return attribute.stringPayload.length == 0 ? prefix : prefix + " " + attribute.stringPayload;
+		}
+		var body = printTypePath(attribute.path);
+		switch (attribute.inputKind) {
+			case AttributeBare:
+			case AttributePathList:
+				var arguments:Array<String> = [];
+				for (argument in attribute)
+					arguments.push(printTypePath(argument));
+				body += "(" + arguments.join(", ") + ")";
+			case AttributeStringValue:
+				if (attribute.stringPayload == null)
+					throw "Rust string-valued attribute is missing its payload";
+				body += ' = "' + escapeStringLiteral(attribute.stringPayload) + '"';
+		}
+		return "#" + (inner ? "!" : "") + "[" + body + "]";
+	}
+
+	static function printComment(comment:RustAST.RustComment):String {
+		if (comment == null)
+			throw "Cannot print a null Rust comment";
+		return comment.text.length == 0 ? "//" : "// " + comment.text;
+	}
+
+	static function printUse(declaration:RustAST.RustUseDeclaration):String {
+		if (declaration == null)
+			throw "Cannot print a null Rust use declaration";
+		var out = visibilityPrefix(declaration.visibility, false) + "use " + printTypePath(declaration.prefix);
+		switch (declaration.kind) {
+			case UseExact:
+				if (declaration.alias != null)
+					out += " as " + printIdentifier(declaration.alias);
+			case UseGlob:
+				out += "::*";
+			case UseGroup:
+				var members:Array<String> = [];
+				for (member in declaration) {
+					var printed = switch (member.kind) {
+						case UseMemberPath:
+							if (member.pathValue == null)
+								throw "Rust grouped-use path member is missing its path";
+							printTypePath(member.pathValue);
+						case UseMemberSelf: "self";
+						case UseMemberGlob: "*";
+					};
+					if (member.alias != null)
+						printed += " as " + printIdentifier(member.alias);
+					members.push(printed);
+				}
+				out += "::{" + members.join(", ") + "}";
+		}
+		return out + ";";
+	}
+
+	static function printModule(declaration:RustAST.RustModuleDeclaration):String {
+		if (declaration == null)
+			throw "Cannot print a null Rust module declaration";
+		var head = visibilityPrefix(declaration.visibility, false) + "mod " + printIdentifier(declaration.name);
+		if (!declaration.isInline)
+			return head + ";";
+		if (declaration.itemCount == 0)
+			return head + " { }";
+		var body = printItemSequence([for (item in declaration) item]);
+		return head + " {\n" + indentMultiline(body, 1) + "\n}";
+	}
+
+	static function printConstant(declaration:RustAST.RustConstantDeclaration):String {
+		if (declaration == null)
+			throw "Cannot print a null Rust constant declaration";
+		return visibilityPrefix(declaration.visibility, false) + "const " + printIdentifier(declaration.name) + ": "
+			+ printType(declaration.type) + " = " + printExpr(declaration.value, 0) + ";";
+	}
+
+	static function printStatic(declaration:RustAST.RustStaticDeclaration):String {
+		if (declaration == null)
+			throw "Cannot print a null Rust static declaration";
+		return visibilityPrefix(declaration.visibility, false) + "static " + printIdentifier(declaration.name) + ": "
+			+ printType(declaration.type) + " = " + printExpr(declaration.value, 0) + ";";
+	}
+
+	static function printTypeAlias(declaration:RustAST.RustTypeAliasDeclaration):String {
+		if (declaration == null)
+			throw "Cannot print a null Rust type alias";
+		return visibilityPrefix(declaration.visibility, false) + "type " + printIdentifier(declaration.name)
+			+ printGenericParameters(declaration.generics) + " = " + printType(declaration.type) + ";";
+	}
+
+	static function indentMultiline(value:String, level:Int):String {
+		var prefix = indentString(level);
+		return value.split("\n").map(line -> prefix + line).join("\n");
 	}
 
 	static function visibilityToken(vis:Null<RustAST.RustVisibility>, isPub:Bool):Null<String> {
@@ -161,10 +328,6 @@ class RustASTPrinter {
 
 	static function printEnum(e:RustAST.RustEnum):String {
 		var parts:Array<String> = [];
-		if (e.derives.length > 0) {
-			parts.push("#[derive(" + e.derives.join(", ") + ")]");
-		}
-
 		var head = visibilityPrefix(e.vis, e.isPub) + "enum " + e.name + printGenericParameters(e.generics);
 		if (e.variants.length == 0) {
 			parts.push(head + " { }");
@@ -456,6 +619,7 @@ class RustASTPrinter {
 	static function printExprPrec(e:RustAST.RustExpr, indent:Int, ctxPrec:Int):String {
 		return switch (e) {
 			case ERaw(fragment): fragment.code;
+			case ELitUnit: "()";
 			case ELitInt(v): Std.string(v);
 			case ELitUInt32(bits): "0x" + StringTools.hex(bits, 8).toLowerCase() + "u32";
 			case ELitFloat(v): {

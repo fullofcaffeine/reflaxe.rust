@@ -57,7 +57,6 @@ pub(crate) fn __hx_static_set_base64_codes(value: hxrt::array::Array<Option<i32>
 pub const __HX_TYPE_ID: u32 = 0x024a7531u32;
 
 #[derive(Debug)]
-
 pub struct Serializer {
     buf: crate::HxRef<crate::string_buf::StringBuf>,
     cache: hxrt::array::Array<hxrt::dynamic::Dynamic>,

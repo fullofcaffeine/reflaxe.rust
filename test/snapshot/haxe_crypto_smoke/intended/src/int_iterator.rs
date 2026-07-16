@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x91f8b838u32;
 
 #[derive(Debug)]
-
 pub struct IntIterator { }
 
 impl IntIterator { }

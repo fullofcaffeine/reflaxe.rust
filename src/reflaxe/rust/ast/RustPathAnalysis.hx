@@ -1,6 +1,7 @@
 package reflaxe.rust.ast;
 
 import reflaxe.rust.ast.RustAST.RustConstArgument;
+import reflaxe.rust.ast.RustAST.RustAttribute;
 import reflaxe.rust.ast.RustAST.RustClosureParameter;
 import reflaxe.rust.ast.RustAST.RustGenericArgument;
 import reflaxe.rust.ast.RustAST.RustGenericParameters;
@@ -9,6 +10,7 @@ import reflaxe.rust.ast.RustAST.RustMember;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustType;
+import reflaxe.rust.ast.RustAST.RustUseDeclaration;
 
 /**
 	Shared semantic queries and traversal for structural Rust paths.
@@ -245,6 +247,51 @@ class RustPathAnalysis {
 			throw "Rust path visitor cannot be null";
 		for (index in 0...member.genericArgumentCount)
 			visitGenericArgumentInternal(member.genericArgumentAt(index), visitor);
+	}
+
+	/**
+		Visits the path and every path argument carried by one structural Rust attribute.
+
+		Why
+		- Derive/lint/cfg attributes can name policy-relevant namespaces even when the decorated
+		  declaration never references them in a type or expression.
+
+		What
+		- Emits the attribute path first, followed by path-list arguments in source order.
+		- Bare and string-valued attributes have no additional structural paths.
+
+		How
+		- Attribute construction already rejects generic and qualified syntax; traversal still delegates
+		  to the common path visitor so namespace matching has one authority.
+	**/
+	public static function visitAttributeTree(attribute:RustAttribute, visitor:RustPath->Void):Void {
+		if (attribute == null)
+			throw "Cannot visit a null Rust attribute";
+		if (visitor == null)
+			throw "Rust path visitor cannot be null";
+		visitPathTreeInternal(attribute.path, visitor);
+		for (argument in attribute)
+			visitPathTreeInternal(argument, visitor);
+	}
+
+	/**
+		Visits every structural path reachable from one Rust use declaration.
+
+		Why / What / How
+		- Runtime policy and item audits must inspect exact, glob, grouped, and renamed imports without
+		  parsing `::`, braces, or `as`. The common prefix is visited first, then grouped member paths in
+		  declaration order; keyword `self`/glob members and aliases contain no path payload.
+	**/
+	public static function visitUseTree(declaration:RustUseDeclaration, visitor:RustPath->Void):Void {
+		if (declaration == null)
+			throw "Cannot visit a null Rust use declaration";
+		if (visitor == null)
+			throw "Rust path visitor cannot be null";
+		visitPathTreeInternal(declaration.prefix, visitor);
+		for (member in declaration) {
+			if (member.pathValue != null)
+				visitPathTreeInternal(member.pathValue, visitor);
+		}
 	}
 
 	/**

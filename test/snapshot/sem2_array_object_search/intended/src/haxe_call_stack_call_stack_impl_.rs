@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xafe5b394u32;
 
 #[derive(Debug)]
-
 pub struct CallStackImpl {}
 
 impl CallStackImpl {

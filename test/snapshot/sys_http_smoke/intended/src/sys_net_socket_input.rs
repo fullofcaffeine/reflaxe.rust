@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x45aaab62u32;
 
 #[derive(Debug)]
-
 pub struct SocketInput {
     pub big_endian: bool,
     handle: crate::HxRef<hxrt::net::SocketHandle>,

@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xe5e0219cu32;
 
 #[derive(Debug)]
-
 pub struct AnyImpl { }
 
 impl AnyImpl { }

@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xaf52976eu32;
 
 #[derive(Debug)]
-
 pub struct BytesBuffer {
     chunks: hxrt::array::Array<crate::HxRef<hxrt::bytes::Bytes>>,
     finalized: bool,

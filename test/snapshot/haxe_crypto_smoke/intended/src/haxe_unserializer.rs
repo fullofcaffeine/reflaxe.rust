@@ -73,7 +73,6 @@ pub(crate) fn __hx_static_set_codes(value: hxrt::array::Array<i32>) {
 pub const __HX_TYPE_ID: u32 = 0xb43e7e96u32;
 
 #[derive(Debug)]
-
 pub struct Unserializer {
     buf: hxrt::string::HxString,
     pos: i32,

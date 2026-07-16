@@ -26,7 +26,7 @@ import reflaxe.rust.ast.RustPathAnalysis;
 	- Performs conservative block-local cleanup after expression lowering.
 	- Rewrites three patterns:
 	  1) `let x; x = rhs;` -> `let x = rhs;` (keeping `mut` only when later writes still need it)
-	  2) `let tmp = rhs;` where `tmp` is never mentioned again -> `let _ = rhs;`
+	  2) `let tmp = rhs;` where ordinary `tmp` is never mentioned again -> `let _ = rhs;`
 	  3) pure discarded statements like `x;` or `123;` -> removed
 
 	How
@@ -39,6 +39,8 @@ import reflaxe.rust.ast.RustPathAnalysis;
 	  binding shadows rather than falsely retaining an unused outer local.
 	- The pass stays intentionally conservative: it only collapses direct local assignments and only
 	  removes discarded expressions when they are side-effect-free.
+	- A named binding beginning with `_` is an intentional Rust lifetime boundary, not an unused-value
+	  warning shape. It is retained because changing `_guard` to `_` drops an RAII guard immediately.
 **/
 class StatementCleanupPass implements RustPass {
 	public function new() {}
@@ -55,6 +57,13 @@ class StatementCleanupPass implements RustPass {
 
 	function rewriteItem(item:RustItem):RustItem {
 		return switch (item) {
+			case RAttributed(value):
+				RAttributed(value.withTarget(rewriteItem(value.target)));
+			case RModule(declaration):
+				if (!declaration.isInline)
+					item;
+				else
+					RModule(declaration.withItems([for (child in declaration) rewriteItem(child)]));
 			case RFn(f):
 				RFn(rewriteFunction(f));
 			case RImpl(i):
@@ -63,7 +72,7 @@ class StatementCleanupPass implements RustPass {
 					forType: i.forType,
 					functions: [for (f in i.functions) rewriteFunction(f)]
 				});
-			case RStruct(_) | REnum(_) | RRaw(_):
+			case RInnerAttribute(_) | RComment(_) | RUse(_) | RConst(_) | RStatic(_) | RTypeAlias(_) | RStruct(_) | REnum(_) | RRaw(_):
 				item;
 		};
 	}
@@ -110,7 +119,7 @@ class StatementCleanupPass implements RustPass {
 
 	function rewriteExpr(expr:RustExpr):RustExpr {
 		return switch (expr) {
-			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 			case ECall(func, args):
 				ECall(rewriteExpr(func), [for (arg in args) rewriteExpr(arg)]);
@@ -402,16 +411,26 @@ class StatementCleanupPass implements RustPass {
 				exprHasDirectAssignmentToName(recv, name);
 			case EPinAsyncMove(body):
 				blockHasDirectAssignmentToName(body, name);
-			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				false;
 		};
 	}
 
+	/**
+		Replaces one genuinely unused ordinary binding with Rust's discard pattern.
+
+		Why / What / How
+		- `let value = effect();` warns when `value` is never read, so ordinary unused compiler bindings
+		  become `let _ = effect();` while preserving evaluation.
+		- Leading-underscore bindings are deliberately excluded: Rust treats `_guard` as a named value
+		  whose destructor runs at scope exit, whereas `_` drops the value at the declaration.
+		- Name-use analysis remains lexical; this final guard protects lifecycle intent independently of
+		  whether a later expression reads the binding.
+	**/
 	function rewriteUnusedBindingIfNeeded(stmt:RustStmt, remainingStmts:Array<RustStmt>, tail:Null<RustExpr>, nextIndex:Int):RustStmt {
 		return switch (stmt) {
 			case RLet(name, _, ty, expr)
-				if (name != "_"
-					&& !StringTools.startsWith(name, "__hx_")
+				if (!StringTools.startsWith(name, "_")
 					&& expr != null
 					&& !blockMentionsNameAfter(remainingStmts, tail, nextIndex, name)):
 				RLet("_", false, ty, expr);
@@ -503,7 +522,7 @@ class StatementCleanupPass implements RustPass {
 				blockMentionsNameInBlock(body, name);
 			case ERaw(raw):
 				rawMentionsName(raw.code, name);
-			case ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
+			case ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				false;
 		};
 	}
@@ -545,7 +564,7 @@ class StatementCleanupPass implements RustPass {
 
 	function isPureExpr(expr:RustExpr):Bool {
 		return switch (expr) {
-			case EPath(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
+			case EPath(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				true;
 			case EField(recv, _):
 				isPureExpr(recv);

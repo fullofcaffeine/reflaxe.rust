@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xe52d85f9u32;
 
 #[derive(Debug)]
-
 pub struct MysqlConnection {
     handle: crate::HxRef<crate::db_mysql_driver::MysqlConnectionHandle>,
 }

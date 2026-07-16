@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x89178131u32;
 
 #[derive(Debug)]
-
 pub struct Parent {
     pub child: crate::HxRef<crate::child::Child>,
 }

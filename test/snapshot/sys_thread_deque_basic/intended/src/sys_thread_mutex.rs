@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xbfa817c1u32;
 
 #[derive(Debug)]
-
 pub struct Mutex {
     _h: crate::HxRef<hxrt::thread::MutexHandle>,
 }

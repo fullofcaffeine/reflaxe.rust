@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x14156acfu32;
 
 #[derive(Debug)]
-
 pub struct FPHelper {}
 
 impl FPHelper {

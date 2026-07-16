@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xfa1b3a4du32;
 
 #[derive(Debug)]
-
 pub struct Sha256 {}
 
 impl Sha256 {

@@ -219,7 +219,7 @@
         "dependencies": []
       },
       {
-        "id": "bitflags@2.13.0:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "bitflags@2.13.1:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [],
         "dependencies": []
       },
@@ -1610,7 +1610,7 @@
         "dependencies": [
           {
             "name": "bitflags",
-            "package": "bitflags@2.13.0:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "bitflags@2.13.1:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -2003,7 +2003,7 @@
         "dependencies": [
           {
             "name": "bitflags",
-            "package": "bitflags@2.13.0:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "bitflags@2.13.1:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -3874,9 +3874,9 @@
       ]
     },
     {
-      "id": "bitflags@2.13.0:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "bitflags@2.13.1:registry+https://github.com/rust-lang/crates.io-index",
       "name": "bitflags",
-      "version": "2.13.0",
+      "version": "2.13.1",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.56.0",
       "enabledFeatures": [],

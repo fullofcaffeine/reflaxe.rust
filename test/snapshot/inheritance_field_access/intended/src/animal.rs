@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x111fa3c1u32;
 
 #[derive(Debug)]
-
 pub struct Animal {
     pub age: i32,
 }

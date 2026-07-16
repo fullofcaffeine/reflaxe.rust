@@ -1,0 +1,228 @@
+import reflaxe.rust.ast.RustAST.RustAttribute;
+import reflaxe.rust.ast.RustAST.RustAttributedItem;
+import reflaxe.rust.ast.RustAST.RustConstantDeclaration;
+import reflaxe.rust.ast.RustAST.RustExpr;
+import reflaxe.rust.ast.RustAST.RustFile;
+import reflaxe.rust.ast.RustAST.RustGenericArgument;
+import reflaxe.rust.ast.RustAST.RustGenericParameter;
+import reflaxe.rust.ast.RustAST.RustGenericParameters;
+import reflaxe.rust.ast.RustAST.RustIdentifier;
+import reflaxe.rust.ast.RustAST.RustItem;
+import reflaxe.rust.ast.RustAST.RustModuleDeclaration;
+import reflaxe.rust.ast.RustAST.RustPath;
+import reflaxe.rust.ast.RustAST.RustPathSegment;
+import reflaxe.rust.ast.RustAST.RustStaticDeclaration;
+import reflaxe.rust.ast.RustAST.RustStructField;
+import reflaxe.rust.ast.RustAST.RustType;
+import reflaxe.rust.ast.RustAST.RustTypeAliasDeclaration;
+import reflaxe.rust.ast.RustAST.RustUseDeclaration;
+import reflaxe.rust.ast.RustAST.RustUseMember;
+import reflaxe.rust.ast.RustAST.RustVisibility;
+import reflaxe.rust.ast.RustAST.RustComment;
+import reflaxe.rust.ast.RustASTPrinter;
+import reflaxe.rust.ast.RustPathAnalysis;
+import reflaxe.rust.passes.RustPassTools;
+
+/**
+	Executable contract for compiler-owned Rust item syntax.
+
+	Why
+	- Attributes, imports, modules, constants, aliases, statics, and generated comments affect Rust
+	  name resolution and declaration attachment. Opaque strings make those relationships invisible
+	  to policy and transformation passes.
+	- Recursive inline modules are a second AST root: a top-level-only pass can appear correct while
+	  silently skipping a generated test or compatibility module.
+
+	What
+	- Characterizes inner/outer attributes, line/doc comments, exact/grouped/glob/renamed uses,
+	  external/inline modules, aliases, constants, statics, visibility, and declaration adjacency.
+	- Proves paths remain traversable and shared expression mapping recurses through inline module
+	  items; the runner separately checks normalization and policy-pass wiring.
+
+	How
+	- Prints one deterministic warning-clean Rust library, validates malformed construction fails
+	  closed, and exposes the bytes to a JS runner for a second-run comparison and exact rustc check.
+**/
+class RustStructuralItemContract {
+	static function expect(condition:Bool, message:String):Void {
+		if (!condition)
+			throw message;
+	}
+
+	static function expectThrows(action:Void->Void, message:String):Void {
+		var threw = false;
+		try {
+			action();
+		} catch (_:String) {
+			threw = true;
+		}
+		expect(threw, message);
+	}
+
+	static function path(names:Array<String>):RustPath {
+		return RustPath.relative([for (name in names) RustPathSegment.plain(name)]);
+	}
+
+	static function cratePath(names:Array<String>):RustPath {
+		return RustPath.cratePath([for (name in names) RustPathSegment.plain(name)]);
+	}
+
+	static function genericType(name:String, arguments:Array<RustGenericArgument>):RustType {
+		return RNamed(RustPath.relative([RustPathSegment.angle(name, arguments)]));
+	}
+
+	static function main():Void {
+		var attributeArguments = [path(["dead_code"]), path(["unused_imports"])];
+		var lintAttribute = RustAttribute.pathList(path(["allow"]), attributeArguments);
+		attributeArguments[0] = path(["warnings"]);
+		expect(lintAttribute.argumentCount == 2,
+			"attribute arguments must be defensively copied");
+
+		var groupMembers = [
+			RustUseMember.path(path(["Debug"]), "DebugTrait"),
+			RustUseMember.path(path(["Display"]))
+		];
+		var groupedUse = RustUseDeclaration.group(VPub, path(["core", "fmt"]), groupMembers);
+		groupMembers.pop();
+		expect(groupedUse.memberCount == 2,
+			"grouped-use members must be defensively copied");
+
+		var maybeGenerics = RustGenericParameters.of([
+			GenericTypeParam(RustIdentifier.named("T"), [], null)
+		]);
+		var maybeType = genericType("Option", [GenericType(RNamed(path(["T"]))) ]);
+
+		var supportItems = [
+			RConst(RustConstantDeclaration.named(VPubCrate, "VALUE", RI32, ELitInt(7)))
+		];
+		var supportModule = RustModuleDeclaration.inlineModule(VPub, "support", supportItems);
+		supportItems.pop();
+		expect(supportModule.itemCount == 1,
+			"inline-module children must be defensively copied");
+		var groupedModule = RustModuleDeclaration.inlineModule(VPub, "grouped", [
+			RUse(groupedUse)
+		]);
+		var aliasModule = RustModuleDeclaration.inlineModule(VPub, "alias", [
+			RUse(RustUseDeclaration.glob(VPub, cratePath(["support"])))
+		]);
+		var testModule = RustModuleDeclaration.inlineModule(VPrivate, "test_only", [
+			RAttributed(RustAttributedItem.of([RustAttribute.bare(path(["test"]))], RFn({
+				name: "smoke",
+				isPub: false,
+				generics: RustGenericParameters.empty(),
+				args: [],
+				ret: RUnit,
+				body: {stmts: [], tail: null}
+			})))
+		]);
+
+		var fields:Array<RustStructField> = [{
+			name: "value",
+			ty: RI32,
+			isPub: true
+		}];
+		var contractFile:RustFile = {
+			items: [
+				RComment(RustComment.line("Generated by structural item contract")),
+				RInnerAttribute(lintAttribute),
+				RUse(RustUseDeclaration.exact(VPub, path(["core", "fmt", "Debug"]), "FmtDebug")),
+				RTypeAlias(RustTypeAliasDeclaration.named(VPrivate, "Maybe", maybeGenerics, maybeType)),
+				RAttributed(RustAttributedItem.of([
+					RustAttribute.stringValue(path(["doc"]), "Contract type id.")
+				], RConst(RustConstantDeclaration.named(VPub, "TYPE_ID", RNamed(path(["u32"])), ELitUInt32(-2147483647))))),
+				RStatic(RustStaticDeclaration.named(VPrivate, "ENABLED", RBool, ELitBool(true))),
+				RConst(RustConstantDeclaration.named(VPrivate, "UNIT", RUnit, ELitUnit)),
+				RModule(RustModuleDeclaration.external(VPrivate, "external")),
+				RModule(supportModule),
+				RModule(groupedModule),
+				RModule(aliasModule),
+				RAttributed(RustAttributedItem.of([
+					RustAttribute.pathList(path(["cfg"]), [path(["test"])])
+				], RModule(testModule))),
+				RAttributed(RustAttributedItem.of([
+					RustAttribute.pathList(path(["derive"]), [path(["Clone"]), path(["Debug"])])
+				], RStruct({
+					name: "Packet",
+					isPub: true,
+					generics: RustGenericParameters.empty(),
+					fields: fields
+				})))
+			]
+		};
+
+		var runtimeAttribute = RustAttribute.pathList(path(["derive"]), [path(["hxrt", "Marker"])]);
+		var attributeFound = false;
+		RustPathAnalysis.visitAttributeTree(runtimeAttribute, candidate -> {
+			if (RustPathAnalysis.belongsToNamespace(candidate, "hxrt"))
+				attributeFound = true;
+		});
+		expect(attributeFound,
+			"attribute argument paths must remain structurally traversable");
+
+		var runtimeUse = RustUseDeclaration.group(VPrivate, path(["std"]), [
+			RustUseMember.path(path(["hxrt", "Payload"]))
+		]);
+		var useFound = false;
+		RustPathAnalysis.visitUseTree(runtimeUse, candidate -> {
+			if (RustPathAnalysis.belongsToNamespace(candidate, "hxrt"))
+				useFound = true;
+		});
+		expect(useFound,
+			"grouped-use member paths must remain structurally traversable");
+
+		var mapped = RustPassTools.mapFile({
+			items: [RModule(RustModuleDeclaration.inlineModule(VPrivate, "mapped", [
+				RConst(RustConstantDeclaration.named(VPrivate, "VALUE", RI32, EPath(path(["before"])))),
+				RStatic(RustStaticDeclaration.named(VPrivate, "STATE", RI32, EPath(path(["before"]))))
+			]))]
+		}, stmt -> stmt, expr -> switch (expr) {
+			case EPath(candidate) if (candidate.plainRelativeIdentifierName() == "before"):
+				EPath(path(["after"]));
+			case _: expr;
+		});
+		var mappedOutput = RustASTPrinter.printFile(mapped);
+		expect(mappedOutput.indexOf("before") == -1 && mappedOutput.indexOf("after") != -1,
+			"shared expression mapping must recurse into module constants and statics");
+
+		expectThrows(() -> RustComment.line("first\nsecond"),
+			"one typed line comment must reject embedded line delimiters");
+		expectThrows(() -> RustAttribute.pathList(path(["allow"]), []),
+			"an empty attribute path list must fail at construction");
+		expectThrows(() -> RustAttribute.bare(RustPath.relative([
+			RustPathSegment.angle("derive", [GenericType(RI32)])
+		])), "attribute paths must reject generic target syntax");
+		expectThrows(() -> RustUseDeclaration.group(VPrivate, path(["std"]), []),
+			"an empty use group must fail at construction");
+		expectThrows(() -> RustUseMember.path(cratePath(["rooted"])),
+			"grouped-use members must remain relative to their declared prefix");
+		expectThrows(() -> RustUseDeclaration.exact(VPrivate, RustPath.typeSelf([RustPathSegment.plain("Item")])),
+			"use declarations must reject the type-Self root that Rust's use grammar does not admit");
+		expectThrows(() -> RustUseDeclaration.exact(VPrivate, path(["std", "fmt", "Debug"]), "bad::alias"),
+			"use aliases must reject target punctuation");
+		expectThrows(() -> RustModuleDeclaration.inlineModule(VPrivate, "bad::module", []),
+			"module names must reject target punctuation");
+		expectThrows(() -> RustTypeAliasDeclaration.named(VPrivate, "bad alias", RustGenericParameters.empty(), RI32),
+			"type-alias names must reject target punctuation");
+		expectThrows(() -> RustAttributedItem.of([], RStruct({
+			name: "Orphan",
+			isPub: false,
+			generics: RustGenericParameters.empty(),
+			fields: []
+		})), "an empty outer attribute wrapper must fail closed instead of silently attaching nothing");
+		var testAttribute = RustAttribute.bare(path(["test"]));
+		var attributedStruct = RAttributed(RustAttributedItem.of([testAttribute], RStruct({
+			name: "Inner",
+			isPub: false,
+			generics: RustGenericParameters.empty(),
+			fields: []
+		})));
+		expectThrows(() -> RustAttributedItem.of([testAttribute], attributedStruct),
+			"outer attribute wrappers must reject nested attachment ambiguity");
+		expectThrows(() -> RustAttributedItem.of([testAttribute], RInnerAttribute(testAttribute)),
+			"outer attributes must not target enclosing-item attributes");
+		expectThrows(() -> RustAttributedItem.of([testAttribute], RComment(RustComment.line("not a declaration"))),
+			"outer attributes must not target detached comments");
+
+		Sys.print(RustASTPrinter.printFile(contractFile));
+	}
+}

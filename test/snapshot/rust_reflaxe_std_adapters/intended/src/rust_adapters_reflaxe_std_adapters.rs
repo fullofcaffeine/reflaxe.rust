@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x9fd02219u32;
 
 #[derive(Debug)]
-
 pub struct ReflaxeStdAdapters {}
 
 impl ReflaxeStdAdapters {

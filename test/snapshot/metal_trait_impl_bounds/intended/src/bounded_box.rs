@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x3976052bu32;
 
 #[derive(Debug)]
-
 pub struct BoundedBox<T: std::fmt::Display + Clone + Send + Sync> {
     pub value: T,
 }

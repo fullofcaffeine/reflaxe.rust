@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x2d898137u32;
 
 #[derive(Debug)]
-
 pub struct Certificate {
     pub handle: crate::HxRef<hxrt::ssl::Certificate>,
 }

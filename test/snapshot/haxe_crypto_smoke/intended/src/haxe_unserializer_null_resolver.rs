@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x914f54b6u32;
 
 #[derive(Debug)]
-
 pub struct NullResolver { }
 
 impl NullResolver { }

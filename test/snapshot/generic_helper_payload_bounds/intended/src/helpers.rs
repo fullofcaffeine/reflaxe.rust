@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xec47dd96u32;
 
 #[derive(Debug)]
-
 pub struct Helpers {}
 
 impl Helpers {

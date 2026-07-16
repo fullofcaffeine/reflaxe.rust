@@ -61,6 +61,13 @@ class BorrowScopeTighteningPass implements RustPass {
 
 	function rewriteItem(item:RustItem):RustItem {
 		return switch (item) {
+			case RAttributed(value):
+				RAttributed(value.withTarget(rewriteItem(value.target)));
+			case RModule(declaration):
+				if (!declaration.isInline)
+					item;
+				else
+					RModule(declaration.withItems([for (child in declaration) rewriteItem(child)]));
 			case RFn(f):
 				RFn(rewriteFunction(f));
 			case RImpl(i):
@@ -69,7 +76,7 @@ class BorrowScopeTighteningPass implements RustPass {
 					forType: i.forType,
 					functions: [for (f in i.functions) rewriteFunction(f)]
 				});
-			case RStruct(_) | REnum(_) | RRaw(_):
+			case RInnerAttribute(_) | RComment(_) | RUse(_) | RConst(_) | RStatic(_) | RTypeAlias(_) | RStruct(_) | REnum(_) | RRaw(_):
 				item;
 		};
 	}
@@ -144,7 +151,7 @@ class BorrowScopeTighteningPass implements RustPass {
 
 	function rewriteExpr(expr:RustExpr, inLoopContext:Bool):RustExpr {
 		var rewritten = switch (expr) {
-			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 			case ECall(func, args):
 				ECall(rewriteExpr(func, inLoopContext), [for (arg in args) rewriteExpr(arg, inLoopContext)]);
@@ -363,7 +370,7 @@ class BorrowScopeTighteningPass implements RustPass {
 		return switch (expr) {
 			case EPath(path):
 				RustPathAnalysis.localIdentifierName(path) == pathName ? 1 : 0;
-			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
+			case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				0;
 			case ECall(func, args):
 				var total = countPathUsesInExpr(func, pathName);
@@ -458,7 +465,7 @@ class BorrowScopeTighteningPass implements RustPass {
 		return switch (expr) {
 			case EClosure(_, _, _) | EPinAsyncMove(_):
 				true;
-			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				false;
 			case ECall(func, args):
 				if (containsClosureExpr(func)) true else {
@@ -543,7 +550,7 @@ class BorrowScopeTighteningPass implements RustPass {
 		return switch (expr) {
 			case EPath(path):
 				RustPathAnalysis.localIdentifierName(path) == pathName ? replacement : expr;
-			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
+			case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				expr;
 			case ECall(func, args):
 				ECall(replacePathInExpr(func, pathName, replacement), [for (arg in args) replacePathInExpr(arg, pathName, replacement)]);

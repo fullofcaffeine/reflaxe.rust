@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xd7e07825u32;
 
 #[derive(Debug)]
-
 pub struct ObjectMap<
     K: hxrt::hxref::HxRefLike + Clone + Send + Sync + 'static + std::fmt::Debug,
     V: Clone + Send + Sync + 'static + std::fmt::Debug,

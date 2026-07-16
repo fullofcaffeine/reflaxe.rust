@@ -34,6 +34,17 @@ class RustPassTools {
 
 	static function mapItem(item:RustItem, mapStmt:RustStmt->RustStmt, mapExpr:RustExpr->RustExpr):RustItem {
 		return switch (item) {
+			case RAttributed(value):
+				RAttributed(value.withTarget(mapItem(value.target, mapStmt, mapExpr)));
+			case RModule(declaration):
+				if (!declaration.isInline)
+					item;
+				else
+					RModule(declaration.withItems([for (child in declaration) mapItem(child, mapStmt, mapExpr)]));
+			case RConst(declaration):
+				RConst(declaration.withValue(mapExprDeep(declaration.value, mapExpr)));
+			case RStatic(declaration):
+				RStatic(declaration.withValue(mapExprDeep(declaration.value, mapExpr)));
 			case RFn(f):
 				RFn(mapFunction(f, mapStmt, mapExpr));
 			case RImpl(i):
@@ -42,7 +53,7 @@ class RustPassTools {
 					forType: i.forType,
 					functions: [for (f in i.functions) mapFunction(f, mapStmt, mapExpr)]
 				});
-			case RStruct(_) | REnum(_) | RRaw(_):
+			case RInnerAttribute(_) | RComment(_) | RUse(_) | RTypeAlias(_) | RStruct(_) | REnum(_) | RRaw(_):
 				item;
 		}
 	}
@@ -93,7 +104,7 @@ class RustPassTools {
 
 	public static function mapExprDeep(e:RustExpr, mapExpr:RustExpr->RustExpr):RustExpr {
 		var deep:RustExpr = switch (e) {
-			case ERaw(_) | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
+			case ERaw(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				e;
 			case ECall(func, args):
 				ECall(mapExprDeep(func, mapExpr), [for (arg in args) mapExprDeep(arg, mapExpr)]);

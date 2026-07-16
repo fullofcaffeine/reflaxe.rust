@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x9bf0ea1eu32;
 
 #[derive(Debug)]
-
 pub struct Box<T: Clone + Send + Sync> {
     pub value: T,
 }

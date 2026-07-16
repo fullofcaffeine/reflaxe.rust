@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x32ac4d2au32;
 
 #[derive(Debug)]
-
 pub struct SystemTimeTools {}
 
 impl SystemTimeTools {

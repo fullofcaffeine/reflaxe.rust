@@ -13,36 +13,36 @@
       "id": "minimal",
       "contract": "minimal generated crate",
       "fixture": "test/snapshot/hello_trace/intended",
-      "lockSha256": "aee393a0c53c7b1c3b20b4d0d3e7bbc24ebcf0aec064f7e86307f910145a465c",
-      "metadataSha256": "4f6f756a21112e6c7347ae640220312fb0d3db16d865555b29c99047b8315ea9"
+      "lockSha256": "cf710e546e105065a467d5586ff0d69ffc9884d9f92b35fe8533c0b6418f2927",
+      "metadataSha256": "bd41e2102f3fb477d64abbaa538d176c3436940f6db6512ddf924120cf9c4b35"
     },
     {
       "id": "portable",
       "contract": "portable generated crate",
       "fixture": "test/snapshot/v1_smoke/intended",
-      "lockSha256": "aee393a0c53c7b1c3b20b4d0d3e7bbc24ebcf0aec064f7e86307f910145a465c",
-      "metadataSha256": "e47b962e5588d75e2dc0e05f3ee1b82a13cffd34ca0fc7ec801c19d7b9323708"
+      "lockSha256": "cf710e546e105065a467d5586ff0d69ffc9884d9f92b35fe8533c0b6418f2927",
+      "metadataSha256": "0b34dc31257bde6a10bb355772af5ebeceabe91f87f6ce5666566599aa0fc765"
     },
     {
       "id": "systems",
       "contract": "systems and TLS generated crate",
       "fixture": "test/snapshot/sys_ssl_sni/intended",
-      "lockSha256": "75c9456f13a5dc450ad9a449d70ab183f624ca81f4d0c5c2fb847fd63062f467",
-      "metadataSha256": "a1a102a0eec01c628146d75a2f4c1c7badb2f3b90c3744c2f4e40fa21fcb366e"
+      "lockSha256": "637d6fcce2e2c79d88d12da80c2ddaa5efcc3600e3d8695c7ab4b5ae714b2f49",
+      "metadataSha256": "9f456f0de53b38dc123cf403390136a36df8e93d9724d38e775976af563229c2"
     },
     {
       "id": "async-feature",
       "contract": "experimental async Tokio generated crate",
       "fixture": "test/snapshot/rust_async_tasks/intended_tokio",
-      "lockSha256": "22832a4a0602858c087a923a21ec79e0676df3e154a39b4a0ddbec48e740e1e1",
-      "metadataSha256": "2d96763eb8bb8a7fb208385ae2fde75c0b1bcfe5243c18827ed5a6dd69d7d4b9"
+      "lockSha256": "0c07fe0e3707b9f7d3965f77e6d8958555337e6faa06f11d01d367cf4602302a",
+      "metadataSha256": "256f0c96c445234ae72052632fdda67780fa3ae9e5df76538013e25f70874bb3"
     },
     {
       "id": "metal",
       "contract": "metal generated crate",
       "fixture": "test/snapshot/metal_v1_smoke/intended_metal",
-      "lockSha256": "aee393a0c53c7b1c3b20b4d0d3e7bbc24ebcf0aec064f7e86307f910145a465c",
-      "metadataSha256": "8f1d80f1260df9eefd6e461281854826361f60b5084964af7a66da628713ef13"
+      "lockSha256": "cf710e546e105065a467d5586ff0d69ffc9884d9f92b35fe8533c0b6418f2927",
+      "metadataSha256": "0c95005ff6c8bc3ac07ed5ec9ce8296c5b0cd9ecb7212fb5362275627a3483e6"
     }
   ]
 }

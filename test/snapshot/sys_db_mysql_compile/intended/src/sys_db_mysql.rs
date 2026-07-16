@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x792eeae2u32;
 
 #[derive(Debug)]
-
 pub struct Mysql {}
 
 impl Mysql {

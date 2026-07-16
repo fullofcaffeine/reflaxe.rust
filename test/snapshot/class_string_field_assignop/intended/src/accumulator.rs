@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x387ca64du32;
 
 #[derive(Debug)]
-
 pub struct Accumulator {
     pub text: hxrt::string::HxString,
 }

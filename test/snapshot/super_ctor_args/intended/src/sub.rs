@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x5a04b671u32;
 
 #[derive(Debug)]
-
 pub struct Sub {
     pub x: i32,
     pub y: hxrt::string::HxString,

@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xd0de220eu32;
 
 #[derive(Debug)]
-
 pub struct List<T: Clone + Send + Sync> {
     pub length: i32,
     items: hxrt::array::Array<T>,

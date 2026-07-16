@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xad5d98ceu32;
 
 #[derive(Debug)]
-
 pub struct Exception {
     _message: hxrt::string::HxString,
     _previous: crate::HxRef<crate::haxe::exception::Exception>,

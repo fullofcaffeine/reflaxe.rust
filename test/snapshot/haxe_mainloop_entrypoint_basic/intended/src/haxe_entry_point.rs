@@ -68,7 +68,6 @@ pub(crate) fn __hx_static_set_thread_count(value: i32) {
 pub const __HX_TYPE_ID: u32 = 0x51a5d353u32;
 
 #[derive(Debug)]
-
 pub struct EntryPoint {}
 
 impl EntryPoint {

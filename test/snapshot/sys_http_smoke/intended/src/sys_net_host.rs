@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x285d6471u32;
 
 #[derive(Debug)]
-
 pub struct Host {
     pub host: hxrt::string::HxString,
     pub ip: i32,

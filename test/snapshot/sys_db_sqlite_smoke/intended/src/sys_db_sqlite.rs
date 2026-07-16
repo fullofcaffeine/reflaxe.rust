@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x07f2cc68u32;
 
 #[derive(Debug)]
-
 pub struct Sqlite {}
 
 impl Sqlite {

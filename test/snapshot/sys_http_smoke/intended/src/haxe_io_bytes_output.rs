@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x77d10119u32;
 
 #[derive(Debug)]
-
 pub struct BytesOutput {
     pub big_endian: bool,
     b: crate::HxRef<crate::haxe_io_bytes_buffer::BytesBuffer>,

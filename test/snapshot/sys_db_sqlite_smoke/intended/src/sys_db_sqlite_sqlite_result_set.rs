@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xedbd9a5cu32;
 
 #[derive(Debug)]
-
 pub struct SqliteResultSet {
     res: crate::HxRef<hxrt::db::QueryResult>,
 }

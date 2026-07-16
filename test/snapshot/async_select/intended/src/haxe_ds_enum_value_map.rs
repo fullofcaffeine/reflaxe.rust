@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0x0cd85f36u32;
 
 #[derive(Debug)]
-
 pub struct EnumValueMap<
     K: Clone + Send + Sync + 'static + std::fmt::Debug,
     V: Clone + Send + Sync + 'static + std::fmt::Debug,

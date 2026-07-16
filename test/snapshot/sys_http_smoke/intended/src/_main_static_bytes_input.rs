@@ -3,7 +3,6 @@
 pub const __HX_TYPE_ID: u32 = 0xddb7adacu32;
 
 #[derive(Debug)]
-
 pub struct StaticBytesInput {
     pub big_endian: bool,
     bytes: crate::HxRef<hxrt::bytes::Bytes>,

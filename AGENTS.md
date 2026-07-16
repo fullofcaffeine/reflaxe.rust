@@ -32,6 +32,18 @@ Before committing bead status changes, run `bd export -o .beads/issues.jsonl` an
 
 Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rust-oo3 --compact`).
 
+## Commit Messages
+
+- Keep the conventional-commit subject concise, then add a useful commit body for every non-trivial
+  change. Write the body in friendly, beginner-readable language so someone who does not already know
+  the compiler internals can understand what problem was solved.
+- Explain what changed, why it matters, and how it was verified. Call out important behavior or output
+  changes and name any intentionally deferred scope so the commit does not imply broader closure than
+  it provides.
+- Prefer concrete descriptions of the old and new behavior over a list of filenames or internal type
+  names. Technical details are welcome, but introduce them in plain language and make the practical
+  outcome clear first.
+
 ## Thinking Levels (Bead Labels)
 
 Use a `thinking:*` label on active beads so execution effort matches task risk.
@@ -273,6 +285,12 @@ Agent policy:
   A binder occurrence is not a liveness use, but it is still a hard barrier for pending-declaration
   collapse: retire a pending outer declaration before a same-block shadow, and never attach a nested
   shadow's assignment to that outer declaration.
+- Structural Rust-item gotcha: outer attributes must be owned by an `RAttributed` target; never emit
+  them as free-standing items that a transform or separator can detach. Inline `RModule` bodies are
+  recursive item roots, so every item-aware transform/policy must recurse through modules and
+  attributed targets, and files/modules must share one item-separator authority. Keep `mod x;`
+  distinct from `mod x { }`, validate attribute/use paths before printing, and use `ELitUnit` for the
+  Rust value `()` instead of disguising it as an empty block expression.
 - Rust identifier keyword gotcha: `RustNaming.isKeyword` includes backend-reserved legal identifiers
   (`std`, `core`, and `alloc`) for source-name allocation. Grammar validation must use
   `RustNaming.isRustKeyword` so structural paths accept those real crate segments while rejecting the
@@ -284,6 +302,10 @@ Agent policy:
   - Enum-match gotcha: avoid emitting wildcard `unreachable!()` arms when the match is already exhaustive (Rust warns with `unreachable_patterns`).
   - Return-lowering gotcha: never emit `return <expr>` when `<expr>` is statically diverging (`todo!()`, `panic!()`, `hxrt::exception::throw(...)`).
     Emit the diverging expression directly; `return <diverging expr>` triggers Rust `unreachable expression` warnings.
+  - RAII underscore-binding gotcha: a named leading-underscore binding such as `_guard` is an
+    intentional lifetime boundary, not equivalent to Rust's discard pattern `_`. Statement cleanup
+    must retain it even when it is never read; rewriting `let _guard = lock()` to `let _ = lock()`
+    drops the guard immediately and can remove synchronization or other destructor-scoped behavior.
   - Nullable-array indexing gotcha: indexing `Array<Null<T>>` through the checked Rust array API produces
     `Option<Option<T>>`. Lower the Haxe-visible nullable result with typed `Option::flatten()` instead of a
     manual `Some(v) => v, None => None` match; the native combinator is clearer and remains clean under
@@ -592,6 +614,10 @@ Agent policy:
 - Dynamic policy guard: `scripts/lint/dynamic_usage_guard.sh` is part of hooks/CI and fails on any non-allowlisted `Dynamic` mention in first-party `*.hx`/`*.cross.hx` files.
   Keep intentional compatibility/runtime boundaries in `scripts/lint/dynamic_allowlist.txt` and remove avoidable `Dynamic` elsewhere.
   - Scan model: the guard is comment-aware; comment-only/doc-text mentions are ignored so the allowlist tracks code boundaries, not prose churn.
+  - Exact-line allowlist gotcha: edits above an approved boundary can move its `path:line` entry even
+    when the boundary itself is unchanged. After moving compiler code, run the guard, compare every
+    reported line with the documented boundary, and update only the verified line entries; never
+    widen an entry to the whole file just to avoid future line-number maintenance.
   - Compiler boundary-literal pattern: keep the unavoidable Haxe dynamic type-name literal centralized in
     `RustCompiler.dynamicBoundaryTypeName()` and route lookups/comparisons through it to prevent scattered allowlist churn.
   - Allowlist strictness: file-scoped entries must include an inline `# FILE_SCOPE_JUSTIFICATION: ...` comment in
