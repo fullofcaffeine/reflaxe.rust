@@ -649,6 +649,12 @@ Agent policy:
   Hash the same `haxe.io.Bytes` used for offsets with `Sha256.make(bytes).toHex()`; the string
   convenience hash is not a byte-contract substitute and diverges from standard UTF-8 SHA-256 for
   non-ASCII generated source on the macro target.
+- Source-map origin-transfer gotcha: origin wrappers are semantically invisible but still own the
+  bytes they wrap. Structural recognizers must peel and rebuild complete `EOrigin`/block-tail chains;
+  destructive rewrites must move statement/expression origins onto the surviving node; and an enum
+  whole-value alias must never replace the complete arm block or erase live payload bindings.
+  `rust-source-map-policy.json` is the single source for compiler-generated reason IDs; run
+  `npm run docs:sync:rust-source-map-policy` instead of editing the Haxe enum or schema list by hand.
 - Snapshot runner gotcha: many snapshot crates share the same crate name (`hx_app`), so `test/run-snapshots.sh` must isolate `CARGO_TARGET_DIR` per case/variant
   (using a shared base cache) to avoid binary collisions and incorrect `stdout.txt` comparisons.
 - `cargo hx` wrapper gotcha: when a smoke/test run compiles both the repo wrapper tool (`tools/hx`) and generated-template wrappers with a shared `CARGO_TARGET_DIR`,

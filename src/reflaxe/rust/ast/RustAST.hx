@@ -29,9 +29,13 @@ class RustAST {}
 	How
 	- Pass a value to `RustOriginTools.generatedItem`, `generatedStatement`, or
 	  `generatedExpression`.
+	- Add or rename values in `rust-source-map-policy.json`, then run
+	  `npm run docs:sync:rust-source-map-policy`; the generated block below and the JSON Schema enum
+	  must not be edited independently.
 	- Additions are schema changes and therefore require source-map contract and documentation review.
 **/
 enum abstract RustGeneratedOriginReason(String) to String {
+	// BEGIN GENERATED RUST SOURCE-MAP REASONS
 	var GeneratedFileMarker = "generated-file-marker";
 	var ModuleScaffolding = "module-scaffolding";
 	var LoweringScaffolding = "lowering-scaffolding";
@@ -55,6 +59,7 @@ enum abstract RustGeneratedOriginReason(String) to String {
 			case _: throw 'Unsupported compiler-generated Rust origin reason: $value';
 		};
 	}
+	// END GENERATED RUST SOURCE-MAP REASONS
 }
 
 /**
@@ -181,9 +186,11 @@ class RustRawCode {
 	public final origin:RustOrigin;
 
 	private function new(code:String, authority:RustRawAuthority, origin:RustOrigin) {
+		if (code == null)
+			throw "Classified raw Rust code cannot be null";
 		this.code = code;
-		this.authority = authority;
-		this.origin = origin;
+		this.authority = requireAuthority(authority);
+		this.origin = RustOriginTools.requireOrigin(origin);
 	}
 
 	public static function compilerGenerated(code:String, reason:RustCompilerRawReason):RustRawCode {
@@ -231,11 +238,48 @@ class RustRawCode {
 	}
 
 	static function generatedReason(reason:RustCompilerRawReason):RustGeneratedOriginReason {
+		if (reason == null)
+			throw "Compiler-owned raw Rust requires a reason";
 		return switch (reason) {
 			case RawStaticStorage: RustGeneratedOriginReason.StaticStorage;
 			case RawDefaultValueFallback: RustGeneratedOriginReason.DefaultValueFallback;
 			case RawUnsupportedFallback: RustGeneratedOriginReason.UnsupportedFallback;
 		};
+	}
+
+	/**
+		Validates the complete authority wrapper at the same boundary as its printable bytes.
+
+		Why / What / How
+		- A non-null outer enum can still contain a null nested reason when created through a cast.
+		- Validate every closed authority family here so no factory can create a fragment that fails only
+		  after transformation or source-map serialization.
+		- Returning the original typed value keeps authority identity unchanged after validation.
+	**/
+	static function requireAuthority(value:RustRawAuthority):RustRawAuthority {
+		if (value == null)
+			throw "Classified raw Rust requires an authority";
+		switch (value) {
+			case RawCompilerOwned(reason):
+				if (reason == null)
+					throw "Compiler-owned raw Rust requires a reason";
+				switch (reason) {
+					case RawStaticStorage | RawDefaultValueFallback | RawUnsupportedFallback:
+				}
+			case RawMetadataOwned(reason):
+				if (reason == null)
+					throw "Metadata-owned raw Rust requires a reason";
+				switch (reason) {
+					case RawTraitImplementation:
+				}
+			case RawSourceOwned(reason):
+				if (reason == null)
+					throw "Source-owned raw Rust requires a reason";
+				switch (reason) {
+					case RawTargetCodeInjection:
+				}
+		}
+		return value;
 	}
 }
 
@@ -2432,27 +2476,46 @@ enum RustExpr {
 **/
 class RustOriginTools {
 	public static function sourceItem(item:RustItem, pos:Position):RustItem {
-		return ROrigin(OriginHaxeSource(requirePosition(pos)), requireItem(item));
+		return ROrigin(requireOrigin(OriginHaxeSource(pos)), requireItem(item));
 	}
 
 	public static function generatedItem(item:RustItem, reason:RustGeneratedOriginReason):RustItem {
-		return ROrigin(OriginCompilerGenerated(requireReason(reason)), requireItem(item));
+		return ROrigin(requireOrigin(OriginCompilerGenerated(reason)), requireItem(item));
 	}
 
 	public static function sourceStatement(statement:RustStmt, pos:Position):RustStmt {
-		return SOrigin(OriginHaxeSource(requirePosition(pos)), requireStatement(statement));
+		return SOrigin(requireOrigin(OriginHaxeSource(pos)), requireStatement(statement));
 	}
 
 	public static function generatedStatement(statement:RustStmt, reason:RustGeneratedOriginReason):RustStmt {
-		return SOrigin(OriginCompilerGenerated(requireReason(reason)), requireStatement(statement));
+		return SOrigin(requireOrigin(OriginCompilerGenerated(reason)), requireStatement(statement));
 	}
 
 	public static function sourceExpression(expression:RustExpr, pos:Position):RustExpr {
-		return EOrigin(OriginHaxeSource(requirePosition(pos)), requireExpression(expression));
+		return EOrigin(requireOrigin(OriginHaxeSource(pos)), requireExpression(expression));
 	}
 
 	public static function generatedExpression(expression:RustExpr, reason:RustGeneratedOriginReason):RustExpr {
-		return EOrigin(OriginCompilerGenerated(requireReason(reason)), requireExpression(expression));
+		return EOrigin(requireOrigin(OriginCompilerGenerated(reason)), requireExpression(expression));
+	}
+
+	/**
+		Validates either admitted origin shape at every AST construction boundary.
+
+		Why / What / How
+		- Raw fragments and typed wrappers share the same provenance contract; validating it in separate
+		  factories allowed `OriginHaxeSource(null)` to survive until source-map encoding.
+		- Rebuilds the enum with a checked Haxe position or a reason round-tripped through the closed ID
+		  vocabulary.
+		- Call this from any new container that stores a `RustOrigin` directly.
+	**/
+	public static function requireOrigin(origin:RustOrigin):RustOrigin {
+		if (origin == null)
+			throw "Rust origin cannot be null";
+		return switch (origin) {
+			case OriginHaxeSource(pos): OriginHaxeSource(requirePosition(pos));
+			case OriginCompilerGenerated(reason): OriginCompilerGenerated(requireReason(reason));
+		};
 	}
 
 	public static function withoutItemOrigin(item:RustItem):RustItem {
@@ -2506,6 +2569,32 @@ class RustOriginTools {
 		return switch (requireExpression(original)) {
 			case EOrigin(origin, inner): EOrigin(origin, replaceExpressionPreservingOrigins(inner, replacement));
 			case _: requireExpression(replacement);
+		};
+	}
+
+	/**
+		Moves a statement's complete origin chain onto an expression created from that statement.
+
+		Why
+		- Cleanup can legally fold `let value; value = rhs;` into `let value = rhs;`, but the assignment
+		  statement then has no statement node left to carry its provenance.
+		- Dropping that chain makes diagnostics on the moved initializer point at the earlier declaration.
+
+		What
+		- Converts each outer `SOrigin` into an `EOrigin` in the same order.
+		- Leaves any origins already attached to `replacement` nested more deeply, preserving their greater
+		  structural specificity.
+
+		How
+		- Use only when the replacement expression contains the executable bytes formerly owned by the
+		  statement; it is not permission to attach origins to unrelated synthesized syntax.
+	**/
+	public static function transferStatementOriginsToExpression(original:RustStmt, replacement:RustExpr):RustExpr {
+		return switch (requireStatement(original)) {
+			case SOrigin(origin, inner):
+				EOrigin(requireOrigin(origin), transferStatementOriginsToExpression(inner, replacement));
+			case _:
+				requireExpression(replacement);
 		};
 	}
 

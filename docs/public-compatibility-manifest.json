@@ -14256,6 +14256,7 @@
         "reflaxe.rust.ast.RustAST.RustExpr",
         "reflaxe.rust.ast.RustAST.RustGeneratedOriginReason",
         "reflaxe.rust.ast.RustAST.RustItem",
+        "reflaxe.rust.ast.RustAST.RustOrigin",
         "reflaxe.rust.ast.RustAST.RustStmt"
       ],
       "transitiveTypeReferences": [
@@ -14404,6 +14405,19 @@
           ]
         },
         {
+          "id": "function:requireOrigin",
+          "kind": "function",
+          "name": "requireOrigin",
+          "signature": "public static function requireOrigin (origin : RustOrigin) : RustOrigin",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustOrigin"
+          ]
+        },
+        {
           "id": "function:withoutItemOrigin",
           "kind": "function",
           "name": "withoutItemOrigin",
@@ -14479,6 +14493,20 @@
           ],
           "typeReferences": [
             "reflaxe.rust.ast.RustAST.RustExpr"
+          ]
+        },
+        {
+          "id": "function:transferStatementOriginsToExpression",
+          "kind": "function",
+          "name": "transferStatementOriginsToExpression",
+          "signature": "public static function transferStatementOriginsToExpression (original : RustStmt, replacement : RustExpr) : RustExpr",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustExpr",
+            "reflaxe.rust.ast.RustAST.RustStmt"
           ]
         }
       ]
@@ -17470,6 +17498,7 @@
         "reflaxe.rust.ast.RustAST.RustMember",
         "reflaxe.rust.ast.RustAST.RustPath",
         "reflaxe.rust.ast.RustAST.RustPattern",
+        "reflaxe.rust.ast.RustAST.RustStmt",
         "reflaxe.rust.ast.RustAST.RustTraitDeclaration",
         "reflaxe.rust.ast.RustAST.RustType",
         "reflaxe.rust.ast.RustAST.RustUseDeclaration",
@@ -17591,6 +17620,32 @@
           ],
           "typeReferences": [
             "reflaxe.rust.ast.RustAST.RustPattern"
+          ]
+        },
+        {
+          "id": "function:patternBindingNames",
+          "kind": "function",
+          "name": "patternBindingNames",
+          "signature": "public static function patternBindingNames (pattern : RustPattern) : Array < String >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustPattern"
+          ]
+        },
+        {
+          "id": "function:statementContainsLocalSpelling",
+          "kind": "function",
+          "name": "statementContainsLocalSpelling",
+          "signature": "public static function statementContainsLocalSpelling (statement : RustStmt, name : String) : Bool",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.ast.RustAST.RustStmt"
           ]
         },
         {
@@ -21983,6 +22038,17 @@
           "kind": "field",
           "name": "code",
           "signature": "public final code : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:byteLength",
+          "kind": "field",
+          "name": "byteLength",
+          "signature": "public final byteLength : Int",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"

@@ -324,13 +324,15 @@ class RustPrintedSourceMapping {
 
 	Why / What / How
 	- Reflaxe may aggregate several Haxe declarations into one Rust file, so each iterator chunk keeps
-	  its code and local mapping offsets together.
-	- Construction defensively copies mappings and checks that none exceeds the chunk bytes.
+	  its code, precomputed UTF-8 byte length, and local mapping offsets together.
+	- Construction computes that length once, defensively copies mappings, and checks that none exceeds
+	  the chunk bytes.
 	- `RustSourceMap.encode` joins chunks with the same separator as Reflaxe's output manager.
 **/
 class RustPrintedSourceFile {
 	public final generatedFile:String;
 	public final code:String;
+	public final byteLength:Int;
 	final values:Array<RustPrintedSourceMapping>;
 	public var mappingCount(get, never):Int;
 
@@ -340,7 +342,7 @@ class RustPrintedSourceFile {
 			throw "Printed Rust source file fields cannot be null";
 		this.code = code;
 		this.values = mappings.copy();
-		var byteLength = Bytes.ofString(code).length;
+		this.byteLength = Bytes.ofString(code).length;
 		for (mapping in values) {
 			if (mapping == null || mapping.endByte > byteLength)
 				throw "Printed Rust source mapping exceeds its file";
@@ -368,7 +370,8 @@ class RustPrintedSourceFile {
 
 private typedef AggregatedPrintedFile = {
 	var generatedFile:String;
-	var code:String;
+	var chunks:Array<String>;
+	var byteLength:Int;
 	var mappings:Array<RustPrintedSourceMapping>;
 }
 
@@ -476,6 +479,8 @@ private class RustSourceByteIndex {
 class RustSourceMap {
 	public static inline var SCHEMA_VERSION:Int = 1;
 	public static inline var GENERATOR:String = "reflaxe.rust";
+	static inline var OUTPUT_CHUNK_SEPARATOR:String = "\n\n";
+	static final OUTPUT_CHUNK_SEPARATOR_BYTE_LENGTH:Int = Bytes.ofString(OUTPUT_CHUNK_SEPARATOR).length;
 
 	/**
 		Builds canonical source-map JSON from exact printer chunks.
@@ -483,6 +488,8 @@ class RustSourceMap {
 		Why / What / How
 		- Resolves source positions once against an absolute compilation root, caches source byte indexes,
 		  sorts every filename/mapping by a total order, and removes exact duplicate entries.
+		- Same-file aggregation stores chunks with a running byte length, shifts each mapping once, and
+		  joins text once so large generated modules do not repeatedly copy or re-encode every prefix.
 		- Hashes the same UTF-8 byte buffers used for offsets and appends one newline to the JSON artifact.
 	**/
 	public static function encode(printedFiles:Array<RustPrintedSourceFile>, sourceRoot:String):String {
@@ -507,13 +514,14 @@ class RustSourceMap {
 				var mappings = [for (mapping in printed) mapping];
 				byFile.set(printed.generatedFile, {
 					generatedFile: printed.generatedFile,
-					code: printed.code,
+					chunks: [printed.code],
+					byteLength: printed.byteLength,
 					mappings: mappings
 				});
 			} else {
-				var separator = "\n\n";
-				var byteDelta = Bytes.ofString(existing.code + separator).length;
-				existing.code += separator + printed.code;
+				var byteDelta = existing.byteLength + OUTPUT_CHUNK_SEPARATOR_BYTE_LENGTH;
+				existing.chunks.push(printed.code);
+				existing.byteLength = byteDelta + printed.byteLength;
 				for (mapping in printed)
 					existing.mappings.push(mapping.shifted(byteDelta));
 			}
@@ -527,7 +535,9 @@ class RustSourceMap {
 			var aggregated = byFile.get(name);
 			if (aggregated == null)
 				continue;
-			var codeBytes = Bytes.ofString(aggregated.code);
+			var codeBytes = Bytes.ofString(aggregated.chunks.join(OUTPUT_CHUNK_SEPARATOR));
+			if (codeBytes.length != aggregated.byteLength)
+				throw "Aggregated Rust source byte length drifted from its running length";
 			var generatedIndex = new RustSourceByteIndex(codeBytes);
 			var mappings = [for (mapping in aggregated.mappings) resolveMapping(mapping, generatedIndex, state)];
 			mappings.sort(compareMappings);
@@ -594,6 +604,9 @@ class RustSourceMap {
 		var bytes = Bytes.ofString(generatedContent);
 		if (bytes.length != selected.byteLength || Sha256.make(bytes).toHex() != selected.contentHash)
 			return null;
+		var generatedIndex = new RustSourceByteIndex(bytes);
+		if (!coordinatesMatchContent(selected, generatedIndex))
+			return null;
 		if (span.endByte > selected.byteLength)
 			return null;
 
@@ -610,6 +623,36 @@ class RustSourceMap {
 				best = mapping;
 		}
 		return best;
+	}
+
+	/**
+		Checks decoded coordinate metadata against the exact content already authenticated by lookup.
+
+		Why
+		- A correct filename, byte length, and SHA-256 prove which bytes were mapped, but do not prove that
+		  untrusted JSON reported honest line/column coordinates for those bytes.
+		- Consumers may display those coordinates directly, so accepting a contradictory map would make the
+		  versioned artifact internally dishonest despite exact freshness checks.
+
+		What / How
+		- Reuses one byte index for the selected file, verifies its exact line count, and recomputes both
+		  endpoints of every mapping.
+		- Any disagreement rejects the complete file before span selection; lookup never returns a partially
+		  trusted mapping.
+	**/
+	static function coordinatesMatchContent(file:RustSourceMapFile, index:RustSourceByteIndex):Bool {
+		if (file.lineCount != index.lineCount)
+			return false;
+		for (mapping in file) {
+			var start = index.pointAt(mapping.generated.startByte);
+			var end = index.pointAt(mapping.generated.endByte);
+			if (mapping.generated.startLine != start.line
+				|| mapping.generated.startColumn != start.column
+				|| mapping.generated.endLine != end.line
+				|| mapping.generated.endColumn != end.column)
+				return false;
+		}
+		return true;
 	}
 
 	/**

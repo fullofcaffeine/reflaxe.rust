@@ -5,6 +5,8 @@ import reflaxe.rust.CompilationContext;
 import reflaxe.rust.RustProfile;
 import reflaxe.rust.RustSourceMap;
 import reflaxe.rust.RustSourceMap.RustMappedOrigin;
+import reflaxe.rust.RustSourceMap.RustPrintedSourceFile;
+import reflaxe.rust.RustSourceMap.RustPrintedSourceMapping;
 import reflaxe.rust.RustSourceMap.RustSourceMapNodeKind;
 import reflaxe.rust.RustSourceMap.RustcGeneratedSpan;
 import reflaxe.rust.ast.RustAST.RustAttribute;
@@ -13,6 +15,7 @@ import reflaxe.rust.ast.RustAST.RustComment;
 import reflaxe.rust.ast.RustAST.RustFile;
 import reflaxe.rust.ast.RustAST.RustGeneratedOriginReason;
 import reflaxe.rust.ast.RustAST.RustMember;
+import reflaxe.rust.ast.RustAST.RustOrigin;
 import reflaxe.rust.ast.RustAST.RustOriginTools;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPathSegment;
@@ -71,6 +74,25 @@ class RustSourceMapContract {
 		return Context.makePosition({file: file, min: start, max: start + label.length});
 	}
 
+	static function replaceExactlyOnce(value:String, needle:String, replacement:String):String {
+		var start = value.indexOf(needle);
+		expect(start >= 0, 'source-map mutation target was missing: $needle in $value');
+		expect(value.indexOf(needle, start + needle.length) < 0,
+			'source-map mutation target was not unique: $needle');
+		return value.substr(0, start) + replacement + value.substr(start + needle.length);
+	}
+
+	static function expectSourceOrigin(mapping:reflaxe.rust.RustSourceMap.RustSourceMapping, pos:Position,
+			message:String):Void {
+		expect(mapping != null, message + " (mapping was missing)");
+		switch (mapping.origin) {
+			case MappedHaxeSource(source):
+				expect(source.startByte == Context.getPosInfos(pos).min, message);
+			case MappedCompilerGenerated(_):
+				throw message + " (resolved as compiler-generated)";
+		}
+	}
+
 	static function local(name:String) {
 		return reflaxe.rust.ast.RustAST.RustExpr.EPath(RustPath.relative([RustPathSegment.plain(name)]));
 	}
@@ -88,6 +110,41 @@ class RustSourceMapContract {
 		var statementPos = sourcePosition("SOURCE_MAP_STATEMENT_ORIGIN");
 		var expressionPos = sourcePosition("SOURCE_MAP_EXPRESSION_ORIGIN");
 		var rawPos = sourcePosition("SOURCE_MAP_RAW_ORIGIN");
+		expect(reflaxe.rust.ast.RustPathAnalysis.statementContainsLocalSpelling(
+			RustOriginTools.sourceStatement(reflaxe.rust.ast.RustAST.RustStmt.RLet("value", false, null,
+				reflaxe.rust.ast.RustAST.RustExpr.ELitInt(1)), statementPos), "value"),
+			"whole-scrutinee shadow safety gate missed an origin-wrapped local declaration");
+		expect(reflaxe.rust.ast.RustPathAnalysis.statementContainsLocalSpelling(
+			reflaxe.rust.ast.RustAST.RustStmt.RSemi(reflaxe.rust.ast.RustAST.RustExpr.ERaw(
+				RustRawCode.compilerGenerated("observe(value)",
+					reflaxe.rust.ast.RustAST.RustCompilerRawReason.RawUnsupportedFallback))), "value"),
+			"whole-scrutinee safety gate treated opaque executable Rust as binding-free");
+		expectThrows(() -> RustRawCode.sourceAt("invalid", RustSourceRawReason.RawTargetCodeInjection, null),
+			"raw source factory accepted a null Haxe position");
+		expectThrows(() -> RustRawCode.compilerAt("invalid",
+			reflaxe.rust.ast.RustAST.RustCompilerRawReason.RawUnsupportedFallback, null),
+			"source-positioned compiler raw factory accepted a null Haxe position");
+		expectThrows(() -> RustRawCode.metadataAt("invalid",
+			reflaxe.rust.ast.RustAST.RustMetadataRawReason.RawTraitImplementation, null),
+			"raw metadata factory accepted a null Haxe position");
+		expectThrows(() -> RustRawCode.sourceAt("invalid", cast null, rawPos),
+			"raw source factory accepted a null authority reason");
+		expectThrows(() -> RustRawCode.metadataAt("invalid", cast null, rawPos),
+			"raw metadata factory accepted a null authority reason");
+		expectThrows(() -> RustRawCode.compilerGenerated("invalid", cast null),
+			"raw compiler factory accepted a null generated reason");
+		expectThrows(() -> RustRawCode.sourceAt(null, RustSourceRawReason.RawTargetCodeInjection, rawPos),
+			"raw source factory accepted null printable bytes");
+		var validRaw = RustRawCode.sourceAt("valid", RustSourceRawReason.RawTargetCodeInjection, rawPos);
+		expectThrows(() -> validRaw.withCode(null), "raw-code transformation accepted null printable bytes");
+		expect(RustRawCode.compilerGenerated("valid",
+			reflaxe.rust.ast.RustAST.RustCompilerRawReason.RawUnsupportedFallback).reasonId() == "unsupported-fallback",
+			"valid compiler-generated raw fragment failed validation");
+		expect(RustRawCode.compilerAt("valid", reflaxe.rust.ast.RustAST.RustCompilerRawReason.RawUnsupportedFallback,
+			rawPos).authorityId() == "compiler-owned", "valid source-positioned compiler raw fragment failed validation");
+		expect(RustRawCode.metadataAt("valid", reflaxe.rust.ast.RustAST.RustMetadataRawReason.RawTraitImplementation,
+			rawPos).authorityId() == "metadata-owned", "valid metadata raw fragment failed validation");
+		expect(validRaw.authorityId() == "source-owned", "valid source raw fragment failed validation");
 		var testAttribute = RustAttribute.bare(RustPath.relative([RustPathSegment.plain("test")]));
 		expectThrows(() -> RustAttributedItem.of([testAttribute], RustOriginTools.sourceItem(
 			reflaxe.rust.ast.RustAST.RustItem.RComment(RustComment.line("not a declaration")), itemPos)),
@@ -95,11 +152,15 @@ class RustSourceMapContract {
 		expectThrows(() -> RustOriginTools.generatedItem(
 			reflaxe.rust.ast.RustAST.RustItem.RComment(RustComment.line("unknown reason")), cast "invented-reason"),
 			"generated-origin factory accepted a value outside the closed reason vocabulary");
+		expectThrows(() -> RustOriginTools.generatedItem(
+			reflaxe.rust.ast.RustAST.RustItem.RComment(RustComment.line("null reason")), cast null),
+			"generated-origin factory accepted a null compiler-generated reason");
 
 		var printerEdgeFile:RustFile = {
 			items: [
 				RustOriginTools.generatedItem(reflaxe.rust.ast.RustAST.RustItem.RRaw(
-					RustRawCode.compilerGenerated("", reflaxe.rust.ast.RustAST.RustCompilerRawReason.RawUnsupportedFallback)),
+					RustRawCode.compilerGenerated("// compiler-generated raw\n",
+						reflaxe.rust.ast.RustAST.RustCompilerRawReason.RawUnsupportedFallback)),
 					RustGeneratedOriginReason.UnsupportedFallback),
 				reflaxe.rust.ast.RustAST.RustItem.RFn({
 					name: "printer_edges",
@@ -108,9 +169,14 @@ class RustSourceMapContract {
 					args: [],
 					ret: reflaxe.rust.ast.RustAST.RustType.RUnit,
 					body: {
-						stmts: [reflaxe.rust.ast.RustAST.RustStmt.RSemi(RustOriginTools.sourceExpression(
-							reflaxe.rust.ast.RustAST.RustExpr.ERaw(RustRawCode.sourceAt("third();  ",
-								RustSourceRawReason.RawTargetCodeInjection, rawPos)), expressionPos))],
+						stmts: [
+							reflaxe.rust.ast.RustAST.RustStmt.RSemi(RustOriginTools.sourceExpression(
+								reflaxe.rust.ast.RustAST.RustExpr.ERaw(RustRawCode.sourceAt("third();  ",
+									RustSourceRawReason.RawTargetCodeInjection, rawPos)), expressionPos)),
+							reflaxe.rust.ast.RustAST.RustStmt.RSemi(reflaxe.rust.ast.RustAST.RustExpr.ERaw(
+								RustRawCode.compilerAt("fourth();", reflaxe.rust.ast.RustAST.RustCompilerRawReason.RawUnsupportedFallback,
+									rawPos)))
+						],
 						tail: null
 					}
 				})
@@ -123,6 +189,16 @@ class RustSourceMapContract {
 		expect(printerEdgePlain.indexOf("third();;") == -1,
 			"raw expression semicolon normalization regressed");
 		var edgeDocument = RustSourceMap.decode(RustSourceMap.encode([printerEdgeMapped], Sys.getCwd()));
+		var generatedRawStart = printerEdgePlain.indexOf("// compiler-generated raw");
+		var generatedRawHit = RustSourceMap.lookup(edgeDocument,
+			RustcGeneratedSpan.at("src/printer_edges.rs", generatedRawStart, generatedRawStart + 2), printerEdgePlain);
+		expect(generatedRawHit != null, "valid compiler-generated raw factory did not survive encoding");
+		switch (generatedRawHit.origin) {
+			case MappedCompilerGenerated(reason):
+				expect(reason == RustGeneratedOriginReason.UnsupportedFallback,
+					"compiler-generated raw factory changed its closed reason while encoding");
+			case MappedHaxeSource(_): throw "compiler-generated raw factory resolved as Haxe source";
+		}
 		var edgeStart = printerEdgePlain.indexOf("third();");
 		var edgeHit = RustSourceMap.lookup(edgeDocument,
 			RustcGeneratedSpan.at("src/printer_edges.rs", edgeStart, edgeStart + "third".length), printerEdgePlain);
@@ -133,6 +209,10 @@ class RustSourceMapContract {
 					"lookup did not prefer the structurally deeper raw origin when generated spans tied");
 			case MappedCompilerGenerated(_): throw "raw source expression resolved as compiler-generated";
 		}
+		var compilerAtStart = printerEdgePlain.indexOf("fourth();");
+		expectSourceOrigin(RustSourceMap.lookup(edgeDocument,
+			RustcGeneratedSpan.at("src/printer_edges.rs", compilerAtStart, compilerAtStart + "fourth".length), printerEdgePlain),
+			rawPos, "valid source-positioned compiler raw factory did not survive encoding");
 
 		var functionItem = RustOriginTools.sourceItem(reflaxe.rust.ast.RustAST.RustItem.RFn({
 			name: "mapped",
@@ -143,8 +223,9 @@ class RustSourceMapContract {
 			body: {
 				stmts: [
 					RustOriginTools.sourceStatement(reflaxe.rust.ast.RustAST.RustStmt.RLet("borrow_alias", false, null,
-						reflaxe.rust.ast.RustAST.RustExpr.ECall(RustOriginTools.sourceExpression(
-							reflaxe.rust.ast.RustAST.RustExpr.EField(local("owner"), RustMember.plain("borrow")), expressionPos), [])), statementPos),
+						RustOriginTools.sourceExpression(reflaxe.rust.ast.RustAST.RustExpr.ECall(RustOriginTools.sourceExpression(
+							reflaxe.rust.ast.RustAST.RustExpr.EField(RustOriginTools.sourceExpression(local("owner"), itemPos),
+								RustMember.plain("borrow")), expressionPos), []), rawPos)), statementPos),
 					RustOriginTools.sourceStatement(reflaxe.rust.ast.RustAST.RustStmt.RSemi(
 						reflaxe.rust.ast.RustAST.RustExpr.ECall(local("consume"), [local("borrow_alias")])), statementPos),
 					RustOriginTools.sourceStatement(reflaxe.rust.ast.RustAST.RustStmt.RSemi(
@@ -156,9 +237,48 @@ class RustSourceMapContract {
 					RustOriginTools.sourceStatement(reflaxe.rust.ast.RustAST.RustStmt.RLet("staged", false,
 						reflaxe.rust.ast.RustAST.RustType.RI32, null), statementPos),
 					RustOriginTools.generatedStatement(reflaxe.rust.ast.RustAST.RustStmt.RSemi(
-						reflaxe.rust.ast.RustAST.RustExpr.EAssign(RustOriginTools.sourceExpression(local("staged"), expressionPos),
-							reflaxe.rust.ast.RustAST.RustExpr.ELitInt(7))),
+						RustOriginTools.sourceExpression(reflaxe.rust.ast.RustAST.RustExpr.EAssign(local("staged"),
+							reflaxe.rust.ast.RustAST.RustExpr.ELitInt(7)), expressionPos)),
 						RustGeneratedOriginReason.LoweringScaffolding),
+					RustOriginTools.sourceStatement(reflaxe.rust.ast.RustAST.RustStmt.RLet("block_staged", false,
+						reflaxe.rust.ast.RustAST.RustType.RI32, null), statementPos),
+					RustOriginTools.generatedStatement(reflaxe.rust.ast.RustAST.RustStmt.RSemi(
+						RustOriginTools.sourceExpression(reflaxe.rust.ast.RustAST.RustExpr.EBlock({
+							stmts: [
+								RustOriginTools.generatedStatement(reflaxe.rust.ast.RustAST.RustStmt.RLet("before", false, null,
+									reflaxe.rust.ast.RustAST.RustExpr.ELitInt(1)), RustGeneratedOriginReason.LoweringScaffolding),
+								RustOriginTools.generatedStatement(reflaxe.rust.ast.RustAST.RustStmt.RSemi(
+									RustOriginTools.sourceExpression(reflaxe.rust.ast.RustAST.RustExpr.EAssign(local("block_staged"),
+										reflaxe.rust.ast.RustAST.RustExpr.ELitInt(9)), expressionPos)),
+									RustGeneratedOriginReason.LoweringScaffolding)
+							],
+							tail: null
+							}), rawPos)), RustGeneratedOriginReason.LoweringScaffolding),
+					RustOriginTools.sourceStatement(reflaxe.rust.ast.RustAST.RustStmt.RSemi(
+						reflaxe.rust.ast.RustAST.RustExpr.ECall(local("inspect"), [
+							reflaxe.rust.ast.RustAST.RustExpr.EUnary("&", local("block_staged"))
+						])), statementPos),
+					RustOriginTools.sourceStatement(reflaxe.rust.ast.RustAST.RustStmt.RLet("tail_result", false, null,
+						reflaxe.rust.ast.RustAST.RustExpr.EBlock({
+							stmts: [reflaxe.rust.ast.RustAST.RustStmt.RLet("tail_borrow", false, null,
+								RustOriginTools.sourceExpression(reflaxe.rust.ast.RustAST.RustExpr.ECall(RustOriginTools.sourceExpression(
+									reflaxe.rust.ast.RustAST.RustExpr.EField(RustOriginTools.sourceExpression(
+										reflaxe.rust.ast.RustAST.RustExpr.EField(local("holder"), RustMember.plain("storage")), itemPos),
+										RustMember.plain("borrow")), expressionPos), []), rawPos))],
+							tail: reflaxe.rust.ast.RustAST.RustExpr.ECall(local("consume"), [local("tail_borrow")])
+						})), statementPos),
+					RustOriginTools.sourceStatement(reflaxe.rust.ast.RustAST.RustStmt.RLet("guard", false, null,
+						reflaxe.rust.ast.RustAST.RustExpr.ECall(RustOriginTools.sourceExpression(
+							reflaxe.rust.ast.RustAST.RustExpr.EField(local("cell"), RustMember.plain("borrow_mut")), rawPos), [])),
+						statementPos),
+					RustOriginTools.sourceStatement(reflaxe.rust.ast.RustAST.RustStmt.RSemi(
+						reflaxe.rust.ast.RustAST.RustExpr.ECall(local("inspect"), [
+							reflaxe.rust.ast.RustAST.RustExpr.EUnary("&", local("guard"))
+						])), statementPos),
+					RustOriginTools.sourceStatement(reflaxe.rust.ast.RustAST.RustStmt.RSemi(
+						reflaxe.rust.ast.RustAST.RustExpr.ECall(local("inspect"), [
+							reflaxe.rust.ast.RustAST.RustExpr.EUnary("&", local("guard"))
+						])), statementPos),
 					RustOriginTools.sourceStatement(reflaxe.rust.ast.RustAST.RustStmt.RLet("mutated", false, null,
 						reflaxe.rust.ast.RustAST.RustExpr.ELitInt(0)), statementPos),
 					RustOriginTools.sourceStatement(reflaxe.rust.ast.RustAST.RustStmt.RLet("borrowed_mut", false,
@@ -184,8 +304,14 @@ class RustSourceMapContract {
 		var plain = RustASTPrinter.printFile(transformed);
 		expect(plain.indexOf("let staged: i32 = 7;") >= 0,
 			"statement cleanup did not preserve a source-wrapped declaration");
+		expect(plain.indexOf("let block_staged: i32 = {") >= 0,
+			"statement cleanup did not collapse a source-wrapped block assignment");
 		expect(plain.indexOf("let borrow_alias") == -1 && plain.indexOf("consume(owner.borrow());") >= 0,
 			"borrow tightening did not preserve a source-wrapped consumer");
+		expect(plain.indexOf("holder.storage.borrow()") >= 0 && plain.indexOf("let tail_borrow") == -1,
+			"borrow tightening did not inline a source-wrapped block-tail alias");
+		expect(plain.indexOf("let mut guard") >= 0,
+			"mutation inference did not recognize an origin around a borrow_mut callee");
 		expect(plain.indexOf("\"payload\".clone()") == -1,
 			"clone elision did not preserve a source-wrapped call");
 		expect(plain.indexOf("let mut mutated = 0;") >= 0,
@@ -218,6 +344,35 @@ class RustSourceMapContract {
 			case MappedCompilerGenerated(_):
 				throw "source statement was mislabeled compiler-generated";
 		}
+		var stagedValueStart = plain.indexOf("7;", stagedStart);
+		expectSourceOrigin(RustSourceMap.lookup(decoded,
+			RustcGeneratedSpan.at("src/contract.rs", stagedValueStart, stagedValueStart + 1), plain), expressionPos,
+			"cleanup discarded the assignment expression origin moved into a let initializer");
+		var blockStagedStart = plain.indexOf("let block_staged");
+		var blockValueStart = plain.indexOf("9", blockStagedStart);
+		expectSourceOrigin(RustSourceMap.lookup(decoded,
+			RustcGeneratedSpan.at("src/contract.rs", blockValueStart, blockValueStart + 1), plain), expressionPos,
+			"block-assignment collapse discarded the final assignment expression origin");
+		var immediateBorrowStart = plain.indexOf("owner.borrow");
+		expectSourceOrigin(RustSourceMap.lookup(decoded,
+			RustcGeneratedSpan.at("src/contract.rs", immediateBorrowStart, immediateBorrowStart + "owner".length), plain),
+			itemPos, "immediate borrow-alias inlining discarded receiver provenance");
+		expectSourceOrigin(RustSourceMap.lookup(decoded,
+			RustcGeneratedSpan.at("src/contract.rs", immediateBorrowStart, immediateBorrowStart + "owner.borrow".length), plain),
+			expressionPos, "immediate borrow-alias inlining discarded initializer provenance");
+		expectSourceOrigin(RustSourceMap.lookup(decoded,
+			RustcGeneratedSpan.at("src/contract.rs", immediateBorrowStart, immediateBorrowStart + "owner.borrow()".length), plain),
+			rawPos, "immediate borrow-alias inlining discarded complete-call provenance");
+		var tailBorrowStart = plain.indexOf("holder.storage.borrow");
+		expectSourceOrigin(RustSourceMap.lookup(decoded,
+			RustcGeneratedSpan.at("src/contract.rs", tailBorrowStart, tailBorrowStart + "holder.storage".length), plain),
+			itemPos, "block-tail borrow-alias inlining discarded receiver provenance");
+		expectSourceOrigin(RustSourceMap.lookup(decoded,
+			RustcGeneratedSpan.at("src/contract.rs", tailBorrowStart, tailBorrowStart + "holder.storage.borrow".length), plain),
+			expressionPos, "block-tail borrow-alias inlining discarded callee provenance");
+		expectSourceOrigin(RustSourceMap.lookup(decoded,
+			RustcGeneratedSpan.at("src/contract.rs", tailBorrowStart, tailBorrowStart + "holder.storage.borrow()".length), plain),
+			rawPos, "block-tail borrow-alias inlining discarded complete-call provenance");
 
 		var markerStart = plain.indexOf("// generated source-map marker");
 		var markerHit = RustSourceMap.lookup(decoded,
@@ -248,7 +403,110 @@ class RustSourceMapContract {
 			"decoder normalized a traversing source path instead of rejecting it");
 		expectThrows(() -> RustSourceMap.decode(encodedFirst.split("generated-file-marker").join("invented-reason")),
 			"decoder accepted an unknown compiler-generated reason");
+
+		var coordinateCode = "é\nx\n";
+		var coordinatePrinted = RustPrintedSourceFile.of("src/coordinate.rs", coordinateCode, [
+			RustPrintedSourceMapping.at(RustSourceMapNodeKind.Expression, RustOrigin.OriginHaxeSource(expressionPos), 0, 0, 2),
+			RustPrintedSourceMapping.at(RustSourceMapNodeKind.Expression, RustOrigin.OriginHaxeSource(expressionPos), 0, 0, 4),
+			RustPrintedSourceMapping.at(RustSourceMapNodeKind.Expression, RustOrigin.OriginHaxeSource(expressionPos), 0, 3, 5)
+		]);
+		var coordinateEncoded = RustSourceMap.encode([coordinatePrinted], Sys.getCwd());
+		function expectCoordinateMutationRejected(needle:String, replacement:String, startByte:Int, endByte:Int,
+				message:String):Void {
+			var mutated = RustSourceMap.decode(replaceExactlyOnce(coordinateEncoded, needle, replacement));
+			expect(RustSourceMap.lookup(mutated,
+				RustcGeneratedSpan.at("src/coordinate.rs", startByte, endByte), coordinateCode) == null, message);
+		}
+		expectCoordinateMutationRejected(
+			'"generated":{"endByte":2,"endColumn":3,"startLine":1,"startByte":0,"endLine":1,"startColumn":1}',
+			'"generated":{"endByte":2,"endColumn":2,"startLine":1,"startByte":0,"endLine":1,"startColumn":1}',
+			0, 1, "lookup accepted a UTF-8 end column that contradicts the exact generated bytes");
+		expectCoordinateMutationRejected(
+			'"generated":{"endByte":4,"endColumn":2,"startLine":1,"startByte":0,"endLine":2,"startColumn":1}',
+			'"generated":{"endByte":4,"endColumn":2,"startLine":2,"startByte":0,"endLine":2,"startColumn":1}',
+			2, 4, "lookup accepted a start line that contradicts the exact generated bytes");
+		expectCoordinateMutationRejected(
+			'"generated":{"endByte":4,"endColumn":2,"startLine":1,"startByte":0,"endLine":2,"startColumn":1}',
+			'"generated":{"endByte":4,"endColumn":2,"startLine":1,"startByte":0,"endLine":3,"startColumn":1}',
+			2, 4, "lookup accepted an end line that contradicts the exact generated bytes");
+		expectCoordinateMutationRejected('"lineCount":3', '"lineCount":99', 0, 1,
+			"lookup accepted a line count that contradicts the exact generated bytes");
+
+		function assertManyChunkAggregation(chunkCount:Int):Void {
+			var manyChunks:Array<RustPrintedSourceFile> = [];
+			for (_ in 0...chunkCount) {
+				manyChunks.push(RustPrintedSourceFile.of("src/many.rs", "x", [
+					RustPrintedSourceMapping.at(RustSourceMapNodeKind.Expression,
+						RustOrigin.OriginHaxeSource(expressionPos), 0, 0, 1)
+				]));
+			}
+			var manyDocument = RustSourceMap.decode(RustSourceMap.encode(manyChunks, Sys.getCwd()));
+			var manyFile = manyDocument.fileAt(0);
+			var expectedManyCode = [for (_ in 0...chunkCount) "x"].join("\n\n");
+			expect(manyFile.byteLength == haxe.io.Bytes.ofString(expectedManyCode).length,
+				'same-file $chunkCount-chunk aggregation changed exact output byte length');
+			expect(manyFile.contentHash == haxe.crypto.Sha256.make(haxe.io.Bytes.ofString(expectedManyCode)).toHex(),
+				'same-file $chunkCount-chunk aggregation changed exact output content hash');
+			expect(manyFile.mappingCount == chunkCount,
+				'same-file $chunkCount-chunk aggregation changed mapping count or deduplication');
+			expect(manyFile.mappingAt(0).generated.startByte == 0,
+				'same-file $chunkCount-chunk aggregation shifted the first mapping');
+			var last = manyFile.mappingAt(chunkCount - 1).generated;
+			expect(last.startByte == (chunkCount - 1) * 3 && last.endByte == expectedManyCode.length,
+				'same-file $chunkCount-chunk aggregation shifted the final mapping incorrectly');
+		}
+		assertManyChunkAggregation(1000);
+		assertManyChunkAggregation(10000);
 		Sys.print(encodedFirst);
+	}
+
+	/** Emits a minimal rustc-backed contract for every origin placement around `borrow_mut()`. */
+	public static function printMutableGuardRegression():Void {
+		var itemPos = sourcePosition("SOURCE_MAP_ITEM_ORIGIN");
+		var statementPos = sourcePosition("SOURCE_MAP_STATEMENT_ORIGIN");
+		var expressionPos = sourcePosition("SOURCE_MAP_EXPRESSION_ORIGIN");
+		var statements:Array<reflaxe.rust.ast.RustAST.RustStmt> = [];
+		function target(names:Array<String>) {
+			return reflaxe.rust.ast.RustAST.RustExpr.EPath(RustPath.relative([
+				for (name in names) RustPathSegment.plain(name)
+			]));
+		}
+		var variants = ["call_origin", "callee_origin", "receiver_origin", "all_origins"];
+		for (index in 0...variants.length) {
+			var cellName = "cell_" + variants[index];
+			var guardName = "guard_" + variants[index];
+			statements.push(reflaxe.rust.ast.RustAST.RustStmt.RLet(cellName, false, null,
+				reflaxe.rust.ast.RustAST.RustExpr.ECall(target(["std", "cell", "RefCell", "new"]), [
+					reflaxe.rust.ast.RustAST.RustExpr.ELitInt(0)
+				])));
+			var receiver = index == 2 || index == 3 ? RustOriginTools.sourceExpression(local(cellName), itemPos) : local(cellName);
+			var callee:reflaxe.rust.ast.RustAST.RustExpr = reflaxe.rust.ast.RustAST.RustExpr.EField(receiver,
+				RustMember.plain("borrow_mut"));
+			if (index == 1 || index == 3)
+				callee = RustOriginTools.sourceExpression(callee, expressionPos);
+			var call:reflaxe.rust.ast.RustAST.RustExpr = reflaxe.rust.ast.RustAST.RustExpr.ECall(callee, []);
+			if (index == 0 || index == 3)
+				call = RustOriginTools.sourceExpression(call, statementPos);
+			statements.push(reflaxe.rust.ast.RustAST.RustStmt.RLet(guardName, false, null, call));
+			statements.push(reflaxe.rust.ast.RustAST.RustStmt.RSemi(reflaxe.rust.ast.RustAST.RustExpr.EAssign(
+				reflaxe.rust.ast.RustAST.RustExpr.EUnary("*", local(guardName)),
+				reflaxe.rust.ast.RustAST.RustExpr.ELitInt(index + 1))));
+			statements.push(reflaxe.rust.ast.RustAST.RustStmt.RSemi(reflaxe.rust.ast.RustAST.RustExpr.EMacroCall("assert_eq", [
+				reflaxe.rust.ast.RustAST.RustExpr.EUnary("*", local(guardName)),
+				reflaxe.rust.ast.RustAST.RustExpr.ELitInt(index + 1)
+			])));
+		}
+		var file:RustFile = {
+			items: [reflaxe.rust.ast.RustAST.RustItem.RFn({
+				name: "main",
+				isPub: false,
+				generics: reflaxe.rust.ast.RustAST.RustGenericParameters.empty(),
+				args: [],
+				ret: reflaxe.rust.ast.RustAST.RustType.RUnit,
+				body: {stmts: statements, tail: null}
+			})]
+		};
+		Sys.print(RustASTPrinter.printFile(RustASTTransformer.transform(file, context())));
 	}
 
 	/** Proves that policy traversal cannot hide a forbidden path below all three origin wrappers. */

@@ -74,6 +74,11 @@ internal diagnostic bridge for the still-open rustc-presentation work. Consumers
 `schemaVersion`, `generator`, exact generated filename, and content hash and must expect lookup to
 fail after rustfmt or any manual generated-source edit.
 
+The closed compiler-generated reason vocabulary is owned by
+[`rust-source-map-policy.json`](../rust-source-map-policy.json). Its generator keeps the typed Haxe
+decoder and JSON Schema enum byte-for-byte synchronized; the source-map and policy guards reject a
+hand-edited consumer.
+
 Exact whitespace, rustfmt output, temporary order, private generated helper names, internal `hxrt`
 layout, and the `__hx_tests` wrapper name/layout remain private. The public `@:rustTest` metadata
 contract is separate from its private generated wrapper.

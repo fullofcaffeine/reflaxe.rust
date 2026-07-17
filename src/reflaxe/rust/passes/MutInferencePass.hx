@@ -510,10 +510,21 @@ class MutInferencePass implements RustPass {
 		}
 	}
 
+	/**
+		Recognizes a `borrow_mut()` initializer without letting provenance affect mutability.
+
+		Why / What / How
+		- Rust requires the guard binding itself to be mutable before `DerefMut` can be used.
+		- Origins may independently wrap the complete call, its member expression, or its receiver.
+		- Inspect the call and callee through the shared transparent helper while returning the untouched AST.
+	**/
 	function exprProducesMutableGuard(expr:RustExpr):Bool {
 		return switch (RustOriginTools.withoutExpressionOrigin(expr)) {
-			case ECall(EField(_, member), []) if (RustPathAnalysis.matchesPlainMember(member, "borrow_mut")):
-				true;
+			case ECall(functionExpression, []):
+				switch (RustOriginTools.withoutExpressionOrigin(functionExpression)) {
+					case EField(_, member) if (RustPathAnalysis.matchesPlainMember(member, "borrow_mut")): true;
+					case _: false;
+				}
 			case _:
 				false;
 		};

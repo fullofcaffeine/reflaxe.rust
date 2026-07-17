@@ -254,13 +254,14 @@ class StatementCleanupPass implements RustPass {
 									if (name != null && pending != null) {
 										pendingDecls = [for (decl in pendingDecls) if (decl.name != name) decl];
 										var mutable = hasDirectAssignmentAfter(stmts, tail, i + 1, name);
+										var initializer = transferAssignmentOrigins(stmt, expr, rhs);
 										collapsed = RustOriginTools.replaceStatementPreservingOrigins(pending.template,
-											RLet(name, mutable, pending.ty, rhs));
+											RLet(name, mutable, pending.ty, initializer));
 									}
 								case _:
 							}
 						case EBlock(block):
-							collapsed = collapsePendingBlockAssignment(block, pendingDecls, stmts, tail, i);
+							collapsed = collapsePendingBlockAssignment(stmt, expr, block, pendingDecls, stmts, tail, i);
 						case _:
 					}
 				case _:
@@ -288,7 +289,8 @@ class StatementCleanupPass implements RustPass {
 		return {stmts: out, tail: tail};
 	}
 
-	function collapsePendingBlockAssignment(block:RustBlock, pendingDecls:Array<{name:String, ty:Null<RustType>, template:RustStmt}>, stmts:Array<RustStmt>, tail:Null<RustExpr>,
+	function collapsePendingBlockAssignment(containerStatement:RustStmt, containerExpression:RustExpr, block:RustBlock,
+			pendingDecls:Array<{name:String, ty:Null<RustType>, template:RustStmt}>, stmts:Array<RustStmt>, tail:Null<RustExpr>,
 			currentIndex:Int):Null<RustStmt> {
 		if (block.stmts.length == 0)
 			return null;
@@ -300,16 +302,16 @@ class StatementCleanupPass implements RustPass {
 		}
 
 		var lastStmt = block.stmts[block.stmts.length - 1];
-		var assignment:Null<{name:String, rhs:RustExpr}> = null;
+		var assignment:Null<{name:String, rhs:RustExpr, statement:RustStmt, expression:RustExpr}> = null;
 		switch (RustOriginTools.withoutStatementOrigin(lastStmt)) {
 			case RSemi(expr) | RExpr(expr, true):
 				switch (RustOriginTools.withoutExpressionOrigin(expr)) {
 					case EAssign(lhs, rhs):
 						switch (RustOriginTools.withoutExpressionOrigin(lhs)) {
-							case EPath(path):
-								var name = RustPathAnalysis.localIdentifierName(path);
-								if (name != null)
-									assignment = {name: name, rhs: rhs};
+						case EPath(path):
+							var name = RustPathAnalysis.localIdentifierName(path);
+							if (name != null)
+								assignment = {name: name, rhs: rhs, statement: lastStmt, expression: expr};
 							case _:
 						}
 					case _:
@@ -344,16 +346,33 @@ class StatementCleanupPass implements RustPass {
 		}
 
 		var mutable = hasDirectAssignmentAfter(stmts, tail, currentIndex + 1, assignment.name);
-		var initExpr = if (block.stmts.length == 1 && block.tail == null) {
-			assignment.rhs;
+		var assignmentTail = transferAssignmentOrigins(assignment.statement, assignment.expression, assignment.rhs);
+		var initCore = if (block.stmts.length == 1 && block.tail == null) {
+			assignmentTail;
 		} else {
 			EBlock({
 				stmts: block.stmts.slice(0, block.stmts.length - 1),
-				tail: assignment.rhs
+				tail: assignmentTail
 			});
 		};
+		var initExpr = RustOriginTools.transferStatementOriginsToExpression(containerStatement,
+			RustOriginTools.replaceExpressionPreservingOrigins(containerExpression, initCore));
 		return RustOriginTools.replaceStatementPreservingOrigins(pending.template,
 			RLet(assignment.name, mutable, pending.ty, initExpr));
+	}
+
+	/**
+		Transfers the provenance of a removed assignment shell to its surviving initializer bytes.
+
+		Why / What / How
+		- Declaration folding deletes both the assignment statement and `EAssign` expression nodes.
+		- Rebuild the assignment expression's origin chain around `rhs`, then convert the surrounding
+		  statement chain to expression origins. Existing RHS origins remain deepest and therefore win
+		  deterministic lookup ties.
+	**/
+	function transferAssignmentOrigins(statement:RustStmt, expression:RustExpr, rhs:RustExpr):RustExpr {
+		return RustOriginTools.transferStatementOriginsToExpression(statement,
+			RustOriginTools.replaceExpressionPreservingOrigins(expression, rhs));
 	}
 
 	function hasDirectAssignmentAfter(stmts:Array<RustStmt>, tail:Null<RustExpr>, startIndex:Int, name:String):Bool {

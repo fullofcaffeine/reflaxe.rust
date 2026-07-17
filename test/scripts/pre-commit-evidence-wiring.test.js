@@ -31,6 +31,8 @@ requireFragment('test:rust-structural-member-closures', 'structural Rust member 
 requireFragment('test:rust-structural-items', 'structural Rust item contract')
 requireFragment('test:rust-structural-trait-impls', 'structural Rust trait and impl contract')
 requireFragment('test:rust-source-map', 'deterministic Rust source-map contract')
+requireFragment('rust-source-map-policy\\.json', 'source-map generated-reason policy trigger')
+requireFragment('rust-source-map-policy\\.js', 'source-map policy generator trigger')
 requireFragment('END REFLAXE.RUST REPOSITORY PRE-COMMIT', 'explicit repository-hook boundary')
 requireFragment('cmp -s "$ROOT_DIR/scripts/hooks/pre-commit"', 'installed-hook freshness check')
 requireFragment('npm run hooks:install', 'installed-hook refresh guidance')

@@ -123,7 +123,7 @@ class BorrowScopeTighteningPass implements RustPass {
 				} else {
 					var aliasCount = countPathUsesInExpr(rewrittenTail, alias.name);
 					if (aliasCount == 1) {
-						rewrittenTail = replacePathInExpr(rewrittenTail, alias.name, borrowCall(alias.target, alias.method));
+						rewrittenTail = replacePathInExpr(rewrittenTail, alias.name, alias.initializer);
 						rewrittenStmts.pop();
 						recordApplied("borrow_scope_tightening.applied.tail_alias_inline");
 						recordLoopApplied(inLoopContext, "borrow_scope_tightening_tail_alias_inline");
@@ -235,7 +235,7 @@ class BorrowScopeTighteningPass implements RustPass {
 				var alias = extractBorrowAlias(current);
 				if (alias != null) {
 					var nextStmt = stmts[i + 1];
-					var tightened = rewriteConsumerStmt(nextStmt, alias.name, alias.target, alias.method);
+					var tightened = rewriteConsumerStmt(nextStmt, alias.name, alias.initializer);
 					if (tightened == null) {
 						recordSkipped("borrow_scope_tightening.skipped.consumer_not_rewritable");
 						recordLoopSkipped(inLoopContext, "consumer_not_rewritable");
@@ -298,11 +298,10 @@ class BorrowScopeTighteningPass implements RustPass {
 		return false;
 	}
 
-	function rewriteConsumerStmt(stmt:RustStmt, aliasName:String, target:RustExpr, method:RustMember):Null<RustStmt> {
-		var replacement = borrowCall(target, method);
+	function rewriteConsumerStmt(stmt:RustStmt, aliasName:String, replacement:RustExpr):Null<RustStmt> {
 		return switch (stmt) {
 			case SOrigin(origin, inner):
-				var rewritten = rewriteConsumerStmt(inner, aliasName, target, method);
+				var rewritten = rewriteConsumerStmt(inner, aliasName, replacement);
 				rewritten == null ? null : SOrigin(origin, rewritten);
 			case RSemi(expr):
 				rewriteConsumerExprStmt(expr, aliasName, replacement, e -> RSemi(e));
@@ -352,7 +351,15 @@ class BorrowScopeTighteningPass implements RustPass {
 		};
 	}
 
-	function extractBorrowAlias(stmt:RustStmt):Null<{name:String, target:RustExpr, method:RustMember}> {
+	/**
+		Separates borrow-safety analysis from the exact expression moved into a consumer.
+
+		Why / What / How
+		- `target` and `method` are the structural facts needed for the tail drop-order policy.
+		- `initializer` retains the complete call, callee, receiver, and nested origin wrappers so inlining
+		  moves the original bytes and provenance instead of reconstructing an unowned lookalike call.
+	**/
+	function extractBorrowAlias(stmt:RustStmt):Null<{name:String, target:RustExpr, method:RustMember, initializer:RustExpr}> {
 		return switch (RustOriginTools.withoutStatementOrigin(stmt)) {
 			case RLet(name, mutable, _, expr):
 				if (mutable || expr == null) {
@@ -364,7 +371,7 @@ class BorrowScopeTighteningPass implements RustPass {
 								case EField(target, method)
 									if (RustPathAnalysis.matchesPlainMember(method, "borrow")
 										|| RustPathAnalysis.matchesPlainMember(method, "borrow_mut")):
-									{name: name, target: target, method: method};
+									{name: name, target: target, method: method, initializer: expr};
 								case _: null;
 							}
 						case _:
@@ -374,10 +381,6 @@ class BorrowScopeTighteningPass implements RustPass {
 			case _:
 				null;
 		};
-	}
-
-	inline function borrowCall(target:RustExpr, method:RustMember):RustExpr {
-		return ECall(EField(target, method), []);
 	}
 
 	function countPathUsesInExpr(expr:RustExpr, pathName:String):Int {

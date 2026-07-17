@@ -220,6 +220,11 @@ private typedef FamilyStdPinReportSnapshot = {
 	var migrationMode:String;
 };
 
+private typedef WholeScrutineeAliasRewrite = {
+	var expression:RustExpr;
+	var erasePatternBindings:Bool;
+};
+
 /**
  * RustCompiler
  *
@@ -10591,12 +10596,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						  and otherwise retain the normal runtime unwrap for genuinely nullable values.
 					**/
 					function unwrapKnownSome(value:RustExpr):Null<RustExpr> {
-						return switch (value) {
-							case ECall(EPath(path), [present]) if (rustPathIsRelative(path, ["Some"])): present;
-							case EBlock(block) if (block.tail != null): {
-									var present = unwrapKnownSome(block.tail);
-									present == null ? null : EBlock({stmts: block.stmts, tail: present});
-								}
+						return switch (structuralTailCore(value)) {
+							case ECall(EPath(path), [present]) if (rustPathIsRelative(path, ["Some"])):
+								replaceStructuralTailCore(value, present);
 							case _: null;
 						}
 					}
@@ -11098,6 +11100,41 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
+		Finds and replaces the structural result at the end of an origin-wrapped expression block.
+
+		Why
+		- Typed block lowering now attaches `EOrigin` to source tails. Lowering decisions that inspect only
+		  direct `EBlock`/`ECall` shapes can therefore change Rust output merely because provenance exists.
+		- Peeling wrappers for recognition without rebuilding them would fix code generation while silently
+		  discarding the mapping contract.
+
+		What
+		- `structuralTailCore` follows any number of origin wrappers and non-empty block tails.
+		- `replaceStructuralTailCore` rebuilds that exact wrapper/block path around a replacement, retaining
+		  every preceding statement in order.
+
+		How
+		- Use the pair only for decisions whose semantics are defined by a final value. Do not use it to skip
+		  block statements or cross a block with no tail.
+	**/
+	function structuralTailCore(expression:RustExpr):RustExpr {
+		return switch (expression) {
+			case EOrigin(_, inner): structuralTailCore(inner);
+			case EBlock(block) if (block.tail != null): structuralTailCore(block.tail);
+			case _: expression;
+		};
+	}
+
+	function replaceStructuralTailCore(expression:RustExpr, replacement:RustExpr):RustExpr {
+		return switch (expression) {
+			case EOrigin(origin, inner): EOrigin(origin, replaceStructuralTailCore(inner, replacement));
+			case EBlock(block) if (block.tail != null):
+				EBlock({stmts: block.stmts, tail: replaceStructuralTailCore(block.tail, replacement)});
+			case _: replacement;
+		};
+	}
+
+	/**
 		Reuses an owned match value through a Rust alias pattern without losing source provenance.
 
 		Why
@@ -11108,33 +11145,84 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		  the replacement expression.
 
 		What
-		- Recognizes a direct whole-scrutinee arm or a binding-scaffolding block whose tail is that local.
-		- Replaces the complete arm with the alias consumed by a `name @ Pattern` arm, which also removes
-		  payload-binding statements made obsolete when the pattern bindings are erased.
+		- Recognizes a direct whole-scrutinee arm or a block whose tail still names that outer local.
+		- Returns both the rewritten expression and whether payload bindings are proven safe to erase.
 
 		How
 		- Origin wrappers are transparent for recognition and are rebuilt around the alias expression.
+		- Executable block statements are always retained. Any reference/shadow of the scrutinee rejects
+		  the rewrite.
+		- Only a structurally proven no-op `let _ = <pattern binding>` discard may be removed. Any retained
+		  payload use rejects aliasing because moving both an owned enum and its payload is invalid for
+		  non-`Copy` generic values.
 		- Generic and enum-index switches share this one helper so their ownership behavior cannot drift.
 	**/
-	function aliasWholeScrutineeArmExpr(armExpr:RustExpr, pathName:String, aliasName:String):Null<RustExpr> {
-		return switch (RustOriginTools.withoutExpressionOrigin(armExpr)) {
-			case EPath(path) if (RustPathAnalysis.localIdentifierName(path) == pathName):
-				RustOriginTools.replaceExpressionPreservingOrigins(armExpr, rustSingleExpr(aliasName));
-			case EBlock(block):
-				if (block.tail == null) {
-					null;
-				} else {
-					switch (RustOriginTools.withoutExpressionOrigin(block.tail)) {
-						case EPath(path) if (RustPathAnalysis.localIdentifierName(path) == pathName):
-							var aliasedTail = RustOriginTools.replaceExpressionPreservingOrigins(block.tail, rustSingleExpr(aliasName));
-							RustOriginTools.replaceExpressionPreservingOrigins(armExpr, aliasedTail);
-						case _:
-							null;
+	function aliasWholeScrutineeArmExpr(armExpr:RustExpr, pathName:String, aliasName:String,
+			pattern:RustPattern):Null<WholeScrutineeAliasRewrite> {
+		var patternBindings = RustPathAnalysis.patternBindingNames(pattern);
+
+		function isDiscardedBindingScaffold(statement:RustStmt):Bool {
+			return switch (RustOriginTools.withoutStatementOrigin(statement)) {
+				case RLet("_", false, null, initializer) if (initializer != null):
+					switch (RustOriginTools.withoutExpressionOrigin(initializer)) {
+						case EPath(path):
+							var name = RustPathAnalysis.localIdentifierName(path);
+							name != null && patternBindings.indexOf(name) >= 0;
+						case _: false;
 					}
-				}
-			case _:
-				null;
+				case _: false;
+			};
 		}
+
+		function retainedStatementIsUnsafe(statement:RustStmt):Bool {
+			if (RustPathAnalysis.statementContainsLocalSpelling(statement, pathName))
+				return true;
+			for (binding in patternBindings) {
+				if (RustPathAnalysis.statementContainsLocalSpelling(statement, binding))
+					return true;
+			}
+			return false;
+		}
+
+		function rewriteTail(expression:RustExpr):Null<RustExpr> {
+			return switch (expression) {
+				case EOrigin(origin, inner):
+					var rewritten = rewriteTail(inner);
+					rewritten == null ? null : EOrigin(origin, rewritten);
+				case EBlock(block):
+					if (block.tail == null) {
+						null;
+					} else {
+						var retained:Array<RustStmt> = [];
+						var safe = true;
+						for (statement in block.stmts) {
+							if (isDiscardedBindingScaffold(statement))
+								continue;
+							if (retainedStatementIsUnsafe(statement)) {
+								safe = false;
+								break;
+							}
+							retained.push(statement);
+						}
+						if (!safe) {
+							null;
+						} else {
+							var rewrittenTail = rewriteTail(block.tail);
+							rewrittenTail == null ? null : EBlock({stmts: retained, tail: rewrittenTail});
+						}
+					}
+				case EPath(path) if (RustPathAnalysis.localIdentifierName(path) == pathName):
+					rustSingleExpr(aliasName);
+				case _:
+					null;
+			};
+		}
+
+		var rewritten = rewriteTail(armExpr);
+		return rewritten == null ? null : {
+			expression: rewritten,
+			erasePatternBindings: patternBindings.length > 0
+		};
 	}
 
 	/**
@@ -11341,10 +11429,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var binds = enumParamBindsForCase(c.values);
 			var armExpr = withEnumParamBinds(binds, () -> compileSwitchArmExpr(c.expr, expectedReturn));
 			if (scrutineeRustPathName != null && patterns.length == 1) {
-				var aliased = aliasWholeScrutineeArmExpr(armExpr, scrutineeRustPathName, "__hx_match_value");
+				var aliased = aliasWholeScrutineeArmExpr(armExpr, scrutineeRustPathName, "__hx_match_value", pat);
 				if (aliased != null) {
-					pat = PAlias("__hx_match_value", erasePatternBindings(pat));
-					armExpr = aliased;
+					if (aliased.erasePatternBindings)
+						pat = erasePatternBindings(pat);
+					pat = PAlias("__hx_match_value", pat);
+					armExpr = aliased.expression;
 				}
 			}
 			arms.push({pat: pat, expr: armExpr});
@@ -11465,10 +11555,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var binds = singleEf != null ? enumParamBindsForSingleVariant(singleEf) : null;
 			var armExpr = withEnumParamBinds(binds, () -> compileSwitchArmExpr(c.expr, expectedReturn));
 			if (scrutineeRustPathName != null && patterns.length == 1) {
-				var aliased = aliasWholeScrutineeArmExpr(armExpr, scrutineeRustPathName, "__hx_match_value");
+				var aliased = aliasWholeScrutineeArmExpr(armExpr, scrutineeRustPathName, "__hx_match_value", pat);
 				if (aliased != null) {
-					pat = PAlias("__hx_match_value", erasePatternBindings(pat));
-					armExpr = aliased;
+					if (aliased.erasePatternBindings)
+						pat = erasePatternBindings(pat);
+					pat = PAlias("__hx_match_value", pat);
+					armExpr = aliased.expression;
 				}
 			}
 			arms.push({pat: pat, expr: armExpr});
@@ -12183,13 +12275,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var specialized = specializeAncestorType(currentClassType, currentMethodOwnerType, sourceType);
 			if (TypeTools.toString(specialized) == TypeTools.toString(sourceType))
 				return false;
-			return switch (expr) {
+			return switch (structuralTailCore(expr)) {
 				// Inherited typed locals and field reads have already been declared/lowered as HxString
 				// after ancestor substitution. Literal/format/native String expressions are deliberately
 				// excluded because they still need the ordinary representation bridge.
 				case EPath(_): true;
 				case ECall(EField(_, member), []) if (RustPathAnalysis.matchesPlainMember(member, "clone")): true;
-				case EBlock(block) if (block.tail != null): isSpecializedInheritedHxStringExpr(block.tail, sourceType);
 				case _: false;
 			}
 		}
@@ -14898,19 +14989,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					}
 
 					function isDynRefNew(e:RustExpr):Bool {
-						var cur = e;
-						while (true) {
-							switch (cur) {
-								case EBlock(b):
-									if (b.tail == null)
-										return false;
-									cur = b.tail;
-									continue;
-								case _:
-							}
-							break;
-						}
-						return switch (cur) {
+						return switch (structuralTailCore(e)) {
 							case ECall(EPath(path), _)
 								if (rustPathIsCrate(path, ["HxDynRef", "new"]) || rustPathIsRelative(path, ["hxrt", "cell", "HxDynRef", "new"])): true;
 							case _: false;

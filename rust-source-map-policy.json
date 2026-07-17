@@ -1,0 +1,28 @@
+{
+  "generatedReasons": [
+    {
+      "constructor": "GeneratedFileMarker",
+      "id": "generated-file-marker"
+    },
+    {
+      "constructor": "ModuleScaffolding",
+      "id": "module-scaffolding"
+    },
+    {
+      "constructor": "LoweringScaffolding",
+      "id": "lowering-scaffolding"
+    },
+    {
+      "constructor": "StaticStorage",
+      "id": "static-storage"
+    },
+    {
+      "constructor": "DefaultValueFallback",
+      "id": "default-value-fallback"
+    },
+    {
+      "constructor": "UnsupportedFallback",
+      "id": "unsupported-fallback"
+    }
+  ]
+}

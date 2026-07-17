@@ -278,7 +278,8 @@
         "the default runtime-backed crate includes ./hxrt and its path dependency",
         "documented Cargo subcommands and flags are forwarded and non-zero Cargo status fails Haxe compilation",
         "the four admitted JSON report filenames are emitted at the crate root when enabled",
-        "rust-source-map.json is emitted at the crate root and binds path-private Haxe origins to exact content-hashed generated Rust bytes"
+        "rust-source-map.json is emitted at the crate root and binds path-private Haxe origins to exact content-hashed generated Rust bytes",
+        "compiler-generated source-map reasons come from rust-source-map-policy.json and are generated into both the typed Haxe decoder and JSON Schema"
       ],
       "evidenceFiles": [
         "test/snapshot/portable_profile_smoke/intended/Cargo.toml",
@@ -287,6 +288,8 @@
         "test/snapshot/portable_profile_smoke/intended/src/main.rs",
         "scripts/ci/check-cargo-failure-propagation.sh",
         "docs/schemas/rust-source-map-v1.schema.json",
+        "rust-source-map-policy.json",
+        "scripts/ci/rust-source-map-policy.js",
         "test/scripts/rust-source-map.test.js"
       ],
       "validationCommands": [
@@ -294,6 +297,7 @@
         "npm run test:rust-toolchain-floor",
         "npm run test:fresh-cargo-resolution",
         "npm run test:cargo-failure-propagation",
+        "npm run guard:rust-source-map-policy",
         "npm run test:rust-source-map"
       ],
       "exclusions": [

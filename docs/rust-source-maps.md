@@ -34,6 +34,12 @@ ranges. A mapping contains:
 - a half-open generated UTF-8 byte range plus one-based line and UTF-8 byte-column coordinates;
 - either an exact Haxe byte/line range or a closed compiler-generated reason.
 
+The generated-reason list has one machine-readable owner:
+[`rust-source-map-policy.json`](../rust-source-map-policy.json). Run
+`npm run docs:sync:rust-source-map-policy` after changing it. That generator updates both the Haxe
+enum/decoder and the JSON Schema enum; `npm run guard:rust-source-map-policy` rejects either consumer
+when it is stale.
+
 Source filenames are repository-relative when they belong to the project. Sources resolved from a
 known Haxe classpath use a `classpath/…` identity. Absolute paths and `.` / `..` path components are
 rejected, so the artifact does not expose a checkout location and remains repeatable across clean
@@ -47,13 +53,18 @@ The typed internal consumer in `reflaxe.rust.RustSourceMap` requires all three i
 2. rustc's half-open UTF-8 byte span;
 3. the complete current generated file content.
 
-Lookup first verifies the content length and SHA-256. It then chooses the smallest containing
-generated range, the most specific structural node kind, and finally the deepest origin wrapper.
-It never falls back to a basename and never uses a changed file's old line numbers.
+Lookup first verifies the content length and SHA-256. It rebuilds a byte index from those exact
+bytes and rejects the complete file if its recorded line count or any mapping endpoint disagrees
+with the byte-derived line and column. It then chooses the smallest containing generated range, the
+most specific structural node kind, and finally the deepest origin wrapper. It never falls back to
+a basename and never uses a changed file's old line numbers.
 
 Files emitted from multiple Haxe types are aggregated with the same `\n\n` separator and in the
 same order as Reflaxe's file-per-module writer. Mapping-aware printing is also contract-tested to
 produce byte-for-byte the same Rust as ordinary printing.
+
+Aggregation stores chunks plus a running UTF-8 byte length. It shifts each chunk's mappings once
+and joins the text once, avoiding repeated rescans and copies of the complete accumulated module.
 
 ## Formatting boundary
 
@@ -80,6 +91,7 @@ The focused contract is:
 npm run test:rust-source-map
 ```
 
-It runs the production transformer pipeline, mutation tests for unsafe paths and stale content,
-two byte-identical compilations, a UTF-8 fixture, schema validation, no-`hxrt` wrapper traversal,
-and a warning-clean Cargo check.
+It runs the production transformer pipeline, mutation tests for unsafe paths, stale content, and
+dishonest UTF-8 coordinates, two byte-identical compilations, schema-policy parity, no-`hxrt`
+wrapper traversal, 1,000/10,000-chunk aggregation checks, rustc-backed mutable-guard inference,
+and a warning-clean Cargo build plus runtime behavior checks.
