@@ -41,6 +41,7 @@ import reflaxe.rust.ast.RustAST.RustGenericParameters;
 import reflaxe.rust.ast.RustAST.RustGeneratedOriginReason;
 import reflaxe.rust.ast.RustAST.RustIdentifier;
 import reflaxe.rust.ast.RustAST.RustItem;
+import reflaxe.rust.ast.RustAST.RustItemGroup;
 import reflaxe.rust.ast.RustAST.RustImpl;
 import reflaxe.rust.ast.RustAST.RustLifetime;
 import reflaxe.rust.ast.RustAST.RustMatchArm;
@@ -50,10 +51,7 @@ import reflaxe.rust.ast.RustAST.RustOriginTools;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPathSegment;
 import reflaxe.rust.ast.RustAST.RustPattern;
-import reflaxe.rust.ast.RustAST.RustCompilerRawReason;
-import reflaxe.rust.ast.RustAST.RustMetadataRawReason;
 import reflaxe.rust.ast.RustAST.RustRawCode;
-import reflaxe.rust.ast.RustAST.RustSourceRawReason;
 import reflaxe.rust.ast.RustAST.RustSelfReceiver;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustStaticDeclaration;
@@ -3004,7 +3002,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		currentNeededSuperThunks = [];
 		var rustSelfType = rustTypeNameForClass(classType);
 		var classGenericDecls = rustGenericDeclsForClass(classType);
-		var rustSelfTypeInst = rustClassTypeInst(classType);
 
 		// Inheritance: methods are not physically inherited in Rust, so we synthesize instance methods
 		// on subclasses for any base methods that have bodies but are not overridden.
@@ -3047,16 +3044,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				emittedStaticStorage.set(key, true);
 
 				var rustName = rustMethodName(classType, cf);
-				var tyStr = rustTypeToString(toRustType(cf.type, cf.pos));
+				var valueType = toRustType(cf.type, cf.pos);
+				var cellType = rustRelativeType(["hxrt", "cell", "HxCell"], [valueType]);
+				var storageType = rustRelativeType(["std", "sync", "OnceLock"], [cellType]);
 
-				var initStr = if (initExpr != null) {
+				var initializer = if (initExpr != null) {
 					var compiled = withFunctionContext(initExpr, [], cf.type, () -> {
 						var ex = compileExpr(initExpr);
 						coerceExprToExpected(ex, initExpr, cf.type);
 					});
-					reflaxe.rust.ast.RustASTPrinter.printExprForInjection(compiled);
+					RustOriginTools.sourceExpression(compiled, initExpr.pos);
 				} else {
-					defaultValueForType(cf.type, cf.pos);
+					defaultValueFallbackExpression(cf.type, cf.pos);
 				};
 
 				var storage = "__HX_STATIC_" + rustName.toUpperCase();
@@ -3064,19 +3063,61 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				var getFn = rustStaticVarHelperName("__hx_static_get", rustName);
 				var setFn = rustStaticVarHelperName("__hx_static_set", rustName);
 
-				var lines:Array<String> = [];
-				lines.push("static " + storage + ": std::sync::OnceLock<hxrt::cell::HxCell<" + tyStr + ">> = std::sync::OnceLock::new();");
-				lines.push("fn " + cellFn + "() -> &'static hxrt::cell::HxCell<" + tyStr + "> {");
-				lines.push("\t" + storage + ".get_or_init(|| hxrt::cell::HxCell::new(" + initStr + "))");
-				lines.push("}");
-				lines.push("pub(crate) fn " + getFn + "() -> " + tyStr + " {");
-				lines.push("\t" + cellFn + "().borrow().clone()");
-				lines.push("}");
-				lines.push("pub(crate) fn " + setFn + "(value: " + tyStr + ") {");
-				lines.push("\t*" + cellFn + "().borrow_mut() = value;");
-				lines.push("}");
+				var staticStorageItems:Array<RustItem> = [];
+				function addStaticStorageItem(item:RustItem):Void {
+					staticStorageItems.push(item);
+				}
 
-				items.push(RRaw(RustRawCode.compilerAt(lines.join("\n"), RawStaticStorage, cf.pos)));
+				addStaticStorageItem(RStatic(RustStaticDeclaration.named(VPrivate, storage, storageType,
+					ECall(rustRelativeExpr(["std", "sync", "OnceLock", "new"]), []))));
+
+				var cellInitializer = ECall(rustRelativeExpr(["hxrt", "cell", "HxCell", "new"]), [initializer]);
+				addStaticStorageItem(RFn({
+					name: cellFn,
+					isPub: false,
+					generics: RustGenericParameters.empty(),
+					args: [],
+					ret: RBorrow(cellType, false, RustLifetime.staticLifetime()),
+					body: {
+						stmts: [],
+						tail: ECall(rustField(rustSingleExpr(storage), "get_or_init"), [
+							EClosure([], {stmts: [], tail: cellInitializer}, false)
+						])
+					}
+				}));
+
+				addStaticStorageItem(RFn({
+					name: getFn,
+					isPub: false,
+					vis: RustVisibility.VPubCrate,
+					generics: RustGenericParameters.empty(),
+					args: [],
+					ret: valueType,
+					body: {
+						stmts: [],
+						tail: ECall(rustField(ECall(rustField(ECall(rustSingleExpr(cellFn), []), "borrow"), []), "clone"), [])
+					}
+				}));
+
+				addStaticStorageItem(RFn({
+					name: setFn,
+					isPub: false,
+					vis: RustVisibility.VPubCrate,
+					generics: RustGenericParameters.empty(),
+					args: [{name: "value", ty: valueType}],
+					ret: RUnit,
+					body: {
+						stmts: [RSemi(EAssign(
+							EUnary("*", ECall(rustField(ECall(rustSingleExpr(cellFn), []), "borrow_mut"), [])),
+							rustSingleExpr("value")
+						))],
+						tail: null
+					}
+				}));
+
+				items.push(RustOriginTools.generatedItem(
+					RustOriginTools.sourceItem(RItemGroup(RustItemGroup.of(staticStorageItems)), cf.pos),
+					RustGeneratedOriginReason.StaticStorage));
 			}
 
 			if (varFields != null) {
@@ -3585,13 +3626,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		Why / What / How
 		- Class/enum declarations are the stable Haxe source fallback for structural declarations, while
 		  file markers and module plumbing have no single source syntax and require generated reasons.
-		- Classified raw items already carry their more precise authority position and reuse it.
+		- Classified raw items can only come from an author-controlled factory and already carry its exact
+		  Haxe position.
 		- Existing wrappers are retained so specialized lowering can provide a narrower origin later.
 	**/
 	function attachTopLevelOrigins(items:Array<RustItem>, declarationPos:haxe.macro.Expr.Position):Array<RustItem> {
 		return [for (item in items) switch (item) {
 			case ROrigin(_, _): item;
-			// Classified raw items already carry mandatory source/generated provenance on the fragment.
+			// Classified raw items already carry mandatory author-source provenance on the fragment.
 			case RRaw(_): item;
 			case RComment(_): RustOriginTools.generatedItem(item, RustGeneratedOriginReason.GeneratedFileMarker);
 			case RInnerAttribute(_) | RUse(_) | RModule(_) | RTypeAlias(_):
@@ -6150,8 +6192,35 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return ECall(rustRelativeExpr(["Default", "default"]), []);
 	}
 
-	function defaultValueForType(t:Type, pos:haxe.macro.Expr.Position):String {
-		return reflaxe.rust.ast.RustASTPrinter.printExprForInjection(defaultValueExprForType(t, pos));
+	/**
+		Marks a typed expression as compiler fallback without hiding its structure.
+
+		Why
+		- Default synthesis and impossible/error recovery used to print an expression early and put the
+		  resulting Rust text in `ERaw`. That prevented path, ownership, and no-hxrt passes from seeing
+		  otherwise ordinary calls and macro expressions.
+
+		What
+		- Retains the complete `RustExpr`, the Haxe position previously owned by the raw fallback, and a
+		  closed compiler-generated reason. The source wrapper is nested more deeply so exact lookup keeps
+		  choosing the original Haxe position when both spans cover the same bytes.
+
+		How
+		- Use `DefaultValueFallback` for synthesized values and `UnsupportedFallback` for the typed
+		  `todo!()` recovery expression. The printer ignores the wrapper, so generated Rust bytes stay the
+		  same while every structural pass can recurse normally.
+	**/
+	function generatedFallbackExpression(expression:RustExpr, reason:RustGeneratedOriginReason,
+			pos:haxe.macro.Expr.Position):RustExpr {
+		return RustOriginTools.generatedExpression(RustOriginTools.sourceExpression(expression, pos), reason);
+	}
+
+	function defaultValueFallbackExpression(t:Type, pos:haxe.macro.Expr.Position):RustExpr {
+		return generatedFallbackExpression(defaultValueExprForType(t, pos), RustGeneratedOriginReason.DefaultValueFallback, pos);
+	}
+
+	function unsupportedFallbackExpression(pos:haxe.macro.Expr.Position):RustExpr {
+		return generatedFallbackExpression(EMacroCall("todo", []), RustGeneratedOriginReason.UnsupportedFallback, pos);
 	}
 
 	/**
@@ -6731,7 +6800,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							// Typechecker should prevent this; keep a deterministic fallback.
 							out.push({
 								param: p,
-								rust: ERaw(RustRawCode.compilerAt(defaultValueForType(p.t, f.field.pos), RawDefaultValueFallback, f.field.pos)),
+								rust: defaultValueFallbackExpression(p.t, f.field.pos),
 								typed: null
 							});
 						}
@@ -7115,7 +7184,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					{name: "_self_", ty: rustBorrowedRefCellClassInstType(classType)}
 				],
 				ret: RUnit,
-				body: {stmts: [RSemi(ERaw(RustRawCode.compilerAt("todo!()", RawUnsupportedFallback, cf.pos)))], tail: null}
+				body: {stmts: [RSemi(unsupportedFallbackExpression(cf.pos))], tail: null}
 			};
 		}
 
@@ -7133,7 +7202,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					{name: "_self_", ty: rustBorrowedRefCellClassInstType(classType)}
 				],
 				ret: RUnit,
-				body: {stmts: [RSemi(ERaw(RustRawCode.compilerAt("todo!()", RawUnsupportedFallback, cf.pos)))], tail: null}
+				body: {stmts: [RSemi(unsupportedFallbackExpression(cf.pos))], tail: null}
 			};
 		}
 
@@ -7547,10 +7616,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function rustBorrowedRefCellClassInstType(classType:ClassType):RustType {
 		return RBorrow(rustRefCellType(rustClassTypeInstType(classType)), false, null);
-	}
-
-	function rustClassTypeInst(classType:ClassType):String {
-		return rustTypeToString(rustClassTypeInstType(classType));
 	}
 
 	function haxeTypeContainsClassTypeParam(t:Type, typeParamNames:Map<String, Bool>):Bool {
@@ -8505,8 +8570,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					if (cellBackedLocal) {
 						// Captured+mutated locals use shared cell storage so closures observe updates from
 						// outer scopes. Keep the local binding immutable and mutate through `borrow_mut()`.
-						var boxedInit = initExpr != null ? initExpr : ERaw(RustRawCode.compilerAt(defaultValueForType(v.t, e.pos), RawDefaultValueFallback,
-							e.pos));
+						var boxedInit = initExpr != null ? initExpr : defaultValueFallbackExpression(v.t, e.pos);
 						initExpr = ECall(rustCrateExpr(["HxRef", "new"]), [boxedInit]);
 					}
 					var mutable = !cellBackedLocal && currentMutatedLocals != null && currentMutatedLocals.exists(v.id);
@@ -9994,7 +10058,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						}
 					case _: null;
 				};
-				return ERaw(RustRawCode.sourceAt(literal != null ? literal : "", RawTargetCodeInjection, e.pos));
+				return ERaw(RustRawCode.targetCodeInjectionAt(literal != null ? literal : "", e.pos));
 			}
 
 			var rendered = new StringBuf();
@@ -10006,7 +10070,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						rendered.add(reflaxe.rust.ast.RustASTPrinter.printExprForInjection(expr));
 				}
 			}
-			return ERaw(RustRawCode.sourceAt(rendered.toString(), RawTargetCodeInjection, e.pos));
+			return ERaw(RustRawCode.targetCodeInjectionAt(rendered.toString(), e.pos));
 		}
 
 		return switch (e.expr) {
@@ -10415,7 +10479,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								outArgs.push(nullFillExprForType(p.t, e.pos));
 							} else {
 								// Typechecker should prevent this; keep a deterministic fallback.
-								outArgs.push(ERaw(RustRawCode.compilerAt(defaultValueForType(p.t, e.pos), RawDefaultValueFallback, e.pos)));
+								outArgs.push(defaultValueFallbackExpression(p.t, e.pos));
 							}
 						}
 					} else {
@@ -11606,7 +11670,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return if (TypeHelper.isVoid(expectedReturn)) {
 			EBlock({stmts: [], tail: null});
 		} else {
-			ERaw(RustRawCode.compilerAt("todo!()", RawUnsupportedFallback, pos));
+			unsupportedFallbackExpression(pos);
 		}
 	}
 
@@ -12904,7 +12968,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			#if eval
 			Context.error("TEnumIndex on non-enum type: " + Std.string(e1.t), pos);
 			#end
-			return ERaw(RustRawCode.compilerAt("todo!()", RawUnsupportedFallback, pos));
+			return unsupportedFallbackExpression(pos);
 		}
 
 		var scrutinee = ECall(rustField(compileExpr(e1), "clone"), []);
@@ -12942,7 +13006,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			#if eval
 			Context.error("TEnumParameter on non-enum type: " + Std.string(e1.t), pos);
 			#end
-			return ERaw(RustRawCode.compilerAt("todo!()", RawUnsupportedFallback, pos));
+			return unsupportedFallbackExpression(pos);
 		}
 
 		var argc = enumFieldArgCount(ef);
@@ -12950,7 +13014,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			#if eval
 			Context.error("TEnumParameter index out of bounds: " + index, pos);
 			#end
-			return ERaw(RustRawCode.compilerAt("todo!()", RawUnsupportedFallback, pos));
+			return unsupportedFallbackExpression(pos);
 		}
 
 		var bindName = "__p";
@@ -16203,7 +16267,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					}
 				}
 				if (input.body != null && StringTools.trim(input.body).length > 0)
-					spec.body = RustRawCode.metadataAt(input.body, RawTraitImplementation, input.pos);
+					spec.body = RustRawCode.traitImplementationAt(input.body, input.pos);
 				out.push(spec);
 			}
 
@@ -18559,7 +18623,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		#if eval
 		Context.error('Unsupported $what for Rust target: ' + Std.string(e.expr), e.pos);
 		#end
-		return ERaw(RustRawCode.compilerAt("todo!()", RawUnsupportedFallback, e.pos));
+		return unsupportedFallbackExpression(e.pos);
 	}
 
 	/**
@@ -18585,7 +18649,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			+ " requires runtime payload-kind dispatch and is not supported. Decode the field to `Int`, `Float`, or `String`, perform the update, then write it back explicitly.",
 			e.pos);
 		#end
-		return ERaw(RustRawCode.compilerAt("todo!()", RawUnsupportedFallback, e.pos));
+		return unsupportedFallbackExpression(e.pos);
 	}
 
 	function rustTraitObjectType(primaryTrait:RustPath, ?extraLifetime:RustLifetime):RustType {
@@ -19310,9 +19374,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return elem != null && isCopyType(elem) ? "copied" : "cloned";
 	}
 
-	function rustTypeToString(t:reflaxe.rust.ast.RustAST.RustType):String {
-		return reflaxe.rust.ast.RustASTPrinter.printTypeSyntax(t);
-	}
 }
 
 private class RustModuleDeclTree {

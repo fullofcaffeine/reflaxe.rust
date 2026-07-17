@@ -88,7 +88,7 @@ exact admitted surface.
 | `generated-package` | `stable-candidate` | `candidate` | `active` | Published Haxelib-shaped package and installed-package workflow. |
 | `generated-private` | `excluded-internal` | `internal` | `active` | Generated helper/wrapper details not admitted as consumer API. |
 
-Inventory: 377 shipped Haxe types, 1933 public operations, 18 metadata names, 55 defines, 4 JSON reports, 6 generated-artifact contracts, and 33 validated evidence records.
+Inventory: 374 shipped Haxe types, 1928 public operations, 18 metadata names, 55 defines, 4 JSON reports, 6 generated-artifact contracts, and 33 validated evidence records.
 <!-- END GENERATED PUBLIC COMPATIBILITY SUMMARY -->
 
 The guard enumerates no-package overrides, primary and secondary module types, direct `std/**`
@@ -140,6 +140,12 @@ be removed before major 2.
 Raw `rust.metal.Code`, `@:rustAllowRaw`, `__rust__`, and the injection macro shim are public
 experimental escape hatches. They are not universally framework-only: a narrowly authorized
 project class may use them under the documented strict and metal-clean rules.
+
+Compiler-owned raw authority is not part of this compatibility surface anymore. The generated
+[typed-IR/raw-authority inventory](rust-raw-authority-inventory.json) records zero compiler-owned
+sites and exactly the existing `@:rustImpl` body plus `__rust__` source boundaries. The removed
+`RustCompilerRawReason`, `RawCompilerOwned`, `compilerGenerated`, and `compilerAt` declarations were
+all `internal-helper`; their removal does not narrow an admitted application API.
 
 Native-helper manifest classifications are implementation-lifecycle labels, not public SemVer
 classes. A helper file, class, module path, or implementation may change without a public break

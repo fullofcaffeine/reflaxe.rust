@@ -118,6 +118,23 @@
       ]
     },
     {
+      "id": "contract:typed-rust-ir",
+      "label": "Typed Rust IR and raw-authority closure",
+      "evidenceClass": "generated",
+      "description": "A single policy generates the two exact author-controlled raw factories and inventories every production call site; compiler-owned paths, declarations, static storage, defaults, and recovery expressions remain structural.",
+      "paths": [
+        "rust-raw-authority-policy.json",
+        "docs/rust-raw-authority.md",
+        "docs/rust-raw-authority-inventory.json",
+        "scripts/ci/rust-raw-authority-policy.js",
+        "test/scripts/rust-raw-authority.test.js"
+      ],
+      "commands": [
+        "npm run guard:rust-raw-authority",
+        "npm run test:rust-raw-authority"
+      ]
+    },
+    {
       "id": "test:snapshots-and-clippy",
       "label": "Generated Rust snapshots and Clippy",
       "evidenceClass": "executable",
@@ -604,10 +621,11 @@
         "test:snapshots-and-clippy",
         "test:metal-policy",
         "test:hxrt-performance",
-        "contract:native-facades"
+        "contract:native-facades",
+        "contract:typed-rust-ir"
       ],
       "qualifications": [
-        "Remaining explicitly classified raw-authority fragments can only map as whole fragments, limiting expression-level attribution and structural optimization inside their text.",
+        "Only the three reviewed author-controlled raw producer calls remain: two __rust__ injection branches and one @:rustImpl body boundary. Those supplied bytes can map only as whole fragments and cannot be structurally optimized internally.",
         "Portable class/reference workloads have not yet established allocation, clone, lock, dispatch, binary-size, and lifecycle budgets against hand-written Rust models.",
         "The current performance suite is microcase-oriented and does not yet prove tail latency, sustained RSS trend, or mixed-workload operability."
       ],

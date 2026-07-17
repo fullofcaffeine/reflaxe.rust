@@ -168,20 +168,20 @@ class Main {
 }
 `, /derives/)
 
-    compileLegacyFixture(tempDir, 'retired-raw-item-reason', `
+    compileLegacyFixture(tempDir, 'retired-compiler-raw-authority', `
 import reflaxe.rust.ast.RustAST.RustCompilerRawReason;
 class Main {
   static function main():Void {
     var reason:RustCompilerRawReason = RawGeneratedFileMarker;
   }
 }
-`, /RawGeneratedFileMarker/)
+`, /RustCompilerRawReason/)
   } finally {
     fs.rmSync(tempDir, {recursive: true, force: true})
   }
 
   const ast = fs.readFileSync(astPath, 'utf8')
-  for (const constructor of ['RAttributed', 'RInnerAttribute', 'RComment', 'RUse', 'RModule', 'RConst', 'RStatic', 'RTypeAlias']) {
+  for (const constructor of ['RItemGroup', 'RAttributed', 'RInnerAttribute', 'RComment', 'RUse', 'RModule', 'RConst', 'RStatic', 'RTypeAlias']) {
     assert.match(ast, new RegExp(`\\b${constructor}\\(`), `RustItem must expose ${constructor}`)
   }
   assert.doesNotMatch(ast, /var derives:Array<String>/,
@@ -216,17 +216,25 @@ class Main {
     'StatementCleanupPass.hx'
   ].map(name => fs.readFileSync(path.join(passDir, name), 'utf8'))
   for (const passSource of passSources) {
+    assert.match(passSource, /case RItemGroup\s*\(/,
+      'ownership and cleanup passes must recurse into layout-preserving item groups')
     assert.match(passSource, /case RModule\s*\(/,
       'ownership and cleanup passes must recurse into inline module functions')
   }
 
   const passTools = fs.readFileSync(path.join(passDir, 'RustPassTools.hx'), 'utf8')
+  assert.match(passTools, /case RItemGroup\s*\(/,
+    'shared pass traversal must recurse into layout-preserving item groups')
   assert.match(passTools, /case RModule\s*\(/,
     'shared pass traversal must recurse into inline modules')
   assert.match(passTools, /case RConst\s*\(/,
     'shared pass traversal must map constant initializers')
   assert.match(passTools, /case RStatic\s*\(/,
     'shared pass traversal must map static initializers')
+
+  const noHxrt = fs.readFileSync(path.join(passDir, 'NoHxrtPass.hx'), 'utf8')
+  assert.match(noHxrt, /case RItemGroup\s*\(/,
+    'no-hxrt policy must recurse into layout-preserving item groups')
 
   const normalizePass = fs.readFileSync(path.join(passDir, 'NormalizePass.hx'), 'utf8')
   assert.match(normalizePass, /case RModule\s*\(/,

@@ -66,6 +66,7 @@ class CloneElisionPass implements RustPass {
 	function rewriteItem(item:RustItem):RustItem {
 		return switch (item) {
 			case ROrigin(origin, inner): ROrigin(origin, rewriteItem(inner));
+			case RItemGroup(group): RItemGroup(group.withItems([for (child in group) rewriteItem(child)]));
 			case RAttributed(value):
 				RAttributed(value.withTarget(rewriteItem(value.target)));
 			case RModule(declaration):

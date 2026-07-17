@@ -25,8 +25,9 @@ import reflaxe.rust.ast.RustAST.RustOrigin;
 
 	How
 	- Walks the file and counts `ERaw(...)` expression nodes.
-	- Anchors raw debug warnings at `OriginHaxeSource`; compiler-generated fragments fall back to the
-	  owning module position because they have no honest source span.
+	- Anchors raw debug warnings at the exact `OriginHaxeSource` required by both admitted factories.
+	  The generated-origin switch branch is defensive exhaustiveness for malformed internal values;
+	  no public compiler-owned raw factory can create it.
 	- Records per-module counts into `CompilationContext` for an end-of-compile summary.
 	- Escalates to compile error when the metal contract hard-error policy is enabled.
 **/

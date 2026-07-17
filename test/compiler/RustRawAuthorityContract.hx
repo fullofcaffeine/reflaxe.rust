@@ -1,33 +1,47 @@
-import reflaxe.rust.ast.RustAST.RustCompilerRawReason;
+#if macro
+import haxe.macro.Context;
 import reflaxe.rust.ast.RustAST.RustItem;
-import reflaxe.rust.ast.RustAST.RustGeneratedOriginReason;
 import reflaxe.rust.ast.RustAST.RustOrigin;
-import reflaxe.rust.ast.RustAST.RustRawAuthority;
 import reflaxe.rust.ast.RustAST.RustRawCode;
 import reflaxe.rust.ast.RustASTPrinter;
 
+/**
+	Executable contract for the two remaining raw-authority boundaries.
+
+	Why / What / How
+	- Compiler-owned Rust text is no longer constructible, so the contract exercises metadata and
+	  explicit source authority instead of preserving a migration-debt factory for test convenience.
+	- Normalization may change only printable bytes; the exact authority, reason, and Haxe position
+	  must survive unchanged.
+	- The Node harness separately proves direct construction is private and that the generated
+	  call-site inventory fails on unreviewed growth.
+**/
 class RustRawAuthorityContract {
 	static function expect(condition:Bool, message:String):Void {
 		if (!condition)
 			throw message;
 	}
 
-	static function main():Void {
-		var original = RustRawCode.compilerGenerated("fn generated() { }  ", RawStaticStorage);
+	public static function run():Void {
+		var pos = Context.currentPos();
+		var original = RustRawCode.traitImplementationAt("fn generated() { }  ", pos);
 		var normalized = original.withCode(StringTools.rtrim(original.code));
 
 		expect(normalized.code == "fn generated() { }", "normalization must update only raw code bytes");
-		expect(normalized.authorityId() == "compiler-owned", "compiler authority must remain queryable");
-		expect(normalized.reasonId() == "static-storage", "compiler reason must remain stable");
-		switch (normalized.authority) {
-			case RawCompilerOwned(RawStaticStorage):
-			case _: throw "normalization changed raw authority";
-		}
+		expect(normalized.authorityId() == "metadata-owned", "metadata authority must remain queryable");
+		expect(normalized.reasonId() == "trait-implementation", "metadata reason must remain stable");
 		switch (normalized.origin) {
-			case OriginCompilerGenerated(RustGeneratedOriginReason.StaticStorage):
-			case OriginCompilerGenerated(_): throw "normalization changed compiler-generated reason";
-			case OriginHaxeSource(_): throw "normalization changed compiler-generated origin";
+			case OriginHaxeSource(actual):
+				expect(Context.getPosInfos(actual).min == Context.getPosInfos(pos).min,
+					"normalization changed the raw fragment source position");
+			case OriginCompilerGenerated(_): throw "author-supplied metadata became compiler-generated";
 		}
-		expect(RustASTPrinter.printFile({items: [RRaw(normalized)]}) == "fn generated() { }\n", "typed metadata must not alter Rust output");
+		expect(RustASTPrinter.printFile({items: [RRaw(normalized)]}) == "fn generated() { }\n",
+			"typed metadata must not alter Rust output");
+
+		var source = RustRawCode.targetCodeInjectionAt("value", pos);
+		expect(source.authorityId() == "source-owned" && source.reasonId() == "target-code-injection",
+			"source injection lost its exact authority classification");
 	}
 }
+#end

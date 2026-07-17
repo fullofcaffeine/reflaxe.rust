@@ -6,9 +6,12 @@ import reflaxe.rust.ast.RustAST.RustFile;
 import reflaxe.rust.ast.RustAST.RustGenericArgument;
 import reflaxe.rust.ast.RustAST.RustGenericParameter;
 import reflaxe.rust.ast.RustAST.RustGenericParameters;
+import reflaxe.rust.ast.RustAST.RustGeneratedOriginReason;
 import reflaxe.rust.ast.RustAST.RustIdentifier;
 import reflaxe.rust.ast.RustAST.RustItem;
+import reflaxe.rust.ast.RustAST.RustItemGroup;
 import reflaxe.rust.ast.RustAST.RustModuleDeclaration;
+import reflaxe.rust.ast.RustAST.RustOriginTools;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPathSegment;
 import reflaxe.rust.ast.RustAST.RustStaticDeclaration;
@@ -35,7 +38,8 @@ import reflaxe.rust.passes.RustPassTools;
 
 	What
 	- Characterizes inner/outer attributes, line/doc comments, exact/grouped/glob/renamed uses,
-	  external/inline modules, aliases, constants, statics, visibility, and declaration adjacency.
+	  external/inline modules, aliases, constants, statics, visibility, and the structural item group
+	  that preserves an already-characterized declaration family's adjacency.
 	- Proves paths remain traversable and shared expression mapping recurses through inline module
 	  items; the runner separately checks normalization and policy-pass wiring.
 
@@ -171,7 +175,7 @@ class RustStructuralItemContract {
 			"grouped-use member paths must remain structurally traversable");
 
 		var mapped = RustPassTools.mapFile({
-			items: [RModule(RustModuleDeclaration.inlineModule(VPrivate, "mapped", [
+			items: [RItemGroup(RustItemGroup.of([
 				RConst(RustConstantDeclaration.named(VPrivate, "VALUE", RI32, EPath(path(["before"])))),
 				RStatic(RustStaticDeclaration.named(VPrivate, "STATE", RI32, EPath(path(["before"]))))
 			]))]
@@ -182,7 +186,19 @@ class RustStructuralItemContract {
 		});
 		var mappedOutput = RustASTPrinter.printFile(mapped);
 		expect(mappedOutput.indexOf("before") == -1 && mappedOutput.indexOf("after") != -1,
-			"shared expression mapping must recurse into module constants and statics");
+			"shared expression mapping must recurse into grouped constants and statics");
+
+		var adjacentSource = [
+			RConst(RustConstantDeclaration.named(VPrivate, "FIRST", RI32, ELitInt(1))),
+			RConst(RustConstantDeclaration.named(VPrivate, "SECOND", RI32, ELitInt(2)))
+		];
+		var adjacentGroup = RustItemGroup.of(adjacentSource);
+		adjacentSource.pop();
+		expect(adjacentGroup.itemCount == 2,
+			"item groups must defensively own their declaration sequence");
+		expect(RustASTPrinter.printFile({items: [RItemGroup(adjacentGroup)]})
+			== "const FIRST: i32 = 1;\nconst SECOND: i32 = 2;\n",
+			"item groups must preserve single-newline adjacency without hiding declaration structure");
 
 		expectThrows(() -> RustComment.line("first\nsecond"),
 			"one typed line comment must reject embedded line delimiters");
@@ -201,6 +217,13 @@ class RustStructuralItemContract {
 			"use aliases must reject target punctuation");
 		expectThrows(() -> RustModuleDeclaration.inlineModule(VPrivate, "bad::module", []),
 			"module names must reject target punctuation");
+		expectThrows(() -> RustItemGroup.of([]),
+			"empty item groups must fail closed");
+		expectThrows(() -> RustItemGroup.of([RItemGroup(adjacentGroup)]),
+			"nested item groups must fail closed");
+		expectThrows(() -> RustItemGroup.of([
+			RustOriginTools.generatedItem(RItemGroup(adjacentGroup), RustGeneratedOriginReason.ModuleScaffolding)
+		]), "origin wrappers must not disguise a nested item group");
 		expectThrows(() -> RustTypeAliasDeclaration.named(VPrivate, "bad alias", RustGenericParameters.empty(), RI32),
 			"type-alias names must reject target punctuation");
 		expectThrows(() -> RustAttributedItem.of([], RStruct({
@@ -222,6 +245,8 @@ class RustStructuralItemContract {
 			"outer attributes must not target enclosing-item attributes");
 		expectThrows(() -> RustAttributedItem.of([testAttribute], RComment(RustComment.line("not a declaration"))),
 			"outer attributes must not target detached comments");
+		expectThrows(() -> RustAttributedItem.of([testAttribute], RItemGroup(adjacentGroup)),
+			"one outer attribute must not ambiguously target an item group");
 
 		Sys.print(RustASTPrinter.printFile(contractFile));
 	}

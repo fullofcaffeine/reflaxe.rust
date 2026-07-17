@@ -226,6 +226,9 @@ class NoHxrtPass implements RustPass {
 			switch (item) {
 				case ROrigin(_, inner):
 					scanItem(inner);
+				case RItemGroup(group):
+					for (child in group)
+						scanItem(child);
 				case RAttributed(value):
 					for (attribute in value)
 						RustPathAnalysis.visitAttributeTree(attribute,

@@ -122,6 +122,16 @@ class RustASTPrinter {
 
 	static function itemPrintsContent(item:RustAST.RustItem):Bool {
 		return switch (RustOriginTools.withoutItemOrigin(item)) {
+			case RItemGroup(group): {
+				var visible = false;
+				for (child in group) {
+					if (itemPrintsContent(child)) {
+						visible = true;
+						break;
+					}
+				}
+				visible;
+			}
 			case RRaw(fragment): StringTools.trim(fragment.code).length > 0;
 			case _: true;
 		};
@@ -216,6 +226,7 @@ class RustASTPrinter {
 	static function printItem(item:RustAST.RustItem):String {
 		return switch (item) {
 			case ROrigin(origin, inner): recordSourceMap(RustSourceMapNodeKind.Item, origin, printItem(inner));
+			case RItemGroup(group): printItemGroup(group);
 			case RAttributed(value): printAttributedItem(value);
 			case RInnerAttribute(attribute): printAttribute(attribute, true);
 			case RComment(comment): printComment(comment);
@@ -231,6 +242,20 @@ class RustASTPrinter {
 			case RImpl(i): printImpl(i);
 			case RRaw(fragment): recordSourceMap(RustSourceMapNodeKind.Item, fragment.origin, fragment.code);
 		}
+	}
+
+	static function printItemGroup(group:RustAST.RustItemGroup):String {
+		if (group == null)
+			throw "Cannot print a null Rust item group";
+		var parts:Array<String> = [];
+		for (item in group) {
+			if (!itemPrintsContent(item))
+				continue;
+			var printed = printItem(item);
+			if (StringTools.trim(printed).length > 0)
+				parts.push(printed);
+		}
+		return parts.join("\n");
 	}
 
 	/** Prints outer attributes immediately adjacent to their structurally owned target item. */

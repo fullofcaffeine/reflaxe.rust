@@ -61,9 +61,14 @@ if grep -Eq '^(scripts/(install-git-hooks\.sh|dev/sync-template-hook-installer\.
   npm --prefix "$ROOT_DIR" run test:pre-commit-evidence-wiring
 fi
 
-if grep -Eq '^(package\.json$|scripts/(ci/harness\.sh|hooks/pre-commit)$|src/reflaxe/rust/(RustCompiler|ast/RustAST|ast/RustASTPrinter|macros/RustInjection|passes/(NormalizePass|MetalRestrictionsPass|NoHxrtPass|StatementCleanupPass))\.hx$|std/rust/metal/Code\.hx$|test/compiler/RustRawAuthorityContract\.hx$|test/scripts/(pre-commit-evidence-wiring|rust-raw-authority)\.test\.js$)' <<<"$STAGED_FILES"; then
-  echo "[pre-commit] Running typed raw-Rust authority contract..."
-  npm --prefix "$ROOT_DIR" run test:rust-raw-authority
+if grep -Eq '^(package\.json|rust-raw-authority-policy\.json|docs/rust-raw-authority(-inventory\.json|\.md)|scripts/(ci/(harness\.sh|rust-raw-authority-policy\.js)|hooks/pre-commit)|(src|std|runtime)/.*\.hx|test/compiler/RustRawAuthorityContract\.hx|test/scripts/(pre-commit-evidence-wiring|rust-raw-authority)\.test\.js)$' <<<"$STAGED_FILES"; then
+	echo "[pre-commit] Running typed raw-Rust authority contract..."
+	if ! git ls-files --error-unmatch docs/rust-raw-authority-inventory.json >/dev/null 2>&1 \
+		|| ! git diff --quiet -- docs/rust-raw-authority-inventory.json; then
+		echo "[pre-commit] ERROR: docs/rust-raw-authority-inventory.json has unstaged changes; regenerate and stage the reviewed inventory." >&2
+		exit 1
+	fi
+	npm --prefix "$ROOT_DIR" run test:rust-raw-authority
 fi
 
 if grep -Eq '^(package\.json$|scripts/(ci/harness\.sh|hooks/pre-commit)$|src/reflaxe/rust/(naming/RustNaming|ast/RustAST|ast/RustASTPrinter)\.hx$|test/compiler/RustStructuralPathContract\.hx$|test/scripts/(pre-commit-evidence-wiring|rust-structural-path-ir)\.test\.js$)' <<<"$STAGED_FILES"; then

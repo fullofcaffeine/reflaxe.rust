@@ -20,7 +20,6 @@ import reflaxe.rust.ast.RustAST.RustOriginTools;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPathSegment;
 import reflaxe.rust.ast.RustAST.RustRawCode;
-import reflaxe.rust.ast.RustAST.RustSourceRawReason;
 import reflaxe.rust.ast.RustASTPrinter;
 import reflaxe.rust.ast.RustASTTransformer;
 import reflaxe.rust.compiler.RustBuildContext;
@@ -116,34 +115,20 @@ class RustSourceMapContract {
 			"whole-scrutinee shadow safety gate missed an origin-wrapped local declaration");
 		expect(reflaxe.rust.ast.RustPathAnalysis.statementContainsLocalSpelling(
 			reflaxe.rust.ast.RustAST.RustStmt.RSemi(reflaxe.rust.ast.RustAST.RustExpr.ERaw(
-				RustRawCode.compilerGenerated("observe(value)",
-					reflaxe.rust.ast.RustAST.RustCompilerRawReason.RawUnsupportedFallback))), "value"),
+				RustRawCode.targetCodeInjectionAt("observe(value)", rawPos))), "value"),
 			"whole-scrutinee safety gate treated opaque executable Rust as binding-free");
-		expectThrows(() -> RustRawCode.sourceAt("invalid", RustSourceRawReason.RawTargetCodeInjection, null),
+		expectThrows(() -> RustRawCode.targetCodeInjectionAt("invalid", null),
 			"raw source factory accepted a null Haxe position");
-		expectThrows(() -> RustRawCode.compilerAt("invalid",
-			reflaxe.rust.ast.RustAST.RustCompilerRawReason.RawUnsupportedFallback, null),
-			"source-positioned compiler raw factory accepted a null Haxe position");
-		expectThrows(() -> RustRawCode.metadataAt("invalid",
-			reflaxe.rust.ast.RustAST.RustMetadataRawReason.RawTraitImplementation, null),
+		expectThrows(() -> RustRawCode.traitImplementationAt("invalid", null),
 			"raw metadata factory accepted a null Haxe position");
-		expectThrows(() -> RustRawCode.sourceAt("invalid", cast null, rawPos),
-			"raw source factory accepted a null authority reason");
-		expectThrows(() -> RustRawCode.metadataAt("invalid", cast null, rawPos),
-			"raw metadata factory accepted a null authority reason");
-		expectThrows(() -> RustRawCode.compilerGenerated("invalid", cast null),
-			"raw compiler factory accepted a null generated reason");
-		expectThrows(() -> RustRawCode.sourceAt(null, RustSourceRawReason.RawTargetCodeInjection, rawPos),
+		expectThrows(() -> RustRawCode.targetCodeInjectionAt(null, rawPos),
 			"raw source factory accepted null printable bytes");
-		var validRaw = RustRawCode.sourceAt("valid", RustSourceRawReason.RawTargetCodeInjection, rawPos);
+		expectThrows(() -> RustRawCode.traitImplementationAt(null, rawPos),
+			"raw metadata factory accepted null printable bytes");
+		var validRaw = RustRawCode.targetCodeInjectionAt("valid", rawPos);
 		expectThrows(() -> validRaw.withCode(null), "raw-code transformation accepted null printable bytes");
-		expect(RustRawCode.compilerGenerated("valid",
-			reflaxe.rust.ast.RustAST.RustCompilerRawReason.RawUnsupportedFallback).reasonId() == "unsupported-fallback",
-			"valid compiler-generated raw fragment failed validation");
-		expect(RustRawCode.compilerAt("valid", reflaxe.rust.ast.RustAST.RustCompilerRawReason.RawUnsupportedFallback,
-			rawPos).authorityId() == "compiler-owned", "valid source-positioned compiler raw fragment failed validation");
-		expect(RustRawCode.metadataAt("valid", reflaxe.rust.ast.RustAST.RustMetadataRawReason.RawTraitImplementation,
-			rawPos).authorityId() == "metadata-owned", "valid metadata raw fragment failed validation");
+		expect(RustRawCode.traitImplementationAt("valid", rawPos).authorityId() == "metadata-owned",
+			"valid metadata raw fragment failed validation");
 		expect(validRaw.authorityId() == "source-owned", "valid source raw fragment failed validation");
 		var testAttribute = RustAttribute.bare(RustPath.relative([RustPathSegment.plain("test")]));
 		expectThrows(() -> RustAttributedItem.of([testAttribute], RustOriginTools.sourceItem(
@@ -158,9 +143,8 @@ class RustSourceMapContract {
 
 		var printerEdgeFile:RustFile = {
 			items: [
-				RustOriginTools.generatedItem(reflaxe.rust.ast.RustAST.RustItem.RRaw(
-					RustRawCode.compilerGenerated("// compiler-generated raw\n",
-						reflaxe.rust.ast.RustAST.RustCompilerRawReason.RawUnsupportedFallback)),
+				RustOriginTools.generatedItem(reflaxe.rust.ast.RustAST.RustItem.RComment(
+					RustComment.line("compiler-generated typed")),
 					RustGeneratedOriginReason.UnsupportedFallback),
 				reflaxe.rust.ast.RustAST.RustItem.RFn({
 					name: "printer_edges",
@@ -171,11 +155,9 @@ class RustSourceMapContract {
 					body: {
 						stmts: [
 							reflaxe.rust.ast.RustAST.RustStmt.RSemi(RustOriginTools.sourceExpression(
-								reflaxe.rust.ast.RustAST.RustExpr.ERaw(RustRawCode.sourceAt("third();  ",
-									RustSourceRawReason.RawTargetCodeInjection, rawPos)), expressionPos)),
+								reflaxe.rust.ast.RustAST.RustExpr.ERaw(RustRawCode.targetCodeInjectionAt("third();  ", rawPos)), expressionPos)),
 							reflaxe.rust.ast.RustAST.RustStmt.RSemi(reflaxe.rust.ast.RustAST.RustExpr.ERaw(
-								RustRawCode.compilerAt("fourth();", reflaxe.rust.ast.RustAST.RustCompilerRawReason.RawUnsupportedFallback,
-									rawPos)))
+								RustRawCode.traitImplementationAt("fourth();", rawPos)))
 						],
 						tail: null
 					}
@@ -189,15 +171,15 @@ class RustSourceMapContract {
 		expect(printerEdgePlain.indexOf("third();;") == -1,
 			"raw expression semicolon normalization regressed");
 		var edgeDocument = RustSourceMap.decode(RustSourceMap.encode([printerEdgeMapped], Sys.getCwd()));
-		var generatedRawStart = printerEdgePlain.indexOf("// compiler-generated raw");
-		var generatedRawHit = RustSourceMap.lookup(edgeDocument,
-			RustcGeneratedSpan.at("src/printer_edges.rs", generatedRawStart, generatedRawStart + 2), printerEdgePlain);
-		expect(generatedRawHit != null, "valid compiler-generated raw factory did not survive encoding");
-		switch (generatedRawHit.origin) {
+		var generatedTypedStart = printerEdgePlain.indexOf("// compiler-generated typed");
+		var generatedTypedHit = RustSourceMap.lookup(edgeDocument,
+			RustcGeneratedSpan.at("src/printer_edges.rs", generatedTypedStart, generatedTypedStart + 2), printerEdgePlain);
+		expect(generatedTypedHit != null, "valid compiler-generated typed origin did not survive encoding");
+		switch (generatedTypedHit.origin) {
 			case MappedCompilerGenerated(reason):
 				expect(reason == RustGeneratedOriginReason.UnsupportedFallback,
-					"compiler-generated raw factory changed its closed reason while encoding");
-			case MappedHaxeSource(_): throw "compiler-generated raw factory resolved as Haxe source";
+					"compiler-generated typed origin changed its closed reason while encoding");
+			case MappedHaxeSource(_): throw "compiler-generated typed origin resolved as Haxe source";
 		}
 		var edgeStart = printerEdgePlain.indexOf("third();");
 		var edgeHit = RustSourceMap.lookup(edgeDocument,
@@ -209,10 +191,10 @@ class RustSourceMapContract {
 					"lookup did not prefer the structurally deeper raw origin when generated spans tied");
 			case MappedCompilerGenerated(_): throw "raw source expression resolved as compiler-generated";
 		}
-		var compilerAtStart = printerEdgePlain.indexOf("fourth();");
+		var metadataStart = printerEdgePlain.indexOf("fourth();");
 		expectSourceOrigin(RustSourceMap.lookup(edgeDocument,
-			RustcGeneratedSpan.at("src/printer_edges.rs", compilerAtStart, compilerAtStart + "fourth".length), printerEdgePlain),
-			rawPos, "valid source-positioned compiler raw factory did not survive encoding");
+			RustcGeneratedSpan.at("src/printer_edges.rs", metadataStart, metadataStart + "fourth".length), printerEdgePlain),
+			rawPos, "valid metadata raw factory did not survive encoding");
 
 		var functionItem = RustOriginTools.sourceItem(reflaxe.rust.ast.RustAST.RustItem.RFn({
 			name: "mapped",
@@ -296,7 +278,7 @@ class RustSourceMapContract {
 			}
 		}), itemPos);
 		var rawItem = RustOriginTools.sourceItem(reflaxe.rust.ast.RustAST.RustItem.RRaw(
-			RustRawCode.metadataAt("first();  \n\n\nsecond(); \t", reflaxe.rust.ast.RustAST.RustMetadataRawReason.RawTraitImplementation, rawPos)), rawPos);
+			RustRawCode.traitImplementationAt("first();  \n\n\nsecond(); \t", rawPos)), rawPos);
 		var generatedItem = RustOriginTools.generatedItem(reflaxe.rust.ast.RustAST.RustItem.RComment(
 			RustComment.line("generated source-map marker")), RustGeneratedOriginReason.GeneratedFileMarker);
 		var input:RustFile = {items: [generatedItem, functionItem, rawItem]};

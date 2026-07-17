@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "sourceOfTruth": "rust-raw-authority-policy.json",
+  "summary": {
+    "compilerOwnedRawCallSites": 0,
+    "metadataOwnedRawCallSites": 1,
+    "sourceOwnedRawCallSites": 2,
+    "totalRawCallSites": 3,
+    "structuralRequirementCount": 6
+  },
+  "boundaries": [
+    {
+      "constructor": "RawMetadataTraitImplementation",
+      "factory": "traitImplementationAt",
+      "authorityId": "metadata-owned",
+      "reasonId": "trait-implementation",
+      "owner": "The body text supplied by @:rustImpl metadata",
+      "structuralEnvelope": "The impl trait path, target type, generics, and where clause remain typed; only the author-supplied body is opaque."
+    },
+    {
+      "constructor": "RawSourceTargetCodeInjection",
+      "factory": "targetCodeInjectionAt",
+      "authorityId": "source-owned",
+      "reasonId": "target-code-injection",
+      "owner": "The Rust text supplied through the configured __rust__ source escape hatch",
+      "structuralEnvelope": "The complete injected expression is intentionally opaque and remains tied to its exact Haxe source position."
+    }
+  ],
+  "structuralRequirements": [
+    {
+      "id": "paths",
+      "source": "src/reflaxe/rust/ast/RustAST.hx"
+    },
+    {
+      "id": "types-generics-lifetimes",
+      "source": "src/reflaxe/rust/ast/RustAST.hx"
+    },
+    {
+      "id": "items-and-declarations",
+      "source": "src/reflaxe/rust/ast/RustAST.hx"
+    },
+    {
+      "id": "traits-impls-and-where-clauses",
+      "source": "src/reflaxe/rust/ast/RustAST.hx"
+    },
+    {
+      "id": "structural-static-storage",
+      "source": "src/reflaxe/rust/RustCompiler.hx"
+    },
+    {
+      "id": "structural-fallback-expressions",
+      "source": "src/reflaxe/rust/RustCompiler.hx"
+    }
+  ],
+  "callSites": [
+    {
+      "path": "src/reflaxe/rust/RustCompiler.hx",
+      "line": 10061,
+      "enclosingFunction": "compileExpr",
+      "factory": "targetCodeInjectionAt",
+      "authorityId": "source-owned",
+      "reasonId": "target-code-injection"
+    },
+    {
+      "path": "src/reflaxe/rust/RustCompiler.hx",
+      "line": 10073,
+      "enclosingFunction": "compileExpr",
+      "factory": "targetCodeInjectionAt",
+      "authorityId": "source-owned",
+      "reasonId": "target-code-injection"
+    },
+    {
+      "path": "src/reflaxe/rust/RustCompiler.hx",
+      "line": 16270,
+      "enclosingFunction": "addSpec",
+      "factory": "traitImplementationAt",
+      "authorityId": "metadata-owned",
+      "reasonId": "trait-implementation"
+    }
+  ]
+}

@@ -291,6 +291,13 @@ Agent policy:
   attributed targets, and files/modules must share one item-separator authority. Keep `mod x;`
   distinct from `mod x { }`, validate attribute/use paths before printing, and use `ELitUnit` for the
   Rust value `()` instead of disguising it as an empty block expression.
+- Typed-IR/raw-authority gotcha: `rust-raw-authority-policy.json` is the single source for every
+  intentionally opaque Rust boundary. Run `npm run docs:sync:rust-raw-authority` after changing it
+  and review the generated call-site inventory; never restore a compiler-owned raw factory. Use
+  `RItemGroup` only when an already characterized declaration family requires single-newline
+  adjacency, and make every item transform/policy recurse through the group just like an inline
+  module. Typed defaults and recovery macros must retain `RustExpr` structure plus an origin reason,
+  not round-trip through the printer into `ERaw`.
 - Structural trait/impl gotcha: generated traits and impls must use `RTrait` / `RImpl` with typed
   generics, trait paths, target types, where predicates, receivers, signatures, and associated items.
   Every body-transforming pass must recurse into trait defaults, impl methods, and non-null associated

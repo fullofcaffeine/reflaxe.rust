@@ -23,6 +23,12 @@ requireFragment('docs/architecture-capability-manifest.json', 'architecture capa
 requireFragment('docs/architecture-capability.md', 'architecture capability generated-page staging check')
 requireFragment('scripts/ci/architecture-capability-manifest.js', 'architecture capability drift check')
 requireFragment('test:rust-raw-authority', 'typed raw-Rust authority contract')
+requireFragment('rust-raw-authority-policy\\.json', 'raw-authority single-source policy trigger')
+requireFragment('rust-raw-authority-policy\\.js', 'raw-authority generator trigger')
+requireFragment('(src|std|runtime)/.*\\.hx', 'complete raw-authority scan-root trigger')
+requireFragment('docs/rust-raw-authority-inventory.json', 'raw-authority reviewed inventory staging check')
+requireFragment('git ls-files --error-unmatch docs/rust-raw-authority-inventory.json',
+  'raw-authority inventory tracked-or-staged check')
 requireFragment('test:rust-structural-path-ir', 'structural Rust path IR contract')
 requireFragment('test:rust-structural-type-declarations', 'structural Rust type declaration contract')
 requireFragment('test:rust-structural-expression-paths', 'structural Rust expression path contract')

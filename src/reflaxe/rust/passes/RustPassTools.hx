@@ -37,6 +37,8 @@ class RustPassTools {
 		return switch (item) {
 			case ROrigin(origin, inner):
 				ROrigin(origin, mapItem(inner, mapStmt, mapExpr));
+			case RItemGroup(group):
+				RItemGroup(group.withItems([for (child in group) mapItem(child, mapStmt, mapExpr)]));
 			case RAttributed(value):
 				RAttributed(value.withTarget(mapItem(value.target, mapStmt, mapExpr)));
 			case RModule(declaration):

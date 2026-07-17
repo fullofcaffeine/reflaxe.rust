@@ -292,8 +292,9 @@ This manifest **does not authorize stable 1.0** and is independent from the stab
   - `test:metal-policy` (executable): Positive and negative compiler fixtures exercise fail-closed no-hxrt eligibility, emitted-runtime rejection, scoped borrow escape checks, overlap checks, typed native facades, and warning-clean Cargo builds.
   - `test:hxrt-performance` (executable): The benchmark protocol tracks size, startup, throughput, and selected output-shape counters, including a metal no-hxrt lower-bound signal.
   - `contract:native-facades` (generated): Every shipped Rust helper island declares its Haxe owner, no-hxrt or hxrt-bridge contract, lowering rationale, dependencies, forbidden growth, evidence owner, and line budget.
+  - `contract:typed-rust-ir` (generated): A single policy generates the two exact author-controlled raw factories and inventories every production call site; compiler-owned paths, declarations, static storage, defaults, and recovery expressions remain structural.
 - Qualifications:
-  - Remaining explicitly classified raw-authority fragments can only map as whole fragments, limiting expression-level attribution and structural optimization inside their text.
+  - Only the three reviewed author-controlled raw producer calls remain: two __rust__ injection branches and one @:rustImpl body boundary. Those supplied bytes can map only as whole fragments and cannot be structurally optimized internally.
   - Portable class/reference workloads have not yet established allocation, clone, lock, dispatch, binary-size, and lifecycle budgets against hand-written Rust models.
   - The current performance suite is microcase-oriented and does not yet prove tail latency, sustained RSS trend, or mixed-workload operability.
 - Does not mean:
@@ -392,6 +393,13 @@ The registry names evidence authorities; it intentionally does not copy their ch
 - Purpose: Origin-wrapped Rust items, statements, expressions, and classified raw fragments survive the production pass pipeline and emit a repeatable, path-private, content-hashed map with exact typed lookup and no basename fallback.
 - Paths: [`src/reflaxe/rust/RustSourceMap.hx`](../src/reflaxe/rust/RustSourceMap.hx), [`docs/rust-source-maps.md`](rust-source-maps.md), [`docs/schemas/rust-source-map-v1.schema.json`](schemas/rust-source-map-v1.schema.json), [`test/scripts/rust-source-map.test.js`](../test/scripts/rust-source-map.test.js)
 - Commands: `npm run test:rust-source-map`
+
+### contract:typed-rust-ir
+
+- Class: `generated`
+- Purpose: A single policy generates the two exact author-controlled raw factories and inventories every production call site; compiler-owned paths, declarations, static storage, defaults, and recovery expressions remain structural.
+- Paths: [`rust-raw-authority-policy.json`](../rust-raw-authority-policy.json), [`docs/rust-raw-authority.md`](rust-raw-authority.md), [`docs/rust-raw-authority-inventory.json`](rust-raw-authority-inventory.json), [`scripts/ci/rust-raw-authority-policy.js`](../scripts/ci/rust-raw-authority-policy.js), [`test/scripts/rust-raw-authority.test.js`](../test/scripts/rust-raw-authority.test.js)
+- Commands: `npm run guard:rust-raw-authority`, `npm run test:rust-raw-authority`
 
 ### test:snapshots-and-clippy
 

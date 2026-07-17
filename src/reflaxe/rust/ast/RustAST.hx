@@ -86,89 +86,36 @@ enum RustOrigin {
 }
 
 /**
-	Closed reasons for compiler-owned Rust text that has not yet migrated to structural IR.
+	The complete set of intentionally opaque Rust boundaries.
 
 	Why
-	- `RRaw` and `ERaw` are analysis blind spots. Treating every compiler string as equivalent makes
-	  it impossible to prioritize migration or tell source authority from backend debt.
+	- Compiler-owned syntax must remain structural so analysis passes can inspect it. A broad
+	  "compiler raw" constructor would make it easy to reintroduce the migration debt this AST closed.
+	- The two remaining strings genuinely come from authors: an explicit target-code injection or the
+	  body portion of `@:rustImpl` metadata.
 
 	What
-	- Each constructor identifies one current compiler lowering family. These reasons describe
-	  migration debt; they do not authorize adding more raw lowering.
+	- Each private constructor represents one exact source boundary rather than a general authority
+	  bucket plus a caller-selected reason.
 
 	How
-	- `RustRawCode` maps every constructor to a stable identifier. Adding a constructor therefore
-	  requires updating the exhaustive mapping and reviewing the new authority explicitly.
+	- `rust-raw-authority-policy.json` owns this list. Run
+	  `npm run docs:sync:rust-raw-authority` after changing it; the generated factories and reviewed
+	  call-site inventory must change together.
 **/
-enum RustCompilerRawReason {
-	RawStaticStorage;
-	RawDefaultValueFallback;
-	RawUnsupportedFallback;
-}
-
-/**
-	Closed reasons for Rust text deliberately supplied through Haxe metadata.
-
-	Why
-	- Metadata is user authority even when the compiler renders its surrounding syntax.
-	- Keeping it separate prevents a future compiler migration from silently claiming ownership of
-	  source-provided Rust bodies or target paths.
-
-	What
-	- Currently covers the raw `@:rustImpl` contract.
-
-	How
-	- The metadata factory always requires the metadata's Haxe position.
-**/
-enum RustMetadataRawReason {
-	RawTraitImplementation;
-}
-
-/**
-	Closed reasons for Rust expressions supplied verbatim by source code.
-
-	Why
-	- Explicit target-code injection is a real escape hatch and must never be confused with typed
-	  compiler lowering merely because both eventually print Rust text.
-
-	What
-	- Currently covers the configured `__rust__` target-code injection boundary.
-
-	How
-	- The source factory requires an exact Haxe position and remains visible to metal restrictions.
-	- This records emission ownership only; it never grants `@:rustAllowRaw` permission or weakens
-	  strict/metal boundary enforcement.
-**/
-enum RustSourceRawReason {
-	RawTargetCodeInjection;
-}
-
-/**
-	Identifies who owns an intentionally raw Rust fragment.
-
-	Why
-	- Policy passes need a typed distinction between compiler migration debt, metadata authority, and
-	  explicit source injection.
-
-	What
-	- Wraps one of three closed reason enums rather than accepting a free-form label.
-
-	How
-	- Instances can only be created through `RustRawCode` factories, which pair authority with a
-	  source origin.
-**/
-enum RustRawAuthority {
-	RawCompilerOwned(reason:RustCompilerRawReason);
-	RawMetadataOwned(reason:RustMetadataRawReason);
-	RawSourceOwned(reason:RustSourceRawReason);
+private enum RustRawAuthority {
+	// BEGIN GENERATED RUST RAW AUTHORITIES
+	RawMetadataTraitImplementation;
+	RawSourceTargetCodeInjection;
+	// END GENERATED RUST RAW AUTHORITIES
 }
 
 /**
 	A classified raw Rust fragment carried by `RRaw` or `ERaw`.
 
 	Why
-	- Plain strings erase both authority and Haxe provenance, so compiler passes cannot distinguish an
-	  intentional escape hatch from syntax that should become typed IR.
+	- Plain strings erase both authority and Haxe provenance, so compiler passes cannot distinguish the
+	  two intentional escape hatches from compiler syntax that must remain typed.
 	- Public construction would allow new raw text to bypass that classification.
 
 	What
@@ -176,14 +123,16 @@ enum RustRawAuthority {
 	- Exposes stable identifiers for reports and policy diagnostics.
 
 	How
-	- The constructor is private. Callers select `compilerGenerated`, `compilerAt`, `metadataAt`, or
-	  `sourceAt`; `withCode` is the only transformation helper and preserves metadata byte-for-byte.
+	- The constructor and authority enum are private. Callers select the boundary-specific
+	  `traitImplementationAt` or `targetCodeInjectionAt` factory; there is deliberately no
+	  compiler-owned factory.
+	- `withCode` is the only transformation helper and preserves metadata byte-for-byte.
 	- The printer reads only `code`, so classification cannot alter generated Rust.
 **/
 class RustRawCode {
 	public final code:String;
-	public final authority:RustRawAuthority;
 	public final origin:RustOrigin;
+	final authority:RustRawAuthority;
 
 	private function new(code:String, authority:RustRawAuthority, origin:RustOrigin) {
 		if (code == null)
@@ -193,93 +142,42 @@ class RustRawCode {
 		this.origin = RustOriginTools.requireOrigin(origin);
 	}
 
-	public static function compilerGenerated(code:String, reason:RustCompilerRawReason):RustRawCode {
-		return new RustRawCode(code, RawCompilerOwned(reason), OriginCompilerGenerated(generatedReason(reason)));
+	// BEGIN GENERATED RUST RAW FACTORIES
+	public static function traitImplementationAt(code:String, pos:Position):RustRawCode {
+		return new RustRawCode(code, RawMetadataTraitImplementation, OriginHaxeSource(pos));
 	}
 
-	public static function compilerAt(code:String, reason:RustCompilerRawReason, pos:Position):RustRawCode {
-		return new RustRawCode(code, RawCompilerOwned(reason), OriginHaxeSource(pos));
-	}
-
-	public static function metadataAt(code:String, reason:RustMetadataRawReason, pos:Position):RustRawCode {
-		return new RustRawCode(code, RawMetadataOwned(reason), OriginHaxeSource(pos));
-	}
-
-	public static function sourceAt(code:String, reason:RustSourceRawReason, pos:Position):RustRawCode {
-		return new RustRawCode(code, RawSourceOwned(reason), OriginHaxeSource(pos));
-	}
-
-	public function withCode(nextCode:String):RustRawCode {
-		return new RustRawCode(nextCode, authority, origin);
+	public static function targetCodeInjectionAt(code:String, pos:Position):RustRawCode {
+		return new RustRawCode(code, RawSourceTargetCodeInjection, OriginHaxeSource(pos));
 	}
 
 	public function authorityId():String {
 		return switch (authority) {
-			case RawCompilerOwned(_): "compiler-owned";
-			case RawMetadataOwned(_): "metadata-owned";
-			case RawSourceOwned(_): "source-owned";
+			case RawMetadataTraitImplementation: "metadata-owned";
+			case RawSourceTargetCodeInjection: "source-owned";
 		};
 	}
 
 	public function reasonId():String {
 		return switch (authority) {
-			case RawCompilerOwned(reason): switch (reason) {
-					case RawStaticStorage: "static-storage";
-					case RawDefaultValueFallback: "default-value-fallback";
-					case RawUnsupportedFallback: "unsupported-fallback";
-				}
-			case RawMetadataOwned(reason): switch (reason) {
-					case RawTraitImplementation: "trait-implementation";
-				}
-			case RawSourceOwned(reason): switch (reason) {
-					case RawTargetCodeInjection: "target-code-injection";
-				}
+			case RawMetadataTraitImplementation: "trait-implementation";
+			case RawSourceTargetCodeInjection: "target-code-injection";
 		};
 	}
 
-	static function generatedReason(reason:RustCompilerRawReason):RustGeneratedOriginReason {
-		if (reason == null)
-			throw "Compiler-owned raw Rust requires a reason";
-		return switch (reason) {
-			case RawStaticStorage: RustGeneratedOriginReason.StaticStorage;
-			case RawDefaultValueFallback: RustGeneratedOriginReason.DefaultValueFallback;
-			case RawUnsupportedFallback: RustGeneratedOriginReason.UnsupportedFallback;
-		};
-	}
-
-	/**
-		Validates the complete authority wrapper at the same boundary as its printable bytes.
-
-		Why / What / How
-		- A non-null outer enum can still contain a null nested reason when created through a cast.
-		- Validate every closed authority family here so no factory can create a fragment that fails only
-		  after transformation or source-map serialization.
-		- Returning the original typed value keeps authority identity unchanged after validation.
-	**/
 	static function requireAuthority(value:RustRawAuthority):RustRawAuthority {
 		if (value == null)
 			throw "Classified raw Rust requires an authority";
 		switch (value) {
-			case RawCompilerOwned(reason):
-				if (reason == null)
-					throw "Compiler-owned raw Rust requires a reason";
-				switch (reason) {
-					case RawStaticStorage | RawDefaultValueFallback | RawUnsupportedFallback:
-				}
-			case RawMetadataOwned(reason):
-				if (reason == null)
-					throw "Metadata-owned raw Rust requires a reason";
-				switch (reason) {
-					case RawTraitImplementation:
-				}
-			case RawSourceOwned(reason):
-				if (reason == null)
-					throw "Source-owned raw Rust requires a reason";
-				switch (reason) {
-					case RawTargetCodeInjection:
-				}
+			case RawMetadataTraitImplementation:
+			case RawSourceTargetCodeInjection:
 		}
 		return value;
+	}
+	// END GENERATED RUST RAW FACTORIES
+
+	public function withCode(nextCode:String):RustRawCode {
+		return new RustRawCode(nextCode, authority, origin);
 	}
 }
 
@@ -1054,6 +952,7 @@ typedef RustFile = {
 
 enum RustItem {
 	ROrigin(origin:RustOrigin, item:RustItem);
+	RItemGroup(group:RustItemGroup);
 	RAttributed(value:RustAttributedItem);
 	RInnerAttribute(attribute:RustAttribute);
 	RComment(comment:RustComment);
@@ -1068,6 +967,75 @@ enum RustItem {
 	RTrait(declaration:RustTraitDeclaration);
 	RImpl(i:RustImpl);
 	RRaw(fragment:RustRawCode);
+}
+
+/**
+	A layout-preserving sequence of structural Rust items.
+
+	Why
+	- Some compiler-generated declaration families are intentionally adjacent. Static backing storage,
+	  for example, historically printed one `static` and three helper functions with single newlines;
+	  turning those declarations into ordinary top-level items would add blank lines and violate the
+	  typed migration's byte-neutral output contract.
+	- Keeping the family in raw text would preserve spacing but hide its types and expressions from
+	  structural analysis.
+
+	What
+	- Owns a non-empty defensive copy of ordinary `RustItem` values that the printer separates with one
+	  newline. The group itself adds no Rust syntax.
+	- Rejects nested groups, including origin-wrapped groups, so separator ownership stays unambiguous.
+
+	How
+	- Use `of` only when adjacency is part of an existing output contract. Every item/pass visitor must
+	  recurse through the group exactly as it recurses through an inline module, while preserving the
+	  group during rebuilding.
+**/
+class RustItemGroup {
+	final items:Array<RustItem>;
+	public var itemCount(get, never):Int;
+
+	private function new(items:Array<RustItem>) {
+		this.items = items;
+	}
+
+	public static function of(values:Array<RustItem>):RustItemGroup {
+		if (values == null || values.length == 0)
+			throw "Rust item group requires at least one item";
+		var copy = values.copy();
+		for (item in copy) {
+			if (item == null)
+				throw "Rust item group cannot contain a null item";
+			if (containsGroup(item))
+				throw "Rust item groups cannot be nested";
+		}
+		return new RustItemGroup(copy);
+	}
+
+	function get_itemCount():Int {
+		return items.length;
+	}
+
+	public function itemAt(index:Int):RustItem {
+		if (index < 0 || index >= items.length)
+			throw 'Rust item-group index out of bounds: $index';
+		return items[index];
+	}
+
+	public function iterator():Iterator<RustItem> {
+		return items.iterator();
+	}
+
+	public function withItems(next:Array<RustItem>):RustItemGroup {
+		return of(next);
+	}
+
+	static function containsGroup(item:RustItem):Bool {
+		return switch (item) {
+			case ROrigin(_, inner): containsGroup(inner);
+			case RItemGroup(_): true;
+			case _: false;
+		};
+	}
 }
 
 /** Identifies the closed payload form carried by one structural Rust attribute. */
@@ -1182,7 +1150,7 @@ class RustAttributedItem {
 		// Provenance is transparent to Rust grammar. Validate the concrete target below any number of
 		// origin wrappers so a caller cannot disguise an annotation-only node as a declaration.
 		switch (RustOriginTools.withoutItemOrigin(target)) {
-			case RAttributed(_) | RInnerAttribute(_) | RComment(_):
+			case RItemGroup(_) | RAttributed(_) | RInnerAttribute(_) | RComment(_):
 				throw "Rust outer attributes require one concrete declaration target";
 			case _:
 		}

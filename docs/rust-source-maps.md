@@ -40,6 +40,11 @@ The generated-reason list has one machine-readable owner:
 enum/decoder and the JSON Schema enum; `npm run guard:rust-source-map-policy` rejects either consumer
 when it is stale.
 
+Raw mappings are limited to the exact author-controlled boundaries in the generated
+[raw-authority inventory](rust-raw-authority-inventory.json). Compiler-generated static storage,
+defaults, and unsupported fallback expressions now carry typed origin wrappers instead of raw
+fragments, so their child paths and expressions remain traversable by normal passes.
+
 Source filenames are repository-relative when they belong to the project. Sources resolved from a
 known Haxe classpath use a `classpath/…` identity. Absolute paths and `.` / `..` path components are
 rejected, so the artifact does not expose a checkout location and remains repeatable across clean
