@@ -298,6 +298,15 @@ Agent policy:
   adjacency, and make every item transform/policy recurse through the group just like an inline
   module. Typed defaults and recovery macros must retain `RustExpr` structure plus an origin reason,
   not round-trip through the printer into `ERaw`.
+- Representation-plan gotcha: `rust-representation-policy.json` owns the closed serialized
+  vocabulary for Rust storage shapes, ownership/reuse policy, semantic runtime reasons, contextual
+  bounds, null encoding, and source value facts. Run `npm run docs:sync:rust-representation-policy` after changing
+  it; never hand-edit the generated Haxe enum blocks, component schema, vocabulary table, or the
+  version-scoped runtime-reason consumers in the immutable runtime-plan schema/consumer manifest.
+  Lowering, clone/reuse logic, runtime/no-hxrt analysis, and thread/task/Dynamic bound inference must
+  consume the same validated decision rather than reconstructing a pass-local type classifier.
+  Boundary-only `Clone`, `Send`, `Sync`, and static requirements belong at the proven crossing, not
+  on unrelated single-thread native values.
 - Structural trait/impl gotcha: generated traits and impls must use `RTrait` / `RImpl` with typed
   generics, trait paths, target types, where predicates, receivers, signatures, and associated items.
   Every body-transforming pass must recurse into trait defaults, impl methods, and non-null associated

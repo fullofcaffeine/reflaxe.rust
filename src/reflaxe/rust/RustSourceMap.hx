@@ -664,19 +664,7 @@ class RustSourceMap {
 		- Rejects absolute, drive-qualified, empty, dot, and dot-dot components.
 	**/
 	public static function requireRelativePath(value:String, label:String):String {
-		if (value == null || value.length == 0)
-			throw '$label cannot be empty';
-		var slashed = value.split("\\").join("/");
-		if (Path.isAbsolute(slashed) || ~/^[A-Za-z]:\//.match(slashed))
-			throw '$label must not be absolute: $value';
-		// Check the caller's components before normalization. `Path.normalize("safe/../file")`
-		// becomes `file`, which would otherwise hide traversal instead of rejecting it.
-		for (segment in slashed.split("/")) {
-			if (segment.length == 0 || segment == "." || segment == "..")
-				throw '$label contains an unsafe path segment: $value';
-		}
-		var normalized = normalizePath(slashed);
-		return normalized;
+		return RustSourcePath.requireRelativePath(value, label);
 	}
 
 	static function resolveMapping(mapping:RustPrintedSourceMapping, generatedIndex:RustSourceByteIndex,

@@ -111,6 +111,11 @@ if grep -Eq '^(package\.json$|rust-source-map-policy\.json$|docs/(rust-source-ma
   npm --prefix "$ROOT_DIR" run test:rust-source-map
 fi
 
+if grep -Eq '^(package\.json$|rust-representation-policy\.json$|docs/(generated-consumer-contract\.json|rust-representation-plan\.md|schemas/(runtime-plan-v4|rust-representation-decision-v1)\.schema\.json)$|scripts/(ci/(harness\.sh|rust-representation-policy\.js)|hooks/pre-commit)$|src/reflaxe/rust/(RustSourcePath|analyze/(RepresentationPlan|SurfaceContractRegistry))\.hx$|test/(compiler/RustRepresentationPlanContract\.hx|scripts/(pre-commit-evidence-wiring|rust-representation-plan)\.test\.js)$)' <<<"$STAGED_FILES"; then
+  echo "[pre-commit] Running typed Rust representation-plan contract..."
+  npm --prefix "$ROOT_DIR" run test:rust-representation-plan
+fi
+
 echo "[pre-commit] OK"
 
 # The Beads-managed integration is appended below this boundary by

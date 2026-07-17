@@ -96,30 +96,30 @@ class NoHxrtEligibilityAnalyzer {
 			var current = unwrapMetaParen(expr);
 			switch (current.expr) {
 				case TObjectDecl(_) if (isDynamicBoundaryType(current.t)):
-					add(requirements, AnonymousObject, "typed_ast", module, "Anonymous object expressions require hxrt object storage.");
+					add(requirements, RuntimeAnonymousObject, "typed_ast", module, "Anonymous object expressions require hxrt object storage.");
 				case TVar(v, init):
 					{
 						if (v != null && isDynamicBoundaryType(v.t))
-							add(requirements, Dynamic, "typed_ast", module, "Dynamic-compatible locals require hxrt dynamic representation.");
+							add(requirements, RuntimeDynamic, "typed_ast", module, "Dynamic-compatible locals require hxrt dynamic representation.");
 						if (v != null && isDynamicBoundaryType(v.t) && init != null && isObjectDecl(init))
-							add(requirements, AnonymousObject, "typed_ast", module,
+							add(requirements, RuntimeAnonymousObject, "typed_ast", module,
 								"Anonymous object expressions crossing Dynamic-compatible boundaries require hxrt object storage.");
 					}
 				case TThrow(_):
-					add(requirements, Exception, "typed_ast", module, "Haxe throw semantics require hxrt exception support.");
+					add(requirements, RuntimeException, "typed_ast", module, "Haxe throw semantics require hxrt exception support.");
 				case TTry(_, _):
-					add(requirements, Exception, "typed_ast", module, "Haxe try/catch semantics require hxrt exception support.");
+					add(requirements, RuntimeException, "typed_ast", module, "Haxe try/catch semantics require hxrt exception support.");
 				case TArrayDecl(_):
-					add(requirements, HaxeArraySemantics, "typed_ast", module, "Haxe Array literals require runtime-backed Array semantics.");
+					add(requirements, RuntimeHaxeArraySemantics, "typed_ast", module, "Haxe Array literals require runtime-backed Array semantics.");
 				case TField(_, FDynamic(_)):
-					add(requirements, Dynamic, "typed_ast", module, "Dynamic field access requires hxrt dynamic representation.");
+					add(requirements, RuntimeDynamic, "typed_ast", module, "Dynamic field access requires hxrt dynamic representation.");
 				case TCall(callTarget, _):
 					{
 						var ownerPath = callOwnerPath(callTarget);
 						if (ownerPath == "Reflect" || ownerPath == "Type" || StringTools.startsWith(ownerPath, "haxe.rtti."))
-							add(requirements, Reflection, "typed_ast", module, "Reflection/runtime introspection requires hxrt support.");
+							add(requirements, RuntimeReflection, "typed_ast", module, "Reflection/runtime introspection requires hxrt support.");
 						if (ownerPath == "Sys" || StringTools.startsWith(ownerPath, "sys."))
-							add(requirements, PlatformAbstraction, "typed_ast", module, "Platform abstraction requires hxrt wrapper support.");
+							add(requirements, RuntimePlatformAbstraction, "typed_ast", module, "Platform abstraction requires hxrt wrapper support.");
 					}
 				case _:
 			}

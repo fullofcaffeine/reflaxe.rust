@@ -1,5 +1,7 @@
 package reflaxe.rust.analyze;
 
+import reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind;
+
 /**
 	Stable semantic reason kind for requiring the Haxe runtime.
 
@@ -13,23 +15,11 @@ package reflaxe.rust.analyze;
 	  cells, platform abstractions, and Haxe collection/string compatibility.
 
 	How
-	- Enum abstract values serialize directly into `runtime_plan.*`.
+	- Typed policy values serialize directly into `runtime_plan.*`.
 	- The analyzer emits only reasons it can justify from typed module usage or explicit defines; the
-	  enum intentionally contains additional values for later AST-level passes.
+	  shared policy vocabulary intentionally contains additional values for later AST-level passes.
 **/
-enum abstract RuntimeRequirementKind(String) to String {
-	var ObjectIdentity = "object_identity";
-	var ReferenceMutation = "reference_mutation";
-	var Dynamic = "dynamic";
-	var Reflection = "reflection";
-	var AnonymousObject = "anonymous_object";
-	var Exception = "exception";
-	var NullableCompat = "nullable_compat";
-	var SharedClosureCell = "shared_closure_cell";
-	var PlatformAbstraction = "platform_abstraction";
-	var HaxeArraySemantics = "haxe_array_semantics";
-	var HaxeStringSemantics = "haxe_string_semantics";
-}
+typedef RuntimeRequirementKind = RustRuntimeRequirementKind;
 
 /**
 	One semantic runtime requirement entry.
@@ -110,41 +100,41 @@ class RuntimeRequirementAnalyzer {
 					continue;
 
 				if (isDynamicPath(path))
-					add(entries, Dynamic, "module", path, null, noHxrt, "Dynamic-compatible values require hxrt dynamic representation.");
+					add(entries, RuntimeDynamic, "module", path, null, noHxrt, "Dynamic-compatible values require hxrt dynamic representation.");
 
 				if (isReflectionPath(path))
-					add(entries, Reflection, "module", path, null, noHxrt, "Reflection/runtime introspection requires hxrt support.");
+					add(entries, RuntimeReflection, "module", path, null, noHxrt, "Reflection/runtime introspection requires hxrt support.");
 
 				if (isAnonymousObjectPath(path))
-					add(entries, AnonymousObject, "module", path, null, noHxrt, "Anonymous runtime objects require hxrt object storage.");
+					add(entries, RuntimeAnonymousObject, "module", path, null, noHxrt, "Anonymous runtime objects require hxrt object storage.");
 
 				if (isExceptionPath(path))
-					add(entries, Exception, "module", path, null, noHxrt, "Haxe exception payload semantics require hxrt exception support.");
+					add(entries, RuntimeException, "module", path, null, noHxrt, "Haxe exception payload semantics require hxrt exception support.");
 
 				if (isPlatformAbstractionPath(path))
-					add(entries, PlatformAbstraction, "module", path, null, noHxrt, "Platform abstraction requires hxrt wrapper support.");
+					add(entries, RuntimePlatformAbstraction, "module", path, null, noHxrt, "Platform abstraction requires hxrt wrapper support.");
 
 				if (isHaxeArrayPath(path))
-					add(entries, HaxeArraySemantics, "module", path, null, noHxrt, "Haxe Array semantics require hxrt array representation.");
+					add(entries, RuntimeHaxeArraySemantics, "module", path, null, noHxrt, "Haxe Array semantics require hxrt array representation.");
 
 				if (isHaxeStringRuntimePath(path))
-					add(entries, HaxeStringSemantics, "module", path, null, noHxrt, "Runtime-backed Haxe string semantics require hxrt string support.");
+					add(entries, RuntimeHaxeStringSemantics, "module", path, null, noHxrt, "Runtime-backed Haxe string semantics require hxrt string support.");
 			}
 		}
 
 		if (nullableStrings) {
-			add(entries, NullableCompat, "define", "rust_string_nullable", null, noHxrt,
+			add(entries, RuntimeNullableCompat, "define", "rust_string_nullable", null, noHxrt,
 				"Nullable compatibility mode requires runtime-backed string/null representation.");
-			add(entries, HaxeStringSemantics, "define", "rust_string_nullable", null, noHxrt,
+			add(entries, RuntimeHaxeStringSemantics, "define", "rust_string_nullable", null, noHxrt,
 				"Nullable String compatibility requires hxrt string representation.");
 		}
 
 		if (allowUnresolvedMonomorphDynamic)
-			add(entries, Dynamic, "define", "rust_allow_unresolved_monomorph_dynamic", null, noHxrt,
+			add(entries, RuntimeDynamic, "define", "rust_allow_unresolved_monomorph_dynamic", null, noHxrt,
 				"Unresolved monomorph fallback requires Dynamic runtime representation.");
 
 		if (allowUnmappedCoreTypeDynamic)
-			add(entries, Dynamic, "define", "rust_allow_unmapped_coretype_dynamic", null, noHxrt,
+			add(entries, RuntimeDynamic, "define", "rust_allow_unmapped_coretype_dynamic", null, noHxrt,
 				"Unmapped core-type fallback requires Dynamic runtime representation.");
 
 		entries.sort(compareEntries);

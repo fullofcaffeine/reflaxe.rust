@@ -1,0 +1,280 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:reflaxe-rust:schema:rust-representation-decision:v1",
+  "title": "reflaxe.rust representation decision component schema v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "generator",
+    "decisions"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "generator": {
+      "const": "reflaxe.rust"
+    },
+    "decisions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/decision"
+      }
+    }
+  },
+  "$defs": {
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subjectId",
+        "sourceKind",
+        "identity",
+        "mutation",
+        "escape",
+        "surface",
+        "nullability",
+        "boundary",
+        "representation",
+        "nullEncoding",
+        "ownership",
+        "reuse",
+        "reason",
+        "runtimeRequirements",
+        "requiredBounds",
+        "noHxrtEligible",
+        "origin"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "noHxrtEligible": {
+                "const": true
+              }
+            },
+            "required": [
+              "noHxrtEligible"
+            ]
+          },
+          "then": {
+            "properties": {
+              "runtimeRequirements": {
+                "maxItems": 0
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "runtimeRequirements": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "subjectId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+        },
+        "sourceKind": {
+          "enum": [
+            "scalar",
+            "enum_value",
+            "class_reference",
+            "polymorphic_reference",
+            "borrowed_ref",
+            "borrowed_mut_ref",
+            "borrowed_str",
+            "borrowed_slice",
+            "borrowed_mut_slice",
+            "native_owned",
+            "native_handle",
+            "dynamic",
+            "string",
+            "array",
+            "anonymous_object",
+            "function_value",
+            "iterator",
+            "portable_facade",
+            "core_handle",
+            "bytes_reference"
+          ]
+        },
+        "identity": {
+          "enum": [
+            "none",
+            "stable"
+          ]
+        },
+        "mutation": {
+          "enum": [
+            "immutable",
+            "owned",
+            "exclusive_borrow",
+            "shared"
+          ]
+        },
+        "escape": {
+          "enum": [
+            "local",
+            "may_escape"
+          ]
+        },
+        "surface": {
+          "enum": [
+            "portable_haxe",
+            "portable_facade",
+            "rust_native"
+          ]
+        },
+        "nullability": {
+          "enum": [
+            "non_nullable",
+            "nullable"
+          ]
+        },
+        "boundary": {
+          "enum": [
+            "local",
+            "thread",
+            "task",
+            "dynamic",
+            "static_storage"
+          ]
+        },
+        "representation": {
+          "enum": [
+            "copy_value",
+            "owned_value",
+            "shared_identity",
+            "shared_trait_object",
+            "borrowed_token",
+            "native_handle",
+            "dynamic_payload",
+            "runtime_string",
+            "runtime_array",
+            "runtime_anonymous_object",
+            "shared_function",
+            "runtime_iterator"
+          ]
+        },
+        "nullEncoding": {
+          "enum": [
+            "not_admitted",
+            "intrinsic",
+            "outer_option"
+          ]
+        },
+        "ownership": {
+          "enum": [
+            "copy",
+            "move",
+            "shared",
+            "borrowed"
+          ]
+        },
+        "reuse": {
+          "enum": [
+            "copy",
+            "move_once",
+            "clone_when_needed",
+            "borrow"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "haxe_scalar_value",
+            "haxe_enum_value",
+            "haxe_class_identity",
+            "haxe_polymorphic_identity",
+            "rust_borrow_surface",
+            "rust_owned_surface",
+            "rust_native_handle",
+            "haxe_dynamic_payload",
+            "haxe_string_contract",
+            "haxe_array_contract",
+            "haxe_anonymous_object",
+            "haxe_function_value",
+            "haxe_iterator_contract",
+            "admitted_portable_facade",
+            "haxe_core_handle",
+            "haxe_bytes_identity"
+          ]
+        },
+        "runtimeRequirements": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "object_identity",
+              "reference_mutation",
+              "dynamic",
+              "reflection",
+              "anonymous_object",
+              "exception",
+              "nullable_compat",
+              "shared_closure_cell",
+              "platform_abstraction",
+              "haxe_array_semantics",
+              "haxe_string_semantics",
+              "function_value",
+              "iterator_semantics"
+            ]
+          }
+        },
+        "requiredBounds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "clone",
+              "send",
+              "sync",
+              "static"
+            ]
+          }
+        },
+        "noHxrtEligible": {
+          "type": "boolean"
+        },
+        "origin": {
+          "$ref": "#/$defs/origin"
+        }
+      }
+    },
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceFile",
+        "modulePath",
+        "startByte",
+        "byteLength"
+      ],
+      "properties": {
+        "sourceFile": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))(?!.*//)[^\\\\\\x00-\\x1f\\x7f]+$"
+        },
+        "modulePath": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$"
+        },
+        "startByte": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,7 @@
 package reflaxe.rust.analyze;
 
+import reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason;
+
 /**
 	Serialized source contract kind for a compiler-recognized surface.
 
@@ -49,10 +51,12 @@ enum abstract SurfaceFallbackPolicy(String) to String {
 	What
 	- `admitted_portable_facade` means the representation came from a registry entry, not from a
 	  heuristic over arbitrary portable code.
+
+	How
+	- This alias consumes the representation policy reason directly so facade reports cannot maintain
+	  a second spelling of the same decision reason.
 **/
-enum abstract NativeRepresentationReason(String) to String {
-	var AdmittedPortableFacade = "admitted_portable_facade";
-}
+typedef NativeRepresentationReason = RustRepresentationReason;
 
 /**
 	Compiler-owned contract for a surface that can affect lowering semantics.
@@ -185,7 +189,7 @@ class SurfaceContractRegistry {
 			out.push({
 				surfaceId: contract.surfaceId,
 				selectedRepresentation: contract.rustRepresentation,
-				reason: AdmittedPortableFacade
+				reason: ReasonAdmittedPortableFacade
 			});
 		}
 		out.sort((a, b) -> compareStrings(a.surfaceId, b.surfaceId));

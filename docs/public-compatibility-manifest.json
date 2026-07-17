@@ -8687,10 +8687,8 @@
         "reflaxe.rust.analyze.NoHxrtEligibilityAnalyzer.NoHxrtEligibilityResult"
       ],
       "transitiveTypeReferences": [
-        "haxe.CallStack",
-        "haxe.CallStack.StackItem",
-        "haxe.Exception",
         "reflaxe.rust.analyze.NoHxrtEligibilityAnalyzer.NoHxrtEligibilityResult",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeFallbackSummary",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementKind"
@@ -8725,9 +8723,7 @@
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry"
       ],
       "transitiveTypeReferences": [
-        "haxe.CallStack",
-        "haxe.CallStack.StackItem",
-        "haxe.Exception",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeFallbackSummary",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementKind"
@@ -9189,6 +9185,2232 @@
       ]
     },
     {
+      "name": "reflaxe.rust.analyze.RepresentationPlan",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "class",
+      "signature": "class RepresentationPlan",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": []
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract RustBoundaryKind (String) to String",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:BoundaryLocal",
+          "kind": "enum-value",
+          "name": "BoundaryLocal",
+          "signature": "var BoundaryLocal = \"local\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:BoundaryThread",
+          "kind": "enum-value",
+          "name": "BoundaryThread",
+          "signature": "var BoundaryThread = \"thread\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:BoundaryTask",
+          "kind": "enum-value",
+          "name": "BoundaryTask",
+          "signature": "var BoundaryTask = \"task\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:BoundaryDynamic",
+          "kind": "enum-value",
+          "name": "BoundaryDynamic",
+          "signature": "var BoundaryDynamic = \"dynamic\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:BoundaryStaticStorage",
+          "kind": "enum-value",
+          "name": "BoundaryStaticStorage",
+          "signature": "var BoundaryStaticStorage = \"static_storage\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:id",
+          "kind": "function",
+          "name": "id",
+          "signature": "public inline function id () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:fromId",
+          "kind": "function",
+          "name": "fromId",
+          "signature": "public static function fromId (value : String) : RustBoundaryKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "class",
+      "signature": "class RustDecisionOrigin",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "field:sourceFile",
+          "kind": "field",
+          "name": "sourceFile",
+          "signature": "public final sourceFile : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:startByte",
+          "kind": "field",
+          "name": "startByte",
+          "signature": "public final startByte : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:endByte",
+          "kind": "field",
+          "name": "endByte",
+          "signature": "public final endByte : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:modulePath",
+          "kind": "field",
+          "name": "modulePath",
+          "signature": "public final modulePath : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:at",
+          "kind": "function",
+          "name": "at",
+          "signature": "public static function at (sourceFile : String, startByte : Int, endByte : Int, modulePath : String) : RustDecisionOrigin",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract RustEscapeFact (String) to String",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:EscapeLocal",
+          "kind": "enum-value",
+          "name": "EscapeLocal",
+          "signature": "var EscapeLocal = \"local\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:EscapeMay",
+          "kind": "enum-value",
+          "name": "EscapeMay",
+          "signature": "var EscapeMay = \"may_escape\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:id",
+          "kind": "function",
+          "name": "id",
+          "signature": "public inline function id () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:fromId",
+          "kind": "function",
+          "name": "fromId",
+          "signature": "public static function fromId (value : String) : RustEscapeFact",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract RustIdentityFact (String) to String",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:IdentityNone",
+          "kind": "enum-value",
+          "name": "IdentityNone",
+          "signature": "var IdentityNone = \"none\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:IdentityStable",
+          "kind": "enum-value",
+          "name": "IdentityStable",
+          "signature": "var IdentityStable = \"stable\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:id",
+          "kind": "function",
+          "name": "id",
+          "signature": "public inline function id () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:fromId",
+          "kind": "function",
+          "name": "fromId",
+          "signature": "public static function fromId (value : String) : RustIdentityFact",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract RustMutationFact (String) to String",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:MutationImmutable",
+          "kind": "enum-value",
+          "name": "MutationImmutable",
+          "signature": "var MutationImmutable = \"immutable\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:MutationOwned",
+          "kind": "enum-value",
+          "name": "MutationOwned",
+          "signature": "var MutationOwned = \"owned\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:MutationExclusiveBorrow",
+          "kind": "enum-value",
+          "name": "MutationExclusiveBorrow",
+          "signature": "var MutationExclusiveBorrow = \"exclusive_borrow\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:MutationShared",
+          "kind": "enum-value",
+          "name": "MutationShared",
+          "signature": "var MutationShared = \"shared\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:id",
+          "kind": "function",
+          "name": "id",
+          "signature": "public inline function id () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:fromId",
+          "kind": "function",
+          "name": "fromId",
+          "signature": "public static function fromId (value : String) : RustMutationFact",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract RustNullabilityFact (String) to String",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:NonNullable",
+          "kind": "enum-value",
+          "name": "NonNullable",
+          "signature": "var NonNullable = \"non_nullable\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:Nullable",
+          "kind": "enum-value",
+          "name": "Nullable",
+          "signature": "var Nullable = \"nullable\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:id",
+          "kind": "function",
+          "name": "id",
+          "signature": "public inline function id () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:fromId",
+          "kind": "function",
+          "name": "fromId",
+          "signature": "public static function fromId (value : String) : RustNullabilityFact",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustNullEncoding",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract RustNullEncoding (String) to String",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:NullNotAdmitted",
+          "kind": "enum-value",
+          "name": "NullNotAdmitted",
+          "signature": "var NullNotAdmitted = \"not_admitted\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:NullIntrinsic",
+          "kind": "enum-value",
+          "name": "NullIntrinsic",
+          "signature": "var NullIntrinsic = \"intrinsic\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:NullOuterOption",
+          "kind": "enum-value",
+          "name": "NullOuterOption",
+          "signature": "var NullOuterOption = \"outer_option\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:id",
+          "kind": "function",
+          "name": "id",
+          "signature": "public inline function id () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:fromId",
+          "kind": "function",
+          "name": "fromId",
+          "signature": "public static function fromId (value : String) : RustNullEncoding",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustOwnershipPolicy",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract RustOwnershipPolicy (String) to String",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:OwnershipCopy",
+          "kind": "enum-value",
+          "name": "OwnershipCopy",
+          "signature": "var OwnershipCopy = \"copy\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:OwnershipMove",
+          "kind": "enum-value",
+          "name": "OwnershipMove",
+          "signature": "var OwnershipMove = \"move\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:OwnershipShared",
+          "kind": "enum-value",
+          "name": "OwnershipShared",
+          "signature": "var OwnershipShared = \"shared\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:OwnershipBorrowed",
+          "kind": "enum-value",
+          "name": "OwnershipBorrowed",
+          "signature": "var OwnershipBorrowed = \"borrowed\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:id",
+          "kind": "function",
+          "name": "id",
+          "signature": "public inline function id () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:fromId",
+          "kind": "function",
+          "name": "fromId",
+          "signature": "public static function fromId (value : String) : RustOwnershipPolicy",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "class",
+      "signature": "class RustRepresentationDecision",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+        "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullEncoding",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustOwnershipPolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRequiredBound",
+        "reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+        "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullEncoding",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustOwnershipPolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRequiredBound",
+        "reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact"
+      ],
+      "operations": [
+        {
+          "id": "field:subjectId",
+          "kind": "field",
+          "name": "subjectId",
+          "signature": "public final subjectId : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:sourceKind",
+          "kind": "field",
+          "name": "sourceKind",
+          "signature": "public final sourceKind : RustSourceValueKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind"
+          ]
+        },
+        {
+          "id": "field:identity",
+          "kind": "field",
+          "name": "identity",
+          "signature": "public final identity : RustIdentityFact",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact"
+          ]
+        },
+        {
+          "id": "field:mutation",
+          "kind": "field",
+          "name": "mutation",
+          "signature": "public final mutation : RustMutationFact",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact"
+          ]
+        },
+        {
+          "id": "field:escape",
+          "kind": "field",
+          "name": "escape",
+          "signature": "public final escape : RustEscapeFact",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact"
+          ]
+        },
+        {
+          "id": "field:surface",
+          "kind": "field",
+          "name": "surface",
+          "signature": "public final surface : RustSurfaceFact",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact"
+          ]
+        },
+        {
+          "id": "field:nullability",
+          "kind": "field",
+          "name": "nullability",
+          "signature": "public final nullability : RustNullabilityFact",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact"
+          ]
+        },
+        {
+          "id": "field:boundary",
+          "kind": "field",
+          "name": "boundary",
+          "signature": "public final boundary : RustBoundaryKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind"
+          ]
+        },
+        {
+          "id": "field:representation",
+          "kind": "field",
+          "name": "representation",
+          "signature": "public final representation : RustRepresentationKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationKind"
+          ]
+        },
+        {
+          "id": "field:nullEncoding",
+          "kind": "field",
+          "name": "nullEncoding",
+          "signature": "public final nullEncoding : RustNullEncoding",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustNullEncoding"
+          ]
+        },
+        {
+          "id": "field:ownership",
+          "kind": "field",
+          "name": "ownership",
+          "signature": "public final ownership : RustOwnershipPolicy",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustOwnershipPolicy"
+          ]
+        },
+        {
+          "id": "field:reuse",
+          "kind": "field",
+          "name": "reuse",
+          "signature": "public final reuse : RustReusePolicy",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy"
+          ]
+        },
+        {
+          "id": "field:reason",
+          "kind": "field",
+          "name": "reason",
+          "signature": "public final reason : RustRepresentationReason",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason"
+          ]
+        },
+        {
+          "id": "field:noHxrtEligible",
+          "kind": "field",
+          "name": "noHxrtEligible",
+          "signature": "public final noHxrtEligible : Bool",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:origin",
+          "kind": "field",
+          "name": "origin",
+          "signature": "public final origin : RustDecisionOrigin",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin"
+          ]
+        },
+        {
+          "id": "function:runtimeRequirements",
+          "kind": "function",
+          "name": "runtimeRequirements",
+          "signature": "public inline function runtimeRequirements () : Array < RustRuntimeRequirementKind >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind"
+          ]
+        },
+        {
+          "id": "function:requiredBounds",
+          "kind": "function",
+          "name": "requiredBounds",
+          "signature": "public inline function requiredBounds () : Array < RustRequiredBound >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustRequiredBound"
+          ]
+        },
+        {
+          "id": "function:canonicalKey",
+          "kind": "function",
+          "name": "canonicalKey",
+          "signature": "public function canonicalKey () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationFacts",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "class",
+      "signature": "class RustRepresentationFacts",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+        "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+        "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact"
+      ],
+      "operations": [
+        {
+          "id": "field:subjectId",
+          "kind": "field",
+          "name": "subjectId",
+          "signature": "public final subjectId : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:sourceKind",
+          "kind": "field",
+          "name": "sourceKind",
+          "signature": "public final sourceKind : RustSourceValueKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind"
+          ]
+        },
+        {
+          "id": "field:identity",
+          "kind": "field",
+          "name": "identity",
+          "signature": "public final identity : RustIdentityFact",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact"
+          ]
+        },
+        {
+          "id": "field:mutation",
+          "kind": "field",
+          "name": "mutation",
+          "signature": "public final mutation : RustMutationFact",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact"
+          ]
+        },
+        {
+          "id": "field:escape",
+          "kind": "field",
+          "name": "escape",
+          "signature": "public final escape : RustEscapeFact",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact"
+          ]
+        },
+        {
+          "id": "field:surface",
+          "kind": "field",
+          "name": "surface",
+          "signature": "public final surface : RustSurfaceFact",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact"
+          ]
+        },
+        {
+          "id": "field:nullability",
+          "kind": "field",
+          "name": "nullability",
+          "signature": "public final nullability : RustNullabilityFact",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact"
+          ]
+        },
+        {
+          "id": "field:boundary",
+          "kind": "field",
+          "name": "boundary",
+          "signature": "public final boundary : RustBoundaryKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind"
+          ]
+        },
+        {
+          "id": "field:origin",
+          "kind": "field",
+          "name": "origin",
+          "signature": "public final origin : RustDecisionOrigin",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin"
+          ]
+        },
+        {
+          "id": "function:of",
+          "kind": "function",
+          "name": "of",
+          "signature": "public static function of (subjectId : String, sourceKind : RustSourceValueKind, identity : RustIdentityFact, mutation : RustMutationFact, escape : RustEscapeFact, surface : RustSurfaceFact, nullability : RustNullabilityFact, boundary : RustBoundaryKind, origin : RustDecisionOrigin) : RustRepresentationFacts",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+            "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+            "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
+            "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact",
+            "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact",
+            "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact",
+            "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind",
+            "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationKind",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract RustRepresentationKind (String) to String",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:RepresentationCopyValue",
+          "kind": "enum-value",
+          "name": "RepresentationCopyValue",
+          "signature": "var RepresentationCopyValue = \"copy_value\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RepresentationOwnedValue",
+          "kind": "enum-value",
+          "name": "RepresentationOwnedValue",
+          "signature": "var RepresentationOwnedValue = \"owned_value\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RepresentationSharedIdentity",
+          "kind": "enum-value",
+          "name": "RepresentationSharedIdentity",
+          "signature": "var RepresentationSharedIdentity = \"shared_identity\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RepresentationSharedTraitObject",
+          "kind": "enum-value",
+          "name": "RepresentationSharedTraitObject",
+          "signature": "var RepresentationSharedTraitObject = \"shared_trait_object\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RepresentationBorrowedToken",
+          "kind": "enum-value",
+          "name": "RepresentationBorrowedToken",
+          "signature": "var RepresentationBorrowedToken = \"borrowed_token\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RepresentationNativeHandle",
+          "kind": "enum-value",
+          "name": "RepresentationNativeHandle",
+          "signature": "var RepresentationNativeHandle = \"native_handle\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RepresentationDynamicPayload",
+          "kind": "enum-value",
+          "name": "RepresentationDynamicPayload",
+          "signature": "var RepresentationDynamicPayload = \"dynamic_payload\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RepresentationRuntimeString",
+          "kind": "enum-value",
+          "name": "RepresentationRuntimeString",
+          "signature": "var RepresentationRuntimeString = \"runtime_string\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RepresentationRuntimeArray",
+          "kind": "enum-value",
+          "name": "RepresentationRuntimeArray",
+          "signature": "var RepresentationRuntimeArray = \"runtime_array\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RepresentationRuntimeAnonymousObject",
+          "kind": "enum-value",
+          "name": "RepresentationRuntimeAnonymousObject",
+          "signature": "var RepresentationRuntimeAnonymousObject = \"runtime_anonymous_object\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RepresentationSharedFunction",
+          "kind": "enum-value",
+          "name": "RepresentationSharedFunction",
+          "signature": "var RepresentationSharedFunction = \"shared_function\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RepresentationRuntimeIterator",
+          "kind": "enum-value",
+          "name": "RepresentationRuntimeIterator",
+          "signature": "var RepresentationRuntimeIterator = \"runtime_iterator\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:id",
+          "kind": "function",
+          "name": "id",
+          "signature": "public inline function id () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:fromId",
+          "kind": "function",
+          "name": "fromId",
+          "signature": "public static function fromId (value : String) : RustRepresentationKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationPlanner",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "class",
+      "signature": "class RustRepresentationPlanner",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationFacts"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+        "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullEncoding",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustOwnershipPolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationFacts",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRequiredBound",
+        "reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact"
+      ],
+      "operations": [
+        {
+          "id": "function:decide",
+          "kind": "function",
+          "name": "decide",
+          "signature": "public static function decide (facts : RustRepresentationFacts) : RustRepresentationDecision",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationFacts"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationPlanSnapshot",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "class",
+      "signature": "class RustRepresentationPlanSnapshot",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+        "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullEncoding",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustOwnershipPolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRequiredBound",
+        "reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact"
+      ],
+      "operations": [
+        {
+          "id": "field:SCHEMA_VERSION",
+          "kind": "field",
+          "name": "SCHEMA_VERSION",
+          "signature": "public static inline var SCHEMA_VERSION : Int = 1",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:GENERATOR",
+          "kind": "field",
+          "name": "GENERATOR",
+          "signature": "public static inline var GENERATOR : String = \"reflaxe.rust\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:decisionCount",
+          "kind": "field",
+          "name": "decisionCount",
+          "signature": "public var decisionCount (get, never) : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:of",
+          "kind": "function",
+          "name": "of",
+          "signature": "public static function of (values : Array < RustRepresentationDecision >) : RustRepresentationPlanSnapshot",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
+          ]
+        },
+        {
+          "id": "function:requireCanonical",
+          "kind": "function",
+          "name": "requireCanonical",
+          "signature": "public static function requireCanonical (values : Array < RustRepresentationDecision >) : RustRepresentationPlanSnapshot",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
+          ]
+        },
+        {
+          "id": "function:at",
+          "kind": "function",
+          "name": "at",
+          "signature": "public inline function at (index : Int) : RustRepresentationDecision",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
+          ]
+        },
+        {
+          "id": "function:renderJson",
+          "kind": "function",
+          "name": "renderJson",
+          "signature": "public function renderJson () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract RustRepresentationReason (String) to String",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:ReasonHaxeScalar",
+          "kind": "enum-value",
+          "name": "ReasonHaxeScalar",
+          "signature": "var ReasonHaxeScalar = \"haxe_scalar_value\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReasonHaxeEnum",
+          "kind": "enum-value",
+          "name": "ReasonHaxeEnum",
+          "signature": "var ReasonHaxeEnum = \"haxe_enum_value\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReasonHaxeClassIdentity",
+          "kind": "enum-value",
+          "name": "ReasonHaxeClassIdentity",
+          "signature": "var ReasonHaxeClassIdentity = \"haxe_class_identity\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReasonHaxePolymorphicIdentity",
+          "kind": "enum-value",
+          "name": "ReasonHaxePolymorphicIdentity",
+          "signature": "var ReasonHaxePolymorphicIdentity = \"haxe_polymorphic_identity\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReasonRustBorrowSurface",
+          "kind": "enum-value",
+          "name": "ReasonRustBorrowSurface",
+          "signature": "var ReasonRustBorrowSurface = \"rust_borrow_surface\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReasonRustOwnedSurface",
+          "kind": "enum-value",
+          "name": "ReasonRustOwnedSurface",
+          "signature": "var ReasonRustOwnedSurface = \"rust_owned_surface\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReasonRustNativeHandle",
+          "kind": "enum-value",
+          "name": "ReasonRustNativeHandle",
+          "signature": "var ReasonRustNativeHandle = \"rust_native_handle\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReasonHaxeDynamicPayload",
+          "kind": "enum-value",
+          "name": "ReasonHaxeDynamicPayload",
+          "signature": "var ReasonHaxeDynamicPayload = \"haxe_dynamic_payload\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReasonHaxeStringContract",
+          "kind": "enum-value",
+          "name": "ReasonHaxeStringContract",
+          "signature": "var ReasonHaxeStringContract = \"haxe_string_contract\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReasonHaxeArrayContract",
+          "kind": "enum-value",
+          "name": "ReasonHaxeArrayContract",
+          "signature": "var ReasonHaxeArrayContract = \"haxe_array_contract\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReasonHaxeAnonymousObject",
+          "kind": "enum-value",
+          "name": "ReasonHaxeAnonymousObject",
+          "signature": "var ReasonHaxeAnonymousObject = \"haxe_anonymous_object\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReasonHaxeFunctionValue",
+          "kind": "enum-value",
+          "name": "ReasonHaxeFunctionValue",
+          "signature": "var ReasonHaxeFunctionValue = \"haxe_function_value\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReasonHaxeIteratorContract",
+          "kind": "enum-value",
+          "name": "ReasonHaxeIteratorContract",
+          "signature": "var ReasonHaxeIteratorContract = \"haxe_iterator_contract\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReasonAdmittedPortableFacade",
+          "kind": "enum-value",
+          "name": "ReasonAdmittedPortableFacade",
+          "signature": "var ReasonAdmittedPortableFacade = \"admitted_portable_facade\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReasonHaxeCoreHandle",
+          "kind": "enum-value",
+          "name": "ReasonHaxeCoreHandle",
+          "signature": "var ReasonHaxeCoreHandle = \"haxe_core_handle\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReasonHaxeBytesIdentity",
+          "kind": "enum-value",
+          "name": "ReasonHaxeBytesIdentity",
+          "signature": "var ReasonHaxeBytesIdentity = \"haxe_bytes_identity\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:id",
+          "kind": "function",
+          "name": "id",
+          "signature": "public inline function id () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:fromId",
+          "kind": "function",
+          "name": "fromId",
+          "signature": "public static function fromId (value : String) : RustRepresentationReason",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustRequiredBound",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract RustRequiredBound (String) to String",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:BoundClone",
+          "kind": "enum-value",
+          "name": "BoundClone",
+          "signature": "var BoundClone = \"clone\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:BoundSend",
+          "kind": "enum-value",
+          "name": "BoundSend",
+          "signature": "var BoundSend = \"send\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:BoundSync",
+          "kind": "enum-value",
+          "name": "BoundSync",
+          "signature": "var BoundSync = \"sync\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:BoundStatic",
+          "kind": "enum-value",
+          "name": "BoundStatic",
+          "signature": "var BoundStatic = \"static\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:id",
+          "kind": "function",
+          "name": "id",
+          "signature": "public inline function id () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:fromId",
+          "kind": "function",
+          "name": "fromId",
+          "signature": "public static function fromId (value : String) : RustRequiredBound",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract RustReusePolicy (String) to String",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:ReuseCopy",
+          "kind": "enum-value",
+          "name": "ReuseCopy",
+          "signature": "var ReuseCopy = \"copy\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReuseMoveOnce",
+          "kind": "enum-value",
+          "name": "ReuseMoveOnce",
+          "signature": "var ReuseMoveOnce = \"move_once\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReuseCloneWhenNeeded",
+          "kind": "enum-value",
+          "name": "ReuseCloneWhenNeeded",
+          "signature": "var ReuseCloneWhenNeeded = \"clone_when_needed\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ReuseBorrow",
+          "kind": "enum-value",
+          "name": "ReuseBorrow",
+          "signature": "var ReuseBorrow = \"borrow\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:id",
+          "kind": "function",
+          "name": "id",
+          "signature": "public inline function id () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:fromId",
+          "kind": "function",
+          "name": "fromId",
+          "signature": "public static function fromId (value : String) : RustReusePolicy",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract RustRuntimeRequirementKind (String) to String",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:RuntimeObjectIdentity",
+          "kind": "enum-value",
+          "name": "RuntimeObjectIdentity",
+          "signature": "var RuntimeObjectIdentity = \"object_identity\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RuntimeReferenceMutation",
+          "kind": "enum-value",
+          "name": "RuntimeReferenceMutation",
+          "signature": "var RuntimeReferenceMutation = \"reference_mutation\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RuntimeDynamic",
+          "kind": "enum-value",
+          "name": "RuntimeDynamic",
+          "signature": "var RuntimeDynamic = \"dynamic\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RuntimeReflection",
+          "kind": "enum-value",
+          "name": "RuntimeReflection",
+          "signature": "var RuntimeReflection = \"reflection\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RuntimeAnonymousObject",
+          "kind": "enum-value",
+          "name": "RuntimeAnonymousObject",
+          "signature": "var RuntimeAnonymousObject = \"anonymous_object\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RuntimeException",
+          "kind": "enum-value",
+          "name": "RuntimeException",
+          "signature": "var RuntimeException = \"exception\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RuntimeNullableCompat",
+          "kind": "enum-value",
+          "name": "RuntimeNullableCompat",
+          "signature": "var RuntimeNullableCompat = \"nullable_compat\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RuntimeSharedClosureCell",
+          "kind": "enum-value",
+          "name": "RuntimeSharedClosureCell",
+          "signature": "var RuntimeSharedClosureCell = \"shared_closure_cell\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RuntimePlatformAbstraction",
+          "kind": "enum-value",
+          "name": "RuntimePlatformAbstraction",
+          "signature": "var RuntimePlatformAbstraction = \"platform_abstraction\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RuntimeHaxeArraySemantics",
+          "kind": "enum-value",
+          "name": "RuntimeHaxeArraySemantics",
+          "signature": "var RuntimeHaxeArraySemantics = \"haxe_array_semantics\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RuntimeHaxeStringSemantics",
+          "kind": "enum-value",
+          "name": "RuntimeHaxeStringSemantics",
+          "signature": "var RuntimeHaxeStringSemantics = \"haxe_string_semantics\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RuntimeFunctionValue",
+          "kind": "enum-value",
+          "name": "RuntimeFunctionValue",
+          "signature": "var RuntimeFunctionValue = \"function_value\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:RuntimeIteratorSemantics",
+          "kind": "enum-value",
+          "name": "RuntimeIteratorSemantics",
+          "signature": "var RuntimeIteratorSemantics = \"iterator_semantics\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:id",
+          "kind": "function",
+          "name": "id",
+          "signature": "public inline function id () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:fromId",
+          "kind": "function",
+          "name": "fromId",
+          "signature": "public static function fromId (value : String) : RustRuntimeRequirementKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract RustSourceValueKind (String) to String",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:SourceScalar",
+          "kind": "enum-value",
+          "name": "SourceScalar",
+          "signature": "var SourceScalar = \"scalar\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceEnumValue",
+          "kind": "enum-value",
+          "name": "SourceEnumValue",
+          "signature": "var SourceEnumValue = \"enum_value\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceClassReference",
+          "kind": "enum-value",
+          "name": "SourceClassReference",
+          "signature": "var SourceClassReference = \"class_reference\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourcePolymorphicReference",
+          "kind": "enum-value",
+          "name": "SourcePolymorphicReference",
+          "signature": "var SourcePolymorphicReference = \"polymorphic_reference\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceBorrowedRef",
+          "kind": "enum-value",
+          "name": "SourceBorrowedRef",
+          "signature": "var SourceBorrowedRef = \"borrowed_ref\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceBorrowedMutRef",
+          "kind": "enum-value",
+          "name": "SourceBorrowedMutRef",
+          "signature": "var SourceBorrowedMutRef = \"borrowed_mut_ref\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceBorrowedStr",
+          "kind": "enum-value",
+          "name": "SourceBorrowedStr",
+          "signature": "var SourceBorrowedStr = \"borrowed_str\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceBorrowedSlice",
+          "kind": "enum-value",
+          "name": "SourceBorrowedSlice",
+          "signature": "var SourceBorrowedSlice = \"borrowed_slice\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceBorrowedMutSlice",
+          "kind": "enum-value",
+          "name": "SourceBorrowedMutSlice",
+          "signature": "var SourceBorrowedMutSlice = \"borrowed_mut_slice\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceNativeOwned",
+          "kind": "enum-value",
+          "name": "SourceNativeOwned",
+          "signature": "var SourceNativeOwned = \"native_owned\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceNativeHandle",
+          "kind": "enum-value",
+          "name": "SourceNativeHandle",
+          "signature": "var SourceNativeHandle = \"native_handle\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceDynamic",
+          "kind": "enum-value",
+          "name": "SourceDynamic",
+          "signature": "var SourceDynamic = \"dynamic\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceString",
+          "kind": "enum-value",
+          "name": "SourceString",
+          "signature": "var SourceString = \"string\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceArray",
+          "kind": "enum-value",
+          "name": "SourceArray",
+          "signature": "var SourceArray = \"array\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceAnonymousObject",
+          "kind": "enum-value",
+          "name": "SourceAnonymousObject",
+          "signature": "var SourceAnonymousObject = \"anonymous_object\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceFunctionValue",
+          "kind": "enum-value",
+          "name": "SourceFunctionValue",
+          "signature": "var SourceFunctionValue = \"function_value\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceIterator",
+          "kind": "enum-value",
+          "name": "SourceIterator",
+          "signature": "var SourceIterator = \"iterator\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourcePortableFacade",
+          "kind": "enum-value",
+          "name": "SourcePortableFacade",
+          "signature": "var SourcePortableFacade = \"portable_facade\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceCoreHandle",
+          "kind": "enum-value",
+          "name": "SourceCoreHandle",
+          "signature": "var SourceCoreHandle = \"core_handle\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceBytesReference",
+          "kind": "enum-value",
+          "name": "SourceBytesReference",
+          "signature": "var SourceBytesReference = \"bytes_reference\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:id",
+          "kind": "function",
+          "name": "id",
+          "signature": "public inline function id () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:fromId",
+          "kind": "function",
+          "name": "fromId",
+          "signature": "public static function fromId (value : String) : RustSourceValueKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact",
+      "source": "src/reflaxe/rust/analyze/RepresentationPlan.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract RustSurfaceFact (String) to String",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:SurfacePortableHaxe",
+          "kind": "enum-value",
+          "name": "SurfacePortableHaxe",
+          "signature": "var SurfacePortableHaxe = \"portable_haxe\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SurfacePortableFacade",
+          "kind": "enum-value",
+          "name": "SurfacePortableFacade",
+          "signature": "var SurfacePortableFacade = \"portable_facade\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SurfaceRustNative",
+          "kind": "enum-value",
+          "name": "SurfaceRustNative",
+          "signature": "var SurfaceRustNative = \"rust_native\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:id",
+          "kind": "function",
+          "name": "id",
+          "signature": "public inline function id () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:fromId",
+          "kind": "function",
+          "name": "fromId",
+          "signature": "public static function fromId (value : String) : RustSurfaceFact",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
       "name": "reflaxe.rust.analyze.RuntimeRequirementAnalyzer",
       "source": "src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx",
       "kind": "class",
@@ -9202,9 +11424,7 @@
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry"
       ],
       "transitiveTypeReferences": [
-        "haxe.CallStack",
-        "haxe.CallStack.StackItem",
-        "haxe.Exception",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeFallbackSummary",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementKind"
@@ -9278,9 +11498,7 @@
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementKind"
       ],
       "transitiveTypeReferences": [
-        "haxe.CallStack",
-        "haxe.CallStack.StackItem",
-        "haxe.Exception",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementKind"
       ],
       "operations": [
@@ -9334,9 +11552,7 @@
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementKind"
       ],
       "transitiveTypeReferences": [
-        "haxe.CallStack",
-        "haxe.CallStack.StackItem",
-        "haxe.Exception",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementKind"
       ],
       "operations": [
@@ -9435,145 +11651,19 @@
     {
       "name": "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementKind",
       "source": "src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx",
-      "kind": "enum-abstract",
-      "signature": "enum abstract RuntimeRequirementKind (String) to String",
+      "kind": "typedef",
+      "signature": "typedef RuntimeRequirementKind = RustRuntimeRequirementKind",
       "contract": "internal-helper",
       "evidenceIds": [
         "test:public-compatibility"
       ],
       "directTypeReferences": [
-        "haxe.Exception"
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind"
       ],
       "transitiveTypeReferences": [
-        "haxe.CallStack",
-        "haxe.CallStack.StackItem",
-        "haxe.Exception"
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind"
       ],
-      "operations": [
-        {
-          "id": "enum-value:ObjectIdentity",
-          "kind": "enum-value",
-          "name": "ObjectIdentity",
-          "signature": "var ObjectIdentity = \"object_identity\"",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-value:ReferenceMutation",
-          "kind": "enum-value",
-          "name": "ReferenceMutation",
-          "signature": "var ReferenceMutation = \"reference_mutation\"",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-value:Dynamic",
-          "kind": "enum-value",
-          "name": "Dynamic",
-          "signature": "var Dynamic = \"dynamic\"",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-value:Reflection",
-          "kind": "enum-value",
-          "name": "Reflection",
-          "signature": "var Reflection = \"reflection\"",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-value:AnonymousObject",
-          "kind": "enum-value",
-          "name": "AnonymousObject",
-          "signature": "var AnonymousObject = \"anonymous_object\"",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-value:Exception",
-          "kind": "enum-value",
-          "name": "Exception",
-          "signature": "var Exception = \"exception\"",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": [
-            "haxe.Exception"
-          ]
-        },
-        {
-          "id": "enum-value:NullableCompat",
-          "kind": "enum-value",
-          "name": "NullableCompat",
-          "signature": "var NullableCompat = \"nullable_compat\"",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-value:SharedClosureCell",
-          "kind": "enum-value",
-          "name": "SharedClosureCell",
-          "signature": "var SharedClosureCell = \"shared_closure_cell\"",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-value:PlatformAbstraction",
-          "kind": "enum-value",
-          "name": "PlatformAbstraction",
-          "signature": "var PlatformAbstraction = \"platform_abstraction\"",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-value:HaxeArraySemantics",
-          "kind": "enum-value",
-          "name": "HaxeArraySemantics",
-          "signature": "var HaxeArraySemantics = \"haxe_array_semantics\"",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        },
-        {
-          "id": "enum-value:HaxeStringSemantics",
-          "kind": "enum-value",
-          "name": "HaxeStringSemantics",
-          "signature": "var HaxeStringSemantics = \"haxe_string_semantics\"",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        }
-      ]
+      "operations": []
     },
     {
       "name": "reflaxe.rust.analyze.RustRawInjectionAuthorityAnalyzer",
@@ -9855,6 +11945,7 @@
         "reflaxe.rust.analyze.SurfaceContractRegistry.SurfaceContract"
       ],
       "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason",
         "reflaxe.rust.analyze.SurfaceContractRegistry.NativeRepresentationDecision",
         "reflaxe.rust.analyze.SurfaceContractRegistry.NativeRepresentationReason",
         "reflaxe.rust.analyze.SurfaceContractRegistry.SurfaceContract",
@@ -9904,6 +11995,7 @@
         "reflaxe.rust.analyze.SurfaceContractRegistry.NativeRepresentationReason"
       ],
       "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason",
         "reflaxe.rust.analyze.SurfaceContractRegistry.NativeRepresentationReason"
       ],
       "operations": [
@@ -9947,27 +12039,19 @@
     {
       "name": "reflaxe.rust.analyze.SurfaceContractRegistry.NativeRepresentationReason",
       "source": "src/reflaxe/rust/analyze/SurfaceContractRegistry.hx",
-      "kind": "enum-abstract",
-      "signature": "enum abstract NativeRepresentationReason (String) to String",
+      "kind": "typedef",
+      "signature": "typedef NativeRepresentationReason = RustRepresentationReason",
       "contract": "internal-helper",
       "evidenceIds": [
         "test:public-compatibility"
       ],
-      "directTypeReferences": [],
-      "transitiveTypeReferences": [],
-      "operations": [
-        {
-          "id": "enum-value:AdmittedPortableFacade",
-          "kind": "enum-value",
-          "name": "AdmittedPortableFacade",
-          "signature": "var AdmittedPortableFacade = \"admitted_portable_facade\"",
-          "contract": "internal-helper",
-          "evidenceIds": [
-            "test:public-compatibility"
-          ],
-          "typeReferences": []
-        }
-      ]
+      "directTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason"
+      ],
+      "operations": []
     },
     {
       "name": "reflaxe.rust.analyze.SurfaceContractRegistry.SurfaceContract",
@@ -22369,6 +24453,31 @@
           "typeReferences": [
             "reflaxe.rust.RustSourceMap.RustMappedOrigin"
           ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.RustSourcePath",
+      "source": "src/reflaxe/rust/RustSourcePath.hx",
+      "kind": "class",
+      "signature": "class RustSourcePath",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "function:requireRelativePath",
+          "kind": "function",
+          "name": "requireRelativePath",
+          "signature": "public static function requireRelativePath (value : String, label : String) : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
         }
       ]
     },

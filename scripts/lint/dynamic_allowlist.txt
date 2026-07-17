@@ -16,13 +16,10 @@ src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:103
 src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:106
 src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:115
 src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:151
-src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:23
-src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:113
-src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:143
-src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:144
-src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:147
-src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:148
-src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:212
+src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:103
+src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:134
+src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:138
+src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:202
 src/reflaxe/rust/CompilerBootstrap.hx:63
 src/reflaxe/rust/CompilerInit.hx:51
 std/rust/_std/haxe/BoundaryTypes.hx:27
