@@ -27,6 +27,14 @@ anonymous fields, typedef targets, and emitted enum-constructor payloads. It del
 method/control scaffolding that does not materialize a value, so a nested `rust.Vec<Dynamic>` fails
 no-hxrt without inventing requirements from compiler-only function types.
 
+The compiler captures that collection and the no-hxrt operation scan at Haxe's completed typed-AST
+boundary, before Reflaxe moves method bodies into per-class lowering data. This keeps expression-only
+representation facts as well as `throw`, reflection, and platform-call evidence. Haxe may deliver
+that boundary through multiple incremental callbacks, so modules are accumulated by semantic type
+path and consumed once in a deterministic order. Direct call and constructor arguments remain value
+positions even when written as `if` or `switch` expressions; their resulting type is recorded without
+treating surrounding method-body control wrappers as stored values.
+
 ## How
 
 Run `node scripts/ci/rust-representation-policy.js --write` after an intentional vocabulary change.

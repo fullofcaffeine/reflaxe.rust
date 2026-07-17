@@ -314,6 +314,14 @@ Agent policy:
   `Dynamic`, anonymous structures, or functions even though they do not materialize such a value.
   Preserve function-valued fields and real expression results, but suppress those scaffolding shapes
   so runtime/no-hxrt reports do not invent requirements from compiler-internal typing artifacts.
+  Capture the complete typed module graph at Haxe's `onAfterTyping` boundary before Reflaxe extracts
+  method bodies into per-class compilation data; a late `Context.getAllModuleTypes()` rescan can keep
+  declarations while silently losing expression-only runtime requirements and operation checks such
+  as `throw`, reflection, or platform calls. Haxe may invoke the callback incrementally, so accumulate
+  the latest module reference by semantic type path and consume one deterministic snapshot at compile
+  start. Direct call/constructor arguments are real value positions even when their syntax is `if` or
+  `switch`; classify the resulting argument type without broadly treating control/body wrappers as
+  stored values.
   Once a real value position is admitted, recurse through representation-bearing type arguments,
   function signatures, anonymous fields, and typedef targets: an outer native container does not
   make an inner `Dynamic`/HxRef/runtime-backed payload no-hxrt eligible.

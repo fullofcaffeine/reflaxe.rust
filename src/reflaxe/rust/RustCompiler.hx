@@ -312,6 +312,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	// portable native-boundary reports so framework std internals do not look like app imports.
 	var usedModulePaths:Map<String, Bool> = [];
 	var userUsedModulePaths:Map<String, Bool> = [];
+	// Haxe's after-typing callback is the last stable owner of complete ClassField bodies. Keep the
+	// module references until `onCompileStart` can filter them with initialized source roots.
+	var typedModuleSnapshotByPath:Map<String, ModuleType> = [];
+	// Typed method bodies are still intact at `onCompileStart`, before Reflaxe extracts them into
+	// per-class compilation data. Runtime/no-hxrt reporting later in the pipeline must consume this
+	// immutable decision snapshot instead of rescanning ClassField expressions that may already be gone.
+	var typedRepresentationDecisions:Array<RustRepresentationDecision> = [];
+	// Non-value no-hxrt checks (throw, reflection, and platform operations) also require complete
+	// method bodies. Cache their early result so later enforcement never depends on lowering order.
+	var typedNoHxrtEligibility:Null<NoHxrtEligibilityResult> = null;
 	var currentCompilationContext:Null<CompilationContext> = null;
 	// Optimizer metrics recorded during lowering before `CompilationContext` exists.
 	var pendingOptimizerAppliedById:Map<String, Int> = [];
@@ -1076,8 +1086,26 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return a < b ? -1 : (a > b ? 1 : 0);
 	}
 
+	/**
+		Registers the compiler's complete typed-module capture boundary.
+
+		Why / What / How
+		- Reflaxe starts target lowering after Haxe finishes typing, and later extraction may remove
+		  executable expressions from their original `ClassField` declarations.
+		- Accumulate each after-typing delivery by semantic type path here, while bodies and exact source
+		  positions are still available. `onCompileStart` filters and converts the resulting snapshot into
+		  immutable representation decisions, then releases these module references.
+	**/
 	public function new() {
 		super();
+		Context.onAfterTyping(moduleTypes -> {
+			if (moduleTypes == null)
+				return;
+			// Haxe may invoke onAfterTyping more than once as macros add modules. Accumulate by semantic
+			// type path instead of letting a later incremental callback erase the application snapshot.
+			for (moduleType in moduleTypes)
+				typedModuleSnapshotByPath.set(moduleType.getPath(), moduleType);
+		});
 	}
 
 	public function createCompilationContext():CompilationContext {
@@ -1194,8 +1222,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (!noHxrtEnabled())
 			return;
 
-		var result = NoHxrtEligibilityAnalyzer.analyze(userProjectModuleTypes(), snapshotUsedModulePaths(), useNullableStringRepresentation(),
-			Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"), classHasSubclasses);
+		var result = typedNoHxrtEligibility;
+		if (result == null || !result.blocked) {
+			result = NoHxrtEligibilityAnalyzer.analyzeCaptured(userProjectModuleTypes(), snapshotUsedModulePaths(), useNullableStringRepresentation(),
+				Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"),
+				snapshotRepresentationDecisions());
+		}
 		if (!result.blocked)
 			return;
 
@@ -1240,14 +1272,43 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return Context.currentPos();
 	}
 
-	function userProjectModuleTypes():Array<ModuleType> {
+	function userProjectModuleTypes(?sourceTypes:Array<ModuleType>):Array<ModuleType> {
 		var out:Array<ModuleType> = [];
-		for (moduleType in Context.getAllModuleTypes()) {
+		var moduleTypes = sourceTypes == null ? Context.getAllModuleTypes() : sourceTypes;
+		for (moduleType in moduleTypes) {
 			var sourceFile = moduleSourceFile(moduleType);
 			if (sourceFile != null && sourceFile.length > 0 && isUserProjectFile(sourceFile))
 				out.push(moduleType);
 		}
 		return out;
+	}
+
+	/**
+		Returns the typed representation facts captured before lowering consumes method bodies.
+
+		Why / What / How
+		- Reflaxe moves executable expressions into `ClassFuncData` while compiling classes, so a late
+		  `Context.getAllModuleTypes()` scan can retain declarations but lose expression-only Dynamic,
+		  anonymous-object, function, or iterator values.
+		- `onCompileStart` captures the complete user-authored typed AST once. Every later runtime report
+		  and no-hxrt check receives a defensive array copy of those immutable decisions.
+	**/
+	function snapshotRepresentationDecisions():Array<RustRepresentationDecision> {
+		return typedRepresentationDecisions.copy();
+	}
+
+	/**
+		Builds one deterministic view of the module references retained at Haxe's after-typing boundary.
+
+		Why / What / How
+		- Haxe may invoke the callback incrementally as macros add or retype modules.
+		- The callback map keeps the latest value for each semantic type path; this helper sorts those
+		  paths before the compiler extracts the complete representation decision snapshot.
+	**/
+	function snapshotTypedModuleTypes():Array<ModuleType> {
+		var paths = [for (path in typedModuleSnapshotByPath.keys()) path];
+		paths.sort(compareStrings);
+		return [for (path in paths) typedModuleSnapshotByPath.get(path)];
 	}
 
 	function profileContractModulePosIndex():Map<String, haxe.macro.Expr.Position> {
@@ -1641,6 +1702,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		rustTestSpecs = [];
 		usedModulePaths = [];
 		userUsedModulePaths = [];
+		typedRepresentationDecisions = [];
+		typedNoHxrtEligibility = null;
 		currentCompilationContext = null;
 		pendingOptimizerAppliedById = [];
 		pendingOptimizerSkippedById = [];
@@ -1727,6 +1790,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		buildSourceProvenanceIndex();
+
+		// Capture representation-bearing expressions before Reflaxe extracts/consumes ClassField
+		// bodies. Later report and no-hxrt stages must reuse this exact typed snapshot.
+		var completeTypedModules = snapshotTypedModuleTypes();
+		if (completeTypedModules.length == 0)
+			completeTypedModules = Context.getAllModuleTypes();
+		var completeUserModules = userProjectModuleTypes(completeTypedModules);
+		typedRepresentationDecisions = RepresentationDecisionAnalyzer.collect(completeUserModules, useNullableStringRepresentation(), classHasSubclasses);
+		if (noHxrtEnabled()) {
+			typedNoHxrtEligibility = NoHxrtEligibilityAnalyzer.analyzeCaptured(completeUserModules, [], useNullableStringRepresentation(),
+				Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"),
+				snapshotRepresentationDecisions());
+		}
+		// Do not retain typed module graphs beyond the one phase that owns their complete bodies. This
+		// also lets a compilation-server reuse refill the callback map with fresh module references.
+		typedModuleSnapshotByPath = [];
 
 		// Collect Haxe-authored Rust test wrappers (`@:rustTest`) once per compile.
 		collectRustTests();
@@ -2446,10 +2525,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		} else {
 			"selective";
 		}
-		var representationDecisions = RepresentationDecisionAnalyzer.collect(userProjectModuleTypes(), useNullableStringRepresentation(), classHasSubclasses);
 		var runtimeRequirements = RuntimeRequirementAnalyzer.collect(modulePaths, noHxrt, useNullableStringRepresentation(),
 			Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"),
-			representationDecisions, false);
+			snapshotRepresentationDecisions(), false);
 		var fallbackSummary = RuntimeRequirementAnalyzer.summarize(runtimeRequirements);
 
 		return {

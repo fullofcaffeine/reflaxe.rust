@@ -5,17 +5,13 @@
 
 # Rust compiler dynamic bridge points (line-scoped; see docs/dynamic-boundaries.md)
 src/reflaxe/rust/DynamicBoundary.hx:23
-src/reflaxe/rust/RustCompiler.hx:2158
-src/reflaxe/rust/RustCompiler.hx:2159
-src/reflaxe/rust/RustCompiler.hx:2166
-src/reflaxe/rust/RustCompiler.hx:2169
-src/reflaxe/rust/RustCompiler.hx:2177
-src/reflaxe/rust/RustCompiler.hx:18730
+src/reflaxe/rust/RustCompiler.hx:2237
+src/reflaxe/rust/RustCompiler.hx:2238
+src/reflaxe/rust/RustCompiler.hx:2245
+src/reflaxe/rust/RustCompiler.hx:2248
+src/reflaxe/rust/RustCompiler.hx:2256
+src/reflaxe/rust/RustCompiler.hx:18808
 src/reflaxe/rust/RustSourceMap.hx:419
-src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:103
-src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:106
-src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:115
-src/reflaxe/rust/analyze/NoHxrtEligibilityAnalyzer.hx:151
 src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:158
 src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:110
 src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:141
@@ -39,8 +35,6 @@ std/rust/_std/sys/Http.hx:370
 std/rust/_std/sys/Http.hx:373
 test/negative/dynamic_field_assignop/Main.hx:3
 test/negative/dynamic_field_unop/Main.hx:3
-test/compiler/RustRepresentationTypeContractMacro.hx:86
-test/compiler/RustRepresentationTypeContractMacro.hx:99
 test/compiler/RustRepresentationTypeFixture.hx:5
 test/compiler/RustRepresentationTypeFixture.hx:11
 test/compiler/RustRepresentationTypeFixture.hx:19

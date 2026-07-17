@@ -67,40 +67,46 @@ class RustRepresentationTypeContractMacro {
 			case TEnum(enumRef, _): fixtureModule.push(TEnumDecl(enumRef));
 			case _: throw "representation enum fixture must resolve to an enum";
 		}
-		var collected = RepresentationDecisionAnalyzer.collect(fixtureModule, false);
-		var methodDynamicDecisions = 0;
-		for (decision in collected) {
-			if (decision.sourceKind == RustSourceValueKind.SourceDynamic
-				&& (decision.subjectId.indexOf("consumeDynamic-parameter-0") >= 0 || decision.subjectId.indexOf("#function-arg-0@") >= 0))
-				methodDynamicDecisions++;
-		}
-		if (methodDynamicDecisions != 1)
-			throw 'method parameter representation must be collected once, got $methodDynamicDecisions';
-		var nestedDynamicDecision = false;
-		for (decision in collected) {
-			if (decision.sourceKind == RustSourceValueKind.SourceDynamic
-				&& decision.subjectId.indexOf("field-nativeOwnedDynamic-type-0") >= 0)
-				nestedDynamicDecision = true;
-		}
-		if (!nestedDynamicDecision)
-			throw "nested Dynamic storage must retain its own representation decision";
-		var enumPayloadDecision = false;
-		for (decision in collected) {
-			if (decision.sourceKind == RustSourceValueKind.SourceDynamic
-				&& decision.subjectId.indexOf("enum-Payload-parameter-0") >= 0)
-				enumPayloadDecision = true;
-		}
-		if (!enumPayloadDecision)
-			throw "enum payload storage must retain its own representation decision";
-		var nestedDecisions = [for (decision in collected) if (decision.subjectId.indexOf("field-nativeOwnedDynamic") >= 0) decision];
-		var nestedRequirements = RuntimeRequirementAnalyzer.collect([], true, false, false, false, nestedDecisions, true);
-		var nestedSummary = RuntimeRequirementAnalyzer.summarize(nestedRequirements);
-		if (!nestedSummary.blockedByNoHxrt || reasonIds(nestedSummary.reasonKinds.map(reason -> reason.id())) != "dynamic")
-			throw "nested Dynamic storage must fail the no-hxrt semantic gate";
-		var runtimeRequirements = RuntimeRequirementAnalyzer.collect([], false, false, false, false, collected, false);
-		Sys.println("runtime-v4|" + reasonIds(runtimeRequirements.map(entry -> entry.reasonKind.id())));
-		var noHxrt = NoHxrtEligibilityAnalyzer.analyze(fixtureModule, [], false, false, false);
-		Sys.println("no-hxrt|" + reasonIds(noHxrt.summary.reasonKinds.map(reason -> reason.id())));
+		var inspectedAfterTyping = false;
+		Context.onAfterTyping(_ -> {
+			if (inspectedAfterTyping)
+				return;
+			inspectedAfterTyping = true;
+			var collected = RepresentationDecisionAnalyzer.collect(fixtureModule, false);
+			var methodDynamicDecisions = 0;
+			for (decision in collected) {
+				if (decision.sourceKind == RustSourceValueKind.SourceDynamic
+					&& decision.subjectId.indexOf("consumeDynamic-parameter-0") >= 0)
+					methodDynamicDecisions++;
+			}
+			if (methodDynamicDecisions != 1)
+				throw 'method parameter representation must be collected once, got $methodDynamicDecisions';
+			var nestedDynamicDecision = false;
+			for (decision in collected) {
+				if (decision.sourceKind == RustSourceValueKind.SourceDynamic
+					&& decision.subjectId.indexOf("field-nativeOwnedDynamic-type-0") >= 0)
+					nestedDynamicDecision = true;
+			}
+			if (!nestedDynamicDecision)
+				throw "nested dynamic storage must retain its own representation decision";
+			var enumPayloadDecision = false;
+			for (decision in collected) {
+				if (decision.sourceKind == RustSourceValueKind.SourceDynamic
+					&& decision.subjectId.indexOf("enum-Payload-parameter-0") >= 0)
+					enumPayloadDecision = true;
+			}
+			if (!enumPayloadDecision)
+				throw "enum payload storage must retain its own representation decision";
+			var nestedDecisions = [for (decision in collected) if (decision.subjectId.indexOf("field-nativeOwnedDynamic") >= 0) decision];
+			var nestedRequirements = RuntimeRequirementAnalyzer.collect([], true, false, false, false, nestedDecisions, true);
+			var nestedSummary = RuntimeRequirementAnalyzer.summarize(nestedRequirements);
+			if (!nestedSummary.blockedByNoHxrt || reasonIds(nestedSummary.reasonKinds.map(reason -> reason.id())) != "dynamic")
+				throw "nested dynamic storage must fail the no-hxrt semantic gate";
+			var runtimeRequirements = RuntimeRequirementAnalyzer.collect([], false, false, false, false, collected, false);
+			Sys.println("runtime-v4|" + reasonIds(runtimeRequirements.map(entry -> entry.reasonKind.id())));
+			var noHxrt = NoHxrtEligibilityAnalyzer.analyze(fixtureModule, [], false, false, false);
+			Sys.println("no-hxrt|" + reasonIds(noHxrt.summary.reasonKinds.map(reason -> reason.id())));
+		});
 		return macro null;
 	}
 

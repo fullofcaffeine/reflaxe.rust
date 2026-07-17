@@ -6,6 +6,7 @@ import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeFallbackSummary;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementKind;
 import reflaxe.rust.analyze.RepresentationDecisionAnalyzer;
+import reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision;
 
 /**
 	NoHxrtEligibilityAnalyzer
@@ -24,6 +25,8 @@ import reflaxe.rust.analyze.RepresentationDecisionAnalyzer;
 
 	How
 	- `analyze(...)` is only meant to run when `rust_no_hxrt` is active.
+	- Production lowering captures both typed decisions and non-value operation evidence before Reflaxe
+	  extracts method bodies, then reuses that immutable result during later enforcement hooks.
 	- It marks every requirement as `noHxrtBlocked: true`.
 	- The final generated-code `NoHxrtPass` still runs afterwards for lowering paths this semantic
 	  pass cannot yet prove.
@@ -31,7 +34,33 @@ import reflaxe.rust.analyze.RepresentationDecisionAnalyzer;
 class NoHxrtEligibilityAnalyzer {
 	public static function analyze(userModuleTypes:Array<ModuleType>, modulePaths:Array<String>, nullableStrings:Bool, allowUnresolvedMonomorphDynamic:Bool,
 			allowUnmappedCoreTypeDynamic:Bool, ?classHasSubclasses:ClassType->Bool):NoHxrtEligibilityResult {
-		var representationDecisions = RepresentationDecisionAnalyzer.collect(userModuleTypes, nullableStrings, classHasSubclasses);
+		return analyzeWithDecisions(userModuleTypes, modulePaths, nullableStrings, allowUnresolvedMonomorphDynamic, allowUnmappedCoreTypeDynamic,
+			RepresentationDecisionAnalyzer.collect(userModuleTypes, nullableStrings, classHasSubclasses));
+	}
+
+	/**
+		Consumes representation decisions captured while typed method bodies were still complete.
+
+		Why / What / How
+		- Reflaxe can extract method expressions before its later no-hxrt enforcement hooks run.
+		- `RustCompiler` therefore captures the decisions at Haxe's after-typing boundary and passes a
+		  defensive copy through this friend-only entry point.
+		- Keeping the method private preserves the existing analyzer API for standalone compiler tests and
+		  prevents callers from accidentally mixing decisions from another typed compilation.
+	**/
+	@:allow(reflaxe.rust.RustCompiler)
+	private static function analyzeCaptured(userModuleTypes:Array<ModuleType>, modulePaths:Array<String>, nullableStrings:Bool,
+			allowUnresolvedMonomorphDynamic:Bool, allowUnmappedCoreTypeDynamic:Bool,
+			capturedRepresentationDecisions:Array<RustRepresentationDecision>):NoHxrtEligibilityResult {
+		if (capturedRepresentationDecisions == null)
+			throw "captured representation decisions cannot be null";
+		return analyzeWithDecisions(userModuleTypes, modulePaths, nullableStrings, allowUnresolvedMonomorphDynamic, allowUnmappedCoreTypeDynamic,
+			capturedRepresentationDecisions.copy());
+	}
+
+	static function analyzeWithDecisions(userModuleTypes:Array<ModuleType>, modulePaths:Array<String>, nullableStrings:Bool,
+			allowUnresolvedMonomorphDynamic:Bool, allowUnmappedCoreTypeDynamic:Bool,
+			representationDecisions:Array<RustRepresentationDecision>):NoHxrtEligibilityResult {
 		var requirements = RuntimeRequirementAnalyzer.collect(modulePaths, true, nullableStrings, allowUnresolvedMonomorphDynamic,
 			allowUnmappedCoreTypeDynamic, representationDecisions, true);
 

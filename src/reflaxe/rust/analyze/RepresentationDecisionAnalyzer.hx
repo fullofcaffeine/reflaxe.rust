@@ -73,7 +73,7 @@ class RepresentationDecisionAnalyzer {
 		}
 
 		function scanExpr(modulePath:String, root:TypedExpr, fieldRoot:Bool):Void {
-			function visit(expr:TypedExpr, rootFunction:Bool, suppressCurrent:Bool):Void {
+			function visit(expr:TypedExpr, rootFunction:Bool, suppressCurrent:Bool, forceValuePosition:Bool = false):Void {
 				if (expr == null)
 					return;
 				var current = unwrapMetaParen(expr);
@@ -88,14 +88,19 @@ class RepresentationDecisionAnalyzer {
 					case _:
 						false;
 				};
-				if (!suppressCurrent && valueBearing && !(rootFunction && functionNode))
+				if (!suppressCurrent && (valueBearing || forceValuePosition) && !(rootFunction && functionNode))
 					addType(modulePath, "expr", current.t, current.pos);
 
 				switch (current.expr) {
 					case TFunction(fn):
-						for (index in 0...fn.args.length)
-							addType(modulePath, "function-arg-" + index, fn.args[index].v.t, current.pos);
-						addType(modulePath, "function-result", fn.t, current.pos);
+						// Method declarations were recorded from their ClassField signature above. Re-adding
+						// the root TFunction arguments/result creates duplicate semantic rows at a second,
+						// broader position. Nested TFunction nodes remain real first-class function values.
+						if (!rootFunction) {
+							for (index in 0...fn.args.length)
+								addType(modulePath, "function-arg-" + index, fn.args[index].v.t, current.pos);
+							addType(modulePath, "function-result", fn.t, current.pos);
+						}
 						visit(fn.expr, false, false);
 						return;
 					case TCall(callTarget, arguments):
@@ -110,7 +115,14 @@ class RepresentationDecisionAnalyzer {
 						};
 						visit(callTarget, false, directMethodTarget);
 						for (argument in arguments)
-							visit(argument, false, false);
+							// A direct argument is a materialized value even when its syntax is a control
+							// expression such as `if` or `switch`. Its resulting type may be Dynamic even
+							// though every branch has a more concrete type.
+							visit(argument, false, false, true);
+						return;
+					case TNew(_, _, arguments):
+						for (argument in arguments)
+							visit(argument, false, false, true);
 						return;
 					case TVar(variable, initializer):
 						if (variable != null)

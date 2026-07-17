@@ -21,6 +21,10 @@ function output(result) {
   return `${result.stdout || ''}\n${result.stderr || ''}`
 }
 
+function runIn(cwd, command, args) {
+  return cp.spawnSync(command, args, { cwd, encoding: 'utf8' })
+}
+
 function main() {
   assert(fs.existsSync(haxeShim), 'project-pinned Haxe shim must exist')
   assert(fs.existsSync(policyPath), 'the representation vocabulary must have one structured policy source')
@@ -88,6 +92,57 @@ function main() {
     'runtime-v4|anonymous_object,dynamic,haxe_array_semantics,object_identity,reference_mutation',
     'no-hxrt|anonymous_object,dynamic,function_value,haxe_array_semantics,iterator_semantics,object_identity,reference_mutation'
   ])
+
+  const controlFixture = path.join(repoRoot, 'test', 'negative', 'representation_dynamic_control')
+  const controlOut = path.join(controlFixture, 'out')
+  fs.rmSync(controlOut, { recursive: true, force: true })
+  const controlArgs = [haxeShim, 'compile.hxml']
+  const controlFirst = runIn(controlFixture, process.execPath, controlArgs)
+  fs.rmSync(controlOut, { recursive: true, force: true })
+  const controlSecond = runIn(controlFixture, process.execPath, controlArgs)
+  fs.rmSync(controlOut, { recursive: true, force: true })
+  assert.notStrictEqual(controlFirst.status, 0, 'Dynamic control-expression fixture must fail no-hxrt eligibility')
+  assert.notStrictEqual(controlSecond.status, 0, 'repeat Dynamic control-expression fixture must fail no-hxrt eligibility')
+  assert.strictEqual(output(controlFirst), output(controlSecond), 'Dynamic control-expression diagnostics must be repeatable')
+  assert.match(output(controlFirst), /\[HXRS-NO-HXRT-ELIGIBILITY\]/,
+    'typed representation decisions must reject Dynamic before the emitted-Rust fallback')
+  assert.match(output(controlFirst), /reasonKind `dynamic`/,
+    'typed representation rejection must retain the Dynamic semantic reason')
+  assert.doesNotMatch(output(controlFirst), /\[HXRS-NO-HXRT-EMITTED-RUNTIME\]/,
+    'the late emitted-Rust guard must not own a typed Dynamic value')
+
+  const reportOutA = path.join(controlFixture, 'out_report_a')
+  const reportOutB = path.join(controlFixture, 'out_report_b')
+  fs.rmSync(reportOutA, { recursive: true, force: true })
+  fs.rmSync(reportOutB, { recursive: true, force: true })
+  const reportFirst = runIn(controlFixture, process.execPath,
+    [haxeShim, 'compile.report.hxml', '-D', 'rust_output=out_report_a'])
+  const reportSecond = runIn(controlFixture, process.execPath,
+    [haxeShim, 'compile.report.hxml', '-D', 'rust_output=out_report_b'])
+  assert.strictEqual(reportFirst.status, 0, output(reportFirst))
+  assert.strictEqual(reportSecond.status, 0, output(reportSecond))
+  const reportJsonA = fs.readFileSync(path.join(reportOutA, 'runtime_plan.json'), 'utf8')
+  const reportJsonB = fs.readFileSync(path.join(reportOutB, 'runtime_plan.json'), 'utf8')
+  const reportMarkdownA = fs.readFileSync(path.join(reportOutA, 'runtime_plan.md'), 'utf8')
+  const reportMarkdownB = fs.readFileSync(path.join(reportOutB, 'runtime_plan.md'), 'utf8')
+  assert.strictEqual(reportJsonA, reportJsonB, 'typed Dynamic runtime-plan JSON must be repeatable')
+  assert.strictEqual(reportMarkdownA, reportMarkdownB, 'typed Dynamic runtime-plan Markdown must be repeatable')
+  const controlReport = JSON.parse(reportJsonA)
+  const dynamicRequirements = controlReport.runtimeRequirements.filter((entry) => entry.reasonKind === 'dynamic')
+  assert.strictEqual(dynamicRequirements.length, 1,
+    'runtime plan must retain exactly one semantic row for the Dynamic control-expression value')
+  const controlSource = fs.readFileSync(path.join(controlFixture, 'Main.hx'), 'utf8')
+  const controlNeedle = 'if (flag) 1 else "value"'
+  const controlCharStart = controlSource.indexOf(controlNeedle)
+  assert.notStrictEqual(controlCharStart, -1, 'control-expression source sentinel must remain present')
+  const controlByteStart = Buffer.byteLength(controlSource.slice(0, controlCharStart), 'utf8')
+  const expectedControlSpan = `Main.hx:${controlByteStart}-${controlByteStart + Buffer.byteLength(controlNeedle, 'utf8')}`
+  assert.strictEqual(dynamicRequirements[0].sourceKind, 'module')
+  assert.strictEqual(dynamicRequirements[0].sourceModule, 'Main')
+  assert.strictEqual(dynamicRequirements[0].sourceSpan, expectedControlSpan,
+    'runtime plan must attribute Dynamic to the exact source-private control-expression bytes')
+  fs.rmSync(reportOutA, { recursive: true, force: true })
+  fs.rmSync(reportOutB, { recursive: true, force: true })
 
   const lines = first.stdout.trimEnd().split('\n')
   assert.deepStrictEqual(lines.slice(0, 5), [
