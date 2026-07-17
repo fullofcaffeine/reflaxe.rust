@@ -93,18 +93,18 @@ class RustRepresentationPlanContract {
 		expect(boundIds(staticStorage.requiredBounds()) == "sync,static",
 			"shared static storage needs Sync + static without unrelated Clone or Send bounds");
 
-		var nullableString = RustRepresentationPlanner.decide(facts("Main.Label", SourceString, IdentityNone, MutationImmutable, EscapeMay,
+		var nullableString = RustRepresentationPlanner.decide(facts("Main.Label", SourceNullableStringCompat, IdentityNone, MutationImmutable, EscapeMay,
 			SurfacePortableHaxe, Nullable, BoundaryLocal, 90));
 		expect(nullableString.representation == RepresentationRuntimeString, "nullable portable String needs its runtime carrier");
 		expect(nullableString.nullEncoding == NullIntrinsic, "the runtime String carrier owns its null sentinel");
 		expect(runtimeIds(nullableString.runtimeRequirements()) == "haxe_string_semantics,nullable_compat",
 			"nullable strings need both semantic runtime reasons in canonical order");
 
-		var nullableNativeString = RustRepresentationPlanner.decide(facts("Main.NativeLabel", SourceString, IdentityNone, MutationImmutable,
-			EscapeMay, SurfaceRustNative, Nullable, BoundaryLocal, 100));
-		expect(nullableNativeString.representation == RepresentationOwnedValue && nullableNativeString.nullEncoding == NullOuterOption,
-			"nullable Rust-native String must use Option<String> instead of the Haxe runtime carrier");
-		expect(nullableNativeString.noHxrtEligible, "nullable Rust-native String must remain eligible for no-runtime lowering");
+		var nullableOwnedString = RustRepresentationPlanner.decide(facts("Main.OwnedLabel", SourceString, IdentityNone, MutationImmutable,
+			EscapeMay, SurfacePortableHaxe, Nullable, BoundaryLocal, 100));
+		expect(nullableOwnedString.representation == RepresentationOwnedValue && nullableOwnedString.nullEncoding == NullOuterOption,
+			"the nullable owned String contract must use Option<String> instead of the Haxe runtime carrier");
+		expect(nullableOwnedString.noHxrtEligible, "the nullable owned String contract must remain eligible for no-runtime lowering");
 
 		var dynamicValue = RustRepresentationPlanner.decide(facts("Main.DynamicValue", SourceDynamic, IdentityNone, MutationShared, EscapeMay,
 			SurfacePortableHaxe, Nullable, BoundaryLocal, 110));
@@ -139,8 +139,12 @@ class RustRepresentationPlanContract {
 			NonNullable, BoundaryLocal, 170), "subject ids must reject control characters");
 		expectThrows(() -> RustRepresentationReason.fromId("invented"), "reason decoding must fail closed");
 		expectThrows(() -> RustRequiredBound.fromId("owned"), "bound decoding must fail closed");
+		expect(RuntimeObjectIdentity.isRuntimePlanV4Reason(),
+			"the generated policy adapter must admit v4-owned runtime reasons");
+		expect(!RuntimeFunctionValue.isRuntimePlanV4Reason() && !RuntimeIteratorSemantics.isRuntimePlanV4Reason(),
+			"the generated policy adapter must keep decision-v1-only reasons out of runtime-plan v4");
 
-		var decisions = [nullableString, nullableNativeString, nullableScalar, nativeDecision, mutableBorrow, classDecision, staticStorage, threadCrossing,
+		var decisions = [nullableString, nullableOwnedString, nullableScalar, nativeDecision, mutableBorrow, classDecision, staticStorage, threadCrossing,
 			dynamicCrossing, dynamicValue];
 		var snapshot = RustRepresentationPlanSnapshot.of(decisions);
 		decisions.reverse();

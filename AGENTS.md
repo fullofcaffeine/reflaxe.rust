@@ -223,6 +223,10 @@ Agent policy:
   wrapped command's exact status, including when the wrapper is called from `if` / `if !` contexts
   where `set -e` is suppressed. Reuse `scripts/ci/timed-command.sh` and keep
   `npm run test:timed-command-failure-propagation` wired into hooks.
+- Generated-artifact cleanup gotcha: `npm run test:clean-artifacts` validates the cleanup script
+  against a temporary fixture; it does not clean the working tree. Use
+  `bash scripts/ci/clean-artifacts.sh --outputs` for generated test/example outputs, or `--all` when
+  the owned build caches must also be removed, then run the npm contract test separately.
 - Pre-commit trigger gotcha: under `set -o pipefail`, `printf ... | grep -q` can report failure after a
   real match when `grep -q` exits early and the producer receives `SIGPIPE`. Match the captured staged
   file list with a here-string (`grep -Eq PATTERN <<<"$STAGED_FILES"`) so evidence gates cannot be
@@ -305,6 +309,16 @@ Agent policy:
   version-scoped runtime-reason consumers in the immutable runtime-plan schema/consumer manifest.
   Lowering, clone/reuse logic, runtime/no-hxrt analysis, and thread/task/Dynamic bound inference must
   consume the same validated decision rather than reconstructing a pass-local type classifier.
+  Typed-AST collection must classify value-bearing positions rather than every node type: control
+  wrappers, type expressions, direct method callees, and declaration method carriers may be typed as
+  `Dynamic`, anonymous structures, or functions even though they do not materialize such a value.
+  Preserve function-valued fields and real expression results, but suppress those scaffolding shapes
+  so runtime/no-hxrt reports do not invent requirements from compiler-internal typing artifacts.
+  Once a real value position is admitted, recurse through representation-bearing type arguments,
+  function signatures, anonymous fields, and typedef targets: an outer native container does not
+  make an inner `Dynamic`/HxRef/runtime-backed payload no-hxrt eligible.
+  Also scan emitted declaration storage such as enum-constructor payloads even when no expression
+  constructs them; the constructor's function-shaped type is a carrier, not a function value.
   Boundary-only `Clone`, `Send`, `Sync`, and static requirements belong at the proven crossing, not
   on unrelated single-thread native values.
 - Structural trait/impl gotcha: generated traits and impls must use `RTrait` / `RImpl` with typed
@@ -685,7 +699,12 @@ Agent policy:
   For intended-stack validation before staging, use a temporary full index (`GIT_INDEX_FILE=... git add -A`) and run `npm run docs:check:evidence` under that index.
   Once cases are staged, the repo pre-commit hook requires both generated summary artifacts to be staged, free of unstaged edits, and byte-for-byte current.
 - Disk-space gotcha: full snapshot regeneration and full harness runs can consume many GB in `test/snapshot/**/out*`, `examples/**/out*`, Cargo caches/registries, and `.cache/examples-target`.
-  If you hit `No space left on device`, run `npm run clean:artifacts:all` before re-running, then regenerate snapshots.
+  The independent consumer checkout's generated Cargo `target` directories can also retain tens of GB across
+  QA runs; they are rebuildable Cargo artifacts, but this repository's cleanup script cannot own a
+  sibling checkout. If you hit `No space left on device`, clean this repository with
+  `npm run clean:artifacts:all`, remove only stale consumer `target` directories when that checkout is
+  in scope, verify free space, and then rerun the failed gate. Never record an ENOSPC harness stop as
+  a compiler failure.
   When adding a new harness stage that writes ignored generated outputs or Cargo target/cache roots,
   update `scripts/ci/clean-artifacts.sh` in the same change so `npm run clean:artifacts:all`
   actually restores the repo to a no-generated-artifacts state after full validation.

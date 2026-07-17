@@ -14,9 +14,18 @@ typed Haxe facts into a validated decision containing the Rust storage shape, ow
 policy, explicit null encoding, semantic runtime reasons, contextual bounds, and an exact
 source-private Haxe byte span.
 
-This first modeling slice does not change generated Rust. Later slices route existing lowering and
-boundary behavior through these decisions and embed the canonical decision component in the runtime
-plan report.
+Production lowering now derives the established scalar, enum, class, trait-object, borrow, native,
+dynamic, string, array, anonymous-object, function, iterator, and nullable storage choices from this
+decision. Clone/reuse insertion and the semantic runtime/no-hxrt analysis consume the same answer.
+The routing is byte-neutral for the established representations: it centralizes why the compiler
+emits those Rust shapes without changing them. One correctness fix is deliberate and covered by an
+exact rustc-backed snapshot: `Null<rust.Ref<T>>` now emits `Option<&T>`, because a bare Rust borrow
+cannot represent Haxe `null`.
+
+Typed collection follows representation-bearing container arguments, function signatures,
+anonymous fields, typedef targets, and emitted enum-constructor payloads. It deliberately skips
+method/control scaffolding that does not materialize a value, so a nested `rust.Vec<Dynamic>` fails
+no-hxrt without inventing requirements from compiler-only function types.
 
 ## How
 
@@ -27,6 +36,14 @@ CI and pre-commit use `--check` and compare every generated consumer byte-for-by
 Runtime-reason entries also declare their versioned consumers. The published `runtime_plan.json`
 v4 vocabulary remains immutable, while the new representation-decision v1 component may model
 additional reasons before a future runtime-report version deliberately admits them.
+
+The v4 report therefore includes the representation reasons it already admits and records their
+exact typed-source spans under its existing `module` source-kind spelling. The complete decision-v1
+vocabulary, including function-value and iterator reasons, remains available to the no-hxrt
+eligibility analysis. A future report version may expose those additional reason IDs and a dedicated
+typed-AST source kind through an explicit schema migration. Until then, function and iterator
+carriers still contribute their admitted identity/mutation reasons, so v4's fallback summary never
+mistakes a runtime-backed value for a no-runtime program.
 
 <!-- BEGIN GENERATED RUST REPRESENTATION VOCABULARY -->
 
@@ -44,7 +61,8 @@ additional reasons before a future runtime-report version deliberately admits th
 | `sourceValueKinds` | `native_owned` | an explicitly Rust-native owned value |
 | `sourceValueKinds` | `native_handle` | an explicitly Rust-native resource or RAII handle |
 | `sourceValueKinds` | `dynamic` | a Haxe Dynamic-compatible payload |
-| `sourceValueKinds` | `string` | a Haxe String under the selected nullable or owned contract |
+| `sourceValueKinds` | `string` | a Haxe String using the ordinary owned Rust string contract |
+| `sourceValueKinds` | `nullable_string_compat` | a Haxe String using the runtime-backed nullable compatibility contract |
 | `sourceValueKinds` | `array` | a Haxe Array with shared identity and mutation |
 | `sourceValueKinds` | `anonymous_object` | a runtime-shaped anonymous Haxe object |
 | `sourceValueKinds` | `function_value` | a reusable Haxe function value |

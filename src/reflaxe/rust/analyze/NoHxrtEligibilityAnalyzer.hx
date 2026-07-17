@@ -2,12 +2,10 @@ package reflaxe.rust.analyze;
 
 import haxe.macro.Type;
 import haxe.macro.TypedExprTools;
-import reflaxe.helpers.TypeHelper;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeFallbackSummary;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementKind;
-
-using reflaxe.helpers.ModuleTypeHelper;
+import reflaxe.rust.analyze.RepresentationDecisionAnalyzer;
 
 /**
 	NoHxrtEligibilityAnalyzer
@@ -19,17 +17,10 @@ using reflaxe.helpers.ModuleTypeHelper;
 	  `dynamic`, `reflection`, or `platform_abstraction` before a late generated-path failure.
 
 	What
-	- Builds a no-runtime eligibility result from two inputs:
-	  - module-level runtime requirements from `RuntimeRequirementAnalyzer`,
-	  - user-authored typed-AST constructs that are known to require runtime semantics.
-	- The current AST slice is intentionally narrow and reportable:
-	  - dynamic field access and Dynamic/DynamicAccess locals,
-	  - anonymous object declarations when they cross a Dynamic/DynamicAccess boundary,
-	  - exceptions,
-	  - Haxe `Array` literals.
-	  - direct reflection/runtime-introspection and platform-abstraction calls.
-	- Broader type expansion is intentionally deferred because Haxe function/class internals can
-	  expose compiler structural types that are not user-authored runtime objects.
+	- Builds a no-runtime eligibility result from the shared typed representation decisions plus
+	  non-value operations such as exceptions, reflection, and platform abstractions.
+	- Typed collection ignores compiler scaffolding that does not materialize a value; this analyzer's
+	  remaining AST scan owns only non-value operations that need their own semantic reason.
 
 	How
 	- `analyze(...)` is only meant to run when `rust_no_hxrt` is active.
@@ -39,9 +30,10 @@ using reflaxe.helpers.ModuleTypeHelper;
 **/
 class NoHxrtEligibilityAnalyzer {
 	public static function analyze(userModuleTypes:Array<ModuleType>, modulePaths:Array<String>, nullableStrings:Bool, allowUnresolvedMonomorphDynamic:Bool,
-			allowUnmappedCoreTypeDynamic:Bool):NoHxrtEligibilityResult {
+			allowUnmappedCoreTypeDynamic:Bool, ?classHasSubclasses:ClassType->Bool):NoHxrtEligibilityResult {
+		var representationDecisions = RepresentationDecisionAnalyzer.collect(userModuleTypes, nullableStrings, classHasSubclasses);
 		var requirements = RuntimeRequirementAnalyzer.collect(modulePaths, true, nullableStrings, allowUnresolvedMonomorphDynamic,
-			allowUnmappedCoreTypeDynamic);
+			allowUnmappedCoreTypeDynamic, representationDecisions, true);
 
 		if (userModuleTypes != null) {
 			for (moduleType in userModuleTypes)
@@ -95,24 +87,10 @@ class NoHxrtEligibilityAnalyzer {
 		function visit(expr:TypedExpr):Void {
 			var current = unwrapMetaParen(expr);
 			switch (current.expr) {
-				case TObjectDecl(_) if (isDynamicBoundaryType(current.t)):
-					add(requirements, RuntimeAnonymousObject, "typed_ast", module, "Anonymous object expressions require hxrt object storage.");
-				case TVar(v, init):
-					{
-						if (v != null && isDynamicBoundaryType(v.t))
-							add(requirements, RuntimeDynamic, "typed_ast", module, "Dynamic-compatible locals require hxrt dynamic representation.");
-						if (v != null && isDynamicBoundaryType(v.t) && init != null && isObjectDecl(init))
-							add(requirements, RuntimeAnonymousObject, "typed_ast", module,
-								"Anonymous object expressions crossing Dynamic-compatible boundaries require hxrt object storage.");
-					}
 				case TThrow(_):
 					add(requirements, RuntimeException, "typed_ast", module, "Haxe throw semantics require hxrt exception support.");
 				case TTry(_, _):
 					add(requirements, RuntimeException, "typed_ast", module, "Haxe try/catch semantics require hxrt exception support.");
-				case TArrayDecl(_):
-					add(requirements, RuntimeHaxeArraySemantics, "typed_ast", module, "Haxe Array literals require runtime-backed Array semantics.");
-				case TField(_, FDynamic(_)):
-					add(requirements, RuntimeDynamic, "typed_ast", module, "Dynamic field access requires hxrt dynamic representation.");
 				case TCall(callTarget, _):
 					{
 						var ownerPath = callOwnerPath(callTarget);
@@ -126,30 +104,6 @@ class NoHxrtEligibilityAnalyzer {
 			TypedExprTools.iter(current, visit);
 		}
 		visit(root);
-	}
-
-	static function isObjectDecl(expr:TypedExpr):Bool {
-		if (expr == null)
-			return false;
-		return switch (unwrapMetaParen(expr).expr) {
-			case TObjectDecl(_): true;
-			case _:
-				false;
-		}
-	}
-
-	static function isDynamicBoundaryType(t:Type):Bool {
-		if (t == null)
-			return false;
-		return switch (t) {
-			case TDynamic(_):
-				true;
-			case TMono(monoRef):
-				isDynamicBoundaryType(monoRef.get());
-			case TLazy(lazyRef):
-				isDynamicBoundaryType(lazyRef());
-			case _: var mt = TypeHelper.toModuleType(t); var path = mt != null ? mt.getPath() : null; path == "Dynamic" || path == "haxe.DynamicAccess";
-		}
 	}
 
 	static function callOwnerPath(callTarget:TypedExpr):String {

@@ -3022,7 +3022,7 @@ run_runtime_plan_report_case "test/negative/runtime_fallback_reason_dynamic" "co
 	"" \
 	"" \
 	'"reasonKind":[[:space:]]*"dynamic"' \
-	'"sourceModule":[[:space:]]*"haxe[.]DynamicAccess"'
+	'"sourceSpan":[[:space:]]*"Main[.]hx:[0-9]+-[0-9]+"'
 run_runtime_plan_report_case "examples/profile_storyboard" "compile.metal.hxml" "metal" "default_features" \
 	'metal default-features runtime plan artifacts (profile_storyboard)' \
 	'rust_hxrt_default_features'

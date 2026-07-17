@@ -49,6 +49,46 @@ function main() {
   assert.strictEqual(first.stdout, second.stdout, 'representation-plan serialization must be byte-for-byte repeatable')
   assert.strictEqual(first.stderr, second.stderr, 'representation-plan diagnostics must be repeatable')
 
+  const typedArgs = [
+    path.join('node_modules', 'lix', 'bin', 'haxeshim.js'),
+    '-cp', 'src',
+    '-cp', 'std',
+    '-cp', 'test/compiler',
+    '-lib', 'reflaxe',
+    '-main', 'RustRepresentationTypeFixture',
+    '--macro', 'RustRepresentationTypeContractMacro.run()',
+    '--no-output'
+  ]
+  const typedFirst = run(process.execPath, typedArgs)
+  assert.strictEqual(typedFirst.status, 0, output(typedFirst))
+  const typedSecond = run(process.execPath, typedArgs)
+  assert.strictEqual(typedSecond.status, 0, output(typedSecond))
+  assert.strictEqual(typedFirst.stdout, typedSecond.stdout, 'typed representation extraction must be byte-for-byte repeatable')
+  assert.strictEqual(typedFirst.stderr, typedSecond.stderr, 'typed representation extraction diagnostics must be repeatable')
+  assert.deepStrictEqual(typedFirst.stdout.trimEnd().split('\n'), [
+    'scalar|scalar|copy_value|not_admitted|copy|haxe_scalar_value|',
+    'enumValue|enum_value|owned_value|not_admitted|clone_when_needed|haxe_enum_value|',
+    'nativeOwned|native_owned|owned_value|not_admitted|move_once|rust_owned_surface|',
+    'sharedIdentity|class_reference|shared_identity|intrinsic|clone_when_needed|haxe_class_identity|object_identity,reference_mutation',
+    'polymorphic|polymorphic_reference|shared_trait_object|intrinsic|clone_when_needed|haxe_polymorphic_identity|object_identity,reference_mutation',
+    'borrowed|borrowed_ref|borrowed_token|not_admitted|borrow|rust_borrow_surface|',
+    'nullableBorrowed|borrowed_ref|borrowed_token|outer_option|borrow|rust_borrow_surface|',
+    'nativeHandle|native_handle|native_handle|not_admitted|move_once|rust_native_handle|',
+    'dynamicValue|dynamic|dynamic_payload|intrinsic|clone_when_needed|haxe_dynamic_payload|dynamic',
+    'stringValue|string|owned_value|not_admitted|clone_when_needed|haxe_string_contract|',
+    'arrayValue|array|runtime_array|intrinsic|clone_when_needed|haxe_array_contract|haxe_array_semantics,reference_mutation',
+    'anonymousValue|anonymous_object|runtime_anonymous_object|intrinsic|clone_when_needed|haxe_anonymous_object|anonymous_object,object_identity,reference_mutation',
+    'functionValue|function_value|shared_function|intrinsic|clone_when_needed|haxe_function_value|function_value,object_identity',
+    'iteratorValue|iterator|runtime_iterator|not_admitted|clone_when_needed|haxe_iterator_contract|iterator_semantics,object_identity,reference_mutation',
+    'nullableValue|scalar|copy_value|outer_option|copy|haxe_scalar_value|',
+    'mapValue|class_reference|shared_identity|intrinsic|clone_when_needed|haxe_class_identity|object_identity,reference_mutation',
+    'runtimeString|nullable_string_compat|runtime_string|intrinsic|clone_when_needed|haxe_string_contract|haxe_string_semantics,nullable_compat',
+    'function-runtime-v4|object_identity',
+    'iterator-runtime-v4|object_identity,reference_mutation',
+    'runtime-v4|anonymous_object,dynamic,haxe_array_semantics,object_identity,reference_mutation',
+    'no-hxrt|anonymous_object,dynamic,function_value,haxe_array_semantics,iterator_semantics,object_identity,reference_mutation'
+  ])
+
   const lines = first.stdout.trimEnd().split('\n')
   assert.deepStrictEqual(lines.slice(0, 5), [
     'shared_identity|shared|clone_when_needed|object_identity,reference_mutation',

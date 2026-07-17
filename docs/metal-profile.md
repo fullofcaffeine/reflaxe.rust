@@ -217,7 +217,9 @@ are not treated as native facades just because of their namespace.
 `runtime_plan.*` schema v4 separates selected Cargo features from semantic runtime requirements.
 `runtimeRequirements` names stable reason kinds such as `dynamic`, `reflection`,
 `platform_abstraction`, `nullable_compat`, and `haxe_string_semantics`; `fallbackSummary` states
-whether those requirements need `hxrt` or would block a no-runtime contract.
+whether those requirements need `hxrt` or would block a no-runtime contract. Storage-related reasons
+are derived from the same typed representation decision used by lowering and clone/reuse logic, while
+reflection, exception, and platform-operation checks remain independent semantic requirements.
 
 ## Minimal runtime mode (`rust_no_hxrt`)
 

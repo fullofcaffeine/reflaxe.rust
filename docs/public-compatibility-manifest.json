@@ -8698,7 +8698,7 @@
           "id": "function:analyze",
           "kind": "function",
           "name": "analyze",
-          "signature": "public static function analyze (userModuleTypes : Array < ModuleType >, modulePaths : Array < String >, nullableStrings : Bool, allowUnresolvedMonomorphDynamic : Bool, allowUnmappedCoreTypeDynamic : Bool) : NoHxrtEligibilityResult",
+          "signature": "public static function analyze (userModuleTypes : Array < ModuleType >, modulePaths : Array < String >, nullableStrings : Bool, allowUnresolvedMonomorphDynamic : Bool, allowUnmappedCoreTypeDynamic : Bool, ? classHasSubclasses : ClassType -> Bool) : NoHxrtEligibilityResult",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
@@ -9180,6 +9180,52 @@
           ],
           "typeReferences": [
             "reflaxe.rust.analyze.ReflectionRegistryPlan.ReflectionRegistryIssue"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationDecisionAnalyzer",
+      "source": "src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx",
+      "kind": "class",
+      "signature": "class RepresentationDecisionAnalyzer",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+        "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullEncoding",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustOwnershipPolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRequiredBound",
+        "reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact"
+      ],
+      "operations": [
+        {
+          "id": "function:collect",
+          "kind": "function",
+          "name": "collect",
+          "signature": "public static function collect (moduleTypes : Array < ModuleType >, nullableStringCompat : Bool, ? classHasSubclasses : ClassType -> Bool) : Array < RustRepresentationDecision >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
           ]
         }
       ]
@@ -11073,6 +11119,17 @@
           "typeReferences": []
         },
         {
+          "id": "function:isRuntimePlanV4Reason",
+          "kind": "function",
+          "name": "isRuntimePlanV4Reason",
+          "signature": "public inline function isRuntimePlanV4Reason () : Bool",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
           "id": "function:fromId",
           "kind": "function",
           "name": "fromId",
@@ -11234,6 +11291,17 @@
           "kind": "enum-value",
           "name": "SourceString",
           "signature": "var SourceString = \"string\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceNullableStringCompat",
+          "kind": "enum-value",
+          "name": "SourceNullableStringCompat",
+          "signature": "var SourceNullableStringCompat = \"nullable_string_compat\"",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
@@ -11411,6 +11479,101 @@
       ]
     },
     {
+      "name": "reflaxe.rust.analyze.RepresentationTypeAnalyzer",
+      "source": "src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx",
+      "kind": "class",
+      "signature": "class RepresentationTypeAnalyzer",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+        "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullEncoding",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustOwnershipPolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRequiredBound",
+        "reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact"
+      ],
+      "operations": [
+        {
+          "id": "function:decide",
+          "kind": "function",
+          "name": "decide",
+          "signature": "public static function decide (subjectId : String, type : Type, pos : Position, origin : RustDecisionOrigin, nullableStringCompat : Bool, ? boundary : RustBoundaryKind = BoundaryLocal, ? classHasSubclasses : ClassType -> Bool) : RustRepresentationDecision",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+            "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
+          ]
+        },
+        {
+          "id": "function:tryDecide",
+          "kind": "function",
+          "name": "tryDecide",
+          "signature": "public static function tryDecide (subjectId : String, type : Type, pos : Position, origin : RustDecisionOrigin, nullableStringCompat : Bool, ? boundary : RustBoundaryKind = BoundaryLocal, ? classHasSubclasses : ClassType -> Bool) : Null < RustRepresentationDecision >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+            "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
+          ]
+        },
+        {
+          "id": "function:decideSourceKind",
+          "kind": "function",
+          "name": "decideSourceKind",
+          "signature": "public static function decideSourceKind (subjectId : String, sourceKind : RustSourceValueKind, explicitlyNullable : Bool, origin : RustDecisionOrigin, ? boundary : RustBoundaryKind = BoundaryLocal) : RustRepresentationDecision",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+            "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
+            "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind"
+          ]
+        },
+        {
+          "id": "function:classify",
+          "kind": "function",
+          "name": "classify",
+          "signature": "public static function classify (type : Type, nullableStringCompat : Bool, ? classHasSubclasses : ClassType -> Bool) : Null < RustSourceValueKind >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind"
+          ]
+        }
+      ]
+    },
+    {
       "name": "reflaxe.rust.analyze.RuntimeRequirementAnalyzer",
       "source": "src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx",
       "kind": "class",
@@ -11420,11 +11583,27 @@
         "test:public-compatibility"
       ],
       "directTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeFallbackSummary",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry"
       ],
       "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+        "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullEncoding",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustOwnershipPolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRequiredBound",
+        "reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy",
         "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeFallbackSummary",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementKind"
@@ -11434,12 +11613,27 @@
           "id": "function:collect",
           "kind": "function",
           "name": "collect",
-          "signature": "public static function collect (modulePaths : Array < String >, noHxrt : Bool, nullableStrings : Bool, allowUnresolvedMonomorphDynamic : Bool, allowUnmappedCoreTypeDynamic : Bool) : Array < RuntimeRequirementEntry >",
+          "signature": "public static function collect (modulePaths : Array < String >, noHxrt : Bool, nullableStrings : Bool, allowUnresolvedMonomorphDynamic : Bool, allowUnmappedCoreTypeDynamic : Bool, ? representationDecisions : Array < RustRepresentationDecision >, ? includeExtendedDecisionReasons : Bool = false) : Array < RuntimeRequirementEntry >",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
           ],
           "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
+            "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry"
+          ]
+        },
+        {
+          "id": "function:addDecisionRequirements",
+          "kind": "function",
+          "name": "addDecisionRequirements",
+          "signature": "public static function addDecisionRequirements (entries : Array < RuntimeRequirementEntry >, decision : RustRepresentationDecision, noHxrt : Bool, includeExtendedDecisionReasons : Bool) : Void",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
             "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry"
           ]
         },

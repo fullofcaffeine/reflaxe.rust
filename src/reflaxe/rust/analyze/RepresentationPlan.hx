@@ -34,6 +34,7 @@ enum abstract RustSourceValueKind(String) to String {
 	var SourceNativeHandle = "native_handle";
 	var SourceDynamic = "dynamic";
 	var SourceString = "string";
+	var SourceNullableStringCompat = "nullable_string_compat";
 	var SourceArray = "array";
 	var SourceAnonymousObject = "anonymous_object";
 	var SourceFunctionValue = "function_value";
@@ -61,6 +62,7 @@ enum abstract RustSourceValueKind(String) to String {
 			case "native_handle": SourceNativeHandle;
 			case "dynamic": SourceDynamic;
 			case "string": SourceString;
+			case "nullable_string_compat": SourceNullableStringCompat;
 			case "array": SourceArray;
 			case "anonymous_object": SourceAnonymousObject;
 			case "function_value": SourceFunctionValue;
@@ -433,6 +435,20 @@ enum abstract RustRuntimeRequirementKind(String) to String {
 		return this;
 	}
 
+	/**
+		Returns whether runtime-plan schema v4 admits this reason.
+
+		Why / What / How
+		- Consumer membership belongs to `rust-representation-policy.json`, beside each reason.
+		- Runtime-report code uses this generated helper instead of repeating a second reason list.
+	**/
+	public inline function isRuntimePlanV4Reason():Bool {
+		return switch (this) {
+			case RuntimeObjectIdentity | RuntimeReferenceMutation | RuntimeDynamic | RuntimeReflection | RuntimeAnonymousObject | RuntimeException | RuntimeNullableCompat | RuntimeSharedClosureCell | RuntimePlatformAbstraction | RuntimeHaxeArraySemantics | RuntimeHaxeStringSemantics: true;
+			case _: false;
+		};
+	}
+
 	public static function fromId(value:String):RustRuntimeRequirementKind {
 		return switch (value) {
 			case "object_identity": RuntimeObjectIdentity;
@@ -597,7 +613,6 @@ class RustRepresentationFacts {
 			require(identity == IdentityNone, "borrowed values do not own stable identity");
 			require(escape == EscapeLocal, "borrowed values cannot escape their admitted lexical region");
 			require(surface == SurfaceRustNative, "borrowed values require an explicit Rust-native surface");
-			require(nullability == NonNullable, "borrow tokens cannot carry Haxe nullability");
 			require(boundary == BoundaryLocal, "borrow tokens cannot cross thread, task, dynamic, or static boundaries");
 			var mutableBorrow = sourceKind == SourceBorrowedMutRef || sourceKind == SourceBorrowedMutSlice;
 			require(mutableBorrow ? mutation == MutationExclusiveBorrow : mutation == MutationImmutable,
@@ -623,9 +638,9 @@ class RustRepresentationFacts {
 				require(identity == IdentityNone, "the dynamic carrier owns payload identity separately");
 				require(surface == SurfacePortableHaxe, "dynamic is a portable Haxe runtime boundary");
 				require(mutation != MutationExclusiveBorrow, "dynamic cannot carry a lexical borrow mutation fact");
-			case SourceString:
+			case SourceString | SourceNullableStringCompat:
 				require(identity == IdentityNone && mutation == MutationImmutable, "String is an immutable reusable value");
-				require(surface != SurfacePortableFacade, "String must use either the portable Haxe or explicit Rust-native surface");
+				require(surface == SurfacePortableHaxe, "Haxe String contracts require the portable Haxe surface");
 			case SourceFunctionValue:
 				require(identity == IdentityStable, "shared callable values require stable handle identity");
 				require(mutation == MutationImmutable || mutation == MutationShared,
@@ -803,15 +818,13 @@ class RustRepresentationPlanner {
 				reuse = ReuseCloneWhenNeeded;
 				reason = ReasonHaxeDynamicPayload;
 				runtime = [RuntimeDynamic];
-			case SourceString:
-				if (facts.surface == SurfaceRustNative) {
+			case SourceString | SourceNullableStringCompat:
+				if (facts.sourceKind == SourceNullableStringCompat) {
+					representation = RepresentationRuntimeString;
+					runtime = [RuntimeHaxeStringSemantics, RuntimeNullableCompat];
+				} else {
 					representation = RepresentationOwnedValue;
 					runtime = [];
-				} else {
-					representation = RepresentationRuntimeString;
-					runtime = [RuntimeHaxeStringSemantics];
-					if (facts.nullability == Nullable)
-						runtime.push(RuntimeNullableCompat);
 				}
 				ownership = OwnershipMove;
 				reuse = ReuseCloneWhenNeeded;
@@ -833,7 +846,7 @@ class RustRepresentationPlanner {
 				ownership = OwnershipShared;
 				reuse = ReuseCloneWhenNeeded;
 				reason = ReasonHaxeFunctionValue;
-				runtime = [RuntimeFunctionValue];
+				runtime = [RuntimeFunctionValue, RuntimeObjectIdentity];
 				if (facts.mutation == MutationShared)
 					runtime.push(RuntimeSharedClosureCell);
 			case SourceIterator:
@@ -841,7 +854,7 @@ class RustRepresentationPlanner {
 				ownership = OwnershipShared;
 				reuse = ReuseCloneWhenNeeded;
 				reason = ReasonHaxeIteratorContract;
-				runtime = [RuntimeIteratorSemantics];
+				runtime = [RuntimeIteratorSemantics, RuntimeObjectIdentity, RuntimeReferenceMutation];
 			case SourcePortableFacade:
 				representation = RepresentationOwnedValue;
 				ownership = OwnershipMove;

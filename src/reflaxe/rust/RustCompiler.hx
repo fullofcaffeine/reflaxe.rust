@@ -81,6 +81,14 @@ import reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeFallbackSummary;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry;
+import reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin;
+import reflaxe.rust.analyze.RepresentationPlan.RustNullEncoding;
+import reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision;
+import reflaxe.rust.analyze.RepresentationPlan.RustRepresentationKind;
+import reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy;
+import reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind;
+import reflaxe.rust.analyze.RepresentationTypeAnalyzer;
+import reflaxe.rust.analyze.RepresentationDecisionAnalyzer;
 import reflaxe.rust.analyze.NativeSurfaceUsageAnalyzer;
 import reflaxe.rust.analyze.NativeSurfaceUsageAnalyzer.TypedNativeImportHit;
 import reflaxe.rust.analyze.SurfaceContractRegistry;
@@ -1186,8 +1194,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (!noHxrtEnabled())
 			return;
 
-		var result = NoHxrtEligibilityAnalyzer.analyze(userProjectModuleTypes(), snapshotUsedModulePaths(), Context.defined("rust_string_nullable"),
-			Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"));
+		var result = NoHxrtEligibilityAnalyzer.analyze(userProjectModuleTypes(), snapshotUsedModulePaths(), useNullableStringRepresentation(),
+			Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"), classHasSubclasses);
 		if (!result.blocked)
 			return;
 
@@ -1461,6 +1469,56 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function sourceFileForPosition(pos:haxe.macro.Expr.Position):String {
 		var info = Context.getPosInfos(pos);
 		return info != null && info.file != null ? info.file : "";
+	}
+
+	/**
+		Build the shared representation decision used by production lowering.
+
+		Why
+		- Rust type emission, null wrapping, reuse cloning, runtime planning, and no-hxrt checks must not
+		  infer the same Haxe value family independently.
+		- Haxe positions may contain absolute checkout paths, while every decision requires a source-private
+		  origin even when the decision is used only in memory.
+
+		What
+		- Specializes inherited generic types, resolves one stable source/module identity, and delegates all
+		  modeled value-family semantics to `RepresentationTypeAnalyzer`.
+		- Returns `null` only for compatibility shapes the typed model has not admitted yet; existing explicit
+		  compiler fallbacks remain responsible for those shapes until their own reviewed migration.
+
+		How
+		- Project files use their path relative to the compilation root.
+		- External classpath files use a logical `classpath/<module>/<file>` identity, never a machine path.
+	**/
+	function representationDecisionForType(type:Type, pos:haxe.macro.Expr.Position):Null<RustRepresentationDecision> {
+		if (type == null || pos == null)
+			return null;
+		var specialized = specializeCurrentMethodType(type);
+		var info = Context.getPosInfos(pos);
+		if (info == null || info.file == null || info.file.length == 0 || info.min < 0 || info.max < info.min)
+			return null;
+
+		var full = canonicalizePosFile(info.file);
+		var modulePath = sourceModuleByCanonicalFile.get(full);
+		if ((modulePath == null || modulePath.length == 0) && currentClassType != null)
+			modulePath = modulePathForClass(currentClassType);
+		if (modulePath == null || !~/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.match(modulePath))
+			modulePath = "CompilerGenerated";
+
+		var cwd = canonicalizePath(Path.normalize(Sys.getCwd()));
+		var stableFile:String;
+		if (Path.isAbsolute(full) && StringTools.startsWith(full, ensureTrailingSlash(cwd))) {
+			stableFile = full.substr(ensureTrailingSlash(cwd).length);
+		} else {
+			var sourceName = Path.withoutDirectory(info.file);
+			if (sourceName == null || sourceName.length == 0)
+				sourceName = "Source.hx";
+			stableFile = "classpath/" + modulePath.split(".").join("/") + "/" + sourceName;
+		}
+
+		var origin = RustDecisionOrigin.at(stableFile, info.min, info.max, modulePath);
+		var subjectId = modulePath + ":" + TypeTools.toString(specialized);
+		return RepresentationTypeAnalyzer.tryDecide(subjectId, specialized, pos, origin, useNullableStringRepresentation(), null, classHasSubclasses);
 	}
 
 	/**
@@ -2388,8 +2446,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		} else {
 			"selective";
 		}
-		var runtimeRequirements = RuntimeRequirementAnalyzer.collect(modulePaths, noHxrt, Context.defined("rust_string_nullable"),
-			Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"));
+		var representationDecisions = RepresentationDecisionAnalyzer.collect(userProjectModuleTypes(), useNullableStringRepresentation(), classHasSubclasses);
+		var runtimeRequirements = RuntimeRequirementAnalyzer.collect(modulePaths, noHxrt, useNullableStringRepresentation(),
+			Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"),
+			representationDecisions, false);
 		var fallbackSummary = RuntimeRequirementAnalyzer.summarize(runtimeRequirements);
 
 		return {
@@ -10565,7 +10625,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var capturedCloneLocals:Array<{name:String}> = [];
 					var capturedReusableLocals:Map<Int, Bool> = [];
 					for (v in capturedOuterLocals) {
-						var needsReusableClone = !isCopyType(v.t) && isHaxeReusableValueType(v.t);
+						var needsReusableClone = !isCopyType(v.t) && isHaxeReusableValueType(v.t, e.pos);
 						if (!isCapturedCellLocal(v) && !needsReusableClone)
 							continue;
 						capturedReusableLocals.set(v.id, true);
@@ -11857,6 +11917,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				break;
 			innerType = n;
 		}
+		var decision = representationDecisionForType(t, pos);
+		if (decision != null)
+			return decision.nullEncoding == RustNullEncoding.NullOuterOption ? innerType : null;
 
 		// Some Rust representations already have an explicit null value (no extra `Option<...>` needed).
 		var innerRust = toRustType(innerType, pos);
@@ -11989,7 +12052,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 	}
 
-	function isHaxeReusableValueType(t:Type):Bool {
+	function isHaxeReusableValueType(t:Type, ?pos:haxe.macro.Expr.Position):Bool {
+		var decision = representationDecisionForType(t, pos == null ? Context.currentPos() : pos);
+		if (decision != null)
+			return decision.reuse == RustReusePolicy.ReuseCloneWhenNeeded;
 		// Types that behave like Haxe reference values (must not be "moved" by Rust assignments).
 		// - `Array<T>` is `hxrt::array::Array<T>` backed by `HxRef<Vec<T>>`.
 		// - class instances / Bytes are shared `HxRef<T>` handles.
@@ -12020,7 +12086,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		  identifiers collide, the declaration path forces a `.clone()` before any coercion.
 	 */
 	function needsForcedAliasCloneForLocalDecl(target:TVar, init:TypedExpr, targetName:String):Bool {
-		if (target == null || init == null || isCopyType(init.t) || !isHaxeReusableValueType(init.t))
+		if (target == null || init == null || isCopyType(init.t) || !isHaxeReusableValueType(init.t, init.pos))
 			return false;
 
 		function unwrapToLocal(e:TypedExpr):Null<TVar> {
@@ -12104,7 +12170,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		if ((isLocalExpr(valueExpr) || isOwnershipLocalExpr(valueExpr) || castWrappedThis)
 			&& !isObviousTemporaryExpr(valueExpr)
-			&& isHaxeReusableValueType(valueExpr.t)) {
+			&& isHaxeReusableValueType(valueExpr.t, valueExpr.pos)) {
 			return ECall(rustField(expr, "clone"), []);
 		}
 		return expr;
@@ -12120,7 +12186,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var castWrappedThis = isCastWrappedThisExpr(valueExpr);
 		if ((isLocalExpr(valueExpr) || isOwnershipLocalExpr(valueExpr) || castWrappedThis)
 			&& !isObviousTemporaryExpr(valueExpr)
-			&& isHaxeReusableValueType(valueExpr.t)) {
+			&& isHaxeReusableValueType(valueExpr.t, valueExpr.pos)) {
 			function unwrapToLocalId(e:TypedExpr):Null<Int> {
 				var cur = unwrapMetaParen(e);
 				while (true) {
@@ -14938,6 +15004,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function coerceArgForParam(compiled:RustExpr, argExpr:TypedExpr, paramType:Type):RustExpr {
 		var rustParamTy = toRustType(paramType, argExpr.pos);
+		var argRepresentationDecision = representationDecisionForType(argExpr.t, argExpr.pos);
+		var paramRepresentationDecision = representationDecisionForType(paramType, argExpr.pos);
 		function isCloneExpr(e:RustExpr):Bool {
 			return switch (e) {
 				case ECall(EField(_, member), []) if (RustPathAnalysis.matchesPlainMember(member, "clone")): true;
@@ -14981,11 +15049,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// What: preserve the reusable-value contract for structural iterator types and both concrete
 		// array-backed iterator classes exposed by Haxe's typed AST.
 		// How: reuse the read-count-aware clone policy so a last-use transfer stays clone-free.
-		if (isIteratorStructType(argExpr.t) || isHaxeArrayBackedIteratorType(argExpr.t)) {
+		var plannedIteratorArgument = argRepresentationDecision != null
+			? argRepresentationDecision.sourceKind == RustSourceValueKind.SourceIterator
+			: (isIteratorStructType(argExpr.t) || isHaxeArrayBackedIteratorType(argExpr.t));
+		if (plannedIteratorArgument) {
 			compiled = maybeCloneForReuseValue(compiled, argExpr);
 		}
 
-		if (isStringType(paramType)) {
+		var plannedStringParameter = paramRepresentationDecision != null
+			? (paramRepresentationDecision.sourceKind == RustSourceValueKind.SourceString
+				|| paramRepresentationDecision.sourceKind == RustSourceValueKind.SourceNullableStringCompat)
+			: isStringType(paramType);
+		if (plannedStringParameter) {
 			// Haxe Strings are immutable and commonly re-used after calls; avoid Rust moves by cloning
 			// when the argument is an existing local that is used more than once.
 			//
@@ -14993,7 +15068,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			// typically produces a fresh String value, so cloning it is redundant noise.
 			var reads = localReadCount(argExpr);
 			var shouldClone = reads == null ? true : (reads > 1);
-			if (shouldClone && isLocalExpr(argExpr) && !isStringLiteralExpr(argExpr) && !isCloneExpr(compiled)) {
+			var plannedReusableString = argRepresentationDecision == null
+				|| argRepresentationDecision.reuse == RustReusePolicy.ReuseCloneWhenNeeded;
+			if (plannedReusableString && shouldClone && isLocalExpr(argExpr) && !isStringLiteralExpr(argExpr) && !isCloneExpr(compiled)) {
 				compiled = ECall(rustField(compiled, "clone"), []);
 			}
 		} else {
@@ -15005,11 +15082,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 
 			// Haxe arrays, enums, class/interface handles, anonymous objects, functions, and Dynamic
-			// values remain reusable after by-value calls.
-			var reusableByValueArg = isArrayType(argExpr.t)
+			// values remain reusable after by-value calls. Strings also carry the planner's reusable-value
+			// policy, but a non-String boundary (notably Dynamic boxing) must defer that choice to
+			// `coerceExprToExpected`. That later step has remaining-read information, so cloning here would
+			// turn otherwise safe last-use moves into noisy `.clone()` calls.
+			var reusableByValueArg = argRepresentationDecision != null ? (argRepresentationDecision.reuse == RustReusePolicy.ReuseCloneWhenNeeded
+				&& argRepresentationDecision.sourceKind != RustSourceValueKind.SourceString
+				&& argRepresentationDecision.sourceKind != RustSourceValueKind.SourceNullableStringCompat) : (isArrayType(argExpr.t)
 				|| isEnumValueType(argExpr.t)
 				|| isRcBackedType(argExpr.t)
-				|| mapsToRustDynamic(argExpr.t, argExpr.pos);
+				|| mapsToRustDynamic(argExpr.t, argExpr.pos));
 			if (!isByRef && reusableByValueArg && !isCloneExpr(compiled) && !isObviousTemporaryExpr(argExpr)) {
 				if (isLocalExpr(argExpr)) {
 					// Preserve the established conservative policy for direct source locals.
@@ -18742,6 +18824,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							innerType = n;
 						}
 						var inner = toRustType(innerType, pos);
+						var nullableDecision = representationDecisionForType(t, pos);
+						if (nullableDecision != null) {
+							switch (nullableDecision.nullEncoding) {
+								case RustNullEncoding.NullOuterOption:
+									return rustOptionType(inner);
+								case RustNullEncoding.NullIntrinsic:
+									var plannedTraitObject = dynRefTraitObjectRustType(innerType, pos);
+									return plannedTraitObject == null ? inner : plannedTraitObject;
+								case RustNullEncoding.NullNotAdmitted:
+									return inner;
+							}
+						}
 
 						// Interface and polymorphic class trait objects need an explicit null sentinel
 						// when the Haxe type is `Null<T>`. A bare `HxRc<dyn Trait>` cannot represent
@@ -18792,6 +18886,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 			case _:
 		}
+		var representationDecision = representationDecisionForType(t, pos);
 		if (TypeHelper.isVoid(t))
 			return RUnit;
 		if (TypeHelper.isBool(t))
@@ -18800,7 +18895,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return RI32;
 		if (TypeHelper.isFloat(t))
 			return RF64;
-		if (isStringType(base)) {
+		if (representationDecision != null
+			? (representationDecision.sourceKind == RustSourceValueKind.SourceString
+				|| representationDecision.sourceKind == RustSourceValueKind.SourceNullableStringCompat)
+			: isStringType(base)) {
 			return rustStringType();
 		}
 
@@ -18837,19 +18935,30 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case _:
 		}
 
-		switch (ft) {
-			case TDynamic(_):
-				return rustDynamicType();
-			case _:
-		}
+		var plannedDynamic = representationDecision != null
+			? representationDecision.representation == RustRepresentationKind.RepresentationDynamicPayload
+			: switch (ft) {
+				case TDynamic(_): true;
+				case _: false;
+			};
+		if (plannedDynamic)
+			return rustDynamicType();
 
-		switch (ft) {
-			case TFun(params, ret):
+		var plannedFunction = representationDecision != null
+			? representationDecision.representation == RustRepresentationKind.RepresentationSharedFunction
+			: switch (ft) {
+				case TFun(_, _): true;
+				case _: false;
+			};
+		if (plannedFunction) {
+			switch (ft) {
+				case TFun(params, ret):
 				{
 					var retTy = TypeHelper.isVoid(ret) ? null : toRustType(ret, pos);
 					return rustDynRefType(rustFunctionTraitObjectType([for (parameter in params) toRustType(parameter.t, pos)], retTy));
 				}
-			case _:
+				case _:
+			}
 		}
 
 		switch (ft) {
@@ -18966,7 +19075,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						}
 
 						// Iterator<T> (structural methods): { hasNext():Bool, next():T }
-						if (hasNext != null && next != null && isIteratorStructType(ft)) {
+						var plannedAnonymousIterator = representationDecision != null
+							? representationDecision.representation == RustRepresentationKind.RepresentationRuntimeIterator
+							: isIteratorStructType(ft);
+						if (hasNext != null && next != null && plannedAnonymousIterator) {
 							var nextRet:Type = switch (followType(next.type)) {
 								case TFun(_, r): r;
 								case _: next.type;
@@ -18983,7 +19095,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case _:
 		}
 
-		if (isArrayType(ft)) {
+		var plannedArray = representationDecision != null
+			? representationDecision.representation == RustRepresentationKind.RepresentationRuntimeArray
+			: isArrayType(ft);
+		if (plannedArray) {
 			var elem = arrayElementType(ft);
 			var elemRust = toRustType(elem, pos);
 			return rustRelativeType(["hxrt", "array", "Array"], [elemRust]);
@@ -19010,7 +19125,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 			case TInst(clsRef, params): {
 					var cls = clsRef.get();
-					if (params != null && params.length == 1) {
+					var plannedClassIterator = representationDecision != null
+						? representationDecision.representation == RustRepresentationKind.RepresentationRuntimeIterator
+						: haxeArrayIteratorKind(cls) != null;
+					if (plannedClassIterator
+						&& params != null
+						&& params.length == 1) {
 						switch (haxeArrayIteratorKind(cls)) {
 							case ArrayIteratorValues:
 								var item = toRustType(params[0], pos);
@@ -19036,7 +19156,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							return rustNamedType(cls.name);
 						case _:
 					}
-					if (isBytesClass(cls)) {
+					if (representationDecision != null
+						? representationDecision.sourceKind == RustSourceValueKind.SourceBytesReference
+						: isBytesClass(cls)) {
 						return rustHxRefType(rustRelativeType(["hxrt", "bytes", "Bytes"]));
 					}
 					if (cls.isExtern) {
@@ -19044,10 +19166,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						var arguments = params == null ? [] : rustTypeArguments([for (parameter in params) toRustType(parameter, pos)]);
 						return RNamed(rustPathWithFinalArguments(path, arguments));
 					}
-					if (cls.isInterface) {
+					if (representationDecision != null
+						&& representationDecision.representation == RustRepresentationKind.RepresentationSharedTraitObject) {
 						var traitObject = traitObjectRustType(t, pos);
 						traitObject == null ? RUnit : rustRcType(traitObject);
-					} else if (classHasSubclasses(cls)) {
+					} else if (representationDecision != null
+						&& representationDecision.representation == RustRepresentationKind.RepresentationSharedIdentity) {
+						rustHxRefType(rustCrateNominalType(rustModuleSegmentsForClass(cls), rustTypeNameForClass(cls),
+							params == null ? [] : [for (parameter in params) toRustType(parameter, pos)]));
+					} else if (cls.isInterface || classHasSubclasses(cls)) {
+						// Compatibility fallback for an as-yet unmodeled class shape.
 						var traitObject = traitObjectRustType(t, pos);
 						traitObject == null ? RUnit : rustRcType(traitObject);
 					} else {
@@ -19066,6 +19194,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function isCopyType(t:Type):Bool {
 		t = specializeCurrentMethodType(t);
+		var decision = representationDecisionForType(t, Context.currentPos());
+		if (decision != null)
+			return decision.reuse == RustReusePolicy.ReuseCopy;
 		var ft = followType(t);
 		return TypeHelper.isBool(ft) || TypeHelper.isInt(ft) || TypeHelper.isFloat(ft);
 	}
@@ -19118,8 +19249,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		- Uses `toRustType` to observe the final Rust representation.
 	**/
 	function mapsToRustDynamic(t:Type, pos:haxe.macro.Expr.Position):Bool {
-		if (isDynamicType(t))
-			return true;
+		var decision = representationDecisionForType(t, pos);
+		if (decision != null)
+			return decision.representation == RustRepresentationKind.RepresentationDynamicPayload;
 		return rustTypeIsDynamicCarrier(toRustType(t, pos));
 	}
 
@@ -19307,6 +19439,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	function isRcBackedType(t:Type):Bool {
+		var decision = representationDecisionForType(t, Context.currentPos());
+		if (decision != null) {
+			return decision.representation == RustRepresentationKind.RepresentationSharedIdentity
+				|| decision.representation == RustRepresentationKind.RepresentationSharedTraitObject
+				|| decision.representation == RustRepresentationKind.RepresentationRuntimeArray
+				|| decision.representation == RustRepresentationKind.RepresentationRuntimeAnonymousObject
+				|| decision.representation == RustRepresentationKind.RepresentationSharedFunction;
+		}
 		// Concrete classes / Bytes are `HxRef<T>` (shared ref-backed).
 		// Interfaces and polymorphic base classes are `HxRc<dyn Trait>` (shared ref-backed).
 		// Additionally, `rust.HxRef<T>` is a shared ref used by framework helpers.

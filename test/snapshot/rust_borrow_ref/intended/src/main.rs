@@ -66,10 +66,15 @@ fn main() {
     let ok: bool = {
         let haystack: &String = &s;
         {
-            let _hx_ref: &String = &String::from("world");
+            let maybe_haystack: Option<&String> = Some(haystack);
+            let still_borrowed: bool = maybe_haystack.is_some();
             {
-                let needle: &str = _hx_ref;
-                crate::rust_string_tools::StringTools::contains(haystack, needle)
+                let _hx_ref: &String = &String::from("world");
+                {
+                    let needle: &str = _hx_ref;
+                    crate::rust_string_tools::StringTools::contains(haystack, needle)
+                        && still_borrowed
+                }
             }
         }
     };

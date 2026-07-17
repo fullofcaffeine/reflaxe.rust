@@ -1,6 +1,7 @@
 package reflaxe.rust.analyze;
 
 import reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind;
+import reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision;
 
 /**
 	Stable semantic reason kind for requiring the Haxe runtime.
@@ -30,10 +31,10 @@ typedef RuntimeRequirementKind = RustRuntimeRequirementKind;
 
 	What
 	- `reasonKind`: stable semantic reason enum.
-	- `sourceKind`: where the reason came from (`module` or `define` in the first pass).
+	- `sourceKind`: `module`/`define` in report v4; internal no-hxrt rows may use `typed_ast`.
 	- `sourceModule`: Haxe module path when available.
-	- `sourceSpan`: reserved for future AST diagnostics; empty when module-level analysis is the
-	  best available attribution.
+	- `sourceSpan`: exact source-private bytes for typed decisions; empty when only a module or define
+	  can be attributed.
 	- `surfaceId`: optional facade/native surface id once surface-aware passes feed the ledger.
 	- `requiresHxrt`: whether the reason requires the bundled runtime.
 	- `noHxrtBlocked`: whether this reason conflicts with the active `rust_no_hxrt` contract.
@@ -81,31 +82,37 @@ typedef RuntimeFallbackSummary = {
 	  common report vocabulary.
 
 	What
-	- Builds a deterministic first-pass ledger from typed module usage plus explicit compatibility
-	  defines.
+	- Builds a deterministic ledger from typed representation decisions, operation-level module usage,
+	  and explicit compatibility defines.
 	- Deliberately avoids broad inference that cannot be justified from available compiler data.
 
 	How
-	- `collect(...)` accepts sorted/unsorted module paths from `TypeUsageAnalyzer`.
+	- `collect(...)` combines sorted/unsorted module paths with optional canonical typed decisions.
 	- `summarize(...)` reduces the ledger to the report-level fallback summary.
 **/
 class RuntimeRequirementAnalyzer {
 	public static function collect(modulePaths:Array<String>, noHxrt:Bool, nullableStrings:Bool, allowUnresolvedMonomorphDynamic:Bool,
-			allowUnmappedCoreTypeDynamic:Bool):Array<RuntimeRequirementEntry> {
+			allowUnmappedCoreTypeDynamic:Bool, ?representationDecisions:Array<RustRepresentationDecision>,
+			?includeExtendedDecisionReasons:Bool = false):Array<RuntimeRequirementEntry> {
 		var entries:Array<RuntimeRequirementEntry> = [];
+		var decisionsProvided = representationDecisions != null;
+		if (representationDecisions != null) {
+			for (decision in representationDecisions)
+				addDecisionRequirements(entries, decision, noHxrt, includeExtendedDecisionReasons);
+		}
 
 		if (modulePaths != null) {
 			for (path in modulePaths) {
 				if (path == null || path.length == 0)
 					continue;
 
-				if (isDynamicPath(path))
+				if (!decisionsProvided && isDynamicPath(path))
 					add(entries, RuntimeDynamic, "module", path, null, noHxrt, "Dynamic-compatible values require hxrt dynamic representation.");
 
 				if (isReflectionPath(path))
 					add(entries, RuntimeReflection, "module", path, null, noHxrt, "Reflection/runtime introspection requires hxrt support.");
 
-				if (isAnonymousObjectPath(path))
+				if (!decisionsProvided && isAnonymousObjectPath(path))
 					add(entries, RuntimeAnonymousObject, "module", path, null, noHxrt, "Anonymous runtime objects require hxrt object storage.");
 
 				if (isExceptionPath(path))
@@ -114,10 +121,10 @@ class RuntimeRequirementAnalyzer {
 				if (isPlatformAbstractionPath(path))
 					add(entries, RuntimePlatformAbstraction, "module", path, null, noHxrt, "Platform abstraction requires hxrt wrapper support.");
 
-				if (isHaxeArrayPath(path))
+				if (!decisionsProvided && isHaxeArrayPath(path))
 					add(entries, RuntimeHaxeArraySemantics, "module", path, null, noHxrt, "Haxe Array semantics require hxrt array representation.");
 
-				if (isHaxeStringRuntimePath(path))
+				if (!decisionsProvided && isHaxeStringRuntimePath(path))
 					add(entries, RuntimeHaxeStringSemantics, "module", path, null, noHxrt, "Runtime-backed Haxe string semantics require hxrt string support.");
 			}
 		}
@@ -139,6 +146,64 @@ class RuntimeRequirementAnalyzer {
 
 		entries.sort(compareEntries);
 		return entries;
+	}
+
+	/**
+		Adds semantic runtime requirements owned by one representation decision.
+
+		Why / What / How
+		- Runtime and no-hxrt consumers must use the planner's reasons rather than classify the Haxe type
+		  again. The source span is carried forward in a path-private deterministic spelling.
+		- Runtime-plan schema v4 cannot admit the newer function/iterator reason IDs, so ordinary report
+		  collection filters those two values. No-hxrt analysis opts into the complete decision-v1 set.
+	**/
+	public static function addDecisionRequirements(entries:Array<RuntimeRequirementEntry>, decision:RustRepresentationDecision, noHxrt:Bool,
+			includeExtendedDecisionReasons:Bool):Void {
+		if (entries == null || decision == null)
+			return;
+		for (reason in decision.runtimeRequirements()) {
+			if (!includeExtendedDecisionReasons && !reason.isRuntimePlanV4Reason())
+				continue;
+			var entry:RuntimeRequirementEntry = {
+				reasonKind: reason,
+				// Runtime-plan v4 has an immutable module/define source-kind vocabulary. Its module row may
+				// now carry the exact planner span; the no-hxrt-only extended path keeps the typed-AST label.
+				sourceKind: includeExtendedDecisionReasons ? "typed_ast" : "module",
+				sourceModule: decision.origin.modulePath,
+				sourceSpan: decision.origin.sourceFile + ":" + decision.origin.startByte + "-" + decision.origin.endByte,
+				surfaceId: null,
+				requiresHxrt: true,
+				noHxrtBlocked: noHxrt,
+				message: messageForDecisionReason(reason)
+			};
+			var duplicate = false;
+			for (existing in entries) {
+				if (sameEntry(existing, entry)) {
+					duplicate = true;
+					break;
+				}
+			}
+			if (!duplicate)
+				entries.push(entry);
+		}
+	}
+
+	static function messageForDecisionReason(reason:RuntimeRequirementKind):String {
+		return switch (reason) {
+			case RuntimeObjectIdentity: "Haxe object identity requires runtime-managed reference semantics.";
+			case RuntimeReferenceMutation: "Alias-visible mutation requires runtime-managed shared storage.";
+			case RuntimeDynamic: "Dynamic-compatible values require hxrt dynamic representation.";
+			case RuntimeReflection: "Reflection/runtime introspection requires hxrt support.";
+			case RuntimeAnonymousObject: "Anonymous runtime objects require hxrt object storage.";
+			case RuntimeException: "Haxe exception payload semantics require hxrt exception support.";
+			case RuntimeNullableCompat: "Nullable compatibility mode requires runtime-backed null representation.";
+			case RuntimeSharedClosureCell: "Shared closure mutation requires a runtime-managed cell.";
+			case RuntimePlatformAbstraction: "Platform abstraction requires hxrt wrapper support.";
+			case RuntimeHaxeArraySemantics: "Haxe Array semantics require hxrt array representation.";
+			case RuntimeHaxeStringSemantics: "Runtime-backed Haxe string semantics require hxrt string support.";
+			case RuntimeFunctionValue: "Reusable Haxe function values require a shared runtime carrier.";
+			case RuntimeIteratorSemantics: "Haxe iterator values require runtime-managed cursor state.";
+		};
 	}
 
 	public static function summarize(entries:Array<RuntimeRequirementEntry>):RuntimeFallbackSummary {

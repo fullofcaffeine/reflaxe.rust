@@ -96,6 +96,7 @@
             "native_handle",
             "dynamic",
             "string",
+            "nullable_string_compat",
             "array",
             "anonymous_object",
             "function_value",
