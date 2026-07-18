@@ -701,11 +701,12 @@ class RustSourceMap {
 			sourceIndex = new RustSourceByteIndex(File.getBytes(resolved.absoluteFile));
 			state.indexedSources.set(resolved.absoluteFile, sourceIndex);
 		}
-		if (info.max > sourceIndex.bytes.length)
+		var byteRange = RustSourcePosition.utf8ByteRange(resolved.absoluteFile, info.min, info.max);
+		if (byteRange == null || byteRange.endByte > sourceIndex.bytes.length)
 			throw 'Mapped Haxe origin exceeds ${resolved.stableFile}';
-		var start = sourceIndex.pointAt(info.min);
-		var end = sourceIndex.pointAt(info.max);
-		var span = RustHaxeSourceSpan.at(resolved.stableFile, info.min, info.max, start.line, start.column, end.line, end.column);
+		var start = sourceIndex.pointAt(byteRange.startByte);
+		var end = sourceIndex.pointAt(byteRange.endByte);
+		var span = RustHaxeSourceSpan.at(resolved.stableFile, byteRange.startByte, byteRange.endByte, start.line, start.column, end.line, end.column);
 		state.sourceSpans.set(spanKey, span);
 		return span;
 	}

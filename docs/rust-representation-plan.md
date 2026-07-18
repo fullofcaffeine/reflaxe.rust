@@ -16,11 +16,18 @@ source-private Haxe byte span.
 
 Production lowering now derives the established scalar, enum, class, trait-object, borrow, native,
 dynamic, string, array, anonymous-object, function, iterator, and nullable storage choices from this
-decision. Clone/reuse insertion and the semantic runtime/no-hxrt analysis consume the same answer.
+decision. A representation-changing boundary is decided from both sides of the crossing: the value's
+actual type and the destination's expected type. This is how a plain `Int`, enum, or class argument
+passed to `Dynamic` gets the same Dynamic decision in early analysis and later Rust boxing. Call and
+constructor arguments, local initializers, assignments, returns, casts, and control-expression
+results all use that expected-type-aware path. Clone/reuse insertion and the semantic runtime/no-hxrt
+analysis consume the same answer.
 The routing is byte-neutral for the established representations: it centralizes why the compiler
 emits those Rust shapes without changing them. One correctness fix is deliberate and covered by an
 exact rustc-backed snapshot: `Null<rust.Ref<T>>` now emits `Option<&T>`, because a bare Rust borrow
-cannot represent Haxe `null`.
+cannot represent Haxe `null`. Nullable mutable borrows are never cloned—`Option<&mut T>` cannot be
+cloned. A local mutable option is opened through `&mut` and yields a real reborrow, allowing admitted
+sequential uses while preserving Rust's exclusive-borrow rules.
 
 Typed collection follows representation-bearing container arguments, function signatures,
 anonymous fields, typedef targets, and emitted enum-constructor payloads. It deliberately skips
@@ -29,11 +36,21 @@ no-hxrt without inventing requirements from compiler-only function types.
 
 The compiler captures that collection and the no-hxrt operation scan at Haxe's completed typed-AST
 boundary, before Reflaxe moves method bodies into per-class lowering data. This keeps expression-only
-representation facts as well as `throw`, reflection, and platform-call evidence. Haxe may deliver
-that boundary through multiple incremental callbacks, so modules are accumulated by semantic type
-path and consumed once in a deterministic order. Direct call and constructor arguments remain value
-positions even when written as `if` or `switch` expressions; their resulting type is recorded without
-treating surrounding method-body control wrappers as stored values.
+saved representation decisions as well as `throw`, reflection, and platform calls. Haxe may deliver
+that boundary through multiple incremental callbacks, so modules are accumulated by Reflaxe's
+collision-safe declaration identity and consumed once in a deterministic order. A display path is not
+used as a key because a primary type such as `NotWidget` and a secondary `Widget` can otherwise
+collapse to the same suffix-derived path. Direct call and constructor arguments remain value positions
+even when written as `if` or `switch` expressions; their resulting type is recorded without treating
+surrounding method-body control wrappers as stored values. An immediately invoked enum constructor is
+call scaffolding, while a constructor stored in a variable remains a real function value.
+
+Haxe compiler positions are source-string offsets rather than the UTF-8 byte offsets promised by the
+reports. The shared source-position adapter converts them against the exact source content before a
+decision or operation is serialized, and converts byte ranges back before asking Haxe to place a
+diagnostic. The no-hxrt check gathers information at two different times: exact source expressions are
+saved early, while broader module usage becomes available later. The compiler always combines both
+sets before reporting an error; finding one blocker never hides an independent reason.
 
 ## How
 

@@ -17,12 +17,30 @@ class RustRepresentationTypeFixture {
 	static var nullableValue:Null<Int>;
 	static var mapValue:Map<String, String>;
 	static function consumeDynamic(value:Dynamic):Void {}
+	static function exerciseDynamicBoundaries(flag:Bool):Dynamic {
+		consumeDynamic(1);
+		consumeDynamic(new RustRepresentationFixtureNode());
+		consumeDynamic(RustRepresentationFixtureChoice.First);
+		// The compiler copies the value behind an immutable rust.Ref before boxing; the lexical
+		// borrow token itself must never be described as escaping into Dynamic.
+		consumeDynamic(borrowed);
+		haxe.Json.stringify(2);
+		var local:Dynamic = 3;
+		local = 4;
+		var constructed = new RustRepresentationDynamicBox(5);
+		var casted:Dynamic = cast 6;
+		return if (flag) 7 else 8;
+	}
 
 	static function main():Void {}
 }
 
 class RustRepresentationFixtureNode {
 	public function new() {}
+}
+
+class RustRepresentationDynamicBox {
+	public function new(value:Dynamic) {}
 }
 
 interface RustRepresentationFixtureContract {}

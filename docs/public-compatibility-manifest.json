@@ -9194,6 +9194,7 @@
         "test:public-compatibility"
       ],
       "directTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
         "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
       ],
       "transitiveTypeReferences": [
@@ -9226,6 +9227,19 @@
           ],
           "typeReferences": [
             "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
+          ]
+        },
+        {
+          "id": "function:originAt",
+          "kind": "function",
+          "name": "originAt",
+          "signature": "public static function originAt (modulePath : String, pos : haxe.macro.Expr.Position) : Null < RustDecisionOrigin >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin"
           ]
         }
       ]
@@ -11538,6 +11552,34 @@
           ],
           "typeReferences": [
             "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+            "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
+          ]
+        },
+        {
+          "id": "function:tryDecideCrossing",
+          "kind": "function",
+          "name": "tryDecideCrossing",
+          "signature": "public static function tryDecideCrossing (subjectId : String, actualType : Type, expectedType : Type, pos : Position, origin : RustDecisionOrigin, nullableStringCompat : Bool, ? classHasSubclasses : ClassType -> Bool) : Null < RustRepresentationDecision >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
+          ]
+        },
+        {
+          "id": "function:tryDecideExprCrossing",
+          "kind": "function",
+          "name": "tryDecideExprCrossing",
+          "signature": "public static function tryDecideExprCrossing (subjectId : String, expression : TypedExpr, expectedType : Type, origin : RustDecisionOrigin, nullableStringCompat : Bool, ? classHasSubclasses : ClassType -> Bool) : Null < RustRepresentationDecision >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
             "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
             "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
           ]
@@ -24667,6 +24709,95 @@
           "kind": "function",
           "name": "requireRelativePath",
           "signature": "public static function requireRelativePath (value : String, label : String) : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.RustSourcePosition",
+      "source": "src/reflaxe/rust/RustSourcePosition.hx",
+      "kind": "class",
+      "signature": "class RustSourcePosition",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.RustSourcePosition.RustUtf8ByteRange"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.RustSourcePosition.RustUtf8ByteRange"
+      ],
+      "operations": [
+        {
+          "id": "function:reset",
+          "kind": "function",
+          "name": "reset",
+          "signature": "public static function reset () : Void",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:utf8ByteRange",
+          "kind": "function",
+          "name": "utf8ByteRange",
+          "signature": "public static function utf8ByteRange (rawFile : String, start : Int, end : Int) : Null < RustUtf8ByteRange >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustSourcePosition.RustUtf8ByteRange"
+          ]
+        },
+        {
+          "id": "function:haxePosition",
+          "kind": "function",
+          "name": "haxePosition",
+          "signature": "public static function haxePosition (rawFile : String, startByte : Int, endByte : Int) : Null < Position >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.RustSourcePosition.RustUtf8ByteRange",
+      "source": "src/reflaxe/rust/RustSourcePosition.hx",
+      "kind": "typedef",
+      "signature": "typedef RustUtf8ByteRange =",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "field:startByte",
+          "kind": "field",
+          "name": "startByte",
+          "signature": "var startByte : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:endByte",
+          "kind": "field",
+          "name": "endByte",
+          "signature": "var endByte : Int",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"

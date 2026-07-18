@@ -25,6 +25,21 @@ function runIn(cwd, command, args) {
   return cp.spawnSync(command, args, { cwd, encoding: 'utf8' })
 }
 
+function exactUtf8Span(filePath, needle, fromIndex = 0) {
+  const source = fs.readFileSync(filePath, 'utf8')
+  const charStart = source.indexOf(needle, fromIndex)
+  assert.notStrictEqual(charStart, -1, `source sentinel must remain present: ${needle}`)
+  const byteStart = Buffer.byteLength(source.slice(0, charStart), 'utf8')
+  return {
+    charStart,
+    span: `${path.basename(filePath)}:${byteStart}-${byteStart + Buffer.byteLength(needle, 'utf8')}`
+  }
+}
+
+function cleanOutput(fixture, name) {
+  fs.rmSync(path.join(fixture, name), { recursive: true, force: true })
+}
+
 function main() {
   assert(fs.existsSync(haxeShim), 'project-pinned Haxe shim must exist')
   assert(fs.existsSync(policyPath), 'the representation vocabulary must have one structured policy source')
@@ -132,7 +147,7 @@ function main() {
   assert.strictEqual(dynamicRequirements.length, 1,
     'runtime plan must retain exactly one semantic row for the Dynamic control-expression value')
   const controlSource = fs.readFileSync(path.join(controlFixture, 'Main.hx'), 'utf8')
-  const controlNeedle = 'if (flag) 1 else "value"'
+  const controlNeedle = 'if (flag) 1 else "välue"'
   const controlCharStart = controlSource.indexOf(controlNeedle)
   assert.notStrictEqual(controlCharStart, -1, 'control-expression source sentinel must remain present')
   const controlByteStart = Buffer.byteLength(controlSource.slice(0, controlCharStart), 'utf8')
@@ -141,8 +156,205 @@ function main() {
   assert.strictEqual(dynamicRequirements[0].sourceModule, 'Main')
   assert.strictEqual(dynamicRequirements[0].sourceSpan, expectedControlSpan,
     'runtime plan must attribute Dynamic to the exact source-private control-expression bytes')
+  assert.match(reportMarkdownA, new RegExp(expectedControlSpan.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+    'runtime-plan Markdown must retain the same exact UTF-8 source span as JSON')
   fs.rmSync(reportOutA, { recursive: true, force: true })
   fs.rmSync(reportOutB, { recursive: true, force: true })
+
+  const boundaryFixture = path.join(repoRoot, 'test', 'negative', 'representation_dynamic_boundary')
+  cleanOutput(boundaryFixture, 'out')
+  const boundaryFirst = runIn(boundaryFixture, process.execPath, [haxeShim, 'compile.hxml'])
+  cleanOutput(boundaryFixture, 'out')
+  const boundarySecond = runIn(boundaryFixture, process.execPath, [haxeShim, 'compile.hxml'])
+  cleanOutput(boundaryFixture, 'out')
+  assert.notStrictEqual(boundaryFirst.status, 0, 'concrete-to-Dynamic framework argument must fail no-hxrt eligibility')
+  assert.strictEqual(output(boundaryFirst), output(boundarySecond), 'concrete-to-Dynamic diagnostics must be repeatable')
+  assert.match(output(boundaryFirst), /\[HXRS-NO-HXRT-ELIGIBILITY\]/,
+    'concrete-to-Dynamic boxing must fail at the semantic gate')
+  assert.doesNotMatch(output(boundaryFirst), /\[HXRS-NO-HXRT-EMITTED-RUNTIME\]/,
+    'concrete-to-Dynamic boxing must not fall through to the emitted-Rust guard')
+  const boundarySourcePath = path.join(boundaryFixture, 'Main.hx')
+  const boundarySpan = exactUtf8Span(boundarySourcePath, '314159').span
+  assert.match(output(boundaryFirst), new RegExp(boundarySpan.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+    'the semantic Dynamic diagnostic must name the exact concrete argument span')
+
+  cleanOutput(boundaryFixture, 'out_report_a')
+  cleanOutput(boundaryFixture, 'out_report_b')
+  const boundaryReportFirst = runIn(boundaryFixture, process.execPath,
+    [haxeShim, 'compile.report.hxml', '-D', 'rust_output=out_report_a'])
+  const boundaryReportSecond = runIn(boundaryFixture, process.execPath,
+    [haxeShim, 'compile.report.hxml', '-D', 'rust_output=out_report_b'])
+  assert.strictEqual(boundaryReportFirst.status, 0, output(boundaryReportFirst))
+  assert.strictEqual(boundaryReportSecond.status, 0, output(boundaryReportSecond))
+  const boundaryJsonA = fs.readFileSync(path.join(boundaryFixture, 'out_report_a', 'runtime_plan.json'), 'utf8')
+  const boundaryJsonB = fs.readFileSync(path.join(boundaryFixture, 'out_report_b', 'runtime_plan.json'), 'utf8')
+  const boundaryMarkdownA = fs.readFileSync(path.join(boundaryFixture, 'out_report_a', 'runtime_plan.md'), 'utf8')
+  const boundaryMarkdownB = fs.readFileSync(path.join(boundaryFixture, 'out_report_b', 'runtime_plan.md'), 'utf8')
+  assert.strictEqual(boundaryJsonA, boundaryJsonB, 'concrete-to-Dynamic JSON must be repeatable')
+  assert.strictEqual(boundaryMarkdownA, boundaryMarkdownB, 'concrete-to-Dynamic Markdown must be repeatable')
+  const boundaryDynamic = JSON.parse(boundaryJsonA).runtimeRequirements.filter((entry) => entry.reasonKind === 'dynamic')
+  assert.strictEqual(boundaryDynamic.length, 1, 'one concrete Dynamic crossing must produce one semantic requirement')
+  assert.strictEqual(boundaryDynamic[0].sourceSpan, boundarySpan,
+    'the runtime plan must attribute Dynamic boxing to the concrete argument')
+  assert.match(boundaryMarkdownA, new RegExp(boundarySpan.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+    'concrete-to-Dynamic Markdown must retain the exact crossing span')
+  cleanOutput(boundaryFixture, 'out_report_a')
+  cleanOutput(boundaryFixture, 'out_report_b')
+
+  const crossingsFixture = path.join(repoRoot, 'test', 'negative', 'representation_dynamic_crossings')
+  const crossingsSourcePath = path.join(crossingsFixture, 'Main.hx')
+  const crossingSpans = [
+    '606060',
+    'new BoundaryNode()',
+    'BoundaryChoice.Selected',
+    '707070',
+    '808080',
+    '909090',
+    'cast(new BoundaryNode(), BoundaryNode)',
+    'if (flag) 111111 else 112112',
+    'switch (selector) { case 1: 121121; default: 122122; }'
+  ].map((needle) => exactUtf8Span(crossingsSourcePath, needle).span)
+  cleanOutput(crossingsFixture, 'out')
+  const crossingsFirst = runIn(crossingsFixture, process.execPath, [haxeShim, 'compile.hxml'])
+  cleanOutput(crossingsFixture, 'out')
+  const crossingsSecond = runIn(crossingsFixture, process.execPath, [haxeShim, 'compile.hxml'])
+  cleanOutput(crossingsFixture, 'out')
+  assert.notStrictEqual(crossingsFirst.status, 0, 'each concrete-to-Dynamic crossing must fail no-hxrt eligibility')
+  assert.strictEqual(output(crossingsFirst), output(crossingsSecond), 'concrete crossing diagnostics must be repeatable')
+  assert.match(output(crossingsFirst), /\[HXRS-NO-HXRT-ELIGIBILITY\]/)
+  assert.doesNotMatch(output(crossingsFirst), /\[HXRS-NO-HXRT-EMITTED-RUNTIME\]/)
+  for (const span of crossingSpans)
+    assert.match(output(crossingsFirst), new RegExp(span.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      `the no-hxrt diagnostic must name concrete crossing ${span}`)
+
+  cleanOutput(crossingsFixture, 'out_report_a')
+  cleanOutput(crossingsFixture, 'out_report_b')
+  const crossingsReportFirst = runIn(crossingsFixture, process.execPath,
+    [haxeShim, 'compile.report.hxml', '-D', 'rust_output=out_report_a'])
+  const crossingsReportSecond = runIn(crossingsFixture, process.execPath,
+    [haxeShim, 'compile.report.hxml', '-D', 'rust_output=out_report_b'])
+  assert.strictEqual(crossingsReportFirst.status, 0, output(crossingsReportFirst))
+  assert.strictEqual(crossingsReportSecond.status, 0, output(crossingsReportSecond))
+  const crossingsJsonA = fs.readFileSync(path.join(crossingsFixture, 'out_report_a', 'runtime_plan.json'), 'utf8')
+  const crossingsJsonB = fs.readFileSync(path.join(crossingsFixture, 'out_report_b', 'runtime_plan.json'), 'utf8')
+  const crossingsMarkdownA = fs.readFileSync(path.join(crossingsFixture, 'out_report_a', 'runtime_plan.md'), 'utf8')
+  const crossingsMarkdownB = fs.readFileSync(path.join(crossingsFixture, 'out_report_b', 'runtime_plan.md'), 'utf8')
+  assert.strictEqual(crossingsJsonA, crossingsJsonB, 'concrete crossing JSON must be byte-identical')
+  assert.strictEqual(crossingsMarkdownA, crossingsMarkdownB, 'concrete crossing Markdown must be byte-identical')
+  const crossingDynamicRows = JSON.parse(crossingsJsonA).runtimeRequirements.filter((entry) => entry.reasonKind === 'dynamic')
+  for (const span of crossingSpans) {
+    assert.strictEqual(crossingDynamicRows.filter((entry) => entry.sourceSpan === span).length, 1,
+      `each concrete boundary must produce exactly one Dynamic row at ${span}`)
+    assert.match(crossingsMarkdownA, new RegExp(span.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      `Markdown must retain concrete crossing ${span}`)
+  }
+  cleanOutput(crossingsFixture, 'out_report_a')
+  cleanOutput(crossingsFixture, 'out_report_b')
+
+  const collisionFixture = path.join(repoRoot, 'test', 'negative', 'representation_snapshot_collision')
+  const collisionSourcePath = path.join(collisionFixture, 'NotWidget.hx')
+  const primarySpan = exactUtf8Span(collisionSourcePath, '110011').span
+  const secondarySpan = exactUtf8Span(collisionSourcePath, '220022').span
+  cleanOutput(collisionFixture, 'out')
+  const collisionFirst = runIn(collisionFixture, process.execPath, [haxeShim, 'compile.hxml'])
+  cleanOutput(collisionFixture, 'out')
+  const collisionSecond = runIn(collisionFixture, process.execPath, [haxeShim, 'compile.hxml'])
+  cleanOutput(collisionFixture, 'out')
+  assert.notStrictEqual(collisionFirst.status, 0, 'colliding module type names must still fail semantic no-hxrt')
+  assert.strictEqual(output(collisionFirst), output(collisionSecond), 'colliding-module diagnostics must be repeatable')
+  for (const span of [primarySpan, secondarySpan])
+    assert.match(output(collisionFirst), new RegExp(span.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      'both colliding module types must retain their exact evidence')
+
+  cleanOutput(collisionFixture, 'out_report_a')
+  cleanOutput(collisionFixture, 'out_report_b')
+  const collisionReportFirst = runIn(collisionFixture, process.execPath,
+    [haxeShim, 'compile.report.hxml', '-D', 'rust_output=out_report_a'])
+  const collisionReportSecond = runIn(collisionFixture, process.execPath,
+    [haxeShim, 'compile.report.hxml', '-D', 'rust_output=out_report_b'])
+  assert.strictEqual(collisionReportFirst.status, 0, output(collisionReportFirst))
+  assert.strictEqual(collisionReportSecond.status, 0, output(collisionReportSecond))
+  const collisionJsonA = fs.readFileSync(path.join(collisionFixture, 'out_report_a', 'runtime_plan.json'), 'utf8')
+  const collisionJsonB = fs.readFileSync(path.join(collisionFixture, 'out_report_b', 'runtime_plan.json'), 'utf8')
+  assert.strictEqual(collisionJsonA, collisionJsonB, 'colliding-module runtime plans must be byte-identical')
+  const collisionDynamicSpans = JSON.parse(collisionJsonA).runtimeRequirements
+    .filter((entry) => entry.reasonKind === 'dynamic')
+    .map((entry) => entry.sourceSpan)
+    .sort()
+  assert.deepStrictEqual(collisionDynamicSpans, [primarySpan, secondarySpan].sort(),
+    'collision-safe typed snapshots must preserve both concrete Dynamic crossings')
+  cleanOutput(collisionFixture, 'out_report_a')
+  cleanOutput(collisionFixture, 'out_report_b')
+
+  const enumFixture = path.join(repoRoot, 'test', 'positive', 'representation_enum_constructor')
+  cleanOutput(enumFixture, 'out')
+  const enumFirst = runIn(enumFixture, process.execPath, [haxeShim, 'compile.hxml'])
+  cleanOutput(enumFixture, 'out')
+  const enumSecond = runIn(enumFixture, process.execPath, [haxeShim, 'compile.hxml'])
+  cleanOutput(enumFixture, 'out')
+  assert.strictEqual(enumFirst.status, 0, output(enumFirst))
+  assert.strictEqual(enumSecond.status, 0, output(enumSecond))
+  assert.strictEqual(output(enumFirst), output(enumSecond), 'immediate enum-constructor no-hxrt output must be repeatable')
+
+  cleanOutput(enumFixture, 'out_report_a')
+  cleanOutput(enumFixture, 'out_report_b')
+  const enumReportFirst = runIn(enumFixture, process.execPath,
+    [haxeShim, 'compile.report.hxml', '-D', 'rust_output=out_report_a'])
+  const enumReportSecond = runIn(enumFixture, process.execPath,
+    [haxeShim, 'compile.report.hxml', '-D', 'rust_output=out_report_b'])
+  assert.strictEqual(enumReportFirst.status, 0, output(enumReportFirst))
+  assert.strictEqual(enumReportSecond.status, 0, output(enumReportSecond))
+  const enumJsonA = fs.readFileSync(path.join(enumFixture, 'out_report_a', 'runtime_plan.json'), 'utf8')
+  const enumJsonB = fs.readFileSync(path.join(enumFixture, 'out_report_b', 'runtime_plan.json'), 'utf8')
+  assert.strictEqual(enumJsonA, enumJsonB, 'captured enum-constructor runtime plans must be byte-identical')
+  const enumSourcePath = path.join(enumFixture, 'Main.hx')
+  const immediateCall = exactUtf8Span(enumSourcePath, 'Payload(41)')
+  const immediateTargetSpan = exactUtf8Span(enumSourcePath, 'Payload', immediateCall.charStart).span
+  const enumObjectRows = JSON.parse(enumJsonA).runtimeRequirements.filter((entry) => entry.reasonKind === 'object_identity')
+  assert(enumObjectRows.length > 0, 'an actually captured enum constructor must remain a function-value requirement')
+  assert(!enumObjectRows.some((entry) => entry.sourceSpan === immediateTargetSpan),
+    'an immediately invoked enum constructor must not be reported as a function value')
+  cleanOutput(enumFixture, 'out_report_a')
+  cleanOutput(enumFixture, 'out_report_b')
+
+  const operationFixture = path.join(repoRoot, 'test', 'negative', 'representation_no_hxrt_operation')
+  const operationSourcePath = path.join(operationFixture, 'Main.hx')
+  const firstOperation = exactUtf8Span(operationSourcePath, 'Type.getClassName(Main)').span
+  const secondOperationStart = fs.readFileSync(operationSourcePath, 'utf8').indexOf('Type.getClassName(Main)') + 1
+  const secondOperation = exactUtf8Span(operationSourcePath, 'Type.getClassName(Main)', secondOperationStart).span
+  cleanOutput(operationFixture, 'out')
+  const operationFirst = runIn(operationFixture, process.execPath, [haxeShim, 'compile.hxml'])
+  cleanOutput(operationFixture, 'out')
+  const operationSecond = runIn(operationFixture, process.execPath, [haxeShim, 'compile.hxml'])
+  cleanOutput(operationFixture, 'out')
+  assert.notStrictEqual(operationFirst.status, 0, 'reflection operations must fail semantic no-hxrt')
+  assert.strictEqual(output(operationFirst), output(operationSecond), 'operation diagnostics must be repeatable')
+  assert.match(output(operationFirst), /reasonKind `reflection`/)
+  for (const span of [firstOperation, secondOperation])
+    assert.match(output(operationFirst), new RegExp(span.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      'same-reason operations must retain distinct exact spans')
+  assert.match(output(operationFirst), /^Main\.hx:3:/m,
+    'the primary semantic diagnostic must point at the first offending expression')
+
+  const mergeFixture = path.join(repoRoot, 'test', 'negative', 'representation_no_hxrt_merge')
+  const mergeSourcePath = path.join(mergeFixture, 'Main.hx')
+  const exactSysSpan = exactUtf8Span(mergeSourcePath, 'Sys.getCwd()').span
+  cleanOutput(mergeFixture, 'out')
+  const mergeFirst = runIn(mergeFixture, process.execPath, [haxeShim, 'compile.hxml'])
+  cleanOutput(mergeFixture, 'out')
+  const mergeSecond = runIn(mergeFixture, process.execPath, [haxeShim, 'compile.hxml'])
+  cleanOutput(mergeFixture, 'out')
+  assert.notStrictEqual(mergeFirst.status, 0, 'combined Dynamic and platform evidence must fail semantic no-hxrt')
+  assert.strictEqual(output(mergeFirst), output(mergeSecond), 'merged no-hxrt diagnostics must be repeatable')
+  assert.match(output(mergeFirst), /reasonKind `dynamic`/)
+  assert.match(output(mergeFirst), /reasonKind `platform_abstraction`/,
+    'an early Dynamic blocker must not suppress later module-path platform evidence')
+  for (const modulePath of ['DateTools', 'rust.concurrent.Mutexes', 'Sys'])
+    assert.match(output(mergeFirst), new RegExp('from module `' + modulePath.replace(/\./g, '\\.') + '`'),
+      `the merged diagnostic must retain platform module ${modulePath}`)
+  assert.match(output(mergeFirst), new RegExp(exactSysSpan.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+    'a platform call that survives in the typed expression tree must retain its exact source span')
+  assert.doesNotMatch(output(mergeFirst), /\[HXRS-NO-HXRT-EMITTED-RUNTIME\]/)
 
   const lines = first.stdout.trimEnd().split('\n')
   assert.deepStrictEqual(lines.slice(0, 5), [

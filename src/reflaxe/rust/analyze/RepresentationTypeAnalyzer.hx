@@ -69,6 +69,149 @@ class RepresentationTypeAnalyzer {
 	}
 
 	/**
+		Builds the decision for a real value crossing into a different representation boundary.
+
+		Why
+		- A concrete argument passed to `Dynamic` still has a scalar/class/enum source type in Haxe's
+		  typed AST. Looking only at that local type cannot explain the runtime boxing emitted later.
+		- Callers previously inferred this crossing independently from the expected parameter type.
+
+		What
+		- Returns a `BoundaryDynamic` decision for a modeled non-Dynamic value whose expected type is
+		  Dynamic (including typedef aliases such as `haxe.Json`'s input type).
+		- For `rust.Ref<T>` and `rust.MutRef<T>`, describes the copied `T` value that lowering boxes. The
+		  short-lived Rust reference itself still remains inside its borrow scope.
+		- Returns `null` when no representation-changing crossing occurs.
+
+		How
+		- Both actual and expected types pass through the same normalization/classification authority as
+		  ordinary storage decisions. The returned decision retains the actual source family and exact
+		  expression origin while the boundary adds Dynamic runtime requirements and bounds.
+	**/
+	public static function tryDecideCrossing(subjectId:String, actualType:Type, expectedType:Type, pos:Position, origin:RustDecisionOrigin,
+			nullableStringCompat:Bool, ?classHasSubclasses:ClassType->Bool):Null<RustRepresentationDecision> {
+		if (actualType == null || expectedType == null || origin == null)
+			return null;
+		var expectedKind = classify(expectedType, nullableStringCompat, classHasSubclasses);
+		if (expectedKind != SourceDynamic)
+			return null;
+		var crossingType = actualType;
+		var actualKind = classify(crossingType, nullableStringCompat, classHasSubclasses);
+		if (actualKind == null || actualKind == SourceDynamic)
+			return null;
+		if (isBorrowed(actualKind)) {
+			crossingType = copiedReferenceValueType(crossingType);
+			if (crossingType == null)
+				return null;
+			actualKind = classify(crossingType, nullableStringCompat, classHasSubclasses);
+			if (actualKind == null || actualKind == SourceDynamic || isBorrowed(actualKind))
+				return null;
+		}
+		return tryDecide(subjectId, crossingType, pos, origin, nullableStringCompat, BoundaryDynamic, classHasSubclasses);
+	}
+
+	/**
+		Returns the owned value that current Dynamic lowering copies out of a Rust reference.
+
+		Why / What / How
+		- `rust.Ref<T>` is emitted as `&T`; calling `.clone()` at a Dynamic boundary copies `T`, not the
+		  reference token. Describing the token as escaping would violate the planner's borrow-scope rule.
+		- Unwrap aliases and `Null`, then admit only the one-parameter `rust.Ref` and `rust.MutRef` shapes
+		  whose lowering already performs that copy.
+		- Borrowed strings and slices need different owned conversions, so they stay unmodeled here instead
+		  of receiving a misleading decision.
+	**/
+	static function copiedReferenceValueType(type:Type):Null<Type> {
+		var normalized = unwrapAliasesAndNull(type).type;
+		return switch (normalized) {
+			case TAbstract(abstractRef, parameters) if (parameters.length == 1):
+				var abstractType = abstractRef.get();
+				if (abstractType == null)
+					null;
+				else {
+					var path = typePath(abstractType.pack, abstractType.name);
+					path == "rust.Ref" || path == "rust.MutRef" ? parameters[0] : null;
+				}
+			case _:
+				null;
+		};
+	}
+
+	/**
+		Builds a crossing decision from an expression whose outer Haxe type may already be contextual.
+
+		Why / What / How
+		- Haxe can type `return if (...) 1 else 2` as Dynamic because the function result is Dynamic,
+		  even though the control expression still boxes a concrete scalar result.
+		- Follow transparent block/control/cast result edges only when the outer expression is already
+		  Dynamic, and admit a concrete source type only when every reachable result branch has the same
+		  modeled source family.
+		- The decision remains anchored to the complete crossing expression, not to an arbitrary branch.
+	**/
+	public static function tryDecideExprCrossing(subjectId:String, expression:TypedExpr, expectedType:Type, origin:RustDecisionOrigin,
+			nullableStringCompat:Bool, ?classHasSubclasses:ClassType->Bool):Null<RustRepresentationDecision> {
+		if (expression == null)
+			return null;
+		var actualType = concreteContextualResultType(expression, nullableStringCompat, classHasSubclasses);
+		return tryDecideCrossing(subjectId, actualType, expectedType, expression.pos, origin, nullableStringCompat, classHasSubclasses);
+	}
+
+	static function concreteContextualResultType(expression:TypedExpr, nullableStringCompat:Bool,
+			classHasSubclasses:Null<ClassType->Bool>):Type {
+		if (expression == null || classify(expression.t, nullableStringCompat, classHasSubclasses) != SourceDynamic)
+			return expression == null ? null : expression.t;
+
+		function commonResult(expressions:Array<TypedExpr>):Null<Type> {
+			var selected:Null<Type> = null;
+			var selectedKind:Null<RustSourceValueKind> = null;
+			for (candidate in expressions) {
+				if (candidate == null)
+					return null;
+				var candidateType = concreteContextualResultType(candidate, nullableStringCompat, classHasSubclasses);
+				var candidateKind = classify(candidateType, nullableStringCompat, classHasSubclasses);
+				if (candidateKind == null || candidateKind == SourceDynamic)
+					return null;
+				if (selectedKind == null) {
+					selectedKind = candidateKind;
+					selected = candidateType;
+				} else if (selectedKind != candidateKind) {
+					return null;
+				}
+			}
+			return selected;
+		}
+
+		var current = expression;
+		var changed = true;
+		while (changed) {
+			changed = false;
+			switch (current.expr) {
+				case TMeta(_, inner) | TParenthesis(inner):
+					current = inner;
+					changed = true;
+				case _:
+			}
+		}
+
+		return switch (current.expr) {
+			case TIf(_, thenExpr, elseExpr) if (elseExpr != null):
+				var common = commonResult([thenExpr, elseExpr]);
+				common == null ? expression.t : common;
+			case TSwitch(_, cases, defaultExpr):
+				var results = [for (entry in cases) entry.expr];
+				if (defaultExpr != null) results.push(defaultExpr);
+				var common = commonResult(results);
+				common == null ? expression.t : common;
+			case TBlock(expressions) if (expressions.length > 0):
+				concreteContextualResultType(expressions[expressions.length - 1], nullableStringCompat, classHasSubclasses);
+			case TCast(inner, _):
+				concreteContextualResultType(inner, nullableStringCompat, classHasSubclasses);
+			case _:
+				expression.t;
+		};
+	}
+
+	/**
 		Build a decision for a typed-AST construct whose syntax preserves a more precise family than its
 		coerced result type.
 

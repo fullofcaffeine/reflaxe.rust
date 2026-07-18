@@ -3,6 +3,7 @@ import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.Type;
 import reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin;
+import reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind;
 import reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind;
 import reflaxe.rust.analyze.NoHxrtEligibilityAnalyzer;
 import reflaxe.rust.analyze.RepresentationDecisionAnalyzer;
@@ -97,6 +98,26 @@ class RustRepresentationTypeContractMacro {
 			}
 			if (!enumPayloadDecision)
 				throw "enum payload storage must retain its own representation decision";
+			var dynamicBoundaryDecisions = [for (decision in collected) if (decision.boundary == RustBoundaryKind.BoundaryDynamic) decision];
+			var dynamicBoundarySubjects = dynamicBoundaryDecisions.map(decision -> decision.subjectId).join("\n");
+			for (label in ["call-argument", "constructor-argument", "local-initializer", "assignment", "return", "cast"])
+				if (dynamicBoundarySubjects.indexOf(label) < 0)
+					throw 'runtime-boundary extraction must cover the $label case';
+			var boundaryKinds:Map<String, Bool> = [];
+			for (decision in dynamicBoundaryDecisions) {
+				boundaryKinds.set(decision.sourceKind.id(), true);
+				if (decision.runtimeRequirements().map(reason -> reason.id()).indexOf("dynamic") < 0)
+					throw "every runtime boundary must carry the planner's matching runtime reason";
+			}
+			for (kind in ["scalar", "class_reference", "enum_value"])
+				if (!boundaryKinds.exists(kind))
+					throw 'runtime-boundary extraction must retain the $kind source family';
+			var leakedBorrowBoundary = false;
+			for (decision in dynamicBoundaryDecisions)
+				if (decision.subjectId.indexOf("call-argument") >= 0 && decision.sourceKind == RustSourceValueKind.SourceBorrowedRef)
+					leakedBorrowBoundary = true;
+			if (leakedBorrowBoundary)
+				throw "a runtime crossing must describe the copied value behind rust.Ref, not the borrow token";
 			var nestedDecisions = [for (decision in collected) if (decision.subjectId.indexOf("field-nativeOwnedDynamic") >= 0) decision];
 			var nestedRequirements = RuntimeRequirementAnalyzer.collect([], true, false, false, false, nestedDecisions, true);
 			var nestedSummary = RuntimeRequirementAnalyzer.summarize(nestedRequirements);

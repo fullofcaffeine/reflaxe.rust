@@ -95,24 +95,29 @@ class RuntimeRequirementAnalyzer {
 			allowUnmappedCoreTypeDynamic:Bool, ?representationDecisions:Array<RustRepresentationDecision>,
 			?includeExtendedDecisionReasons:Bool = false):Array<RuntimeRequirementEntry> {
 		var entries:Array<RuntimeRequirementEntry> = [];
-		var decisionsProvided = representationDecisions != null;
+		var decisionReasonCoverage:Map<String, Bool> = [];
 		if (representationDecisions != null) {
-			for (decision in representationDecisions)
+			for (decision in representationDecisions) {
+				for (reason in decision.runtimeRequirements())
+					decisionReasonCoverage.set(reason.id(), true);
 				addDecisionRequirements(entries, decision, noHxrt, includeExtendedDecisionReasons);
+			}
 		}
+		inline function coveredByDecision(reason:RuntimeRequirementKind):Bool
+			return decisionReasonCoverage.exists(reason.id());
 
 		if (modulePaths != null) {
 			for (path in modulePaths) {
 				if (path == null || path.length == 0)
 					continue;
 
-				if (!decisionsProvided && isDynamicPath(path))
+				if (!coveredByDecision(RuntimeDynamic) && isDynamicPath(path))
 					add(entries, RuntimeDynamic, "module", path, null, noHxrt, "Dynamic-compatible values require hxrt dynamic representation.");
 
 				if (isReflectionPath(path))
 					add(entries, RuntimeReflection, "module", path, null, noHxrt, "Reflection/runtime introspection requires hxrt support.");
 
-				if (!decisionsProvided && isAnonymousObjectPath(path))
+				if (!coveredByDecision(RuntimeAnonymousObject) && isAnonymousObjectPath(path))
 					add(entries, RuntimeAnonymousObject, "module", path, null, noHxrt, "Anonymous runtime objects require hxrt object storage.");
 
 				if (isExceptionPath(path))
@@ -121,10 +126,10 @@ class RuntimeRequirementAnalyzer {
 				if (isPlatformAbstractionPath(path))
 					add(entries, RuntimePlatformAbstraction, "module", path, null, noHxrt, "Platform abstraction requires hxrt wrapper support.");
 
-				if (!decisionsProvided && isHaxeArrayPath(path))
+				if (!coveredByDecision(RuntimeHaxeArraySemantics) && isHaxeArrayPath(path))
 					add(entries, RuntimeHaxeArraySemantics, "module", path, null, noHxrt, "Haxe Array semantics require hxrt array representation.");
 
-				if (!decisionsProvided && isHaxeStringRuntimePath(path))
+				if (!coveredByDecision(RuntimeHaxeStringSemantics) && isHaxeStringRuntimePath(path))
 					add(entries, RuntimeHaxeStringSemantics, "module", path, null, noHxrt, "Runtime-backed Haxe string semantics require hxrt string support.");
 			}
 		}
@@ -272,6 +277,7 @@ class RuntimeRequirementAnalyzer {
 			|| StringTools.startsWith(path, "hxrt.json");
 	}
 
+	@:allow(reflaxe.rust.analyze.NoHxrtEligibilityAnalyzer)
 	static inline function isReflectionPath(path:String):Bool {
 		return path == "Reflect" || path == "Type" || StringTools.startsWith(path, "haxe.rtti.");
 	}
@@ -284,6 +290,8 @@ class RuntimeRequirementAnalyzer {
 		return StringTools.startsWith(path, "hxrt.exception");
 	}
 
+	@:allow(reflaxe.rust.analyze.NoHxrtEligibilityAnalyzer)
+	@:allow(reflaxe.rust.RustCompiler)
 	static inline function isPlatformAbstractionPath(path:String):Bool {
 		return path == "Sys"
 			|| path == "Date"
@@ -322,10 +330,36 @@ class RuntimeRequirementAnalyzer {
 		var sourceModuleOrder = compareStrings(a.sourceModule, b.sourceModule);
 		if (sourceModuleOrder != 0)
 			return sourceModuleOrder;
-		var sourceSpanOrder = compareStrings(a.sourceSpan, b.sourceSpan);
+		var sourceSpanOrder = compareSourceSpans(a.sourceSpan, b.sourceSpan);
 		if (sourceSpanOrder != 0)
 			return sourceSpanOrder;
 		return compareStrings(a.surfaceId == null ? "" : a.surfaceId, b.surfaceId == null ? "" : b.surfaceId);
+	}
+
+	static function compareSourceSpans(left:String, right:String):Int {
+		function parse(value:String):Null<{file:String, start:Int, end:Int}> {
+			if (value == null || value.length == 0)
+				return null;
+			var colon = value.lastIndexOf(":");
+			var dash = colon < 0 ? -1 : value.indexOf("-", colon + 1);
+			if (colon <= 0 || dash <= colon + 1 || dash >= value.length - 1)
+				return null;
+			var start = Std.parseInt(value.substring(colon + 1, dash));
+			var end = Std.parseInt(value.substr(dash + 1));
+			if (start == null || end == null)
+				return null;
+			return {file: value.substr(0, colon), start: start, end: end};
+		}
+		var leftPoint = parse(left);
+		var rightPoint = parse(right);
+		if (leftPoint == null || rightPoint == null)
+			return compareStrings(left == null ? "" : left, right == null ? "" : right);
+		var fileOrder = compareStrings(leftPoint.file, rightPoint.file);
+		if (fileOrder != 0)
+			return fileOrder;
+		if (leftPoint.start != rightPoint.start)
+			return leftPoint.start < rightPoint.start ? -1 : 1;
+		return leftPoint.end < rightPoint.end ? -1 : (leftPoint.end > rightPoint.end ? 1 : 0);
 	}
 
 	static inline function compareStrings(a:String, b:String):Int {

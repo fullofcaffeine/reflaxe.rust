@@ -5,19 +5,19 @@
 
 # Rust compiler dynamic bridge points (line-scoped; see docs/dynamic-boundaries.md)
 src/reflaxe/rust/DynamicBoundary.hx:23
-src/reflaxe/rust/RustCompiler.hx:2237
-src/reflaxe/rust/RustCompiler.hx:2238
-src/reflaxe/rust/RustCompiler.hx:2245
-src/reflaxe/rust/RustCompiler.hx:2248
-src/reflaxe/rust/RustCompiler.hx:2256
-src/reflaxe/rust/RustCompiler.hx:18808
+src/reflaxe/rust/RustCompiler.hx:2355
+src/reflaxe/rust/RustCompiler.hx:2356
+src/reflaxe/rust/RustCompiler.hx:2363
+src/reflaxe/rust/RustCompiler.hx:2366
+src/reflaxe/rust/RustCompiler.hx:2374
+src/reflaxe/rust/RustCompiler.hx:19001
 src/reflaxe/rust/RustSourceMap.hx:419
-src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:158
-src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:110
-src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:141
-src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:145
-src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:195
-src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:267
+src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:301
+src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:115
+src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:146
+src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:150
+src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:200
+src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:272
 src/reflaxe/rust/CompilerBootstrap.hx:63
 src/reflaxe/rust/CompilerInit.hx:51
 std/rust/_std/haxe/BoundaryTypes.hx:27
@@ -38,7 +38,16 @@ test/negative/dynamic_field_unop/Main.hx:3
 test/compiler/RustRepresentationTypeFixture.hx:5
 test/compiler/RustRepresentationTypeFixture.hx:11
 test/compiler/RustRepresentationTypeFixture.hx:19
-test/compiler/RustRepresentationTypeFixture.hx:36
+test/compiler/RustRepresentationTypeFixture.hx:20
+test/compiler/RustRepresentationTypeFixture.hx:28
+test/compiler/RustRepresentationTypeFixture.hx:31
+test/compiler/RustRepresentationTypeFixture.hx:43
+test/compiler/RustRepresentationTypeFixture.hx:54
+test/negative/representation_dynamic_crossings/Main.hx:10
+test/negative/representation_dynamic_crossings/Main.hx:17
+test/negative/representation_dynamic_crossings/Main.hx:19
+test/negative/representation_dynamic_crossings/Main.hx:27
+test/negative/representation_dynamic_crossings/Main.hx:32
 test/perf/json/Main.hx # FILE_SCOPE_JUSTIFICATION: Perf fixture intentionally round-trips through haxe.Json.parse Dynamic values to measure JSON runtime overhead.
 test/runtime_e2e/portable_sys_failures/Main.hx # FILE_SCOPE_JUSTIFICATION: Runtime failure fixture uses Dynamic only as the final exception catch-all to prove typed Sys and haxe.io.Error payloads are not replaced by another Haxe-visible value.
 test/runtime_e2e/reflection_framework_failure/Main.hx:36

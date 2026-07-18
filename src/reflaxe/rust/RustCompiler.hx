@@ -81,6 +81,7 @@ import reflaxe.rust.analyze.ProfileContractAnalyzer.ProfileContractDiagnostics;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeFallbackSummary;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry;
+import reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind;
 import reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin;
 import reflaxe.rust.analyze.RepresentationPlan.RustNullEncoding;
 import reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision;
@@ -314,7 +315,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var userUsedModulePaths:Map<String, Bool> = [];
 	// Haxe's after-typing callback is the last stable owner of complete ClassField bodies. Keep the
 	// module references until `onCompileStart` can filter them with initialized source roots.
-	var typedModuleSnapshotByPath:Map<String, ModuleType> = [];
+	var typedModuleSnapshotByIdentity:Map<String, ModuleType> = [];
 	// Typed method bodies are still intact at `onCompileStart`, before Reflaxe extracts them into
 	// per-class compilation data. Runtime/no-hxrt reporting later in the pipeline must consume this
 	// immutable decision snapshot instead of rescanning ClassField expressions that may already be gone.
@@ -1092,19 +1093,20 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		Why / What / How
 		- Reflaxe starts target lowering after Haxe finishes typing, and later extraction may remove
 		  executable expressions from their original `ClassField` declarations.
-		- Accumulate each after-typing delivery by semantic type path here, while bodies and exact source
-		  positions are still available. `onCompileStart` filters and converts the resulting snapshot into
-		  immutable representation decisions, then releases these module references.
+		- Accumulate each after-typing delivery by Reflaxe's collision-safe type identity here, while
+		  bodies and exact source positions are still available. `onCompileStart` filters and converts the
+		  resulting snapshot into immutable representation decisions, then releases these references.
 	**/
 	public function new() {
 		super();
 		Context.onAfterTyping(moduleTypes -> {
 			if (moduleTypes == null)
 				return;
-			// Haxe may invoke onAfterTyping more than once as macros add modules. Accumulate by semantic
-			// type path instead of letting a later incremental callback erase the application snapshot.
+			// Haxe may invoke onAfterTyping more than once as macros add modules. Reflaxe's collision-safe
+			// identity includes declaration kind, module, and declared type name; a display path can make
+			// `NotWidget` and its secondary `Widget` type collide through suffix matching.
 			for (moduleType in moduleTypes)
-				typedModuleSnapshotByPath.set(moduleType.getPath(), moduleType);
+				typedModuleSnapshotByIdentity.set(moduleType.getUniqueId(), moduleType);
 		});
 	}
 
@@ -1223,11 +1225,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return;
 
 		var result = typedNoHxrtEligibility;
-		if (result == null || !result.blocked) {
+		if (result == null) {
 			result = NoHxrtEligibilityAnalyzer.analyzeCaptured(userProjectModuleTypes(), snapshotUsedModulePaths(), useNullableStringRepresentation(),
 				Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"),
 				snapshotRepresentationDecisions());
+		} else {
+			result = NoHxrtEligibilityAnalyzer.mergeCaptured(result, snapshotUsedModulePaths(), useNullableStringRepresentation(),
+				Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"),
+				snapshotRepresentationDecisions());
 		}
+		typedNoHxrtEligibility = result;
 		if (!result.blocked)
 			return;
 
@@ -1244,6 +1251,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	static function formatNoHxrtRequirement(entry:RuntimeRequirementEntry):String {
 		var surface = entry.surfaceId == null ? "" : ", surface `" + entry.surfaceId + "`";
+		var span = entry.sourceSpan == null || entry.sourceSpan.length == 0 ? "" : " at `" + entry.sourceSpan + "`";
 		return "- reasonKind `"
 			+ entry.reasonKind
 			+ "` from "
@@ -1251,6 +1259,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			+ " `"
 			+ entry.sourceModule
 			+ "`"
+			+ span
 			+ surface
 			+ ": "
 			+ entry.message;
@@ -1262,6 +1271,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (result != null && result.requirements != null) {
 			for (entry in result.requirements) {
 				if (entry.noHxrtBlocked) {
+					var exact = noHxrtRequirementPosition(entry);
+					if (exact != null)
+						return exact;
 					var pos = profileContractDiagnosticPos(entry.sourceModule, modulePosIndex);
 					if (pos != null)
 						return pos;
@@ -1270,6 +1282,24 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 		#end
 		return Context.currentPos();
+	}
+
+	function noHxrtRequirementPosition(entry:RuntimeRequirementEntry):Null<haxe.macro.Expr.Position> {
+		#if eval
+		if (entry == null || entry.sourceSpan == null || entry.sourceSpan.length == 0)
+			return null;
+		var colon = entry.sourceSpan.lastIndexOf(":");
+		var dash = colon < 0 ? -1 : entry.sourceSpan.indexOf("-", colon + 1);
+		if (colon <= 0 || dash <= colon + 1 || dash >= entry.sourceSpan.length - 1)
+			return null;
+		var min = Std.parseInt(entry.sourceSpan.substring(colon + 1, dash));
+		var max = Std.parseInt(entry.sourceSpan.substr(dash + 1));
+		if (min == null || max == null || min < 0 || max < min)
+			return null;
+		return RustSourcePosition.haxePosition(entry.sourceSpan.substr(0, colon), min, max);
+		#else
+		return null;
+		#end
 	}
 
 	function userProjectModuleTypes(?sourceTypes:Array<ModuleType>):Array<ModuleType> {
@@ -1302,13 +1332,60 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		Why / What / How
 		- Haxe may invoke the callback incrementally as macros add or retype modules.
-		- The callback map keeps the latest value for each semantic type path; this helper sorts those
-		  paths before the compiler extracts the complete representation decision snapshot.
+		- The callback map keeps the latest value for each collision-safe Reflaxe type identity; this
+		  helper sorts those identities before extracting the complete representation decision snapshot.
 	**/
 	function snapshotTypedModuleTypes():Array<ModuleType> {
-		var paths = [for (path in typedModuleSnapshotByPath.keys()) path];
-		paths.sort(compareStrings);
-		return [for (path in paths) typedModuleSnapshotByPath.get(path)];
+		var identities = [for (identity in typedModuleSnapshotByIdentity.keys()) identity];
+		identities.sort(compareStrings);
+		return [for (identity in identities) typedModuleSnapshotByIdentity.get(identity)];
+	}
+
+	/**
+		Returns platform dependency paths present in the complete after-typing snapshot.
+
+		Why / What / How
+		- Per-class lowering populates `usedModulePaths` incrementally, but no-hxrt enforcement can run on
+		  the first class before a later `DateTools`, async, or concurrent dependency is visited.
+		- Haxe's after-typing batch already contains the complete typed dependency graph. Record both the
+		  declaring module and full declared type path only when the authoritative runtime policy classifies
+		  them as platform abstractions, then deduplicate and sort before any diagnostic.
+		- Dynamic, reflection, collection, and string families are deliberately excluded here: core compiler
+		  modules may load those declarations without a user operation, while their exact typed decisions or
+		  operation evidence already provide complete coverage.
+		- This supplies broad module policy evidence; exact user-expression evidence remains owned by the
+		  operation scanner and wins over a broad fallback during merge.
+	**/
+	function snapshotTypedModulePaths(moduleTypes:Array<ModuleType>):Array<String> {
+		var seen:Map<String, Bool> = [];
+		if (moduleTypes != null) {
+			for (moduleType in moduleTypes) {
+				if (moduleType == null)
+					continue;
+				var module = moduleType.getModule();
+				if (module != null && module.length > 0 && RuntimeRequirementAnalyzer.isPlatformAbstractionPath(module))
+					seen.set(module, true);
+				var declared = switch (moduleType) {
+					case TClassDecl(classRef):
+						var value = classRef.get();
+						value == null ? "" : (value.pack.length == 0 ? value.name : value.pack.join(".") + "." + value.name);
+					case TEnumDecl(enumRef):
+						var value = enumRef.get();
+						value == null ? "" : (value.pack.length == 0 ? value.name : value.pack.join(".") + "." + value.name);
+					case TTypeDecl(typeRef):
+						var value = typeRef.get();
+						value == null ? "" : (value.pack.length == 0 ? value.name : value.pack.join(".") + "." + value.name);
+					case TAbstract(abstractRef):
+						var value = abstractRef.get();
+						value == null ? "" : (value.pack.length == 0 ? value.name : value.pack.join(".") + "." + value.name);
+				};
+				if (declared.length > 0 && RuntimeRequirementAnalyzer.isPlatformAbstractionPath(declared))
+					seen.set(declared, true);
+			}
+		}
+		var out = [for (path in seen.keys()) path];
+		out.sort(compareStrings);
+		return out;
 	}
 
 	function profileContractModulePosIndex():Map<String, haxe.macro.Expr.Position> {
@@ -1533,28 +1610,19 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
-		Build the shared representation decision used by production lowering.
+		Builds a private, byte-exact source location for a lowering decision.
 
-		Why
-		- Rust type emission, null wrapping, reuse cloning, runtime planning, and no-hxrt checks must not
-		  infer the same Haxe value family independently.
-		- Haxe positions may contain absolute checkout paths, while every decision requires a source-private
-		  origin even when the decision is used only in memory.
-
-		What
-		- Specializes inherited generic types, resolves one stable source/module identity, and delegates all
-		  modeled value-family semantics to `RepresentationTypeAnalyzer`.
-		- Returns `null` only for compatibility shapes the typed model has not admitted yet; existing explicit
-		  compiler fallbacks remain responsible for those shapes until their own reviewed migration.
-
-		How
-		- Project files use their path relative to the compilation root.
-		- External classpath files use a logical `classpath/<module>/<file>` identity, never a machine path.
+		Why / What / How
+		- Haxe positions may contain absolute checkout paths and use source-string coordinates, while reports
+		  promise private filenames and UTF-8 byte ranges.
+		- Resolve the Haxe module from the compiler's source-file index, turn project paths into relative
+		  identities and external paths into logical `classpath/...` identities, then convert the position
+		  against the exact source bytes through `RustSourcePosition`.
+		- Returning `null` keeps an unresolved origin from masquerading as exact attribution.
 	**/
-	function representationDecisionForType(type:Type, pos:haxe.macro.Expr.Position):Null<RustRepresentationDecision> {
-		if (type == null || pos == null)
+	function representationOriginAt(pos:haxe.macro.Expr.Position):Null<RustDecisionOrigin> {
+		if (pos == null)
 			return null;
-		var specialized = specializeCurrentMethodType(type);
 		var info = Context.getPosInfos(pos);
 		if (info == null || info.file == null || info.file.length == 0 || info.min < 0 || info.max < info.min)
 			return null;
@@ -1577,13 +1645,60 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			stableFile = "classpath/" + modulePath.split(".").join("/") + "/" + sourceName;
 		}
 
-		var origin = RustDecisionOrigin.at(stableFile, info.min, info.max, modulePath);
+		var byteRange = RustSourcePosition.utf8ByteRange(full, info.min, info.max);
+		if (byteRange == null)
+			return null;
+		return RustDecisionOrigin.at(stableFile, byteRange.startByte, byteRange.endByte, modulePath);
+	}
+
+	/**
+		Builds the shared local representation decision used by production lowering.
+
+		Why / What / How
+		- Rust type emission, null wrapping, reuse cloning, runtime planning, and no-hxrt checks must not
+		  infer the same Haxe value family independently.
+		- Specialize inherited generic types, attach the shared exact source location, and delegate every supported value kind
+		  to `RepresentationTypeAnalyzer`.
+		- `null` means the compatibility shape is not admitted yet; only the caller's explicit reviewed
+		  fallback may handle it.
+	**/
+	function representationDecisionForType(type:Type, pos:haxe.macro.Expr.Position):Null<RustRepresentationDecision> {
+		if (type == null || pos == null)
+			return null;
+		var specialized = specializeCurrentMethodType(type);
+		var origin = representationOriginAt(pos);
+		if (origin == null)
+			return null;
+		var modulePath = origin.modulePath;
 		var subjectId = modulePath + ":" + TypeTools.toString(specialized);
 		return RepresentationTypeAnalyzer.tryDecide(subjectId, specialized, pos, origin, useNullableStringRepresentation(), null, classHasSubclasses);
 	}
 
 	/**
-		Build source-position provenance from Haxe/Reflaxe typed module metadata.
+		Builds the same expected-type-aware crossing decision consumed by the early semantic snapshot.
+
+		Why / What / How
+		- Dynamic boxing is selected at coercion sites, where both the actual expression and expected type
+		  are available. A local-only decision cannot describe that boundary.
+		- Reuse the typed crossing adapter and exact origin used by `RepresentationDecisionAnalyzer`; a
+		  modeled crossing therefore drives both semantic reporting and Rust AST boxing.
+		- Unmodeled compatibility shapes may still use the explicit fallback in coercion, but they cannot
+		  masquerade as a successful representation decision.
+	**/
+	function representationDecisionForCrossing(valueExpr:TypedExpr, expected:Type):Null<RustRepresentationDecision> {
+		if (valueExpr == null || expected == null)
+			return null;
+		var origin = representationOriginAt(valueExpr.pos);
+		if (origin == null)
+			return null;
+		var specializedExpected = specializeCurrentMethodType(expected);
+		var subjectId = origin.modulePath + ":boundary:" + TypeTools.toString(valueExpr.t) + "->" + TypeTools.toString(specializedExpected);
+		return RepresentationTypeAnalyzer.tryDecideExprCrossing(subjectId, valueExpr, specializedExpected, origin, useNullableStringRepresentation(),
+			classHasSubclasses);
+	}
+
+	/**
+		Build the source-file-to-module index from Haxe/Reflaxe typed module metadata.
 
 		Why
 		- Several policy checks receive only a `Position`, whose public data is a source file path.
@@ -1690,6 +1805,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	override public function onCompileStart() {
+		RustSourcePosition.reset();
 		// Reset cached class hierarchy info per compilation.
 		classHasSubclass = null;
 		frameworkStdDir = null;
@@ -1796,16 +1912,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var completeTypedModules = snapshotTypedModuleTypes();
 		if (completeTypedModules.length == 0)
 			completeTypedModules = Context.getAllModuleTypes();
+		var completeTypedModulePaths = snapshotTypedModulePaths(completeTypedModules);
 		var completeUserModules = userProjectModuleTypes(completeTypedModules);
 		typedRepresentationDecisions = RepresentationDecisionAnalyzer.collect(completeUserModules, useNullableStringRepresentation(), classHasSubclasses);
 		if (noHxrtEnabled()) {
-			typedNoHxrtEligibility = NoHxrtEligibilityAnalyzer.analyzeCaptured(completeUserModules, [], useNullableStringRepresentation(),
+			typedNoHxrtEligibility = NoHxrtEligibilityAnalyzer.analyzeCaptured(completeUserModules, completeTypedModulePaths,
+				useNullableStringRepresentation(),
 				Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"),
 				snapshotRepresentationDecisions());
 		}
 		// Do not retain typed module graphs beyond the one phase that owns their complete bodies. This
 		// also lets a compilation-server reuse refill the callback map with fresh module references.
-		typedModuleSnapshotByPath = [];
+		typedModuleSnapshotByIdentity = [];
 
 		// Collect Haxe-authored Rust test wrappers (`@:rustTest`) once per compile.
 		collectRustTests();
@@ -2626,6 +2744,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		} else {
 			for (requirement in snapshot.runtimeRequirements) {
 				var source = requirement.sourceModule.length == 0 ? requirement.sourceKind : requirement.sourceKind + ": " + requirement.sourceModule;
+				if (requirement.sourceSpan != null && requirement.sourceSpan.length > 0)
+					source += " @ " + requirement.sourceSpan;
 				lines.push("- `" + requirement.reasonKind + "` <= `" + source + "` (requires hxrt: `" + boolLabel(requirement.requiresHxrt)
 					+ "`, blocks no-hxrt: `" + boolLabel(requirement.noHxrtBlocked) + "`) - " + requirement.message);
 			}
@@ -9489,8 +9609,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 				case TVar(v, init):
 					{
-						if (init != null && isRustMutRefType(v.t)) {
+						if (init != null && !isNullType(v.t) && isRustMutRefType(v.t)) {
 							// Taking a `rust.MutRef<T>` from a local requires the source binding to be `mut`.
+							// A `Null<rust.MutRef<T>>` declaration stores an existing borrow inside Option;
+							// it does not take a fresh mutable borrow from the initializer binding.
 							markLocal(init);
 						}
 					}
@@ -12513,6 +12635,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		var expectedIsDyn = mapsToRustDynamic(expected, valueExpr.pos);
 		var actualIsDyn = mapsToRustDynamic(valueExpr.t, valueExpr.pos);
+		var dynamicBoundaryDecision = representationDecisionForCrossing(valueExpr, expected);
+		var plannedDynamicBoundary = dynamicBoundaryDecision != null
+			&& dynamicBoundaryDecision.boundary == RustBoundaryKind.BoundaryDynamic;
 
 		// Haxe often types a null-checked `Null<Interface>` value as still carrying the nullable
 		// trait-object wrapper (`HxDynRef<dyn Trait>`). When a callee expects the non-null
@@ -12541,6 +12666,56 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// Semantics: `None` is a "Null Access" error (catchable via hxrt exception machinery).
 		var actualNullInner = nullOptionInnerType(valueExpr.t, valueExpr.pos);
 		if (!expectedIsDyn && actualNullInner != null) {
+			var innerDecision = representationDecisionForType(actualNullInner, valueExpr.pos);
+			if (innerDecision != null && innerDecision.reuse == RustReusePolicy.ReuseBorrow) {
+				var mutableBorrow = innerDecision.sourceKind == RustSourceValueKind.SourceBorrowedMutRef
+					|| innerDecision.sourceKind == RustSourceValueKind.SourceBorrowedMutSlice;
+				function nullBranch():RustExpr {
+					return isStringType(expected) ? (useNullableStringRepresentation() ? stringNullExpr() : nullAccessThrow()) : nullAccessThrow();
+				}
+				function localIdOf(expression:TypedExpr):Null<Int> {
+					var current = unwrapMetaParen(expression);
+					while (true) {
+						switch (current.expr) {
+							case TCast(inner, _):
+								current = unwrapMetaParen(inner);
+								continue;
+							case _:
+						}
+						break;
+					}
+					return switch (current.expr) {
+						case TLocal(variable): variable.id;
+						case _: null;
+					};
+				}
+
+				if (mutableBorrow) {
+					var localId = localIdOf(valueExpr);
+					if (localId != null) {
+						// Preserve the Option for a later sequential use by reborrowing the exclusive
+						// reference through `&mut Option<&mut T>`. The explicit mutable borrow also gives
+						// MutInferencePass the structural evidence needed for `let mut`. Local-read counts
+						// are deliberately not used here: branch pre-scans may consume their bookkeeping
+						// before expression coercion, while a reborrow is valid for both last and repeated use.
+						var reborrowed = EUnary("&mut ", EUnary("*", EUnary("*", rustSingleExpr("__v"))));
+						return EMatch(EUnary("&mut ", compiled), [
+							{pat: PTupleStruct(RustPath.single("Some"), [PBind("__v")]), expr: reborrowed},
+							{pat: PPath(RustPath.single("None")), expr: nullBranch()}
+						]);
+					}
+				}
+
+				// Immutable borrows are Rust-Copy tokens; a mutable borrow on its final use moves
+				// exactly once. Neither case has a semantic Clone operation.
+				return EBlock({
+					stmts: [RLet("__hx_opt", false, null, compiled)],
+					tail: EMatch(rustSingleExpr("__hx_opt"), [
+						{pat: PTupleStruct(RustPath.single("Some"), [PBind("__v")]), expr: rustSingleExpr("__v")},
+						{pat: PPath(RustPath.single("None")), expr: nullBranch()}
+					])
+				});
+			}
 			var innerIsCopy = isCopyType(actualNullInner);
 			// Avoid moving a reusable local `Option` by cloning it first.
 			var optExpr = if (!innerIsCopy && isLocalExpr(valueExpr) && !isObviousTemporaryExpr(valueExpr)) {
@@ -12660,7 +12835,21 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			- Falls back to compile-time literal ids for concrete class/enum values.
 		**/
 		function boxDynamicBoundaryValue(value:RustExpr, valueType:Type):RustExpr {
-			var byRef = isArrayType(valueType) || isRcBackedType(valueType);
+			var byRef = if (dynamicBoundaryDecision != null) {
+				switch (dynamicBoundaryDecision.representation) {
+					case RustRepresentationKind.RepresentationSharedIdentity
+						| RustRepresentationKind.RepresentationSharedTraitObject
+						| RustRepresentationKind.RepresentationRuntimeArray
+						| RustRepresentationKind.RepresentationRuntimeAnonymousObject
+						| RustRepresentationKind.RepresentationSharedFunction
+						| RustRepresentationKind.RepresentationRuntimeIterator:
+						true;
+					case _:
+						false;
+				}
+			} else {
+				isArrayType(valueType) || isRcBackedType(valueType);
+			};
 			var runtimeTypeId = runtimeDynamicBoundaryTypeIdExpr(rustSingleExpr("__hx_box"), valueType);
 			if (runtimeTypeId != null) {
 				var boxFn = rustDynamicBoxFunctionExpr(byRef, true);
@@ -12682,7 +12871,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		// Boxing to `Dynamic`.
-		if (expectedIsDyn && !actualIsDyn) {
+		if ((plannedDynamicBoundary || (dynamicBoundaryDecision == null && expectedIsDyn)) && !actualIsDyn) {
 			if (isNullConstExpr(valueExpr)) {
 				return rustDynamicNullExpr();
 			}
@@ -15268,6 +15457,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		var refInnerType = rustRefBorrowedValueType(paramType);
 		if (refInnerType != null) {
+			// `Null<Ref<T>>` and `Null<MutRef<T>>` are Options, not direct borrow tokens. Unwrap
+			// through the representation-aware nullable path before the ordinary ref introducer logic.
+			if (nullOptionInnerType(argExpr.t, argExpr.pos) != null)
+				return coerceExprToExpected(compiled, argExpr, paramType);
 			var borrowSource = unwrapRustRefIntroducer(argExpr);
 			if (!isDirectRustRefValue(argExpr)) {
 				if (!shouldSkipBorrowedStringInnerCoercion(compiled, borrowSource, refInnerType)) {

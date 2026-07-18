@@ -44,6 +44,20 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   names. Technical details are welcome, but introduce them in plain language and make the practical
   outcome clear first.
 
+## Plain-language communication
+
+- In chat, plans, commit messages, Beads notes, reviews, and user-facing documentation, lead with the
+  concrete behavior: what used to happen, what happens now, and why a user should care. Prefer familiar
+  phrases such as “exact source location,” “where this generated code came from,” or “saved compiler
+  decision” over specialist shorthand such as “provenance,” “semantic authority,” or “evidence ledger.”
+- When a precise technical term is genuinely useful, define it in ordinary language the first time and
+  keep using the concrete explanation alongside it. Do not assume that recognizing a term means the
+  reader understands the underlying behavior, tradeoffs, or failure case.
+- Keep explanations beginner-friendly without pretending the work is simpler or more certain than it
+  is. State important limits, assumptions, and remaining risks directly; check understanding through
+  concrete examples rather than confidence-signaling jargon. This avoids the Dunning-Kruger trap of
+  mistaking a shallow label for a clear mental model.
+
 ## Thinking Levels (Bead Labels)
 
 Use a `thinking:*` label on active beads so execution effort matches task risk.
@@ -55,7 +69,8 @@ Use a `thinking:*` label on active beads so execution effort matches task risk.
 - `thinking:high`
   - Parity contracts, gate semantics, dependency graph changes, perf-policy changes, compiler/runtime architecture decisions.
 - `thinking:xhigh`
-  - Scope-definition changes, release enforcement, provenance-sensitive implementation strategy, or any task where a wrong decision would create misleading 1.0 evidence.
+  - Scope-definition changes, release enforcement, implementation choices that affect exact source
+    locations, or any task where a wrong decision would create misleading 1.0 evidence.
 
 Agent policy:
 
@@ -318,10 +333,25 @@ Agent policy:
   method bodies into per-class compilation data; a late `Context.getAllModuleTypes()` rescan can keep
   declarations while silently losing expression-only runtime requirements and operation checks such
   as `throw`, reflection, or platform calls. Haxe may invoke the callback incrementally, so accumulate
-  the latest module reference by semantic type path and consume one deterministic snapshot at compile
-  start. Direct call/constructor arguments are real value positions even when their syntax is `if` or
-  `switch`; classify the resulting argument type without broadly treating control/body wrappers as
-  stored values.
+  the latest module reference by `ModuleTypeHelper.getUniqueId()` and consume one deterministic
+  snapshot at compile start. Do not key this map with `ModuleType.getPath()`: its suffix test can make
+  a primary `NotWidget` and secondary `Widget` declaration collide. Direct call/constructor arguments
+  are real value positions even when their syntax is `if` or `switch`; classify the resulting argument
+  type without broadly treating control/body wrappers as stored values. Immediately invoked `FEnum`
+  constructor targets are call scaffolding, but a constructor assigned to a variable remains a real
+  function value.
+  A representation-changing crossing needs both the actual expression type and the expected
+  destination type before Rust AST construction. Record call/constructor arguments, local
+  initializers, assignments, returns, casts, and control-expression results through that shared path;
+  a scalar passed to a framework-owned `Dynamic` parameter must not disappear merely because the
+  framework method body is outside the user snapshot. Suppress module fallbacks only for the runtime
+  reason categories covered by real decisions, never merely because a non-null decision array exists.
+  Haxe `Position.min/max` values are source-string coordinates, not the UTF-8 byte ranges promised by
+  runtime plans and source maps. Convert through `RustSourcePosition` before serialization and convert
+  back before `Context.makePosition`; an ASCII-only span fixture cannot prove this contract.
+  Early exact no-hxrt findings and later broad module-path findings are two incomplete sources of
+  information. Combine them unconditionally before diagnostics—an already blocked result does not
+  mean collection is complete—and keep exact same-reason expression locations distinct.
   Once a real value position is admitted, recurse through representation-bearing type arguments,
   function signatures, anonymous fields, and typedef targets: an outer native container does not
   make an inner `Dynamic`/HxRef/runtime-backed payload no-hxrt eligible.
@@ -438,7 +468,7 @@ Agent policy:
   - keeps a typed callable surface (no `untyped` at callsites)
   - supports Reflaxe `{0}` placeholder interpolation with varargs (`RustInjection.__rust__("foo({0})", arg0)`)
 - Reflaxe injection gotcha: `TargetCodeInjection.checkTargetCodeInjectionGeneric` returns an empty list when the injected string has no `{0}` placeholders. The compiler must treat that case as “literal injection string”.
-- Macro-injection provenance gotcha: a macro that returns another injection macro call must forward the
+- Macro-injection source-location gotcha: a macro that returns another injection macro call must forward the
   user callsite through every expansion layer with Haxe's special `@:pos(callerPos)` metadata. Assigning
   only `Expr.pos` is insufficient for the nested macro invocation and can leave typed `__rust__` nodes
   anchored in `src/reflaxe/rust/macros`. Keep the exact `rust.metal.Code.expr/stmt` line assertions in
@@ -540,7 +570,9 @@ Agent policy:
     symlink aliases (for example `/var/...` vs `/private/var/...`) can make packaged std overrides look like non-framework files and skip emission.
   - Validation gotcha: `.cross.hx` std override behavior must be validated through a real `-lib reflaxe.rust` install path (`haxelib newrepo` + `haxelib install <zip>`).
     A raw `-cp <pkg>/src` compile is not an equivalent packaging test and can resolve upstream std modules instead.
-  - Governance rule: keep `docs/stdlib-provenance-ledger.json` in sync with tracked `std/rust/_std/**/*.hx` files, keep
+  - Governance rule: keep `docs/stdlib-provenance-ledger.json`—the historical filename for the table
+    that records where each standard-library override came from—in sync with tracked
+    `std/rust/_std/**/*.hx` files, keep
     `docs/portable-stdlib-allowlist.json` aligned with `test/upstream_std_modules.txt`, and run boundary guards:
     `npm run guard:upstream-stdlib-boundary` + `npm run guard:stdlib-ledger` + `npm run guard:portable-stdlib-allowlist`.
     - Preferred update flow for Tier1 list changes: edit `test/upstream_std_modules.txt`, run
@@ -612,7 +644,7 @@ Agent policy:
 - Run upstream stdlib sweep locally:
   - Tier1 (default): `bash test/run-upstream-stdlib-sweep.sh` (or single-module: `--module haxe.Json`)
   - Tier2 (broader): `bash test/run-upstream-stdlib-sweep.sh --tier tier2`
-- Run stdlib boundary/provenance guards locally:
+- Run standard-library boundary and source-record guards locally:
   - `npm run stdlib:audit:candidates`
   - `npm run stdlib:sync:tier2`
   - `npm run stdlib:sync:allowlist`
@@ -621,7 +653,9 @@ Agent policy:
   - `npm run guard:portable-stdlib-allowlist`
   - `npm run guard:stdlib-candidates`
   - `npm run guard:stdlib-candidate-gap` (defaults to strict zero-gap; override only intentionally via `PORTABLE_STDLIB_CANDIDATE_GAP_MAX`)
-  - `guard:stdlib-ledger` also enforces that every provenance-ledger importable module is represented in Tier2; intentional non-importable boundary modules must carry `tier2SweepExcludeReason` in `docs/stdlib-provenance-ledger.json`.
+  - `guard:stdlib-ledger` also enforces that every module marked importable in
+    `docs/stdlib-provenance-ledger.json` is represented in Tier2; intentional non-importable boundary
+    modules must carry `tier2SweepExcludeReason` in that file.
 - Run Windows-safe smoke subset locally: `bash scripts/ci/windows-smoke.sh` (same subset used by the Windows CI job).
 - Run packaged-install smoke locally: `bash scripts/ci/package-smoke.sh` (build zip, install into local haxelib repo, compile, cargo build).
   - Regression coverage includes a symlinked working-directory compile pass to catch path-alias mismatches when classifying framework std files.

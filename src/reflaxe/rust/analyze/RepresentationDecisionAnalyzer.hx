@@ -5,6 +5,7 @@ import haxe.macro.Context;
 import haxe.macro.Type;
 import haxe.macro.TypeTools;
 import haxe.macro.TypedExprTools;
+import reflaxe.rust.RustSourcePosition;
 import reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin;
 import reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision;
 import reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind;
@@ -33,6 +34,7 @@ import reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind;
 class RepresentationDecisionAnalyzer {
 	public static function collect(moduleTypes:Array<ModuleType>, nullableStringCompat:Bool,
 			?classHasSubclasses:ClassType->Bool):Array<RustRepresentationDecision> {
+		RustSourcePosition.reset();
 		var out:Array<RustRepresentationDecision> = [];
 		var seen:Map<String, Bool> = [];
 		if (moduleTypes == null)
@@ -72,8 +74,21 @@ class RepresentationDecisionAnalyzer {
 			visitType(type, label);
 		}
 
+		function addCrossing(modulePath:String, label:String, actual:TypedExpr, expected:Type):Void {
+			if (actual == null || expected == null)
+				return;
+			var origin = originAt(modulePath, actual.pos);
+			if (origin == null)
+				return;
+			var info = Context.getPosInfos(actual.pos);
+			var subject = modulePath + "#" + label + "@" + info.min + ":" + info.max;
+			addDecision(RepresentationTypeAnalyzer.tryDecideExprCrossing(subject, actual, expected, origin, nullableStringCompat,
+				classHasSubclasses));
+		}
+
 		function scanExpr(modulePath:String, root:TypedExpr, fieldRoot:Bool):Void {
-			function visit(expr:TypedExpr, rootFunction:Bool, suppressCurrent:Bool, forceValuePosition:Bool = false):Void {
+			function visit(expr:TypedExpr, rootFunction:Bool, suppressCurrent:Bool, forceValuePosition:Bool = false,
+					expectedReturn:Null<Type> = null):Void {
 				if (expr == null)
 					return;
 				var current = unwrapMetaParen(expr);
@@ -101,32 +116,52 @@ class RepresentationDecisionAnalyzer {
 								addType(modulePath, "function-arg-" + index, fn.args[index].v.t, current.pos);
 							addType(modulePath, "function-result", fn.t, current.pos);
 						}
-						visit(fn.expr, false, false);
+						visit(fn.expr, false, false, false, fn.t);
 						return;
 					case TCall(callTarget, arguments):
-						var directMethodTarget = switch (unwrapMetaParen(callTarget).expr) {
+						var directCallableTarget = switch (unwrapMetaParen(callTarget).expr) {
 							case TField(_, FStatic(_, fieldRef)) | TField(_, FInstance(_, _, fieldRef)):
 								var field = fieldRef.get();
 								field != null && switch (field.kind) {
 									case FMethod(_): true;
 									case _: false;
 								};
+							case TField(_, FEnum(_, _)): true;
 							case _: false;
 						};
-						visit(callTarget, false, directMethodTarget);
-						for (argument in arguments)
+						visit(callTarget, false, directCallableTarget, false, expectedReturn);
+						var expectedArguments = functionArgumentTypes(callTarget.t);
+						for (index in 0...arguments.length) {
+							var argument = arguments[index];
+							if (index < expectedArguments.length)
+								addCrossing(modulePath, "call-argument-" + index + "-boundary", argument, expectedArguments[index]);
 							// A direct argument is a materialized value even when its syntax is a control
 							// expression such as `if` or `switch`. Its resulting type may be Dynamic even
 							// though every branch has a more concrete type.
-							visit(argument, false, false, true);
+							visit(argument, false, false, true, expectedReturn);
+						}
 						return;
-					case TNew(_, _, arguments):
-						for (argument in arguments)
-							visit(argument, false, false, true);
+					case TNew(classRef, typeParameters, arguments):
+						var expectedArguments = constructorArgumentTypes(classRef, typeParameters);
+						for (index in 0...arguments.length) {
+							var argument = arguments[index];
+							if (index < expectedArguments.length)
+								addCrossing(modulePath, "constructor-argument-" + index + "-boundary", argument, expectedArguments[index]);
+							visit(argument, false, false, true, expectedReturn);
+						}
 						return;
 					case TVar(variable, initializer):
-						if (variable != null)
+						if (variable != null) {
 							addType(modulePath, "local-" + variable.id, variable.t, current.pos);
+							if (initializer != null)
+								addCrossing(modulePath, "local-initializer-boundary", initializer, variable.t);
+						}
+					case TBinop(OpAssign, left, right):
+						addCrossing(modulePath, "assignment-boundary", right, left.t);
+					case TReturn(value) if (value != null && expectedReturn != null):
+						addCrossing(modulePath, "return-boundary", value, expectedReturn);
+					case TCast(value, _):
+						addCrossing(modulePath, "cast-boundary", value, current.t);
 					case TObjectDecl(_) if (RepresentationTypeAnalyzer.classify(current.t, nullableStringCompat, classHasSubclasses)
 						== RustSourceValueKind.SourceDynamic):
 						var origin = originAt(modulePath, current.pos);
@@ -137,7 +172,7 @@ class RepresentationDecisionAnalyzer {
 						}
 					case _:
 				}
-				TypedExprTools.iter(current, child -> visit(child, false, false));
+				TypedExprTools.iter(current, child -> visit(child, false, false, false, expectedReturn));
 			}
 			visit(root, fieldRoot, false);
 		}
@@ -211,6 +246,30 @@ class RepresentationDecisionAnalyzer {
 		return out;
 	}
 
+	static function functionArgumentTypes(type:Type):Array<Type> {
+		if (type == null)
+			return [];
+		return switch (TypeTools.follow(type)) {
+			case TFun(arguments, _): [for (argument in arguments) argument.t];
+			case _: [];
+		};
+	}
+
+	static function constructorArgumentTypes(classRef:Ref<ClassType>, typeParameters:Array<Type>):Array<Type> {
+		if (classRef == null)
+			return [];
+		var classType = classRef.get();
+		if (classType == null || classType.constructor == null)
+			return [];
+		var constructor = classType.constructor.get();
+		if (constructor == null)
+			return [];
+		var constructorType = constructor.type;
+		if (classType.params != null && typeParameters != null && classType.params.length == typeParameters.length && classType.params.length > 0)
+			constructorType = TypeTools.applyTypeParameters(constructorType, classType.params, typeParameters);
+		return functionArgumentTypes(constructorType);
+	}
+
 	/**
 		Returns the direct representation-bearing children of one typed value.
 
@@ -264,13 +323,25 @@ class RepresentationDecisionAnalyzer {
 		return out;
 	}
 
-	static function originAt(modulePath:String, pos:haxe.macro.Expr.Position):Null<RustDecisionOrigin> {
+	/**
+		Builds the exact source location shared by typed representation and no-hxrt operation checks.
+
+		Why / What / How
+		- Both analyzers must attribute the same Haxe expression identically, including multibyte source text.
+		- Preserve an already-safe relative path or replace an absolute/classpath spelling with a logical
+		  module path, then convert Haxe source-string coordinates to exact UTF-8 bytes.
+		- Return `null` when either path privacy or exact source resolution cannot be proven.
+	**/
+	public static function originAt(modulePath:String, pos:haxe.macro.Expr.Position):Null<RustDecisionOrigin> {
 		var info = Context.getPosInfos(pos);
 		if (info == null || info.file == null || info.file.length == 0 || info.min < 0 || info.max < info.min)
 			return null;
 		var slashed = info.file.split("\\").join("/");
 		var stableFile = isSafeRelative(slashed) ? slashed : "classpath/" + modulePath.split(".").join("/") + "/" + Path.withoutDirectory(slashed);
-		return RustDecisionOrigin.at(stableFile, info.min, info.max, modulePath);
+		var byteRange = RustSourcePosition.utf8ByteRange(info.file, info.min, info.max);
+		if (byteRange == null)
+			return null;
+		return RustDecisionOrigin.at(stableFile, byteRange.startByte, byteRange.endByte, modulePath);
 	}
 
 	static function isSafeRelative(path:String):Bool {

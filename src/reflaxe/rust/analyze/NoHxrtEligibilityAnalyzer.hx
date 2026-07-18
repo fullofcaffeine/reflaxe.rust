@@ -58,6 +58,54 @@ class NoHxrtEligibilityAnalyzer {
 			capturedRepresentationDecisions.copy());
 	}
 
+	/**
+		Merges later module-path evidence into the exact typed snapshot unconditionally.
+
+		Why / What / How
+		- Module usage is complete only after lowering starts, while executable expression positions are
+		  complete only in the earlier after-typing snapshot.
+		- A pre-existing blocker does not mean collection is complete. Combine both lists, remove
+		  exact duplicates, and prefer an exact typed expression over a broad module fallback for the same
+		  reason kind.
+		- Sorting and summary generation happen after the union, so declaration order cannot change the
+		  diagnostic or hide an independent blocker.
+	**/
+	@:allow(reflaxe.rust.RustCompiler)
+	private static function mergeCaptured(captured:NoHxrtEligibilityResult, modulePaths:Array<String>, nullableStrings:Bool,
+			allowUnresolvedMonomorphDynamic:Bool, allowUnmappedCoreTypeDynamic:Bool,
+			capturedRepresentationDecisions:Array<RustRepresentationDecision>):NoHxrtEligibilityResult {
+		if (captured == null || captured.requirements == null || capturedRepresentationDecisions == null)
+			throw "captured no-hxrt evidence and representation decisions cannot be null";
+		var requirements = captured.requirements.copy();
+		var later = RuntimeRequirementAnalyzer.collect(modulePaths, true, nullableStrings, allowUnresolvedMonomorphDynamic,
+			allowUnmappedCoreTypeDynamic, capturedRepresentationDecisions.copy(), true);
+		for (entry in later) {
+			var exactReasonAlreadyCaptured = false;
+			if (entry.sourceKind == "module" && entry.sourceSpan.length == 0) {
+				for (existing in requirements) {
+					if (existing.reasonKind == entry.reasonKind && existing.sourceSpan.length > 0) {
+						exactReasonAlreadyCaptured = true;
+						break;
+					}
+				}
+			}
+			if (exactReasonAlreadyCaptured)
+				continue;
+			var duplicate = false;
+			for (existing in requirements) {
+				if (RuntimeRequirementAnalyzer.sameEntry(existing, entry)) {
+					duplicate = true;
+					break;
+				}
+			}
+			if (!duplicate)
+				requirements.push(entry);
+		}
+		requirements.sort(RuntimeRequirementAnalyzer.compareEntries);
+		var summary = RuntimeRequirementAnalyzer.summarize(requirements);
+		return {blocked: summary.blockedByNoHxrt, requirements: requirements, summary: summary};
+	}
+
 	static function analyzeWithDecisions(userModuleTypes:Array<ModuleType>, modulePaths:Array<String>, nullableStrings:Bool,
 			allowUnresolvedMonomorphDynamic:Bool, allowUnmappedCoreTypeDynamic:Bool,
 			representationDecisions:Array<RustRepresentationDecision>):NoHxrtEligibilityResult {
@@ -117,16 +165,18 @@ class NoHxrtEligibilityAnalyzer {
 			var current = unwrapMetaParen(expr);
 			switch (current.expr) {
 				case TThrow(_):
-					add(requirements, RuntimeException, "typed_ast", module, "Haxe throw semantics require hxrt exception support.");
+					add(requirements, RuntimeException, "typed_ast", module, current.pos, "Haxe throw semantics require hxrt exception support.");
 				case TTry(_, _):
-					add(requirements, RuntimeException, "typed_ast", module, "Haxe try/catch semantics require hxrt exception support.");
+					add(requirements, RuntimeException, "typed_ast", module, current.pos, "Haxe try/catch semantics require hxrt exception support.");
 				case TCall(callTarget, _):
 					{
 						var ownerPath = callOwnerPath(callTarget);
-						if (ownerPath == "Reflect" || ownerPath == "Type" || StringTools.startsWith(ownerPath, "haxe.rtti."))
-							add(requirements, RuntimeReflection, "typed_ast", module, "Reflection/runtime introspection requires hxrt support.");
-						if (ownerPath == "Sys" || StringTools.startsWith(ownerPath, "sys."))
-							add(requirements, RuntimePlatformAbstraction, "typed_ast", module, "Platform abstraction requires hxrt wrapper support.");
+						if (RuntimeRequirementAnalyzer.isReflectionPath(ownerPath))
+							add(requirements, RuntimeReflection, "typed_ast", module, current.pos,
+								"Reflection/runtime introspection requires hxrt support.");
+						if (RuntimeRequirementAnalyzer.isPlatformAbstractionPath(ownerPath))
+							add(requirements, RuntimePlatformAbstraction, "typed_ast", module, current.pos,
+								"Platform abstraction requires hxrt wrapper support.");
 					}
 				case _:
 			}
@@ -149,12 +199,13 @@ class NoHxrtEligibilityAnalyzer {
 	}
 
 	static function add(requirements:Array<RuntimeRequirementEntry>, reasonKind:RuntimeRequirementKind, sourceKind:String, sourceModule:String,
-			message:String):Void {
+			pos:haxe.macro.Expr.Position, message:String):Void {
+		var origin = RepresentationDecisionAnalyzer.originAt(sourceModule, pos);
 		var entry:RuntimeRequirementEntry = {
 			reasonKind: reasonKind,
 			sourceKind: sourceKind,
 			sourceModule: sourceModule,
-			sourceSpan: "",
+			sourceSpan: origin == null ? "" : origin.sourceFile + ":" + origin.startByte + "-" + origin.endByte,
 			surfaceId: null,
 			requiresHxrt: true,
 			noHxrtBlocked: true,
