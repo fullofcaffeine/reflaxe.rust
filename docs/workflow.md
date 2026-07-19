@@ -142,6 +142,20 @@ Each GitHub run shards the expensive harness work into parallel jobs for speed, 
 `npm run test:all` is still the full harness, and `HARNESS_STAGES=... bash scripts/ci/harness.sh` is
 only for focused shard debugging.
 
+When several Haxe-family compiler repositories are validating on the same machine, use the opt-in
+queued form to avoid running their heavyweight suites at the same time:
+
+```bash
+npm run test:all:queued
+```
+
+This runs the unchanged `npm run test:all` command after acquiring the shared
+`haxe-family.heavy-run-lease.v1` lease. The wait is bounded to 15 minutes and exits with status 75
+if capacity does not become available. CI bypasses the lease, ordinary `npm run test:all` remains
+unchanged, and stale owners are recovered without signalling another process. Override the common
+lease location only for an isolated test with `HAXE_FAMILY_HEAVY_RUN_LEASE_FILE`; Haxe-family
+repositories coordinate through the same user-scoped default path.
+
 ## HXRT overhead tracking
 
 To track runtime footprint regressions explicitly:
