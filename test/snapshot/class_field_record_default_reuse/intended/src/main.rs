@@ -82,17 +82,14 @@ fn main() {
     });
     println!(
         "{}",
-        hxrt::dynamic::from(
-            ({
-                let __hx_recv = {
-                    let __b = parent.borrow();
-                    __b.child.clone()
-                };
-                let __b = __hx_recv.borrow();
-                __b.name.clone()
-            })
-            .clone()
-        )
+        hxrt::dynamic::from({
+            let __hx_recv = {
+                let __b = parent.borrow();
+                __b.child.clone()
+            };
+            let __b = __hx_recv.borrow();
+            __b.name.clone()
+        })
     );
     let defaulted: crate::HxRef<crate::parent_with_default_child::ParentWithDefaultChild> =
         crate::parent_with_default_child::ParentWithDefaultChild::new();

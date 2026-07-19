@@ -91,8 +91,5 @@ fn flow() -> hxrt::async_::HxFuture<String> {
 
 fn main() {
     hxrt::async_::enable_tokio_runtime();
-    println!(
-        "{}",
-        hxrt::dynamic::from(hxrt::async_::block_on(flow()).clone())
-    );
+    println!("{}", hxrt::dynamic::from(hxrt::async_::block_on(flow())));
 }

@@ -82,6 +82,8 @@ fn consume_mut_slice(_value: &mut [i32]) -> i32 {
     return 8;
 }
 
+fn observe_score(_value: i32) {}
+
 fn main() {
     let s: String = String::from("hello world");
     let ok: bool = {
@@ -122,13 +124,23 @@ fn main() {
             let mut maybe: Option<&mut Vec<i32>> = Some(borrowed);
             let mut score: i32 = 0;
             if maybe.is_some() {
+                let choose_first: bool = score == 0;
                 {
                     score = score
-                        + consume_mut_ref(match &mut maybe {
-                            Some(__v) => &mut **__v,
-                            None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
-                                "Null Access",
-                            ))),
+                        + consume_mut_ref(if choose_first {
+                            match &mut maybe {
+                                Some(__v) => &mut **__v,
+                                None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                    "Null Access",
+                                ))),
+                            }
+                        } else {
+                            match &mut maybe {
+                                Some(__v) => &mut **__v,
+                                None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                    "Null Access",
+                                ))),
+                            }
                         });
                     score
                 };
@@ -144,11 +156,72 @@ fn main() {
                 };
                 {
                     score = score
+                        + consume_mut_ref(if score == 4 {
+                            match &mut maybe {
+                                Some(__v) => &mut **__v,
+                                None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                    "Null Access",
+                                ))),
+                            }
+                        } else {
+                            match &mut maybe {
+                                Some(__v) => &mut **__v,
+                                None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                    "Null Access",
+                                ))),
+                            }
+                        });
+                    score
+                };
+                {
+                    score = score
                         + consume_mut_ref(match &mut maybe {
                             Some(__v) => &mut **__v,
                             None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
                                 "Null Access",
                             ))),
+                        });
+                    score
+                };
+                {
+                    score = score
+                        + consume_mut_ref({
+                            observe_score(score);
+                            match &mut maybe {
+                                Some(__v) => &mut **__v,
+                                None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                    "Null Access",
+                                ))),
+                            }
+                        });
+                    score
+                };
+                {
+                    score = score
+                        + consume_mut_ref(match &mut maybe {
+                            Some(__v) => &mut **__v,
+                            None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                "Null Access",
+                            ))),
+                        });
+                    score
+                };
+                {
+                    score = score
+                        + consume_mut_ref(if choose_first {
+                            match &mut maybe {
+                                Some(__v) => &mut **__v,
+                                None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                    "Null Access",
+                                ))),
+                            }
+                        } else {
+                            match &mut maybe {
+                                Some(__v) => &mut **__v,
+                                None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                    "Null Access",
+                                ))),
+                            }
                         });
                     score
                 };
@@ -186,13 +259,23 @@ fn main() {
                 let mut maybe_3: Option<&mut [i32]> = Some(borrowed_3);
                 let mut score_2: i32 = 0;
                 if maybe_3.is_some() {
+                    let choose_first_2: bool = score_2 == 0;
                     {
                         score_2 = score_2
-                            + consume_mut_slice(match &mut maybe_3 {
-                                Some(__v) => &mut **__v,
-                                None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
-                                    "Null Access",
-                                ))),
+                            + consume_mut_slice(if choose_first_2 {
+                                match &mut maybe_3 {
+                                    Some(__v) => &mut **__v,
+                                    None => hxrt::exception::throw(hxrt::dynamic::from(
+                                        String::from("Null Access"),
+                                    )),
+                                }
+                            } else {
+                                match &mut maybe_3 {
+                                    Some(__v) => &mut **__v,
+                                    None => hxrt::exception::throw(hxrt::dynamic::from(
+                                        String::from("Null Access"),
+                                    )),
+                                }
                             });
                         score_2
                     };
@@ -208,11 +291,72 @@ fn main() {
                     };
                     {
                         score_2 = score_2
+                            + consume_mut_slice(if score_2 == 16 {
+                                match &mut maybe_3 {
+                                    Some(__v) => &mut **__v,
+                                    None => hxrt::exception::throw(hxrt::dynamic::from(
+                                        String::from("Null Access"),
+                                    )),
+                                }
+                            } else {
+                                match &mut maybe_3 {
+                                    Some(__v) => &mut **__v,
+                                    None => hxrt::exception::throw(hxrt::dynamic::from(
+                                        String::from("Null Access"),
+                                    )),
+                                }
+                            });
+                        score_2
+                    };
+                    {
+                        score_2 = score_2
                             + consume_mut_slice(match &mut maybe_3 {
                                 Some(__v) => &mut **__v,
                                 None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
                                     "Null Access",
                                 ))),
+                            });
+                        score_2
+                    };
+                    {
+                        score_2 = score_2
+                            + consume_mut_slice({
+                                observe_score(score_2);
+                                match &mut maybe_3 {
+                                    Some(__v) => &mut **__v,
+                                    None => hxrt::exception::throw(hxrt::dynamic::from(
+                                        String::from("Null Access"),
+                                    )),
+                                }
+                            });
+                        score_2
+                    };
+                    {
+                        score_2 = score_2
+                            + consume_mut_slice(match &mut maybe_3 {
+                                Some(__v) => &mut **__v,
+                                None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                    "Null Access",
+                                ))),
+                            });
+                        score_2
+                    };
+                    {
+                        score_2 = score_2
+                            + consume_mut_slice(if choose_first_2 {
+                                match &mut maybe_3 {
+                                    Some(__v) => &mut **__v,
+                                    None => hxrt::exception::throw(hxrt::dynamic::from(
+                                        String::from("Null Access"),
+                                    )),
+                                }
+                            } else {
+                                match &mut maybe_3 {
+                                    Some(__v) => &mut **__v,
+                                    None => hxrt::exception::throw(hxrt::dynamic::from(
+                                        String::from("Null Access"),
+                                    )),
+                                }
                             });
                         score_2
                     };
@@ -224,7 +368,7 @@ fn main() {
     println!(
         "{}",
         hxrt::dynamic::from(
-            ok && mutable_ref_score == 6 && slice_score == 4 && mutable_slice_score == 24
+            ok && mutable_ref_score == 14 && slice_score == 4 && mutable_slice_score == 56
         )
     );
 }

@@ -79,7 +79,7 @@ fn main() {
                     let _g: &i32 = __p;
                     {
                         let x: &i32 = _g;
-                        println!("{}", hxrt::dynamic::from(x.clone()));
+                        println!("{}", hxrt::dynamic::from(*x));
                     }
                 }
                 Option::None => {

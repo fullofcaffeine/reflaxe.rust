@@ -117,6 +117,14 @@ control live in the [public compatibility manifest](public-compatibility-manifes
   - Records executed pass order, applied optimization counts, skipped-reason counts,
     family pin metadata (`familyStdPin.*`), and aggregate convergence metrics
     (`cloneElisions`, `loopOptimizations`).
+- `rust_representation_crossing_audit`
+  - Internal test/review switch; ordinary projects should not enable it.
+  - Emits `representation_crossing_audit.txt` in the generated crate root. Each user-value row shows
+    the private relative source range, saved conversion kind, reuse choice, action number, and whether
+    Rust lowering consumed that saved action exactly once. Compiler-created Dynamic values are listed
+    separately so they cannot hide a missed user conversion.
+  - The focused representation contract compares this file across repeated builds. It is a debugging
+    record, not a stable application artifact or public report schema.
 - `rust_no_hxrt`
   - Metal-only minimal-runtime mode.
   - Omits bundled `hxrt` emission and `Cargo.toml` dependency.

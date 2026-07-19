@@ -68,10 +68,7 @@ fn main() {
             __tmp.as_arc_opt().unwrap().clone();
         __up
     };
-    println!("{}", hxrt::dynamic::from(a.speak().clone()));
+    println!("{}", hxrt::dynamic::from(a.speak()));
     let d: crate::HxRef<crate::dog::Dog> = crate::dog::Dog::new();
-    println!(
-        "{}",
-        hxrt::dynamic::from(crate::dog::Dog::speak(&*d).clone())
-    );
+    println!("{}", hxrt::dynamic::from(crate::dog::Dog::speak(&*d)));
 }

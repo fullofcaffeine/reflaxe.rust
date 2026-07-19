@@ -1,4 +1,8 @@
 class RustRepresentationTypeFixture {
+	public function new() {
+		var constructorDynamic:Dynamic = 424242;
+	}
+
 	static var scalar:Int;
 	static var enumValue:RustRepresentationFixtureChoice;
 	static var nativeOwned:rust.Vec<Int>;
@@ -9,6 +13,8 @@ class RustRepresentationTypeFixture {
 	static var nullableBorrowed:Null<rust.Ref<Int>>;
 	static var nativeHandle:rust.net.TcpStream;
 	static var dynamicValue:Dynamic;
+	static var classHandle:Class<RustRepresentationFixtureNode>;
+	static var enumHandle:Enum<RustRepresentationFixtureChoice>;
 	static var stringValue:String;
 	static var arrayValue:Array<Int>;
 	static var anonymousValue:{value:Int};

@@ -9185,6 +9185,540 @@
       ]
     },
     {
+      "name": "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization",
+      "source": "src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract RustDynamicValueMaterialization (String) from String to String",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:DynamicValueDirect",
+          "kind": "enum-value",
+          "name": "DynamicValueDirect",
+          "signature": "var DynamicValueDirect = \"direct\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:DynamicValueBorrowCopy",
+          "kind": "enum-value",
+          "name": "DynamicValueBorrowCopy",
+          "signature": "var DynamicValueBorrowCopy = \"borrow-copy\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:DynamicValueBorrowClone",
+          "kind": "enum-value",
+          "name": "DynamicValueBorrowClone",
+          "signature": "var DynamicValueBorrowClone = \"borrow-clone\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRepresentationAnalysisSnapshot",
+      "source": "src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx",
+      "kind": "class",
+      "signature": "class RustRepresentationAnalysisSnapshot",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRuntimeRequirementCoverage",
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization",
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRuntimeRequirementCoverage",
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing",
+        "reflaxe.rust.analyze.RepresentationDecisionAnalyzer",
+        "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+        "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullEncoding",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustOwnershipPolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRequiredBound",
+        "reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact"
+      ],
+      "operations": [
+        {
+          "id": "function:of",
+          "kind": "function",
+          "name": "of",
+          "signature": "public static function of (decisions : Array < RustRepresentationDecision >, crossings : Array < RustSavedRepresentationCrossing >, coverage : Array < RustRuntimeRequirementCoverage >) : RustRepresentationAnalysisSnapshot",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRuntimeRequirementCoverage",
+            "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing",
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
+          ]
+        },
+        {
+          "id": "function:decisions",
+          "kind": "function",
+          "name": "decisions",
+          "signature": "public inline function decisions () : Array < RustRepresentationDecision >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
+          ]
+        },
+        {
+          "id": "function:crossings",
+          "kind": "function",
+          "name": "crossings",
+          "signature": "public inline function crossings () : Array < RustSavedRepresentationCrossing >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing"
+          ]
+        },
+        {
+          "id": "function:coverage",
+          "kind": "function",
+          "name": "coverage",
+          "signature": "public inline function coverage () : Array < RustRuntimeRequirementCoverage >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRuntimeRequirementCoverage"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRuntimeRequirementCoverage",
+      "source": "src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx",
+      "kind": "class",
+      "signature": "@:allow (reflaxe.rust.analyze.RepresentationDecisionAnalyzer) class RustRuntimeRequirementCoverage",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationDecisionAnalyzer",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization",
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRepresentationAnalysisSnapshot",
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing",
+        "reflaxe.rust.analyze.RepresentationDecisionAnalyzer",
+        "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+        "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullEncoding",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustOwnershipPolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRequiredBound",
+        "reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact"
+      ],
+      "operations": [
+        {
+          "id": "field:reasonKind",
+          "kind": "field",
+          "name": "reasonKind",
+          "signature": "public final reasonKind : RustRuntimeRequirementKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind"
+          ]
+        },
+        {
+          "id": "field:modulePath",
+          "kind": "field",
+          "name": "modulePath",
+          "signature": "public final modulePath : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:includeDescendants",
+          "kind": "field",
+          "name": "includeDescendants",
+          "signature": "public final includeDescendants : Bool",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:covers",
+          "kind": "function",
+          "name": "covers",
+          "signature": "public function covers (reasonKind : RustRuntimeRequirementKind, candidate : String) : Bool",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind"
+          ]
+        },
+        {
+          "id": "function:canonicalKey",
+          "kind": "function",
+          "name": "canonicalKey",
+          "signature": "public function canonicalKey () : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedCrossingCountProblem",
+      "source": "src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx",
+      "kind": "typedef",
+      "signature": "typedef RustSavedCrossingCountProblem =",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization",
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing",
+        "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+        "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullEncoding",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustOwnershipPolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRequiredBound",
+        "reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact"
+      ],
+      "operations": [
+        {
+          "id": "field:crossing",
+          "kind": "field",
+          "name": "crossing",
+          "signature": "var crossing : RustSavedRepresentationCrossing",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing"
+          ]
+        },
+        {
+          "id": "field:count",
+          "kind": "field",
+          "name": "count",
+          "signature": "var count : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedCrossingTracker",
+      "source": "src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx",
+      "kind": "class",
+      "signature": "class RustSavedCrossingTracker",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedCrossingCountProblem",
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing",
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization",
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedCrossingCountProblem",
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing",
+        "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+        "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullEncoding",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustOwnershipPolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRequiredBound",
+        "reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact"
+      ],
+      "operations": [
+        {
+          "id": "function:of",
+          "kind": "function",
+          "name": "of",
+          "signature": "public static function of (crossings : Array < RustSavedRepresentationCrossing >) : RustSavedCrossingTracker",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing"
+          ]
+        },
+        {
+          "id": "function:empty",
+          "kind": "function",
+          "name": "empty",
+          "signature": "public static function empty () : RustSavedCrossingTracker",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:consume",
+          "kind": "function",
+          "name": "consume",
+          "signature": "public function consume (origin : RustDecisionOrigin) : Null < RustSavedRepresentationCrossing >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing",
+            "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin"
+          ]
+        },
+        {
+          "id": "function:countFor",
+          "kind": "function",
+          "name": "countFor",
+          "signature": "public function countFor (crossing : RustSavedRepresentationCrossing) : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing"
+          ]
+        },
+        {
+          "id": "function:countProblems",
+          "kind": "function",
+          "name": "countProblems",
+          "signature": "public function countProblems () : Array < RustSavedCrossingCountProblem >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedCrossingCountProblem"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing",
+      "source": "src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx",
+      "kind": "class",
+      "signature": "class RustSavedRepresentationCrossing",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization",
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization",
+        "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+        "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustIdentityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustMutationFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullEncoding",
+        "reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact",
+        "reflaxe.rust.analyze.RepresentationPlan.RustOwnershipPolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationReason",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRequiredBound",
+        "reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy",
+        "reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind",
+        "reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact"
+      ],
+      "operations": [
+        {
+          "id": "field:key",
+          "kind": "field",
+          "name": "key",
+          "signature": "public final key : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:baseKey",
+          "kind": "field",
+          "name": "baseKey",
+          "signature": "public final baseKey : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:ordinal",
+          "kind": "field",
+          "name": "ordinal",
+          "signature": "public final ordinal : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:origin",
+          "kind": "field",
+          "name": "origin",
+          "signature": "public final origin : RustDecisionOrigin",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin"
+          ]
+        },
+        {
+          "id": "field:decision",
+          "kind": "field",
+          "name": "decision",
+          "signature": "public final decision : RustRepresentationDecision",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
+          ]
+        },
+        {
+          "id": "field:materialization",
+          "kind": "field",
+          "name": "materialization",
+          "signature": "public final materialization : RustDynamicValueMaterialization",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization"
+          ]
+        },
+        {
+          "id": "function:of",
+          "kind": "function",
+          "name": "of",
+          "signature": "public static function of (origin : RustDecisionOrigin, decision : RustRepresentationDecision, materialization : RustDynamicValueMaterialization, ? ordinal : Int = 0) : RustSavedRepresentationCrossing",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization",
+            "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
+            "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
+          ]
+        },
+        {
+          "id": "function:baseKeyFor",
+          "kind": "function",
+          "name": "baseKeyFor",
+          "signature": "public static function baseKeyFor (origin : RustDecisionOrigin) : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin"
+          ]
+        }
+      ]
+    },
+    {
       "name": "reflaxe.rust.analyze.RepresentationDecisionAnalyzer",
       "source": "src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx",
       "kind": "class",
@@ -9194,10 +9728,15 @@
         "test:public-compatibility"
       ],
       "directTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRepresentationAnalysisSnapshot",
         "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
         "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
       ],
       "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization",
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRepresentationAnalysisSnapshot",
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRuntimeRequirementCoverage",
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing",
         "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
         "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
         "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
@@ -9227,6 +9766,19 @@
           ],
           "typeReferences": [
             "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision"
+          ]
+        },
+        {
+          "id": "function:collectSnapshot",
+          "kind": "function",
+          "name": "collectSnapshot",
+          "signature": "public static function collectSnapshot (moduleTypes : Array < ModuleType >, nullableStringCompat : Bool, ? classHasSubclasses : ClassType -> Bool) : RustRepresentationAnalysisSnapshot",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRepresentationAnalysisSnapshot"
           ]
         },
         {
@@ -11571,6 +12123,28 @@
           ]
         },
         {
+          "id": "function:immutableReferenceValueType",
+          "kind": "function",
+          "name": "immutableReferenceValueType",
+          "signature": "public static function immutableReferenceValueType (type : Type) : Null < Type >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:stringFormattingNeedsDynamic",
+          "kind": "function",
+          "name": "stringFormattingNeedsDynamic",
+          "signature": "public static function stringFormattingNeedsDynamic (type : Type, nullableStringCompat : Bool, ? classHasSubclasses : ClassType -> Bool) : Bool",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
           "id": "function:tryDecideExprCrossing",
           "kind": "function",
           "name": "tryDecideExprCrossing",
@@ -11625,11 +12199,17 @@
         "test:public-compatibility"
       ],
       "directTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRuntimeRequirementCoverage",
         "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeFallbackSummary",
         "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry"
       ],
       "transitiveTypeReferences": [
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization",
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRepresentationAnalysisSnapshot",
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRuntimeRequirementCoverage",
+        "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing",
+        "reflaxe.rust.analyze.RepresentationDecisionAnalyzer",
         "reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind",
         "reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin",
         "reflaxe.rust.analyze.RepresentationPlan.RustEscapeFact",
@@ -11655,12 +12235,13 @@
           "id": "function:collect",
           "kind": "function",
           "name": "collect",
-          "signature": "public static function collect (modulePaths : Array < String >, noHxrt : Bool, nullableStrings : Bool, allowUnresolvedMonomorphDynamic : Bool, allowUnmappedCoreTypeDynamic : Bool, ? representationDecisions : Array < RustRepresentationDecision >, ? includeExtendedDecisionReasons : Bool = false) : Array < RuntimeRequirementEntry >",
+          "signature": "public static function collect (modulePaths : Array < String >, noHxrt : Bool, nullableStrings : Bool, allowUnresolvedMonomorphDynamic : Bool, allowUnmappedCoreTypeDynamic : Bool, ? representationDecisions : Array < RustRepresentationDecision >, ? includeExtendedDecisionReasons : Bool = false, ? coverage : Array < RustRuntimeRequirementCoverage >) : Array < RuntimeRequirementEntry >",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
           ],
           "typeReferences": [
+            "reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRuntimeRequirementCoverage",
             "reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision",
             "reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry"
           ]
@@ -24745,6 +25326,17 @@
           "typeReferences": []
         },
         {
+          "id": "function:stableSourcePath",
+          "kind": "function",
+          "name": "stableSourcePath",
+          "signature": "public static function stableSourcePath (rawFile : String, modulePath : String) : Null < String >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
           "id": "function:utf8ByteRange",
           "kind": "function",
           "name": "utf8ByteRange",
@@ -24758,10 +25350,43 @@
           ]
         },
         {
+          "id": "function:rememberHaxePosition",
+          "kind": "function",
+          "name": "rememberHaxePosition",
+          "signature": "public static function rememberHaxePosition (stableFile : String, startByte : Int, endByte : Int) : Void",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
           "id": "function:haxePosition",
           "kind": "function",
           "name": "haxePosition",
           "signature": "public static function haxePosition (rawFile : String, startByte : Int, endByte : Int) : Null < Position >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:inlineDiagnosticPrefix",
+          "kind": "function",
+          "name": "inlineDiagnosticPrefix",
+          "signature": "public static function inlineDiagnosticPrefix (stableFile : String, startByte : Int, endByte : Int) : Null < String >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:privateUnknownPosition",
+          "kind": "function",
+          "name": "privateUnknownPosition",
+          "signature": "public static function privateUnknownPosition (stableFile : String) : Position",
           "contract": "internal-helper",
           "evidenceIds": [
             "test:public-compatibility"
@@ -36491,6 +37116,15 @@
     {
       "name": "rust_release",
       "contract": "build-controls",
+      "valueGrammar": "presence flag",
+      "default": "disabled",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ]
+    },
+    {
+      "name": "rust_representation_crossing_audit",
+      "contract": "build-internal",
       "valueGrammar": "presence flag",
       "default": "disabled",
       "evidenceIds": [

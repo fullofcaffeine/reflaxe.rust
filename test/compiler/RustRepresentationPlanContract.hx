@@ -16,6 +16,8 @@ import reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy;
 import reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind;
 import reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind;
 import reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact;
+import reflaxe.rust.analyze.RuntimeRequirementAnalyzer;
+import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry;
 
 class RustRepresentationPlanContract {
 	static function expect(condition:Bool, message:String):Void {
@@ -48,6 +50,13 @@ class RustRepresentationPlanContract {
 
 	static function boundIds(values:Array<RustRequiredBound>):String {
 		return [for (value in values) value.id()].join(",");
+	}
+
+	static function hasModuleRequirement(entries:Array<RuntimeRequirementEntry>, reason:RustRuntimeRequirementKind, module:String):Bool {
+		for (entry in entries)
+			if (entry.reasonKind == reason && entry.sourceKind == "module" && entry.sourceModule == module && entry.sourceSpan.length == 0)
+				return true;
+		return false;
 	}
 
 	static function main():Void {
@@ -110,6 +119,23 @@ class RustRepresentationPlanContract {
 			SurfacePortableHaxe, Nullable, BoundaryLocal, 110));
 		expect(dynamicValue.representation == RepresentationDynamicPayload, "dynamic needs its closed payload representation");
 		expect(runtimeIds(dynamicValue.runtimeRequirements()) == "dynamic", "dynamic needs one stable runtime reason");
+
+		var anonymousValue = RustRepresentationPlanner.decide(facts("Main.AnonymousValue", SourceAnonymousObject, IdentityStable, MutationShared,
+			EscapeMay, SurfacePortableHaxe, NonNullable, BoundaryLocal, 115));
+		var arrayValue = RustRepresentationPlanner.decide(facts("Main.ArrayValue", SourceArray, IdentityStable, MutationShared, EscapeMay,
+			SurfacePortableHaxe, NonNullable, BoundaryLocal, 120));
+		var partialDynamic = RuntimeRequirementAnalyzer.collect(["haxe.Json"], false, false, false, false, [dynamicValue], true);
+		expect(hasModuleRequirement(partialDynamic, RuntimeDynamic, "haxe.Json"),
+			"one saved Dynamic value must not hide an unrelated haxe.Json module requirement");
+		var partialAnonymous = RuntimeRequirementAnalyzer.collect(["hxrt.anon.Object"], false, false, false, false, [anonymousValue], true);
+		expect(hasModuleRequirement(partialAnonymous, RuntimeAnonymousObject, "hxrt.anon.Object"),
+			"one saved anonymous value must not hide an unrelated anonymous-object module requirement");
+		var partialArray = RuntimeRequirementAnalyzer.collect(["hxrt.array.Array"], false, false, false, false, [arrayValue], true);
+		expect(hasModuleRequirement(partialArray, RuntimeHaxeArraySemantics, "hxrt.array.Array"),
+			"one saved array value must not hide an unrelated array module requirement");
+		var partialString = RuntimeRequirementAnalyzer.collect(["hxrt.string.HxString"], false, false, false, false, [nullableString], true);
+		expect(hasModuleRequirement(partialString, RuntimeHaxeStringSemantics, "hxrt.string.HxString"),
+			"one saved runtime-backed String must not hide an unrelated string module requirement");
 
 		var nullableScalar = RustRepresentationPlanner.decide(facts("Main.OptionalCount", SourceScalar, IdentityNone, MutationImmutable, EscapeMay,
 			SurfacePortableHaxe, Nullable, BoundaryLocal, 125));

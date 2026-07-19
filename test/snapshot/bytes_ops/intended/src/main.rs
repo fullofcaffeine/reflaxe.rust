@@ -62,19 +62,16 @@ fn main() {
     let b: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRef::new(hxrt::bytes::Bytes::of_string(
         hxrt::string::HxString::from("hello").as_str(),
     ));
-    println!("{}", hxrt::dynamic::from(b.borrow().to_string().clone()));
+    println!("{}", hxrt::dynamic::from(b.borrow().to_string()));
     let s: crate::HxRef<hxrt::bytes::Bytes> = crate::HxRef::new(b.borrow().sub(1, 3));
-    println!("{}", hxrt::dynamic::from(s.borrow().to_string().clone()));
+    println!("{}", hxrt::dynamic::from(s.borrow().to_string()));
     let out: crate::HxRef<hxrt::bytes::Bytes> =
         crate::HxRef::new(hxrt::bytes::Bytes::alloc(5 as usize));
     hxrt::bytes::blit(&out, 0, &b, 0, 5);
-    println!("{}", hxrt::dynamic::from(out.borrow().to_string().clone()));
+    println!("{}", hxrt::dynamic::from(out.borrow().to_string()));
     out.borrow_mut().set(0, 72);
     println!("{}", hxrt::dynamic::from(out.borrow().get(0)));
-    println!(
-        "{}",
-        hxrt::dynamic::from(out.borrow().get_string(0, 2).clone())
-    );
+    println!("{}", hxrt::dynamic::from(out.borrow().get_string(0, 2)));
     match hxrt::exception::catch_unwind(|| {
         out.borrow().get(999);
     }) {
@@ -82,7 +79,7 @@ fn main() {
         Err(__hx_ex) => match __hx_ex.downcast::<hxrt::io::Error>() {
             Ok(__hx_box) => {
                 let e: hxrt::io::Error = *__hx_box;
-                println!("{}", hxrt::dynamic::from(e));
+                println!("{}", hxrt::dynamic::from_with_type_id(e, 0x6666eea1u32));
             }
             Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
         },
@@ -94,7 +91,7 @@ fn main() {
         Err(__hx_ex) => match __hx_ex.downcast::<hxrt::io::Error>() {
             Ok(__hx_box) => {
                 let e_2: hxrt::io::Error = *__hx_box;
-                println!("{}", hxrt::dynamic::from(e_2));
+                println!("{}", hxrt::dynamic::from_with_type_id(e_2, 0x6666eea1u32));
             }
             Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
         },

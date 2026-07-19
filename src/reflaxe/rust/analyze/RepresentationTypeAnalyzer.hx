@@ -14,6 +14,7 @@ import reflaxe.rust.analyze.RepresentationPlan.RustNullabilityFact;
 import reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision;
 import reflaxe.rust.analyze.RepresentationPlan.RustRepresentationFacts;
 import reflaxe.rust.analyze.RepresentationPlan.RustRepresentationPlanner;
+import reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy;
 import reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind;
 import reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact;
 
@@ -79,8 +80,9 @@ class RepresentationTypeAnalyzer {
 		What
 		- Returns a `BoundaryDynamic` decision for a modeled non-Dynamic value whose expected type is
 		  Dynamic (including typedef aliases such as `haxe.Json`'s input type).
-		- For `rust.Ref<T>` and `rust.MutRef<T>`, describes the copied `T` value that lowering boxes. The
-		  short-lived Rust reference itself still remains inside its borrow scope.
+		- For `rust.Ref<T>`, describes the copied or cloned `T` value that lowering can materialize. A
+		  mutable borrow and an owned native value without a proven clone stay unmodeled instead of claiming
+		  that the short-lived reference itself can enter Dynamic.
 		- Returns `null` when no representation-changing crossing occurs.
 
 		How
@@ -100,12 +102,16 @@ class RepresentationTypeAnalyzer {
 		if (actualKind == null || actualKind == SourceDynamic)
 			return null;
 		if (isBorrowed(actualKind)) {
-			crossingType = copiedReferenceValueType(crossingType);
+			if (actualKind != SourceBorrowedRef)
+				return null;
+			crossingType = immutableReferenceValueType(crossingType);
 			if (crossingType == null)
 				return null;
-			actualKind = classify(crossingType, nullableStringCompat, classHasSubclasses);
-			if (actualKind == null || actualKind == SourceDynamic || isBorrowed(actualKind))
+			var innerDecision = tryDecide(subjectId, crossingType, pos, origin, nullableStringCompat, BoundaryDynamic, classHasSubclasses);
+			if (innerDecision == null
+				|| innerDecision.reuse != RustReusePolicy.ReuseCopy && innerDecision.reuse != RustReusePolicy.ReuseCloneWhenNeeded)
 				return null;
+			return innerDecision;
 		}
 		return tryDecide(subjectId, crossingType, pos, origin, nullableStringCompat, BoundaryDynamic, classHasSubclasses);
 	}
@@ -116,12 +122,11 @@ class RepresentationTypeAnalyzer {
 		Why / What / How
 		- `rust.Ref<T>` is emitted as `&T`; calling `.clone()` at a Dynamic boundary copies `T`, not the
 		  reference token. Describing the token as escaping would violate the planner's borrow-scope rule.
-		- Unwrap aliases and `Null`, then admit only the one-parameter `rust.Ref` and `rust.MutRef` shapes
-		  whose lowering already performs that copy.
+		- Unwrap aliases and `Null`, then admit only one-parameter immutable `rust.Ref`.
 		- Borrowed strings and slices need different owned conversions, so they stay unmodeled here instead
 		  of receiving a misleading decision.
 	**/
-	static function copiedReferenceValueType(type:Type):Null<Type> {
+	public static function immutableReferenceValueType(type:Type):Null<Type> {
 		var normalized = unwrapAliasesAndNull(type).type;
 		return switch (normalized) {
 			case TAbstract(abstractRef, parameters) if (parameters.length == 1):
@@ -130,10 +135,35 @@ class RepresentationTypeAnalyzer {
 					null;
 				else {
 					var path = typePath(abstractType.pack, abstractType.name);
-					path == "rust.Ref" || path == "rust.MutRef" ? parameters[0] : null;
+					path == "rust.Ref" ? parameters[0] : null;
 				}
 			case _:
 				null;
+		};
+	}
+
+	/**
+		Reports whether Haxe-style string conversion needs the runtime Dynamic formatter.
+
+		Why / What / How
+		- `Std.string` is declared with a Dynamic parameter, but the Rust backend directly formats strings,
+		  numbers, booleans, and open generic values without creating a Dynamic box.
+		- Saving a Dynamic action for those direct conversions would make no-hxrt reject code that emits no
+		  Dynamic runtime call, and the saved action could never be consumed by lowering.
+		- Keep this one typed rule shared by early call analysis and lowering. All other modeled concrete
+		  values use the runtime formatter and therefore require a saved Dynamic action.
+	**/
+	public static function stringFormattingNeedsDynamic(type:Type, nullableStringCompat:Bool,
+			?classHasSubclasses:ClassType->Bool):Bool {
+		if (type == null || containsTypeParameter(type))
+			return false;
+		return switch (classify(type, nullableStringCompat, classHasSubclasses)) {
+			case SourceString | SourceNullableStringCompat | SourceScalar | SourceDynamic:
+				false;
+			case null:
+				false;
+			case _:
+				true;
 		};
 	}
 
@@ -300,7 +330,8 @@ class RepresentationTypeAnalyzer {
 				if (abstractType.meta != null && abstractType.meta.has(":coreType")) {
 					if (abstractType.module == "StdTypes" && abstractType.name == "Dynamic")
 						return SourceDynamic;
-					if (abstractType.module == "StdTypes" && (abstractType.name == "Class" || abstractType.name == "Enum"))
+					if ((abstractType.name == "Class" || abstractType.name == "Enum")
+						&& (abstractType.module == "StdTypes" || abstractType.pack.length == 0))
 						return SourceCoreHandle;
 					return null;
 				}
@@ -335,6 +366,8 @@ class RepresentationTypeAnalyzer {
 				} else {
 					var path = typePath(classType.pack, classType.name);
 					switch (classType.kind) {
+						case _ if ((path == "Class" || path == "Enum") && (classType.module == "StdTypes" || classType.pack.length == 0)):
+							SourceCoreHandle;
 						case KTypeParameter(_): null;
 						case _ if (isHaxeArray(classType)): SourceArray;
 						case _ if (isArrayIterator(classType, parameters)): SourceIterator;
@@ -352,6 +385,81 @@ class RepresentationTypeAnalyzer {
 				resolved == null ? null : sourceKind(unwrapAliasesAndNull(resolved).type, nullableStringCompat, classHasSubclasses);
 			case _: null;
 		};
+	}
+
+	/**
+		Reports whether a value type still depends on an open Haxe type parameter.
+
+		Why / What / How
+		- Runtime Dynamic boxing requires Rust `Any + 'static`, which an unresolved generic parameter cannot
+		  promise until the later contextual-bound milestone is implemented.
+		- Follow aliases, lazy/monomorph nodes, container parameters, function signatures, and anonymous
+		  fields so a nested open parameter is not mistaken for a concrete boxable value.
+		- String formatting uses this conservative answer to retain its direct Debug fallback rather than
+		  saving a Dynamic action lowering cannot legally emit.
+	**/
+	static function containsTypeParameter(type:Type):Bool {
+		if (type == null)
+			return false;
+		return switch (type) {
+			case TLazy(resolve):
+				containsTypeParameter(resolve());
+			case TType(typeRef, parameters):
+				var typedefType = typeRef.get();
+				if (typedefType == null) {
+					false;
+				} else {
+					var underlying = typedefType.type;
+					if (typedefType.params != null && typedefType.params.length > 0 && parameters.length == typedefType.params.length)
+						underlying = TypeTools.applyTypeParameters(underlying, typedefType.params, parameters);
+					containsTypeParameter(underlying);
+				}
+			case TInst(classRef, parameters):
+				var classType = classRef.get();
+				if (classType != null) {
+					switch (classType.kind) {
+						case KTypeParameter(_): true;
+						case _: anyTypeParameter(parameters);
+					}
+				} else {
+					anyTypeParameter(parameters);
+				}
+			case TEnum(_, parameters) | TAbstract(_, parameters):
+				anyTypeParameter(parameters);
+			case TFun(arguments, result):
+				var found = containsTypeParameter(result);
+				if (!found)
+					for (argument in arguments)
+						if (containsTypeParameter(argument.t)) {
+							found = true;
+							break;
+						}
+				found;
+			case TAnonymous(anonymousRef):
+				var anonymous = anonymousRef.get();
+				var found = false;
+				if (anonymous != null && anonymous.fields != null)
+					for (field in anonymous.fields)
+						if (containsTypeParameter(field.type)) {
+							found = true;
+							break;
+						}
+				found;
+			case TDynamic(inner):
+				inner != null && containsTypeParameter(inner);
+			case TMono(monomorphRef):
+				var resolved = monomorphRef.get();
+				resolved != null && containsTypeParameter(resolved);
+		};
+	}
+
+	static function anyTypeParameter(types:Array<Type>):Bool {
+		if (types == null)
+			return false;
+		for (type in types)
+			if (containsTypeParameter(type))
+				return true;
+		return false;
 	}
 
 	static function unwrapAliasesAndNull(type:Type):{type:Type, nullable:Bool} {

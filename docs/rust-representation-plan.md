@@ -20,14 +20,25 @@ decision. A representation-changing boundary is decided from both sides of the c
 actual type and the destination's expected type. This is how a plain `Int`, enum, or class argument
 passed to `Dynamic` gets the same Dynamic decision in early analysis and later Rust boxing. Call and
 constructor arguments, local initializers, assignments, returns, casts, and control-expression
-results all use that expected-type-aware path. Clone/reuse insertion and the semantic runtime/no-hxrt
-analysis consume the same answer.
-The routing is byte-neutral for the established representations: it centralizes why the compiler
-emits those Rust shapes without changing them. One correctness fix is deliberate and covered by an
-exact rustc-backed snapshot: `Null<rust.Ref<T>>` now emits `Option<&T>`, because a bare Rust borrow
-cannot represent Haxe `null`. Nullable mutable borrows are never cloned—`Option<&mut T>` cannot be
-cloned. A local mutable option is opened through `&mut` and yields a real reborrow, allowing admitted
-sequential uses while preserving Rust's exclusive-borrow rules.
+results all use that expected-type-aware path. Clone/reuse insertion, the runtime requirement report,
+and the no-runtime checks consume the same answer. For every user value that must enter `Dynamic`, the early scan saves
+the exact boxing action and source range. Later lowering must consume that saved action exactly once;
+a missing or unused action is an internal compiler error. Framework-generated conversions use a
+separate, explicitly labeled path so they cannot silently hide a missed user conversion.
+Connecting lowering to the saved decision intentionally corrected several generated-Rust shapes. A
+one-use value entering `Dynamic` no longer receives an unnecessary clone. Class, enum, array, and
+anonymous-object values use the constructor and type identity selected for their real storage shape.
+`Null<T>` now converts `Some(value)` through the inner value's Dynamic conversion and converts `None`
+to Dynamic null, instead of storing the Rust `Option` as an unrelated payload. A `rust.Ref<T>` crossing
+materializes an owned inner value by copying or cloning `T`; the short-lived borrow itself never enters
+the Dynamic container. These are reviewed correctness and output-quality changes, not byte-neutral
+plumbing. Exact snapshots and focused Rust/runtime tests cover the changed forms.
+
+`Null<rust.Ref<T>>` emits `Option<&T>`, because a bare Rust borrow cannot represent Haxe `null`.
+Nullable mutable borrows are never cloned—`Option<&mut T>` cannot be cloned. A local mutable option is
+opened through `&mut` and yields a real reborrow. When an `if`, `switch`, or block chooses between
+nullable mutable borrows, lowering reborrows at the result leaves so later valid uses do not move the
+original option.
 
 Typed collection follows representation-bearing container arguments, function signatures,
 anonymous fields, typedef targets, and emitted enum-constructor payloads. It deliberately skips
@@ -51,6 +62,94 @@ decision or operation is serialized, and converts byte ranges back before asking
 diagnostic. The no-hxrt check gathers information at two different times: exact source expressions are
 saved early, while broader module usage becomes available later. The compiler always combines both
 sets before reporting an error; finding one blocker never hides an independent reason.
+
+## Why this is a small lowering plan, not a second full AST
+
+**Architecture status:** accepted for the current compiler. This is a structural Rust-tree design
+with small saved plans for the few choices that Rust syntax must not rediscover.
+
+An intermediate representation, often shortened to “IR,” is a compiler-owned description placed
+between the source-language tree and the target-language tree. This compiler intentionally uses a
+small version of that idea: the representation plan saves decisions that must be consistent before
+`RustAST` is constructed. It does not copy every Haxe expression into another complete tree.
+
+The intended pipeline is:
+
+```text
+typed Haxe AST
+    -> validated representation and boundary decisions
+    -> structural RustAST
+    -> Rust transformation passes
+    -> printer
+```
+
+The saved decisions own facts that Rust syntax should not have to guess later:
+
+- the selected Rust storage shape;
+- whether reuse copies, moves, clones, borrows, or reborrows;
+- how null is represented;
+- conversions caused by an expected parameter, assignment, or return type;
+- required runtime support and crossing-specific Rust bounds;
+- the exact Haxe source location used in reports and diagnostics.
+
+Adding another saved decision or temporary compiler marker requires a concrete contract:
+
+- name the source fact that would otherwise be lost before Rust construction;
+- use a closed typed choice and store only what lowering cannot safely work out later;
+- name one producer and one lowering step that consumes it;
+- define when it is legal, then reject malformed, duplicate, missing, or unused decisions;
+- report unsupported source at its exact Haxe location instead of silently choosing a weaker form;
+- prove the generated Rust shape and runtime behavior with a focused test; and
+- leave the printer responsible only for formatting the already chosen Rust structure.
+
+Checks that can reject invalid typed Haxe without looking at Rust structure run before the builder.
+For example, returning a scoped `rust.Ref<T>` or `rust.Slice<T>` is reported at that Haxe return or
+alias before any later Dynamic conversion is considered. This keeps the useful source error from
+being replaced by an unrelated internal lowering failure.
+
+The early scan includes ordinary instance/static fields and methods plus each class constructor.
+Haxe exposes a constructor separately from the normal field arrays; omitting it would let a conversion
+inside `new(...)` reach lowering without the saved action required by the rest of this contract.
+
+If several independent builders repeatedly need the same broader control-flow, cleanup, place, or
+ownership model, that is new evidence for reconsidering a larger layer. A preference for symmetry,
+an increasing pass count, or the existence of a fuller IR in another compiler is not enough.
+
+A complete function IR like the `HxcIR` design in the sibling `haxe.c` project additionally models
+blocks of ordered instructions, the jumps between them, variables that can be assigned to, each
+variable's initialization state, where execution goes after a failure, and the cleanup that runs on
+each exit. That model is necessary for C because C syntax cannot safely preserve or verify many of
+those choices on its own. Rust already provides structured blocks and matches, typed enums, explicit
+moves and borrows, automatic cleanup, and a compiler that checks ownership and lifetimes. Duplicating
+all of that in another full tree would add conversion code, validation work, another set of source
+locations to keep in sync, and new failure modes without current evidence that the extra layer would
+solve more than the bounded plan.
+
+The C design is still useful prior art. This compiler should retain its clearest ideas: distinguish a
+value from a variable or field that can be assigned to, make conversions and reuse choices explicit,
+validate decisions before target syntax is emitted, and keep exact source locations attached. It
+should not copy the full block, instruction, jump, and cleanup model merely to make the two compilers
+look alike internally.
+
+This decision can be revisited, but only when concrete compiler fixtures show that the current design
+cannot express a required behavior reliably. Strong reasons would include:
+
+- whole-function ownership or last-use analysis that cannot be decided before Rust syntax emission;
+- async, generator, or exception lowering that needs an explicit state and cleanup graph;
+- multiple production passes independently rebuilding the same branch, loop, or ownership facts from
+  emitted Rust nodes;
+- correct output depending on fragile pattern matching against Rust syntax generated earlier.
+
+If one of those cases appears, begin with a narrow per-function experiment and compare its complexity,
+generated Rust, diagnostics, and tests with the existing plan. Do not begin with a compiler-wide
+rewrite. The upcoming boundary-bound and closure work should first extend the current plan; any limit
+it exposes must be recorded with a failing fixture before expanding the architecture.
+
+Two smaller architecture improvements remain useful without changing this decision: one exhaustive
+definition of every immediate `RustAST` child, and modest pass results/final checks as the pass list
+grows. They protect new nodes from becoming accidental leaves and make a failed transformation easier
+to locate. They are separate, output-inert migrations and should not be bundled into a representation
+or Dynamic-lowering repair.
 
 ## How
 

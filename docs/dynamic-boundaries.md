@@ -62,8 +62,11 @@ This document is the source of truth for intentional `Dynamic` usage in `reflaxe
   - the type analyzer has one exact comparison for the built-in Haxe type;
   - the runtime report has a small set of user-facing messages and path checks for this one runtime
     boundary;
-  - the compiler records the choice before generating Rust and reuses the same choice when it emits
-    the conversion.
+  - complete typed-module analysis saves the exact conversion action before generating Rust;
+  - Rust lowering must consume that saved action exactly once, and compilation stops if an action is
+    missing, duplicated, malformed, or left unused;
+  - an immutable `rust.Ref<T>` crossing records whether lowering must copy or clone the owned `T`, so
+    the short-lived borrow itself is never placed into the runtime container.
 - Guardrail: these entries describe or recognize the unavoidable boundary. They do not permit
   untyped values to spread through compiler logic.
 - Exit criteria: remove an entry only when the same behavior can be expressed through a stronger
@@ -102,8 +105,9 @@ Exit criteria:
 ### Representation boundary fixtures (line-scoped)
 
 - Why: these focused compiler tests deliberately place concrete values into `Dynamic` parameters,
-  locals, returns, enum payloads, and constructor arguments. They prove that the compiler reports
-  the exact crossing before Rust generation and does not overlook framework-owned signatures.
+  locals, returns, enum payloads, constructor arguments, and scoped immutable borrows. They prove
+  that the compiler reports the exact crossing before Rust generation, consumes the saved action,
+  and does not overlook framework-owned signatures or constructor bodies.
 - Guardrail: only the individual declarations and expressions needed to exercise the boundary are
   allowlisted. The test assertions use ordinary-language descriptions rather than adding extra
   allowlist entries for message text.

@@ -86,9 +86,9 @@ fn main() {
     );
     println!(
         "{}",
-        hxrt::dynamic::from(
-            crate::sys::Sys::get_env(hxrt::string::HxString::from("HX_TEST_ENV")).clone()
-        )
+        hxrt::dynamic::from(crate::sys::Sys::get_env(hxrt::string::HxString::from(
+            "HX_TEST_ENV"
+        )))
     );
     let env: crate::HxRef<crate::haxe_ds_string_map::StringMap<hxrt::string::HxString>> =
         crate::sys::Sys::environment();
@@ -101,13 +101,10 @@ fn main() {
     );
     println!(
         "{}",
-        hxrt::dynamic::from(
-            crate::haxe_ds_string_map::StringMap::get(
-                &*env,
-                hxrt::string::HxString::from("HX_TEST_ENV")
-            )
-            .clone()
-        )
+        hxrt::dynamic::from(crate::haxe_ds_string_map::StringMap::get(
+            &*env,
+            hxrt::string::HxString::from("HX_TEST_ENV")
+        ))
     );
     crate::sys::Sys::put_env(
         hxrt::string::HxString::from("HX_TEST_ENV"),
@@ -115,9 +112,9 @@ fn main() {
     );
     println!(
         "{}",
-        hxrt::dynamic::from(
-            crate::sys::Sys::get_env(hxrt::string::HxString::from("HX_TEST_ENV")).clone()
-        )
+        hxrt::dynamic::from(crate::sys::Sys::get_env(hxrt::string::HxString::from(
+            "HX_TEST_ENV"
+        )))
     );
     println!(
         "{}",
@@ -136,10 +133,9 @@ fn main() {
     );
     println!(
         "{}",
-        hxrt::dynamic::from(
-            crate::sys_io_file::File::get_content(hxrt::string::HxString::from(path.clone()))
-                .clone()
-        )
+        hxrt::dynamic::from(crate::sys_io_file::File::get_content(
+            hxrt::string::HxString::from(path.clone())
+        ))
     );
     println!(
         "{}",
@@ -165,10 +161,7 @@ fn main() {
     crate::sys_io_file::File::save_bytes(hxrt::string::HxString::from(bin.clone()), bytes.clone());
     let bytes2: crate::HxRef<hxrt::bytes::Bytes> =
         crate::sys_io_file::File::get_bytes(hxrt::string::HxString::from(bin.clone()));
-    println!(
-        "{}",
-        hxrt::dynamic::from(bytes2.borrow().to_string().clone())
-    );
+    println!("{}", hxrt::dynamic::from(bytes2.borrow().to_string()));
     crate::sys_file_system::FileSystem::delete_file(hxrt::string::HxString::from(bin.clone()));
     println!(
         "{}",

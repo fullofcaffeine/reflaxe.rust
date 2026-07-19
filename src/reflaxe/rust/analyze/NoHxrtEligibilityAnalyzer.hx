@@ -7,6 +7,7 @@ import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementKind;
 import reflaxe.rust.analyze.RepresentationDecisionAnalyzer;
 import reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision;
+import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRuntimeRequirementCoverage;
 
 /**
 	NoHxrtEligibilityAnalyzer
@@ -34,8 +35,9 @@ import reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision;
 class NoHxrtEligibilityAnalyzer {
 	public static function analyze(userModuleTypes:Array<ModuleType>, modulePaths:Array<String>, nullableStrings:Bool, allowUnresolvedMonomorphDynamic:Bool,
 			allowUnmappedCoreTypeDynamic:Bool, ?classHasSubclasses:ClassType->Bool):NoHxrtEligibilityResult {
+		var snapshot = RepresentationDecisionAnalyzer.collectSnapshot(userModuleTypes, nullableStrings, classHasSubclasses);
 		return analyzeWithDecisions(userModuleTypes, modulePaths, nullableStrings, allowUnresolvedMonomorphDynamic, allowUnmappedCoreTypeDynamic,
-			RepresentationDecisionAnalyzer.collect(userModuleTypes, nullableStrings, classHasSubclasses));
+			snapshot.decisions(), snapshot.coverage());
 	}
 
 	/**
@@ -51,11 +53,33 @@ class NoHxrtEligibilityAnalyzer {
 	@:allow(reflaxe.rust.RustCompiler)
 	private static function analyzeCaptured(userModuleTypes:Array<ModuleType>, modulePaths:Array<String>, nullableStrings:Bool,
 			allowUnresolvedMonomorphDynamic:Bool, allowUnmappedCoreTypeDynamic:Bool,
-			capturedRepresentationDecisions:Array<RustRepresentationDecision>):NoHxrtEligibilityResult {
-		if (capturedRepresentationDecisions == null)
-			throw "captured representation decisions cannot be null";
+			capturedRepresentationDecisions:Array<RustRepresentationDecision>, ?capturedCoverage:Array<RustRuntimeRequirementCoverage>,
+			?capturedOperations:Array<RuntimeRequirementEntry>):NoHxrtEligibilityResult {
+		if (capturedRepresentationDecisions == null || capturedCoverage == null || capturedOperations == null)
+			throw "captured representation decisions, coverage, and operations cannot be null";
 		return analyzeWithDecisions(userModuleTypes, modulePaths, nullableStrings, allowUnresolvedMonomorphDynamic, allowUnmappedCoreTypeDynamic,
-			capturedRepresentationDecisions.copy());
+			capturedRepresentationDecisions.copy(), capturedCoverage.copy(), capturedOperations.copy());
+	}
+
+	/**
+		Saves exact operation rows while Haxe still owns complete typed method bodies.
+
+		Why / What / How
+		- Reflaxe and Haxe can remove or inline calls before `onCompileStart`. A broad module name then
+		  survives, but the exact call position does not.
+		- Scan each after-typing delivery immediately and retain only small validated report rows, never the
+		  executable typed expression graph.
+		- The compiler stores rows by collision-safe declaration identity, filters them to user modules at
+		  compile start, and passes them back through `analyzeCaptured`.
+	**/
+	@:allow(reflaxe.rust.RustCompiler)
+	private static function captureOperationEntries(moduleTypes:Array<ModuleType>):Array<RuntimeRequirementEntry> {
+		var requirements:Array<RuntimeRequirementEntry> = [];
+		if (moduleTypes != null)
+			for (moduleType in moduleTypes)
+				scanModuleType(moduleType, requirements);
+		requirements.sort(RuntimeRequirementAnalyzer.compareEntries);
+		return requirements;
 	}
 
 	/**
@@ -64,33 +88,22 @@ class NoHxrtEligibilityAnalyzer {
 		Why / What / How
 		- Module usage is complete only after lowering starts, while executable expression positions are
 		  complete only in the earlier after-typing snapshot.
-		- A pre-existing blocker does not mean collection is complete. Combine both lists, remove
-		  exact duplicates, and prefer an exact typed expression over a broad module fallback for the same
-		  reason kind.
+		- A pre-existing blocker does not mean collection is complete. Combine both lists and remove only
+		  exact duplicates. An exact `Sys` expression, for example, says nothing about an independent
+		  `DateTools` or `rust.concurrent` dependency discovered later.
 		- Sorting and summary generation happen after the union, so declaration order cannot change the
 		  diagnostic or hide an independent blocker.
 	**/
 	@:allow(reflaxe.rust.RustCompiler)
 	private static function mergeCaptured(captured:NoHxrtEligibilityResult, modulePaths:Array<String>, nullableStrings:Bool,
 			allowUnresolvedMonomorphDynamic:Bool, allowUnmappedCoreTypeDynamic:Bool,
-			capturedRepresentationDecisions:Array<RustRepresentationDecision>):NoHxrtEligibilityResult {
-		if (captured == null || captured.requirements == null || capturedRepresentationDecisions == null)
-			throw "captured no-hxrt evidence and representation decisions cannot be null";
+			capturedRepresentationDecisions:Array<RustRepresentationDecision>, ?capturedCoverage:Array<RustRuntimeRequirementCoverage>):NoHxrtEligibilityResult {
+		if (captured == null || captured.requirements == null || capturedRepresentationDecisions == null || capturedCoverage == null)
+			throw "captured no-hxrt information, representation decisions, and coverage cannot be null";
 		var requirements = captured.requirements.copy();
 		var later = RuntimeRequirementAnalyzer.collect(modulePaths, true, nullableStrings, allowUnresolvedMonomorphDynamic,
-			allowUnmappedCoreTypeDynamic, capturedRepresentationDecisions.copy(), true);
+			allowUnmappedCoreTypeDynamic, capturedRepresentationDecisions.copy(), true, capturedCoverage.copy());
 		for (entry in later) {
-			var exactReasonAlreadyCaptured = false;
-			if (entry.sourceKind == "module" && entry.sourceSpan.length == 0) {
-				for (existing in requirements) {
-					if (existing.reasonKind == entry.reasonKind && existing.sourceSpan.length > 0) {
-						exactReasonAlreadyCaptured = true;
-						break;
-					}
-				}
-			}
-			if (exactReasonAlreadyCaptured)
-				continue;
 			var duplicate = false;
 			for (existing in requirements) {
 				if (RuntimeRequirementAnalyzer.sameEntry(existing, entry)) {
@@ -108,11 +121,23 @@ class NoHxrtEligibilityAnalyzer {
 
 	static function analyzeWithDecisions(userModuleTypes:Array<ModuleType>, modulePaths:Array<String>, nullableStrings:Bool,
 			allowUnresolvedMonomorphDynamic:Bool, allowUnmappedCoreTypeDynamic:Bool,
-			representationDecisions:Array<RustRepresentationDecision>):NoHxrtEligibilityResult {
+			representationDecisions:Array<RustRepresentationDecision>, coverage:Array<RustRuntimeRequirementCoverage>,
+			?capturedOperations:Array<RuntimeRequirementEntry>):NoHxrtEligibilityResult {
 		var requirements = RuntimeRequirementAnalyzer.collect(modulePaths, true, nullableStrings, allowUnresolvedMonomorphDynamic,
-			allowUnmappedCoreTypeDynamic, representationDecisions, true);
+			allowUnmappedCoreTypeDynamic, representationDecisions, true, coverage);
 
-		if (userModuleTypes != null) {
+		if (capturedOperations != null) {
+			for (entry in capturedOperations) {
+				var duplicate = false;
+				for (existing in requirements)
+					if (RuntimeRequirementAnalyzer.sameEntry(existing, entry)) {
+						duplicate = true;
+						break;
+					}
+				if (!duplicate)
+					requirements.push(entry);
+			}
+		} else if (userModuleTypes != null) {
 			for (moduleType in userModuleTypes)
 				scanModuleType(moduleType, requirements);
 		}

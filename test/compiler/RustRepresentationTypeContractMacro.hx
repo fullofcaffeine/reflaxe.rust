@@ -9,6 +9,10 @@ import reflaxe.rust.analyze.NoHxrtEligibilityAnalyzer;
 import reflaxe.rust.analyze.RepresentationDecisionAnalyzer;
 import reflaxe.rust.analyze.RepresentationTypeAnalyzer;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer;
+import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry;
+import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization;
+import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedCrossingTracker;
+import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing;
 
 /**
 	Compile-time contract for extracting representation facts from real typed Haxe values.
@@ -20,14 +24,25 @@ import reflaxe.rust.analyze.RuntimeRequirementAnalyzer;
 	- The JavaScript harness compares the deterministic rows and then production lowering consumes the
 	  same analyzer, so classifier drift fails before it changes generated Rust.
 **/
+@:access(reflaxe.rust.analyze.NoHxrtEligibilityAnalyzer)
+@:access(reflaxe.rust.analyze.RepresentationDecisionAnalyzer)
 class RustRepresentationTypeContractMacro {
 	public static macro function run():Expr {
+		var enumTarget = Context.typeExpr(macro RustRepresentationTypeFixture.RustRepresentationFixtureChoice.Payload);
+		var castWrappedTarget:TypedExpr = {expr: TCast(enumTarget, null), t: enumTarget.t, pos: enumTarget.pos};
+		var unwrappedTarget = RepresentationDecisionAnalyzer.transparentCallableTarget(castWrappedTarget);
+		switch (unwrappedTarget.expr) {
+			case TField(_, FEnum(_, _)):
+			case _:
+				throw "a transparent typed cast must retain immediate enum-constructor call-target suppression";
+		}
 		var fixture = switch (Context.getType("RustRepresentationTypeFixture")) {
 			case TInst(classRef, _): classRef.get();
 			case _: throw "representation type fixture must resolve to a class";
 		};
 		var expected = [
-			"scalar", "enumValue", "nativeOwned", "sharedIdentity", "polymorphic", "borrowed", "nullableBorrowed", "nativeHandle", "dynamicValue", "stringValue",
+			"scalar", "enumValue", "nativeOwned", "sharedIdentity", "polymorphic", "borrowed", "nullableBorrowed", "nativeHandle", "dynamicValue", "classHandle",
+			"enumHandle", "stringValue",
 			"arrayValue", "anonymousValue", "functionValue", "iteratorValue", "nullableValue", "mapValue"
 		];
 		var fields:Map<String, ClassField> = [];
@@ -56,6 +71,34 @@ class RustRepresentationTypeContractMacro {
 			true);
 		rows.push(row("runtimeString", runtimeString));
 
+		var scalarField = fields.get("scalar");
+		var scalarInfo = Context.getPosInfos(scalarField.pos);
+		var scalarOrigin = RustDecisionOrigin.at("test/compiler/RustRepresentationTypeFixture.hx", scalarInfo.min, scalarInfo.max,
+			"RustRepresentationTypeFixture");
+		var scalarBoundary = RepresentationTypeAnalyzer.tryDecideCrossing("saved-scalar-boundary", scalarField.type, Context.getType("Dynamic"),
+			scalarField.pos, scalarOrigin, false);
+		if (scalarBoundary == null)
+			throw "the saved-action tracker contract needs a scalar Dynamic boundary";
+		var savedScalar = RustSavedRepresentationCrossing.of(scalarOrigin, scalarBoundary, RustDynamicValueMaterialization.DynamicValueDirect);
+		var tracker = RustSavedCrossingTracker.of([savedScalar]);
+		var missingOrigin = RustDecisionOrigin.at(scalarOrigin.sourceFile, scalarOrigin.startByte + 1, scalarOrigin.endByte + 1, scalarOrigin.modulePath);
+		if (tracker.consume(missingOrigin) != null)
+			throw "a missing saved action must not be replaced by a lowering-time decision";
+		var missingProblems = tracker.countProblems();
+		if (missingProblems.length != 1 || missingProblems[0].count != 0)
+			throw "a deleted or unused saved action must fail the final consumption check";
+		if (tracker.consume(scalarOrigin) != savedScalar || tracker.countProblems().length != 0)
+			throw "one exact saved-action use must satisfy the final consumption check";
+		if (tracker.consume(scalarOrigin) != null)
+			throw "using more actions than early analysis saved must fail immediately";
+		var savedScalarSecond = RustSavedRepresentationCrossing.of(scalarOrigin, scalarBoundary,
+			RustDynamicValueMaterialization.DynamicValueDirect, 1);
+		var sameSpanTracker = RustSavedCrossingTracker.of([savedScalar, savedScalarSecond]);
+		if (sameSpanTracker.consume(scalarOrigin) != savedScalar
+			|| sameSpanTracker.consume(scalarOrigin) != savedScalarSecond
+			|| sameSpanTracker.countProblems().length != 0)
+			throw "several macro-generated actions at one source span must be consumed in saved order";
+
 		Sys.println(rows.join("\n"));
 		Sys.println("function-runtime-v4|" + runtimeDecisionReasonIds(decisions.get("functionValue")));
 		Sys.println("iterator-runtime-v4|" + runtimeDecisionReasonIds(decisions.get("iteratorValue")));
@@ -73,7 +116,38 @@ class RustRepresentationTypeContractMacro {
 			if (inspectedAfterTyping)
 				return;
 			inspectedAfterTyping = true;
-			var collected = RepresentationDecisionAnalyzer.collect(fixtureModule, false);
+			var snapshot = RepresentationDecisionAnalyzer.collectSnapshot(fixtureModule, false);
+			var collected = snapshot.decisions();
+			function literalPosition(root:TypedExpr, expectedValue:Int):haxe.macro.Expr.Position {
+				var found:Null<haxe.macro.Expr.Position> = null;
+				function visit(expression:TypedExpr):Void {
+					if (expression == null || found != null)
+						return;
+					switch (expression.expr) {
+						case TConst(TInt(value)) if (value == expectedValue):
+							found = expression.pos;
+						case _:
+							haxe.macro.TypedExprTools.iter(expression, visit);
+					}
+				}
+				visit(root);
+				if (found == null)
+					throw 'missing typed literal $expectedValue in representation fixture';
+				return found;
+			}
+			function requiresSavedActionAt(pos:haxe.macro.Expr.Position, label:String):Void {
+				var info = Context.getPosInfos(pos);
+				for (crossing in snapshot.crossings())
+					if (crossing.origin.startByte == info.min && crossing.origin.endByte == info.max)
+						return;
+				throw '$label must contribute a saved Dynamic action before lowering';
+			}
+			var constructorRef = fixture.constructor;
+			var constructorField = constructorRef == null ? null : constructorRef.get();
+			var constructorExpr = constructorField == null ? null : constructorField.expr();
+			if (constructorExpr == null)
+				throw "representation fixture constructor body must be typed";
+			requiresSavedActionAt(literalPosition(constructorExpr, 424242), "a constructor-body crossing");
 			var methodDynamicDecisions = 0;
 			for (decision in collected) {
 				if (decision.sourceKind == RustSourceValueKind.SourceDynamic
@@ -100,7 +174,7 @@ class RustRepresentationTypeContractMacro {
 				throw "enum payload storage must retain its own representation decision";
 			var dynamicBoundaryDecisions = [for (decision in collected) if (decision.boundary == RustBoundaryKind.BoundaryDynamic) decision];
 			var dynamicBoundarySubjects = dynamicBoundaryDecisions.map(decision -> decision.subjectId).join("\n");
-			for (label in ["call-argument", "constructor-argument", "local-initializer", "assignment", "return", "cast"])
+			for (label in ["call-argument", "constructor-argument", "local-initializer", "assignment", "return"])
 				if (dynamicBoundarySubjects.indexOf(label) < 0)
 					throw 'runtime-boundary extraction must cover the $label case';
 			var boundaryKinds:Map<String, Bool> = [];
@@ -127,6 +201,38 @@ class RustRepresentationTypeContractMacro {
 			Sys.println("runtime-v4|" + reasonIds(runtimeRequirements.map(entry -> entry.reasonKind.id())));
 			var noHxrt = NoHxrtEligibilityAnalyzer.analyze(fixtureModule, [], false, false, false);
 			Sys.println("no-hxrt|" + reasonIds(noHxrt.summary.reasonKinds.map(reason -> reason.id())));
+
+			var exactSys:RuntimeRequirementEntry = {
+				reasonKind: RuntimePlatformAbstraction,
+				sourceKind: "typed_ast",
+				sourceModule: "Main",
+				sourceSpan: "Main.hx:10-20",
+				surfaceId: null,
+				requiresHxrt: true,
+				noHxrtBlocked: true,
+				message: "exact Sys operation"
+			};
+			var capturedRequirements = [exactSys];
+			var capturedSummary = RuntimeRequirementAnalyzer.summarize(capturedRequirements);
+			var merged = NoHxrtEligibilityAnalyzer.mergeCaptured({
+				blocked: capturedSummary.blockedByNoHxrt,
+				requirements: capturedRequirements,
+				summary: capturedSummary
+			}, ["DateTools", "rust.concurrent.Mutexes"], false, false, false, [], []);
+			if (!hasModuleRequirement(merged.requirements, RuntimePlatformAbstraction, "DateTools"))
+				throw "an exact Sys operation must not hide an independent later DateTools dependency";
+			if (!hasModuleRequirement(merged.requirements, RuntimePlatformAbstraction, "rust.concurrent.Mutexes"))
+				throw "an exact Sys operation must not hide an independent later rust.concurrent dependency";
+			var reversed = NoHxrtEligibilityAnalyzer.mergeCaptured({
+				blocked: capturedSummary.blockedByNoHxrt,
+				requirements: capturedRequirements,
+				summary: capturedSummary
+			}, ["rust.concurrent.Mutexes", "DateTools"], false, false, false, [], []);
+			if (requirementRows(merged.requirements) != requirementRows(reversed.requirements))
+				throw "later no-hxrt module input order must not change the merged result";
+			var repeated = NoHxrtEligibilityAnalyzer.mergeCaptured(merged, ["DateTools", "rust.concurrent.Mutexes"], false, false, false, [], []);
+			if (requirementRows(merged.requirements) != requirementRows(repeated.requirements))
+				throw "repeating the no-hxrt merge must not duplicate or remove requirements";
 		});
 		return macro null;
 	}
@@ -159,6 +265,19 @@ class RustRepresentationTypeContractMacro {
 		}
 		out.sort((left, right) -> left < right ? -1 : (left > right ? 1 : 0));
 		return out.join(",");
+	}
+
+	static function hasModuleRequirement(entries:Array<RuntimeRequirementEntry>, reason:reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind,
+			module:String):Bool {
+		for (entry in entries)
+			if (entry.reasonKind == reason && entry.sourceKind == "module" && entry.sourceModule == module && entry.sourceSpan.length == 0)
+				return true;
+		return false;
+	}
+
+	static function requirementRows(entries:Array<RuntimeRequirementEntry>):String {
+		return [for (entry in entries)
+			entry.reasonKind.id() + "|" + entry.sourceKind + "|" + entry.sourceModule + "|" + entry.sourceSpan + "|" + entry.message].join("\n");
 	}
 }
 #end

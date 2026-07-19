@@ -253,7 +253,7 @@ fn main() {
     extra.push(hxrt::dynamic::from(2));
     {
         let __obj = dyn_.clone();
-        let __val = hxrt::dynamic::from(extra);
+        let __val = hxrt::dynamic::from_ref(extra);
         hxrt::dynamic::field_set(&__obj, "extra", __val);
     };
     let pretty: hxrt::string::HxString = hxrt::string::HxString::from(

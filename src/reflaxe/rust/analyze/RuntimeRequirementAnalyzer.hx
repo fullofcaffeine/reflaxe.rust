@@ -2,6 +2,7 @@ package reflaxe.rust.analyze;
 
 import reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind;
 import reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision;
+import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRuntimeRequirementCoverage;
 
 /**
 	Stable semantic reason kind for requiring the Haxe runtime.
@@ -93,31 +94,33 @@ typedef RuntimeFallbackSummary = {
 class RuntimeRequirementAnalyzer {
 	public static function collect(modulePaths:Array<String>, noHxrt:Bool, nullableStrings:Bool, allowUnresolvedMonomorphDynamic:Bool,
 			allowUnmappedCoreTypeDynamic:Bool, ?representationDecisions:Array<RustRepresentationDecision>,
-			?includeExtendedDecisionReasons:Bool = false):Array<RuntimeRequirementEntry> {
+			?includeExtendedDecisionReasons:Bool = false, ?coverage:Array<RustRuntimeRequirementCoverage>):Array<RuntimeRequirementEntry> {
 		var entries:Array<RuntimeRequirementEntry> = [];
-		var decisionReasonCoverage:Map<String, Bool> = [];
 		if (representationDecisions != null) {
-			for (decision in representationDecisions) {
-				for (reason in decision.runtimeRequirements())
-					decisionReasonCoverage.set(reason.id(), true);
+			for (decision in representationDecisions)
 				addDecisionRequirements(entries, decision, noHxrt, includeExtendedDecisionReasons);
-			}
 		}
-		inline function coveredByDecision(reason:RuntimeRequirementKind):Bool
-			return decisionReasonCoverage.exists(reason.id());
+		function coveredByProof(reason:RuntimeRequirementKind, path:String):Bool {
+			if (coverage == null)
+				return false;
+			for (proof in coverage)
+				if (proof != null && proof.covers(reason, path))
+					return true;
+			return false;
+		}
 
 		if (modulePaths != null) {
 			for (path in modulePaths) {
 				if (path == null || path.length == 0)
 					continue;
 
-				if (!coveredByDecision(RuntimeDynamic) && isDynamicPath(path))
+				if (isDynamicPath(path) && !coveredByProof(RuntimeDynamic, path))
 					add(entries, RuntimeDynamic, "module", path, null, noHxrt, "Dynamic-compatible values require hxrt dynamic representation.");
 
 				if (isReflectionPath(path))
 					add(entries, RuntimeReflection, "module", path, null, noHxrt, "Reflection/runtime introspection requires hxrt support.");
 
-				if (!coveredByDecision(RuntimeAnonymousObject) && isAnonymousObjectPath(path))
+				if (isAnonymousObjectPath(path) && !coveredByProof(RuntimeAnonymousObject, path))
 					add(entries, RuntimeAnonymousObject, "module", path, null, noHxrt, "Anonymous runtime objects require hxrt object storage.");
 
 				if (isExceptionPath(path))
@@ -126,10 +129,10 @@ class RuntimeRequirementAnalyzer {
 				if (isPlatformAbstractionPath(path))
 					add(entries, RuntimePlatformAbstraction, "module", path, null, noHxrt, "Platform abstraction requires hxrt wrapper support.");
 
-				if (!coveredByDecision(RuntimeHaxeArraySemantics) && isHaxeArrayPath(path))
+				if (isHaxeArrayPath(path) && !coveredByProof(RuntimeHaxeArraySemantics, path))
 					add(entries, RuntimeHaxeArraySemantics, "module", path, null, noHxrt, "Haxe Array semantics require hxrt array representation.");
 
-				if (!coveredByDecision(RuntimeHaxeStringSemantics) && isHaxeStringRuntimePath(path))
+				if (isHaxeStringRuntimePath(path) && !coveredByProof(RuntimeHaxeStringSemantics, path))
 					add(entries, RuntimeHaxeStringSemantics, "module", path, null, noHxrt, "Runtime-backed Haxe string semantics require hxrt string support.");
 			}
 		}

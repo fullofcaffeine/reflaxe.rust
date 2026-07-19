@@ -359,6 +359,32 @@ Agent policy:
   constructs them; the constructor's function-shaped type is a carrier, not a function value.
   Boundary-only `Clone`, `Send`, `Sync`, and static requirements belong at the proven crossing, not
   on unrelated single-thread native values.
+  Treat the current representation/lowering plan as the intentionally small intermediate layer
+  between typed Haxe and `RustAST`. It records only meaning that Rust syntax must not rediscover,
+  including representation, move/copy/clone/borrow behavior, null handling, boundary conversions,
+  runtime needs, required bounds, and exact source locations. Do not copy a whole-function C-style
+  IR such as the sibling `haxe.c` `HxcIR` by default: Rust already provides structured control flow,
+  typed enums, ownership checks, borrows, and automatic cleanup, so a second block/instruction/type
+  model would duplicate both the typed Haxe input and `RustAST`. Revisit a fuller function model only
+  through a `thinking:xhigh` design bead with concrete failing fixtures showing that whole-function
+  ownership, async/exception cleanup, or passes that repeatedly recover meaning from generated Rust
+  nodes cannot be made reliable in the bounded plan plus structural Rust AST. Start any such work as
+  a narrow per-function pilot, not a compiler-wide rewrite.
+  Before adding a saved plan field or temporary compiler marker, name the exact source fact that
+  would otherwise be lost, use a closed typed choice with the smallest useful payload, name one
+  producer and one lowering consumer, and define when the value stops being legal. Fail on malformed,
+  duplicate, missing, or unused decisions; unsupported source must receive an exact source diagnostic.
+  Run source-only validity checks, such as scoped-borrow escape detection, on the complete typed Haxe
+  snapshot before Rust AST construction. Do not let invalid source enter a later conversion and replace
+  the useful Haxe error with an unrelated internal lowering failure.
+  Haxe typed-class body gotcha: `ClassType.constructor` is stored separately from `fields` and
+  `statics`. Any analysis that claims complete executable-body coverage must scan the constructor
+  explicitly; otherwise constructor-only conversions or runtime requirements disappear before lowering.
+  The printer only formats the already selected Rust structure. Cover each admitted choice with a
+  focused generated-shape test and a runtime test when behavior can change.
+  Central exhaustive `RustAST` child traversal and modest pass-result/final checks are worthwhile
+  follow-ups as the tree and pass list grow, but migrate them separately and preserve current pass
+  order/output. Do not bundle that infrastructure with an unrelated lowering or runtime behavior fix.
 - Structural trait/impl gotcha: generated traits and impls must use `RTrait` / `RImpl` with typed
   generics, trait paths, target types, where predicates, receivers, signatures, and associated items.
   Every body-transforming pass must recurse into trait defaults, impl methods, and non-null associated

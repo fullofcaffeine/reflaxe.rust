@@ -72,7 +72,7 @@ fn main() {
     );
     println!(
         "{}",
-        hxrt::dynamic::from(hxrt::string::HxString::from(1.5.to_string()).clone())
+        hxrt::dynamic::from(hxrt::string::HxString::from(1.5.to_string()))
     );
     println!(
         "{}",
@@ -80,12 +80,10 @@ fn main() {
     );
     println!(
         "{}",
-        hxrt::dynamic::from(
-            hxrt::string::HxString::from(
-                hxrt::dynamic::from(crate::foo::Foo::new(3).clone()).to_haxe_string()
-            )
-            .clone()
-        )
+        hxrt::dynamic::from(hxrt::string::HxString::from(
+            hxrt::dynamic::from_ref_with_type_id(crate::foo::Foo::new(3), 0x43dd80b3u32)
+                .to_haxe_string()
+        ))
     );
     println!(
         "{}",
@@ -109,11 +107,11 @@ fn main() {
     );
     println!(
         "{}",
-        hxrt::dynamic::from(hxrt::string::HxString::from("Foo").clone())
+        hxrt::dynamic::from(hxrt::string::HxString::from("Foo"))
     );
     println!(
         "{}",
-        hxrt::dynamic::from(hxrt::string::HxString::from("MyEnum").clone())
+        hxrt::dynamic::from(hxrt::string::HxString::from("MyEnum"))
     );
     println!(
         "{}",
@@ -125,13 +123,13 @@ fn main() {
     println!("{}", hxrt::dynamic::from(b.borrow().length()));
     println!("{}", hxrt::dynamic::from(b.borrow().get(0)));
     b.borrow_mut().set(0, 72);
-    println!("{}", hxrt::dynamic::from(b.borrow().to_string().clone()));
+    println!("{}", hxrt::dynamic::from(b.borrow().to_string()));
     let b2: crate::HxRef<hxrt::bytes::Bytes> =
         crate::HxRef::new(hxrt::bytes::Bytes::alloc(3 as usize));
     b2.borrow_mut().set(0, 65);
     b2.borrow_mut().set(1, 66);
     b2.borrow_mut().set(2, 67);
-    println!("{}", hxrt::dynamic::from(b2.borrow().to_string().clone()));
+    println!("{}", hxrt::dynamic::from(b2.borrow().to_string()));
     println!(
         "{}",
         hxrt::dynamic::from(hxrt::string::HxString::from("--- Option ---"))

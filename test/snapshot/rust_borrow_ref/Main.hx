@@ -22,6 +22,8 @@ class Main {
 		return 8;
 	}
 
+	static function observeScore(_value:Int):Void {}
+
 	static function main():Void {
 		var s = "hello world";
 		var ok = Borrow.withRef(s, haystack -> {
@@ -39,11 +41,20 @@ class Main {
 			var maybe:Null<rust.MutRef<Vec<Int>>> = borrowed;
 			var score = 0;
 			if (maybe != null) {
+				var chooseFirst = score == 0;
+				score += consumeMutRef((cast (chooseFirst ? maybe : maybe) : Null<rust.MutRef<Vec<Int>>>));
 				score += consumeMutRef(maybe);
+				score += consumeMutRef((cast switch (score) {
+					case 4: maybe;
+					default: maybe;
+				} : Null<rust.MutRef<Vec<Int>>>));
 				score += consumeMutRef(maybe);
-				score += consumeMutRef({
+				score += consumeMutRef((cast {
+					observeScore(score);
 					maybe;
-				});
+				} : Null<rust.MutRef<Vec<Int>>>));
+				score += consumeMutRef(maybe);
+				score += consumeMutRef(chooseFirst ? maybe : maybe);
 			}
 			score;
 		});
@@ -57,15 +68,24 @@ class Main {
 			var maybe:Null<rust.MutSlice<Int>> = borrowed;
 			var score = 0;
 			if (maybe != null) {
+				var chooseFirst = score == 0;
+				score += consumeMutSlice((cast (chooseFirst ? maybe : maybe) : Null<rust.MutSlice<Int>>));
 				score += consumeMutSlice(maybe);
+				score += consumeMutSlice((cast switch (score) {
+					case 16: maybe;
+					default: maybe;
+				} : Null<rust.MutSlice<Int>>));
 				score += consumeMutSlice(maybe);
-				score += consumeMutSlice({
+				score += consumeMutSlice((cast {
+					observeScore(score);
 					maybe;
-				});
+				} : Null<rust.MutSlice<Int>>));
+				score += consumeMutSlice(maybe);
+				score += consumeMutSlice(chooseFirst ? maybe : maybe);
 			}
 			score;
 		});
 
-		trace(ok && mutableRefScore == 6 && sliceScore == 4 && mutableSliceScore == 24);
+		trace(ok && mutableRefScore == 14 && sliceScore == 4 && mutableSliceScore == 56);
 	}
 }

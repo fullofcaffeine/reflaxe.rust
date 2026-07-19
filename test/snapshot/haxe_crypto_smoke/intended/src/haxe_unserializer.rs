@@ -315,7 +315,6 @@ impl Unserializer {
             let v: hxrt::dynamic::Dynamic =
                 crate::haxe_unserializer::Unserializer::unserialize(&*__hx_this);
             {
-                let __obj = o.clone();
                 let __name = {
                     let __hx_dyn = k.clone();
                     if __hx_dyn.is_null() {
@@ -339,7 +338,7 @@ impl Unserializer {
                         }
                     }
                 };
-                let __dyn = hxrt::dynamic::from(__obj);
+                let __dyn = hxrt::dynamic::from_ref(o.clone());
                 let __val = v;
                 hxrt::dynamic::field_set(&__dyn, __name.as_str(), __val);
             };

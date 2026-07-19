@@ -3,6 +3,7 @@
 const assert = require('assert')
 const cp = require('child_process')
 const fs = require('fs')
+const os = require('os')
 const path = require('path')
 const Ajv = require('ajv')
 
@@ -36,6 +37,23 @@ function exactUtf8Span(filePath, needle, fromIndex = 0) {
   }
 }
 
+function sourceLine(filePath, needle) {
+  return sourceLocation(filePath, needle).line
+}
+
+function sourceLocation(filePath, needle) {
+  const source = fs.readFileSync(filePath, 'utf8')
+  const index = source.indexOf(needle)
+  assert.notStrictEqual(index, -1, `source line sentinel must remain present: ${needle}`)
+  const lineStart = source.lastIndexOf('\n', index - 1) + 1
+  return {
+    line: source.slice(0, index).split(/\r?\n/).length,
+    // Haxe diagnostics print both endpoints as one-based character columns.
+    startColumn: index - lineStart + 1,
+    endColumn: index - lineStart + needle.length + 1
+  }
+}
+
 function cleanOutput(fixture, name) {
   fs.rmSync(path.join(fixture, name), { recursive: true, force: true })
 }
@@ -50,6 +68,11 @@ function main() {
     /typed Rust representation-plan contract" npm run test:rust-representation-plan/,
     'the compiler snapshot stage must run the representation-plan contract'
   )
+  const compilerSource = fs.readFileSync(path.join(repoRoot, 'src', 'reflaxe', 'rust', 'RustCompiler.hx'), 'utf8')
+  assert.strictEqual(compilerSource.split('rustRelativeExpr(["hxrt", "dynamic", "from"])').length - 1, 1,
+    'all direct Dynamic::from construction must remain centralized in the labeled compiler-generated String helper')
+  assert.match(compilerSource, /function boxCompilerGeneratedStringAsDynamic\(/,
+    'compiler-created Dynamic String payloads must retain an explicit audit path')
 
   const generator = run(process.execPath, [generatorPath, '--check'])
   assert.strictEqual(generator.status, 0, output(generator))
@@ -94,6 +117,8 @@ function main() {
     'nullableBorrowed|borrowed_ref|borrowed_token|outer_option|borrow|rust_borrow_surface|',
     'nativeHandle|native_handle|native_handle|not_admitted|move_once|rust_native_handle|',
     'dynamicValue|dynamic|dynamic_payload|intrinsic|clone_when_needed|haxe_dynamic_payload|dynamic',
+    'classHandle|core_handle|copy_value|intrinsic|copy|haxe_core_handle|',
+    'enumHandle|core_handle|copy_value|intrinsic|copy|haxe_core_handle|',
     'stringValue|string|owned_value|not_admitted|clone_when_needed|haxe_string_contract|',
     'arrayValue|array|runtime_array|intrinsic|clone_when_needed|haxe_array_contract|haxe_array_semantics,reference_mutation',
     'anonymousValue|anonymous_object|runtime_anonymous_object|intrinsic|clone_when_needed|haxe_anonymous_object|anonymous_object,object_identity,reference_mutation',
@@ -230,9 +255,9 @@ function main() {
   cleanOutput(crossingsFixture, 'out_report_a')
   cleanOutput(crossingsFixture, 'out_report_b')
   const crossingsReportFirst = runIn(crossingsFixture, process.execPath,
-    [haxeShim, 'compile.report.hxml', '-D', 'rust_output=out_report_a'])
+    [haxeShim, 'compile.report.hxml', '-D', 'rust_output=out_report_a', '-D', 'rust_representation_crossing_audit'])
   const crossingsReportSecond = runIn(crossingsFixture, process.execPath,
-    [haxeShim, 'compile.report.hxml', '-D', 'rust_output=out_report_b'])
+    [haxeShim, 'compile.report.hxml', '-D', 'rust_output=out_report_b', '-D', 'rust_representation_crossing_audit'])
   assert.strictEqual(crossingsReportFirst.status, 0, output(crossingsReportFirst))
   assert.strictEqual(crossingsReportSecond.status, 0, output(crossingsReportSecond))
   const crossingsJsonA = fs.readFileSync(path.join(crossingsFixture, 'out_report_a', 'runtime_plan.json'), 'utf8')
@@ -248,8 +273,49 @@ function main() {
     assert.match(crossingsMarkdownA, new RegExp(span.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
       `Markdown must retain concrete crossing ${span}`)
   }
+  const crossingAuditA = fs.readFileSync(path.join(crossingsFixture, 'out_report_a', 'representation_crossing_audit.txt'), 'utf8')
+  const crossingAuditB = fs.readFileSync(path.join(crossingsFixture, 'out_report_b', 'representation_crossing_audit.txt'), 'utf8')
+  assert.strictEqual(crossingAuditA, crossingAuditB, 'saved/consumed Dynamic action record must be byte-identical')
+  const userCrossingAudit = crossingAuditA.trim().split('\n').filter((line) => line.startsWith('user|'))
+  assert(userCrossingAudit.length > 0, 'the Dynamic crossing contract must save user-authored lowering actions')
+  assert(userCrossingAudit.every((line) => line.includes('|consumed=1|')),
+    'every saved user-authored Dynamic action must be consumed exactly once')
+  assert(userCrossingAudit.every((line) => /\|reuse=(?:copy|clone_when_needed|move_once|borrow)\|/.test(line)),
+    'every saved Dynamic action must expose the reuse policy that lowering consumes')
+  for (const expected of [
+    { needle: '606060', reuse: 'copy' },
+    { needle: 'new BoundaryNode()', reuse: 'clone_when_needed' },
+    { needle: 'BoundaryChoice.Selected', reuse: 'clone_when_needed' }
+  ]) {
+    const span = exactUtf8Span(crossingsSourcePath, expected.needle).span
+    assert(userCrossingAudit.some((line) => line.includes(span) && line.includes(`|reuse=${expected.reuse}|`)),
+      `${expected.needle} must retain its saved ${expected.reuse} policy through lowering`)
+  }
+  for (const needle of ['trace(node)', 'Std.string(node)', 'throw node']) {
+    const expressionSpan = exactUtf8Span(crossingsSourcePath, needle)
+    const nodeSpan = exactUtf8Span(crossingsSourcePath, 'node', expressionSpan.charStart).span
+    assert(userCrossingAudit.some((line) => line.includes(nodeSpan)),
+      `${needle} must route its user value through the saved Dynamic action`)
+  }
   cleanOutput(crossingsFixture, 'out_report_a')
   cleanOutput(crossingsFixture, 'out_report_b')
+
+  const unreachableCrossingFixture = path.join(repoRoot, 'test', 'snapshot', 'return_void')
+  cleanOutput(unreachableCrossingFixture, 'out')
+  const unreachableCrossingCompile = runIn(unreachableCrossingFixture, process.execPath,
+    [haxeShim, 'compile.hxml', '-D', 'rust_no_build'])
+  assert.strictEqual(unreachableCrossingCompile.status, 0, output(unreachableCrossingCompile))
+  const unreachableCrossingRust = fs.readFileSync(path.join(unreachableCrossingFixture, 'out', 'src', 'main.rs'), 'utf8')
+  assert.doesNotMatch(unreachableCrossingRust, /nope/,
+    'early representation analysis must not save an action for code lowering removes after an unconditional return')
+  cleanOutput(unreachableCrossingFixture, 'out')
+
+  const staticTypeCheckFixture = path.join(repoRoot, 'test', 'snapshot', 'std_is_of_type')
+  cleanOutput(staticTypeCheckFixture, 'out')
+  const staticTypeCheckCompile = runIn(staticTypeCheckFixture, process.execPath,
+    [haxeShim, 'compile.hxml', '-D', 'rust_no_build'])
+  assert.strictEqual(staticTypeCheckCompile.status, 0, output(staticTypeCheckCompile))
+  cleanOutput(staticTypeCheckFixture, 'out')
 
   const collisionFixture = path.join(repoRoot, 'test', 'negative', 'representation_snapshot_collision')
   const collisionSourcePath = path.join(collisionFixture, 'NotWidget.hx')
@@ -310,10 +376,31 @@ function main() {
   const enumSourcePath = path.join(enumFixture, 'Main.hx')
   const immediateCall = exactUtf8Span(enumSourcePath, 'Payload(41)')
   const immediateTargetSpan = exactUtf8Span(enumSourcePath, 'Payload', immediateCall.charStart).span
+  const immediateTargetNeedles = ['Payload(41)', '(Payload)(42)', 'Token.Payload(43)', 'GenericToken.Wrapped(44)',
+    '(@:noCompletion Payload)(45)', '(cast Payload : Int->Token)(46)']
+  const immediateTargetSpans = immediateTargetNeedles.map((needle) => {
+    const call = exactUtf8Span(enumSourcePath, needle)
+    const targetNeedle = needle.includes('Wrapped') ? 'Wrapped' : 'Payload'
+    return exactUtf8Span(enumSourcePath, targetNeedle, call.charStart).span
+  })
   const enumObjectRows = JSON.parse(enumJsonA).runtimeRequirements.filter((entry) => entry.reasonKind === 'object_identity')
   assert(enumObjectRows.length > 0, 'an actually captured enum constructor must remain a function-value requirement')
   assert(!enumObjectRows.some((entry) => entry.sourceSpan === immediateTargetSpan),
     'an immediately invoked enum constructor must not be reported as a function value')
+  for (const span of immediateTargetSpans)
+    assert(!enumObjectRows.some((entry) => entry.sourceSpan === span),
+      `transparent wrappers around an immediately invoked enum constructor must not materialize a function value at ${span}`)
+  const storedConstructorNeedles = [
+    'var constructor = Payload;',
+    'keepConstructor(Payload)',
+    'return Payload;'
+  ]
+  for (const needle of storedConstructorNeedles) {
+    const expression = exactUtf8Span(enumSourcePath, needle)
+    const targetSpan = exactUtf8Span(enumSourcePath, 'Payload', expression.charStart).span
+    assert(enumObjectRows.some((entry) => entry.sourceSpan === targetSpan),
+      `capturing, passing, or returning an enum constructor must retain a real function-value row at ${targetSpan}`)
+  }
   cleanOutput(enumFixture, 'out_report_a')
   cleanOutput(enumFixture, 'out_report_b')
 
@@ -336,9 +423,152 @@ function main() {
   assert.match(output(operationFirst), /^Main\.hx:3:/m,
     'the primary semantic diagnostic must point at the first offending expression')
 
+  const platformPositionFixture = path.join(repoRoot, 'test', 'negative', 'representation_no_hxrt_platform_position')
+  const platformPositionSource = path.join(platformPositionFixture, 'Main.hx')
+  const sysNeedle = 'Sys.getEnv("κλειδί")'
+  const sysLocation = sourceLocation(platformPositionSource, sysNeedle)
+  const sysLine = sysLocation.line
+  const sysSpan = exactUtf8Span(platformPositionSource, sysNeedle).span
+  cleanOutput(platformPositionFixture, 'out')
+  const platformPositionFirst = runIn(platformPositionFixture, process.execPath, [haxeShim, 'compile.hxml'])
+  cleanOutput(platformPositionFixture, 'out')
+  const platformPositionSecond = runIn(platformPositionFixture, process.execPath, [haxeShim, 'compile.hxml'])
+  cleanOutput(platformPositionFixture, 'out')
+  assert.notStrictEqual(platformPositionFirst.status, 0, 'a Sys operation must fail semantic no-hxrt')
+  assert.strictEqual(output(platformPositionFirst), output(platformPositionSecond), 'platform diagnostics must be repeatable')
+  assert.match(output(platformPositionFirst),
+    new RegExp(`^Main\\.hx:${sysLine}: characters ${sysLocation.startColumn}-${sysLocation.endColumn} :`, 'm'),
+    'a broad Sys module row must not preempt the exact Sys.getEnv expression range')
+  assert.match(output(platformPositionFirst), new RegExp(sysSpan.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+    'the stored Sys range must count multibyte text inside the blocked expression as UTF-8 bytes')
+
+  for (const operation of [
+    { define: 'position_date_tools', needle: 'DateTools.parse(86400000)', module: 'DateTools' },
+    { define: 'position_concurrent', needle: 'rust.concurrent.Mutexes.create(1)', module: 'rust.concurrent.Mutexes' }
+  ]) {
+    cleanOutput(platformPositionFixture, 'out')
+    const firstOperation = runIn(platformPositionFixture, process.execPath, [haxeShim, 'compile.hxml', '-D', operation.define])
+    cleanOutput(platformPositionFixture, 'out')
+    const secondOperation = runIn(platformPositionFixture, process.execPath, [haxeShim, 'compile.hxml', '-D', operation.define])
+    cleanOutput(platformPositionFixture, 'out')
+    assert.notStrictEqual(firstOperation.status, 0, `${operation.module} must fail semantic no-hxrt`)
+    assert.strictEqual(output(firstOperation), output(secondOperation), `${operation.module} diagnostics must be repeatable`)
+    const location = sourceLocation(platformPositionSource, operation.needle)
+    assert.match(output(firstOperation),
+      new RegExp(`^Main\\.hx:${location.line}: characters ${location.startColumn}-${location.endColumn} :`, 'm'),
+      `the broad ${operation.module} module row must not preempt its exact operation range`)
+    const span = exactUtf8Span(platformPositionSource, operation.needle).span
+    assert.match(output(firstOperation), new RegExp(span.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      `${operation.module} must retain its exact typed-operation byte range`)
+  }
+
+  const absolutePlatformArgs = [haxeShim,
+    '-cp', platformPositionFixture,
+    '-lib', 'reflaxe.rust',
+    '-D', 'reflaxe_rust_profile=metal',
+    '-D', 'rust_no_hxrt',
+    '-D', 'rust_no_build',
+    '-D', 'rust_output=test/negative/representation_no_hxrt_platform_position/out',
+    '-main', 'Main']
+  const absolutePlatform = run(process.execPath, absolutePlatformArgs)
+  cleanOutput(platformPositionFixture, 'out')
+  assert.notStrictEqual(absolutePlatform.status, 0, 'absolute classpaths must preserve the no-hxrt failure')
+  assert.doesNotMatch(output(absolutePlatform), new RegExp(repoRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+    'no-runtime diagnostics must not expose the machine-local checkout path')
+  assert.match(output(absolutePlatform),
+    new RegExp(`^(?:[^:\\n]+\\/)*Main\\.hx:${sysLine}: characters ${sysLocation.startColumn}-${sysLocation.endColumn} :`, 'm'),
+    'a private source identity from an absolute classpath must still recover the exact expression range')
+  assert.match(output(absolutePlatform), new RegExp(sysSpan.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+    'an absolute classpath must preserve the multibyte expression byte range without exposing the real path')
+
+  const externalClasspath = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-position-'))
+  try {
+    fs.copyFileSync(platformPositionSource, path.join(externalClasspath, 'Main.hx'))
+    const externalPlatform = run(process.execPath, [haxeShim,
+      '-cp', externalClasspath,
+      '-lib', 'reflaxe.rust',
+      '-D', 'reflaxe_rust_profile=metal',
+      '-D', 'rust_no_hxrt',
+      '-D', 'rust_no_build',
+      '-D', `rust_output=${path.join(externalClasspath, 'out')}`,
+      '-main', 'Main'])
+    assert.notStrictEqual(externalPlatform.status, 0, 'an external absolute classpath must preserve the no-hxrt failure')
+    assert.doesNotMatch(output(externalPlatform), new RegExp(externalClasspath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      'diagnostics must not expose the external absolute classpath')
+    assert.match(output(externalPlatform),
+      new RegExp(`\\[HXRS-NO-HXRT-ELIGIBILITY\\] Main\\.hx:${sysLine}: characters ${sysLocation.startColumn}-${sysLocation.endColumn} :`),
+      'the diagnostic text must retain the exact private expression range when Haxe cannot safely own the external filename')
+    assert.doesNotMatch(output(externalPlatform), /^Main\.hx:1: characters/m,
+      'the outer Haxe position must be unknown instead of inventing a line-one range for an external source')
+    assert.match(output(externalPlatform), new RegExp(sysSpan.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      'external-classpath diagnostics must retain the exact multibyte byte range')
+  } finally {
+    fs.rmSync(externalClasspath, { recursive: true, force: true })
+  }
+
+  const borrowDynamicFixture = path.join(repoRoot, 'test', 'positive', 'representation_borrow_dynamic')
+  cleanOutput(borrowDynamicFixture, 'out')
+  const borrowDynamicCompile = runIn(borrowDynamicFixture, process.execPath, [haxeShim, 'compile.hxml'])
+  assert.strictEqual(borrowDynamicCompile.status, 0, output(borrowDynamicCompile))
+  const borrowDynamicRust = fs.readFileSync(path.join(borrowDynamicFixture, 'out', 'src', 'main.rs'), 'utf8')
+  assert.match(borrowDynamicRust, /hxrt::dynamic::from\(\*borrowed\)/,
+    'a Copy value behind rust.Ref must be dereferenced before it enters Dynamic')
+  assert.match(borrowDynamicRust, /hxrt::dynamic::from\(\(\*borrowed_2\)\.clone\(\)\)/,
+    'a Clone value behind rust.Ref must be cloned as an owned value before it enters Dynamic')
+  assert.doesNotMatch(borrowDynamicRust, /hxrt::dynamic::from\(borrowed(?:_2)?\)/,
+    'the short-lived Rust borrow token itself must never enter Dynamic')
+  const borrowAudit = fs.readFileSync(path.join(borrowDynamicFixture, 'out', 'representation_crossing_audit.txt'), 'utf8')
+  assert.match(borrowAudit, /\|borrow-copy\|reuse=copy\|consumed=1\|/)
+  assert.match(borrowAudit, /\|borrow-clone\|reuse=clone_when_needed\|consumed=1\|/)
+  const rustcProbe = run('rustc', ['--print', 'sysroot'])
+  assert.strictEqual(rustcProbe.status, 0, output(rustcProbe))
+  const cargoBin = path.join(rustcProbe.stdout.trim(), 'bin', process.platform === 'win32' ? 'cargo.exe' : 'cargo')
+  const borrowCargoCheck = runIn(path.join(borrowDynamicFixture, 'out'), cargoBin, ['check', '--quiet'])
+  assert.strictEqual(borrowCargoCheck.status, 0, output(borrowCargoCheck))
+  const borrowCargoRun = runIn(path.join(borrowDynamicFixture, 'out'), cargoBin, ['run', '--quiet'])
+  assert.strictEqual(borrowCargoRun.status, 0, output(borrowCargoRun))
+  assert.strictEqual(borrowCargoRun.stdout.trim(), '7|hello', 'owned borrow snapshots must not escape the Borrow callback')
+  cleanOutput(borrowDynamicFixture, 'out')
+
+  const frameworkDynamicFixture = path.join(repoRoot, 'test', 'snapshot', 'haxe_crypto_smoke')
+  const frameworkDynamicBuild = run('bash', ['test/run-snapshots.sh', '--case', 'haxe_crypto_smoke', '--no-diff'])
+  assert.strictEqual(frameworkDynamicBuild.status, 0, output(frameworkDynamicBuild))
+  const serializerRust = fs.readFileSync(path.join(frameworkDynamicFixture, 'out', 'src', 'haxe_serializer.rs'), 'utf8')
+  const unserializerRust = fs.readFileSync(path.join(frameworkDynamicFixture, 'out', 'src', 'haxe_unserializer.rs'), 'utf8')
+  assert.match(serializerRust, /hxrt::dynamic::from_ref\(v\.clone\(\)\)/,
+    'framework-authored Dynamic conversions must preserve a shared value reused by a later loop iteration')
+  assert.match(unserializerRust, /hxrt::dynamic::from_ref\(o\.clone\(\)\)/,
+    'a framework-authored loop must clone its reusable object handle before Dynamic consumes it')
+  cleanOutput(frameworkDynamicFixture, 'out')
+
+  const nullableMutableFixture = path.join(repoRoot, 'test', 'snapshot', 'rust_borrow_ref')
+  cleanOutput(nullableMutableFixture, 'out')
+  const nullableMutableCompile = runIn(nullableMutableFixture, process.execPath, [haxeShim, 'compile.hxml'])
+  assert.strictEqual(nullableMutableCompile.status, 0, output(nullableMutableCompile))
+  const nullableMutableRust = fs.readFileSync(path.join(nullableMutableFixture, 'out', 'src', 'main.rs'), 'utf8')
+  assert.doesNotMatch(nullableMutableRust, /let __hx_opt = if choose_first/,
+    'a nullable mutable-reference control expression must not move its Option local into a temporary')
+  assert.match(nullableMutableRust, /consume_mut_ref\(if choose_first \{ match &mut maybe/,
+    'if branches must reborrow the nullable mutable reference at their result leaves')
+  assert.match(nullableMutableRust, /if score == 4 \{ match &mut maybe/,
+    'switch result branches must reborrow without consuming the original Option binding')
+  assert.match(nullableMutableRust, /observe_score\(score\);\s+match &mut maybe/,
+    'block statements must remain before the reborrowed tail expression')
+  assert.doesNotMatch(nullableMutableRust, /maybe(?:_3)?\.clone\(\)/,
+    'Option<&mut T> and Option<&mut [T]> must never be cloned')
+  const nullableMutableRun = runIn(path.join(nullableMutableFixture, 'out'), cargoBin, ['run', '--quiet'])
+  assert.strictEqual(nullableMutableRun.status, 0, output(nullableMutableRun))
+  assert.strictEqual(nullableMutableRun.stdout.trim(), 'true',
+    'conditional nullable mutable reborrows must preserve every later use at runtime')
+  cleanOutput(nullableMutableFixture, 'out')
+
   const mergeFixture = path.join(repoRoot, 'test', 'negative', 'representation_no_hxrt_merge')
   const mergeSourcePath = path.join(mergeFixture, 'Main.hx')
-  const exactSysSpan = exactUtf8Span(mergeSourcePath, 'Sys.getCwd()').span
+  const exactPlatformSpans = [
+    exactUtf8Span(mergeSourcePath, 'DateTools.parse(86400000)').span,
+    exactUtf8Span(mergeSourcePath, 'rust.concurrent.Mutexes.create(1)').span,
+    exactUtf8Span(mergeSourcePath, 'Sys.getCwd()').span
+  ]
   cleanOutput(mergeFixture, 'out')
   const mergeFirst = runIn(mergeFixture, process.execPath, [haxeShim, 'compile.hxml'])
   cleanOutput(mergeFixture, 'out')
@@ -352,8 +582,9 @@ function main() {
   for (const modulePath of ['DateTools', 'rust.concurrent.Mutexes', 'Sys'])
     assert.match(output(mergeFirst), new RegExp('from module `' + modulePath.replace(/\./g, '\\.') + '`'),
       `the merged diagnostic must retain platform module ${modulePath}`)
-  assert.match(output(mergeFirst), new RegExp(exactSysSpan.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
-    'a platform call that survives in the typed expression tree must retain its exact source span')
+  for (const span of exactPlatformSpans)
+    assert.match(output(mergeFirst), new RegExp(span.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      'captured platform operations must retain their independent exact source spans')
   assert.doesNotMatch(output(mergeFirst), /\[HXRS-NO-HXRT-EMITTED-RUNTIME\]/)
 
   const lines = first.stdout.trimEnd().split('\n')

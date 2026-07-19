@@ -20,8 +20,16 @@ class Main {
 		return 606060;
 	}
 
+	static function exerciseImplicitBoxes(node:BoundaryNode):Void {
+		trace(node);
+		var rendered = Std.string(node);
+		if (flag && rendered.length == -1)
+			throw node;
+	}
+
 	static function main():Void {
 		consumeDynamic(new BoundaryNode());
+		exerciseImplicitBoxes(new BoundaryNode());
 		consumeDynamic(BoundaryChoice.Selected);
 		var boxed = new BoundaryBox(707070);
 		var local:Dynamic = 808080;

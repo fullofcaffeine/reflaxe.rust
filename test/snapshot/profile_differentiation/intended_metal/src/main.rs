@@ -71,7 +71,13 @@ fn main() {
             total
         };
     }
-    println!("{}", hxrt::dynamic::from(banner));
+    println!("{}", {
+        let __hx_opt = banner;
+        match __hx_opt {
+            Some(__v) => hxrt::dynamic::from(__v),
+            None => hxrt::dynamic::Dynamic::null(),
+        }
+    });
     println!("{}", hxrt::dynamic::from(frozen));
     println!("{}", hxrt::dynamic::from(total));
 }
