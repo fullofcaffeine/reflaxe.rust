@@ -39,6 +39,23 @@ async function expectReject(promise, pattern) {
   }
 }
 
+/**
+ * Keep this isolated release repository independent from the outer CI checkout.
+ *
+ * semantic-release asks env-ci for the current branch. Forwarding GitHub Actions
+ * identity would make the temporary repository look like the caller's feature
+ * branch or pull-request merge ref even though its own checked-out branch is
+ * deliberately `main`.
+ */
+function isolatedReleaseEnvironment(statePath) {
+  const env = { ...process.env }
+  delete env.GITHUB_ACTIONS
+  return {
+    ...env,
+    RELEASE_LIFECYCLE_STATE: statePath
+  }
+}
+
 async function main() {
   const { default: semanticRelease } = await import('semantic-release')
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-release-lifecycle-'))
@@ -74,10 +91,7 @@ async function main() {
       repositoryUrl: remote,
       tagFormat: 'v${version}'
     }
-    const baseEnvironment = {
-      ...process.env,
-      RELEASE_LIFECYCLE_STATE: statePath
-    }
+    const baseEnvironment = isolatedReleaseEnvironment(statePath)
 
     await expectReject(
       semanticRelease(options, {

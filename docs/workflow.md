@@ -132,10 +132,15 @@ Before pushing to `main`, run the closest local equivalent of CI:
 - `bash scripts/ci/local.sh`
 - `bash scripts/ci/perf-hxrt-overhead.sh` (already included by `scripts/ci/local.sh`)
 
-The GitHub push/PR workflow shards the expensive harness work into parallel jobs for speed, then
-keeps `Snapshots + Examples` as an aggregate required check. Local runs stay intentionally boring:
-`npm run test:all` is still the full harness, and `HARNESS_STAGES=... bash scripts/ci/harness.sh`
-is only for focused shard debugging.
+GitHub validates pushes to `main` and every pull request, including pull requests stacked on another
+feature branch. An open feature branch is validated once in pull-request context instead of running
+the same expensive suite for both its push and its pull request. Use manual workflow dispatch when a
+branch without a pull request needs remote validation.
+
+Each GitHub run shards the expensive harness work into parallel jobs for speed, then keeps
+`Snapshots + Examples` as an aggregate required check. Local runs stay intentionally boring:
+`npm run test:all` is still the full harness, and `HARNESS_STAGES=... bash scripts/ci/harness.sh` is
+only for focused shard debugging.
 
 ## HXRT overhead tracking
 
