@@ -248,11 +248,15 @@ impl Http {
                 let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                 {
                     let mut __b = __o.borrow_mut();
-                    __b.set("param", argname);
-                    __b.set("filename", filename);
-                    __b.set("io", file);
-                    __b.set("size", size);
-                    __b.set("mimeType", mime_type);
+                    __b.set_dyn("param", hxrt::dynamic::from(argname));
+                    __b.set_dyn("filename", hxrt::dynamic::from(filename));
+                    __b.set_dyn("io", {
+                        let __hx_box = file;
+                        let __hx_box_type_id = __hx_box.__hx_type_id();
+                        hxrt::dynamic::from_ref_with_type_id(__hx_box, __hx_box_type_id)
+                    });
+                    __b.set_dyn("size", hxrt::dynamic::from(size));
+                    __b.set_dyn("mimeType", hxrt::dynamic::from(mime_type));
                 };
                 __o
             };
@@ -1258,8 +1262,8 @@ impl Http {
                             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                             {
                                 let mut __b = __o.borrow_mut();
-                                __b.set("name", name.clone());
-                                __b.set("value", value.clone());
+                                __b.set_dyn("name", hxrt::dynamic::from(name.clone()));
+                                __b.set_dyn("value", hxrt::dynamic::from(value.clone()));
                             };
                             __o
                         };
@@ -1282,8 +1286,8 @@ impl Http {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("name", name);
-                __b.set("value", value);
+                __b.set_dyn("name", hxrt::dynamic::from(name));
+                __b.set_dyn("value", hxrt::dynamic::from(value));
             };
             __o
         });
@@ -1303,8 +1307,8 @@ impl Http {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("name", header);
-                __b.set("value", value);
+                __b.set_dyn("name", hxrt::dynamic::from(header));
+                __b.set_dyn("value", hxrt::dynamic::from(value));
             };
             __o
         });
@@ -1342,8 +1346,8 @@ impl Http {
                             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                             {
                                 let mut __b = __o.borrow_mut();
-                                __b.set("name", name.clone());
-                                __b.set("value", value.clone());
+                                __b.set_dyn("name", hxrt::dynamic::from(name.clone()));
+                                __b.set_dyn("value", hxrt::dynamic::from(value.clone()));
                             };
                             __o
                         };
@@ -1366,8 +1370,8 @@ impl Http {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("name", name);
-                __b.set("value", value);
+                __b.set_dyn("name", hxrt::dynamic::from(name));
+                __b.set_dyn("value", hxrt::dynamic::from(value));
             };
             __o
         });
@@ -1387,8 +1391,8 @@ impl Http {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("name", name);
-                __b.set("value", value);
+                __b.set_dyn("name", hxrt::dynamic::from(name));
+                __b.set_dyn("value", hxrt::dynamic::from(value));
             };
             __o
         });
@@ -1596,10 +1600,16 @@ impl Http {
                 let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                 {
                     let mut __b = __o.borrow_mut();
-                    __b.set("secure", secure);
-                    __b.set("host", hxrt::string::HxString::from(""));
-                    __b.set("port", 0);
-                    __b.set("path", hxrt::string::HxString::from("/"));
+                    __b.set_dyn("secure", hxrt::dynamic::from(secure));
+                    __b.set_dyn(
+                        "host",
+                        hxrt::dynamic::from(hxrt::string::HxString::from("")),
+                    );
+                    __b.set_dyn("port", hxrt::dynamic::from(0));
+                    __b.set_dyn(
+                        "path",
+                        hxrt::dynamic::from(hxrt::string::HxString::from("/")),
+                    );
                 };
                 __o
             };
@@ -1626,10 +1636,16 @@ impl Http {
                     let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                     {
                         let mut __b = __o.borrow_mut();
-                        __b.set("secure", secure);
-                        __b.set("host", hxrt::string::HxString::from(""));
-                        __b.set("port", 0);
-                        __b.set("path", hxrt::string::HxString::from("/"));
+                        __b.set_dyn("secure", hxrt::dynamic::from(secure));
+                        __b.set_dyn(
+                            "host",
+                            hxrt::dynamic::from(hxrt::string::HxString::from("")),
+                        );
+                        __b.set_dyn("port", hxrt::dynamic::from(0));
+                        __b.set_dyn(
+                            "path",
+                            hxrt::dynamic::from(hxrt::string::HxString::from("/")),
+                        );
                     };
                     __o
                 };
@@ -1641,10 +1657,16 @@ impl Http {
                 let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                 {
                     let mut __b = __o.borrow_mut();
-                    __b.set("secure", secure);
-                    __b.set("host", hxrt::string::HxString::from(""));
-                    __b.set("port", 0);
-                    __b.set("path", hxrt::string::HxString::from("/"));
+                    __b.set_dyn("secure", hxrt::dynamic::from(secure));
+                    __b.set_dyn(
+                        "host",
+                        hxrt::dynamic::from(hxrt::string::HxString::from("")),
+                    );
+                    __b.set_dyn("port", hxrt::dynamic::from(0));
+                    __b.set_dyn(
+                        "path",
+                        hxrt::dynamic::from(hxrt::string::HxString::from("/")),
+                    );
                 };
                 __o
             };
@@ -1653,10 +1675,10 @@ impl Http {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("secure", secure);
-                __b.set("host", host);
-                __b.set("port", port);
-                __b.set("path", path);
+                __b.set_dyn("secure", hxrt::dynamic::from(secure));
+                __b.set_dyn("host", hxrt::dynamic::from(host));
+                __b.set_dyn("port", hxrt::dynamic::from(port));
+                __b.set_dyn("path", hxrt::dynamic::from(path));
             };
             __o
         };

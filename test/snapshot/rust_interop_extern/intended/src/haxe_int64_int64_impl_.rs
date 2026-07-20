@@ -381,26 +381,42 @@ impl Int64Impl {
                             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                             {
                                 let mut __b = __o.borrow_mut();
-                                __b.set("quotient", {
-                                    let high: i32 = {
-                                        let __b = dividend.borrow();
-                                        __b.high.clone()
-                                    };
-                                    let low: i32 = {
-                                        let __b = dividend.borrow();
-                                        __b.low.clone()
-                                    };
-                                    let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
-                                        crate::haxe_int64_int64::Int64::new(high, low);
-                                    let this1: crate::HxRef<crate::haxe_int64_int64::Int64> = x;
-                                    this1
-                                });
-                                __b.set("modulus", {
-                                    let x_2: crate::HxRef<crate::haxe_int64_int64::Int64> =
-                                        crate::haxe_int64_int64::Int64::new(0, 0);
-                                    let this1_2: crate::HxRef<crate::haxe_int64_int64::Int64> = x_2;
-                                    this1_2
-                                });
+                                __b.set_dyn(
+                                    "quotient",
+                                    hxrt::dynamic::from_ref_with_type_id(
+                                        {
+                                            let high: i32 = {
+                                                let __b = dividend.borrow();
+                                                __b.high.clone()
+                                            };
+                                            let low: i32 = {
+                                                let __b = dividend.borrow();
+                                                __b.low.clone()
+                                            };
+                                            let x: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                                                crate::haxe_int64_int64::Int64::new(high, low);
+                                            let this1: crate::HxRef<
+                                                crate::haxe_int64_int64::Int64,
+                                            > = x;
+                                            this1
+                                        },
+                                        0xb19488f3u32,
+                                    ),
+                                );
+                                __b.set_dyn(
+                                    "modulus",
+                                    hxrt::dynamic::from_ref_with_type_id(
+                                        {
+                                            let x_2: crate::HxRef<crate::haxe_int64_int64::Int64> =
+                                                crate::haxe_int64_int64::Int64::new(0, 0);
+                                            let this1_2: crate::HxRef<
+                                                crate::haxe_int64_int64::Int64,
+                                            > = x_2;
+                                            this1_2
+                                        },
+                                        0xb19488f3u32,
+                                    ),
+                                );
                             };
                             __o
                         };
@@ -896,8 +912,14 @@ impl Int64Impl {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("quotient", quotient);
-                __b.set("modulus", modulus);
+                __b.set_dyn(
+                    "quotient",
+                    hxrt::dynamic::from_ref_with_type_id(quotient, 0xb19488f3u32),
+                );
+                __b.set_dyn(
+                    "modulus",
+                    hxrt::dynamic::from_ref_with_type_id(modulus, 0xb19488f3u32),
+                );
             };
             __o
         };

@@ -5,6 +5,11 @@ import rust.StrTools;
 import rust.StringTools;
 import rust.Vec;
 
+private enum BorrowBranch {
+	First;
+	Second;
+}
+
 class Main {
 	static function consumeRef(_value:rust.Ref<String>):Int {
 		return 1;
@@ -49,6 +54,18 @@ class Main {
 					default: maybe;
 				} : Null<rust.MutRef<Vec<Int>>>));
 				score += consumeMutRef(maybe);
+				var branch = score == 6 ? BorrowBranch.First : BorrowBranch.Second;
+				score += consumeMutRef((cast switch (branch) {
+					case First: {
+						observeScore(score);
+						maybe;
+					}
+					case Second: {
+						observeScore(score);
+						maybe;
+					}
+				} : Null<rust.MutRef<Vec<Int>>>));
+				score += consumeMutRef(maybe);
 				score += consumeMutRef((cast {
 					observeScore(score);
 					maybe;
@@ -76,6 +93,18 @@ class Main {
 					default: maybe;
 				} : Null<rust.MutSlice<Int>>));
 				score += consumeMutSlice(maybe);
+				var branch = score == 24 ? BorrowBranch.First : BorrowBranch.Second;
+				score += consumeMutSlice((cast switch (branch) {
+					case First: {
+						observeScore(score);
+						maybe;
+					}
+					case Second: {
+						observeScore(score);
+						maybe;
+					}
+				} : Null<rust.MutSlice<Int>>));
+				score += consumeMutSlice(maybe);
 				score += consumeMutSlice((cast {
 					observeScore(score);
 					maybe;
@@ -86,6 +115,6 @@ class Main {
 			score;
 		});
 
-		trace(ok && mutableRefScore == 14 && sliceScore == 4 && mutableSliceScore == 56);
+		trace(ok && mutableRefScore == 18 && sliceScore == 4 && mutableSliceScore == 72);
 	}
 }

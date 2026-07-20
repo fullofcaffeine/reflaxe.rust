@@ -66,16 +66,22 @@ fn main() {
         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
         {
             let mut __b = __o.borrow_mut();
-            __b.set(
+            __b.set_dyn(
                 "child",
-                crate::child::Child::new({
-                    let __o = crate::HxRef::new(hxrt::anon::Anon::new());
-                    {
-                        let mut __b = __o.borrow_mut();
-                        __b.set("name", hxrt::string::HxString::from("ready"));
-                    };
-                    __o
-                }),
+                hxrt::dynamic::from_ref_with_type_id(
+                    crate::child::Child::new({
+                        let __o = crate::HxRef::new(hxrt::anon::Anon::new());
+                        {
+                            let mut __b = __o.borrow_mut();
+                            __b.set_dyn(
+                                "name",
+                                hxrt::dynamic::from(hxrt::string::HxString::from("ready")),
+                            );
+                        };
+                        __o
+                    }),
+                    0xcc2f5b61u32,
+                ),
             );
         };
         __o

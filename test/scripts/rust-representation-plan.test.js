@@ -228,6 +228,7 @@ function main() {
 
   const crossingsFixture = path.join(repoRoot, 'test', 'negative', 'representation_dynamic_crossings')
   const crossingsSourcePath = path.join(crossingsFixture, 'Main.hx')
+  const crossModuleSourcePath = path.join(crossingsFixture, 'CrossModuleBoundary.hx')
   const crossingSpans = [
     '606060',
     'new BoundaryNode()',
@@ -235,10 +236,47 @@ function main() {
     '707070',
     '808080',
     '909090',
+    '101101',
+    '102102',
+    '131131',
+    '132132',
+    '133133',
+    '141141',
+    '142142',
+    '151151',
+    '161161',
+    '162162',
+    '163163',
+    '164164',
+    '169169',
+    '165165',
+    '166166',
+    '167167',
+    '168168',
+    '171171',
+    '172172',
+    '181181',
+    '191191',
+    '192192',
+    '201201',
+    '202202',
+    '208208',
+    '209209',
+    '204204',
+    '205205',
     'cast(new BoundaryNode(), BoundaryNode)',
     'if (flag) 111111 else 112112',
     'switch (selector) { case 1: 121121; default: 122122; }'
-  ].map((needle) => exactUtf8Span(crossingsSourcePath, needle).span)
+	].map((needle) => exactUtf8Span(crossingsSourcePath, needle).span).concat(
+		[
+			'{value: optionalForDynamic}',
+			'dynamicAssigned.value = optionalForDynamic'
+		].map((expression) => {
+			const outer = exactUtf8Span(crossingsSourcePath, expression)
+			return exactUtf8Span(crossingsSourcePath, 'optionalForDynamic', outer.charStart).span
+		}),
+		['211211', '212212', '213213'].map((needle) => exactUtf8Span(crossModuleSourcePath, needle).span)
+	)
   cleanOutput(crossingsFixture, 'out')
   const crossingsFirst = runIn(crossingsFixture, process.execPath, [haxeShim, 'compile.hxml'])
   cleanOutput(crossingsFixture, 'out')
@@ -252,8 +290,25 @@ function main() {
     assert.match(output(crossingsFirst), new RegExp(span.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
       `the no-hxrt diagnostic must name concrete crossing ${span}`)
 
-  cleanOutput(crossingsFixture, 'out_report_a')
+  // Keep the first generated crate until the shared pinned-Cargo probe below. The action audit proves
+  // that analysis and lowering agreed; Cargo then proves the complete assignment/equality/default/
+  // replay matrix is valid warning-clean Rust, and running it catches storage-shape mismatches.
   cleanOutput(crossingsFixture, 'out_report_b')
+
+  const directReflectFixture = path.join(repoRoot, 'test', 'snapshot', 'reflect_basic')
+  cleanOutput(directReflectFixture, 'out_action_audit')
+  const directReflectCompile = runIn(directReflectFixture, process.execPath,
+    [haxeShim, 'compile.hxml', '-D', 'rust_no_build', '-D', 'rust_output=out_action_audit', '-D', 'rust_representation_crossing_audit'])
+  assert.strictEqual(directReflectCompile.status, 0, output(directReflectCompile))
+  const directReflectSource = path.join(directReflectFixture, 'Main.hx')
+  const optionalReflectWrite = exactUtf8Span(directReflectSource, 'Reflect.setField(dynamicFields, "value", optionalForDynamic)')
+  const directReflectSpans = ['143143', '() -> 170170', '170170'].map((needle) => exactUtf8Span(directReflectSource, needle).span)
+    .concat([exactUtf8Span(directReflectSource, 'optionalForDynamic', optionalReflectWrite.charStart).span])
+  const directReflectAudit = fs.readFileSync(path.join(directReflectFixture, 'out_action_audit', 'representation_crossing_audit.txt'), 'utf8')
+  for (const span of directReflectSpans)
+    assert(directReflectAudit.split('\n').some((line) => line.includes(span) && line.includes('|consumed=1|')),
+      'constant-name Reflect.setField must consume the saved action for its declared field shape and Dynamic storage')
+  cleanOutput(directReflectFixture, 'out_action_audit')
   const crossingsReportFirst = runIn(crossingsFixture, process.execPath,
     [haxeShim, 'compile.report.hxml', '-D', 'rust_output=out_report_a', '-D', 'rust_representation_crossing_audit'])
   const crossingsReportSecond = runIn(crossingsFixture, process.execPath,
@@ -273,6 +328,11 @@ function main() {
     assert.match(crossingsMarkdownA, new RegExp(span.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
       `Markdown must retain concrete crossing ${span}`)
   }
+  for (const needle of ['193193', '194194', '195195', '203203', '206206', '207207']) {
+    const unreachableSpan = exactUtf8Span(crossingsSourcePath, needle).span
+    assert(!crossingDynamicRows.some((entry) => entry.sourceSpan === unreachableSpan),
+      `a boundary after an exhaustive diverging switch must stay absent at ${unreachableSpan}`)
+  }
   const crossingAuditA = fs.readFileSync(path.join(crossingsFixture, 'out_report_a', 'representation_crossing_audit.txt'), 'utf8')
   const crossingAuditB = fs.readFileSync(path.join(crossingsFixture, 'out_report_b', 'representation_crossing_audit.txt'), 'utf8')
   assert.strictEqual(crossingAuditA, crossingAuditB, 'saved/consumed Dynamic action record must be byte-identical')
@@ -280,6 +340,18 @@ function main() {
   assert(userCrossingAudit.length > 0, 'the Dynamic crossing contract must save user-authored lowering actions')
   assert(userCrossingAudit.every((line) => line.includes('|consumed=1|')),
     'every saved user-authored Dynamic action must be consumed exactly once')
+  for (const span of crossingSpans)
+    assert(userCrossingAudit.some((line) => line.includes(`|boundary=${span}|`) && line.includes('|consumed=1|')),
+      `each intended Dynamic source boundary must consume a saved action at ${span}`)
+  for (const replay of [
+    ...['171171', '172172', '181181', '191191', '192192'].map((needle) => ({ source: crossingsSourcePath, needle })),
+    ...['211211', '212212', '213213'].map((needle) => ({ source: crossModuleSourcePath, needle }))
+  ]) {
+    const replaySpan = exactUtf8Span(replay.source, replay.needle).span
+    assert(userCrossingAudit.some((line) => line.includes(replaySpan) && line.includes('|replayed=1|')
+      && /\|replay-family=[^|]+\|/.test(line) && !line.includes('|replay-family=none|')),
+      `${replay.needle} must record its second generated emission as one explicit replay`)
+  }
   assert(userCrossingAudit.every((line) => /\|reuse=(?:copy|clone_when_needed|move_once|borrow)\|/.test(line)),
     'every saved Dynamic action must expose the reuse policy that lowering consumes')
   for (const expected of [
@@ -297,8 +369,7 @@ function main() {
     assert(userCrossingAudit.some((line) => line.includes(nodeSpan)),
       `${needle} must route its user value through the saved Dynamic action`)
   }
-  cleanOutput(crossingsFixture, 'out_report_a')
-  cleanOutput(crossingsFixture, 'out_report_b')
+	cleanOutput(crossingsFixture, 'out_report_b')
 
   const unreachableCrossingFixture = path.join(repoRoot, 'test', 'snapshot', 'return_void')
   cleanOutput(unreachableCrossingFixture, 'out')
@@ -506,6 +577,75 @@ function main() {
     fs.rmSync(externalClasspath, { recursive: true, force: true })
   }
 
+  for (const externalCase of [
+    { main: 'ExternalThrow', needle: 'throw "βλάβη"' },
+    { main: 'ExternalTry', needle: 'try {\n\t\t\tthrow "σφάλμα";\n\t\t} catch (_:String) {}' }
+  ]) {
+    const source = path.join(platformPositionFixture, `${externalCase.main}.hx`)
+    const location = sourceLocation(source, externalCase.needle)
+    const span = exactUtf8Span(source, externalCase.needle).span
+    const externalRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-position-'))
+    try {
+      fs.copyFileSync(source, path.join(externalRoot, `${externalCase.main}.hx`))
+      const result = run(process.execPath, [haxeShim,
+        '-cp', externalRoot,
+        '-lib', 'reflaxe.rust',
+        '-D', 'reflaxe_rust_profile=metal',
+        '-D', 'rust_no_hxrt',
+        '-D', 'rust_no_build',
+        '-D', `rust_output=${path.join(externalRoot, 'out')}`,
+        '-main', externalCase.main])
+      assert.notStrictEqual(result.status, 0, `${externalCase.main} must fail the early no-hxrt check`)
+      assert.match(output(result), /\[HXRS-NO-HXRT-ELIGIBILITY\]/,
+        `${externalCase.main} must be rejected before generated Rust becomes the ordinary detector`)
+      assert.doesNotMatch(output(result), new RegExp(externalRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+        `${externalCase.main} diagnostics must not expose its absolute classpath`)
+      const displayLocation = externalCase.needle.includes('\n')
+        ? `${externalCase.main}\\.hx: lines ${location.line}-${location.line + externalCase.needle.split('\n').length - 1}`
+        : `${externalCase.main}\\.hx:${location.line}: characters ${location.startColumn}-`
+      assert.match(output(result), new RegExp(`\\[HXRS-NO-HXRT-ELIGIBILITY\\] ${displayLocation}`),
+        `${externalCase.main} must retain the exact external expression line and starting column`)
+      assert.match(output(result), new RegExp(span.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+        `${externalCase.main} must retain the operation's private UTF-8 byte range`)
+    } finally {
+      fs.rmSync(externalRoot, { recursive: true, force: true })
+    }
+  }
+
+  const unsupportedBorrowFixture = path.join(repoRoot, 'test', 'negative', 'representation_borrow_dynamic_unsupported')
+  for (const unsupported of [
+    { main: 'NativeBorrow', detail: 'native handle' },
+    { main: 'GenericBorrow', detail: 'generic inner type' }
+  ]) {
+    const source = path.join(unsupportedBorrowFixture, `${unsupported.main}.hx`)
+    const line = sourceLine(source, 'inspect(borrowed)')
+    const outputName = `out_${unsupported.main}`
+    const compile = () => runIn(unsupportedBorrowFixture, process.execPath, [haxeShim,
+      '-cp', '.',
+      '-lib', 'reflaxe.rust',
+      '-D', 'reflaxe_rust_profile=metal',
+      '-D', 'rust_no_build',
+      '-D', `rust_output=${outputName}`,
+      '-main', unsupported.main])
+    cleanOutput(unsupportedBorrowFixture, outputName)
+    const firstUnsupported = compile()
+    cleanOutput(unsupportedBorrowFixture, outputName)
+    const secondUnsupported = compile()
+    assert.notStrictEqual(firstUnsupported.status, 0, `${unsupported.main} must be rejected before Rust construction`)
+    assert.strictEqual(output(firstUnsupported), output(secondUnsupported), `${unsupported.main} diagnostics must be repeatable`)
+    assert.match(output(firstUnsupported), /\[HXRS-BORROW-REGION\].*cannot enter Dynamic/,
+      `${unsupported.main} must explain why its borrowed value cannot become owned Dynamic storage`)
+    assert.match(output(firstUnsupported), new RegExp(`${unsupported.main}\\.hx:${line}:`),
+      `${unsupported.main} must point to the exact failing call`)
+    assert.match(output(firstUnsupported), new RegExp(unsupported.detail),
+      `${unsupported.main} must name the concrete unsupported reason`)
+    assert.doesNotMatch(output(firstUnsupported), /Internal Rust representation error/,
+      `${unsupported.main} must fail during typed analysis instead of later Rust lowering`)
+    assert(!fs.existsSync(path.join(unsupportedBorrowFixture, outputName, 'src')),
+      `${unsupported.main} must not construct Rust source after the typed boundary fails`)
+    cleanOutput(unsupportedBorrowFixture, outputName)
+  }
+
   const borrowDynamicFixture = path.join(repoRoot, 'test', 'positive', 'representation_borrow_dynamic')
   cleanOutput(borrowDynamicFixture, 'out')
   const borrowDynamicCompile = runIn(borrowDynamicFixture, process.execPath, [haxeShim, 'compile.hxml'])
@@ -515,19 +655,30 @@ function main() {
     'a Copy value behind rust.Ref must be dereferenced before it enters Dynamic')
   assert.match(borrowDynamicRust, /hxrt::dynamic::from\(\(\*borrowed_2\)\.clone\(\)\)/,
     'a Clone value behind rust.Ref must be cloned as an owned value before it enters Dynamic')
-  assert.doesNotMatch(borrowDynamicRust, /hxrt::dynamic::from\(borrowed(?:_2)?\)/,
+  assert.match(borrowDynamicRust, /hxrt::dynamic::from\(\(\*borrowed_3\)\.clone\(\)\)/,
+    'a concrete rust.Vec behind rust.Ref must be cloned as an owned value before it enters Dynamic')
+  assert.match(borrowDynamicRust, /hxrt::dynamic::from\(\(\*borrowed_4\)\.clone\(\)\)/,
+    'a concrete rust.PathBuf behind rust.Ref must be cloned as an owned value before it enters Dynamic')
+  assert.doesNotMatch(borrowDynamicRust, /hxrt::dynamic::from\((?:borrowed(?:_[0-9]+)?|count_ref|label_ref)\)/,
     'the short-lived Rust borrow token itself must never enter Dynamic')
+  assert.doesNotMatch(borrowDynamicRust, /\.set\([^\n]*(?:count_ref|label_ref)/,
+    'anonymous-object storage must not hide raw Rust references inside its generic runtime setter')
   const borrowAudit = fs.readFileSync(path.join(borrowDynamicFixture, 'out', 'representation_crossing_audit.txt'), 'utf8')
   assert.match(borrowAudit, /\|borrow-copy\|reuse=copy\|consumed=1\|/)
   assert.match(borrowAudit, /\|borrow-clone\|reuse=clone_when_needed\|consumed=1\|/)
   const rustcProbe = run('rustc', ['--print', 'sysroot'])
   assert.strictEqual(rustcProbe.status, 0, output(rustcProbe))
   const cargoBin = path.join(rustcProbe.stdout.trim(), 'bin', process.platform === 'win32' ? 'cargo.exe' : 'cargo')
+  const crossingsCargoCheck = runIn(path.join(crossingsFixture, 'out_report_a'), cargoBin, ['check', '--quiet'])
+  assert.strictEqual(crossingsCargoCheck.status, 0, output(crossingsCargoCheck))
+  const crossingsCargoRun = runIn(path.join(crossingsFixture, 'out_report_a'), cargoBin, ['run', '--quiet'])
+  assert.strictEqual(crossingsCargoRun.status, 0, output(crossingsCargoRun))
+  cleanOutput(crossingsFixture, 'out_report_a')
   const borrowCargoCheck = runIn(path.join(borrowDynamicFixture, 'out'), cargoBin, ['check', '--quiet'])
   assert.strictEqual(borrowCargoCheck.status, 0, output(borrowCargoCheck))
   const borrowCargoRun = runIn(path.join(borrowDynamicFixture, 'out'), cargoBin, ['run', '--quiet'])
   assert.strictEqual(borrowCargoRun.status, 0, output(borrowCargoRun))
-  assert.strictEqual(borrowCargoRun.stdout.trim(), '7|hello', 'owned borrow snapshots must not escape the Borrow callback')
+  assert.strictEqual(borrowCargoRun.stdout.trim(), '7|hello|true', 'owned borrow snapshots must not escape the Borrow callback')
   cleanOutput(borrowDynamicFixture, 'out')
 
   const frameworkDynamicFixture = path.join(repoRoot, 'test', 'snapshot', 'haxe_crypto_smoke')
@@ -537,11 +688,17 @@ function main() {
   const unserializerRust = fs.readFileSync(path.join(frameworkDynamicFixture, 'out', 'src', 'haxe_unserializer.rs'), 'utf8')
   assert.match(serializerRust, /hxrt::dynamic::from_ref\(v\.clone\(\)\)/,
     'framework-authored Dynamic conversions must preserve a shared value reused by a later loop iteration')
-  assert.match(unserializerRust, /hxrt::dynamic::from_ref\(o\.clone\(\)\)/,
-    'a framework-authored loop must clone its reusable object handle before Dynamic consumes it')
-  cleanOutput(frameworkDynamicFixture, 'out')
+	  assert.match(unserializerRust, /hxrt::dynamic::from_ref\(o\.clone\(\)\)/,
+	    'a framework-authored loop must clone its reusable object handle before Dynamic consumes it')
+	  cleanOutput(frameworkDynamicFixture, 'out')
 
-  const nullableMutableFixture = path.join(repoRoot, 'test', 'snapshot', 'rust_borrow_ref')
+	  for (const semanticCase of ['dynamic_access_iterator_boundary', 'map_key_value_iterator_manual']) {
+	    const frameworkGenericRun = run('python3', ['test/run-semantic-diff.py', '--case', semanticCase])
+	    assert.strictEqual(frameworkGenericRun.status, 0,
+	      `${semanticCase} must admit only its reviewed framework generic Dynamic boundary\n${output(frameworkGenericRun)}`)
+	  }
+
+	  const nullableMutableFixture = path.join(repoRoot, 'test', 'snapshot', 'rust_borrow_ref')
   cleanOutput(nullableMutableFixture, 'out')
   const nullableMutableCompile = runIn(nullableMutableFixture, process.execPath, [haxeShim, 'compile.hxml'])
   assert.strictEqual(nullableMutableCompile.status, 0, output(nullableMutableCompile))
@@ -552,6 +709,8 @@ function main() {
     'if branches must reborrow the nullable mutable reference at their result leaves')
   assert.match(nullableMutableRust, /if score == 4 \{ match &mut maybe/,
     'switch result branches must reborrow without consuming the original Option binding')
+  assert.doesNotMatch(nullableMutableRust, /let __hx_opt = match branch/,
+    'an exhaustive enum switch must reborrow each branch instead of moving the nullable mutable reference')
   assert.match(nullableMutableRust, /observe_score\(score\);\s+match &mut maybe/,
     'block statements must remain before the reborrowed tail expression')
   assert.doesNotMatch(nullableMutableRust, /maybe(?:_3)?\.clone\(\)/,

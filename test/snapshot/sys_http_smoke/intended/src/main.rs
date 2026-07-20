@@ -101,9 +101,18 @@ fn run_request(
         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
         {
             let mut __b = __o.borrow_mut();
-            __b.set("method", hxrt::string::HxString::from(""));
-            __b.set("contentType", hxrt::string::HxString::null());
-            __b.set("body", hxrt::string::HxString::from(""));
+            __b.set_dyn(
+                "method",
+                hxrt::dynamic::from(hxrt::string::HxString::from("")),
+            );
+            __b.set_dyn("contentType", {
+                let __hx_storage_value: hxrt::string::HxString = hxrt::string::HxString::null();
+                hxrt::dynamic::from(__hx_storage_value)
+            });
+            __b.set_dyn(
+                "body",
+                hxrt::dynamic::from(hxrt::string::HxString::from("")),
+            );
         };
         __o
     };
@@ -122,7 +131,9 @@ fn run_request(
             {
                 let __obj = capture_for_thread.clone();
                 let __tmp = request.borrow().get::<hxrt::string::HxString>("method");
-                __obj.borrow_mut().set("method", __tmp.clone());
+                __obj
+                    .borrow_mut()
+                    .set_dyn("method", hxrt::dynamic::from(__tmp.clone()));
                 __tmp
             };
             {
@@ -130,13 +141,17 @@ fn run_request(
                 let __tmp = request
                     .borrow()
                     .get::<hxrt::string::HxString>("contentType");
-                __obj.borrow_mut().set("contentType", __tmp.clone());
+                __obj
+                    .borrow_mut()
+                    .set_dyn("contentType", hxrt::dynamic::from(__tmp.clone()));
                 __tmp
             };
             {
                 let __obj = capture_for_thread.clone();
                 let __tmp = request.borrow().get::<hxrt::string::HxString>("body");
-                __obj.borrow_mut().set("body", __tmp.clone());
+                __obj
+                    .borrow_mut()
+                    .set_dyn("body", hxrt::dynamic::from(__tmp.clone()));
                 __tmp
             };
             client.__hx_get_output().write_string(
@@ -204,14 +219,20 @@ fn run_request(
         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
         {
             let mut __b = __o.borrow_mut();
-            __b.set(
+            __b.set_dyn(
                 "http",
-                built
-                    .borrow()
-                    .get::<crate::HxRef<crate::sys_http::Http>>("http"),
+                hxrt::dynamic::from_ref_with_type_id(
+                    built
+                        .borrow()
+                        .get::<crate::HxRef<crate::sys_http::Http>>("http"),
+                    0x76d977f8u32,
+                ),
             );
-            __b.set("capture", capture);
-            __b.set("responseData", response_data.borrow().clone());
+            __b.set_dyn("capture", hxrt::dynamic::from_ref(capture));
+            __b.set_dyn(
+                "responseData",
+                hxrt::dynamic::from(response_data.borrow().clone()),
+            );
         };
         __o
     };
@@ -280,9 +301,9 @@ fn read_request(
         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
         {
             let mut __b = __o.borrow_mut();
-            __b.set("method", method);
-            __b.set("contentType", content_type);
-            __b.set("body", body);
+            __b.set_dyn("method", hxrt::dynamic::from(method));
+            __b.set_dyn("contentType", hxrt::dynamic::from(content_type));
+            __b.set_dyn("body", hxrt::dynamic::from(body));
         };
         __o
     };
@@ -385,15 +406,21 @@ fn main() {
                         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                         {
                             let mut __b = __o.borrow_mut();
-                            __b.set("http", http.clone());
-                            __b.set("run", {
-                                let http = http.clone();
-                                let __rc: crate::HxRc<dyn Fn() + Send + Sync> =
-                                    crate::HxRc::new(move || {
-                                        crate::sys_http::Http::request(&*http, Some(true));
-                                    });
-                                crate::HxDynRef::new(__rc)
-                            });
+                            __b.set_dyn(
+                                "http",
+                                hxrt::dynamic::from_ref_with_type_id(http.clone(), 0x76d977f8u32),
+                            );
+                            __b.set_dyn(
+                                "run",
+                                hxrt::dynamic::from_ref({
+                                    let http = http.clone();
+                                    let __rc: crate::HxRc<dyn Fn() + Send + Sync> =
+                                        crate::HxRc::new(move || {
+                                            crate::sys_http::Http::request(&*http, Some(true));
+                                        });
+                                    crate::HxDynRef::new(__rc)
+                                }),
+                            );
                         };
                         __o
                     };
@@ -495,15 +522,21 @@ fn main() {
                         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                         {
                             let mut __b = __o.borrow_mut();
-                            __b.set("http", http.clone());
-                            __b.set("run", {
-                                let http = http.clone();
-                                let __rc: crate::HxRc<dyn Fn() + Send + Sync> =
-                                    crate::HxRc::new(move || {
-                                        crate::sys_http::Http::request(&*http, Some(true));
-                                    });
-                                crate::HxDynRef::new(__rc)
-                            });
+                            __b.set_dyn(
+                                "http",
+                                hxrt::dynamic::from_ref_with_type_id(http.clone(), 0x76d977f8u32),
+                            );
+                            __b.set_dyn(
+                                "run",
+                                hxrt::dynamic::from_ref({
+                                    let http = http.clone();
+                                    let __rc: crate::HxRc<dyn Fn() + Send + Sync> =
+                                        crate::HxRc::new(move || {
+                                            crate::sys_http::Http::request(&*http, Some(true));
+                                        });
+                                    crate::HxDynRef::new(__rc)
+                                }),
+                            );
                         };
                         __o
                     };

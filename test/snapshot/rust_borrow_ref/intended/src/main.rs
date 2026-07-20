@@ -9,6 +9,7 @@ type HxDynRef<T: ?Sized> = hxrt::cell::HxDynRef<T>;
 type HxRefCell<T> = hxrt::cell::HxCell<T>;
 type HxRef<T> = hxrt::cell::HxRef<T>;
 
+mod _main_borrow_branch;
 mod fp_helper;
 mod haxe_call_stack_call_stack_impl_;
 mod haxe_ds_enum_value_map;
@@ -183,6 +184,45 @@ fn main() {
                         });
                     score
                 };
+                let branch: crate::_main_borrow_branch::BorrowBranch = if score == 6 {
+                    crate::_main_borrow_branch::BorrowBranch::First
+                } else {
+                    crate::_main_borrow_branch::BorrowBranch::Second
+                };
+                {
+                    score = score
+                        + consume_mut_ref(match branch {
+                            crate::_main_borrow_branch::BorrowBranch::First => {
+                                observe_score(score);
+                                match &mut maybe {
+                                    Some(__v) => &mut **__v,
+                                    None => hxrt::exception::throw(hxrt::dynamic::from(
+                                        String::from("Null Access"),
+                                    )),
+                                }
+                            }
+                            crate::_main_borrow_branch::BorrowBranch::Second => {
+                                observe_score(score);
+                                match &mut maybe {
+                                    Some(__v) => &mut **__v,
+                                    None => hxrt::exception::throw(hxrt::dynamic::from(
+                                        String::from("Null Access"),
+                                    )),
+                                }
+                            }
+                        });
+                    score
+                };
+                {
+                    score = score
+                        + consume_mut_ref(match &mut maybe {
+                            Some(__v) => &mut **__v,
+                            None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                "Null Access",
+                            ))),
+                        });
+                    score
+                };
                 {
                     score = score
                         + consume_mut_ref({
@@ -318,6 +358,45 @@ fn main() {
                             });
                         score_2
                     };
+                    let branch_2: crate::_main_borrow_branch::BorrowBranch = if score_2 == 24 {
+                        crate::_main_borrow_branch::BorrowBranch::First
+                    } else {
+                        crate::_main_borrow_branch::BorrowBranch::Second
+                    };
+                    {
+                        score_2 = score_2
+                            + consume_mut_slice(match branch_2 {
+                                crate::_main_borrow_branch::BorrowBranch::First => {
+                                    observe_score(score_2);
+                                    match &mut maybe_3 {
+                                        Some(__v) => &mut **__v,
+                                        None => hxrt::exception::throw(hxrt::dynamic::from(
+                                            String::from("Null Access"),
+                                        )),
+                                    }
+                                }
+                                crate::_main_borrow_branch::BorrowBranch::Second => {
+                                    observe_score(score_2);
+                                    match &mut maybe_3 {
+                                        Some(__v) => &mut **__v,
+                                        None => hxrt::exception::throw(hxrt::dynamic::from(
+                                            String::from("Null Access"),
+                                        )),
+                                    }
+                                }
+                            });
+                        score_2
+                    };
+                    {
+                        score_2 = score_2
+                            + consume_mut_slice(match &mut maybe_3 {
+                                Some(__v) => &mut **__v,
+                                None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                    "Null Access",
+                                ))),
+                            });
+                        score_2
+                    };
                     {
                         score_2 = score_2
                             + consume_mut_slice({
@@ -368,7 +447,7 @@ fn main() {
     println!(
         "{}",
         hxrt::dynamic::from(
-            ok && mutable_ref_score == 14 && slice_score == 4 && mutable_slice_score == 56
+            ok && mutable_ref_score == 18 && slice_score == 4 && mutable_slice_score == 72
         )
     );
 }

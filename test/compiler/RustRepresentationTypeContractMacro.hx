@@ -6,13 +6,17 @@ import reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin;
 import reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind;
 import reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind;
 import reflaxe.rust.analyze.NoHxrtEligibilityAnalyzer;
+import reflaxe.rust.analyze.BorrowRegionAnalyzer;
 import reflaxe.rust.analyze.RepresentationDecisionAnalyzer;
 import reflaxe.rust.analyze.RepresentationTypeAnalyzer;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry;
+import reflaxe.rust.analyze.TypedExprReplayFamily;
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization;
+import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicCrossingTypeCheck;
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedCrossingTracker;
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing;
+import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedCrossingReplayContext;
 
 /**
 	Compile-time contract for extracting representation facts from real typed Haxe values.
@@ -79,25 +83,86 @@ class RustRepresentationTypeContractMacro {
 			scalarField.pos, scalarOrigin, false);
 		if (scalarBoundary == null)
 			throw "the saved-action tracker contract needs a scalar Dynamic boundary";
-		var savedScalar = RustSavedRepresentationCrossing.of(scalarOrigin, scalarBoundary, RustDynamicValueMaterialization.DynamicValueDirect);
+		var scalarTypeCheck = RepresentationTypeAnalyzer.tryDynamicCrossingTypeCheck(scalarField.type, Context.getType("Dynamic"), false);
+		if (scalarTypeCheck == null)
+			throw "the saved-action tracker contract needs a scalar source type check";
+		for (name in ["borrowedNativeOwned", "borrowedPath"]) {
+			var field = fields.get(name);
+			var typeCheck = field == null ? null : RepresentationTypeAnalyzer.tryDynamicCrossingTypeCheck(field.type, Context.getType("Dynamic"), false);
+			if (typeCheck == null || typeCheck.materialization != RustDynamicValueMaterialization.DynamicValueBorrowClone)
+				throw '$name must materialize a known concrete Clone value behind rust.Ref before Dynamic storage';
+		}
+		var borrowedNativeHandle = fields.get("borrowedNativeHandle");
+		if (borrowedNativeHandle == null
+			|| RepresentationTypeAnalyzer.tryDynamicCrossingTypeCheck(borrowedNativeHandle.type, Context.getType("Dynamic"), false) != null)
+			throw "rust.Ref<TcpStream> must stay unsupported because the native handle has no admitted Clone conversion";
+		function rejects(label:String, operation:() -> Void):Void {
+			var rejected = false;
+			try operation() catch (_:Dynamic) rejected = true;
+			if (!rejected)
+				throw label;
+		}
+		rejects("a direct saved action must reject a borrowed source carrier", () -> RustDynamicCrossingTypeCheck.validated("rust.Ref<Int>",
+			"Dynamic", RustSourceValueKind.SourceBorrowedRef, RustSourceValueKind.SourceScalar,
+			RustDynamicValueMaterialization.DynamicValueDirect));
+		rejects("borrow-copy must reject a non-Copy owned value", () -> RustDynamicCrossingTypeCheck.validated("rust.Ref<String>", "Dynamic",
+			RustSourceValueKind.SourceBorrowedRef, RustSourceValueKind.SourceString,
+			RustDynamicValueMaterialization.DynamicValueBorrowCopy));
+		rejects("borrow-clone must reject a non-reference source", () -> RustDynamicCrossingTypeCheck.validated("String", "Dynamic",
+			RustSourceValueKind.SourceString, RustSourceValueKind.SourceString,
+			RustDynamicValueMaterialization.DynamicValueBorrowClone));
+		rejects("a saved action must reject a destination other than the exact Dynamic boundary", () -> RustDynamicCrossingTypeCheck.validated("Int",
+			"NotDynamic", RustSourceValueKind.SourceScalar, RustSourceValueKind.SourceScalar,
+			RustDynamicValueMaterialization.DynamicValueDirect));
+		var stringTypeCheck = RepresentationTypeAnalyzer.tryDynamicCrossingTypeCheck(stringField.type, Context.getType("Dynamic"), false);
+		if (stringTypeCheck == null)
+			throw "the saved-action mismatch contract needs a String source type check";
+		rejects("a saved decision and source type check must describe the same owned value family",
+			() -> RustSavedRepresentationCrossing.of(scalarOrigin, scalarBoundary, stringTypeCheck));
+		var outsideBoundary = RustDecisionOrigin.at(scalarOrigin.sourceFile, scalarOrigin.startByte + 1, scalarOrigin.endByte - 1,
+			scalarOrigin.modulePath);
+		rejects("a saved action location must sit inside the complete source boundary",
+			() -> RustSavedRepresentationCrossing.of(scalarOrigin, scalarBoundary, scalarTypeCheck, 0, outsideBoundary));
+		var savedScalar = RustSavedRepresentationCrossing.of(scalarOrigin, scalarBoundary, scalarTypeCheck);
 		var tracker = RustSavedCrossingTracker.of([savedScalar]);
+		if (tracker.consume(scalarOrigin, stringTypeCheck) != null || tracker.countProblems()[0].count != 0)
+			throw "lowering must reject a saved action whose source type check differs from the actual typed value";
 		var missingOrigin = RustDecisionOrigin.at(scalarOrigin.sourceFile, scalarOrigin.startByte + 1, scalarOrigin.endByte + 1, scalarOrigin.modulePath);
-		if (tracker.consume(missingOrigin) != null)
+		if (tracker.consume(missingOrigin, scalarTypeCheck) != null)
 			throw "a missing saved action must not be replaced by a lowering-time decision";
 		var missingProblems = tracker.countProblems();
 		if (missingProblems.length != 1 || missingProblems[0].count != 0)
 			throw "a deleted or unused saved action must fail the final consumption check";
-		if (tracker.consume(scalarOrigin) != savedScalar || tracker.countProblems().length != 0)
+		if (tracker.consume(scalarOrigin, scalarTypeCheck) != savedScalar || tracker.countProblems().length != 0)
 			throw "one exact saved-action use must satisfy the final consumption check";
-		if (tracker.consume(scalarOrigin) != null)
+		if (tracker.consume(scalarOrigin, scalarTypeCheck) != null)
 			throw "using more actions than early analysis saved must fail immediately";
-		var savedScalarSecond = RustSavedRepresentationCrossing.of(scalarOrigin, scalarBoundary,
-			RustDynamicValueMaterialization.DynamicValueDirect, 1);
+		var savedScalarSecond = RustSavedRepresentationCrossing.of(scalarOrigin, scalarBoundary, scalarTypeCheck, 1);
 		var sameSpanTracker = RustSavedCrossingTracker.of([savedScalar, savedScalarSecond]);
-		if (sameSpanTracker.consume(scalarOrigin) != savedScalar
-			|| sameSpanTracker.consume(scalarOrigin) != savedScalarSecond
+		if (sameSpanTracker.consume(scalarOrigin, scalarTypeCheck) != savedScalar
+			|| sameSpanTracker.consume(scalarOrigin, scalarTypeCheck) != savedScalarSecond
 			|| sameSpanTracker.countProblems().length != 0)
 			throw "several macro-generated actions at one source span must be consumed in saved order";
+		var replayFamily = TypedExprReplayFamily.constructorBody(fixture);
+		var wrongReplayFamily = TypedExprReplayFamily.constructorDefault(fixture, 0);
+		var savedReplay = RustSavedRepresentationCrossing.of(scalarOrigin, scalarBoundary, scalarTypeCheck, 0, scalarOrigin, replayFamily);
+		rejects("a saved replay family must reject a missing declaration owner", () -> TypedExprReplayFamily.constructorBody(null));
+		var replayTracker = RustSavedCrossingTracker.of([savedReplay]);
+		var firstReplay = RustSavedCrossingReplayContext.of(replayFamily, "call:a");
+		var secondReplay = RustSavedCrossingReplayContext.of(replayFamily, "call:b");
+		var wrongReplay = RustSavedCrossingReplayContext.of(wrongReplayFamily, "call:a");
+		if (replayTracker.consume(scalarOrigin, scalarTypeCheck) != null
+			|| replayTracker.consume(scalarOrigin, scalarTypeCheck, wrongReplay) != null)
+			throw "a replayable action must reject ordinary use and the wrong source definition family";
+		if (replayTracker.consume(scalarOrigin, scalarTypeCheck, firstReplay) != savedReplay
+			|| replayTracker.consume(scalarOrigin, scalarTypeCheck, secondReplay) != savedReplay
+			|| replayTracker.countProblems().length != 0 || replayTracker.replayCountFor(savedReplay) != 1)
+			throw "one saved default action must support explicit distinct generated callsite replays without becoming multiply consumed";
+		if (replayTracker.consume(scalarOrigin, scalarTypeCheck, secondReplay) != null)
+			throw "one generated replay site must not consume the same saved action twice";
+		var ordinaryReplayTracker = RustSavedCrossingTracker.of([savedScalar]);
+		if (ordinaryReplayTracker.consume(scalarOrigin, scalarTypeCheck, firstReplay) != null)
+			throw "an ordinary saved action must reject an invented replay context";
 
 		Sys.println(rows.join("\n"));
 		Sys.println("function-runtime-v4|" + runtimeDecisionReasonIds(decisions.get("functionValue")));
@@ -117,6 +182,47 @@ class RustRepresentationTypeContractMacro {
 				return;
 			inspectedAfterTyping = true;
 			var snapshot = RepresentationDecisionAnalyzer.collectSnapshot(fixtureModule, false);
+			var constructorAnalysisModule:Array<ModuleType> = switch (Context.getType("RustRepresentationTypeFixture.RustConstructorAnalysisFixture")) {
+				case TInst(classRef, _): [TClassDecl(classRef)];
+				case _: throw "constructor analysis fixture must resolve to a class";
+			};
+			var constructorBorrowErrors = BorrowRegionAnalyzer.analyze(constructorAnalysisModule, _ -> true).errors;
+			var constructorBorrowMessages = [for (error in constructorBorrowErrors) error.message];
+			if (!Lambda.exists(constructorBorrowMessages, message -> message.indexOf("stored borrow-only alias") >= 0)
+				|| !Lambda.exists(constructorBorrowMessages, message -> message.indexOf("stored closure captures borrow-only alias") >= 0))
+				throw "constructor bodies must retain direct-storage and captured-closure borrow escapes in the complete early scan";
+			var constructorField = switch (constructorAnalysisModule[0]) {
+				case TClassDecl(classRef): classRef.get().constructor.get();
+				case _: null;
+			};
+			if (constructorField == null)
+				throw "constructor analysis fixture must retain its constructor field";
+			var constructorExpression = constructorField.expr();
+			if (constructorExpression == null)
+				throw "constructor analysis fixture must retain its typed constructor body";
+			var constructorPos = Context.getPosInfos(constructorExpression.pos);
+			for (error in constructorBorrowErrors) {
+				var errorPos = Context.getPosInfos(error.pos);
+				if (errorPos.file != constructorPos.file || errorPos.min < constructorPos.min || errorPos.max > constructorPos.max
+					|| errorPos.min == constructorPos.min && errorPos.max == constructorPos.max)
+					throw "constructor-only borrow errors must point inside the exact failing expression rather than at the declaration";
+			}
+			var constructorOperations = NoHxrtEligibilityAnalyzer.captureOperationEntries(constructorAnalysisModule);
+			var constructorOperationKinds:Map<String, Bool> = [];
+			var constructorOperationSpans:Map<String, Bool> = [];
+			for (entry in constructorOperations)
+				if (entry.sourceKind == "typed_ast" && entry.sourceSpan != null && entry.sourceSpan.length > 0) {
+					constructorOperationKinds.set(entry.reasonKind.id(), true);
+					constructorOperationSpans.set(entry.sourceSpan, true);
+				}
+			if (!constructorOperationKinds.exists("platform_abstraction") || !constructorOperationKinds.exists("exception")
+				|| !constructorOperationKinds.exists("reflection"))
+				throw "constructor bodies must retain exact platform, exception, and reflection operation facts";
+			var constructorSpanCount = 0;
+			for (_ in constructorOperationSpans.keys())
+				constructorSpanCount++;
+			if (constructorSpanCount < 4)
+				throw "constructor operations must retain distinct exact call, throw, and try/catch source ranges";
 			var collected = snapshot.decisions();
 			function literalPosition(root:TypedExpr, expectedValue:Int):haxe.macro.Expr.Position {
 				var found:Null<haxe.macro.Expr.Position> = null;

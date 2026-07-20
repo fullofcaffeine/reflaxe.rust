@@ -40,8 +40,8 @@ import haxe.macro.TypedExprTools;
 	  type, so owned derivations such as `Some(VecTools.len(alias))` remain valid.
 	- Tracks first-wave mutable borrow regions by local source identity, which catches nested
 	  `withMut(...)` / `MutSliceTools.with(...)` conflicts while allowing sequential scoped borrows.
-	- Does not attempt full lifetime parity: field/static source provenance and whole-program alias
-	  equivalence remain follow-up typed-pass work.
+	- Does not attempt full lifetime parity: aliases first obtained from fields/statics and aliases that
+	  can only be proven equal by inspecting the whole program remain follow-up typed-pass work.
 **/
 class BorrowRegionAnalyzer {
 	public static function analyze(moduleTypes:Array<ModuleType>, shouldReport:haxe.macro.Expr.Position->Bool):BorrowRegionDiagnostics {
@@ -63,8 +63,11 @@ class BorrowRegionAnalyzer {
 			switch (moduleType) {
 				case TClassDecl(classRef):
 					var classType = classRef.get();
-					scanClassFieldExprs(classType.fields.get(), add);
-					scanClassFieldExprs(classType.statics.get(), add);
+					scanClassFieldExprs(TypedClassExecutableFields.collect(classType), add);
+				case TAbstract(abstractRef):
+					var abstractType = abstractRef.get();
+					if (abstractType != null && abstractType.impl != null)
+						scanClassFieldExprs(TypedClassExecutableFields.collect(abstractType.impl.get()), add);
 				case _:
 			}
 		}

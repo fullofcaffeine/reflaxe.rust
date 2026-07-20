@@ -4,6 +4,8 @@ import reflaxe.rust.analyze.RepresentationPlan.RustBoundaryKind;
 import reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin;
 import reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision;
 import reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind;
+import reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind;
+import reflaxe.rust.analyze.TypedExprReplayFamily;
 
 /**
 	Describes how Rust lowering obtains the owned value that will enter `Dynamic`.
@@ -28,6 +30,111 @@ enum abstract RustDynamicValueMaterialization(String) from String to String {
 }
 
 /**
+	Describes the exact source shape that one saved `Dynamic` action is allowed to consume.
+
+	Why / What / How
+	- A source byte range alone cannot prove that lowering is boxing the same kind of value that early
+	  analysis inspected. A malformed action could otherwise say “direct” for `rust.Ref<T>` and let a
+	  short-lived Rust reference reach runtime storage.
+	- The type check records the source and destination type spellings, the outer carrier family, the
+	  owned value family, and the required copy/clone step.
+	- `RepresentationTypeAnalyzer` builds valid type checks from typed Haxe types. Lowering rebuilds
+	  only this small description and must match it exactly before it may use the saved decision.
+**/
+@:allow(reflaxe.rust.analyze.RepresentationTypeAnalyzer)
+@:allow(RustRepresentationTypeContractMacro)
+class RustDynamicCrossingTypeCheck {
+	public final sourceTypeKey:String;
+	public final boundaryTypeKey:String;
+	public final carrierKind:RustSourceValueKind;
+	public final valueKind:RustSourceValueKind;
+	public final materialization:RustDynamicValueMaterialization;
+
+	private function new(sourceTypeKey:String, boundaryTypeKey:String, carrierKind:RustSourceValueKind, valueKind:RustSourceValueKind,
+			materialization:RustDynamicValueMaterialization) {
+		this.sourceTypeKey = sourceTypeKey;
+		this.boundaryTypeKey = boundaryTypeKey;
+		this.carrierKind = carrierKind;
+		this.valueKind = valueKind;
+		this.materialization = materialization;
+	}
+
+	/**
+		Constructs only source/destination combinations that lowering can safely check.
+
+		Why / What / How
+		- A caller must not pair “use directly” with a borrow or claim copy/clone behavior for the wrong
+		  carrier family.
+		- Validate the exact Dynamic destination plus the allowed carrier, owned-value, and preparation
+		  combinations before the immutable check enters a snapshot.
+		- The production type analyzer supplies these fields from Haxe `Type` values; focused mutation tests
+		  call this factory directly to prove malformed combinations fail immediately.
+	**/
+	private static function validated(sourceTypeKey:String, boundaryTypeKey:String, carrierKind:RustSourceValueKind,
+			valueKind:RustSourceValueKind, materialization:RustDynamicValueMaterialization):RustDynamicCrossingTypeCheck {
+		if (sourceTypeKey == null || sourceTypeKey.length == 0 || sourceTypeKey.indexOf("\u0000") >= 0
+			|| boundaryTypeKey != "Dynamic"
+			|| carrierKind == null || valueKind == null || materialization == null)
+			throw "Dynamic crossing type checks require a safe source type, the exact Dynamic boundary, source families, and a materialization";
+		switch (materialization) {
+			case DynamicValueDirect:
+				if (isBorrowed(carrierKind) || carrierKind != valueKind)
+					throw "A direct Dynamic action must consume the same non-borrowed source family it describes";
+			case DynamicValueBorrowCopy:
+				if (carrierKind != RustSourceValueKind.SourceBorrowedRef
+					|| valueKind != RustSourceValueKind.SourceScalar && valueKind != RustSourceValueKind.SourceCoreHandle)
+					throw "A borrow-copy Dynamic action requires rust.Ref<T> with a proven Copy inner value";
+			case DynamicValueBorrowClone:
+				if (carrierKind != RustSourceValueKind.SourceBorrowedRef || isBorrowed(valueKind)
+					|| valueKind == RustSourceValueKind.SourceScalar || valueKind == RustSourceValueKind.SourceCoreHandle
+					|| valueKind == RustSourceValueKind.SourceDynamic || valueKind == RustSourceValueKind.SourceNativeHandle)
+					throw "A borrow-clone Dynamic action requires rust.Ref<T> with a proven concrete Clone inner value";
+		}
+		return new RustDynamicCrossingTypeCheck(sourceTypeKey, boundaryTypeKey, carrierKind, valueKind, materialization);
+	}
+
+	public function canonicalKey():String {
+		return sourceTypeKey + "\u0000" + boundaryTypeKey + "\u0000" + carrierKind.id() + "\u0000" + valueKind.id() + "\u0000"
+			+ materialization;
+	}
+
+	static function isBorrowed(kind:RustSourceValueKind):Bool {
+		return kind == RustSourceValueKind.SourceBorrowedRef || kind == RustSourceValueKind.SourceBorrowedMutRef
+			|| kind == RustSourceValueKind.SourceBorrowedStr || kind == RustSourceValueKind.SourceBorrowedSlice
+			|| kind == RustSourceValueKind.SourceBorrowedMutSlice;
+	}
+}
+
+/**
+	Identifies one intentional re-emission of a source expression.
+
+	Why / What / How
+	- Haxe default arguments, read-only static initializers, and base constructor bodies can be compiled
+	  at more than one generated Rust site even though early analysis sees one source expression.
+	- `family` names the source definition being replayed; `emissionId` names the concrete generated call,
+	  read, or derived-constructor site.
+	- The first emission consumes the saved action. Later distinct emissions may reuse that immutable
+	  action only through this explicit context; an ordinary second lookup still fails.
+**/
+class RustSavedCrossingReplayContext {
+	public final family:TypedExprReplayFamily;
+	public final emissionId:String;
+	public final key:String;
+
+	private function new(family:TypedExprReplayFamily, emissionId:String) {
+		this.family = family;
+		this.emissionId = emissionId;
+		this.key = family.id + "\u0000" + emissionId;
+	}
+
+	public static function of(family:TypedExprReplayFamily, emissionId:String):RustSavedCrossingReplayContext {
+		if (family == null || emissionId == null || emissionId.length == 0 || emissionId.indexOf("\u0000") >= 0)
+			throw "Saved Dynamic replay contexts require safe family and emission identities";
+		return new RustSavedCrossingReplayContext(family, emissionId);
+	}
+}
+
+/**
 	One saved Dynamic-boxing action consumed later by Rust lowering.
 
 	Why / What / How
@@ -36,8 +143,9 @@ enum abstract RustDynamicValueMaterialization(String) from String to String {
 	- This record joins the decision to the exact expression bytes that emit one box and records the
 	  required borrowed-value conversion. Contextual `if`/`switch` results may have one report decision
 	  but several branch-level actions, all pointing back to that decision.
-	- The stable key contains only private source identity, byte range, module, boundary kind, and a
-	  zero-based action number for macros that create several boxes at one span. It survives the gap
+	- The stable key contains only private source identity, byte range, module, boundary kind, the compact
+	  source/destination type check, and a zero-based action number for macros that create several boxes
+	  at one span. It survives the gap
 	  between Haxe's after-typing callback and Rust AST construction without retaining the complete
 	  typed module graph.
 **/
@@ -45,35 +153,55 @@ class RustSavedRepresentationCrossing {
 	public final key:String;
 	public final baseKey:String;
 	public final ordinal:Int;
+	/** Complete source boundary that caused this action; control-expression branches sit inside it. */
+	public final boundaryOrigin:RustDecisionOrigin;
 	public final origin:RustDecisionOrigin;
 	public final decision:RustRepresentationDecision;
-	public final materialization:RustDynamicValueMaterialization;
+	public final typeCheck:RustDynamicCrossingTypeCheck;
+	/** The source definition that permits this action to be emitted at several generated sites. */
+	public final replayFamily:Null<TypedExprReplayFamily>;
+	public var materialization(get, never):RustDynamicValueMaterialization;
 
-	private function new(origin:RustDecisionOrigin, decision:RustRepresentationDecision, materialization:RustDynamicValueMaterialization, ordinal:Int) {
+	private function new(origin:RustDecisionOrigin, decision:RustRepresentationDecision, typeCheck:RustDynamicCrossingTypeCheck, ordinal:Int,
+			boundaryOrigin:RustDecisionOrigin, replayFamily:Null<TypedExprReplayFamily>) {
 		this.origin = origin;
+		this.boundaryOrigin = boundaryOrigin;
 		this.decision = decision;
-		this.materialization = materialization;
+		this.typeCheck = typeCheck;
+		this.replayFamily = replayFamily;
 		this.ordinal = ordinal;
-		this.baseKey = baseKeyFor(origin);
+		this.baseKey = baseKeyFor(origin, typeCheck);
 		this.key = baseKey + "\u0000" + ordinal;
 	}
 
 	public static function of(origin:RustDecisionOrigin, decision:RustRepresentationDecision,
-			materialization:RustDynamicValueMaterialization, ?ordinal:Int = 0):RustSavedRepresentationCrossing {
-		if (origin == null || decision == null || materialization == null)
-			throw "Saved representation crossings require an origin, decision, and materialization";
+			typeCheck:RustDynamicCrossingTypeCheck, ?ordinal:Int = 0,
+			?boundaryOrigin:RustDecisionOrigin, ?replayFamily:TypedExprReplayFamily):RustSavedRepresentationCrossing {
+		if (boundaryOrigin == null)
+			boundaryOrigin = origin;
+		if (origin == null || boundaryOrigin == null || decision == null || typeCheck == null)
+			throw "Saved representation crossings require an action location, boundary location, decision, and source type check";
+		if (boundaryOrigin.modulePath != origin.modulePath || boundaryOrigin.sourceFile != origin.sourceFile
+			|| boundaryOrigin.startByte > origin.startByte || boundaryOrigin.endByte < origin.endByte)
+			throw "A saved Dynamic action must sit inside its complete source boundary";
 		if (decision.boundary != RustBoundaryKind.BoundaryDynamic)
 			throw "Saved representation crossings currently admit only Dynamic boundaries";
+		if (decision.sourceKind != typeCheck.valueKind)
+			throw "A saved Dynamic decision must describe the owned value family in its source type check";
 		if (ordinal < 0)
 			throw "Saved representation crossing action numbers cannot be negative";
-		return new RustSavedRepresentationCrossing(origin, decision, materialization, ordinal);
+		return new RustSavedRepresentationCrossing(origin, decision, typeCheck, ordinal, boundaryOrigin, replayFamily);
 	}
 
-	public static function baseKeyFor(origin:RustDecisionOrigin):String {
-		if (origin == null)
-			throw "Saved representation crossing keys require an origin";
-		return origin.modulePath + "\u0000" + origin.sourceFile + "\u0000" + origin.startByte + "\u0000" + origin.endByte + "\u0000dynamic";
+	public static function baseKeyFor(origin:RustDecisionOrigin, typeCheck:RustDynamicCrossingTypeCheck):String {
+		if (origin == null || typeCheck == null)
+			throw "Saved representation crossing keys require an origin and source type check";
+		return origin.modulePath + "\u0000" + origin.sourceFile + "\u0000" + origin.startByte + "\u0000" + origin.endByte + "\u0000dynamic\u0000"
+			+ typeCheck.canonicalKey();
 	}
+
+	inline function get_materialization():RustDynamicValueMaterialization
+		return typeCheck.materialization;
 }
 
 /** One saved action whose lowering count is not exactly one. */
@@ -97,6 +225,9 @@ class RustSavedCrossingTracker {
 	final savedByBaseKey:Map<String, Array<RustSavedRepresentationCrossing>>;
 	final nextByBaseKey:Map<String, Int>;
 	final consumedByKey:Map<String, Int>;
+	final primaryReplayEmission:Map<String, String>;
+	final nextByReplayEmission:Map<String, Int>;
+	final replayUsesByKey:Map<String, Int>;
 
 	private function new(crossings:Array<RustSavedRepresentationCrossing>) {
 		saved = crossings.copy();
@@ -104,6 +235,9 @@ class RustSavedCrossingTracker {
 		savedByBaseKey = [];
 		nextByBaseKey = [];
 		consumedByKey = [];
+		primaryReplayEmission = [];
+		nextByReplayEmission = [];
+		replayUsesByKey = [];
 		var seenKeys:Map<String, Bool> = [];
 		for (crossing in saved) {
 			if (crossing == null)
@@ -115,6 +249,12 @@ class RustSavedCrossingTracker {
 			if (bucket == null) {
 				bucket = [];
 				savedByBaseKey.set(crossing.baseKey, bucket);
+			}
+			if (bucket.length > 0) {
+				var expectedFamily = bucket[0].replayFamily == null ? null : bucket[0].replayFamily.id;
+				var actualFamily = crossing.replayFamily == null ? null : crossing.replayFamily.id;
+				if (expectedFamily != actualFamily)
+					throw 'Saved Dynamic actions at `${crossing.baseKey}` cannot mix ordinary and repeated source definitions';
 			}
 			if (crossing.ordinal != bucket.length)
 				throw 'Saved Dynamic crossing action numbers for `${crossing.baseKey}` must be contiguous from zero';
@@ -132,17 +272,53 @@ class RustSavedCrossingTracker {
 		return new RustSavedCrossingTracker([]);
 
 	/** Returns and counts the exact saved action, or `null` when early analysis did not save one. */
-	public function consume(origin:RustDecisionOrigin):Null<RustSavedRepresentationCrossing> {
-		var baseKey = RustSavedRepresentationCrossing.baseKeyFor(origin);
+	public function consume(origin:RustDecisionOrigin, typeCheck:RustDynamicCrossingTypeCheck,
+			?replay:RustSavedCrossingReplayContext):Null<RustSavedRepresentationCrossing> {
+		var baseKey = RustSavedRepresentationCrossing.baseKeyFor(origin, typeCheck);
 		var bucket = savedByBaseKey.get(baseKey);
 		if (bucket == null)
 			return null;
+		if (replay != null) {
+			var replayCursorKey = replay.key + "\u0000" + baseKey;
+			var replayNext = nextByReplayEmission.get(replayCursorKey);
+			if (replayNext == null)
+				replayNext = 0;
+			if (replayNext >= bucket.length)
+				return null;
+			var replayed = bucket[replayNext];
+			if (replayed.replayFamily == null || replayed.replayFamily.id != replay.family.id)
+				return null;
+
+			var familyKey = replay.family.id + "\u0000" + baseKey;
+			var primaryEmission = primaryReplayEmission.get(familyKey);
+			if (primaryEmission == null) {
+				primaryEmission = replay.emissionId;
+				primaryReplayEmission.set(familyKey, primaryEmission);
+			}
+			nextByReplayEmission.set(replayCursorKey, replayNext + 1);
+			if (replay.emissionId == primaryEmission) {
+				var globalNext = nextByBaseKey.get(baseKey);
+				if (globalNext == null)
+					globalNext = 0;
+				if (globalNext != replayNext)
+					return null;
+				nextByBaseKey.set(baseKey, globalNext + 1);
+				var primaryCount = consumedByKey.get(replayed.key);
+				consumedByKey.set(replayed.key, primaryCount == null ? 1 : primaryCount + 1);
+			} else {
+				var replayCount = replayUsesByKey.get(replayed.key);
+				replayUsesByKey.set(replayed.key, replayCount == null ? 1 : replayCount + 1);
+			}
+			return replayed;
+		}
 		var next = nextByBaseKey.get(baseKey);
 		if (next == null)
 			next = 0;
 		if (next >= bucket.length)
 			return null;
 		var crossing = bucket[next];
+		if (crossing.replayFamily != null)
+			return null;
 		nextByBaseKey.set(baseKey, next + 1);
 		var count = consumedByKey.get(crossing.key);
 		consumedByKey.set(crossing.key, count == null ? 1 : count + 1);
@@ -153,6 +329,13 @@ class RustSavedCrossingTracker {
 		if (crossing == null)
 			throw "A saved Dynamic crossing is required to read its use count";
 		var count = consumedByKey.get(crossing.key);
+		return count == null ? 0 : count;
+	}
+
+	public function replayCountFor(crossing:RustSavedRepresentationCrossing):Int {
+		if (crossing == null)
+			throw "A saved Dynamic crossing is required to read its replay count";
+		var count = replayUsesByKey.get(crossing.key);
 		return count == null ? 0 : count;
 	}
 

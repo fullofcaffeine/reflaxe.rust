@@ -19,6 +19,8 @@ Before committing bead status changes, run `bd export -o .beads/issues.jsonl` an
   include it with the Beads bookkeeping unless you are intentionally leaving local interaction history out.
 - Modern Beads migration gotcha: this repo has been migrated to the embedded Dolt backend (`bd context` should report `Backend: dolt`, `mode: embedded`).
   Do not use legacy direct SQLite-style `bd --db .beads/beads.db ...` commands; they can open an empty legacy database and remove/hide the JSONL export.
+  A diagnostic `git worktree add` normally runs this repository's `post-checkout` hook, and worktrees share the same embedded Beads database. Create disposable worktrees with hooks disabled for that command
+  (`git -c core.hooksPath=/dev/null worktree add ...`) and do not run `bd` inside them, so an unrelated comparison cannot import or rewrite the main worktree's tracker state.
   If recovery is needed, first copy `.beads/issues.jsonl` to a temp path, then run `bd init --from-jsonl --reinit-local --prefix haxe.rust --skip-agents --skip-hooks --non-interactive`
   and verify `bd status` matches the JSONL counts before mutating issues.
   The modern backend normalizes the configured prefix to `haxe_rust`; when adding children to the historical `haxe.rust-*` roadmap, use explicit IDs with `bd create --force --id ...`.

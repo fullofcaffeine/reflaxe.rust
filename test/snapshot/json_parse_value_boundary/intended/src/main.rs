@@ -107,8 +107,17 @@ fn object_fields(
                         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                         {
                             let mut __b = __o.borrow_mut();
-                            __b.set("name", keys.get_unchecked(i as usize));
-                            __b.set("value", values.get_unchecked(i as usize));
+                            __b.set_dyn(
+                                "name",
+                                hxrt::dynamic::from(keys.get_unchecked(i as usize)),
+                            );
+                            __b.set_dyn(
+                                "value",
+                                hxrt::dynamic::from_with_type_id(
+                                    values.get_unchecked(i as usize),
+                                    0xad5df524u32,
+                                ),
+                            );
                         };
                         __o
                     });

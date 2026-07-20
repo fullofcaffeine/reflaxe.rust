@@ -19,6 +19,14 @@ class Main {
 		};
 	}
 
+	static function makeExplicitNull():Payload {
+		return {
+			name: "Lin",
+			nickname: null,
+			enabled: null
+		};
+	}
+
 	static function describe(p:Payload):String {
 		var nick = p.nickname == null ? "<missing>" : p.nickname;
 		var active = p.enabled == true ? "enabled" : "disabled-or-missing";
@@ -37,5 +45,11 @@ class Main {
 		Sys.println(present.nickname == null);
 		Sys.println(present.enabled == null);
 		Sys.println(describe(present));
+
+		var explicitNull = makeExplicitNull();
+		Sys.println(explicitNull.name);
+		Sys.println(explicitNull.nickname == null);
+		Sys.println(explicitNull.enabled == null);
+		Sys.println(describe(explicitNull));
 	}
 }

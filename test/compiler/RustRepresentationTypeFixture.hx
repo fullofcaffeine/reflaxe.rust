@@ -10,6 +10,9 @@ class RustRepresentationTypeFixture {
 	static var sharedIdentity:RustRepresentationFixtureNode;
 	static var polymorphic:RustRepresentationFixtureContract;
 	static var borrowed:rust.Ref<Int>;
+	static var borrowedNativeOwned:rust.Ref<rust.Vec<Int>>;
+	static var borrowedPath:rust.Ref<rust.PathBuf>;
+	static var borrowedNativeHandle:rust.Ref<rust.net.TcpStream>;
 	static var nullableBorrowed:Null<rust.Ref<Int>>;
 	static var nativeHandle:rust.net.TcpStream;
 	static var dynamicValue:Dynamic;
@@ -58,4 +61,21 @@ class RustRepresentationFixtureImplementation implements RustRepresentationFixtu
 enum RustRepresentationFixtureChoice {
 	First;
 	Payload(value:Dynamic);
+}
+
+class RustConstructorAnalysisFixture {
+	static var escaped:rust.Ref<Int>;
+	static var escapedClosure:Void->rust.Ref<Int>;
+
+	public function new(borrowed:rust.Ref<Int>) {
+		var alias = borrowed;
+		escaped = alias;
+		escapedClosure = () -> alias;
+		var cwd = Sys.getCwd();
+		var reflected = Reflect.field({value: 1}, "value");
+		try {
+			if (cwd.length == -1 || reflected == null)
+				throw "constructor-only";
+		} catch (_:String) {}
+	}
 }

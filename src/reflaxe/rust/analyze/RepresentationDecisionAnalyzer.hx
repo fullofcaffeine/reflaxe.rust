@@ -6,13 +6,13 @@ import haxe.macro.Type;
 import haxe.macro.TypeTools;
 import haxe.macro.TypedExprTools;
 import reflaxe.helpers.TypeHelper;
+import reflaxe.rust.RustDiagnostic;
+import reflaxe.rust.RustDiagnostic.RustDiagnosticId;
 import reflaxe.rust.RustSourcePosition;
 import reflaxe.rust.analyze.RepresentationPlan.RustDecisionOrigin;
 import reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision;
-import reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy;
 import reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind;
 import reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind;
-import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization;
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRepresentationAnalysisSnapshot;
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRuntimeRequirementCoverage;
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing;
@@ -59,17 +59,32 @@ class RepresentationDecisionAnalyzer {
 	**/
 	public static function collectSnapshot(moduleTypes:Array<ModuleType>, nullableStringCompat:Bool,
 			?classHasSubclasses:ClassType->Bool):RustRepresentationAnalysisSnapshot {
-		RustSourcePosition.reset();
 		var out:Array<RustRepresentationDecision> = [];
 		var crossings:Array<RustSavedRepresentationCrossing> = [];
 		var coverage:Array<RustRuntimeRequirementCoverage> = [];
 		var seen:Map<String, Bool> = [];
 		var crossingByExpression:ObjectMap<{}, RustSavedRepresentationCrossing> = new ObjectMap();
+		var seenReplayDefinitions:Map<String, Bool> = [];
+		var contextualFunctionReturnByExpression:ObjectMap<{}, Type> = new ObjectMap();
 		var seenAnchoredCrossings:Map<String, Bool> = [];
 		var nextCrossingOrdinal:Map<String, Int> = [];
 		var seenCoverage:Map<String, Bool> = [];
+		var currentReplayFamily:Null<TypedExprReplayFamily> = null;
 		if (moduleTypes == null)
 			return RustRepresentationAnalysisSnapshot.of(out, crossings, coverage);
+
+		function replayFamilyId(family:Null<TypedExprReplayFamily>):String {
+			return family == null ? "" : family.id;
+		}
+
+		function withReplayFamily(family:TypedExprReplayFamily, build:() -> Void):Void {
+			if (family == null)
+				throw "Repeated source analysis requires a typed source definition identity";
+			var previous = currentReplayFamily;
+			currentReplayFamily = family;
+			build();
+			currentReplayFamily = previous;
+		}
 
 		function addCoverage(value:RustRuntimeRequirementCoverage):Void {
 			var key = value.canonicalKey();
@@ -131,6 +146,16 @@ class RepresentationDecisionAnalyzer {
 		function addCrossing(modulePath:String, label:String, actual:TypedExpr, expected:Type, ?relatedModulePath:String):Void {
 			if (actual == null || expected == null)
 				return;
+			var actualCore = unwrapMetaParen(actual);
+			switch (actualCore.expr) {
+				case TFunction(_):
+					switch (TypeTools.follow(expected)) {
+						case TFun(_, expectedResult):
+							contextualFunctionReturnByExpression.set(actualCore, expectedResult);
+						case _:
+					}
+				case _:
+			}
 			var origin = originAt(modulePath, actual.pos);
 			if (origin == null)
 				return;
@@ -171,33 +196,32 @@ class RepresentationDecisionAnalyzer {
 				var siteOrigin = originAt(modulePath, site.pos);
 				if (siteOrigin == null)
 					continue;
-				var decision = groupDecision;
-				if (decision == null) {
-					decision = RepresentationTypeAnalyzer.tryDecideCrossing(subject + "-branch", site.t, expected, site.pos, origin, nullableStringCompat,
-						classHasSubclasses);
+				var rejection = RepresentationTypeAnalyzer.dynamicCrossingRejectionReason(site.t, expected, nullableStringCompat,
+					classHasSubclasses);
+				if (rejection != null) {
+					RustDiagnostic.error(RustDiagnosticId.BorrowRegion, "Rust borrow region violation: " + rejection, site.pos);
+					return;
 				}
-				if (decision == null)
+				var typeCheck = RepresentationTypeAnalyzer.tryDynamicCrossingTypeCheck(site.t, expected, nullableStringCompat, classHasSubclasses);
+				var decision = RepresentationTypeAnalyzer.tryDecideCrossing(subject + "-action", site.t, expected, site.pos, siteOrigin,
+					nullableStringCompat, classHasSubclasses);
+				if (decision == null || typeCheck == null)
 					continue;
-				var siteKind = RepresentationTypeAnalyzer.classify(site.t, nullableStringCompat, classHasSubclasses);
-				var materialization = if (siteKind == RustSourceValueKind.SourceBorrowedRef) {
-					decision.reuse == RustReusePolicy.ReuseCopy ? RustDynamicValueMaterialization.DynamicValueBorrowCopy : RustDynamicValueMaterialization.DynamicValueBorrowClone;
-				} else {
-					RustDynamicValueMaterialization.DynamicValueDirect;
-				};
 				var existing = crossingByExpression.get(site);
 				if (existing != null) {
 					if (existing.decision.sourceKind != decision.sourceKind
 						|| existing.decision.representation != decision.representation
 						|| existing.decision.reuse != decision.reuse
-						|| existing.materialization != materialization)
+						|| existing.typeCheck.canonicalKey() != typeCheck.canonicalKey()
+						|| replayFamilyId(existing.replayFamily) != replayFamilyId(currentReplayFamily))
 						throw 'Conflicting saved Dynamic crossings at `${existing.baseKey}`';
 					continue;
 				}
-				var baseKey = RustSavedRepresentationCrossing.baseKeyFor(siteOrigin);
+				var baseKey = RustSavedRepresentationCrossing.baseKeyFor(siteOrigin, typeCheck);
 				var ordinal = nextCrossingOrdinal.get(baseKey);
 				if (ordinal == null)
 					ordinal = 0;
-				var saved = RustSavedRepresentationCrossing.of(siteOrigin, decision, materialization, ordinal);
+				var saved = RustSavedRepresentationCrossing.of(siteOrigin, decision, typeCheck, ordinal, origin, currentReplayFamily);
 				nextCrossingOrdinal.set(baseKey, ordinal + 1);
 				crossingByExpression.set(site, saved);
 				crossings.push(saved);
@@ -222,6 +246,28 @@ class RepresentationDecisionAnalyzer {
 		}
 
 		/**
+			Registers a declaration expression only after lowering has a real use that will emit it.
+
+			Why / What / How
+			- Defaults and read-only static constants live on their declaration but may be emitted at several
+			  call or read sites. An unused declaration must create no saved Dynamic action.
+			- Use the private module plus exact source bytes as the definition identity, and analyze the
+			  declaration expression once after its first real use is found.
+			- Later emitted uses reuse that saved action through the compiler's explicit replay context.
+		**/
+		function beginReplayedDefinition(modulePath:String, family:TypedExprReplayFamily, expression:TypedExpr):Bool {
+			var origin = originAt(modulePath, expression.pos);
+			if (origin == null)
+				return false;
+			var key = family.id + "\u0000" + origin.modulePath + "\u0000" + origin.sourceFile + "\u0000" + origin.startByte + "\u0000"
+				+ origin.endByte;
+			if (seenReplayDefinitions.exists(key))
+				return false;
+			seenReplayDefinitions.set(key, true);
+			return true;
+		}
+
+		/**
 			Saves a compiler-intrinsic result conversion whose concrete type is known from typed metadata.
 
 			Why / What / How
@@ -237,26 +283,21 @@ class RepresentationDecisionAnalyzer {
 			var origin = originAt(modulePath, anchor.pos);
 			if (origin == null)
 				return;
-			var dedupeKey = label + "\u0000" + RustSavedRepresentationCrossing.baseKeyFor(origin);
-			if (seenAnchoredCrossings.exists(dedupeKey))
-				return;
 			var info = Context.getPosInfos(anchor.pos);
 			var subject = modulePath + "#" + label + "@" + info.min + ":" + info.max;
 			var decision = RepresentationTypeAnalyzer.tryDecideCrossing(subject, actualType, expected, anchor.pos, origin, nullableStringCompat,
 				classHasSubclasses);
-			if (decision == null)
+			var typeCheck = RepresentationTypeAnalyzer.tryDynamicCrossingTypeCheck(actualType, expected, nullableStringCompat, classHasSubclasses);
+			if (decision == null || typeCheck == null)
 				return;
-			var sourceKind = RepresentationTypeAnalyzer.classify(actualType, nullableStringCompat, classHasSubclasses);
-			var materialization = if (sourceKind == RustSourceValueKind.SourceBorrowedRef) {
-				decision.reuse == RustReusePolicy.ReuseCopy ? RustDynamicValueMaterialization.DynamicValueBorrowCopy : RustDynamicValueMaterialization.DynamicValueBorrowClone;
-			} else {
-				RustDynamicValueMaterialization.DynamicValueDirect;
-			};
-			var baseKey = RustSavedRepresentationCrossing.baseKeyFor(origin);
+			var dedupeKey = label + "\u0000" + RustSavedRepresentationCrossing.baseKeyFor(origin, typeCheck);
+			if (seenAnchoredCrossings.exists(dedupeKey))
+				return;
+			var baseKey = RustSavedRepresentationCrossing.baseKeyFor(origin, typeCheck);
 			var ordinal = nextCrossingOrdinal.get(baseKey);
 			if (ordinal == null)
 				ordinal = 0;
-			crossings.push(RustSavedRepresentationCrossing.of(origin, decision, materialization, ordinal));
+			crossings.push(RustSavedRepresentationCrossing.of(origin, decision, typeCheck, ordinal, origin, currentReplayFamily));
 			nextCrossingOrdinal.set(baseKey, ordinal + 1);
 			seenAnchoredCrossings.set(dedupeKey, true);
 			addDecision(decision);
@@ -270,40 +311,36 @@ class RepresentationDecisionAnalyzer {
 			};
 		}
 
-		/**
-			Reports when a typed expression guarantees that the next statement cannot run.
-
-			Why / What / How
-			- Haxe can leave statements after an unconditional `return`, `throw`, `break`, or `continue`
-			  in the typed tree even though Rust lowering deliberately omits them.
-			- Early analysis must skip those omitted statements or it will save Dynamic actions that no
-			  generated expression can consume.
-			- Follow transparent wrappers and sequential blocks, and accept an `if` only when both branches
-			  stop. Uncertain control flow returns `false`, so reachable work is never discarded speculatively.
-		**/
-		function stopsFollowingStatements(expression:TypedExpr):Bool {
-			if (expression == null)
-				return false;
-			var current = unwrapMetaParen(expression);
-			return switch (current.expr) {
-				case TReturn(_) | TThrow(_) | TBreak | TContinue:
-					true;
-				case TCast(inner, _):
-					stopsFollowingStatements(inner);
-				case TBlock(expressions):
-					var stops = false;
-					for (child in expressions) {
-						if (stopsFollowingStatements(child)) {
-							stops = true;
-							break;
-						}
-					}
-					stops;
-				case TIf(_, thenExpression, elseExpression) if (elseExpression != null):
-					stopsFollowingStatements(thenExpression) && stopsFollowingStatements(elseExpression);
+		function arrayElementType(type:Type):Null<Type> {
+			return switch (TypeTools.follow(type)) {
+				case TInst(classRef, parameters) if (parameters.length == 1):
+					var classType = classRef.get();
+					classType != null && classType.pack.length == 0 && classType.name == "Array" ? parameters[0] : null;
 				case _:
-					false;
+					null;
 			};
+		}
+
+		function addImplicitResultCrossing(modulePath:String, body:TypedExpr, expectedReturn:Type):Void {
+			if (body == null || expectedReturn == null || TypeHelper.isVoid(TypeTools.follow(expectedReturn)))
+				return;
+			var result = unwrapMetaParen(body);
+			switch (result.expr) {
+				case TBlock(expressions) if (expressions.length > 0):
+					var index = 0;
+					while (index < expressions.length - 1) {
+						if (TypedExprControlFlow.stopsFollowingStatements(expressions[index]))
+							return;
+						index++;
+					}
+					result = unwrapMetaParen(expressions[expressions.length - 1]);
+				case _:
+			}
+			switch (result.expr) {
+				case TReturn(_) | TThrow(_) | TBreak | TContinue:
+				case _:
+					addCrossing(modulePath, "implicit-result-boundary", result, expectedReturn);
+			}
 		}
 
 		function scanExpr(modulePath:String, root:TypedExpr, fieldRoot:Bool):Void {
@@ -330,7 +367,7 @@ class RepresentationDecisionAnalyzer {
 					case TBlock(expressions):
 						for (child in expressions) {
 							visit(child, false, false, false, expectedReturn);
-							if (stopsFollowingStatements(child))
+							if (TypedExprControlFlow.stopsFollowingStatements(child))
 								break;
 						}
 						return;
@@ -343,23 +380,38 @@ class RepresentationDecisionAnalyzer {
 								addType(modulePath, "function-arg-" + index, fn.args[index].v.t, current.pos);
 							addType(modulePath, "function-result", fn.t, current.pos);
 						}
-						visit(fn.expr, false, false, false, fn.t);
+						var expectedFunctionResult = contextualFunctionReturnByExpression.get(current);
+						if (expectedFunctionResult == null)
+							expectedFunctionResult = fn.t;
+						addImplicitResultCrossing(modulePath, fn.expr, expectedFunctionResult);
+						visit(fn.expr, false, false, false, expectedFunctionResult);
 						return;
 					case TCall(callTarget, arguments):
 						var callableTarget = transparentCallableTarget(callTarget);
 						var relatedModulePath = callableOwnerPath(callableTarget);
 						var intrinsicOwner:Null<ClassType> = null;
 						var intrinsicField:Null<ClassField> = null;
+						var declaredCallOwner:Null<ClassType> = null;
+						var declaredCallField:Null<ClassField> = null;
+						var declaredCallIsStatic = false;
 						switch (callableTarget.expr) {
 							case TField(_, FStatic(ownerRef, fieldRef)):
 								intrinsicOwner = ownerRef.get();
 								intrinsicField = fieldRef.get();
+								declaredCallOwner = intrinsicOwner;
+								declaredCallField = intrinsicField;
+								declaredCallIsStatic = true;
+							case TField(_, FInstance(ownerRef, _, fieldRef)):
+								declaredCallOwner = ownerRef.get();
+								declaredCallField = fieldRef.get();
 							case _:
 						}
 						var stdStringCall = intrinsicOwner != null && intrinsicField != null && intrinsicOwner.pack.length == 0
 							&& intrinsicOwner.name == "Std" && intrinsicField.name == "string";
 						var stdIsOfTypeCall = intrinsicOwner != null && intrinsicField != null && intrinsicOwner.pack.length == 0
 							&& intrinsicOwner.name == "Std" && intrinsicField.name == "isOfType";
+						var traceCall = intrinsicOwner != null && intrinsicField != null && intrinsicOwner.pack.join(".") == "haxe"
+							&& intrinsicOwner.name == "Log" && intrinsicField.name == "trace";
 						var directReflectField:Null<ClassField> = null;
 						var reflectOperation = intrinsicOwner != null && intrinsicField != null && intrinsicOwner.pack.length == 0
 							&& intrinsicOwner.name == "Reflect" ? intrinsicField.name : "";
@@ -380,6 +432,14 @@ class RepresentationDecisionAnalyzer {
 							};
 						if (reflectOperation == "field" && directReflectField != null)
 							addAnchoredCrossing(modulePath, "reflect-field-result-boundary", current, directReflectField.type, Context.getType("Dynamic"));
+						if (reflectOperation == "setField" && directReflectField != null && arguments.length >= 3) {
+							var anonymousWrite = RepresentationTypeAnalyzer.classify(arguments[0].t, nullableStringCompat, classHasSubclasses)
+								== RustSourceValueKind.SourceAnonymousObject;
+							if (anonymousWrite)
+								addCrossing(modulePath, "reflect-field-write-shape-boundary", arguments[2], directReflectField.type);
+							var writeBoundary = anonymousWrite ? Context.getType("Dynamic") : directReflectField.type;
+							addCrossing(modulePath, "reflect-field-write-boundary", arguments[2], writeBoundary);
+						}
 						var directCallableTarget = switch (callableTarget.expr) {
 							case TField(_, FStatic(_, fieldRef)) | TField(_, FInstance(_, _, fieldRef)):
 								var field = fieldRef.get();
@@ -395,8 +455,22 @@ class RepresentationDecisionAnalyzer {
 						// with suppression so recursive traversal cannot re-materialize the wrapped constructor.
 						visit(directCallableTarget ? callableTarget : callTarget, false, directCallableTarget, false, expectedReturn);
 						var expectedArguments = functionArgumentTypes(callTarget.t);
+						var defaultExpressions:Array<Null<TypedExpr>> = [];
+						if (declaredCallOwner != null && declaredCallField != null) {
+							switch (declaredCallField.kind) {
+								case FMethod(_):
+									var functionData = declaredCallField.findFuncData(declaredCallOwner, declaredCallIsStatic);
+									if (functionData != null && functionData.args != null)
+										defaultExpressions = [for (argument in functionData.args) argument.expr];
+								case _:
+							}
+						}
 						for (index in 0...arguments.length) {
 							var argument = arguments[index];
+							// Haxe adds a compiler-created `{fileName, lineNumber, ...}` argument to `haxe.Log.trace`.
+							// Rust trace lowering consumes the source position directly and never constructs that record.
+							if (traceCall && index > 0)
+								continue;
 							var directReflectReceiver = index == 0 && (directReflectField != null
 								&& (reflectOperation == "field" || reflectOperation == "setField")
 								|| reflectOperation == "hasField" && constantReflectName && hasStaticReflectFields(arguments[0]));
@@ -416,14 +490,54 @@ class RepresentationDecisionAnalyzer {
 							// though every branch has a more concrete type.
 							visit(argument, false, false, true, expectedReturn);
 						}
+						for (index in arguments.length...expectedArguments.length) {
+							var defaultExpression = index < defaultExpressions.length ? defaultExpressions[index] : null;
+							if (defaultExpression == null || !TypedExprEmissionPolicy.defaultArgumentIsCallsiteSafe(defaultExpression))
+								continue;
+							if (declaredCallOwner == null || declaredCallField == null)
+								continue;
+							var family = TypedExprReplayFamily.methodDefault(declaredCallOwner, declaredCallField, index);
+							var definitionModulePath = moduleName(declaredCallOwner.module, declaredCallOwner.pack, declaredCallOwner.name);
+							if (beginReplayedDefinition(definitionModulePath, family, defaultExpression)) {
+								withReplayFamily(family, () -> {
+									addCrossing(definitionModulePath, "function-default-" + index + "-boundary", defaultExpression,
+										expectedArguments[index]);
+									scanExpr(definitionModulePath, defaultExpression, false);
+								});
+							}
+						}
 						return;
 					case TNew(classRef, typeParameters, arguments):
 						var expectedArguments = constructorArgumentTypes(classRef, typeParameters);
+						var defaultExpressions:Array<Null<TypedExpr>> = [];
+						var constructedClass = classRef == null ? null : classRef.get();
+						if (constructedClass != null && constructedClass.constructor != null) {
+							var constructor = constructedClass.constructor.get();
+							var functionData = constructor == null ? null : constructor.findFuncData(constructedClass, false);
+							if (functionData != null && functionData.args != null)
+								defaultExpressions = [for (argument in functionData.args) argument.expr];
+						}
 						for (index in 0...arguments.length) {
 							var argument = arguments[index];
 							if (index < expectedArguments.length)
 								addCrossing(modulePath, "constructor-argument-" + index + "-boundary", argument, expectedArguments[index]);
 							visit(argument, false, false, true, expectedReturn);
+						}
+						for (index in arguments.length...expectedArguments.length) {
+							var defaultExpression = index < defaultExpressions.length ? defaultExpressions[index] : null;
+							if (defaultExpression == null || !TypedExprEmissionPolicy.defaultArgumentIsCallsiteSafe(defaultExpression))
+								continue;
+							if (constructedClass == null)
+								continue;
+							var family = TypedExprReplayFamily.constructorDefault(constructedClass, index);
+							var definitionModulePath = moduleName(constructedClass.module, constructedClass.pack, constructedClass.name);
+							if (beginReplayedDefinition(definitionModulePath, family, defaultExpression)) {
+								withReplayFamily(family, () -> {
+									addCrossing(definitionModulePath, "constructor-default-" + index + "-boundary", defaultExpression,
+										expectedArguments[index]);
+									scanExpr(definitionModulePath, defaultExpression, false);
+								});
+							}
 						}
 						return;
 					case TVar(variable, initializer):
@@ -431,6 +545,20 @@ class RepresentationDecisionAnalyzer {
 							addType(modulePath, "local-" + variable.id, variable.t, current.pos);
 							if (initializer != null)
 								addCrossing(modulePath, "local-initializer-boundary", initializer, variable.t);
+						}
+					case TField(_, FStatic(ownerRef, fieldRef)):
+						var owner = ownerRef.get();
+						var field = fieldRef.get();
+						var inlineInitializer = TypedExprEmissionPolicy.staticReadOnlyConstantExpr(field);
+						if (owner != null && field != null && inlineInitializer != null) {
+							var family = TypedExprReplayFamily.staticReadOnly(owner, field);
+							var definitionModulePath = moduleName(owner.module, owner.pack, owner.name);
+							if (beginReplayedDefinition(definitionModulePath, family, inlineInitializer)) {
+								withReplayFamily(family, () -> {
+									addCrossing(definitionModulePath, "static-readonly-boundary", inlineInitializer, field.type);
+									scanExpr(definitionModulePath, inlineInitializer, false);
+								});
+							}
 						}
 					case TArray(array, index)
 						if (RepresentationTypeAnalyzer.classify(array.t, nullableStringCompat, classHasSubclasses) == RustSourceValueKind.SourceDynamic):
@@ -447,7 +575,45 @@ class RepresentationDecisionAnalyzer {
 						if (!directStringIndex && !TypeHelper.isInt(TypeTools.follow(index.t)))
 							addCrossing(modulePath, "dynamic-index-boundary", index, Context.getType("Dynamic"));
 					case TBinop(OpAssign, left, right):
-						addCrossing(modulePath, "assignment-boundary", right, left.t);
+						var expected = left.t;
+						switch (unwrapMetaParen(left).expr) {
+							case TField(receiver, FAnon(fieldRef))
+								if (RepresentationTypeAnalyzer.classify(receiver.t, nullableStringCompat, classHasSubclasses)
+									== RustSourceValueKind.SourceAnonymousObject):
+								var field = fieldRef.get();
+								if (field != null)
+									addCrossing(modulePath, "anonymous-assignment-shape-boundary", right, field.type);
+								expected = Context.getType("Dynamic");
+							case _:
+						}
+						addCrossing(modulePath, "assignment-boundary", right, expected);
+						var writeTarget = unwrapMetaParen(left);
+						switch (writeTarget.expr) {
+							case TField(receiver, _):
+								visit(receiver, false, false, false, expectedReturn);
+							case TArray(array, index):
+								visit(array, false, false, false, expectedReturn);
+								visit(index, false, false, true, expectedReturn);
+							case TLocal(_):
+							case _:
+								visit(left, false, false, false, expectedReturn);
+						}
+						visit(right, false, false, true, expectedReturn);
+						return;
+					case TBinop(OpEq, left, right) | TBinop(OpNotEq, left, right):
+						var leftDynamic = RepresentationTypeAnalyzer.classify(left.t, nullableStringCompat, classHasSubclasses)
+							== RustSourceValueKind.SourceDynamic;
+						var rightDynamic = RepresentationTypeAnalyzer.classify(right.t, nullableStringCompat, classHasSubclasses)
+							== RustSourceValueKind.SourceDynamic;
+						if (leftDynamic && !rightDynamic)
+							addCrossing(modulePath, "dynamic-equality-right-boundary", right, Context.getType("Dynamic"));
+						if (rightDynamic && !leftDynamic)
+							addCrossing(modulePath, "dynamic-equality-left-boundary", left, Context.getType("Dynamic"));
+					case TArrayDecl(values):
+						var elementType = arrayElementType(current.t);
+						if (elementType != null)
+							for (value in values)
+								addCrossing(modulePath, "array-element-boundary", value, elementType);
 					case TBinop(OpAdd, left, right) if (isStringFamily(current.t) || isStringFamily(left.t) || isStringFamily(right.t)):
 						if (!isStringFamily(left.t))
 							addCrossing(modulePath, "string-concat-left-boundary", left, Context.getType("Dynamic"));
@@ -463,13 +629,30 @@ class RepresentationDecisionAnalyzer {
 						addCrossing(modulePath, "throw-boundary", value, Context.getType("Dynamic"));
 					case TCast(value, _):
 						addCrossing(modulePath, "cast-boundary", value, current.t);
-					case TObjectDecl(_) if (RepresentationTypeAnalyzer.classify(current.t, nullableStringCompat, classHasSubclasses)
-						== RustSourceValueKind.SourceDynamic):
-						var origin = originAt(modulePath, current.pos);
-						if (origin != null) {
-							var info = Context.getPosInfos(current.pos);
-							addDecision(RepresentationTypeAnalyzer.decideSourceKind(modulePath + "#anonymous-object@" + info.min + ":" + info.max,
-								RustSourceValueKind.SourceAnonymousObject, false, origin));
+					case TObjectDecl(fields):
+						var declaredFields:Map<String, Type> = [];
+						switch (TypeTools.follow(current.t)) {
+							case TAnonymous(anonymousRef):
+								var anonymous = anonymousRef.get();
+								if (anonymous != null && anonymous.fields != null)
+									for (declared in anonymous.fields)
+										declaredFields.set(declared.name, declared.type);
+							case _:
+						}
+						for (field in fields) {
+							var declaredType = declaredFields.get(field.name);
+							if (declaredType != null)
+								addCrossing(modulePath, "anonymous-field-" + field.name + "-shape-boundary", field.expr, declaredType);
+							addCrossing(modulePath, "anonymous-field-" + field.name + "-boundary", field.expr, Context.getType("Dynamic"));
+						}
+						if (RepresentationTypeAnalyzer.classify(current.t, nullableStringCompat, classHasSubclasses)
+							== RustSourceValueKind.SourceDynamic) {
+							var origin = originAt(modulePath, current.pos);
+							if (origin != null) {
+								var info = Context.getPosInfos(current.pos);
+								addDecision(RepresentationTypeAnalyzer.decideSourceKind(modulePath + "#anonymous-object@" + info.min + ":" + info.max,
+									RustSourceValueKind.SourceAnonymousObject, false, origin));
+							}
 						}
 					case _:
 				}
@@ -478,9 +661,24 @@ class RepresentationDecisionAnalyzer {
 			visit(root, fieldRoot, false);
 		}
 
-		function scanFields(modulePath:String, fields:Array<ClassField>):Void {
+		function scanFields(modulePath:String, owner:ClassType, fields:Array<ClassField>, staticFields:Array<ClassField>):Void {
 			if (fields == null)
 				return;
+			function fieldKey(field:ClassField):String {
+				var position = Context.getPosInfos(field.pos);
+				return field.name + "\u0000" + position.file + "\u0000" + position.min + "\u0000" + position.max;
+			}
+			var staticFieldKeys:Map<String, Bool> = [];
+			if (staticFields != null)
+				for (field in staticFields)
+					if (field != null)
+						staticFieldKeys.set(fieldKey(field), true);
+			var constructorKey:Null<String> = null;
+			if (owner != null && owner.constructor != null) {
+				var constructor = owner.constructor.get();
+				if (constructor != null)
+					constructorKey = fieldKey(constructor);
+			}
 			for (field in fields) {
 				if (field == null)
 					continue;
@@ -497,8 +695,19 @@ class RepresentationDecisionAnalyzer {
 						addType(modulePath, "field-" + field.name, field.type, field.pos);
 				}
 				var expression = field.expr();
-				if (expression != null)
-					scanExpr(modulePath, expression, method);
+				if (expression != null) {
+					var inlineStatic = staticFieldKeys.exists(fieldKey(field)) && TypedExprEmissionPolicy.staticReadOnlyConstantExpr(field) != null;
+					if (!inlineStatic) {
+						if (!method)
+							addCrossing(modulePath, "field-initializer-" + field.name + "-boundary", expression, field.type);
+						if (constructorKey != null && fieldKey(field) == constructorKey) {
+							var family = TypedExprReplayFamily.constructorBody(owner);
+							withReplayFamily(family, () -> scanExpr(modulePath, expression, method));
+						} else {
+							scanExpr(modulePath, expression, method);
+						}
+					}
+				}
 			}
 		}
 
@@ -508,17 +717,7 @@ class RepresentationDecisionAnalyzer {
 					var classType = classRef.get();
 					if (classType != null) {
 						var modulePath = moduleName(classType.module, classType.pack, classType.name);
-						// Haxe stores constructors outside `fields` / `statics`. They are still executable
-						// user code and can contain the same argument, assignment, return, and Dynamic
-						// boundaries as ordinary methods.
-						var constructorRef = classType.constructor;
-						if (constructorRef != null) {
-							var constructor = constructorRef.get();
-							if (constructor != null)
-								scanFields(modulePath, [constructor]);
-						}
-						scanFields(modulePath, classType.fields.get());
-						scanFields(modulePath, classType.statics.get());
+						scanFields(modulePath, classType, TypedClassExecutableFields.collect(classType), classType.statics.get());
 					}
 				case TAbstract(abstractRef):
 					var abstractType = abstractRef.get();
@@ -526,8 +725,7 @@ class RepresentationDecisionAnalyzer {
 						var implementation = abstractType.impl.get();
 						if (implementation != null) {
 							var modulePath = moduleName(abstractType.module, abstractType.pack, abstractType.name);
-							scanFields(modulePath, implementation.fields.get());
-							scanFields(modulePath, implementation.statics.get());
+							scanFields(modulePath, implementation, TypedClassExecutableFields.collect(implementation), implementation.statics.get());
 						}
 					}
 				case TEnumDecl(enumRef):

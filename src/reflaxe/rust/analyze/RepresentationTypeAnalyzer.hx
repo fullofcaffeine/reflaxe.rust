@@ -17,6 +17,8 @@ import reflaxe.rust.analyze.RepresentationPlan.RustRepresentationPlanner;
 import reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy;
 import reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind;
 import reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact;
+import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicCrossingTypeCheck;
+import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization;
 
 /**
 	Extracts the shared Rust representation plan from real typed Haxe values.
@@ -94,26 +96,148 @@ class RepresentationTypeAnalyzer {
 			nullableStringCompat:Bool, ?classHasSubclasses:ClassType->Bool):Null<RustRepresentationDecision> {
 		if (actualType == null || expectedType == null || origin == null)
 			return null;
-		var expectedKind = classify(expectedType, nullableStringCompat, classHasSubclasses);
-		if (expectedKind != SourceDynamic)
+		var typeCheck = tryDynamicCrossingTypeCheck(actualType, expectedType, nullableStringCompat, classHasSubclasses);
+		if (typeCheck == null)
 			return null;
-		var crossingType = actualType;
-		var actualKind = classify(crossingType, nullableStringCompat, classHasSubclasses);
-		if (actualKind == null || actualKind == SourceDynamic)
+		var crossingType = typeCheck.carrierKind == SourceBorrowedRef ? immutableReferenceValueType(actualType) : actualType;
+		if (crossingType == null)
 			return null;
-		if (isBorrowed(actualKind)) {
-			if (actualKind != SourceBorrowedRef)
+		var decision = tryDecide(subjectId, crossingType, pos, origin, nullableStringCompat, BoundaryDynamic, classHasSubclasses);
+		return decision != null && decision.sourceKind == typeCheck.valueKind ? decision : null;
+	}
+
+	/**
+		Builds the small source-shape check that must match before lowering consumes a saved action.
+
+		Why / What / How
+		- Lowering must verify the actual carrier and expected boundary without rebuilding the planner's
+		  representation decision.
+		- Direct values retain their source family. Immutable `rust.Ref<T>` values are admitted only when
+		  the compiler can prove how to obtain an owned `T`: dereference a Copy value or clone a known
+		  concrete Clone value.
+		- Generic/native-handle/mutable borrow cases return `null`, so they fail at the Haxe boundary rather
+		  than attempting to store a short-lived Rust reference.
+	**/
+	public static function tryDynamicCrossingTypeCheck(actualType:Type, expectedType:Type, nullableStringCompat:Bool,
+			?classHasSubclasses:ClassType->Bool):Null<RustDynamicCrossingTypeCheck> {
+		if (actualType == null || expectedType == null
+			|| classify(expectedType, nullableStringCompat, classHasSubclasses) != SourceDynamic)
+			return null;
+		var carrierKind = classify(actualType, nullableStringCompat, classHasSubclasses);
+		if (carrierKind == null || carrierKind == SourceDynamic)
+			return null;
+		var valueKind = carrierKind;
+		var materialization = RustDynamicValueMaterialization.DynamicValueDirect;
+		if (isBorrowed(carrierKind)) {
+			if (carrierKind != SourceBorrowedRef)
 				return null;
-			crossingType = immutableReferenceValueType(crossingType);
-			if (crossingType == null)
+			var innerType = immutableReferenceValueType(actualType);
+			if (innerType == null)
 				return null;
-			var innerDecision = tryDecide(subjectId, crossingType, pos, origin, nullableStringCompat, BoundaryDynamic, classHasSubclasses);
-			if (innerDecision == null
-				|| innerDecision.reuse != RustReusePolicy.ReuseCopy && innerDecision.reuse != RustReusePolicy.ReuseCloneWhenNeeded)
+			valueKind = classify(innerType, nullableStringCompat, classHasSubclasses);
+			if (valueKind == null)
 				return null;
-			return innerDecision;
+			materialization = if (valueKind == SourceScalar || valueKind == SourceCoreHandle) {
+				RustDynamicValueMaterialization.DynamicValueBorrowCopy;
+			} else if (knownConcreteBorrowCloneValue(innerType, valueKind, nullableStringCompat, classHasSubclasses)) {
+				RustDynamicValueMaterialization.DynamicValueBorrowClone;
+			} else {
+				return null;
+			}
 		}
-		return tryDecide(subjectId, crossingType, pos, origin, nullableStringCompat, BoundaryDynamic, classHasSubclasses);
+		return RustDynamicCrossingTypeCheck.validated(TypeTools.toString(actualType), "Dynamic", carrierKind, valueKind, materialization);
+	}
+
+	/**
+		Explains why a scoped borrowed value cannot become owned `Dynamic` storage.
+
+		Why / What / How
+		- A missing saved action used to reach Rust construction and appear as an internal compiler error,
+		  even when typed Haxe already proved that a temporary reference could not outlive its borrow scope.
+		- Return a beginner-readable reason only for a real borrowed-to-Dynamic boundary that this compiler
+		  cannot materialize as an owned value.
+		- Keep supported Copy and known concrete Clone cases silent. Generic inner values, native resources,
+		  mutable borrows, strings/slices, and unproved shapes fail at the exact Haxe expression instead.
+	**/
+	public static function dynamicCrossingRejectionReason(actualType:Type, expectedType:Type, nullableStringCompat:Bool,
+			?classHasSubclasses:ClassType->Bool):Null<String> {
+		if (actualType == null || expectedType == null
+			|| classify(expectedType, nullableStringCompat, classHasSubclasses) != SourceDynamic)
+			return null;
+		var carrierKind = classify(actualType, nullableStringCompat, classHasSubclasses);
+		if (carrierKind == null || !isBorrowed(carrierKind)
+			|| tryDynamicCrossingTypeCheck(actualType, expectedType, nullableStringCompat, classHasSubclasses) != null)
+			return null;
+
+		var source = TypeTools.toString(actualType);
+		if (carrierKind != SourceBorrowedRef)
+			return '`$source` cannot enter Dynamic because this borrowed view has no admitted owned conversion. '
+				+ "Create an owned value inside the borrow callback before storing or passing it.";
+
+		var innerType = immutableReferenceValueType(actualType);
+		if (innerType != null && containsTypeParameter(innerType))
+			return '`$source` cannot enter Dynamic because its generic inner type does not prove Copy or Clone. '
+				+ "Add a supported owned conversion at the source boundary.";
+		var innerKind = innerType == null ? null : classify(innerType, nullableStringCompat, classHasSubclasses);
+		if (innerKind == SourceNativeHandle)
+			return '`$source` cannot enter Dynamic because its native handle cannot be copied or cloned into owned runtime storage. '
+				+ "Convert the resource to an owned supported value instead.";
+		return '`$source` cannot enter Dynamic because the compiler cannot prove how to copy or clone an owned inner value. '
+			+ "Create an owned value inside the borrow callback before the boundary.";
+	}
+
+	/**
+		Answers whether an immutable `rust.Ref<T>` can provide one owned `T` for Dynamic storage.
+
+		Why / What / How
+		- Ordinary reuse policy says whether a source value normally moves or clones; it does not prove that
+		  a value behind a borrow can be copied out before the borrow ends.
+		- Admit concrete Haxe/runtime reference carriers and a closed set of Rust-native Clone values. Check
+		  `Vec`/`HashMap` element types recursively.
+		- Reject type parameters, mutable/other borrow carriers, Dynamic, and native resource handles until
+		  a real bound or owned conversion proves the operation.
+	**/
+	static function knownConcreteBorrowCloneValue(type:Type, kind:RustSourceValueKind, nullableStringCompat:Bool,
+			classHasSubclasses:Null<ClassType->Bool>):Bool {
+		if (type == null || containsTypeParameter(type) || kind == SourceDynamic || kind == SourceNativeHandle || isBorrowed(kind))
+			return false;
+		if (kind != SourceNativeOwned)
+			return kind != SourceScalar && kind != SourceCoreHandle;
+		return switch (unwrapAliasesAndNull(type).type) {
+			case TInst(classRef, parameters):
+				var classType = classRef.get();
+				if (classType == null) {
+					false;
+				} else {
+					var path = typePath(classType.pack, classType.name);
+					var declaredModule = classType.module;
+					switch (declaredModule) {
+						case "rust.PathBuf" | "rust.OsString" | "rust.Duration" | "rust.Instant" | "rust.SystemTime"
+							| "rust.net.SocketAddr":
+							true;
+						case "rust.Vec" | "rust.HashMap":
+							var cloneable = parameters.length > 0;
+							for (parameter in parameters) {
+								var parameterKind = classify(parameter, nullableStringCompat, classHasSubclasses);
+								if (parameterKind == null
+									|| !knownConcreteBorrowCloneValue(parameter, parameterKind, nullableStringCompat, classHasSubclasses)
+										&& parameterKind != SourceScalar && parameterKind != SourceCoreHandle) {
+									cloneable = false;
+									break;
+								}
+							}
+							cloneable;
+						case _:
+							// Before Reflaxe target-name shaping, the declared package/name path is still
+							// available directly. After shaping (for example PathBuf -> std::path::PathBuf),
+							// `module` above remains the stable Haxe facade identity.
+							path == "rust.PathBuf" || path == "rust.OsString" || path == "rust.Duration" || path == "rust.Instant"
+								|| path == "rust.SystemTime" || path == "rust.net.SocketAddr";
+					}
+				}
+			case _:
+				false;
+		};
 	}
 
 	/**
@@ -372,7 +496,7 @@ class RepresentationTypeAnalyzer {
 						case _ if (isHaxeArray(classType)): SourceArray;
 						case _ if (isArrayIterator(classType, parameters)): SourceIterator;
 						case _ if (path == "haxe.io.Bytes"): SourceBytesReference;
-						case _ if (isNativeHandle(path)): SourceNativeHandle;
+						case _ if (isNativeHandle(path) || isNativeHandle(classType.module)): SourceNativeHandle;
 						case _ if (isNativeOwned(classType, path)): SourceNativeOwned;
 						case _ if (classType.isInterface || (classHasSubclasses != null && classHasSubclasses(classType))): SourcePolymorphicReference;
 						case _ if (!classType.isExtern): SourceClassReference;
@@ -547,6 +671,10 @@ class RepresentationTypeAnalyzer {
 	static function isNativeOwned(classType:ClassType, path:String):Bool {
 		if (!classType.isExtern)
 			return false;
+		return isNativeOwnedPath(path) || isNativeOwnedPath(classType.module);
+	}
+
+	static function isNativeOwnedPath(path:String):Bool {
 		return path == "rust.Vec" || path == "rust.HashMap" || path == "rust.Iter" || path == "rust.PathBuf" || path == "rust.OsString"
 			|| path == "rust.Duration" || path == "rust.Instant" || path == "rust.SystemTime" || path == "rust.SystemTimeError"
 			|| path == "rust.net.SocketAddr" || path == "rust.net.SocketError";

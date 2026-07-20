@@ -1,5 +1,7 @@
 package reflaxe.rust.analyze;
 
+import haxe.macro.Context;
+import haxe.macro.Expr.Position;
 import haxe.macro.Type;
 import haxe.macro.TypedExprTools;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeFallbackSummary;
@@ -156,8 +158,7 @@ class NoHxrtEligibilityAnalyzer {
 			case TClassDecl(classRef):
 				var classType = classRef.get();
 				var module = moduleNameForClass(classType);
-				scanClassFieldExprs(module, classType.fields.get(), requirements);
-				scanClassFieldExprs(module, classType.statics.get(), requirements);
+				scanClassFieldExprs(module, TypedClassExecutableFields.collect(classType), requirements);
 			case TAbstract(absRef):
 				var abstractType = absRef.get();
 				if (abstractType.impl == null)
@@ -166,8 +167,7 @@ class NoHxrtEligibilityAnalyzer {
 				if (impl == null)
 					return;
 				var module = moduleNameForAbstract(abstractType);
-				scanClassFieldExprs(module, impl.fields.get(), requirements);
-				scanClassFieldExprs(module, impl.statics.get(), requirements);
+				scanClassFieldExprs(module, TypedClassExecutableFields.collect(impl), requirements);
 			case TEnumDecl(_):
 			case TTypeDecl(_):
 		}
@@ -189,10 +189,17 @@ class NoHxrtEligibilityAnalyzer {
 		function visit(expr:TypedExpr):Void {
 			var current = unwrapMetaParen(expr);
 			switch (current.expr) {
-				case TThrow(_):
-					add(requirements, RuntimeException, "typed_ast", module, current.pos, "Haxe throw semantics require hxrt exception support.");
-				case TTry(_, _):
-					add(requirements, RuntimeException, "typed_ast", module, current.pos, "Haxe try/catch semantics require hxrt exception support.");
+				case TThrow(value):
+					add(requirements, RuntimeException, "typed_ast", module, coveringPosition([current.pos, value.pos]),
+						"Haxe throw semantics require hxrt exception support.");
+				case TTry(tryExpression, catches):
+					var positions:Array<Position> = [current.pos, tryExpression.pos];
+					if (catches != null)
+						for (entry in catches)
+							if (entry != null && entry.expr != null)
+								positions.push(entry.expr.pos);
+					add(requirements, RuntimeException, "typed_ast", module, coveringPosition(positions),
+						"Haxe try/catch semantics require hxrt exception support.");
 				case TCall(callTarget, _):
 					{
 						var ownerPath = callOwnerPath(callTarget);
@@ -241,6 +248,34 @@ class NoHxrtEligibilityAnalyzer {
 				return;
 		}
 		requirements.push(entry);
+	}
+
+	/**
+		Builds one exact Haxe range covering all syntax that belongs to a compound operation.
+
+		Why / What / How
+		- Haxe may attach a `throw`/`try` node position to only part of its printed syntax, which loses the
+		  keyword or a catch body when diagnostics are reconstructed later.
+		- Take the smallest start and largest end from the wrapper and its required children.
+		- Require one source file and return a real Haxe `Position`; UTF-8 byte conversion and private path
+		  handling remain owned by `RustSourcePosition`.
+	**/
+	static function coveringPosition(positions:Array<Position>):Position {
+		if (positions == null || positions.length == 0)
+			throw "An exact no-hxrt operation range requires at least one Haxe position";
+		var first = Context.getPosInfos(positions[0]);
+		var min = first.min;
+		var max = first.max;
+		for (index in 1...positions.length) {
+			var info = Context.getPosInfos(positions[index]);
+			if (info.file != first.file)
+				throw "One no-hxrt operation cannot span several Haxe source files";
+			if (info.min < min)
+				min = info.min;
+			if (info.max > max)
+				max = info.max;
+		}
+		return Context.makePosition({file: first.file, min: min, max: max});
 	}
 
 	static function unwrapMetaParen(expr:TypedExpr):TypedExpr {

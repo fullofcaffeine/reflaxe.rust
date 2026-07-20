@@ -63,7 +63,10 @@ fn make_missing() -> crate::HxRef<hxrt::anon::Anon> {
         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
         {
             let mut __b = __o.borrow_mut();
-            __b.set("name", hxrt::string::HxString::from("Ada"));
+            __b.set_dyn(
+                "name",
+                hxrt::dynamic::from(hxrt::string::HxString::from("Ada")),
+            );
         };
         __o
     };
@@ -74,9 +77,37 @@ fn make_present() -> crate::HxRef<hxrt::anon::Anon> {
         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
         {
             let mut __b = __o.borrow_mut();
-            __b.set("name", hxrt::string::HxString::from("Grace"));
-            __b.set("nickname", hxrt::string::HxString::from("Amazing"));
-            __b.set("enabled", Some(true));
+            __b.set_dyn(
+                "name",
+                hxrt::dynamic::from(hxrt::string::HxString::from("Grace")),
+            );
+            __b.set_dyn(
+                "nickname",
+                hxrt::dynamic::from(hxrt::string::HxString::from("Amazing")),
+            );
+            __b.set_dyn("enabled", hxrt::dynamic::from(Some(true)));
+        };
+        __o
+    };
+}
+
+fn make_explicit_null() -> crate::HxRef<hxrt::anon::Anon> {
+    return {
+        let __o = crate::HxRef::new(hxrt::anon::Anon::new());
+        {
+            let mut __b = __o.borrow_mut();
+            __b.set_dyn(
+                "name",
+                hxrt::dynamic::from(hxrt::string::HxString::from("Lin")),
+            );
+            __b.set_dyn("nickname", {
+                let __hx_storage_value: hxrt::string::HxString = hxrt::string::HxString::null();
+                hxrt::dynamic::from(__hx_storage_value)
+            });
+            __b.set_dyn("enabled", {
+                let __hx_storage_value: Option<bool> = None;
+                hxrt::dynamic::from(__hx_storage_value)
+            });
         };
         __o
     };
@@ -186,4 +217,31 @@ fn main() {
         .is_none(),
     ));
     crate::sys::Sys::println(hxrt::dynamic::from(describe(present.clone())));
+    let explicit_null: crate::HxRef<hxrt::anon::Anon> = make_explicit_null();
+    crate::sys::Sys::println(hxrt::dynamic::from(
+        explicit_null.borrow().get::<hxrt::string::HxString>("name"),
+    ));
+    crate::sys::Sys::println(hxrt::dynamic::from(
+        ({
+            let __b = explicit_null.borrow();
+            if __b.has_key("nickname") {
+                __b.get::<hxrt::string::HxString>("nickname")
+            } else {
+                hxrt::string::HxString::null()
+            }
+        })
+        .is_null(),
+    ));
+    crate::sys::Sys::println(hxrt::dynamic::from(
+        ({
+            let __b = explicit_null.borrow();
+            if __b.has_key("enabled") {
+                __b.get::<Option<bool>>("enabled")
+            } else {
+                None
+            }
+        })
+        .is_none(),
+    ));
+    crate::sys::Sys::println(hxrt::dynamic::from(describe(explicit_null.clone())));
 }

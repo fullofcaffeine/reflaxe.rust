@@ -92,9 +92,13 @@ import reflaxe.rust.analyze.RepresentationPlan.RustRuntimeRequirementKind;
 import reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind;
 import reflaxe.rust.analyze.RepresentationTypeAnalyzer;
 import reflaxe.rust.analyze.RepresentationDecisionAnalyzer;
+import reflaxe.rust.analyze.TypedExprControlFlow;
+import reflaxe.rust.analyze.TypedExprEmissionPolicy;
+import reflaxe.rust.analyze.TypedExprReplayFamily;
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization;
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustRuntimeRequirementCoverage;
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedCrossingTracker;
+import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedCrossingReplayContext;
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing;
 import reflaxe.rust.analyze.NativeSurfaceUsageAnalyzer;
 import reflaxe.rust.analyze.NativeSurfaceUsageAnalyzer.TypedNativeImportHit;
@@ -310,6 +314,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var currentLocalUsed:Null<Map<String, Bool>> = null;
 	var currentEnumParamBinds:Null<Map<String, String>> = null;
 	var currentFunctionReturn:Null<Type> = null;
+	// A function literal can be inferred more narrowly than the storage/call boundary that receives
+	// it (for example `() -> 1` assigned to `Void->Dynamic`). Keep that expected signature only while
+	// compiling the literal itself so its body and Rust `dyn Fn` result use the same saved boundary.
+	var currentFunctionLiteralExpectedType:Null<Type> = null;
 	var currentFunctionIsAsync:Bool = false;
 	var currentFunctionContext:Null<RustFuncContext> = null;
 	// Generated framework crossings need a conservative reusable-handle clone only when the
@@ -338,6 +346,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	var typedRepresentationCrossings:Array<RustSavedRepresentationCrossing> = [];
 	var typedRepresentationCoverage:Array<RustRuntimeRequirementCoverage> = [];
 	var savedCrossingTracker:RustSavedCrossingTracker = RustSavedCrossingTracker.empty();
+	var currentSavedCrossingReplay:Null<RustSavedCrossingReplayContext> = null;
 	var generatedDynamicCrossingFacts:Array<String> = [];
 	var typedNoHxrtOperations:Array<RuntimeRequirementEntry> = [];
 	// Non-value no-hxrt checks (throw, reflection, and platform operations) also require complete
@@ -1775,18 +1784,64 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		Why / What / How
 		- Dynamic boxing is selected at coercion sites, but the decision was already made while complete
 		  typed Haxe method bodies were available.
-		- Rebuild only the private source key, then ask the shared tracker for the saved action. A successful
-		  lookup is counted so the end-of-build check can require exactly one use.
+		- Rebuild only the private source key and compact source/destination type check, then ask the shared
+		  tracker for the saved action. A successful lookup is counted so the end-of-build check can require
+		  one ordinary use while explicitly identified generated copies are recorded as replays.
 		- A missing user action returns `null`; the caller reports an internal compiler error instead of
 		  silently recalculating or boxing through a compatibility fallback.
 	**/
-	function consumeRepresentationCrossing(valueExpr:TypedExpr):Null<RustSavedRepresentationCrossing> {
-		if (valueExpr == null)
+	function consumeRepresentationCrossing(valueExpr:TypedExpr, expected:Type):Null<RustSavedRepresentationCrossing> {
+		if (valueExpr == null || expected == null)
 			return null;
 		var origin = representationOriginAt(valueExpr.pos);
 		if (origin == null)
 			return null;
-		return savedCrossingTracker.consume(origin);
+		var typeCheck = RepresentationTypeAnalyzer.tryDynamicCrossingTypeCheck(valueExpr.t, expected, useNullableStringRepresentation(),
+			classHasSubclasses);
+		return typeCheck == null ? null : savedCrossingTracker.consume(origin, typeCheck, currentSavedCrossingReplay);
+	}
+
+	/**
+		Compiles one deliberately repeated source expression under a named generated Rust site.
+
+		Why / What / How
+		- Defaults, read-only statics, and base constructors may be emitted more than once, while ordinary
+		  saved actions are valid for one lowering use only.
+		- The scoped context lets the tracker distinguish the first generated site from later legitimate
+		  copies without weakening the ordinary one-use rule.
+		- Restore the previous context after success or failure so nested defaults/static reads compose and
+		  one failed builder cannot leak replay permission into unrelated lowering.
+	**/
+	function withSavedCrossingReplay<T>(family:TypedExprReplayFamily, emissionId:String, build:() -> T):T {
+		var previous = currentSavedCrossingReplay;
+		currentSavedCrossingReplay = RustSavedCrossingReplayContext.of(family, emissionId);
+		try {
+			var result = build();
+			currentSavedCrossingReplay = previous;
+			return result;
+		} catch (error:Dynamic) {
+			currentSavedCrossingReplay = previous;
+			throw error;
+		}
+	}
+
+	/**
+		Builds the stable identity for one generated copy of a typed source expression.
+
+		Why / What / How
+		- The definition's source range identifies the saved decision, but not each call, static read, or
+		  derived constructor that emits it.
+		- Combine the generated-site label with the consuming source range and any enclosing replay site.
+		- Use only safe project-relative source identity; unresolved compiler-created sites receive an
+		  explicit `generated` spelling rather than a machine-local path.
+	**/
+	function savedCrossingEmissionId(label:String, pos:haxe.macro.Expr.Position):String {
+		var parent = currentSavedCrossingReplay == null ? "" : ":within:" + currentSavedCrossingReplay.family.id + ":"
+			+ currentSavedCrossingReplay.emissionId;
+		var origin = representationOriginAt(pos);
+		if (origin != null)
+			return label + ":" + origin.modulePath + ":" + origin.sourceFile + ":" + origin.startByte + "-" + origin.endByte + parent;
+		return label + ":generated" + parent;
 	}
 
 	/**
@@ -1815,6 +1870,80 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (decision != null)
 			generatedDynamicCrossingFacts.push(origin.sourceFile + ":" + origin.startByte + "-" + origin.endByte + "|" + subjectId);
 		return decision;
+	}
+
+	/**
+		Admits one framework-owned open generic at a `Dynamic` boundary only when its emitted Rust
+		declaration already promises every bound required by `Dynamic::from`.
+
+		Why / What / How
+		- Target std helpers such as `DynamicAccessKeyValueIterator<T>` box `T` while their source module
+		  is intentionally excluded from the application saved-action snapshot.
+		- An open `T` has no ordinary representation family, so the normal generated-decision adapter
+		  returns `null` even when the helper's reviewed `@:rustGeneric` declaration guarantees
+		  `Clone + Send + Sync + 'static`.
+		- Accept only a direct type parameter owned by the current framework class, inspect the structural
+		  Rust generic bounds, and record a generated runtime fact. Application positions, unbounded
+		  parameters, nested open types, and borrowed values still fail closed.
+	**/
+	function admitGeneratedOpenGenericDynamicCrossing(valueExpr:TypedExpr, expected:Type):Bool {
+		if (valueExpr == null || expected == null || !mapsToRustDynamic(expected, valueExpr.pos)
+			|| mapsToRustDynamic(valueExpr.t, valueExpr.pos))
+			return false;
+		var info = Context.getPosInfos(valueExpr.pos);
+		if (info != null && info.file != null && isUserProjectFile(info.file))
+			return false;
+
+		var parameterName:Null<String> = switch (followType(valueExpr.t)) {
+			case TInst(classRef, _):
+				var classType = classRef.get();
+				if (classType == null) null else switch (classType.kind) {
+					case KTypeParameter(_): classType.name;
+					case _: null;
+				};
+			case _: null;
+		};
+		if (parameterName == null)
+			return false;
+
+		var owner = currentMethodOwnerType != null ? currentMethodOwnerType : currentClassType;
+		if (owner == null || !isFrameworkStdClass(owner))
+			return false;
+		var required:Array<RustGenericBound> = [
+			GenericTraitBound(RustPath.single("Clone")),
+			GenericTraitBound(RustPath.single("Send")),
+			GenericTraitBound(RustPath.single("Sync")),
+			GenericLifetimeBound(RustLifetime.staticLifetime())
+		];
+		var admitted = false;
+		for (parameter in rustGenericDeclsForClass(owner)) {
+			switch (parameter) {
+				case GenericTypeParam(name, bounds, _) if (name.name == parameterName):
+					admitted = true;
+					for (requiredBound in required) {
+						var found = false;
+						for (bound in bounds)
+							if (rustGenericBoundsEqual(bound, requiredBound)) {
+								found = true;
+								break;
+							}
+						if (!found) {
+							admitted = false;
+							break;
+						}
+					}
+				case _:
+			}
+		}
+		if (!admitted)
+			return false;
+
+		var origin = representationOriginAt(valueExpr.pos);
+		if (origin == null)
+			return false;
+		var subjectId = origin.modulePath + ":generated-open-generic-boundary:" + parameterName + "->Dynamic";
+		generatedDynamicCrossingFacts.push(origin.sourceFile + ":" + origin.startByte + "-" + origin.endByte + "|" + subjectId);
+		return true;
 	}
 
 	/**
@@ -1927,7 +2056,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	override public function onCompileStart() {
-		RustSourcePosition.reset();
 		cachedMainClass = null;
 		cachedMainClassResolved = false;
 		// Reset cached class hierarchy info per compilation.
@@ -1947,6 +2075,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		typedRepresentationCrossings = [];
 		typedRepresentationCoverage = [];
 		savedCrossingTracker = RustSavedCrossingTracker.empty();
+		currentSavedCrossingReplay = null;
+		currentFunctionLiteralExpectedType = null;
 		generatedDynamicCrossingFacts = [];
 		typedNoHxrtOperations = [];
 		typedNoHxrtEligibility = null;
@@ -2268,9 +2398,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			return;
 		var lines:Array<String> = [];
 		for (crossing in typedRepresentationCrossings) {
+			var replayFamily = crossing.replayFamily == null ? "none" : crossing.replayFamily.id;
 			lines.push("user|" + crossing.origin.sourceFile + ":" + crossing.origin.startByte + "-" + crossing.origin.endByte + "|"
+				+ "boundary=" + crossing.boundaryOrigin.sourceFile + ":" + crossing.boundaryOrigin.startByte + "-" + crossing.boundaryOrigin.endByte + "|"
 				+ crossing.materialization + "|reuse=" + crossing.decision.reuse.id() + "|consumed=" + savedCrossingTracker.countFor(crossing)
-				+ "|action=" + crossing.ordinal + "|"
+				+ "|replayed=" + savedCrossingTracker.replayCountFor(crossing) + "|replay-family=" + replayFamily + "|action=" + crossing.ordinal + "|"
 				+ crossing.decision.subjectId);
 		}
 		var generated = generatedDynamicCrossingFacts.copy();
@@ -3498,7 +3630,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 				var initializer = if (initExpr != null) {
 					var compiled = withFunctionContext(initExpr, [], cf.type, () -> {
-						var ex = compileExpr(initExpr);
+						var ex = compileExprWithExpectedFunction(initExpr, cf.type);
 						coerceExprToExpected(ex, initExpr, cf.type);
 					});
 					RustOriginTools.sourceExpression(compiled, initExpr.pos);
@@ -5053,34 +5185,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		  converted into fresh values at every read.
 	**/
 	function staticReadOnlyConstantExpr(cf:ClassField):Null<TypedExpr> {
-		if (cf == null)
-			return null;
-		switch (cf.kind) {
-			case FVar(_, AccNever):
-			case _:
-				return null;
-		}
-
-		var init:Null<TypedExpr> = null;
-		try
-			init = cf.expr()
-		catch (_:haxe.Exception) {}
-		if (init == null)
-			return null;
-
-		function unwrapConst(e:TypedExpr):Null<TypedExpr> {
-			var u = unwrapMetaParen(e);
-			return switch (u.expr) {
-				case TConst(_):
-					u;
-				case TCast(inner, _):
-					unwrapConst(inner);
-				case _:
-					null;
-			}
-		}
-
-		return unwrapConst(init);
+		return TypedExprEmissionPolicy.staticReadOnlyConstantExpr(cf);
 	}
 
 	function metaNameEquals(actual:String, expected:String):Bool {
@@ -6741,31 +6846,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		  and coerce it for the parameter; otherwise let the parameter's null-fill representation stand.
 	**/
 	function defaultArgExprIsCallsiteSafe(e:TypedExpr):Bool {
-		var u = unwrapMetaParen(e);
-		return switch (u.expr) {
-			case TConst(_): true;
-			case TArrayDecl(values):
-				values == null ? true : Lambda.fold(values, (x, acc) -> acc && defaultArgExprIsCallsiteSafe(x), true);
-			case TObjectDecl(fields):
-				fields == null ? true : Lambda.fold(fields, (f, acc) -> acc && defaultArgExprIsCallsiteSafe(f.expr), true);
-			case TBinop(_, x, y): defaultArgExprIsCallsiteSafe(x) && defaultArgExprIsCallsiteSafe(y);
-			case TUnop(_, _, x):
-				defaultArgExprIsCallsiteSafe(x);
-			case TCall(f2, a2): defaultArgExprIsCallsiteSafe(f2) && (a2 == null ? true : Lambda.fold(a2, (x, acc) -> acc && defaultArgExprIsCallsiteSafe(x),
-					true));
-			case TNew(_, _, a2):
-				a2 == null ? true : Lambda.fold(a2, (x, acc) -> acc && defaultArgExprIsCallsiteSafe(x), true);
-			case TCast(inner, _):
-				defaultArgExprIsCallsiteSafe(inner);
-			case TParenthesis(inner):
-				defaultArgExprIsCallsiteSafe(inner);
-			case TMeta(_, inner):
-				defaultArgExprIsCallsiteSafe(inner);
-			case TTypeExpr(_):
-				true;
-			case _:
-				false;
-		};
+		return TypedExprEmissionPolicy.defaultArgumentIsCallsiteSafe(e);
 	}
 
 	// "Null fill" value for extending Haxe arrays.
@@ -6898,7 +6979,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 			}
 
-			withFunctionContext(ctxExpr, [for (a in f.args) a.getName()], f.ret, () -> {
+			withSavedCrossingReplay(TypedExprReplayFamily.constructorBody(classType), "constructor-output:" + classKey(classType),
+				() -> withFunctionContext(ctxExpr, [for (a in f.args) a.getName()], f.ret, () -> {
 				for (a in f.args) {
 					args.push({
 						name: rustArgIdent(a.getName()),
@@ -7370,13 +7452,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 						if (remaining != null) {
 							var bodyExpr:TypedExpr = {expr: TBlock(remaining), pos: ctorExpr.pos, t: ctorExpr.t};
-							var block = compileVoidBody(bodyExpr);
+							var block = withSavedCrossingReplay(TypedExprReplayFamily.constructorBody(cls), "constructor-output:" + classKey(classType),
+								() -> compileVoidBody(bodyExpr));
 							for (s in block.stmts)
 								stmts.push(s);
 							if (block.tail != null)
 								stmts.push(RSemi(block.tail));
 						} else {
-							var block = compileVoidBody(ctorExpr);
+							var block = withSavedCrossingReplay(TypedExprReplayFamily.constructorBody(cls), "constructor-output:" + classKey(classType),
+								() -> compileVoidBody(ctorExpr));
 							for (s in block.stmts)
 								stmts.push(s);
 							if (block.tail != null)
@@ -7423,7 +7507,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					stmts.push(RSemi(bodyBlock.tail));
 
 				stmts.push(RReturn(rustSingleExpr("self_")));
-			});
+				}));
 		}
 
 		return {
@@ -8217,7 +8301,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					// Single-expression function body. Non-void expression bodies must remain tails so
 					// value expressions such as `try/catch` lower to the function return value.
 					if (allowTail && canUseAsTailExpr(e, expectedReturn))
-						{stmts: [], tail: RustOriginTools.sourceExpression(coerceExprToExpected(compileExpr(e), e, expectedReturn), e.pos)} else {stmts: [compileStmt(e)], tail: null};
+						{stmts: [], tail: RustOriginTools.sourceExpression(coerceExprToExpected(compileExprWithExpectedFunction(e, expectedReturn), e, expectedReturn), e.pos)} else {stmts: [compileStmt(e)], tail: null};
 				}
 		};
 
@@ -8252,7 +8336,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var isLast = (i == exprs.length - 1);
 
 			if (allowTail && isLast && canUseAsTailExpr(e, expectedTail)) {
-				tail = RustOriginTools.sourceExpression(coerceExprToExpected(compileExpr(e), e, expectedTail), e.pos);
+				tail = RustOriginTools.sourceExpression(coerceExprToExpected(compileExprWithExpectedFunction(e, expectedTail), e, expectedTail), e.pos);
 				break;
 			}
 
@@ -8411,16 +8495,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				stmts.push(emittedStmt);
 			}
 
-			// Avoid emitting Rust code that is statically unreachable (and triggers `unreachable_code` warnings).
-			//
-			// Why both checks:
-			// - `exprAlwaysDiverges(e)` catches typed Haxe diverging forms (`throw/return/break/continue`).
-			// - `rustStmtAlwaysDiverges(...)` catches divergence that only becomes obvious after lowering
-			//   (for example `if/else` where both branches lower to `hxrt::exception::throw(...)`).
-			//
-			// This keeps explicit-return lambdas/functions warning-free without requiring source-style
-			// workarounds (implicit returns).
-			if ((emittedStmt != null && rustStmtAlwaysDiverges(emittedStmt)) || exprAlwaysDiverges(e))
+			// Early analysis and Rust construction must stop after exactly the same source expression.
+			// Rust-only shape recognition may still simplify the statement itself, but it must not hide a
+			// following Haxe expression for which early analysis saved a lowering action.
+			if (TypedExprControlFlow.stopsFollowingStatements(e))
 				break;
 		}
 
@@ -8465,17 +8543,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// type to `()`.
 		return switch (unwrapMetaParen(e).expr) {
 			case TTry(_, _): true;
-			case _: false;
-		}
-	}
-
-	function exprAlwaysDiverges(e:TypedExpr):Bool {
-		var cur = unwrapMetaParen(e);
-		return switch (cur.expr) {
-			case TThrow(_): true;
-			case TReturn(_): true;
-			case TBreak: true;
-			case TContinue: true;
 			case _: false;
 		}
 	}
@@ -9037,7 +9104,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						Context.warning("rust_debug_string_types TVar `" + name + "`: v.t=" + vt + ", init.t=" + it, e.pos);
 					}
 					#end
-					var initExpr = init != null ? compileExpr(init) : null;
+					var initExpr = init != null ? compileExprWithExpectedFunction(init, v.t) : null;
 					if (initExpr != null) {
 						// Haxe's inliner/desugarer frequently introduces `_g*` temporaries to preserve evaluation
 						// order (e.g. for comprehensions / iterator lowering). For `Array<T>` (mapped to a
@@ -9202,7 +9269,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									}
 								}
 							case _: {
-									var ex = compileExpr(retExpr);
+									var ex = compileExprWithExpectedFunction(retExpr, currentFunctionReturn);
 									if (ex != null) {
 										ex = coerceExprToExpected(ex, retExpr, currentFunctionReturn);
 									}
@@ -10565,6 +10632,42 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		return currentClosureCapturedReusableLocals != null && currentClosureCapturedReusableLocals.exists(localId);
 	}
 
+	/**
+		Compiles a function literal with the signature required by its surrounding typed boundary.
+
+		Why / What / How
+		- Haxe may leave `() -> 1` with an inferred `Int` result even when a local, field, argument, or
+		  return slot requires `Void->Dynamic`.
+		- Rust must build one `dyn Fn() -> Dynamic`, including the saved `Int`-to-`Dynamic` action inside
+		  the closure body; wrapping an already-built `dyn Fn() -> i32` cannot repair the signature.
+		- Set a narrowly scoped expected type only for a real function literal (through metadata or
+		  parentheses). The literal consumes it, clears it while compiling nested expressions, and the
+		  caller restores the previous context.
+	**/
+	function compileExprWithExpectedFunction(expression:TypedExpr, expected:Null<Type>):RustExpr {
+		if (expression == null)
+			throw "A typed expression is required for contextual function-literal lowering";
+		if (expected == null)
+			return compileExpr(expression);
+		var core = unwrapMetaParen(expression);
+		var functionLiteral = switch (core.expr) {
+			case TFunction(_): true;
+			case _: false;
+		};
+		if (!functionLiteral)
+			return compileExpr(expression);
+		var previous = currentFunctionLiteralExpectedType;
+		currentFunctionLiteralExpectedType = expected;
+		try {
+			var result = compileExpr(expression);
+			currentFunctionLiteralExpectedType = previous;
+			return result;
+		} catch (error:Dynamic) {
+			currentFunctionLiteralExpectedType = previous;
+			throw error;
+		}
+	}
+
 	function compileExpr(e:TypedExpr):RustExpr {
 		// Target code injection: __rust__("...{0}...", arg0, ...)
 		//
@@ -10670,7 +10773,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						// occurs exactly once and left-to-right without adding a runtime helper or temporary.
 						var vecValues:Array<RustExpr> = [];
 						for (value in values) {
-							var compiled = maybeCloneForReuseValue(compileExpr(value), value);
+							var compiled = maybeCloneForReuseValue(compileExprWithExpectedFunction(value, elem), value);
 							// A typed local String has already crossed the compiler's String -> HxString
 							// boundary at its declaration. Avoid adding an identity wrapper here; literal,
 							// call, field, nullable, and other element forms still use the full coercion path.
@@ -10954,6 +11057,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					// Mirror `compileCall(...)` behavior: coerce provided args and fill omitted optional args.
 					var ctorParamDefs:Null<Array<{name:String, t:Type, opt:Bool}>> = null;
 					var ctorParamDefaultExprs:Null<Array<Null<TypedExpr>>> = null;
+					var ctorParamDefaultFamilies:Null<Array<TypedExprReplayFamily>> = null;
 					if (cls != null && cls.constructor != null) {
 						var cf = cls.constructor.get();
 						if (cf != null) {
@@ -10965,6 +11069,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							var fd = cf.findFuncData(cls, false);
 							if (fd != null && fd.args != null) {
 								ctorParamDefaultExprs = [for (a in fd.args) a.expr];
+								ctorParamDefaultFamilies = [for (i in 0...fd.args.length) TypedExprReplayFamily.constructorDefault(cls, i)];
 							}
 						}
 					}
@@ -10975,14 +11080,19 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							var p = ctorParamDefs[i];
 							if (i < args.length) {
 								var a = args[i];
-								var compiled = compileExpr(a);
+								var compiled = compileExprWithExpectedFunction(a, p.t);
 								compiled = coerceArgForParam(compiled, a, p.t);
 								outArgs.push(compiled);
 							} else if (p.opt) {
 								var def:Null<TypedExpr> = (ctorParamDefaultExprs != null && i < ctorParamDefaultExprs.length) ? ctorParamDefaultExprs[i] : null;
 								if (def != null && defaultArgExprIsCallsiteSafe(def)) {
-									var compiled = compileExpr(def);
-									compiled = coerceArgForParam(compiled, def, p.t);
+									if (ctorParamDefaultFamilies == null || i >= ctorParamDefaultFamilies.length)
+										throw "Constructor default lowering is missing its typed source definition identity";
+									var family = ctorParamDefaultFamilies[i];
+									var compiled = withSavedCrossingReplay(family, savedCrossingEmissionId("constructor-default-call-" + i, e.pos), () -> {
+										var value = compileExprWithExpectedFunction(def, p.t);
+										return coerceArgForParam(value, def, p.t);
+									});
 									outArgs.push(compiled);
 									continue;
 								}
@@ -11056,6 +11166,16 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 
 			case TFunction(fn): {
+					var contextualFunctionType = currentFunctionLiteralExpectedType;
+					currentFunctionLiteralExpectedType = null;
+					var closureReturnType = fn.t;
+					if (contextualFunctionType != null) {
+						switch (followType(contextualFunctionType)) {
+							case TFun(expectedArguments, expectedResult) if (expectedArguments.length == fn.args.length):
+								closureReturnType = expectedResult;
+							case _:
+						}
+					}
 					// Lower a Haxe function literal to our runtime function representation.
 					//
 					// Representation:
@@ -11090,7 +11210,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var argParts:Array<RustClosureParameter> = [];
 					var body:RustBlock = {stmts: [], tail: null};
 
-					withFunctionContext(fn.expr, baseArgNames, fn.t, () -> {
+					withFunctionContext(fn.expr, baseArgNames, closureReturnType, () -> {
 						for (i in 0...fn.args.length) {
 							var a = fn.args[i];
 							var baseName = baseArgNames[i];
@@ -11099,12 +11219,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						}
 						var prevClosureCapturedReusableLocals = currentClosureCapturedReusableLocals;
 						currentClosureCapturedReusableLocals = capturedReusableLocals;
-						body = compileFunctionBody(fn.expr, fn.t, true);
+						body = compileFunctionBody(fn.expr, closureReturnType, true);
 						currentClosureCapturedReusableLocals = prevClosureCapturedReusableLocals;
 					});
 
 					var fnTraitType = rustFunctionTraitObjectType([for (a in fn.args) toRustType(a.v.t, e.pos)],
-						TypeHelper.isVoid(fn.t) ? null : toRustType(fn.t, e.pos));
+						TypeHelper.isVoid(closureReturnType) ? null : toRustType(closureReturnType, e.pos));
 
 					var rcTy:RustType = rustRcType(fnTraitType);
 					var rcExpr:RustExpr = ECall(rustRcMemberExpr("new"), [EClosure(argParts, body, true)]);
@@ -11120,7 +11240,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				}
 
 			case TCast(e1, _): {
-					var inner = compileExpr(e1);
+					var inner = compileExprWithExpectedFunction(e1, e.t);
 					if (rustExprAlwaysDiverges(inner))
 						return inner;
 					var fromT = followType(e1.t);
@@ -11225,14 +11345,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 					// General record literal -> allocate an `HxRef<hxrt::anon::Anon>`, mutate its fields,
 					// then return the shared handle.
-					function typedNoneForNull(t:Type, pos:haxe.macro.Expr.Position):RustExpr {
-						var inner = nullOptionInnerType(t, pos);
-						if (inner == null)
-							return rustSingleExpr("None");
-						var innerRust = toRustType(inner, pos);
-						return rustRelativeMemberExpr(["Option"], [GenericType(innerRust)], "None");
-					}
-
 					var newAnon = ECall(rustRelativeExpr(["hxrt", "anon", "Anon", "new"]), []);
 					var newRef = ECall(rustCrateExpr(["HxRef", "new"]), [newAnon]);
 					// Why: a zero-field record has nothing to initialize. Taking a write guard anyway is
@@ -11250,15 +11362,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 					var innerStmts:Array<RustStmt> = [];
 					innerStmts.push(RLet("__b", true, null, ECall(rustField(rustSingleExpr(objName), "borrow_mut"), [])));
+					var declaredFields:Map<String, Type> = [];
+					switch (followType(e.t)) {
+						case TAnonymous(anonymousRef):
+							var anonymous = anonymousRef.get();
+							if (anonymous != null && anonymous.fields != null)
+								for (declared in anonymous.fields)
+									declaredFields.set(declared.name, declared.type);
+						case _:
+					}
 					for (f in fields) {
 						var valueExpr = f.expr;
-						var compiledVal:RustExpr;
-						if (isNullConstExpr(valueExpr) && isNullOptionType(valueExpr.t, valueExpr.pos)) {
-							compiledVal = typedNoneForNull(valueExpr.t, valueExpr.pos);
-						} else {
-							compiledVal = maybeCloneForReuseValue(compileExpr(valueExpr), valueExpr);
-						}
-						innerStmts.push(RSemi(ECall(rustField(rustSingleExpr("__b"), "set"), [ELitString(f.name), compiledVal])));
+						var declaredType = declaredFields.get(f.name);
+						var compiled = declaredType == null ? compileExpr(valueExpr) : compileExprWithExpectedFunction(valueExpr, declaredType);
+						var compiledVal = coerceExprToExpected(compiled, valueExpr, haxeDynamicBoundaryType(), true,
+							preserveAnonymousStorageCarrier(declaredType, valueExpr.pos));
+						innerStmts.push(RSemi(ECall(rustField(rustSingleExpr("__b"), "set_dyn"), [ELitString(f.name), compiledVal])));
 					}
 					stmts.push(RSemi(EBlock({stmts: innerStmts, tail: null})));
 
@@ -12859,7 +12978,35 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		});
 	}
 
-	function coerceExprToExpected(compiled:RustExpr, valueExpr:TypedExpr, expected:Null<Type>, ?cloneDynamicDirectValue:Bool = true):RustExpr {
+	/**
+		Reports whether anonymous-object storage must retain the declared Rust carrier itself.
+
+		Why / What / How
+		- A concrete optional field is read back as `Option<T>`, so storage must box that exact carrier.
+		- A field declared `Dynamic` follows Haxe's ordinary rule instead: `None` becomes Dynamic null rather
+		  than a boxed `Option<T>` that later Dynamic reads would treat as a non-null value.
+		- Decide from the field's typed declaration at the compiler boundary; the runtime receives only the
+		  already-converted payload and never guesses from its Rust shape.
+	**/
+	function preserveAnonymousStorageCarrier(declaredType:Null<Type>, pos:haxe.macro.Expr.Position):Bool {
+		return declaredType != null && !mapsToRustDynamic(declaredType, pos);
+	}
+
+	/**
+		Converts one compiled value to the Rust representation required by its typed Haxe destination.
+
+		Why / What / How
+		- Parameters, returns, assignments, casts, and runtime-backed containers must agree on the same
+		  copy/move/clone/borrow decision. In particular, concrete-to-Dynamic conversion must consume the
+		  exact action saved before Rust AST construction.
+		- `cloneDynamicDirectValue` controls whether a reusable direct value is cloned before boxing.
+		- `preserveDynamicStorageCarrier` is only for concretely typed anonymous-object fields. Optional
+		  fields are read back as their real Rust carrier (for example `Option<bool>`), so storage must box
+		  that carrier itself. Fields declared `Dynamic` and other ordinary Dynamic boundaries retain Haxe's
+		  normal rule where `None` becomes Dynamic null.
+	**/
+	function coerceExprToExpected(compiled:RustExpr, valueExpr:TypedExpr, expected:Null<Type>, ?cloneDynamicDirectValue:Bool = true,
+			?preserveDynamicStorageCarrier:Bool = false):RustExpr {
 		if (expected == null)
 			return compiled;
 		if (rustExprAlwaysDiverges(compiled))
@@ -12923,12 +13070,17 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		var expectedIsDyn = mapsToRustDynamic(expected, valueExpr.pos);
 		var actualIsDyn = mapsToRustDynamic(valueExpr.t, valueExpr.pos);
-		var savedDynamicCrossing = expectedIsDyn && !actualIsDyn ? consumeRepresentationCrossing(valueExpr) : null;
+		var savedDynamicCrossing = expectedIsDyn && !actualIsDyn ? consumeRepresentationCrossing(valueExpr, expected) : null;
 		var dynamicBoundaryDecision = savedDynamicCrossing == null ? null : savedDynamicCrossing.decision;
-		if (dynamicBoundaryDecision == null && expectedIsDyn && !actualIsDyn)
+		var generatedOpenGenericDynamicBoundary = false;
+		if (dynamicBoundaryDecision == null && expectedIsDyn && !actualIsDyn) {
 			dynamicBoundaryDecision = generatedRepresentationDecisionForCrossing(valueExpr, expected);
-		var plannedDynamicBoundary = dynamicBoundaryDecision != null
-			&& dynamicBoundaryDecision.boundary == RustBoundaryKind.BoundaryDynamic;
+			if (dynamicBoundaryDecision == null)
+				generatedOpenGenericDynamicBoundary = admitGeneratedOpenGenericDynamicCrossing(valueExpr, expected);
+		}
+		var plannedDynamicBoundary = (dynamicBoundaryDecision != null
+			&& dynamicBoundaryDecision.boundary == RustBoundaryKind.BoundaryDynamic)
+			|| generatedOpenGenericDynamicBoundary;
 
 		// Haxe often types a null-checked `Null<Interface>` value as still carrying the nullable
 		// trait-object wrapper (`HxDynRef<dyn Trait>`). When a callee expects the non-null
@@ -13001,8 +13153,10 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							case TCast(inner, _): collectResultLocals(inner);
 							case TIf(_, thenExpr, elseExpr) if (elseExpr != null):
 								collectResultLocals(thenExpr) && collectResultLocals(elseExpr);
-							case TSwitch(_, cases, defaultExpr):
-								var complete = defaultExpr != null && collectResultLocals(defaultExpr);
+							case TSwitch(subject, cases, defaultExpr):
+								var complete = TypedExprControlFlow.switchIsExhaustive(subject, cases, defaultExpr);
+								if (complete && defaultExpr != null)
+									complete = collectResultLocals(defaultExpr);
 								for (entry in cases)
 									complete = collectResultLocals(entry.expr) && complete;
 								complete;
@@ -13272,24 +13426,26 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (expectedIsDyn && !actualIsDyn && !plannedDynamicBoundary) {
 			#if eval
 			var missingOrigin = representationOriginAt(valueExpr.pos);
-			var location = missingOrigin == null ? "unknown source range" : missingOrigin.sourceFile + ":" + missingOrigin.startByte + "-" + missingOrigin.endByte;
+			var location = missingOrigin == null ? "unknown source range" : missingOrigin.modulePath + " " + missingOrigin.sourceFile + ":"
+				+ missingOrigin.startByte + "-" + missingOrigin.endByte;
+			var replayContext = currentSavedCrossingReplay == null ? "ordinary emission" : "repeated definition `" + currentSavedCrossingReplay.family.id + "`";
 			Context.error('Internal Rust representation error: Dynamic boxing at $location has no saved early decision '
-				+ '(actual `${TypeTools.toString(valueExpr.t)}`, expected `${TypeTools.toString(expected)}`)', valueExpr.pos);
+				+ '(actual `${TypeTools.toString(valueExpr.t)}`, expected `${TypeTools.toString(expected)}`, $replayContext)', valueExpr.pos);
 			#end
 			return compiled;
 		}
 		if (plannedDynamicBoundary && !actualIsDyn) {
-			if (isNullConstExpr(valueExpr)) {
+			if (isNullConstExpr(valueExpr) && !preserveDynamicStorageCarrier) {
 				return rustDynamicNullExpr();
 			}
 
 			var valueNullInner = nullOptionInnerType(valueExpr.t, valueExpr.pos);
-			if (valueNullInner != null) {
+			if (valueNullInner != null && !preserveDynamicStorageCarrier) {
 				// `Option<T>` -> `Dynamic`: `None` becomes `Dynamic::null()`.
 				var innerType:Type = valueNullInner;
 
 				var optExpr = maybeCloneForReuseValue(compiled, valueExpr, savedDynamicCrossing == null && currentRuntimeLoopDepth > 0,
-					dynamicBoundaryDecision.reuse);
+					dynamicBoundaryDecision == null ? null : dynamicBoundaryDecision.reuse);
 				var someExpr:RustExpr;
 					if (mapsToRustDynamic(innerType, valueExpr.pos)) {
 						someExpr = rustSingleExpr("__v");
@@ -13308,6 +13464,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			}
 
 			var materialized = materializeDynamicBoundaryValue(compiled, valueExpr.t, cloneDynamicDirectValue);
+			if (preserveDynamicStorageCarrier && isNullConstExpr(valueExpr)) {
+				var storageType = toRustType(materialized.valueType, valueExpr.pos);
+				return EBlock({
+					stmts: [RLet("__hx_storage_value", false, storageType, materialized.value)],
+					tail: boxDynamicBoundaryValue(rustSingleExpr("__hx_storage_value"), materialized.valueType)
+				});
+			}
 			return boxDynamicBoundaryValue(materialized.value, materialized.valueType);
 		}
 
@@ -14777,7 +14940,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 																var stmts:Array<RustStmt> = [];
 																stmts.push(RLet("__obj", false, null, maybeCloneForReuseValue(compileExpr(obj), obj)));
-																var rhsExpr = maybeCloneForReuseValue(compileExpr(valueExpr), valueExpr);
+																var rhsExpr = maybeCloneForReuseValue(compileExprWithExpectedFunction(valueExpr, cf.type), valueExpr);
 																if (isDynamicType(valueExpr.t)) {
 																	stmts.push(RLet("__v", false, null, rhsExpr));
 																	stmts.push(RLet("__val", false, null, dynamicToConcrete("__v", cf.type, fullExpr.pos)));
@@ -14809,17 +14972,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 														break;
 													}
 												}
-												if (cf != null && isAnonObjectType(obj.t)) {
-													var stmts:Array<RustStmt> = [];
-													stmts.push(RLet("__obj", false, null, maybeCloneForReuseValue(compileExpr(obj), obj)));
-													var rhsExpr = maybeCloneForReuseValue(compileExpr(valueExpr), valueExpr);
-													if (isDynamicType(valueExpr.t)) {
-														stmts.push(RLet("__v", false, null, rhsExpr));
-														stmts.push(RLet("__val", false, null, dynamicToConcrete("__v", cf.type, fullExpr.pos)));
-													} else {
-														stmts.push(RLet("__val", false, null, coerceExprToExpected(rhsExpr, valueExpr, cf.type)));
-													}
-													var setCall = ECall(rustField(ECall(rustField(rustSingleExpr("__obj"), "borrow_mut"), []), "set"),
+										if (cf != null && isAnonObjectType(obj.t)) {
+											var stmts:Array<RustStmt> = [];
+											stmts.push(RLet("__obj", false, null, maybeCloneForReuseValue(compileExpr(obj), obj)));
+											var rhsExpr = maybeCloneForReuseValue(compileExprWithExpectedFunction(valueExpr, cf.type), valueExpr);
+											var dynamicValue = coerceExprToExpected(rhsExpr, valueExpr, haxeDynamicBoundaryType(), true,
+												preserveAnonymousStorageCarrier(cf.type, valueExpr.pos));
+													stmts.push(RLet("__val", false, null, dynamicValue));
+													var setCall = ECall(rustField(ECall(rustField(rustSingleExpr("__obj"), "borrow_mut"), []), "set_dyn"),
 														[ELitString(cf.getHaxeName()), rustSingleExpr("__val")]);
 													stmts.push(RSemi(setCall));
 													return EBlock({stmts: stmts, tail: null});
@@ -15472,6 +15632,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		var paramDefs:Null<Array<{name:String, t:Type, opt:Bool}>> = funParamDefs(fnTypeForParams);
 		var paramDefaultExprs:Null<Array<Null<TypedExpr>>> = null;
+		var paramDefaultFamilies:Null<Array<TypedExprReplayFamily>> = null;
 
 		// If this call targets a known class field, attempt to retrieve default-arg expressions.
 		//
@@ -15489,6 +15650,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									var fd = cf.findFuncData(cls, true);
 									if (fd != null && fd.args != null) {
 										paramDefaultExprs = [for (a in fd.args) a.expr];
+									paramDefaultFamilies = [for (i in 0...fd.args.length) TypedExprReplayFamily.methodDefault(cls, cf, i)];
 									}
 								}
 							case _:
@@ -15512,6 +15674,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 									var fd = cf.findFuncData(owner, false);
 									if (fd != null && fd.args != null) {
 										paramDefaultExprs = [for (a in fd.args) a.expr];
+									paramDefaultFamilies = [for (i in 0...fd.args.length) TypedExprReplayFamily.methodDefault(owner, cf, i)];
 									}
 								}
 							case _:
@@ -15540,7 +15703,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var a:Array<RustExpr> = [];
 		for (i in 0...args.length) {
 			var arg = args[i];
-			var compiled = compileExpr(arg);
+			var compiled = paramDefs != null && i < paramDefs.length ? compileExprWithExpectedFunction(arg, paramDefs[i].t) : compileExpr(arg);
 
 			if (paramDefs != null && i < paramDefs.length) {
 				compiled = coerceArgForParam(compiled, arg, paramDefs[i].t);
@@ -15556,10 +15719,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			for (i in args.length...paramDefs.length) {
 				if (!paramDefs[i].opt)
 					break;
-				var def:Null<TypedExpr> = (paramDefaultExprs != null && i < paramDefaultExprs.length) ? paramDefaultExprs[i] : null;
-				if (def != null && defaultArgExprIsCallsiteSafe(def)) {
-					var compiled = compileExpr(def);
-					compiled = coerceArgForParam(compiled, def, paramDefs[i].t);
+			var def:Null<TypedExpr> = (paramDefaultExprs != null && i < paramDefaultExprs.length) ? paramDefaultExprs[i] : null;
+			if (def != null && defaultArgExprIsCallsiteSafe(def)) {
+				if (paramDefaultFamilies == null || i >= paramDefaultFamilies.length)
+					throw "Method default lowering is missing its typed source definition identity";
+				var family = paramDefaultFamilies[i];
+					var compiled = withSavedCrossingReplay(family, savedCrossingEmissionId("method-default-call-" + i, fullExpr.pos), () -> {
+						var value = compileExprWithExpectedFunction(def, paramDefs[i].t);
+						return coerceArgForParam(value, def, paramDefs[i].t);
+					});
 					a.push(compiled);
 					continue;
 				}
@@ -16065,7 +16233,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	function compileAnonObjectBorrowedFieldRead(borrowed:RustExpr, cf:ClassField, pos:haxe.macro.Expr.Position):RustExpr {
 		var fieldType = toRustType(cf.type, pos);
 		var fieldName = cf.getHaxeName();
-		var read = ECall(rustGenericField(rustSingleExpr("__b"), "get", [GenericType(fieldType)]), [ELitString(fieldName)]);
+		var dynamicField = mapsToRustDynamic(cf.type, pos);
+		var read = dynamicField ? ECall(rustField(rustSingleExpr("__b"), "get_dyn"), [ELitString(fieldName)]) : ECall(rustGenericField(rustSingleExpr("__b"),
+			"get", [GenericType(fieldType)]), [ELitString(fieldName)]);
 		var optional = isOptionalAnonField(cf);
 		var value = if (optional) {
 			var hasField = ECall(rustField(rustSingleExpr("__b"), "has_key"), [ELitString(fieldName)]);
@@ -16084,7 +16254,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			});
 		}
 		if (!functionValued)
-			return ECall(rustGenericField(borrowed, "get", [GenericType(fieldType)]), [ELitString(fieldName)]);
+			return dynamicField ? ECall(rustField(borrowed, "get_dyn"), [ELitString(fieldName)]) : ECall(rustGenericField(borrowed, "get", [GenericType(fieldType)]),
+				[ELitString(fieldName)]);
 		return EBlock({
 			stmts: [RLet("__b", false, null, borrowed), RLet("__hx_value", false, null, value)],
 			tail: rustSingleExpr("__hx_value")
@@ -16130,8 +16301,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 					var inlineStatic = staticReadOnlyConstantExpr(cf);
 					if (inlineStatic != null) {
-						var value = compileExpr(inlineStatic);
-						return coerceExprToExpected(value, inlineStatic, cf.type);
+						return withSavedCrossingReplay(TypedExprReplayFamily.staticReadOnly(cls, cf),
+							savedCrossingEmissionId("static-readonly-use", fullExpr.pos), () -> {
+								var value = compileExpr(inlineStatic);
+								return coerceExprToExpected(value, inlineStatic, cf.type);
+							});
 					}
 
 					// Static vars are stored in module-level lazy cells (`__hx_static_get_*`).
@@ -16487,7 +16661,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			var fillExpr:RustExpr = nullFillExprForType(elem, rhs.pos);
 
 			var stmts:Array<RustStmt> = [];
-			var rhsExpr = compileExpr(rhs);
+			var rhsExpr = compileExprWithExpectedFunction(rhs, cf.type);
 			rhsExpr = maybeCloneForReuseValue(rhsExpr, rhs);
 			stmts.push(RLet("__tmp", false, null, rhsExpr));
 
@@ -16528,7 +16702,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							if (paramType == null)
 								return unsupported(rhs, "property write (missing setter param)");
 
-							var rhsCompiled = coerceArgForParam(compileExpr(rhs), rhs, paramType);
+							var rhsCompiled = coerceArgForParam(compileExprWithExpectedFunction(rhs, paramType), rhs, paramType);
 
 							// `super.prop = rhs` must call the base setter implementation.
 							if (isSuperExpr(obj)) {
@@ -16560,13 +16734,22 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			// `{ let __tmp = rhs; self_.borrow_mut().field = __tmp.clone(); __tmp }`
 			var stmts:Array<RustStmt> = [];
 
-			var rhsExpr = compileExpr(rhs);
+			var rhsExpr = compileExprWithExpectedFunction(rhs, cf.type);
 			rhsExpr = maybeCloneForReuseValue(rhsExpr, rhs);
 			stmts.push(RLet("__tmp", false, null, rhsExpr));
 
 			var borrowed = ECall(rustField(rustSingleExpr("self_"), "borrow_mut"), []);
 			var access = rustField(borrowed, rustFieldName(currentClassType != null ? currentClassType : owner, cf));
 			var rhsVal:RustExpr = isCopyType(rhs.t) ? rustSingleExpr("__tmp") : ECall(rustField(rustSingleExpr("__tmp"), "clone"), []);
+			if (!rhsIsNullish) {
+				var coerceExpected:Type = cf.type;
+				if (fieldIsNullOpt) {
+					var inner = nullOptionInnerType(cf.type, rhs.pos);
+					if (inner != null)
+						coerceExpected = inner;
+				}
+				rhsVal = coerceExprToExpected(rhsVal, rhs, coerceExpected);
+			}
 			var assigned = fieldIsOptionWrapped ? (rhsIsNullish ? rustSingleExpr("None") : ECall(rustSingleExpr("Some"),
 				[rhsVal])) : ((fieldIsNullOpt && !rhsIsNullish) ? ECall(rustSingleExpr("Some"), [rhsVal]) : rhsVal);
 			stmts.push(RSemi(EAssign(access, assigned)));
@@ -16578,7 +16761,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			// Haxe assignment returns the RHS value.
 			// `{ let __tmp = rhs; obj.__hx_set_field(__tmp.clone()); __tmp }`
 			var stmts:Array<RustStmt> = [];
-			var rhsExpr = compileExpr(rhs);
+			var rhsExpr = compileExprWithExpectedFunction(rhs, cf.type);
 			rhsExpr = maybeCloneForReuseValue(rhsExpr, rhs);
 			stmts.push(RLet("__tmp", false, null, rhsExpr));
 
@@ -16604,7 +16787,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// `{ let __tmp = rhs; obj.borrow_mut().field = __tmp.clone(); __tmp }`
 		var stmts:Array<RustStmt> = [];
 
-		var rhsExpr = compileExpr(rhs);
+		var rhsExpr = compileExprWithExpectedFunction(rhs, cf.type);
 		rhsExpr = maybeCloneForReuseValue(rhsExpr, rhs);
 		stmts.push(RLet("__tmp", false, null, rhsExpr));
 
@@ -16635,13 +16818,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// Haxe assignment returns the RHS value.
 		// `{ let __tmp = rhs; arr.set(idx, __tmp.clone()); __tmp }`
 		var stmts:Array<RustStmt> = [];
-		var rhsExpr = compileExpr(rhs);
+		var elementType = arrayElementType(arr.t);
+		var rhsExpr = compileExprWithExpectedFunction(rhs, elementType);
 		rhsExpr = maybeCloneForReuseValue(rhsExpr, rhs);
 		stmts.push(RLet("__tmp", false, null, rhsExpr));
 
 		var idx = ECast(compileExpr(index), rustNamedType("usize"));
 		var rhsVal:RustExpr = isCopyType(rhs.t) ? rustSingleExpr("__tmp") : ECall(rustField(rustSingleExpr("__tmp"), "clone"), []);
-		var fill = nullFillExprForType(arrayElementType(arr.t), rhs.pos);
+		rhsVal = coerceExprToExpected(rhsVal, rhs, elementType);
+		var fill = nullFillExprForType(elementType, rhs.pos);
 		var fillFn = EClosure([], {stmts: [], tail: fill}, true);
 		stmts.push(RSemi(ECall(rustField(compileExpr(arr), "set_haxe"), [idx, rhsVal, fillFn])));
 
@@ -17867,6 +18052,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					var stmts:Array<RustStmt> = [];
 					stmts.push(RLet("__tmp", false, null, compileExpr(e2)));
 					var rhsVal:RustExpr = isCopyType(e2.t) ? rustSingleExpr("__tmp") : ECall(rustField(rustSingleExpr("__tmp"), "clone"), []);
+					var innerType = nullOptionInnerType(e1.t, e2.pos);
+					if (innerType != null)
+						rhsVal = coerceExprToExpected(rhsVal, e2, innerType);
 					var wrapped = ECall(rustSingleExpr("Some"), [rhsVal]);
 					if (cellBackedLocal) {
 						var cellWrite = EUnary("*", ECall(rustField(rustSingleExpr(localName), "borrow_mut"), []));
@@ -17877,7 +18065,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
 				}
 
-				var rhsExpr = compileExpr(e2);
+				var rhsExpr = compileExprWithExpectedFunction(e2, e1.t);
 				rhsExpr = maybeCloneForReuseValue(rhsExpr, e2);
 				rhsExpr = coerceExprToExpected(rhsExpr, e2, e1.t);
 				if (!cellBackedLocal)
@@ -17920,6 +18108,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							stmts.push(RLet("__tmp", false, null, compileExpr(e2)));
 
 							var rhsVal:RustExpr = isCopyType(e2.t) ? rustSingleExpr("__tmp") : ECall(rustField(rustSingleExpr("__tmp"), "clone"), []);
+							var innerType = nullOptionInnerType(e1.t, e2.pos);
+							if (innerType != null)
+								rhsVal = coerceExprToExpected(rhsVal, e2, innerType);
 							var wrapped = ECall(rustSingleExpr("Some"), [rhsVal]);
 							if (cellBackedLocal) {
 								var cellWrite = EUnary("*", ECall(rustField(rustSingleExpr(localName), "borrow_mut"), []));
@@ -17935,7 +18126,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							// This handles trait upcasts and structural typedef adapters (TypeResolver).
 							var localName = rustLocalRefIdent(v);
 							var cellBackedLocal = isCapturedCellLocal(v) || isCapturedCellLocalName(localName);
-							var rhsExpr = compileExpr(e2);
+							var rhsExpr = compileExprWithExpectedFunction(e2, e1.t);
 							rhsExpr = maybeCloneForReuseValue(rhsExpr, e2);
 							rhsExpr = coerceExprToExpected(rhsExpr, e2, e1.t);
 							if (!cellBackedLocal)
@@ -17953,7 +18144,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						}
 					case TField(obj, FAnon(cfRef)): {
 							// Assignment into anonymous-object fields:
-							// `{ let __obj = obj.clone(); let __tmp = rhs; __obj.borrow_mut().set("field", __tmp.clone()); __tmp }`
+							// `{ let __obj = obj.clone(); let __tmp = rhs; __obj.borrow_mut().set_dyn("field", boxed); __tmp }`
 							//
 							// Only supported for general anonymous objects, not iterator protocol structs.
 							if (!isAnonObjectType(obj.t)) {
@@ -17966,32 +18157,21 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 							if (cf == null)
 								return unsupported(fullExpr, "anon field assign");
 
-							var fieldIsNullOpt = isNullOptionType(cf.type, cf.pos);
-							var rhsIsNullish = isNullOptionType(e2.t, e2.pos) || isNullConstExpr(e2);
-
-							function typedNoneForNull(t:Type, pos:haxe.macro.Expr.Position):RustExpr {
-								var inner = nullOptionInnerType(t, pos);
-								if (inner == null)
-									return rustSingleExpr("None");
-								var innerRust = toRustType(inner, pos);
-								return rustRelativeMemberExpr(["Option"], [GenericType(innerRust)], "None");
-							}
-
 							var stmts:Array<RustStmt> = [];
 
 							// Evaluate receiver once (and clone locals to avoid moves).
 							stmts.push(RLet("__obj", false, null, maybeCloneForReuseValue(compileExpr(obj), obj)));
 
 							// Evaluate RHS before taking a mutable borrow.
-							var rhsExpr = if (isNullConstExpr(e2) && fieldIsNullOpt) typedNoneForNull(cf.type,
-								e2.pos) else maybeCloneForReuseValue(compileExpr(e2), e2);
+							var rhsExpr = maybeCloneForReuseValue(compileExprWithExpectedFunction(e2, cf.type), e2);
 							stmts.push(RLet("__tmp", false, null, rhsExpr));
 
 							var rhsVal:RustExpr = isCopyType(e2.t) ? rustSingleExpr("__tmp") : ECall(rustField(rustSingleExpr("__tmp"), "clone"), []);
-							var assigned = (fieldIsNullOpt && !rhsIsNullish) ? ECall(rustSingleExpr("Some"), [rhsVal]) : rhsVal;
+							var assigned = coerceExprToExpected(rhsVal, e2, haxeDynamicBoundaryType(), false,
+								preserveAnonymousStorageCarrier(cf.type, e2.pos));
 
 							var borrowed = ECall(rustField(rustSingleExpr("__obj"), "borrow_mut"), []);
-							var setCall = ECall(rustField(borrowed, "set"), [ELitString(cf.getHaxeName()), assigned]);
+							var setCall = ECall(rustField(borrowed, "set_dyn"), [ELitString(cf.getHaxeName()), assigned]);
 							stmts.push(RSemi(setCall));
 
 							return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
@@ -18008,19 +18188,20 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								return unsupported(fullExpr, "static var assign");
 							switch (cf.kind) {
 								case FVar(_, _): {
-										var stmts:Array<RustStmt> = [];
-										var rhsExpr = compileExpr(e2);
-										rhsExpr = maybeCloneForReuseValue(rhsExpr, e2);
-										stmts.push(RLet("__tmp", false, null, rhsExpr));
+									var stmts:Array<RustStmt> = [];
+									var rhsExpr = compileExprWithExpectedFunction(e2, cf.type);
+									rhsExpr = maybeCloneForReuseValue(rhsExpr, e2);
+									stmts.push(RLet("__tmp", false, null, rhsExpr));
 
-										var rustName = rustMethodName(owner, cf);
-										var setterFn = rustStaticVarHelperName("__hx_static_set", rustName);
+									var rustName = rustMethodName(owner, cf);
+									var setterFn = rustStaticVarHelperName("__hx_static_set", rustName);
 									var setter = staticVarHelperExpr(owner, setterFn);
 
-										var argVal:RustExpr = isCopyType(e2.t) ? rustSingleExpr("__tmp") : ECall(rustField(rustSingleExpr("__tmp"), "clone"), []);
+									var argVal:RustExpr = isCopyType(e2.t) ? rustSingleExpr("__tmp") : ECall(rustField(rustSingleExpr("__tmp"), "clone"), []);
+									argVal = coerceExprToExpected(argVal, e2, cf.type);
 									stmts.push(RSemi(ECall(setter, [argVal])));
-										return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
-									}
+									return EBlock({stmts: stmts, tail: rustSingleExpr("__tmp")});
+								}
 								case _:
 									// Fall back to plain assignment (likely invalid), but keep behavior explicit.
 									EAssign(compileExpr(e1), compileExpr(e2));
@@ -18067,7 +18248,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 										var stmts:Array<RustStmt> = [];
 										if (!isThisExpr(obj))
 											stmts.push(RLet(recvName, false, null, ECall(rustField(compileExpr(obj), "clone"), [])));
-										var rhsExpr = maybeCloneForReuseValue(compileExpr(e2), e2);
+										var rhsExpr = maybeCloneForReuseValue(compileExprWithExpectedFunction(e2, cf.type), e2);
 										stmts.push(RLet("__tmp", false, null, rhsExpr));
 										stmts.push(RSemi(EAssign(rustField(ECall(rustField(recvExpr, "borrow_mut"), []), fieldName),
 											ECall(rustField(rustSingleExpr("__tmp"), "clone"), []))));

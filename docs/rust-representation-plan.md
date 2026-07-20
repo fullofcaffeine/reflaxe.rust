@@ -21,10 +21,39 @@ actual type and the destination's expected type. This is how a plain `Int`, enum
 passed to `Dynamic` gets the same Dynamic decision in early analysis and later Rust boxing. Call and
 constructor arguments, local initializers, assignments, returns, casts, and control-expression
 results all use that expected-type-aware path. Clone/reuse insertion, the runtime requirement report,
-and the no-runtime checks consume the same answer. For every user value that must enter `Dynamic`, the early scan saves
-the exact boxing action and source range. Later lowering must consume that saved action exactly once;
-a missing or unused action is an internal compiler error. Framework-generated conversions use a
-separate, explicitly labeled path so they cannot silently hide a missed user conversion.
+and the no-runtime checks consume the same answer.
+
+For every user value that must enter `Dynamic`, the early scan saves the exact conversion action.
+The action records both the complete source boundary and the smaller expression that emits the Rust
+box. For example, one `if` argument has one user-facing report row, while its two concrete branches
+have two lowering actions. Each branch action points back to the complete `if` range and must be used
+once. The action also records a compact check of the real source type, the owned value type, and
+whether lowering must use the value directly, copy through `rust.Ref<T>`, or clone through
+`rust.Ref<T>`. Later lowering rebuilds that small type check and consumes the matching saved action;
+it does not run the representation planner again. A malformed, missing, duplicated, or unused action
+is an internal compiler error. Framework-generated conversions use a separate, explicitly labeled
+path so they cannot silently hide a missed user conversion.
+
+That framework path remains narrow for open generic values. Target std helpers such as
+`DynamicAccessKeyValueIterator<T>` are not application code, so their bodies are intentionally absent
+from the application saved-action snapshot. They may box their own direct `T` only when the current
+framework class's structural Rust declaration already promises `Clone + Send + Sync + 'static`, the
+bounds required by `Dynamic::from`. The compiler records this as a generated action. It does not apply
+to application source, borrowed values, nested open types, or an under-bounded generic parameter.
+
+Some Haxe expressions are intentionally emitted more than once. A default value is inserted at each
+omitted call, a read-only static value may be inserted at each read, and a base constructor body may
+also be inserted into a derived constructor. Early analysis registers a declaration expression only
+after it finds a real typed use, so an unused default or read-only static declaration creates no saved
+action or runtime report row. One shared typed helper names the declaration family—constructor body,
+method default, constructor default, or read-only static—from its real owner. The saved action retains
+that family, and every emitted copy presents the same family plus an explicit generated-site identity.
+The first emitted site counts as the action's one normal use; each additional distinct site records a
+replay of that same immutable decision. A caller in another module therefore still finds the action
+saved under the declaration's source module, while a wrong family or a second use at the same generated
+site fails. This keeps ordinary source expressions on the strict one-action/one-use rule without
+pretending that a source byte range identifies every generated copy.
+
 Connecting lowering to the saved decision intentionally corrected several generated-Rust shapes. A
 one-use value entering `Dynamic` no longer receives an unnecessary clone. Class, enum, array, and
 anonymous-object values use the constructor and type identity selected for their real storage shape.
@@ -34,11 +63,24 @@ materializes an owned inner value by copying or cloning `T`; the short-lived bor
 the Dynamic container. These are reviewed correctness and output-quality changes, not byte-neutral
 plumbing. Exact snapshots and focused Rust/runtime tests cover the changed forms.
 
+Anonymous-object fields no longer ask the runtime to discover a conversion through the generic
+`Anon::set<T>` helper. Generated Rust first performs the saved conversion, including copying or
+cloning the owned value behind an immutable borrow, then calls `set_dyn` with the finished `Dynamic`
+value. For a concretely declared field, the conversion preserves the field's real storage carrier—an
+optional `Bool`, for example, is stored as `Option<bool>` rather than as a bare `bool`—because typed
+reads retrieve that same Rust type. A field declared as `Dynamic` deliberately does not preserve the
+source carrier: `None` follows ordinary Haxe null conversion and becomes Dynamic null. Typed field
+reads still use `get<T>`; a field declared `Dynamic` uses `get_dyn`. Anonymous-object literals, normal
+field assignments, and constant-name `Reflect.setField` therefore follow the same checked route as
+parameters, returns, and ordinary fields.
+
 `Null<rust.Ref<T>>` emits `Option<&T>`, because a bare Rust borrow cannot represent Haxe `null`.
 Nullable mutable borrows are never cloned—`Option<&mut T>` cannot be cloned. A local mutable option is
 opened through `&mut` and yields a real reborrow. When an `if`, `switch`, or block chooses between
 nullable mutable borrows, lowering reborrows at the result leaves so later valid uses do not move the
-original option.
+original option. A shared typed-Haxe control-flow helper recognizes exhaustive Bool and enum switches,
+including switches without a default, so early analysis and mutable-borrow lowering agree about which
+branches are complete and which following expressions are unreachable.
 
 Typed collection follows representation-bearing container arguments, function signatures,
 anonymous fields, typedef targets, and emitted enum-constructor payloads. It deliberately skips
@@ -56,10 +98,18 @@ even when written as `if` or `switch` expressions; their resulting type is recor
 surrounding method-body control wrappers as stored values. An immediately invoked enum constructor is
 call scaffolding, while a constructor stored in a variable remains a real function value.
 
+All complete source-only analyzers obtain executable class content from one helper that returns the
+constructor, ordinary instance fields, and static fields. Haxe stores `ClassType.constructor`
+separately, so this shared list prevents a constructor-only borrow escape, throw, reflection call, or
+platform call from disappearing merely because one analyzer copied only the two ordinary field lists.
+
 Haxe compiler positions are source-string offsets rather than the UTF-8 byte offsets promised by the
 reports. The shared source-position adapter converts them against the exact source content before a
 decision or operation is serialized, and converts byte ranges back before asking Haxe to place a
-diagnostic. The no-hxrt check gathers information at two different times: exact source expressions are
+diagnostic. Its private real-file and line/column maps are reset once before the first completed typed
+capture and remain available until final diagnostics. This preserves exact external-classpath
+locations for compound `throw` and `try/catch` ranges without serializing a machine-local absolute
+path. The no-hxrt check gathers information at two different times: exact source expressions are
 saved early, while broader module usage becomes available later. The compiler always combines both
 sets before reporting an error; finding one blocker never hides an independent reason.
 
@@ -106,6 +156,12 @@ Checks that can reject invalid typed Haxe without looking at Rust structure run 
 For example, returning a scoped `rust.Ref<T>` or `rust.Slice<T>` is reported at that Haxe return or
 alias before any later Dynamic conversion is considered. This keeps the useful source error from
 being replaced by an unrelated internal lowering failure.
+
+The same early boundary reports a borrowed value that cannot become owned Dynamic storage. Known Copy
+values are copied and known concrete Clone values are cloned behind `rust.Ref<T>`. A generic inner type
+without a proven bound, or a native resource such as a socket that has no admitted clone operation, is
+rejected at the exact Haxe call or storage expression. The compiler never attempts to put the temporary
+Rust reference itself into the runtime container.
 
 The early scan includes ordinary instance/static fields and methods plus each class constructor.
 Haxe exposes a constructor separately from the normal field arrays; omitting it would let a conversion

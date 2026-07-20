@@ -100,23 +100,32 @@ fn decode_todo(row: hxrt::dynamic::Dynamic) -> crate::HxRef<hxrt::anon::Anon> {
         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
         {
             let mut __b = __o.borrow_mut();
-            __b.set("id", {
-                let __hx_dyn = id;
-                if __hx_dyn.is_null() {
-                    hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
-                } else {
-                    __hx_dyn.downcast_ref::<i32>().unwrap().clone()
-                }
-            });
-            __b.set("name", hxrt::string::HxString::from(name.to_haxe_string()));
-            __b.set("done", {
-                let __hx_dyn = done;
-                if __hx_dyn.is_null() {
-                    hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
-                } else {
-                    __hx_dyn.downcast_ref::<i32>().unwrap().clone()
-                }
-            });
+            __b.set_dyn(
+                "id",
+                hxrt::dynamic::from({
+                    let __hx_dyn = id;
+                    if __hx_dyn.is_null() {
+                        hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                    } else {
+                        __hx_dyn.downcast_ref::<i32>().unwrap().clone()
+                    }
+                }),
+            );
+            __b.set_dyn(
+                "name",
+                hxrt::dynamic::from(hxrt::string::HxString::from(name.to_haxe_string())),
+            );
+            __b.set_dyn(
+                "done",
+                hxrt::dynamic::from({
+                    let __hx_dyn = done;
+                    if __hx_dyn.is_null() {
+                        hxrt::exception::throw(hxrt::dynamic::from(String::from("Null Access")))
+                    } else {
+                        __hx_dyn.downcast_ref::<i32>().unwrap().clone()
+                    }
+                }),
+            );
         };
         __o
     };
