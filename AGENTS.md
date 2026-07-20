@@ -349,6 +349,10 @@ Agent policy:
   Haxe `Position.min/max` values are source-string coordinates, not the UTF-8 byte ranges promised by
   runtime plans and source maps. Convert through `RustSourcePosition` before serialization and convert
   back before `Context.makePosition`; an ASCII-only span fixture cannot prove this contract.
+  Reset `RustSourcePosition` once before the first after-typing capture for a compilation request, then
+  retain its private stable-path and display-location maps through final diagnostics. Clearing those
+  maps again during a later representation scan loses exact external-classpath locations for wrapper
+  expressions such as `throw` and `try`, even though their saved byte ranges are still correct.
   Early exact no-hxrt findings and later broad module-path findings are two incomplete sources of
   information. Combine them unconditionally before diagnostics—an already blocked result does not
   mean collection is complete—and keep exact same-reason expression locations distinct.
@@ -374,6 +378,17 @@ Agent policy:
   would otherwise be lost, use a closed typed choice with the smallest useful payload, name one
   producer and one lowering consumer, and define when the value stops being legal. Fail on malformed,
   duplicate, missing, or unused decisions; unsupported source must receive an exact source diagnostic.
+  Saved-decision replay gotcha: a Haxe default value, read-only static initializer, or base constructor
+  body may intentionally be emitted at several Rust sites. A source byte range cannot distinguish
+  those generated copies. Register a replayable declaration expression only after typed analysis finds
+  a real use that lowering will emit; an unused default or read-only static declaration must create no
+  action. Derive the replay family from the declaration owner (constructor body, method default,
+  constructor default, or read-only static) through one shared typed helper; do not build it from the
+  caller's current module or from separately spelled strings in analysis and lowering. Store that
+  family on the saved action and require every emitted copy—including the first—to present the same
+  family plus a stable generated-site identity. Count the first site as the one normal use and later
+  sites as explicit replays; using the decision twice at the same generated site must still fail. Do
+  not loosen the ordinary one-use check for source expressions that are not deliberately replayed.
   Run source-only validity checks, such as scoped-borrow escape detection, on the complete typed Haxe
   snapshot before Rust AST construction. Do not let invalid source enter a later conversion and replace
   the useful Haxe error with an unrelated internal lowering failure.
@@ -431,6 +446,12 @@ Agent policy:
     must use `HxRef<Anon>` with Haxe reference equality. If a Rust-first API needs an owned pair, expose a
     distinct nominal `rust.*` facade; native map iterators must bridge their items back into the ordinary
     anonymous-record representation.
+  - Anonymous-field Dynamic-storage gotcha: generated literals, assignments, and constant-name
+    `Reflect.setField` calls must convert the source through the compiler's saved Dynamic action and call
+    `set_dyn`; do not hide that conversion in generic `Anon::set<T>`. Preserve `Option<T>` or another
+    exact Rust carrier only for a concretely typed field whose typed reads request that carrier. A field
+    declared `Dynamic` keeps ordinary Haxe null behavior, so `None` becomes Dynamic null rather than a
+    boxed Rust `Option` value.
   - Structural-iterator gotcha: field names and function signatures alone do not make an anonymous value
     a native iterator. Reserve `hxrt::iter::Iter<T>` for Haxe's method-shaped `Iterator<T>` contract
     (`FMethod`); a mutable record with `FVar` callbacks named `hasNext` / `next` remains `HxRef<Anon>`.
@@ -505,6 +526,17 @@ Agent policy:
     preserve required Rust `String` -> `HxString` bridges in return/helper coercions, and skip
     borrowed inner string wrapping only when the source expression already lowers to
     `hxrt::string::HxString`.
+  - Ref-to-Dynamic gotcha: `rust.Ref<T>` is a temporary `&T`, so never put that reference token into
+    `Dynamic`. Copy a proven Copy inner value or clone a known concrete Clone inner value, and use the
+    inner Haxe type for runtime boxing/type IDs. A generic inner type without a proven bound and a
+    non-clone native handle must fail at the exact Haxe call/storage expression before Rust AST
+    construction, with a direct explanation instead of a later internal compiler error.
+  - Framework open-generic Dynamic gotcha: target std helpers are intentionally outside the
+    application saved-action snapshot, but a reviewed helper may box its own `T`. Admit that generated
+    path only when `T` is a direct parameter of the current framework class and its structural
+    `@:rustGeneric` declaration already includes `Clone + Send + Sync + 'static`, exactly matching
+    `Dynamic::from`. Record it as a compiler/framework action. Never use this exception for application
+    source, nested open types, borrowed values, or parameters whose required Rust bounds are missing.
 - Rust naming collisions across inheritance must preserve base-field names: assign names in base→derived order and only disambiguate derived names against already-used base names.
 - Inheritance method dispatch model: Rust does not “inherit” methods, so subclasses must synthesize concrete Rust methods for non-overridden base methods (compile the base body with `this` dispatch bound to the subclass). This avoids invalid calls like `Base::method(&RefCell<Sub>)` and eliminates `todo!()` stubs in base trait impls.
 - Base traits include inherited methods: if `BTrait` includes inherited `A.foo`, then `impl BTrait for RefCell<C>` must implement `foo` even if `B` didn’t declare it; emit base-trait impl methods from the base trait surface (declared + inherited), not just `baseType.fields.get()`.
