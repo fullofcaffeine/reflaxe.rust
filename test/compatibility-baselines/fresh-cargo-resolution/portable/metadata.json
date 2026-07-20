@@ -289,7 +289,7 @@
           },
           {
             "name": "syn",
-            "package": "syn@3.0.0:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "syn@3.0.1:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -324,7 +324,7 @@
         "dependencies": []
       },
       {
-        "id": "syn@3.0.0:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "syn@3.0.1:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "clone-impls",
           "derive",
@@ -1506,9 +1506,9 @@
       ]
     },
     {
-      "id": "syn@3.0.0:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "syn@3.0.1:registry+https://github.com/rust-lang/crates.io-index",
       "name": "syn",
-      "version": "3.0.0",
+      "version": "3.0.1",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [
