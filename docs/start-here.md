@@ -78,21 +78,20 @@ The mental model is deliberately simple:
 ```bash
 npm run dev:new-project -- ./my_haxe_rust_app
 cd my_haxe_rust_app
-cargo hx --action run
+cargo hx dev
 ```
 
 Generated projects include:
 
-- `cargo hx` task driver (`run/test/build/release` flows),
-- watch helper (`scripts/dev/watch-haxe-rust.sh`),
+- `cargo hx dev` watch loop and one-shot `run/test/build/release` commands,
 - compile task hxmls (`compile.hxml`, `compile.metal.hxml`, CI/release variants).
 
 Recommended first generated-app loop:
 
 ```bash
-cargo hx --action run
-cargo hx --action test
-cargo hx --action build --release
+cargo hx dev
+cargo hx test
+cargo hx build --release
 ```
 
 Read [Workflow](workflow.md#new-project-scaffold--task-hxmls) when you want the exact generated
@@ -133,7 +132,7 @@ compiler/API plan.
 Before adopting in a production service/tool:
 
 1. Confirm your APIs are covered in the [feature support matrix](feature-support-matrix.md).
-2. Run the generated app through `cargo hx --action test` or an equivalent CI command.
+2. Run the generated app through `cargo hx test` or an equivalent CI command.
 3. Add smoke tests for platform-sensitive behavior: process exit/error paths, network failures,
    TLS setup, DB driver setup, and thread/event-loop behavior if used.
 4. Keep `portable` as the default profile and document every `metal` use as an intentional boundary.

@@ -108,15 +108,14 @@ Generate a ready-to-run Haxe.rust project:
 ```bash
 npm run dev:new-project -- ./my_haxe_rust_app
 cd my_haxe_rust_app
-cargo hx --action run
+cargo hx dev
 ```
 
 The generated project includes the full task plumbing:
 
-- `cargo hx --action run` (compile Haxe->Rust, then run)
-- `cargo hx --action test` (compile Haxe->Rust, then test)
-- `cargo hx --action build --release` (production build)
-- `bash scripts/dev/watch-haxe-rust.sh --hxml compile.hxml` (watch loop)
+- `cargo hx dev` (watch, compile, and run during development)
+- `cargo hx run` / `cargo hx test` (one compile-and-run/test cycle)
+- `cargo hx build --release` (production build)
 - `bash scripts/dev/check-guards.sh` (local-path + security wiring checks; gitleaks scan when installed)
 - `bash scripts/install-git-hooks.sh` (installs pre-commit local-path + staged gitleaks checks)
 
@@ -169,8 +168,8 @@ After the first successful run, the recommended next step is a generated starter
 ```bash
 npm run dev:new-project -- ./my_haxe_rust_app
 cd my_haxe_rust_app
-cargo hx --action run
-cargo hx --action test
+cargo hx dev
+cargo hx test
 ```
 
 That path exercises the same project-local workflow users should keep in application repos.
@@ -185,11 +184,13 @@ Install watcher engine once:
 Then run:
 
 ```bash
-npm run dev:watch -- --hxml examples/hello/compile.hxml
+cd examples/hello
+cargo hx dev
 ```
 
 Watch mode uses a session-owned Haxe compile server by default, so compiles are faster after warm-up.
-Use `--no-haxe-server` if you want direct compile-only behavior.
+Use `cargo hx dev --mode test` to test on each change, or `--no-haxe-server` if you want direct
+compilation without the incremental server.
 
 More usage options: [Dev Watcher guide](docs/dev-watcher.md).
 
@@ -250,7 +251,7 @@ Coverage map: [docs/examples-matrix.md](docs/examples-matrix.md).
 
 ## Most Useful Commands
 
-- Watch mode for local development: `npm run dev:watch -- --hxml examples/hello/compile.hxml`
+- Watch mode for local development: `cargo hx dev`
 - Scaffold a new starter project: `npm run dev:new-project -- ./my_haxe_rust_app`
 - Refresh tracker-backed status docs: `npm run docs:sync:progress`
 - Verify tracker-backed status docs are in sync: `npm run docs:check:progress`

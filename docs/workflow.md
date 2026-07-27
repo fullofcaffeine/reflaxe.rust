@@ -19,18 +19,19 @@ only when a wrapper script or external task runner will invoke Cargo itself.
 Use the watcher when you want fast feedback while editing:
 
 ```bash
-npm run dev:watch -- --hxml examples/hello/compile.hxml
+cd examples/hello
+cargo hx dev
 ```
 
 By default, watch mode uses a session-owned Haxe compile server (`--wait`/`--connect`) so incremental compiles are faster after warm-up.
 
 Common variants:
 
-- Compile + run on change (default): `--mode run`
-- Compile + test on change: `--mode test`
-- Compile only on change: `--mode build`
-- One cycle without watcher: `--once`
-- Disable compile server in watch mode: `--no-haxe-server`
+- Compile + run on change (default): `cargo hx dev`
+- Compile + test on change: `cargo hx dev --mode test`
+- Compile only on change: `cargo hx dev --mode build`
+- One cycle without watcher: `cargo hx dev --once`
+- Disable compile server in watch mode: `cargo hx dev --no-haxe-server`
 
 Full guide: [Dev Watcher](dev-watcher.md).
 
@@ -66,8 +67,19 @@ cargo hx --project examples/chat_loopback --profile portable --ci --action test
 cargo hx --project examples/chat_loopback --profile metal --action build --release
 
 # from inside examples/chat_loopback you can omit --project:
-# cargo hx --profile portable --action run
+# cargo hx dev --profile portable
 ```
+
+The shorter positional commands are preferred for interactive use:
+
+```bash
+cargo hx dev
+cargo hx run
+cargo hx test
+cargo hx build --release
+```
+
+The older `--action` spelling remains supported for scripts.
 
 ## Recommended project workflow
 
@@ -95,7 +107,7 @@ cargo hx --action run
 
 Generated projects include this plumbing by default:
 
-- `cargo hx ...` task driver (compile Haxe+Rust, then run/test/build/check/clippy).
+- `cargo hx dev` project-local watch loop plus one-shot run/test/build/check/clippy commands.
 - task HXML compatibility files (`compile*.hxml`).
 - local watcher script (`scripts/dev/watch-haxe-rust.sh`) for edit-compile-run/test loops.
 - local guard entrypoint (`scripts/dev/check-guards.sh`) for path/security checks (+ full gitleaks when installed).
@@ -111,10 +123,11 @@ cargo hx --action build --release
 
 First-use checklist for app repos:
 
-1. Run `cargo hx --action run` once to prove the Haxe -> Rust -> Cargo path.
-2. Run `cargo hx --action test` once before adding app code.
-3. Keep `portable` as the default profile until a path has a measured Rust-first or interop reason.
-4. Add one app-level smoke test for each production-sensitive boundary you use: file/process,
+1. Run `cargo hx run` once to prove the Haxe -> Rust -> Cargo path.
+2. Run `cargo hx test` once before adding app code.
+3. Use `cargo hx dev` for the normal edit-compile-run loop.
+4. Keep `portable` as the default profile until a path has a measured Rust-first or interop reason.
+5. Add one app-level smoke test for each production-sensitive boundary you use: file/process,
    sockets or HTTP, TLS, DB setup, and thread/event-loop behavior.
 
 Generated task files:

@@ -106,10 +106,10 @@ log "run root cargo-hx wrapper with --project"
     cargo run --quiet --manifest-path tools/hx/Cargo.toml -- --project "$app_dir" --action test
 )
 
-log "watcher one-shot smoke"
+log "cargo hx dev one-shot smoke"
 (
   cd "$app_dir"
-  bash scripts/dev/watch-haxe-rust.sh --hxml compile.hxml --once --mode test --no-haxe-server
+  cargo hx dev --once --mode test --no-haxe-server
 )
 
 log "ok"

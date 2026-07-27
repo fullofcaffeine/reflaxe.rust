@@ -50,14 +50,14 @@ Each instance gets an auto-generated funny name. Presence updates are automatic;
 Use the repo cargo alias with flags instead of adding many task HXML files:
 
 ```bash
-cargo hx --action run
-cargo hx --profile portable --action run
-cargo hx --profile metal --action run
-cargo hx --profile portable --ci --action test
-cargo hx --profile metal --action build --release
+cargo hx dev
+cargo hx run --profile portable
+cargo hx run --profile metal
+cargo hx test --profile portable --ci
+cargo hx build --profile metal --release
 
 # or from repo root:
-# cargo hx --project examples/chat_loopback --action run
+# cargo hx run --project examples/chat_loopback
 ```
 
 This keeps profile selection in existing `compile.<profile>.hxml` files while build/run/test behavior is selected via cargo flags.
