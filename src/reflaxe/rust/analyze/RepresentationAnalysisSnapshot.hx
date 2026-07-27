@@ -30,52 +30,51 @@ enum abstract RustDynamicValueMaterialization(String) from String to String {
 }
 
 /**
-	Describes the exact source shape that one saved `Dynamic` action is allowed to consume.
+	An opaque description of the real typed Haxe value entering a saved `Dynamic` action.
 
-	Why / What / How
-	- A source byte range alone cannot prove that lowering is boxing the same kind of value that early
-	  analysis inspected. A malformed action could otherwise say “direct” for `rust.Ref<T>` and let a
-	  short-lived Rust reference reach runtime storage.
-	- The type check records the source and destination type spellings, the outer carrier family, the
-	  owned value family, and the required copy/clone step.
-	- `RepresentationTypeAnalyzer` builds valid type checks from typed Haxe types. Lowering rebuilds
-	  only this small description and must match it exactly before it may use the saved decision.
+	Why
+	- A caller could previously combine the text `rust.Ref<String>` with a scalar/Copy classification,
+	  creating a record whose fields contradicted one another.
+
+	What
+	- Keeps the exact source type spelling, outer carrier family, owned value family, and required
+	  copy/clone step as one indivisible value.
+
+	How
+	- Only `RepresentationTypeAnalyzer` may create this value, while it has the real Haxe `Type` and has
+	  derived every field from that same type.
+	- Later snapshot and lowering code may inspect the immutable fields but cannot forge a new combination.
 **/
 @:allow(reflaxe.rust.analyze.RepresentationTypeAnalyzer)
-@:allow(RustRepresentationTypeContractMacro)
-class RustDynamicCrossingTypeCheck {
+class RustDynamicCrossingSourceFingerprint {
 	public final sourceTypeKey:String;
-	public final boundaryTypeKey:String;
 	public final carrierKind:RustSourceValueKind;
 	public final valueKind:RustSourceValueKind;
 	public final materialization:RustDynamicValueMaterialization;
 
-	private function new(sourceTypeKey:String, boundaryTypeKey:String, carrierKind:RustSourceValueKind, valueKind:RustSourceValueKind,
+	private function new(sourceTypeKey:String, carrierKind:RustSourceValueKind, valueKind:RustSourceValueKind,
 			materialization:RustDynamicValueMaterialization) {
 		this.sourceTypeKey = sourceTypeKey;
-		this.boundaryTypeKey = boundaryTypeKey;
 		this.carrierKind = carrierKind;
 		this.valueKind = valueKind;
 		this.materialization = materialization;
 	}
 
 	/**
-		Constructs only source/destination combinations that lowering can safely check.
+		Constructs only source combinations that lowering can safely check.
 
 		Why / What / How
 		- A caller must not pair “use directly” with a borrow or claim copy/clone behavior for the wrong
 		  carrier family.
-		- Validate the exact Dynamic destination plus the allowed carrier, owned-value, and preparation
-		  combinations before the immutable check enters a snapshot.
-		- The production type analyzer supplies these fields from Haxe `Type` values; focused mutation tests
-		  call this factory directly to prove malformed combinations fail immediately.
+		- Validate the allowed carrier, owned-value, and preparation combinations before the immutable
+		  fingerprint enters a snapshot.
+		- The one permitted caller supplies these fields together while inspecting the actual Haxe `Type`.
 	**/
-	private static function validated(sourceTypeKey:String, boundaryTypeKey:String, carrierKind:RustSourceValueKind,
-			valueKind:RustSourceValueKind, materialization:RustDynamicValueMaterialization):RustDynamicCrossingTypeCheck {
+	private static function validated(sourceTypeKey:String, carrierKind:RustSourceValueKind,
+			valueKind:RustSourceValueKind, materialization:RustDynamicValueMaterialization):RustDynamicCrossingSourceFingerprint {
 		if (sourceTypeKey == null || sourceTypeKey.length == 0 || sourceTypeKey.indexOf("\u0000") >= 0
-			|| boundaryTypeKey != "Dynamic"
 			|| carrierKind == null || valueKind == null || materialization == null)
-			throw "Dynamic crossing type checks require a safe source type, the exact Dynamic boundary, source families, and a materialization";
+			throw "Dynamic crossing source fingerprints require a safe source type, source families, and a materialization";
 		switch (materialization) {
 			case DynamicValueDirect:
 				if (isBorrowed(carrierKind) || carrierKind != valueKind)
@@ -90,12 +89,11 @@ class RustDynamicCrossingTypeCheck {
 					|| valueKind == RustSourceValueKind.SourceDynamic || valueKind == RustSourceValueKind.SourceNativeHandle)
 					throw "A borrow-clone Dynamic action requires rust.Ref<T> with a proven concrete Clone inner value";
 		}
-		return new RustDynamicCrossingTypeCheck(sourceTypeKey, boundaryTypeKey, carrierKind, valueKind, materialization);
+		return new RustDynamicCrossingSourceFingerprint(sourceTypeKey, carrierKind, valueKind, materialization);
 	}
 
 	public function canonicalKey():String {
-		return sourceTypeKey + "\u0000" + boundaryTypeKey + "\u0000" + carrierKind.id() + "\u0000" + valueKind.id() + "\u0000"
-			+ materialization;
+		return sourceTypeKey + "\u0000" + carrierKind.id() + "\u0000" + valueKind.id() + "\u0000" + materialization;
 	}
 
 	static function isBorrowed(kind:RustSourceValueKind):Bool {
@@ -103,6 +101,53 @@ class RustDynamicCrossingTypeCheck {
 			|| kind == RustSourceValueKind.SourceBorrowedStr || kind == RustSourceValueKind.SourceBorrowedSlice
 			|| kind == RustSourceValueKind.SourceBorrowedMutSlice;
 	}
+}
+
+/**
+	Describes the exact source and destination shape that one saved `Dynamic` action may consume.
+
+	Why / What / How
+	- A source byte range alone cannot prove that lowering is boxing the same typed value inspected early.
+	- The opaque source fingerprint prevents contradictory type facts, while the destination remains the
+	  one currently admitted `Dynamic` boundary.
+	- Lowering rebuilds this small description from its real typed value and must match it exactly.
+**/
+@:allow(reflaxe.rust.analyze.RepresentationTypeAnalyzer)
+class RustDynamicCrossingTypeCheck {
+	public final sourceFingerprint:RustDynamicCrossingSourceFingerprint;
+	public final boundaryTypeKey:String;
+	public var sourceTypeKey(get, never):String;
+	public var carrierKind(get, never):RustSourceValueKind;
+	public var valueKind(get, never):RustSourceValueKind;
+	public var materialization(get, never):RustDynamicValueMaterialization;
+
+	private function new(sourceFingerprint:RustDynamicCrossingSourceFingerprint, boundaryTypeKey:String) {
+		this.sourceFingerprint = sourceFingerprint;
+		this.boundaryTypeKey = boundaryTypeKey;
+	}
+
+	private static function validated(sourceFingerprint:RustDynamicCrossingSourceFingerprint,
+			boundaryTypeKey:String):RustDynamicCrossingTypeCheck {
+		if (sourceFingerprint == null || boundaryTypeKey != "Dynamic")
+			throw "Dynamic crossing type checks require one analyzed source fingerprint and the exact Dynamic boundary";
+		return new RustDynamicCrossingTypeCheck(sourceFingerprint, boundaryTypeKey);
+	}
+
+	public function canonicalKey():String {
+		return sourceFingerprint.canonicalKey() + "\u0000" + boundaryTypeKey;
+	}
+
+	inline function get_sourceTypeKey():String
+		return sourceFingerprint.sourceTypeKey;
+
+	inline function get_carrierKind():RustSourceValueKind
+		return sourceFingerprint.carrierKind;
+
+	inline function get_valueKind():RustSourceValueKind
+		return sourceFingerprint.valueKind;
+
+	inline function get_materialization():RustDynamicValueMaterialization
+		return sourceFingerprint.materialization;
 }
 
 /**
@@ -186,6 +231,8 @@ class RustSavedRepresentationCrossing {
 			throw "A saved Dynamic action must sit inside its complete source boundary";
 		if (decision.boundary != RustBoundaryKind.BoundaryDynamic)
 			throw "Saved representation crossings currently admit only Dynamic boundaries";
+		if (!sameOrigin(origin, decision.origin))
+			throw "A saved Dynamic action and its representation decision must name the same exact source location";
 		if (decision.sourceKind != typeCheck.valueKind)
 			throw "A saved Dynamic decision must describe the owned value family in its source type check";
 		if (ordinal < 0)
@@ -202,6 +249,11 @@ class RustSavedRepresentationCrossing {
 
 	inline function get_materialization():RustDynamicValueMaterialization
 		return typeCheck.materialization;
+
+	static function sameOrigin(left:RustDecisionOrigin, right:RustDecisionOrigin):Bool {
+		return left != null && right != null && left.modulePath == right.modulePath && left.sourceFile == right.sourceFile
+			&& left.startByte == right.startByte && left.endByte == right.endByte;
+	}
 }
 
 /** One saved action whose lowering count is not exactly one. */

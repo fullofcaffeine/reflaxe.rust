@@ -347,6 +347,12 @@ types, including `Int` fields returned from helpers or decoded from `haxe.json.V
 Omitted `@:optional` fields also work: generated Rust checks whether the runtime anonymous object has
 the key and returns the field type's Haxe null representation when it is absent.
 
+Anonymous fields declared as `rust.Ref<T>` or `Null<rust.Ref<T>>` are rejected at the value being
+stored. These references are valid only inside their scoped callback, while a runtime anonymous record
+owns its fields. Store an owned `T` value instead. Supporting a borrowed field would require a new
+guarded-read API that ties the returned reference to the record's read lock; the current value-returning
+field API cannot promise that lifetime safely.
+
 Field names do not silently change the representation. A mutable anonymous record with function-valued
 `hasNext` and `next` fields remains a shared record even though Haxe also accepts it as an iterator. It
 can be aliased, have a function field replaced through either alias, retain reference equality, and be

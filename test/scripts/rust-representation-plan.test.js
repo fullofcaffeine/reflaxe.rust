@@ -69,10 +69,18 @@ function main() {
     'the compiler snapshot stage must run the representation-plan contract'
   )
   const compilerSource = fs.readFileSync(path.join(repoRoot, 'src', 'reflaxe', 'rust', 'RustCompiler.hx'), 'utf8')
+  const crossingSnapshotSource = fs.readFileSync(
+    path.join(repoRoot, 'src', 'reflaxe', 'rust', 'analyze', 'RepresentationAnalysisSnapshot.hx'),
+    'utf8')
   assert.strictEqual(compilerSource.split('rustRelativeExpr(["hxrt", "dynamic", "from"])').length - 1, 1,
     'all direct Dynamic::from construction must remain centralized in the labeled compiler-generated String helper')
   assert.match(compilerSource, /function boxCompilerGeneratedStringAsDynamic\(/,
     'compiler-created Dynamic String payloads must retain an explicit audit path')
+  assert.match(crossingSnapshotSource, /class RustDynamicCrossingSourceFingerprint/,
+    'saved Dynamic actions must receive one opaque source fingerprint built from the actual typed Haxe value')
+  assert.doesNotMatch(crossingSnapshotSource,
+    /validated\(sourceTypeKey:String,\s*boundaryTypeKey:String,\s*carrierKind:RustSourceValueKind/,
+    'saved-action factories must not accept independent type spellings and classifications that can contradict each other')
 
   const generator = run(process.execPath, [generatorPath, '--check'])
   assert.strictEqual(generator.status, 0, output(generator))
@@ -612,6 +620,45 @@ function main() {
     }
   }
 
+  const castCallSource = path.join(platformPositionFixture, 'ExternalCastCalls.hx')
+  const castCallNeedles = [
+    '(cast Sys.time : Void->Float)()',
+    '(cast Type.resolveClass : String->Class<Dynamic>)("β.ExternalCastCalls")',
+    '(cast Reflect.field : Dynamic->String->Dynamic)({value: 1}, "κλειδί")'
+  ]
+  const castCallRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-cast-call-position-'))
+  try {
+    fs.copyFileSync(castCallSource, path.join(castCallRoot, 'ExternalCastCalls.hx'))
+    const castCallResult = run(process.execPath, [haxeShim,
+      '-cp', castCallRoot,
+      '-lib', 'reflaxe.rust',
+      '-D', 'reflaxe_rust_profile=metal',
+      '-D', 'rust_no_hxrt',
+      '-D', 'rust_no_build',
+      '-D', `rust_output=${path.join(castCallRoot, 'out')}`,
+      '-main', 'ExternalCastCalls'])
+    assert.notStrictEqual(castCallResult.status, 0,
+      'same-type casts around Sys, Type, and Reflect targets must fail the early no-hxrt check')
+    assert.match(output(castCallResult), /\[HXRS-NO-HXRT-ELIGIBILITY\]/,
+      'cast-wrapped runtime operations must be rejected before Rust AST construction')
+    assert.doesNotMatch(output(castCallResult), /\[HXRS-NO-HXRT-EMITTED-RUNTIME\]/,
+      'the generated-Rust guard must remain a backstop rather than the ordinary cast-wrapped detector')
+    assert.doesNotMatch(output(castCallResult),
+      new RegExp(castCallRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      'cast-wrapped operation diagnostics must not expose their absolute classpath')
+    const primaryCastLocation = sourceLocation(castCallSource, castCallNeedles[0])
+    assert.match(output(castCallResult),
+      new RegExp(`\\[HXRS-NO-HXRT-ELIGIBILITY\\] ExternalCastCalls\\.hx:${primaryCastLocation.line}:`),
+      'the first canonical cast-wrapped operation must own the primary exact constructor location')
+    for (const needle of castCallNeedles) {
+      const span = exactUtf8Span(castCallSource, needle).span
+      assert.match(output(castCallResult), new RegExp(span.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+        `${needle} must retain its exact private UTF-8 source range`)
+    }
+  } finally {
+    fs.rmSync(castCallRoot, { recursive: true, force: true })
+  }
+
   const unsupportedBorrowFixture = path.join(repoRoot, 'test', 'negative', 'representation_borrow_dynamic_unsupported')
   for (const unsupported of [
     { main: 'NativeBorrow', detail: 'native handle' },
@@ -646,6 +693,34 @@ function main() {
     cleanOutput(unsupportedBorrowFixture, outputName)
   }
 
+  const anonymousBorrowFixture = path.join(repoRoot, 'test', 'negative', 'representation_anonymous_borrowed_field')
+  for (const operation of ['literal', 'assign', 'reflect']) {
+    for (const nullable of [false, true]) {
+      const outputName = `out_${operation}_${nullable ? 'nullable' : 'direct'}`
+      const args = [haxeShim, 'compile.hxml', '-D', `operation_${operation}`, '-D', `rust_output=${outputName}`]
+      if (nullable)
+        args.push('-D', 'nullable')
+      const compile = () => runIn(anonymousBorrowFixture, process.execPath, args)
+      cleanOutput(anonymousBorrowFixture, outputName)
+      const firstRejected = compile()
+      cleanOutput(anonymousBorrowFixture, outputName)
+      const secondRejected = compile()
+      assert.notStrictEqual(firstRejected.status, 0,
+        `${operation} storage for ${nullable ? 'Null<rust.Ref<T>>' : 'rust.Ref<T>'} anonymous fields must fail early`)
+      assert.strictEqual(output(firstRejected), output(secondRejected),
+        `${operation} borrowed-field diagnostics must be repeatable`)
+      assert.match(output(firstRejected), /\[HXRS-BORROW-REGION\].*anonymous field `value`/,
+        `${operation} storage must explain that a runtime anonymous object cannot expose rust.Ref<T>`)
+      assert.match(output(firstRejected), /store an owned value/i,
+        `${operation} storage must tell the author how to make the field safe`)
+      assert.doesNotMatch(output(firstRejected), /Internal Rust representation error/,
+        `${operation} storage must fail during typed analysis rather than Rust lowering`)
+      assert(!fs.existsSync(path.join(anonymousBorrowFixture, outputName, 'src')),
+        `${operation} storage must not construct Rust source after the typed boundary fails`)
+      cleanOutput(anonymousBorrowFixture, outputName)
+    }
+  }
+
   const borrowDynamicFixture = path.join(repoRoot, 'test', 'positive', 'representation_borrow_dynamic')
   cleanOutput(borrowDynamicFixture, 'out')
   const borrowDynamicCompile = runIn(borrowDynamicFixture, process.execPath, [haxeShim, 'compile.hxml'])
@@ -659,10 +734,8 @@ function main() {
     'a concrete rust.Vec behind rust.Ref must be cloned as an owned value before it enters Dynamic')
   assert.match(borrowDynamicRust, /hxrt::dynamic::from\(\(\*borrowed_4\)\.clone\(\)\)/,
     'a concrete rust.PathBuf behind rust.Ref must be cloned as an owned value before it enters Dynamic')
-  assert.doesNotMatch(borrowDynamicRust, /hxrt::dynamic::from\((?:borrowed(?:_[0-9]+)?|count_ref|label_ref)\)/,
+  assert.doesNotMatch(borrowDynamicRust, /hxrt::dynamic::from\(borrowed(?:_[0-9]+)?\)/,
     'the short-lived Rust borrow token itself must never enter Dynamic')
-  assert.doesNotMatch(borrowDynamicRust, /\.set\([^\n]*(?:count_ref|label_ref)/,
-    'anonymous-object storage must not hide raw Rust references inside its generic runtime setter')
   const borrowAudit = fs.readFileSync(path.join(borrowDynamicFixture, 'out', 'representation_crossing_audit.txt'), 'utf8')
   assert.match(borrowAudit, /\|borrow-copy\|reuse=copy\|consumed=1\|/)
   assert.match(borrowAudit, /\|borrow-clone\|reuse=clone_when_needed\|consumed=1\|/)
@@ -711,6 +784,14 @@ function main() {
     'switch result branches must reborrow without consuming the original Option binding')
   assert.doesNotMatch(nullableMutableRust, /let __hx_opt = match branch/,
     'an exhaustive enum switch must reborrow each branch instead of moving the nullable mutable reference')
+  assert.doesNotMatch(nullableMutableRust, /let __hx_opt = match diverging_branch/,
+    'an exhaustive switch with a diverging arm must not move the nullable mutable-reference Option')
+  assert.doesNotMatch(nullableMutableRust, /let __hx_opt = match diverging_bool/,
+    'an exhaustive Bool switch with a diverging arm must not move the nullable mutable-reference Option')
+  assert.match(nullableMutableRust, /match diverging_branch \{[\s\S]*?match &mut maybe[\s\S]*?hxrt::exception::throw/,
+    'the enum switch must reborrow its local arm and preserve its throwing arm')
+  assert.match(nullableMutableRust, /if diverging_bool \{[\s\S]*?match &mut maybe[\s\S]*?hxrt::exception::throw/,
+    'the Bool switch must reborrow its local arm and preserve its throwing arm')
   assert.match(nullableMutableRust, /observe_score\(score\);\s+match &mut maybe/,
     'block statements must remain before the reborrowed tail expression')
   assert.doesNotMatch(nullableMutableRust, /maybe(?:_3)?\.clone\(\)/,

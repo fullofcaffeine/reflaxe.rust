@@ -17,10 +17,6 @@ class Main {
 		var cloned = Borrow.withRef(label, borrowed -> inspect(borrowed));
 		var clonedNumbers = Borrow.withRef(numbers, borrowed -> inspect(borrowed));
 		var clonedPath = Borrow.withRef(path, borrowed -> inspect(borrowed));
-		var anonymousCreated = Borrow.withRef(count, countRef -> Borrow.withRef(label, labelRef -> {
-			var holder = {count: countRef, label: labelRef};
-			holder != null;
-		}));
-		Sys.println(copied + "|" + cloned + "|" + (clonedNumbers.length > 0 && clonedPath.length > 0 && anonymousCreated));
+		Sys.println(copied + "|" + cloned + "|" + (clonedNumbers.length > 0 && clonedPath.length > 0));
 	}
 }

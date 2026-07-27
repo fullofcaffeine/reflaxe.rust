@@ -71,7 +71,7 @@
     },
     {
       "path": "src/reflaxe/rust/RustCompiler.hx",
-      "line": 17130,
+      "line": 17135,
       "enclosingFunction": "addSpec",
       "factory": "traitImplementationAt",
       "authorityId": "metadata-owned",

@@ -220,7 +220,7 @@ class NoHxrtEligibilityAnalyzer {
 	static function callOwnerPath(callTarget:TypedExpr):String {
 		if (callTarget == null)
 			return "";
-		return switch (unwrapMetaParen(callTarget).expr) {
+		return switch (TypedCallableTarget.transparent(callTarget).expr) {
 			case TField(_, FStatic(ownerRef, _)):
 				classPath(ownerRef.get());
 			case TField(_, FInstance(ownerRef, _, _)):

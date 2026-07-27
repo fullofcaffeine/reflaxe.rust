@@ -15,46 +15,48 @@ src/reflaxe/rust/RustCompiler.hx:2685
 src/reflaxe/rust/RustCompiler.hx:2688
 src/reflaxe/rust/RustCompiler.hx:2696
 src/reflaxe/rust/RustCompiler.hx:10665
-src/reflaxe/rust/RustCompiler.hx:13413
-src/reflaxe/rust/RustCompiler.hx:13432
-src/reflaxe/rust/RustCompiler.hx:19501
+src/reflaxe/rust/RustCompiler.hx:13418
+src/reflaxe/rust/RustCompiler.hx:13437
+src/reflaxe/rust/RustCompiler.hx:19507
 src/reflaxe/rust/RustSourceMap.hx:419
-src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:76
-src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:78
-src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:82
-src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:86
-src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:91
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:77
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:81
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:85
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:90
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:131
 src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:132
-src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:186
-src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:188
-src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:190
-src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:244
-src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:246
-src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:257
-src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:260
-src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:267
-src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:330
-src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:337
-src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:445
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:177
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:231
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:233
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:235
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:237
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:296
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:298
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:309
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:312
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:319
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:382
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:389
+src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:497
 src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:110
 src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:217
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:434
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:440
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:576
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:586
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:609
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:611
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:619
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:621
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:625
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:629
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:646
-src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:148
-src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:174
-src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:179
-src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:183
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:443
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:451
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:587
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:599
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:622
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:624
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:632
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:634
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:638
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:642
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:661
+src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:150
+src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:176
+src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:181
 src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:185
-src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:455
+src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:187
+src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:481
 src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:118
 src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:149
 src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:153
@@ -84,6 +86,7 @@ test/negative/representation_borrow_dynamic_unsupported/GenericBorrow.hx # FILE_
 test/negative/representation_borrow_dynamic_unsupported/NativeBorrow.hx # FILE_SCOPE_JUSTIFICATION: Negative fixture deliberately asks a borrowed native handle to cross into Dynamic and checks the exact compiler error.
 test/negative/representation_dynamic_crossings/CrossModuleBoundary.hx # FILE_SCOPE_JUSTIFICATION: Focused fixture deliberately repeats Dynamic defaults and read-only values across module boundaries to test saved-decision replay.
 test/negative/representation_dynamic_crossings/Main.hx # FILE_SCOPE_JUSTIFICATION: Focused fixture deliberately exercises every supported Dynamic storage and conversion site plus repeated emission and unreachable-code cases.
+test/negative/representation_no_hxrt_platform_position/ExternalCastCalls.hx # FILE_SCOPE_JUSTIFICATION: Negative fixture deliberately uses Dynamic only in cast-wrapped Type and Reflect signatures to prove exact early no-hxrt operation errors.
 test/positive/representation_borrow_dynamic/Main.hx # FILE_SCOPE_JUSTIFICATION: Focused fixture deliberately converts borrowed Copy and concrete Clone values into owned Dynamic payloads.
 test/perf/json/Main.hx # FILE_SCOPE_JUSTIFICATION: Perf fixture intentionally round-trips through haxe.Json.parse Dynamic values to measure JSON runtime overhead.
 test/runtime_e2e/portable_sys_failures/Main.hx # FILE_SCOPE_JUSTIFICATION: Runtime failure fixture uses Dynamic only as the final exception catch-all to prove typed Sys and haxe.io.Error payloads are not replaced by another Haxe-visible value.

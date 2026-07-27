@@ -31,8 +31,11 @@ once. The action also records a compact check of the real source type, the owned
 whether lowering must use the value directly, copy through `rust.Ref<T>`, or clone through
 `rust.Ref<T>`. Later lowering rebuilds that small type check and consumes the matching saved action;
 it does not run the representation planner again. A malformed, missing, duplicated, or unused action
-is an internal compiler error. Framework-generated conversions use a separate, explicitly labeled
-path so they cannot silently hide a missed user conversion.
+is an internal compiler error. The source description is opaque: only the typed analyzer can create
+it from a real Haxe type, so callers cannot combine a `rust.Ref<String>` spelling with an unrelated
+scalar/Copy classification. The saved action and its decision must also name the same exact source
+location. Framework-generated conversions use a separate, explicitly labeled path so they cannot
+silently hide a missed user conversion.
 
 That framework path remains narrow for open generic values. Target std helpers such as
 `DynamicAccessKeyValueIterator<T>` are not application code, so their bodies are intentionally absent
@@ -64,9 +67,8 @@ the Dynamic container. These are reviewed correctness and output-quality changes
 plumbing. Exact snapshots and focused Rust/runtime tests cover the changed forms.
 
 Anonymous-object fields no longer ask the runtime to discover a conversion through the generic
-`Anon::set<T>` helper. Generated Rust first performs the saved conversion, including copying or
-cloning the owned value behind an immutable borrow, then calls `set_dyn` with the finished `Dynamic`
-value. For a concretely declared field, the conversion preserves the field's real storage carrier—an
+`Anon::set<T>` helper. Generated Rust first performs the saved conversion, then calls `set_dyn` with
+the finished `Dynamic` value. For a concretely declared field, the conversion preserves the field's real storage carrier—an
 optional `Bool`, for example, is stored as `Option<bool>` rather than as a bare `bool`—because typed
 reads retrieve that same Rust type. A field declared as `Dynamic` deliberately does not preserve the
 source carrier: `None` follows ordinary Haxe null conversion and becomes Dynamic null. Typed field
@@ -74,13 +76,23 @@ reads still use `get<T>`; a field declared `Dynamic` uses `get_dyn`. Anonymous-o
 field assignments, and constant-name `Reflect.setField` therefore follow the same checked route as
 parameters, returns, and ordinary fields.
 
+One combination is rejected deliberately: a concretely typed anonymous field may not be declared
+`rust.Ref<T>` or `Null<rust.Ref<T>>`. The runtime object owns values and reads them back by their exact
+stored Rust type. Saving owned `T` would not match a later typed read of `&T`, while saving the
+short-lived `&T` would let the borrow escape its callback. Literal creation, direct assignment, and
+constant-name `Reflect.setField` all report this at the stored Haxe value and ask the author to store
+an owned value instead. Supporting such a field later requires an explicit guarded-read lifetime
+contract; it cannot be implemented safely by changing only the written type.
+
 `Null<rust.Ref<T>>` emits `Option<&T>`, because a bare Rust borrow cannot represent Haxe `null`.
 Nullable mutable borrows are never cloned—`Option<&mut T>` cannot be cloned. A local mutable option is
 opened through `&mut` and yields a real reborrow. When an `if`, `switch`, or block chooses between
 nullable mutable borrows, lowering reborrows at the result leaves so later valid uses do not move the
 original option. A shared typed-Haxe control-flow helper recognizes exhaustive Bool and enum switches,
 including switches without a default, so early analysis and mutable-borrow lowering agree about which
-branches are complete and which following expressions are unreachable.
+branches are complete and which following expressions are unreachable. A branch that is proven to
+stop—such as `throw`—is preserved as-is; only reachable local-value branches are rewritten as
+reborrows. This means a throwing arm does not force another arm to move its original `Option<&mut T>`.
 
 Typed collection follows representation-bearing container arguments, function signatures,
 anonymous fields, typedef targets, and emitted enum-constructor payloads. It deliberately skips
@@ -97,6 +109,10 @@ collapse to the same suffix-derived path. Direct call and constructor arguments 
 even when written as `if` or `switch` expressions; their resulting type is recorded without treating
 surrounding method-body control wrappers as stored values. An immediately invoked enum constructor is
 call scaffolding, while a constructor stored in a variable remains a real function value.
+Representation and no-runtime analysis share one call-target helper: metadata, parentheses, and a
+cast between identical function types are transparent only for the immediately invoked target.
+Consequently cast-wrapped `Sys`, `Type`, and `Reflect` calls keep their exact early error location,
+while a type-changing cast or stored function remains a real value.
 
 All complete source-only analyzers obtain executable class content from one helper that returns the
 constructor, ordinary instance fields, and static fields. Haxe stores `ClassType.constructor`

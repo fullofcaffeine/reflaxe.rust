@@ -66,6 +66,30 @@ class Main {
 					}
 				} : Null<rust.MutRef<Vec<Int>>>));
 				score += consumeMutRef(maybe);
+				var divergingBranch = score > 0 ? BorrowBranch.First : BorrowBranch.Second;
+				score += consumeMutRef((cast switch (divergingBranch) {
+					case First: {
+						observeScore(score);
+						maybe;
+					}
+					case Second: {
+						observeScore(score);
+						throw "enum branch stopped";
+					}
+				} : Null<rust.MutRef<Vec<Int>>>));
+				score += consumeMutRef(maybe);
+				var divergingBool = score > 0;
+				score += consumeMutRef((cast switch (divergingBool) {
+					case true: {
+						observeScore(score);
+						maybe;
+					}
+					case false: {
+						observeScore(score);
+						throw "bool branch stopped";
+					}
+				} : Null<rust.MutRef<Vec<Int>>>));
+				score += consumeMutRef(maybe);
 				score += consumeMutRef((cast {
 					observeScore(score);
 					maybe;
@@ -105,6 +129,30 @@ class Main {
 					}
 				} : Null<rust.MutSlice<Int>>));
 				score += consumeMutSlice(maybe);
+				var divergingBranch = score > 0 ? BorrowBranch.First : BorrowBranch.Second;
+				score += consumeMutSlice((cast switch (divergingBranch) {
+					case First: {
+						observeScore(score);
+						maybe;
+					}
+					case Second: {
+						observeScore(score);
+						throw "enum branch stopped";
+					}
+				} : Null<rust.MutSlice<Int>>));
+				score += consumeMutSlice(maybe);
+				var divergingBool = score > 0;
+				score += consumeMutSlice((cast switch (divergingBool) {
+					case true: {
+						observeScore(score);
+						maybe;
+					}
+					case false: {
+						observeScore(score);
+						throw "bool branch stopped";
+					}
+				} : Null<rust.MutSlice<Int>>));
+				score += consumeMutSlice(maybe);
 				score += consumeMutSlice((cast {
 					observeScore(score);
 					maybe;
@@ -115,6 +163,6 @@ class Main {
 			score;
 		});
 
-		trace(ok && mutableRefScore == 18 && sliceScore == 4 && mutableSliceScore == 72);
+		trace(ok && mutableRefScore == 26 && sliceScore == 4 && mutableSliceScore == 104);
 	}
 }

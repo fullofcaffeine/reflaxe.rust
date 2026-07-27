@@ -12,8 +12,8 @@ import reflaxe.rust.analyze.RepresentationTypeAnalyzer;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer;
 import reflaxe.rust.analyze.RuntimeRequirementAnalyzer.RuntimeRequirementEntry;
 import reflaxe.rust.analyze.TypedExprReplayFamily;
+import reflaxe.rust.analyze.TypedCallableTarget;
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization;
-import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicCrossingTypeCheck;
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedCrossingTracker;
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedRepresentationCrossing;
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedCrossingReplayContext;
@@ -34,7 +34,7 @@ class RustRepresentationTypeContractMacro {
 	public static macro function run():Expr {
 		var enumTarget = Context.typeExpr(macro RustRepresentationTypeFixture.RustRepresentationFixtureChoice.Payload);
 		var castWrappedTarget:TypedExpr = {expr: TCast(enumTarget, null), t: enumTarget.t, pos: enumTarget.pos};
-		var unwrappedTarget = RepresentationDecisionAnalyzer.transparentCallableTarget(castWrappedTarget);
+		var unwrappedTarget = TypedCallableTarget.transparent(castWrappedTarget);
 		switch (unwrappedTarget.expr) {
 			case TField(_, FEnum(_, _)):
 			case _:
@@ -102,18 +102,6 @@ class RustRepresentationTypeContractMacro {
 			if (!rejected)
 				throw label;
 		}
-		rejects("a direct saved action must reject a borrowed source carrier", () -> RustDynamicCrossingTypeCheck.validated("rust.Ref<Int>",
-			"Dynamic", RustSourceValueKind.SourceBorrowedRef, RustSourceValueKind.SourceScalar,
-			RustDynamicValueMaterialization.DynamicValueDirect));
-		rejects("borrow-copy must reject a non-Copy owned value", () -> RustDynamicCrossingTypeCheck.validated("rust.Ref<String>", "Dynamic",
-			RustSourceValueKind.SourceBorrowedRef, RustSourceValueKind.SourceString,
-			RustDynamicValueMaterialization.DynamicValueBorrowCopy));
-		rejects("borrow-clone must reject a non-reference source", () -> RustDynamicCrossingTypeCheck.validated("String", "Dynamic",
-			RustSourceValueKind.SourceString, RustSourceValueKind.SourceString,
-			RustDynamicValueMaterialization.DynamicValueBorrowClone));
-		rejects("a saved action must reject a destination other than the exact Dynamic boundary", () -> RustDynamicCrossingTypeCheck.validated("Int",
-			"NotDynamic", RustSourceValueKind.SourceScalar, RustSourceValueKind.SourceScalar,
-			RustDynamicValueMaterialization.DynamicValueDirect));
 		var stringTypeCheck = RepresentationTypeAnalyzer.tryDynamicCrossingTypeCheck(stringField.type, Context.getType("Dynamic"), false);
 		if (stringTypeCheck == null)
 			throw "the saved-action mismatch contract needs a String source type check";
@@ -123,6 +111,14 @@ class RustRepresentationTypeContractMacro {
 			scalarOrigin.modulePath);
 		rejects("a saved action location must sit inside the complete source boundary",
 			() -> RustSavedRepresentationCrossing.of(scalarOrigin, scalarBoundary, scalarTypeCheck, 0, outsideBoundary));
+		var differentDecisionOrigin = RustDecisionOrigin.at(scalarOrigin.sourceFile, scalarOrigin.startByte + 1, scalarOrigin.endByte + 1,
+			scalarOrigin.modulePath);
+		var differentOriginDecision = RepresentationTypeAnalyzer.tryDecideCrossing("different-origin-boundary", scalarField.type,
+			Context.getType("Dynamic"), scalarField.pos, differentDecisionOrigin, false);
+		if (differentOriginDecision == null)
+			throw "the saved-action origin contract needs a second valid scalar decision";
+		rejects("a saved action and its representation decision must name the same exact source location",
+			() -> RustSavedRepresentationCrossing.of(scalarOrigin, differentOriginDecision, scalarTypeCheck));
 		var savedScalar = RustSavedRepresentationCrossing.of(scalarOrigin, scalarBoundary, scalarTypeCheck);
 		var tracker = RustSavedCrossingTracker.of([savedScalar]);
 		if (tracker.consume(scalarOrigin, stringTypeCheck) != null || tracker.countProblems()[0].count != 0)

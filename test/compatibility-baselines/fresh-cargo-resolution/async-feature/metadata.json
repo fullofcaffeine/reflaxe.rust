@@ -275,7 +275,7 @@
           },
           {
             "name": "tokio",
-            "package": "tokio@1.53.0:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "tokio@1.53.1:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -347,7 +347,7 @@
           },
           {
             "name": "tokio",
-            "package": "tokio@1.53.0:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "tokio@1.53.1:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -358,7 +358,7 @@
         ]
       },
       {
-        "id": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "default",
           "std"
@@ -409,7 +409,7 @@
           },
           {
             "name": "libc",
-            "package": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -596,7 +596,7 @@
           },
           {
             "name": "syn",
-            "package": "syn@3.0.1:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "syn@3.0.3:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -682,7 +682,7 @@
         ]
       },
       {
-        "id": "syn@3.0.1:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "syn@3.0.3:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "clone-impls",
           "derive",
@@ -760,7 +760,7 @@
         ]
       },
       {
-        "id": "tokio@1.53.0:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "tokio@1.53.1:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "default",
           "macros",
@@ -1807,9 +1807,9 @@
       ]
     },
     {
-      "id": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
       "name": "libc",
-      "version": "0.2.186",
+      "version": "0.2.189",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.65.0",
       "enabledFeatures": [
@@ -2807,9 +2807,9 @@
       ]
     },
     {
-      "id": "syn@3.0.1:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "syn@3.0.3:registry+https://github.com/rust-lang/crates.io-index",
       "name": "syn",
-      "version": "3.0.1",
+      "version": "3.0.3",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [
@@ -3049,9 +3049,9 @@
       ]
     },
     {
-      "id": "tokio@1.53.0:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "tokio@1.53.1:registry+https://github.com/rust-lang/crates.io-index",
       "name": "tokio",
-      "version": "1.53.0",
+      "version": "1.53.1",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [

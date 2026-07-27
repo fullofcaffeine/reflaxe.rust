@@ -397,6 +397,21 @@ Agent policy:
   Haxe typed-class body gotcha: `ClassType.constructor` is stored separately from `fields` and
   `statics`. Any analysis that claims complete executable-body coverage must scan the constructor
   explicitly; otherwise constructor-only conversions or runtime requirements disappear before lowering.
+  Saved Dynamic source-shape gotcha: construct the type spelling, carrier kind, owned-value kind, and
+  copy/clone choice as one opaque fingerprint from the actual Haxe `Type`; do not expose a factory that
+  accepts those facts independently. The saved decision must name the same exact source location as
+  its action.
+  Anonymous borrowed-field gotcha: runtime anonymous records own values and read them back by exact
+  stored Rust type. Reject fields declared `rust.Ref<T>` or `Null<rust.Ref<T>>` at literal, assignment,
+  and constant `Reflect.setField` boundaries until a guard-bound read API can preserve the lifetime.
+  Storing owned `T` while reading `&T`, or storing the short-lived reference, is not a valid shortcut.
+  Transparent callable-target gotcha: representation and no-hxrt source analysis must share one helper
+  that unwraps metadata, parentheses, and only casts between identical function types. This keeps
+  cast-wrapped immediate enum constructors as call syntax and preserves exact `Sys`/`Type`/`Reflect`
+  operation errors without hiding type-changing casts or stored functions.
+  Expression-build gotcha: never call `compileExpr` speculatively and then discard the result before
+  compiling the same source expression again. Besides duplicated compiler work, that can consume one
+  saved boundary action twice even when generated Rust contains only one expression.
   The printer only formats the already selected Rust structure. Cover each admitted choice with a
   focused generated-shape test and a runtime test when behavior can change.
   Central exhaustive `RustAST` child traversal and modest pass-result/final checks are worthwhile

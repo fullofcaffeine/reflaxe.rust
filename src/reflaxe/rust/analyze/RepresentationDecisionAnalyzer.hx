@@ -311,6 +311,15 @@ class RepresentationDecisionAnalyzer {
 			};
 		}
 
+		function rejectAnonymousBorrowedField(fieldName:String, declaredType:Type, value:TypedExpr):Bool {
+			var reason = RepresentationTypeAnalyzer.anonymousBorrowedFieldRejectionReason(declaredType);
+			if (reason == null)
+				return false;
+			RustDiagnostic.error(RustDiagnosticId.BorrowRegion,
+				'Rust borrow region violation: anonymous field `$fieldName` cannot be stored safely. $reason', value.pos);
+			return true;
+		}
+
 		function arrayElementType(type:Type):Null<Type> {
 			return switch (TypeTools.follow(type)) {
 				case TInst(classRef, parameters) if (parameters.length == 1):
@@ -387,7 +396,7 @@ class RepresentationDecisionAnalyzer {
 						visit(fn.expr, false, false, false, expectedFunctionResult);
 						return;
 					case TCall(callTarget, arguments):
-						var callableTarget = transparentCallableTarget(callTarget);
+						var callableTarget = TypedCallableTarget.transparent(callTarget);
 						var relatedModulePath = callableOwnerPath(callableTarget);
 						var intrinsicOwner:Null<ClassType> = null;
 						var intrinsicField:Null<ClassField> = null;
@@ -435,6 +444,8 @@ class RepresentationDecisionAnalyzer {
 						if (reflectOperation == "setField" && directReflectField != null && arguments.length >= 3) {
 							var anonymousWrite = RepresentationTypeAnalyzer.classify(arguments[0].t, nullableStringCompat, classHasSubclasses)
 								== RustSourceValueKind.SourceAnonymousObject;
+							if (anonymousWrite && rejectAnonymousBorrowedField(directReflectField.name, directReflectField.type, arguments[2]))
+								return;
 							if (anonymousWrite)
 								addCrossing(modulePath, "reflect-field-write-shape-boundary", arguments[2], directReflectField.type);
 							var writeBoundary = anonymousWrite ? Context.getType("Dynamic") : directReflectField.type;
@@ -581,6 +592,8 @@ class RepresentationDecisionAnalyzer {
 								if (RepresentationTypeAnalyzer.classify(receiver.t, nullableStringCompat, classHasSubclasses)
 									== RustSourceValueKind.SourceAnonymousObject):
 								var field = fieldRef.get();
+								if (field != null && rejectAnonymousBorrowedField(field.name, field.type, right))
+									return;
 								if (field != null)
 									addCrossing(modulePath, "anonymous-assignment-shape-boundary", right, field.type);
 								expected = Context.getType("Dynamic");
@@ -641,6 +654,8 @@ class RepresentationDecisionAnalyzer {
 						}
 						for (field in fields) {
 							var declaredType = declaredFields.get(field.name);
+							if (declaredType != null && rejectAnonymousBorrowedField(field.name, declaredType, field.expr))
+								return;
 							if (declaredType != null)
 								addCrossing(modulePath, "anonymous-field-" + field.name + "-shape-boundary", field.expr, declaredType);
 							addCrossing(modulePath, "anonymous-field-" + field.name + "-boundary", field.expr, Context.getType("Dynamic"));
@@ -757,7 +772,7 @@ class RepresentationDecisionAnalyzer {
 	static function callableOwnerPath(callTarget:TypedExpr):String {
 		if (callTarget == null)
 			return "";
-		return switch (transparentCallableTarget(callTarget).expr) {
+		return switch (TypedCallableTarget.transparent(callTarget).expr) {
 			case TField(_, FStatic(ownerRef, _)) | TField(_, FInstance(ownerRef, _, _)):
 				var owner = ownerRef.get();
 				owner == null ? "" : typePath(owner.pack, owner.name);
@@ -928,34 +943,6 @@ class RepresentationDecisionAnalyzer {
 			changed = false;
 			switch (current.expr) {
 				case TMeta(_, inner) | TParenthesis(inner):
-					current = inner;
-					changed = true;
-				case _:
-			}
-		}
-		return current;
-	}
-
-	/**
-		Returns the meaningful target of an immediately invoked callable expression.
-
-		Why / What / How
-		- Haxe and macros may retain metadata, parentheses, or a same-type `TCast` around a method or enum
-		  constructor. Those wrappers do not store the callable, so treating their child as a value invents
-		  function and object-identity runtime needs.
-		- Peel only wrappers that preserve the target type. Calls, assignments, locals, and type-changing
-		  casts remain visible because they can genuinely materialize a function value.
-	**/
-	private static function transparentCallableTarget(expr:TypedExpr):TypedExpr {
-		var current = expr;
-		var changed = true;
-		while (changed && current != null) {
-			changed = false;
-			switch (current.expr) {
-				case TMeta(_, inner) | TParenthesis(inner):
-					current = inner;
-					changed = true;
-				case TCast(inner, _) if (TypeTools.toString(current.t) == TypeTools.toString(inner.t)):
 					current = inner;
 					changed = true;
 				case _:

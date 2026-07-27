@@ -18,6 +18,7 @@ import reflaxe.rust.analyze.RepresentationPlan.RustReusePolicy;
 import reflaxe.rust.analyze.RepresentationPlan.RustSourceValueKind;
 import reflaxe.rust.analyze.RepresentationPlan.RustSurfaceFact;
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicCrossingTypeCheck;
+import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicCrossingSourceFingerprint;
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization;
 
 /**
@@ -145,7 +146,8 @@ class RepresentationTypeAnalyzer {
 				return null;
 			}
 		}
-		return RustDynamicCrossingTypeCheck.validated(TypeTools.toString(actualType), "Dynamic", carrierKind, valueKind, materialization);
+		var fingerprint = RustDynamicCrossingSourceFingerprint.validated(TypeTools.toString(actualType), carrierKind, valueKind, materialization);
+		return RustDynamicCrossingTypeCheck.validated(fingerprint, "Dynamic");
 	}
 
 	/**
@@ -264,6 +266,30 @@ class RepresentationTypeAnalyzer {
 			case _:
 				null;
 		};
+	}
+
+	/**
+		Explains why a runtime anonymous-object field cannot expose `rust.Ref<T>`.
+
+		Why
+		- Anonymous storage owns a concrete runtime value and reads it back by its exact stored Rust type.
+		- Turning `rust.Ref<T>` into owned `T` on write but still reading the declared field as `&T` makes
+		  the runtime downcast fail. Keeping the short-lived `&T` would instead let a borrow escape.
+
+		What
+		- Rejects immutable `rust.Ref<T>` fields, including `Null<rust.Ref<T>>`, before Rust construction.
+
+		How
+		- Reuse the same alias/null-aware reference recognizer as Dynamic materialization.
+		- Full support requires a future stored-versus-exposed field contract with a guard-bound read
+		  lifetime; this compiler does not pretend that an owned clone is still a scoped reference.
+	**/
+	public static function anonymousBorrowedFieldRejectionReason(type:Type):Null<String> {
+		if (type == null || immutableReferenceValueType(type) == null)
+			return null;
+		return "runtime anonymous objects cannot safely expose this `rust.Ref<T>` field: storing the reference would let a "
+			+ "short-lived borrow escape, while storing an owned `T` would no longer match the declared reference type. "
+			+ "Store an owned value instead.";
 	}
 
 	/**

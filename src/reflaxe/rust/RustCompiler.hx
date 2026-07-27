@@ -13139,15 +13139,18 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					Why / What / How
 					- Moving `if flag then maybe else maybe` into a temporary consumes `Option<&mut T>`, so a
 					  later use of `maybe` fails Rust's ownership check.
-					- Admit only casts, `if`, `switch`, and block tails whose every result is a local. Rewrite
-					  the already-lowered result leaves into `match &mut local`, preserving conditions,
-					  match inputs, preceding statements, expression origins, and evaluation order.
+					- Admit only casts, `if`, `switch`, and block tails whose reachable value results are
+					  locals and whose other results are proven to diverge, such as `throw`.
+					- Rewrite local leaves into `match &mut local` and preserve diverging Rust leaves,
+					  conditions, match inputs, preceding statements, expression origins, and evaluation order.
 					- Return `null` for every other shape so the ordinary proven-temporary/final-use path remains
 					  responsible for moves.
 				**/
 				function reborrowNullableMutableControl(expression:TypedExpr, lowered:RustExpr):Null<RustExpr> {
 					var localNames:Map<String, Bool> = [];
 					function collectResultLocals(value:TypedExpr):Bool {
+						if (TypedExprControlFlow.stopsFollowingStatements(value))
+							return true;
 						var current = unwrapMetaParen(value);
 						return switch (current.expr) {
 							case TCast(inner, _): collectResultLocals(inner);
@@ -13180,6 +13183,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 					}
 
 					function rewrite(value:RustExpr):Null<RustExpr> {
+						if (rustExprAlwaysDiverges(value))
+							return value;
 						return switch (value) {
 							case EOrigin(origin, inner):
 								var rewritten = rewrite(inner);
@@ -18763,9 +18768,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 										|| isStringType(followType(e1.t))
 										|| isStringType(followType(e2.t)));
 								var rhsIsString = isStringType(followType(e2.t));
-								var rhsExpr = stringy && !rhsIsString ? compileExpr(e2) : maybeCloneForReuseValue(compileExpr(e2), e2);
 								if (cellBackedLocal) {
 									if (stringy) {
+										var rhsExpr = !rhsIsString ? compileExpr(e2) : maybeCloneForReuseValue(compileExpr(e2), e2);
 										var rhsStr:RustExpr = rhsIsString ? rustSingleExpr("__tmp") : stringifyThroughDynamic(rustSingleExpr("__tmp"), e2);
 										return EBlock({
 											stmts: [
@@ -18789,6 +18794,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 								}
 								var lhs = compileExpr(e1);
 								if (stringy) {
+									var rhsExpr = !rhsIsString ? compileExpr(e2) : maybeCloneForReuseValue(compileExpr(e2), e2);
 									var rhsStr:RustExpr = rhsIsString ? rustSingleExpr("__tmp") : stringifyThroughDynamic(rustSingleExpr("__tmp"), e2);
 									EBlock({
 										stmts: [

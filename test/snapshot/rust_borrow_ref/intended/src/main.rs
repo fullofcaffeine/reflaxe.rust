@@ -223,6 +223,71 @@ fn main() {
                         });
                     score
                 };
+                let diverging_branch: crate::_main_borrow_branch::BorrowBranch = if score > 0 {
+                    crate::_main_borrow_branch::BorrowBranch::First
+                } else {
+                    crate::_main_borrow_branch::BorrowBranch::Second
+                };
+                {
+                    score = score
+                        + consume_mut_ref(match diverging_branch {
+                            crate::_main_borrow_branch::BorrowBranch::First => {
+                                observe_score(score);
+                                match &mut maybe {
+                                    Some(__v) => &mut **__v,
+                                    None => hxrt::exception::throw(hxrt::dynamic::from(
+                                        String::from("Null Access"),
+                                    )),
+                                }
+                            }
+                            crate::_main_borrow_branch::BorrowBranch::Second => {
+                                observe_score(score);
+                                hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                    "enum branch stopped",
+                                )))
+                            }
+                        });
+                    score
+                };
+                {
+                    score = score
+                        + consume_mut_ref(match &mut maybe {
+                            Some(__v) => &mut **__v,
+                            None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                "Null Access",
+                            ))),
+                        });
+                    score
+                };
+                let diverging_bool: bool = score > 0;
+                {
+                    score = score
+                        + consume_mut_ref(if diverging_bool {
+                            observe_score(score);
+                            match &mut maybe {
+                                Some(__v) => &mut **__v,
+                                None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                    "Null Access",
+                                ))),
+                            }
+                        } else {
+                            observe_score(score);
+                            hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                "bool branch stopped",
+                            )));
+                        });
+                    score
+                };
+                {
+                    score = score
+                        + consume_mut_ref(match &mut maybe {
+                            Some(__v) => &mut **__v,
+                            None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                "Null Access",
+                            ))),
+                        });
+                    score
+                };
                 {
                     score = score
                         + consume_mut_ref({
@@ -397,6 +462,72 @@ fn main() {
                             });
                         score_2
                     };
+                    let diverging_branch_2: crate::_main_borrow_branch::BorrowBranch =
+                        if score_2 > 0 {
+                            crate::_main_borrow_branch::BorrowBranch::First
+                        } else {
+                            crate::_main_borrow_branch::BorrowBranch::Second
+                        };
+                    {
+                        score_2 = score_2
+                            + consume_mut_slice(match diverging_branch_2 {
+                                crate::_main_borrow_branch::BorrowBranch::First => {
+                                    observe_score(score_2);
+                                    match &mut maybe_3 {
+                                        Some(__v) => &mut **__v,
+                                        None => hxrt::exception::throw(hxrt::dynamic::from(
+                                            String::from("Null Access"),
+                                        )),
+                                    }
+                                }
+                                crate::_main_borrow_branch::BorrowBranch::Second => {
+                                    observe_score(score_2);
+                                    hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                        "enum branch stopped",
+                                    )))
+                                }
+                            });
+                        score_2
+                    };
+                    {
+                        score_2 = score_2
+                            + consume_mut_slice(match &mut maybe_3 {
+                                Some(__v) => &mut **__v,
+                                None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                    "Null Access",
+                                ))),
+                            });
+                        score_2
+                    };
+                    let diverging_bool_2: bool = score_2 > 0;
+                    {
+                        score_2 = score_2
+                            + consume_mut_slice(if diverging_bool_2 {
+                                observe_score(score_2);
+                                match &mut maybe_3 {
+                                    Some(__v) => &mut **__v,
+                                    None => hxrt::exception::throw(hxrt::dynamic::from(
+                                        String::from("Null Access"),
+                                    )),
+                                }
+                            } else {
+                                observe_score(score_2);
+                                hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                    "bool branch stopped",
+                                )));
+                            });
+                        score_2
+                    };
+                    {
+                        score_2 = score_2
+                            + consume_mut_slice(match &mut maybe_3 {
+                                Some(__v) => &mut **__v,
+                                None => hxrt::exception::throw(hxrt::dynamic::from(String::from(
+                                    "Null Access",
+                                ))),
+                            });
+                        score_2
+                    };
                     {
                         score_2 = score_2
                             + consume_mut_slice({
@@ -447,7 +578,7 @@ fn main() {
     println!(
         "{}",
         hxrt::dynamic::from(
-            ok && mutable_ref_score == 18 && slice_score == 4 && mutable_slice_score == 72
+            ok && mutable_ref_score == 26 && slice_score == 4 && mutable_slice_score == 104
         )
     );
 }

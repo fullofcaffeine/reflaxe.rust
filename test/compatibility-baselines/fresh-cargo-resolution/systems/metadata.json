@@ -22,7 +22,7 @@
         "dependencies": [
           {
             "name": "libc",
-            "package": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -195,7 +195,7 @@
           },
           {
             "name": "time",
-            "package": "time@0.3.53:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "time@0.3.54:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -247,7 +247,7 @@
         "dependencies": []
       },
       {
-        "id": "cc@1.3.0:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "cc@1.4.0:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [],
         "dependencies": [
           {
@@ -373,7 +373,7 @@
           },
           {
             "name": "libc",
-            "package": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -389,7 +389,7 @@
         "dependencies": [
           {
             "name": "libc",
-            "package": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -613,7 +613,7 @@
           },
           {
             "name": "libc",
-            "package": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -758,7 +758,7 @@
           },
           {
             "name": "libc",
-            "package": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -796,7 +796,7 @@
           },
           {
             "name": "libc",
-            "package": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -1041,7 +1041,7 @@
         "dependencies": [
           {
             "name": "cc",
-            "package": "cc@1.3.0:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "cc@1.4.0:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "build",
@@ -1175,7 +1175,7 @@
         "dependencies": []
       },
       {
-        "id": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "default",
           "std"
@@ -1261,7 +1261,7 @@
         "dependencies": [
           {
             "name": "libc",
-            "package": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -1466,7 +1466,7 @@
           },
           {
             "name": "libc",
-            "package": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -1630,7 +1630,7 @@
         "dependencies": [
           {
             "name": "cc",
-            "package": "cc@1.3.0:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "cc@1.4.0:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "build",
@@ -1660,7 +1660,7 @@
           },
           {
             "name": "libc",
-            "package": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -1745,7 +1745,7 @@
           },
           {
             "name": "pki_types",
-            "package": "rustls-pki-types@1.15.0:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "rustls-pki-types@1.15.1:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -1794,7 +1794,7 @@
         "dependencies": [
           {
             "name": "pki_types",
-            "package": "rustls-pki-types@1.15.0:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "rustls-pki-types@1.15.1:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -1805,7 +1805,7 @@
         ]
       },
       {
-        "id": "rustls-pki-types@1.15.0:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "rustls-pki-types@1.15.1:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "alloc",
           "default",
@@ -1834,7 +1834,7 @@
         "dependencies": [
           {
             "name": "pki_types",
-            "package": "rustls-pki-types@1.15.0:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "rustls-pki-types@1.15.1:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -1884,7 +1884,7 @@
           },
           {
             "name": "pki_types",
-            "package": "rustls-pki-types@1.15.0:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "rustls-pki-types@1.15.1:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -1981,7 +1981,7 @@
           },
           {
             "name": "libc",
-            "package": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -2033,7 +2033,7 @@
           },
           {
             "name": "libc",
-            "package": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -2101,7 +2101,7 @@
           },
           {
             "name": "syn",
-            "package": "syn@3.0.1:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "syn@3.0.3:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -2234,7 +2234,7 @@
         "dependencies": [
           {
             "name": "libc",
-            "package": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -2260,7 +2260,7 @@
         "dependencies": [
           {
             "name": "libc",
-            "package": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -2333,7 +2333,7 @@
         ]
       },
       {
-        "id": "syn@3.0.1:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "syn@3.0.3:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "clone-impls",
           "derive",
@@ -2471,7 +2471,7 @@
         "dependencies": []
       },
       {
-        "id": "time-macros@0.2.31:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "time-macros@0.2.32:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "formatting",
           "parsing"
@@ -2500,7 +2500,7 @@
         ]
       },
       {
-        "id": "time@0.3.53:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "time@0.3.54:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "alloc",
           "default",
@@ -2562,7 +2562,7 @@
           },
           {
             "name": "time_macros",
-            "package": "time-macros@0.2.31:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "time-macros@0.2.32:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -2779,7 +2779,7 @@
         "dependencies": [
           {
             "name": "pki_types",
-            "package": "rustls-pki-types@1.15.0:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "rustls-pki-types@1.15.1:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -3531,7 +3531,7 @@
           },
           {
             "name": "time",
-            "package": "time@0.3.53:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "time@0.3.54:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -4200,9 +4200,9 @@
       ]
     },
     {
-      "id": "cc@1.3.0:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "cc@1.4.0:registry+https://github.com/rust-lang/crates.io-index",
       "name": "cc",
-      "version": "1.3.0",
+      "version": "1.4.0",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.63.0",
       "enabledFeatures": [],
@@ -6305,9 +6305,9 @@
       ]
     },
     {
-      "id": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
       "name": "libc",
-      "version": "0.2.186",
+      "version": "0.2.189",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.65.0",
       "enabledFeatures": [
@@ -7832,9 +7832,9 @@
       ]
     },
     {
-      "id": "rustls-pki-types@1.15.0:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "rustls-pki-types@1.15.1:registry+https://github.com/rust-lang/crates.io-index",
       "name": "rustls-pki-types",
-      "version": "1.15.0",
+      "version": "1.15.1",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.60.0",
       "enabledFeatures": [
@@ -7853,6 +7853,17 @@
           "usesDefaultFeatures": true,
           "features": [],
           "target": "cfg(all(target_os = \"linux\", target_arch = \"x86_64\"))"
+        },
+        {
+          "name": "criterion",
+          "rename": null,
+          "requirement": "^0.8",
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "kind": "dev",
+          "optional": false,
+          "usesDefaultFeatures": true,
+          "features": [],
+          "target": null
         },
         {
           "name": "web-time",
@@ -9351,9 +9362,9 @@
       ]
     },
     {
-      "id": "syn@3.0.1:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "syn@3.0.3:registry+https://github.com/rust-lang/crates.io-index",
       "name": "syn",
-      "version": "3.0.1",
+      "version": "3.0.3",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [
@@ -9717,9 +9728,9 @@
       "dependencies": []
     },
     {
-      "id": "time-macros@0.2.31:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "time-macros@0.2.32:registry+https://github.com/rust-lang/crates.io-index",
       "name": "time-macros",
-      "version": "0.2.31",
+      "version": "0.2.32",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.88.0",
       "enabledFeatures": [
@@ -9752,9 +9763,9 @@
       ]
     },
     {
-      "id": "time@0.3.53:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "time@0.3.54:registry+https://github.com/rust-lang/crates.io-index",
       "name": "time",
-      "version": "0.3.53",
+      "version": "0.3.54",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.88.0",
       "enabledFeatures": [
@@ -10016,7 +10027,7 @@
         {
           "name": "time-macros",
           "rename": null,
-          "requirement": "=0.2.31",
+          "requirement": "=0.2.32",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "dev",
           "optional": false,
@@ -10027,7 +10038,7 @@
         {
           "name": "time-macros",
           "rename": null,
-          "requirement": "=0.2.31",
+          "requirement": "=0.2.32",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": true,
