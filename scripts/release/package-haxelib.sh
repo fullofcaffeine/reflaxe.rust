@@ -29,6 +29,8 @@ if [ ! -f "$reflaxe_run" ]; then
   exit 2
 fi
 
+node "$root_dir/scripts/ci/vendor-reflaxe-provenance.js"
+
 mkdir -p "$(dirname "$out_abs")"
 rm -f "$out_abs"
 
@@ -170,6 +172,10 @@ node "$root_dir/scripts/release/prepare-package-metadata.js" \
   "$version" \
   "$tag" \
   "$source_sha"
+
+node "$root_dir/scripts/release/generate-license-artifacts.js" \
+  --output-dir "$build_dir" \
+  --version "$version"
 
 # Target-specific runtime/compiler assets not covered by generic Reflaxe build flow.
 copy_dir_required_to_build "runtime"

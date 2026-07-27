@@ -5,25 +5,38 @@ const fs = require('fs')
 const path = require('path')
 const { strFromU8, unzipSync } = require('fflate')
 const { compareEntryNames, validateEntryNames } = require('./deterministic-zip.js')
+const { buildArtifacts: buildLicenseArtifacts } = require('./generate-license-artifacts.js')
+const REPOSITORY_ROOT = path.join(__dirname, '..', '..')
+const RELEASE_COMPONENTS = JSON.parse(
+  fs.readFileSync(path.join(REPOSITORY_ROOT, 'docs', 'release-package-components.json'), 'utf8')
+).components
+const REQUIRED_THIRD_PARTY_COMPONENTS = RELEASE_COMPONENTS.slice(1).map((component) => component.name)
 
 const REQUIRED_ENTRIES = [
   'LICENSE',
   'README.md',
+  'THIRD_PARTY_NOTICES.md',
   'extraParams.hxml',
   'haxelib.json',
   'release-metadata.json',
+  'release-sbom.json',
   'runtime/hxrt/Cargo.toml',
   'src/haxe/Exception.cross.hx',
   'src/reflaxe/rust/CompilerInit.hx',
+  'vendor/reflaxe/LICENSE',
+  'vendor/reflaxe/provenance.json',
+  'vendor/reflaxe/reflaxe-rust.patch',
   'vendor/reflaxe/src/reflaxe/ReflectCompiler.hx'
 ]
 const ALLOWED_ROOT_FILES = new Set([
   'LICENSE',
   'README.md',
+  'THIRD_PARTY_NOTICES.md',
   'Run.hx',
   'extraParams.hxml',
   'haxelib.json',
   'release-metadata.json',
+  'release-sbom.json',
   'run.n'
 ])
 const ALLOWED_ROOT_DIRECTORIES = new Set(['runtime', 'src', 'vendor'])
@@ -100,6 +113,23 @@ function parseJsonEntry(files, name) {
   }
 }
 
+function filesBelow(directory, prefix = '') {
+  const result = []
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const relative = prefix ? `${prefix}/${entry.name}` : entry.name
+    if (entry.isDirectory()) result.push(...filesBelow(path.join(directory, entry.name), relative))
+    else if (entry.isFile()) result.push(relative)
+    else throw new Error(`unsupported source entry while verifying release: ${relative}`)
+  }
+  return result
+}
+
+function requireExactFile(files, archiveName, sourcePath) {
+  if (!Buffer.from(files[archiveName]).equals(fs.readFileSync(sourcePath))) {
+    throw new Error(`archive entry differs from the reviewed source: ${archiveName}`)
+  }
+}
+
 function verifyLayout(names) {
   validateEntryNames(names)
   const sorted = [...names].sort(compareEntryNames)
@@ -128,7 +158,7 @@ function verifyLayout(names) {
   }
 }
 
-function verifyReleaseArtifact({ zipPath, version, tag, sourceCommit }) {
+function verifyReleaseArtifact({ zipPath, version, tag, sourceCommit, sourceRoot = REPOSITORY_ROOT }) {
   const bytes = fs.readFileSync(zipPath)
   const central = centralDirectoryEntries(bytes)
   const names = central.map(({ name }) => name)
@@ -141,6 +171,21 @@ function verifyReleaseArtifact({ zipPath, version, tag, sourceCommit }) {
     throw new Error('release artifact cannot be decompressed')
   }
   const haxelib = parseJsonEntry(files, 'haxelib.json')
+  const expectedHaxelib = JSON.parse(fs.readFileSync(path.join(sourceRoot, 'haxelib.json'), 'utf8'))
+  delete expectedHaxelib.reflaxe
+  expectedHaxelib.version = version
+  expectedHaxelib.releasenote = `v${version}: See GitHub Releases`
+  const sortJson = (value) => {
+    if (Array.isArray(value)) return value.map(sortJson)
+    if (value !== null && typeof value === 'object') {
+      return Object.fromEntries(
+        Object.keys(value)
+          .sort()
+          .map((key) => [key, sortJson(value[key])])
+      )
+    }
+    return value
+  }
   if (haxelib.version !== version) {
     throw new Error(`packaged haxelib version ${String(haxelib.version)} does not match ${version}`)
   }
@@ -151,12 +196,76 @@ function verifyReleaseArtifact({ zipPath, version, tag, sourceCommit }) {
   if (Object.prototype.hasOwnProperty.call(haxelib, 'reflaxe')) {
     throw new Error('packaged haxelib metadata still contains the source-only reflaxe block')
   }
+  if (JSON.stringify(sortJson(haxelib)) !== JSON.stringify(sortJson(expectedHaxelib))) {
+    throw new Error('packaged haxelib metadata differs from the reviewed source and authorized release fields')
+  }
+
+  requireExactFile(files, 'LICENSE', path.join(sourceRoot, 'LICENSE'))
+  requireExactFile(
+    files,
+    'runtime/hxrt/Cargo.toml',
+    path.join(sourceRoot, 'runtime', 'hxrt', 'Cargo.toml')
+  )
+  const vendorRoot = path.join(sourceRoot, 'vendor', 'reflaxe')
+  const expectedVendorEntries = filesBelow(vendorRoot, 'vendor/reflaxe').sort(compareEntryNames)
+  const packagedVendorEntries = names
+    .filter((name) => name.startsWith('vendor/reflaxe/'))
+    .sort(compareEntryNames)
+  if (JSON.stringify(packagedVendorEntries) !== JSON.stringify(expectedVendorEntries)) {
+    throw new Error('packaged Reflaxe file inventory differs from the reviewed source')
+  }
+  for (const archiveName of expectedVendorEntries) {
+    requireExactFile(files, archiveName, path.join(sourceRoot, archiveName))
+  }
+  for (const [archiveName, expected] of buildLicenseArtifacts(version)) {
+    if (strFromU8(files[archiveName]) !== expected) {
+      throw new Error(`archive entry differs from generated license evidence: ${archiveName}`)
+    }
+  }
 
   const metadata = parseJsonEntry(files, 'release-metadata.json')
   if (metadata.schemaVersion !== 1) throw new Error('release metadata schemaVersion must be 1')
   if (metadata.version !== version) throw new Error('release metadata version does not match')
   if (metadata.tag !== tag) throw new Error('release metadata tag does not match')
   if (metadata.sourceCommit !== sourceCommit) throw new Error('release metadata source commit does not match')
+
+  const sbom = parseJsonEntry(files, 'release-sbom.json')
+  if (sbom.bomFormat !== 'CycloneDX' || sbom.specVersion !== '1.6') {
+    throw new Error('release SBOM must use CycloneDX 1.6')
+  }
+  if (!Array.isArray(sbom.components)) throw new Error('release SBOM components must be an array')
+  if (sbom.metadata?.component?.version !== version) {
+    throw new Error('release SBOM package version does not match')
+  }
+  for (const componentName of REQUIRED_THIRD_PARTY_COMPONENTS) {
+    if (!sbom.components.some((entry) => entry.name === componentName)) {
+      throw new Error(`release SBOM must inventory ${componentName}`)
+    }
+  }
+
+  const reflaxeProvenance = parseJsonEntry(files, 'vendor/reflaxe/provenance.json')
+  if (reflaxeProvenance.schemaVersion !== 1) {
+    throw new Error('vendored Reflaxe provenance schemaVersion must be 1')
+  }
+  if (!/^[0-9a-f]{40}$/.test(reflaxeProvenance.upstream?.baseCommit || '')) {
+    throw new Error('vendored Reflaxe provenance must name an exact upstream base commit')
+  }
+  const patchDigest = crypto
+    .createHash('sha256')
+    .update(files['vendor/reflaxe/reflaxe-rust.patch'])
+    .digest('hex')
+  if (patchDigest !== reflaxeProvenance.localPatch?.sha256) {
+    throw new Error('vendored Reflaxe patch digest does not match its provenance record')
+  }
+  const notices = strFromU8(files['THIRD_PARTY_NOTICES.md'])
+  for (const componentName of REQUIRED_THIRD_PARTY_COMPONENTS) {
+    if (!notices.includes(componentName)) {
+      throw new Error(`third-party notices do not cover ${componentName}`)
+    }
+  }
+  if (!strFromU8(files['vendor/reflaxe/LICENSE']).startsWith('MIT License')) {
+    throw new Error('vendored Reflaxe MIT license text is missing')
+  }
 
   return {
     entries: names,

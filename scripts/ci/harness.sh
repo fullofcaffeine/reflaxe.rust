@@ -482,6 +482,8 @@ run_policy_group() {
 }
 
 run_packaging_group() {
+  run_stage "vendored Reflaxe and license artifact contract" npm run test:vendor-reflaxe-provenance
+
   if is_truthy "${HARNESS_SKIP_PACKAGE_SMOKE:-0}"; then
     echo "[harness] package smoke skipped (HARNESS_SKIP_PACKAGE_SMOKE=1)"
   else

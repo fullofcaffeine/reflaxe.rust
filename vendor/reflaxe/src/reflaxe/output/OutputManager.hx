@@ -228,18 +228,6 @@ class OutputManager {
 		for(c in compiler.generateOutputIterator()) {
 			final mid = c.baseType.moduleId();
 			final filename = overrideFileName(mid, c);
-			#if debug_output_manager
-			trace('[OutputManager] Processing class for module output:');
-			trace('[OutputManager]   moduleId: ${mid}');
-			trace('[OutputManager]   overrideFileName: ${c.overrideFileName}');
-			trace('[OutputManager]   overrideDirectory: ${c.overrideDirectory}');
-			trace('[OutputManager]   computed filename: ${filename}');
-			var dataLen = switch(c.data.data()) {
-				case String(s): s.length;
-				case Bytes(b): b.length;
-			};
-			trace('[OutputManager]   data length: ${dataLen}');
-			#end
 			if(!files.exists(filename)) {
 				files[filename] = [];
 			}
@@ -249,22 +237,9 @@ class OutputManager {
 			}
 		}
 
-		#if debug_output_manager
-		trace('[OutputManager] Files map ready. Checking entries...');
-		for(k in files.keys()) {
-			final v = files.get(k);
-			if(v != null) {
-				trace('[OutputManager] MAP KEY: ${k} (entries: ${v.length})');
-			}
-		}
-		trace('[OutputManager] Writing files...');
-		#end
 		for(moduleId in files.keys()) {
 			final outputList = files.get(moduleId);
 			if(outputList == null) continue;
-			#if debug_output_manager
-			trace('[OutputManager] WRITE: ${getFileName(moduleId)}');
-			#end
 			saveFile(getFileName(moduleId), joinStringOrBytes(outputList));
 		}
 	}
@@ -298,13 +273,6 @@ class OutputManager {
 		ensureOutputDirExists();
 		for(c in compiler.generateOutputIterator()) {
 			final filename = overrideFileName(c.baseType.globalName(), c);
-			#if debug_output_manager
-			trace('[OutputManager] Writing file: ${getFileName(filename)}');
-			trace('[OutputManager]   baseType.globalName: ${c.baseType.globalName()}');
-			trace('[OutputManager]   overrideFileName: ${c.overrideFileName}');
-			trace('[OutputManager]   overrideDirectory: ${c.overrideDirectory}');
-			trace('[OutputManager]   final filename: ${filename}');
-			#end
 			saveFile(getFileName(filename), c.data);
 		}
 	}
@@ -325,109 +293,13 @@ class OutputManager {
 		relative to the output folder.
 	**/
 	public function saveFile(path: String, content: StringOrBytes) {
-		/**
-		 * REFLAXE BUG FIX: Defensive path sanitization for malformed module filenames
-		 * 
-		 * PROBLEM:
-		 * The generateFilePerModule() method can receive malformed filenames from
-		 * getFileName(moduleId) where moduleId contains a leading slash. This creates
-		 * invalid filesystem paths that attempt to write to the system root.
-		 * 
-		 * ROOT CAUSE ANALYSIS - WHY MALFORMED FILENAMES OCCUR:
-		 * The issue originates from how Haxe processes certain standard library types
-		 * during compilation, particularly when using regex literals like ~/pattern/:
-		 * 
-		 * 1. **Haxe Regex Literal Processing**: When Haxe encounters ~/pattern/, it
-		 *    internally references the EReg class from the standard library
-		 * 2. **Type Resolution Bug**: During macro-time type resolution, some standard
-		 *    library types (especially EReg) get their BaseType.module field corrupted
-		 * 3. **Module Name Corruption**: Instead of "EReg", the module becomes "/e_reg"
-		 * 4. **Propagation Through Reflaxe**: This malformed name propagates through:
-		 *    - BaseTypeHelper.moduleId() processes "/e_reg" → "/e_reg" 
-		 *    - generateFilePerModule() calls getFileName("/e_reg") → "/e_reg.ex"
-		 *    - saveFile() receives "/e_reg.ex" as filename
-		 * 
-		 * SUSPECTED HAXE COMPILER INTERACTION:
-		 * This likely occurs due to:
-		 * - Haxe's internal module name normalization conflicting with Reflaxe's expectations
-		 * - Different handling of standard library vs user-defined types during macro expansion
-		 * - Platform-specific path handling differences in Haxe 4.3.x macro context
-		 * 
-		 * PROBLEMATIC FLOW:
-		 * 1. User writes: var r = ~/test/; (uses EReg implicitly)
-		 * 2. Haxe type system: BaseType.module = "/e_reg" (should be "EReg")
-		 * 3. BaseTypeHelper.moduleId() returns "/e_reg" (even after our primary fix)
-		 * 4. getFileName("/e_reg") returns "/e_reg.ex" 
-		 * 5. haxe.io.Path.isAbsolute("/e_reg.ex") returns true
-		 * 6. saveFile() uses path as-is → tries to write "/e_reg.ex" at filesystem root
-		 * 7. Result: "Uncaught exception /e_reg.ex: Read-only file system"
-		 * 
-		 * WHY OUTPUTMANAGER ALSO NEEDS THIS FIX:
-		 * This is the SECOND layer of defense. Even though BaseTypeHelper.moduleId()
-		 * sanitizes EReg's module name, we add this defensive check because:
-		 * 1. Other code paths might bypass moduleId()
-		 * 2. Future Haxe versions might corrupt other types similarly
-		 * 3. Defensive programming prevents filesystem errors at the last moment
-		 * 4. Two-layer defense ensures robustness
-		 * 
-		 * DEFENSIVE STRATEGY:
-		 * Distinguish between legitimate absolute paths and malformed relative paths:
-		 * - Legitimate: "/Users/john/project/file.ex", "/tmp/cache.ex", "/home/user/output.ex"
-		 * - Malformed: "/e_reg.ex", "/some_type.ex" (these are corrupted module names)
-		 * 
-		 * EXAMPLES OF PATH CLASSIFICATION:
-		 * - "/e_reg.ex" → Malformed relative path → "e_reg.ex" (sanitized)
-		 * - "/some_module.ex" → Malformed relative path → "some_module.ex" (sanitized)  
-		 * - "/Users/john/file.ex" → Real absolute path → "/Users/john/file.ex" (preserved)
-		 * - "/tmp/output.ex" → Real absolute path → "/tmp/output.ex" (preserved)
-		 * - "normal_file.ex" → Normal relative path → "normal_file.ex" (unchanged)
-		 * 
-		 * ALGORITHM:
-		 * 1. If path starts with "/" AND length > 1:
-		 * 2. Check if it looks like a real absolute path (/Users/, /tmp/, /var/, etc.)
-		 * 3. If NOT a real absolute path, remove the leading "/" 
-		 * 4. This converts malformed "/e_reg.ex" to proper "e_reg.ex"
-		 * 
-		 * IMPACT:
-		 * - Prevents filesystem permission errors during compilation
-		 * - Ensures all generated files go to the intended output directory
-		 * - No impact on legitimate absolute paths
-		 * - No impact on normal relative paths
-		 * 
-		 * LAYERED DEFENSE:
-		 * This works in conjunction with the BaseTypeHelper.moduleId() fix:
-		 * - Primary fix: Sanitize module names at source
-		 * - Secondary fix: Sanitize file paths defensively here
-		 * - Both fixes together ensure robust error handling
-		 * 
-		 * UPSTREAM STATUS:
-		 * This is a defensive fix that should be contributed back to Reflaxe.
-		 * The root cause of malformed module names should also be investigated
-		 * in the Haxe compiler or Reflaxe's type processing.
-		 * 
-		 * Applied by: reflaxe.elixir project
-		 * Date: 2025-01-18
-		 */
-		var sanitizedPath = path;
-		if (StringTools.startsWith(path, "/") && path.length > 1) {
-			// Check if this is a malformed relative path (starts with / but doesn't look like a real absolute path)
-			var isRealAbsolutePath = StringTools.startsWith(path, "/Users/") || 
-									StringTools.startsWith(path, "/tmp/") || 
-									StringTools.startsWith(path, "/var/") || 
-									StringTools.startsWith(path, "/home/") ||
-									StringTools.startsWith(path, "/opt/");
-			if (!isRealAbsolutePath) {
-				sanitizedPath = path.substring(1); // Remove leading slash from malformed path
-			}
-		}
-		
-		// Get full path using sanitized input
-		final p = if(haxe.io.Path.isAbsolute(sanitizedPath)) {
-			sanitizedPath;
+		// Get full path
+		final p = if(haxe.io.Path.isAbsolute(path)) {
+			path;
 		} else if(outputDir != null) {
-			joinPaths(outputDir, sanitizedPath);
+			joinPaths(outputDir, path);
 		} else {
-			sanitizedPath;
+			path;
 		}
 
 		// Ensure directories exist

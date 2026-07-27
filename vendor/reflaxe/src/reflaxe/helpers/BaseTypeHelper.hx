@@ -60,60 +60,7 @@ class BaseTypeHelper {
 	}
 
 	public static function moduleId(self: BaseType): String {
-		var module = self.module;
-		
-		/**
-		 * REFLAXE BUG FIX: Sanitize malformed EReg module path from Haxe
-		 * 
-		 * PROBLEM - EReg-Specific Module Corruption:
-		 * EReg is the ONLY standard library class with compiler-integrated literal
-		 * syntax (~/pattern/). When Haxe encounters regex literals, it goes through
-		 * a special resolution path that corrupts the module name:
-		 * - Expected: self.module = "EReg"
-		 * - Actual: self.module = "/e_reg" (snake_case + leading slash)
-		 * - Result: Attempts to write "/e_reg.ex" to filesystem root
-		 * 
-		 * WHY ONLY REFLAXE.ELIXIR HAS THIS BUG:
-		 * We checked all other Reflaxe targets and found:
-		 * - Reflaxe.CPP: Provides custom EReg in std/cxx/_std/EReg.hx → No bug
-		 * - Reflaxe.Go: Provides custom EReg in src/EReg.cross.hx → No bug
-		 * - Reflaxe.GDScript: Doesn't support EReg at all → No bug
-		 * - Reflaxe.CSharp: Doesn't support EReg at all → No bug
-		 * - Reflaxe.Elixir: Uses Haxe's standard EReg → HAS THE BUG!
-		 * 
-		 * We're uniquely vulnerable because we inherit Haxe's problematic EReg
-		 * resolution without providing our own override.
-		 * 
-		 * THIS FIX - Primary Defense Layer:
-		 * Remove leading "/" from module names at the earliest point in Reflaxe's
-		 * pipeline. This sanitizes the corrupted module name from Haxe before it
-		 * can cause filesystem errors.
-		 * 
-		 * WHY THIS IS THE RIGHT SOLUTION:
-		 * 1. We can't fix Haxe compiler's EReg handling (out of scope)
-		 * 2. Creating custom EReg would require maintaining regex implementation
-		 * 3. This minimal fix solves the problem with zero side effects
-		 * 4. OutputManager provides secondary defense for robustness
-		 * 
-		 * IMPACT:
-		 * - Fixes "Read-only file system" errors when using ~/pattern/ syntax
-		 * - Enables regex literals to work in Reflaxe.Elixir
-		 * - No impact on any other types or correct module names
-		 * 
-		 * UPSTREAM STATUS:
-		 * This handles a Haxe→Reflaxe interaction issue. Could be removed if:
-		 * 1. Haxe fixes EReg's special resolution path
-		 * 2. Reflaxe.Elixir provides custom EReg implementation
-		 * 3. Reflaxe framework adds general module name sanitization
-		 * 
-		 * Applied by: reflaxe.elixir project
-		 * Date: 2025-01-18
-		 */
-		if (StringTools.startsWith(module, "/")) {
-			module = module.substring(1); // Remove leading slash
-		}
-		
-		return StringTools.replace(module, ".", "_");
+		return StringTools.replace(self.module, ".", "_");
 	}
 
 	public static function matchesDotPath(self: BaseType, path: String): Bool {

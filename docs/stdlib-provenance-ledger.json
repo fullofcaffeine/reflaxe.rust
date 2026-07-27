@@ -1,6 +1,12 @@
 {
   "schemaVersion": 1,
   "upstreamStdVersion": "4.3.7",
+  "upstreamRepository": "https://github.com/HaxeFoundation/haxe",
+  "license": {
+    "id": "MIT",
+    "sourceFile": "docs/licenses/haxe-stdlib-4.3.7-MIT.txt",
+    "sha256": "6c88cb5bd81451d51805a88bf54d7090e953aa065577d4a33b962db3f9e28cb2"
+  },
   "description": "Provenance ledger for tracked Rust-target stdlib override source files (std/rust/_std/**/*.hx).",
   "entries": [
     {

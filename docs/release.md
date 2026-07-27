@@ -86,10 +86,15 @@ The release adapter:
 2. requires byte-identical ZIPs,
 3. validates central-directory names, order, modes, compression, and path safety,
 4. validates required compiler/runtime/vendor entries and staged metadata,
-5. runs the existing Haxelib install, Haxe compile, and Cargo build smoke against that exact ZIP,
-6. writes its SHA-256 sidecar,
-7. verifies local and remote tag identity before upload,
-8. verifies hosted asset names, states, sizes, and SHA-256 digests after publication.
+5. validates the shipped licenses, third-party notice, CycloneDX inventory,
+   and exact vendored Reflaxe base/patch record,
+6. runs the existing Haxelib install, Haxe compile, and Cargo build smoke against that exact ZIP,
+7. writes its SHA-256 sidecar,
+8. verifies local and remote tag identity before upload,
+9. verifies hosted asset names, states, sizes, and SHA-256 digests after publication.
+
+See `docs/release-licensing-review.md` for the factual package inventory and
+the questions that still require professional legal review before 1.0.
 
 The local paths are fixed (`dist/reflaxe.rust.zip` and `.zip.sha256`) to prevent stale globs. The
 GitHub publisher gives them versioned hosted names.

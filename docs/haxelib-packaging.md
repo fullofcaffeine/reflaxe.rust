@@ -40,8 +40,9 @@ runner:
 
 The script then adds target-required `runtime/` and `vendor/` assets that generic Reflaxe packaging
 does not know about. Release builds then inject the tag-derived version plus source/tag provenance
-into package staging and create a canonical ZIP with fixed metadata and sorted entries. The tracked
-checkout keeps development version sentinels and is never rewritten by publication.
+into package staging, generate the third-party notice and CycloneDX software inventory, and create a
+canonical ZIP with fixed metadata and sorted entries. The tracked checkout keeps development version
+sentinels and is never rewritten by publication.
 
 ## Reflaxe conventions followed here
 
@@ -105,6 +106,7 @@ Use `bash scripts/ci/package-smoke.sh` to validate the shipped artifact end-to-e
 
 - Build the zip with `scripts/release/package-haxelib.sh`.
 - Verify package layout + metadata invariants (`src/` flattening, sanitized `haxelib.json`, pruned runtime artifacts).
+- Verify the project/Reflaxe licenses, third-party notice, SBOM, exact Reflaxe base, and local patch are present.
 - Compile a minimal app from the source checkout using repo `haxe_libraries` to confirm `_std` source overrides work without generated `.cross.hx` files.
 - Create an isolated local haxelib repo (`haxelib newrepo`) and install the zip.
 - Compile a minimal app with `-lib reflaxe.rust` and confirm std override modules are emitted.
@@ -129,6 +131,12 @@ Packaging checks are complemented by stdlib governance guards:
   - restricts tracked std override file types under `std/`.
 - `node scripts/ci/stdlib-provenance-ledger-check.js`
   - enforces `docs/stdlib-provenance-ledger.json` coverage for tracked `std/rust/_std/**/*.hx` files.
+
+Release license and source-origin evidence is described in
+`docs/release-licensing-review.md`. `docs/release-package-components.json` is
+the source used to generate `THIRD_PARTY_NOTICES.md` and
+`release-sbom.json`; `vendor/reflaxe/provenance.json` owns the exact vendored
+framework base and patch record.
 
 ## Backend-specific requirement
 

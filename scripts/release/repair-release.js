@@ -7,6 +7,7 @@ const { execFileSync } = require('child_process')
 const { loadReleasePolicy, verifyReleaseVersion } = require('./release-policy.js')
 const { verifyReleaseArtifact } = require('./verify-release-artifact.js')
 const { artifactNames, normalizeSha, verifyHostedRelease, verifyTagIdentity } = require('./release-provenance.js')
+const { assertPackageInputsTracked } = require('./package-input-cleanliness.js')
 
 function run(command, args, options = {}) {
   return execFileSync(command, args, {
@@ -91,6 +92,7 @@ function main() {
 
   const tracked = run('git', ['status', '--porcelain', '--untracked-files=no'], { cwd })
   if (tracked.trim().length > 0) throw new Error('repair checkout contains tracked changes')
+  assertPackageInputsTracked(cwd)
   const artifact = buildApprovedArtifact({ cwd, version, tag, sourceCommit })
   const existing = releaseView(tag, cwd)
   if (existing && existing.isImmutable) {

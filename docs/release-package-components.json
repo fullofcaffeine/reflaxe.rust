@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "components": [
+    {
+      "id": "reflaxe-rust",
+      "name": "reflaxe.rust",
+      "kind": "application",
+      "versionSource": "haxelib.json",
+      "licenseSource": "haxelib.json",
+      "licenseFile": "LICENSE",
+      "source": "https://github.com/fullofcaffeine/reflaxe.rust"
+    },
+    {
+      "id": "reflaxe",
+      "name": "Reflaxe",
+      "kind": "library",
+      "provenanceFile": "vendor/reflaxe/provenance.json",
+      "notice": "The shipped framework source starts from the recorded commit and includes the exact local patch under vendor/reflaxe."
+    },
+    {
+      "id": "haxe-standard-library-derived-files",
+      "name": "Haxe Standard Library derived files",
+      "kind": "library",
+      "stdlibProvenanceFile": "docs/stdlib-provenance-ledger.json",
+      "notice": "Some std/ files are target overrides derived from Haxe Standard Library source. The file-by-file origin record is available in the source repository: https://github.com/fullofcaffeine/reflaxe.rust/blob/main/docs/stdlib-provenance-ledger.json.",
+      "copyright": null
+    }
+  ],
+  "cargoDependencyPolicy": {
+    "manifest": "runtime/hxrt/Cargo.toml",
+    "scope": "declared-not-shipped",
+    "explanation": "These version requirements are shipped, but dependency source is downloaded later by Cargo. A consuming application's Cargo.lock chooses exact versions."
+  }
+}

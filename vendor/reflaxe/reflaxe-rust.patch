@@ -1,0 +1,259 @@
+diff --git a/src/reflaxe/compiler/TargetCodeInjection.hx b/src/reflaxe/compiler/TargetCodeInjection.hx
+index d267779d5751a8fe56262470373d16fb3c27fca1..671153560165265a508b73d50171bf86ec063712 100644
+--- a/src/reflaxe/compiler/TargetCodeInjection.hx
++++ b/src/reflaxe/compiler/TargetCodeInjection.hx
+@@ -24,6 +24,11 @@ class TargetCodeInjection {
+ 						arguments = el;
+ 						id;
+ 					}
++					// Also check for TLocal with the injection name (for when it's a local variable)
++					case TLocal(v) if (v.name == injectFunctionName): {
++						arguments = el;
++						v.name;
++					}
+ 					case _: null;
+ 				}
+ 			}
+@@ -94,6 +99,11 @@ class TargetCodeInjection {
+ 						arguments = el;
+ 						id;
+ 					}
++					// Also check for TLocal with the injection name (for when it's a local variable)
++					case TLocal(v) if (v.name == injectFunctionName): {
++						arguments = el;
++						v.name;
++					}
+ 					case _: null;
+ 				}
+ 			}
+diff --git a/src/reflaxe/compiler/TypeUsageTracker.hx b/src/reflaxe/compiler/TypeUsageTracker.hx
+index 72830f8063f058286f45d44aab8cf02bc0113c61..09a35e235ecaba8f89319170067066c470499ca6 100644
+--- a/src/reflaxe/compiler/TypeUsageTracker.hx
++++ b/src/reflaxe/compiler/TypeUsageTracker.hx
+@@ -280,8 +280,14 @@ class TypeUsageTracker {
+ 			case TEnumDecl(e): {
+ 				final enm = e.get();
+ 
+-				for(name => field in enm.constructs) {
+-					addFunction(field.type);
++				// Avoid key/value iteration (`for (k => v in map)`) here to prevent the compiler from
++				// pulling in `haxe.iterators.MapKeyValueIterator` via `@:ifFeature`, which some targets
++				// (including reflaxe.rust) do not currently emit.
++				for(name in enm.constructs.keys()) {
++					final field = enm.constructs.get(name);
++					if(field != null) {
++						addFunction(field.type);
++					}
+ 				}
+ 			}
+ 
+@@ -302,7 +308,12 @@ class TypeUsageTracker {
+ 			final level = Std.int(Math.pow(2, i));
+ 			result.set(cast level, []);
+ 		}
+-		for(id => moduleData in modules) {
++		// Avoid key/value iteration (`for (k => v in map)`) here to prevent the compiler from
++		// pulling in `haxe.iterators.MapKeyValueIterator` via `@:ifFeature`, which some targets
++		// (including reflaxe.rust) do not currently emit.
++		for(id in modules.keys()) {
++			final moduleData = modules.get(id);
++			if(moduleData == null) continue;
+ 			for(i in 0...TypeUsageLevel.LevelCount()) {
+ 				final level = Std.int(Math.pow(2, i));
+ 				if((moduleData.level & level) != 0) {
+diff --git a/src/reflaxe/data/ClassVarData.hx b/src/reflaxe/data/ClassVarData.hx
+index cb57c150272428ee720a1c063dcf8175f1906616..bcfb326d4ceadfc65ee3342ecacba00ef004b4ad 100644
+--- a/src/reflaxe/data/ClassVarData.hx
++++ b/src/reflaxe/data/ClassVarData.hx
+@@ -75,8 +75,12 @@ class ClassVarData {
+ 		if(hasDefaultValue()) {
+ 			final data = classType.extractPreconstructorFieldAssignments();
+ 			if(data != null) {
+-				for(assignField => expr in data.assignments) {
+-					if(field.name == assignField.name) {
++				// Avoid key/value iteration (`for (k => v in map)`) here to prevent the compiler from
++				// pulling in `haxe.iterators.MapKeyValueIterator` via `@:ifFeature`, which some targets
++				// (including reflaxe.rust) do not currently emit.
++				for(assignField in data.assignments.keys()) {
++					final expr = data.assignments.get(assignField);
++					if(expr != null && field.name == assignField.name) {
+ 						return expr;
+ 					}
+ 				}
+diff --git a/src/reflaxe/helpers/TypeHelper.hx b/src/reflaxe/helpers/TypeHelper.hx
+index 7bf83ffe738286bfd549e09c09138f296408f24c..313c39e82c02d648eec161afd6d374752cd9ce23 100644
+--- a/src/reflaxe/helpers/TypeHelper.hx
++++ b/src/reflaxe/helpers/TypeHelper.hx
+@@ -35,12 +35,21 @@ class TypeHelper {
+ 		final resolvedTypes = getSubTypeList(t);
+ 		final cfSubTypes = getSubTypeList(cf.type);
+ 
+-		for(key => subType in cfSubTypes) {
++		// Avoid key/value iteration (`for (k => v in map)`) here to prevent the compiler from
++		// pulling in `haxe.iterators.MapKeyValueIterator` via `@:ifFeature`, which some targets
++		// (including reflaxe.rust) do not currently emit.
++		for(key in cfSubTypes.keys()) {
++			final subType = cfSubTypes.get(key);
++			if(subType == null) continue;
++
+ 			final typeParamName = getTypeParameterName(subType);
+ 			if(typeParamName != null && paramNameIndexMap.exists(typeParamName)) {
+ 				final index = paramNameIndexMap.get(typeParamName);
+ 				if(index != null && result[index] == null) {
+-					result[index] = resolvedTypes[key];
++					final resolved = resolvedTypes.get(key);
++					if(resolved != null) {
++						result[index] = resolved;
++					}
+ 				}
+ 			}
+ 		}
+@@ -69,8 +78,12 @@ class TypeHelper {
+ 			if(subType != null) {
+ 				final si = Std.string(index);
+ 				result.set(si, subType);
+-				for(id => subSubType in getSubTypeList(subType)) {
+-					result.set(si + "_" + id, subSubType);
++				final subSubs = getSubTypeList(subType);
++				for(id in subSubs.keys()) {
++					final subSubType = subSubs.get(id);
++					if(subSubType != null) {
++						result.set(si + "_" + id, subSubType);
++					}
+ 				}
+ 			}
+ 			index++;
+diff --git a/src/reflaxe/input/ClassModifier.hx b/src/reflaxe/input/ClassModifier.hx
+index b6543572a7e1c94a9dd816769bde484fc573da49..7cbf39f6ffc13c1e15e9f611d1957901fa3627b1 100644
+--- a/src/reflaxe/input/ClassModifier.hx
++++ b/src/reflaxe/input/ClassModifier.hx
+@@ -25,7 +25,12 @@ class ClassModifier {
+ 			modifications.set(classPath, []);
+ 
+ 			#if eval
++			// Haxe 4.3.x does not have Compiler.addMetadata; fall back to addGlobalMetadata
++			#if (haxe_ver >= 4.4)
+ 			Compiler.addMetadata("@:build(reflaxe.input.ClassModifier.applyMod(\"" + classPath + "\"))", classPath);
++			#else
++			Compiler.addGlobalMetadata("@:build(reflaxe.input.ClassModifier.applyMod(\"" + classPath + "\"))", classPath);
++			#end
+ 			#end
+ 		}
+ 
+diff --git a/src/reflaxe/input/ModuleUsageTracker.hx b/src/reflaxe/input/ModuleUsageTracker.hx
+index bac93270796cfef6387b649c357178c2bacfb275..1306e19a60945b9e23481d8c09992131631b3901 100644
+--- a/src/reflaxe/input/ModuleUsageTracker.hx
++++ b/src/reflaxe/input/ModuleUsageTracker.hx
+@@ -81,8 +81,14 @@ class ModuleUsageTracker {
+ 			}
+ 			case TEnumDecl(enumRef): {
+ 				final enm = enumRef.get();
+-				for(_ => f in enm.constructs) {
+-					addUsedType(f.type);
++				// Avoid key/value iteration (`for (k => v in map)`) here to prevent the compiler from
++				// pulling in `haxe.iterators.MapKeyValueIterator` via `@:ifFeature`, which some targets
++				// (including reflaxe.rust) do not currently emit.
++				for(name in enm.constructs.keys()) {
++					final f = enm.constructs.get(name);
++					if(f != null) {
++						addUsedType(f.type);
++					}
+ 				}
+ 			}
+ 			case TTypeDecl(defTypeRef) if(compiler.options.unwrapTypedefs): {
+diff --git a/src/reflaxe/output/OutputManager.hx b/src/reflaxe/output/OutputManager.hx
+index 72cf346b3cad179b90f7d43db350d774f6507d8b..8936919d4ae135c40857168dcb4e973b2d7ef71d 100644
+--- a/src/reflaxe/output/OutputManager.hx
++++ b/src/reflaxe/output/OutputManager.hx
+@@ -156,9 +156,16 @@ class OutputManager {
+ 			}
+ 		}
+ 
+-		for(path => content in compiler.extraFiles) {
++		// Avoid key/value iteration (`for (k => v in map)`) here to prevent the compiler from
++		// pulling in `haxe.iterators.MapKeyValueIterator` via `@:ifFeature`, which some targets
++		// (including reflaxe.rust) do not currently emit.
++		for(path in compiler.extraFiles.keys()) {
++			final content = compiler.extraFiles.get(path);
++			if(content == null) continue;
++
+ 			final keys = [];
+-			for(priority => cpp in content) {
++			for(priority in content.keys()) {
++				final cpp = content.get(priority);
+ 				if(StringTools.trim(cpp).length > 0) {
+ 					keys.push(priority);
+ 				}
+@@ -230,7 +237,9 @@ class OutputManager {
+ 			}
+ 		}
+ 
+-		for(moduleId => outputList in files) {
++		for(moduleId in files.keys()) {
++			final outputList = files.get(moduleId);
++			if(outputList == null) continue;
+ 			saveFile(getFileName(moduleId), joinStringOrBytes(outputList));
+ 		}
+ 	}
+diff --git a/src/reflaxe/preprocessors/implementations/MarkUnusedVariablesImpl.hx b/src/reflaxe/preprocessors/implementations/MarkUnusedVariablesImpl.hx
+index 805f42fa422f311de2269cf2c9e6bc63216b07e7..7b25942453477e59e620e3091f90b482c9df2472 100644
+--- a/src/reflaxe/preprocessors/implementations/MarkUnusedVariablesImpl.hx
++++ b/src/reflaxe/preprocessors/implementations/MarkUnusedVariablesImpl.hx
+@@ -51,7 +51,11 @@ class MarkUnusedVariablesImpl {
+ 			iter(e);
+ 		}
+ 
+-		for(id => tvar in tvarMap) {
++		// Avoid key/value iteration (`for (k => v in map)`) here to prevent the compiler from
++		// pulling in `haxe.iterators.MapKeyValueIterator` via `@:ifFeature`, which some targets
++		// (including reflaxe.rust) do not currently emit.
++		for(id in tvarMap.keys()) {
++			final tvar = tvarMap.get(id);
+ 			if(tvar != null) {
+ 				if(!tvar.meta.maybeHas("-reflaxe.unused")) {
+ 					tvar.meta.maybeAdd("-reflaxe.unused", [], tvarPos.get(id).trustMe());
+diff --git a/src/reflaxe/preprocessors/implementations/RemoveTemporaryVariablesImpl.hx b/src/reflaxe/preprocessors/implementations/RemoveTemporaryVariablesImpl.hx
+index 243bd0c023113d105817f7a0c9bad3d1e0e00827..124600e547887d0e0aa539cb9a0c9465f58fa247 100644
+--- a/src/reflaxe/preprocessors/implementations/RemoveTemporaryVariablesImpl.hx
++++ b/src/reflaxe/preprocessors/implementations/RemoveTemporaryVariablesImpl.hx
+@@ -178,7 +178,7 @@ class RemoveTemporaryVariablesImpl {
+ 			if(i < exprList.length - 1) {
+ 				switch(exprList[i].expr) {
+ 					case TVar(tvar, maybeExpr): {
+-						if(shouldRemoveVariable(tvar, maybeExpr)) {
++						if(maybeExpr != null && shouldRemoveVariable(tvar, maybeExpr)) {
+ 							tvarMap.set(tvar.id, mapTypedExpr(maybeExpr.trustMe(), false));
+ 							hasOverload = true;
+ 							continue;
+diff --git a/src/reflaxe/preprocessors/implementations/RemoveUnnecessaryBlocksImpl.hx b/src/reflaxe/preprocessors/implementations/RemoveUnnecessaryBlocksImpl.hx
+index 7c472a70deb0452417c1d17ab97e8bb02ac7b454..2d0250d84a17b5bbb8cf208ffdf6c545e3fea2c7 100644
+--- a/src/reflaxe/preprocessors/implementations/RemoveUnnecessaryBlocksImpl.hx
++++ b/src/reflaxe/preprocessors/implementations/RemoveUnnecessaryBlocksImpl.hx
+@@ -178,8 +178,12 @@ class RemoveUnnecessaryBlocksImpl {
+ 		}
+ 		
+ 		final result = [];
+-		for(name => useCount in varInstanceCount) {
+-			if(useCount.length > 1) {
++		// Avoid key/value iteration (`for (k => v in map)`) here to prevent the compiler from
++		// pulling in `haxe.iterators.MapKeyValueIterator` via `@:ifFeature`, which some targets
++		// (including reflaxe.rust) do not currently emit.
++		for(name in varInstanceCount.keys()) {
++			final useCount = varInstanceCount.get(name);
++			if(useCount != null && useCount.length > 1) {
+ 				result.push(name);
+ 			}
+ 		}
+diff --git a/src/reflaxe/preprocessors/implementations/everything_is_expr/EverythingIsExprSanitizer.hx b/src/reflaxe/preprocessors/implementations/everything_is_expr/EverythingIsExprSanitizer.hx
+index 6f4a55e9959b5c52e9490bbcc3b9696921af7988..a01581b9ac8f34b6386d49108efdb7232d0c73eb 100644
+--- a/src/reflaxe/preprocessors/implementations/everything_is_expr/EverythingIsExprSanitizer.hx
++++ b/src/reflaxe/preprocessors/implementations/everything_is_expr/EverythingIsExprSanitizer.hx
+@@ -731,7 +731,7 @@ class EverythingIsExprSanitizer {
+ 		};
+ 
+ 		final eiec = new EverythingIsExprSanitizer(e, options, this, idExpr, nameGenerator);
+-		
++
+ 		final initNull = options.setUninitializedVariablesToNull;
+ 
+ 		// Wrap `e.t` with `Null<T>` if initializing with `null`.

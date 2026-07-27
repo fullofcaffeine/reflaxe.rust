@@ -1,0 +1,1081 @@
+{
+  "$schema": "https://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "bom-ref": "pkg:generic/reflaxe-rust@0.0.0",
+      "name": "reflaxe.rust",
+      "version": "0.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "GPL-3.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/fullofcaffeine/reflaxe.rust"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:license-file",
+          "value": "LICENSE"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:generic/reflaxe@3ec70a83936a8919e5441e03a6fdc1b17ec79881",
+      "name": "Reflaxe",
+      "version": "3ec70a83936a8919e5441e03a6fdc1b17ec79881",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/SomeRanDev/reflaxe.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:license-file",
+          "value": "vendor/reflaxe/LICENSE"
+        },
+        {
+          "name": "reflaxe.rust:notice",
+          "value": "The shipped framework source starts from the recorded commit and includes the exact local patch under vendor/reflaxe."
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:generic/haxe-standard-library-derived-files@4.3.7",
+      "name": "Haxe Standard Library derived files",
+      "version": "4.3.7",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/HaxeFoundation/haxe/tree/4.3.7"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:notice",
+          "value": "Some std/ files are target overrides derived from Haxe Standard Library source. The file-by-file origin record is available in the source repository: https://github.com/fullofcaffeine/reflaxe.rust/blob/main/docs/stdlib-provenance-ledger.json."
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:bbf30f3a58d8ff0e411ce64bf1318f0d",
+      "name": "chrono",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/chrono"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "chrono"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.4"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:b9fb42889da3b49809685c0f3494e821",
+      "name": "dns-lookup",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/dns-lookup"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "dns-lookup"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^2"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:37d4227269cdf40c3ff75fd4addea278",
+      "name": "futures-timer",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/futures-timer"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "futures-timer"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^3"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:d269a01a30b83bff20b7ceb5a9f03b04",
+      "name": "futures",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/futures"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "futures"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.3"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:97b323aeaf621aa80b7060f56c87f4ea",
+      "name": "hostname",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/hostname"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "hostname"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.4"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:61177161df3dcd3340e8b47bdd778ca3",
+      "name": "md-5",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/md-5"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "md-5"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.10"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:d9854712eb753433cf687217807f2895",
+      "name": "mio",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/mio"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "mio"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.8"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:f76810d7446b061757f60078a0affb2a",
+      "name": "oid-registry",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/oid-registry"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "oid-registry"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.7"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:ec0794a779cc21b2625db84e199f0917",
+      "name": "parking_lot",
+      "scope": "required",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/parking_lot"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "parking_lot"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.12"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:946b99f963e36e52188b5623bc7cd0b9",
+      "name": "pem-rfc7468",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/pem-rfc7468"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "pem-rfc7468"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.7"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:7f930f032045abf05ac6414f721196ff",
+      "name": "pollster",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/pollster"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "pollster"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.4"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:e5df3d2383e3660a9517b7ae3298f6a8",
+      "name": "rcgen",
+      "scope": "excluded",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/rcgen"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "dev"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "rcgen"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.13"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:c61026ace4c1873af9f53df065e8be60",
+      "name": "ring",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/ring"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "ring"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.17"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:915761d06e83513fc971ec5dcdeb622c",
+      "name": "ripemd",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/ripemd"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "ripemd"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.1"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:89b172dd1af2a3c213ea440bf7800ef1",
+      "name": "rustls-native-certs",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/rustls-native-certs"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "rustls-native-certs"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.7"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:b063a305812ae6a33468c34921da6750",
+      "name": "rustls-pemfile",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/rustls-pemfile"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "rustls-pemfile"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^2"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:827d1b49ee40229cbe232f54d0a1b19c",
+      "name": "rustls",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/rustls"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "rustls"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.23"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:5c27d7dc89a6720456d3d076678d6452",
+      "name": "serde_json",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/serde_json"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "serde_json"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^1"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:10f7cee09a42e85495ed2251f839a525",
+      "name": "serde",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/serde"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "serde"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^1"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:50c971630461b9fc1a975af32ac7abf5",
+      "name": "sha1",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/sha1"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "sha1"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.10"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:77f414cf3599ec4d7624e905a63a97e4",
+      "name": "sha2",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/sha2"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "sha2"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.10"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:b2274c72ba8bd2e74fc1f41048a86c4f",
+      "name": "socket2",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/socket2"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "socket2"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.5"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:152a41749b9f83701e66aa00479d2515",
+      "name": "tokio",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/tokio"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "tokio"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^1"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:bcc47bbce0be3faf92c723125543e414",
+      "name": "webpki-roots",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/webpki-roots"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "webpki-roots"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.26"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urn:reflaxe-rust:cargo-requirement:b2097a1e27932ddaccd8dfd7effd1177",
+      "name": "x509-parser",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/crates/x509-parser"
+        }
+      ],
+      "properties": [
+        {
+          "name": "reflaxe.rust:inventory-scope",
+          "value": "declared-not-shipped"
+        },
+        {
+          "name": "reflaxe.rust:dependency-kind",
+          "value": "runtime"
+        },
+        {
+          "name": "reflaxe.rust:local-dependency-name",
+          "value": "x509-parser"
+        },
+        {
+          "name": "reflaxe.rust:version-requirement",
+          "value": "^0.16"
+        },
+        {
+          "name": "reflaxe.rust:version-kind",
+          "value": "unresolved Cargo requirement"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:generic/reflaxe-rust@0.0.0",
+      "dependsOn": [
+        "pkg:generic/reflaxe@3ec70a83936a8919e5441e03a6fdc1b17ec79881",
+        "pkg:generic/haxe-standard-library-derived-files@4.3.7",
+        "urn:reflaxe-rust:cargo-requirement:bbf30f3a58d8ff0e411ce64bf1318f0d",
+        "urn:reflaxe-rust:cargo-requirement:b9fb42889da3b49809685c0f3494e821",
+        "urn:reflaxe-rust:cargo-requirement:37d4227269cdf40c3ff75fd4addea278",
+        "urn:reflaxe-rust:cargo-requirement:d269a01a30b83bff20b7ceb5a9f03b04",
+        "urn:reflaxe-rust:cargo-requirement:97b323aeaf621aa80b7060f56c87f4ea",
+        "urn:reflaxe-rust:cargo-requirement:61177161df3dcd3340e8b47bdd778ca3",
+        "urn:reflaxe-rust:cargo-requirement:d9854712eb753433cf687217807f2895",
+        "urn:reflaxe-rust:cargo-requirement:f76810d7446b061757f60078a0affb2a",
+        "urn:reflaxe-rust:cargo-requirement:ec0794a779cc21b2625db84e199f0917",
+        "urn:reflaxe-rust:cargo-requirement:946b99f963e36e52188b5623bc7cd0b9",
+        "urn:reflaxe-rust:cargo-requirement:7f930f032045abf05ac6414f721196ff",
+        "urn:reflaxe-rust:cargo-requirement:e5df3d2383e3660a9517b7ae3298f6a8",
+        "urn:reflaxe-rust:cargo-requirement:c61026ace4c1873af9f53df065e8be60",
+        "urn:reflaxe-rust:cargo-requirement:915761d06e83513fc971ec5dcdeb622c",
+        "urn:reflaxe-rust:cargo-requirement:89b172dd1af2a3c213ea440bf7800ef1",
+        "urn:reflaxe-rust:cargo-requirement:b063a305812ae6a33468c34921da6750",
+        "urn:reflaxe-rust:cargo-requirement:827d1b49ee40229cbe232f54d0a1b19c",
+        "urn:reflaxe-rust:cargo-requirement:5c27d7dc89a6720456d3d076678d6452",
+        "urn:reflaxe-rust:cargo-requirement:10f7cee09a42e85495ed2251f839a525",
+        "urn:reflaxe-rust:cargo-requirement:50c971630461b9fc1a975af32ac7abf5",
+        "urn:reflaxe-rust:cargo-requirement:77f414cf3599ec4d7624e905a63a97e4",
+        "urn:reflaxe-rust:cargo-requirement:b2274c72ba8bd2e74fc1f41048a86c4f",
+        "urn:reflaxe-rust:cargo-requirement:152a41749b9f83701e66aa00479d2515",
+        "urn:reflaxe-rust:cargo-requirement:bcc47bbce0be3faf92c723125543e414",
+        "urn:reflaxe-rust:cargo-requirement:b2097a1e27932ddaccd8dfd7effd1177"
+      ]
+    },
+    {
+      "ref": "pkg:generic/reflaxe@3ec70a83936a8919e5441e03a6fdc1b17ec79881",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:generic/haxe-standard-library-derived-files@4.3.7",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:bbf30f3a58d8ff0e411ce64bf1318f0d",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:b9fb42889da3b49809685c0f3494e821",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:37d4227269cdf40c3ff75fd4addea278",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:d269a01a30b83bff20b7ceb5a9f03b04",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:97b323aeaf621aa80b7060f56c87f4ea",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:61177161df3dcd3340e8b47bdd778ca3",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:d9854712eb753433cf687217807f2895",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:f76810d7446b061757f60078a0affb2a",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:ec0794a779cc21b2625db84e199f0917",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:946b99f963e36e52188b5623bc7cd0b9",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:7f930f032045abf05ac6414f721196ff",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:e5df3d2383e3660a9517b7ae3298f6a8",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:c61026ace4c1873af9f53df065e8be60",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:915761d06e83513fc971ec5dcdeb622c",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:89b172dd1af2a3c213ea440bf7800ef1",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:b063a305812ae6a33468c34921da6750",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:827d1b49ee40229cbe232f54d0a1b19c",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:5c27d7dc89a6720456d3d076678d6452",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:10f7cee09a42e85495ed2251f839a525",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:50c971630461b9fc1a975af32ac7abf5",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:77f414cf3599ec4d7624e905a63a97e4",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:b2274c72ba8bd2e74fc1f41048a86c4f",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:152a41749b9f83701e66aa00479d2515",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:bcc47bbce0be3faf92c723125543e414",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:reflaxe-rust:cargo-requirement:b2097a1e27932ddaccd8dfd7effd1177",
+      "dependsOn": []
+    }
+  ]
+}

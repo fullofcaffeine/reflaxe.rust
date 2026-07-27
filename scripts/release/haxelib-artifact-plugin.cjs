@@ -5,6 +5,7 @@ const path = require('path')
 const { execFileSync } = require('child_process')
 const { verifyReleaseArtifact } = require('./verify-release-artifact.js')
 const { artifactNames, normalizeSha, verifyTagIdentity } = require('./release-provenance.js')
+const { assertPackageInputsTracked } = require('./package-input-cleanliness.js')
 
 function run(command, args, options = {}) {
   return execFileSync(command, args, {
@@ -31,6 +32,7 @@ function assertTrackedTreeClean(cwd) {
     encoding: 'utf8'
   })
   if (status.trim().length > 0) throw new Error('release preparation modified tracked repository files')
+  assertPackageInputsTracked(cwd)
 }
 
 function hash(filePath) {
