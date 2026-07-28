@@ -15,7 +15,8 @@ The release ZIP contains:
 - Reflaxe's upstream MIT license, exact upstream base commit, exact local
   patch, and a machine-readable source record;
 - the Haxe Standard Library MIT notice for target override files derived from
-  Haxe 4.3.7;
+  Haxe 4.3.7, plus the complete file-by-file source record at
+  `provenance/stdlib-provenance-ledger.json`;
 - `release-sbom.json`, a CycloneDX 1.6 inventory of shipped components and the
   Cargo version requirements declared by the shipped `hxrt` crate; and
 - `THIRD_PARTY_NOTICES.md`, generated from the same component record as the
@@ -49,8 +50,11 @@ SBOM therefore records their version requirements as
 by a future application lockfile.
 
 The file-by-file source origin for Haxe standard-library overrides remains in
-`docs/stdlib-provenance-ledger.json`. The release notice summarizes that
-origin, while the tracked ledger supplies the detailed review evidence.
+`docs/stdlib-provenance-ledger.json` in the reviewed source tree. Packaging
+copies those exact bytes to `provenance/stdlib-provenance-ledger.json` inside
+the ZIP. The release notice points to that package-local record, so an offline
+review remains tied to the published artifact rather than to a branch that can
+change later.
 
 ## Questions for professional legal review
 

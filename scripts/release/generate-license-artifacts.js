@@ -7,6 +7,7 @@ const { execFileSync } = require('child_process')
 
 const root = path.resolve(__dirname, '..', '..')
 const REQUIRED_COMPONENT_IDS = ['reflaxe-rust', 'reflaxe', 'haxe-standard-library-derived-files']
+const STDLIB_PACKAGE_EVIDENCE_PATH = 'provenance/stdlib-provenance-ledger.json'
 
 function validateRequiredComponentIds(source) {
   if (!Array.isArray(source.components)) throw new Error('release component inventory must be an array')
@@ -14,6 +15,15 @@ function validateRequiredComponentIds(source) {
   if (new Set(ids).size !== ids.length) throw new Error('release component inventory contains duplicate IDs')
   for (const id of REQUIRED_COMPONENT_IDS) {
     if (!ids.includes(id)) throw new Error(`release component inventory is missing required component: ${id}`)
+  }
+  const stdlib = source.components.find(
+    (component) => component.id === 'haxe-standard-library-derived-files'
+  )
+  if (!stdlib.notice?.includes(STDLIB_PACKAGE_EVIDENCE_PATH)) {
+    throw new Error('stdlib release notice must name the package-local source record')
+  }
+  if (/(?:https?:)?\/\//i.test(stdlib.notice)) {
+    throw new Error('stdlib release notice must not depend on an external branch URL')
   }
 }
 
@@ -255,5 +265,6 @@ module.exports = {
   cargoRequirements,
   validateRequiredComponentIds,
   resolveStdlibComponent,
-  REQUIRED_COMPONENT_IDS
+  REQUIRED_COMPONENT_IDS,
+  STDLIB_PACKAGE_EVIDENCE_PATH
 }

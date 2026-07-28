@@ -81,7 +81,7 @@
       "properties": [
         {
           "name": "reflaxe.rust:notice",
-          "value": "Some std/ files are target overrides derived from Haxe Standard Library source. The file-by-file origin record is available in the source repository: https://github.com/fullofcaffeine/reflaxe.rust/blob/main/docs/stdlib-provenance-ledger.json."
+          "value": "Some std/ files are target overrides derived from Haxe Standard Library source. The file-by-file source record is shipped inside this package at provenance/stdlib-provenance-ledger.json."
         }
       ]
     },

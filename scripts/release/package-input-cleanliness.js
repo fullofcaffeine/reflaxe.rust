@@ -1,7 +1,16 @@
 const { execFileSync } = require('child_process')
 
 const PACKAGE_INPUT_ROOTS = ['src/', 'std/', 'runtime/', 'vendor/']
-const OPTIONAL_PACKAGE_INPUT_FILES = ['Run.hx', 'run.n']
+const PACKAGE_INPUT_FILES = [
+  'LICENSE',
+  'README.md',
+  'Run.hx',
+  'docs/release-package-components.json',
+  'docs/stdlib-provenance-ledger.json',
+  'extraParams.hxml',
+  'haxelib.json',
+  'run.n'
+]
 
 function gitPaths(cwd, args) {
   return execFileSync('git', ['ls-files', '-z', ...args], { cwd })
@@ -32,7 +41,7 @@ function assertPackageInputsTracked(cwd) {
   const unsafe = [...new Set(candidates)]
     .filter(
       (file) =>
-        OPTIONAL_PACKAGE_INPUT_FILES.includes(file) ||
+        PACKAGE_INPUT_FILES.includes(file) ||
         PACKAGE_INPUT_ROOTS.some((prefix) => file.startsWith(prefix))
     )
     .sort()
@@ -41,4 +50,4 @@ function assertPackageInputsTracked(cwd) {
   }
 }
 
-module.exports = { assertPackageInputsTracked, PACKAGE_INPUT_ROOTS, OPTIONAL_PACKAGE_INPUT_FILES }
+module.exports = { assertPackageInputsTracked, PACKAGE_INPUT_FILES, PACKAGE_INPUT_ROOTS }

@@ -17,7 +17,10 @@ function main() {
     git(temp, ['init', '-q'])
     fs.mkdirSync(path.join(temp, 'src'), { recursive: true })
     fs.writeFileSync(path.join(temp, 'src', 'Tracked.hx'), 'class Tracked {}\n')
-    fs.writeFileSync(path.join(temp, '.gitignore'), 'vendor/haxe/\n*.n\n')
+    fs.writeFileSync(
+      path.join(temp, '.gitignore'),
+      'vendor/haxe/\n*.n\ndocs/stdlib-provenance-ledger.json\n'
+    )
     git(temp, ['add', '.'])
     git(temp, [
       '-c',
@@ -50,6 +53,17 @@ function main() {
 
     fs.writeFileSync(path.join(temp, 'Run.hx'), 'untracked source input\n')
     assert.throws(() => assertPackageInputsTracked(temp), /Run\.hx/)
+    fs.rmSync(path.join(temp, 'Run.hx'))
+
+    fs.mkdirSync(path.join(temp, 'docs'), { recursive: true })
+    fs.writeFileSync(
+      path.join(temp, 'docs', 'stdlib-provenance-ledger.json'),
+      '{"unreviewed":true}\n'
+    )
+    assert.throws(
+      () => assertPackageInputsTracked(temp),
+      /docs\/stdlib-provenance-ledger\.json/
+    )
 
     console.log('[package-input-cleanliness-test] OK')
   } finally {

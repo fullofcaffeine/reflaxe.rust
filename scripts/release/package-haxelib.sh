@@ -138,6 +138,19 @@ copy_dir_required_to_build() {
   log "Copying directory: $rel/"
 }
 
+copy_file_required_to_build_as() {
+  local source_rel="$1"
+  local package_rel="$2"
+  local src="$root_dir/$source_rel"
+  if [ ! -f "$src" ]; then
+    echo "[package] error: required file missing: $source_rel" >&2
+    exit 2
+  fi
+  mkdir -p "$build_dir/$(dirname "$package_rel")"
+  cp "$src" "$build_dir/$package_rel"
+  log "Copying reviewed evidence: $package_rel"
+}
+
 prune_runtime_dev_artifacts() {
   local hxrt_dir="$build_dir/runtime/hxrt"
   if [ ! -d "$hxrt_dir" ]; then
@@ -176,6 +189,12 @@ node "$root_dir/scripts/release/prepare-package-metadata.js" \
 node "$root_dir/scripts/release/generate-license-artifacts.js" \
   --output-dir "$build_dir" \
   --version "$version"
+
+# Package-only reviewers need the exact file-by-file Haxe source record without relying on a
+# repository branch that can change after publication.
+copy_file_required_to_build_as \
+  "docs/stdlib-provenance-ledger.json" \
+  "provenance/stdlib-provenance-ledger.json"
 
 # Target-specific runtime/compiler assets not covered by generic Reflaxe build flow.
 copy_dir_required_to_build "runtime"

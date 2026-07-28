@@ -5,10 +5,13 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const { execFileSync } = require('child_process')
+const { validateReflaxeHaxelib } = require('../release/reflaxe-metadata.js')
 
 let root = path.resolve(__dirname, '..', '..')
 let vendorRoot = path.join(root, 'vendor', 'reflaxe')
 let manifestPath = path.join(vendorRoot, 'provenance.json')
+const RECONSTRUCTION_SCOPE = ['Run.hx', 'src']
+const COPIED_UPSTREAM_SURFACE = ['LICENSE', 'Run.hx', 'src']
 
 function fail(message) {
   throw new Error(message)
@@ -67,12 +70,12 @@ function verifyAgainstUpstream(manifest, upstreamDir) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'reflaxe-provenance-'))
   try {
     const archive = path.join(temp, 'base.tar')
-    execFileSync('git', ['-C', upstreamDir, 'archive', `--output=${archive}`, base, ...manifest.localPatch.scope])
+    execFileSync('git', ['-C', upstreamDir, 'archive', `--output=${archive}`, base, ...RECONSTRUCTION_SCOPE])
     execFileSync('tar', ['-xf', archive, '-C', temp])
     execFileSync('git', ['-C', temp, 'init', '-q'])
     execFileSync('git', ['-C', temp, 'apply', path.join(vendorRoot, manifest.localPatch.file)])
 
-    for (const scope of manifest.localPatch.scope) {
+    for (const scope of RECONSTRUCTION_SCOPE) {
       const expected = path.join(vendorRoot, scope)
       const actual = path.join(temp, scope)
       if (fs.statSync(expected).isDirectory()) {
@@ -116,13 +119,24 @@ function main() {
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
   if (manifest.schemaVersion !== 1) fail('unsupported Reflaxe provenance schema')
   if (!/^[0-9a-f]{40}$/.test(manifest.upstream.baseCommit)) fail('upstream base must be an exact commit')
+  if (JSON.stringify(manifest.localPatch.scope) !== JSON.stringify(RECONSTRUCTION_SCOPE)) {
+    fail('vendored Reflaxe reconstruction scope must exactly cover Run.hx and src')
+  }
+  if (
+    JSON.stringify(manifest.vendoredSurface.copiedFromUpstream) !==
+    JSON.stringify(COPIED_UPSTREAM_SURFACE)
+  ) {
+    fail('vendored Reflaxe copied upstream surface must exactly cover LICENSE, Run.hx, and src')
+  }
+  const haxelib = JSON.parse(fs.readFileSync(path.join(vendorRoot, 'haxelib.json'), 'utf8'))
+  validateReflaxeHaxelib(manifest, haxelib)
   const licensePath = path.join(vendorRoot, manifest.component.licenseFile)
   if (!fs.existsSync(licensePath)) fail('vendored Reflaxe license is missing')
   if (sha256(licensePath) !== manifest.component.licenseSha256) fail('vendored Reflaxe license digest is stale')
 
   const patchPath = path.join(vendorRoot, manifest.localPatch.file)
   if (sha256(patchPath) !== manifest.localPatch.sha256) fail('vendored Reflaxe patch digest is stale')
-  if (vendoredTreeDigest(manifest.localPatch.scope) !== manifest.localPatch.vendoredTreeSha256) {
+  if (vendoredTreeDigest(RECONSTRUCTION_SCOPE) !== manifest.localPatch.vendoredTreeSha256) {
     fail('vendored Reflaxe source tree digest is stale')
   }
   const patchFiles = patchChangedFiles(fs.readFileSync(patchPath, 'utf8'))

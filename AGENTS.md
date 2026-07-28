@@ -920,10 +920,14 @@ Agent policy:
   belongs to the locked standard `semver` dependency, not a custom regex.
 - Tracked package/HXML versions are development sentinels. Exact versions are injected only into the
   staged Haxelib package and bound to the tag/source SHA in `release-metadata.json`.
-- Release artifact rule (strict): build the complete package twice, require byte-identical output,
-  validate the full ZIP contract, run package smoke against that exact ZIP, and compare hosted
-  state/size/SHA-256 to the approved local ZIP and checksum. Published releases and remote version
-  tags are immutable; never move/delete a remote version tag to recover.
+- Release artifact rule (strict): build the complete package twice and make the strict verifier
+  compare every candidate ZIP byte with the separate independent rebuild. A broad allowed-directory
+  list plus selected file checks is not a complete source-to-package proof because extra or changed
+  bytes can hide below an allowed root. Also ship exact file-by-file source records needed by an
+  offline package reviewer; do not make release evidence depend on a mutable branch URL. Run package
+  smoke against the exact verified ZIP, then compare hosted state/size/SHA-256 to the approved local
+  ZIP and checksum. Published releases and remote version tags are immutable; never move/delete a
+  remote version tag to recover.
 - If a valid tag lacks a complete GitHub Release, use existing-tag repair from `docs/release.md`;
   never advance the version merely to escape partial publication.
 - Treat `docs/release-reference-architecture.md` as the reference contract for sibling compiler

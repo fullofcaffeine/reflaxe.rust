@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const assert = require('assert')
+const crypto = require('crypto')
 const { execFileSync, spawnSync } = require('child_process')
 const fs = require('fs')
 const os = require('os')
@@ -39,6 +40,34 @@ function writeManifest(repositoryRoot, manifest) {
     path.join(repositoryRoot, 'vendor', 'reflaxe', 'provenance.json'),
     `${JSON.stringify(manifest, null, 2)}\n`
   )
+}
+
+function filesBelow(directory, prefix = '') {
+  const result = []
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const relative = prefix ? `${prefix}/${entry.name}` : entry.name
+    if (entry.isDirectory()) result.push(...filesBelow(path.join(directory, entry.name), relative))
+    else if (entry.isFile()) result.push(relative)
+  }
+  return result
+}
+
+function treeDigest(repositoryRoot, scopes) {
+  const vendor = path.join(repositoryRoot, 'vendor', 'reflaxe')
+  const files = scopes
+    .flatMap((scope) => {
+      const absolute = path.join(vendor, scope)
+      return fs.statSync(absolute).isDirectory() ? filesBelow(absolute, scope) : [scope]
+    })
+    .sort()
+  const hash = crypto.createHash('sha256')
+  for (const file of files) {
+    hash.update(file)
+    hash.update('\0')
+    hash.update(fs.readFileSync(path.join(vendor, file)))
+    hash.update('\0')
+  }
+  return hash.digest('hex')
 }
 
 function git(directory, args) {
@@ -112,6 +141,94 @@ function main() {
     const licenseDrift = copyFixture(temp, 'license-drift')
     fs.appendFileSync(path.join(licenseDrift, 'vendor', 'reflaxe', 'LICENSE'), '\nchanged\n')
     expectFailure(licenseDrift, /license digest is stale/)
+
+    const narrowedScope = copyFixture(temp, 'narrowed-scope')
+    const narrowedManifest = readManifest(narrowedScope)
+    narrowedManifest.localPatch.scope = ['src']
+    narrowedManifest.localPatch.vendoredTreeSha256 = treeDigest(narrowedScope, ['src'])
+    writeManifest(narrowedScope, narrowedManifest)
+    fs.appendFileSync(path.join(narrowedScope, 'vendor', 'reflaxe', 'Run.hx'), '\nunchecked change\n')
+    expectFailure(narrowedScope, /reconstruction scope must exactly cover Run\.hx and src/)
+
+    const contradictorySurface = copyFixture(temp, 'contradictory-surface')
+    const contradictoryManifest = readManifest(contradictorySurface)
+    contradictoryManifest.vendoredSurface.copiedFromUpstream = ['LICENSE', 'src']
+    writeManifest(contradictorySurface, contradictoryManifest)
+    expectFailure(contradictorySurface, /copied upstream surface must exactly cover LICENSE, Run\.hx, and src/)
+
+    const nestedLicenseDrift = copyFixture(temp, 'nested-license-drift')
+    const nestedLicense = JSON.parse(
+      fs.readFileSync(path.join(nestedLicenseDrift, 'vendor', 'reflaxe', 'haxelib.json'), 'utf8')
+    )
+    nestedLicense.license = 'Apache-2.0'
+    fs.writeFileSync(
+      path.join(nestedLicenseDrift, 'vendor', 'reflaxe', 'haxelib.json'),
+      `${JSON.stringify(nestedLicense, null, 2)}\n`
+    )
+    expectFailure(nestedLicenseDrift, /Reflaxe haxelib metadata contradicts provenance: license differs/)
+
+    const nestedUrlDrift = copyFixture(temp, 'nested-url-drift')
+    const nestedUrl = JSON.parse(
+      fs.readFileSync(path.join(nestedUrlDrift, 'vendor', 'reflaxe', 'haxelib.json'), 'utf8')
+    )
+    nestedUrl.url = 'https://example.invalid/not-reflaxe'
+    fs.writeFileSync(
+      path.join(nestedUrlDrift, 'vendor', 'reflaxe', 'haxelib.json'),
+      `${JSON.stringify(nestedUrl, null, 2)}\n`
+    )
+    expectFailure(nestedUrlDrift, /Reflaxe haxelib metadata contradicts provenance: repository differs/)
+
+    const renamedComponent = copyFixture(temp, 'renamed-component')
+    const renamedManifest = readManifest(renamedComponent)
+    renamedManifest.component.name = 'Different framework'
+    writeManifest(renamedComponent, renamedManifest)
+    expectFailure(renamedComponent, /Reflaxe provenance component name must be Reflaxe/)
+
+    const missingLicenseAgreement = copyFixture(temp, 'missing-license-agreement')
+    const missingLicenseManifest = readManifest(missingLicenseAgreement)
+    delete missingLicenseManifest.component.license
+    writeManifest(missingLicenseAgreement, missingLicenseManifest)
+    const missingLicenseHaxelibPath = path.join(
+      missingLicenseAgreement,
+      'vendor',
+      'reflaxe',
+      'haxelib.json'
+    )
+    const missingLicenseHaxelib = JSON.parse(
+      fs.readFileSync(missingLicenseHaxelibPath, 'utf8')
+    )
+    delete missingLicenseHaxelib.license
+    fs.writeFileSync(
+      missingLicenseHaxelibPath,
+      `${JSON.stringify(missingLicenseHaxelib, null, 2)}\n`
+    )
+    expectFailure(
+      missingLicenseAgreement,
+      /Reflaxe provenance license must be a non-empty string/
+    )
+
+    const missingRepositoryAgreement = copyFixture(temp, 'missing-repository-agreement')
+    const missingRepositoryManifest = readManifest(missingRepositoryAgreement)
+    delete missingRepositoryManifest.component.upstreamRepository
+    writeManifest(missingRepositoryAgreement, missingRepositoryManifest)
+    const missingRepositoryHaxelibPath = path.join(
+      missingRepositoryAgreement,
+      'vendor',
+      'reflaxe',
+      'haxelib.json'
+    )
+    const missingRepositoryHaxelib = JSON.parse(
+      fs.readFileSync(missingRepositoryHaxelibPath, 'utf8')
+    )
+    delete missingRepositoryHaxelib.url
+    fs.writeFileSync(
+      missingRepositoryHaxelibPath,
+      `${JSON.stringify(missingRepositoryHaxelib, null, 2)}\n`
+    )
+    expectFailure(
+      missingRepositoryAgreement,
+      /Reflaxe provenance repository must be a non-empty string/
+    )
 
     const reconstruction = copyFixture(temp, 'reconstruction')
     const upstream = syntheticUpstream(temp, reconstruction)

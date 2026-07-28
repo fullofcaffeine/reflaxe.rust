@@ -48,7 +48,14 @@ function buildApprovedArtifact({ cwd, version, tag, sourceCommit }) {
     if (!fs.readFileSync(zipPath).equals(fs.readFileSync(repeatZip))) {
       throw new Error('repaired Haxelib package is not byte-for-byte reproducible')
     }
-    const verified = verifyReleaseArtifact({ zipPath, version, tag, sourceCommit })
+    const verified = verifyReleaseArtifact({
+      zipPath,
+      canonicalZipPath: repeatZip,
+      version,
+      tag,
+      sourceCommit,
+      sourceRoot: cwd
+    })
     const names = artifactNames(version)
     fs.writeFileSync(checksumPath, `${verified.sha256}  ${names.archive}\n`)
     run('bash', ['scripts/ci/package-smoke.sh'], {

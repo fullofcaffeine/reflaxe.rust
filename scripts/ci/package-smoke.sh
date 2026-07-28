@@ -117,6 +117,7 @@ log "verify package layout"
 [[ -f "$pkg_dir/vendor/reflaxe/LICENSE" ]]
 [[ -f "$pkg_dir/vendor/reflaxe/provenance.json" ]]
 [[ -f "$pkg_dir/vendor/reflaxe/reflaxe-rust.patch" ]]
+[[ -f "$pkg_dir/provenance/stdlib-provenance-ledger.json" ]]
 [[ -f "$pkg_dir/src/reflaxe/rust/CompilerInit.hx" ]]
 [[ -f "$pkg_dir/src/haxe/Exception.cross.hx" ]]
 [[ -f "$pkg_dir/src/haxe/ds/List.cross.hx" ]]

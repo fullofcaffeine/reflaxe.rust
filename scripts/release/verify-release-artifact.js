@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 
 const crypto = require('crypto')
+const { execFileSync } = require('child_process')
 const fs = require('fs')
+const os = require('os')
 const path = require('path')
 const { strFromU8, unzipSync } = require('fflate')
 const { compareEntryNames, validateEntryNames } = require('./deterministic-zip.js')
 const { buildArtifacts: buildLicenseArtifacts } = require('./generate-license-artifacts.js')
+const { assertPackageInputsTracked } = require('./package-input-cleanliness.js')
+const { validateReflaxeHaxelib } = require('./reflaxe-metadata.js')
 const REPOSITORY_ROOT = path.join(__dirname, '..', '..')
 const RELEASE_COMPONENTS = JSON.parse(
   fs.readFileSync(path.join(REPOSITORY_ROOT, 'docs', 'release-package-components.json'), 'utf8')
@@ -20,6 +24,7 @@ const REQUIRED_ENTRIES = [
   'haxelib.json',
   'release-metadata.json',
   'release-sbom.json',
+  'provenance/stdlib-provenance-ledger.json',
   'runtime/hxrt/Cargo.toml',
   'src/haxe/Exception.cross.hx',
   'src/reflaxe/rust/CompilerInit.hx',
@@ -39,7 +44,7 @@ const ALLOWED_ROOT_FILES = new Set([
   'release-sbom.json',
   'run.n'
 ])
-const ALLOWED_ROOT_DIRECTORIES = new Set(['runtime', 'src', 'vendor'])
+const ALLOWED_ROOT_DIRECTORIES = new Set(['provenance', 'runtime', 'src', 'vendor'])
 
 /**
  * Why
@@ -158,7 +163,26 @@ function verifyLayout(names) {
   }
 }
 
-function verifyReleaseArtifact({ zipPath, version, tag, sourceCommit, sourceRoot = REPOSITORY_ROOT }) {
+function verifyReleaseArtifact({
+  zipPath,
+  canonicalZipPath,
+  version,
+  tag,
+  sourceCommit,
+  sourceRoot = REPOSITORY_ROOT,
+  stdlibLedgerSourcePath = path.join(sourceRoot, 'docs', 'stdlib-provenance-ledger.json')
+}) {
+  if (!canonicalZipPath) {
+    throw new Error('an independently rebuilt canonical package is required for release verification')
+  }
+  const candidateStat = fs.statSync(zipPath)
+  const canonicalStat = fs.statSync(canonicalZipPath)
+  if (
+    fs.realpathSync(zipPath) === fs.realpathSync(canonicalZipPath) ||
+    (candidateStat.dev === canonicalStat.dev && candidateStat.ino === canonicalStat.ino)
+  ) {
+    throw new Error('candidate and canonical package must be separate independently built files')
+  }
   const bytes = fs.readFileSync(zipPath)
   const central = centralDirectoryEntries(bytes)
   const names = central.map(({ name }) => name)
@@ -201,6 +225,22 @@ function verifyReleaseArtifact({ zipPath, version, tag, sourceCommit, sourceRoot
   }
 
   requireExactFile(files, 'LICENSE', path.join(sourceRoot, 'LICENSE'))
+  requireExactFile(files, 'README.md', path.join(sourceRoot, 'README.md'))
+  requireExactFile(files, 'extraParams.hxml', path.join(sourceRoot, 'extraParams.hxml'))
+  for (const optionalName of ['Run.hx', 'run.n']) {
+    const sourcePath = path.join(sourceRoot, optionalName)
+    const sourceHasFile = fs.existsSync(sourcePath)
+    const packageHasFile = Object.prototype.hasOwnProperty.call(files, optionalName)
+    if (sourceHasFile !== packageHasFile) {
+      throw new Error(`optional archive entry does not match reviewed source presence: ${optionalName}`)
+    }
+    if (sourceHasFile) requireExactFile(files, optionalName, sourcePath)
+  }
+  requireExactFile(
+    files,
+    'provenance/stdlib-provenance-ledger.json',
+    stdlibLedgerSourcePath
+  )
   requireExactFile(
     files,
     'runtime/hxrt/Cargo.toml',
@@ -257,6 +297,10 @@ function verifyReleaseArtifact({ zipPath, version, tag, sourceCommit, sourceRoot
   if (patchDigest !== reflaxeProvenance.localPatch?.sha256) {
     throw new Error('vendored Reflaxe patch digest does not match its provenance record')
   }
+  validateReflaxeHaxelib(
+    reflaxeProvenance,
+    parseJsonEntry(files, 'vendor/reflaxe/haxelib.json')
+  )
   const notices = strFromU8(files['THIRD_PARTY_NOTICES.md'])
   for (const componentName of REQUIRED_THIRD_PARTY_COMPONENTS) {
     if (!notices.includes(componentName)) {
@@ -265,6 +309,14 @@ function verifyReleaseArtifact({ zipPath, version, tag, sourceCommit, sourceRoot
   }
   if (!strFromU8(files['vendor/reflaxe/LICENSE']).startsWith('MIT License')) {
     throw new Error('vendored Reflaxe MIT license text is missing')
+  }
+  if (!notices.includes('provenance/stdlib-provenance-ledger.json')) {
+    throw new Error('third-party notices do not name the packaged stdlib source record')
+  }
+
+  const canonicalBytes = fs.readFileSync(canonicalZipPath)
+  if (!bytes.equals(canonicalBytes)) {
+    throw new Error('release artifact differs from the independently rebuilt canonical package')
   }
 
   return {
@@ -290,13 +342,48 @@ function parseArgs(argv) {
 
 function main() {
   const args = parseArgs(process.argv.slice(2))
-  const result = verifyReleaseArtifact({
-    zipPath: path.resolve(args.zip),
-    version: args.version,
-    tag: args.tag,
-    sourceCommit: args['source-sha']
-  })
-  console.log(JSON.stringify(result))
+  const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD^{commit}'], {
+    cwd: REPOSITORY_ROOT,
+    encoding: 'utf8'
+  }).trim()
+  if (sourceCommit !== args['source-sha']) {
+    throw new Error('reviewed source commit does not match the checked-out commit')
+  }
+  const trackedChanges = execFileSync(
+    'git',
+    ['status', '--porcelain', '--untracked-files=no'],
+    { cwd: REPOSITORY_ROOT, encoding: 'utf8' }
+  )
+  if (trackedChanges.trim()) {
+    throw new Error('reviewed source contains tracked changes')
+  }
+  assertPackageInputsTracked(REPOSITORY_ROOT)
+
+  const canonicalRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-release-verify-'))
+  const canonicalZipPath = path.join(canonicalRoot, 'reflaxe.rust.zip')
+  try {
+    execFileSync(
+      'bash',
+      [
+        'scripts/release/package-haxelib.sh',
+        canonicalZipPath,
+        args.version,
+        args.tag,
+        sourceCommit
+      ],
+      { cwd: REPOSITORY_ROOT, stdio: 'inherit' }
+    )
+    const result = verifyReleaseArtifact({
+      zipPath: path.resolve(args.zip),
+      canonicalZipPath,
+      version: args.version,
+      tag: args.tag,
+      sourceCommit
+    })
+    console.log(JSON.stringify(result))
+  } finally {
+    fs.rmSync(canonicalRoot, { recursive: true, force: true })
+  }
 }
 
 if (require.main === module) {

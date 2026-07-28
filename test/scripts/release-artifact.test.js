@@ -49,13 +49,25 @@ function packageFixture(root, options = {}) {
   write(root, 'src/reflaxe/rust/CompilerInit.hx', 'package reflaxe.rust; class CompilerInit {}\n')
   write(root, 'src/haxe/Exception.cross.hx', 'package haxe; class Exception {}\n')
   write(root, 'runtime/hxrt/Cargo.toml', '[package]\nname = "hxrt"\n')
-  write(root, 'vendor/reflaxe/LICENSE', 'MIT License\n')
+  const reflaxeLicense = 'MIT License\n'
+  write(root, 'vendor/reflaxe/LICENSE', reflaxeLicense)
+  writeJson(root, 'vendor/reflaxe/haxelib.json', {
+    name: 'reflaxe',
+    url: 'https://github.com/SomeRanDev/reflaxe',
+    license: 'MIT',
+    version: '4.0.0-beta'
+  })
   const fixturePatch = 'fixture patch\n'
   writeJson(root, 'vendor/reflaxe/provenance.json', {
     schemaVersion: 1,
-    component: 'Reflaxe',
+    component: {
+      name: 'Reflaxe',
+      upstreamRepository: 'https://github.com/SomeRanDev/reflaxe.git',
+      license: 'MIT',
+      licenseFile: 'LICENSE',
+      licenseSha256: crypto.createHash('sha256').update(reflaxeLicense).digest('hex')
+    },
     upstream: {
-      repository: 'https://github.com/SomeRanDev/reflaxe.git',
       baseCommit: '3ec70a83936a8919e5441e03a6fdc1b17ec79881'
     },
     localPatch: {
@@ -65,6 +77,10 @@ function packageFixture(root, options = {}) {
   })
   write(root, 'vendor/reflaxe/reflaxe-rust.patch', fixturePatch)
   write(root, 'vendor/reflaxe/src/reflaxe/ReflectCompiler.hx', 'package reflaxe; class ReflectCompiler {}\n')
+  writeJson(root, 'provenance/stdlib-provenance-ledger.json', {
+    schemaVersion: 1,
+    fixture: 'reviewed Haxe Standard Library source records'
+  })
 }
 
 function sha256(filePath) {
@@ -102,8 +118,30 @@ function main() {
       new RegExp(`missing required component: ${requiredId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)
     )
   }
+  for (const externalLink of [
+    'https://github.com/fullofcaffeine/reflaxe.rust/tree/main/docs/stdlib-provenance-ledger.json',
+    'HTTPS://github.com/fullofcaffeine/reflaxe.rust/tree/main/docs/stdlib-provenance-ledger.json',
+    '//github.com/fullofcaffeine/reflaxe.rust/tree/main/docs/stdlib-provenance-ledger.json'
+  ]) {
+    const mutableStdlibLink = JSON.parse(JSON.stringify(releaseComponents))
+    mutableStdlibLink.components.find(
+      (component) => component.id === 'haxe-standard-library-derived-files'
+    ).notice += ` Alternate record: ${externalLink}.`
+    expectThrow(
+      () => licenseApi.validateRequiredComponentIds(mutableStdlibLink),
+      /stdlib release notice must not depend on an external branch URL/
+    )
+  }
   const stdlibComponent = releaseComponents.components.find(
     (component) => component.id === 'haxe-standard-library-derived-files'
+  )
+  assert(
+    stdlibComponent.notice.includes('provenance/stdlib-provenance-ledger.json'),
+    'the stdlib notice must point package reviewers to the archive-local source record'
+  )
+  assert(
+    !stdlibComponent.notice.includes('/blob/main/'),
+    'release evidence must not depend on a mutable main-branch link'
   )
   const movedStdlib = licenseApi.resolveStdlibComponent(stdlibComponent, {
     upstreamStdVersion: '9.8.7',
@@ -183,12 +221,30 @@ libc = "0.2"
     })
     assert.strictEqual(sha256(leftZip), sha256(rightZip), 'ZIP bytes must ignore source mtimes and modes')
 
+    const reviewedSource = path.join(temp, 'reviewed-source')
+    fs.cpSync(left, reviewedSource, { recursive: true })
+    write(
+      reviewedSource,
+      'docs/stdlib-provenance-ledger.json',
+      fs.readFileSync(path.join(left, 'provenance', 'stdlib-provenance-ledger.json'))
+    )
+
+    const verifyArtifact = (options, canonicalZipPath = rightZip) =>
+      verifyApi.verifyReleaseArtifact({
+        ...options,
+        canonicalZipPath,
+        stdlibLedgerSourcePath:
+          options.stdlibLedgerSourcePath ||
+          path.join(options.sourceRoot || left, 'provenance', 'stdlib-provenance-ledger.json')
+      })
+
     const result = verifyApi.verifyReleaseArtifact({
       zipPath: leftZip,
+      canonicalZipPath: rightZip,
       version: VERSION,
       tag: TAG,
       sourceCommit: SOURCE_SHA,
-      sourceRoot: left
+      sourceRoot: reviewedSource
     })
     assert.strictEqual(result.sha256, sha256(leftZip))
     assert.strictEqual(result.size, fs.statSync(leftZip).size)
@@ -198,10 +254,42 @@ libc = "0.2"
     assert(result.entries.includes('vendor/reflaxe/LICENSE'))
     assert(result.entries.includes('vendor/reflaxe/provenance.json'))
     assert(result.entries.includes('vendor/reflaxe/reflaxe-rust.patch'))
+    assert(result.entries.includes('provenance/stdlib-provenance-ledger.json'))
+    assert(
+      fs
+        .readFileSync(path.join(left, 'THIRD_PARTY_NOTICES.md'), 'utf8')
+        .includes('provenance/stdlib-provenance-ledger.json'),
+      'the generated notice must name the package-local stdlib source record'
+    )
     assert.deepStrictEqual(
       [...result.entries].sort(zipApi.compareEntryNames),
       result.entries,
       'archive entries must be sorted'
+    )
+    expectThrow(
+      () =>
+        verifyApi.verifyReleaseArtifact({
+          zipPath: leftZip,
+          version: VERSION,
+          tag: TAG,
+          sourceCommit: SOURCE_SHA,
+          sourceRoot: left
+        }),
+      /an independently rebuilt canonical package is required/
+    )
+    expectThrow(
+      () =>
+        verifyArtifact(
+          {
+            zipPath: leftZip,
+            version: VERSION,
+            tag: TAG,
+            sourceCommit: SOURCE_SHA,
+            sourceRoot: left
+          },
+          leftZip
+        ),
+      /candidate and canonical package must be separate independently built files/
     )
 
     const missingRoot = path.join(temp, 'missing-root')
@@ -211,7 +299,7 @@ libc = "0.2"
     zipApi.createDeterministicZip(missingRoot, missingZip)
     expectThrow(
       () =>
-        verifyApi.verifyReleaseArtifact({
+        verifyArtifact({
           zipPath: missingZip,
           version: VERSION,
           tag: TAG,
@@ -227,7 +315,7 @@ libc = "0.2"
     zipApi.createDeterministicZip(wrongVersionRoot, wrongVersionZip)
     expectThrow(
       () =>
-        verifyApi.verifyReleaseArtifact({
+        verifyArtifact({
           zipPath: wrongVersionZip,
           version: VERSION,
           tag: TAG,
@@ -244,7 +332,7 @@ libc = "0.2"
     zipApi.createDeterministicZip(badPatchRoot, badPatchZip)
     expectThrow(
       () =>
-        verifyApi.verifyReleaseArtifact({
+        verifyArtifact({
           zipPath: badPatchZip,
           version: VERSION,
           tag: TAG,
@@ -265,7 +353,7 @@ libc = "0.2"
     zipApi.createDeterministicZip(badSbomRoot, badSbomZip)
     expectThrow(
       () =>
-        verifyApi.verifyReleaseArtifact({
+        verifyArtifact({
           zipPath: badSbomZip,
           version: VERSION,
           tag: TAG,
@@ -282,7 +370,7 @@ libc = "0.2"
     zipApi.createDeterministicZip(missingLicenseRoot, missingLicenseZip)
     expectThrow(
       () =>
-        verifyApi.verifyReleaseArtifact({
+        verifyArtifact({
           zipPath: missingLicenseZip,
           version: VERSION,
           tag: TAG,
@@ -305,7 +393,7 @@ libc = "0.2"
     zipApi.createDeterministicZip(badCargoRoot, badCargoZip)
     expectThrow(
       () =>
-        verifyApi.verifyReleaseArtifact({
+        verifyArtifact({
           zipPath: badCargoZip,
           version: VERSION,
           tag: TAG,
@@ -324,7 +412,7 @@ libc = "0.2"
     zipApi.createDeterministicZip(badRootLicense, badRootLicenseZip)
     expectThrow(
       () =>
-        verifyApi.verifyReleaseArtifact({
+        verifyArtifact({
           zipPath: badRootLicenseZip,
           version: VERSION,
           tag: TAG,
@@ -345,7 +433,7 @@ libc = "0.2"
     zipApi.createDeterministicZip(badMetadataRoot, badMetadataZip)
     expectThrow(
       () =>
-        verifyApi.verifyReleaseArtifact({
+        verifyArtifact({
           zipPath: badMetadataZip,
           version: VERSION,
           tag: TAG,
@@ -368,7 +456,7 @@ libc = "0.2"
     zipApi.createDeterministicZip(badVendorRoot, badVendorZip)
     expectThrow(
       () =>
-        verifyApi.verifyReleaseArtifact({
+        verifyArtifact({
           zipPath: badVendorZip,
           version: VERSION,
           tag: TAG,
@@ -385,7 +473,7 @@ libc = "0.2"
     zipApi.createDeterministicZip(badNoticeRoot, badNoticeZip)
     expectThrow(
       () =>
-        verifyApi.verifyReleaseArtifact({
+        verifyArtifact({
           zipPath: badNoticeZip,
           version: VERSION,
           tag: TAG,
@@ -395,6 +483,189 @@ libc = "0.2"
       /archive entry differs from generated license evidence: THIRD_PARTY_NOTICES\.md/
     )
 
+    const expectCanonicalMismatch = (name, relativePath, content) => {
+      const candidateRoot = path.join(temp, name)
+      fs.cpSync(left, candidateRoot, { recursive: true })
+      write(candidateRoot, relativePath, content)
+      const candidateZip = path.join(temp, `${name}.zip`)
+      zipApi.createDeterministicZip(candidateRoot, candidateZip)
+      expectThrow(
+        () =>
+          verifyArtifact({
+            zipPath: candidateZip,
+            version: VERSION,
+            tag: TAG,
+            sourceCommit: SOURCE_SHA,
+            sourceRoot: left
+          }),
+        /optional archive entry does not match reviewed source presence|archive entry differs from the reviewed source|release artifact differs from the independently rebuilt canonical package/
+      )
+    }
+
+    expectCanonicalMismatch('unexpected-run-hx', 'Run.hx', 'unreviewed runner\n')
+    expectCanonicalMismatch('unexpected-run-n', 'run.n', 'unreviewed bytecode\n')
+    expectCanonicalMismatch('changed-readme', 'README.md', '# unreviewed readme\n')
+    expectCanonicalMismatch('changed-extra-params', 'extraParams.hxml', '# unreviewed flags\n')
+    expectCanonicalMismatch('unexpected-source', 'src/unreviewed/Payload.hx', 'package unreviewed;\n')
+    expectCanonicalMismatch('unexpected-runtime', 'runtime/unreviewed/payload.txt', 'unreviewed runtime\n')
+    expectCanonicalMismatch('unexpected-vendor', 'vendor/other/payload.txt', 'unreviewed vendor\n')
+
+    for (const [name, field, value] of [
+      ['contradictory-reflaxe-license', 'license', 'Apache-2.0'],
+      ['contradictory-reflaxe-url', 'url', 'https://example.invalid/reflaxe']
+    ]) {
+      const contradictoryRoot = path.join(temp, name)
+      fs.cpSync(left, contradictoryRoot, { recursive: true })
+      const nestedPath = path.join(contradictoryRoot, 'vendor', 'reflaxe', 'haxelib.json')
+      const nested = JSON.parse(fs.readFileSync(nestedPath, 'utf8'))
+      nested[field] = value
+      writeJson(contradictoryRoot, 'vendor/reflaxe/haxelib.json', nested)
+      const contradictoryCanonicalRoot = path.join(temp, `${name}-canonical`)
+      fs.cpSync(contradictoryRoot, contradictoryCanonicalRoot, { recursive: true })
+      const contradictoryZip = path.join(temp, `${name}.zip`)
+      const contradictoryCanonicalZip = path.join(temp, `${name}-canonical.zip`)
+      zipApi.createDeterministicZip(contradictoryRoot, contradictoryZip)
+      zipApi.createDeterministicZip(contradictoryCanonicalRoot, contradictoryCanonicalZip)
+      expectThrow(
+        () =>
+          verifyArtifact(
+            {
+              zipPath: contradictoryZip,
+              version: VERSION,
+              tag: TAG,
+              sourceCommit: SOURCE_SHA,
+              sourceRoot: contradictoryRoot
+            },
+            contradictoryCanonicalZip
+          ),
+        /Reflaxe haxelib metadata contradicts provenance/
+      )
+    }
+
+    for (const [name, mutate, pattern] of [
+      [
+        'renamed-reflaxe-component',
+        (provenance) => {
+          provenance.component.name = 'Different framework'
+        },
+        /Reflaxe provenance component name must be Reflaxe/
+      ],
+      [
+        'missing-reflaxe-license',
+        (provenance, nested) => {
+          delete provenance.component.license
+          delete nested.license
+        },
+        /Reflaxe provenance license must be a non-empty string/
+      ],
+      [
+        'missing-reflaxe-repository',
+        (provenance, nested) => {
+          delete provenance.component.upstreamRepository
+          delete nested.url
+        },
+        /Reflaxe provenance repository must be a non-empty string/
+      ]
+    ]) {
+      const invalidRoot = path.join(temp, name)
+      fs.cpSync(left, invalidRoot, { recursive: true })
+      const provenance = JSON.parse(
+        fs.readFileSync(path.join(invalidRoot, 'vendor', 'reflaxe', 'provenance.json'), 'utf8')
+      )
+      const nested = JSON.parse(
+        fs.readFileSync(path.join(invalidRoot, 'vendor', 'reflaxe', 'haxelib.json'), 'utf8')
+      )
+      mutate(provenance, nested)
+      writeJson(invalidRoot, 'vendor/reflaxe/provenance.json', provenance)
+      writeJson(invalidRoot, 'vendor/reflaxe/haxelib.json', nested)
+      const invalidCanonicalRoot = path.join(temp, `${name}-canonical`)
+      fs.cpSync(invalidRoot, invalidCanonicalRoot, { recursive: true })
+      const invalidZip = path.join(temp, `${name}.zip`)
+      const invalidCanonicalZip = path.join(temp, `${name}-canonical.zip`)
+      zipApi.createDeterministicZip(invalidRoot, invalidZip)
+      zipApi.createDeterministicZip(invalidCanonicalRoot, invalidCanonicalZip)
+      expectThrow(
+        () =>
+          verifyArtifact(
+            {
+              zipPath: invalidZip,
+              version: VERSION,
+              tag: TAG,
+              sourceCommit: SOURCE_SHA,
+              sourceRoot: invalidRoot
+            },
+            invalidCanonicalZip
+          ),
+        pattern
+      )
+    }
+
+    const missingLedgerRoot = path.join(temp, 'missing-ledger')
+    fs.cpSync(left, missingLedgerRoot, { recursive: true })
+    fs.rmSync(path.join(missingLedgerRoot, 'provenance', 'stdlib-provenance-ledger.json'))
+    const missingLedgerZip = path.join(temp, 'missing-ledger.zip')
+    zipApi.createDeterministicZip(missingLedgerRoot, missingLedgerZip)
+    expectThrow(
+      () =>
+        verifyArtifact({
+          zipPath: missingLedgerZip,
+          version: VERSION,
+          tag: TAG,
+          sourceCommit: SOURCE_SHA,
+          sourceRoot: left
+        }),
+      /required archive entry is missing: provenance\/stdlib-provenance-ledger\.json/
+    )
+
+    expectCanonicalMismatch(
+      'changed-ledger',
+      'provenance/stdlib-provenance-ledger.json',
+      '{"schemaVersion":1,"forged":true}\n'
+    )
+
+    const wrongLedgerSource = path.join(temp, 'wrong-ledger-source')
+    fs.cpSync(reviewedSource, wrongLedgerSource, { recursive: true })
+    write(
+      wrongLedgerSource,
+      'docs/stdlib-provenance-ledger.json',
+      '{"schemaVersion":1,"forgedSource":true}\n'
+    )
+    expectThrow(
+      () =>
+        verifyApi.verifyReleaseArtifact({
+          zipPath: leftZip,
+          canonicalZipPath: rightZip,
+          version: VERSION,
+          tag: TAG,
+          sourceCommit: SOURCE_SHA,
+          sourceRoot: wrongLedgerSource
+        }),
+      /archive entry differs from the reviewed source: provenance\/stdlib-provenance-ledger\.json/
+    )
+
+    const optionalLeft = path.join(temp, 'optional-left')
+    const optionalRight = path.join(temp, 'optional-right')
+    packageFixture(optionalLeft)
+    packageFixture(optionalRight)
+    for (const root of [optionalLeft, optionalRight]) {
+      write(root, 'Run.hx', 'class Run {}\n')
+      write(root, 'run.n', 'reviewed bytecode fixture\n')
+    }
+    const optionalLeftZip = path.join(temp, 'optional-left.zip')
+    const optionalRightZip = path.join(temp, 'optional-right.zip')
+    zipApi.createDeterministicZip(optionalLeft, optionalLeftZip)
+    zipApi.createDeterministicZip(optionalRight, optionalRightZip)
+    verifyArtifact(
+      {
+        zipPath: optionalLeftZip,
+        version: VERSION,
+        tag: TAG,
+        sourceCommit: SOURCE_SHA,
+        sourceRoot: optionalLeft
+      },
+      optionalRightZip
+    )
+
     const unsafeZip = path.join(temp, 'unsafe.zip')
     fs.writeFileSync(
       unsafeZip,
@@ -402,7 +673,7 @@ libc = "0.2"
     )
     expectThrow(
       () =>
-        verifyApi.verifyReleaseArtifact({
+        verifyArtifact({
           zipPath: unsafeZip,
           version: VERSION,
           tag: TAG,

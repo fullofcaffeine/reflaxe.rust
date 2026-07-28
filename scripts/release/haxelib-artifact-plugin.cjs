@@ -66,7 +66,14 @@ async function prepare(_pluginConfig, context) {
       throw new Error('complete Haxelib package is not byte-for-byte reproducible')
     }
 
-    const verified = verifyReleaseArtifact({ zipPath, version, tag, sourceCommit: source })
+    const verified = verifyReleaseArtifact({
+      zipPath,
+      canonicalZipPath: secondZip,
+      version,
+      tag,
+      sourceCommit: source,
+      sourceRoot: cwd
+    })
     const names = artifactNames(version)
     fs.writeFileSync(checksumPath, `${verified.sha256}  ${names.archive}\n`)
 
@@ -95,7 +102,26 @@ async function publish(_pluginConfig, context) {
   const source = sourceCommit(cwd)
   verifyTagIdentity({ tag, sourceCommit: source, cwd })
   const zipPath = path.join(cwd, 'dist', 'reflaxe.rust.zip')
-  const verified = verifyReleaseArtifact({ zipPath, version, tag, sourceCommit: source })
+  const canonicalRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-release-publish-'))
+  const canonicalZipPath = path.join(canonicalRoot, 'reflaxe.rust.zip')
+  let verified
+  try {
+    assertTrackedTreeClean(cwd)
+    run('bash', ['scripts/release/package-haxelib.sh', canonicalZipPath, version, tag, source], {
+      cwd,
+      env: { ...process.env, TZ: 'UTC', TMPDIR: canonicalRoot }
+    })
+    verified = verifyReleaseArtifact({
+      zipPath,
+      canonicalZipPath,
+      version,
+      tag,
+      sourceCommit: source,
+      sourceRoot: cwd
+    })
+  } finally {
+    fs.rmSync(canonicalRoot, { recursive: true, force: true })
+  }
   const checksumPath = path.join(cwd, 'dist', 'reflaxe.rust.zip.sha256')
   const names = artifactNames(version)
   const expectedChecksum = `${verified.sha256}  ${names.archive}\n`

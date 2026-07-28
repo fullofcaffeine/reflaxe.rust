@@ -41,7 +41,7 @@ License: MIT
 
 Source: https://github.com/HaxeFoundation/haxe/tree/4.3.7
 
-Some std/ files are target overrides derived from Haxe Standard Library source. The file-by-file origin record is available in the source repository: https://github.com/fullofcaffeine/reflaxe.rust/blob/main/docs/stdlib-provenance-ledger.json.
+Some std/ files are target overrides derived from Haxe Standard Library source. The file-by-file source record is shipped inside this package at provenance/stdlib-provenance-ledger.json.
 
 Copyright (C)2005-2016 Haxe Foundation
 
