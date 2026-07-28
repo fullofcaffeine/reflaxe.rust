@@ -720,6 +720,54 @@ function main() {
       cleanOutput(anonymousBorrowFixture, outputName)
     }
   }
+  const anonymousBorrowSource = path.join(anonymousBorrowFixture, 'Main.hx')
+  const optionalShapeLine = sourceLine(anonymousBorrowSource, 'var holder:BorrowedHolder = {};')
+  for (const operation of ['runtime_reflect', 'dynamic_reflect']) {
+    const outputName = `out_${operation}_optional_nullable`
+    const args = [haxeShim, 'compile.hxml',
+      '-D', 'reflaxe_rust_profile=portable',
+      '-D', `operation_${operation}`,
+      '-D', 'optional',
+      '-D', 'nullable',
+      '-D', `rust_output=${outputName}`]
+    const compile = () => runIn(anonymousBorrowFixture, process.execPath, args)
+    cleanOutput(anonymousBorrowFixture, outputName)
+    const firstRejected = compile()
+    cleanOutput(anonymousBorrowFixture, outputName)
+    const secondRejected = compile()
+    assert.notStrictEqual(firstRejected.status, 0,
+      `${operation} must reject an omitted optional Null<rust.Ref<T>> field before reflection can mutate it`)
+    assert.strictEqual(output(firstRejected), output(secondRejected),
+      `${operation} optional borrowed-field diagnostics must be repeatable`)
+    assert.match(output(firstRejected), /\[HXRS-BORROW-REGION\].*anonymous field `value`/,
+      `${operation} must explain that the declared runtime record shape cannot expose rust.Ref<T>`)
+    assert.match(output(firstRejected), new RegExp(`Main\\.hx:${optionalShapeLine}:`),
+      `${operation} must point to the anonymous value whose complete declared shape is unsupported`)
+    assert.match(output(firstRejected), /store an owned value/i,
+      `${operation} must tell the author how to make the field safe`)
+    assert(!fs.existsSync(path.join(anonymousBorrowFixture, outputName, 'src')),
+      `${operation} must stop before generated Rust can store an owned value under a borrowed field type`)
+    cleanOutput(anonymousBorrowFixture, outputName)
+  }
+  const controlShapeLine = sourceLine(anonymousBorrowSource, 'var erased:Dynamic = flag ? holder : holder;')
+  const controlOutputName = 'out_dynamic_control_optional_nullable'
+  const anonymousControlArgs = [haxeShim, 'compile.hxml',
+    '-D', 'reflaxe_rust_profile=portable',
+    '-D', 'operation_dynamic_control',
+    '-D', 'optional',
+    '-D', 'nullable',
+    '-D', `rust_output=${controlOutputName}`]
+  cleanOutput(anonymousBorrowFixture, controlOutputName)
+  const rejectedControlShape = runIn(anonymousBorrowFixture, process.execPath, anonymousControlArgs)
+  assert.notStrictEqual(rejectedControlShape.status, 0,
+    'each typed anonymous branch entering Dynamic must reject the complete borrowed-field shape')
+  assert.match(output(rejectedControlShape), /\[HXRS-BORROW-REGION\].*anonymous field `value`/,
+    'contextual control crossings must retain the unsupported anonymous field declaration')
+  assert.match(output(rejectedControlShape), new RegExp(`Main\\.hx:${controlShapeLine}:`),
+    'the control crossing must point to the typed anonymous value before its shape is erased')
+  assert(!fs.existsSync(path.join(anonymousBorrowFixture, controlOutputName, 'src')),
+    'the control crossing must stop before Rust construction')
+  cleanOutput(anonymousBorrowFixture, controlOutputName)
 
   const borrowDynamicFixture = path.join(repoRoot, 'test', 'positive', 'representation_borrow_dynamic')
   cleanOutput(borrowDynamicFixture, 'out')

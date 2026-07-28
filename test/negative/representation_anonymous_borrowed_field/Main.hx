@@ -6,12 +6,41 @@ private typedef BorrowedValue = Null<rust.Ref<String>>;
 private typedef BorrowedValue = rust.Ref<String>;
 #end
 
+#if optional
+private typedef BorrowedHolder = {
+	@:optional var value:BorrowedValue;
+}
+#else
 private typedef BorrowedHolder = {
 	var value:BorrowedValue;
 }
+#end
 
 class Main {
-	#if operation_literal
+	#if operation_dynamic_control
+	static function write(holder:BorrowedHolder, borrowed:rust.Ref<String>, flag:Bool):Void {
+		var erased:Dynamic = flag ? holder : holder;
+		Reflect.setField(erased, "value", borrowed);
+	}
+
+	static function main():Void {}
+	#elseif (operation_runtime_reflect || operation_dynamic_reflect)
+	static function main():Void {
+		var holder:BorrowedHolder = {};
+		var fieldName = "value";
+		var label = "temporary";
+		Borrow.withRef(label, borrowed -> {
+			#if operation_runtime_reflect
+			Reflect.setField(holder, fieldName, borrowed);
+			#else
+			var erased:Dynamic = holder;
+			Reflect.setField(erased, "value", borrowed);
+			#end
+			var readBack = holder.value;
+			if (readBack == null) {}
+		});
+	}
+	#elseif operation_literal
 	static function main():Void {
 		var label = "temporary";
 		Borrow.withRef(label, borrowed -> {

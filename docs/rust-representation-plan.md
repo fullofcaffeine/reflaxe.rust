@@ -79,10 +79,15 @@ parameters, returns, and ordinary fields.
 One combination is rejected deliberately: a concretely typed anonymous field may not be declared
 `rust.Ref<T>` or `Null<rust.Ref<T>>`. The runtime object owns values and reads them back by their exact
 stored Rust type. Saving owned `T` would not match a later typed read of `&T`, while saving the
-short-lived `&T` would let the borrow escape its callback. Literal creation, direct assignment, and
-constant-name `Reflect.setField` all report this at the stored Haxe value and ask the author to store
-an owned value instead. Supporting such a field later requires an explicit guarded-read lifetime
-contract; it cannot be implemented safely by changing only the written type.
+short-lived `&T` would let the borrow escape its callback. The compiler validates the complete
+anonymous-record declaration when a record value is created or converted to `Dynamic`, including
+`@:optional` fields omitted from a literal. This prevents runtime-name reflection—or a later write
+through a `Dynamic` alias—from hiding the field declaration before mutation. Literal creation, direct
+assignment, and constant-name `Reflect.setField` still report the exact stored Haxe value. When no
+field value exists yet, the error points to the anonymous value whose declared shape is unsupported.
+Both forms ask the author to store an owned value instead. Supporting such a field later requires an
+explicit guarded-read lifetime contract; it cannot be implemented safely by changing only the written
+type.
 
 `Null<rust.Ref<T>>` emits `Option<&T>`, because a bare Rust borrow cannot represent Haxe `null`.
 Nullable mutable borrows are never cloned—`Option<&mut T>` cannot be cloned. A local mutable option is

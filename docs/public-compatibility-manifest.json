@@ -12547,6 +12547,17 @@
           "typeReferences": []
         },
         {
+          "id": "function:anonymousBorrowedField",
+          "kind": "function",
+          "name": "anonymousBorrowedField",
+          "signature": "public static function anonymousBorrowedField (type : Type) : Null < ClassField >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
           "id": "function:stringFormattingNeedsDynamic",
           "kind": "function",
           "name": "stringFormattingNeedsDynamic",

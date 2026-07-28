@@ -293,6 +293,58 @@ class RepresentationTypeAnalyzer {
 	}
 
 	/**
+		Finds an unsupported borrowed field anywhere in a runtime anonymous-record shape.
+
+		Why
+		- A record literal may omit an `@:optional` field, so checking only the values physically written
+		  by that literal does not inspect the complete declared shape.
+		- Once the record is converted to `Dynamic`, runtime-name reflection no longer carries the field
+		  declaration needed to catch a later mismatched write.
+
+		What
+		- Returns the first declared `rust.Ref<T>` or `Null<rust.Ref<T>>` field on a real runtime anonymous
+		  record, including omitted optional fields.
+		- Iterator-shaped anonymous values remain iterator carriers rather than runtime record storage.
+
+		How
+		- Follow typedef aliases, applied type parameters, and outer `Null`, then inspect a name-sorted copy
+		  of every declared field through the same reference recognizer used by Dynamic materialization.
+		- Callers choose the useful source location: the exact stored value for a direct write, or the
+		  anonymous value/type materialization when no field value exists yet.
+	**/
+	public static function anonymousBorrowedField(type:Type):Null<ClassField> {
+		if (type == null)
+			return null;
+		var normalized = unwrapAliasesAndNull(type).type;
+		return switch (normalized) {
+			case TAnonymous(anonymousRef):
+				var anonymous = anonymousRef.get();
+				if (anonymous == null || anonymous.fields == null || isIteratorAnonymous(anonymous)) {
+					null;
+				} else {
+					var fields = anonymous.fields.copy();
+					fields.sort((left, right) -> {
+						if (left.name < right.name)
+							-1;
+						else if (left.name > right.name)
+							1;
+						else
+							0;
+					});
+					var rejected:Null<ClassField> = null;
+					for (field in fields)
+						if (field != null && anonymousBorrowedFieldRejectionReason(field.type) != null) {
+							rejected = field;
+							break;
+						}
+					rejected;
+				}
+			case _:
+				null;
+		};
+	}
+
+	/**
 		Reports whether Haxe-style string conversion needs the runtime Dynamic formatter.
 
 		Why / What / How

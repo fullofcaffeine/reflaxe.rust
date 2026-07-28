@@ -145,6 +145,13 @@ Agent policy:
   relation, ownership conversion, module path, or other fact needed to emit the Rust operation.
 - Architecture policy: when warnings/regressions come from emitted Rust shape (lowering/printer artifacts),
   fix the compiler pass/lowering logic instead of relying on style-level source workarounds (for example rewriting app code to avoid explicit `return` in lambdas).
+- Anonymous runtime-record shape gotcha: validate every declared field of a `TAnonymous` value before
+  constructing the runtime record or converting that typed value to `Dynamic`, including `@:optional`
+  fields omitted from an object literal and concrete branch results hidden by a contextual Dynamic
+  `if`/`switch`. A direct write should still point to the exact stored value. When no value exists yet,
+  point to the anonymous value whose complete declared shape is unsupported. Do not rely only on
+  `Reflect.setField` call-site checks: a runtime field name or an already-Dynamic receiver has lost the
+  typed field declaration needed to prevent owned-value versus borrowed-read mismatches.
 - Workaround policy (strict): do not land temporary workarounds. Fix the root cause in compiler/runtime lowering and add or update regression coverage in the same change.
 - Single-source convergence policy (strict): when a defect is caused by the same contract, version,
   schema, status, or policy fact being maintained independently across code, config, docs, generated

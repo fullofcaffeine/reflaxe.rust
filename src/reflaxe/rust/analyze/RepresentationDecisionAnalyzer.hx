@@ -143,6 +143,18 @@ class RepresentationDecisionAnalyzer {
 			visitType(type, label);
 		}
 
+		function rejectAnonymousBorrowedShape(type:Type, value:TypedExpr):Bool {
+			var field = RepresentationTypeAnalyzer.anonymousBorrowedField(type);
+			if (field == null)
+				return false;
+			var reason = RepresentationTypeAnalyzer.anonymousBorrowedFieldRejectionReason(field.type);
+			if (reason == null)
+				return false;
+			RustDiagnostic.error(RustDiagnosticId.BorrowRegion,
+				'Rust borrow region violation: anonymous field `${field.name}` makes this runtime record shape unsafe. $reason', value.pos);
+			return true;
+		}
+
 		function addCrossing(modulePath:String, label:String, actual:TypedExpr, expected:Type, ?relatedModulePath:String):Void {
 			if (actual == null || expected == null)
 				return;
@@ -193,6 +205,9 @@ class RepresentationDecisionAnalyzer {
 
 			var addedAction = false;
 			for (site in emissionSites(actual)) {
+				if (RepresentationTypeAnalyzer.classify(expected, nullableStringCompat, classHasSubclasses) == RustSourceValueKind.SourceDynamic
+					&& rejectAnonymousBorrowedShape(site.t, site))
+					return;
 				var siteOrigin = originAt(modulePath, site.pos);
 				if (siteOrigin == null)
 					continue;
@@ -660,6 +675,8 @@ class RepresentationDecisionAnalyzer {
 								addCrossing(modulePath, "anonymous-field-" + field.name + "-shape-boundary", field.expr, declaredType);
 							addCrossing(modulePath, "anonymous-field-" + field.name + "-boundary", field.expr, Context.getType("Dynamic"));
 						}
+						if (rejectAnonymousBorrowedShape(current.t, current))
+							return;
 						if (RepresentationTypeAnalyzer.classify(current.t, nullableStringCompat, classHasSubclasses)
 							== RustSourceValueKind.SourceDynamic) {
 							var origin = originAt(modulePath, current.pos);
