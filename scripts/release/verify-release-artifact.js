@@ -7,14 +7,20 @@ const os = require('os')
 const path = require('path')
 const { strFromU8, unzipSync } = require('fflate')
 const { compareEntryNames, validateEntryNames } = require('./deterministic-zip.js')
-const { buildArtifacts: buildLicenseArtifacts } = require('./generate-license-artifacts.js')
+const {
+  buildArtifacts: buildLicenseArtifacts,
+  REQUIRED_COMPONENT_CONTRACT
+} = require('./generate-license-artifacts.js')
 const { assertPackageInputsTracked } = require('./package-input-cleanliness.js')
-const { validateReflaxeHaxelib } = require('./reflaxe-metadata.js')
+const {
+  requireExactReflaxePaths,
+  validateReflaxeHaxelib
+} = require('./reflaxe-metadata.js')
 const REPOSITORY_ROOT = path.join(__dirname, '..', '..')
-const RELEASE_COMPONENTS = JSON.parse(
-  fs.readFileSync(path.join(REPOSITORY_ROOT, 'docs', 'release-package-components.json'), 'utf8')
-).components
-const REQUIRED_THIRD_PARTY_COMPONENTS = RELEASE_COMPONENTS.slice(1).map((component) => component.name)
+const REQUIRED_THIRD_PARTY_COMPONENTS = [
+  REQUIRED_COMPONENT_CONTRACT.reflaxe.name,
+  REQUIRED_COMPONENT_CONTRACT['haxe-standard-library-derived-files'].name
+]
 
 const REQUIRED_ENTRIES = [
   'LICENSE',
@@ -284,6 +290,7 @@ function verifyReleaseArtifact({
   }
 
   const reflaxeProvenance = parseJsonEntry(files, 'vendor/reflaxe/provenance.json')
+  requireExactReflaxePaths(reflaxeProvenance)
   if (reflaxeProvenance.schemaVersion !== 1) {
     throw new Error('vendored Reflaxe provenance schemaVersion must be 1')
   }
@@ -297,6 +304,13 @@ function verifyReleaseArtifact({
   if (patchDigest !== reflaxeProvenance.localPatch?.sha256) {
     throw new Error('vendored Reflaxe patch digest does not match its provenance record')
   }
+  const licenseDigest = crypto
+    .createHash('sha256')
+    .update(files['vendor/reflaxe/LICENSE'])
+    .digest('hex')
+  if (licenseDigest !== reflaxeProvenance.component?.licenseSha256) {
+    throw new Error('vendored Reflaxe license digest does not match its provenance record')
+  }
   validateReflaxeHaxelib(
     reflaxeProvenance,
     parseJsonEntry(files, 'vendor/reflaxe/haxelib.json')
@@ -307,8 +321,27 @@ function verifyReleaseArtifact({
       throw new Error(`third-party notices do not cover ${componentName}`)
     }
   }
-  if (!strFromU8(files['vendor/reflaxe/LICENSE']).startsWith('MIT License')) {
-    throw new Error('vendored Reflaxe MIT license text is missing')
+  const componentNamed = (name) => sbom.components.find((entry) => entry.name === name)
+  const reflaxeComponent = componentNamed(REQUIRED_COMPONENT_CONTRACT.reflaxe.name)
+  if (
+    reflaxeComponent?.version !== reflaxeProvenance.upstream.baseCommit ||
+    reflaxeComponent?.licenses?.[0]?.license?.id !== reflaxeProvenance.component.license ||
+    reflaxeComponent?.externalReferences?.[0]?.url !==
+      reflaxeProvenance.component.upstreamRepository
+  ) {
+    throw new Error('release SBOM Reflaxe facts contradict the packaged provenance record')
+  }
+  const stdlibLedger = parseJsonEntry(files, 'provenance/stdlib-provenance-ledger.json')
+  const stdlibComponent = componentNamed(
+    REQUIRED_COMPONENT_CONTRACT['haxe-standard-library-derived-files'].name
+  )
+  if (
+    stdlibComponent?.version !== stdlibLedger.upstreamStdVersion ||
+    stdlibComponent?.licenses?.[0]?.license?.id !== stdlibLedger.license?.id ||
+    stdlibComponent?.externalReferences?.[0]?.url !==
+      `${stdlibLedger.upstreamRepository}/tree/${stdlibLedger.upstreamStdVersion}`
+  ) {
+    throw new Error('release SBOM Haxe facts contradict the packaged stdlib source record')
   }
   if (!notices.includes('provenance/stdlib-provenance-ledger.json')) {
     throw new Error('third-party notices do not name the packaged stdlib source record')

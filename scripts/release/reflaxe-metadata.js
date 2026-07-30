@@ -1,3 +1,5 @@
+const path = require('path')
+
 function normalizedRepository(value) {
   if (typeof value !== 'string' || value.length === 0) return ''
   return value.replace(/\/+$/, '').replace(/\.git$/, '')
@@ -6,6 +8,43 @@ function normalizedRepository(value) {
 function requireNonEmptyString(value, label) {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new Error(`${label} must be a non-empty string`)
+  }
+  return value
+}
+
+const REFLAXE_FILES = Object.freeze({
+  provenance: 'provenance.json',
+  license: 'LICENSE',
+  patch: 'reflaxe-rust.patch',
+  haxelib: 'haxelib.json'
+})
+
+function requireExactReflaxePaths(provenance) {
+  if (provenance?.component?.licenseFile !== REFLAXE_FILES.license) {
+    throw new Error('Reflaxe provenance component.licenseFile must be exactly LICENSE')
+  }
+  if (provenance?.localPatch?.file !== REFLAXE_FILES.patch) {
+    throw new Error('Reflaxe provenance localPatch.file must be exactly reflaxe-rust.patch')
+  }
+  if (
+    provenance.localMetadata !== undefined &&
+    provenance.localMetadata?.file !== REFLAXE_FILES.haxelib
+  ) {
+    throw new Error('Reflaxe provenance localMetadata.file must be exactly haxelib.json')
+  }
+}
+
+function requireReviewedReflaxeSourcePath(value, label = 'changed file') {
+  requireNonEmptyString(value, `Reflaxe ${label}`)
+  if (
+    value.includes('\\') ||
+    path.posix.isAbsolute(value) ||
+    /^[A-Za-z]:/.test(value) ||
+    path.posix.normalize(value) !== value ||
+    value.split('/').some((part) => part === '.' || part === '..' || part.length === 0) ||
+    !(value === 'Run.hx' || value.startsWith('src/'))
+  ) {
+    throw new Error(`Reflaxe ${label} is outside the reviewed Reflaxe source surface: ${value}`)
   }
   return value
 }
@@ -58,4 +97,11 @@ function validateReflaxeHaxelib(provenance, haxelib) {
   }
 }
 
-module.exports = { normalizedRepository, requireNonEmptyString, validateReflaxeHaxelib }
+module.exports = {
+  REFLAXE_FILES,
+  normalizedRepository,
+  requireExactReflaxePaths,
+  requireNonEmptyString,
+  requireReviewedReflaxeSourcePath,
+  validateReflaxeHaxelib
+}

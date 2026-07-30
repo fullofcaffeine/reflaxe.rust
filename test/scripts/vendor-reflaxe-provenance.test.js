@@ -142,6 +142,25 @@ function main() {
     fs.appendFileSync(path.join(licenseDrift, 'vendor', 'reflaxe', 'LICENSE'), '\nchanged\n')
     expectFailure(licenseDrift, /license digest is stale/)
 
+    const escapedLicense = copyFixture(temp, 'escaped-license')
+    const escapedLicenseManifest = readManifest(escapedLicense)
+    escapedLicenseManifest.component.licenseFile = '../../LICENSE'
+    writeManifest(escapedLicense, escapedLicenseManifest)
+    fs.writeFileSync(path.join(escapedLicense, 'LICENSE'), 'MIT License\nexternal\n')
+    expectFailure(escapedLicense, /licenseFile must be exactly LICENSE/)
+
+    const escapedPatch = copyFixture(temp, 'escaped-patch')
+    const escapedPatchManifest = readManifest(escapedPatch)
+    escapedPatchManifest.localPatch.file = '../reflaxe-rust.patch'
+    writeManifest(escapedPatch, escapedPatchManifest)
+    expectFailure(escapedPatch, /localPatch\.file must be exactly reflaxe-rust\.patch/)
+
+    const escapedChangedFile = copyFixture(temp, 'escaped-changed-file')
+    const escapedChangedManifest = readManifest(escapedChangedFile)
+    escapedChangedManifest.localPatch.changedFiles[0] = '../outside.hx'
+    writeManifest(escapedChangedFile, escapedChangedManifest)
+    expectFailure(escapedChangedFile, /changed file is outside the reviewed Reflaxe source surface/)
+
     const narrowedScope = copyFixture(temp, 'narrowed-scope')
     const narrowedManifest = readManifest(narrowedScope)
     narrowedManifest.localPatch.scope = ['src']
@@ -236,6 +255,22 @@ function main() {
     reconstructionManifest.upstream.baseCommit = git(upstream, ['rev-parse', 'HEAD'])
     writeManifest(reconstruction, reconstructionManifest)
     assert.strictEqual(run(reconstruction, upstream).status, 0, 'synthetic upstream reconstruction must pass')
+
+    const upstreamNarrowed = copyFixture(temp, 'upstream-narrowed')
+    const upstreamNarrowedManifest = readManifest(upstreamNarrowed)
+    upstreamNarrowedManifest.localPatch.scope = ['src']
+    writeManifest(upstreamNarrowed, upstreamNarrowedManifest)
+    expectFailure(upstreamNarrowed, /reconstruction scope must exactly cover Run\.hx and src/, upstream)
+
+    const upstreamContradictory = copyFixture(temp, 'upstream-contradictory')
+    const upstreamContradictoryManifest = readManifest(upstreamContradictory)
+    upstreamContradictoryManifest.vendoredSurface.copiedFromUpstream = ['LICENSE', 'src']
+    writeManifest(upstreamContradictory, upstreamContradictoryManifest)
+    expectFailure(
+      upstreamContradictory,
+      /copied upstream surface must exactly cover LICENSE, Run\.hx, and src/,
+      upstream
+    )
 
     fs.appendFileSync(path.join(upstream, 'src', 'reflaxe', 'ReflectCompiler.hx'), '\nincompatible\n')
     git(upstream, ['add', '.'])

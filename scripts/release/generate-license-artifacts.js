@@ -4,10 +4,26 @@ const fs = require('fs')
 const path = require('path')
 const crypto = require('crypto')
 const { execFileSync } = require('child_process')
+const { requireExactReflaxePaths } = require('./reflaxe-metadata.js')
 
 const root = path.resolve(__dirname, '..', '..')
 const REQUIRED_COMPONENT_IDS = ['reflaxe-rust', 'reflaxe', 'haxe-standard-library-derived-files']
 const STDLIB_PACKAGE_EVIDENCE_PATH = 'provenance/stdlib-provenance-ledger.json'
+const REFLAXE_PROVENANCE_PATH = 'vendor/reflaxe/provenance.json'
+const STDLIB_PROVENANCE_PATH = 'docs/stdlib-provenance-ledger.json'
+const REQUIRED_COMPONENT_CONTRACT = Object.freeze({
+  'reflaxe-rust': { name: 'reflaxe.rust', kind: 'application' },
+  reflaxe: {
+    name: 'Reflaxe',
+    kind: 'library',
+    provenanceFile: REFLAXE_PROVENANCE_PATH
+  },
+  'haxe-standard-library-derived-files': {
+    name: 'Haxe Standard Library derived files',
+    kind: 'library',
+    stdlibProvenanceFile: STDLIB_PROVENANCE_PATH
+  }
+})
 
 function validateRequiredComponentIds(source) {
   if (!Array.isArray(source.components)) throw new Error('release component inventory must be an array')
@@ -15,6 +31,13 @@ function validateRequiredComponentIds(source) {
   if (new Set(ids).size !== ids.length) throw new Error('release component inventory contains duplicate IDs')
   for (const id of REQUIRED_COMPONENT_IDS) {
     if (!ids.includes(id)) throw new Error(`release component inventory is missing required component: ${id}`)
+    const component = source.components.find((entry) => entry.id === id)
+    const contract = REQUIRED_COMPONENT_CONTRACT[id]
+    for (const [field, expected] of Object.entries(contract)) {
+      if (component[field] !== expected) {
+        throw new Error(`release component ${id} ${field} must be exactly ${expected}`)
+      }
+    }
   }
   const stdlib = source.components.find(
     (component) => component.id === 'haxe-standard-library-derived-files'
@@ -100,18 +123,19 @@ function resolvedComponents(source) {
       ...component,
       ...(component.licenseSource === 'haxelib.json' ? { license: haxelib.license } : {})
     }
-    if (component.stdlibProvenanceFile) {
-      const ledger = JSON.parse(fs.readFileSync(path.join(root, component.stdlibProvenanceFile), 'utf8'))
+    if (component.id === 'haxe-standard-library-derived-files') {
+      const ledger = JSON.parse(fs.readFileSync(path.join(root, STDLIB_PROVENANCE_PATH), 'utf8'))
       return resolveStdlibComponent(withPackageFacts, ledger)
     }
-    if (!component.provenanceFile) return withPackageFacts
-    const provenancePath = path.join(root, component.provenanceFile)
+    if (component.id !== 'reflaxe') return withPackageFacts
+    const provenancePath = path.join(root, REFLAXE_PROVENANCE_PATH)
     const provenance = JSON.parse(fs.readFileSync(provenancePath, 'utf8'))
+    requireExactReflaxePaths(provenance)
     return {
       ...withPackageFacts,
       version: provenance.upstream.baseCommit,
       license: provenance.component.license,
-      licenseFile: path.posix.join(path.posix.dirname(component.provenanceFile), provenance.component.licenseFile),
+      licenseFile: 'vendor/reflaxe/LICENSE',
       licenseSha256: provenance.component.licenseSha256,
       source: provenance.component.upstreamRepository
     }
@@ -266,5 +290,8 @@ module.exports = {
   validateRequiredComponentIds,
   resolveStdlibComponent,
   REQUIRED_COMPONENT_IDS,
+  REQUIRED_COMPONENT_CONTRACT,
+  REFLAXE_PROVENANCE_PATH,
+  STDLIB_PROVENANCE_PATH,
   STDLIB_PACKAGE_EVIDENCE_PATH
 }

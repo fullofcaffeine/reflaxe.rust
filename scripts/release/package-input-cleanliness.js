@@ -19,6 +19,23 @@ function gitPaths(cwd, args) {
     .filter(Boolean)
 }
 
+function trackedModes(cwd) {
+  const output = execFileSync('git', ['ls-files', '--stage', '-z'], { cwd }).toString('utf8')
+  const result = new Map()
+  for (const record of output.split('\0').filter(Boolean)) {
+    const match = /^([0-9]{6}) [0-9a-f]+ [0-9]+\t(.+)$/.exec(record)
+    if (match) result.set(match[2], match[1])
+  }
+  return result
+}
+
+function isPackageInput(file) {
+  return (
+    PACKAGE_INPUT_FILES.includes(file) ||
+    PACKAGE_INPUT_ROOTS.some((prefix) => file.startsWith(prefix))
+  )
+}
+
 /**
  * Why
  * Release archives are tied to one Git commit, but the package builder reads complete source,
@@ -39,14 +56,19 @@ function assertPackageInputsTracked(cwd) {
     ...gitPaths(cwd, ['--others', '--ignored', '--exclude-standard'])
   ]
   const unsafe = [...new Set(candidates)]
-    .filter(
-      (file) =>
-        PACKAGE_INPUT_FILES.includes(file) ||
-        PACKAGE_INPUT_ROOTS.some((prefix) => file.startsWith(prefix))
-    )
+    .filter(isPackageInput)
     .sort()
   if (unsafe.length > 0) {
     throw new Error(`release package input is not tracked by the source commit: ${unsafe.join(', ')}`)
+  }
+  const invalidModes = [...trackedModes(cwd)]
+    .filter(([file, mode]) => isPackageInput(file) && mode !== '100644' && mode !== '100755')
+    .map(([file]) => file)
+    .sort()
+  if (invalidModes.length > 0) {
+    throw new Error(
+      `release package input must be a regular Git blob: ${invalidModes.join(', ')}`
+    )
   }
 }
 

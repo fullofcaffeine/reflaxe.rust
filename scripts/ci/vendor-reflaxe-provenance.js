@@ -5,7 +5,11 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const { execFileSync } = require('child_process')
-const { validateReflaxeHaxelib } = require('../release/reflaxe-metadata.js')
+const {
+  requireExactReflaxePaths,
+  requireReviewedReflaxeSourcePath,
+  validateReflaxeHaxelib
+} = require('../release/reflaxe-metadata.js')
 
 let root = path.resolve(__dirname, '..', '..')
 let vendorRoot = path.join(root, 'vendor', 'reflaxe')
@@ -117,6 +121,13 @@ function main() {
   }
 
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+  requireExactReflaxePaths(manifest)
+  for (const file of manifest.localPatch.changedFiles || []) {
+    requireReviewedReflaxeSourcePath(file)
+  }
+  for (const group of manifest.localPatch.changeGroups || []) {
+    for (const file of group.files || []) requireReviewedReflaxeSourcePath(file, 'change-group file')
+  }
   if (manifest.schemaVersion !== 1) fail('unsupported Reflaxe provenance schema')
   if (!/^[0-9a-f]{40}$/.test(manifest.upstream.baseCommit)) fail('upstream base must be an exact commit')
   if (JSON.stringify(manifest.localPatch.scope) !== JSON.stringify(RECONSTRUCTION_SCOPE)) {

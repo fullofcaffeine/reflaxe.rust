@@ -64,6 +64,28 @@ function main() {
       () => assertPackageInputsTracked(temp),
       /docs\/stdlib-provenance-ledger\.json/
     )
+    fs.rmSync(path.join(temp, 'docs', 'stdlib-provenance-ledger.json'))
+
+    const external = path.join(temp, '..', `external-${path.basename(temp)}.json`)
+    fs.writeFileSync(external, '{"external":true}\n')
+    fs.symlinkSync(external, path.join(temp, 'docs', 'stdlib-provenance-ledger.json'))
+    git(temp, ['add', '-f', 'docs/stdlib-provenance-ledger.json'])
+    git(temp, [
+      '-c',
+      'user.name=Package Test',
+      '-c',
+      'user.email=package@example.invalid',
+      'commit',
+      '-q',
+      '-m',
+      'tracked symlink'
+    ])
+    assert.strictEqual(git(temp, ['status', '--porcelain', '--untracked-files=no']), '')
+    assert.throws(
+      () => assertPackageInputsTracked(temp),
+      /release package input must be a regular Git blob: docs\/stdlib-provenance-ledger\.json/
+    )
+    fs.rmSync(external)
 
     console.log('[package-input-cleanliness-test] OK')
   } finally {

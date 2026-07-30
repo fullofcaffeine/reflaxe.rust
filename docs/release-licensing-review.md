@@ -56,6 +56,13 @@ the ZIP. The release notice points to that package-local record, so an offline
 review remains tied to the published artifact rather than to a branch that can
 change later.
 
+Release tooling treats these source locations as fixed code-owned inputs. It
+rejects symlinks, Git submodules, parent-path references, and alternate local
+record pointers. The final package check also compares the Reflaxe license and
+the Haxe/Reflaxe SBOM facts with the exact records inside the archive. This
+prevents a clean checkout from publishing bytes that came from an unrelated
+file outside the reviewed commit.
+
 ## Questions for professional legal review
 
 Before a 1.0 release decision, counsel should answer these concrete questions:

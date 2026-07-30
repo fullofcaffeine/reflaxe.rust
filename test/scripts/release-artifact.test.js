@@ -77,10 +77,11 @@ function packageFixture(root, options = {}) {
   })
   write(root, 'vendor/reflaxe/reflaxe-rust.patch', fixturePatch)
   write(root, 'vendor/reflaxe/src/reflaxe/ReflectCompiler.hx', 'package reflaxe; class ReflectCompiler {}\n')
-  writeJson(root, 'provenance/stdlib-provenance-ledger.json', {
-    schemaVersion: 1,
-    fixture: 'reviewed Haxe Standard Library source records'
-  })
+  write(
+    root,
+    'provenance/stdlib-provenance-ledger.json',
+    fs.readFileSync(path.join(repoRoot, 'docs', 'stdlib-provenance-ledger.json'))
+  )
 }
 
 function sha256(filePath) {
@@ -117,6 +118,25 @@ function main() {
         }),
       new RegExp(`missing required component: ${requiredId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)
     )
+  }
+  for (const [id, field, value, pattern] of [
+    ['reflaxe', 'name', 'Different framework', /reflaxe name must be exactly Reflaxe/],
+    [
+      'reflaxe',
+      'provenanceFile',
+      'local/alternate.json',
+      /reflaxe provenanceFile must be exactly vendor\/reflaxe\/provenance\.json/
+    ],
+    [
+      'haxe-standard-library-derived-files',
+      'stdlibProvenanceFile',
+      'local/alternate.json',
+      /stdlibProvenanceFile must be exactly docs\/stdlib-provenance-ledger\.json/
+    ]
+  ]) {
+    const mutation = JSON.parse(JSON.stringify(releaseComponents))
+    mutation.components.find((component) => component.id === id)[field] = value
+    expectThrow(() => licenseApi.validateRequiredComponentIds(mutation), pattern)
   }
   for (const externalLink of [
     'https://github.com/fullofcaffeine/reflaxe.rust/tree/main/docs/stdlib-provenance-ledger.json',
@@ -340,6 +360,28 @@ libc = "0.2"
           sourceRoot: badPatchRoot
         }),
       /vendored Reflaxe patch digest does not match/
+    )
+
+    const badLicenseRoot = path.join(temp, 'bad-license')
+    packageFixture(badLicenseRoot)
+    write(badLicenseRoot, 'vendor/reflaxe/LICENSE', 'MIT License\nforged package bytes\n')
+    const badLicenseLeftZip = path.join(temp, 'bad-license-left.zip')
+    const badLicenseRightZip = path.join(temp, 'bad-license-right.zip')
+    zipApi.createDeterministicZip(badLicenseRoot, badLicenseLeftZip)
+    zipApi.createDeterministicZip(badLicenseRoot, badLicenseRightZip)
+    expectThrow(
+      () =>
+        verifyArtifact(
+          {
+            zipPath: badLicenseLeftZip,
+            version: VERSION,
+            tag: TAG,
+            sourceCommit: SOURCE_SHA,
+            sourceRoot: badLicenseRoot
+          },
+          badLicenseRightZip
+        ),
+      /vendored Reflaxe license digest does not match its provenance record/
     )
 
     const badSbomRoot = path.join(temp, 'bad-sbom')

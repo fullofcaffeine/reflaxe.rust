@@ -272,6 +272,12 @@ Agent policy:
   builds. Compiler evidence uses the two-pass, per-case-empty Cargo homes and reviewed
   locks/normalized metadata under `test/compatibility-baselines/fresh-cargo-resolution`; refresh that
   baseline only on exact Rust 1.96 after reviewing all graph changes.
+- Release-input ownership gotcha: release notices, SBOM entries, vendored Reflaxe records, and the
+  packaged Haxe source record must be read from code-owned exact paths, not editable pointers in an
+  evidence file. Every consumed package input must be a regular Git blob; reject symlinks, gitlinks,
+  path traversal, and files outside the reviewed package roots before generation. The final verifier
+  must compare the packaged license/source records with the facts printed in the packaged notice and
+  SBOM, so two tools cannot agree on a different local file and call it reviewed.
 - Rustup temp-workspace gotcha: rustup selects a toolchain from each command's working directory.
   A probe can report the repository-pinned `rustc` and then silently execute Cargo or rustc from the
   rolling default toolchain after moving to a temporary fixture outside the repository. Before
