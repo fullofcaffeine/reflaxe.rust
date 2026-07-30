@@ -409,9 +409,12 @@ Agent policy:
   accepts those facts independently. The saved decision must name the same exact source location as
   its action.
   Anonymous borrowed-field gotcha: runtime anonymous records own values and read them back by exact
-  stored Rust type. Reject fields declared `rust.Ref<T>` or `Null<rust.Ref<T>>` at literal, assignment,
-  and constant `Reflect.setField` boundaries until a guard-bound read API can preserve the lifetime.
-  Storing owned `T` while reading `&T`, or storing the short-lived reference, is not a valid shortcut.
+  stored Rust type. Reject fields declared `rust.Ref<T>` or `Null<rust.Ref<T>>`—including ordinary
+  non-core Haxe abstracts backed by those types—at literal, assignment, and constant
+  `Reflect.setField` boundaries until a guard-bound read API can preserve the lifetime. Use one
+  applied-type-aware transparent-abstract recognizer for both representation and borrow-region
+  analysis; stop at unrelated `@:coreType` abstracts rather than blindly following them. Storing
+  owned `T` while reading `&T`, or storing the short-lived reference, is not a valid shortcut.
   Transparent callable-target gotcha: representation and no-hxrt source analysis must share one helper
   that unwraps metadata, parentheses, and only casts between identical function types. This keeps
   cast-wrapped immediate enum constructors as call syntax and preserves exact `Sys`/`Type`/`Reflect`

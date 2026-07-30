@@ -21,6 +21,14 @@ import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicCrossingTy
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicCrossingSourceFingerprint;
 import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustDynamicValueMaterialization;
 
+private enum RustBorrowTypeMatch {
+	BorrowMatchRef(valueType:Type);
+	BorrowMatchMutRef(valueType:Type);
+	BorrowMatchSlice(valueType:Type);
+	BorrowMatchMutSlice(valueType:Type);
+	BorrowMatchStr;
+}
+
 /**
 	Extracts the shared Rust representation plan from real typed Haxe values.
 
@@ -248,24 +256,65 @@ class RepresentationTypeAnalyzer {
 		Why / What / How
 		- `rust.Ref<T>` is emitted as `&T`; calling `.clone()` at a Dynamic boundary copies `T`, not the
 		  reference token. Describing the token as escaping would violate the planner's borrow-scope rule.
-		- Unwrap aliases and `Null`, then admit only one-parameter immutable `rust.Ref`.
+		- Unwrap aliases, `Null`, and ordinary non-core abstracts, then admit only one-parameter
+		  immutable `rust.Ref`.
 		- Borrowed strings and slices need different owned conversions, so they stay unmodeled here instead
 		  of receiving a misleading decision.
 	**/
 	public static function immutableReferenceValueType(type:Type):Null<Type> {
-		var normalized = unwrapAliasesAndNull(type).type;
-		return switch (normalized) {
-			case TAbstract(abstractRef, parameters) if (parameters.length == 1):
-				var abstractType = abstractRef.get();
-				if (abstractType == null)
-					null;
-				else {
-					var path = typePath(abstractType.pack, abstractType.name);
-					path == "rust.Ref" ? parameters[0] : null;
-				}
-			case _:
-				null;
+		return switch (borrowTypeMatch(type)) {
+			case BorrowMatchRef(valueType): valueType;
+			case _: null;
 		};
+	}
+
+	/**
+		Names the scoped Rust borrow represented by a Haxe type.
+
+		Why
+		- Most ordinary Haxe abstracts disappear in generated Rust and use their backing type. An abstract
+		  such as `BorrowedAlias<T>(rust.Ref<T>)` therefore carries the same lifetime restriction as
+		  `rust.Ref<T>`.
+		- Representation checks and borrow-escape checks must not disagree merely because one follows that
+		  transparent wrapper and the other does not.
+
+		What
+		- Recognizes the five compiler-supported borrowed carriers through lazy values, typedefs, `Null`,
+		  and ordinary non-core abstracts.
+		- Stops at every other `@:coreType` abstract because those types have no safe general backing-type
+		  rule.
+
+		How
+		- `borrowTypeMatch` substitutes applied type parameters while it opens each transparent wrapper,
+		  then stops as soon as it reaches a known `rust.*` borrow carrier.
+	**/
+	@:allow(reflaxe.rust.analyze.BorrowRegionAnalyzer)
+	static function borrowOnlyReason(type:Type):Null<String> {
+		return switch (borrowTypeMatch(type)) {
+			case BorrowMatchRef(_): "rust.Ref<T>";
+			case BorrowMatchMutRef(_): "rust.MutRef<T>";
+			case BorrowMatchSlice(_): "rust.Slice<T>";
+			case BorrowMatchMutSlice(_): "rust.MutSlice<T>";
+			case BorrowMatchStr: "rust.Str";
+			case null: null;
+		};
+	}
+
+	/**
+		Reports whether a type stores or returns any scoped Rust borrow.
+
+		Why / What / How
+		- Borrow-region validation needs the same transparent-abstract rule as representation analysis,
+		  including when the borrow is nested in a function, record, container parameter, or ordinary
+		  abstract backing type.
+		- This shared walk prevents a wrapper from looking owned to the escape checker while lowering to a
+		  Rust reference later.
+		- Unknown core abstracts remain opaque; their visible type parameters are still inspected
+		  conservatively.
+	**/
+	@:allow(reflaxe.rust.analyze.BorrowRegionAnalyzer)
+	static function containsBorrowOnlyType(type:Type):Bool {
+		return containsBorrowOnlyTypeRecursive(type, 0);
 	}
 
 	/**
@@ -277,10 +326,12 @@ class RepresentationTypeAnalyzer {
 		  the runtime downcast fail. Keeping the short-lived `&T` would instead let a borrow escape.
 
 		What
-		- Rejects immutable `rust.Ref<T>` fields, including `Null<rust.Ref<T>>`, before Rust construction.
+		- Rejects immutable `rust.Ref<T>` fields, including `Null<rust.Ref<T>>` and ordinary Haxe
+		  abstracts backed by those types, before Rust construction.
 
 		How
-		- Reuse the same alias/null-aware reference recognizer as Dynamic materialization.
+		- Reuse the same transparent-wrapper-aware reference recognizer as Dynamic materialization and
+		  borrow-region checking.
 		- Full support requires a future stored-versus-exposed field contract with a guard-bound read
 		  lifetime; this compiler does not pretend that an owned clone is still a scoped reference.
 	**/
@@ -303,12 +354,13 @@ class RepresentationTypeAnalyzer {
 
 		What
 		- Returns the first declared `rust.Ref<T>` or `Null<rust.Ref<T>>` field on a real runtime anonymous
-		  record, including omitted optional fields.
+		  record, including omitted optional fields and ordinary Haxe abstracts backed by those types.
 		- Iterator-shaped anonymous values remain iterator carriers rather than runtime record storage.
 
 		How
-		- Follow typedef aliases, applied type parameters, and outer `Null`, then inspect a name-sorted copy
-		  of every declared field through the same reference recognizer used by Dynamic materialization.
+		- Follow typedef aliases, applied type parameters, outer `Null`, and ordinary non-core abstracts,
+		  then inspect a name-sorted copy of every declared field through the same reference recognizer
+		  used by Dynamic materialization.
 		- Callers choose the useful source location: the exact stored value for a direct write, or the
 		  anonymous value/type materialization when no field value exists yet.
 	**/
@@ -694,6 +746,137 @@ class RepresentationTypeAnalyzer {
 			}
 		}
 		return {type: current, nullable: nullable};
+	}
+
+	static function borrowTypeMatch(type:Type):Null<RustBorrowTypeMatch> {
+		return borrowTypeMatchRecursive(type, 0);
+	}
+
+	static function borrowTypeMatchRecursive(type:Type, depth:Int):Null<RustBorrowTypeMatch> {
+		if (type == null || depth > 16)
+			return null;
+		return switch (type) {
+			case TMono(monomorphRef):
+				var resolved = monomorphRef.get();
+				resolved == null ? null : borrowTypeMatchRecursive(resolved, depth + 1);
+			case TLazy(resolve):
+				borrowTypeMatchRecursive(resolve(), depth + 1);
+			case TType(typeRef, parameters):
+				var typedefType = typeRef.get();
+				if (typedefType == null) {
+					null;
+				} else {
+					var underlying = typedefType.type;
+					if (typedefType.params != null && typedefType.params.length > 0 && parameters.length == typedefType.params.length)
+						underlying = TypeTools.applyTypeParameters(underlying, typedefType.params, parameters);
+					borrowTypeMatchRecursive(underlying, depth + 1);
+				}
+			case TAbstract(abstractRef, parameters):
+				var abstractType = abstractRef.get();
+				if (abstractType == null) {
+					null;
+				} else {
+					var path = typePath(abstractType.pack, abstractType.name);
+					switch (path) {
+						case "rust.Ref" if (parameters.length == 1):
+							BorrowMatchRef(parameters[0]);
+						case "rust.MutRef" if (parameters.length == 1):
+							BorrowMatchMutRef(parameters[0]);
+						case "rust.Slice" if (parameters.length == 1):
+							BorrowMatchSlice(parameters[0]);
+						case "rust.MutSlice" if (parameters.length == 1):
+							BorrowMatchMutSlice(parameters[0]);
+						case "rust.Str" if (parameters.length == 0):
+							BorrowMatchStr;
+						case _ if (abstractType.module == "StdTypes" && abstractType.name == "Null" && parameters.length == 1):
+							borrowTypeMatchRecursive(parameters[0], depth + 1);
+						case _ if (abstractType.meta != null && abstractType.meta.has(":coreType")):
+							null;
+						case _:
+							var underlying = abstractType.type;
+							if (abstractType.params != null
+								&& abstractType.params.length > 0
+								&& parameters.length == abstractType.params.length)
+								underlying = TypeTools.applyTypeParameters(underlying, abstractType.params, parameters);
+							borrowTypeMatchRecursive(underlying, depth + 1);
+					}
+				}
+			case _:
+				null;
+		};
+	}
+
+	static function containsBorrowOnlyTypeRecursive(type:Type, depth:Int):Bool {
+		if (type == null || depth > 16)
+			return false;
+		if (borrowTypeMatchRecursive(type, depth) != null)
+			return true;
+
+		return switch (type) {
+			case TMono(monomorphRef):
+				var resolved = monomorphRef.get();
+				resolved != null && containsBorrowOnlyTypeRecursive(resolved, depth + 1);
+			case TLazy(resolve):
+				containsBorrowOnlyTypeRecursive(resolve(), depth + 1);
+			case TType(typeRef, parameters):
+				var typedefType = typeRef.get();
+				if (typedefType == null) {
+					false;
+				} else {
+					var underlying = typedefType.type;
+					if (typedefType.params != null && typedefType.params.length > 0 && parameters.length == typedefType.params.length)
+						underlying = TypeTools.applyTypeParameters(underlying, typedefType.params, parameters);
+					containsBorrowOnlyTypeRecursive(underlying, depth + 1);
+				}
+			case TAbstract(abstractRef, parameters):
+				var abstractType = abstractRef.get();
+				if (abstractType == null) {
+					false;
+				} else if (abstractType.module == "StdTypes" && abstractType.name == "Null" && parameters.length == 1) {
+					containsBorrowOnlyTypeRecursive(parameters[0], depth + 1);
+				} else if (abstractType.meta != null && abstractType.meta.has(":coreType")) {
+					containsBorrowOnlyTypeList(parameters, depth + 1);
+				} else {
+					var underlying = abstractType.type;
+					if (abstractType.params != null
+						&& abstractType.params.length > 0
+						&& parameters.length == abstractType.params.length)
+						underlying = TypeTools.applyTypeParameters(underlying, abstractType.params, parameters);
+					containsBorrowOnlyTypeRecursive(underlying, depth + 1);
+				}
+			case TInst(_, parameters) | TEnum(_, parameters):
+				containsBorrowOnlyTypeList(parameters, depth + 1);
+			case TAnonymous(anonymousRef):
+				var anonymous = anonymousRef.get();
+				var found = false;
+				if (anonymous != null && anonymous.fields != null)
+					for (field in anonymous.fields)
+						if (field != null && containsBorrowOnlyTypeRecursive(field.type, depth + 1)) {
+							found = true;
+							break;
+						}
+				found;
+			case TFun(arguments, result):
+				var found = containsBorrowOnlyTypeRecursive(result, depth + 1);
+				if (!found && arguments != null)
+					for (argument in arguments)
+						if (argument != null && containsBorrowOnlyTypeRecursive(argument.t, depth + 1)) {
+							found = true;
+							break;
+						}
+				found;
+			case TDynamic(inner):
+				inner != null && containsBorrowOnlyTypeRecursive(inner, depth + 1);
+		};
+	}
+
+	static function containsBorrowOnlyTypeList(types:Array<Type>, depth:Int):Bool {
+		if (types == null)
+			return false;
+		for (type in types)
+			if (containsBorrowOnlyTypeRecursive(type, depth))
+				return true;
+		return false;
 	}
 
 	static function isString(type:Type):Bool {

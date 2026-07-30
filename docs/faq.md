@@ -349,13 +349,19 @@ the key and returns the field type's Haxe null representation when it is absent.
 
 Anonymous fields declared as `rust.Ref<T>` or `Null<rust.Ref<T>>` are rejected because these
 references are valid only inside their scoped callback, while a runtime anonymous record owns its
-fields. The compiler checks every declared field, including an `@:optional` field omitted from the
-literal, before the record is created or converted to `Dynamic`. This also prevents runtime-name
-reflection and writes through a `Dynamic` alias from bypassing the rule after the field declaration is
-no longer visible. A direct write points to the exact stored value; an omitted field points to the
-anonymous value whose complete shape is unsupported. Store an owned `T` value instead. Supporting a
-borrowed field would require a new guarded-read API that ties the returned reference to the record's
-read lock; the current value-returning field API cannot promise that lifetime safely.
+fields. The same rule applies when a normal Haxe abstract uses one of those references as its backing
+type: the abstract disappears in generated Rust, so it cannot make the reference live longer. The
+compiler follows typedef parameters, `Null`, and ordinary non-core abstracts, then checks every
+declared field—including an `@:optional` field omitted from the literal—before the record is created
+or converted to `Dynamic`. It does not blindly open unrelated `@:coreType` abstracts, whose backing
+representation is compiler-defined.
+
+This complete check prevents runtime-name reflection and writes through a `Dynamic` alias from
+bypassing the rule after the field declaration is no longer visible. A direct write points to the
+exact stored value; an omitted field points to the anonymous value whose complete shape is
+unsupported. Store an owned `T` value instead. Supporting a borrowed field would require a new
+guarded-read API that ties the returned reference to the record's read lock; the current
+value-returning field API cannot promise that lifetime safely.
 
 Field names do not silently change the representation. A mutable anonymous record with function-valued
 `hasNext` and `next` fields remains a shared record even though Haxe also accepts it as an iterator. It

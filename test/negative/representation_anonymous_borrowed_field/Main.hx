@@ -1,9 +1,21 @@
 import rust.Borrow;
 
+#if abstract_wrapper
+private abstract BorrowedAlias<T>(rust.Ref<T>) from rust.Ref<T> to rust.Ref<T> {}
+#end
+
+#if abstract_wrapper
+#if nullable
+private typedef BorrowedValue = Null<BorrowedAlias<String>>;
+#else
+private typedef BorrowedValue = BorrowedAlias<String>;
+#end
+#else
 #if nullable
 private typedef BorrowedValue = Null<rust.Ref<String>>;
 #else
 private typedef BorrowedValue = rust.Ref<String>;
+#end
 #end
 
 #if optional
