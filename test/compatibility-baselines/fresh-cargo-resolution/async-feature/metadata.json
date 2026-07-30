@@ -638,7 +638,7 @@
         "dependencies": []
       },
       {
-        "id": "syn@2.0.119:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "syn@3.0.3:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "clone-impls",
           "default",
@@ -682,49 +682,7 @@
         ]
       },
       {
-        "id": "syn@3.0.3:registry+https://github.com/rust-lang/crates.io-index",
-        "enabledFeatures": [
-          "clone-impls",
-          "derive",
-          "parsing",
-          "printing",
-          "proc-macro"
-        ],
-        "dependencies": [
-          {
-            "name": "proc_macro2",
-            "package": "proc-macro2@1.0.107:registry+https://github.com/rust-lang/crates.io-index",
-            "kinds": [
-              {
-                "kind": "normal",
-                "target": null
-              }
-            ]
-          },
-          {
-            "name": "quote",
-            "package": "quote@1.0.47:registry+https://github.com/rust-lang/crates.io-index",
-            "kinds": [
-              {
-                "kind": "normal",
-                "target": null
-              }
-            ]
-          },
-          {
-            "name": "unicode_ident",
-            "package": "unicode-ident@1.0.24:registry+https://github.com/rust-lang/crates.io-index",
-            "kinds": [
-              {
-                "kind": "normal",
-                "target": null
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "id": "tokio-macros@2.7.1:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "tokio-macros@2.7.2:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [],
         "dependencies": [
           {
@@ -749,7 +707,7 @@
           },
           {
             "name": "syn",
-            "package": "syn@2.0.119:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "syn@3.0.3:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -781,7 +739,7 @@
           },
           {
             "name": "tokio_macros",
-            "package": "tokio-macros@2.7.1:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "tokio-macros@2.7.2:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -2622,9 +2580,9 @@
       ]
     },
     {
-      "id": "syn@2.0.119:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "syn@3.0.3:registry+https://github.com/rust-lang/crates.io-index",
       "name": "syn",
-      "version": "2.0.119",
+      "version": "3.0.3",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [
@@ -2807,192 +2765,9 @@
       ]
     },
     {
-      "id": "syn@3.0.3:registry+https://github.com/rust-lang/crates.io-index",
-      "name": "syn",
-      "version": "3.0.3",
-      "source": "registry+https://github.com/rust-lang/crates.io-index",
-      "rustVersion": "1.71.0",
-      "enabledFeatures": [
-        "clone-impls",
-        "derive",
-        "parsing",
-        "printing",
-        "proc-macro"
-      ],
-      "dependencies": [
-        {
-          "name": "anyhow",
-          "rename": null,
-          "requirement": "^1",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "kind": "dev",
-          "optional": false,
-          "usesDefaultFeatures": true,
-          "features": [],
-          "target": null
-        },
-        {
-          "name": "automod",
-          "rename": null,
-          "requirement": "^1",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "kind": "dev",
-          "optional": false,
-          "usesDefaultFeatures": true,
-          "features": [],
-          "target": null
-        },
-        {
-          "name": "flate2",
-          "rename": null,
-          "requirement": "^1",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "kind": "dev",
-          "optional": false,
-          "usesDefaultFeatures": true,
-          "features": [],
-          "target": "cfg(not(miri))"
-        },
-        {
-          "name": "insta",
-          "rename": null,
-          "requirement": "^1",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "kind": "dev",
-          "optional": false,
-          "usesDefaultFeatures": true,
-          "features": [],
-          "target": null
-        },
-        {
-          "name": "proc-macro2",
-          "rename": null,
-          "requirement": "^1.0.91",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "kind": "normal",
-          "optional": false,
-          "usesDefaultFeatures": false,
-          "features": [],
-          "target": null
-        },
-        {
-          "name": "quote",
-          "rename": null,
-          "requirement": "^1.0.35",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "kind": "normal",
-          "optional": true,
-          "usesDefaultFeatures": false,
-          "features": [],
-          "target": null
-        },
-        {
-          "name": "rayon",
-          "rename": null,
-          "requirement": "^1",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "kind": "dev",
-          "optional": false,
-          "usesDefaultFeatures": true,
-          "features": [],
-          "target": "cfg(not(miri))"
-        },
-        {
-          "name": "ref-cast",
-          "rename": null,
-          "requirement": "^1",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "kind": "dev",
-          "optional": false,
-          "usesDefaultFeatures": true,
-          "features": [],
-          "target": null
-        },
-        {
-          "name": "reqwest",
-          "rename": null,
-          "requirement": "^0.13",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "kind": "dev",
-          "optional": false,
-          "usesDefaultFeatures": true,
-          "features": [
-            "blocking"
-          ],
-          "target": "cfg(not(miri))"
-        },
-        {
-          "name": "rustversion",
-          "rename": null,
-          "requirement": "^1",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "kind": "dev",
-          "optional": false,
-          "usesDefaultFeatures": true,
-          "features": [],
-          "target": null
-        },
-        {
-          "name": "syn-test-suite",
-          "rename": null,
-          "requirement": "^0",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "kind": "dev",
-          "optional": false,
-          "usesDefaultFeatures": true,
-          "features": [],
-          "target": null
-        },
-        {
-          "name": "tar",
-          "rename": null,
-          "requirement": "^0.4.16",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "kind": "dev",
-          "optional": false,
-          "usesDefaultFeatures": true,
-          "features": [],
-          "target": "cfg(not(miri))"
-        },
-        {
-          "name": "termcolor",
-          "rename": null,
-          "requirement": "^1",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "kind": "dev",
-          "optional": false,
-          "usesDefaultFeatures": true,
-          "features": [],
-          "target": null
-        },
-        {
-          "name": "unicode-ident",
-          "rename": null,
-          "requirement": "^1",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "kind": "normal",
-          "optional": false,
-          "usesDefaultFeatures": true,
-          "features": [],
-          "target": null
-        },
-        {
-          "name": "walkdir",
-          "rename": null,
-          "requirement": "^2.3.2",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "kind": "dev",
-          "optional": false,
-          "usesDefaultFeatures": true,
-          "features": [],
-          "target": "cfg(not(miri))"
-        }
-      ]
-    },
-    {
-      "id": "tokio-macros@2.7.1:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "tokio-macros@2.7.2:registry+https://github.com/rust-lang/crates.io-index",
       "name": "tokio-macros",
-      "version": "2.7.1",
+      "version": "2.7.2",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [],
@@ -3022,7 +2797,7 @@
         {
           "name": "syn",
           "rename": null,
-          "requirement": "^2.0",
+          "requirement": "^3.0",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,

@@ -145,7 +145,7 @@
           },
           {
             "name": "displaydoc",
-            "package": "displaydoc@0.2.6:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "displaydoc@0.2.7:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -469,7 +469,7 @@
           },
           {
             "name": "displaydoc",
-            "package": "displaydoc@0.2.6:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "displaydoc@0.2.7:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -559,7 +559,7 @@
         ]
       },
       {
-        "id": "displaydoc@0.2.6:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "displaydoc@0.2.7:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "default",
           "std"
@@ -587,7 +587,7 @@
           },
           {
             "name": "syn",
-            "package": "syn@2.0.119:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "syn@3.0.3:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -965,7 +965,7 @@
           },
           {
             "name": "rustls",
-            "package": "rustls@0.23.42:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "rustls@0.23.43:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -1865,7 +1865,7 @@
         ]
       },
       {
-        "id": "rustls@0.23.42:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "rustls@0.23.43:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "ring",
           "std",
@@ -2336,6 +2336,7 @@
         "id": "syn@3.0.3:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "clone-impls",
+          "default",
           "derive",
           "parsing",
           "printing",
@@ -5012,11 +5013,11 @@
       ]
     },
     {
-      "id": "displaydoc@0.2.6:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "displaydoc@0.2.7:registry+https://github.com/rust-lang/crates.io-index",
       "name": "displaydoc",
-      "version": "0.2.6",
+      "version": "0.2.7",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
-      "rustVersion": "1.56.0",
+      "rustVersion": "1.71.0",
       "enabledFeatures": [
         "default",
         "std"
@@ -5091,7 +5092,7 @@
         {
           "name": "syn",
           "rename": null,
-          "requirement": "^2.0",
+          "requirement": "^3.0",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -8040,9 +8041,9 @@
       ]
     },
     {
-      "id": "rustls@0.23.42:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "rustls@0.23.43:registry+https://github.com/rust-lang/crates.io-index",
       "name": "rustls",
-      "version": "0.23.42",
+      "version": "0.23.43",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [
@@ -9369,6 +9370,7 @@
       "rustVersion": "1.71.0",
       "enabledFeatures": [
         "clone-impls",
+        "default",
         "derive",
         "parsing",
         "printing",

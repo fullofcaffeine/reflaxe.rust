@@ -27,15 +27,15 @@
       "id": "systems",
       "contract": "systems and TLS generated crate",
       "fixture": "test/snapshot/sys_ssl_sni/intended",
-      "lockSha256": "c16e7b91a11890855e1d8e9236ed508d6b4d6a68756e9a64cf6ca6beca775078",
-      "metadataSha256": "d235097ea28845043f0e65f473707b683e49c28bc09d2d0faa7214006a5ef7e6"
+      "lockSha256": "a2aded89dd784beddf4a5ca97fc17eb58838c75ade7ebc6b5cde0c3d14694def",
+      "metadataSha256": "930d380c50091f172630ad6bc4f526cc322521a43bc6d83791cdd8f1dce09569"
     },
     {
       "id": "async-feature",
       "contract": "experimental async Tokio generated crate",
       "fixture": "test/snapshot/rust_async_tasks/intended_tokio",
-      "lockSha256": "cfe34b759640c26726337b2dd659de8e1a73dd78d86e9b91a70d1b2b9da86ef8",
-      "metadataSha256": "01ca4b8839c64316894c3814e8c5d3fcf96ae4e2f68112d294fa4888296e247c"
+      "lockSha256": "aa552cdb9df84a2c75108a11415875a34a1cf412285108aecb2f0c45204cdedc",
+      "metadataSha256": "dfeea4b51a92100721566625f1017e27e4a67431736366a6c8bc86cc85a80e7f"
     },
     {
       "id": "metal",
