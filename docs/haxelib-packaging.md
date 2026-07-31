@@ -142,7 +142,10 @@ the source used to generate `THIRD_PARTY_NOTICES.md` and
 `release-sbom.json`; `vendor/reflaxe/provenance.json` owns the exact vendored
 framework base, repository, license, and patch record. The nested
 `vendor/reflaxe/haxelib.json` is checked as a small matching view of those
-repository and license facts.
+repository and license facts. Haxe license generation is fixed to
+`docs/licenses/haxe-stdlib-4.3.7-MIT.txt`; the source record cannot redirect it to another checkout
+file. Package-input checks read repository-sized Git output with an explicit bound and reject a
+symlink or submodule placed at either a package root or one of its descendants.
 
 ## Backend-specific requirement
 

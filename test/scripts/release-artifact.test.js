@@ -132,12 +132,28 @@ function main() {
       'stdlibProvenanceFile',
       'local/alternate.json',
       /stdlibProvenanceFile must be exactly docs\/stdlib-provenance-ledger\.json/
+    ],
+    [
+      'reflaxe-rust',
+      'source',
+      'https://example.invalid/different-product',
+      /reflaxe-rust source must be exactly https:\/\/github\.com\/fullofcaffeine\/reflaxe\.rust/
     ]
   ]) {
     const mutation = JSON.parse(JSON.stringify(releaseComponents))
     mutation.components.find((component) => component.id === id)[field] = value
     expectThrow(() => licenseApi.validateRequiredComponentIds(mutation), pattern)
   }
+	const duplicateProjectName = JSON.parse(JSON.stringify(releaseComponents))
+	duplicateProjectName.components.push({
+		id: 'duplicate-project-name',
+		name: 'reflaxe.rust',
+		kind: 'library'
+	})
+	expectThrow(
+		() => licenseApi.validateRequiredComponentIds(duplicateProjectName),
+		/release component inventory must contain exactly one reflaxe\.rust component/
+	)
   for (const externalLink of [
     'https://github.com/fullofcaffeine/reflaxe.rust/tree/main/docs/stdlib-provenance-ledger.json',
     'HTTPS://github.com/fullofcaffeine/reflaxe.rust/tree/main/docs/stdlib-provenance-ledger.json',
@@ -163,22 +179,68 @@ function main() {
     !stdlibComponent.notice.includes('/blob/main/'),
     'release evidence must not depend on a mutable main-branch link'
   )
-  const movedStdlib = licenseApi.resolveStdlibComponent(stdlibComponent, {
-    upstreamStdVersion: '9.8.7',
-    upstreamRepository: 'https://example.invalid/haxe',
-    license: {
-      id: 'MIT',
-      sourceFile: 'reviewed-license.txt',
-      sha256: 'a'.repeat(64)
-    }
-  })
-  assert.strictEqual(movedStdlib.version, '9.8.7')
-  assert.strictEqual(movedStdlib.source, 'https://example.invalid/haxe/tree/9.8.7')
-  assert.strictEqual(movedStdlib.licenseSourceFile, 'reviewed-license.txt')
+  for (const unsafeLicenseSource of [
+    '../outside-haxe-license.txt',
+    '/tmp/outside-haxe-license.txt',
+    'C:\\outside-haxe-license.txt',
+    'docs\\licenses\\haxe-stdlib-4.3.7-MIT.txt',
+    'docs/licenses/../licenses/haxe-stdlib-4.3.7-MIT.txt'
+  ]) {
+    expectThrow(
+      () => licenseApi.resolveStdlibComponent(stdlibComponent, {
+        upstreamStdVersion: '4.3.7',
+        upstreamRepository: 'https://github.com/HaxeFoundation/haxe',
+        license: {
+          id: 'MIT',
+          sourceFile: unsafeLicenseSource,
+          sha256: 'a'.repeat(64)
+        }
+      }),
+      /stdlib license sourceFile must be exactly docs\/licenses\/haxe-stdlib-4\.3\.7-MIT\.txt/
+    )
+  }
+
+  const extraComponent = {
+    id: 'unreviewed-primary',
+    name: 'Different Product',
+    kind: 'application',
+    versionSource: 'release',
+    license: 'Proprietary',
+    source: 'https://example.invalid/different-product'
+  }
+  for (const reordered of [
+    [extraComponent, ...releaseComponents.components],
+    [...releaseComponents.components, extraComponent],
+    [...releaseComponents.components].reverse()
+  ]) {
+    const source = { ...releaseComponents, components: reordered }
+    const reorderedSbom = JSON.parse(licenseApi.buildArtifacts('9.9.9', source).get('release-sbom.json'))
+    assert.strictEqual(reorderedSbom.metadata.component.name, 'reflaxe.rust')
+    assert.strictEqual(reorderedSbom.metadata.component.type, 'application')
+    assert.strictEqual(reorderedSbom.metadata.component['bom-ref'], 'pkg:generic/reflaxe-rust@9.9.9')
+    assert.strictEqual(reorderedSbom.dependencies[0].ref, 'pkg:generic/reflaxe-rust@9.9.9')
+  }
   const firstSbom = JSON.parse(licenseApi.buildArtifacts('1.2.34').get('release-sbom.json'))
   const secondSbom = JSON.parse(licenseApi.buildArtifacts('12.3.4').get('release-sbom.json'))
   assert(!('serialNumber' in firstSbom), 'deterministic SBOM must omit a fabricated UUID serial number')
   assert.notDeepStrictEqual(firstSbom, secondSbom, 'different package versions must produce different SBOMs')
+	assert.doesNotThrow(() => verifyApi.validateSbomPrimary(firstSbom, { license: 'GPL-3.0' }, '1.2.34'))
+	for (const [label, mutate, pattern] of [
+		['name', (sbom) => { sbom.metadata.component.name = 'Different Product' }, /primary component/],
+		['kind', (sbom) => { sbom.metadata.component.type = 'library' }, /primary component/],
+		['identity', (sbom) => { sbom.metadata.component['bom-ref'] = 'pkg:generic/different@1.2.34' }, /primary component/],
+		['license', (sbom) => { sbom.metadata.component.licenses[0].license.id = 'Proprietary' }, /primary component/],
+		['repository', (sbom) => { sbom.metadata.component.externalReferences[0].url = 'https://example.invalid' }, /primary component/],
+		['root dependency', (sbom) => { sbom.dependencies[0].ref = 'pkg:generic/different@1.2.34' }, /root dependency/]
+	]) {
+		const mutation = JSON.parse(JSON.stringify(firstSbom))
+		mutate(mutation)
+		expectThrow(
+			() => verifyApi.validateSbomPrimary(mutation, { license: 'GPL-3.0' }, '1.2.34'),
+			pattern,
+			`the package verifier must reject a false SBOM ${label}`
+		)
+	}
   const cargoRequirement = firstSbom.components.find((component) =>
     component.properties?.some((property) => property.name === 'reflaxe.rust:version-requirement')
   )
@@ -723,6 +785,27 @@ libc = "0.2"
         }),
       /unsafe archive entry/
     )
+
+		const gitMetadataLeft = path.join(temp, 'git-metadata-left')
+		const gitMetadataRight = path.join(temp, 'git-metadata-right')
+		packageFixture(gitMetadataLeft)
+		packageFixture(gitMetadataRight)
+		write(gitMetadataLeft, 'runtime/.git', 'gitdir: external\n')
+		write(gitMetadataRight, 'runtime/.git', 'gitdir: external\n')
+		const gitMetadataLeftZip = path.join(temp, 'git-metadata-left.zip')
+		const gitMetadataRightZip = path.join(temp, 'git-metadata-right.zip')
+		zipApi.createDeterministicZip(gitMetadataLeft, gitMetadataLeftZip)
+		zipApi.createDeterministicZip(gitMetadataRight, gitMetadataRightZip)
+		expectThrow(
+			() => verifyArtifact({
+				zipPath: gitMetadataLeftZip,
+				version: VERSION,
+				tag: TAG,
+				sourceCommit: SOURCE_SHA,
+				sourceRoot: gitMetadataLeft
+			}, gitMetadataRightZip),
+			/development-only archive entry is not allowed: runtime\/\.git/
+		)
 
     expectThrow(() => zipApi.validateEntryNames(['a.txt', 'a.txt']), /duplicate archive entry/)
     expectThrow(() => zipApi.validateEntryNames(['/absolute.txt']), /unsafe archive entry/)

@@ -26,8 +26,9 @@ The release ZIP contains:
 and SBOM inventory. Reflaxe's repository, base, and license facts come from
 `vendor/reflaxe/provenance.json`; reflaxe.rust's declared license comes from
 `haxelib.json`; and the Haxe version, repository, and reviewed Standard Library
-license text come from `docs/stdlib-provenance-ledger.json`. The generator also
-checks the recorded SHA-256 for copied license text. Run
+license facts come from `docs/stdlib-provenance-ledger.json`. The license text itself is the
+code-owned regular Git file `docs/licenses/haxe-stdlib-4.3.7-MIT.txt`; the ledger cannot redirect
+generation to another local path. The generator also checks its recorded SHA-256. Run
 `npm run docs:license-artifacts` after changing these inputs. Package and
 release checks reject missing or stale copies.
 
@@ -61,7 +62,9 @@ rejects symlinks, Git submodules, parent-path references, and alternate local
 record pointers. The final package check also compares the Reflaxe license and
 the Haxe/Reflaxe SBOM facts with the exact records inside the archive. This
 prevents a clean checkout from publishing bytes that came from an unrelated
-file outside the reviewed commit.
+file outside the reviewed commit. The SBOM's primary package is selected by the fixed
+`reflaxe-rust` component ID rather than editable list order, and the package verifier checks its
+name, kind, license, repository, version, and root dependency identity independently.
 
 ## Questions for professional legal review
 

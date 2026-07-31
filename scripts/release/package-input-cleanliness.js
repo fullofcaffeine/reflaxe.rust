@@ -1,30 +1,41 @@
 const { execFileSync } = require('child_process')
 
-const PACKAGE_INPUT_ROOTS = ['src/', 'std/', 'runtime/', 'vendor/']
+const PACKAGE_INPUT_ROOTS = ['src', 'std', 'runtime', 'vendor']
 const PACKAGE_INPUT_FILES = [
   'LICENSE',
   'README.md',
   'Run.hx',
+  'docs/licenses/haxe-stdlib-4.3.7-MIT.txt',
   'docs/release-package-components.json',
   'docs/stdlib-provenance-ledger.json',
   'extraParams.hxml',
   'haxelib.json',
   'run.n'
 ]
+const GIT_OUTPUT_MAX_BYTES = 64 * 1024 * 1024
 
 function gitPaths(cwd, args) {
-  return execFileSync('git', ['ls-files', '-z', ...args], { cwd })
+  return execFileSync('git', ['ls-files', '-z', ...args], {
+    cwd,
+    maxBuffer: GIT_OUTPUT_MAX_BYTES
+  })
     .toString('utf8')
     .split('\0')
     .filter(Boolean)
 }
 
 function trackedModes(cwd) {
-  const output = execFileSync('git', ['ls-files', '--stage', '-z'], { cwd }).toString('utf8')
+  const output = execFileSync('git', ['ls-files', '--stage', '-z'], {
+    cwd,
+    maxBuffer: GIT_OUTPUT_MAX_BYTES
+  }).toString('utf8')
   const result = new Map()
   for (const record of output.split('\0').filter(Boolean)) {
-    const match = /^([0-9]{6}) [0-9a-f]+ [0-9]+\t(.+)$/.exec(record)
-    if (match) result.set(match[2], match[1])
+    const separator = record.indexOf('\t')
+    if (separator < 0) continue
+    const header = record.slice(0, separator)
+    const mode = header.slice(0, 6)
+    if (/^[0-9]{6}$/.test(mode)) result.set(record.slice(separator + 1), mode)
   }
   return result
 }
@@ -32,7 +43,7 @@ function trackedModes(cwd) {
 function isPackageInput(file) {
   return (
     PACKAGE_INPUT_FILES.includes(file) ||
-    PACKAGE_INPUT_ROOTS.some((prefix) => file.startsWith(prefix))
+    PACKAGE_INPUT_ROOTS.some((root) => file === root || file.startsWith(`${root}/`))
   )
 }
 

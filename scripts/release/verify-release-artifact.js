@@ -9,7 +9,9 @@ const { strFromU8, unzipSync } = require('fflate')
 const { compareEntryNames, validateEntryNames } = require('./deterministic-zip.js')
 const {
   buildArtifacts: buildLicenseArtifacts,
-  REQUIRED_COMPONENT_CONTRACT
+  REQUIRED_COMPONENT_CONTRACT,
+  STDLIB_LICENSE_SOURCE_PATH,
+  PROJECT_COMPONENT_ID
 } = require('./generate-license-artifacts.js')
 const { assertPackageInputsTracked } = require('./package-input-cleanliness.js')
 const {
@@ -161,11 +163,36 @@ function verifyLayout(names) {
       name.startsWith('std/') ||
       name.includes('/target/') ||
       name.includes('/node_modules/') ||
-      name.includes('/.git/') ||
+      name.split('/').includes('.git') ||
       name.startsWith('runtime/hxrt/tests/')
     ) {
       throw new Error(`development-only archive entry is not allowed: ${name}`)
     }
+  }
+}
+
+/**
+ * Require the SBOM root to describe this compiler rather than whichever editable component came first.
+ *
+ * This check deliberately repeats a few code-owned product facts instead of trusting generated output:
+ * a deterministic candidate and canonical package could otherwise agree on the same false primary
+ * identity. The package's own Haxelib license remains the one source for the project license value.
+ */
+function validateSbomPrimary(sbom, haxelib, version) {
+  const primary = sbom.metadata?.component
+  const expectedPrimaryRef = `pkg:generic/${PROJECT_COMPONENT_ID}@${version}`
+  if (
+    primary?.name !== 'reflaxe.rust' ||
+    primary?.type !== 'application' ||
+    primary?.['bom-ref'] !== expectedPrimaryRef ||
+    primary?.version !== version ||
+    primary?.licenses?.[0]?.license?.id !== haxelib.license ||
+    primary?.externalReferences?.[0]?.url !== 'https://github.com/fullofcaffeine/reflaxe.rust'
+  ) {
+    throw new Error('release SBOM primary component does not identify the reviewed reflaxe.rust package')
+  }
+  if (sbom.dependencies?.[0]?.ref !== expectedPrimaryRef) {
+    throw new Error('release SBOM root dependency does not identify the reviewed reflaxe.rust package')
   }
 }
 
@@ -280,9 +307,7 @@ function verifyReleaseArtifact({
     throw new Error('release SBOM must use CycloneDX 1.6')
   }
   if (!Array.isArray(sbom.components)) throw new Error('release SBOM components must be an array')
-  if (sbom.metadata?.component?.version !== version) {
-    throw new Error('release SBOM package version does not match')
-  }
+  validateSbomPrimary(sbom, haxelib, version)
   for (const componentName of REQUIRED_THIRD_PARTY_COMPONENTS) {
     if (!sbom.components.some((entry) => entry.name === componentName)) {
       throw new Error(`release SBOM must inventory ${componentName}`)
@@ -332,6 +357,9 @@ function verifyReleaseArtifact({
     throw new Error('release SBOM Reflaxe facts contradict the packaged provenance record')
   }
   const stdlibLedger = parseJsonEntry(files, 'provenance/stdlib-provenance-ledger.json')
+  if (stdlibLedger.license?.sourceFile !== STDLIB_LICENSE_SOURCE_PATH) {
+    throw new Error('packaged stdlib source record names an unauthorized license input')
+  }
   const stdlibComponent = componentNamed(
     REQUIRED_COMPONENT_CONTRACT['haxe-standard-library-derived-files'].name
   )
@@ -428,4 +456,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { centralDirectoryEntries, verifyLayout, verifyReleaseArtifact }
+module.exports = { centralDirectoryEntries, validateSbomPrimary, verifyLayout, verifyReleaseArtifact }

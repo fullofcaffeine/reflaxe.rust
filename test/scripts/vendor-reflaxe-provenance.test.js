@@ -256,6 +256,54 @@ function main() {
     writeManifest(reconstruction, reconstructionManifest)
     assert.strictEqual(run(reconstruction, upstream).status, 0, 'synthetic upstream reconstruction must pass')
 
+		for (const [name, withUpstream] of [['quoted-patch-offline', false], ['quoted-patch-upstream', true]]) {
+			const quoted = copyFixture(temp, name)
+			const quotedManifest = readManifest(quoted)
+			quotedManifest.upstream.baseCommit = git(upstream, ['rev-parse', 'HEAD'])
+			const hiddenPath = quotedManifest.localPatch.changedFiles[0]
+			const quotedPatchPath = path.join(quoted, 'vendor', 'reflaxe', 'reflaxe-rust.patch')
+			const quotedPatch = fs.readFileSync(quotedPatchPath, 'utf8').replace(
+				`diff --git a/${hiddenPath} b/${hiddenPath}`,
+				`diff --git "a/${hiddenPath}" "b/${hiddenPath}"`
+			)
+			fs.writeFileSync(quotedPatchPath, quotedPatch)
+			quotedManifest.localPatch.sha256 = crypto.createHash('sha256').update(quotedPatch).digest('hex')
+			quotedManifest.localPatch.changedFiles = quotedManifest.localPatch.changedFiles.filter((file) => file !== hiddenPath)
+			for (const group of quotedManifest.localPatch.changeGroups)
+				group.files = group.files.filter((file) => file !== hiddenPath)
+			writeManifest(quoted, quotedManifest)
+			expectFailure(
+				quoted,
+				/changed-file list does not match the exact patch/,
+				withUpstream ? upstream : null
+			)
+		}
+		for (const [name, withUpstream] of [['quoted-outside-offline', false], ['quoted-outside-upstream', true]]) {
+			const quotedOutside = copyFixture(temp, name)
+			const quotedOutsideManifest = readManifest(quotedOutside)
+			quotedOutsideManifest.upstream.baseCommit = git(upstream, ['rev-parse', 'HEAD'])
+			const quotedOutsidePatchPath = path.join(quotedOutside, 'vendor', 'reflaxe', 'reflaxe-rust.patch')
+			const addition = [
+				'diff --git "a/docs/escaped name.txt" "b/docs/escaped name.txt"',
+				'new file mode 100644',
+				'index 0000000..d95f3ad',
+				'--- /dev/null',
+				'+++ "b/docs/escaped name.txt"',
+				'@@ -0,0 +1 @@',
+				'+outside reviewed surface',
+				''
+			].join('\n')
+			const changedPatch = `${fs.readFileSync(quotedOutsidePatchPath, 'utf8').trimEnd()}\n${addition}`
+			fs.writeFileSync(quotedOutsidePatchPath, changedPatch)
+			quotedOutsideManifest.localPatch.sha256 = crypto.createHash('sha256').update(changedPatch).digest('hex')
+			writeManifest(quotedOutside, quotedOutsideManifest)
+			expectFailure(
+				quotedOutside,
+				/Reflaxe patch file is outside the reviewed Reflaxe source surface: docs\/escaped name\.txt/,
+				withUpstream ? upstream : null
+			)
+		}
+
     const upstreamNarrowed = copyFixture(temp, 'upstream-narrowed')
     const upstreamNarrowedManifest = readManifest(upstreamNarrowed)
     upstreamNarrowedManifest.localPatch.scope = ['src']

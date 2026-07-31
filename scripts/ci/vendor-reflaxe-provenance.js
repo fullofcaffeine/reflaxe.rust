@@ -40,11 +40,36 @@ function filesBelow(directory, prefix = '') {
   return result
 }
 
-function patchChangedFiles(patchText) {
-  return [...patchText.matchAll(/^diff --git a\/(.+?) b\/(.+)$/gm)].map((match) => {
-    if (match[1] !== match[2]) fail(`vendored patch contains a rename: ${match[1]} -> ${match[2]}`)
-    return match[2]
-  })
+/**
+ * Ask Git to decode patch paths instead of interpreting its quoted header syntax here.
+ *
+ * Git's NUL-delimited numstat form preserves spaces, tabs, escapes, additions, and deletions without
+ * depending on `core.quotePath`. A rename or copy uses an empty pathname followed by the old and new
+ * names; this evidence format deliberately rejects those operations so every changed path has one
+ * unambiguous reviewed identity.
+ */
+function patchChangedFiles(patchPath) {
+  const output = execFileSync('git', ['apply', '--numstat', '-z', patchPath], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    maxBuffer: 16 * 1024 * 1024
+  }).toString('utf8')
+  const records = output.split('\0')
+  const files = []
+  for (let index = 0; index < records.length; index += 1) {
+    const record = records[index]
+    if (!record) continue
+    const firstTab = record.indexOf('\t')
+    const secondTab = firstTab < 0 ? -1 : record.indexOf('\t', firstTab + 1)
+    if (firstTab < 1 || secondTab < 0) fail('Git returned malformed numstat data for the vendored patch')
+    const file = record.slice(secondTab + 1)
+    if (!file) {
+      const oldPath = records[index + 1]
+      const newPath = records[index + 2]
+      fail(`vendored patch contains an unsupported rename or copy: ${oldPath} -> ${newPath}`)
+    }
+    files.push(file)
+  }
+  return files
 }
 
 function vendoredTreeDigest(scopes) {
@@ -150,7 +175,8 @@ function main() {
   if (vendoredTreeDigest(RECONSTRUCTION_SCOPE) !== manifest.localPatch.vendoredTreeSha256) {
     fail('vendored Reflaxe source tree digest is stale')
   }
-  const patchFiles = patchChangedFiles(fs.readFileSync(patchPath, 'utf8'))
+  const patchFiles = patchChangedFiles(patchPath)
+  for (const file of patchFiles) requireReviewedReflaxeSourcePath(file, 'patch file')
   if (JSON.stringify(patchFiles) !== JSON.stringify(manifest.localPatch.changedFiles)) {
     fail('vendored Reflaxe changed-file list does not match the exact patch')
   }

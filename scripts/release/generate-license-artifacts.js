@@ -11,8 +11,17 @@ const REQUIRED_COMPONENT_IDS = ['reflaxe-rust', 'reflaxe', 'haxe-standard-librar
 const STDLIB_PACKAGE_EVIDENCE_PATH = 'provenance/stdlib-provenance-ledger.json'
 const REFLAXE_PROVENANCE_PATH = 'vendor/reflaxe/provenance.json'
 const STDLIB_PROVENANCE_PATH = 'docs/stdlib-provenance-ledger.json'
+const STDLIB_LICENSE_SOURCE_PATH = 'docs/licenses/haxe-stdlib-4.3.7-MIT.txt'
+const PROJECT_COMPONENT_ID = 'reflaxe-rust'
 const REQUIRED_COMPONENT_CONTRACT = Object.freeze({
-  'reflaxe-rust': { name: 'reflaxe.rust', kind: 'application' },
+  'reflaxe-rust': {
+    name: 'reflaxe.rust',
+    kind: 'application',
+    versionSource: 'haxelib.json',
+    licenseSource: 'haxelib.json',
+    licenseFile: 'LICENSE',
+    source: 'https://github.com/fullofcaffeine/reflaxe.rust'
+  },
   reflaxe: {
     name: 'Reflaxe',
     kind: 'library',
@@ -38,6 +47,10 @@ function validateRequiredComponentIds(source) {
         throw new Error(`release component ${id} ${field} must be exactly ${expected}`)
       }
     }
+		const matchingNames = source.components.filter((entry) => entry.name === contract.name)
+		if (matchingNames.length !== 1) {
+			throw new Error(`release component inventory must contain exactly one ${contract.name} component`)
+		}
   }
   const stdlib = source.components.find(
     (component) => component.id === 'haxe-standard-library-derived-files'
@@ -106,6 +119,9 @@ function resolveStdlibComponent(component, ledger) {
   if (!ledger.upstreamStdVersion || !ledger.upstreamRepository || !ledger.license?.id) {
     throw new Error('stdlib provenance ledger lacks version, repository, or license facts')
   }
+  if (ledger.license.sourceFile !== STDLIB_LICENSE_SOURCE_PATH) {
+    throw new Error(`stdlib license sourceFile must be exactly ${STDLIB_LICENSE_SOURCE_PATH}`)
+  }
   return {
     ...component,
     version: ledger.upstreamStdVersion,
@@ -142,12 +158,39 @@ function resolvedComponents(source) {
   })
 }
 
+/**
+ * Validate every license byte source before notice generation reads it.
+ *
+ * The component facts may describe the expected digest, but they do not grant filesystem access.
+ * Paths must stay normalized and inside this checkout, and the final path must be a regular file
+ * rather than a symlink to bytes that are absent from the reviewed Git tree. Release preflight then
+ * independently proves that the same path is stored as a regular Git blob.
+ */
 function validateLicenseFiles(components) {
   for (const component of components) {
     const licenseSourceFile = component.licenseSourceFile || component.licenseFile
     if (!licenseSourceFile || !component.licenseSha256) continue
-    const licensePath = path.join(root, licenseSourceFile)
+    if (
+      path.isAbsolute(licenseSourceFile) ||
+      /^[A-Za-z]:/.test(licenseSourceFile) ||
+      licenseSourceFile.includes('\\') ||
+      path.posix.normalize(licenseSourceFile) !== licenseSourceFile ||
+      licenseSourceFile.split('/').some((segment) => segment === '.' || segment === '..' || segment === '')
+    ) {
+      throw new Error(`license source path is not a normalized repository-relative file: ${licenseSourceFile}`)
+    }
+    const licensePath = path.resolve(root, ...licenseSourceFile.split('/'))
+    const rootPrefix = `${fs.realpathSync(root)}${path.sep}`
+    if (!licensePath.startsWith(rootPrefix)) {
+      throw new Error(`license source is outside the reviewed repository: ${licenseSourceFile}`)
+    }
     if (!fs.existsSync(licensePath)) throw new Error(`license source is missing: ${licenseSourceFile}`)
+    if (!fs.lstatSync(licensePath).isFile()) {
+      throw new Error(`license source must be a regular reviewed file: ${licenseSourceFile}`)
+    }
+    if (!fs.realpathSync(licensePath).startsWith(rootPrefix)) {
+      throw new Error(`license source resolves outside the reviewed repository: ${licenseSourceFile}`)
+    }
     if (sha256Text(fs.readFileSync(licensePath)) !== component.licenseSha256) {
       throw new Error(`license source digest is stale: ${licenseSourceFile}`)
     }
@@ -204,8 +247,8 @@ function componentToCyclone(component, version) {
   }
 }
 
-function buildArtifacts(version) {
-  const source = JSON.parse(fs.readFileSync(path.join(root, 'docs', 'release-package-components.json'), 'utf8'))
+function buildArtifacts(version, source = null) {
+  source = source || JSON.parse(fs.readFileSync(path.join(root, 'docs', 'release-package-components.json'), 'utf8'))
   validateRequiredComponentIds(source)
   const releaseComponents = resolvedComponents(source)
   validateLicenseFiles(releaseComponents)
@@ -234,19 +277,23 @@ function buildArtifacts(version) {
     }
   })
   const components = releaseComponents.map((component) => componentToCyclone(component, version))
+  const primaryIndex = releaseComponents.findIndex((component) => component.id === PROJECT_COMPONENT_ID)
+  if (primaryIndex < 0) throw new Error(`release component inventory is missing required component: ${PROJECT_COMPONENT_ID}`)
+  const primary = components[primaryIndex]
+  const included = components.filter((_component, index) => index !== primaryIndex)
   const sbom = {
     $schema: 'https://cyclonedx.org/schema/bom-1.6.schema.json',
     bomFormat: 'CycloneDX',
     specVersion: '1.6',
     version: 1,
-    metadata: { component: components[0] },
-    components: [...components.slice(1), ...dependencies],
+    metadata: { component: primary },
+    components: [...included, ...dependencies],
     dependencies: [
       {
-        ref: components[0]['bom-ref'],
-        dependsOn: [...components.slice(1), ...dependencies].map((component) => component['bom-ref'])
+        ref: primary['bom-ref'],
+        dependsOn: [...included, ...dependencies].map((component) => component['bom-ref'])
       },
-      ...[...components.slice(1), ...dependencies].map((component) => ({
+      ...[...included, ...dependencies].map((component) => ({
         ref: component['bom-ref'],
         dependsOn: []
       }))
@@ -293,5 +340,7 @@ module.exports = {
   REQUIRED_COMPONENT_CONTRACT,
   REFLAXE_PROVENANCE_PATH,
   STDLIB_PROVENANCE_PATH,
-  STDLIB_PACKAGE_EVIDENCE_PATH
+  STDLIB_PACKAGE_EVIDENCE_PATH,
+  STDLIB_LICENSE_SOURCE_PATH,
+  PROJECT_COMPONENT_ID
 }

@@ -38,6 +38,7 @@ function requireReviewedReflaxeSourcePath(value, label = 'changed file') {
   requireNonEmptyString(value, `Reflaxe ${label}`)
   if (
     value.includes('\\') ||
+		/[\u0000-\u001f\u007f]/.test(value) ||
     path.posix.isAbsolute(value) ||
     /^[A-Za-z]:/.test(value) ||
     path.posix.normalize(value) !== value ||
