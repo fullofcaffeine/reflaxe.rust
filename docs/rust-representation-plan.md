@@ -76,15 +76,19 @@ reads still use `get<T>`; a field declared `Dynamic` uses `get_dyn`. Anonymous-o
 field assignments, and constant-name `Reflect.setField` therefore follow the same checked route as
 parameters, returns, and ordinary fields.
 
-One combination is rejected deliberately: a concretely typed anonymous field may not be declared
-`rust.Ref<T>` or `Null<rust.Ref<T>>`. This includes an ordinary non-core Haxe abstract backed by
-either form, because normal abstracts disappear during Rust generation and use their backing type.
+One combination is rejected deliberately: a concretely typed anonymous field may not use a scoped
+Rust borrow carrier: `rust.Ref<T>`, `rust.MutRef<T>`, `rust.Slice<T>`, `rust.MutSlice<T>`, or
+`rust.Str`, including nullable forms. This also applies when an ordinary non-core Haxe abstract wraps
+the field or the complete record, because normal abstracts disappear during Rust generation and use
+their backing type.
 The runtime object owns values and reads them back by their exact stored Rust type. Saving owned `T`
 would not match a later typed read of `&T`, while saving the short-lived `&T` would let the borrow
 escape its callback.
 
 The compiler uses one applied-type-aware recognizer for representation decisions and early
-borrow-escape checks. It opens lazy types, typedefs, `Null`, and ordinary abstracts, but stops at
+borrow-escape checks. It opens lazy types, typedefs, `Null`, and ordinary abstracts without imposing
+an arbitrary nesting limit. Active-type cycle detection terminates recursive owned types without
+mistaking a deeply nested borrow for an owned value. The walk stops at
 unrelated `@:coreType` abstracts because those require explicit compiler mappings rather than a
 general backing-type rule. The compiler validates the complete anonymous-record declaration when a
 record value is created or converted to `Dynamic`, including `@:optional` fields omitted from a

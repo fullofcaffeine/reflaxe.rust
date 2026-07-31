@@ -1,35 +1,61 @@
 import rust.Borrow;
 
+#if carrier_mut_ref
+private typedef DirectBorrowedValue = rust.MutRef<Int>;
+#elseif carrier_mut_slice
+private typedef DirectBorrowedValue = rust.MutSlice<Int>;
+#elseif carrier_slice
+private typedef DirectBorrowedValue = rust.Slice<Int>;
+#elseif carrier_str
+private typedef DirectBorrowedValue = rust.Str;
+#else
+private typedef DirectBorrowedValue = rust.Ref<String>;
+#end
+
 #if abstract_wrapper
-private abstract BorrowedAlias<T>(rust.Ref<T>) from rust.Ref<T> to rust.Ref<T> {}
+private abstract BorrowedAlias(DirectBorrowedValue) from DirectBorrowedValue to DirectBorrowedValue {}
 #end
 
 #if abstract_wrapper
 #if nullable
-private typedef BorrowedValue = Null<BorrowedAlias<String>>;
+private typedef BorrowedValue = Null<BorrowedAlias>;
 #else
-private typedef BorrowedValue = BorrowedAlias<String>;
+private typedef BorrowedValue = BorrowedAlias;
 #end
 #else
 #if nullable
-private typedef BorrowedValue = Null<rust.Ref<String>>;
+private typedef BorrowedValue = Null<DirectBorrowedValue>;
 #else
-private typedef BorrowedValue = rust.Ref<String>;
+private typedef BorrowedValue = DirectBorrowedValue;
 #end
 #end
 
 #if optional
-private typedef BorrowedHolder = {
-	@:optional var value:BorrowedValue;
+private typedef BorrowedHolderShape<T> = {
+	@:optional var value:T;
 }
 #else
-private typedef BorrowedHolder = {
-	var value:BorrowedValue;
+private typedef BorrowedHolderShape<T> = {
+	var value:T;
 }
 #end
 
+#if outer_record_abstract
+@:forward(value)
+private abstract BorrowedHolderCarrier<T>(BorrowedHolderShape<T>) from BorrowedHolderShape<T> to BorrowedHolderShape<T> {}
+private typedef BorrowedHolder = BorrowedHolderCarrier<BorrowedValue>;
+#else
+private typedef BorrowedHolder = BorrowedHolderShape<BorrowedValue>;
+#end
+
 class Main {
-	#if operation_dynamic_control
+	#if operation_typed_read
+	static function main():Void {
+		var typedReadHolder:BorrowedHolder = {};
+		var readBack = typedReadHolder.value;
+		if (readBack == null) {}
+	}
+	#elseif operation_dynamic_control
 	static function write(holder:BorrowedHolder, borrowed:rust.Ref<String>, flag:Bool):Void {
 		var erased:Dynamic = flag ? holder : holder;
 		Reflect.setField(erased, "value", borrowed);
@@ -38,7 +64,11 @@ class Main {
 	static function main():Void {}
 	#elseif (operation_runtime_reflect || operation_dynamic_reflect)
 	static function main():Void {
+		#if outer_record_abstract
+		var holder:BorrowedHolder = haxe.Json.parse("{}");
+		#else
 		var holder:BorrowedHolder = {};
+		#end
 		var fieldName = "value";
 		var label = "temporary";
 		Borrow.withRef(label, borrowed -> {

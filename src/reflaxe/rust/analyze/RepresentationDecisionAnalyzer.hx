@@ -158,6 +158,13 @@ class RepresentationDecisionAnalyzer {
 		function addCrossing(modulePath:String, label:String, actual:TypedExpr, expected:Type, ?relatedModulePath:String):Void {
 			if (actual == null || expected == null)
 				return;
+			// Validate the destination record while its declared field shape is still available. This covers
+			// values decoded from Dynamic into an ordinary abstract around an anonymous record; waiting for a
+			// later reflection call would report the mutation rather than the first unsupported materialization.
+			if (RepresentationTypeAnalyzer.classify(expected, nullableStringCompat, classHasSubclasses)
+				== RustSourceValueKind.SourceAnonymousObject
+				&& rejectAnonymousBorrowedShape(expected, actual))
+				return;
 			var actualCore = unwrapMetaParen(actual);
 			switch (actualCore.expr) {
 				case TFunction(_):

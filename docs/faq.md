@@ -347,14 +347,16 @@ types, including `Int` fields returned from helpers or decoded from `haxe.json.V
 Omitted `@:optional` fields also work: generated Rust checks whether the runtime anonymous object has
 the key and returns the field type's Haxe null representation when it is absent.
 
-Anonymous fields declared as `rust.Ref<T>` or `Null<rust.Ref<T>>` are rejected because these
-references are valid only inside their scoped callback, while a runtime anonymous record owns its
-fields. The same rule applies when a normal Haxe abstract uses one of those references as its backing
-type: the abstract disappears in generated Rust, so it cannot make the reference live longer. The
-compiler follows typedef parameters, `Null`, and ordinary non-core abstracts, then checks every
-declared field—including an `@:optional` field omitted from the literal—before the record is created
-or converted to `Dynamic`. It does not blindly open unrelated `@:coreType` abstracts, whose backing
-representation is compiler-defined.
+Anonymous fields declared with a scoped Rust borrow—`rust.Ref<T>`, `rust.MutRef<T>`, `rust.Slice<T>`,
+`rust.MutSlice<T>`, or `rust.Str`, including nullable forms—are rejected because those references are
+valid only inside their callback, while a runtime anonymous record owns its fields. The same rule
+applies when a normal Haxe abstract wraps the borrowed field or the complete record: the abstract
+disappears in generated Rust, so it cannot make the reference live longer. The compiler follows
+applied typedef parameters, `Null`, and ordinary non-core abstracts, then checks every declared
+field—including an `@:optional` field omitted from the literal—before the record is created or
+converted to `Dynamic`. The check uses cycle detection rather than a fixed nesting limit, so deeply
+nested borrowed types cannot pass merely because analysis stopped early. It does not blindly open
+unrelated `@:coreType` abstracts, whose backing representation is compiler-defined.
 
 This complete check prevents runtime-name reflection and writes through a `Dynamic` alias from
 bypassing the rule after the field declaration is no longer visible. A direct write points to the

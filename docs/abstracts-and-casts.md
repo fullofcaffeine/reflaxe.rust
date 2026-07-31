@@ -12,6 +12,9 @@ Practical impact:
 - `enum abstract Color(Int)` compiles to Rust `i32`
 - `abstract BorrowedAlias<T>(rust.Ref<T>)` still compiles to Rust `&T` and keeps the same scoped-borrow
   restrictions as `rust.Ref<T>`; the abstract name does not turn it into owned storage
+- an ordinary abstract around a complete anonymous record also keeps the record's real field
+  carriers, so it cannot hide a scoped `Ref`, `MutRef`, `Slice`, `MutSlice`, or `Str` field from the
+  early lifetime check
 - `@:from` / `@:to` affect typing, but runtime code usually becomes:
   - a cast (`as`) for numeric conversions, or
   - a static helper call (`*_Impl_`), depending on how Haxe lowers the operation
