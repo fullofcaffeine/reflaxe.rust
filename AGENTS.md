@@ -63,14 +63,14 @@ Agent policy:
 - If a claimed bead has no `thinking:*` label, infer one immediately and add it before substantial work.
 - `thinking:xhigh` should get a second-pass review before closure.
   - Preferred: an Oracle checkpoint/review.
-    - Default Oracle workflow: prepare a detailed prompt for GPT-5.5 Pro in the web UI, including the review questions, relevant file paths, Beads IDs/commands, and any repo bundles to upload (for example a repomix archive). Give that prompt to the user to paste, wait for the user to paste the reply back, then incorporate the findings.
+    - Use the globally installed `$oracle-review` skill for the rare manual GPT-5.6 Pro handoff. It owns the detailed prompt, sanitized Repomix bundle, checked ZIP, pending-request check, and archive lifecycle under `/tmp/oracle`. Public source and install instructions: https://github.com/fullofcaffeine/caf-skills/tree/main/skills/oracle-review
     - Oracle bundle completeness gotcha: do not assume a Repomix/archive command included tracked,
       vendored, hidden, lock, license, generated-consumer, or release-artifact files merely because
       they were requested in the prompt. Before handoff, inspect the archive inventory and record
       the reviewed commit plus artifact names/sizes/digests. Treat a reviewer report that a requested
       file was absent as an evidence-bundle omission until the repository and hosted artifact are
       checked independently; do not create a fake product defect from an upload omission.
-    - Do not use a subagent for Oracle-style review unless the user explicitly asks for one.
+    - The human hands the package to Oracle and pastes the response back. Do not use a subagent as a substitute for that manual review unless the user explicitly asks for one.
   - Acceptable fallback: an explicit written second-pass design review recorded in the bead comments.
 - Oracle is a review/escalation tool for `thinking:xhigh`; it is not a substitute for implementation, tests, or CI evidence.
 
