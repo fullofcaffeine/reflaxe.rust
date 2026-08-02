@@ -39,24 +39,26 @@ src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:382
 src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:389
 src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:497
 src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:110
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:239
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:465
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:473
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:609
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:621
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:644
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:646
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:654
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:656
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:660
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:664
-src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:683
-src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:158
-src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:184
-src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:189
-src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:193
-src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:195
-src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:575
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:260
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:486
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:494
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:630
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:642
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:665
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:667
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:675
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:677
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:681
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:685
+src/reflaxe/rust/analyze/RepresentationDecisionAnalyzer.hx:704
+src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:153
+src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:164
+src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:301
+src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:327
+src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:332
+src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:336
+src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:338
+src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:745
 src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:118
 src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:149
 src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:153
@@ -84,8 +86,8 @@ test/compiler/RustRepresentationTypeContractMacro.hx # FILE_SCOPE_JUSTIFICATION:
 test/compiler/RustRepresentationTypeFixture.hx # FILE_SCOPE_JUSTIFICATION: Typed fixture deliberately supplies Dynamic fields, arguments, and results for representation-analysis contracts.
 test/negative/representation_borrow_dynamic_unsupported/GenericBorrow.hx # FILE_SCOPE_JUSTIFICATION: Negative fixture deliberately asks an unbounded borrowed generic value to cross into Dynamic and checks the exact compiler error.
 test/negative/representation_borrow_dynamic_unsupported/NativeBorrow.hx # FILE_SCOPE_JUSTIFICATION: Negative fixture deliberately asks a borrowed native handle to cross into Dynamic and checks the exact compiler error.
-test/negative/representation_anonymous_borrowed_field/Main.hx:60
-test/negative/representation_anonymous_borrowed_field/Main.hx:78
+test/negative/representation_anonymous_borrowed_field/Main.hx:74
+test/negative/representation_anonymous_borrowed_field/Main.hx:92
 test/negative/representation_dynamic_crossings/CrossModuleBoundary.hx # FILE_SCOPE_JUSTIFICATION: Focused fixture deliberately repeats Dynamic defaults and read-only values across module boundaries to test saved-decision replay.
 test/negative/representation_dynamic_crossings/Main.hx # FILE_SCOPE_JUSTIFICATION: Focused fixture deliberately exercises every supported Dynamic storage and conversion site plus repeated emission and unreachable-code cases.
 test/negative/representation_no_hxrt_platform_position/ExternalCastCalls.hx # FILE_SCOPE_JUSTIFICATION: Negative fixture deliberately uses Dynamic only in cast-wrapped Type and Reflect signatures to prove exact early no-hxrt operation errors.

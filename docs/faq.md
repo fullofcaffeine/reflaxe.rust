@@ -354,8 +354,10 @@ applies when a normal Haxe abstract wraps the borrowed field or the complete rec
 disappears in generated Rust, so it cannot make the reference live longer. The compiler follows
 applied typedef parameters, `Null`, and ordinary non-core abstracts, then checks every declared
 field—including an `@:optional` field omitted from the literal—before the record is created or
-converted to `Dynamic`. The check uses cycle detection rather than a fixed nesting limit, so deeply
-nested borrowed types cannot pass merely because analysis stopped early. It does not blindly open
+converted to `Dynamic`. It also checks scoped borrows retained inside array elements, function
+arguments/results, and class or enum type parameters, because those types remain present in generated
+Rust. Cycle detection uses real typed declaration identity and applied arguments rather than display
+text, so bound monomorphs and lazy wrappers cannot look like false cycles. It does not blindly open
 unrelated `@:coreType` abstracts, whose backing representation is compiler-defined.
 
 This complete check prevents runtime-name reflection and writes through a `Dynamic` alias from

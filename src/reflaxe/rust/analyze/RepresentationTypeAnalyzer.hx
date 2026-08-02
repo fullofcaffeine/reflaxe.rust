@@ -1,5 +1,6 @@
 package reflaxe.rust.analyze;
 
+import haxe.ds.ObjectMap;
 import haxe.macro.Context;
 import haxe.macro.Expr.Position;
 import haxe.macro.Type;
@@ -27,6 +28,148 @@ private enum RustBorrowTypeMatch {
 	BorrowMatchSlice(valueType:Type);
 	BorrowMatchMutSlice(valueType:Type);
 	BorrowMatchStr;
+}
+
+private enum RustTypeDefinitionVisit {
+	VisitEntered(key:String);
+	VisitExactCycle;
+	VisitChangingCycle;
+}
+
+private enum RustStoredBorrowInspection {
+	StoredOwned;
+	StoredBorrowed;
+	StoredUnsupportedRecursive;
+}
+
+/**
+	Tracks real typed-node and declaration identity during one type walk.
+
+	Why
+	- `TypeTools.toString` is display text, not identity: a resolved monomorph or lazy node prints like
+	  its child, while a recursive generic can keep changing its printed arguments forever.
+	- Early safety checks must terminate without calling an unresolved or changing recursive type owned.
+
+	What
+	- Uses stable declaration identity for named Haxe definitions and request-local identity only for
+	  anonymous or unresolved typed nodes.
+	- Records the complete applied-argument graph for definitions that analysis opens.
+
+	How
+	- Re-entering the same definition with the same arguments is an ordinary recursive cycle.
+	- Re-entering it with different arguments is parameter-growing recursion and remains unsupported at
+	  a borrow-safety boundary.
+**/
+private class RustTypeTraversalState {
+	final objectIds:ObjectMap<{}, Int> = new ObjectMap();
+	final activeDefinitions:Map<String, String> = [];
+	final activeNodes:ObjectMap<{}, Bool> = new ObjectMap();
+	var nextObjectId:Int = 1;
+
+	public function new() {}
+
+	public function enterNode(type:Type):Bool {
+		var node:{} = cast type;
+		if (activeNodes.exists(node))
+			return false;
+		activeNodes.set(node, true);
+		return true;
+	}
+
+	public function leaveNode(type:Type):Void {
+		activeNodes.remove(cast type);
+	}
+
+	public function enterDefinition(key:String, parameters:Array<Type>):RustTypeDefinitionVisit {
+		var signature = typeListFingerprint(parameters, new ObjectMap());
+		var previous = activeDefinitions.get(key);
+		if (previous != null)
+			return previous == signature ? VisitExactCycle : VisitChangingCycle;
+		activeDefinitions.set(key, signature);
+		return VisitEntered(key);
+	}
+
+	public function leaveDefinition(key:String):Void {
+		activeDefinitions.remove(key);
+	}
+
+	public function typeFingerprint(type:Type):String {
+		return fingerprint(type, new ObjectMap());
+	}
+
+	public function inventoryIdentity(type:Type):String {
+		if (type == null)
+			return "null";
+		return switch (type) {
+			case TMono(monomorphRef): "mono-node:" + objectId(monomorphRef);
+			case TLazy(_): "lazy-node:" + objectId(cast type);
+			case TAnonymous(anonymousRef):
+				var anonymous = anonymousRef.get();
+				"anonymous-node:" + objectId(anonymous == null ? cast anonymousRef : cast anonymous);
+			case _: typeFingerprint(type);
+		};
+	}
+
+	public static function namedDefinitionKey(kind:String, module:String, pack:Array<String>, name:String):String {
+		return kind + ":" + (module == null ? "" : module) + ":" + (pack == null ? "" : pack.join(".")) + ":" + name;
+	}
+
+	function typeListFingerprint(types:Array<Type>, visiting:ObjectMap<{}, Bool>):String {
+		if (types == null || types.length == 0)
+			return "[]";
+		return "[" + [for (type in types) fingerprint(type, visiting)].join(",") + "]";
+	}
+
+	function fingerprint(type:Type, visiting:ObjectMap<{}, Bool>):String {
+		if (type == null)
+			return "null";
+		var node:{} = cast type;
+		if (visiting.exists(node))
+			return "node-cycle:" + objectId(node);
+		visiting.set(node, true);
+		var result = switch (type) {
+			case TMono(monomorphRef):
+				var resolved = monomorphRef.get();
+				resolved == null ? "mono:" + objectId(monomorphRef) : fingerprint(resolved, visiting);
+			case TLazy(resolve):
+				fingerprint(resolve(), visiting);
+			case TType(typeRef, parameters):
+				var definition = typeRef.get();
+				(definition == null ? "typedef-ref:" + objectId(typeRef) : namedDefinitionKey("typedef", definition.module, definition.pack, definition.name))
+					+ typeListFingerprint(parameters, visiting);
+			case TAbstract(abstractRef, parameters):
+				var definition = abstractRef.get();
+				(definition == null ? "abstract-ref:" + objectId(abstractRef) : namedDefinitionKey("abstract", definition.module, definition.pack, definition.name))
+					+ typeListFingerprint(parameters, visiting);
+			case TInst(classRef, parameters):
+				var definition = classRef.get();
+				(definition == null ? "class-ref:" + objectId(classRef) : namedDefinitionKey("class", definition.module, definition.pack, definition.name))
+					+ typeListFingerprint(parameters, visiting);
+			case TEnum(enumRef, parameters):
+				var definition = enumRef.get();
+				(definition == null ? "enum-ref:" + objectId(enumRef) : namedDefinitionKey("enum", definition.module, definition.pack, definition.name))
+					+ typeListFingerprint(parameters, visiting);
+			case TAnonymous(anonymousRef):
+				"anonymous:" + objectId(anonymousRef.get() == null ? (cast anonymousRef : Dynamic) : (cast anonymousRef.get() : Dynamic));
+			case TFun(arguments, resultType):
+				"function:[" + [for (argument in arguments) fingerprint(argument.t, visiting)].join(",") + "]->"
+					+ fingerprint(resultType, visiting);
+			case TDynamic(inner):
+				"dynamic:" + (inner == null ? "none" : fingerprint(inner, visiting));
+		};
+		visiting.remove(node);
+		return result;
+	}
+
+	function objectId(value:Dynamic):Int {
+		var object:{} = cast value;
+		var existing = objectIds.get(object);
+		if (existing != null)
+			return existing;
+		var assigned = nextObjectId++;
+		objectIds.set(object, assigned);
+		return assigned;
+	}
 }
 
 /**
@@ -314,7 +457,23 @@ class RepresentationTypeAnalyzer {
 	**/
 	@:allow(reflaxe.rust.analyze.BorrowRegionAnalyzer)
 	static function containsBorrowOnlyType(type:Type):Bool {
-		return containsBorrowOnlyTypeRecursive(type, []);
+		return containsBorrowOnlyTypeRecursive(type, new RustTypeTraversalState());
+	}
+
+	/**
+		Creates one identity function for a complete representation inventory walk.
+
+		Why / What / How
+		- Request-local anonymous, monomorph, and lazy identities are meaningful only when every node in the
+		  same walk shares the allocator that issued them.
+		- A transparent wrapper deliberately has a different inventory key from its resolved child so the
+		  child still contributes its structural type arguments and fields.
+		- Named types retain a structural declaration-plus-arguments key; display text is never used.
+	**/
+	@:allow(reflaxe.rust.analyze.RepresentationDecisionAnalyzer)
+	static function traversalIdentityFactory():Type->String {
+		var state = new RustTypeTraversalState();
+		return type -> state.inventoryIdentity(type);
 	}
 
 	/**
@@ -337,11 +496,19 @@ class RepresentationTypeAnalyzer {
 		  lifetime; this compiler does not pretend that an owned clone is still a scoped reference.
 	**/
 	public static function anonymousBorrowedFieldRejectionReason(type:Type):Null<String> {
-		if (type == null || borrowTypeMatch(type) == null)
+		if (type == null)
 			return null;
-		return "runtime anonymous objects cannot safely expose this scoped Rust borrow field: storing the reference would let a "
-			+ "short-lived borrow escape, while storing an owned value would no longer match the declared borrowed type. "
-			+ "Store an owned value instead.";
+		return switch (inspectStoredBorrow(type, new RustTypeTraversalState())) {
+			case StoredOwned:
+				null;
+			case StoredBorrowed:
+				"runtime anonymous objects cannot safely expose this scoped Rust borrow field: storing the reference would let a "
+				+ "short-lived borrow escape, while storing an owned value would no longer match the declared borrowed type. "
+				+ "Store an owned value instead.";
+			case StoredUnsupportedRecursive:
+				"runtime anonymous objects cannot safely prove the stored Rust type for this parameter-changing recursive field. "
+				+ "Use a finite owned field type instead.";
+		};
 	}
 
 	/**
@@ -368,7 +535,7 @@ class RepresentationTypeAnalyzer {
 	public static function anonymousBorrowedField(type:Type):Null<ClassField> {
 		if (type == null)
 			return null;
-		var anonymous = transparentAnonymousBacking(type, []);
+		var anonymous = transparentAnonymousBacking(type, new RustTypeTraversalState());
 		if (anonymous == null || anonymous.fields == null || isIteratorAnonymous(anonymous))
 			return null;
 		var fields = anonymous.fields.copy();
@@ -547,7 +714,10 @@ class RepresentationTypeAnalyzer {
 		return sourceKind(unwrapAliasesAndNull(type).type, nullableStringCompat, classHasSubclasses);
 	}
 
-	static function sourceKind(type:Type, nullableStringCompat:Bool, classHasSubclasses:Null<ClassType->Bool>):Null<RustSourceValueKind> {
+	static function sourceKind(type:Type, nullableStringCompat:Bool, classHasSubclasses:Null<ClassType->Bool>,
+			?state:RustTypeTraversalState):Null<RustSourceValueKind> {
+		if (state == null)
+			state = new RustTypeTraversalState();
 		if (TypeHelper.isBool(type) || TypeHelper.isInt(type) || TypeHelper.isFloat(type))
 			return SourceScalar;
 		if (isString(type))
@@ -579,19 +749,17 @@ class RepresentationTypeAnalyzer {
 						return SourceCoreHandle;
 					return null;
 				}
-				var followedAbstract = followType(type);
-				var remainsSameAbstract = switch (followedAbstract) {
-					case TAbstract(followedRef, _):
-						var followedType = followedRef.get();
-						followedType != null && typePath(followedType.pack, followedType.name) == path;
-					case _: false;
+				return switch (state.enterDefinition(RustTypeTraversalState.namedDefinitionKey("abstract", abstractType.module, abstractType.pack, abstractType.name), parameters)) {
+					case VisitEntered(key):
+						var underlying = abstractType.type;
+						if (abstractType.params != null && abstractType.params.length > 0 && parameters.length == abstractType.params.length)
+							underlying = TypeTools.applyTypeParameters(underlying, abstractType.params, parameters);
+						var result = sourceKind(unwrapAliasesAndNull(underlying).type, nullableStringCompat, classHasSubclasses, state);
+						state.leaveDefinition(key);
+						result;
+					case VisitExactCycle | VisitChangingCycle:
+						null;
 				};
-				if (!remainsSameAbstract)
-					return sourceKind(unwrapAliasesAndNull(followedAbstract).type, nullableStringCompat, classHasSubclasses);
-				var underlying = abstractType.type;
-				if (abstractType.params != null && abstractType.params.length > 0 && parameters.length == abstractType.params.length)
-					underlying = TypeTools.applyTypeParameters(underlying, abstractType.params, parameters);
-				return sourceKind(unwrapAliasesAndNull(underlying).type, nullableStringCompat, classHasSubclasses);
 			case _:
 		}
 
@@ -599,7 +767,8 @@ class RepresentationTypeAnalyzer {
 			case TFun(_, _):
 				SourceFunctionValue;
 			case TAnonymous(anonymousRef):
-				isIteratorAnonymous(anonymousRef.get()) ? SourceIterator : SourceAnonymousObject;
+				var anonymous = anonymousRef.get();
+				if (anonymous == null) null else if (isIteratorAnonymous(anonymous)) SourceIterator else if (isRuntimeAnonymous(anonymous)) SourceAnonymousObject else SourceCoreHandle;
 			case TEnum(enumRef, _):
 				var enumType = enumRef.get();
 				if (enumType == null) null else if (isPortableFacade(typePath(enumType.pack, enumType.name))) SourcePortableFacade else SourceEnumValue;
@@ -626,7 +795,7 @@ class RepresentationTypeAnalyzer {
 			case TDynamic(_): SourceDynamic;
 			case TMono(monomorphRef):
 				var resolved = monomorphRef.get();
-				resolved == null ? null : sourceKind(unwrapAliasesAndNull(resolved).type, nullableStringCompat, classHasSubclasses);
+				resolved == null ? null : sourceKind(unwrapAliasesAndNull(resolved).type, nullableStringCompat, classHasSubclasses, state);
 			case _: null;
 		};
 	}
@@ -746,35 +915,46 @@ class RepresentationTypeAnalyzer {
 		  stopping analysis at a fixed depth would let the two stages disagree about whether a value borrows.
 		- Recognize the five compiler-owned borrow carriers before opening ordinary wrappers, and preserve
 		  the applied type arguments used by the concrete source program.
-		- Track each active instantiated type spelling only along the current path. Reaching the same active
-		  spelling means a real cycle; sibling uses are removed from the set and remain independently checked.
+		- Resolve monomorph/lazy wrappers before comparing real declaration identity and applied arguments.
+		  Human-readable type text is used only in diagnostics, never as cycle identity.
 	**/
 	static function borrowTypeMatch(type:Type):Null<RustBorrowTypeMatch> {
-		return borrowTypeMatchRecursive(type, []);
+		return borrowTypeMatchRecursive(type, new RustTypeTraversalState());
 	}
 
-	static function borrowTypeMatchRecursive(type:Type, active:Map<String, Bool>):Null<RustBorrowTypeMatch> {
+	static function borrowTypeMatchRecursive(type:Type, state:RustTypeTraversalState):Null<RustBorrowTypeMatch> {
 		if (type == null)
 			return null;
-		var key = TypeTools.toString(type);
-		if (active.exists(key))
-			return null;
-		active.set(key, true);
-		var result = switch (type) {
+		return switch (type) {
 			case TMono(monomorphRef):
+				if (!state.enterNode(type))
+					return null;
 				var resolved = monomorphRef.get();
-				resolved == null ? null : borrowTypeMatchRecursive(resolved, active);
+				var result = resolved == null ? null : borrowTypeMatchRecursive(resolved, state);
+				state.leaveNode(type);
+				result;
 			case TLazy(resolve):
-				borrowTypeMatchRecursive(resolve(), active);
+				if (!state.enterNode(type))
+					return null;
+				var result = borrowTypeMatchRecursive(resolve(), state);
+				state.leaveNode(type);
+				result;
 			case TType(typeRef, parameters):
 				var typedefType = typeRef.get();
 				if (typedefType == null) {
 					null;
 				} else {
-					var underlying = typedefType.type;
-					if (typedefType.params != null && typedefType.params.length > 0 && parameters.length == typedefType.params.length)
-						underlying = TypeTools.applyTypeParameters(underlying, typedefType.params, parameters);
-					borrowTypeMatchRecursive(underlying, active);
+					switch (state.enterDefinition(RustTypeTraversalState.namedDefinitionKey("typedef", typedefType.module, typedefType.pack, typedefType.name), parameters)) {
+						case VisitEntered(key):
+							var underlying = typedefType.type;
+							if (typedefType.params != null && typedefType.params.length > 0 && parameters.length == typedefType.params.length)
+								underlying = TypeTools.applyTypeParameters(underlying, typedefType.params, parameters);
+							var result = borrowTypeMatchRecursive(underlying, state);
+							state.leaveDefinition(key);
+							result;
+						case VisitExactCycle | VisitChangingCycle:
+							null;
+					}
 				}
 			case TAbstract(abstractRef, parameters):
 				var abstractType = abstractRef.get();
@@ -794,100 +974,243 @@ class RepresentationTypeAnalyzer {
 						case "rust.Str" if (parameters.length == 0):
 							BorrowMatchStr;
 						case _ if (abstractType.module == "StdTypes" && abstractType.name == "Null" && parameters.length == 1):
-							borrowTypeMatchRecursive(parameters[0], active);
+							borrowTypeMatchRecursive(parameters[0], state);
 						case _ if (abstractType.meta != null && abstractType.meta.has(":coreType")):
 							null;
 						case _:
-							var underlying = abstractType.type;
-							if (abstractType.params != null
-								&& abstractType.params.length > 0
-								&& parameters.length == abstractType.params.length)
-								underlying = TypeTools.applyTypeParameters(underlying, abstractType.params, parameters);
-							borrowTypeMatchRecursive(underlying, active);
+							switch (state.enterDefinition(RustTypeTraversalState.namedDefinitionKey("abstract", abstractType.module, abstractType.pack, abstractType.name), parameters)) {
+								case VisitEntered(key):
+									var underlying = abstractType.type;
+									if (abstractType.params != null
+										&& abstractType.params.length > 0
+										&& parameters.length == abstractType.params.length)
+										underlying = TypeTools.applyTypeParameters(underlying, abstractType.params, parameters);
+									var result = borrowTypeMatchRecursive(underlying, state);
+									state.leaveDefinition(key);
+									result;
+								case VisitExactCycle | VisitChangingCycle:
+									null;
+							}
 					}
 				}
 			case _:
 				null;
 		};
-		active.remove(key);
-		return result;
 	}
 
-	static function containsBorrowOnlyTypeRecursive(type:Type, active:Map<String, Bool>):Bool {
+	static function inspectStoredBorrow(type:Type, state:RustTypeTraversalState):RustStoredBorrowInspection {
 		if (type == null)
-			return false;
-		if (borrowTypeMatch(type) != null)
-			return true;
-		var key = TypeTools.toString(type);
-		if (active.exists(key))
-			return false;
-		active.set(key, true);
-
-		var result = switch (type) {
+			return StoredOwned;
+		return switch (type) {
 			case TMono(monomorphRef):
+				if (!state.enterNode(type))
+					return StoredUnsupportedRecursive;
 				var resolved = monomorphRef.get();
-				resolved != null && containsBorrowOnlyTypeRecursive(resolved, active);
+				var result = resolved == null ? StoredUnsupportedRecursive : inspectStoredBorrow(resolved, state);
+				state.leaveNode(type);
+				result;
 			case TLazy(resolve):
-				containsBorrowOnlyTypeRecursive(resolve(), active);
+				if (!state.enterNode(type))
+					return StoredUnsupportedRecursive;
+				var result = inspectStoredBorrow(resolve(), state);
+				state.leaveNode(type);
+				result;
 			case TType(typeRef, parameters):
 				var typedefType = typeRef.get();
 				if (typedefType == null) {
-					false;
+					StoredUnsupportedRecursive;
 				} else {
-					var underlying = typedefType.type;
-					if (typedefType.params != null && typedefType.params.length > 0 && parameters.length == typedefType.params.length)
-						underlying = TypeTools.applyTypeParameters(underlying, typedefType.params, parameters);
-					containsBorrowOnlyTypeRecursive(underlying, active);
+					switch (state.enterDefinition(RustTypeTraversalState.namedDefinitionKey("typedef", typedefType.module, typedefType.pack, typedefType.name), parameters)) {
+						case VisitEntered(key):
+							var underlying = typedefType.type;
+							if (typedefType.params != null && typedefType.params.length > 0 && parameters.length == typedefType.params.length)
+								underlying = TypeTools.applyTypeParameters(underlying, typedefType.params, parameters);
+							var result = inspectStoredBorrow(underlying, state);
+							state.leaveDefinition(key);
+							result;
+						case VisitExactCycle:
+							StoredOwned;
+						case VisitChangingCycle:
+							StoredUnsupportedRecursive;
+					}
 				}
 			case TAbstract(abstractRef, parameters):
 				var abstractType = abstractRef.get();
 				if (abstractType == null) {
-					false;
-				} else if (abstractType.module == "StdTypes" && abstractType.name == "Null" && parameters.length == 1) {
-					containsBorrowOnlyTypeRecursive(parameters[0], active);
-				} else if (abstractType.meta != null && abstractType.meta.has(":coreType")) {
-					containsBorrowOnlyTypeList(parameters, active);
+					StoredUnsupportedRecursive;
 				} else {
-					var underlying = abstractType.type;
-					if (abstractType.params != null
-						&& abstractType.params.length > 0
-						&& parameters.length == abstractType.params.length)
-						underlying = TypeTools.applyTypeParameters(underlying, abstractType.params, parameters);
-					containsBorrowOnlyTypeRecursive(underlying, active);
+					var path = typePath(abstractType.pack, abstractType.name);
+					switch (path) {
+						case "rust.Ref" | "rust.MutRef" | "rust.Slice" | "rust.MutSlice" if (parameters.length == 1):
+							StoredBorrowed;
+						case "rust.Str" if (parameters.length == 0):
+							StoredBorrowed;
+						case _ if (abstractType.module == "StdTypes" && abstractType.name == "Null" && parameters.length == 1):
+							inspectStoredBorrow(parameters[0], state);
+						case _ if (abstractType.meta != null && abstractType.meta.has(":coreType")):
+							StoredOwned;
+						case _:
+							switch (state.enterDefinition(RustTypeTraversalState.namedDefinitionKey("abstract", abstractType.module, abstractType.pack, abstractType.name), parameters)) {
+								case VisitEntered(key):
+									var underlying = abstractType.type;
+									if (abstractType.params != null
+										&& abstractType.params.length > 0
+										&& parameters.length == abstractType.params.length)
+										underlying = TypeTools.applyTypeParameters(underlying, abstractType.params, parameters);
+									var result = inspectStoredBorrow(underlying, state);
+									state.leaveDefinition(key);
+									result;
+								case VisitExactCycle:
+									StoredOwned;
+								case VisitChangingCycle:
+									StoredUnsupportedRecursive;
+							}
+					}
+				}
+			case TInst(classRef, parameters):
+				var classType = classRef.get();
+				if (classType != null && (classType.name == "Class" || classType.name == "Enum")
+					&& (classType.module == "StdTypes" || classType.pack.length == 0))
+					StoredOwned;
+				else
+					inspectStoredBorrowList(parameters, state);
+			case TEnum(_, parameters):
+				inspectStoredBorrowList(parameters, state);
+			case TFun(arguments, resultType):
+				var result = inspectStoredBorrow(resultType, state);
+				if (result == StoredOwned)
+					result = inspectStoredBorrowList([for (argument in arguments) argument.t], state);
+				result;
+			case TAnonymous(_):
+				// A nested runtime record is stored as HxRef<Anon>; its field types are not retained in this slot.
+				StoredOwned;
+			case TDynamic(_):
+				StoredOwned;
+		};
+	}
+
+	static function inspectStoredBorrowList(types:Array<Type>, state:RustTypeTraversalState):RustStoredBorrowInspection {
+		if (types == null)
+			return StoredOwned;
+		var unsupported = false;
+		for (type in types) {
+			var result = inspectStoredBorrow(type, state);
+			if (result == StoredBorrowed)
+				return StoredBorrowed;
+			if (result == StoredUnsupportedRecursive)
+				unsupported = true;
+		}
+		return unsupported ? StoredUnsupportedRecursive : StoredOwned;
+	}
+
+	static function containsBorrowOnlyTypeRecursive(type:Type, state:RustTypeTraversalState):Bool {
+		if (type == null)
+			return false;
+		if (borrowTypeMatch(type) != null)
+			return true;
+		return switch (type) {
+			case TMono(monomorphRef):
+				if (!state.enterNode(type))
+					return true;
+				var resolved = monomorphRef.get();
+				var result = resolved == null || containsBorrowOnlyTypeRecursive(resolved, state);
+				state.leaveNode(type);
+				result;
+			case TLazy(resolve):
+				if (!state.enterNode(type))
+					return true;
+				var result = containsBorrowOnlyTypeRecursive(resolve(), state);
+				state.leaveNode(type);
+				result;
+			case TType(typeRef, parameters):
+				var typedefType = typeRef.get();
+				if (typedefType == null) {
+					true;
+				} else {
+					switch (state.enterDefinition(RustTypeTraversalState.namedDefinitionKey("typedef", typedefType.module, typedefType.pack, typedefType.name), parameters)) {
+						case VisitEntered(key):
+							var underlying = typedefType.type;
+							if (typedefType.params != null && typedefType.params.length > 0 && parameters.length == typedefType.params.length)
+								underlying = TypeTools.applyTypeParameters(underlying, typedefType.params, parameters);
+							var result = containsBorrowOnlyTypeRecursive(underlying, state);
+							state.leaveDefinition(key);
+							result;
+						case VisitExactCycle:
+							false;
+						case VisitChangingCycle:
+							true;
+					}
+				}
+			case TAbstract(abstractRef, parameters):
+				var abstractType = abstractRef.get();
+				if (abstractType == null) {
+					true;
+				} else if (abstractType.module == "StdTypes" && abstractType.name == "Null" && parameters.length == 1) {
+					containsBorrowOnlyTypeRecursive(parameters[0], state);
+				} else if (abstractType.meta != null && abstractType.meta.has(":coreType")) {
+					containsBorrowOnlyTypeList(parameters, state);
+				} else {
+					switch (state.enterDefinition(RustTypeTraversalState.namedDefinitionKey("abstract", abstractType.module, abstractType.pack, abstractType.name), parameters)) {
+						case VisitEntered(key):
+							var underlying = abstractType.type;
+							if (abstractType.params != null
+								&& abstractType.params.length > 0
+								&& parameters.length == abstractType.params.length)
+								underlying = TypeTools.applyTypeParameters(underlying, abstractType.params, parameters);
+							var result = containsBorrowOnlyTypeRecursive(underlying, state);
+							state.leaveDefinition(key);
+							result;
+						case VisitExactCycle:
+							false;
+						case VisitChangingCycle:
+							true;
+					}
 				}
 			case TInst(_, parameters) | TEnum(_, parameters):
-				containsBorrowOnlyTypeList(parameters, active);
+				containsBorrowOnlyTypeList(parameters, state);
 			case TAnonymous(anonymousRef):
 				var anonymous = anonymousRef.get();
-				var found = false;
-				if (anonymous != null && anonymous.fields != null)
-					for (field in anonymous.fields)
-						if (field != null && containsBorrowOnlyTypeRecursive(field.type, active)) {
-							found = true;
-							break;
-						}
-				found;
+				if (anonymous == null) {
+					true;
+				} else if (!isRuntimeAnonymous(anonymous)) {
+					false;
+				} else {
+					switch (state.enterDefinition("anonymous:" + state.typeFingerprint(type), [])) {
+						case VisitEntered(key):
+							var found = false;
+							if (anonymous.fields != null)
+								for (field in anonymous.fields)
+									if (field != null && containsBorrowOnlyTypeRecursive(field.type, state)) {
+										found = true;
+										break;
+									}
+							state.leaveDefinition(key);
+							found;
+						case VisitExactCycle:
+							false;
+						case VisitChangingCycle:
+							true;
+					}
+				}
 			case TFun(arguments, result):
-				var found = containsBorrowOnlyTypeRecursive(result, active);
+				var found = containsBorrowOnlyTypeRecursive(result, state);
 				if (!found && arguments != null)
 					for (argument in arguments)
-						if (argument != null && containsBorrowOnlyTypeRecursive(argument.t, active)) {
+						if (argument != null && containsBorrowOnlyTypeRecursive(argument.t, state)) {
 							found = true;
 							break;
 						}
 				found;
 			case TDynamic(inner):
-				inner != null && containsBorrowOnlyTypeRecursive(inner, active);
+				inner != null && containsBorrowOnlyTypeRecursive(inner, state);
 		};
-		active.remove(key);
-		return result;
 	}
 
-	static function containsBorrowOnlyTypeList(types:Array<Type>, active:Map<String, Bool>):Bool {
+	static function containsBorrowOnlyTypeList(types:Array<Type>, state:RustTypeTraversalState):Bool {
 		if (types == null)
 			return false;
 		for (type in types)
-			if (containsBorrowOnlyTypeRecursive(type, active))
+			if (containsBorrowOnlyTypeRecursive(type, state))
 				return true;
 		return false;
 	}
@@ -900,53 +1223,72 @@ class RepresentationTypeAnalyzer {
 		  wrapped around the complete record while later emission reaches its borrowed fields.
 		- Resolve lazy and typedef nodes, remove outer `Null`, and open ordinary non-core abstracts with
 		  applied type arguments. Exact compiler-owned core abstracts remain opaque.
-		- Track the active instantiated type spellings so recursive owned types terminate without imposing
-		  a fail-open nesting limit on valid acyclic types.
+		- Track real declaration identity plus applied arguments so recursive owned types terminate without
+		  confusing a monomorph/lazy display string with a cycle.
 	**/
-	static function transparentAnonymousBacking(type:Type, active:Map<String, Bool>):Null<AnonType> {
+	static function transparentAnonymousBacking(type:Type, state:RustTypeTraversalState):Null<AnonType> {
 		if (type == null)
 			return null;
-		var key = TypeTools.toString(type);
-		if (active.exists(key))
-			return null;
-		active.set(key, true);
-		var result = switch (type) {
+		return switch (type) {
 			case TMono(monomorphRef):
+				if (!state.enterNode(type))
+					return null;
 				var resolved = monomorphRef.get();
-				resolved == null ? null : transparentAnonymousBacking(resolved, active);
+				var result = resolved == null ? null : transparentAnonymousBacking(resolved, state);
+				state.leaveNode(type);
+				result;
 			case TLazy(resolve):
-				transparentAnonymousBacking(resolve(), active);
+				if (!state.enterNode(type))
+					return null;
+				var result = transparentAnonymousBacking(resolve(), state);
+				state.leaveNode(type);
+				result;
 			case TType(typeRef, parameters):
 				var typedefType = typeRef.get();
 				if (typedefType == null) {
 					null;
 				} else {
-					var underlying = typedefType.type;
-					if (typedefType.params != null && typedefType.params.length > 0 && parameters.length == typedefType.params.length)
-						underlying = TypeTools.applyTypeParameters(underlying, typedefType.params, parameters);
-					transparentAnonymousBacking(underlying, active);
+					switch (state.enterDefinition(RustTypeTraversalState.namedDefinitionKey("typedef", typedefType.module, typedefType.pack, typedefType.name), parameters)) {
+						case VisitEntered(key):
+							var underlying = typedefType.type;
+							if (typedefType.params != null && typedefType.params.length > 0 && parameters.length == typedefType.params.length)
+								underlying = TypeTools.applyTypeParameters(underlying, typedefType.params, parameters);
+							var result = transparentAnonymousBacking(underlying, state);
+							state.leaveDefinition(key);
+							result;
+						case VisitExactCycle | VisitChangingCycle:
+							null;
+					}
 				}
 			case TAbstract(abstractRef, parameters):
 				var abstractType = abstractRef.get();
-				if (abstractType == null || (abstractType.meta != null && abstractType.meta.has(":coreType"))) {
+				if (abstractType == null) {
 					null;
 				} else if (abstractType.module == "StdTypes" && abstractType.name == "Null" && parameters.length == 1) {
-					transparentAnonymousBacking(parameters[0], active);
+					transparentAnonymousBacking(parameters[0], state);
+				} else if (abstractType.meta != null && abstractType.meta.has(":coreType")) {
+					null;
 				} else {
-					var underlying = abstractType.type;
-					if (abstractType.params != null
-						&& abstractType.params.length > 0
-						&& parameters.length == abstractType.params.length)
-						underlying = TypeTools.applyTypeParameters(underlying, abstractType.params, parameters);
-					transparentAnonymousBacking(underlying, active);
+					switch (state.enterDefinition(RustTypeTraversalState.namedDefinitionKey("abstract", abstractType.module, abstractType.pack, abstractType.name), parameters)) {
+						case VisitEntered(key):
+							var underlying = abstractType.type;
+							if (abstractType.params != null
+								&& abstractType.params.length > 0
+								&& parameters.length == abstractType.params.length)
+								underlying = TypeTools.applyTypeParameters(underlying, abstractType.params, parameters);
+							var result = transparentAnonymousBacking(underlying, state);
+							state.leaveDefinition(key);
+							result;
+						case VisitExactCycle | VisitChangingCycle:
+							null;
+					}
 				}
 			case TAnonymous(anonymousRef):
-				anonymousRef.get();
+				var anonymous = anonymousRef.get();
+				anonymous != null && isRuntimeAnonymous(anonymous) ? anonymous : null;
 			case _:
 				null;
 		};
-		active.remove(key);
-		return result;
 	}
 
 	static function isString(type:Type):Bool {
@@ -982,6 +1324,26 @@ class RepresentationTypeAnalyzer {
 			}
 		}
 		return hasNext && next;
+	}
+
+	/**
+		Distinguishes runtime record storage from Haxe's anonymous-looking type namespaces.
+
+		Why / What / How
+		- Haxe represents class, enum, and abstract static fields with `TAnonymous`, but generated Rust
+		  treats those values as type handles rather than `hxrt::anon::Anon` records.
+		- Scanning a static method signature as a stored record field can reject valid programs before the
+		  diagnostic that actually owns the source construct.
+		- Keep closed, open, const, and extended structures as runtime records; exclude only the three
+		  explicit static-namespace statuses.
+	**/
+	static function isRuntimeAnonymous(anonymous:AnonType):Bool {
+		if (anonymous == null)
+			return false;
+		return switch (anonymous.status) {
+			case AClassStatics(_) | AEnumStatics(_) | AAbstractStatics(_): false;
+			case AClosed | AOpened | AConst | AExtend(_): true;
+		};
 	}
 
 	static inline function isHaxeArray(classType:ClassType):Bool {

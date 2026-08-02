@@ -797,31 +797,33 @@ function main() {
   }
   const outerRecordShapeLine = sourceLine(anonymousBorrowSource,
     'var holder:BorrowedHolder = haxe.Json.parse("{}");')
-  for (const operation of ['runtime_reflect', 'dynamic_reflect']) {
-    const outputName = `out_${operation}_outer_record_abstract`
-    const args = [haxeShim, 'compile.hxml',
-      '-D', 'reflaxe_rust_profile=portable',
-      '-D', `operation_${operation}`,
-      '-D', 'optional',
-      '-D', 'nullable',
-      '-D', 'outer_record_abstract',
-      '-D', `rust_output=${outputName}`]
-    const compile = () => runIn(anonymousBorrowFixture, process.execPath, args)
-    cleanOutput(anonymousBorrowFixture, outputName)
-    const first = compile()
-    cleanOutput(anonymousBorrowFixture, outputName)
-    const second = compile()
-    assert.notStrictEqual(first.status, 0,
-      `${operation} must inspect an ordinary abstract around the complete anonymous record`)
-    assert.strictEqual(output(first), output(second),
-      `${operation} outer-record diagnostics must be repeatable`)
-    assert.match(output(first), /\[HXRS-BORROW-REGION\].*anonymous field `value`/,
-      `${operation} must name the hidden borrowed field`)
-    assert.match(output(first), new RegExp(`Main\\.hx:${outerRecordShapeLine}:`),
-      `${operation} must point to the abstract-wrapped anonymous value before its shape is erased`)
-    assert(!fs.existsSync(path.join(anonymousBorrowFixture, outputName, 'src')),
-      `${operation} outer-record rejection must happen before Rust construction`)
-    cleanOutput(anonymousBorrowFixture, outputName)
+  for (const outerRecord of ['abstract', 'null']) {
+    for (const operation of ['runtime_reflect', 'dynamic_reflect']) {
+      const outputName = `out_${operation}_outer_record_${outerRecord}`
+      const args = [haxeShim, 'compile.hxml',
+        '-D', 'reflaxe_rust_profile=portable',
+        '-D', `operation_${operation}`,
+        '-D', 'optional',
+        '-D', 'nullable',
+        '-D', `outer_record_${outerRecord}`,
+        '-D', `rust_output=${outputName}`]
+      const compile = () => runIn(anonymousBorrowFixture, process.execPath, args)
+      cleanOutput(anonymousBorrowFixture, outputName)
+      const first = compile()
+      cleanOutput(anonymousBorrowFixture, outputName)
+      const second = compile()
+      assert.notStrictEqual(first.status, 0,
+        `${operation} must inspect ${outerRecord} around the complete anonymous record`)
+      assert.strictEqual(output(first), output(second),
+        `${operation} ${outerRecord} outer-record diagnostics must be repeatable`)
+      assert.match(output(first), /\[HXRS-BORROW-REGION\].*anonymous field `value`/,
+        `${operation} ${outerRecord} must name the hidden borrowed field`)
+      assert.match(output(first), new RegExp(`Main\\.hx:${outerRecordShapeLine}:`),
+        `${operation} ${outerRecord} must point to the anonymous value before its shape is erased`)
+      assert(!fs.existsSync(path.join(anonymousBorrowFixture, outputName, 'src')),
+        `${operation} ${outerRecord} rejection must happen before Rust construction`)
+      cleanOutput(anonymousBorrowFixture, outputName)
+    }
   }
   const typedReadShapeLine = sourceLine(anonymousBorrowSource,
     'var typedReadHolder:BorrowedHolder = {};')
@@ -854,6 +856,37 @@ function main() {
         `${carrier} must stop before Rust construction`)
       cleanOutput(anonymousBorrowFixture, outputName)
     }
+  }
+
+  for (const shape of [
+    {name: 'outer_null', defines: ['outer_record_null']},
+    {name: 'nested_array', defines: ['carrier_nested_array']},
+    {name: 'nested_function', defines: ['carrier_nested_function']},
+    {name: 'nested_function_argument', defines: ['carrier_nested_function_argument']},
+    {name: 'nested_enum', defines: ['carrier_nested_enum']}
+  ]) {
+    const outputName = `out_typed_read_${shape.name}`
+    const args = [haxeShim, 'compile.hxml',
+      '-D', 'operation_typed_read',
+      '-D', 'optional',
+      '-D', 'nullable',
+      '-D', `rust_output=${outputName}`]
+    for (const define of shape.defines)
+      args.push('-D', define)
+    const compile = () => runIn(anonymousBorrowFixture, process.execPath, args)
+    cleanOutput(anonymousBorrowFixture, outputName)
+    const first = compile()
+    cleanOutput(anonymousBorrowFixture, outputName)
+    const second = compile()
+    assert.notStrictEqual(first.status, 0, `${shape.name} must be rejected before its typed runtime read reaches Rust`)
+    assert.strictEqual(output(first), output(second), `${shape.name} diagnostics must be repeatable`)
+    assert.match(output(first), /\[HXRS-BORROW-REGION\].*anonymous field `value`/,
+      `${shape.name} must identify the nested borrowed field`)
+    assert.match(output(first), new RegExp(`Main\\.hx:${typedReadShapeLine}:`),
+      `${shape.name} must report the complete anonymous value`)
+    assert(!fs.existsSync(path.join(anonymousBorrowFixture, outputName, 'src')),
+      `${shape.name} must stop before Rust construction`)
+    cleanOutput(anonymousBorrowFixture, outputName)
   }
 
   const ownedAbstractFixture = path.join(repoRoot, 'test', 'positive', 'representation_anonymous_owned_abstract')

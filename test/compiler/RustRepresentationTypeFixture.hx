@@ -10,6 +10,8 @@ class RustRepresentationTypeFixture {
 	static var sharedIdentity:RustRepresentationFixtureNode;
 	static var polymorphic:RustRepresentationFixtureContract;
 	static var borrowed:rust.Ref<Int>;
+	static var borrowedArrayShape:Array<rust.Ref<Int>>;
+	static var anonymousSiblings:RustRepresentationAnonymousPair<{left:Int}, {right:Dynamic}>;
 	static var borrowedNativeOwned:rust.Ref<rust.Vec<Int>>;
 	static var borrowedPath:rust.Ref<rust.PathBuf>;
 	static var borrowedNativeHandle:rust.Ref<rust.net.TcpStream>;
@@ -42,6 +44,19 @@ class RustRepresentationTypeFixture {
 	}
 
 	static function main():Void {}
+}
+
+typedef RustRepresentationBorrowedHolder = {
+	@:optional var value:Null<rust.Ref<Int>>;
+}
+
+// Kept unused by ordinary source lowering: the compile-time contract below constructs one
+// instantiated node directly and proves the analyzer terminates conservatively when the same
+// typedef is revisited with a larger type argument.
+typedef RustRepresentationParameterGrowing<T> = Array<RustRepresentationParameterGrowing<Array<T>>>;
+
+class RustRepresentationAnonymousPair<A, B> {
+	public function new() {}
 }
 
 class RustRepresentationFixtureNode {

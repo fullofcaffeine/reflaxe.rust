@@ -1,6 +1,18 @@
 import rust.Borrow;
 
-#if carrier_mut_ref
+private enum RetainedCarrier<T> {
+	Empty;
+}
+
+#if carrier_nested_array
+private typedef DirectBorrowedValue = Array<rust.Ref<Int>>;
+#elseif carrier_nested_function_argument
+private typedef DirectBorrowedValue = rust.Ref<Int>->Void;
+#elseif carrier_nested_function
+private typedef DirectBorrowedValue = Void->rust.Ref<Int>;
+#elseif carrier_nested_enum
+private typedef DirectBorrowedValue = RetainedCarrier<rust.Slice<Int>>;
+#elseif carrier_mut_ref
 private typedef DirectBorrowedValue = rust.MutRef<Int>;
 #elseif carrier_mut_slice
 private typedef DirectBorrowedValue = rust.MutSlice<Int>;
@@ -40,7 +52,9 @@ private typedef BorrowedHolderShape<T> = {
 }
 #end
 
-#if outer_record_abstract
+#if outer_record_null
+private typedef BorrowedHolder = Null<BorrowedHolderShape<BorrowedValue>>;
+#elseif outer_record_abstract
 @:forward(value)
 private abstract BorrowedHolderCarrier<T>(BorrowedHolderShape<T>) from BorrowedHolderShape<T> to BorrowedHolderShape<T> {}
 private typedef BorrowedHolder = BorrowedHolderCarrier<BorrowedValue>;
@@ -64,7 +78,7 @@ class Main {
 	static function main():Void {}
 	#elseif (operation_runtime_reflect || operation_dynamic_reflect)
 	static function main():Void {
-		#if outer_record_abstract
+		#if (outer_record_abstract || outer_record_null)
 		var holder:BorrowedHolder = haxe.Json.parse("{}");
 		#else
 		var holder:BorrowedHolder = {};

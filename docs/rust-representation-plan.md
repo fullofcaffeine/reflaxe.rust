@@ -86,13 +86,15 @@ would not match a later typed read of `&T`, while saving the short-lived `&T` wo
 escape its callback.
 
 The compiler uses one applied-type-aware recognizer for representation decisions and early
-borrow-escape checks. It opens lazy types, typedefs, `Null`, and ordinary abstracts without imposing
-an arbitrary nesting limit. Active-type cycle detection terminates recursive owned types without
-mistaking a deeply nested borrow for an owned value. The walk stops at
+borrow-escape checks. It opens bound monomorphs, lazy types, typedefs, `Null`, and ordinary abstracts
+without imposing an arbitrary nesting limit. Cycle checks use real typed declaration identity and
+applied arguments, not human-readable type text, so a transparent wrapper cannot be mistaken for a
+recursive owned type. The walk stops at
 unrelated `@:coreType` abstracts because those require explicit compiler mappings rather than a
 general backing-type rule. The compiler validates the complete anonymous-record declaration when a
 record value is created or converted to `Dynamic`, including `@:optional` fields omitted from a
-literal. This prevents runtime-name reflection—or a later write through a `Dynamic` alias—from hiding
+literal. It follows storage types that Rust preserves, including array elements, function arguments
+and results, and retained class or enum parameters. This prevents runtime-name reflection—or a later write through a `Dynamic` alias—from hiding
 the field declaration before mutation. Literal creation, direct assignment, and constant-name
 `Reflect.setField` still report the exact stored Haxe value. When no field value exists yet, the error
 points to the anonymous value whose declared shape is unsupported. Both forms ask the author to store

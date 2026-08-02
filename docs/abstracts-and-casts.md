@@ -15,6 +15,8 @@ Practical impact:
 - an ordinary abstract around a complete anonymous record also keeps the record's real field
   carriers, so it cannot hide a scoped `Ref`, `MutRef`, `Slice`, `MutSlice`, or `Str` field from the
   early lifetime check
+- the same check follows a scoped borrow nested inside a Rust-preserved array, function signature,
+  or retained generic parameter; wrapping the outer field does not make that nested reference owned
 - `@:from` / `@:to` affect typing, but runtime code usually becomes:
   - a cast (`as`) for numeric conversions, or
   - a static helper call (`*_Impl_`), depending on how Haxe lowers the operation

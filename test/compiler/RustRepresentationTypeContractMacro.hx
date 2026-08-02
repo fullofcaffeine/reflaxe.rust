@@ -30,8 +30,34 @@ import reflaxe.rust.analyze.RepresentationAnalysisSnapshot.RustSavedCrossingRepl
 **/
 @:access(reflaxe.rust.analyze.NoHxrtEligibilityAnalyzer)
 @:access(reflaxe.rust.analyze.RepresentationDecisionAnalyzer)
+@:access(reflaxe.rust.analyze.RepresentationTypeAnalyzer)
 class RustRepresentationTypeContractMacro {
 	public static macro function run():Expr {
+		var borrowedHolder = Context.getType("RustRepresentationTypeFixture.RustRepresentationBorrowedHolder");
+		var inventoryIdentity = RepresentationTypeAnalyzer.traversalIdentityFactory();
+		var holderMono = Context.makeMonomorph();
+		if (!Context.unify(holderMono, borrowedHolder))
+			throw "borrowed-holder monomorph fixture must unify";
+		if (RepresentationTypeAnalyzer.anonymousBorrowedField(holderMono) == null)
+			throw "a bound TMono must not hide the complete anonymous borrowed-field shape";
+		if (inventoryIdentity(holderMono) == inventoryIdentity(borrowedHolder))
+			throw "inventory traversal must visit a bound TMono and its resolved child separately";
+		var lazyHolder:Type = TLazy(() -> borrowedHolder);
+		if (RepresentationTypeAnalyzer.anonymousBorrowedField(lazyHolder) == null)
+			throw "a TLazy node must not hide the complete anonymous borrowed-field shape";
+		if (inventoryIdentity(lazyHolder) == inventoryIdentity(borrowedHolder))
+			throw "inventory traversal must visit a TLazy node and its resolved child separately";
+		var classNamespace = Context.typeExpr(macro RustRepresentationTypeFixture).t;
+		if (RepresentationTypeAnalyzer.anonymousBorrowedField(classNamespace) != null)
+			throw "a class static namespace must not be treated as runtime anonymous-record storage";
+		if (RepresentationTypeAnalyzer.classify(classNamespace, false) != RustSourceValueKind.SourceCoreHandle)
+			throw "a class static namespace must retain the core type-handle representation";
+		var growingType = switch (Context.getType("RustRepresentationTypeFixture.RustRepresentationParameterGrowing")) {
+			case TType(typeRef, _): TType(typeRef, [Context.getType("Int")]);
+			case _: throw "parameter-growing representation fixture must resolve to a typedef";
+		};
+		if (!RepresentationTypeAnalyzer.containsBorrowOnlyType(growingType))
+			throw "parameter-growing recursive types must terminate conservatively instead of being treated as owned";
 		var enumTarget = Context.typeExpr(macro RustRepresentationTypeFixture.RustRepresentationFixtureChoice.Payload);
 		var castWrappedTarget:TypedExpr = {expr: TCast(enumTarget, null), t: enumTarget.t, pos: enumTarget.pos};
 		var unwrappedTarget = TypedCallableTarget.transparent(castWrappedTarget);
@@ -53,6 +79,19 @@ class RustRepresentationTypeContractMacro {
 		var decisions:Map<String, reflaxe.rust.analyze.RepresentationPlan.RustRepresentationDecision> = [];
 		for (field in fixture.statics.get())
 			fields.set(field.name, field);
+		for (name in ["borrowed", "borrowedArrayShape"]) {
+			var field = fields.get(name);
+			if (field == null)
+				throw 'missing transparent-node fixture field: $name';
+			var mono = Context.makeMonomorph();
+			if (!Context.unify(mono, field.type))
+				throw '$name monomorph fixture must unify';
+			if (RepresentationTypeAnalyzer.anonymousBorrowedFieldRejectionReason(mono) == null)
+				throw 'a bound TMono must not hide the scoped borrow in $name';
+			var lazyType:Type = TLazy(() -> field.type);
+			if (RepresentationTypeAnalyzer.anonymousBorrowedFieldRejectionReason(lazyType) == null)
+				throw 'a TLazy node must not hide the scoped borrow in $name';
+		}
 
 		var rows:Array<String> = [];
 		for (name in expected) {
@@ -266,6 +305,13 @@ class RustRepresentationTypeContractMacro {
 			}
 			if (!nestedDynamicDecision)
 				throw "nested dynamic storage must retain its own representation decision";
+			var rightAnonymousSiblingDecision = false;
+			for (decision in collected)
+				if (decision.sourceKind == RustSourceValueKind.SourceDynamic
+					&& decision.subjectId.indexOf("field-anonymousSiblings-type-1-type-0") >= 0)
+					rightAnonymousSiblingDecision = true;
+			if (!rightAnonymousSiblingDecision)
+				throw "an owned anonymous sibling must not hide a later sibling's Dynamic field";
 			var enumPayloadDecision = false;
 			for (decision in collected) {
 				if (decision.sourceKind == RustSourceValueKind.SourceDynamic

@@ -1,5 +1,9 @@
 private abstract UserId(Int) from Int to Int {}
 
+private enum OwnedCarrier<T> {
+	Empty;
+}
+
 private abstract Deep<T>(Array<Array<T>>) from Array<Array<T>> to Array<Array<T>> {}
 private typedef D1<T> = Deep<T>;
 private typedef D2<T> = Deep<D1<T>>;
@@ -14,6 +18,10 @@ private typedef OwnedNode = {
 
 private typedef UserRecord = {
 	@:optional var userId:UserId;
+	@:optional var userIds:Array<UserId>;
+	@:optional var buildUserId:Void->UserId;
+	@:optional var acceptUserId:UserId->Void;
+	@:optional var retained:OwnedCarrier<UserId>;
 }
 
 @:forward(userId)

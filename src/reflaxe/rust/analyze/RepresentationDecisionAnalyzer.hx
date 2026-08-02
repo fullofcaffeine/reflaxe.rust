@@ -127,18 +127,39 @@ class RepresentationDecisionAnalyzer {
 				return;
 			var info = Context.getPosInfos(pos);
 			var seenTypes:Map<String, Bool> = [];
+			var activeDefinitions:Map<String, String> = [];
+			var traversalIdentity = RepresentationTypeAnalyzer.traversalIdentityFactory();
 			function visitType(current:Type, currentLabel:String):Void {
 				if (current == null)
 					return;
-				var typeKey = TypeTools.toString(current);
+				var definition:Null<String> = switch (current) {
+					case TType(typeRef, _):
+						var typedefType = typeRef.get();
+						typedefType == null ? null : "typedef:" + typedefType.module + ":" + typedefType.pack.join(".") + ":" + typedefType.name;
+					case TAnonymous(_): "anonymous:" + traversalIdentity(current);
+					case TLazy(_): "lazy:" + traversalIdentity(current);
+					case _: null;
+				};
+				var typeKey = traversalIdentity(current);
+				if (definition != null && activeDefinitions.exists(definition)) {
+					var previousTypeKey = activeDefinitions.get(definition);
+					if (previousTypeKey != typeKey)
+						RustDiagnostic.error(RustDiagnosticId.BorrowRegion,
+							"Rust representation cannot safely lower this parameter-changing recursive type. Use a finite owned type instead.", pos);
+					return;
+				}
 				if (seenTypes.exists(typeKey))
 					return;
 				seenTypes.set(typeKey, true);
+				if (definition != null)
+					activeDefinitions.set(definition, typeKey);
 				var subject = modulePath + "#" + currentLabel + "@" + info.min + ":" + info.max;
 				addDecision(RepresentationTypeAnalyzer.tryDecide(subject, current, pos, origin, nullableStringCompat, null, classHasSubclasses));
 				var children = directTypeChildren(current);
 				for (index in 0...children.length)
 					visitType(children[index], currentLabel + "-type-" + index);
+				if (definition != null)
+					activeDefinitions.remove(definition);
 			}
 			visitType(type, label);
 		}

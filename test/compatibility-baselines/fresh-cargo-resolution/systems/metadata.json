@@ -195,7 +195,7 @@
           },
           {
             "name": "time",
-            "package": "time@0.3.54:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "time@0.3.55:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -2501,7 +2501,7 @@
         ]
       },
       {
-        "id": "time@0.3.54:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "time@0.3.55:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "alloc",
           "default",
@@ -3532,7 +3532,7 @@
           },
           {
             "name": "time",
-            "package": "time@0.3.54:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "time@0.3.55:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -9765,9 +9765,9 @@
       ]
     },
     {
-      "id": "time@0.3.54:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "time@0.3.55:registry+https://github.com/rust-lang/crates.io-index",
       "name": "time",
-      "version": "0.3.54",
+      "version": "0.3.55",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.88.0",
       "enabledFeatures": [
