@@ -79,16 +79,15 @@ Agent policy:
 - When a bead has a `thinking:*` label, match reasoning depth to that label automatically.
 - If a claimed bead has no `thinking:*` label, infer one immediately and add it before substantial work.
 - `thinking:xhigh` should get a second-pass review before closure.
-  - Preferred: an Oracle checkpoint/review.
-    - Default Oracle workflow: prepare a detailed prompt for GPT-5.5 Pro in the web UI, including the review questions, relevant file paths, Beads IDs/commands, and any repo bundles to upload (for example a repomix archive). Give that prompt to the user to paste, wait for the user to paste the reply back, then incorporate the findings.
+  - Use Oracle only when the work is also genuinely critical and remains unusually hard, materially undefined, non-convergent, or in need of a higher-quality independent challenge.
+    - Invoke the globally installed `$oracle-review` skill for planning or review and let its caf-oracle facade own the ledger, agent provenance, checked evidence, browser dispatch, recovery, response capture, disposition, and archive. Do not maintain a parallel `/tmp/oracle` queue or manually upload and paste when the tool is available. If `$show-me-your-work` is active, link its concise trail to the request rather than duplicating artifacts.
     - Oracle bundle completeness gotcha: do not assume a Repomix/archive command included tracked,
       vendored, hidden, lock, license, generated-consumer, or release-artifact files merely because
       they were requested in the prompt. Before handoff, inspect the archive inventory and record
       the reviewed commit plus artifact names/sizes/digests. Treat a reviewer report that a requested
       file was absent as an evidence-bundle omission until the repository and hosted artifact are
       checked independently; do not create a fake product defect from an upload omission.
-    - Do not use a subagent for Oracle-style review unless the user explicitly asks for one.
-  - Acceptable fallback: an explicit written second-pass design review recorded in the bead comments.
+  - Otherwise use an explicit written second-pass design review recorded in the bead comments.
 - Oracle is a review/escalation tool for `thinking:xhigh`; it is not a substitute for implementation, tests, or CI evidence.
 
 ## Product Source of Truth
