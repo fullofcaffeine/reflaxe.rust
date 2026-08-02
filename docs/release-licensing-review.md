@@ -23,7 +23,11 @@ The release ZIP contains:
   SBOM.
 
 `docs/release-package-components.json` is the editable source for the notice
-and SBOM inventory. Reflaxe's repository, base, and license facts come from
+and SBOM inventory. Required-component license bytes are not editable there:
+Haxe and Reflaxe always read their fixed reviewed license files. An additional
+component must keep its complete license text inline in this tracked record;
+it cannot turn an untracked local file into a release input. Reflaxe's
+repository, base, and license facts come from
 `vendor/reflaxe/provenance.json`; reflaxe.rust's declared license comes from
 `haxelib.json`; and the Haxe version, repository, and reviewed Standard Library
 license facts come from `docs/stdlib-provenance-ledger.json`. The license text itself is the
@@ -59,12 +63,19 @@ change later.
 
 Release tooling treats these source locations as fixed code-owned inputs. It
 rejects symlinks, Git submodules, parent-path references, and alternate local
-record pointers. The final package check also compares the Reflaxe license and
+record pointers. More importantly, preparation, publication, repair, and the
+standalone verifier build from a fresh archive of the exact named Git commit;
+they never obtain package or generator bytes from the live working tree. This
+remains true when Git status is fooled by `assume-unchanged`, `skip-worktree`,
+checkout filters, or line-ending conversion. The final package check also
+compares the Reflaxe license and
 the Haxe/Reflaxe SBOM facts with the exact records inside the archive. This
 prevents a clean checkout from publishing bytes that came from an unrelated
 file outside the reviewed commit. The SBOM's primary package is selected by the fixed
-`reflaxe-rust` component ID rather than editable list order, and the package verifier checks its
-name, kind, license, repository, version, and root dependency identity independently.
+`reflaxe-rust` component ID rather than editable list order. A separate
+Haxelib check requires the installer-facing name and repository to identify
+reflaxe.rust and requires a non-empty license; the package verifier then checks
+the SBOM's name, kind, license, repository, version, and root dependency identity independently.
 
 ## Questions for professional legal review
 

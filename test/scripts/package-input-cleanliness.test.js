@@ -6,6 +6,10 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const { assertPackageInputsTracked } = require('../../scripts/release/package-input-cleanliness.js')
+const {
+	assertTrackedTreeClean,
+	withReviewedSource
+} = require('../../scripts/release/reviewed-source.js')
 const repoRoot = path.resolve(__dirname, '..', '..')
 
 function git(cwd, args) {
@@ -13,6 +17,23 @@ function git(cwd, args) {
 }
 
 function main() {
+	for (const relative of [
+		'scripts/release/haxelib-artifact-plugin.cjs',
+		'scripts/release/repair-release.js',
+		'scripts/release/verify-release-artifact.js'
+	]) {
+		const source = fs.readFileSync(path.join(repoRoot, relative), 'utf8')
+		assert.match(
+			source,
+			/withReviewedSource/,
+			`${relative} must use the shared exact-commit source owner`
+		)
+		assert.match(
+			source,
+			/buildFromReviewedSource/,
+			`${relative} must run package construction from the materialized commit`
+		)
+	}
 	const completeIndex = execFileSync('git', ['ls-files', '--stage', '-z'], {
 		cwd: repoRoot,
 		maxBuffer: 8 * 1024 * 1024
@@ -50,6 +71,120 @@ function main() {
 		)
 	} finally {
 		fs.rmSync(largeIndex, { recursive: true, force: true })
+	}
+
+	const largeStatus = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-large-package-status-'))
+	try {
+		git(largeStatus, ['init', '-q'])
+		const statusFile = (index) =>
+			`src/generated/repository-sized-status-output-regression-fixture/Entry${String(index).padStart(5, '0')}.hx`
+		for (let index = 0; index < 15000; index += 1) {
+			const relative = statusFile(index)
+			const file = path.join(largeStatus, relative)
+			fs.mkdirSync(path.dirname(file), { recursive: true })
+			fs.writeFileSync(file, 'class Generated {}\n')
+		}
+		git(largeStatus, ['add', '.'])
+		git(largeStatus, [
+			'-c',
+			'user.name=Package Test',
+			'-c',
+			'user.email=package@example.invalid',
+			'commit',
+			'-q',
+			'-m',
+			'large status fixture'
+		])
+		for (let index = 0; index < 15000; index += 1) {
+			fs.appendFileSync(
+				path.join(largeStatus, statusFile(index)),
+				'// dirty\n'
+			)
+		}
+		const statusBytes = execFileSync(
+			'git',
+			['status', '--porcelain', '--untracked-files=no'],
+			{ cwd: largeStatus, maxBuffer: 8 * 1024 * 1024 }
+		)
+		assert(statusBytes.length > 1024 * 1024, 'the generated Git status must exceed 1 MiB')
+		assert.throws(
+			() => assertTrackedTreeClean(largeStatus, 'release fixture contains tracked changes'),
+			/release fixture contains tracked changes/,
+			'a repository-sized dirty status must reach the controlled integrity error rather than ENOBUFS'
+		)
+	} finally {
+		fs.rmSync(largeStatus, { recursive: true, force: true })
+	}
+
+	for (const flag of ['--assume-unchanged', '--skip-worktree']) {
+		const hiddenChange = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-reviewed-source-'))
+		try {
+			git(hiddenChange, ['init', '-q'])
+			for (const relative of [
+				'haxelib.json',
+				'docs/release-package-components.json',
+				'docs/licenses/haxe-stdlib-4.3.7-MIT.txt',
+				'scripts/release/generate-license-artifacts.js',
+				'src/Main.hx',
+				'std/Std.hx',
+				'runtime/payload.rs',
+				'vendor/payload.hx'
+			]) {
+				const file = path.join(hiddenChange, relative)
+				fs.mkdirSync(path.dirname(file), { recursive: true })
+				fs.writeFileSync(file, `reviewed ${relative}\n`)
+			}
+			git(hiddenChange, ['add', '.'])
+			git(hiddenChange, [
+				'-c',
+				'user.name=Package Test',
+				'-c',
+				'user.email=package@example.invalid',
+				'commit',
+				'-q',
+				'-m',
+				'reviewed bytes'
+			])
+			const sourceCommit = git(hiddenChange, ['rev-parse', 'HEAD']).trim()
+			for (const relative of [
+				'haxelib.json',
+				'docs/release-package-components.json',
+				'docs/licenses/haxe-stdlib-4.3.7-MIT.txt',
+				'scripts/release/generate-license-artifacts.js',
+				'src/Main.hx',
+				'std/Std.hx',
+				'runtime/payload.rs',
+				'vendor/payload.hx'
+			]) {
+				git(hiddenChange, ['update-index', flag, relative])
+				fs.writeFileSync(path.join(hiddenChange, relative), `hidden ${relative}\n`)
+			}
+			assert.strictEqual(
+				git(hiddenChange, ['status', '--porcelain', '--untracked-files=no']),
+				'',
+				`${flag} must reproduce the clean-live-worktree attack precondition`
+			)
+			withReviewedSource(hiddenChange, sourceCommit, (sourceRoot) => {
+				for (const relative of [
+					'haxelib.json',
+					'docs/release-package-components.json',
+					'docs/licenses/haxe-stdlib-4.3.7-MIT.txt',
+					'scripts/release/generate-license-artifacts.js',
+					'src/Main.hx',
+					'std/Std.hx',
+					'runtime/payload.rs',
+					'vendor/payload.hx'
+				]) {
+					assert.strictEqual(
+						fs.readFileSync(path.join(sourceRoot, relative), 'utf8'),
+						`reviewed ${relative}\n`,
+						`${flag} must not replace the bytes materialized from sourceCommit`
+					)
+				}
+			})
+		} finally {
+			fs.rmSync(hiddenChange, { recursive: true, force: true })
+		}
 	}
 
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-package-input-cleanliness-'))
@@ -150,6 +285,21 @@ function main() {
 				new RegExp(`release package input must be a regular Git blob: ${packageRoot}`),
 				`an exact ${packageRoot} gitlink must not supply package bytes outside the reviewed commit`
 			)
+			git(gitlinkFixture, [
+				'-c',
+				'user.name=Package Test',
+				'-c',
+				'user.email=package@example.invalid',
+				'commit',
+				'-q',
+				'-m',
+				`tracked ${packageRoot} gitlink`
+			])
+			assert.throws(
+				() => withReviewedSource(gitlinkFixture, git(gitlinkFixture, ['rev-parse', 'HEAD']).trim(), () => {}),
+				new RegExp(`reviewed release input must be a regular Git blob: ${packageRoot}`),
+				`the exact-commit materializer must reject an exact ${packageRoot} gitlink`
+			)
 			git(gitlinkFixture, ['update-index', '--force-remove', packageRoot])
 			const externalRoot = path.join(temp, `external-${packageRoot}`)
 			fs.mkdirSync(externalRoot)
@@ -160,6 +310,21 @@ function main() {
 				() => assertPackageInputsTracked(gitlinkFixture),
 				new RegExp(`release package input must be a regular Git blob: ${packageRoot}`),
 				`an exact ${packageRoot} symlink must not supply package bytes outside the reviewed commit`
+			)
+			git(gitlinkFixture, [
+				'-c',
+				'user.name=Package Test',
+				'-c',
+				'user.email=package@example.invalid',
+				'commit',
+				'-q',
+				'-m',
+				`tracked ${packageRoot} symlink`
+			])
+			assert.throws(
+				() => withReviewedSource(gitlinkFixture, git(gitlinkFixture, ['rev-parse', 'HEAD']).trim(), () => {}),
+				new RegExp(`reviewed release input must be a regular Git blob: ${packageRoot}`),
+				`the exact-commit materializer must reject an exact ${packageRoot} symlink`
 			)
 		}
 
@@ -186,6 +351,14 @@ function main() {
 		assert.throws(
 			() => assertPackageInputsTracked(licenseSymlinkFixture),
 			/release package input must be a regular Git blob: docs\/licenses\/haxe-stdlib-4\.3\.7-MIT\.txt/
+		)
+		assert.throws(
+			() => withReviewedSource(
+				licenseSymlinkFixture,
+				git(licenseSymlinkFixture, ['rev-parse', 'HEAD']).trim(),
+				() => {}
+			),
+			/reviewed release input must be a regular Git blob: docs\/licenses\/haxe-stdlib-4\.3\.7-MIT\.txt/
 		)
 
     console.log('[package-input-cleanliness-test] OK')

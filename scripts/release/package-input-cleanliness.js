@@ -12,6 +12,16 @@ const PACKAGE_INPUT_FILES = [
   'haxelib.json',
   'run.n'
 ]
+const RELEASE_TOOL_FILES = [
+  'scripts/ci/vendor-reflaxe-provenance.js',
+  'scripts/release/deterministic-zip.js',
+  'scripts/release/generate-license-artifacts.js',
+  'scripts/release/package-haxelib.sh',
+  'scripts/release/prepare-package-metadata.js',
+  'scripts/release/reflaxe-metadata.js',
+  'scripts/release/reviewed-source.js',
+  'scripts/release/verify-release-artifact.js'
+]
 const GIT_OUTPUT_MAX_BYTES = 64 * 1024 * 1024
 
 function gitPaths(cwd, args) {
@@ -40,9 +50,10 @@ function trackedModes(cwd) {
   return result
 }
 
-function isPackageInput(file) {
+function isReleaseInput(file) {
   return (
     PACKAGE_INPUT_FILES.includes(file) ||
+    RELEASE_TOOL_FILES.includes(file) ||
     PACKAGE_INPUT_ROOTS.some((root) => file === root || file.startsWith(`${root}/`))
   )
 }
@@ -67,13 +78,13 @@ function assertPackageInputsTracked(cwd) {
     ...gitPaths(cwd, ['--others', '--ignored', '--exclude-standard'])
   ]
   const unsafe = [...new Set(candidates)]
-    .filter(isPackageInput)
+    .filter(isReleaseInput)
     .sort()
   if (unsafe.length > 0) {
     throw new Error(`release package input is not tracked by the source commit: ${unsafe.join(', ')}`)
   }
   const invalidModes = [...trackedModes(cwd)]
-    .filter(([file, mode]) => isPackageInput(file) && mode !== '100644' && mode !== '100755')
+    .filter(([file, mode]) => isReleaseInput(file) && mode !== '100644' && mode !== '100755')
     .map(([file]) => file)
     .sort()
   if (invalidModes.length > 0) {
@@ -83,4 +94,11 @@ function assertPackageInputsTracked(cwd) {
   }
 }
 
-module.exports = { assertPackageInputsTracked, PACKAGE_INPUT_FILES, PACKAGE_INPUT_ROOTS }
+module.exports = {
+  assertPackageInputsTracked,
+  isReleaseInput,
+  GIT_OUTPUT_MAX_BYTES,
+  PACKAGE_INPUT_FILES,
+  PACKAGE_INPUT_ROOTS,
+  RELEASE_TOOL_FILES
+}

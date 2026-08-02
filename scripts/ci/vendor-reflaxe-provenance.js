@@ -44,11 +44,20 @@ function filesBelow(directory, prefix = '') {
  * Ask Git to decode patch paths instead of interpreting its quoted header syntax here.
  *
  * Git's NUL-delimited numstat form preserves spaces, tabs, escapes, additions, and deletions without
- * depending on `core.quotePath`. A rename or copy uses an empty pathname followed by the old and new
- * names; this evidence format deliberately rejects those operations so every changed path has one
- * unambiguous reviewed identity.
+ * depending on `core.quotePath`. `git apply --numstat`, however, may report only the destination of a
+ * real rename or copy. Those operations are therefore rejected from their explicit patch metadata
+ * before numstat is used for the ordinary changed-file inventory.
  */
 function patchChangedFiles(patchPath) {
+  const patchText = fs.readFileSync(patchPath, 'utf8')
+  for (const line of patchText.split(/\r?\n/)) {
+    if (line.startsWith('rename from ') || line.startsWith('rename to ')) {
+      fail('vendored patch contains an unsupported rename')
+    }
+    if (line.startsWith('copy from ') || line.startsWith('copy to ')) {
+      fail('vendored patch contains an unsupported copy')
+    }
+  }
   const output = execFileSync('git', ['apply', '--numstat', '-z', patchPath], {
     stdio: ['ignore', 'pipe', 'pipe'],
     maxBuffer: 16 * 1024 * 1024

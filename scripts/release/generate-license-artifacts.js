@@ -13,6 +13,8 @@ const REFLAXE_PROVENANCE_PATH = 'vendor/reflaxe/provenance.json'
 const STDLIB_PROVENANCE_PATH = 'docs/stdlib-provenance-ledger.json'
 const STDLIB_LICENSE_SOURCE_PATH = 'docs/licenses/haxe-stdlib-4.3.7-MIT.txt'
 const PROJECT_COMPONENT_ID = 'reflaxe-rust'
+const PROJECT_NAME = 'reflaxe.rust'
+const PROJECT_REPOSITORY = 'https://github.com/fullofcaffeine/reflaxe.rust'
 const REQUIRED_COMPONENT_CONTRACT = Object.freeze({
   'reflaxe-rust': {
     name: 'reflaxe.rust',
@@ -47,10 +49,16 @@ function validateRequiredComponentIds(source) {
         throw new Error(`release component ${id} ${field} must be exactly ${expected}`)
       }
     }
-		const matchingNames = source.components.filter((entry) => entry.name === contract.name)
-		if (matchingNames.length !== 1) {
-			throw new Error(`release component inventory must contain exactly one ${contract.name} component`)
-		}
+    const forbiddenLicenseOverrides = id === PROJECT_COMPONENT_ID
+      ? ['licenseText', 'licenseSourceFile', 'licenseSha256']
+      : ['license', 'licenseText', 'licenseSourceFile', 'licenseFile', 'licenseSha256']
+    if (forbiddenLicenseOverrides.some((field) => Object.prototype.hasOwnProperty.call(component, field))) {
+      throw new Error(`release component ${id} must not override reviewed license bytes`)
+    }
+    const matchingNames = source.components.filter((entry) => entry.name === contract.name)
+    if (matchingNames.length !== 1) {
+      throw new Error(`release component inventory must contain exactly one ${contract.name} component`)
+    }
   }
   const stdlib = source.components.find(
     (component) => component.id === 'haxe-standard-library-derived-files'
@@ -60,6 +68,52 @@ function validateRequiredComponentIds(source) {
   }
   if (/(?:https?:)?\/\//i.test(stdlib.notice)) {
     throw new Error('stdlib release notice must not depend on an external branch URL')
+  }
+  for (const component of source.components.filter((entry) => !REQUIRED_COMPONENT_IDS.includes(entry.id))) {
+    if (
+      ['licenseSourceFile', 'licenseFile', 'licenseSha256'].some((field) =>
+        Object.prototype.hasOwnProperty.call(component, field)
+      )
+    ) {
+      throw new Error(
+        'extra release component license text must be inline in the reviewed component record'
+      )
+    }
+    if (typeof component.licenseText !== 'string' || component.licenseText.trim().length === 0) {
+      throw new Error(
+        'extra release component license text must be inline in the reviewed component record'
+      )
+    }
+  }
+}
+
+function normalizeRepository(value) {
+  if (typeof value !== 'string') return ''
+  return value.trim().replace(/\/+$/, '').replace(/\.git$/, '')
+}
+
+/**
+ * Why
+ * `haxelib.json` is the installer-facing product identity. A deterministic SBOM is still false if
+ * both generated packages call themselves a different product while the SBOM says reflaxe.rust.
+ *
+ * What
+ * Require the reviewed Haxelib metadata to identify this project and carry a non-empty license.
+ *
+ * How
+ * Compare the name and normalized repository with code-owned product facts. The exact license ID is
+ * intentionally not fixed here; legal policy owns that choice, while generation and verification
+ * require the package and SBOM to use the same non-empty value.
+ */
+function validateProjectHaxelib(haxelib) {
+  if (haxelib?.name !== PROJECT_NAME) {
+    throw new Error(`reviewed ${PROJECT_NAME} Haxelib metadata name must be exactly ${PROJECT_NAME}`)
+  }
+  if (normalizeRepository(haxelib?.url) !== normalizeRepository(PROJECT_REPOSITORY)) {
+    throw new Error(`reviewed ${PROJECT_NAME} Haxelib metadata repository must be exactly ${PROJECT_REPOSITORY}`)
+  }
+  if (typeof haxelib?.license !== 'string' || haxelib.license.trim().length === 0) {
+    throw new Error(`reviewed ${PROJECT_NAME} Haxelib metadata license must be a non-empty string`)
   }
 }
 
@@ -134,6 +188,7 @@ function resolveStdlibComponent(component, ledger) {
 
 function resolvedComponents(source) {
   const haxelib = JSON.parse(fs.readFileSync(path.join(root, 'haxelib.json'), 'utf8'))
+  validateProjectHaxelib(haxelib)
   return source.components.map((component) => {
     const withPackageFacts = {
       ...component,
@@ -206,12 +261,11 @@ function notice(components, cargoPolicy) {
         `Source: ${component.source}`,
         component.copyright,
         component.notice,
-        component.licenseText ||
-          ((component.licenseSourceFile || component.licenseFile) && component.licenseSha256
-            ? fs
-                .readFileSync(path.join(root, component.licenseSourceFile || component.licenseFile), 'utf8')
-                .trim()
-            : null),
+        component.id === 'haxe-standard-library-derived-files'
+          ? fs.readFileSync(path.join(root, STDLIB_LICENSE_SOURCE_PATH), 'utf8').trim()
+          : component.id === 'reflaxe'
+            ? fs.readFileSync(path.join(root, 'vendor', 'reflaxe', 'LICENSE'), 'utf8').trim()
+            : component.licenseText,
         component.licenseFile ? `License text: ${component.licenseFile}` : null
       ].filter(Boolean)
       return `## ${component.name}\n\n${details.join('\n\n')}`
@@ -342,5 +396,8 @@ module.exports = {
   STDLIB_PROVENANCE_PATH,
   STDLIB_PACKAGE_EVIDENCE_PATH,
   STDLIB_LICENSE_SOURCE_PATH,
-  PROJECT_COMPONENT_ID
+  PROJECT_COMPONENT_ID,
+  PROJECT_NAME,
+  PROJECT_REPOSITORY,
+  validateProjectHaxelib
 }

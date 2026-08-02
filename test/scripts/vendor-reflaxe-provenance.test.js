@@ -304,6 +304,48 @@ function main() {
 			)
 		}
 
+		for (const [operation, metadata] of [
+			[
+				'rename',
+				[
+					'diff --git a/src/reflaxe/ReflectCompiler.hx b/src/reflaxe/ReflectCompilerRenamed.hx',
+					'similarity index 100%',
+					'rename from src/reflaxe/ReflectCompiler.hx',
+					'rename to src/reflaxe/ReflectCompilerRenamed.hx',
+					''
+				].join('\n')
+			],
+			[
+				'copy',
+				[
+					'diff --git a/src/reflaxe/ReflectCompiler.hx b/src/reflaxe/ReflectCompilerCopied.hx',
+					'similarity index 100%',
+					'copy from src/reflaxe/ReflectCompiler.hx',
+					'copy to src/reflaxe/ReflectCompilerCopied.hx',
+					''
+				].join('\n')
+			]
+		]) {
+			for (const withUpstream of [false, true]) {
+				const fixture = copyFixture(
+					temp,
+					`${operation}-${withUpstream ? 'upstream' : 'offline'}`
+				)
+				const manifest = readManifest(fixture)
+				manifest.upstream.baseCommit = git(upstream, ['rev-parse', 'HEAD'])
+				const patchPath = path.join(fixture, 'vendor', 'reflaxe', 'reflaxe-rust.patch')
+				const changedPatch = `${fs.readFileSync(patchPath, 'utf8').trimEnd()}\n${metadata}`
+				fs.writeFileSync(patchPath, changedPatch)
+				manifest.localPatch.sha256 = crypto.createHash('sha256').update(changedPatch).digest('hex')
+				writeManifest(fixture, manifest)
+				expectFailure(
+					fixture,
+					new RegExp(`unsupported ${operation}`),
+					withUpstream ? upstream : null
+				)
+			}
+		}
+
     const upstreamNarrowed = copyFixture(temp, 'upstream-narrowed')
     const upstreamNarrowedManifest = readManifest(upstreamNarrowed)
     upstreamNarrowedManifest.localPatch.scope = ['src']

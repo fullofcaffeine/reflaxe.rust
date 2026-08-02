@@ -29,6 +29,7 @@ function writeJson(root, relativePath, value) {
 function packageFixture(root, options = {}) {
   writeJson(root, 'haxelib.json', {
     name: 'reflaxe.rust',
+    url: 'https://github.com/fullofcaffeine/reflaxe.rust',
     version: options.version || VERSION,
     releasenote: `v${options.version || VERSION}: See GitHub Releases`,
     classPath: 'src',
@@ -144,6 +145,23 @@ function main() {
     mutation.components.find((component) => component.id === id)[field] = value
     expectThrow(() => licenseApi.validateRequiredComponentIds(mutation), pattern)
   }
+	for (const [id, field, value] of [
+		['haxe-standard-library-derived-files', 'licenseText', 'FORGED INLINE HAXE LICENSE TEXT'],
+		['haxe-standard-library-derived-files', 'licenseSourceFile', 'docs/local-license.txt'],
+		['haxe-standard-library-derived-files', 'licenseFile', 'docs/local-license.txt'],
+		['haxe-standard-library-derived-files', 'licenseSha256', 'a'.repeat(64)],
+		['reflaxe', 'licenseText', 'FORGED INLINE REFLAXE LICENSE TEXT'],
+		['reflaxe', 'licenseSourceFile', 'docs/local-license.txt'],
+		['reflaxe', 'licenseFile', 'docs/local-license.txt'],
+		['reflaxe', 'licenseSha256', 'a'.repeat(64)]
+	]) {
+		const mutation = JSON.parse(JSON.stringify(releaseComponents))
+		mutation.components.find((component) => component.id === id)[field] = value
+		expectThrow(
+			() => licenseApi.validateRequiredComponentIds(mutation),
+			new RegExp(`${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} must not override reviewed license bytes`)
+		)
+	}
 	const duplicateProjectName = JSON.parse(JSON.stringify(releaseComponents))
 	duplicateProjectName.components.push({
 		id: 'duplicate-project-name',
@@ -206,6 +224,7 @@ function main() {
     kind: 'application',
     versionSource: 'release',
     license: 'Proprietary',
+    licenseText: 'Proprietary fixture license text',
     source: 'https://example.invalid/different-product'
   }
   for (const reordered of [
@@ -220,11 +239,56 @@ function main() {
     assert.strictEqual(reorderedSbom.metadata.component['bom-ref'], 'pkg:generic/reflaxe-rust@9.9.9')
     assert.strictEqual(reorderedSbom.dependencies[0].ref, 'pkg:generic/reflaxe-rust@9.9.9')
   }
+	for (const field of ['licenseSourceFile', 'licenseFile', 'licenseSha256']) {
+		const fileBackedExtra = JSON.parse(JSON.stringify(releaseComponents))
+		fileBackedExtra.components.push({
+			id: `file-backed-extra-${field}`,
+			name: `File-backed extra ${field}`,
+			kind: 'library',
+			version: '1.0.0',
+			license: 'MIT',
+			licenseText: 'Reviewed inline terms',
+			source: 'https://example.invalid/extra',
+			[field]: field === 'licenseSha256' ? 'a'.repeat(64) : '.git/config'
+		})
+		expectThrow(
+			() => licenseApi.buildArtifacts('9.9.9', fileBackedExtra),
+			/extra release component license text must be inline in the reviewed component record/
+		)
+	}
+	const expectedHaxeLicense = fs
+		.readFileSync(path.join(repoRoot, licenseApi.STDLIB_LICENSE_SOURCE_PATH), 'utf8')
+		.trim()
+	const generatedNotice = licenseApi.buildArtifacts('1.2.34').get('THIRD_PARTY_NOTICES.md')
+	assert(
+		generatedNotice.includes(
+			`${stdlibComponent.notice}\n\n${expectedHaxeLicense}\n\n## Rust crate dependencies`
+		),
+		'the complete fixed Haxe license bytes must appear in the generated notice'
+	)
   const firstSbom = JSON.parse(licenseApi.buildArtifacts('1.2.34').get('release-sbom.json'))
   const secondSbom = JSON.parse(licenseApi.buildArtifacts('12.3.4').get('release-sbom.json'))
   assert(!('serialNumber' in firstSbom), 'deterministic SBOM must omit a fabricated UUID serial number')
   assert.notDeepStrictEqual(firstSbom, secondSbom, 'different package versions must produce different SBOMs')
-	assert.doesNotThrow(() => verifyApi.validateSbomPrimary(firstSbom, { license: 'GPL-3.0' }, '1.2.34'))
+	const canonicalHaxelib = {
+		name: 'reflaxe.rust',
+		url: 'https://github.com/fullofcaffeine/reflaxe.rust',
+		license: 'GPL-3.0'
+	}
+	assert.doesNotThrow(() => verifyApi.validateSbomPrimary(firstSbom, canonicalHaxelib, '1.2.34'))
+	for (const [label, mutation] of [
+		['name', { ...canonicalHaxelib, name: 'different.product' }],
+		['missing name', { ...canonicalHaxelib, name: '' }],
+		['repository', { ...canonicalHaxelib, url: 'https://example.invalid/different-product' }],
+		['missing repository', { ...canonicalHaxelib, url: '' }],
+		['empty license', { ...canonicalHaxelib, license: '' }]
+	]) {
+		expectThrow(
+			() => verifyApi.validateSbomPrimary(firstSbom, mutation, '1.2.34'),
+			/reviewed reflaxe\.rust Haxelib metadata/,
+			`the package verifier must reject a contradictory Haxelib ${label}`
+		)
+	}
 	for (const [label, mutate, pattern] of [
 		['name', (sbom) => { sbom.metadata.component.name = 'Different Product' }, /primary component/],
 		['kind', (sbom) => { sbom.metadata.component.type = 'library' }, /primary component/],
@@ -236,7 +300,7 @@ function main() {
 		const mutation = JSON.parse(JSON.stringify(firstSbom))
 		mutate(mutation)
 		expectThrow(
-			() => verifyApi.validateSbomPrimary(mutation, { license: 'GPL-3.0' }, '1.2.34'),
+			() => verifyApi.validateSbomPrimary(mutation, canonicalHaxelib, '1.2.34'),
 			pattern,
 			`the package verifier must reject a false SBOM ${label}`
 		)
@@ -544,8 +608,39 @@ libc = "0.2"
           sourceCommit: SOURCE_SHA,
           sourceRoot: metadataSourceRoot
         }),
-      /packaged haxelib metadata differs from the reviewed source/
+      /reviewed reflaxe\.rust Haxelib metadata license must be a non-empty string/
     )
+
+		for (const [name, mutate] of [
+			['contradictory-project-name', (haxelib) => { haxelib.name = 'different.product' }],
+			['missing-project-name', (haxelib) => { haxelib.name = '' }],
+			['contradictory-project-url', (haxelib) => { haxelib.url = 'https://example.invalid/different-product' }],
+			['missing-project-url', (haxelib) => { haxelib.url = '' }],
+			['missing-project-license', (haxelib) => { haxelib.license = '' }]
+		]) {
+			const contradictoryRoot = path.join(temp, name)
+			packageFixture(contradictoryRoot)
+			const haxelibPath = path.join(contradictoryRoot, 'haxelib.json')
+			const haxelib = JSON.parse(fs.readFileSync(haxelibPath, 'utf8'))
+			mutate(haxelib)
+			writeJson(contradictoryRoot, 'haxelib.json', haxelib)
+			const canonicalRoot = path.join(temp, `${name}-canonical`)
+			fs.cpSync(contradictoryRoot, canonicalRoot, { recursive: true })
+			const candidateZip = path.join(temp, `${name}.zip`)
+			const canonicalZip = path.join(temp, `${name}-canonical.zip`)
+			zipApi.createDeterministicZip(contradictoryRoot, candidateZip)
+			zipApi.createDeterministicZip(canonicalRoot, canonicalZip)
+			expectThrow(
+				() => verifyArtifact({
+					zipPath: candidateZip,
+					version: VERSION,
+					tag: TAG,
+					sourceCommit: SOURCE_SHA,
+					sourceRoot: contradictoryRoot
+				}, canonicalZip),
+				/reviewed reflaxe\.rust Haxelib metadata/
+			)
+		}
 
     const vendorSourceRoot = path.join(temp, 'vendor-source')
     const badVendorRoot = path.join(temp, 'bad-vendor')

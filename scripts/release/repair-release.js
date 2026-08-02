@@ -5,9 +5,12 @@ const os = require('os')
 const path = require('path')
 const { execFileSync } = require('child_process')
 const { loadReleasePolicy, verifyReleaseVersion } = require('./release-policy.js')
-const { verifyReleaseArtifact } = require('./verify-release-artifact.js')
 const { artifactNames, normalizeSha, verifyHostedRelease, verifyTagIdentity } = require('./release-provenance.js')
-const { assertPackageInputsTracked } = require('./package-input-cleanliness.js')
+const {
+  assertTrackedTreeClean,
+  buildFromReviewedSource,
+  withReviewedSource
+} = require('./reviewed-source.js')
 
 function run(command, args, options = {}) {
   return execFileSync(command, args, {
@@ -36,26 +39,39 @@ function buildApprovedArtifact({ cwd, version, tag, sourceCommit }) {
   const repeatZip = path.join(repeatRoot, 'reflaxe.rust.zip')
   try {
     fs.mkdirSync(dist, { recursive: true })
-    run('bash', ['scripts/release/package-haxelib.sh', zipPath, version, tag, sourceCommit], {
-      cwd,
-      stdio: 'inherit'
-    })
-    run('bash', ['scripts/release/package-haxelib.sh', repeatZip, version, tag, sourceCommit], {
-      cwd,
-      env: { ...process.env, TZ: 'UTC', TMPDIR: repeatRoot },
-      stdio: 'inherit'
-    })
-    if (!fs.readFileSync(zipPath).equals(fs.readFileSync(repeatZip))) {
-      throw new Error('repaired Haxelib package is not byte-for-byte reproducible')
-    }
-    const verified = verifyReleaseArtifact({
-      zipPath,
-      canonicalZipPath: repeatZip,
-      version,
-      tag,
-      sourceCommit,
-      sourceRoot: cwd
-    })
+    const verified = withReviewedSource(cwd, sourceCommit, (firstSourceRoot) =>
+      withReviewedSource(cwd, sourceCommit, (secondSourceRoot) => {
+        buildFromReviewedSource({
+          sourceRoot: firstSourceRoot,
+          zipPath,
+          version,
+          tag,
+          sourceCommit
+        })
+        buildFromReviewedSource({
+          sourceRoot: secondSourceRoot,
+          zipPath: repeatZip,
+          version,
+          tag,
+          sourceCommit,
+          env: { ...process.env, TZ: 'UTC', TMPDIR: repeatRoot }
+        })
+        if (!fs.readFileSync(zipPath).equals(fs.readFileSync(repeatZip))) {
+          throw new Error('repaired Haxelib package is not byte-for-byte reproducible')
+        }
+        const reviewedVerifier = require(
+          path.join(firstSourceRoot, 'scripts', 'release', 'verify-release-artifact.js')
+        )
+        return reviewedVerifier.verifyReleaseArtifact({
+          zipPath,
+          canonicalZipPath: repeatZip,
+          version,
+          tag,
+          sourceCommit,
+          sourceRoot: firstSourceRoot
+        })
+      })
+    )
     const names = artifactNames(version)
     fs.writeFileSync(checksumPath, `${verified.sha256}  ${names.archive}\n`)
     run('bash', ['scripts/ci/package-smoke.sh'], {
@@ -97,9 +113,7 @@ function main() {
   const sourceCommit = normalizeSha(run('git', ['rev-parse', 'HEAD^{commit}'], { cwd }), 'checked-out HEAD')
   verifyTagIdentity({ tag, sourceCommit, cwd })
 
-  const tracked = run('git', ['status', '--porcelain', '--untracked-files=no'], { cwd })
-  if (tracked.trim().length > 0) throw new Error('repair checkout contains tracked changes')
-  assertPackageInputsTracked(cwd)
+  assertTrackedTreeClean(cwd, 'repair checkout contains tracked changes')
   const artifact = buildApprovedArtifact({ cwd, version, tag, sourceCommit })
   const existing = releaseView(tag, cwd)
   if (existing && existing.isImmutable) {

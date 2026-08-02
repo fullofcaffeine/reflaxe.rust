@@ -11,9 +11,14 @@ const {
   buildArtifacts: buildLicenseArtifacts,
   REQUIRED_COMPONENT_CONTRACT,
   STDLIB_LICENSE_SOURCE_PATH,
-  PROJECT_COMPONENT_ID
+  PROJECT_COMPONENT_ID,
+  validateProjectHaxelib
 } = require('./generate-license-artifacts.js')
-const { assertPackageInputsTracked } = require('./package-input-cleanliness.js')
+const {
+  assertTrackedTreeClean,
+  buildFromReviewedSource,
+  withReviewedSource
+} = require('./reviewed-source.js')
 const {
   requireExactReflaxePaths,
   validateReflaxeHaxelib
@@ -179,6 +184,7 @@ function verifyLayout(names) {
  * identity. The package's own Haxelib license remains the one source for the project license value.
  */
 function validateSbomPrimary(sbom, haxelib, version) {
+  validateProjectHaxelib(haxelib)
   const primary = sbom.metadata?.component
   const expectedPrimaryRef = `pkg:generic/${PROJECT_COMPONENT_ID}@${version}`
   if (
@@ -229,6 +235,8 @@ function verifyReleaseArtifact({
   }
   const haxelib = parseJsonEntry(files, 'haxelib.json')
   const expectedHaxelib = JSON.parse(fs.readFileSync(path.join(sourceRoot, 'haxelib.json'), 'utf8'))
+  validateProjectHaxelib(haxelib)
+  validateProjectHaxelib(expectedHaxelib)
   delete expectedHaxelib.reflaxe
   expectedHaxelib.version = version
   expectedHaxelib.releasenote = `v${version}: See GitHub Releases`
@@ -410,36 +418,30 @@ function main() {
   if (sourceCommit !== args['source-sha']) {
     throw new Error('reviewed source commit does not match the checked-out commit')
   }
-  const trackedChanges = execFileSync(
-    'git',
-    ['status', '--porcelain', '--untracked-files=no'],
-    { cwd: REPOSITORY_ROOT, encoding: 'utf8' }
-  )
-  if (trackedChanges.trim()) {
-    throw new Error('reviewed source contains tracked changes')
-  }
-  assertPackageInputsTracked(REPOSITORY_ROOT)
+  assertTrackedTreeClean(REPOSITORY_ROOT, 'reviewed source contains tracked changes')
 
   const canonicalRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-release-verify-'))
   const canonicalZipPath = path.join(canonicalRoot, 'reflaxe.rust.zip')
   try {
-    execFileSync(
-      'bash',
-      [
-        'scripts/release/package-haxelib.sh',
-        canonicalZipPath,
-        args.version,
-        args.tag,
+    const result = withReviewedSource(REPOSITORY_ROOT, sourceCommit, (sourceRoot) => {
+      buildFromReviewedSource({
+        sourceRoot,
+        zipPath: canonicalZipPath,
+        version: args.version,
+        tag: args.tag,
         sourceCommit
-      ],
-      { cwd: REPOSITORY_ROOT, stdio: 'inherit' }
-    )
-    const result = verifyReleaseArtifact({
-      zipPath: path.resolve(args.zip),
-      canonicalZipPath,
-      version: args.version,
-      tag: args.tag,
-      sourceCommit
+      })
+      const reviewedVerifier = require(
+        path.join(sourceRoot, 'scripts', 'release', 'verify-release-artifact.js')
+      )
+      return reviewedVerifier.verifyReleaseArtifact({
+        zipPath: path.resolve(args.zip),
+        canonicalZipPath,
+        version: args.version,
+        tag: args.tag,
+        sourceCommit,
+        sourceRoot
+      })
     })
     console.log(JSON.stringify(result))
   } finally {

@@ -118,10 +118,12 @@ Use `bash scripts/ci/package-smoke.sh` to validate the shipped artifact end-to-e
 Important: validate packaged behavior through `haxelib install` + `-lib reflaxe.rust`, not raw `-cp <pkg>/src`.
 Raw classpath-only tests are not equivalent for packaged `.cross.hx` std override selection.
 
-Release automation runs the same package builder from the local semantic-release artifact plugin,
-builds it twice, and makes the strict verifier compare every byte of the candidate ZIP with the
-independent rebuild. This complete comparison catches added or changed files even under otherwise
-allowed directories. Package smoke then runs against the exact verified ZIP before the tag is
+Release automation first materializes the exact CI-tested Git commit into two fresh temporary source
+trees. It runs the committed package builder and license generator from those trees, then makes the
+committed strict verifier compare every byte of the candidate ZIP with the independent rebuild. The
+live worktree is never a package input, even when Git status is fooled by hidden index flags or
+checkout transformations. This complete comparison catches added or changed files even under
+otherwise allowed directories. Package smoke then runs against the exact verified ZIP before the tag is
 created. The CI release job must install the pinned lix Haxe toolchain before semantic-release
 starts. The local package-smoke guard proves package semantics; the workflow setup provides the
 matching `haxe`/`haxelib` runtime when building the release asset.
@@ -145,7 +147,9 @@ framework base, repository, license, and patch record. The nested
 repository and license facts. Haxe license generation is fixed to
 `docs/licenses/haxe-stdlib-4.3.7-MIT.txt`; the source record cannot redirect it to another checkout
 file. Package-input checks read repository-sized Git output with an explicit bound and reject a
-symlink or submodule placed at either a package root or one of its descendants.
+symlink or submodule placed at either a package root or one of its descendants. The required Haxe and
+Reflaxe license texts always come from their fixed files. Additional component license text must be
+inline in the tracked component record, so an editable path cannot import unreviewed local bytes.
 
 ## Backend-specific requirement
 

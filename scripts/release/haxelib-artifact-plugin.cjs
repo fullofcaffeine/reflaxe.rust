@@ -3,9 +3,12 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const { execFileSync } = require('child_process')
-const { verifyReleaseArtifact } = require('./verify-release-artifact.js')
 const { artifactNames, normalizeSha, verifyTagIdentity } = require('./release-provenance.js')
-const { assertPackageInputsTracked } = require('./package-input-cleanliness.js')
+const {
+  assertTrackedTreeClean,
+  buildFromReviewedSource,
+  withReviewedSource
+} = require('./reviewed-source.js')
 
 function run(command, args, options = {}) {
   return execFileSync(command, args, {
@@ -26,15 +29,6 @@ function sourceCommit(cwd) {
   return tested
 }
 
-function assertTrackedTreeClean(cwd) {
-  const status = execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], {
-    cwd,
-    encoding: 'utf8'
-  })
-  if (status.trim().length > 0) throw new Error('release preparation modified tracked repository files')
-  assertPackageInputsTracked(cwd)
-}
-
 function hash(filePath) {
   return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex')
 }
@@ -52,28 +46,44 @@ async function prepare(_pluginConfig, context) {
   const secondZip = path.join(secondRoot, 'reflaxe.rust.zip')
 
   try {
-    assertTrackedTreeClean(cwd)
+    assertTrackedTreeClean(cwd, 'release preparation modified tracked repository files')
     fs.mkdirSync(dist, { recursive: true })
     fs.rmSync(zipPath, { force: true })
     fs.rmSync(checksumPath, { force: true })
 
-    run('bash', ['scripts/release/package-haxelib.sh', zipPath, version, tag, source], { cwd })
-    run('bash', ['scripts/release/package-haxelib.sh', secondZip, version, tag, source], {
-      cwd,
-      env: { ...process.env, TZ: 'UTC', TMPDIR: secondRoot }
-    })
-    if (!fs.readFileSync(zipPath).equals(fs.readFileSync(secondZip))) {
-      throw new Error('complete Haxelib package is not byte-for-byte reproducible')
-    }
-
-    const verified = verifyReleaseArtifact({
-      zipPath,
-      canonicalZipPath: secondZip,
-      version,
-      tag,
-      sourceCommit: source,
-      sourceRoot: cwd
-    })
+    const verified = withReviewedSource(cwd, source, (firstSourceRoot) =>
+      withReviewedSource(cwd, source, (secondSourceRoot) => {
+        buildFromReviewedSource({
+          sourceRoot: firstSourceRoot,
+          zipPath,
+          version,
+          tag,
+          sourceCommit: source
+        })
+        buildFromReviewedSource({
+          sourceRoot: secondSourceRoot,
+          zipPath: secondZip,
+          version,
+          tag,
+          sourceCommit: source,
+          env: { ...process.env, TZ: 'UTC', TMPDIR: secondRoot }
+        })
+        if (!fs.readFileSync(zipPath).equals(fs.readFileSync(secondZip))) {
+          throw new Error('complete Haxelib package is not byte-for-byte reproducible')
+        }
+        const reviewedVerifier = require(
+          path.join(firstSourceRoot, 'scripts', 'release', 'verify-release-artifact.js')
+        )
+        return reviewedVerifier.verifyReleaseArtifact({
+          zipPath,
+          canonicalZipPath: secondZip,
+          version,
+          tag,
+          sourceCommit: source,
+          sourceRoot: firstSourceRoot
+        })
+      })
+    )
     const names = artifactNames(version)
     fs.writeFileSync(checksumPath, `${verified.sha256}  ${names.archive}\n`)
 
@@ -85,7 +95,7 @@ async function prepare(_pluginConfig, context) {
         PACKAGE_ZIP_REL: path.relative(cwd, zipPath)
       }
     })
-    assertTrackedTreeClean(cwd)
+    assertTrackedTreeClean(cwd, 'release preparation modified tracked repository files')
     context.logger.success(
       `Prepared reproducible ${names.archive} (${verified.size} bytes, sha256:${verified.sha256}) from ${source}`
     )
@@ -106,18 +116,27 @@ async function publish(_pluginConfig, context) {
   const canonicalZipPath = path.join(canonicalRoot, 'reflaxe.rust.zip')
   let verified
   try {
-    assertTrackedTreeClean(cwd)
-    run('bash', ['scripts/release/package-haxelib.sh', canonicalZipPath, version, tag, source], {
-      cwd,
-      env: { ...process.env, TZ: 'UTC', TMPDIR: canonicalRoot }
-    })
-    verified = verifyReleaseArtifact({
-      zipPath,
-      canonicalZipPath,
-      version,
-      tag,
-      sourceCommit: source,
-      sourceRoot: cwd
+    assertTrackedTreeClean(cwd, 'release publication modified tracked repository files')
+    verified = withReviewedSource(cwd, source, (sourceRoot) => {
+      buildFromReviewedSource({
+        sourceRoot,
+        zipPath: canonicalZipPath,
+        version,
+        tag,
+        sourceCommit: source,
+        env: { ...process.env, TZ: 'UTC', TMPDIR: canonicalRoot }
+      })
+      const reviewedVerifier = require(
+        path.join(sourceRoot, 'scripts', 'release', 'verify-release-artifact.js')
+      )
+      return reviewedVerifier.verifyReleaseArtifact({
+        zipPath,
+        canonicalZipPath,
+        version,
+        tag,
+        sourceCommit: source,
+        sourceRoot
+      })
     })
   } finally {
     fs.rmSync(canonicalRoot, { recursive: true, force: true })
@@ -132,7 +151,7 @@ async function publish(_pluginConfig, context) {
   ) {
     throw new Error('approved release artifact changed after preparation')
   }
-  assertTrackedTreeClean(cwd)
+  assertTrackedTreeClean(cwd, 'release publication modified tracked repository files')
   context.logger.success(`Verified ${tag} and the approved artifact before GitHub publication`)
 }
 
