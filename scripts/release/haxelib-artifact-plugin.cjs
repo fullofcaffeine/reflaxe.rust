@@ -1,9 +1,15 @@
-const crypto = require('crypto')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const { execFileSync } = require('child_process')
-const { artifactNames, normalizeSha, verifyTagIdentity } = require('./release-provenance.js')
+const {
+  artifactNames,
+  assertArtifactReceiptFiles,
+  captureArtifactReceipt,
+  createArtifactReceipt,
+  normalizeSha,
+  verifyTagIdentity
+} = require('./release-provenance.js')
 const { assertExactBootstrap, gitObject } = require('./exact-git-source.js')
 const {
   assertTrackedTreeClean,
@@ -13,13 +19,15 @@ const {
 } = require('./reviewed-source.js')
 
 function run(command, args, options = {}) {
-  return execFileSync(command, args, {
+  const environment = releaseProcessEnvironment(
+    options.env || process.env,
+    options.additionalEnvironmentKeys || []
+  )
+  const executable = command === 'bash' ? environment.RELEASE_BASH_BIN : command
+  return execFileSync(executable, args, {
     cwd: options.cwd,
     encoding: 'utf8',
-    env: releaseProcessEnvironment(
-      options.env || process.env,
-      options.additionalEnvironmentKeys || []
-    ),
+    env: environment,
     stdio: options.stdio || 'inherit'
   })
 }
@@ -33,10 +41,6 @@ function sourceCommit(cwd) {
   if (head !== tested) throw new Error('release checkout does not match the CI-tested GITHUB_SHA')
   assertExactBootstrap(cwd, tested)
   return tested
-}
-
-function hash(filePath) {
-  return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex')
 }
 
 /** Build twice, compare bytes, validate the complete archive, and smoke the exact first build. */
@@ -102,6 +106,16 @@ async function prepare(_pluginConfig, context) {
       },
       additionalEnvironmentKeys: ['PACKAGE_SMOKE_USE_EXISTING', 'PACKAGE_ZIP_REL']
     })
+    const receipt = createArtifactReceipt({
+      version,
+      tag,
+      sourceCommit: source,
+      zipPath,
+      checksumPath
+    })
+    if (receipt.archive.digest !== `sha256:${verified.sha256}` || receipt.archive.size !== verified.size) {
+      throw new Error('package smoke changed the approved release artifact')
+    }
     assertTrackedTreeClean(cwd, 'release preparation modified tracked repository files')
     context.logger.success(
       `Prepared reproducible ${names.archive} (${verified.size} bytes, sha256:${verified.sha256}) from ${source}`
@@ -151,13 +165,21 @@ async function publish(_pluginConfig, context) {
   const checksumPath = path.join(cwd, 'dist', 'reflaxe.rust.zip.sha256')
   const names = artifactNames(version)
   const expectedChecksum = `${verified.sha256}  ${names.archive}\n`
-  if (
-    hash(zipPath) !== verified.sha256 ||
-    !fs.existsSync(checksumPath) ||
-    fs.readFileSync(checksumPath, 'utf8') !== expectedChecksum
-  ) {
+  if (!fs.existsSync(checksumPath) || fs.readFileSync(checksumPath, 'utf8') !== expectedChecksum) {
     throw new Error('approved release artifact changed after preparation')
   }
+  const receipt = createArtifactReceipt({
+    version,
+    tag,
+    sourceCommit: source,
+    zipPath,
+    checksumPath
+  })
+  assertArtifactReceiptFiles(receipt, { zipPath, checksumPath })
+  if (receipt.archive.digest !== `sha256:${verified.sha256}` || receipt.archive.size !== verified.size) {
+    throw new Error('approved release artifact differs from the independent publication rebuild')
+  }
+  captureArtifactReceipt(receipt)
   assertTrackedTreeClean(cwd, 'release publication modified tracked repository files')
   context.logger.success(`Verified ${tag} and the approved artifact before GitHub publication`)
 }

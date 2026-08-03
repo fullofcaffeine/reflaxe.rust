@@ -2,7 +2,10 @@
 
 const assert = require('assert')
 const fs = require('fs')
+const os = require('os')
 const path = require('path')
+const { execFileSync, spawnSync } = require('child_process')
+const { pathToFileURL } = require('url')
 
 const root = path.resolve(__dirname, '..', '..')
 const ciPath = path.join(root, '.github', 'workflows', 'ci.yml')
@@ -10,13 +13,114 @@ const legacyReleasePath = path.join(root, '.github', 'workflows', 'release.yml')
 const repairPath = path.join(root, '.github', 'workflows', 'release-repair.yml')
 const weeklyPath = path.join(root, '.github', 'workflows', 'weekly-ci-evidence.yml')
 const packagePath = path.join(root, 'package.json')
+const packageSmokePath = path.join(root, 'scripts', 'ci', 'package-smoke.sh')
 
 function requireMatch(text, pattern, message) {
   assert.match(text, pattern, message)
 }
 
-function main() {
+function assertRustPolicyGithubBoundary() {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-policy-output-'))
+  const githubEnvironment = path.join(temp, 'github-env')
+  const githubOutput = path.join(temp, 'github-output')
+  try {
+    execFileSync(process.execPath, [
+      path.join(root, 'scripts', 'ci', 'rust-toolchain-policy.js'),
+      '--github-output',
+      '--activate',
+      'release'
+    ], {
+      cwd: root,
+      env: {
+        GITHUB_ENV: githubEnvironment,
+        GITHUB_OUTPUT: githubOutput,
+        LANG: 'C'
+      },
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+    assert.match(fs.readFileSync(githubEnvironment, 'utf8'), /^RUSTUP_TOOLCHAIN=\d+\.\d+\.\d+\n$/)
+    assert.match(fs.readFileSync(githubOutput, 'utf8'), /^minimum=.*\nrelease=.*\ncurrent=.*\n$/)
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true })
+  }
+}
+
+async function assertSemanticReleaseGithubCredential() {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-semantic-auth-'))
+  const fakeGit = path.join(temp, 'git')
+  try {
+    fs.writeFileSync(
+      fakeGit,
+      '#!/bin/sh\ncase "$*" in *x-access-token:fixture-token@github.com*) exit 0 ;; *) exit 1 ;; esac\n',
+      { mode: 0o755 }
+    )
+    const source = path.join(root, 'node_modules', 'semantic-release', 'lib', 'get-git-auth-url.js')
+    const { default: getGitAuthUrl } = await import(pathToFileURL(source).href)
+    const authUrl = await getGitAuthUrl({
+      branch: { name: 'main' },
+      cwd: root,
+      env: {
+        GITHUB_ACTION: 'release',
+        GH_TOKEN: 'fixture-token',
+        GITHUB_TOKEN: 'fixture-token',
+        PATH: temp
+      },
+      options: { repositoryUrl: 'https://github.com/example/reflaxe.rust.git' }
+    })
+    assert.strictEqual(
+      authUrl,
+      'https://x-access-token:fixture-token@github.com/example/reflaxe.rust.git',
+      'the locked semantic-release path must use GitHub Actions installation-token credentials'
+    )
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true })
+  }
+}
+
+function assertExactRepairTagResolution() {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-repair-ref-'))
+  try {
+    execFileSync('/usr/bin/git', ['init', '-b', 'main'], { cwd: temp, stdio: 'ignore' })
+    execFileSync('/usr/bin/git', ['config', 'user.name', 'Release Workflow Test'], { cwd: temp })
+    execFileSync('/usr/bin/git', ['config', 'user.email', 'release-workflow@example.invalid'], { cwd: temp })
+    fs.writeFileSync(path.join(temp, 'fixture.txt'), 'reviewed\n')
+    execFileSync('/usr/bin/git', ['add', 'fixture.txt'], { cwd: temp })
+    execFileSync('/usr/bin/git', ['commit', '-m', 'test: seed repair ref'], { cwd: temp, stdio: 'ignore' })
+    execFileSync('/usr/bin/git', ['branch', 'v1.2.3'], { cwd: temp })
+    const branchOnly = spawnSync('/usr/bin/git', ['rev-parse', 'refs/tags/v1.2.3^{commit}'], {
+      cwd: temp,
+      stdio: 'ignore'
+    })
+    assert.notStrictEqual(branchOnly.status, 0, 'a version-shaped branch must not resolve as a repair tag')
+    execFileSync('/usr/bin/git', ['tag', 'v1.2.3'], { cwd: temp })
+    assert.strictEqual(
+      execFileSync('/usr/bin/git', ['rev-parse', 'refs/tags/v1.2.3^{commit}'], { cwd: temp, encoding: 'utf8' }).trim(),
+      execFileSync('/usr/bin/git', ['rev-parse', 'HEAD^{commit}'], { cwd: temp, encoding: 'utf8' }).trim()
+    )
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true })
+  }
+}
+
+async function main() {
   const ci = fs.readFileSync(ciPath, 'utf8')
+  const packageSmoke = fs.readFileSync(packageSmokePath, 'utf8')
+  const explicitLibraryPaths = packageSmoke.match(/HAXE_LIBRARY_PATH=/g) || []
+  assert.strictEqual(
+    explicitLibraryPaths.length,
+    1,
+    'only the source-layout smoke may set an explicit reviewed Haxe library path'
+  )
+  requireMatch(
+    packageSmoke,
+    /HAXE_LIBRARY_PATH="\$root_dir\/haxe_libraries"[\s\\]*"\$RELEASE_HAXE_BIN" -cp "\$source_app_dir"/,
+    'the isolated source-layout smoke must resolve reflaxe.rust from the exact reviewed repository'
+  )
+  requireMatch(
+    packageSmoke,
+    /JSON\.stringify\(\{ version: source\.version, resolveLibs: 'haxelib' \}[\s\S]*"\$RELEASE_HAXE_BIN" -cp \. -lib reflaxe\.rust/,
+    'the isolated installed-package smoke must force library resolution through its temporary Haxelib repository'
+  )
   assert(!ci.includes('workflow_run'), 'normal publication must not cross a privileged workflow_run boundary')
   assert(!fs.existsSync(legacyReleasePath), 'the separate normal Release workflow must be removed')
   requireMatch(ci, /npm audit\n/, 'a successful dependency audit must be part of the release gate')
@@ -36,32 +140,69 @@ function main() {
   requireMatch(release, /node-version: "22\.14\.0"/, 'release Node runtime must be exact')
   requireMatch(
     release,
+    /shell: \/usr\/bin\/bash --noprofile --norc -euo pipefail \{0\}/,
+    'release steps must start under a profile-free absolute Bash before any script text runs'
+  )
+  requireMatch(release, /BASH_ENV: ""[\s\S]*ENV: ""[\s\S]*NODE_OPTIONS: ""/, 'release job startup must clear shell and Node preload variables')
+  requireMatch(release, /node_bin="\$\(\/usr\/bin\/readlink -f "\$\(command -v node\)"\)"[\s\S]*"\$node_bin" --version/, 'release must capture and validate the setup-node executable by absolute path')
+  requireMatch(release, /RUNNER_TOOL_CACHE\/node\/22\.14\.0/, 'release must bind Node to setup-node\'s pinned tool-cache directory')
+  requireMatch(
+    release,
+    /\/bin\/cp \.haxerc "\$RUNNER_TEMP\/haxe-rust-lix-home\/haxe\/\.haxerc"[\s\S]*release_home="\$RUNNER_TEMP\/haxe-rust-lix-home"/,
+    'release must use one fresh Lix home with an exact global Haxe version inside temporary build directories'
+  )
+  requireMatch(
+    release,
+    /\/usr\/bin\/git --no-replace-objects[^\n]*[\s\S]*fsck --strict --full --no-reflogs "\$SOURCE_COMMIT"[\s\S]*cat-file blob/,
+    'release must validate reachable Git object identities before extracting executable bootstrap bytes'
+  )
+  requireMatch(
+    release,
     /git --no-replace-objects cat-file blob[\s\S]*SOURCE_COMMIT:scripts\/release\/exact-git-source\.js/,
     'the workflow must load its release bootstrap from the tested commit rather than the live checkout'
   )
   requireMatch(
     release,
-    /node "\$bootstrap" bootstrap "\$GITHUB_WORKSPACE" "\$SOURCE_COMMIT" "\$source_root"/,
+    /"\$node_bin" "\$bootstrap" bootstrap[\s\S]*"\$GITHUB_WORKSPACE" "\$SOURCE_COMMIT" "\$source_root"[\s\S]*"\$GITHUB_SERVER_URL\/\$GITHUB_REPOSITORY\.git"/,
     'the workflow must create an exact-object release repository before loading release code'
   )
+  assert(!release.includes('remote set-url'), 'the bootstrap receipt must be written after the final reviewed origin is configured')
   requireMatch(
     release,
-    /RELEASE_BOOTSTRAP=\$bootstrap[\s\S]*RELEASE_SOURCE_COMMIT=\$SOURCE_COMMIT/,
-    'the workflow must retain the externally loaded bootstrap and exact source identity'
+    /RELEASE_NODE_BIN=\$node_bin[\s\S]*RELEASE_GIT_BIN=\/usr\/bin\/git[\s\S]*RELEASE_SOURCE_COMMIT=\$SOURCE_COMMIT/,
+    'the workflow must retain absolute reviewed tool paths and exact source identity'
   )
-  const releaseAssert = release.indexOf(
-    'node "$RELEASE_BOOTSTRAP" assert "$RELEASE_SOURCE_ROOT" "$RELEASE_SOURCE_COMMIT"'
-  )
+  const releaseAssert = release.indexOf('"$RELEASE_NODE_BIN" "$final_bootstrap" assert')
   const semanticRelease = release.indexOf('semantic-release/bin/semantic-release.js')
-  assert(releaseAssert !== -1, 'release must recheck literal commit bytes after tool installation')
+  assert(releaseAssert !== -1, 'release must re-extract and run a fresh literal bootstrap after tool installation')
   assert(releaseAssert < semanticRelease, 'literal commit-byte proof must precede semantic-release loading')
-  for (const command of ['npm ci', 'node_modules/lix/bin/lix.js download', 'rust-toolchain-policy.js', 'semantic-release/bin/semantic-release.js']) {
+  const finalBootstrap = release.lastIndexOf('cat-file blob', releaseAssert)
+  const finalFsck = release.lastIndexOf('fsck --strict --full --no-reflogs', releaseAssert)
+  assert(finalBootstrap !== -1 && finalFsck !== -1 && finalFsck < finalBootstrap, 'final release assertion must fsck then freshly extract its checker')
+  requireMatch(
+    release.slice(releaseAssert, semanticRelease),
+    /"\$GITHUB_SERVER_URL\/\$GITHUB_REPOSITORY\.git"/,
+    'final release assertion must compare Git configuration with the workflow-owned repository URL'
+  )
+  assert(!release.includes('RELEASE_BOOTSTRAP='), 'a writable bootstrap extracted before dependency setup must never be reused as release authority')
+  for (const command of ['RELEASE_NPM_BIN" ci', '"$lix" download', 'rust-toolchain-policy.js', 'semantic-release/bin/semantic-release.js']) {
     const commandIndex = release.indexOf(command)
     assert(commandIndex > release.indexOf('Materialize exact reviewed release repository'), `${command} must run only after exact-source bootstrap`)
     const preceding = release.slice(Math.max(0, commandIndex - 500), commandIndex)
     requireMatch(preceding, /RELEASE_SOURCE_ROOT/, `${command} must run from the exact reviewed repository`)
   }
-  requireMatch(release, /env -u BASH_ENV -u ENV -u NODE_OPTIONS -u NODE_PATH -u TAR_OPTIONS -u CARGO_BIN/, 'publication must clear executable environment injections')
+  requireMatch(release, /env -i[\s\S]*RELEASE_CARGO_BIN="\$cargo_bin"[\s\S]*RELEASE_NODE_BIN="\$RELEASE_NODE_BIN"/, 'publication must use an explicit allowlisted execution environment')
+  requireMatch(
+    release,
+    /env -i LANG=C GITHUB_ENV="\$GITHUB_ENV" GITHUB_OUTPUT="\$GITHUB_OUTPUT"[\s\\]*"\$RELEASE_NODE_BIN"[\s\\]*scripts\/ci\/rust-toolchain-policy\.js --github-output --activate release/,
+    'release Rust policy resolution must preserve GitHub output files through env -i'
+  )
+  requireMatch(
+    release.slice(releaseAssert, semanticRelease),
+    /GITHUB_ACTION="\$GITHUB_ACTION"/,
+    'semantic-release must receive the GitHub Actions credential-mode marker'
+  )
+  requireMatch(release, /RELEASE_EXPECTED_ORIGIN_URL="\$GITHUB_SERVER_URL\/\$GITHUB_REPOSITORY\.git"/, 'release callers must retain the workflow-owned repository URL')
   assert(!release.includes('actions/cache'), 'the privileged release job must not restore an executable cache')
   assert(!release.includes('workflow_dispatch'), 'normal publication must not have a manual bypass')
 
@@ -69,7 +210,20 @@ function main() {
   const repair = fs.readFileSync(repairPath, 'utf8')
   requireMatch(repair, /workflow_dispatch:/, 'repair must be explicitly manual')
   requireMatch(repair, /tag:\n\s+description:/, 'repair must require a tag input')
-  requireMatch(repair, /ref: \$\{\{ inputs\.tag \}\}/, 'repair must check out the supplied immutable tag')
+  assert(!repair.includes("if: startsWith(inputs.tag, 'v')"), 'invalid repair input must fail explicitly instead of skipping the write-capable job')
+  requireMatch(
+    repair,
+    /\[\[ ! "\$REPAIR_TAG" =~ \^v\(0\|\[1-9\]\[0-9\]\*\)\\\.\(0\|\[1-9\]\[0-9\]\*\)\\\.\(0\|\[1-9\]\[0-9\]\*\)\$ \]\]/,
+    'repair must validate exact stable-version syntax before checkout'
+  )
+  requireMatch(repair, /ref: refs\/tags\/\$\{\{ inputs\.tag \}\}/, 'repair must check out the explicit immutable tag namespace')
+  requireMatch(repair, /shell: \/usr\/bin\/bash --noprofile --norc -euo pipefail \{0\}/, 'repair steps must use profile-free absolute Bash')
+  requireMatch(repair, /BASH_ENV: ""[\s\S]*ENV: ""[\s\S]*NODE_OPTIONS: ""/, 'repair startup must clear shell and Node preload variables')
+  requireMatch(
+    repair,
+    /\/bin\/cp \.haxerc "\$RUNNER_TEMP\/haxe-rust-lix-home\/haxe\/\.haxerc"[\s\S]*release_home="\$RUNNER_TEMP\/haxe-rust-lix-home"/,
+    'repair must use one fresh Lix home with an exact global Haxe version inside temporary build directories'
+  )
   requireMatch(repair, /REPAIR_TAG: \$\{\{ inputs\.tag \}\}/, 'manual input must cross into shell through an environment value')
   requireMatch(
     repair,
@@ -78,18 +232,30 @@ function main() {
   )
   requireMatch(
     repair,
-    /RELEASE_BOOTSTRAP=\$bootstrap[\s\S]*RELEASE_SOURCE_COMMIT=\$source_commit/,
-    'repair must retain the externally loaded bootstrap and supplied tag identity'
+    /RELEASE_NODE_BIN=\$node_bin[\s\S]*RELEASE_GIT_BIN=\/usr\/bin\/git[\s\S]*RELEASE_SOURCE_COMMIT=\$source_commit/,
+    'repair must retain absolute reviewed tool paths and supplied tag identity'
   )
-  const repairAssert = repair.indexOf(
-    'node "$RELEASE_BOOTSTRAP" assert "$RELEASE_SOURCE_ROOT" "$RELEASE_SOURCE_COMMIT"'
-  )
-  const repairCommand = repair.indexOf('node scripts/release/repair-release.js "$REPAIR_TAG"')
+  requireMatch(repair, /rev-parse --verify "refs\/tags\/\$REPAIR_TAG\^\{commit\}"/, 'repair source resolution must use the explicit tag namespace')
+  requireMatch(repair, /test "\$head_commit" = "\$source_commit"/, 'repair must prove checkout HEAD equals the supplied tag commit')
+  const repairAssert = repair.indexOf('"$RELEASE_NODE_BIN" "$final_bootstrap" assert')
+  const repairCommand = repair.indexOf('"$RELEASE_NODE_BIN" scripts/release/repair-release.js "$REPAIR_TAG"')
   assert(repairAssert !== -1, 'repair must recheck literal commit bytes after tool installation')
   assert(repairAssert < repairCommand, 'literal commit-byte proof must precede repair code loading')
+  requireMatch(
+    repair.slice(repairAssert, repairCommand),
+    /"\$GITHUB_SERVER_URL\/\$GITHUB_REPOSITORY\.git"/,
+    'final repair assertion must compare Git configuration with the workflow-owned repository URL'
+  )
+  assert(!repair.includes('RELEASE_BOOTSTRAP='), 'repair must not reuse a writable pre-install bootstrap')
   requireMatch(repair, /cd "\$RELEASE_SOURCE_ROOT"[\s\S]*repair-release\.js/, 'repair must execute from the exact tag repository')
-  requireMatch(repair, /env -u BASH_ENV -u ENV -u NODE_OPTIONS -u NODE_PATH -u TAR_OPTIONS -u CARGO_BIN/, 'repair must clear executable environment injections')
-  requireMatch(repair, /node scripts\/release\/repair-release\.js "\$REPAIR_TAG"/, 'repair must use the non-version-deriving repair command')
+  requireMatch(repair, /env -i[\s\S]*RELEASE_CARGO_BIN="\$cargo_bin"[\s\S]*RELEASE_NODE_BIN="\$RELEASE_NODE_BIN"/, 'repair must use an explicit allowlisted execution environment')
+  requireMatch(
+    repair,
+    /env -i LANG=C GITHUB_ENV="\$GITHUB_ENV" GITHUB_OUTPUT="\$GITHUB_OUTPUT"[\s\\]*"\$RELEASE_NODE_BIN"[\s\\]*scripts\/ci\/rust-toolchain-policy\.js --github-output --activate release/,
+    'repair Rust policy resolution must preserve GitHub output files through env -i'
+  )
+  requireMatch(repair, /RELEASE_EXPECTED_ORIGIN_URL="\$GITHUB_SERVER_URL\/\$GITHUB_REPOSITORY\.git"/, 'repair callers must retain the workflow-owned repository URL')
+  requireMatch(repair, /"\$RELEASE_NODE_BIN" scripts\/release\/repair-release\.js "\$REPAIR_TAG"/, 'repair must use the non-version-deriving repair command')
   assert(!repair.includes('semantic-release'), 'repair must never derive or create a new version')
   assert(!repair.includes('git tag'), 'repair must never create, move, or delete a tag')
 
@@ -118,7 +284,14 @@ function main() {
     requireMatch(weekly, new RegExp(`- ${requiredNeed.replaceAll('-', '\\-')}`), `weekly rollup must wait for ${requiredNeed}`)
   }
 
+  assertRustPolicyGithubBoundary()
+  await assertSemanticReleaseGithubCredential()
+  assertExactRepairTagResolution()
+
   console.log('[release-workflow-test] OK')
 }
 
-main()
+main().catch((error) => {
+  console.error(error.stack || error.message)
+  process.exit(1)
+})

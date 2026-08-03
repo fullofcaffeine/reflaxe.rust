@@ -1,5 +1,6 @@
 const crypto = require('crypto')
 const fs = require('fs')
+const path = require('path')
 const { execFileSync } = require('child_process')
 const {
   GIT_OUTPUT_MAX_BYTES,
@@ -15,15 +16,23 @@ const HOST_ENVIRONMENT_KEYS = [
   'GITHUB_SERVER_URL',
   'GITHUB_TOKEN'
 ]
+let capturedArtifactReceipt = null
 
 function defaultRun(command, args, options = {}) {
   const git = command === 'git'
-  return execFileSync(command, git ? ['--no-replace-objects', ...args] : args, {
+  const environment = git
+    ? gitObjectEnvironment(options.env || process.env)
+    : releaseProcessEnvironment(options.env || process.env, HOST_ENVIRONMENT_KEYS)
+  const executable = git
+    ? (options.env || process.env).RELEASE_GIT_BIN || '/usr/bin/git'
+    : environment.RELEASE_GH_BIN
+  if (!path.isAbsolute(executable || '')) {
+    throw new Error(`release ${command} executable must be an absolute path`)
+  }
+  return execFileSync(executable, git ? ['--no-replace-objects', ...args] : args, {
     cwd: options.cwd,
     encoding: 'utf8',
-    env: git
-      ? gitObjectEnvironment(options.env || process.env)
-      : releaseProcessEnvironment(options.env || process.env, HOST_ENVIRONMENT_KEYS),
+    env: environment,
     stdio: ['ignore', 'pipe', 'pipe'],
     maxBuffer: GIT_OUTPUT_MAX_BYTES
   })
@@ -51,6 +60,82 @@ function artifactNames(version) {
     archive: `reflaxe.rust-${version}.zip`,
     checksum: `reflaxe.rust-${version}.zip.sha256`
   }
+}
+
+function createArtifactReceipt({ version, tag, sourceCommit, zipPath, checksumPath }) {
+  const names = artifactNames(version)
+  const archive = fileIdentity(zipPath)
+  const checksum = fileIdentity(checksumPath)
+  const checksumText = `${archive.digest.slice('sha256:'.length)}  ${names.archive}\n`
+  if (fs.readFileSync(checksumPath, 'utf8') !== checksumText) {
+    throw new Error('checksum sidecar does not identify the approved archive')
+  }
+  return {
+    schemaVersion: 1,
+    version,
+    tag,
+    sourceCommit: normalizeSha(sourceCommit, 'approved artifact source commit'),
+    archive: { name: names.archive, ...archive },
+    checksum: { name: names.checksum, ...checksum },
+    checksumText
+  }
+}
+
+function validateArtifactReceipt(receipt) {
+  if (
+    !receipt ||
+    receipt.schemaVersion !== 1 ||
+    typeof receipt.version !== 'string' ||
+    receipt.tag !== `v${receipt.version}` ||
+    !/^[0-9a-f]{40}$/.test(receipt.sourceCommit || '') ||
+    !receipt.archive ||
+    !receipt.checksum ||
+    receipt.archive.name !== artifactNames(receipt.version).archive ||
+    receipt.checksum.name !== artifactNames(receipt.version).checksum ||
+    !/^sha256:[0-9a-f]{64}$/.test(receipt.archive.digest || '') ||
+    !/^sha256:[0-9a-f]{64}$/.test(receipt.checksum.digest || '') ||
+    !Number.isSafeInteger(receipt.archive.size) ||
+    receipt.archive.size < 0 ||
+    !Number.isSafeInteger(receipt.checksum.size) ||
+    receipt.checksum.size < 0 ||
+    receipt.checksumText !==
+      `${receipt.archive.digest.slice('sha256:'.length)}  ${receipt.archive.name}\n`
+  ) {
+    throw new Error('approved artifact receipt is invalid')
+  }
+  return receipt
+}
+
+function assertArtifactReceiptFiles(receipt, { zipPath, checksumPath }) {
+  validateArtifactReceipt(receipt)
+  const archive = fileIdentity(zipPath)
+  const checksum = fileIdentity(checksumPath)
+  if (
+    archive.digest !== receipt.archive.digest ||
+    archive.size !== receipt.archive.size ||
+    checksum.digest !== receipt.checksum.digest ||
+    checksum.size !== receipt.checksum.size ||
+    fs.readFileSync(checksumPath, 'utf8') !== receipt.checksumText
+  ) {
+    throw new Error('approved release artifact changed after approval')
+  }
+  return receipt
+}
+
+function captureArtifactReceipt(receipt) {
+  const serialized = JSON.stringify(validateArtifactReceipt(receipt))
+  if (capturedArtifactReceipt !== null && capturedArtifactReceipt !== serialized) {
+    throw new Error('a later operation cannot replace the captured approval identity')
+  }
+  capturedArtifactReceipt = serialized
+  return JSON.parse(serialized)
+}
+
+function readCapturedArtifactReceipt() {
+  if (capturedArtifactReceipt === null) {
+    throw new Error('approved artifact receipt was not captured in this release process')
+  }
+  return validateArtifactReceipt(JSON.parse(capturedArtifactReceipt))
 }
 
 /**
@@ -110,20 +195,15 @@ function verifyAsset(asset, expected, label) {
  *
  * What
  * Verify the hosted release kind, immutability, exact custom asset set, uploaded states, lengths,
- * and SHA-256 digests against the local approved ZIP and checksum sidecar.
+ * and SHA-256 digests against the captured approval receipt.
  *
  * How
- * Query GitHub after its publisher plugin completes and compare API metadata to locally calculated
- * identities. Immutable releases make that successful comparison durable for future consumers.
+ * Query GitHub after the source-owned publisher completes and compare API metadata to identities
+ * captured before the upload boundary. Immutable releases make that successful comparison durable.
  */
-function verifyHostedRelease({ version, tag, zipPath, checksumPath, cwd, run = defaultRun }) {
-  const names = artifactNames(version)
-  const zipIdentity = fileIdentity(zipPath)
-  const checksumIdentity = fileIdentity(checksumPath)
-  const expectedChecksum = `${zipIdentity.digest.slice('sha256:'.length)}  ${names.archive}\n`
-  if (fs.readFileSync(checksumPath, 'utf8') !== expectedChecksum) {
-    throw new Error('checksum sidecar does not identify the approved archive')
-  }
+function verifyHostedRelease({ receipt, cwd, run = defaultRun }) {
+  const approved = validateArtifactReceipt(receipt)
+  const names = artifactNames(approved.version)
 
   const release = JSON.parse(
     run(
@@ -131,14 +211,14 @@ function verifyHostedRelease({ version, tag, zipPath, checksumPath, cwd, run = d
       [
         'release',
         'view',
-        tag,
+        approved.tag,
         '--json',
         'tagName,isDraft,isImmutable,isPrerelease,assets'
       ],
       { cwd }
     )
   )
-  if (release.tagName !== tag) throw new Error('published GitHub Release tag does not match')
+  if (release.tagName !== approved.tag) throw new Error('published GitHub Release tag does not match')
   if (release.isDraft) throw new Error('published GitHub Release is still a draft')
   if (release.isPrerelease) throw new Error('published GitHub Release unexpectedly uses prerelease status')
   if (!release.isImmutable) throw new Error('published GitHub Release is not immutable')
@@ -150,8 +230,8 @@ function verifyHostedRelease({ version, tag, zipPath, checksumPath, cwd, run = d
     throw new Error('hosted custom asset set does not match the release contract')
   }
   const byName = new Map(assets.map((asset) => [asset.name, asset]))
-  verifyAsset(byName.get(names.archive), zipIdentity, 'hosted asset')
-  verifyAsset(byName.get(names.checksum), checksumIdentity, 'hosted checksum asset')
+  verifyAsset(byName.get(names.archive), approved.archive, 'hosted asset')
+  verifyAsset(byName.get(names.checksum), approved.checksum, 'hosted checksum asset')
   return release
 }
 
@@ -187,9 +267,13 @@ function verifyHostReleaseControls({ repository, cwd, run = defaultRun }) {
 
 module.exports = {
   artifactNames,
+  assertArtifactReceiptFiles,
+  captureArtifactReceipt,
+  createArtifactReceipt,
   defaultRun,
   fileIdentity,
   normalizeSha,
+  readCapturedArtifactReceipt,
   verifyHostReleaseControls,
   verifyHostedRelease,
   verifyTagIdentity

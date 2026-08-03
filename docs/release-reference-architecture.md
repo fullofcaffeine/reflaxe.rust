@@ -46,7 +46,9 @@ versioned commit before it is tagged.
      exact bytes that will be uploaded.
 6. **Hosted bytes equal approved bytes.**
    - A checksum sidecar names the versioned artifact.
-   - Hosted state, length, and digest match local approved files; unexpected assets fail.
+   - One process-local approval receipt survives the upload boundary; later local files cannot redefine
+     the expected state, length, or digest or replace the receipt itself.
+   - A reviewed source-owned publisher uploads only receipt-matching copies; unexpected assets fail.
 7. **Version tags and published releases are immutable.**
    - A remote version tag is never moved or deleted.
    - Invalid public content requires a corrective version.

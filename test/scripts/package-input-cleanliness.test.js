@@ -233,7 +233,12 @@ function main() {
 			)
 		})
 		const bootstrapped = path.join(replacementFixture, '..', `${path.basename(replacementFixture)}-bootstrapped`)
-		bootstrapRepository(replacementFixture, reviewed, bootstrapped)
+		bootstrapRepository(
+			replacementFixture,
+			reviewed,
+			bootstrapped,
+			'https://example.invalid/example/repository.git'
+		)
 		assert.strictEqual(
 			fs.readFileSync(path.join(bootstrapped, 'src', 'Payload.hx'), 'utf8'),
 			'reviewed bytes\n',
@@ -278,7 +283,12 @@ function main() {
 			)
 		})
 		const bootstrapped = path.join(attributesFixture, '..', `${path.basename(attributesFixture)}-bootstrapped`)
-		bootstrapRepository(attributesFixture, git(attributesFixture, ['rev-parse', 'HEAD']).trim(), bootstrapped)
+		bootstrapRepository(
+			attributesFixture,
+			git(attributesFixture, ['rev-parse', 'HEAD']).trim(),
+			bootstrapped,
+			'https://example.invalid/example/repository.git'
+		)
 		assert.strictEqual(
 			fs.readFileSync(path.join(bootstrapped, 'src', 'Omitted.hx'), 'utf8'),
 			'must remain included\n',
@@ -296,7 +306,10 @@ function main() {
 		const injected = path.join(shellEnvironmentFixture, 'injected.txt')
 		const bashEnvironment = path.join(shellEnvironmentFixture, 'bash-environment.sh')
 		fs.mkdirSync(path.dirname(script), { recursive: true })
-		fs.writeFileSync(script, '#!/usr/bin/env bash\nset -euo pipefail\nprintf package > "$1"\n')
+		fs.writeFileSync(
+			script,
+			'#!/usr/bin/env bash\nset -euo pipefail\ntest -z "${HAXE_STD_PATH+x}"\ntest "$PATH" = "/usr/bin:/bin"\ntest "$HOME" = "$RELEASE_HOME"\nprintf package > "$1"\n'
+		)
 		fs.chmodSync(script, 0o755)
 		fs.writeFileSync(bashEnvironment, 'printf injected > "$RELEASE_TEST_INJECTED"\n')
 		buildFromReviewedSource({
@@ -308,6 +321,13 @@ function main() {
 			env: {
 				...process.env,
 				BASH_ENV: bashEnvironment,
+				HAXE_LIBCACHE: path.join(shellEnvironmentFixture, 'attacker-cache'),
+				HAXE_LIBRARY_PATH: path.join(shellEnvironmentFixture, 'attacker-library'),
+				HAXE_STD_PATH: path.join(shellEnvironmentFixture, 'attacker-std'),
+				HOME: path.join(shellEnvironmentFixture, 'attacker-home'),
+				PATH: path.join(shellEnvironmentFixture, 'attacker-bin'),
+				RELEASE_HOME: path.join(shellEnvironmentFixture, 'release-home'),
+				RELEASE_TEMP_ROOT: shellEnvironmentFixture,
 				RELEASE_TEST_INJECTED: injected
 			}
 		})

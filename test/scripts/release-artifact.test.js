@@ -351,20 +351,23 @@ libc = "0.2"
 `
     )
     write(cargoFixture, 'src/lib.rs', '')
-    const fakeCargo = path.join(cargoFixture, 'fake-cargo.sh')
+    const fakeCargo = path.join(cargoFixture, 'cargo')
     const fakeCargoMarker = path.join(cargoFixture, 'fake-cargo-ran.txt')
-    write(cargoFixture, 'fake-cargo.sh', `#!/usr/bin/env bash\nprintf invoked > ${JSON.stringify(fakeCargoMarker)}\nexit 97\n`)
+    write(cargoFixture, 'cargo', `#!/usr/bin/env bash\nprintf invoked > ${JSON.stringify(fakeCargoMarker)}\nexit 97\n`)
     fs.chmodSync(fakeCargo, 0o755)
     const previousCargoBin = process.env.CARGO_BIN
+    const previousPath = process.env.PATH
     process.env.CARGO_BIN = fakeCargo
+    process.env.PATH = `${cargoFixture}${path.delimiter}${previousPath}`
     let parsedCargo
     try {
       parsedCargo = licenseApi.cargoRequirements(path.join(cargoFixture, 'Cargo.toml'))
     } finally {
       if (previousCargoBin === undefined) delete process.env.CARGO_BIN
       else process.env.CARGO_BIN = previousCargoBin
+      process.env.PATH = previousPath
     }
-    assert(!fs.existsSync(fakeCargoMarker), 'release evidence must ignore caller-provided CARGO_BIN')
+    assert(!fs.existsSync(fakeCargoMarker), 'release evidence must derive Cargo requirements from reviewed manifest bytes without executing ambient Cargo')
     assert(parsedCargo.some((entry) => entry.name === 'serde' && entry.optional))
     assert(parsedCargo.some((entry) => entry.name === 'cc' && entry.kind === 'build'))
     assert(parsedCargo.some((entry) => entry.name === 'libc' && entry.target === 'cfg(unix)'))

@@ -6,7 +6,14 @@ const path = require('path')
 const { execFileSync } = require('child_process')
 const { assertExactBootstrap, gitObject } = require('./exact-git-source.js')
 const { loadReleasePolicy, verifyReleaseVersion } = require('./release-policy.js')
-const { artifactNames, normalizeSha, verifyHostedRelease, verifyTagIdentity } = require('./release-provenance.js')
+const {
+  artifactNames,
+  assertArtifactReceiptFiles,
+  createArtifactReceipt,
+  normalizeSha,
+  verifyHostedRelease,
+  verifyTagIdentity
+} = require('./release-provenance.js')
 const {
   assertTrackedTreeClean,
   buildFromReviewedSource,
@@ -26,10 +33,16 @@ const REPAIR_ENVIRONMENT_KEYS = [
 ]
 
 function run(command, args, options = {}) {
-  return execFileSync(command, args, {
+  const environment = releaseProcessEnvironment(options.env || process.env, REPAIR_ENVIRONMENT_KEYS)
+  const executable = {
+    bash: environment.RELEASE_BASH_BIN,
+    gh: environment.RELEASE_GH_BIN
+  }[command] || command
+  if (!executable) throw new Error(`reviewed release execution lacks an absolute ${command} tool`)
+  return execFileSync(executable, args, {
     cwd: options.cwd,
     encoding: 'utf8',
-    env: releaseProcessEnvironment(options.env || process.env, REPAIR_ENVIRONMENT_KEYS),
+    env: environment,
     stdio: options.stdio || ['ignore', 'pipe', 'pipe']
   })
 }
@@ -98,7 +111,17 @@ function buildApprovedArtifact({ cwd, version, tag, sourceCommit }) {
       },
       stdio: 'inherit'
     })
-    return { checksumPath, names, verified, zipPath }
+    const receipt = createArtifactReceipt({
+      version,
+      tag,
+      sourceCommit,
+      zipPath,
+      checksumPath
+    })
+    if (receipt.archive.digest !== `sha256:${verified.sha256}` || receipt.archive.size !== verified.size) {
+      throw new Error('package smoke changed the repaired release artifact')
+    }
+    return { checksumPath, names, receipt, verified, zipPath }
   } finally {
     fs.rmSync(repeatRoot, { recursive: true, force: true })
   }
@@ -137,10 +160,7 @@ function main() {
   const existing = releaseView(tag, cwd)
   if (existing && existing.isImmutable) {
     verifyHostedRelease({
-      version,
-      tag,
-      zipPath: artifact.zipPath,
-      checksumPath: artifact.checksumPath,
+      receipt: artifact.receipt,
       cwd
     })
     console.log(`[release-repair] ${tag} is already complete and immutable`)
@@ -164,6 +184,10 @@ function main() {
   const versionedChecksum = path.join(cwd, 'dist', artifact.names.checksum)
   fs.copyFileSync(artifact.zipPath, versionedZip)
   fs.copyFileSync(artifact.checksumPath, versionedChecksum)
+  assertArtifactReceiptFiles(artifact.receipt, {
+    zipPath: versionedZip,
+    checksumPath: versionedChecksum
+  })
   run(
     'gh',
     [
@@ -176,12 +200,13 @@ function main() {
     ],
     { cwd, stdio: 'inherit' }
   )
+  assertArtifactReceiptFiles(artifact.receipt, {
+    zipPath: versionedZip,
+    checksumPath: versionedChecksum
+  })
   run('gh', ['release', 'edit', tag, '--draft=false'], { cwd, stdio: 'inherit' })
   verifyHostedRelease({
-    version,
-    tag,
-    zipPath: artifact.zipPath,
-    checksumPath: artifact.checksumPath,
+    receipt: artifact.receipt,
     cwd
   })
   console.log(`[release-repair] completed immutable ${tag}`)

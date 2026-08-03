@@ -93,13 +93,19 @@ The release adapter:
 7. runs the existing Haxelib install, Haxe compile, and Cargo build smoke against that exact ZIP,
 8. writes its SHA-256 sidecar,
 9. verifies local and remote tag identity before upload,
-10. verifies hosted asset names, states, sizes, and SHA-256 digests after publication.
+10. records the approved archive/checksum names, lengths, and digests in a process-local receipt that
+    cannot be replaced by another mutable repository file,
+11. lets the reviewed project plugin—not a general publisher—create the draft and upload only copies
+    that still match that receipt,
+12. verifies hosted asset names, states, sizes, and SHA-256 digests against the captured receipt after
+    publication.
 
 See `docs/release-licensing-review.md` for the factual package inventory and
 the questions that still require professional legal review before 1.0.
 
 The local paths are fixed (`dist/reflaxe.rust.zip` and `.zip.sha256`) to prevent stale globs. The
-GitHub publisher gives them versioned hosted names.
+reviewed publication plugin gives them versioned hosted names. No third-party publisher receives the
+mutable local artifact paths after approval.
 
 ## Changelog And Release Notes
 
@@ -127,8 +133,10 @@ Run the protected **Repair Existing Release** workflow with that exact tag. Its 
 2. re-derives no version and creates no tag,
 3. rebuilds the deterministic package twice from the tag,
 4. runs the complete exact-artifact contract and smoke,
-5. creates or cleans only the associated draft Release,
-6. uploads the approved ZIP/checksum, publishes the draft, and verifies immutable hosted digests.
+5. captures a fresh approval receipt after smoke and checks the versioned upload copies against it,
+6. creates or cleans only the associated draft Release,
+7. uploads the approved ZIP/checksum, publishes the draft, and verifies immutable hosted digests
+   against that receipt rather than recomputing approval from mutable local files.
 
 If the Release is already complete and immutable, repair is a non-mutating verification. If a
 published release or remote tag contains invalid content, never move/delete the remote tag or reuse

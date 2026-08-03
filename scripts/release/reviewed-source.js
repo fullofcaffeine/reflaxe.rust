@@ -16,29 +16,135 @@ const {
 
 const RELEASE_ENVIRONMENT_KEYS = [
   'COMSPEC',
-  'HAXE_LIBCACHE',
-  'HAXE_LIBRARY_PATH',
-  'HAXE_STD_PATH',
-  'HOME',
+  'CI',
+  'GITHUB_ACTIONS',
+  'GITHUB_EVENT_NAME',
+  'GITHUB_REF',
+  'GITHUB_SHA',
   'LANG',
   'LC_ALL',
   'LC_CTYPE',
-  'PATH',
   'PATHEXT',
+  'RELEASE_BASH_BIN',
+  'RELEASE_CARGO_BIN',
+  'RELEASE_CARGO_HOME',
+  'RELEASE_EXPECTED_ORIGIN_URL',
+  'RELEASE_GH_BIN',
+  'RELEASE_GIT_BIN',
+  'RELEASE_HAXE_BIN',
+  'RELEASE_HAXELIB_BIN',
+  'RELEASE_HOME',
+  'RELEASE_NODE_BIN',
+  'RELEASE_NPM_BIN',
+  'RELEASE_RUSTC_BIN',
+  'RELEASE_STRICT_EXECUTION',
+  'RELEASE_TEMP_ROOT',
+  'RELEASE_TOOL_DIR',
   'SYSTEMROOT',
   'TEMP',
-  'TMP',
-  'TMPDIR',
   'TZ',
   'WINDIR'
 ]
+
+const TOOL_FALLBACKS = Object.freeze({
+  RELEASE_BASH_BIN: process.platform === 'win32' ? null : '/bin/bash',
+  RELEASE_GIT_BIN: process.platform === 'win32' ? null : '/usr/bin/git',
+  RELEASE_NODE_BIN: process.execPath
+})
+
+function assertAbsoluteTool(environment, key, required) {
+  let executable = environment[key] || TOOL_FALLBACKS[key]
+  if (!executable && environment.RELEASE_STRICT_EXECUTION !== '1' && process.platform !== 'win32') {
+    const command = {
+      RELEASE_CARGO_BIN: 'cargo',
+      RELEASE_GH_BIN: 'gh',
+      RELEASE_HAXE_BIN: 'haxe',
+      RELEASE_HAXELIB_BIN: 'haxelib',
+      RELEASE_NPM_BIN: 'npm',
+      RELEASE_RUSTC_BIN: 'rustc'
+    }[key]
+    if (command) {
+      try {
+        executable = execFileSync('/usr/bin/which', [command], { encoding: 'utf8' }).trim()
+      } catch (_error) {
+        executable = null
+      }
+    }
+  }
+  if (!executable) {
+    if (required) throw new Error(`reviewed release execution requires ${key}`)
+    return
+  }
+  if (!path.isAbsolute(executable) || !fs.statSync(executable).isFile()) {
+    throw new Error(`${key} must name an absolute regular executable`)
+  }
+  fs.accessSync(executable, fs.constants.X_OK)
+  environment[key] = executable
+}
 
 function releaseProcessEnvironment(source, additionalKeys = []) {
   const environment = {}
   for (const key of [...RELEASE_ENVIRONMENT_KEYS, ...additionalKeys]) {
     if (source[key] !== undefined) environment[key] = source[key]
   }
-  if (!environment.PATH) throw new Error('reviewed release execution requires an explicit PATH')
+  const strict = environment.RELEASE_STRICT_EXECUTION === '1'
+  for (const key of ['RELEASE_BASH_BIN', 'RELEASE_GIT_BIN', 'RELEASE_NODE_BIN']) {
+    assertAbsoluteTool(environment, key, true)
+  }
+  for (const key of [
+    'RELEASE_CARGO_BIN',
+    'RELEASE_HAXE_BIN',
+    'RELEASE_HAXELIB_BIN',
+    'RELEASE_NPM_BIN',
+    'RELEASE_RUSTC_BIN'
+  ]) {
+    assertAbsoluteTool(environment, key, strict)
+  }
+  if (environment.RELEASE_GH_BIN !== undefined) {
+    assertAbsoluteTool(environment, 'RELEASE_GH_BIN', true)
+  }
+  const home = environment.RELEASE_HOME || (!strict ? source.HOME : null)
+  const temporary = environment.RELEASE_TEMP_ROOT || (!strict ? (source.TMPDIR || source.TMP) : null)
+  if (!home || !path.isAbsolute(home)) throw new Error('reviewed release execution requires an absolute RELEASE_HOME')
+  if (!temporary || !path.isAbsolute(temporary)) {
+    throw new Error('reviewed release execution requires an absolute RELEASE_TEMP_ROOT')
+  }
+  environment.HOME = home
+  if (environment.RELEASE_CARGO_HOME !== undefined) {
+    if (!path.isAbsolute(environment.RELEASE_CARGO_HOME)) {
+      throw new Error('RELEASE_CARGO_HOME must be absolute')
+    }
+    environment.CARGO_HOME = environment.RELEASE_CARGO_HOME
+  } else if (strict) {
+    throw new Error('reviewed release execution requires RELEASE_CARGO_HOME')
+  }
+  if (environment.RELEASE_RUSTC_BIN) environment.RUSTC = environment.RELEASE_RUSTC_BIN
+  environment.TMP = temporary
+  environment.TMPDIR = temporary
+  if (environment.RELEASE_TOOL_DIR !== undefined) {
+    if (!path.isAbsolute(environment.RELEASE_TOOL_DIR) || !fs.statSync(environment.RELEASE_TOOL_DIR).isDirectory()) {
+      throw new Error('RELEASE_TOOL_DIR must be an absolute directory')
+    }
+    const expected = new Map([
+      ['haxe', environment.RELEASE_HAXE_BIN],
+      ['haxelib', environment.RELEASE_HAXELIB_BIN],
+      ['node', environment.RELEASE_NODE_BIN]
+    ])
+    const entries = fs.readdirSync(environment.RELEASE_TOOL_DIR).sort()
+    if (JSON.stringify(entries) !== JSON.stringify([...expected.keys()].sort())) {
+      throw new Error('RELEASE_TOOL_DIR may expose only haxe, haxelib, and node')
+    }
+    for (const [name, executable] of expected) {
+      if (!executable || fs.realpathSync(path.join(environment.RELEASE_TOOL_DIR, name)) !== fs.realpathSync(executable)) {
+        throw new Error(`RELEASE_TOOL_DIR ${name} does not match its reviewed executable`)
+      }
+    }
+  } else if (strict) {
+    throw new Error('reviewed release execution requires RELEASE_TOOL_DIR')
+  }
+  environment.PATH = process.platform === 'win32'
+    ? ''
+    : `${environment.RELEASE_TOOL_DIR ? `${environment.RELEASE_TOOL_DIR}:` : ''}/usr/bin:/bin`
   return environment
 }
 
@@ -99,8 +205,9 @@ function buildFromReviewedSource({
   env = process.env,
   stdio = 'inherit'
 }) {
+  const environment = releaseProcessEnvironment(env)
   return execFileSync(
-    'bash',
+    environment.RELEASE_BASH_BIN,
     [
       path.join(sourceRoot, 'scripts', 'release', 'package-haxelib.sh'),
       zipPath,
@@ -110,7 +217,7 @@ function buildFromReviewedSource({
     ],
     {
       cwd: sourceRoot,
-      env: releaseProcessEnvironment(env),
+      env: environment,
       stdio,
       maxBuffer: GIT_OUTPUT_MAX_BYTES
     }

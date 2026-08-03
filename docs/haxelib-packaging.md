@@ -120,18 +120,32 @@ Raw classpath-only tests are not equivalent for packaged `.cross.hx` std overrid
 
 Release automation first reads `scripts/release/exact-git-source.js` directly from the CI-tested Git
 object while replacement refs and local/global Git configuration are disabled. That externally loaded
-bootstrap writes literal regular blobs into a fresh repository. After locked tool installation, it
-compares every tracked worktree byte with the named objects before semantic-release or repair code is
-loaded. This is the trust boundary: repository code cannot prove what bytes it contained before it ran.
+bootstrap first requires strict reachable-object validation, independently hashes every blob against
+its object ID, and writes literal regular blobs into a fresh repository. It records the exact index,
+origin configuration, disabled-hook directory, and absence of alternate object stores. After locked
+tool installation, the workflow repeats the object check, extracts a fresh checker, and revalidates
+the complete index, Git administration, and every tracked worktree byte before semantic-release or
+repair code is loaded. The earlier writable checker is never reused. This is the trust boundary:
+repository code cannot prove what bytes it contained before it ran.
 
 The release adapter then materializes the same commit twice more for artifact construction. It runs the
 committed package builder and license generator from those trees, and the committed strict verifier
 compares every candidate ZIP byte with the independent rebuild. Hidden index flags, checkout filters,
 replacement refs, and `export-ignore` attributes cannot change those inputs. Artifact generation and
 verification use only reviewed release code plus Node built-ins; locked `node_modules` packages remain
-release-orchestration inputs, not expected-value generators. Shell and Node injection variables are
-removed from package and smoke subprocesses. Package smoke runs against the exact verified ZIP before
-the tag is created. The workflow supplies exact Node, Haxe, and release Rust versions.
+release-orchestration inputs, not expected-value generators. Cargo requirements are parsed directly
+from the reviewed `Cargo.toml`; ambient Cargo metadata cannot define SBOM facts. The workflow starts
+under profile-free absolute Bash, clears shell/Node preload variables before startup, and gives the
+release process absolute Node/Git/Haxe/Haxelib/Cargo/Rust paths, a three-entry Haxe/Node tool directory, and
+fresh HOME/Cargo/temp roots. Caller `HAXE_*`, PATH, HOME, Cargo config, and broad `node_modules/.bin`
+state are not package inputs. The release HOME is the same fresh job-owned Lix home where Haxe 4.3.7
+was installed; its global `.haxerc` is copied from the reviewed project setting so temporary package
+directories cannot resolve the mutable `stable` alias or fall back to the runner account. The
+source-layout smoke points only that compile at the reviewed repository's `haxe_libraries`; the
+installed-package smoke derives a temporary exact-version Haxe config that resolves libraries only
+through its isolated Haxelib repository, so it cannot pass by accidentally loading checkout files.
+Package smoke runs against the exact verified ZIP before the tag is created. The workflow supplies
+exact Node, Haxe, and release Rust versions.
 
 ## Stdlib provenance guards
 

@@ -69,21 +69,36 @@ function main() {
       checksum: `reflaxe.rust-${VERSION}.zip.sha256`
     })
 
-    provenance.verifyHostedRelease({
+    const receipt = provenance.createArtifactReceipt({
       version: VERSION,
       tag: TAG,
+      sourceCommit: SOURCE_SHA,
       zipPath,
-      checksumPath,
+      checksumPath
+    })
+    provenance.verifyHostedRelease({
+      receipt,
       run: fakeRunner(expectedRelease(zipPath, checksumPath))
     })
+    const approvedRemote = expectedRelease(zipPath, checksumPath)
+    fs.writeFileSync(zipPath, 'mutated after approval')
+    fs.writeFileSync(checksumPath, 'mutated checksum after approval\n')
+    provenance.verifyHostedRelease({
+      receipt,
+      run: fakeRunner(approvedRemote)
+    })
+    expectThrow(
+      () => provenance.assertArtifactReceiptFiles(receipt, { zipPath, checksumPath }),
+      /changed after approval/,
+      'post-approval local mutations must be measured against the captured receipt'
+    )
+    fs.writeFileSync(zipPath, Buffer.from('deterministic fixture bytes'))
+    fs.writeFileSync(checksumPath, `${hash(fs.readFileSync(zipPath))}  reflaxe.rust-${VERSION}.zip\n`)
 
     expectThrow(
       () =>
         provenance.verifyHostedRelease({
-          version: VERSION,
-          tag: TAG,
-          zipPath,
-          checksumPath,
+          receipt,
           run: fakeRunner(expectedRelease(zipPath, checksumPath, { wrongDigest: true }))
         }),
       /hosted asset digest does not match the approved file/
@@ -91,10 +106,7 @@ function main() {
     expectThrow(
       () =>
         provenance.verifyHostedRelease({
-          version: VERSION,
-          tag: TAG,
-          zipPath,
-          checksumPath,
+          receipt,
           run: fakeRunner(expectedRelease(zipPath, checksumPath, { extraAsset: true }))
         }),
       /hosted custom asset set does not match the release contract/
@@ -102,10 +114,7 @@ function main() {
     expectThrow(
       () =>
         provenance.verifyHostedRelease({
-          version: VERSION,
-          tag: TAG,
-          zipPath,
-          checksumPath,
+          receipt,
           run: fakeRunner(expectedRelease(zipPath, checksumPath, { mutable: true }))
         }),
       /published GitHub Release is not immutable/
@@ -183,7 +192,6 @@ function main() {
       './scripts/release/semantic-release-policy.cjs',
       '@semantic-release/release-notes-generator',
       './scripts/release/haxelib-artifact-plugin.cjs',
-      '@semantic-release/github',
       './scripts/release/published-verifier-plugin.cjs'
     ])
 

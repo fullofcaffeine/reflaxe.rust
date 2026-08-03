@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+const crypto = require('crypto')
 const fs = require('fs')
 const path = require('path')
 const { execFileSync } = require('child_process')
@@ -11,7 +12,6 @@ const GIT_ENVIRONMENT_KEYS = [
   'LANG',
   'LC_ALL',
   'LC_CTYPE',
-  'PATH',
   'PATHEXT',
   'SYSTEMROOT',
   'TEMP',
@@ -64,13 +64,55 @@ function gitObjectEnvironment(source = process.env) {
   return environment
 }
 
+function gitBinary(source = process.env) {
+  const configured = source.RELEASE_GIT_BIN
+  if (configured !== undefined) {
+    if (!path.isAbsolute(configured)) {
+      throw new Error('RELEASE_GIT_BIN must be an absolute path')
+    }
+    return configured
+  }
+  if (process.platform !== 'win32' && fs.existsSync('/usr/bin/git')) return '/usr/bin/git'
+  throw new Error('exact release verification requires an absolute RELEASE_GIT_BIN')
+}
+
 function gitObject(repositoryRoot, args, options = {}) {
-  return execFileSync('git', ['--no-replace-objects', ...args], {
+  const { env: sourceEnvironment = process.env, ...executionOptions } = options
+  return execFileSync(gitBinary(sourceEnvironment), ['--no-replace-objects', ...args], {
     cwd: repositoryRoot,
-    env: gitObjectEnvironment(),
+    env: gitObjectEnvironment(sourceEnvironment),
     maxBuffer: GIT_OUTPUT_MAX_BYTES,
-    ...options
+    ...executionOptions
   })
+}
+
+function gitDirectory(repositoryRoot) {
+  return fs.realpathSync(
+    path.resolve(
+      repositoryRoot,
+      gitObject(repositoryRoot, ['rev-parse', '--git-dir'], { encoding: 'utf8' }).trim()
+    )
+  )
+}
+
+function rejectAlternateObjectStores(repositoryRoot) {
+  const alternateFile = path.join(gitDirectory(repositoryRoot), 'objects', 'info', 'alternates')
+  if (fs.existsSync(alternateFile)) {
+    throw new Error('exact release verification rejects alternate Git object stores')
+  }
+}
+
+function assertReachableObjectIntegrity(repositoryRoot, sourceCommit) {
+  rejectAlternateObjectStores(repositoryRoot)
+  try {
+    gitObject(
+      repositoryRoot,
+      ['fsck', '--strict', '--full', '--no-reflogs', '--no-dangling', sourceCommit],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
+    )
+  } catch (_error) {
+    throw new Error('reviewed Git object integrity check failed')
+  }
 }
 
 function reviewedCommit(repositoryRoot, sourceCommit) {
@@ -177,7 +219,16 @@ function readCommitBlobs(repositoryRoot, entries) {
       if (contentEnd >= output.length || output[contentEnd] !== 0x0a) {
         throw new Error(`Git returned truncated blob bytes for ${entry.file}`)
       }
-      blobs.push(output.subarray(contentStart, contentEnd))
+      const bytes = output.subarray(contentStart, contentEnd)
+      const actualObjectId = crypto
+        .createHash('sha1')
+        .update(`blob ${bytes.length}\0`)
+        .update(bytes)
+        .digest('hex')
+      if (actualObjectId !== entry.objectId) {
+        throw new Error(`reviewed Git object identity does not match its bytes: ${entry.file}`)
+      }
+      blobs.push(bytes)
       offset = contentEnd + 1
     }
     if (offset !== output.length) throw new Error('Git returned unexpected trailing blob data')
@@ -186,6 +237,7 @@ function readCommitBlobs(repositoryRoot, entries) {
 }
 
 function materializeCommit(repositoryRoot, sourceCommit, sourceRoot) {
+  assertReachableObjectIntegrity(repositoryRoot, sourceCommit)
   const entries = commitEntries(repositoryRoot, sourceCommit)
   const blobs = readCommitBlobs(repositoryRoot, entries)
   for (let index = 0; index < entries.length; index += 1) {
@@ -215,6 +267,7 @@ function materializeCommit(repositoryRoot, sourceCommit, sourceRoot) {
  */
 function assertMaterializedCommit(repositoryRoot, sourceCommit) {
   const commit = reviewedCommit(repositoryRoot, sourceCommit)
+  assertReachableObjectIntegrity(repositoryRoot, commit)
   const entries = commitEntries(repositoryRoot, commit)
   const blobs = readCommitBlobs(repositoryRoot, entries)
   for (let index = 0; index < entries.length; index += 1) {
@@ -242,6 +295,82 @@ function assertMaterializedCommit(repositoryRoot, sourceCommit) {
   return commit
 }
 
+function assertIndexMatchesCommit(repositoryRoot, sourceCommit) {
+  const expected = commitEntries(repositoryRoot, sourceCommit)
+    .map(({ file, mode, objectId }) => `${mode} ${objectId} 0\t${file}`)
+    .sort()
+  const actual = gitObject(repositoryRoot, ['ls-files', '--stage', '-z'])
+    .toString('utf8')
+    .split('\0')
+    .filter(Boolean)
+    .sort()
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error('exact release Git index does not match the reviewed commit')
+  }
+}
+
+function reviewedOriginUrl(value) {
+  if (!/^https:\/\/[A-Za-z0-9.-]+(?::[0-9]+)?\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\.git$/.test(value || '')) {
+    throw new Error('exact release origin must be a normalized HTTPS repository URL')
+  }
+  return value
+}
+
+function reviewedLocalConfig(directory, originUrl) {
+  const hooksDirectory = path.join(directory, 'haxe-rust-empty-hooks')
+  return [
+    '[core]',
+    '\trepositoryformatversion = 0',
+    '\tfilemode = false',
+    '\tbare = false',
+    '\tlogallrefupdates = true',
+    `\thooksPath = ${hooksDirectory}`,
+    '[remote "origin"]',
+    `\turl = ${reviewedOriginUrl(originUrl)}`,
+    '\tfetch = +refs/heads/*:refs/remotes/origin/*',
+    ''
+  ].join('\n')
+}
+
+function administrativeState(repositoryRoot, originUrl) {
+  const directory = gitDirectory(repositoryRoot)
+  const hooksDirectory = path.join(directory, 'haxe-rust-empty-hooks')
+  const expectedConfig = reviewedLocalConfig(directory, originUrl)
+  return {
+    configSha256: crypto.createHash('sha256').update(expectedConfig).digest('hex'),
+    expectedConfig,
+    hooksDirectory,
+    originUrl: reviewedOriginUrl(originUrl)
+  }
+}
+
+function assertAdministrativeState(repositoryRoot, receipt, originUrl) {
+  const directory = gitDirectory(repositoryRoot)
+  const current = administrativeState(repositoryRoot, originUrl)
+  const configuration = path.join(directory, 'config')
+  if (
+    fs.readFileSync(configuration, 'utf8') !== current.expectedConfig ||
+    current.configSha256 !== receipt.configSha256 ||
+    current.hooksDirectory !== receipt.hooksDirectory ||
+    current.originUrl !== receipt.originUrl
+  ) {
+    throw new Error('exact release Git administration differs from the bootstrap receipt')
+  }
+  const hooksStat = fs.lstatSync(current.hooksDirectory)
+  if (!hooksStat.isDirectory() || fs.readdirSync(current.hooksDirectory).length !== 0) {
+    throw new Error('exact release trusted hooks directory must remain empty')
+  }
+  for (const relative of [
+    'config.worktree',
+    path.join('objects', 'info', 'alternates'),
+    path.join('info', 'attributes')
+  ]) {
+    if (fs.existsSync(path.join(directory, relative))) {
+      throw new Error(`exact release Git administration contains unsupported ${relative}`)
+    }
+  }
+}
+
 /** Reject untracked or ignored code/config that Node or shell resolution could load pre-release. */
 function assertNoPreloadShadows(repositoryRoot) {
   const candidates = []
@@ -262,45 +391,53 @@ function assertNoPreloadShadows(repositoryRoot) {
   }
 }
 
-function bootstrapRepository(repositoryRoot, sourceCommit, destination) {
+function bootstrapRepository(repositoryRoot, sourceCommit, destination, originUrl) {
   const commit = reviewedCommit(repositoryRoot, sourceCommit)
+  const reviewedOrigin = reviewedOriginUrl(originUrl)
+  assertReachableObjectIntegrity(repositoryRoot, commit)
   if (fs.existsSync(destination)) throw new Error('exact release destination already exists')
   gitObject(repositoryRoot, ['clone', '--no-checkout', '--no-hardlinks', '--no-local', repositoryRoot, destination])
   const clonedCommit = reviewedCommit(destination, commit)
   gitObject(destination, ['read-tree', '--reset', clonedCommit])
   materializeCommit(destination, clonedCommit, destination)
   gitObject(destination, ['update-ref', 'HEAD', clonedCommit])
+  const exactGitDirectory = gitDirectory(destination)
+  const hooksDirectory = path.join(exactGitDirectory, 'haxe-rust-empty-hooks')
+  fs.mkdirSync(hooksDirectory, { mode: 0o700 })
+  fs.writeFileSync(
+    path.join(exactGitDirectory, 'config'),
+    reviewedLocalConfig(exactGitDirectory, reviewedOrigin),
+    { mode: 0o600 }
+  )
   const status = gitObject(destination, ['status', '--porcelain', '--untracked-files=no'], {
     encoding: 'utf8'
   })
   if (status.trim().length > 0) throw new Error('exact release source does not match its Git index')
-  const gitDirectory = path.resolve(
-    destination,
-    gitObject(destination, ['rev-parse', '--git-dir'], { encoding: 'utf8' }).trim()
-  )
+  assertIndexMatchesCommit(destination, clonedCommit)
   const bootstrapEntry = commitEntries(destination, clonedCommit).find(
     ({ file }) => file === 'scripts/release/exact-git-source.js'
   )
   if (!bootstrapEntry) throw new Error('reviewed release source lacks its exact-object bootstrap')
+  const state = administrativeState(destination, reviewedOrigin)
   fs.writeFileSync(
-    path.join(gitDirectory, BOOTSTRAP_RECEIPT),
+    path.join(exactGitDirectory, BOOTSTRAP_RECEIPT),
     `${JSON.stringify({
-      schemaVersion: 1,
+      schemaVersion: 2,
       sourceCommit: clonedCommit,
-      bootstrapObjectId: bootstrapEntry.objectId
+      bootstrapObjectId: bootstrapEntry.objectId,
+      configSha256: state.configSha256,
+      hooksDirectory: state.hooksDirectory,
+      originUrl: state.originUrl
     })}\n`,
     { mode: 0o600 }
   )
   return destination
 }
 
-function assertExactBootstrap(repositoryRoot, sourceCommit) {
+function assertExactBootstrap(repositoryRoot, sourceCommit, originUrl = process.env.RELEASE_EXPECTED_ORIGIN_URL) {
   const commit = reviewedCommit(repositoryRoot, sourceCommit)
-  const gitDirectory = path.resolve(
-    repositoryRoot,
-    gitObject(repositoryRoot, ['rev-parse', '--git-dir'], { encoding: 'utf8' }).trim()
-  )
-  const receiptPath = path.join(gitDirectory, BOOTSTRAP_RECEIPT)
+  const reviewedOrigin = reviewedOriginUrl(originUrl)
+  const receiptPath = path.join(gitDirectory(repositoryRoot), BOOTSTRAP_RECEIPT)
   if (!fs.existsSync(receiptPath)) {
     throw new Error('release authority must run from the externally bootstrapped exact Git object')
   }
@@ -314,30 +451,32 @@ function assertExactBootstrap(repositoryRoot, sourceCommit) {
     ({ file }) => file === 'scripts/release/exact-git-source.js'
   )
   if (
-    receipt.schemaVersion !== 1 ||
+    receipt.schemaVersion !== 2 ||
     receipt.sourceCommit !== commit ||
     receipt.bootstrapObjectId !== bootstrapEntry?.objectId
   ) {
     throw new Error('exact release bootstrap receipt does not match the reviewed commit')
   }
+  assertAdministrativeState(repositoryRoot, receipt, reviewedOrigin)
+  assertIndexMatchesCommit(repositoryRoot, commit)
   assertMaterializedCommit(repositoryRoot, commit)
   assertNoPreloadShadows(repositoryRoot)
   return commit
 }
 
 function main() {
-  const [command, repositoryRoot, sourceCommit, destination, ...rest] = process.argv.slice(2)
-  if (command === 'assert' && repositoryRoot && sourceCommit && destination === undefined) {
-    assertExactBootstrap(path.resolve(repositoryRoot), sourceCommit)
+  const [command, repositoryRoot, sourceCommit, destinationOrOrigin, originUrl, ...rest] = process.argv.slice(2)
+  if (command === 'assert' && repositoryRoot && sourceCommit && destinationOrOrigin && originUrl === undefined && rest.length === 0) {
+    assertExactBootstrap(path.resolve(repositoryRoot), sourceCommit, destinationOrOrigin)
     console.log('[exact-git-source] exact reviewed release repository verified')
     return
   }
-  if (command !== 'bootstrap' || !repositoryRoot || !sourceCommit || !destination || rest.length > 0) {
+  if (command !== 'bootstrap' || !repositoryRoot || !sourceCommit || !destinationOrOrigin || !originUrl || rest.length > 0) {
     throw new Error(
-      'usage: exact-git-source.js bootstrap <repository> <commit> <destination> | assert <repository> <commit>'
+      'usage: exact-git-source.js bootstrap <repository> <commit> <destination> <origin-url> | assert <repository> <commit> <origin-url>'
     )
   }
-  bootstrapRepository(path.resolve(repositoryRoot), sourceCommit, path.resolve(destination))
+  bootstrapRepository(path.resolve(repositoryRoot), sourceCommit, path.resolve(destinationOrOrigin), originUrl)
   console.log('[exact-git-source] materialized reviewed release repository')
 }
 
@@ -353,11 +492,13 @@ if (require.main === module) {
 module.exports = {
   GIT_OUTPUT_MAX_BYTES,
   assertExactBootstrap,
+  assertIndexMatchesCommit,
   assertMaterializedCommit,
   assertNoPreloadShadows,
   bootstrapRepository,
   commitEntries,
   gitObject,
+  gitBinary,
   gitObjectEnvironment,
   materializeCommit,
   reviewedCommit

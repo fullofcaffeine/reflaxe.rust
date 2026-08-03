@@ -3,7 +3,6 @@
 const fs = require('fs')
 const path = require('path')
 const crypto = require('crypto')
-const { execFileSync } = require('child_process')
 const { requireExactReflaxePaths } = require('./reflaxe-metadata.js')
 
 const root = path.resolve(__dirname, '..', '..')
@@ -138,33 +137,190 @@ function parseArgs(args) {
   return values
 }
 
-function cargoRequirements(
-  cargoPath = path.join(root, 'runtime', 'hxrt', 'Cargo.toml'),
-  cargo = 'cargo'
-) {
-  cargoPath = path.resolve(cargoPath)
-  const metadata = JSON.parse(
-    execFileSync(cargo, ['metadata', '--format-version', '1', '--no-deps', '--manifest-path', cargoPath], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe']
-    })
-  )
-  const hxrt = metadata.packages.find((entry) => entry.manifest_path === cargoPath)
-  if (!hxrt) throw new Error('Cargo metadata did not return the hxrt package')
-  return hxrt.dependencies
-    .map((dependency) => ({
-      name: dependency.name,
-      localName: dependency.rename || dependency.name,
-      requirement: dependency.req,
-      optional: dependency.optional,
-      kind: dependency.kind || 'runtime',
-      target: dependency.target || null
-    }))
-    .sort((left, right) =>
-      [left.localName, left.name, left.kind, left.target || ''].join('\0').localeCompare(
-        [right.localName, right.name, right.kind, right.target || ''].join('\0')
-      )
+function stripTomlComment(line) {
+  let quote = null
+  let escaped = false
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index]
+    if (quote === '"' && escaped) {
+      escaped = false
+      continue
+    }
+    if (quote === '"' && character === '\\') {
+      escaped = true
+      continue
+    }
+    if (quote !== null) {
+      if (character === quote) quote = null
+      continue
+    }
+    if (character === '"' || character === "'") quote = character
+    else if (character === '#') return line.slice(0, index)
+  }
+  return line
+}
+
+function splitTomlEntries(value) {
+  const entries = []
+  let start = 0
+  let quote = null
+  let escaped = false
+  let square = 0
+  let curly = 0
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index]
+    if (quote === '"' && escaped) {
+      escaped = false
+      continue
+    }
+    if (quote === '"' && character === '\\') {
+      escaped = true
+      continue
+    }
+    if (quote !== null) {
+      if (character === quote) quote = null
+      continue
+    }
+    if (character === '"' || character === "'") quote = character
+    else if (character === '[') square += 1
+    else if (character === ']') square -= 1
+    else if (character === '{') curly += 1
+    else if (character === '}') curly -= 1
+    else if (character === ',' && square === 0 && curly === 0) {
+      entries.push(value.slice(start, index).trim())
+      start = index + 1
+    }
+  }
+  entries.push(value.slice(start).trim())
+  return entries.filter(Boolean)
+}
+
+function tomlString(value, label) {
+  const trimmed = value.trim()
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    try {
+      return JSON.parse(trimmed)
+    } catch (_error) {
+      throw new Error(`Cargo manifest contains an invalid ${label} string`)
+    }
+  }
+  if (trimmed.startsWith("'") && trimmed.endsWith("'")) return trimmed.slice(1, -1)
+  throw new Error(`Cargo manifest ${label} must be a string`)
+}
+
+function dependencyValue(value, label) {
+  const trimmed = value.trim()
+  if (trimmed.startsWith('"') || trimmed.startsWith("'")) {
+    return { version: tomlString(trimmed, label) }
+  }
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+    throw new Error(`Cargo manifest ${label} must be a version string or inline table`)
+  }
+  const fields = {}
+  for (const entry of splitTomlEntries(trimmed.slice(1, -1))) {
+    const equals = entry.indexOf('=')
+    if (equals < 1) throw new Error(`Cargo manifest contains malformed ${label} metadata`)
+    const key = entry.slice(0, equals).trim()
+    const fieldValue = entry.slice(equals + 1).trim()
+    if (key === 'version' || key === 'package') fields[key] = tomlString(fieldValue, `${label}.${key}`)
+    else if (key === 'optional') {
+      if (fieldValue !== 'true' && fieldValue !== 'false') {
+        throw new Error(`Cargo manifest ${label}.optional must be boolean`)
+      }
+      fields.optional = fieldValue === 'true'
+    }
+  }
+  return fields
+}
+
+function dependencyTableField(key, value, label) {
+  if (key === 'version' || key === 'package') return { [key]: tomlString(value, `${label}.${key}`) }
+  if (key === 'optional') {
+    const trimmed = value.trim()
+    if (trimmed !== 'true' && trimmed !== 'false') {
+      throw new Error(`Cargo manifest ${label}.optional must be boolean`)
+    }
+    return { optional: trimmed === 'true' }
+  }
+  return {}
+}
+
+function dependencySection(header) {
+  const direct = /^(dependencies|dev-dependencies|build-dependencies)$/.exec(header)
+  if (direct) return { kind: direct[1], localName: null, target: null }
+  const table = /^(dependencies|dev-dependencies|build-dependencies)\.([A-Za-z0-9_-]+)$/.exec(header)
+  if (table) return { kind: table[1], localName: table[2], target: null }
+  const targeted = /^target\.(?:'([^']+)'|"([^"]+)")\.(dependencies|dev-dependencies|build-dependencies)(?:\.([A-Za-z0-9_-]+))?$/.exec(header)
+  if (targeted) {
+    return {
+      kind: targeted[3],
+      localName: targeted[4] || null,
+      target: targeted[1] || targeted[2]
+    }
+  }
+  return null
+}
+
+/**
+ * Why
+ * The release inventory describes unresolved requirements written in the reviewed Cargo manifest.
+ * Executing an ambient `cargo metadata` lets caller PATH, HOME, config, and toolchain state rewrite
+ * those facts while two builds still agree.
+ *
+ * What
+ * Read only dependency declarations from the source-owned Cargo.toml and return the same closed
+ * requirement shape consumed by notice and SBOM generation.
+ *
+ * How
+ * A deliberately small fail-closed TOML reader accepts Cargo dependency tables, target-specific
+ * tables, version strings, and inline tables. Unsupported dependency syntax is rejected rather than
+ * delegated to a process outside the reviewed source boundary.
+ */
+function cargoRequirements(cargoPath = path.join(root, 'runtime', 'hxrt', 'Cargo.toml')) {
+  const source = fs.readFileSync(path.resolve(cargoPath), 'utf8')
+  const requirements = new Map()
+  let section = null
+  for (const rawLine of source.split(/\r?\n/)) {
+    const line = stripTomlComment(rawLine).trim()
+    if (!line) continue
+    if (line.startsWith('[') && line.endsWith(']')) {
+      section = dependencySection(line.slice(1, -1).trim())
+      continue
+    }
+    if (!section) continue
+    const equals = line.indexOf('=')
+    if (equals < 1) throw new Error('Cargo dependency declaration is malformed')
+    const key = line.slice(0, equals).trim()
+    if (!/^[A-Za-z0-9_-]+$/.test(key)) throw new Error('Cargo dependency name is malformed')
+    const localName = section.localName || key
+    const fields = section.localName
+      ? dependencyTableField(key, line.slice(equals + 1), localName)
+      : dependencyValue(line.slice(equals + 1), localName)
+    const identity = [section.target || '', section.kind, localName].join('\0')
+    const current = requirements.get(identity) || {
+      name: localName,
+      localName,
+      requirement: null,
+      optional: false,
+      kind: section.kind === 'dependencies' ? 'runtime' : section.kind.replace('-dependencies', ''),
+      target: section.target
+    }
+    if (fields.package) current.name = fields.package
+    if (fields.version) current.requirement = fields.version
+    if (fields.optional !== undefined) current.optional = fields.optional
+    requirements.set(identity, current)
+  }
+  const result = [...requirements.values()]
+  for (const requirement of result) {
+    if (!requirement.requirement) {
+      throw new Error(`Cargo dependency ${requirement.localName} lacks a reviewed version requirement`)
+    }
+  }
+  return result.sort((left, right) =>
+    [left.localName, left.name, left.kind, left.target || ''].join('\0').localeCompare(
+      [right.localName, right.name, right.kind, right.target || ''].join('\0')
     )
+  )
 }
 
 function sha256Text(value) {

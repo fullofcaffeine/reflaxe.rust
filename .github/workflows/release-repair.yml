@@ -21,17 +21,33 @@ env:
 jobs:
   repair:
     name: Complete publication for an existing tag
-    if: startsWith(inputs.tag, 'v')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: write
+    defaults:
+      run:
+        shell: /usr/bin/bash --noprofile --norc -euo pipefail {0}
+    env:
+      BASH_ENV: ""
+      ENV: ""
+      NODE_OPTIONS: ""
+      NODE_PATH: ""
     steps:
+      - name: Validate supplied immutable tag
+        env:
+          REPAIR_TAG: ${{ inputs.tag }}
+        run: |
+          if [[ ! "$REPAIR_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "repair requires an exact existing vMAJOR.MINOR.PATCH tag" >&2
+            exit 1
+          fi
+
       - name: Checkout supplied tag
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           fetch-depth: 0
-          ref: ${{ inputs.tag }}
+          ref: refs/tags/${{ inputs.tag }}
 
       - name: Setup exact Node.js
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
@@ -42,7 +58,15 @@ jobs:
         env:
           REPAIR_TAG: ${{ inputs.tag }}
         run: |
-          set -euo pipefail
+          node_bin="$(/usr/bin/readlink -f "$(command -v node)")"
+          npm_bin="$(dirname "$node_bin")/npm"
+          case "$node_bin" in
+            "$RUNNER_TOOL_CACHE/node/22.14.0/"*) ;;
+            *) echo "setup-node executable escaped the pinned tool-cache version" >&2; exit 1 ;;
+          esac
+          test -x "$node_bin"
+          test -x "$npm_bin"
+          test "$("$node_bin" --version)" = "v22.14.0"
           source_commit="$(
             env -i \
               PATH="/usr/bin:/bin" \
@@ -51,10 +75,25 @@ jobs:
               GIT_CONFIG_NOSYSTEM=1 \
               GIT_NO_REPLACE_OBJECTS=1 \
               /usr/bin/git --no-replace-objects -C "$GITHUB_WORKSPACE" \
-                rev-parse "$REPAIR_TAG^{commit}"
+                rev-parse --verify "refs/tags/$REPAIR_TAG^{commit}"
           )"
+          head_commit="$(
+            env -i \
+              PATH="/usr/bin:/bin" \
+              GIT_ATTR_NOSYSTEM=1 \
+              GIT_CONFIG_GLOBAL=/dev/null \
+              GIT_CONFIG_NOSYSTEM=1 \
+              GIT_NO_REPLACE_OBJECTS=1 \
+              /usr/bin/git --no-replace-objects -C "$GITHUB_WORKSPACE" \
+                rev-parse --verify "HEAD^{commit}"
+          )"
+          test "$head_commit" = "$source_commit"
           bootstrap="$RUNNER_TEMP/exact-git-source.js"
           source_root="$RUNNER_TEMP/haxe-rust-release-source"
+          env -i GIT_ATTR_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null \
+            GIT_CONFIG_NOSYSTEM=1 GIT_NO_REPLACE_OBJECTS=1 \
+            /usr/bin/git --no-replace-objects -C "$GITHUB_WORKSPACE" \
+              fsck --strict --full --no-reflogs "$source_commit"
           env -i \
             PATH="/usr/bin:/bin" \
             GIT_ATTR_NOSYSTEM=1 \
@@ -63,35 +102,54 @@ jobs:
             GIT_NO_REPLACE_OBJECTS=1 \
             /usr/bin/git --no-replace-objects cat-file blob \
               "$source_commit:scripts/release/exact-git-source.js" > "$bootstrap"
-          node "$bootstrap" bootstrap "$GITHUB_WORKSPACE" "$source_commit" "$source_root"
-          git -C "$source_root" remote set-url origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
-          echo "RELEASE_BOOTSTRAP=$bootstrap" >> "$GITHUB_ENV"
+          env -i LANG=C RELEASE_GIT_BIN=/usr/bin/git TMPDIR="$RUNNER_TEMP" \
+            "$node_bin" "$bootstrap" bootstrap \
+              "$GITHUB_WORKSPACE" "$source_commit" "$source_root" \
+              "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          echo "RELEASE_NODE_BIN=$node_bin" >> "$GITHUB_ENV"
+          echo "RELEASE_NPM_BIN=$npm_bin" >> "$GITHUB_ENV"
+          echo "RELEASE_GIT_BIN=/usr/bin/git" >> "$GITHUB_ENV"
+          echo "RELEASE_BASH_BIN=/usr/bin/bash" >> "$GITHUB_ENV"
           echo "RELEASE_SOURCE_COMMIT=$source_commit" >> "$GITHUB_ENV"
           echo "RELEASE_SOURCE_ROOT=$source_root" >> "$GITHUB_ENV"
 
       - name: Install locked npm dependencies
         run: |
           cd "$RELEASE_SOURCE_ROOT"
-          env -u BASH_ENV -u ENV -u NODE_OPTIONS -u NODE_PATH \
-            npm ci --ignore-scripts --no-audit --no-fund
+          env -i HOME="$RUNNER_TEMP/haxe-rust-npm-home" LANG=C \
+            PATH="$(dirname "$RELEASE_NODE_BIN"):/usr/bin:/bin" \
+            "$RELEASE_NPM_BIN" ci --ignore-scripts --no-audit --no-fund
 
       - name: Install Haxe 4.3.7
         run: |
-          set -euo pipefail
           cd "$RELEASE_SOURCE_ROOT"
-          env -u NODE_OPTIONS -u NODE_PATH node node_modules/lix/bin/lix.js download
-          env -u NODE_OPTIONS -u NODE_PATH node node_modules/lix/bin/lix.js download haxe "${{ env.HAXE_VERSION }}"
-          env -u NODE_OPTIONS -u NODE_PATH node node_modules/lix/bin/lix.js use haxe "${{ env.HAXE_VERSION }}"
-          echo "$(pwd)/node_modules/.bin" >> "$GITHUB_PATH"
-          export PATH="$(pwd)/node_modules/.bin:$PATH"
-          haxe -version
+          lix="$(pwd)/node_modules/lix/bin/lix.js"
+          env -i HOME="$RUNNER_TEMP/haxe-rust-lix-home" LANG=C "$RELEASE_NODE_BIN" "$lix" download
+          env -i HOME="$RUNNER_TEMP/haxe-rust-lix-home" LANG=C "$RELEASE_NODE_BIN" "$lix" download haxe "${{ env.HAXE_VERSION }}"
+          env -i HOME="$RUNNER_TEMP/haxe-rust-lix-home" LANG=C "$RELEASE_NODE_BIN" "$lix" use haxe "${{ env.HAXE_VERSION }}"
+          # Package construction invokes Haxe from a temporary directory where the
+          # repository .haxerc is not visible. Pin Lix's fresh global scope to the
+          # same exact version so it never resolves the mutable "stable" alias.
+          /bin/cp .haxerc "$RUNNER_TEMP/haxe-rust-lix-home/haxe/.haxerc"
+          haxe_bin="$(pwd)/node_modules/.bin/haxe"
+          haxelib_bin="$(pwd)/node_modules/.bin/haxelib"
+          test "$($haxe_bin -version 2>&1)" = "${{ env.HAXE_VERSION }}"
+          tool_dir="$RUNNER_TEMP/haxe-rust-release-tools"
+          /bin/mkdir -p "$tool_dir"
+          /bin/ln -s "$haxe_bin" "$tool_dir/haxe"
+          /bin/ln -s "$haxelib_bin" "$tool_dir/haxelib"
+          /bin/ln -s "$RELEASE_NODE_BIN" "$tool_dir/node"
+          echo "RELEASE_HAXE_BIN=$haxe_bin" >> "$GITHUB_ENV"
+          echo "RELEASE_HAXELIB_BIN=$haxelib_bin" >> "$GITHUB_ENV"
+          echo "RELEASE_TOOL_DIR=$tool_dir" >> "$GITHUB_ENV"
 
       - name: Resolve Rust toolchain policy
         id: rust-policy
         run: |
           cd "$RELEASE_SOURCE_ROOT"
-          env -u NODE_OPTIONS -u NODE_PATH \
-            node scripts/ci/rust-toolchain-policy.js --github-output --activate release
+          env -i LANG=C GITHUB_ENV="$GITHUB_ENV" GITHUB_OUTPUT="$GITHUB_OUTPUT" \
+            "$RELEASE_NODE_BIN" \
+            scripts/ci/rust-toolchain-policy.js --github-output --activate release
 
       - name: Setup reproducible release Rust
         uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30
@@ -105,11 +163,61 @@ jobs:
           REPAIR_TAG: ${{ inputs.tag }}
         run: |
           cd "$RELEASE_SOURCE_ROOT"
-          env -u BASH_ENV -u ENV -u NODE_OPTIONS -u NODE_PATH \
-            node "$RELEASE_BOOTSTRAP" assert "$RELEASE_SOURCE_ROOT" "$RELEASE_SOURCE_COMMIT"
-          env -u BASH_ENV -u ENV -u NODE_OPTIONS -u NODE_PATH -u TAR_OPTIONS -u CARGO_BIN \
-            -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE -u GIT_OBJECT_DIRECTORY \
-            -u GIT_ALTERNATE_OBJECT_DIRECTORIES -u GIT_REPLACE_REF_BASE -u GIT_CONFIG_COUNT \
-            GIT_ATTR_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 \
-            GIT_NO_REPLACE_OBJECTS=1 \
-            node scripts/release/repair-release.js "$REPAIR_TAG"
+          rustup_bin="$(command -v rustup)"
+          cargo_bin="$("$rustup_bin" which --toolchain "${{ steps.rust-policy.outputs.release }}" cargo)"
+          rustc_bin="$("$rustup_bin" which --toolchain "${{ steps.rust-policy.outputs.release }}" rustc)"
+          gh_bin=/usr/bin/gh
+          test -x "$gh_bin"
+          test "$("$rustc_bin" --version | cut -d' ' -f2)" = "${{ steps.rust-policy.outputs.release }}"
+          final_bootstrap="$RUNNER_TEMP/exact-git-source-final.js"
+          env -i GIT_ATTR_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null \
+            GIT_CONFIG_NOSYSTEM=1 GIT_NO_REPLACE_OBJECTS=1 \
+            /usr/bin/git --no-replace-objects -C "$RELEASE_SOURCE_ROOT" \
+              fsck --strict --full --no-reflogs "$RELEASE_SOURCE_COMMIT"
+          env -i GIT_ATTR_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null \
+            GIT_CONFIG_NOSYSTEM=1 GIT_NO_REPLACE_OBJECTS=1 \
+            /usr/bin/git --no-replace-objects -C "$RELEASE_SOURCE_ROOT" cat-file blob \
+              "$RELEASE_SOURCE_COMMIT:scripts/release/exact-git-source.js" > "$final_bootstrap"
+          env -i LANG=C RELEASE_GIT_BIN=/usr/bin/git TMPDIR="$RUNNER_TEMP" \
+            "$RELEASE_NODE_BIN" "$final_bootstrap" assert \
+              "$RELEASE_SOURCE_ROOT" "$RELEASE_SOURCE_COMMIT" \
+              "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          # Lix downloaded the pinned compiler and project libraries into this fresh,
+          # job-owned home. Reuse that isolated home so its reviewed shim cannot fall
+          # back to the runner account or attempt a second network resolution.
+          release_home="$RUNNER_TEMP/haxe-rust-lix-home"
+          cargo_home="$RUNNER_TEMP/haxe-rust-cargo-home"
+          mkdir -p "$cargo_home"
+          env -i \
+            CI=true \
+            GH_TOKEN="$GH_TOKEN" \
+            GITHUB_ACTIONS=true \
+            GITHUB_EVENT_NAME="$GITHUB_EVENT_NAME" \
+            GITHUB_REF="$GITHUB_REF" \
+            GITHUB_REPOSITORY="$GITHUB_REPOSITORY" \
+            GITHUB_SERVER_URL="$GITHUB_SERVER_URL" \
+            GITHUB_SHA="$GITHUB_SHA" \
+            GITHUB_TOKEN="$GITHUB_TOKEN" \
+            HOME="$release_home" \
+            LANG=C \
+            PATH="/usr/bin:/bin" \
+            RELEASE_BASH_BIN=/usr/bin/bash \
+            RELEASE_CARGO_BIN="$cargo_bin" \
+            RELEASE_CARGO_HOME="$cargo_home" \
+            RELEASE_EXPECTED_ORIGIN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" \
+            RELEASE_GH_BIN="$gh_bin" \
+            RELEASE_GIT_BIN=/usr/bin/git \
+            RELEASE_HAXE_BIN="$RELEASE_HAXE_BIN" \
+            RELEASE_HAXELIB_BIN="$RELEASE_HAXELIB_BIN" \
+            RELEASE_NODE_BIN="$RELEASE_NODE_BIN" \
+            RELEASE_NPM_BIN="$RELEASE_NPM_BIN" \
+            RELEASE_RUSTC_BIN="$rustc_bin" \
+            RELEASE_HOME="$release_home" \
+            RELEASE_SOURCE_COMMIT="$RELEASE_SOURCE_COMMIT" \
+            RELEASE_SOURCE_ROOT="$RELEASE_SOURCE_ROOT" \
+            RELEASE_STRICT_EXECUTION=1 \
+            RELEASE_TEMP_ROOT="$RUNNER_TEMP" \
+            RELEASE_TOOL_DIR="$RELEASE_TOOL_DIR" \
+            REPAIR_TAG="$REPAIR_TAG" \
+            TMPDIR="$RUNNER_TEMP" \
+            "$RELEASE_NODE_BIN" scripts/release/repair-release.js "$REPAIR_TAG"
