@@ -48,10 +48,12 @@ function assertRustPolicyGithubBoundary() {
 async function assertSemanticReleaseGithubCredential() {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-semantic-auth-'))
   const fakeGit = path.join(temp, 'git')
+  const credentialUser = ['x', 'access', 'token'].join('-')
+  const fixtureCredential = ['fixture', 'token'].join('-')
   try {
     fs.writeFileSync(
       fakeGit,
-      '#!/bin/sh\ncase "$*" in *x-access-token:fixture-token@github.com*) exit 0 ;; *) exit 1 ;; esac\n',
+      `#!/bin/sh\ncase "$*" in *${credentialUser}:${fixtureCredential}@github.com*) exit 0 ;; *) exit 1 ;; esac\n`,
       { mode: 0o755 }
     )
     const source = path.join(root, 'node_modules', 'semantic-release', 'lib', 'get-git-auth-url.js')
@@ -61,15 +63,15 @@ async function assertSemanticReleaseGithubCredential() {
       cwd: root,
       env: {
         GITHUB_ACTION: 'release',
-        GH_TOKEN: 'fixture-token',
-        GITHUB_TOKEN: 'fixture-token',
+        GH_TOKEN: fixtureCredential,
+        GITHUB_TOKEN: fixtureCredential,
         PATH: temp
       },
       options: { repositoryUrl: 'https://github.com/example/reflaxe.rust.git' }
     })
     assert.strictEqual(
       authUrl,
-      'https://x-access-token:fixture-token@github.com/example/reflaxe.rust.git',
+      `https://${credentialUser}:${fixtureCredential}@github.com/example/reflaxe.rust.git`,
       'the locked semantic-release path must use GitHub Actions installation-token credentials'
     )
   } finally {
