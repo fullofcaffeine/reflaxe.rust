@@ -138,9 +138,11 @@ function parseArgs(args) {
   return values
 }
 
-function cargoRequirements(cargoPath = path.join(root, 'runtime', 'hxrt', 'Cargo.toml')) {
+function cargoRequirements(
+  cargoPath = path.join(root, 'runtime', 'hxrt', 'Cargo.toml'),
+  cargo = 'cargo'
+) {
   cargoPath = path.resolve(cargoPath)
-  const cargo = process.env.CARGO_BIN || 'cargo'
   const metadata = JSON.parse(
     execFileSync(cargo, ['metadata', '--format-version', '1', '--no-deps', '--manifest-path', cargoPath], {
       encoding: 'utf8',

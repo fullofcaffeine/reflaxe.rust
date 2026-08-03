@@ -1,13 +1,31 @@
 const crypto = require('crypto')
 const fs = require('fs')
 const { execFileSync } = require('child_process')
+const {
+  GIT_OUTPUT_MAX_BYTES,
+  gitObjectEnvironment
+} = require('./exact-git-source.js')
+const { releaseProcessEnvironment } = require('./reviewed-source.js')
+
+const HOST_ENVIRONMENT_KEYS = [
+  'GH_HOST',
+  'GH_TOKEN',
+  'GITHUB_API_URL',
+  'GITHUB_REPOSITORY',
+  'GITHUB_SERVER_URL',
+  'GITHUB_TOKEN'
+]
 
 function defaultRun(command, args, options = {}) {
-  return execFileSync(command, args, {
+  const git = command === 'git'
+  return execFileSync(command, git ? ['--no-replace-objects', ...args] : args, {
     cwd: options.cwd,
     encoding: 'utf8',
-    env: options.env || process.env,
-    stdio: ['ignore', 'pipe', 'pipe']
+    env: git
+      ? gitObjectEnvironment(options.env || process.env)
+      : releaseProcessEnvironment(options.env || process.env, HOST_ENVIRONMENT_KEYS),
+    stdio: ['ignore', 'pipe', 'pipe'],
+    maxBuffer: GIT_OUTPUT_MAX_BYTES
   })
 }
 

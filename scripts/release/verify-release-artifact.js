@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 const crypto = require('crypto')
-const { execFileSync } = require('child_process')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
-const { strFromU8, unzipSync } = require('fflate')
+const { inflateRawSync } = require('zlib')
+const { assertExactBootstrap, gitObject } = require('./exact-git-source.js')
 const { compareEntryNames, validateEntryNames } = require('./deterministic-zip.js')
+const { crc32 } = require('./deterministic-zip.js')
 const {
   buildArtifacts: buildLicenseArtifacts,
   REQUIRED_COMPONENT_CONTRACT,
@@ -71,8 +72,8 @@ const ALLOWED_ROOT_DIRECTORIES = new Set(['provenance', 'runtime', 'src', 'vendo
  *
  * How
  * A small central-directory reader exposes names, flags, methods, and Unix attributes that high-
- * level unzip maps normally hide. Only after structural validation succeeds is `fflate` used to
- * decode file contents.
+ * level unzip maps normally hide. Only after structural validation succeeds are local headers
+ * cross-checked and file bytes decoded with Node's built-in raw DEFLATE implementation.
  */
 
 function findEndOfCentralDirectory(buffer) {
@@ -100,10 +101,14 @@ function centralDirectoryEntries(buffer) {
     }
     const flags = buffer.readUInt16LE(offset + 8)
     const method = buffer.readUInt16LE(offset + 10)
+    const crc = buffer.readUInt32LE(offset + 16)
+    const compressedSize = buffer.readUInt32LE(offset + 20)
+    const uncompressedSize = buffer.readUInt32LE(offset + 24)
     const nameLength = buffer.readUInt16LE(offset + 28)
     const extraLength = buffer.readUInt16LE(offset + 30)
     const commentLength = buffer.readUInt16LE(offset + 32)
     const externalAttributes = buffer.readUInt32LE(offset + 38)
+    const localOffset = buffer.readUInt32LE(offset + 42)
     const nameStart = offset + 46
     const nameEnd = nameStart + nameLength
     const nameBytes = buffer.subarray(nameStart, nameEnd)
@@ -115,7 +120,7 @@ function centralDirectoryEntries(buffer) {
     const unixMode = externalAttributes >>> 16
     if ((unixMode & 0o170000) === 0o120000) throw new Error(`symbolic link entry is not allowed: ${name}`)
     if ((unixMode & 0o777) !== 0o644) throw new Error(`archive entry mode must be 0644: ${name}`)
-    entries.push({ name, flags, method, unixMode })
+    entries.push({ compressedSize, crc, flags, localOffset, method, name, uncompressedSize, unixMode })
     offset = nameEnd + extraLength + commentLength
   }
   if (offset !== expectedEnd) throw new Error('invalid ZIP central-directory size')
@@ -123,9 +128,63 @@ function centralDirectoryEntries(buffer) {
   return entries
 }
 
+function decodeEntries(buffer, entries) {
+  const files = Object.create(null)
+  for (const entry of entries) {
+    const offset = entry.localOffset
+    if (offset + 30 > buffer.length || buffer.readUInt32LE(offset) !== 0x04034b50) {
+      throw new Error(`invalid ZIP local header for ${entry.name}`)
+    }
+    const flags = buffer.readUInt16LE(offset + 6)
+    const method = buffer.readUInt16LE(offset + 8)
+    const crc = buffer.readUInt32LE(offset + 14)
+    const compressedSize = buffer.readUInt32LE(offset + 18)
+    const uncompressedSize = buffer.readUInt32LE(offset + 22)
+    const nameLength = buffer.readUInt16LE(offset + 26)
+    const extraLength = buffer.readUInt16LE(offset + 28)
+    const nameStart = offset + 30
+    const nameEnd = nameStart + nameLength
+    const dataStart = nameEnd + extraLength
+    const dataEnd = dataStart + compressedSize
+    if (
+      flags !== entry.flags ||
+      method !== entry.method ||
+      crc !== entry.crc ||
+      compressedSize !== entry.compressedSize ||
+      uncompressedSize !== entry.uncompressedSize ||
+      dataEnd > buffer.length ||
+      buffer.subarray(nameStart, nameEnd).toString('utf8') !== entry.name
+    ) {
+      throw new Error(`ZIP local header contradicts the central directory: ${entry.name}`)
+    }
+    const compressed = buffer.subarray(dataStart, dataEnd)
+    let bytes
+    try {
+      if (method === 0) bytes = Buffer.from(compressed)
+      else if (method === 8) bytes = inflateRawSync(compressed)
+      else throw new Error('unsupported method')
+    } catch (_error) {
+      throw new Error(`release artifact entry cannot be decompressed: ${entry.name}`)
+    }
+    if (bytes.length !== uncompressedSize || crc32(bytes) !== crc) {
+      throw new Error(`release artifact entry checksum is invalid: ${entry.name}`)
+    }
+    files[entry.name] = bytes
+  }
+  return files
+}
+
+function strFromBytes(bytes) {
+  const value = Buffer.from(bytes).toString('utf8')
+  if (!Buffer.from(value, 'utf8').equals(Buffer.from(bytes))) {
+    throw new Error('release artifact text is not valid UTF-8')
+  }
+  return value
+}
+
 function parseJsonEntry(files, name) {
   try {
-    return JSON.parse(strFromU8(files[name]))
+    return JSON.parse(strFromBytes(files[name]))
   } catch (_error) {
     throw new Error(`archive entry is not readable JSON: ${name}`)
   }
@@ -227,12 +286,7 @@ function verifyReleaseArtifact({
   const names = central.map(({ name }) => name)
   verifyLayout(names)
 
-  let files
-  try {
-    files = unzipSync(bytes)
-  } catch (_error) {
-    throw new Error('release artifact cannot be decompressed')
-  }
+  const files = decodeEntries(bytes, central)
   const haxelib = parseJsonEntry(files, 'haxelib.json')
   const expectedHaxelib = JSON.parse(fs.readFileSync(path.join(sourceRoot, 'haxelib.json'), 'utf8'))
   validateProjectHaxelib(haxelib)
@@ -299,7 +353,7 @@ function verifyReleaseArtifact({
     requireExactFile(files, archiveName, path.join(sourceRoot, archiveName))
   }
   for (const [archiveName, expected] of buildLicenseArtifacts(version)) {
-    if (strFromU8(files[archiveName]) !== expected) {
+    if (strFromBytes(files[archiveName]) !== expected) {
       throw new Error(`archive entry differs from generated license evidence: ${archiveName}`)
     }
   }
@@ -348,7 +402,7 @@ function verifyReleaseArtifact({
     reflaxeProvenance,
     parseJsonEntry(files, 'vendor/reflaxe/haxelib.json')
   )
-  const notices = strFromU8(files['THIRD_PARTY_NOTICES.md'])
+  const notices = strFromBytes(files['THIRD_PARTY_NOTICES.md'])
   for (const componentName of REQUIRED_THIRD_PARTY_COMPONENTS) {
     if (!notices.includes(componentName)) {
       throw new Error(`third-party notices do not cover ${componentName}`)
@@ -411,13 +465,13 @@ function parseArgs(argv) {
 
 function main() {
   const args = parseArgs(process.argv.slice(2))
-  const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD^{commit}'], {
-    cwd: REPOSITORY_ROOT,
+  const sourceCommit = gitObject(REPOSITORY_ROOT, ['rev-parse', 'HEAD^{commit}'], {
     encoding: 'utf8'
   }).trim()
   if (sourceCommit !== args['source-sha']) {
     throw new Error('reviewed source commit does not match the checked-out commit')
   }
+  assertExactBootstrap(REPOSITORY_ROOT, sourceCommit)
   assertTrackedTreeClean(REPOSITORY_ROOT, 'reviewed source contains tracked changes')
 
   const canonicalRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-release-verify-'))
@@ -458,4 +512,10 @@ if (require.main === module) {
   }
 }
 
-module.exports = { centralDirectoryEntries, validateSbomPrimary, verifyLayout, verifyReleaseArtifact }
+module.exports = {
+  centralDirectoryEntries,
+  decodeEntries,
+  validateSbomPrimary,
+  verifyLayout,
+  verifyReleaseArtifact
+}

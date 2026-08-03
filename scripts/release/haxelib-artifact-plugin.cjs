@@ -4,9 +4,11 @@ const os = require('os')
 const path = require('path')
 const { execFileSync } = require('child_process')
 const { artifactNames, normalizeSha, verifyTagIdentity } = require('./release-provenance.js')
+const { assertExactBootstrap, gitObject } = require('./exact-git-source.js')
 const {
   assertTrackedTreeClean,
   buildFromReviewedSource,
+  releaseProcessEnvironment,
   withReviewedSource
 } = require('./reviewed-source.js')
 
@@ -14,18 +16,22 @@ function run(command, args, options = {}) {
   return execFileSync(command, args, {
     cwd: options.cwd,
     encoding: 'utf8',
-    env: options.env || process.env,
+    env: releaseProcessEnvironment(
+      options.env || process.env,
+      options.additionalEnvironmentKeys || []
+    ),
     stdio: options.stdio || 'inherit'
   })
 }
 
 function sourceCommit(cwd) {
   const head = normalizeSha(
-    execFileSync('git', ['rev-parse', 'HEAD^{commit}'], { cwd, encoding: 'utf8' }),
+    gitObject(cwd, ['rev-parse', 'HEAD^{commit}'], { encoding: 'utf8' }),
     'checked-out HEAD'
   )
   const tested = process.env.GITHUB_SHA ? normalizeSha(process.env.GITHUB_SHA, 'GITHUB_SHA') : head
   if (head !== tested) throw new Error('release checkout does not match the CI-tested GITHUB_SHA')
+  assertExactBootstrap(cwd, tested)
   return tested
 }
 
@@ -93,7 +99,8 @@ async function prepare(_pluginConfig, context) {
         ...process.env,
         PACKAGE_SMOKE_USE_EXISTING: '1',
         PACKAGE_ZIP_REL: path.relative(cwd, zipPath)
-      }
+      },
+      additionalEnvironmentKeys: ['PACKAGE_SMOKE_USE_EXISTING', 'PACKAGE_ZIP_REL']
     })
     assertTrackedTreeClean(cwd, 'release preparation modified tracked repository files')
     context.logger.success(

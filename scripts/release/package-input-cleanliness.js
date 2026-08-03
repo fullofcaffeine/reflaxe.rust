@@ -1,6 +1,6 @@
-const { execFileSync } = require('child_process')
+const { GIT_OUTPUT_MAX_BYTES, gitObject } = require('./exact-git-source.js')
 
-const PACKAGE_INPUT_ROOTS = ['src', 'std', 'runtime', 'vendor']
+const PACKAGE_INPUT_ROOTS = ['scripts/ci', 'scripts/release', 'src', 'std', 'runtime', 'vendor']
 const PACKAGE_INPUT_FILES = [
   'LICENSE',
   'README.md',
@@ -15,30 +15,29 @@ const PACKAGE_INPUT_FILES = [
 const RELEASE_TOOL_FILES = [
   'scripts/ci/vendor-reflaxe-provenance.js',
   'scripts/release/deterministic-zip.js',
+  'scripts/release/exact-git-source.js',
   'scripts/release/generate-license-artifacts.js',
+  'scripts/release/haxelib-artifact-plugin.cjs',
   'scripts/release/package-haxelib.sh',
   'scripts/release/prepare-package-metadata.js',
+  'scripts/release/published-verifier-plugin.cjs',
+  'scripts/release/release-policy.js',
+  'scripts/release/release-provenance.js',
   'scripts/release/reflaxe-metadata.js',
+  'scripts/release/repair-release.js',
   'scripts/release/reviewed-source.js',
+  'scripts/release/semantic-version.js',
   'scripts/release/verify-release-artifact.js'
 ]
-const GIT_OUTPUT_MAX_BYTES = 64 * 1024 * 1024
-
 function gitPaths(cwd, args) {
-  return execFileSync('git', ['ls-files', '-z', ...args], {
-    cwd,
-    maxBuffer: GIT_OUTPUT_MAX_BYTES
-  })
+  return gitObject(cwd, ['ls-files', '-z', ...args])
     .toString('utf8')
     .split('\0')
     .filter(Boolean)
 }
 
 function trackedModes(cwd) {
-  const output = execFileSync('git', ['ls-files', '--stage', '-z'], {
-    cwd,
-    maxBuffer: GIT_OUTPUT_MAX_BYTES
-  }).toString('utf8')
+  const output = gitObject(cwd, ['ls-files', '--stage', '-z']).toString('utf8')
   const result = new Map()
   for (const record of output.split('\0').filter(Boolean)) {
     const separator = record.indexOf('\t')

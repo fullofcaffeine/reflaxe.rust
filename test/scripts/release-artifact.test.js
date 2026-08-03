@@ -6,6 +6,7 @@ const { execFileSync } = require('child_process')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
+// Test-only archive construction deliberately stays independent from the production ZIP writer.
 const { strToU8, zipSync } = require('fflate')
 
 const repoRoot = path.resolve(__dirname, '..', '..')
@@ -104,6 +105,15 @@ function expectThrow(callback, pattern) {
 function main() {
   assert(fs.existsSync(zipModulePath), 'deterministic ZIP module must exist')
   assert(fs.existsSync(verifyModulePath), 'release artifact verifier must exist')
+  for (const relative of [
+    'scripts/release/deterministic-zip.js',
+    'scripts/release/prepare-package-metadata.js',
+    'scripts/release/semantic-version.js',
+    'scripts/release/verify-release-artifact.js'
+  ]) {
+    const source = fs.readFileSync(path.join(repoRoot, relative), 'utf8')
+    assert(!/require\(['"](?:fflate|semver)['"]\)/.test(source), `${relative} must not load artifact authority from node_modules`)
+  }
   const zipApi = require(zipModulePath)
   const verifyApi = require(verifyModulePath)
   const licenseApi = require(licenseArtifactModulePath)
@@ -341,7 +351,20 @@ libc = "0.2"
 `
     )
     write(cargoFixture, 'src/lib.rs', '')
-    const parsedCargo = licenseApi.cargoRequirements(path.join(cargoFixture, 'Cargo.toml'))
+    const fakeCargo = path.join(cargoFixture, 'fake-cargo.sh')
+    const fakeCargoMarker = path.join(cargoFixture, 'fake-cargo-ran.txt')
+    write(cargoFixture, 'fake-cargo.sh', `#!/usr/bin/env bash\nprintf invoked > ${JSON.stringify(fakeCargoMarker)}\nexit 97\n`)
+    fs.chmodSync(fakeCargo, 0o755)
+    const previousCargoBin = process.env.CARGO_BIN
+    process.env.CARGO_BIN = fakeCargo
+    let parsedCargo
+    try {
+      parsedCargo = licenseApi.cargoRequirements(path.join(cargoFixture, 'Cargo.toml'))
+    } finally {
+      if (previousCargoBin === undefined) delete process.env.CARGO_BIN
+      else process.env.CARGO_BIN = previousCargoBin
+    }
+    assert(!fs.existsSync(fakeCargoMarker), 'release evidence must ignore caller-provided CARGO_BIN')
     assert(parsedCargo.some((entry) => entry.name === 'serde' && entry.optional))
     assert(parsedCargo.some((entry) => entry.name === 'cc' && entry.kind === 'build'))
     assert(parsedCargo.some((entry) => entry.name === 'libc' && entry.target === 'cfg(unix)'))

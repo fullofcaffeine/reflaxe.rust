@@ -34,6 +34,34 @@ function main() {
   requireMatch(release, /actions\/checkout@[0-9a-f]{40}/, 'privileged checkout must pin a full action commit')
   requireMatch(release, /actions\/setup-node@[0-9a-f]{40}/, 'privileged Node setup must pin a full action commit')
   requireMatch(release, /node-version: "22\.14\.0"/, 'release Node runtime must be exact')
+  requireMatch(
+    release,
+    /git --no-replace-objects cat-file blob[\s\S]*SOURCE_COMMIT:scripts\/release\/exact-git-source\.js/,
+    'the workflow must load its release bootstrap from the tested commit rather than the live checkout'
+  )
+  requireMatch(
+    release,
+    /node "\$bootstrap" bootstrap "\$GITHUB_WORKSPACE" "\$SOURCE_COMMIT" "\$source_root"/,
+    'the workflow must create an exact-object release repository before loading release code'
+  )
+  requireMatch(
+    release,
+    /RELEASE_BOOTSTRAP=\$bootstrap[\s\S]*RELEASE_SOURCE_COMMIT=\$SOURCE_COMMIT/,
+    'the workflow must retain the externally loaded bootstrap and exact source identity'
+  )
+  const releaseAssert = release.indexOf(
+    'node "$RELEASE_BOOTSTRAP" assert "$RELEASE_SOURCE_ROOT" "$RELEASE_SOURCE_COMMIT"'
+  )
+  const semanticRelease = release.indexOf('semantic-release/bin/semantic-release.js')
+  assert(releaseAssert !== -1, 'release must recheck literal commit bytes after tool installation')
+  assert(releaseAssert < semanticRelease, 'literal commit-byte proof must precede semantic-release loading')
+  for (const command of ['npm ci', 'node_modules/lix/bin/lix.js download', 'rust-toolchain-policy.js', 'semantic-release/bin/semantic-release.js']) {
+    const commandIndex = release.indexOf(command)
+    assert(commandIndex > release.indexOf('Materialize exact reviewed release repository'), `${command} must run only after exact-source bootstrap`)
+    const preceding = release.slice(Math.max(0, commandIndex - 500), commandIndex)
+    requireMatch(preceding, /RELEASE_SOURCE_ROOT/, `${command} must run from the exact reviewed repository`)
+  }
+  requireMatch(release, /env -u BASH_ENV -u ENV -u NODE_OPTIONS -u NODE_PATH -u TAR_OPTIONS -u CARGO_BIN/, 'publication must clear executable environment injections')
   assert(!release.includes('actions/cache'), 'the privileged release job must not restore an executable cache')
   assert(!release.includes('workflow_dispatch'), 'normal publication must not have a manual bypass')
 
@@ -43,6 +71,24 @@ function main() {
   requireMatch(repair, /tag:\n\s+description:/, 'repair must require a tag input')
   requireMatch(repair, /ref: \$\{\{ inputs\.tag \}\}/, 'repair must check out the supplied immutable tag')
   requireMatch(repair, /REPAIR_TAG: \$\{\{ inputs\.tag \}\}/, 'manual input must cross into shell through an environment value')
+  requireMatch(
+    repair,
+    /git --no-replace-objects cat-file blob[\s\S]*source_commit:scripts\/release\/exact-git-source\.js/,
+    'repair must load its bootstrap from the supplied tag object'
+  )
+  requireMatch(
+    repair,
+    /RELEASE_BOOTSTRAP=\$bootstrap[\s\S]*RELEASE_SOURCE_COMMIT=\$source_commit/,
+    'repair must retain the externally loaded bootstrap and supplied tag identity'
+  )
+  const repairAssert = repair.indexOf(
+    'node "$RELEASE_BOOTSTRAP" assert "$RELEASE_SOURCE_ROOT" "$RELEASE_SOURCE_COMMIT"'
+  )
+  const repairCommand = repair.indexOf('node scripts/release/repair-release.js "$REPAIR_TAG"')
+  assert(repairAssert !== -1, 'repair must recheck literal commit bytes after tool installation')
+  assert(repairAssert < repairCommand, 'literal commit-byte proof must precede repair code loading')
+  requireMatch(repair, /cd "\$RELEASE_SOURCE_ROOT"[\s\S]*repair-release\.js/, 'repair must execute from the exact tag repository')
+  requireMatch(repair, /env -u BASH_ENV -u ENV -u NODE_OPTIONS -u NODE_PATH -u TAR_OPTIONS -u CARGO_BIN/, 'repair must clear executable environment injections')
   requireMatch(repair, /node scripts\/release\/repair-release\.js "\$REPAIR_TAG"/, 'repair must use the non-version-deriving repair command')
   assert(!repair.includes('semantic-release'), 'repair must never derive or create a new version')
   assert(!repair.includes('git tag'), 'repair must never create, move, or delete a tag')

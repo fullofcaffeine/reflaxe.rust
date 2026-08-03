@@ -1,10 +1,10 @@
 const path = require('path')
+const { assertExactBootstrap, gitObject } = require('./exact-git-source.js')
 const { normalizeSha, verifyHostedRelease, verifyTagIdentity } = require('./release-provenance.js')
 
 function sourceCommit(cwd) {
-  const { execFileSync } = require('child_process')
   const head = normalizeSha(
-    execFileSync('git', ['rev-parse', 'HEAD^{commit}'], { cwd, encoding: 'utf8' }),
+    gitObject(cwd, ['rev-parse', 'HEAD^{commit}'], { encoding: 'utf8' }),
     'checked-out HEAD'
   )
   return process.env.GITHUB_SHA ? normalizeSha(process.env.GITHUB_SHA, 'GITHUB_SHA') : head
@@ -14,6 +14,7 @@ function sourceCommit(cwd) {
 async function publish(_pluginConfig, context) {
   const cwd = context.cwd
   const source = sourceCommit(cwd)
+  assertExactBootstrap(cwd, source)
   const version = context.nextRelease.version
   const tag = context.nextRelease.gitTag
   verifyTagIdentity({ tag, sourceCommit: source, cwd })

@@ -7,9 +7,11 @@ const os = require('os')
 const path = require('path')
 const { assertPackageInputsTracked } = require('../../scripts/release/package-input-cleanliness.js')
 const {
+	buildFromReviewedSource,
 	assertTrackedTreeClean,
 	withReviewedSource
 } = require('../../scripts/release/reviewed-source.js')
+const { bootstrapRepository } = require('../../scripts/release/exact-git-source.js')
 const repoRoot = path.resolve(__dirname, '..', '..')
 
 function git(cwd, args) {
@@ -185,6 +187,133 @@ function main() {
 		} finally {
 			fs.rmSync(hiddenChange, { recursive: true, force: true })
 		}
+	}
+
+	const replacementFixture = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-replacement-object-'))
+	try {
+		git(replacementFixture, ['init', '-q'])
+		fs.mkdirSync(path.join(replacementFixture, 'src'), { recursive: true })
+		fs.writeFileSync(path.join(replacementFixture, 'src', 'Payload.hx'), 'reviewed bytes\n')
+		fs.mkdirSync(path.join(replacementFixture, 'scripts', 'release'), { recursive: true })
+		fs.copyFileSync(
+			path.join(repoRoot, 'scripts', 'release', 'exact-git-source.js'),
+			path.join(replacementFixture, 'scripts', 'release', 'exact-git-source.js')
+		)
+		git(replacementFixture, ['add', '.'])
+		git(replacementFixture, [
+			'-c',
+			'user.name=Package Test',
+			'-c',
+			'user.email=package@example.invalid',
+			'commit',
+			'-q',
+			'-m',
+			'reviewed object'
+		])
+		const reviewed = git(replacementFixture, ['rev-parse', 'HEAD']).trim()
+		fs.writeFileSync(path.join(replacementFixture, 'src', 'Payload.hx'), 'replacement bytes\n')
+		git(replacementFixture, ['add', '.'])
+		git(replacementFixture, [
+			'-c',
+			'user.name=Package Test',
+			'-c',
+			'user.email=package@example.invalid',
+			'commit',
+			'-q',
+			'-m',
+			'replacement object'
+		])
+		const replacement = git(replacementFixture, ['rev-parse', 'HEAD']).trim()
+		git(replacementFixture, ['replace', reviewed, replacement])
+		withReviewedSource(replacementFixture, reviewed, (sourceRoot) => {
+			assert.strictEqual(
+				fs.readFileSync(path.join(sourceRoot, 'src', 'Payload.hx'), 'utf8'),
+				'reviewed bytes\n',
+				'replacement refs must not redefine the tree named by sourceCommit'
+			)
+		})
+		const bootstrapped = path.join(replacementFixture, '..', `${path.basename(replacementFixture)}-bootstrapped`)
+		bootstrapRepository(replacementFixture, reviewed, bootstrapped)
+		assert.strictEqual(
+			fs.readFileSync(path.join(bootstrapped, 'src', 'Payload.hx'), 'utf8'),
+			'reviewed bytes\n',
+			'the workflow bootstrap must ignore replacement refs before any release caller loads'
+		)
+		fs.rmSync(bootstrapped, { recursive: true, force: true })
+	} finally {
+		fs.rmSync(replacementFixture, { recursive: true, force: true })
+	}
+
+	const attributesFixture = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-archive-attributes-'))
+	try {
+		git(attributesFixture, ['init', '-q'])
+		fs.mkdirSync(path.join(attributesFixture, 'src'), { recursive: true })
+		fs.writeFileSync(path.join(attributesFixture, 'src', 'Included.hx'), 'included\n')
+		fs.writeFileSync(path.join(attributesFixture, 'src', 'Omitted.hx'), 'must remain included\n')
+		fs.mkdirSync(path.join(attributesFixture, 'scripts', 'release'), { recursive: true })
+		fs.copyFileSync(
+			path.join(repoRoot, 'scripts', 'release', 'exact-git-source.js'),
+			path.join(attributesFixture, 'scripts', 'release', 'exact-git-source.js')
+		)
+		git(attributesFixture, ['add', '.'])
+		git(attributesFixture, [
+			'-c',
+			'user.name=Package Test',
+			'-c',
+			'user.email=package@example.invalid',
+			'commit',
+			'-q',
+			'-m',
+			'attribute fixture'
+		])
+		fs.writeFileSync(
+			path.join(attributesFixture, '.git', 'info', 'attributes'),
+			'src/Omitted.hx export-ignore\n'
+		)
+		withReviewedSource(attributesFixture, git(attributesFixture, ['rev-parse', 'HEAD']).trim(), (sourceRoot) => {
+			assert.strictEqual(
+				fs.readFileSync(path.join(sourceRoot, 'src', 'Omitted.hx'), 'utf8'),
+				'must remain included\n',
+				'local Git attributes must not remove bytes from the named commit'
+			)
+		})
+		const bootstrapped = path.join(attributesFixture, '..', `${path.basename(attributesFixture)}-bootstrapped`)
+		bootstrapRepository(attributesFixture, git(attributesFixture, ['rev-parse', 'HEAD']).trim(), bootstrapped)
+		assert.strictEqual(
+			fs.readFileSync(path.join(bootstrapped, 'src', 'Omitted.hx'), 'utf8'),
+			'must remain included\n',
+			'the workflow bootstrap must ignore local export-ignore attributes'
+		)
+		fs.rmSync(bootstrapped, { recursive: true, force: true })
+	} finally {
+		fs.rmSync(attributesFixture, { recursive: true, force: true })
+	}
+
+	const shellEnvironmentFixture = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-release-env-'))
+	try {
+		const sourceRoot = path.join(shellEnvironmentFixture, 'source')
+		const script = path.join(sourceRoot, 'scripts', 'release', 'package-haxelib.sh')
+		const injected = path.join(shellEnvironmentFixture, 'injected.txt')
+		const bashEnvironment = path.join(shellEnvironmentFixture, 'bash-environment.sh')
+		fs.mkdirSync(path.dirname(script), { recursive: true })
+		fs.writeFileSync(script, '#!/usr/bin/env bash\nset -euo pipefail\nprintf package > "$1"\n')
+		fs.chmodSync(script, 0o755)
+		fs.writeFileSync(bashEnvironment, 'printf injected > "$RELEASE_TEST_INJECTED"\n')
+		buildFromReviewedSource({
+			sourceRoot,
+			zipPath: path.join(shellEnvironmentFixture, 'artifact.zip'),
+			version: '1.0.0',
+			tag: 'v1.0.0',
+			sourceCommit: '0'.repeat(40),
+			env: {
+				...process.env,
+				BASH_ENV: bashEnvironment,
+				RELEASE_TEST_INJECTED: injected
+			}
+		})
+		assert(!fs.existsSync(injected), 'reviewed package execution must clear caller-provided BASH_ENV')
+	} finally {
+		fs.rmSync(shellEnvironmentFixture, { recursive: true, force: true })
 	}
 
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-package-input-cleanliness-'))

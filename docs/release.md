@@ -49,8 +49,9 @@ cannot derive, create, move, or delete a version tag.
 - prerelease channels and build metadata are rejected until explicitly modeled.
 
 `scripts/release/semantic-release-policy.cjs` delegates Conventional Commit parsing to the pinned
-official analyzer and applies only that project policy. The locked `semver` package performs strict
-version parsing; the repository has no custom SemVer parser.
+official analyzer and applies only that project policy. Exact release versions use the small
+source-owned SemVer 2.0.0 syntax parser in `scripts/release/semantic-version.js`; it performs no range
+selection and keeps package bytes independent of executable validation code in `node_modules`.
 
 A repository adopting this policy without existing version tags must establish and review an
 initial major-zero baseline tag (normally `v0.0.0`) before enabling automatic publication.
@@ -82,16 +83,17 @@ pure-JavaScript deterministic ZIP writer rather than system `zip`.
 
 The release adapter:
 
-1. builds the complete package twice in different temporary environments,
-2. requires byte-identical ZIPs,
-3. validates central-directory names, order, modes, compression, and path safety,
-4. validates required compiler/runtime/vendor entries and staged metadata,
-5. validates the shipped licenses, third-party notice, CycloneDX inventory,
+1. starts only after an externally loaded Git-object bootstrap has rechecked every tracked source byte,
+2. builds the complete package twice from literal blobs in different temporary environments,
+3. requires byte-identical ZIPs,
+4. validates central-directory names, order, modes, compression, and path safety,
+5. validates required compiler/runtime/vendor entries and staged metadata,
+6. validates the shipped licenses, third-party notice, CycloneDX inventory,
    and exact vendored Reflaxe base/patch record,
-6. runs the existing Haxelib install, Haxe compile, and Cargo build smoke against that exact ZIP,
-7. writes its SHA-256 sidecar,
-8. verifies local and remote tag identity before upload,
-9. verifies hosted asset names, states, sizes, and SHA-256 digests after publication.
+7. runs the existing Haxelib install, Haxe compile, and Cargo build smoke against that exact ZIP,
+8. writes its SHA-256 sidecar,
+9. verifies local and remote tag identity before upload,
+10. verifies hosted asset names, states, sizes, and SHA-256 digests after publication.
 
 See `docs/release-licensing-review.md` for the factual package inventory and
 the questions that still require professional legal review before 1.0.

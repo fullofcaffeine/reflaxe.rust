@@ -4,19 +4,32 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const { execFileSync } = require('child_process')
+const { assertExactBootstrap, gitObject } = require('./exact-git-source.js')
 const { loadReleasePolicy, verifyReleaseVersion } = require('./release-policy.js')
 const { artifactNames, normalizeSha, verifyHostedRelease, verifyTagIdentity } = require('./release-provenance.js')
 const {
   assertTrackedTreeClean,
   buildFromReviewedSource,
+  releaseProcessEnvironment,
   withReviewedSource
 } = require('./reviewed-source.js')
+
+const REPAIR_ENVIRONMENT_KEYS = [
+  'GH_HOST',
+  'GH_TOKEN',
+  'GITHUB_API_URL',
+  'GITHUB_REPOSITORY',
+  'GITHUB_SERVER_URL',
+  'GITHUB_TOKEN',
+  'PACKAGE_SMOKE_USE_EXISTING',
+  'PACKAGE_ZIP_REL'
+]
 
 function run(command, args, options = {}) {
   return execFileSync(command, args, {
     cwd: options.cwd,
     encoding: 'utf8',
-    env: options.env || process.env,
+    env: releaseProcessEnvironment(options.env || process.env, REPAIR_ENVIRONMENT_KEYS),
     stdio: options.stdio || ['ignore', 'pipe', 'pipe']
   })
 }
@@ -32,6 +45,8 @@ function releaseView(tag, cwd) {
 }
 
 function buildApprovedArtifact({ cwd, version, tag, sourceCommit }) {
+  assertExactBootstrap(cwd, sourceCommit)
+  assertTrackedTreeClean(cwd, 'repair checkout contains tracked changes')
   const dist = path.join(cwd, 'dist')
   const zipPath = path.join(dist, 'reflaxe.rust.zip')
   const checksumPath = path.join(dist, 'reflaxe.rust.zip.sha256')
@@ -110,7 +125,11 @@ function main() {
   const cwd = path.resolve(__dirname, '..', '..')
   const version = tag.slice(1)
   verifyReleaseVersion(loadReleasePolicy(path.join(cwd, 'release-manifest.json')), version)
-  const sourceCommit = normalizeSha(run('git', ['rev-parse', 'HEAD^{commit}'], { cwd }), 'checked-out HEAD')
+  const sourceCommit = normalizeSha(
+    gitObject(cwd, ['rev-parse', 'HEAD^{commit}'], { encoding: 'utf8' }),
+    'checked-out HEAD'
+  )
+  assertExactBootstrap(cwd, sourceCommit)
   verifyTagIdentity({ tag, sourceCommit, cwd })
 
   assertTrackedTreeClean(cwd, 'repair checkout contains tracked changes')
@@ -168,9 +187,13 @@ function main() {
   console.log(`[release-repair] completed immutable ${tag}`)
 }
 
-try {
-  main()
-} catch (error) {
-  console.error(`[release-repair] ERROR: ${error.message}`)
-  process.exit(1)
+if (require.main === module) {
+  try {
+    main()
+  } catch (error) {
+    console.error(`[release-repair] ERROR: ${error.message}`)
+    process.exit(1)
+  }
 }
+
+module.exports = { buildApprovedArtifact, main }

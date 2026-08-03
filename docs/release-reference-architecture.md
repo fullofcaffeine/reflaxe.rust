@@ -30,7 +30,7 @@ versioned commit before it is tagged.
 
 1. **Real tags own exact version lineage.**
    - Generated package metadata never selects or blocks the next version.
-   - A standard, locked SemVer implementation parses versions.
+   - A reviewed exact-version SemVer parser handles syntax; it does not duplicate range resolution.
 2. **Release-line policy stays small and explicit.**
    - Initial-development breaking-bump behavior is deliberate.
    - Every stable major owns an independent reviewed approval; unknown majors fail closed.
@@ -64,7 +64,7 @@ versioned commit before it is tagged.
 
 | Universal core | Repository-specific adapter |
 | --- | --- |
-| Strict SemVer parser | Package metadata/layout |
+| Strict exact-version SemVer parser | Package metadata/layout |
 | Conventional Commit analysis | Artifact filename/labels |
 | `0.x` and stable-major policy | Deterministic package builder |
 | Same-SHA CI/release gate | Required archive contents |
@@ -145,7 +145,7 @@ no-op, created no `v0.81.5` tag, and left `v0.81.4` as the latest Release.
 
 - Creating and pushing a new release commit after CI tested another commit.
 - Letting tracked package versions influence tag-derived version analysis.
-- Custom SemVer regexes where a standards-tested library exists.
+- Reimplementing SemVer range selection when only one exact release version needs validation.
 - Rewriting current prose and badges on every patch release.
 - Treating a same-name hosted asset as byte identity.
 - Running normal publication from manual branch/SHA input.

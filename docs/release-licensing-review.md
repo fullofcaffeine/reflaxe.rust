@@ -63,11 +63,17 @@ change later.
 
 Release tooling treats these source locations as fixed code-owned inputs. It
 rejects symlinks, Git submodules, parent-path references, and alternate local
-record pointers. More importantly, preparation, publication, repair, and the
-standalone verifier build from a fresh archive of the exact named Git commit;
-they never obtain package or generator bytes from the live working tree. This
-remains true when Git status is fooled by `assume-unchanged`, `skip-worktree`,
-checkout filters, or line-ending conversion. The final package check also
+record pointers. More importantly, the normal and repair workflows extract a
+small bootstrap directly from the named Git object with replacement refs and
+ambient Git configuration disabled. It materializes literal blobs, then
+rechecks every tracked byte after tool installation and before release code is
+loaded. Preparation, publication, repair, and artifact verification rebuild
+from those named objects rather than live worktree bytes. A standalone
+verifier has this authority only inside a repository carrying the matching
+external-bootstrap receipt; a live program cannot authenticate its own
+pre-execution file. This remains true when ordinary status is fooled by
+`assume-unchanged`, `skip-worktree`, checkout filters, line-ending conversion,
+replacement refs, or archive attributes. The final package check also
 compares the Reflaxe license and
 the Haxe/Reflaxe SBOM facts with the exact records inside the archive. This
 prevents a clean checkout from publishing bytes that came from an unrelated

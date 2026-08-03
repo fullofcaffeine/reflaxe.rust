@@ -1,6 +1,6 @@
 const fs = require('fs')
 const path = require('path')
-const semver = require('semver')
+const { parseExactSemanticVersion } = require('./semantic-version.js')
 
 /**
  * Why
@@ -9,8 +9,8 @@ const semver = require('semver')
  * boundary and prevents tracked development metadata from influencing tag-derived version lineage.
  *
  * What
- * Load and validate the small release policy manifest, parse versions with the locked `semver`
- * package, and decide whether a fully derived release version is authorized.
+ * Load and validate the small release policy manifest, parse one exact version with the reviewed
+ * source-owned parser, and decide whether a fully derived release version is authorized.
  *
  * How
  * Major zero is always the initial-development line and maps breaking commits to a configured
@@ -108,15 +108,7 @@ function loadReleasePolicy(policyPath = path.resolve('release-manifest.json')) {
 }
 
 function parseSemanticVersion(version) {
-  if (typeof version !== 'string') {
-    throw new Error(`invalid semantic version: ${String(version)}`)
-  }
-  let parsed
-  try {
-    parsed = new semver.SemVer(version, { loose: false, includePrerelease: true })
-  } catch (_error) {
-    throw new Error(`invalid semantic version: ${version}`)
-  }
+  const parsed = parseExactSemanticVersion(version)
   if (parsed.prerelease.length > 0) {
     throw new Error(`prerelease channels are not enabled: ${version}`)
   }

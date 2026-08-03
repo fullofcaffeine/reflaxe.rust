@@ -658,22 +658,50 @@ jobs:
         with:
           node-version: "22.14.0"
 
+      - name: Materialize exact reviewed release repository
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          bootstrap="$RUNNER_TEMP/exact-git-source.js"
+          source_root="$RUNNER_TEMP/haxe-rust-release-source"
+          env -i \
+            PATH="/usr/bin:/bin" \
+            GIT_ATTR_NOSYSTEM=1 \
+            GIT_CONFIG_GLOBAL=/dev/null \
+            GIT_CONFIG_NOSYSTEM=1 \
+            GIT_NO_REPLACE_OBJECTS=1 \
+            /usr/bin/git --no-replace-objects cat-file blob \
+              "$SOURCE_COMMIT:scripts/release/exact-git-source.js" > "$bootstrap"
+          node "$bootstrap" bootstrap "$GITHUB_WORKSPACE" "$SOURCE_COMMIT" "$source_root"
+          git -C "$source_root" remote set-url origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          echo "RELEASE_BOOTSTRAP=$bootstrap" >> "$GITHUB_ENV"
+          echo "RELEASE_SOURCE_COMMIT=$SOURCE_COMMIT" >> "$GITHUB_ENV"
+          echo "RELEASE_SOURCE_ROOT=$source_root" >> "$GITHUB_ENV"
+
       - name: Install locked npm dependencies
-        run: npm ci --ignore-scripts --no-audit --no-fund
+        run: |
+          cd "$RELEASE_SOURCE_ROOT"
+          env -u BASH_ENV -u ENV -u NODE_OPTIONS -u NODE_PATH \
+            npm ci --ignore-scripts --no-audit --no-fund
 
       - name: Install Haxe 4.3.7
         run: |
           set -euo pipefail
-          npx lix download
-          npx lix download haxe "${{ env.HAXE_VERSION }}"
-          npx lix use haxe "${{ env.HAXE_VERSION }}"
+          cd "$RELEASE_SOURCE_ROOT"
+          env -u NODE_OPTIONS -u NODE_PATH node node_modules/lix/bin/lix.js download
+          env -u NODE_OPTIONS -u NODE_PATH node node_modules/lix/bin/lix.js download haxe "${{ env.HAXE_VERSION }}"
+          env -u NODE_OPTIONS -u NODE_PATH node node_modules/lix/bin/lix.js use haxe "${{ env.HAXE_VERSION }}"
           echo "$(pwd)/node_modules/.bin" >> "$GITHUB_PATH"
           export PATH="$(pwd)/node_modules/.bin:$PATH"
           haxe -version
 
       - name: Resolve Rust toolchain policy
         id: rust-policy
-        run: node scripts/ci/rust-toolchain-policy.js --github-output --activate release
+        run: |
+          cd "$RELEASE_SOURCE_ROOT"
+          env -u NODE_OPTIONS -u NODE_PATH \
+            node scripts/ci/rust-toolchain-policy.js --github-output --activate release
 
       - name: Setup reproducible release Rust
         uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30
@@ -684,4 +712,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
-        run: npx semantic-release
+        run: |
+          cd "$RELEASE_SOURCE_ROOT"
+          env -u BASH_ENV -u ENV -u NODE_OPTIONS -u NODE_PATH \
+            node "$RELEASE_BOOTSTRAP" assert "$RELEASE_SOURCE_ROOT" "$RELEASE_SOURCE_COMMIT"
+          env -u BASH_ENV -u ENV -u NODE_OPTIONS -u NODE_PATH -u TAR_OPTIONS -u CARGO_BIN \
+            -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE -u GIT_OBJECT_DIRECTORY \
+            -u GIT_ALTERNATE_OBJECT_DIRECTORIES -u GIT_REPLACE_REF_BASE -u GIT_CONFIG_COUNT \
+            GIT_ATTR_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 \
+            GIT_NO_REPLACE_OBJECTS=1 \
+            node node_modules/semantic-release/bin/semantic-release.js

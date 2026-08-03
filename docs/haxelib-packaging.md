@@ -118,15 +118,20 @@ Use `bash scripts/ci/package-smoke.sh` to validate the shipped artifact end-to-e
 Important: validate packaged behavior through `haxelib install` + `-lib reflaxe.rust`, not raw `-cp <pkg>/src`.
 Raw classpath-only tests are not equivalent for packaged `.cross.hx` std override selection.
 
-Release automation first materializes the exact CI-tested Git commit into two fresh temporary source
-trees. It runs the committed package builder and license generator from those trees, then makes the
-committed strict verifier compare every byte of the candidate ZIP with the independent rebuild. The
-live worktree is never a package input, even when Git status is fooled by hidden index flags or
-checkout transformations. This complete comparison catches added or changed files even under
-otherwise allowed directories. Package smoke then runs against the exact verified ZIP before the tag is
-created. The CI release job must install the pinned lix Haxe toolchain before semantic-release
-starts. The local package-smoke guard proves package semantics; the workflow setup provides the
-matching `haxe`/`haxelib` runtime when building the release asset.
+Release automation first reads `scripts/release/exact-git-source.js` directly from the CI-tested Git
+object while replacement refs and local/global Git configuration are disabled. That externally loaded
+bootstrap writes literal regular blobs into a fresh repository. After locked tool installation, it
+compares every tracked worktree byte with the named objects before semantic-release or repair code is
+loaded. This is the trust boundary: repository code cannot prove what bytes it contained before it ran.
+
+The release adapter then materializes the same commit twice more for artifact construction. It runs the
+committed package builder and license generator from those trees, and the committed strict verifier
+compares every candidate ZIP byte with the independent rebuild. Hidden index flags, checkout filters,
+replacement refs, and `export-ignore` attributes cannot change those inputs. Artifact generation and
+verification use only reviewed release code plus Node built-ins; locked `node_modules` packages remain
+release-orchestration inputs, not expected-value generators. Shell and Node injection variables are
+removed from package and smoke subprocesses. Package smoke runs against the exact verified ZIP before
+the tag is created. The workflow supplies exact Node, Haxe, and release Rust versions.
 
 ## Stdlib provenance guards
 

@@ -27,7 +27,7 @@
     "test:clean-artifacts": "bash test/scripts/clean-artifacts.sh",
     "test:release-policy": "node test/scripts/release-policy.test.js",
     "test:release-notes": "node test/scripts/release-notes.test.js",
-    "test:release-artifact": "node test/scripts/release-artifact.test.js && node test/scripts/package-input-cleanliness.test.js",
+    "test:release-artifact": "node test/scripts/release-artifact.test.js && node test/scripts/package-input-cleanliness.test.js && node test/scripts/release-exact-callers.test.js",
     "test:release-provenance": "node test/scripts/release-provenance.test.js",
     "test:release-workflow": "node test/scripts/release-workflow.test.js",
     "test:release-lifecycle": "node test/scripts/release-lifecycle.test.js",

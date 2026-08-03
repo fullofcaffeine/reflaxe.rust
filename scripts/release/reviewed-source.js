@@ -4,37 +4,47 @@ const path = require('path')
 const { execFileSync } = require('child_process')
 const {
   assertPackageInputsTracked,
-  GIT_OUTPUT_MAX_BYTES,
   isReleaseInput
 } = require('./package-input-cleanliness.js')
+const {
+  GIT_OUTPUT_MAX_BYTES,
+  commitEntries,
+  gitObject,
+  materializeCommit,
+  reviewedCommit
+} = require('./exact-git-source.js')
 
-function reviewedCommit(repositoryRoot, sourceCommit) {
-  if (!/^[0-9a-f]{40}$/.test(sourceCommit || '')) {
-    throw new Error('reviewed release source must be an exact lowercase Git commit')
+const RELEASE_ENVIRONMENT_KEYS = [
+  'COMSPEC',
+  'HAXE_LIBCACHE',
+  'HAXE_LIBRARY_PATH',
+  'HAXE_STD_PATH',
+  'HOME',
+  'LANG',
+  'LC_ALL',
+  'LC_CTYPE',
+  'PATH',
+  'PATHEXT',
+  'SYSTEMROOT',
+  'TEMP',
+  'TMP',
+  'TMPDIR',
+  'TZ',
+  'WINDIR'
+]
+
+function releaseProcessEnvironment(source, additionalKeys = []) {
+  const environment = {}
+  for (const key of [...RELEASE_ENVIRONMENT_KEYS, ...additionalKeys]) {
+    if (source[key] !== undefined) environment[key] = source[key]
   }
-  const resolved = execFileSync('git', ['rev-parse', `${sourceCommit}^{commit}`], {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-    maxBuffer: GIT_OUTPUT_MAX_BYTES
-  }).trim()
-  if (resolved !== sourceCommit) {
-    throw new Error('reviewed release source does not resolve to the named exact commit')
-  }
-  return resolved
+  if (!environment.PATH) throw new Error('reviewed release execution requires an explicit PATH')
+  return environment
 }
 
 function assertCommitReleaseInputModes(repositoryRoot, sourceCommit) {
-  const output = execFileSync(
-    'git',
-    ['ls-tree', '-r', '-z', '--full-tree', sourceCommit],
-    { cwd: repositoryRoot, maxBuffer: GIT_OUTPUT_MAX_BYTES }
-  ).toString('utf8')
   const invalid = []
-  for (const record of output.split('\0').filter(Boolean)) {
-    const separator = record.indexOf('\t')
-    if (separator < 0) throw new Error('Git returned malformed reviewed-tree data')
-    const [mode, type] = record.slice(0, separator).split(' ')
-    const file = record.slice(separator + 1)
+  for (const { file, mode, type } of commitEntries(repositoryRoot, sourceCommit)) {
     if (
       isReleaseInput(file) &&
       (type !== 'blob' || (mode !== '100644' && mode !== '100755'))
@@ -60,31 +70,19 @@ function assertCommitReleaseInputModes(repositoryRoot, sourceCommit) {
  * directory to one synchronous release operation.
  *
  * How
- * Git writes the committed tree to an archive, the helper extracts it into an empty directory, and
- * release-owned paths are required to be ordinary Git blobs. The checkout's `node_modules` may be
- * linked as a tool dependency, but package construction never copies that directory. Cleanup runs
- * even when the caller rejects the build.
+ * Git enumerates the committed tree with replacement objects disabled, then each permitted regular
+ * blob is read by object ID and written into an empty directory. Archive attributes, checkout
+ * filters, and the live worktree never participate. Cleanup runs even when the caller rejects the
+ * build.
  */
 function withReviewedSource(repositoryRoot, sourceCommit, operation) {
   const commit = reviewedCommit(repositoryRoot, sourceCommit)
   assertCommitReleaseInputModes(repositoryRoot, commit)
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-reviewed-source-'))
-  const archivePath = path.join(temporaryRoot, 'source.tar')
   const sourceRoot = path.join(temporaryRoot, 'source')
   try {
     fs.mkdirSync(sourceRoot)
-    execFileSync(
-      'git',
-      ['archive', '--format=tar', `--output=${archivePath}`, commit],
-      { cwd: repositoryRoot, maxBuffer: GIT_OUTPUT_MAX_BYTES }
-    )
-    execFileSync('tar', ['-xf', archivePath, '-C', sourceRoot], {
-      maxBuffer: GIT_OUTPUT_MAX_BYTES
-    })
-    const toolModules = path.join(repositoryRoot, 'node_modules')
-    if (fs.existsSync(toolModules)) {
-      fs.symlinkSync(toolModules, path.join(sourceRoot, 'node_modules'), 'dir')
-    }
+    materializeCommit(repositoryRoot, commit, sourceRoot)
     return operation(sourceRoot)
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true })
@@ -110,16 +108,19 @@ function buildFromReviewedSource({
       tag,
       sourceCommit
     ],
-    { cwd: sourceRoot, env, stdio, maxBuffer: GIT_OUTPUT_MAX_BYTES }
+    {
+      cwd: sourceRoot,
+      env: releaseProcessEnvironment(env),
+      stdio,
+      maxBuffer: GIT_OUTPUT_MAX_BYTES
+    }
   )
 }
 
 /** Keep large repository status output inside the shared explicit process bound. */
 function assertTrackedTreeClean(repositoryRoot, message) {
-  const status = execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], {
-    cwd: repositoryRoot,
+  const status = gitObject(repositoryRoot, ['status', '--porcelain', '--untracked-files=no'], {
     encoding: 'utf8',
-    maxBuffer: GIT_OUTPUT_MAX_BYTES
   })
   if (status.trim().length > 0) throw new Error(message)
   assertPackageInputsTracked(repositoryRoot)
@@ -129,6 +130,9 @@ module.exports = {
   assertCommitReleaseInputModes,
   assertTrackedTreeClean,
   buildFromReviewedSource,
+  commitEntries,
+  materializeCommit,
+  releaseProcessEnvironment,
   reviewedCommit,
   withReviewedSource
 }
