@@ -20,6 +20,13 @@
 - Repair input is an exact stable tag, never a convenient short ref. Validate `vMAJOR.MINOR.PATCH`
   before checkout, check out `refs/tags/<tag>`, resolve that full namespace again, and require HEAD
   to equal the tag commit before any code from the repaired revision runs.
+- Treat `origin` as the tag authority during bootstrap. Record its complete tag snapshot, reject
+  local-only or stale tags later, and permit only the single newly derived stable tag at the reviewed
+  commit. Semantic-release's broad `git push --tags` must pass through the reviewed guard that
+  publishes only that approved ref.
+- Host controls are preconditions, not post-release observations. Check them immediately before a
+  write-capable release command, then re-read and validate the exact mutable, non-prerelease draft
+  and receipt-bound asset set immediately before changing the draft to public.
 - Two reproducible builds are useful only when their inputs independently come from the reviewed
   commit. Comparing two packages built from the same live checkout is not source evidence.
 - Artifact construction and verification may use Node built-ins, but must not load executable package
@@ -35,6 +42,8 @@
 - Do not execute Cargo to discover the unresolved requirements already written in `Cargo.toml`.
   License/SBOM generation uses the source-owned fail-closed manifest projection, while real Cargo is
   reserved for the later build/run observer under its exact tool path and fresh Cargo home.
+  Reject path, Git, registry, workspace-inherited, patch, replace, and unknown dependency selectors;
+  silently dropping a source selector would misstate where a shipped requirement comes from.
 - Lix shims need the cache in their configured HOME. Install into one fresh job-owned Lix home, copy
   the reviewed project `.haxerc` to its global `haxe/.haxerc`, and reuse that isolated home during
   release execution. Switching to a second empty home makes temporary package directories resolve or

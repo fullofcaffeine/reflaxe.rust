@@ -225,24 +225,22 @@ function main() {
 		])
 		const replacement = git(replacementFixture, ['rev-parse', 'HEAD']).trim()
 		git(replacementFixture, ['replace', reviewed, replacement])
-		withReviewedSource(replacementFixture, reviewed, (sourceRoot) => {
-			assert.strictEqual(
-				fs.readFileSync(path.join(sourceRoot, 'src', 'Payload.hx'), 'utf8'),
-				'reviewed bytes\n',
-				'replacement refs must not redefine the tree named by sourceCommit'
-			)
-		})
-		const bootstrapped = path.join(replacementFixture, '..', `${path.basename(replacementFixture)}-bootstrapped`)
-		bootstrapRepository(
-			replacementFixture,
-			reviewed,
-			bootstrapped,
-			'https://example.invalid/example/repository.git'
+		assert.throws(
+			() => withReviewedSource(replacementFixture, reviewed, () => {}),
+			/replacement refs/,
+			'reviewed-source materialization must reject replacement history before reading objects'
 		)
-		assert.strictEqual(
-			fs.readFileSync(path.join(bootstrapped, 'src', 'Payload.hx'), 'utf8'),
-			'reviewed bytes\n',
-			'the workflow bootstrap must ignore replacement refs before any release caller loads'
+		const bootstrapped = path.join(replacementFixture, '..', `${path.basename(replacementFixture)}-bootstrapped`)
+		assert.throws(
+			() => bootstrapRepository(
+				replacementFixture,
+				reviewed,
+				bootstrapped,
+				'https://example.invalid/example/repository.git',
+				{ authoritativeTags: [] }
+			),
+			/replacement refs/,
+			'the workflow bootstrap must reject replacement history before any release caller loads'
 		)
 		fs.rmSync(bootstrapped, { recursive: true, force: true })
 	} finally {
@@ -287,7 +285,8 @@ function main() {
 			attributesFixture,
 			git(attributesFixture, ['rev-parse', 'HEAD']).trim(),
 			bootstrapped,
-			'https://example.invalid/example/repository.git'
+			'https://example.invalid/example/repository.git',
+			{ authoritativeTags: [] }
 		)
 		assert.strictEqual(
 			fs.readFileSync(path.join(bootstrapped, 'src', 'Omitted.hx'), 'utf8'),

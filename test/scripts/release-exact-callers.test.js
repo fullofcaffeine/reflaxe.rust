@@ -108,8 +108,6 @@ module.exports = { verifyReleaseArtifact }
     git(repository, ['add', '.'])
     git(repository, ['commit', '-q', '-m', 'reviewed release caller fixture'])
     const reviewed = git(repository, ['rev-parse', 'HEAD']).trim()
-    git(repository, ['tag', 'v1.2.3', reviewed])
-
     fs.writeFileSync(
       path.join(repository, 'scripts', 'release', 'package-haxelib.sh'),
       '#!/usr/bin/env bash\nprintf "replacement artifact\\n" > "$1"\n'
@@ -158,10 +156,41 @@ module.exports = { verifyReleaseArtifact }
       }
     )
     fs.writeFileSync(externalBootstrap, bootstrapBytes, { mode: 0o700 })
+    const fakeGit = path.join(temporaryRoot, 'git')
+    writeExecutable(
+      fakeGit,
+      `#!${process.execPath}
+const { spawnSync } = require('child_process')
+const args = process.argv.slice(2)
+if (args[0] === '--no-replace-objects') args.shift()
+if (args[0] === 'fetch' && args.includes('origin')) process.exit(0)
+if (args[0] === 'ls-remote' && args.includes('--tags')) {
+  const local = spawnSync('/usr/bin/git', ['--no-replace-objects', 'rev-parse', '--verify', 'refs/tags/v1.2.3'], { encoding: 'utf8' })
+  if (local.status === 0) process.stdout.write(local.stdout.trim() + '\\trefs/tags/v1.2.3\\n')
+  process.exit(0)
+}
+const result = spawnSync('/usr/bin/git', ['--no-replace-objects', ...args], { stdio: 'inherit' })
+process.exit(result.status === null ? 1 : result.status)
+`
+    )
+    process.env.RELEASE_GIT_BIN = fakeGit
+    let replacementRejected = false
+    try {
+      execFileSync(
+        process.execPath,
+        [externalBootstrap, 'bootstrap', repository, reviewed, exactRoot, TEST_ORIGIN],
+        { env: { ...process.env, RELEASE_GIT_BIN: fakeGit }, stdio: 'pipe' }
+      )
+    } catch (error) {
+      replacementRejected = true
+      assert.match(String(error.stderr), /rejects replacement refs/)
+    }
+    assert(replacementRejected, 'the external bootstrap must reject replacement refs before materialization')
+    git(repository, ['replace', '-d', reviewed])
     execFileSync(
       process.execPath,
       [externalBootstrap, 'bootstrap', repository, reviewed, exactRoot, TEST_ORIGIN],
-      { stdio: 'pipe' }
+      { env: { ...process.env, RELEASE_GIT_BIN: fakeGit }, stdio: 'pipe' }
     )
     assert.match(
       fs.readFileSync(path.join(exactRoot, 'scripts', 'release', 'package-haxelib.sh'), 'utf8'),
@@ -223,21 +252,6 @@ module.exports = { verifyReleaseArtifact }
       { stdio: 'pipe' }
     )
 
-    const fakeGit = path.join(temporaryRoot, 'git')
-    writeExecutable(
-      fakeGit,
-      `#!${process.execPath}
-const { spawnSync } = require('child_process')
-const args = process.argv.slice(2)
-if (args[0] === '--no-replace-objects') args.shift()
-if (args[0] === 'ls-remote') {
-  process.stdout.write(${JSON.stringify(`${reviewed}\trefs/tags/v1.2.3\n`)})
-  process.exit(0)
-}
-const result = spawnSync('/usr/bin/git', ['--no-replace-objects', ...args], { stdio: 'inherit' })
-process.exit(result.status === null ? 1 : result.status)
-`
-    )
     process.env.GITHUB_SHA = reviewed
     process.env.RELEASE_EXPECTED_ORIGIN_URL = TEST_ORIGIN
     process.env.RELEASE_GIT_BIN = fakeGit
@@ -265,11 +279,14 @@ process.exit(result.status === null ? 1 : result.status)
       'the real prepare caller must package only reviewed bytes'
     )
     assert(!fs.existsSync(injectedMarker), 'release shell children must not load caller BASH_ENV')
+    git(exactRoot, ['tag', 'v1.2.3', reviewed])
     await plugin.publish({}, context(exactRoot))
     assert(!fs.existsSync(injectedMarker), 'publication rebuilds must retain the sanitized environment')
     const approvedZip = fs.readFileSync(path.join(exactRoot, 'dist', 'reflaxe.rust.zip'))
     const approvedChecksum = fs.readFileSync(path.join(exactRoot, 'dist', 'reflaxe.rust.zip.sha256'))
     const fakeGhState = path.join(temporaryRoot, 'fake-gh-state.json')
+    const fakeGhAttack = path.join(temporaryRoot, 'fake-gh-attack.txt')
+    const fakeGhEditMarker = path.join(temporaryRoot, 'fake-gh-edit.txt')
     const fakeGh = path.join(temporaryRoot, 'gh')
     writeExecutable(
       fakeGh,
@@ -277,9 +294,12 @@ process.exit(result.status === null ? 1 : result.status)
 const crypto = require('crypto')
 const fs = require('fs')
 const statePath = ${JSON.stringify(fakeGhState)}
+const attackPath = ${JSON.stringify(fakeGhAttack)}
+const editMarker = ${JSON.stringify(fakeGhEditMarker)}
 const args = process.argv.slice(2)
 const read = () => fs.existsSync(statePath) ? JSON.parse(fs.readFileSync(statePath, 'utf8')) : null
 const write = (state) => fs.writeFileSync(statePath, JSON.stringify(state))
+const attack = () => fs.existsSync(attackPath) ? fs.readFileSync(attackPath, 'utf8').trim() : ''
 const identity = (file) => {
   const bytes = fs.readFileSync(file)
   return { size: bytes.length, digest: 'sha256:' + crypto.createHash('sha256').update(bytes).digest('hex') }
@@ -299,8 +319,12 @@ if (args[1] === 'view') {
     const measured = identity(file)
     state.assets.push({ name: require('path').basename(file), state: 'uploaded', ...measured })
   }
+  if (attack() === 'extra-asset') {
+    state.assets.push({ name: 'unreviewed.txt', state: 'uploaded', size: 1, digest: 'sha256:' + '0'.repeat(64) })
+  }
   write(state)
 } else if (args[1] === 'edit') {
+  fs.writeFileSync(editMarker, 'public transition attempted\\n')
   const state = read()
   state.isDraft = false
   state.isImmutable = true
@@ -359,6 +383,20 @@ if (args[1] === 'view') {
     fs.rmSync(receiptPath, { force: true })
     fs.writeFileSync(path.join(exactRoot, 'dist', 'reflaxe.rust.zip'), approvedZip)
     fs.writeFileSync(path.join(exactRoot, 'dist', 'reflaxe.rust.zip.sha256'), approvedChecksum)
+
+    fs.writeFileSync(fakeGhAttack, 'extra-asset\n')
+    await assert.rejects(
+      () => publisher.publish({}, context(exactRoot)),
+      /asset set|draft|hosted/i,
+      'normal publication must reject a changed hosted draft before making it public'
+    )
+    assert(
+      !fs.existsSync(fakeGhEditMarker),
+      'normal publication must not cross the public transition after a draft-asset mismatch'
+    )
+    fs.rmSync(fakeGhAttack, { force: true })
+    fs.rmSync(fakeGhState, { force: true })
+
     await publisher.publish({}, context(exactRoot))
     const hosted = JSON.parse(fs.readFileSync(fakeGhState, 'utf8'))
     assert(hosted.isImmutable, 'the source-owned publisher must make the verified release immutable')
@@ -367,9 +405,15 @@ if (args[1] === 'view') {
       ['reflaxe.rust-1.2.3.zip', 'reflaxe.rust-1.2.3.zip.sha256'],
       'the source-owned publisher must upload exactly the two receipt-bound assets'
     )
-    const repair = require(path.join(exactRoot, 'scripts', 'release', 'repair-release.js'))
+    const repairRoot = path.join(temporaryRoot, 'repair-source')
+    execFileSync(
+      process.execPath,
+      [externalBootstrap, 'bootstrap', exactRoot, reviewed, repairRoot, TEST_ORIGIN],
+      { env: { ...process.env, RELEASE_GIT_BIN: fakeGit }, stdio: 'pipe' }
+    )
+    const repair = require(path.join(repairRoot, 'scripts', 'release', 'repair-release.js'))
     const repaired = repair.buildApprovedArtifact({
-      cwd: exactRoot,
+      cwd: repairRoot,
       version: '1.2.3',
       tag: 'v1.2.3',
       sourceCommit: reviewed
@@ -381,7 +425,28 @@ if (args[1] === 'view') {
     )
     assert(!fs.existsSync(injectedMarker), 'repair rebuilds must retain the sanitized environment')
     fs.rmSync(fakeGhState, { force: true })
-    process.argv = [process.execPath, path.join(exactRoot, 'scripts', 'release', 'repair-release.js'), 'v1.2.3']
+    fs.rmSync(fakeGhEditMarker, { force: true })
+    fs.writeFileSync(
+      fakeGhState,
+      JSON.stringify({
+        tagName: 'v1.2.3',
+        isDraft: true,
+        isImmutable: false,
+        isPrerelease: true,
+        assets: []
+      })
+    )
+    process.argv = [process.execPath, path.join(repairRoot, 'scripts', 'release', 'repair-release.js'), 'v1.2.3']
+    assert.throws(
+      () => repair.main(),
+      /prerelease|unsupported.*draft/i,
+      'repair must reject a prerelease draft before deleting assets or publishing it'
+    )
+    assert(
+      !fs.existsSync(fakeGhEditMarker),
+      'repair must not cross the public transition for an unsupported prerelease draft'
+    )
+    fs.rmSync(fakeGhState, { force: true })
     repair.main()
     const repairedHosted = JSON.parse(fs.readFileSync(fakeGhState, 'utf8'))
     assert(repairedHosted.isImmutable, 'the real repair caller must publish only receipt-bound assets')

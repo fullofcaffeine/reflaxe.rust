@@ -729,8 +729,12 @@ jobs:
           /bin/ln -s "$haxe_bin" "$tool_dir/haxe"
           /bin/ln -s "$haxelib_bin" "$tool_dir/haxelib"
           /bin/ln -s "$RELEASE_NODE_BIN" "$tool_dir/node"
+          git_guard="$RELEASE_SOURCE_ROOT/scripts/release/git-command-guard.sh"
+          test -x "$git_guard"
+          /bin/ln -s "$git_guard" "$tool_dir/git"
           echo "RELEASE_HAXE_BIN=$haxe_bin" >> "$GITHUB_ENV"
           echo "RELEASE_HAXELIB_BIN=$haxelib_bin" >> "$GITHUB_ENV"
+          echo "RELEASE_GIT_GUARD_BIN=$git_guard" >> "$GITHUB_ENV"
           echo "RELEASE_TOOL_DIR=$tool_dir" >> "$GITHUB_ENV"
 
       - name: Resolve Rust toolchain policy
@@ -778,6 +782,29 @@ jobs:
           cargo_home="$RUNNER_TEMP/haxe-rust-cargo-home"
           mkdir -p "$cargo_home"
           env -i \
+            GH_TOKEN="$GH_TOKEN" \
+            GITHUB_REPOSITORY="$GITHUB_REPOSITORY" \
+            GITHUB_TOKEN="$GITHUB_TOKEN" \
+            HOME="$release_home" \
+            LANG=C \
+            RELEASE_BASH_BIN=/usr/bin/bash \
+            RELEASE_CARGO_BIN="$cargo_bin" \
+            RELEASE_CARGO_HOME="$cargo_home" \
+            RELEASE_GH_BIN="$gh_bin" \
+            RELEASE_GIT_BIN=/usr/bin/git \
+            RELEASE_GIT_GUARD_BIN="$RELEASE_GIT_GUARD_BIN" \
+            RELEASE_HAXE_BIN="$RELEASE_HAXE_BIN" \
+            RELEASE_HAXELIB_BIN="$RELEASE_HAXELIB_BIN" \
+            RELEASE_NODE_BIN="$RELEASE_NODE_BIN" \
+            RELEASE_NPM_BIN="$RELEASE_NPM_BIN" \
+            RELEASE_RUSTC_BIN="$rustc_bin" \
+            RELEASE_HOME="$release_home" \
+            RELEASE_STRICT_EXECUTION=1 \
+            RELEASE_TEMP_ROOT="$RUNNER_TEMP" \
+            RELEASE_TOOL_DIR="$RELEASE_TOOL_DIR" \
+            TMPDIR="$RUNNER_TEMP" \
+            "$RELEASE_NODE_BIN" scripts/release/verify-host-controls.js "$GITHUB_REPOSITORY"
+          env -i \
             CI=true \
             GH_TOKEN="$GH_TOKEN" \
             GITHUB_ACTION="$GITHUB_ACTION" \
@@ -790,13 +817,18 @@ jobs:
             GITHUB_TOKEN="$GITHUB_TOKEN" \
             HOME="$release_home" \
             LANG=C \
-            PATH="/usr/bin:/bin" \
+            GIT_ATTR_NOSYSTEM=1 \
+            GIT_CONFIG_GLOBAL=/dev/null \
+            GIT_CONFIG_NOSYSTEM=1 \
+            GIT_NO_REPLACE_OBJECTS=1 \
+            PATH="$RELEASE_TOOL_DIR:/usr/bin:/bin" \
             RELEASE_BASH_BIN=/usr/bin/bash \
             RELEASE_CARGO_BIN="$cargo_bin" \
             RELEASE_CARGO_HOME="$cargo_home" \
             RELEASE_EXPECTED_ORIGIN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" \
             RELEASE_GH_BIN="$gh_bin" \
             RELEASE_GIT_BIN=/usr/bin/git \
+            RELEASE_GIT_GUARD_BIN="$RELEASE_GIT_GUARD_BIN" \
             RELEASE_HAXE_BIN="$RELEASE_HAXE_BIN" \
             RELEASE_HAXELIB_BIN="$RELEASE_HAXELIB_BIN" \
             RELEASE_NODE_BIN="$RELEASE_NODE_BIN" \

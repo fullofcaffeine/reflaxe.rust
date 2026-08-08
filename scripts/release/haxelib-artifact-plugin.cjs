@@ -32,14 +32,16 @@ function run(command, args, options = {}) {
   })
 }
 
-function sourceCommit(cwd) {
+function sourceCommit(cwd, allowedNewTag) {
   const head = normalizeSha(
     gitObject(cwd, ['rev-parse', 'HEAD^{commit}'], { encoding: 'utf8' }),
     'checked-out HEAD'
   )
   const tested = process.env.GITHUB_SHA ? normalizeSha(process.env.GITHUB_SHA, 'GITHUB_SHA') : head
   if (head !== tested) throw new Error('release checkout does not match the CI-tested GITHUB_SHA')
-  assertExactBootstrap(cwd, tested)
+  assertExactBootstrap(cwd, tested, process.env.RELEASE_EXPECTED_ORIGIN_URL, {
+    ...(allowedNewTag ? { allowedNewTag } : {})
+  })
   return tested
 }
 
@@ -130,7 +132,7 @@ async function publish(_pluginConfig, context) {
   const cwd = context.cwd
   const version = context.nextRelease.version
   const tag = context.nextRelease.gitTag
-  const source = sourceCommit(cwd)
+  const source = sourceCommit(cwd, tag)
   verifyTagIdentity({ tag, sourceCommit: source, cwd })
   const zipPath = path.join(cwd, 'dist', 'reflaxe.rust.zip')
   const canonicalRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-release-publish-'))

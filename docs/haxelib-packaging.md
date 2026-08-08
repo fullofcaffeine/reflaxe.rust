@@ -134,9 +134,11 @@ compares every candidate ZIP byte with the independent rebuild. Hidden index fla
 replacement refs, and `export-ignore` attributes cannot change those inputs. Artifact generation and
 verification use only reviewed release code plus Node built-ins; locked `node_modules` packages remain
 release-orchestration inputs, not expected-value generators. Cargo requirements are parsed directly
-from the reviewed `Cargo.toml`; ambient Cargo metadata cannot define SBOM facts. The workflow starts
+from the reviewed `Cargo.toml`; ambient Cargo metadata cannot define SBOM facts, and path, Git,
+registry, workspace-inherited, patch, replace, or unknown dependency selectors fail closed instead of
+being mislabeled as ordinary crates.io requirements. The workflow starts
 under profile-free absolute Bash, clears shell/Node preload variables before startup, and gives the
-release process absolute Node/Git/Haxe/Haxelib/Cargo/Rust paths, a three-entry Haxe/Node tool directory, and
+release process absolute Node/Git/Haxe/Haxelib/Cargo/Rust paths, a four-entry Git/Haxe/Node tool directory, and
 fresh HOME/Cargo/temp roots. Caller `HAXE_*`, PATH, HOME, Cargo config, and broad `node_modules/.bin`
 state are not package inputs. The release HOME is the same fresh job-owned Lix home where Haxe 4.3.7
 was installed; its global `.haxerc` is copied from the reviewed project setting so temporary package
@@ -145,7 +147,14 @@ source-layout smoke points only that compile at the reviewed repository's `haxe_
 installed-package smoke derives a temporary exact-version Haxe config that resolves libraries only
 through its isolated Haxelib repository, so it cannot pass by accidentally loading checkout files.
 Package smoke runs against the exact verified ZIP before the tag is created. The workflow supplies
-exact Node, Haxe, and release Rust versions.
+exact Node, Haxe, and release Rust versions. The bootstrap snapshots tags from `origin`; later release
+checks allow only the single derived stable tag at the reviewed commit. A reviewed Git guard narrows
+semantic-release's broad tag push to that exact ref. Immediately before a normal or repair draft is
+made public, the publisher rechecks that it is a mutable non-prerelease draft with exactly the two
+receipt-bound assets.
+That last check and GitHub's publish request are separate API calls; the
+release tooling minimizes and detects its own stale-state window but does not
+describe the external service transition as atomic.
 
 ## Stdlib provenance guards
 

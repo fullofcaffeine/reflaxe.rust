@@ -45,6 +45,44 @@ function assertRustPolicyGithubBoundary() {
   }
 }
 
+function assertSingleTagGitGuard() {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-git-guard-'))
+  const fakeGit = path.join(temp, 'git')
+  const log = path.join(temp, 'git.log')
+  const sourceCommit = 'a'.repeat(40)
+  try {
+    fs.writeFileSync(
+      fakeGit,
+      `#!/bin/sh\nprintf '%s\\n' "$*" >> ${JSON.stringify(log)}\ncase "$*" in *rev-parse*) printf '%s\\n' ${sourceCommit} ;; esac\n`,
+      { mode: 0o755 }
+    )
+    execFileSync(path.join(root, 'scripts', 'release', 'git-command-guard.sh'), [
+      'push', '--tags', 'https://example.invalid/repository.git'
+    ], {
+      env: {
+        RELEASE_APPROVED_TAG: 'v1.2.3',
+        RELEASE_GIT_BIN: fakeGit,
+        RELEASE_SOURCE_COMMIT: sourceCommit
+      }
+    })
+    const calls = fs.readFileSync(log, 'utf8')
+    assert(!/push .*--tags/.test(calls), 'the delegated Git push must never retain --tags')
+    assert.match(
+      calls,
+      /push --no-verify https:\/\/example\.invalid\/repository\.git refs\/tags\/v1\.2\.3:refs\/tags\/v1\.2\.3/,
+      'the Git guard must publish only the approved release tag ref'
+    )
+    const rejected = spawnSync(
+      path.join(root, 'scripts', 'release', 'git-command-guard.sh'),
+      ['push', '--tags', 'https://example.invalid/repository.git'],
+      { env: { RELEASE_GIT_BIN: fakeGit, RELEASE_SOURCE_COMMIT: sourceCommit } }
+    )
+    assert.notStrictEqual(rejected.status, 0, 'a broad tag push without one approved tag must fail')
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true })
+  }
+}
+
 async function assertSemanticReleaseGithubCredential() {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-semantic-auth-'))
   const fakeGit = path.join(temp, 'git')
@@ -205,6 +243,23 @@ async function main() {
     'semantic-release must receive the GitHub Actions credential-mode marker'
   )
   requireMatch(release, /RELEASE_EXPECTED_ORIGIN_URL="\$GITHUB_SERVER_URL\/\$GITHUB_REPOSITORY\.git"/, 'release callers must retain the workflow-owned repository URL')
+  requireMatch(
+    release.slice(releaseAssert, semanticRelease),
+    /GIT_ATTR_NOSYSTEM=1[\s\S]*GIT_CONFIG_GLOBAL=\/dev\/null[\s\S]*GIT_CONFIG_NOSYSTEM=1[\s\S]*GIT_NO_REPLACE_OBJECTS=1/,
+    'semantic-release itself must inherit replacement-free, system/global-config-free Git behavior'
+  )
+  requireMatch(
+    release,
+    /\/bin\/ln -s "\$git_guard" "\$tool_dir\/git"[\s\S]*RELEASE_GIT_GUARD_BIN=/,
+    'semantic-release Git calls must pass through the reviewed single-tag publication guard'
+  )
+  requireMatch(
+    release.slice(releaseAssert, semanticRelease),
+    /PATH="\$RELEASE_TOOL_DIR:\/usr\/bin:\/bin"/,
+    'semantic-release PATH must resolve git through the reviewed guard before the system executable'
+  )
+  const hostControl = release.indexOf('scripts/release/verify-host-controls.js')
+  assert(hostControl > releaseAssert && hostControl < semanticRelease, 'host release controls must be checked immediately before publication authority')
   assert(!release.includes('actions/cache'), 'the privileged release job must not restore an executable cache')
   assert(!release.includes('workflow_dispatch'), 'normal publication must not have a manual bypass')
 
@@ -256,6 +311,16 @@ async function main() {
     /env -i LANG=C GITHUB_ENV="\$GITHUB_ENV" GITHUB_OUTPUT="\$GITHUB_OUTPUT"[\s\\]*"\$RELEASE_NODE_BIN"[\s\\]*scripts\/ci\/rust-toolchain-policy\.js --github-output --activate release/,
     'repair Rust policy resolution must preserve GitHub output files through env -i'
   )
+  requireMatch(
+    repair,
+    /GIT_ATTR_NOSYSTEM=1[\s\S]*GIT_CONFIG_GLOBAL=\/dev\/null[\s\S]*GIT_CONFIG_NOSYSTEM=1[\s\S]*GIT_NO_REPLACE_OBJECTS=1/,
+    'repair must preserve replacement-free, system/global-config-free Git behavior through its final process'
+  )
+  requireMatch(
+    repair,
+    /scripts\/release\/verify-host-controls\.js[\s\S]*scripts\/release\/repair-release\.js/,
+    'repair must verify immutable-release and tag controls before receiving publication authority'
+  )
   requireMatch(repair, /RELEASE_EXPECTED_ORIGIN_URL="\$GITHUB_SERVER_URL\/\$GITHUB_REPOSITORY\.git"/, 'repair callers must retain the workflow-owned repository URL')
   requireMatch(repair, /"\$RELEASE_NODE_BIN" scripts\/release\/repair-release\.js "\$REPAIR_TAG"/, 'repair must use the non-version-deriving repair command')
   assert(!repair.includes('semantic-release'), 'repair must never derive or create a new version')
@@ -287,6 +352,7 @@ async function main() {
   }
 
   assertRustPolicyGithubBoundary()
+  assertSingleTagGitGuard()
   await assertSemanticReleaseGithubCredential()
   assertExactRepairTagResolution()
 

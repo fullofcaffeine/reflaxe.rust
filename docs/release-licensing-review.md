@@ -82,6 +82,15 @@ file outside the reviewed commit. The SBOM's primary package is selected by the 
 Haxelib check requires the installer-facing name and repository to identify
 reflaxe.rust and requires a non-empty license; the package verifier then checks
 the SBOM's name, kind, license, repository, version, and root dependency identity independently.
+The external bootstrap also rejects linked-worktree administration, history
+replacement, and tag namespaces that differ from the fetched `origin` tag
+snapshot. Only the newly derived stable release tag may appear afterward, and
+the reviewed Git command guard publishes that one ref instead of every local
+tag. Normal and repair publication verify host controls before mutation and
+verify the exact non-prerelease draft plus both approved assets immediately
+before making it public. GitHub does not offer one atomic verify-and-publish
+operation, so this closes compiler-controlled ordering errors but does not
+claim to eliminate an external mutation in the final API-call interval.
 
 ## Questions for professional legal review
 

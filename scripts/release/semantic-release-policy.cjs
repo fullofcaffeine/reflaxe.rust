@@ -47,6 +47,17 @@ async function analyzeCommits(pluginConfig, context) {
 async function verifyRelease(pluginConfig, context) {
   const policy = loadReleasePolicy(policyPath(pluginConfig, context))
   verifyReleaseVersion(policy, context.nextRelease.version)
+  const expectedTag = `v${context.nextRelease.version}`
+  if (
+    context.nextRelease.gitTag !== expectedTag ||
+    !/^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(expectedTag)
+  ) {
+    throw new Error('release tag must be the exact stable version selected by policy')
+  }
+  if (!/^[0-9a-f]{40}$/.test(context.env.RELEASE_SOURCE_COMMIT || '')) {
+    throw new Error('release policy requires the exact reviewed source commit')
+  }
+  context.env.RELEASE_APPROVED_TAG = expectedTag
 }
 
 module.exports = { analyzeCommits, verifyRelease }

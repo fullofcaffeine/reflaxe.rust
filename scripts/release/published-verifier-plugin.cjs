@@ -8,11 +8,12 @@ const {
   defaultRun,
   normalizeSha,
   readCapturedArtifactReceipt,
+  verifyHostedDraft,
   verifyHostedRelease,
   verifyTagIdentity
 } = require('./release-provenance.js')
 
-function sourceCommit(cwd) {
+function sourceCommit(cwd, allowedNewTag) {
   const head = normalizeSha(
     gitObject(cwd, ['rev-parse', 'HEAD^{commit}'], { encoding: 'utf8' }),
     'checked-out HEAD'
@@ -45,8 +46,10 @@ function releaseExists(tag, cwd) {
  */
 async function publish(_pluginConfig, context) {
   const cwd = context.cwd
-  const source = sourceCommit(cwd)
-  assertExactBootstrap(cwd, source)
+  const source = sourceCommit(cwd, context.nextRelease.gitTag)
+  assertExactBootstrap(cwd, source, process.env.RELEASE_EXPECTED_ORIGIN_URL, {
+    allowedNewTag: context.nextRelease.gitTag
+  })
   assertTrackedTreeClean(cwd, 'release publication modified tracked repository files')
   const receipt = readCapturedArtifactReceipt()
   if (
@@ -112,6 +115,7 @@ async function publish(_pluginConfig, context) {
       zipPath: versionedZip,
       checksumPath: versionedChecksum
     })
+    verifyHostedDraft({ receipt, cwd })
     defaultRun('gh', ['release', 'edit', receipt.tag, '--draft=false'], { cwd })
     verifyHostedRelease({ receipt, cwd })
   } finally {

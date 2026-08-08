@@ -208,6 +208,42 @@ function tomlString(value, label) {
   throw new Error(`Cargo manifest ${label} must be a string`)
 }
 
+function tomlBoolean(value, label) {
+  const trimmed = value.trim()
+  if (trimmed !== 'true' && trimmed !== 'false') {
+    throw new Error(`Cargo manifest ${label} must be boolean`)
+  }
+  return trimmed === 'true'
+}
+
+function tomlStringArray(value, label) {
+  const trimmed = value.trim()
+  if (!trimmed.startsWith('[') || !trimmed.endsWith(']')) {
+    throw new Error(`Cargo manifest ${label} must be an array of strings`)
+  }
+  for (const entry of splitTomlEntries(trimmed.slice(1, -1))) tomlString(entry, label)
+}
+
+function unsupportedDependencyField(label, key) {
+  throw new Error(`Cargo manifest ${label}.${key} uses an unsupported Cargo dependency field`)
+}
+
+function normalizedTomlAuthorityPath(value) {
+  return value.replace(/["'\s]/g, '')
+}
+
+function isCargoSourceOverridePath(value) {
+  return /^(patch(?:\.|$)|replace(?:\.|$)|workspace\.dependencies(?:\.|$))/.test(
+    normalizedTomlAuthorityPath(value)
+  )
+}
+
+function cargoVersionRequirement(value) {
+  return /^(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*)){0,2}(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/.test(value)
+    ? `^${value}`
+    : value
+}
+
 function dependencyValue(value, label) {
   const trimmed = value.trim()
   if (trimmed.startsWith('"') || trimmed.startsWith("'")) {
@@ -223,26 +259,26 @@ function dependencyValue(value, label) {
     const key = entry.slice(0, equals).trim()
     const fieldValue = entry.slice(equals + 1).trim()
     if (key === 'version' || key === 'package') fields[key] = tomlString(fieldValue, `${label}.${key}`)
-    else if (key === 'optional') {
-      if (fieldValue !== 'true' && fieldValue !== 'false') {
-        throw new Error(`Cargo manifest ${label}.optional must be boolean`)
-      }
-      fields.optional = fieldValue === 'true'
-    }
+    else if (key === 'optional') fields.optional = tomlBoolean(fieldValue, `${label}.optional`)
+    else if (key === 'default-features') tomlBoolean(fieldValue, `${label}.default-features`)
+    else if (key === 'features') tomlStringArray(fieldValue, `${label}.features`)
+    else unsupportedDependencyField(label, key)
   }
   return fields
 }
 
 function dependencyTableField(key, value, label) {
   if (key === 'version' || key === 'package') return { [key]: tomlString(value, `${label}.${key}`) }
-  if (key === 'optional') {
-    const trimmed = value.trim()
-    if (trimmed !== 'true' && trimmed !== 'false') {
-      throw new Error(`Cargo manifest ${label}.optional must be boolean`)
-    }
-    return { optional: trimmed === 'true' }
+  if (key === 'optional') return { optional: tomlBoolean(value, `${label}.optional`) }
+  if (key === 'default-features') {
+    tomlBoolean(value, `${label}.default-features`)
+    return {}
   }
-  return {}
+  if (key === 'features') {
+    tomlStringArray(value, `${label}.features`)
+    return {}
+  }
+  return unsupportedDependencyField(label, key)
 }
 
 function dependencySection(header) {
@@ -250,12 +286,12 @@ function dependencySection(header) {
   if (direct) return { kind: direct[1], localName: null, target: null }
   const table = /^(dependencies|dev-dependencies|build-dependencies)\.([A-Za-z0-9_-]+)$/.exec(header)
   if (table) return { kind: table[1], localName: table[2], target: null }
-  const targeted = /^target\.(?:'([^']+)'|"([^"]+)")\.(dependencies|dev-dependencies|build-dependencies)(?:\.([A-Za-z0-9_-]+))?$/.exec(header)
+  const targeted = /^target\.([^.]+)\.(dependencies|dev-dependencies|build-dependencies)(?:\.([A-Za-z0-9_-]+))?$/.exec(header)
   if (targeted) {
     return {
-      kind: targeted[3],
-      localName: targeted[4] || null,
-      target: targeted[1] || targeted[2]
+      kind: targeted[2],
+      localName: targeted[3] || null,
+      target: targeted[1]
     }
   }
   return null
@@ -284,8 +320,37 @@ function cargoRequirements(cargoPath = path.join(root, 'runtime', 'hxrt', 'Cargo
     const line = stripTomlComment(rawLine).trim()
     if (!line) continue
     if (line.startsWith('[') && line.endsWith(']')) {
-      section = dependencySection(line.slice(1, -1).trim())
+      const header = line.slice(1, -1).trim()
+      if (header.includes('\\')) {
+        throw new Error('Cargo manifest uses an unsupported escaped TOML key path')
+      }
+      if (isCargoSourceOverridePath(header)) {
+        throw new Error(`Cargo manifest uses unsupported Cargo source override section [${header}]`)
+      }
+      const normalizedHeader = normalizedTomlAuthorityPath(header)
+      section = dependencySection(normalizedHeader)
+      if (
+        !section &&
+        /^(dependencies|dev-dependencies|build-dependencies)(?:\.|$)|^target\./.test(normalizedHeader)
+      ) {
+        throw new Error(`Cargo manifest uses an unsupported dependency table [${header}]`)
+      }
       continue
+    }
+    const topLevelKey = line.slice(0, line.indexOf('=') < 0 ? line.length : line.indexOf('='))
+    if (!section && topLevelKey.includes('\\')) {
+      throw new Error('Cargo manifest uses an unsupported escaped TOML key path')
+    }
+    if (!section && isCargoSourceOverridePath(topLevelKey)) {
+      throw new Error('Cargo manifest uses an unsupported top-level Cargo source override')
+    }
+    if (
+      !section &&
+      /^(dependencies|dev-dependencies|build-dependencies)(?:\.|$)|^target\./.test(
+        normalizedTomlAuthorityPath(topLevelKey)
+      )
+    ) {
+      throw new Error('unsupported Cargo top-level dotted dependency declaration')
     }
     if (!section) continue
     const equals = line.indexOf('=')
@@ -306,7 +371,7 @@ function cargoRequirements(cargoPath = path.join(root, 'runtime', 'hxrt', 'Cargo
       target: section.target
     }
     if (fields.package) current.name = fields.package
-    if (fields.version) current.requirement = fields.version
+    if (fields.version) current.requirement = cargoVersionRequirement(fields.version)
     if (fields.optional !== undefined) current.optional = fields.optional
     requirements.set(identity, current)
   }

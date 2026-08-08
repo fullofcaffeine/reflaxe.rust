@@ -21,6 +21,10 @@ const RELEASE_ENVIRONMENT_KEYS = [
   'GITHUB_EVENT_NAME',
   'GITHUB_REF',
   'GITHUB_SHA',
+  'GIT_ATTR_NOSYSTEM',
+  'GIT_CONFIG_GLOBAL',
+  'GIT_CONFIG_NOSYSTEM',
+  'GIT_NO_REPLACE_OBJECTS',
   'LANG',
   'LC_ALL',
   'LC_CTYPE',
@@ -31,12 +35,14 @@ const RELEASE_ENVIRONMENT_KEYS = [
   'RELEASE_EXPECTED_ORIGIN_URL',
   'RELEASE_GH_BIN',
   'RELEASE_GIT_BIN',
+  'RELEASE_GIT_GUARD_BIN',
   'RELEASE_HAXE_BIN',
   'RELEASE_HAXELIB_BIN',
   'RELEASE_HOME',
   'RELEASE_NODE_BIN',
   'RELEASE_NPM_BIN',
   'RELEASE_RUSTC_BIN',
+  'RELEASE_APPROVED_TAG',
   'RELEASE_STRICT_EXECUTION',
   'RELEASE_TEMP_ROOT',
   'RELEASE_TOOL_DIR',
@@ -110,6 +116,10 @@ function releaseProcessEnvironment(source, additionalKeys = []) {
     throw new Error('reviewed release execution requires an absolute RELEASE_TEMP_ROOT')
   }
   environment.HOME = home
+  environment.GIT_ATTR_NOSYSTEM = '1'
+  environment.GIT_CONFIG_GLOBAL = process.platform === 'win32' ? 'NUL' : '/dev/null'
+  environment.GIT_CONFIG_NOSYSTEM = '1'
+  environment.GIT_NO_REPLACE_OBJECTS = '1'
   if (environment.RELEASE_CARGO_HOME !== undefined) {
     if (!path.isAbsolute(environment.RELEASE_CARGO_HOME)) {
       throw new Error('RELEASE_CARGO_HOME must be absolute')
@@ -130,9 +140,13 @@ function releaseProcessEnvironment(source, additionalKeys = []) {
       ['haxelib', environment.RELEASE_HAXELIB_BIN],
       ['node', environment.RELEASE_NODE_BIN]
     ])
+    if (strict || environment.RELEASE_GIT_GUARD_BIN !== undefined) {
+      assertAbsoluteTool(environment, 'RELEASE_GIT_GUARD_BIN', true)
+      expected.set('git', environment.RELEASE_GIT_GUARD_BIN)
+    }
     const entries = fs.readdirSync(environment.RELEASE_TOOL_DIR).sort()
     if (JSON.stringify(entries) !== JSON.stringify([...expected.keys()].sort())) {
-      throw new Error('RELEASE_TOOL_DIR may expose only haxe, haxelib, and node')
+      throw new Error('RELEASE_TOOL_DIR exposes an unexpected reviewed-tool set')
     }
     for (const [name, executable] of expected) {
       if (!executable || fs.realpathSync(path.join(environment.RELEASE_TOOL_DIR, name)) !== fs.realpathSync(executable)) {

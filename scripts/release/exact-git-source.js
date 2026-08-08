@@ -86,23 +86,58 @@ function gitObject(repositoryRoot, args, options = {}) {
   })
 }
 
-function gitDirectory(repositoryRoot) {
+function resolvedGitPath(repositoryRoot, argument) {
   return fs.realpathSync(
     path.resolve(
       repositoryRoot,
-      gitObject(repositoryRoot, ['rev-parse', '--git-dir'], { encoding: 'utf8' }).trim()
+      gitObject(repositoryRoot, ['rev-parse', argument], { encoding: 'utf8' }).trim()
     )
   )
 }
 
+function gitDirectory(repositoryRoot) {
+  return resolvedGitPath(repositoryRoot, '--git-dir')
+}
+
+function gitCommonDirectory(repositoryRoot) {
+  return resolvedGitPath(repositoryRoot, '--git-common-dir')
+}
+
+/** A release checkout owns one administration directory; linked worktrees are deliberately unsupported. */
+function assertSingleGitDirectory(repositoryRoot) {
+  const directory = gitDirectory(repositoryRoot)
+  const common = gitCommonDirectory(repositoryRoot)
+  if (directory !== common || fs.existsSync(path.join(directory, 'commondir'))) {
+    throw new Error('exact release verification rejects split Git common directories and linked worktrees')
+  }
+  return directory
+}
+
+function assertNoHistorySubstitution(repositoryRoot) {
+  const directory = assertSingleGitDirectory(repositoryRoot)
+  for (const relative of [path.join('info', 'grafts'), 'shallow']) {
+    if (fs.existsSync(path.join(directory, relative))) {
+      throw new Error(`exact release verification rejects Git history substitution through ${relative}`)
+    }
+  }
+  const replacementRefs = gitObject(
+    repositoryRoot,
+    ['for-each-ref', '--format=%(refname)', 'refs/replace']
+  ).toString('utf8').trim()
+  if (replacementRefs) {
+    throw new Error('exact release verification rejects replacement refs')
+  }
+}
+
 function rejectAlternateObjectStores(repositoryRoot) {
-  const alternateFile = path.join(gitDirectory(repositoryRoot), 'objects', 'info', 'alternates')
+  const alternateFile = path.join(assertSingleGitDirectory(repositoryRoot), 'objects', 'info', 'alternates')
   if (fs.existsSync(alternateFile)) {
     throw new Error('exact release verification rejects alternate Git object stores')
   }
 }
 
 function assertReachableObjectIntegrity(repositoryRoot, sourceCommit) {
+  assertNoHistorySubstitution(repositoryRoot)
   rejectAlternateObjectStores(repositoryRoot)
   try {
     gitObject(
@@ -316,6 +351,107 @@ function reviewedOriginUrl(value) {
   return value
 }
 
+function normalizeTagSnapshot(value) {
+  const records = Array.isArray(value)
+    ? value
+    : String(value || '').split(/\r?\n/).filter(Boolean)
+  const seen = new Set()
+  const normalized = records.map((record) => {
+    const match = /^([0-9a-f]{40,64})\s+(refs\/tags\/[^\s]+)$/.exec(String(record).trim())
+    if (!match || match[2].includes('\\') || match[2].split('/').some((part) => part === '.' || part === '..')) {
+      throw new Error('authoritative Git tag snapshot contains malformed data')
+    }
+    const line = `${match[1]}\t${match[2]}`
+    if (seen.has(match[2])) throw new Error(`authoritative Git tag snapshot repeats ${match[2]}`)
+    seen.add(match[2])
+    return line
+  }).sort()
+  return normalized
+}
+
+function localTagSnapshot(repositoryRoot) {
+  const output = gitObject(
+    repositoryRoot,
+    ['for-each-ref', '--format=%(objectname)%09%(refname)%09%(*objectname)', 'refs/tags']
+  ).toString('utf8')
+  const records = []
+  for (const line of output.split(/\r?\n/).filter(Boolean)) {
+    const [objectId, ref, peeled = ''] = line.split('\t')
+    records.push(`${objectId}\t${ref}`)
+    if (peeled) records.push(`${peeled}\t${ref}^{}`)
+  }
+  return normalizeTagSnapshot(records)
+}
+
+function authoritativeTagSnapshot(repositoryRoot, options = {}) {
+  if (Object.prototype.hasOwnProperty.call(options, 'authoritativeTags')) {
+    return normalizeTagSnapshot(options.authoritativeTags)
+  }
+  return normalizeTagSnapshot(
+    gitObject(repositoryRoot, ['ls-remote', '--tags', 'origin']).toString('utf8')
+  )
+}
+
+function tagSnapshotSha256(snapshot) {
+  return crypto.createHash('sha256').update(`${snapshot.join('\n')}\n`).digest('hex')
+}
+
+function synchronizeAuthoritativeTags(repositoryRoot, options = {}) {
+  if (!Object.prototype.hasOwnProperty.call(options, 'authoritativeTags')) {
+    gitObject(repositoryRoot, [
+      'fetch',
+      '--force',
+      '--prune',
+      '--prune-tags',
+      'origin',
+      '+refs/tags/*:refs/tags/*'
+    ])
+  }
+  const authoritative = authoritativeTagSnapshot(repositoryRoot, options)
+  const currentRefs = gitObject(
+    repositoryRoot,
+    ['for-each-ref', '--format=%(refname)', 'refs/tags']
+  ).toString('utf8').split(/\r?\n/).filter(Boolean)
+  for (const ref of currentRefs) gitObject(repositoryRoot, ['update-ref', '-d', ref])
+  for (const record of authoritative) {
+    const [objectId, ref] = record.split('\t')
+    if (ref.endsWith('^{}')) continue
+    gitObject(repositoryRoot, ['cat-file', '-e', `${objectId}^{object}`])
+    gitObject(repositoryRoot, ['update-ref', ref, objectId])
+  }
+  if (JSON.stringify(localTagSnapshot(repositoryRoot)) !== JSON.stringify(authoritative)) {
+    throw new Error('local Git tags do not match the authoritative remote tag snapshot')
+  }
+  return authoritative
+}
+
+function assertAuthoritativeTags(repositoryRoot, sourceCommit, receipt, options = {}) {
+  if (
+    !Array.isArray(receipt.tagSnapshot) ||
+    receipt.tagSnapshotSha256 !== tagSnapshotSha256(normalizeTagSnapshot(receipt.tagSnapshot))
+  ) {
+    throw new Error('exact release bootstrap tag receipt is invalid')
+  }
+  const expected = [...normalizeTagSnapshot(receipt.tagSnapshot)]
+  if (options.allowedNewTag !== undefined) {
+    const tag = options.allowedNewTag
+    if (!/^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag || '')) {
+      throw new Error('allowed release tag must use exact stable semantic-version syntax')
+    }
+    const ref = `refs/tags/${tag}`
+    if (expected.some((record) => record.endsWith(`\t${ref}`) || record.endsWith(`\t${ref}^{}`))) {
+      throw new Error('new release tag already existed in the bootstrap tag snapshot')
+    }
+    expected.push(`${sourceCommit}\t${ref}`)
+    expected.sort()
+  }
+  const authoritative = authoritativeTagSnapshot(repositoryRoot, options)
+  const local = localTagSnapshot(repositoryRoot)
+  if (JSON.stringify(authoritative) !== JSON.stringify(expected) || JSON.stringify(local) !== JSON.stringify(expected)) {
+    throw new Error('local Git tag namespace differs from the authoritative remote tag snapshot')
+  }
+}
+
 function reviewedLocalConfig(directory, originUrl) {
   const hooksDirectory = path.join(directory, 'haxe-rust-empty-hooks')
   return [
@@ -333,7 +469,7 @@ function reviewedLocalConfig(directory, originUrl) {
 }
 
 function administrativeState(repositoryRoot, originUrl) {
-  const directory = gitDirectory(repositoryRoot)
+  const directory = assertSingleGitDirectory(repositoryRoot)
   const hooksDirectory = path.join(directory, 'haxe-rust-empty-hooks')
   const expectedConfig = reviewedLocalConfig(directory, originUrl)
   return {
@@ -345,7 +481,7 @@ function administrativeState(repositoryRoot, originUrl) {
 }
 
 function assertAdministrativeState(repositoryRoot, receipt, originUrl) {
-  const directory = gitDirectory(repositoryRoot)
+  const directory = assertSingleGitDirectory(repositoryRoot)
   const current = administrativeState(repositoryRoot, originUrl)
   const configuration = path.join(directory, 'config')
   if (
@@ -361,9 +497,12 @@ function assertAdministrativeState(repositoryRoot, receipt, originUrl) {
     throw new Error('exact release trusted hooks directory must remain empty')
   }
   for (const relative of [
+    'commondir',
     'config.worktree',
+    path.join('info', 'grafts'),
     path.join('objects', 'info', 'alternates'),
-    path.join('info', 'attributes')
+    path.join('info', 'attributes'),
+    'shallow'
   ]) {
     if (fs.existsSync(path.join(directory, relative))) {
       throw new Error(`exact release Git administration contains unsupported ${relative}`)
@@ -391,7 +530,7 @@ function assertNoPreloadShadows(repositoryRoot) {
   }
 }
 
-function bootstrapRepository(repositoryRoot, sourceCommit, destination, originUrl) {
+function bootstrapRepository(repositoryRoot, sourceCommit, destination, originUrl, options = {}) {
   const commit = reviewedCommit(repositoryRoot, sourceCommit)
   const reviewedOrigin = reviewedOriginUrl(originUrl)
   assertReachableObjectIntegrity(repositoryRoot, commit)
@@ -401,7 +540,7 @@ function bootstrapRepository(repositoryRoot, sourceCommit, destination, originUr
   gitObject(destination, ['read-tree', '--reset', clonedCommit])
   materializeCommit(destination, clonedCommit, destination)
   gitObject(destination, ['update-ref', 'HEAD', clonedCommit])
-  const exactGitDirectory = gitDirectory(destination)
+  const exactGitDirectory = assertSingleGitDirectory(destination)
   const hooksDirectory = path.join(exactGitDirectory, 'haxe-rust-empty-hooks')
   fs.mkdirSync(hooksDirectory, { mode: 0o700 })
   fs.writeFileSync(
@@ -409,6 +548,7 @@ function bootstrapRepository(repositoryRoot, sourceCommit, destination, originUr
     reviewedLocalConfig(exactGitDirectory, reviewedOrigin),
     { mode: 0o600 }
   )
+  const tagSnapshot = synchronizeAuthoritativeTags(destination, options)
   const status = gitObject(destination, ['status', '--porcelain', '--untracked-files=no'], {
     encoding: 'utf8'
   })
@@ -422,22 +562,29 @@ function bootstrapRepository(repositoryRoot, sourceCommit, destination, originUr
   fs.writeFileSync(
     path.join(exactGitDirectory, BOOTSTRAP_RECEIPT),
     `${JSON.stringify({
-      schemaVersion: 2,
+      schemaVersion: 3,
       sourceCommit: clonedCommit,
       bootstrapObjectId: bootstrapEntry.objectId,
       configSha256: state.configSha256,
       hooksDirectory: state.hooksDirectory,
-      originUrl: state.originUrl
+      originUrl: state.originUrl,
+      tagSnapshot,
+      tagSnapshotSha256: tagSnapshotSha256(tagSnapshot)
     })}\n`,
     { mode: 0o600 }
   )
   return destination
 }
 
-function assertExactBootstrap(repositoryRoot, sourceCommit, originUrl = process.env.RELEASE_EXPECTED_ORIGIN_URL) {
+function assertExactBootstrap(
+  repositoryRoot,
+  sourceCommit,
+  originUrl = process.env.RELEASE_EXPECTED_ORIGIN_URL,
+  options = {}
+) {
   const commit = reviewedCommit(repositoryRoot, sourceCommit)
   const reviewedOrigin = reviewedOriginUrl(originUrl)
-  const receiptPath = path.join(gitDirectory(repositoryRoot), BOOTSTRAP_RECEIPT)
+  const receiptPath = path.join(assertSingleGitDirectory(repositoryRoot), BOOTSTRAP_RECEIPT)
   if (!fs.existsSync(receiptPath)) {
     throw new Error('release authority must run from the externally bootstrapped exact Git object')
   }
@@ -451,13 +598,15 @@ function assertExactBootstrap(repositoryRoot, sourceCommit, originUrl = process.
     ({ file }) => file === 'scripts/release/exact-git-source.js'
   )
   if (
-    receipt.schemaVersion !== 2 ||
+    receipt.schemaVersion !== 3 ||
     receipt.sourceCommit !== commit ||
     receipt.bootstrapObjectId !== bootstrapEntry?.objectId
   ) {
     throw new Error('exact release bootstrap receipt does not match the reviewed commit')
   }
   assertAdministrativeState(repositoryRoot, receipt, reviewedOrigin)
+  assertNoHistorySubstitution(repositoryRoot)
+  assertAuthoritativeTags(repositoryRoot, commit, receipt, options)
   assertIndexMatchesCommit(repositoryRoot, commit)
   assertMaterializedCommit(repositoryRoot, commit)
   assertNoPreloadShadows(repositoryRoot)
@@ -491,15 +640,20 @@ if (require.main === module) {
 
 module.exports = {
   GIT_OUTPUT_MAX_BYTES,
+  assertAuthoritativeTags,
   assertExactBootstrap,
   assertIndexMatchesCommit,
   assertMaterializedCommit,
   assertNoPreloadShadows,
+  assertSingleGitDirectory,
+  authoritativeTagSnapshot,
   bootstrapRepository,
   commitEntries,
   gitObject,
   gitBinary,
+  gitCommonDirectory,
   gitObjectEnvironment,
+  localTagSnapshot,
   materializeCommit,
   reviewedCommit
 }

@@ -372,6 +372,36 @@ libc = "0.2"
     assert(parsedCargo.some((entry) => entry.name === 'cc' && entry.kind === 'build'))
     assert(parsedCargo.some((entry) => entry.name === 'libc' && entry.target === 'cfg(unix)'))
 
+    for (const [name, manifest] of Object.entries({
+      path: `[dependencies]\nparking_lot = { version = "0.12", path = "../ambient/parking_lot" }\n`,
+      git: `[dependencies]\nserde = { version = "1", git = "https://example.invalid/serde", branch = "main" }\n`,
+      registry: `[dependencies.serde]\nversion = "1"\nregistry = "private"\n`,
+      patch: `[dependencies]\nserde = "1"\n\n[patch.crates-io]\nserde = { git = "https://example.invalid/serde" }\n`,
+      replaceTable: `[dependencies]\nserde = "=1.0.0"\n\n[replace."serde:1.0.0"]\npath = "vendor/serde"\n`,
+      dottedPatch: `patch.crates-io.serde = { path = "vendor/serde" }\n[dependencies]\nserde = "1"\n`,
+      dottedReplace: `replace."serde:1.0.0" = { path = "vendor/serde" }\n[dependencies]\nserde = "=1.0.0"\n`,
+      dottedWorkspace: `workspace.dependencies.serde = { version = "1", path = "vendor/serde" }\n[dependencies]\nserde = { workspace = true }\n`,
+      quotedDottedPatch: `"patch"."crates-io".serde = { path = "vendor/serde" }\n[dependencies]\nserde = "1"\n`,
+      spacedPatchTable: `[dependencies]\nserde = "1"\n\n[patch . crates-io]\nserde = { path = "vendor/serde" }\n`,
+      quotedReplaceTable: `[dependencies]\nserde = "=1.0.0"\n\n["replace"."serde:1.0.0"]\npath = "vendor/serde"\n`,
+      escapedPatchTable: `[dependencies]\nserde = "1"\n\n["\\u0070atch".crates-io]\nserde = { path = "vendor/serde" }\n`,
+      escapedReplaceTable: `[dependencies]\nserde = "=1.0.0"\n\n["repl\\u0061ce"."serde:1.0.0"]\npath = "vendor/serde"\n`,
+      escapedDottedPatch: `"\\u0070atch".crates-io.serde = { path = "vendor/serde" }\n[dependencies]\nserde = "1"\n`,
+      quotedDependencyTable: `[dependencies."serde"]\nversion = "1.0.0"\npath = "vendor/serde"\n`,
+      spacedDependencyTable: `[dependencies . serde]\nversion = "1.0.0"\npath = "vendor/serde"\n`,
+      quotedTargetDependencyTable: `["target"."cfg(unix)"."dependencies"."serde"]\nversion = "1.0.0"\npath = "vendor/serde"\n`,
+      dottedDependency: `dependencies.serde = { version = "1", path = "vendor/serde" }\n`,
+      quotedDottedDependency: `"dependencies"."serde" = { version = "1", path = "vendor/serde" }\n`
+    })) {
+      const sourceSelector = path.join(cargoFixture, `${name}.toml`)
+      fs.writeFileSync(sourceSelector, manifest)
+      assert.throws(
+        () => licenseApi.cargoRequirements(sourceSelector),
+        /unsupported.*Cargo|source selector|patch|registry|path|git/i,
+        `Cargo ${name} source authority must not be silently reported as crates.io`
+      )
+    }
+
     const left = path.join(temp, 'left')
     const right = path.join(temp, 'right')
     packageFixture(left)

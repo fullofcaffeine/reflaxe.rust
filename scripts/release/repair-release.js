@@ -11,6 +11,7 @@ const {
   assertArtifactReceiptFiles,
   createArtifactReceipt,
   normalizeSha,
+  verifyHostedDraft,
   verifyHostedRelease,
   verifyTagIdentity
 } = require('./release-provenance.js')
@@ -158,6 +159,9 @@ function main() {
   assertTrackedTreeClean(cwd, 'repair checkout contains tracked changes')
   const artifact = buildApprovedArtifact({ cwd, version, tag, sourceCommit })
   const existing = releaseView(tag, cwd)
+  if (existing && existing.isPrerelease) {
+    throw new Error(`refusing to modify prerelease draft ${tag}`)
+  }
   if (existing && existing.isImmutable) {
     verifyHostedRelease({
       receipt: artifact.receipt,
@@ -204,6 +208,7 @@ function main() {
     zipPath: versionedZip,
     checksumPath: versionedChecksum
   })
+  verifyHostedDraft({ receipt: artifact.receipt, cwd })
   run('gh', ['release', 'edit', tag, '--draft=false'], { cwd, stdio: 'inherit' })
   verifyHostedRelease({
     receipt: artifact.receipt,

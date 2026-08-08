@@ -14,6 +14,7 @@ const {
 
 const repoRoot = path.resolve(__dirname, '..', '..')
 const TEST_ORIGIN = 'https://example.invalid/example/repository.git'
+const FIXTURE_TAGS = { authoritativeTags: [] }
 
 function git(cwd, args, options = {}) {
   return execFileSync('git', args, {
@@ -54,7 +55,7 @@ function withBootstrap(label, operation) {
   try {
     fs.mkdirSync(source)
     const commit = commitFixture(source)
-    bootstrapRepository(source, commit, exact, TEST_ORIGIN)
+    bootstrapRepository(source, commit, exact, TEST_ORIGIN, FIXTURE_TAGS)
     operation({ commit, exact, fixture, source })
   } finally {
     fs.rmSync(fixture, { recursive: true, force: true })
@@ -104,7 +105,7 @@ function main() {
       fs.writeFileSync(target, 'throw new Error("unreviewed preload");\n')
       git(exact, ['add', relative])
       assert.throws(
-        () => assertExactBootstrap(exact, commit, TEST_ORIGIN),
+        () => assertExactBootstrap(exact, commit, TEST_ORIGIN, FIXTURE_TAGS),
         /index.*reviewed commit|unreviewed.*(code|configuration)|staged/i,
         `${relative} must not become release authority merely by entering the live index`
       )
@@ -117,7 +118,7 @@ function main() {
     fs.writeFileSync(path.join(hookRoot, 'pre-push'), '#!/bin/sh\nexit 0\n')
     git(exact, ['config', 'core.hooksPath', hookRoot])
     assert.throws(
-      () => assertExactBootstrap(exact, commit, TEST_ORIGIN),
+      () => assertExactBootstrap(exact, commit, TEST_ORIGIN, FIXTURE_TAGS),
       /Git administration|hooks|config/i,
       'post-bootstrap Git configuration must not add an executable authority'
     )
@@ -134,7 +135,7 @@ function main() {
     receipt.configSha256 = require('crypto').createHash('sha256').update(changedConfig).digest('hex')
     fs.writeFileSync(receiptPath, `${JSON.stringify(receipt)}\n`)
     assert.throws(
-      () => assertExactBootstrap(exact, commit, TEST_ORIGIN),
+      () => assertExactBootstrap(exact, commit, TEST_ORIGIN, FIXTURE_TAGS),
       /Git administration|origin|config/i,
       'changing both the config and its writable receipt must not create a self-validating authority'
     )
@@ -149,9 +150,58 @@ function main() {
       `${alternateObjects}\n`
     )
     assert.throws(
-      () => assertExactBootstrap(exact, commit, TEST_ORIGIN),
+      () => assertExactBootstrap(exact, commit, TEST_ORIGIN, FIXTURE_TAGS),
       /alternate.*object|Git administration/i,
       'post-bootstrap alternate object stores must not participate in release verification'
+    )
+  })
+
+  withBootstrap('common-directory', ({ commit, exact, fixture }) => {
+    const common = path.join(fixture, 'external-common.git')
+    const hostileHooks = path.join(fixture, 'hostile-hooks')
+    fs.cpSync(path.join(exact, '.git'), common, { recursive: true })
+    fs.mkdirSync(hostileHooks)
+    fs.writeFileSync(path.join(hostileHooks, 'pre-push'), '#!/bin/sh\nexit 0\n')
+    fs.chmodSync(path.join(hostileHooks, 'pre-push'), 0o755)
+    fs.writeFileSync(
+      path.join(common, 'config'),
+      fs.readFileSync(path.join(common, 'config'), 'utf8')
+        .replace(/hooksPath = .*\n/, `hooksPath = ${hostileHooks}\n`)
+    )
+    fs.writeFileSync(path.join(exact, '.git', 'commondir'), `${common}\n`)
+    assert.throws(
+      () => assertExactBootstrap(exact, commit, TEST_ORIGIN, FIXTURE_TAGS),
+      /common.*director|split.*Git|linked.*worktree|Git administration/i,
+      'an external common Git directory must not replace the receipt-bound config and hooks'
+    )
+  })
+
+  withBootstrap('replacement-ref', ({ commit, exact }) => {
+    const tree = git(exact, ['rev-parse', `${commit}^{tree}`]).trim()
+    const substitute = git(exact, ['commit-tree', tree], {
+      input: 'feat!: substituted release history\n',
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: 'Exact Source Test',
+        GIT_AUTHOR_EMAIL: 'exact-source@example.invalid',
+        GIT_COMMITTER_NAME: 'Exact Source Test',
+        GIT_COMMITTER_EMAIL: 'exact-source@example.invalid'
+      }
+    }).trim()
+    git(exact, ['replace', commit, substitute])
+    assert.throws(
+      () => assertExactBootstrap(exact, commit, TEST_ORIGIN, FIXTURE_TAGS),
+      /replacement|refs\/replace|history substitution/i,
+      'replacement refs must not change the history later consumed by semantic-release'
+    )
+  })
+
+  withBootstrap('local-only-tag', ({ commit, exact }) => {
+    git(exact, ['tag', 'v0.90.0', commit])
+    assert.throws(
+      () => assertExactBootstrap(exact, commit, TEST_ORIGIN, FIXTURE_TAGS),
+      /tag.*(authority|snapshot|remote|namespace)|local-only/i,
+      'a local-only version tag must not influence or be pushed by semantic-release'
     )
   })
 

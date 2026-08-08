@@ -188,6 +188,50 @@ function verifyAsset(asset, expected, label) {
   if (asset.digest !== expected.digest) throw new Error(`${label} digest does not match the approved file`)
 }
 
+function hostedRelease(receipt, cwd, run) {
+  const approved = validateArtifactReceipt(receipt)
+  return {
+    approved,
+    release: JSON.parse(
+      run(
+        'gh',
+        [
+          'release',
+          'view',
+          approved.tag,
+          '--json',
+          'tagName,isDraft,isImmutable,isPrerelease,assets'
+        ],
+        { cwd }
+      )
+    )
+  }
+}
+
+function verifyHostedAssetSet(release, approved, label) {
+  const names = artifactNames(approved.version)
+  const assets = Array.isArray(release.assets) ? release.assets : []
+  const expectedNames = [names.archive, names.checksum].sort()
+  const actualNames = assets.map(({ name }) => name).sort()
+  if (JSON.stringify(actualNames) !== JSON.stringify(expectedNames)) {
+    throw new Error(`${label} custom asset set does not match the release contract`)
+  }
+  const byName = new Map(assets.map((asset) => [asset.name, asset]))
+  verifyAsset(byName.get(names.archive), approved.archive, `${label} asset`)
+  verifyAsset(byName.get(names.checksum), approved.checksum, `${label} checksum asset`)
+}
+
+/** Verify the exact mutable draft immediately before the irreversible public transition. */
+function verifyHostedDraft({ receipt, cwd, run = defaultRun }) {
+  const { approved, release } = hostedRelease(receipt, cwd, run)
+  if (release.tagName !== approved.tag) throw new Error('draft GitHub Release tag does not match')
+  if (!release.isDraft) throw new Error('GitHub Release is no longer an editable draft')
+  if (release.isPrerelease) throw new Error('GitHub Release draft unexpectedly uses prerelease status')
+  if (release.isImmutable) throw new Error('GitHub Release draft is unexpectedly immutable')
+  verifyHostedAssetSet(release, approved, 'draft hosted')
+  return release
+}
+
 /**
  * Why
  * An asset name is not provenance. Publication completes only when GitHub reports the same bytes
@@ -202,36 +246,13 @@ function verifyAsset(asset, expected, label) {
  * captured before the upload boundary. Immutable releases make that successful comparison durable.
  */
 function verifyHostedRelease({ receipt, cwd, run = defaultRun }) {
-  const approved = validateArtifactReceipt(receipt)
-  const names = artifactNames(approved.version)
-
-  const release = JSON.parse(
-    run(
-      'gh',
-      [
-        'release',
-        'view',
-        approved.tag,
-        '--json',
-        'tagName,isDraft,isImmutable,isPrerelease,assets'
-      ],
-      { cwd }
-    )
-  )
+  const { approved, release } = hostedRelease(receipt, cwd, run)
   if (release.tagName !== approved.tag) throw new Error('published GitHub Release tag does not match')
   if (release.isDraft) throw new Error('published GitHub Release is still a draft')
   if (release.isPrerelease) throw new Error('published GitHub Release unexpectedly uses prerelease status')
   if (!release.isImmutable) throw new Error('published GitHub Release is not immutable')
 
-  const assets = Array.isArray(release.assets) ? release.assets : []
-  const expectedNames = [names.archive, names.checksum].sort()
-  const actualNames = assets.map(({ name }) => name).sort()
-  if (JSON.stringify(actualNames) !== JSON.stringify(expectedNames)) {
-    throw new Error('hosted custom asset set does not match the release contract')
-  }
-  const byName = new Map(assets.map((asset) => [asset.name, asset]))
-  verifyAsset(byName.get(names.archive), approved.archive, 'hosted asset')
-  verifyAsset(byName.get(names.checksum), approved.checksum, 'hosted checksum asset')
+  verifyHostedAssetSet(release, approved, 'hosted')
   return release
 }
 
@@ -275,6 +296,7 @@ module.exports = {
   normalizeSha,
   readCapturedArtifactReceipt,
   verifyHostReleaseControls,
+  verifyHostedDraft,
   verifyHostedRelease,
   verifyTagIdentity
 }
