@@ -34,6 +34,12 @@ The release job is the final job in `.github/workflows/ci.yml` and runs only for
 It depends on the required security, Rust, Windows, harness, performance, and stdlib jobs from the
 same workflow run, checks out `${{ github.sha }}`, and alone receives `contents: write`.
 
+The dependency audit fails on every finding except a short-lived list of exact advisory URLs under
+the installed but unused `@semantic-release/npm` plugin. The project does not configure npm package
+publication. The exception also requires the exact unused dependency paths, rejects critical or new
+findings, and expires on 2026-09-30 so an available upstream npm fix replaces it instead of silently
+turning into permanent policy.
+
 Normal publication has no `workflow_dispatch` entry point. Manual operation is isolated in
 `.github/workflows/release-repair.yml`, which accepts only an existing `vMAJOR.MINOR.PATCH` tag and
 cannot derive, create, move, or delete a version tag.

@@ -15,7 +15,7 @@
     "conventional-changelog-conventionalcommits": "10.2.1",
     "fflate": "0.8.3",
     "lix": "15.12.4",
-    "semantic-release": "25.0.5",
+    "semantic-release": "25.0.9",
     "semver": "7.8.5"
   },
   "scripts": {
@@ -31,6 +31,7 @@
     "test:release-provenance": "node test/scripts/release-provenance.test.js",
     "test:release-workflow": "node test/scripts/release-workflow.test.js",
     "test:release-lifecycle": "node test/scripts/release-lifecycle.test.js",
+    "test:npm-audit-policy": "node test/scripts/npm-audit-policy.test.js",
     "test:runtime-e2e-contract": "node test/scripts/runtime-e2e-contract.test.js",
     "test:rust-raw-authority": "node test/scripts/rust-raw-authority.test.js && bash test/run-snapshots.sh --case hello_trace --no-diff",
     "test:rust-structural-path-ir": "node test/scripts/rust-structural-path-ir.test.js && bash test/run-snapshots.sh --case hello_trace --no-diff",
@@ -59,7 +60,7 @@
     "fresh-cargo-resolution:refresh": "node scripts/ci/fresh-cargo-resolution.js --lane minimum --refresh-baseline --out-dir .cache/fresh-cargo-resolution/minimum",
     "test:generated-report-contract": "bash scripts/ci/check-generated-report-contract.sh",
     "test:generated-artifact-contract": "bash scripts/ci/check-generated-artifact-contract.sh",
-    "test:release": "npm run test:release-policy && npm run test:release-notes && npm run test:release-artifact && npm run test:release-provenance && npm run test:release-workflow && npm run test:release-lifecycle",
+    "test:release": "npm run test:release-policy && npm run test:release-notes && npm run test:release-artifact && npm run test:release-provenance && npm run test:release-workflow && npm run test:release-lifecycle && npm run test:npm-audit-policy",
     "test:upstream-stdlib": "bash test/run-upstream-stdlib-sweep.sh",
     "test:upstream-stdlib:tier2": "bash test/run-upstream-stdlib-sweep.sh --tier tier2",
     "test:semantic-diff": "python3 test/run-semantic-diff.py",

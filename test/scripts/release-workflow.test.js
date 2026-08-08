@@ -163,7 +163,11 @@ async function main() {
   )
   assert(!ci.includes('workflow_run'), 'normal publication must not cross a privileged workflow_run boundary')
   assert(!fs.existsSync(legacyReleasePath), 'the separate normal Release workflow must be removed')
-  requireMatch(ci, /npm audit\n/, 'a successful dependency audit must be part of the release gate')
+  requireMatch(
+    ci,
+    /node scripts\/ci\/npm-audit-policy\.js\n/,
+    'the fail-closed dependency audit policy must be part of the release gate'
+  )
 
   const releaseStart = ci.indexOf('\n  release:\n')
   assert(releaseStart !== -1, 'CI must contain a release job')

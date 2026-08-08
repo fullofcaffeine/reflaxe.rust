@@ -42,7 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           npm ci --ignore-scripts --no-audit --no-fund
-          npm audit
+          node scripts/ci/npm-audit-policy.js
 
       - name: Install gitleaks
         run: |
