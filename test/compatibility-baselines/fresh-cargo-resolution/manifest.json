@@ -27,8 +27,8 @@
       "id": "systems",
       "contract": "systems and TLS generated crate",
       "fixture": "test/snapshot/sys_ssl_sni/intended",
-      "lockSha256": "668ab302e9fd0faffa096a96bd92e5c8f8a70df9f2e5149f6446f1d554776fbe",
-      "metadataSha256": "36f1d2cdb7341608e2b1565034b9e79939ec87108cf4d6c98bac5ff332e03635"
+      "lockSha256": "66b798a7d652c1ed79a429b7f9a28a856c602830093f235688904d94ba094cc9",
+      "metadataSha256": "48b461a59bbe3e7b6cabbc6550ffcfeeb6eff287e3727c56d63b28e85f9a7c26"
     },
     {
       "id": "async-feature",

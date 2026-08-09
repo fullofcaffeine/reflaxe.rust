@@ -17,7 +17,7 @@
     "root": "hx_app@0.0.1:path",
     "nodes": [
       {
-        "id": "android_system_properties@0.1.5:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "android_system_properties@0.1.6:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [],
         "dependencies": [
           {
@@ -247,12 +247,12 @@
         "dependencies": []
       },
       {
-        "id": "cc@1.4.0:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "cc@1.4.2:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [],
         "dependencies": [
           {
             "name": "find_msvc_tools",
-            "package": "find-msvc-tools@0.1.9:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "find-msvc-tools@0.1.10:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -306,7 +306,7 @@
           },
           {
             "name": "js_sys",
-            "package": "js-sys@0.3.103:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "js-sys@0.3.104:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -326,7 +326,7 @@
           },
           {
             "name": "wasm_bindgen",
-            "package": "wasm-bindgen@0.2.126:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "wasm-bindgen@0.2.127:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -440,7 +440,7 @@
         ]
       },
       {
-        "id": "data-encoding@2.11.0:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "data-encoding@2.11.1:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "alloc",
           "default",
@@ -644,7 +644,7 @@
         ]
       },
       {
-        "id": "find-msvc-tools@0.1.9:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "find-msvc-tools@0.1.10:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [],
         "dependencies": []
       },
@@ -1041,7 +1041,7 @@
         "dependencies": [
           {
             "name": "cc",
-            "package": "cc@1.4.0:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "cc@1.4.2:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "build",
@@ -1059,7 +1059,7 @@
         "dependencies": [
           {
             "name": "android_system_properties",
-            "package": "android_system_properties@0.1.5:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "android_system_properties@0.1.6:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -1089,7 +1089,7 @@
           },
           {
             "name": "js_sys",
-            "package": "js-sys@0.3.103:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "js-sys@0.3.104:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -1109,7 +1109,7 @@
           },
           {
             "name": "wasm_bindgen",
-            "package": "wasm-bindgen@0.2.126:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "wasm-bindgen@0.2.127:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -1130,7 +1130,7 @@
         ]
       },
       {
-        "id": "js-sys@0.3.103:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "js-sys@0.3.104:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "default",
           "std",
@@ -1159,7 +1159,7 @@
           },
           {
             "name": "wasm_bindgen",
-            "package": "wasm-bindgen@0.2.126:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "wasm-bindgen@0.2.127:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -1630,7 +1630,7 @@
         "dependencies": [
           {
             "name": "cc",
-            "package": "cc@1.4.0:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "cc@1.4.2:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "build",
@@ -2602,7 +2602,7 @@
         "dependencies": []
       },
       {
-        "id": "wasm-bindgen-macro-support@0.2.126:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "wasm-bindgen-macro-support@0.2.127:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [],
         "dependencies": [
           {
@@ -2647,7 +2647,7 @@
           },
           {
             "name": "wasm_bindgen_shared",
-            "package": "wasm-bindgen-shared@0.2.126:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "wasm-bindgen-shared@0.2.127:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -2658,7 +2658,7 @@
         ]
       },
       {
-        "id": "wasm-bindgen-macro@0.2.126:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "wasm-bindgen-macro@0.2.127:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [],
         "dependencies": [
           {
@@ -2673,7 +2673,7 @@
           },
           {
             "name": "wasm_bindgen_macro_support",
-            "package": "wasm-bindgen-macro-support@0.2.126:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "wasm-bindgen-macro-support@0.2.127:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -2684,7 +2684,7 @@
         ]
       },
       {
-        "id": "wasm-bindgen-shared@0.2.126:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "wasm-bindgen-shared@0.2.127:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [],
         "dependencies": [
           {
@@ -2700,7 +2700,7 @@
         ]
       },
       {
-        "id": "wasm-bindgen@0.2.126:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "wasm-bindgen@0.2.127:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "default",
           "std"
@@ -2738,7 +2738,7 @@
           },
           {
             "name": "wasm_bindgen_macro",
-            "package": "wasm-bindgen-macro@0.2.126:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "wasm-bindgen-macro@0.2.127:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -2748,7 +2748,7 @@
           },
           {
             "name": "wasm_bindgen_shared",
-            "package": "wasm-bindgen-shared@0.2.126:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "wasm-bindgen-shared@0.2.127:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -3462,7 +3462,7 @@
           },
           {
             "name": "data_encoding",
-            "package": "data-encoding@2.11.0:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "data-encoding@2.11.1:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -3554,9 +3554,9 @@
   },
   "packages": [
     {
-      "id": "android_system_properties@0.1.5:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "android_system_properties@0.1.6:registry+https://github.com/rust-lang/crates.io-index",
       "name": "android_system_properties",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": null,
       "enabledFeatures": [],
@@ -4201,17 +4201,17 @@
       ]
     },
     {
-      "id": "cc@1.4.0:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "cc@1.4.2:registry+https://github.com/rust-lang/crates.io-index",
       "name": "cc",
-      "version": "1.4.0",
+      "version": "1.4.2",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
-      "rustVersion": "1.63.0",
+      "rustVersion": "1.64.0",
       "enabledFeatures": [],
       "dependencies": [
         {
           "name": "find-msvc-tools",
           "rename": null,
-          "requirement": "^0.1.9",
+          "requirement": "^0.1.10",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -4233,7 +4233,7 @@
         {
           "name": "libc",
           "rename": null,
-          "requirement": "^0.2.62",
+          "requirement": "^0.2.168",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": true,
@@ -4660,9 +4660,9 @@
       ]
     },
     {
-      "id": "data-encoding@2.11.0:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "data-encoding@2.11.1:registry+https://github.com/rust-lang/crates.io-index",
       "name": "data-encoding",
-      "version": "2.11.0",
+      "version": "2.11.1",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.48.0",
       "enabledFeatures": [
@@ -5182,11 +5182,11 @@
       ]
     },
     {
-      "id": "find-msvc-tools@0.1.9:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "find-msvc-tools@0.1.10:registry+https://github.com/rust-lang/crates.io-index",
       "name": "find-msvc-tools",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
-      "rustVersion": "1.63.0",
+      "rustVersion": "1.64.0",
       "enabledFeatures": [],
       "dependencies": []
     },
@@ -6168,9 +6168,9 @@
       ]
     },
     {
-      "id": "js-sys@0.3.103:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "js-sys@0.3.104:registry+https://github.com/rust-lang/crates.io-index",
       "name": "js-sys",
-      "version": "0.3.103",
+      "version": "0.3.104",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.77.0",
       "enabledFeatures": [
@@ -6250,7 +6250,7 @@
         {
           "name": "wasm-bindgen",
           "rename": null,
-          "requirement": "=0.2.126",
+          "requirement": "=0.2.127",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -10212,9 +10212,9 @@
       ]
     },
     {
-      "id": "wasm-bindgen-macro-support@0.2.126:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "wasm-bindgen-macro-support@0.2.127:registry+https://github.com/rust-lang/crates.io-index",
       "name": "wasm-bindgen-macro-support",
-      "version": "0.2.126",
+      "version": "0.2.127",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.77.0",
       "enabledFeatures": [],
@@ -10271,7 +10271,7 @@
         {
           "name": "wasm-bindgen-shared",
           "rename": null,
-          "requirement": "=0.2.126",
+          "requirement": "=0.2.127",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -10282,9 +10282,9 @@
       ]
     },
     {
-      "id": "wasm-bindgen-macro@0.2.126:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "wasm-bindgen-macro@0.2.127:registry+https://github.com/rust-lang/crates.io-index",
       "name": "wasm-bindgen-macro",
-      "version": "0.2.126",
+      "version": "0.2.127",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.77.0",
       "enabledFeatures": [],
@@ -10314,7 +10314,7 @@
         {
           "name": "wasm-bindgen-macro-support",
           "rename": null,
-          "requirement": "=0.2.126",
+          "requirement": "=0.2.127",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -10325,9 +10325,9 @@
       ]
     },
     {
-      "id": "wasm-bindgen-shared@0.2.126:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "wasm-bindgen-shared@0.2.127:registry+https://github.com/rust-lang/crates.io-index",
       "name": "wasm-bindgen-shared",
-      "version": "0.2.126",
+      "version": "0.2.127",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.77.0",
       "enabledFeatures": [],
@@ -10346,9 +10346,9 @@
       ]
     },
     {
-      "id": "wasm-bindgen@0.2.126:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "wasm-bindgen@0.2.127:registry+https://github.com/rust-lang/crates.io-index",
       "name": "wasm-bindgen",
-      "version": "0.2.126",
+      "version": "0.2.127",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.77.0",
       "enabledFeatures": [
@@ -10469,7 +10469,7 @@
         {
           "name": "wasm-bindgen-macro",
           "rename": null,
-          "requirement": "=0.2.126",
+          "requirement": "=0.2.127",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -10480,7 +10480,7 @@
         {
           "name": "wasm-bindgen-shared",
           "rename": null,
-          "requirement": "=0.2.126",
+          "requirement": "=0.2.127",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
