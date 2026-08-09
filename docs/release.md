@@ -34,6 +34,12 @@ The release job is the final job in `.github/workflows/ci.yml` and runs only for
 It depends on the required security, Rust, Windows, harness, performance, and stdlib jobs from the
 same workflow run, checks out `${{ github.sha }}`, and alone receives `contents: write`.
 
+The dependency audit fails on every finding except a short-lived list of exact advisory URLs under
+the installed but unused `@semantic-release/npm` plugin. The project does not configure npm package
+publication. The exception also requires the exact unused dependency paths, rejects critical or new
+findings, and expires on 2026-09-30 so an available upstream npm fix replaces it instead of silently
+turning into permanent policy.
+
 Normal publication has no `workflow_dispatch` entry point. Manual operation is isolated in
 `.github/workflows/release-repair.yml`, which accepts only an existing `vMAJOR.MINOR.PATCH` tag and
 cannot derive, create, move, or delete a version tag.
@@ -49,8 +55,9 @@ cannot derive, create, move, or delete a version tag.
 - prerelease channels and build metadata are rejected until explicitly modeled.
 
 `scripts/release/semantic-release-policy.cjs` delegates Conventional Commit parsing to the pinned
-official analyzer and applies only that project policy. The locked `semver` package performs strict
-version parsing; the repository has no custom SemVer parser.
+official analyzer and applies only that project policy. Exact release versions use the small
+source-owned SemVer 2.0.0 syntax parser in `scripts/release/semantic-version.js`; it performs no range
+selection and keeps package bytes independent of executable validation code in `node_modules`.
 
 A repository adopting this policy without existing version tags must establish and review an
 initial major-zero baseline tag (normally `v0.0.0`) before enabling automatic publication.
@@ -82,17 +89,29 @@ pure-JavaScript deterministic ZIP writer rather than system `zip`.
 
 The release adapter:
 
-1. builds the complete package twice in different temporary environments,
-2. requires byte-identical ZIPs,
-3. validates central-directory names, order, modes, compression, and path safety,
-4. validates required compiler/runtime/vendor entries and staged metadata,
-5. runs the existing Haxelib install, Haxe compile, and Cargo build smoke against that exact ZIP,
-6. writes its SHA-256 sidecar,
-7. verifies local and remote tag identity before upload,
-8. verifies hosted asset names, states, sizes, and SHA-256 digests after publication.
+1. starts only after an externally loaded Git-object bootstrap has rechecked every tracked source byte,
+2. builds the complete package twice from literal blobs in different temporary environments,
+3. requires byte-identical ZIPs,
+4. validates central-directory names, order, modes, compression, and path safety,
+5. validates required compiler/runtime/vendor entries and staged metadata,
+6. validates the shipped licenses, third-party notice, CycloneDX inventory,
+   and exact vendored Reflaxe base/patch record,
+7. runs the existing Haxelib install, Haxe compile, and Cargo build smoke against that exact ZIP,
+8. writes its SHA-256 sidecar,
+9. verifies local and remote tag identity before upload,
+10. records the approved archive/checksum names, lengths, and digests in a process-local receipt that
+    cannot be replaced by another mutable repository file,
+11. lets the reviewed project plugin—not a general publisher—create the draft and upload only copies
+    that still match that receipt,
+12. verifies hosted asset names, states, sizes, and SHA-256 digests against the captured receipt after
+    publication.
+
+See `docs/release-licensing-review.md` for the factual package inventory and
+the questions that still require professional legal review before 1.0.
 
 The local paths are fixed (`dist/reflaxe.rust.zip` and `.zip.sha256`) to prevent stale globs. The
-GitHub publisher gives them versioned hosted names.
+reviewed publication plugin gives them versioned hosted names. No third-party publisher receives the
+mutable local artifact paths after approval.
 
 ## Changelog And Release Notes
 
@@ -120,8 +139,10 @@ Run the protected **Repair Existing Release** workflow with that exact tag. Its 
 2. re-derives no version and creates no tag,
 3. rebuilds the deterministic package twice from the tag,
 4. runs the complete exact-artifact contract and smoke,
-5. creates or cleans only the associated draft Release,
-6. uploads the approved ZIP/checksum, publishes the draft, and verifies immutable hosted digests.
+5. captures a fresh approval receipt after smoke and checks the versioned upload copies against it,
+6. creates or cleans only the associated draft Release,
+7. uploads the approved ZIP/checksum, publishes the draft, and verifies immutable hosted digests
+   against that receipt rather than recomputing approval from mutable local files.
 
 If the Release is already complete and immutable, repair is a non-mutating verification. If a
 published release or remote tag contains invalid content, never move/delete the remote tag or reuse

@@ -12,6 +12,57 @@ import reflaxe.rust.naming.RustNaming;
 class RustAST {}
 
 /**
+	A closed, stable explanation for Rust syntax that has no honest single Haxe source position.
+
+	Why
+	- Writing only "compiler generated" is too vague for a diagnostic: users need to know whether a
+	  span is module scaffolding, a cleanup rewrite, or a still-raw fallback.
+	- Free-form reason strings would drift between lowering, transformation, source-map artifacts, and
+	  future rustc diagnostic rendering.
+
+	What
+	- Each value is both a typed compiler choice and the kebab-case identifier serialized into the
+	  deterministic source map.
+	- The list contains only reasons emitted by current lowering/raw boundaries; adding speculative
+	  pass names would expand the artifact vocabulary without an honest generated node.
+
+	How
+	- Pass a value to `RustOriginTools.generatedItem`, `generatedStatement`, or
+	  `generatedExpression`.
+	- Add or rename values in `rust-source-map-policy.json`, then run
+	  `npm run docs:sync:rust-source-map-policy`; the generated block below and the JSON Schema enum
+	  must not be edited independently.
+	- Additions are schema changes and therefore require source-map contract and documentation review.
+**/
+enum abstract RustGeneratedOriginReason(String) to String {
+	// BEGIN GENERATED RUST SOURCE-MAP REASONS
+	var GeneratedFileMarker = "generated-file-marker";
+	var ModuleScaffolding = "module-scaffolding";
+	var LoweringScaffolding = "lowering-scaffolding";
+	var StaticStorage = "static-storage";
+	var DefaultValueFallback = "default-value-fallback";
+	var UnsupportedFallback = "unsupported-fallback";
+
+	public inline function id():String {
+		return this;
+	}
+
+	/** Rebuilds a validated reason at serialization boundaries; arbitrary abstract casts fail closed. */
+	public static function fromId(value:String):RustGeneratedOriginReason {
+		return switch (value) {
+			case "generated-file-marker": GeneratedFileMarker;
+			case "module-scaffolding": ModuleScaffolding;
+			case "lowering-scaffolding": LoweringScaffolding;
+			case "static-storage": StaticStorage;
+			case "default-value-fallback": DefaultValueFallback;
+			case "unsupported-fallback": UnsupportedFallback;
+			case _: throw 'Unsupported compiler-generated Rust origin reason: $value';
+		};
+	}
+	// END GENERATED RUST SOURCE-MAP REASONS
+}
+
+/**
 	Describes whether a Rust IR node came from Haxe source or was synthesized by the backend.
 
 	Why
@@ -22,7 +73,8 @@ class RustAST {}
 
 	What
 	- `OriginHaxeSource` retains the exact typed-AST position supplied by Haxe.
-	- `OriginCompilerGenerated` marks syntax with no single honest Haxe source position.
+	- `OriginCompilerGenerated` marks syntax with no single honest Haxe source position and requires a
+	  closed reason suitable for diagnostics.
 
 	How
 	- Raw-fragment factories require one of these origins today. Later typed IR nodes can reuse the
@@ -30,93 +82,40 @@ class RustAST {}
 **/
 enum RustOrigin {
 	OriginHaxeSource(pos:Position);
-	OriginCompilerGenerated;
+	OriginCompilerGenerated(reason:RustGeneratedOriginReason);
 }
 
 /**
-	Closed reasons for compiler-owned Rust text that has not yet migrated to structural IR.
+	The complete set of intentionally opaque Rust boundaries.
 
 	Why
-	- `RRaw` and `ERaw` are analysis blind spots. Treating every compiler string as equivalent makes
-	  it impossible to prioritize migration or tell source authority from backend debt.
+	- Compiler-owned syntax must remain structural so analysis passes can inspect it. A broad
+	  "compiler raw" constructor would make it easy to reintroduce the migration debt this AST closed.
+	- The two remaining strings genuinely come from authors: an explicit target-code injection or the
+	  body portion of `@:rustImpl` metadata.
 
 	What
-	- Each constructor identifies one current compiler lowering family. These reasons describe
-	  migration debt; they do not authorize adding more raw lowering.
+	- Each private constructor represents one exact source boundary rather than a general authority
+	  bucket plus a caller-selected reason.
 
 	How
-	- `RustRawCode` maps every constructor to a stable identifier. Adding a constructor therefore
-	  requires updating the exhaustive mapping and reviewing the new authority explicitly.
+	- `rust-raw-authority-policy.json` owns this list. Run
+	  `npm run docs:sync:rust-raw-authority` after changing it; the generated factories and reviewed
+	  call-site inventory must change together.
 **/
-enum RustCompilerRawReason {
-	RawStaticStorage;
-	RawDefaultValueFallback;
-	RawUnsupportedFallback;
-}
-
-/**
-	Closed reasons for Rust text deliberately supplied through Haxe metadata.
-
-	Why
-	- Metadata is user authority even when the compiler renders its surrounding syntax.
-	- Keeping it separate prevents a future compiler migration from silently claiming ownership of
-	  source-provided Rust bodies or target paths.
-
-	What
-	- Currently covers the raw `@:rustImpl` contract.
-
-	How
-	- The metadata factory always requires the metadata's Haxe position.
-**/
-enum RustMetadataRawReason {
-	RawTraitImplementation;
-}
-
-/**
-	Closed reasons for Rust expressions supplied verbatim by source code.
-
-	Why
-	- Explicit target-code injection is a real escape hatch and must never be confused with typed
-	  compiler lowering merely because both eventually print Rust text.
-
-	What
-	- Currently covers the configured `__rust__` target-code injection boundary.
-
-	How
-	- The source factory requires an exact Haxe position and remains visible to metal restrictions.
-	- This records emission ownership only; it never grants `@:rustAllowRaw` permission or weakens
-	  strict/metal boundary enforcement.
-**/
-enum RustSourceRawReason {
-	RawTargetCodeInjection;
-}
-
-/**
-	Identifies who owns an intentionally raw Rust fragment.
-
-	Why
-	- Policy passes need a typed distinction between compiler migration debt, metadata authority, and
-	  explicit source injection.
-
-	What
-	- Wraps one of three closed reason enums rather than accepting a free-form label.
-
-	How
-	- Instances can only be created through `RustRawCode` factories, which pair authority with a
-	  source origin.
-**/
-enum RustRawAuthority {
-	RawCompilerOwned(reason:RustCompilerRawReason);
-	RawMetadataOwned(reason:RustMetadataRawReason);
-	RawSourceOwned(reason:RustSourceRawReason);
+private enum RustRawAuthority {
+	// BEGIN GENERATED RUST RAW AUTHORITIES
+	RawMetadataTraitImplementation;
+	RawSourceTargetCodeInjection;
+	// END GENERATED RUST RAW AUTHORITIES
 }
 
 /**
 	A classified raw Rust fragment carried by `RRaw` or `ERaw`.
 
 	Why
-	- Plain strings erase both authority and Haxe provenance, so compiler passes cannot distinguish an
-	  intentional escape hatch from syntax that should become typed IR.
+	- Plain strings erase both authority and Haxe provenance, so compiler passes cannot distinguish the
+	  two intentional escape hatches from compiler syntax that must remain typed.
 	- Public construction would allow new raw text to bypass that classification.
 
 	What
@@ -124,63 +123,61 @@ enum RustRawAuthority {
 	- Exposes stable identifiers for reports and policy diagnostics.
 
 	How
-	- The constructor is private. Callers select `compilerGenerated`, `compilerAt`, `metadataAt`, or
-	  `sourceAt`; `withCode` is the only transformation helper and preserves metadata byte-for-byte.
+	- The constructor and authority enum are private. Callers select the boundary-specific
+	  `traitImplementationAt` or `targetCodeInjectionAt` factory; there is deliberately no
+	  compiler-owned factory.
+	- `withCode` is the only transformation helper and preserves metadata byte-for-byte.
 	- The printer reads only `code`, so classification cannot alter generated Rust.
 **/
 class RustRawCode {
 	public final code:String;
-	public final authority:RustRawAuthority;
 	public final origin:RustOrigin;
+	final authority:RustRawAuthority;
 
 	private function new(code:String, authority:RustRawAuthority, origin:RustOrigin) {
+		if (code == null)
+			throw "Classified raw Rust code cannot be null";
 		this.code = code;
-		this.authority = authority;
-		this.origin = origin;
+		this.authority = requireAuthority(authority);
+		this.origin = RustOriginTools.requireOrigin(origin);
 	}
 
-	public static function compilerGenerated(code:String, reason:RustCompilerRawReason):RustRawCode {
-		return new RustRawCode(code, RawCompilerOwned(reason), OriginCompilerGenerated);
+	// BEGIN GENERATED RUST RAW FACTORIES
+	public static function traitImplementationAt(code:String, pos:Position):RustRawCode {
+		return new RustRawCode(code, RawMetadataTraitImplementation, OriginHaxeSource(pos));
 	}
 
-	public static function compilerAt(code:String, reason:RustCompilerRawReason, pos:Position):RustRawCode {
-		return new RustRawCode(code, RawCompilerOwned(reason), OriginHaxeSource(pos));
-	}
-
-	public static function metadataAt(code:String, reason:RustMetadataRawReason, pos:Position):RustRawCode {
-		return new RustRawCode(code, RawMetadataOwned(reason), OriginHaxeSource(pos));
-	}
-
-	public static function sourceAt(code:String, reason:RustSourceRawReason, pos:Position):RustRawCode {
-		return new RustRawCode(code, RawSourceOwned(reason), OriginHaxeSource(pos));
-	}
-
-	public function withCode(nextCode:String):RustRawCode {
-		return new RustRawCode(nextCode, authority, origin);
+	public static function targetCodeInjectionAt(code:String, pos:Position):RustRawCode {
+		return new RustRawCode(code, RawSourceTargetCodeInjection, OriginHaxeSource(pos));
 	}
 
 	public function authorityId():String {
 		return switch (authority) {
-			case RawCompilerOwned(_): "compiler-owned";
-			case RawMetadataOwned(_): "metadata-owned";
-			case RawSourceOwned(_): "source-owned";
+			case RawMetadataTraitImplementation: "metadata-owned";
+			case RawSourceTargetCodeInjection: "source-owned";
 		};
 	}
 
 	public function reasonId():String {
 		return switch (authority) {
-			case RawCompilerOwned(reason): switch (reason) {
-					case RawStaticStorage: "static-storage";
-					case RawDefaultValueFallback: "default-value-fallback";
-					case RawUnsupportedFallback: "unsupported-fallback";
-				}
-			case RawMetadataOwned(reason): switch (reason) {
-					case RawTraitImplementation: "trait-implementation";
-				}
-			case RawSourceOwned(reason): switch (reason) {
-					case RawTargetCodeInjection: "target-code-injection";
-				}
+			case RawMetadataTraitImplementation: "trait-implementation";
+			case RawSourceTargetCodeInjection: "target-code-injection";
 		};
+	}
+
+	static function requireAuthority(value:RustRawAuthority):RustRawAuthority {
+		if (value == null)
+			throw "Classified raw Rust requires an authority";
+		switch (value) {
+			case RawMetadataTraitImplementation:
+			case RawSourceTargetCodeInjection:
+		}
+		return value;
+	}
+	// END GENERATED RUST RAW FACTORIES
+
+	public function withCode(nextCode:String):RustRawCode {
+		return new RustRawCode(nextCode, authority, origin);
 	}
 }
 
@@ -954,6 +951,8 @@ typedef RustFile = {
 }
 
 enum RustItem {
+	ROrigin(origin:RustOrigin, item:RustItem);
+	RItemGroup(group:RustItemGroup);
 	RAttributed(value:RustAttributedItem);
 	RInnerAttribute(attribute:RustAttribute);
 	RComment(comment:RustComment);
@@ -968,6 +967,75 @@ enum RustItem {
 	RTrait(declaration:RustTraitDeclaration);
 	RImpl(i:RustImpl);
 	RRaw(fragment:RustRawCode);
+}
+
+/**
+	A layout-preserving sequence of structural Rust items.
+
+	Why
+	- Some compiler-generated declaration families are intentionally adjacent. Static backing storage,
+	  for example, historically printed one `static` and three helper functions with single newlines;
+	  turning those declarations into ordinary top-level items would add blank lines and violate the
+	  typed migration's byte-neutral output contract.
+	- Keeping the family in raw text would preserve spacing but hide its types and expressions from
+	  structural analysis.
+
+	What
+	- Owns a non-empty defensive copy of ordinary `RustItem` values that the printer separates with one
+	  newline. The group itself adds no Rust syntax.
+	- Rejects nested groups, including origin-wrapped groups, so separator ownership stays unambiguous.
+
+	How
+	- Use `of` only when adjacency is part of an existing output contract. Every item/pass visitor must
+	  recurse through the group exactly as it recurses through an inline module, while preserving the
+	  group during rebuilding.
+**/
+class RustItemGroup {
+	final items:Array<RustItem>;
+	public var itemCount(get, never):Int;
+
+	private function new(items:Array<RustItem>) {
+		this.items = items;
+	}
+
+	public static function of(values:Array<RustItem>):RustItemGroup {
+		if (values == null || values.length == 0)
+			throw "Rust item group requires at least one item";
+		var copy = values.copy();
+		for (item in copy) {
+			if (item == null)
+				throw "Rust item group cannot contain a null item";
+			if (containsGroup(item))
+				throw "Rust item groups cannot be nested";
+		}
+		return new RustItemGroup(copy);
+	}
+
+	function get_itemCount():Int {
+		return items.length;
+	}
+
+	public function itemAt(index:Int):RustItem {
+		if (index < 0 || index >= items.length)
+			throw 'Rust item-group index out of bounds: $index';
+		return items[index];
+	}
+
+	public function iterator():Iterator<RustItem> {
+		return items.iterator();
+	}
+
+	public function withItems(next:Array<RustItem>):RustItemGroup {
+		return of(next);
+	}
+
+	static function containsGroup(item:RustItem):Bool {
+		return switch (item) {
+			case ROrigin(_, inner): containsGroup(inner);
+			case RItemGroup(_): true;
+			case _: false;
+		};
+	}
 }
 
 /** Identifies the closed payload form carried by one structural Rust attribute. */
@@ -1079,8 +1147,10 @@ class RustAttributedItem {
 		}
 		if (target == null)
 			throw "Rust attributed item target cannot be null";
-		switch (target) {
-			case RAttributed(_) | RInnerAttribute(_) | RComment(_):
+		// Provenance is transparent to Rust grammar. Validate the concrete target below any number of
+		// origin wrappers so a caller cannot disguise an annotation-only node as a declaration.
+		switch (RustOriginTools.withoutItemOrigin(target)) {
+			case RItemGroup(_) | RAttributed(_) | RInnerAttribute(_) | RComment(_):
 				throw "Rust outer attributes require one concrete declaration target";
 			case _:
 		}
@@ -2269,6 +2339,7 @@ class RustClosureParameter {
 }
 
 enum RustStmt {
+	SOrigin(origin:RustOrigin, statement:RustStmt);
 	RLet(name:String, mutable:Bool, ty:Null<RustType>, expr:Null<RustExpr>);
 	RSemi(e:RustExpr);
 	// Like `RSemi`, but allows emitting statement-like expressions without a trailing semicolon
@@ -2283,6 +2354,7 @@ enum RustStmt {
 }
 
 enum RustExpr {
+	EOrigin(origin:RustOrigin, expression:RustExpr);
 	ERaw(fragment:RustRawCode);
 	/**
 		The structural Rust value receiver keyword used inside associated method bodies.
@@ -2349,4 +2421,178 @@ enum RustExpr {
 	// - Printer renders this constructor directly; traversal passes recurse into `body`.
 	EPinAsyncMove(body:RustBlock);
 	EAwait(expr:RustExpr);
+}
+
+/**
+	Constructs and inspects provenance wrappers without changing the wrapped Rust syntax.
+
+	Why
+	- Origin metadata must travel with the node it describes. A side table keyed by object identity
+	  becomes stale as soon as an immutable transformation rebuilds an enum value.
+	- Callers also need one transparent unwrapping authority for structural analyses; ad-hoc wrapper
+	  handling would recreate the same pass-recursion drift source maps are meant to eliminate.
+
+	What
+	- Source factories require an exact Haxe `Position`.
+	- Generated factories require a closed `RustGeneratedOriginReason`.
+	- `without*Origin` removes any number of nested wrappers for read-only structural inspection.
+
+	How
+	- Lowering wraps the outer item, statement, or expression that corresponds to a typed Haxe node.
+	- Rewriting passes match a wrapper, transform its child, then rebuild the same wrapper unchanged.
+	- The printer ignores the wrapper for Rust text and records its generated span only in mapping mode.
+**/
+class RustOriginTools {
+	public static function sourceItem(item:RustItem, pos:Position):RustItem {
+		return ROrigin(requireOrigin(OriginHaxeSource(pos)), requireItem(item));
+	}
+
+	public static function generatedItem(item:RustItem, reason:RustGeneratedOriginReason):RustItem {
+		return ROrigin(requireOrigin(OriginCompilerGenerated(reason)), requireItem(item));
+	}
+
+	public static function sourceStatement(statement:RustStmt, pos:Position):RustStmt {
+		return SOrigin(requireOrigin(OriginHaxeSource(pos)), requireStatement(statement));
+	}
+
+	public static function generatedStatement(statement:RustStmt, reason:RustGeneratedOriginReason):RustStmt {
+		return SOrigin(requireOrigin(OriginCompilerGenerated(reason)), requireStatement(statement));
+	}
+
+	public static function sourceExpression(expression:RustExpr, pos:Position):RustExpr {
+		return EOrigin(requireOrigin(OriginHaxeSource(pos)), requireExpression(expression));
+	}
+
+	public static function generatedExpression(expression:RustExpr, reason:RustGeneratedOriginReason):RustExpr {
+		return EOrigin(requireOrigin(OriginCompilerGenerated(reason)), requireExpression(expression));
+	}
+
+	/**
+		Validates either admitted origin shape at every AST construction boundary.
+
+		Why / What / How
+		- Raw fragments and typed wrappers share the same provenance contract; validating it in separate
+		  factories allowed `OriginHaxeSource(null)` to survive until source-map encoding.
+		- Rebuilds the enum with a checked Haxe position or a reason round-tripped through the closed ID
+		  vocabulary.
+		- Call this from any new container that stores a `RustOrigin` directly.
+	**/
+	public static function requireOrigin(origin:RustOrigin):RustOrigin {
+		if (origin == null)
+			throw "Rust origin cannot be null";
+		return switch (origin) {
+			case OriginHaxeSource(pos): OriginHaxeSource(requirePosition(pos));
+			case OriginCompilerGenerated(reason): OriginCompilerGenerated(requireReason(reason));
+		};
+	}
+
+	public static function withoutItemOrigin(item:RustItem):RustItem {
+		var current = requireItem(item);
+		while (true) {
+			switch (current) {
+				case ROrigin(_, inner): current = requireItem(inner);
+				case _: return current;
+			}
+		}
+	}
+
+	public static function withoutStatementOrigin(statement:RustStmt):RustStmt {
+		var current = requireStatement(statement);
+		while (true) {
+			switch (current) {
+				case SOrigin(_, inner): current = requireStatement(inner);
+				case _: return current;
+			}
+		}
+	}
+
+	public static function withoutExpressionOrigin(expression:RustExpr):RustExpr {
+		var current = requireExpression(expression);
+		while (true) {
+			switch (current) {
+				case EOrigin(_, inner): current = requireExpression(inner);
+				case _: return current;
+			}
+		}
+	}
+
+	/** Rebuilds `replacement` under the complete item-origin chain carried by `original`. */
+	public static function replaceItemPreservingOrigins(original:RustItem, replacement:RustItem):RustItem {
+		return switch (requireItem(original)) {
+			case ROrigin(origin, inner): ROrigin(origin, replaceItemPreservingOrigins(inner, replacement));
+			case _: requireItem(replacement);
+		};
+	}
+
+	/** Rebuilds `replacement` under the complete statement-origin chain carried by `original`. */
+	public static function replaceStatementPreservingOrigins(original:RustStmt, replacement:RustStmt):RustStmt {
+		return switch (requireStatement(original)) {
+			case SOrigin(origin, inner): SOrigin(origin, replaceStatementPreservingOrigins(inner, replacement));
+			case _: requireStatement(replacement);
+		};
+	}
+
+	/** Rebuilds `replacement` under the complete expression-origin chain carried by `original`. */
+	public static function replaceExpressionPreservingOrigins(original:RustExpr, replacement:RustExpr):RustExpr {
+		return switch (requireExpression(original)) {
+			case EOrigin(origin, inner): EOrigin(origin, replaceExpressionPreservingOrigins(inner, replacement));
+			case _: requireExpression(replacement);
+		};
+	}
+
+	/**
+		Moves a statement's complete origin chain onto an expression created from that statement.
+
+		Why
+		- Cleanup can legally fold `let value; value = rhs;` into `let value = rhs;`, but the assignment
+		  statement then has no statement node left to carry its provenance.
+		- Dropping that chain makes diagnostics on the moved initializer point at the earlier declaration.
+
+		What
+		- Converts each outer `SOrigin` into an `EOrigin` in the same order.
+		- Leaves any origins already attached to `replacement` nested more deeply, preserving their greater
+		  structural specificity.
+
+		How
+		- Use only when the replacement expression contains the executable bytes formerly owned by the
+		  statement; it is not permission to attach origins to unrelated synthesized syntax.
+	**/
+	public static function transferStatementOriginsToExpression(original:RustStmt, replacement:RustExpr):RustExpr {
+		return switch (requireStatement(original)) {
+			case SOrigin(origin, inner):
+				EOrigin(requireOrigin(origin), transferStatementOriginsToExpression(inner, replacement));
+			case _:
+				requireExpression(replacement);
+		};
+	}
+
+	static function requirePosition(pos:Position):Position {
+		if (pos == null)
+			throw "Rust source origin requires a Haxe position";
+		return pos;
+	}
+
+	static function requireReason(reason:RustGeneratedOriginReason):RustGeneratedOriginReason {
+		if (reason == null || reason.id().length == 0)
+			throw "Rust compiler-generated origin requires a reason";
+		return RustGeneratedOriginReason.fromId(reason.id());
+	}
+
+	static function requireItem(item:RustItem):RustItem {
+		if (item == null)
+			throw "Rust origin cannot wrap a null item";
+		return item;
+	}
+
+	static function requireStatement(statement:RustStmt):RustStmt {
+		if (statement == null)
+			throw "Rust origin cannot wrap a null statement";
+		return statement;
+	}
+
+	static function requireExpression(expression:RustExpr):RustExpr {
+		if (expression == null)
+			throw "Rust origin cannot wrap a null expression";
+		return expression;
+	}
 }

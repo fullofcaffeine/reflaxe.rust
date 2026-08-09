@@ -4,13 +4,13 @@ import reflaxe.rust.CompilationContext;
 import reflaxe.rust.RustProfile;
 import reflaxe.rust.ast.RustAST.RustAttribute;
 import reflaxe.rust.ast.RustAST.RustAttributedItem;
-import reflaxe.rust.ast.RustAST.RustCompilerRawReason;
 import reflaxe.rust.ast.RustAST.RustConstantDeclaration;
 import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustFile;
 import reflaxe.rust.ast.RustAST.RustFunction;
 import reflaxe.rust.ast.RustAST.RustGenericParameters;
 import reflaxe.rust.ast.RustAST.RustItem;
+import reflaxe.rust.ast.RustAST.RustItemGroup;
 import reflaxe.rust.ast.RustAST.RustMember;
 import reflaxe.rust.ast.RustAST.RustModuleDeclaration;
 import reflaxe.rust.ast.RustAST.RustPath;
@@ -88,6 +88,16 @@ class RustStructuralItemPassContract {
 
 	static function findFunction(item:RustItem, name:String):Null<RustFunction> {
 		return switch (item) {
+			case ROrigin(_, inner):
+				findFunction(inner, name);
+			case RItemGroup(group):
+				var found:Null<RustFunction> = null;
+				for (child in group) {
+					found = findFunction(child, name);
+					if (found != null)
+						break;
+				}
+				found;
 			case RAttributed(value):
 				findFunction(value.target, name);
 			case RModule(declaration) if (declaration.isInline):
@@ -107,6 +117,16 @@ class RustStructuralItemPassContract {
 
 	static function findRaw(item:RustItem):Null<RustRawCode> {
 		return switch (item) {
+			case ROrigin(_, inner):
+				findRaw(inner);
+			case RItemGroup(group):
+				var found:Null<RustRawCode> = null;
+				for (child in group) {
+					found = findRaw(child);
+					if (found != null)
+						break;
+				}
+				found;
 			case RAttributed(value):
 				findRaw(value.target);
 			case RModule(declaration) if (declaration.isInline):
@@ -142,7 +162,7 @@ class RustStructuralItemPassContract {
 	}
 
 	public static function run():Void {
-		var raw = RustRawCode.compilerGenerated("first();  \n\n\nsecond(); \t", RawUnsupportedFallback);
+		var raw = RustRawCode.targetCodeInjectionAt("first();  \n\n\nsecond(); \t", Context.currentPos());
 		var nestedItems:Array<RustItem> = [
 			attributedFunction("borrow_nested", [
 				RLet("alias", false, null, ECall(EField(local("owner"), RustMember.plain("borrow")), [])),
@@ -169,7 +189,9 @@ class RustStructuralItemPassContract {
 		var input:RustFile = {
 			items: [RAttributed(RustAttributedItem.of([
 				RustAttribute.pathList(path(["cfg"]), [path(["test"])])
-			], RModule(RustModuleDeclaration.inlineModule(VPrivate, "outer", nestedItems))))]
+			], RModule(RustModuleDeclaration.inlineModule(VPrivate, "outer", [
+				RItemGroup(RustItemGroup.of(nestedItems))
+			]))))]
 		};
 
 		var compilation = context(false);
@@ -224,13 +246,13 @@ class RustStructuralItemPassContract {
 		var nested:RustItem = RAttributed(RustAttributedItem.of([
 			RustAttribute.pathList(path(["derive"]), [path(["hxrt", "Marker"])])
 		], RModule(RustModuleDeclaration.inlineModule(VPrivate, "outer", [
-			RModule(RustModuleDeclaration.inlineModule(VPrivate, "inner", [
+			RModule(RustModuleDeclaration.inlineModule(VPrivate, "inner", [RItemGroup(RustItemGroup.of([
 				RInnerAttribute(RustAttribute.bare(path(["hxrt", "inner"]))),
 				RUse(RustUseDeclaration.exact(VPrivate, path(["hxrt", "api"]))),
 				RConst(RustConstantDeclaration.named(VPrivate, "VALUE", hxrtType("ConstType"), EPath(path(["hxrt", "const_value"])))),
 				RStatic(RustStaticDeclaration.named(VPrivate, "STATE", hxrtType("StaticType"), EPath(path(["hxrt", "static_value"])))),
 				RTypeAlias(RustTypeAliasDeclaration.named(VPrivate, "Alias", RustGenericParameters.empty(), hxrtType("AliasType")))
-			]))
+			]))]))
 		]))));
 		RustASTTransformer.transform({items: [nested]}, context(true));
 		throw "NoHxrtPass accepted runtime paths hidden inside structural nested items";

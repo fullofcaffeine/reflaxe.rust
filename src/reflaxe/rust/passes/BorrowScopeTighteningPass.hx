@@ -8,6 +8,7 @@ import reflaxe.rust.ast.RustAST.RustFile;
 import reflaxe.rust.ast.RustAST.RustFunction;
 import reflaxe.rust.ast.RustAST.RustItem;
 import reflaxe.rust.ast.RustAST.RustMatchArm;
+import reflaxe.rust.ast.RustAST.RustOriginTools;
 import reflaxe.rust.ast.RustAST.RustMember;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustStructLitField;
@@ -63,6 +64,8 @@ class BorrowScopeTighteningPass implements RustPass {
 
 	function rewriteItem(item:RustItem):RustItem {
 		return switch (item) {
+			case ROrigin(origin, inner): ROrigin(origin, rewriteItem(inner));
+			case RItemGroup(group): RItemGroup(group.withItems([for (child in group) rewriteItem(child)]));
 			case RAttributed(value):
 				RAttributed(value.withTarget(rewriteItem(value.target)));
 			case RModule(declaration):
@@ -121,7 +124,7 @@ class BorrowScopeTighteningPass implements RustPass {
 				} else {
 					var aliasCount = countPathUsesInExpr(rewrittenTail, alias.name);
 					if (aliasCount == 1) {
-						rewrittenTail = replacePathInExpr(rewrittenTail, alias.name, borrowCall(alias.target, alias.method));
+						rewrittenTail = replacePathInExpr(rewrittenTail, alias.name, alias.initializer);
 						rewrittenStmts.pop();
 						recordApplied("borrow_scope_tightening.applied.tail_alias_inline");
 						recordLoopApplied(inLoopContext, "borrow_scope_tightening_tail_alias_inline");
@@ -140,6 +143,7 @@ class BorrowScopeTighteningPass implements RustPass {
 
 	function rewriteStmt(stmt:RustStmt, inLoopContext:Bool):RustStmt {
 		return switch (stmt) {
+			case SOrigin(origin, inner): SOrigin(origin, rewriteStmt(inner, inLoopContext));
 			case RLet(name, mutable, ty, expr):
 				RLet(name, mutable, ty, expr == null ? null : rewriteExpr(expr, inLoopContext));
 			case RSemi(expr):
@@ -161,6 +165,7 @@ class BorrowScopeTighteningPass implements RustPass {
 
 	function rewriteExpr(expr:RustExpr, inLoopContext:Bool):RustExpr {
 		var rewritten = switch (expr) {
+			case EOrigin(origin, inner): EOrigin(origin, rewriteExpr(inner, inLoopContext));
 			case ERaw(_) | ESelf | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 			case ECall(func, args):
@@ -231,7 +236,7 @@ class BorrowScopeTighteningPass implements RustPass {
 				var alias = extractBorrowAlias(current);
 				if (alias != null) {
 					var nextStmt = stmts[i + 1];
-					var tightened = rewriteConsumerStmt(nextStmt, alias.name, alias.target, alias.method);
+					var tightened = rewriteConsumerStmt(nextStmt, alias.name, alias.initializer);
 					if (tightened == null) {
 						recordSkipped("borrow_scope_tightening.skipped.consumer_not_rewritable");
 						recordLoopSkipped(inLoopContext, "consumer_not_rewritable");
@@ -271,7 +276,7 @@ class BorrowScopeTighteningPass implements RustPass {
 	**/
 	function hasPathUseAfter(stmts:Array<RustStmt>, tail:Null<RustExpr>, fromIndex:Int, pathName:String):Bool {
 		if (fromIndex >= 0 && fromIndex < stmts.length) {
-			switch (stmts[fromIndex]) {
+			switch (RustOriginTools.withoutStatementOrigin(stmts[fromIndex])) {
 				case RLet(name, _, _, _) if (name == pathName):
 					return false;
 				case _:
@@ -282,7 +287,7 @@ class BorrowScopeTighteningPass implements RustPass {
 			var stmt = stmts[i];
 			if (countPathUsesInStmt(stmt, pathName) > 0)
 				return true;
-			switch (stmt) {
+			switch (RustOriginTools.withoutStatementOrigin(stmt)) {
 				case RLet(name, _, _, _) if (name == pathName):
 					return false;
 				case _:
@@ -294,9 +299,11 @@ class BorrowScopeTighteningPass implements RustPass {
 		return false;
 	}
 
-	function rewriteConsumerStmt(stmt:RustStmt, aliasName:String, target:RustExpr, method:RustMember):Null<RustStmt> {
-		var replacement = borrowCall(target, method);
+	function rewriteConsumerStmt(stmt:RustStmt, aliasName:String, replacement:RustExpr):Null<RustStmt> {
 		return switch (stmt) {
+			case SOrigin(origin, inner):
+				var rewritten = rewriteConsumerStmt(inner, aliasName, replacement);
+				rewritten == null ? null : SOrigin(origin, rewritten);
 			case RSemi(expr):
 				rewriteConsumerExprStmt(expr, aliasName, replacement, e -> RSemi(e));
 			case RExpr(expr, needsSemicolon):
@@ -337,7 +344,7 @@ class BorrowScopeTighteningPass implements RustPass {
 		- Immediate next-statement rewrites remain enabled; they do not rely on block-tail drop order.
 	**/
 	function canRewriteTailAliasTarget(target:RustExpr):Bool {
-		return switch (target) {
+		return switch (RustOriginTools.withoutExpressionOrigin(target)) {
 			case EPath(_):
 				false;
 			case _:
@@ -345,23 +352,28 @@ class BorrowScopeTighteningPass implements RustPass {
 		};
 	}
 
-	function extractBorrowAlias(stmt:RustStmt):Null<{name:String, target:RustExpr, method:RustMember}> {
-		return switch (stmt) {
+	/**
+		Separates borrow-safety analysis from the exact expression moved into a consumer.
+
+		Why / What / How
+		- `target` and `method` are the structural facts needed for the tail drop-order policy.
+		- `initializer` retains the complete call, callee, receiver, and nested origin wrappers so inlining
+		  moves the original bytes and provenance instead of reconstructing an unowned lookalike call.
+	**/
+	function extractBorrowAlias(stmt:RustStmt):Null<{name:String, target:RustExpr, method:RustMember, initializer:RustExpr}> {
+		return switch (RustOriginTools.withoutStatementOrigin(stmt)) {
 			case RLet(name, mutable, _, expr):
 				if (mutable || expr == null) {
 					null;
 				} else {
-					switch (expr) {
-						case ECall(EField(target, method), []):
-							if (!RustPathAnalysis.matchesPlainMember(method, "borrow")
-								&& !RustPathAnalysis.matchesPlainMember(method, "borrow_mut")) {
-								null;
-							} else {
-								{
-									name: name,
-									target: target,
-									method: method
-								};
+					switch (RustOriginTools.withoutExpressionOrigin(expr)) {
+						case ECall(functionExpression, []):
+							switch (RustOriginTools.withoutExpressionOrigin(functionExpression)) {
+								case EField(target, method)
+									if (RustPathAnalysis.matchesPlainMember(method, "borrow")
+										|| RustPathAnalysis.matchesPlainMember(method, "borrow_mut")):
+									{name: name, target: target, method: method, initializer: expr};
+								case _: null;
 							}
 						case _:
 							null;
@@ -372,12 +384,9 @@ class BorrowScopeTighteningPass implements RustPass {
 		};
 	}
 
-	inline function borrowCall(target:RustExpr, method:RustMember):RustExpr {
-		return ECall(EField(target, method), []);
-	}
-
 	function countPathUsesInExpr(expr:RustExpr, pathName:String):Int {
 		return switch (expr) {
+			case EOrigin(_, inner): countPathUsesInExpr(inner, pathName);
 			case EPath(path):
 				RustPathAnalysis.localIdentifierName(path) == pathName ? 1 : 0;
 			case ERaw(_) | ESelf | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
@@ -439,7 +448,7 @@ class BorrowScopeTighteningPass implements RustPass {
 			if (shadowed)
 				break;
 			total += countPathUsesInStmt(stmt, pathName);
-			switch (stmt) {
+			switch (RustOriginTools.withoutStatementOrigin(stmt)) {
 				case RLet(name, _, _, _) if (name == pathName):
 					shadowed = true;
 				case _:
@@ -452,6 +461,7 @@ class BorrowScopeTighteningPass implements RustPass {
 
 	function countPathUsesInStmt(stmt:RustStmt, pathName:String):Int {
 		return switch (stmt) {
+			case SOrigin(_, inner): countPathUsesInStmt(inner, pathName);
 			case RLet(_, _, _, expr):
 				expr == null ? 0 : countPathUsesInExpr(expr, pathName);
 			case RSemi(expr):
@@ -473,6 +483,7 @@ class BorrowScopeTighteningPass implements RustPass {
 
 	function containsClosureExpr(expr:RustExpr):Bool {
 		return switch (expr) {
+			case EOrigin(_, inner): containsClosureExpr(inner);
 			case EClosure(_, _, _) | EPinAsyncMove(_):
 				true;
 			case ERaw(_) | ESelf | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
@@ -541,6 +552,7 @@ class BorrowScopeTighteningPass implements RustPass {
 
 	function containsClosureStmt(stmt:RustStmt):Bool {
 		return switch (stmt) {
+			case SOrigin(_, inner): containsClosureStmt(inner);
 			case RLet(_, _, _, expr): expr != null && containsClosureExpr(expr);
 			case RSemi(expr):
 				containsClosureExpr(expr);
@@ -558,6 +570,7 @@ class BorrowScopeTighteningPass implements RustPass {
 
 	function replacePathInExpr(expr:RustExpr, pathName:String, replacement:RustExpr):RustExpr {
 		return switch (expr) {
+			case EOrigin(origin, inner): EOrigin(origin, replacePathInExpr(inner, pathName, replacement));
 			case EPath(path):
 				RustPathAnalysis.localIdentifierName(path) == pathName ? replacement : expr;
 			case ERaw(_) | ESelf | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
@@ -623,7 +636,7 @@ class BorrowScopeTighteningPass implements RustPass {
 				continue;
 			}
 			stmts.push(replacePathInStmt(stmt, pathName, replacement));
-			switch (stmt) {
+			switch (RustOriginTools.withoutStatementOrigin(stmt)) {
 				case RLet(name, _, _, _) if (name == pathName):
 					shadowed = true;
 				case _:
@@ -637,6 +650,7 @@ class BorrowScopeTighteningPass implements RustPass {
 
 	function replacePathInStmt(stmt:RustStmt, pathName:String, replacement:RustExpr):RustStmt {
 		return switch (stmt) {
+			case SOrigin(origin, inner): SOrigin(origin, replacePathInStmt(inner, pathName, replacement));
 			case RLet(name, mutable, ty, expr):
 				RLet(name, mutable, ty, expr == null ? null : replacePathInExpr(expr, pathName, replacement));
 			case RSemi(expr):

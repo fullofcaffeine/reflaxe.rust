@@ -1,0 +1,8 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_profile=metal
+-D rust_no_build
+-D rust_deny_warnings
+-D rust_runtime_plan_report
+-D rust_output=out_report
+-main Main

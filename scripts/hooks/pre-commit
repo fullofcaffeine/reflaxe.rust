@@ -61,9 +61,14 @@ if grep -Eq '^(scripts/(install-git-hooks\.sh|dev/sync-template-hook-installer\.
   npm --prefix "$ROOT_DIR" run test:pre-commit-evidence-wiring
 fi
 
-if grep -Eq '^(package\.json$|scripts/(ci/harness\.sh|hooks/pre-commit)$|src/reflaxe/rust/(RustCompiler|ast/RustAST|ast/RustASTPrinter|macros/RustInjection|passes/(NormalizePass|MetalRestrictionsPass|NoHxrtPass|StatementCleanupPass))\.hx$|std/rust/metal/Code\.hx$|test/compiler/RustRawAuthorityContract\.hx$|test/scripts/(pre-commit-evidence-wiring|rust-raw-authority)\.test\.js$)' <<<"$STAGED_FILES"; then
-  echo "[pre-commit] Running typed raw-Rust authority contract..."
-  npm --prefix "$ROOT_DIR" run test:rust-raw-authority
+if grep -Eq '^(package\.json|rust-raw-authority-policy\.json|docs/rust-raw-authority(-inventory\.json|\.md)|scripts/(ci/(harness\.sh|rust-raw-authority-policy\.js)|hooks/pre-commit)|(src|std|runtime)/.*\.hx|test/compiler/RustRawAuthorityContract\.hx|test/scripts/(pre-commit-evidence-wiring|rust-raw-authority)\.test\.js)$' <<<"$STAGED_FILES"; then
+	echo "[pre-commit] Running typed raw-Rust authority contract..."
+	if ! git ls-files --error-unmatch docs/rust-raw-authority-inventory.json >/dev/null 2>&1 \
+		|| ! git diff --quiet -- docs/rust-raw-authority-inventory.json; then
+		echo "[pre-commit] ERROR: docs/rust-raw-authority-inventory.json has unstaged changes; regenerate and stage the reviewed inventory." >&2
+		exit 1
+	fi
+	npm --prefix "$ROOT_DIR" run test:rust-raw-authority
 fi
 
 if grep -Eq '^(package\.json$|scripts/(ci/harness\.sh|hooks/pre-commit)$|src/reflaxe/rust/(naming/RustNaming|ast/RustAST|ast/RustASTPrinter)\.hx$|test/compiler/RustStructuralPathContract\.hx$|test/scripts/(pre-commit-evidence-wiring|rust-structural-path-ir)\.test\.js$)' <<<"$STAGED_FILES"; then
@@ -99,6 +104,16 @@ fi
 if grep -Eq '^(package\.json$|scripts/(ci/harness\.sh|hooks/pre-commit)$|src/reflaxe/rust/(RustCompiler|ast/(RustAST|RustASTPrinter|RustPathAnalysis)|metadata/RustMetadataSyntax|passes/[^/]+)\.hx$|test/compiler/RustStructuralTraitImpl(Pass)?Contract\.hx$|test/scripts/(pre-commit-evidence-wiring|rust-structural-trait-impls)\.test\.js$)' <<<"$STAGED_FILES"; then
   echo "[pre-commit] Running structural Rust trait and impl contract..."
   npm --prefix "$ROOT_DIR" run test:rust-structural-trait-impls
+fi
+
+if grep -Eq '^(package\.json$|rust-source-map-policy\.json$|docs/(rust-source-maps\.md|schemas/rust-source-map-v1\.schema\.json)$|scripts/(ci/(harness\.sh|rust-source-map-policy\.js)|hooks/pre-commit)$|src/reflaxe/rust/(CompilationContext|RustCompiler|RustOutputIterator|RustSourceMap|ast/(RustAST|RustASTPrinter|RustPathAnalysis)|passes/[^/]+)\.hx$|test/(run-snapshots\.sh|compiler/RustSourceMapContract\.hx|positive/rust_source_map/[^/]+|scripts/(pre-commit-evidence-wiring|rust-source-map)\.test\.js)$)' <<<"$STAGED_FILES"; then
+  echo "[pre-commit] Running deterministic Rust source-map contract..."
+  npm --prefix "$ROOT_DIR" run test:rust-source-map
+fi
+
+if grep -Eq '^(package\.json$|rust-representation-policy\.json$|docs/(generated-consumer-contract\.json|rust-representation-plan\.md|schemas/(runtime-plan-v4|rust-representation-decision-v1)\.schema\.json)$|scripts/(ci/(harness\.sh|rust-representation-policy\.js)|hooks/pre-commit)$|src/reflaxe/rust/(RustSourcePath|analyze/(RepresentationPlan|SurfaceContractRegistry))\.hx$|test/(compiler/RustRepresentationPlanContract\.hx|scripts/(pre-commit-evidence-wiring|rust-representation-plan)\.test\.js)$)' <<<"$STAGED_FILES"; then
+  echo "[pre-commit] Running typed Rust representation-plan contract..."
+  npm --prefix "$ROOT_DIR" run test:rust-representation-plan
 fi
 
 echo "[pre-commit] OK"

@@ -145,7 +145,7 @@ fn main() {
         crate::os_string_tools::OsStringTools::fromString(String::from("hello"));
     println!(
         "{}",
-        hxrt::dynamic::from(crate::os_string_tools::OsStringTools::toStringLossy(&os).clone())
+        hxrt::dynamic::from(crate::os_string_tools::OsStringTools::toStringLossy(&os))
     );
     let p: std::path::PathBuf =
         crate::path_buf_tools::PathBufTools::fromString(String::from("foo"));
@@ -153,7 +153,7 @@ fn main() {
         crate::path_buf_tools::PathBufTools::join(&p, String::from("bar.txt"));
     println!(
         "{}",
-        hxrt::dynamic::from(crate::path_buf_tools::PathBufTools::toStringLossy(&p2).clone())
+        hxrt::dynamic::from(crate::path_buf_tools::PathBufTools::toStringLossy(&p2))
     );
     println!(
         "{}",

@@ -39,9 +39,12 @@ runner:
 - It copies release files and sanitizes `haxelib.json` by removing Reflaxe metadata.
 
 The script then adds target-required `runtime/` and `vendor/` assets that generic Reflaxe packaging
-does not know about. Release builds then inject the tag-derived version plus source/tag provenance
-into package staging and create a canonical ZIP with fixed metadata and sorted entries. The tracked
-checkout keeps development version sentinels and is never rewritten by publication.
+does not know about. It also places the reviewed Haxe Standard Library file-by-file source record at
+`provenance/stdlib-provenance-ledger.json`, so someone inspecting only the ZIP does not need a live
+repository link. Release builds then inject the tag-derived version plus source/tag identity
+into package staging, generate the third-party notice and CycloneDX software inventory, and create a
+canonical ZIP with fixed metadata and sorted entries. The tracked checkout keeps development version
+sentinels and is never rewritten by publication.
 
 ## Reflaxe conventions followed here
 
@@ -105,6 +108,7 @@ Use `bash scripts/ci/package-smoke.sh` to validate the shipped artifact end-to-e
 
 - Build the zip with `scripts/release/package-haxelib.sh`.
 - Verify package layout + metadata invariants (`src/` flattening, sanitized `haxelib.json`, pruned runtime artifacts).
+- Verify the project/Reflaxe licenses, third-party notice, SBOM, exact Reflaxe base, and local patch are present.
 - Compile a minimal app from the source checkout using repo `haxe_libraries` to confirm `_std` source overrides work without generated `.cross.hx` files.
 - Create an isolated local haxelib repo (`haxelib newrepo`) and install the zip.
 - Compile a minimal app with `-lib reflaxe.rust` and confirm std override modules are emitted.
@@ -114,11 +118,43 @@ Use `bash scripts/ci/package-smoke.sh` to validate the shipped artifact end-to-e
 Important: validate packaged behavior through `haxelib install` + `-lib reflaxe.rust`, not raw `-cp <pkg>/src`.
 Raw classpath-only tests are not equivalent for packaged `.cross.hx` std override selection.
 
-Release automation runs the same package builder from the local semantic-release artifact plugin,
-builds it twice for byte equality, and runs package smoke against the exact first ZIP before the tag
-is created. The CI release job must install the pinned lix Haxe toolchain before semantic-release
-starts. The local package-smoke guard proves package semantics; the workflow setup provides the
-matching `haxe`/`haxelib` runtime when building the release asset.
+Release automation first reads `scripts/release/exact-git-source.js` directly from the CI-tested Git
+object while replacement refs and local/global Git configuration are disabled. That externally loaded
+bootstrap first requires strict reachable-object validation, independently hashes every blob against
+its object ID, and writes literal regular blobs into a fresh repository. It records the exact index,
+origin configuration, disabled-hook directory, and absence of alternate object stores. After locked
+tool installation, the workflow repeats the object check, extracts a fresh checker, and revalidates
+the complete index, Git administration, and every tracked worktree byte before semantic-release or
+repair code is loaded. The earlier writable checker is never reused. This is the trust boundary:
+repository code cannot prove what bytes it contained before it ran.
+
+The release adapter then materializes the same commit twice more for artifact construction. It runs the
+committed package builder and license generator from those trees, and the committed strict verifier
+compares every candidate ZIP byte with the independent rebuild. Hidden index flags, checkout filters,
+replacement refs, and `export-ignore` attributes cannot change those inputs. Artifact generation and
+verification use only reviewed release code plus Node built-ins; locked `node_modules` packages remain
+release-orchestration inputs, not expected-value generators. Cargo requirements are parsed directly
+from the reviewed `Cargo.toml`; ambient Cargo metadata cannot define SBOM facts, and path, Git,
+registry, workspace-inherited, patch, replace, or unknown dependency selectors fail closed instead of
+being mislabeled as ordinary crates.io requirements. The workflow starts
+under profile-free absolute Bash, clears shell/Node preload variables before startup, and gives the
+release process absolute Node/Git/Haxe/Haxelib/Cargo/Rust paths, a four-entry Git/Haxe/Node tool directory, and
+fresh HOME/Cargo/temp roots. Caller `HAXE_*`, PATH, HOME, Cargo config, and broad `node_modules/.bin`
+state are not package inputs. The release HOME is the same fresh job-owned Lix home where Haxe 4.3.7
+was installed; its global `.haxerc` is copied from the reviewed project setting so temporary package
+directories cannot resolve the mutable `stable` alias or fall back to the runner account. The
+source-layout smoke points only that compile at the reviewed repository's `haxe_libraries`; the
+installed-package smoke derives a temporary exact-version Haxe config that resolves libraries only
+through its isolated Haxelib repository, so it cannot pass by accidentally loading checkout files.
+Package smoke runs against the exact verified ZIP before the tag is created. The workflow supplies
+exact Node, Haxe, and release Rust versions. The bootstrap snapshots tags from `origin`; later release
+checks allow only the single derived stable tag at the reviewed commit. A reviewed Git guard narrows
+semantic-release's broad tag push to that exact ref. Immediately before a normal or repair draft is
+made public, the publisher rechecks that it is a mutable non-prerelease draft with exactly the two
+receipt-bound assets.
+That last check and GitHub's publish request are separate API calls; the
+release tooling minimizes and detects its own stale-state window but does not
+describe the external service transition as atomic.
 
 ## Stdlib provenance guards
 
@@ -129,6 +165,19 @@ Packaging checks are complemented by stdlib governance guards:
   - restricts tracked std override file types under `std/`.
 - `node scripts/ci/stdlib-provenance-ledger-check.js`
   - enforces `docs/stdlib-provenance-ledger.json` coverage for tracked `std/rust/_std/**/*.hx` files.
+
+Release license and source-origin evidence is described in
+`docs/release-licensing-review.md`. `docs/release-package-components.json` is
+the source used to generate `THIRD_PARTY_NOTICES.md` and
+`release-sbom.json`; `vendor/reflaxe/provenance.json` owns the exact vendored
+framework base, repository, license, and patch record. The nested
+`vendor/reflaxe/haxelib.json` is checked as a small matching view of those
+repository and license facts. Haxe license generation is fixed to
+`docs/licenses/haxe-stdlib-4.3.7-MIT.txt`; the source record cannot redirect it to another checkout
+file. Package-input checks read repository-sized Git output with an explicit bound and reject a
+symlink or submodule placed at either a package root or one of its descendants. The required Haxe and
+Reflaxe license texts always come from their fixed files. Additional component license text must be
+inline in the tracked component record, so an editable path cannot import unreviewed local bytes.
 
 ## Backend-specific requirement
 

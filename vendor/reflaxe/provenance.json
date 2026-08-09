@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "component": {
+    "name": "Reflaxe",
+    "upstreamRepository": "https://github.com/SomeRanDev/reflaxe.git",
+    "license": "MIT",
+    "licenseFile": "LICENSE",
+    "licenseSha256": "091dcef3e01fc680736f7e8c28a10e2e65224cc0fda7ba8a614f2daa9b10702d"
+  },
+  "upstream": {
+    "baseCommit": "3ec70a83936a8919e5441e03a6fdc1b17ec79881",
+    "baseDate": "2025-12-09T19:21:45-05:00",
+    "baseSubject": "Remove reflection from command management in Run.hx",
+    "lastAuditedHead": "73a983112e039daad46b37912ab238df6bf0cf53",
+    "lastAuditedAt": "2026-07-27",
+    "status": "The complete haxe.rust patch has not been submitted upstream. The upstream repository's complete open and closed pull-request list was checked on 2026-07-27; no pull request matches this patch."
+  },
+  "localPatch": {
+    "file": "reflaxe-rust.patch",
+    "sha256": "8221e5492d7a802a149c7d49243fe05b4e0de7bd0e11511ea459321696868d70",
+    "vendoredTreeSha256": "b49065ac48a754cd20ad0d6fcd5b7bdd8a67bcf34db965aad494263e854b9a8e",
+    "scope": [
+      "Run.hx",
+      "src"
+    ],
+    "changedFiles": [
+      "src/reflaxe/compiler/TargetCodeInjection.hx",
+      "src/reflaxe/compiler/TypeUsageTracker.hx",
+      "src/reflaxe/data/ClassVarData.hx",
+      "src/reflaxe/helpers/TypeHelper.hx",
+      "src/reflaxe/input/ClassModifier.hx",
+      "src/reflaxe/input/ModuleUsageTracker.hx",
+      "src/reflaxe/output/OutputManager.hx",
+      "src/reflaxe/preprocessors/implementations/MarkUnusedVariablesImpl.hx",
+      "src/reflaxe/preprocessors/implementations/RemoveTemporaryVariablesImpl.hx",
+      "src/reflaxe/preprocessors/implementations/RemoveUnnecessaryBlocksImpl.hx",
+      "src/reflaxe/preprocessors/implementations/everything_is_expr/EverythingIsExprSanitizer.hx"
+    ],
+    "why": "These framework changes expose typed compiler hooks and deterministic output behavior that haxe.rust uses. The patch is kept as one exact base-to-vendor diff so reviewers can reproduce the shipped source instead of relying on an informal list of edits.",
+    "verification": [
+      "node scripts/ci/vendor-reflaxe-provenance.js",
+      "node scripts/ci/vendor-reflaxe-provenance.js --upstream-dir /path/to/reflaxe",
+      "npm run test:all",
+      "npm run test:package-smoke"
+    ],
+    "changeGroups": [
+      {
+        "name": "typed target-code injection",
+        "files": [
+          "src/reflaxe/compiler/TargetCodeInjection.hx"
+        ],
+        "behavior": "Recognize the compiler's typed local injection function in addition to the original field form.",
+        "tests": [
+          "npm run test:rust-raw-authority",
+          "npm run test:all"
+        ]
+      },
+      {
+        "name": "Haxe 4.3.7 framework compatibility",
+        "files": [
+          "src/reflaxe/compiler/TypeUsageTracker.hx",
+          "src/reflaxe/data/ClassVarData.hx",
+          "src/reflaxe/helpers/TypeHelper.hx",
+          "src/reflaxe/input/ClassModifier.hx",
+          "src/reflaxe/input/ModuleUsageTracker.hx",
+          "src/reflaxe/output/OutputManager.hx",
+          "src/reflaxe/preprocessors/implementations/MarkUnusedVariablesImpl.hx",
+          "src/reflaxe/preprocessors/implementations/RemoveUnnecessaryBlocksImpl.hx"
+        ],
+        "behavior": "Use APIs and map iteration shapes that work with the pinned Haxe compiler without adding target-only iterator modules as an accidental side effect.",
+        "tests": [
+          "bash test/run-snapshots.sh",
+          "npm run test:package-smoke",
+          "npm run test:all"
+        ]
+      },
+      {
+        "name": "nullable temporary-variable safety",
+        "files": [
+          "src/reflaxe/preprocessors/implementations/RemoveTemporaryVariablesImpl.hx"
+        ],
+        "behavior": "Do not treat a variable declaration with no initializer as if it contained an expression.",
+        "tests": [
+          "bash test/run-snapshots.sh",
+          "npm run test:all"
+        ]
+      },
+      {
+        "name": "format cleanup",
+        "files": [
+          "src/reflaxe/preprocessors/implementations/everything_is_expr/EverythingIsExprSanitizer.hx"
+        ],
+        "behavior": "Remove one trailing-whitespace-only line from the vendored source.",
+        "tests": [
+          "git diff --check"
+        ]
+      }
+    ]
+  },
+  "localMetadata": {
+    "file": "haxelib.json",
+    "reason": "Package metadata identifies this directory as a vendored build input. It is not part of the source patch because the release package uses reflaxe.rust's own haxelib metadata."
+  },
+  "vendoredSurface": {
+    "copiedFromUpstream": [
+      "LICENSE",
+      "Run.hx",
+      "src"
+    ],
+    "localRecords": [
+      "PATCHES.md",
+      "haxelib.json",
+      "provenance.json",
+      "reflaxe-rust.patch"
+    ],
+    "omittedUpstreamFiles": "The upstream repository's development, documentation, test, and project metadata files are not needed to build or ship haxe.rust. The haxe.rust repository owns its own build, tests, package metadata, and release documents."
+  }
+}

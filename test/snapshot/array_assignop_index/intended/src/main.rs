@@ -71,9 +71,9 @@ fn main() {
     };
     println!(
         "{}",
-        hxrt::dynamic::from(
-            hxrt::string::HxString::from(a.join(hxrt::string::HxString::from(","))).clone()
-        )
+        hxrt::dynamic::from(hxrt::string::HxString::from(
+            a.join(hxrt::string::HxString::from(","))
+        ))
     );
     {
         let __hx_arr = a.clone();
@@ -86,9 +86,9 @@ fn main() {
     };
     println!(
         "{}",
-        hxrt::dynamic::from(
-            hxrt::string::HxString::from(a.join(hxrt::string::HxString::from(","))).clone()
-        )
+        hxrt::dynamic::from(hxrt::string::HxString::from(
+            a.join(hxrt::string::HxString::from(","))
+        ))
     );
     let b: hxrt::array::Array<f64> = hxrt::array::Array::<f64>::from_vec(vec![1.0, 2.0]);
     {
@@ -102,9 +102,9 @@ fn main() {
     };
     println!(
         "{}",
-        hxrt::dynamic::from(
-            hxrt::string::HxString::from(b.join(hxrt::string::HxString::from(","))).clone()
-        )
+        hxrt::dynamic::from(hxrt::string::HxString::from(
+            b.join(hxrt::string::HxString::from(","))
+        ))
     );
     let strings: hxrt::array::Array<hxrt::string::HxString> =
         hxrt::array::Array::<hxrt::string::HxString>::from_vec(vec![hxrt::string::HxString::from(
@@ -120,9 +120,9 @@ fn main() {
     }
     println!(
         "{}",
-        hxrt::dynamic::from(
-            hxrt::string::HxString::from(strings.join(hxrt::string::HxString::from(","))).clone()
-        )
+        hxrt::dynamic::from(hxrt::string::HxString::from(
+            strings.join(hxrt::string::HxString::from(","))
+        ))
     );
     let appended: hxrt::string::HxString = hxrt::string::HxString::from({
         let __hx_arr = strings;

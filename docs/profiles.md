@@ -252,9 +252,12 @@ The report schemas include explicit identity fields:
 Runtime requirement reason kinds are stable strings. The current ledger schema admits
 `object_identity`, `reference_mutation`, `dynamic`, `reflection`, `anonymous_object`, `exception`,
 `nullable_compat`, `shared_closure_cell`, `platform_abstraction`, `haxe_array_semantics`, and
-`haxe_string_semantics`. The first implementation emits only reasons it can justify from typed
-module usage or explicit defines; later typed-AST passes can add source-span precision without
-changing the schema.
+`haxe_string_semantics`. Value-storage reasons come from the same typed representation decisions
+used by lowering and clone/reuse analysis, so entries can carry exact source spans without a second
+type classifier. Operation-level reasons such as reflection, exceptions, and portable platform APIs
+remain dedicated semantic checks. Runtime-plan schema v4 retains its existing reason and source-kind
+vocabulary; decision-only function and iterator reasons are reserved for a future report-version
+migration while still participating in no-hxrt eligibility.
 
 ## Migration notes
 

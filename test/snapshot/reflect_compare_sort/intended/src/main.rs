@@ -65,8 +65,11 @@ fn main() {
                 let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                 {
                     let mut __b = __o.borrow_mut();
-                    __b.set("modelId", hxrt::string::HxString::from("b"));
-                    __b.set("rank", 2);
+                    __b.set_dyn(
+                        "modelId",
+                        hxrt::dynamic::from(hxrt::string::HxString::from("b")),
+                    );
+                    __b.set_dyn("rank", hxrt::dynamic::from(2));
                 };
                 __o
             },
@@ -74,8 +77,11 @@ fn main() {
                 let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                 {
                     let mut __b = __o.borrow_mut();
-                    __b.set("modelId", hxrt::string::HxString::from("a"));
-                    __b.set("rank", 3);
+                    __b.set_dyn(
+                        "modelId",
+                        hxrt::dynamic::from(hxrt::string::HxString::from("a")),
+                    );
+                    __b.set_dyn("rank", hxrt::dynamic::from(3));
                 };
                 __o
             },
@@ -83,8 +89,11 @@ fn main() {
                 let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                 {
                     let mut __b = __o.borrow_mut();
-                    __b.set("modelId", hxrt::string::HxString::from("a"));
-                    __b.set("rank", 1);
+                    __b.set_dyn(
+                        "modelId",
+                        hxrt::dynamic::from(hxrt::string::HxString::from("a")),
+                    );
+                    __b.set_dyn("rank", hxrt::dynamic::from(1));
                 };
                 __o
             },

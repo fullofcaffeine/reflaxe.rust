@@ -87,9 +87,9 @@ npx lix use haxe 4.3.7
 Run the generated project:
 
 ```bash
-cargo hx --action run
-cargo hx --action test
-cargo hx --action build --release
+cargo hx dev
+cargo hx test
+cargo hx build --release
 ```
 
 The generated README documents the same commands plus watch mode, guards, and pre-commit setup.

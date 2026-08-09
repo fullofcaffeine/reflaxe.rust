@@ -26,7 +26,7 @@ _Status snapshot generated from the internal tracker via `npm run docs:sync:prog
 | Real-app harness complete | App-scale behavior is validated in CI-style flows. | closed |
 | Release-evidence hardening closed | Public readiness claims, semantic proof depth, and tracker truth were aligned in the latest hardening tranche. | closed |
 
-- Release-evidence hardening checks closed: **5 / 5 (100%)**
+- Release-evidence hardening checks closed: **21 / 21 (100%)**
 - Release-evidence hardening checks still open: **0**
 <!-- GENERATED:vision-status:end -->
 

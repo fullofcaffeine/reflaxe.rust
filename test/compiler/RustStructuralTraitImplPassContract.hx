@@ -139,7 +139,7 @@ class RustStructuralTraitImplPassContract {
 	}
 
 	public static function run():Void {
-		var raw = RustRawCode.metadataAt("first();  \n\n\nsecond(); \t", RawTraitImplementation, Context.currentPos());
+		var raw = RustRawCode.traitImplementationAt("first();  \n\n\nsecond(); \t", Context.currentPos());
 		var constantInitializer = EBlock({
 			stmts: [
 				RLet("const_alias", false, null,
@@ -238,7 +238,7 @@ class RustStructuralTraitImplPassContract {
 			RustWherePredicate.typeBounds(named("T"), [GenericTraitBound(path(["hxrt", "ImplWhere"]))])
 		]), [
 			AssocType(RustAssociatedTypeDeclaration.named("Output", RustGenericParameters.empty(), [], RustWhereClause.empty(), hxrtType("TypeValue"))),
-			AssocRaw(RustRawCode.metadataAt("fn raw() { hxrt::raw(); }", RawTraitImplementation, Context.currentPos()))
+			AssocRaw(RustRawCode.traitImplementationAt("fn raw() { hxrt::raw(); }", Context.currentPos()))
 		]);
 		var trait = RustTraitDeclaration.named(VPrivate, "Surface", RustGenericParameters.empty(), [
 			GenericTraitBound(path(["hxrt", "Super"]))

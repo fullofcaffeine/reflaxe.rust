@@ -25,7 +25,7 @@ _Status snapshot generated from the internal tracker via `npm run docs:sync:prog
 | Real-application stress harness | Non-trivial app coverage validates behavior under realistic usage. | closed |
 | Release-evidence hardening | Status docs, semantic-confidence evidence, and readiness claims have been hardened against the current proof depth. | closed |
 
-- Hardening checklist completion: **5 / 5 closed (100%)**
+- Hardening checklist completion: **21 / 21 closed (100%)**
 - Remaining hardening checks: **0**
 <!-- GENERATED:progress-status:end -->
 

@@ -29,17 +29,25 @@ Install with either:
 
 ## Quick start
 
-From the repo root:
+From an application or example directory:
 
 ```bash
-npm run dev:watch -- --hxml examples/hello/compile.hxml
+cargo hx dev
 ```
 
 That runs in `run` mode by default:
 
+- choose the same `compile*.hxml` file as the one-shot `cargo hx` commands
 - compile Haxe with the selected `.hxml`
 - run generated Rust with `cargo run -q`
 - repeat on file changes
+
+For example, from the compiler checkout:
+
+```bash
+cd examples/hello
+cargo hx dev
+```
 
 Mode guardrail:
 
@@ -51,36 +59,37 @@ Mode guardrail:
 Run tests on every change:
 
 ```bash
-npm run dev:watch -- --hxml examples/hello/compile.hxml --mode test
+cargo hx dev --mode test
 ```
 
 Compile only (no `cargo run` / `cargo test`):
 
 ```bash
-npm run dev:watch -- --hxml examples/hello/compile.hxml --mode build
+cargo hx dev --mode build
 ```
 
 Run one cycle and exit (no watcher required):
 
 ```bash
-npm run dev:watch -- --hxml examples/hello/compile.hxml --once
+cargo hx dev --once
 ```
 
 Disable the compile server (force direct Haxe compile each cycle):
 
 ```bash
-npm run dev:watch -- --hxml examples/hello/compile.hxml --no-haxe-server
+cargo hx dev --no-haxe-server
 ```
 
 Equivalent environment override:
 
 ```bash
-HAXE_RUST_WATCH_NO_SERVER=1 npm run dev:watch -- --hxml examples/hello/compile.hxml
+HAXE_RUST_WATCH_NO_SERVER=1 cargo hx dev
 ```
 
 ## Arguments
 
-- `--hxml <path>`: required build target file.
+- `--profile <name>`: select `compile.<profile>.hxml` when present.
+- `--hxml <path>`: explicitly select a build target instead of automatic selection.
 - `--mode <run|build|test>`: per-change action. Default `run`.
 - `--watch <path>`: add extra paths to watch (repeatable).
 - `--debounce-ms <n>`: delay before rebuild. Default `250`.
@@ -88,6 +97,9 @@ HAXE_RUST_WATCH_NO_SERVER=1 npm run dev:watch -- --hxml examples/hello/compile.h
 - `--no-haxe-server`: skip the incremental Haxe compile server and compile directly.
 - `--haxe-bin <path>`: override Haxe binary.
 - `--cargo-bin <path>`: override Cargo binary.
+
+The lower-level `bash scripts/dev/watch-haxe-rust.sh --hxml ...` command remains available for
+custom tooling. Application developers normally should not need it.
 
 ## Practical tips
 

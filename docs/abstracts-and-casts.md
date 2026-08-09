@@ -10,6 +10,13 @@ Practical impact:
 
 - `abstract Meters(Int)` compiles to Rust `i32`
 - `enum abstract Color(Int)` compiles to Rust `i32`
+- `abstract BorrowedAlias<T>(rust.Ref<T>)` still compiles to Rust `&T` and keeps the same scoped-borrow
+  restrictions as `rust.Ref<T>`; the abstract name does not turn it into owned storage
+- an ordinary abstract around a complete anonymous record also keeps the record's real field
+  carriers, so it cannot hide a scoped `Ref`, `MutRef`, `Slice`, `MutSlice`, or `Str` field from the
+  early lifetime check
+- the same check follows a scoped borrow nested inside a Rust-preserved array, function signature,
+  or retained generic parameter; wrapping the outer field does not make that nested reference owned
 - `@:from` / `@:to` affect typing, but runtime code usually becomes:
   - a cast (`as`) for numeric conversions, or
   - a static helper call (`*_Impl_`), depending on how Haxe lowers the operation
@@ -24,4 +31,3 @@ When Haxe produces a typed `cast` between `Int` and `Float`, the backend emits a
 - `cast (i: Int)` to `Float` → `(i as f64)`
 
 This is intended to be “portable enough” for Haxe semantics (truncation toward zero), while staying idiomatic Rust.
-

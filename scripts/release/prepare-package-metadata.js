@@ -2,7 +2,7 @@
 
 const fs = require('fs')
 const path = require('path')
-const semver = require('semver')
+const { parseExactSemanticVersion } = require('./semantic-version.js')
 
 /**
  * Why
@@ -19,7 +19,9 @@ const semver = require('semver')
  */
 
 function preparePackageMetadata({ haxelibPath, metadataPath, version, tag, sourceCommit }) {
-  if (semver.valid(version, { loose: false }) === null) {
+  try {
+    parseExactSemanticVersion(version)
+  } catch (_error) {
     throw new Error(`invalid package semantic version: ${version}`)
   }
   if (typeof tag !== 'string' || tag.length === 0) throw new Error('package tag is required')

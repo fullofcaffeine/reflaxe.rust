@@ -32,10 +32,10 @@ hi
 
 ## Watch Loop
 
-From the repository root:
+From this example directory:
 
 ```bash
-npm run dev:watch -- --hxml examples/hello/compile.hxml
+cargo hx dev
 ```
 
 ## Read Next

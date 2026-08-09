@@ -79,17 +79,17 @@ fn make_payload(seed: i32) -> crate::HxRef<hxrt::anon::Anon> {
         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
         {
             let mut __b = __o.borrow_mut();
-            __b.set("enabled", n > 0);
-            __b.set(
+            __b.set_dyn("enabled", hxrt::dynamic::from(n > 0));
+            __b.set_dyn(
                 "label",
-                hxrt::string::HxString::from(format!(
+                hxrt::dynamic::from(hxrt::string::HxString::from(format!(
                     "{}{}",
                     "fn-",
                     hxrt::dynamic::from(n).to_haxe_string()
-                )),
+                ))),
             );
-            __b.set("mode", build_mode(n));
-            __b.set("functionNumber", n);
+            __b.set_dyn("mode", hxrt::dynamic::from(build_mode(n)));
+            __b.set_dyn("functionNumber", hxrt::dynamic::from(n));
         };
         __o
     };
@@ -253,37 +253,37 @@ fn payload_from_value(value: crate::haxe_json_value::Value) -> crate::HxRef<hxrt
         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
         {
             let mut __b = __o.borrow_mut();
-            __b.set(
+            __b.set_dyn(
                 "enabled",
-                bool_field(
+                hxrt::dynamic::from(bool_field(
                     value.clone(),
                     hxrt::string::HxString::from("enabled"),
                     false,
-                ),
+                )),
             );
-            __b.set(
+            __b.set_dyn(
                 "label",
-                string_field(
+                hxrt::dynamic::from(string_field(
                     value.clone(),
                     hxrt::string::HxString::from("label"),
                     hxrt::string::HxString::from(""),
-                ),
+                )),
             );
-            __b.set(
+            __b.set_dyn(
                 "mode",
-                mode_field(
+                hxrt::dynamic::from(mode_field(
                     value.clone(),
                     hxrt::string::HxString::from("mode"),
                     hxrt::string::HxString::from("stop"),
-                ),
+                )),
             );
-            __b.set(
+            __b.set_dyn(
                 "functionNumber",
-                int_field(
+                hxrt::dynamic::from(int_field(
                     value.clone(),
                     hxrt::string::HxString::from("functionNumber"),
                     -1,
-                ),
+                )),
             );
         };
         __o
@@ -299,10 +299,16 @@ fn make_binding_from_literal() -> crate::HxRef<crate::binding::Binding> {
         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
         {
             let mut __b = __o.borrow_mut();
-            __b.set("enabled", false);
-            __b.set("label", hxrt::string::HxString::from("none"));
-            __b.set("mode", hxrt::string::HxString::from("stop"));
-            __b.set("functionNumber", -1);
+            __b.set_dyn("enabled", hxrt::dynamic::from(false));
+            __b.set_dyn(
+                "label",
+                hxrt::dynamic::from(hxrt::string::HxString::from("none")),
+            );
+            __b.set_dyn(
+                "mode",
+                hxrt::dynamic::from(hxrt::string::HxString::from("stop")),
+            );
+            __b.set_dyn("functionNumber", hxrt::dynamic::from(-1));
         };
         __o
     });

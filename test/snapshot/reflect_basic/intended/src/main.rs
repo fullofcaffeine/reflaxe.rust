@@ -76,6 +76,11 @@ fn main() {
         let __val = 3;
         __obj.borrow_mut().n = __val;
     };
+    {
+        let __obj = c.clone();
+        let __val = hxrt::dynamic::from(143143);
+        __obj.borrow_mut().dynamic_value = __val;
+    };
     println!(
         "{}",
         hxrt::dynamic::from({
@@ -87,7 +92,7 @@ fn main() {
         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
         {
             let mut __b = __o.borrow_mut();
-            __b.set("x", 1);
+            __b.set_dyn("x", hxrt::dynamic::from(1));
         };
         __o
     };
@@ -96,10 +101,71 @@ fn main() {
     println!("{}", hxrt::dynamic::from(o.borrow().get::<i32>("x")));
     {
         let __obj = o.clone();
-        let __val = 2;
-        __obj.borrow_mut().set("x", __val);
+        let __val = hxrt::dynamic::from(2);
+        __obj.borrow_mut().set_dyn("x", __val);
     };
     println!("{}", hxrt::dynamic::from(o.borrow().get::<i32>("x")));
+    let functions: crate::HxRef<hxrt::anon::Anon> = {
+        let __o = crate::HxRef::new(hxrt::anon::Anon::new());
+        {
+            let mut __b = __o.borrow_mut();
+            __b.set_dyn(
+                "factory",
+                hxrt::dynamic::from_ref({
+                    let __rc: crate::HxRc<dyn Fn() -> hxrt::dynamic::Dynamic + Send + Sync> =
+                        crate::HxRc::new(move || {
+                            return hxrt::dynamic::from(169169);
+                        });
+                    crate::HxDynRef::new(__rc)
+                }),
+            );
+        };
+        __o
+    };
+    {
+        let __obj = functions.clone();
+        let __val = hxrt::dynamic::from_ref({
+            let __rc: crate::HxRc<dyn Fn() -> hxrt::dynamic::Dynamic + Send + Sync> =
+                crate::HxRc::new(move || {
+                    return hxrt::dynamic::from(170170);
+                });
+            crate::HxDynRef::new(__rc)
+        });
+        __obj.borrow_mut().set_dyn("factory", __val);
+    };
+    println!(
+        "{}",
+        ({
+            let __hx_value = functions.borrow().get::<crate::HxDynRef<
+                dyn Fn() -> hxrt::dynamic::Dynamic + Send + Sync,
+            >>("factory");
+            __hx_value
+        })()
+    );
+    let optional_for_dynamic: Option<bool> = None;
+    let dynamic_fields: crate::HxRef<hxrt::anon::Anon> = {
+        let __o = crate::HxRef::new(hxrt::anon::Anon::new());
+        {
+            let mut __b = __o.borrow_mut();
+            __b.set_dyn("value", hxrt::dynamic::from(true));
+        };
+        __o
+    };
+    {
+        let __obj = dynamic_fields.clone();
+        let __val = {
+            let __hx_opt = optional_for_dynamic;
+            match __hx_opt {
+                Some(__v) => hxrt::dynamic::from(__v),
+                None => hxrt::dynamic::Dynamic::null(),
+            }
+        };
+        __obj.borrow_mut().set_dyn("value", __val);
+    };
+    println!(
+        "{}",
+        hxrt::dynamic::from(dynamic_fields.borrow().get_dyn("value").is_null())
+    );
     let parsed: hxrt::dynamic::Dynamic =
         crate::haxe_json::Json::parse(hxrt::string::HxString::from("{\"label\":\"ok\",\"n\":3}"));
     println!(

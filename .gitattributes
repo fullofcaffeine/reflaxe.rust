@@ -11,3 +11,7 @@
 *.sh text eol=lf
 *.yaml text eol=lf
 *.yml text eol=lf
+
+# This is an exact upstream-to-vendor patch. Its added lines preserve upstream
+# whitespace byte-for-byte, so the outer repository must not reinterpret them.
+vendor/reflaxe/reflaxe-rust.patch text eol=lf whitespace=-blank-at-eol,-space-before-tab

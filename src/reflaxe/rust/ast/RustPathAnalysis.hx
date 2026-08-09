@@ -5,6 +5,8 @@ import reflaxe.rust.ast.RustAST.RustAttribute;
 import reflaxe.rust.ast.RustAST.RustAssociatedFunction;
 import reflaxe.rust.ast.RustAST.RustAssociatedItem;
 import reflaxe.rust.ast.RustAST.RustClosureParameter;
+import reflaxe.rust.ast.RustAST.RustBlock;
+import reflaxe.rust.ast.RustAST.RustExpr;
 import reflaxe.rust.ast.RustAST.RustGenericArgument;
 import reflaxe.rust.ast.RustAST.RustGenericBound;
 import reflaxe.rust.ast.RustAST.RustGenericParameters;
@@ -13,6 +15,7 @@ import reflaxe.rust.ast.RustAST.RustImpl;
 import reflaxe.rust.ast.RustAST.RustMember;
 import reflaxe.rust.ast.RustAST.RustPath;
 import reflaxe.rust.ast.RustAST.RustPattern;
+import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustTraitDeclaration;
 import reflaxe.rust.ast.RustAST.RustType;
 import reflaxe.rust.ast.RustAST.RustUseDeclaration;
@@ -165,6 +168,145 @@ class RustPathAnalysis {
 				}
 			case PWildcard | PPath(_) | PLitInt(_) | PLitUInt32(_) | PLitBool(_) | PLitString(_): false;
 		};
+	}
+
+	/**
+		Returns every distinct structural pattern binding in deterministic traversal order.
+
+		Why / What / How
+		- Nested tuple, tuple-struct, alias, and OR patterns can all introduce locals hidden from a shallow
+		  switch.
+		- Walks source order, records alias names before their children, and removes duplicates without
+		  sorting so safety checks can inspect compiler-owned bindings without parsing printer text.
+	**/
+	public static function patternBindingNames(pattern:RustPattern):Array<String> {
+		var names:Array<String> = [];
+		function add(name:String):Void {
+			if (name != null && names.indexOf(name) < 0)
+				names.push(name);
+		}
+		function collect(value:RustPattern):Void {
+			if (value == null)
+				return;
+			switch (value) {
+				case PBind(name): add(name);
+				case PAlias(name, inner):
+					add(name);
+					collect(inner);
+				case PTuple(fields) | PTupleStruct(_, fields) | POr(fields):
+					for (field in fields)
+						collect(field);
+				case PWildcard | PPath(_) | PLitInt(_) | PLitUInt32(_) | PLitBool(_) | PLitString(_):
+			}
+		}
+		collect(pattern);
+		return names;
+	}
+
+	/**
+		Conservatively reports whether executable Rust syntax contains one local-shaped spelling.
+
+		Why
+		- Ownership rewrites must not replace a block tail as though it still named an outer value after a
+		  preceding statement has read, assigned, or shadowed the same spelling.
+		- Printed-text scanning would miss structural nesting and violate the AST-first contract.
+
+		What
+		- Walks the closed statement/expression variants and treats origin wrappers as transparent.
+		- This is intentionally conservative across nested lexical scopes: a same-spelled inner binding may
+		  reject an optimization, but can never authorize an unsafe rewrite of the outer value.
+
+		How
+		- Use for safety gates, not exact use counts. Passes that rewrite locals still need their ordinary
+		  lexical shadow analysis.
+	**/
+	public static function statementContainsLocalSpelling(statement:RustStmt, name:String):Bool {
+		if (statement == null || name == null)
+			return false;
+		return switch (statement) {
+			case SOrigin(_, inner): statementContainsLocalSpelling(inner, name);
+			case RLet(binding, _, _, initializer):
+				binding == name || (initializer != null && expressionContainsLocalSpelling(initializer, name));
+			case RSemi(expression) | RExpr(expression, _): expressionContainsLocalSpelling(expression, name);
+			case RReturn(expression): expression != null && expressionContainsLocalSpelling(expression, name);
+			case RWhile(condition, body):
+				expressionContainsLocalSpelling(condition, name) || blockContainsLocalSpelling(body, name);
+			case RLoop(body): blockContainsLocalSpelling(body, name);
+			case RFor(binding, iterable, body):
+				binding == name || expressionContainsLocalSpelling(iterable, name) || blockContainsLocalSpelling(body, name);
+			case RBreak | RContinue: false;
+		};
+	}
+
+	static function blockContainsLocalSpelling(block:RustBlock, name:String):Bool {
+		if (block == null)
+			return false;
+		for (statement in block.stmts) {
+			if (statementContainsLocalSpelling(statement, name))
+				return true;
+		}
+		return block.tail != null && expressionContainsLocalSpelling(block.tail, name);
+	}
+
+	static function expressionContainsLocalSpelling(expression:RustExpr, name:String):Bool {
+		if (expression == null)
+			return false;
+		return switch (expression) {
+			case EOrigin(_, inner): expressionContainsLocalSpelling(inner, name);
+			case EPath(path): localIdentifierName(path) == name;
+			case ECall(functionExpression, arguments):
+				expressionContainsLocalSpelling(functionExpression, name) || expressionsContainLocalSpelling(arguments, name);
+			case EMacroCall(_, arguments): expressionsContainLocalSpelling(arguments, name);
+			case EClosure(parameters, body, _):
+				closureParametersBindName(parameters, name) || blockContainsLocalSpelling(body, name);
+			case EBinary(_, left, right) | ERange(left, right) | EAssign(left, right):
+				expressionContainsLocalSpelling(left, name) || expressionContainsLocalSpelling(right, name);
+			case EUnary(_, inner) | ECast(inner, _) | EAwait(inner): expressionContainsLocalSpelling(inner, name);
+			case EIndex(receiver, index):
+				expressionContainsLocalSpelling(receiver, name) || expressionContainsLocalSpelling(index, name);
+			case EStructLit(_, fields): {
+					var found = false;
+					for (field in fields) {
+						if (expressionContainsLocalSpelling(field.expr, name)) {
+							found = true;
+							break;
+						}
+					}
+					found;
+				}
+			case EBlock(block) | EPinAsyncMove(block): blockContainsLocalSpelling(block, name);
+			case EIf(condition, thenExpression, elseExpression):
+				expressionContainsLocalSpelling(condition, name)
+				|| expressionContainsLocalSpelling(thenExpression, name)
+				|| (elseExpression != null && expressionContainsLocalSpelling(elseExpression, name));
+			case EMatch(scrutinee, arms): {
+					var found = expressionContainsLocalSpelling(scrutinee, name);
+					if (!found) {
+						for (arm in arms) {
+							if (patternBindsName(arm.pat, name) || expressionContainsLocalSpelling(arm.expr, name)) {
+								found = true;
+								break;
+							}
+						}
+					}
+					found;
+				}
+			case EField(receiver, _): expressionContainsLocalSpelling(receiver, name);
+			// Raw Rust is intentionally opaque to structural analysis. Treat it as a possible use so an
+			// ownership optimization can never erase a binding that source-authorized target code needs.
+			case ERaw(_): true;
+			case ESelf | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_): false;
+		};
+	}
+
+	static function expressionsContainLocalSpelling(expressions:Array<RustExpr>, name:String):Bool {
+		if (expressions == null)
+			return false;
+		for (expression in expressions) {
+			if (expressionContainsLocalSpelling(expression, name))
+				return true;
+		}
+		return false;
 	}
 
 	/**

@@ -73,7 +73,7 @@ fn main() {
     );
     println!(
         "{}",
-        hxrt::dynamic::from(hxrt::string::HxString::from(1.5.to_string()).clone())
+        hxrt::dynamic::from(hxrt::string::HxString::from(1.5.to_string()))
     );
     println!(
         "{}",
@@ -86,13 +86,13 @@ fn main() {
     let xs: hxrt::array::Array<i32> = hxrt::array::Array::<i32>::from_vec(vec![1, 2, 3]);
     println!(
         "{}",
-        hxrt::dynamic::from(
-            hxrt::string::HxString::from(hxrt::dynamic::from(xs.clone()).to_haxe_string()).clone()
-        )
+        hxrt::dynamic::from(hxrt::string::HxString::from(
+            hxrt::dynamic::from_ref(xs.clone()).to_haxe_string()
+        ))
     );
     println!(
         "{}",
-        hxrt::dynamic::from(hxrt::string::HxString::from(xs.toString()).clone())
+        hxrt::dynamic::from(hxrt::string::HxString::from(xs.toString()))
     );
     println!(
         "{}",
@@ -101,9 +101,9 @@ fn main() {
     let foo: crate::HxRef<crate::foo::Foo> = crate::foo::Foo::new(3);
     println!(
         "{}",
-        hxrt::dynamic::from(
-            hxrt::string::HxString::from(hxrt::dynamic::from(foo.clone()).to_haxe_string()).clone()
-        )
+        hxrt::dynamic::from(hxrt::string::HxString::from(
+            hxrt::dynamic::from_ref_with_type_id(foo.clone(), 0x43dd80b3u32).to_haxe_string()
+        ))
     );
     println!(
         "{}",

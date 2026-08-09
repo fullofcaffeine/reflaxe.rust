@@ -1,0 +1,215 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:reflaxe-rust:schema:rust-source-map:v1",
+  "title": "reflaxe.rust rust-source-map.json schema v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schemaVersion",
+    "generator",
+    "files"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "generator": {
+      "const": "reflaxe.rust"
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/generatedFile"
+      }
+    }
+  },
+  "$defs": {
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//).+$"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "positive": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "generatedSpan": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "startByte",
+        "endByte",
+        "startLine",
+        "startColumn",
+        "endLine",
+        "endColumn"
+      ],
+      "properties": {
+        "startByte": {
+          "$ref": "#/$defs/count"
+        },
+        "endByte": {
+          "$ref": "#/$defs/positive"
+        },
+        "startLine": {
+          "$ref": "#/$defs/positive"
+        },
+        "startColumn": {
+          "$ref": "#/$defs/positive"
+        },
+        "endLine": {
+          "$ref": "#/$defs/positive"
+        },
+        "endColumn": {
+          "$ref": "#/$defs/positive"
+        }
+      }
+    },
+    "haxeSourceSpan": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "file",
+        "startByte",
+        "endByte",
+        "startLine",
+        "startColumn",
+        "endLine",
+        "endColumn"
+      ],
+      "properties": {
+        "file": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "startByte": {
+          "$ref": "#/$defs/count"
+        },
+        "endByte": {
+          "$ref": "#/$defs/count"
+        },
+        "startLine": {
+          "$ref": "#/$defs/positive"
+        },
+        "startColumn": {
+          "$ref": "#/$defs/positive"
+        },
+        "endLine": {
+          "$ref": "#/$defs/positive"
+        },
+        "endColumn": {
+          "$ref": "#/$defs/positive"
+        }
+      }
+    },
+    "origin": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "required": [
+            "kind",
+            "source"
+          ],
+          "properties": {
+            "kind": {
+              "const": "haxe-source"
+            },
+            "source": {
+              "$ref": "#/$defs/haxeSourceSpan"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "required": [
+            "kind",
+            "reason"
+          ],
+          "properties": {
+            "kind": {
+              "const": "compiler-generated"
+            },
+            "reason": {
+              "$ref": "#/$defs/generatedReason"
+            }
+          }
+        }
+      ]
+    },
+    "mapping": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "nodeKind",
+        "originDepth",
+        "generated",
+        "origin"
+      ],
+      "properties": {
+        "nodeKind": {
+          "enum": [
+            "item",
+            "statement",
+            "expression"
+          ]
+        },
+        "originDepth": {
+          "$ref": "#/$defs/count"
+        },
+        "generated": {
+          "$ref": "#/$defs/generatedSpan"
+        },
+        "origin": {
+          "$ref": "#/$defs/origin"
+        }
+      }
+    },
+    "generatedFile": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "generatedFile",
+        "byteLength",
+        "lineCount",
+        "contentHash",
+        "mappings"
+      ],
+      "properties": {
+        "generatedFile": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "byteLength": {
+          "$ref": "#/$defs/count"
+        },
+        "lineCount": {
+          "$ref": "#/$defs/count"
+        },
+        "contentHash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "mappings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mapping"
+          }
+        }
+      }
+    },
+    "generatedReason": {
+      "enum": [
+        "generated-file-marker",
+        "module-scaffolding",
+        "lowering-scaffolding",
+        "static-storage",
+        "default-value-fallback",
+        "unsupported-fallback"
+      ]
+    }
+  }
+}

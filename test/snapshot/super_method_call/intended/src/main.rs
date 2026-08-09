@@ -65,14 +65,11 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
 
 fn main() {
     let c: crate::HxRef<crate::c::C> = crate::c::C::new();
-    println!("{}", hxrt::dynamic::from(crate::c::C::sound(&*c).clone()));
+    println!("{}", hxrt::dynamic::from(crate::c::C::sound(&*c)));
     println!(
         "{}",
-        hxrt::dynamic::from(crate::c::C::call_super_sound(&*c).clone())
+        hxrt::dynamic::from(crate::c::C::call_super_sound(&*c))
     );
-    println!(
-        "{}",
-        hxrt::dynamic::from(crate::c::C::call_super_foo(&*c).clone())
-    );
+    println!("{}", hxrt::dynamic::from(crate::c::C::call_super_foo(&*c)));
     println!("{}", hxrt::dynamic::from(crate::c::C::inc_super_x(&*c)));
 }

@@ -131,7 +131,9 @@ Limitations:
   expression in compiler-owned syntax.
 - Impl body strings are a narrow metadata escape hatch, not the long-term app authoring model for
   common Rust trait patterns. See [Metal trait, impl, and bound model](metal-trait-impl-bound-model.md)
-  for the current contract and planned typed surfaces.
+  for the current contract and planned typed surfaces. The compiler-wide
+  [raw-authority inventory](rust-raw-authority.md) proves that the body is the only metadata-owned
+  raw producer and that no compiler-owned raw lowering remains.
 
 ## Escape hatch: `__rust__` injection (framework-only)
 
@@ -148,6 +150,9 @@ Important:
 
 - Examples/snapshots are guarded by `-D reflaxe_rust_strict_examples` and will fail if `__rust__`
   leaks into user code via inlining.
+- Both injection branches are listed explicitly in the generated
+  [raw-authority inventory](rust-raw-authority-inventory.json); adding another producer requires a
+  reviewed inventory update.
 
 ## Scoped raw authority (`@:rustAllowRaw`)
 

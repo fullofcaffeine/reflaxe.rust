@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 1,
+  "decisionSchemaVersion": 1,
+  "generator": "reflaxe.rust",
+  "vocabularies": [
+    {
+      "key": "sourceValueKinds",
+      "haxeType": "RustSourceValueKind",
+      "description": "The normalized typed-Haxe value family presented to the representation planner.",
+      "values": [
+        { "name": "SourceScalar", "id": "scalar", "meaning": "a primitive scalar with Rust Copy semantics" },
+        { "name": "SourceEnumValue", "id": "enum_value", "meaning": "a reusable Haxe enum value" },
+        { "name": "SourceClassReference", "id": "class_reference", "meaning": "a concrete Haxe class reference with stable identity and shared mutation" },
+        { "name": "SourcePolymorphicReference", "id": "polymorphic_reference", "meaning": "an interface or polymorphic class reference represented through a trait object" },
+        { "name": "SourceBorrowedRef", "id": "borrowed_ref", "meaning": "an immutable rust.Ref borrow token" },
+        { "name": "SourceBorrowedMutRef", "id": "borrowed_mut_ref", "meaning": "a mutable rust.MutRef borrow token" },
+        { "name": "SourceBorrowedStr", "id": "borrowed_str", "meaning": "a borrowed rust.Str view" },
+        { "name": "SourceBorrowedSlice", "id": "borrowed_slice", "meaning": "an immutable rust.Slice view" },
+        { "name": "SourceBorrowedMutSlice", "id": "borrowed_mut_slice", "meaning": "a mutable rust.MutSlice view" },
+        { "name": "SourceNativeOwned", "id": "native_owned", "meaning": "an explicitly Rust-native owned value" },
+        { "name": "SourceNativeHandle", "id": "native_handle", "meaning": "an explicitly Rust-native resource or RAII handle" },
+        { "name": "SourceDynamic", "id": "dynamic", "meaning": "a Haxe Dynamic-compatible payload" },
+        { "name": "SourceString", "id": "string", "meaning": "a Haxe String using the ordinary owned Rust string contract" },
+        { "name": "SourceNullableStringCompat", "id": "nullable_string_compat", "meaning": "a Haxe String using the runtime-backed nullable compatibility contract" },
+        { "name": "SourceArray", "id": "array", "meaning": "a Haxe Array with shared identity and mutation" },
+        { "name": "SourceAnonymousObject", "id": "anonymous_object", "meaning": "a runtime-shaped anonymous Haxe object" },
+        { "name": "SourceFunctionValue", "id": "function_value", "meaning": "a reusable Haxe function value" },
+        { "name": "SourceIterator", "id": "iterator", "meaning": "the Haxe method-shaped iterator protocol" },
+        { "name": "SourcePortableFacade", "id": "portable_facade", "meaning": "a portable facade with an admitted native Rust representation" },
+        { "name": "SourceCoreHandle", "id": "core_handle", "meaning": "a compiler-known Class or Enum numeric handle" },
+        { "name": "SourceBytesReference", "id": "bytes_reference", "meaning": "a shared haxe.io.Bytes reference" }
+      ]
+    },
+    {
+      "key": "identityFacts",
+      "haxeType": "RustIdentityFact",
+      "description": "Whether observable source semantics require stable reference identity.",
+      "values": [
+        { "name": "IdentityNone", "id": "none", "meaning": "the value has no observable reference identity" },
+        { "name": "IdentityStable", "id": "stable", "meaning": "aliases must observe the same stable reference identity" }
+      ]
+    },
+    {
+      "key": "mutationFacts",
+      "haxeType": "RustMutationFact",
+      "description": "How mutation is observable through the typed source value.",
+      "values": [
+        { "name": "MutationImmutable", "id": "immutable", "meaning": "the source value is immutable" },
+        { "name": "MutationOwned", "id": "owned", "meaning": "mutation belongs to one owned Rust value" },
+        { "name": "MutationExclusiveBorrow", "id": "exclusive_borrow", "meaning": "mutation is admitted only through one lexical mutable borrow" },
+        { "name": "MutationShared", "id": "shared", "meaning": "mutation must remain visible through aliases" }
+      ]
+    },
+    {
+      "key": "escapeFacts",
+      "haxeType": "RustEscapeFact",
+      "description": "Whether a value may outlive its immediate lexical region.",
+      "values": [
+        { "name": "EscapeLocal", "id": "local", "meaning": "the value is confined to its admitted lexical region" },
+        { "name": "EscapeMay", "id": "may_escape", "meaning": "the value may be returned, stored, captured, or otherwise escape" }
+      ]
+    },
+    {
+      "key": "surfaceFacts",
+      "haxeType": "RustSurfaceFact",
+      "description": "The source-language authority that admits the representation.",
+      "values": [
+        { "name": "SurfacePortableHaxe", "id": "portable_haxe", "meaning": "ordinary portable Haxe semantics" },
+        { "name": "SurfacePortableFacade", "id": "portable_facade", "meaning": "an explicitly admitted portable facade" },
+        { "name": "SurfaceRustNative", "id": "rust_native", "meaning": "an explicit rust.* or typed native surface" }
+      ]
+    },
+    {
+      "key": "nullabilityFacts",
+      "haxeType": "RustNullabilityFact",
+      "description": "Whether the typed source value admits null.",
+      "values": [
+        { "name": "NonNullable", "id": "non_nullable", "meaning": "null is outside the source contract" },
+        { "name": "Nullable", "id": "nullable", "meaning": "the representation must preserve a null value" }
+      ]
+    },
+    {
+      "key": "boundaryKinds",
+      "haxeType": "RustBoundaryKind",
+      "description": "The contextual boundary at which Rust trait or lifetime requirements apply.",
+      "values": [
+        { "name": "BoundaryLocal", "id": "local", "meaning": "ordinary single-thread local use" },
+        { "name": "BoundaryThread", "id": "thread", "meaning": "an OS-thread spawn boundary" },
+        { "name": "BoundaryTask", "id": "task", "meaning": "an asynchronous task spawn boundary" },
+        { "name": "BoundaryDynamic", "id": "dynamic", "meaning": "boxing into the runtime Dynamic payload" },
+        { "name": "BoundaryStaticStorage", "id": "static_storage", "meaning": "shared static storage with process lifetime" }
+      ]
+    },
+    {
+      "key": "representationKinds",
+      "haxeType": "RustRepresentationKind",
+      "description": "The closed Rust storage shape selected before AST emission.",
+      "values": [
+        { "name": "RepresentationCopyValue", "id": "copy_value", "meaning": "an ordinary Rust Copy value" },
+        { "name": "RepresentationOwnedValue", "id": "owned_value", "meaning": "an ordinary owned Rust value" },
+        { "name": "RepresentationSharedIdentity", "id": "shared_identity", "meaning": "a nullable HxRef-style shared identity handle" },
+        { "name": "RepresentationSharedTraitObject", "id": "shared_trait_object", "meaning": "a shared trait-object identity handle" },
+        { "name": "RepresentationBorrowedToken", "id": "borrowed_token", "meaning": "a lexical Rust borrow or borrowed view" },
+        { "name": "RepresentationNativeHandle", "id": "native_handle", "meaning": "an owned Rust-native resource or RAII handle" },
+        { "name": "RepresentationDynamicPayload", "id": "dynamic_payload", "meaning": "the hxrt Dynamic carrier" },
+        { "name": "RepresentationRuntimeString", "id": "runtime_string", "meaning": "the nullable Haxe-compatible runtime string carrier" },
+        { "name": "RepresentationRuntimeArray", "id": "runtime_array", "meaning": "the Haxe-compatible shared runtime array carrier" },
+        { "name": "RepresentationRuntimeAnonymousObject", "id": "runtime_anonymous_object", "meaning": "the shared runtime anonymous-object carrier" },
+        { "name": "RepresentationSharedFunction", "id": "shared_function", "meaning": "the shared Haxe function-value carrier" },
+        { "name": "RepresentationRuntimeIterator", "id": "runtime_iterator", "meaning": "the Haxe iterator adapter carrier" }
+      ]
+    },
+    {
+      "key": "nullEncodings",
+      "haxeType": "RustNullEncoding",
+      "description": "How the selected Rust representation preserves source-level nullability.",
+      "values": [
+        { "name": "NullNotAdmitted", "id": "not_admitted", "meaning": "the typed source value does not admit null" },
+        { "name": "NullIntrinsic", "id": "intrinsic", "meaning": "the selected carrier owns its null sentinel" },
+        { "name": "NullOuterOption", "id": "outer_option", "meaning": "lowering wraps the selected base representation in Option" }
+      ]
+    },
+    {
+      "key": "ownershipPolicies",
+      "haxeType": "RustOwnershipPolicy",
+      "description": "The ownership behavior of the selected Rust representation.",
+      "values": [
+        { "name": "OwnershipCopy", "id": "copy", "meaning": "reads copy the value" },
+        { "name": "OwnershipMove", "id": "move", "meaning": "ordinary Rust moves own the value" },
+        { "name": "OwnershipShared", "id": "shared", "meaning": "a shared handle preserves aliases and identity" },
+        { "name": "OwnershipBorrowed", "id": "borrowed", "meaning": "the value is a lexical non-owning token" }
+      ]
+    },
+    {
+      "key": "reusePolicies",
+      "haxeType": "RustReusePolicy",
+      "description": "How lowering preserves source-level reuse without blanket Clone bounds.",
+      "values": [
+        { "name": "ReuseCopy", "id": "copy", "meaning": "reuse is free because the value is Copy" },
+        { "name": "ReuseMoveOnce", "id": "move_once", "meaning": "the value moves and cannot be implicitly reused" },
+        { "name": "ReuseCloneWhenNeeded", "id": "clone_when_needed", "meaning": "lowering clones only when later source reuse requires it" },
+        { "name": "ReuseBorrow", "id": "borrow", "meaning": "reuse remains inside the admitted borrow region" }
+      ]
+    },
+    {
+      "key": "representationReasons",
+      "haxeType": "RustRepresentationReason",
+      "description": "The stable reason why a Rust storage shape was selected.",
+      "values": [
+        { "name": "ReasonHaxeScalar", "id": "haxe_scalar_value", "meaning": "the Haxe scalar maps directly to a Rust Copy value" },
+        { "name": "ReasonHaxeEnum", "id": "haxe_enum_value", "meaning": "the Haxe enum maps to an owned reusable Rust enum" },
+        { "name": "ReasonHaxeClassIdentity", "id": "haxe_class_identity", "meaning": "class aliases require shared identity and mutation" },
+        { "name": "ReasonHaxePolymorphicIdentity", "id": "haxe_polymorphic_identity", "meaning": "interface or subclass dispatch requires a shared trait object" },
+        { "name": "ReasonRustBorrowSurface", "id": "rust_borrow_surface", "meaning": "an explicit rust.* borrow surface admits a lexical Rust reference" },
+        { "name": "ReasonRustOwnedSurface", "id": "rust_owned_surface", "meaning": "an explicit rust.* surface admits an owned Rust value" },
+        { "name": "ReasonRustNativeHandle", "id": "rust_native_handle", "meaning": "an explicit native facade owns a Rust resource or RAII handle" },
+        { "name": "ReasonHaxeDynamicPayload", "id": "haxe_dynamic_payload", "meaning": "Dynamic semantics require the runtime payload carrier" },
+        { "name": "ReasonHaxeStringContract", "id": "haxe_string_contract", "meaning": "the selected Haxe string contract determines owned or runtime storage" },
+        { "name": "ReasonHaxeArrayContract", "id": "haxe_array_contract", "meaning": "Haxe Array aliases require shared runtime storage" },
+        { "name": "ReasonHaxeAnonymousObject", "id": "haxe_anonymous_object", "meaning": "anonymous-object fields require runtime object storage" },
+        { "name": "ReasonHaxeFunctionValue", "id": "haxe_function_value", "meaning": "Haxe function values are reusable shared callable handles" },
+        { "name": "ReasonHaxeIteratorContract", "id": "haxe_iterator_contract", "meaning": "the Haxe iterator protocol uses the runtime iterator adapter" },
+        { "name": "ReasonAdmittedPortableFacade", "id": "admitted_portable_facade", "meaning": "a per-surface contract admits the native representation" },
+        { "name": "ReasonHaxeCoreHandle", "id": "haxe_core_handle", "meaning": "Class and Enum values use compiler-known numeric handles" },
+        { "name": "ReasonHaxeBytesIdentity", "id": "haxe_bytes_identity", "meaning": "haxe.io.Bytes preserves shared identity and mutation" }
+      ]
+    },
+    {
+      "key": "runtimeRequirements",
+      "haxeType": "RustRuntimeRequirementKind",
+      "description": "The semantic reason a decision requires hxrt rather than ordinary Rust alone.",
+      "values": [
+        { "name": "RuntimeObjectIdentity", "id": "object_identity", "meaning": "Haxe object identity requires runtime-managed reference semantics", "consumers": ["representation-decision-v1", "runtime-plan-v4"] },
+        { "name": "RuntimeReferenceMutation", "id": "reference_mutation", "meaning": "shared reference mutation requires runtime-managed storage", "consumers": ["representation-decision-v1", "runtime-plan-v4"] },
+        { "name": "RuntimeDynamic", "id": "dynamic", "meaning": "Dynamic-compatible values require runtime representation", "consumers": ["representation-decision-v1", "runtime-plan-v4"] },
+        { "name": "RuntimeReflection", "id": "reflection", "meaning": "reflection or runtime introspection requires runtime support", "consumers": ["representation-decision-v1", "runtime-plan-v4"] },
+        { "name": "RuntimeAnonymousObject", "id": "anonymous_object", "meaning": "anonymous runtime objects require runtime object storage", "consumers": ["representation-decision-v1", "runtime-plan-v4"] },
+        { "name": "RuntimeException", "id": "exception", "meaning": "Haxe exception payload semantics require runtime support", "consumers": ["representation-decision-v1", "runtime-plan-v4"] },
+        { "name": "RuntimeNullableCompat", "id": "nullable_compat", "meaning": "nullable compatibility mode requires runtime-backed null representation", "consumers": ["representation-decision-v1", "runtime-plan-v4"] },
+        { "name": "RuntimeSharedClosureCell", "id": "shared_closure_cell", "meaning": "captured shared mutation requires a runtime-managed closure cell", "consumers": ["representation-decision-v1", "runtime-plan-v4"] },
+        { "name": "RuntimePlatformAbstraction", "id": "platform_abstraction", "meaning": "portable platform APIs require a runtime abstraction", "consumers": ["representation-decision-v1", "runtime-plan-v4"] },
+        { "name": "RuntimeHaxeArraySemantics", "id": "haxe_array_semantics", "meaning": "Haxe Array semantics require runtime array representation", "consumers": ["representation-decision-v1", "runtime-plan-v4"] },
+        { "name": "RuntimeHaxeStringSemantics", "id": "haxe_string_semantics", "meaning": "Haxe String compatibility requires runtime string representation", "consumers": ["representation-decision-v1", "runtime-plan-v4"] },
+        { "name": "RuntimeFunctionValue", "id": "function_value", "meaning": "reusable Haxe callable values need a shared runtime carrier", "consumers": ["representation-decision-v1"] },
+        { "name": "RuntimeIteratorSemantics", "id": "iterator_semantics", "meaning": "the Haxe iterator adapter needs runtime state", "consumers": ["representation-decision-v1"] }
+      ]
+    },
+    {
+      "key": "requiredBounds",
+      "haxeType": "RustRequiredBound",
+      "description": "The contextual Rust trait or lifetime requirement introduced at a real boundary.",
+      "values": [
+        { "name": "BoundClone", "id": "clone", "meaning": "the boundary needs to duplicate the payload" },
+        { "name": "BoundSend", "id": "send", "meaning": "ownership may cross a Rust thread or task" },
+        { "name": "BoundSync", "id": "sync", "meaning": "shared access may cross a Rust thread or task" },
+        { "name": "BoundStatic", "id": "static", "meaning": "the payload must outlive borrowed source regions" }
+      ]
+    }
+  ]
+}

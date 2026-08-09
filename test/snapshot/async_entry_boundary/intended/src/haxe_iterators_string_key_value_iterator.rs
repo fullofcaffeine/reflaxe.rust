@@ -44,13 +44,16 @@ impl StringKeyValueIterator {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("key", {
-                    let __b = __hx_this.borrow();
-                    __b.offset
-                });
-                __b.set(
+                __b.set_dyn(
+                    "key",
+                    hxrt::dynamic::from({
+                        let __b = __hx_this.borrow();
+                        __b.offset
+                    }),
+                );
+                __b.set_dyn(
                     "value",
-                    crate::string_tools::StringTools::fast_code_at(
+                    hxrt::dynamic::from(crate::string_tools::StringTools::fast_code_at(
                         {
                             let __b = __hx_this.borrow();
                             __b.s.clone()
@@ -60,7 +63,7 @@ impl StringKeyValueIterator {
                             self_.borrow_mut().offset = __tmp + 1;
                             __tmp
                         },
-                    ),
+                    )),
                 );
             };
             __o

@@ -36,6 +36,10 @@ class NormalizePass implements RustPass {
 
 	function normalizeItem(item:RustItem):RustItem {
 		return switch (item) {
+			case ROrigin(origin, inner):
+				ROrigin(origin, normalizeItem(inner));
+			case RItemGroup(group):
+				RItemGroup(group.withItems([for (child in group) normalizeItem(child)]));
 			case RAttributed(value):
 				RAttributed(value.withTarget(normalizeItem(value.target)));
 			case RModule(declaration):

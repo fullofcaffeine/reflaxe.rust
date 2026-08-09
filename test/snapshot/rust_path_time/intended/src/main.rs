@@ -130,7 +130,7 @@ fn main() {
                 }
             }
             Option::None => {
-                println!("{}", hxrt::dynamic::from(os_lossy.clone()));
+                println!("{}", hxrt::dynamic::from(os_lossy));
             }
         }
     }

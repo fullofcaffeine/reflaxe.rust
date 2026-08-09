@@ -182,17 +182,35 @@ impl FileSystem {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("gid", gid);
-                __b.set("uid", uid);
-                __b.set("atime", crate::date::Date::from_time(at_ms));
-                __b.set("mtime", crate::date::Date::from_time(mt_ms));
-                __b.set("ctime", crate::date::Date::from_time(ct_ms));
-                __b.set("size", size);
-                __b.set("dev", dev);
-                __b.set("ino", ino);
-                __b.set("nlink", nlink);
-                __b.set("rdev", rdev);
-                __b.set("mode", mode);
+                __b.set_dyn("gid", hxrt::dynamic::from(gid));
+                __b.set_dyn("uid", hxrt::dynamic::from(uid));
+                __b.set_dyn(
+                    "atime",
+                    hxrt::dynamic::from_ref_with_type_id(
+                        crate::date::Date::from_time(at_ms),
+                        0x0d3c0cadu32,
+                    ),
+                );
+                __b.set_dyn(
+                    "mtime",
+                    hxrt::dynamic::from_ref_with_type_id(
+                        crate::date::Date::from_time(mt_ms),
+                        0x0d3c0cadu32,
+                    ),
+                );
+                __b.set_dyn(
+                    "ctime",
+                    hxrt::dynamic::from_ref_with_type_id(
+                        crate::date::Date::from_time(ct_ms),
+                        0x0d3c0cadu32,
+                    ),
+                );
+                __b.set_dyn("size", hxrt::dynamic::from(size));
+                __b.set_dyn("dev", hxrt::dynamic::from(dev));
+                __b.set_dyn("ino", hxrt::dynamic::from(ino));
+                __b.set_dyn("nlink", hxrt::dynamic::from(nlink));
+                __b.set_dyn("rdev", hxrt::dynamic::from(rdev));
+                __b.set_dyn("mode", hxrt::dynamic::from(mode));
             };
             __o
         };

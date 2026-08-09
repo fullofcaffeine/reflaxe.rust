@@ -8,6 +8,7 @@ import reflaxe.rust.ast.RustAST.RustFile;
 import reflaxe.rust.ast.RustAST.RustFunction;
 import reflaxe.rust.ast.RustAST.RustItem;
 import reflaxe.rust.ast.RustAST.RustMatchArm;
+import reflaxe.rust.ast.RustAST.RustOriginTools;
 import reflaxe.rust.ast.RustAST.RustPattern;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustStructLitField;
@@ -31,6 +32,8 @@ import reflaxe.rust.ast.RustPathAnalysis;
 	How
 	- Recursively rewrites nested blocks first (`EBlock`, closures, async move bodies, loop bodies),
 	  whether they live in ordinary functions, trait defaults, or associated constant initializers.
+	- Treats provenance wrappers as transparent evidence containers, preserving them while inspecting
+	  the wrapped assignment, borrow, path, and lexical-binding shapes.
 	- Tracks structural closure/match patterns plus nested `let` and `for` bindings while walking
 	  expressions, evaluating initializers/iterables before each new lexical shadow enters scope.
 	- Counts captured closure and async-move writes as repeated mutation evidence so declaration-only
@@ -60,6 +63,8 @@ class MutInferencePass implements RustPass {
 
 	function rewriteItem(item:RustItem):RustItem {
 		return switch (item) {
+			case ROrigin(origin, inner): ROrigin(origin, rewriteItem(inner));
+			case RItemGroup(group): RItemGroup(group.withItems([for (child in group) rewriteItem(child)]));
 			case RAttributed(value):
 				RAttributed(value.withTarget(rewriteItem(value.target)));
 			case RModule(declaration):
@@ -116,6 +121,7 @@ class MutInferencePass implements RustPass {
 
 	function rewriteStmt(stmt:RustStmt):RustStmt {
 		return switch (stmt) {
+			case SOrigin(origin, inner): SOrigin(origin, rewriteStmt(inner));
 			case RLet(name, mutable, ty, expr):
 				RLet(name, mutable, ty, expr == null ? null : rewriteExpr(expr));
 			case RSemi(expr):
@@ -137,6 +143,7 @@ class MutInferencePass implements RustPass {
 
 	function rewriteExpr(expr:RustExpr):RustExpr {
 		return switch (expr) {
+			case EOrigin(origin, inner): EOrigin(origin, rewriteExpr(inner));
 			case ERaw(_) | ESelf | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 			case ECall(func, args):
@@ -227,6 +234,7 @@ class MutInferencePass implements RustPass {
 		**/
 		function collectDeclarationOnly(stmt:RustStmt):Void {
 			switch (stmt) {
+				case SOrigin(_, inner): collectDeclarationOnly(inner);
 				case RLet(name, _, _, null) if (name != "_"):
 					declarationOnly.set(name, true);
 				case _:
@@ -238,6 +246,8 @@ class MutInferencePass implements RustPass {
 
 		visitExpr = function(expr:RustExpr):Void {
 			switch (expr) {
+				case EOrigin(_, inner):
+					visitExpr(inner);
 				case EAssign(lhs, rhs):
 					markAssignmentTarget(lhs, out, isLexicallyShadowed);
 					visitExpr(rhs);
@@ -258,7 +268,7 @@ class MutInferencePass implements RustPass {
 					visitExpr(left);
 					visitExpr(right);
 				case EUnary(op, inner):
-					switch (inner) {
+					switch (RustOriginTools.withoutExpressionOrigin(inner)) {
 						case EPath(path):
 							if (StringTools.startsWith(op, "&mut")) {
 								var name = RustPathAnalysis.localIdentifierName(path);
@@ -307,6 +317,8 @@ class MutInferencePass implements RustPass {
 
 		visitStmt = function(stmt:RustStmt, collectOwnLetEvidence:Bool):Void {
 			switch (stmt) {
+				case SOrigin(_, inner):
+					visitStmt(inner, collectOwnLetEvidence);
 				case RLet(name, _, _, expr):
 					if (expr != null) {
 						if (collectOwnLetEvidence && exprProducesMutableGuard(expr) && !isLexicallyShadowed(name)) {
@@ -345,7 +357,7 @@ class MutInferencePass implements RustPass {
 				// borrow-guard evidence for the let itself.
 				visitStmt(stmt, isRootBlock);
 				if (!isRootBlock) {
-					switch (stmt) {
+					switch (RustOriginTools.withoutStatementOrigin(stmt)) {
 						case RLet(name, _, _, _) if (name != "_"):
 							shadowNames.push(name);
 							localShadowCount++;
@@ -393,7 +405,7 @@ class MutInferencePass implements RustPass {
 			if (targetShadowed)
 				break;
 			total += maxDirectWritesOnPathInStmt(stmt, target);
-			switch (stmt) {
+			switch (RustOriginTools.withoutStatementOrigin(stmt)) {
 				case RLet(name, _, _, expr) if (name == target):
 					if (preserveDeclarationOnlyRoot && !preservedRootDeclaration && expr == null)
 						preservedRootDeclaration = true;
@@ -409,6 +421,7 @@ class MutInferencePass implements RustPass {
 
 	function maxDirectWritesOnPathInStmt(stmt:RustStmt, target:String):Int {
 		return switch (stmt) {
+			case SOrigin(_, inner): maxDirectWritesOnPathInStmt(inner, target);
 			case RLet(_, _, _, expr):
 				expr == null ? 0 : maxDirectWritesOnPathInExpr(expr, target);
 			case RSemi(expr) | RExpr(expr, _):
@@ -430,6 +443,7 @@ class MutInferencePass implements RustPass {
 
 	function maxDirectWritesOnPathInExpr(expr:RustExpr, target:String):Int {
 		return switch (expr) {
+			case EOrigin(_, inner): maxDirectWritesOnPathInExpr(inner, target);
 			case EAssign(lhs, rhs):
 				(directAssignsTarget(lhs, target) ? 1 : 0) + maxDirectWritesOnPathInExpr(rhs, target);
 			case ECall(func, args):
@@ -489,7 +503,7 @@ class MutInferencePass implements RustPass {
 	}
 
 	function directAssignsTarget(lhs:RustExpr, target:String):Bool {
-		return switch (lhs) {
+		return switch (RustOriginTools.withoutExpressionOrigin(lhs)) {
 			case EPath(path):
 				RustPathAnalysis.localIdentifierName(path) == target;
 			case _:
@@ -497,17 +511,28 @@ class MutInferencePass implements RustPass {
 		}
 	}
 
+	/**
+		Recognizes a `borrow_mut()` initializer without letting provenance affect mutability.
+
+		Why / What / How
+		- Rust requires the guard binding itself to be mutable before `DerefMut` can be used.
+		- Origins may independently wrap the complete call, its member expression, or its receiver.
+		- Inspect the call and callee through the shared transparent helper while returning the untouched AST.
+	**/
 	function exprProducesMutableGuard(expr:RustExpr):Bool {
-		return switch (expr) {
-			case ECall(EField(_, member), []) if (RustPathAnalysis.matchesPlainMember(member, "borrow_mut")):
-				true;
+		return switch (RustOriginTools.withoutExpressionOrigin(expr)) {
+			case ECall(functionExpression, []):
+				switch (RustOriginTools.withoutExpressionOrigin(functionExpression)) {
+					case EField(_, member) if (RustPathAnalysis.matchesPlainMember(member, "borrow_mut")): true;
+					case _: false;
+				}
 			case _:
 				false;
 		};
 	}
 
 	function markAssignmentTarget(lhs:RustExpr, out:Map<String, Bool>, isShadowed:String->Bool):Void {
-		switch (lhs) {
+		switch (RustOriginTools.withoutExpressionOrigin(lhs)) {
 			case EPath(path):
 				var name = RustPathAnalysis.localIdentifierName(path);
 				if (name != null && !isShadowed(name))
@@ -521,6 +546,7 @@ class MutInferencePass implements RustPass {
 
 	function applyMutability(stmt:RustStmt, assigned:Map<String, Bool>):RustStmt {
 		return switch (stmt) {
+			case SOrigin(origin, inner): SOrigin(origin, applyMutability(inner, assigned));
 			case RLet(name, mutable, ty, expr):
 				var shouldBeMutable = name != "_" && (mutable || assigned.exists(name));
 				if (mutable != shouldBeMutable) RLet(name, shouldBeMutable, ty, expr) else stmt;

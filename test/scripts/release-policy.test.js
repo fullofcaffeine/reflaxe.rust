@@ -45,9 +45,10 @@ async function analyze(plugin, root, lastVersion, messages) {
 }
 
 async function verify(plugin, root, version) {
+  const env = { RELEASE_SOURCE_COMMIT: 'a'.repeat(40) }
   return plugin.verifyRelease(
     { policyPath: path.join(root, 'release-manifest.json') },
-    { cwd: root, nextRelease: { version }, logger: logger() }
+    { cwd: root, env, nextRelease: { version, gitTag: `v${version}` }, logger: logger() }
   )
 }
 

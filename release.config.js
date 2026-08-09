@@ -33,26 +33,6 @@ module.exports = {
       }
     ],
     './scripts/release/haxelib-artifact-plugin.cjs',
-    [
-      '@semantic-release/github',
-      {
-        successComment: false,
-        failComment: false,
-        releasedLabels: false,
-        assets: [
-          {
-            path: 'dist/reflaxe.rust.zip',
-            name: 'reflaxe.rust-${nextRelease.version}.zip',
-            label: 'reflaxe.rust haxelib package'
-          },
-          {
-            path: 'dist/reflaxe.rust.zip.sha256',
-            name: 'reflaxe.rust-${nextRelease.version}.zip.sha256',
-            label: 'SHA-256 checksum'
-          }
-        ]
-      }
-    ],
     './scripts/release/published-verifier-plugin.cjs'
   ]
 }

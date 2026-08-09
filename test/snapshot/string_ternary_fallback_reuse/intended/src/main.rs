@@ -75,13 +75,10 @@ fn pick(
 fn main() {
     println!(
         "{}",
-        hxrt::dynamic::from(
-            pick(
-                false,
-                hxrt::string::HxString::from("live"),
-                hxrt::string::HxString::from("backup")
-            )
-            .clone()
-        )
+        hxrt::dynamic::from(pick(
+            false,
+            hxrt::string::HxString::from("live"),
+            hxrt::string::HxString::from("backup")
+        ))
     );
 }

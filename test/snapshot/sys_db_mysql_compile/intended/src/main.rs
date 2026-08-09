@@ -74,10 +74,22 @@ fn main() {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("host", hxrt::string::HxString::from("127.0.0.1"));
-                __b.set("user", hxrt::string::HxString::from("root"));
-                __b.set("pass", hxrt::string::HxString::from(""));
-                __b.set("database", hxrt::string::HxString::null());
+                __b.set_dyn(
+                    "host",
+                    hxrt::dynamic::from(hxrt::string::HxString::from("127.0.0.1")),
+                );
+                __b.set_dyn(
+                    "user",
+                    hxrt::dynamic::from(hxrt::string::HxString::from("root")),
+                );
+                __b.set_dyn(
+                    "pass",
+                    hxrt::dynamic::from(hxrt::string::HxString::from("")),
+                );
+                __b.set_dyn("database", {
+                    let __hx_storage_value: hxrt::string::HxString = hxrt::string::HxString::null();
+                    hxrt::dynamic::from(__hx_storage_value)
+                });
             };
             __o
         });

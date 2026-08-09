@@ -413,6 +413,8 @@ run_snapshots_group() {
   run_stage "structural Rust member and closure contract" npm run test:rust-structural-member-closures
   run_stage "structural Rust item contract" npm run test:rust-structural-items
   run_stage "structural Rust trait and impl contract" npm run test:rust-structural-trait-impls
+  run_stage "deterministic Rust source-map contract" npm run test:rust-source-map
+  run_stage "typed Rust representation-plan contract" npm run test:rust-representation-plan
   run_stage "snapshots" run_snapshots
   intermediate_cleanup "snapshots"
 }
@@ -480,6 +482,8 @@ run_policy_group() {
 }
 
 run_packaging_group() {
+  run_stage "vendored Reflaxe and license artifact contract" npm run test:vendor-reflaxe-provenance
+
   if is_truthy "${HARNESS_SKIP_PACKAGE_SMOKE:-0}"; then
     echo "[harness] package smoke skipped (HARNESS_SKIP_PACKAGE_SMOKE=1)"
   else

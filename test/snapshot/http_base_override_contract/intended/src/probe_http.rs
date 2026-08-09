@@ -184,8 +184,8 @@ impl ProbeHttp {
                             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                             {
                                 let mut __b = __o.borrow_mut();
-                                __b.set("name", name.clone());
-                                __b.set("value", value.clone());
+                                __b.set_dyn("name", hxrt::dynamic::from(name.clone()));
+                                __b.set_dyn("value", hxrt::dynamic::from(value.clone()));
                             };
                             __o
                         };
@@ -208,8 +208,8 @@ impl ProbeHttp {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("name", name);
-                __b.set("value", value);
+                __b.set_dyn("name", hxrt::dynamic::from(name));
+                __b.set_dyn("value", hxrt::dynamic::from(value));
             };
             __o
         });
@@ -229,8 +229,8 @@ impl ProbeHttp {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("name", header);
-                __b.set("value", value);
+                __b.set_dyn("name", hxrt::dynamic::from(header));
+                __b.set_dyn("value", hxrt::dynamic::from(value));
             };
             __o
         });
@@ -268,8 +268,8 @@ impl ProbeHttp {
                             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
                             {
                                 let mut __b = __o.borrow_mut();
-                                __b.set("name", name.clone());
-                                __b.set("value", value.clone());
+                                __b.set_dyn("name", hxrt::dynamic::from(name.clone()));
+                                __b.set_dyn("value", hxrt::dynamic::from(value.clone()));
                             };
                             __o
                         };
@@ -292,8 +292,8 @@ impl ProbeHttp {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("name", name);
-                __b.set("value", value);
+                __b.set_dyn("name", hxrt::dynamic::from(name));
+                __b.set_dyn("value", hxrt::dynamic::from(value));
             };
             __o
         });
@@ -313,8 +313,8 @@ impl ProbeHttp {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("name", name);
-                __b.set("value", value);
+                __b.set_dyn("name", hxrt::dynamic::from(name));
+                __b.set_dyn("value", hxrt::dynamic::from(value));
             };
             __o
         });

@@ -41,6 +41,37 @@ This document is the source of truth for intentional `Dynamic` usage in `reflaxe
 - Exit criteria: replace this boundary with a typed JSON decoder or generated codec that can parse
   the pin schema without raw `Dynamic`.
 
+### `src/reflaxe/rust/RustSourceMap.hx` source-map decoder (line-scoped)
+
+- Why: `haxe.Json.parse` necessarily returns one untyped value before an internal diagnostic
+  consumer can validate `rust-source-map.json`.
+- Current narrowing:
+  - one documented `RustSourceMapJsonValue` alias owns the parser result;
+  - object, array, string, and integer helpers validate every field immediately;
+  - only typed source-map documents, files, mappings, origins, and spans reach lookup logic.
+- Guardrail: path safety, the closed generated-reason vocabulary, deterministic mapping order, and
+  content hashes are revalidated after parsing; no untyped value escapes the codec section.
+- Exit criteria: replace the alias if Haxe gains a typed JSON decoder that can construct the
+  versioned source-map schema without an untyped parser result.
+
+### Representation planning and runtime reporting (line-scoped)
+
+- Why: the compiler must recognize the Haxe `Dynamic` type and explain when a concrete value, such
+  as an `Int` or enum value, is placed into that runtime container.
+- Current narrowing:
+  - the type analyzer has one exact comparison for the built-in Haxe type;
+  - the runtime report has a small set of user-facing messages and path checks for this one runtime
+    boundary;
+  - complete typed-module analysis saves the exact conversion action before generating Rust;
+  - Rust lowering must consume that saved action exactly once, and compilation stops if an action is
+    missing, duplicated, malformed, or left unused;
+  - an immutable `rust.Ref<T>` crossing records whether lowering must copy or clone the owned `T`, so
+    the short-lived borrow itself is never placed into the runtime container.
+- Guardrail: these entries describe or recognize the unavoidable boundary. They do not permit
+  untyped values to spread through compiler logic.
+- Exit criteria: remove an entry only when the same behavior can be expressed through a stronger
+  typed Haxe API without losing compatibility.
+
 ### File-scoped entries
 
 - None currently.
@@ -70,6 +101,18 @@ Why:
 
 Exit criteria:
 - If target semantics intentionally change and the fixtures are replaced with typed behavior.
+
+### Representation boundary fixtures (line-scoped)
+
+- Why: these focused compiler tests deliberately place concrete values into `Dynamic` parameters,
+  locals, returns, enum payloads, constructor arguments, and scoped immutable borrows. They prove
+  that the compiler reports the exact crossing before Rust generation, consumes the saved action,
+  and does not overlook framework-owned signatures or constructor bodies.
+- Guardrail: only the individual declarations and expressions needed to exercise the boundary are
+  allowlisted. The test assertions use ordinary-language descriptions rather than adding extra
+  allowlist entries for message text.
+- Exit criteria: remove these entries if Haxe replaces the tested upstream `Dynamic` contracts with
+  concrete typed APIs.
 
 ## Maintenance Workflow
 

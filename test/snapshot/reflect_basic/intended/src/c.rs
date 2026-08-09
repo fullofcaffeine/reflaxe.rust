@@ -5,11 +5,15 @@ pub const __HX_TYPE_ID: u32 = 0x76d46036u32;
 #[derive(Debug)]
 pub struct C {
     pub n: i32,
+    pub dynamic_value: hxrt::dynamic::Dynamic,
 }
 
 impl C {
     pub fn new() -> crate::HxRef<crate::c::C> {
-        let self_: crate::HxRef<crate::c::C> = crate::HxRef::new(C { n: 0 });
+        let self_: crate::HxRef<crate::c::C> = crate::HxRef::new(C {
+            n: 0,
+            dynamic_value: hxrt::dynamic::Dynamic::null(),
+        });
         return self_;
     }
 }

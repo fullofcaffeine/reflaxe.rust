@@ -64,8 +64,11 @@ fn main() {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("kind", hxrt::string::HxString::from("boom"));
-                __b.set("count", 3);
+                __b.set_dyn(
+                    "kind",
+                    hxrt::dynamic::from(hxrt::string::HxString::from("boom")),
+                );
+                __b.set_dyn("count", hxrt::dynamic::from(3));
             };
             __o
         });

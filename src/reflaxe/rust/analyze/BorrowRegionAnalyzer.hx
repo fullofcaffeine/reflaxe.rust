@@ -2,7 +2,6 @@ package reflaxe.rust.analyze;
 
 import haxe.macro.Expr.Binop;
 import haxe.macro.Type;
-import haxe.macro.TypeTools;
 import haxe.macro.TypedExprTools;
 
 /**
@@ -40,8 +39,8 @@ import haxe.macro.TypedExprTools;
 	  type, so owned derivations such as `Some(VecTools.len(alias))` remain valid.
 	- Tracks first-wave mutable borrow regions by local source identity, which catches nested
 	  `withMut(...)` / `MutSliceTools.with(...)` conflicts while allowing sequential scoped borrows.
-	- Does not attempt full lifetime parity: field/static source provenance and whole-program alias
-	  equivalence remain follow-up typed-pass work.
+	- Does not attempt full lifetime parity: aliases first obtained from fields/statics and aliases that
+	  can only be proven equal by inspecting the whole program remain follow-up typed-pass work.
 **/
 class BorrowRegionAnalyzer {
 	public static function analyze(moduleTypes:Array<ModuleType>, shouldReport:haxe.macro.Expr.Position->Bool):BorrowRegionDiagnostics {
@@ -63,8 +62,11 @@ class BorrowRegionAnalyzer {
 			switch (moduleType) {
 				case TClassDecl(classRef):
 					var classType = classRef.get();
-					scanClassFieldExprs(classType.fields.get(), add);
-					scanClassFieldExprs(classType.statics.get(), add);
+					scanClassFieldExprs(TypedClassExecutableFields.collect(classType), add);
+				case TAbstract(abstractRef):
+					var abstractType = abstractRef.get();
+					if (abstractType != null && abstractType.impl != null)
+						scanClassFieldExprs(TypedClassExecutableFields.collect(abstractType.impl.get()), add);
 				case _:
 			}
 		}
@@ -602,7 +604,7 @@ class BorrowRegionAnalyzer {
 	}
 
 	static function classifyBorrowReason(t:Type):Null<String> {
-		return classifyBorrowReasonRecursive(t, 0);
+		return RepresentationTypeAnalyzer.borrowOnlyReason(t);
 	}
 
 	static function isMutableBorrowReason(reason:String):Bool {
@@ -610,98 +612,7 @@ class BorrowRegionAnalyzer {
 	}
 
 	static function typeContainsBorrowReason(t:Type):Bool {
-		return typeContainsBorrowReasonRecursive(t, 0);
-	}
-
-	static function typeContainsBorrowReasonRecursive(t:Type, depth:Int):Bool {
-		if (t == null || depth > 16)
-			return false;
-		if (classifyBorrowReasonRecursive(t, depth) != null)
-			return true;
-
-		return switch (t) {
-			case TMono(monoRef): var resolved = monoRef.get(); resolved != null && typeContainsBorrowReasonRecursive(resolved, depth + 1);
-			case TLazy(loader):
-				typeContainsBorrowReasonRecursive(loader(), depth + 1);
-			case TType(_, _):
-				typeContainsBorrowReasonRecursive(TypeTools.follow(t), depth + 1);
-			case TAbstract(_, params) | TInst(_, params) | TEnum(_, params): params != null && containsBorrowInTypeList(params, depth + 1);
-			case TAnonymous(anonRef):
-				{
-					var anon = anonRef.get();
-					if (anon == null || anon.fields == null)
-						false;
-					else {
-						var found = false;
-						for (field in anon.fields) {
-							if (field != null && typeContainsBorrowReasonRecursive(field.type, depth + 1)) {
-								found = true;
-								break;
-							}
-						}
-						found;
-					}
-				}
-			case TFun(args, ret):
-				{
-					var found = typeContainsBorrowReasonRecursive(ret, depth + 1);
-					if (!found && args != null) {
-						for (arg in args) {
-							if (arg != null && typeContainsBorrowReasonRecursive(arg.t, depth + 1)) {
-								found = true;
-								break;
-							}
-						}
-					}
-					found;
-				}
-			case _:
-				false;
-		}
-	}
-
-	static function containsBorrowInTypeList(types:Array<Type>, depth:Int):Bool {
-		for (param in types) {
-			if (typeContainsBorrowReasonRecursive(param, depth))
-				return true;
-		}
-		return false;
-	}
-
-	static function classifyBorrowReasonRecursive(t:Type, depth:Int):Null<String> {
-		if (t == null || depth > 16)
-			return null;
-
-		return switch (t) {
-			case TMono(monoRef):
-				var resolved = monoRef.get();
-				resolved == null ? null : classifyBorrowReasonRecursive(resolved, depth + 1);
-			case TLazy(loader):
-				classifyBorrowReasonRecursive(loader(), depth + 1);
-			case TType(_, _):
-				classifyBorrowReasonRecursive(TypeTools.follow(t), depth + 1);
-			case TAbstract(absRef, params):
-				var abs = absRef.get();
-				var path = modulePath(abs.pack, abs.name);
-				switch (path) {
-					case "rust.Ref":
-						"rust.Ref<T>";
-					case "rust.MutRef":
-						"rust.MutRef<T>";
-					case "rust.Slice":
-						"rust.Slice<T>";
-					case "rust.MutSlice":
-						"rust.MutSlice<T>";
-					case "rust.Str":
-						"rust.Str";
-					case "Null":
-						if (params != null && params.length == 1) classifyBorrowReasonRecursive(params[0], depth + 1) else null;
-					case _:
-						null;
-				}
-			case _:
-				null;
-		}
+		return RepresentationTypeAnalyzer.containsBorrowOnlyType(t);
 	}
 
 	static inline function modulePath(pack:Array<String>, name:String):String {

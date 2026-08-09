@@ -101,6 +101,8 @@ class NoHxrtPass implements RustPass {
 
 		scanStmt = function(stmt:RustStmt):Void {
 			switch (stmt) {
+				case SOrigin(_, inner):
+					scanStmt(inner);
 				case RLet(_, _, ty, expr):
 					if (ty != null)
 						scanType(ty);
@@ -127,6 +129,8 @@ class NoHxrtPass implements RustPass {
 
 		scanExpr = function(expr:RustExpr):Void {
 			switch (expr) {
+				case EOrigin(_, inner):
+					scanExpr(inner);
 				case ERaw(raw):
 					if (containsHxrt(raw.code))
 						record("raw expression [" + raw.authorityId() + ":" + raw.reasonId() + "] containing `hxrt::`");
@@ -220,6 +224,11 @@ class NoHxrtPass implements RustPass {
 
 		scanItem = function(item:RustItem):Void {
 			switch (item) {
+				case ROrigin(_, inner):
+					scanItem(inner);
+				case RItemGroup(group):
+					for (child in group)
+						scanItem(child);
 				case RAttributed(value):
 					for (attribute in value)
 						RustPathAnalysis.visitAttributeTree(attribute,

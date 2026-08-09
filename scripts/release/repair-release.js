@@ -4,15 +4,46 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const { execFileSync } = require('child_process')
+const { assertExactBootstrap, gitObject } = require('./exact-git-source.js')
 const { loadReleasePolicy, verifyReleaseVersion } = require('./release-policy.js')
-const { verifyReleaseArtifact } = require('./verify-release-artifact.js')
-const { artifactNames, normalizeSha, verifyHostedRelease, verifyTagIdentity } = require('./release-provenance.js')
+const {
+  artifactNames,
+  assertArtifactReceiptFiles,
+  createArtifactReceipt,
+  normalizeSha,
+  verifyHostedDraft,
+  verifyHostedRelease,
+  verifyTagIdentity
+} = require('./release-provenance.js')
+const {
+  assertTrackedTreeClean,
+  buildFromReviewedSource,
+  releaseProcessEnvironment,
+  withReviewedSource
+} = require('./reviewed-source.js')
+
+const REPAIR_ENVIRONMENT_KEYS = [
+  'GH_HOST',
+  'GH_TOKEN',
+  'GITHUB_API_URL',
+  'GITHUB_REPOSITORY',
+  'GITHUB_SERVER_URL',
+  'GITHUB_TOKEN',
+  'PACKAGE_SMOKE_USE_EXISTING',
+  'PACKAGE_ZIP_REL'
+]
 
 function run(command, args, options = {}) {
-  return execFileSync(command, args, {
+  const environment = releaseProcessEnvironment(options.env || process.env, REPAIR_ENVIRONMENT_KEYS)
+  const executable = {
+    bash: environment.RELEASE_BASH_BIN,
+    gh: environment.RELEASE_GH_BIN
+  }[command] || command
+  if (!executable) throw new Error(`reviewed release execution lacks an absolute ${command} tool`)
+  return execFileSync(executable, args, {
     cwd: options.cwd,
     encoding: 'utf8',
-    env: options.env || process.env,
+    env: environment,
     stdio: options.stdio || ['ignore', 'pipe', 'pipe']
   })
 }
@@ -28,6 +59,8 @@ function releaseView(tag, cwd) {
 }
 
 function buildApprovedArtifact({ cwd, version, tag, sourceCommit }) {
+  assertExactBootstrap(cwd, sourceCommit)
+  assertTrackedTreeClean(cwd, 'repair checkout contains tracked changes')
   const dist = path.join(cwd, 'dist')
   const zipPath = path.join(dist, 'reflaxe.rust.zip')
   const checksumPath = path.join(dist, 'reflaxe.rust.zip.sha256')
@@ -35,19 +68,39 @@ function buildApprovedArtifact({ cwd, version, tag, sourceCommit }) {
   const repeatZip = path.join(repeatRoot, 'reflaxe.rust.zip')
   try {
     fs.mkdirSync(dist, { recursive: true })
-    run('bash', ['scripts/release/package-haxelib.sh', zipPath, version, tag, sourceCommit], {
-      cwd,
-      stdio: 'inherit'
-    })
-    run('bash', ['scripts/release/package-haxelib.sh', repeatZip, version, tag, sourceCommit], {
-      cwd,
-      env: { ...process.env, TZ: 'UTC', TMPDIR: repeatRoot },
-      stdio: 'inherit'
-    })
-    if (!fs.readFileSync(zipPath).equals(fs.readFileSync(repeatZip))) {
-      throw new Error('repaired Haxelib package is not byte-for-byte reproducible')
-    }
-    const verified = verifyReleaseArtifact({ zipPath, version, tag, sourceCommit })
+    const verified = withReviewedSource(cwd, sourceCommit, (firstSourceRoot) =>
+      withReviewedSource(cwd, sourceCommit, (secondSourceRoot) => {
+        buildFromReviewedSource({
+          sourceRoot: firstSourceRoot,
+          zipPath,
+          version,
+          tag,
+          sourceCommit
+        })
+        buildFromReviewedSource({
+          sourceRoot: secondSourceRoot,
+          zipPath: repeatZip,
+          version,
+          tag,
+          sourceCommit,
+          env: { ...process.env, TZ: 'UTC', TMPDIR: repeatRoot }
+        })
+        if (!fs.readFileSync(zipPath).equals(fs.readFileSync(repeatZip))) {
+          throw new Error('repaired Haxelib package is not byte-for-byte reproducible')
+        }
+        const reviewedVerifier = require(
+          path.join(firstSourceRoot, 'scripts', 'release', 'verify-release-artifact.js')
+        )
+        return reviewedVerifier.verifyReleaseArtifact({
+          zipPath,
+          canonicalZipPath: repeatZip,
+          version,
+          tag,
+          sourceCommit,
+          sourceRoot: firstSourceRoot
+        })
+      })
+    )
     const names = artifactNames(version)
     fs.writeFileSync(checksumPath, `${verified.sha256}  ${names.archive}\n`)
     run('bash', ['scripts/ci/package-smoke.sh'], {
@@ -59,7 +112,17 @@ function buildApprovedArtifact({ cwd, version, tag, sourceCommit }) {
       },
       stdio: 'inherit'
     })
-    return { checksumPath, names, verified, zipPath }
+    const receipt = createArtifactReceipt({
+      version,
+      tag,
+      sourceCommit,
+      zipPath,
+      checksumPath
+    })
+    if (receipt.archive.digest !== `sha256:${verified.sha256}` || receipt.archive.size !== verified.size) {
+      throw new Error('package smoke changed the repaired release artifact')
+    }
+    return { checksumPath, names, receipt, verified, zipPath }
   } finally {
     fs.rmSync(repeatRoot, { recursive: true, force: true })
   }
@@ -86,19 +149,22 @@ function main() {
   const cwd = path.resolve(__dirname, '..', '..')
   const version = tag.slice(1)
   verifyReleaseVersion(loadReleasePolicy(path.join(cwd, 'release-manifest.json')), version)
-  const sourceCommit = normalizeSha(run('git', ['rev-parse', 'HEAD^{commit}'], { cwd }), 'checked-out HEAD')
+  const sourceCommit = normalizeSha(
+    gitObject(cwd, ['rev-parse', 'HEAD^{commit}'], { encoding: 'utf8' }),
+    'checked-out HEAD'
+  )
+  assertExactBootstrap(cwd, sourceCommit)
   verifyTagIdentity({ tag, sourceCommit, cwd })
 
-  const tracked = run('git', ['status', '--porcelain', '--untracked-files=no'], { cwd })
-  if (tracked.trim().length > 0) throw new Error('repair checkout contains tracked changes')
+  assertTrackedTreeClean(cwd, 'repair checkout contains tracked changes')
   const artifact = buildApprovedArtifact({ cwd, version, tag, sourceCommit })
   const existing = releaseView(tag, cwd)
+  if (existing && existing.isPrerelease) {
+    throw new Error(`refusing to modify prerelease draft ${tag}`)
+  }
   if (existing && existing.isImmutable) {
     verifyHostedRelease({
-      version,
-      tag,
-      zipPath: artifact.zipPath,
-      checksumPath: artifact.checksumPath,
+      receipt: artifact.receipt,
       cwd
     })
     console.log(`[release-repair] ${tag} is already complete and immutable`)
@@ -122,6 +188,10 @@ function main() {
   const versionedChecksum = path.join(cwd, 'dist', artifact.names.checksum)
   fs.copyFileSync(artifact.zipPath, versionedZip)
   fs.copyFileSync(artifact.checksumPath, versionedChecksum)
+  assertArtifactReceiptFiles(artifact.receipt, {
+    zipPath: versionedZip,
+    checksumPath: versionedChecksum
+  })
   run(
     'gh',
     [
@@ -134,20 +204,26 @@ function main() {
     ],
     { cwd, stdio: 'inherit' }
   )
+  assertArtifactReceiptFiles(artifact.receipt, {
+    zipPath: versionedZip,
+    checksumPath: versionedChecksum
+  })
+  verifyHostedDraft({ receipt: artifact.receipt, cwd })
   run('gh', ['release', 'edit', tag, '--draft=false'], { cwd, stdio: 'inherit' })
   verifyHostedRelease({
-    version,
-    tag,
-    zipPath: artifact.zipPath,
-    checksumPath: artifact.checksumPath,
+    receipt: artifact.receipt,
     cwd
   })
   console.log(`[release-repair] completed immutable ${tag}`)
 }
 
-try {
-  main()
-} catch (error) {
-  console.error(`[release-repair] ERROR: ${error.message}`)
-  process.exit(1)
+if (require.main === module) {
+  try {
+    main()
+  } catch (error) {
+    console.error(`[release-repair] ERROR: ${error.message}`)
+    process.exit(1)
+  }
 }
+
+module.exports = { buildApprovedArtifact, main }

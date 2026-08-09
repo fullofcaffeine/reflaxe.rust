@@ -66,33 +66,36 @@ fn main() {
         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
         {
             let mut __b = __o.borrow_mut();
-            __b.set(
+            __b.set_dyn(
                 "child",
-                crate::child::Child::new({
-                    let __o = crate::HxRef::new(hxrt::anon::Anon::new());
-                    {
-                        let mut __b = __o.borrow_mut();
-                        __b.set("name", hxrt::string::HxString::from("ready"));
-                    };
-                    __o
-                }),
+                hxrt::dynamic::from_ref_with_type_id(
+                    crate::child::Child::new({
+                        let __o = crate::HxRef::new(hxrt::anon::Anon::new());
+                        {
+                            let mut __b = __o.borrow_mut();
+                            __b.set_dyn(
+                                "name",
+                                hxrt::dynamic::from(hxrt::string::HxString::from("ready")),
+                            );
+                        };
+                        __o
+                    }),
+                    0xcc2f5b61u32,
+                ),
             );
         };
         __o
     });
     println!(
         "{}",
-        hxrt::dynamic::from(
-            ({
-                let __hx_recv = {
-                    let __b = parent.borrow();
-                    __b.child.clone()
-                };
-                let __b = __hx_recv.borrow();
-                __b.name.clone()
-            })
-            .clone()
-        )
+        hxrt::dynamic::from({
+            let __hx_recv = {
+                let __b = parent.borrow();
+                __b.child.clone()
+            };
+            let __b = __hx_recv.borrow();
+            __b.name.clone()
+        })
     );
     let defaulted: crate::HxRef<crate::parent_with_default_child::ParentWithDefaultChild> =
         crate::parent_with_default_child::ParentWithDefaultChild::new();

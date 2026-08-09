@@ -73,13 +73,10 @@ fn main() {
     );
     println!(
         "{}",
-        hxrt::dynamic::from(
-            ({
-                let __b = s.borrow();
-                __b.y.clone()
-            })
-            .clone()
-        )
+        hxrt::dynamic::from({
+            let __b = s.borrow();
+            __b.y.clone()
+        })
     );
     println!(
         "{}",

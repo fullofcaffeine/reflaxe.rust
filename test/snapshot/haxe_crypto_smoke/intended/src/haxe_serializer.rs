@@ -220,8 +220,7 @@ impl Serializer {
         let __hx_this: crate::HxRef<crate::haxe_serializer::Serializer> = self_.self_ref();
         {
             let _g1: hxrt::array::Array<hxrt::string::HxString> = {
-                let __obj = v.clone();
-                let __dyn = hxrt::dynamic::from(__obj);
+                let __dyn = hxrt::dynamic::from_ref(v.clone());
                 hxrt::dynamic::field_names(&__dyn)
             };
             for f in _g1.iter_borrowed() {
@@ -230,9 +229,8 @@ impl Serializer {
                     hxrt::string::HxString::from(f.clone()),
                 );
                 crate::haxe_serializer::Serializer::serialize(&*__hx_this, {
-                    let __obj = v.clone();
                     let __name = f.clone();
-                    let __dyn = hxrt::dynamic::from(__obj);
+                    let __dyn = hxrt::dynamic::from_ref(v.clone());
                     hxrt::dynamic::field_get(&__dyn, __name.as_str())
                 });
             }
@@ -250,8 +248,7 @@ impl Serializer {
         let __hx_this: crate::HxRef<crate::haxe_serializer::Serializer> = self_.self_ref();
         {
             let _g: crate::value_type::ValueType = {
-                let __v = v.clone();
-                let __dyn = __v;
+                let __dyn = v.clone();
                 if __dyn.is_null() {
                     crate::value_type::ValueType::TNull
                 } else {

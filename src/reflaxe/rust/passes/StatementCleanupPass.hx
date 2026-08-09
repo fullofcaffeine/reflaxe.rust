@@ -8,6 +8,7 @@ import reflaxe.rust.ast.RustAST.RustFile;
 import reflaxe.rust.ast.RustAST.RustFunction;
 import reflaxe.rust.ast.RustAST.RustItem;
 import reflaxe.rust.ast.RustAST.RustMatchArm;
+import reflaxe.rust.ast.RustAST.RustOriginTools;
 import reflaxe.rust.ast.RustAST.RustStmt;
 import reflaxe.rust.ast.RustAST.RustStructLitField;
 import reflaxe.rust.ast.RustAST.RustType;
@@ -58,6 +59,8 @@ class StatementCleanupPass implements RustPass {
 
 	function rewriteItem(item:RustItem):RustItem {
 		return switch (item) {
+			case ROrigin(origin, inner): ROrigin(origin, rewriteItem(inner));
+			case RItemGroup(group): RItemGroup(group.withItems([for (child in group) rewriteItem(child)]));
 			case RAttributed(value):
 				RAttributed(value.withTarget(rewriteItem(value.target)));
 			case RModule(declaration):
@@ -107,6 +110,7 @@ class StatementCleanupPass implements RustPass {
 
 	function rewriteStmt(stmt:RustStmt):RustStmt {
 		return switch (stmt) {
+			case SOrigin(origin, inner): SOrigin(origin, rewriteStmt(inner));
 			case RLet(name, mutable, ty, expr):
 				RLet(name, mutable, ty, expr == null ? null : rewriteExpr(expr));
 			case RSemi(expr):
@@ -128,6 +132,7 @@ class StatementCleanupPass implements RustPass {
 
 	function rewriteExpr(expr:RustExpr):RustExpr {
 		return switch (expr) {
+			case EOrigin(origin, inner): EOrigin(origin, rewriteExpr(inner));
 			case ERaw(_) | ESelf | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_) | EPath(_):
 				expr;
 			case ECall(func, args):
@@ -181,9 +186,9 @@ class StatementCleanupPass implements RustPass {
 
 	function cleanupBlock(stmts:Array<RustStmt>, tail:Null<RustExpr>):RustBlock {
 		var out:Array<RustStmt> = [];
-		var pendingDecls:Array<{name:String, ty:Null<RustType>}> = [];
+		var pendingDecls:Array<{name:String, ty:Null<RustType>, template:RustStmt}> = [];
 
-		function findPendingDecl(name:String):Null<{name:String, ty:Null<RustType>}> {
+		function findPendingDecl(name:String):Null<{name:String, ty:Null<RustType>, template:RustStmt}> {
 			for (decl in pendingDecls) {
 				if (decl.name == name)
 					return decl;
@@ -194,10 +199,10 @@ class StatementCleanupPass implements RustPass {
 		function flushPendingMentionedBy(stmt:RustStmt):Void {
 			if (pendingDecls.length == 0)
 				return;
-			var remaining:Array<{name:String, ty:Null<RustType>}> = [];
+			var remaining:Array<{name:String, ty:Null<RustType>, template:RustStmt}> = [];
 			for (decl in pendingDecls) {
 				if (stmtMentionsName(stmt, decl.name)) {
-					out.push(RLet(decl.name, false, decl.ty, null));
+					out.push(RustOriginTools.replaceStatementPreservingOrigins(decl.template, RLet(decl.name, false, decl.ty, null)));
 				} else {
 					remaining.push(decl);
 				}
@@ -209,7 +214,7 @@ class StatementCleanupPass implements RustPass {
 			if (pendingDecls.length == 0)
 				return;
 			for (decl in pendingDecls)
-				out.push(RLet(decl.name, false, decl.ty, null));
+				out.push(RustOriginTools.replaceStatementPreservingOrigins(decl.template, RLet(decl.name, false, decl.ty, null)));
 			pendingDecls = [];
 		}
 
@@ -218,16 +223,16 @@ class StatementCleanupPass implements RustPass {
 			if (pending == null)
 				return;
 			pendingDecls = [for (decl in pendingDecls) if (decl.name != name) decl];
-			out.push(RLet(pending.name, false, pending.ty, null));
+			out.push(RustOriginTools.replaceStatementPreservingOrigins(pending.template, RLet(pending.name, false, pending.ty, null)));
 		}
 
 		var i = 0;
 		while (i < stmts.length) {
 			var stmt = stmts[i];
-			switch (stmt) {
+			switch (RustOriginTools.withoutStatementOrigin(stmt)) {
 				case RLet(name, _, ty, null):
 					flushPendingShadowedBy(name);
-					pendingDecls.push({name: name, ty: ty});
+					pendingDecls.push({name: name, ty: ty, template: stmt});
 					i++;
 					continue;
 				case RLet(name, _, _, _):
@@ -238,25 +243,33 @@ class StatementCleanupPass implements RustPass {
 				case _:
 			}
 
-			var collapsed = switch (stmt) {
-				case RSemi(EAssign(EPath(path), rhs)) | RExpr(EAssign(EPath(path), rhs), true):
-					var name = RustPathAnalysis.localIdentifierName(path);
-					var pending = name == null ? null : findPendingDecl(name);
-					if (name != null && pending != null) {
-						pendingDecls = [for (decl in pendingDecls) if (decl.name != name) decl];
-						var mutable = hasDirectAssignmentAfter(stmts, tail, i + 1, name);
-						RLet(name, mutable, pending.ty, rhs);
-					} else {
-						null;
+			var collapsed:Null<RustStmt> = null;
+			switch (RustOriginTools.withoutStatementOrigin(stmt)) {
+				case RSemi(expr) | RExpr(expr, true):
+					switch (RustOriginTools.withoutExpressionOrigin(expr)) {
+						case EAssign(lhs, rhs):
+							switch (RustOriginTools.withoutExpressionOrigin(lhs)) {
+								case EPath(path):
+									var name = RustPathAnalysis.localIdentifierName(path);
+									var pending = name == null ? null : findPendingDecl(name);
+									if (name != null && pending != null) {
+										pendingDecls = [for (decl in pendingDecls) if (decl.name != name) decl];
+										var mutable = hasDirectAssignmentAfter(stmts, tail, i + 1, name);
+										var initializer = transferAssignmentOrigins(stmt, expr, rhs);
+										collapsed = RustOriginTools.replaceStatementPreservingOrigins(pending.template,
+											RLet(name, mutable, pending.ty, initializer));
+									}
+								case _:
+							}
+						case EBlock(block):
+							collapsed = collapsePendingBlockAssignment(stmt, expr, block, pendingDecls, stmts, tail, i);
+						case _:
 					}
-				case RSemi(EBlock(block)) | RExpr(EBlock(block), true):
-					collapsePendingBlockAssignment(block, pendingDecls, stmts, tail, i);
 				case _:
-					null;
 			}
 
 			if (collapsed != null) {
-				switch (collapsed) {
+				switch (RustOriginTools.withoutStatementOrigin(collapsed)) {
 					case RLet(name, _, _, _):
 						pendingDecls = [for (decl in pendingDecls) if (decl.name != name) decl];
 					case _:
@@ -277,7 +290,8 @@ class StatementCleanupPass implements RustPass {
 		return {stmts: out, tail: tail};
 	}
 
-	function collapsePendingBlockAssignment(block:RustBlock, pendingDecls:Array<{name:String, ty:Null<RustType>}>, stmts:Array<RustStmt>, tail:Null<RustExpr>,
+	function collapsePendingBlockAssignment(containerStatement:RustStmt, containerExpression:RustExpr, block:RustBlock,
+			pendingDecls:Array<{name:String, ty:Null<RustType>, template:RustStmt}>, stmts:Array<RustStmt>, tail:Null<RustExpr>,
 			currentIndex:Int):Null<RustStmt> {
 		if (block.stmts.length == 0)
 			return null;
@@ -289,13 +303,22 @@ class StatementCleanupPass implements RustPass {
 		}
 
 		var lastStmt = block.stmts[block.stmts.length - 1];
-		var assignment = switch (lastStmt) {
-			case RSemi(EAssign(EPath(path), rhs)) | RExpr(EAssign(EPath(path), rhs), true):
-				var name = RustPathAnalysis.localIdentifierName(path);
-				name == null ? null : {name: name, rhs: rhs};
+		var assignment:Null<{name:String, rhs:RustExpr, statement:RustStmt, expression:RustExpr}> = null;
+		switch (RustOriginTools.withoutStatementOrigin(lastStmt)) {
+			case RSemi(expr) | RExpr(expr, true):
+				switch (RustOriginTools.withoutExpressionOrigin(expr)) {
+					case EAssign(lhs, rhs):
+						switch (RustOriginTools.withoutExpressionOrigin(lhs)) {
+						case EPath(path):
+							var name = RustPathAnalysis.localIdentifierName(path);
+							if (name != null)
+								assignment = {name: name, rhs: rhs, statement: lastStmt, expression: expr};
+							case _:
+						}
+					case _:
+				}
 			case _:
-				null;
-		};
+		}
 		if (assignment == null)
 			return null;
 
@@ -311,7 +334,7 @@ class StatementCleanupPass implements RustPass {
 
 		for (j in 0...block.stmts.length - 1) {
 			var stmt = block.stmts[j];
-			switch (stmt) {
+			switch (RustOriginTools.withoutStatementOrigin(stmt)) {
 				case RLet(bindName, _, _, initializer):
 					if (initializer != null && exprMentionsName(initializer, assignment.name))
 						return null;
@@ -324,15 +347,33 @@ class StatementCleanupPass implements RustPass {
 		}
 
 		var mutable = hasDirectAssignmentAfter(stmts, tail, currentIndex + 1, assignment.name);
-		var initExpr = if (block.stmts.length == 1 && block.tail == null) {
-			assignment.rhs;
+		var assignmentTail = transferAssignmentOrigins(assignment.statement, assignment.expression, assignment.rhs);
+		var initCore = if (block.stmts.length == 1 && block.tail == null) {
+			assignmentTail;
 		} else {
 			EBlock({
 				stmts: block.stmts.slice(0, block.stmts.length - 1),
-				tail: assignment.rhs
+				tail: assignmentTail
 			});
 		};
-		return RLet(assignment.name, mutable, pending.ty, initExpr);
+		var initExpr = RustOriginTools.transferStatementOriginsToExpression(containerStatement,
+			RustOriginTools.replaceExpressionPreservingOrigins(containerExpression, initCore));
+		return RustOriginTools.replaceStatementPreservingOrigins(pending.template,
+			RLet(assignment.name, mutable, pending.ty, initExpr));
+	}
+
+	/**
+		Transfers the provenance of a removed assignment shell to its surviving initializer bytes.
+
+		Why / What / How
+		- Declaration folding deletes both the assignment statement and `EAssign` expression nodes.
+		- Rebuild the assignment expression's origin chain around `rhs`, then convert the surrounding
+		  statement chain to expression origins. Existing RHS origins remain deepest and therefore win
+		  deterministic lookup ties.
+	**/
+	function transferAssignmentOrigins(statement:RustStmt, expression:RustExpr, rhs:RustExpr):RustExpr {
+		return RustOriginTools.transferStatementOriginsToExpression(statement,
+			RustOriginTools.replaceExpressionPreservingOrigins(expression, rhs));
 	}
 
 	function hasDirectAssignmentAfter(stmts:Array<RustStmt>, tail:Null<RustExpr>, startIndex:Int, name:String):Bool {
@@ -362,7 +403,7 @@ class StatementCleanupPass implements RustPass {
 	**/
 	function statementsHaveDirectAssignmentToName(stmts:Array<RustStmt>, tail:Null<RustExpr>, startIndex:Int, name:String):Bool {
 		for (i in startIndex...stmts.length) {
-			switch (stmts[i]) {
+			switch (RustOriginTools.withoutStatementOrigin(stmts[i])) {
 				case RLet(bindName, _, _, initializer):
 					if (initializer != null && exprHasDirectAssignmentToName(initializer, name))
 						return true;
@@ -378,6 +419,7 @@ class StatementCleanupPass implements RustPass {
 
 	function stmtHasDirectAssignmentToName(stmt:RustStmt, name:String):Bool {
 		return switch (stmt) {
+			case SOrigin(_, inner): stmtHasDirectAssignmentToName(inner, name);
 			case RLet(_, _, _, expr): expr != null && exprHasDirectAssignmentToName(expr, name);
 			case RSemi(expr) | RExpr(expr, _) | RReturn(expr): expr != null && exprHasDirectAssignmentToName(expr, name);
 			case RWhile(cond, body): exprHasDirectAssignmentToName(cond, name) || blockHasDirectAssignmentToName(body, name);
@@ -396,8 +438,13 @@ class StatementCleanupPass implements RustPass {
 
 	function exprHasDirectAssignmentToName(expr:RustExpr, name:String):Bool {
 		return switch (expr) {
-			case EAssign(EPath(lhs), rhs): RustPathAnalysis.localIdentifierName(lhs) == name || exprHasDirectAssignmentToName(rhs, name);
-			case EAssign(lhs, rhs): exprHasDirectAssignmentToName(lhs, name) || exprHasDirectAssignmentToName(rhs, name);
+			case EOrigin(_, inner): exprHasDirectAssignmentToName(inner, name);
+			case EAssign(lhs, rhs):
+				var directlyAssigned = switch (RustOriginTools.withoutExpressionOrigin(lhs)) {
+					case EPath(path): RustPathAnalysis.localIdentifierName(path) == name;
+					case _: false;
+				};
+				directlyAssigned || exprHasDirectAssignmentToName(lhs, name) || exprHasDirectAssignmentToName(rhs, name);
 			case ECall(func, args): exprHasDirectAssignmentToName(func, name) || anyExprHasDirectAssignmentToName(args, name);
 			case EMacroCall(_, args):
 				anyExprHasDirectAssignmentToName(args, name);
@@ -438,6 +485,8 @@ class StatementCleanupPass implements RustPass {
 	**/
 	function rewriteUnusedBindingIfNeeded(stmt:RustStmt, remainingStmts:Array<RustStmt>, tail:Null<RustExpr>, nextIndex:Int):RustStmt {
 		return switch (stmt) {
+			case SOrigin(origin, inner):
+				SOrigin(origin, rewriteUnusedBindingIfNeeded(inner, remainingStmts, tail, nextIndex));
 			case RLet(name, _, ty, expr)
 				if (!StringTools.startsWith(name, "_")
 					&& expr != null
@@ -471,7 +520,7 @@ class StatementCleanupPass implements RustPass {
 	**/
 	function statementsMentionName(stmts:Array<RustStmt>, tail:Null<RustExpr>, startIndex:Int, name:String):Bool {
 		for (i in startIndex...stmts.length) {
-			switch (stmts[i]) {
+			switch (RustOriginTools.withoutStatementOrigin(stmts[i])) {
 				case RLet(bindName, _, _, initializer):
 					if (initializer != null && exprMentionsName(initializer, name))
 						return true;
@@ -487,6 +536,7 @@ class StatementCleanupPass implements RustPass {
 
 	function stmtMentionsName(stmt:RustStmt, name:String):Bool {
 		return switch (stmt) {
+			case SOrigin(_, inner): stmtMentionsName(inner, name);
 			case RLet(_, _, _, expr): expr != null && exprMentionsName(expr, name);
 			case RSemi(expr) | RExpr(expr, _) | RReturn(expr): expr != null && exprMentionsName(expr, name);
 			case RWhile(cond, body): exprMentionsName(cond, name) || blockMentionsNameInBlock(body, name);
@@ -505,6 +555,7 @@ class StatementCleanupPass implements RustPass {
 
 	function exprMentionsName(expr:RustExpr, name:String):Bool {
 		return switch (expr) {
+			case EOrigin(_, inner): exprMentionsName(inner, name);
 			case EPath(path):
 				RustPathAnalysis.localIdentifierName(path) == name;
 			case ECall(func, args): exprMentionsName(func, name) || anyExprMentionsName(args, name);
@@ -563,9 +614,14 @@ class StatementCleanupPass implements RustPass {
 
 	function isDeadDiscardStmt(stmt:RustStmt):Bool {
 		return switch (stmt) {
+			case SOrigin(_, inner): isDeadDiscardStmt(inner);
 			case RSemi(expr) | RExpr(expr, true):
 				isPureExpr(expr);
-			case RExpr(EBlock(block), false): block.stmts.length == 0 && block.tail == null;
+			case RExpr(expr, false):
+				switch (RustOriginTools.withoutExpressionOrigin(expr)) {
+					case EBlock(block): block.stmts.length == 0 && block.tail == null;
+					case _: false;
+				}
 			case _:
 				false;
 		};
@@ -573,6 +629,7 @@ class StatementCleanupPass implements RustPass {
 
 	function isPureExpr(expr:RustExpr):Bool {
 		return switch (expr) {
+			case EOrigin(_, inner): isPureExpr(inner);
 			case ESelf | EPath(_) | ELitUnit | ELitInt(_) | ELitUInt32(_) | ELitFloat(_) | ELitBool(_) | ELitString(_):
 				true;
 			case EField(recv, _):
@@ -601,6 +658,7 @@ class StatementCleanupPass implements RustPass {
 
 	function stmtHasSideEffects(stmt:RustStmt):Bool {
 		return switch (stmt) {
+			case SOrigin(_, inner): stmtHasSideEffects(inner);
 			case RLet(_, _, _, expr): expr != null && !isPureExpr(expr);
 			case RSemi(expr) | RExpr(expr, _):
 				!isPureExpr(expr);

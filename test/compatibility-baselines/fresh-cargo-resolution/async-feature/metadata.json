@@ -27,7 +27,7 @@
         "dependencies": []
       },
       {
-        "id": "futures-channel@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "futures-channel@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "alloc",
           "futures-sink",
@@ -37,7 +37,7 @@
         "dependencies": [
           {
             "name": "futures_core",
-            "package": "futures-core@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "futures-core@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -47,7 +47,7 @@
           },
           {
             "name": "futures_sink",
-            "package": "futures-sink@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "futures-sink@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -58,7 +58,7 @@
         ]
       },
       {
-        "id": "futures-core@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "futures-core@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "alloc",
           "std"
@@ -66,14 +66,14 @@
         "dependencies": []
       },
       {
-        "id": "futures-io@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "futures-io@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "std"
         ],
         "dependencies": []
       },
       {
-        "id": "futures-sink@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "futures-sink@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "alloc",
           "std"
@@ -81,7 +81,7 @@
         "dependencies": []
       },
       {
-        "id": "futures-task@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "futures-task@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "alloc",
           "std"
@@ -94,7 +94,7 @@
         "dependencies": []
       },
       {
-        "id": "futures-util@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "futures-util@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "alloc",
           "channel",
@@ -110,7 +110,7 @@
         "dependencies": [
           {
             "name": "futures_channel",
-            "package": "futures-channel@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "futures-channel@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -120,7 +120,7 @@
           },
           {
             "name": "futures_core",
-            "package": "futures-core@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "futures-core@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -130,7 +130,7 @@
           },
           {
             "name": "futures_io",
-            "package": "futures-io@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "futures-io@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -140,7 +140,7 @@
           },
           {
             "name": "futures_sink",
-            "package": "futures-sink@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "futures-sink@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -150,7 +150,7 @@
           },
           {
             "name": "futures_task",
-            "package": "futures-task@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "futures-task@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -191,7 +191,7 @@
         ]
       },
       {
-        "id": "futures@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "futures@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "alloc",
           "std"
@@ -199,7 +199,7 @@
         "dependencies": [
           {
             "name": "futures_channel",
-            "package": "futures-channel@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "futures-channel@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -209,7 +209,7 @@
           },
           {
             "name": "futures_core",
-            "package": "futures-core@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "futures-core@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -219,7 +219,7 @@
           },
           {
             "name": "futures_io",
-            "package": "futures-io@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "futures-io@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -229,7 +229,7 @@
           },
           {
             "name": "futures_sink",
-            "package": "futures-sink@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "futures-sink@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -239,7 +239,7 @@
           },
           {
             "name": "futures_task",
-            "package": "futures-task@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "futures-task@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -249,7 +249,7 @@
           },
           {
             "name": "futures_util",
-            "package": "futures-util@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "futures-util@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -275,7 +275,7 @@
           },
           {
             "name": "tokio",
-            "package": "tokio@1.52.4:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "tokio@1.53.1:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -307,7 +307,7 @@
           },
           {
             "name": "futures",
-            "package": "futures@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "futures@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -337,7 +337,7 @@
           },
           {
             "name": "serde",
-            "package": "serde@1.0.228:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "serde@1.0.229:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -347,7 +347,7 @@
           },
           {
             "name": "tokio",
-            "package": "tokio@1.52.4:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "tokio@1.53.1:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -358,7 +358,7 @@
         ]
       },
       {
-        "id": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "default",
           "std"
@@ -409,7 +409,7 @@
           },
           {
             "name": "libc",
-            "package": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -488,7 +488,7 @@
         "dependencies": []
       },
       {
-        "id": "proc-macro2@1.0.106:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "proc-macro2@1.0.107:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "default",
           "proc-macro"
@@ -507,7 +507,7 @@
         ]
       },
       {
-        "id": "quote@1.0.46:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "quote@1.0.47:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "default",
           "proc-macro"
@@ -515,7 +515,7 @@
         "dependencies": [
           {
             "name": "proc_macro2",
-            "package": "proc-macro2@1.0.106:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "proc-macro2@1.0.107:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -550,7 +550,7 @@
         "dependencies": []
       },
       {
-        "id": "serde_core@1.0.228:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "serde_core@1.0.229:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "result",
           "std"
@@ -558,7 +558,7 @@
         "dependencies": [
           {
             "name": "serde_derive",
-            "package": "serde_derive@1.0.228:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "serde_derive@1.0.229:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -569,14 +569,14 @@
         ]
       },
       {
-        "id": "serde_derive@1.0.228:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "serde_derive@1.0.229:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "default"
         ],
         "dependencies": [
           {
             "name": "proc_macro2",
-            "package": "proc-macro2@1.0.106:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "proc-macro2@1.0.107:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -586,7 +586,7 @@
           },
           {
             "name": "quote",
-            "package": "quote@1.0.46:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "quote@1.0.47:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -596,7 +596,7 @@
           },
           {
             "name": "syn",
-            "package": "syn@2.0.119:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "syn@3.0.3:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -607,7 +607,7 @@
         ]
       },
       {
-        "id": "serde@1.0.228:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "serde@1.0.229:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "default",
           "std"
@@ -615,7 +615,7 @@
         "dependencies": [
           {
             "name": "serde_core",
-            "package": "serde_core@1.0.228:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "serde_core@1.0.229:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -638,7 +638,7 @@
         "dependencies": []
       },
       {
-        "id": "syn@2.0.119:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "syn@3.0.3:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "clone-impls",
           "default",
@@ -651,7 +651,7 @@
         "dependencies": [
           {
             "name": "proc_macro2",
-            "package": "proc-macro2@1.0.106:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "proc-macro2@1.0.107:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -661,7 +661,7 @@
           },
           {
             "name": "quote",
-            "package": "quote@1.0.46:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "quote@1.0.47:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -682,12 +682,12 @@
         ]
       },
       {
-        "id": "tokio-macros@2.7.0:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "tokio-macros@2.7.2:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [],
         "dependencies": [
           {
             "name": "proc_macro2",
-            "package": "proc-macro2@1.0.106:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "proc-macro2@1.0.107:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -697,7 +697,7 @@
           },
           {
             "name": "quote",
-            "package": "quote@1.0.46:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "quote@1.0.47:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -707,7 +707,7 @@
           },
           {
             "name": "syn",
-            "package": "syn@2.0.119:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "syn@3.0.3:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -718,7 +718,7 @@
         ]
       },
       {
-        "id": "tokio@1.52.4:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "tokio@1.53.1:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "default",
           "macros",
@@ -739,7 +739,7 @@
           },
           {
             "name": "tokio_macros",
-            "package": "tokio-macros@2.7.0:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "tokio-macros@2.7.2:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -923,9 +923,9 @@
       ]
     },
     {
-      "id": "futures-channel@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "futures-channel@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
       "name": "futures-channel",
-      "version": "0.3.32",
+      "version": "0.3.33",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [
@@ -938,7 +938,7 @@
         {
           "name": "futures-core",
           "rename": null,
-          "requirement": "^0.3.32",
+          "requirement": "^0.3.33",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -949,7 +949,7 @@
         {
           "name": "futures-sink",
           "rename": null,
-          "requirement": "^0.3.32",
+          "requirement": "^0.3.33",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": true,
@@ -960,9 +960,9 @@
       ]
     },
     {
-      "id": "futures-core@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "futures-core@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
       "name": "futures-core",
-      "version": "0.3.32",
+      "version": "0.3.33",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.36.0",
       "enabledFeatures": [
@@ -986,9 +986,9 @@
       ]
     },
     {
-      "id": "futures-io@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "futures-io@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
       "name": "futures-io",
-      "version": "0.3.32",
+      "version": "0.3.33",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.36.0",
       "enabledFeatures": [
@@ -997,9 +997,9 @@
       "dependencies": []
     },
     {
-      "id": "futures-sink@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "futures-sink@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
       "name": "futures-sink",
-      "version": "0.3.32",
+      "version": "0.3.33",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.36.0",
       "enabledFeatures": [
@@ -1009,9 +1009,9 @@
       "dependencies": []
     },
     {
-      "id": "futures-task@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "futures-task@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
       "name": "futures-task",
-      "version": "0.3.32",
+      "version": "0.3.33",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [
@@ -1079,9 +1079,9 @@
       ]
     },
     {
-      "id": "futures-util@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "futures-util@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
       "name": "futures-util",
-      "version": "0.3.32",
+      "version": "0.3.33",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [
@@ -1100,7 +1100,7 @@
         {
           "name": "futures-channel",
           "rename": null,
-          "requirement": "^0.3.32",
+          "requirement": "^0.3.33",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": true,
@@ -1113,7 +1113,7 @@
         {
           "name": "futures-core",
           "rename": null,
-          "requirement": "^0.3.32",
+          "requirement": "^0.3.33",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -1124,7 +1124,7 @@
         {
           "name": "futures-io",
           "rename": null,
-          "requirement": "^0.3.32",
+          "requirement": "^0.3.33",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": true,
@@ -1137,7 +1137,7 @@
         {
           "name": "futures-macro",
           "rename": null,
-          "requirement": "=0.3.32",
+          "requirement": "=0.3.33",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": true,
@@ -1148,7 +1148,7 @@
         {
           "name": "futures-sink",
           "rename": null,
-          "requirement": "^0.3.32",
+          "requirement": "^0.3.33",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": true,
@@ -1159,7 +1159,7 @@
         {
           "name": "futures-task",
           "rename": null,
-          "requirement": "^0.3.32",
+          "requirement": "^0.3.33",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -1212,6 +1212,28 @@
           "target": null
         },
         {
+          "name": "portable-atomic-util",
+          "rename": null,
+          "requirement": "^0.2.7",
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "kind": "normal",
+          "optional": true,
+          "usesDefaultFeatures": false,
+          "features": [],
+          "target": null
+        },
+        {
+          "name": "portable-atomic",
+          "rename": "portable_atomic_crate",
+          "requirement": "^1.13.1",
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "kind": "normal",
+          "optional": true,
+          "usesDefaultFeatures": false,
+          "features": [],
+          "target": null
+        },
+        {
           "name": "slab",
           "rename": null,
           "requirement": "^0.4.7",
@@ -1225,7 +1247,7 @@
         {
           "name": "spin",
           "rename": null,
-          "requirement": "^0.10.0",
+          "requirement": "^0.12.0",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": true,
@@ -1258,9 +1280,9 @@
       ]
     },
     {
-      "id": "futures@0.3.32:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "futures@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
       "name": "futures",
-      "version": "0.3.32",
+      "version": "0.3.33",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [
@@ -1282,7 +1304,7 @@
         {
           "name": "futures-channel",
           "rename": null,
-          "requirement": "^0.3.32",
+          "requirement": "^0.3.33",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -1295,7 +1317,7 @@
         {
           "name": "futures-core",
           "rename": null,
-          "requirement": "^0.3.32",
+          "requirement": "^0.3.33",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -1306,7 +1328,7 @@
         {
           "name": "futures-executor",
           "rename": null,
-          "requirement": "^0.3.32",
+          "requirement": "^0.3.33",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": true,
@@ -1317,7 +1339,7 @@
         {
           "name": "futures-io",
           "rename": null,
-          "requirement": "^0.3.32",
+          "requirement": "^0.3.33",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -1328,7 +1350,7 @@
         {
           "name": "futures-sink",
           "rename": null,
-          "requirement": "^0.3.32",
+          "requirement": "^0.3.33",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -1339,7 +1361,7 @@
         {
           "name": "futures-task",
           "rename": null,
-          "requirement": "^0.3.32",
+          "requirement": "^0.3.33",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -1350,7 +1372,7 @@
         {
           "name": "futures-util",
           "rename": null,
-          "requirement": "^0.3.32",
+          "requirement": "^0.3.33",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -1743,9 +1765,9 @@
       ]
     },
     {
-      "id": "libc@0.2.186:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "libc@0.2.189:registry+https://github.com/rust-lang/crates.io-index",
       "name": "libc",
-      "version": "0.2.186",
+      "version": "0.2.189",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.65.0",
       "enabledFeatures": [
@@ -2080,11 +2102,11 @@
       ]
     },
     {
-      "id": "proc-macro2@1.0.106:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "proc-macro2@1.0.107:registry+https://github.com/rust-lang/crates.io-index",
       "name": "proc-macro2",
-      "version": "1.0.106",
+      "version": "1.0.107",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
-      "rustVersion": "1.68.0",
+      "rustVersion": "1.71.0",
       "enabledFeatures": [
         "default",
         "proc-macro"
@@ -2159,9 +2181,9 @@
       ]
     },
     {
-      "id": "quote@1.0.46:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "quote@1.0.47:registry+https://github.com/rust-lang/crates.io-index",
       "name": "quote",
-      "version": "1.0.46",
+      "version": "1.0.47",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [
@@ -2262,9 +2284,9 @@
       "dependencies": []
     },
     {
-      "id": "serde_core@1.0.228:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "serde_core@1.0.229:registry+https://github.com/rust-lang/crates.io-index",
       "name": "serde_core",
-      "version": "1.0.228",
+      "version": "1.0.229",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.56.0",
       "enabledFeatures": [
@@ -2286,7 +2308,7 @@
         {
           "name": "serde_derive",
           "rename": null,
-          "requirement": "=1.0.228",
+          "requirement": "=1.0.229",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -2308,11 +2330,11 @@
       ]
     },
     {
-      "id": "serde_derive@1.0.228:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "serde_derive@1.0.229:registry+https://github.com/rust-lang/crates.io-index",
       "name": "serde_derive",
-      "version": "1.0.228",
+      "version": "1.0.229",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
-      "rustVersion": "1.61.0",
+      "rustVersion": "1.71.0",
       "enabledFeatures": [
         "default"
       ],
@@ -2357,7 +2379,7 @@
         {
           "name": "syn",
           "rename": null,
-          "requirement": "^2.0.81",
+          "requirement": "^3",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -2374,9 +2396,9 @@
       ]
     },
     {
-      "id": "serde@1.0.228:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "serde@1.0.229:registry+https://github.com/rust-lang/crates.io-index",
       "name": "serde",
-      "version": "1.0.228",
+      "version": "1.0.229",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.56.0",
       "enabledFeatures": [
@@ -2387,7 +2409,7 @@
         {
           "name": "serde_core",
           "rename": null,
-          "requirement": "=1.0.228",
+          "requirement": "=1.0.229",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -2558,9 +2580,9 @@
       ]
     },
     {
-      "id": "syn@2.0.119:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "syn@3.0.3:registry+https://github.com/rust-lang/crates.io-index",
       "name": "syn",
-      "version": "2.0.119",
+      "version": "3.0.3",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [
@@ -2743,9 +2765,9 @@
       ]
     },
     {
-      "id": "tokio-macros@2.7.0:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "tokio-macros@2.7.2:registry+https://github.com/rust-lang/crates.io-index",
       "name": "tokio-macros",
-      "version": "2.7.0",
+      "version": "2.7.2",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [],
@@ -2775,7 +2797,7 @@
         {
           "name": "syn",
           "rename": null,
-          "requirement": "^2.0",
+          "requirement": "^3.0",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -2802,9 +2824,9 @@
       ]
     },
     {
-      "id": "tokio@1.52.4:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "tokio@1.53.1:registry+https://github.com/rust-lang/crates.io-index",
       "name": "tokio",
-      "version": "1.52.4",
+      "version": "1.53.1",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [

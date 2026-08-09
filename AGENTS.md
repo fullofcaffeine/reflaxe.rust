@@ -19,6 +19,8 @@ Before committing bead status changes, run `bd export -o .beads/issues.jsonl` an
   include it with the Beads bookkeeping unless you are intentionally leaving local interaction history out.
 - Modern Beads migration gotcha: this repo has been migrated to the embedded Dolt backend (`bd context` should report `Backend: dolt`, `mode: embedded`).
   Do not use legacy direct SQLite-style `bd --db .beads/beads.db ...` commands; they can open an empty legacy database and remove/hide the JSONL export.
+  A diagnostic `git worktree add` normally runs this repository's `post-checkout` hook, and worktrees share the same embedded Beads database. Create disposable worktrees with hooks disabled for that command
+  (`git -c core.hooksPath=/dev/null worktree add ...`) and do not run `bd` inside them, so an unrelated comparison cannot import or rewrite the main worktree's tracker state.
   If recovery is needed, first copy `.beads/issues.jsonl` to a temp path, then run `bd init --from-jsonl --reinit-local --prefix haxe.rust --skip-agents --skip-hooks --non-interactive`
   and verify `bd status` matches the JSONL counts before mutating issues.
   The modern backend normalizes the configured prefix to `haxe_rust`; when adding children to the historical `haxe.rust-*` roadmap, use explicit IDs with `bd create --force --id ...`.
@@ -44,6 +46,20 @@ Milestone plan lives in Beads under epic `haxe.rust-oo3` (see `bd graph haxe.rus
   names. Technical details are welcome, but introduce them in plain language and make the practical
   outcome clear first.
 
+## Plain-language communication
+
+- In chat, plans, commit messages, Beads notes, reviews, and user-facing documentation, lead with the
+  concrete behavior: what used to happen, what happens now, and why a user should care. Prefer familiar
+  phrases such as “exact source location,” “where this generated code came from,” or “saved compiler
+  decision” over specialist shorthand such as “provenance,” “semantic authority,” or “evidence ledger.”
+- When a precise technical term is genuinely useful, define it in ordinary language the first time and
+  keep using the concrete explanation alongside it. Do not assume that recognizing a term means the
+  reader understands the underlying behavior, tradeoffs, or failure case.
+- Keep explanations beginner-friendly without pretending the work is simpler or more certain than it
+  is. State important limits, assumptions, and remaining risks directly; check understanding through
+  concrete examples rather than confidence-signaling jargon. This avoids the Dunning-Kruger trap of
+  mistaking a shallow label for a clear mental model.
+
 ## Thinking Levels (Bead Labels)
 
 Use a `thinking:*` label on active beads so execution effort matches task risk.
@@ -55,7 +71,8 @@ Use a `thinking:*` label on active beads so execution effort matches task risk.
 - `thinking:high`
   - Parity contracts, gate semantics, dependency graph changes, perf-policy changes, compiler/runtime architecture decisions.
 - `thinking:xhigh`
-  - Scope-definition changes, release enforcement, provenance-sensitive implementation strategy, or any task where a wrong decision would create misleading 1.0 evidence.
+  - Scope-definition changes, release enforcement, implementation choices that affect exact source
+    locations, or any task where a wrong decision would create misleading 1.0 evidence.
 
 Agent policy:
 
@@ -127,6 +144,13 @@ Agent policy:
   relation, ownership conversion, module path, or other fact needed to emit the Rust operation.
 - Architecture policy: when warnings/regressions come from emitted Rust shape (lowering/printer artifacts),
   fix the compiler pass/lowering logic instead of relying on style-level source workarounds (for example rewriting app code to avoid explicit `return` in lambdas).
+- Anonymous runtime-record shape gotcha: validate every declared field of a `TAnonymous` value before
+  constructing the runtime record or converting that typed value to `Dynamic`, including `@:optional`
+  fields omitted from an object literal and concrete branch results hidden by a contextual Dynamic
+  `if`/`switch`. A direct write should still point to the exact stored value. When no value exists yet,
+  point to the anonymous value whose complete declared shape is unsupported. Do not rely only on
+  `Reflect.setField` call-site checks: a runtime field name or an already-Dynamic receiver has lost the
+  typed field declaration needed to prevent owned-value versus borrowed-read mismatches.
 - Workaround policy (strict): do not land temporary workarounds. Fix the root cause in compiler/runtime lowering and add or update regression coverage in the same change.
 - Single-source convergence policy (strict): when a defect is caused by the same contract, version,
   schema, status, or policy fact being maintained independently across code, config, docs, generated
@@ -222,6 +246,10 @@ Agent policy:
   wrapped command's exact status, including when the wrapper is called from `if` / `if !` contexts
   where `set -e` is suppressed. Reuse `scripts/ci/timed-command.sh` and keep
   `npm run test:timed-command-failure-propagation` wired into hooks.
+- Generated-artifact cleanup gotcha: `npm run test:clean-artifacts` validates the cleanup script
+  against a temporary fixture; it does not clean the working tree. Use
+  `bash scripts/ci/clean-artifacts.sh --outputs` for generated test/example outputs, or `--all` when
+  the owned build caches must also be removed, then run the npm contract test separately.
 - Pre-commit trigger gotcha: under `set -o pipefail`, `printf ... | grep -q` can report failure after a
   real match when `grep -q` exits early and the producer receives `SIGPIPE`. Match the captured staged
   file list with a here-string (`grep -Eq PATTERN <<<"$STAGED_FILES"`) so evidence gates cannot be
@@ -243,6 +271,19 @@ Agent policy:
   builds. Compiler evidence uses the two-pass, per-case-empty Cargo homes and reviewed
   locks/normalized metadata under `test/compatibility-baselines/fresh-cargo-resolution`; refresh that
   baseline only on exact Rust 1.96 after reviewing all graph changes.
+- Release-input ownership gotcha: release notices, SBOM entries, vendored Reflaxe records, and the
+  packaged Haxe source record must be read from code-owned exact paths, not editable pointers in an
+  evidence file. Every consumed package input must be a regular Git blob; reject symlinks, gitlinks,
+  path traversal, and files outside the reviewed package roots before generation. The final verifier
+  must compare the packaged license/source records with the facts printed in the packaged notice and
+  SBOM, so two tools cannot agree on a different local file and call it reviewed.
+- Release-scale/parser gotcha: repository-wide `git ls-files` output can exceed Node's 1 MiB
+  synchronous-process default even on the current tree, so stream it or set and test an explicit
+  repository-sized output limit. Match package roots as both the exact name and descendants so a
+  gitlink at `runtime` cannot hide behind a `runtime/`-only prefix. Let Git decode patch path quoting
+  through a NUL-delimited command; never infer the complete changed-file set from `diff --git` text
+  with a regular expression. Select the SBOM's primary product by its code-owned component ID, not
+  editable array order.
 - Rustup temp-workspace gotcha: rustup selects a toolchain from each command's working directory.
   A probe can report the repository-pinned `rustc` and then silently execute Cargo or rustc from the
   rolling default toolchain after moving to a temporary fixture outside the repository. Before
@@ -290,6 +331,115 @@ Agent policy:
   attributed targets, and files/modules must share one item-separator authority. Keep `mod x;`
   distinct from `mod x { }`, validate attribute/use paths before printing, and use `ELitUnit` for the
   Rust value `()` instead of disguising it as an empty block expression.
+- Typed-IR/raw-authority gotcha: `rust-raw-authority-policy.json` is the single source for every
+  intentionally opaque Rust boundary. Run `npm run docs:sync:rust-raw-authority` after changing it
+  and review the generated call-site inventory; never restore a compiler-owned raw factory. Use
+  `RItemGroup` only when an already characterized declaration family requires single-newline
+  adjacency, and make every item transform/policy recurse through the group just like an inline
+  module. Typed defaults and recovery macros must retain `RustExpr` structure plus an origin reason,
+  not round-trip through the printer into `ERaw`.
+- Representation-plan gotcha: `rust-representation-policy.json` owns the closed serialized
+  vocabulary for Rust storage shapes, ownership/reuse policy, semantic runtime reasons, contextual
+  bounds, null encoding, and source value facts. Run `npm run docs:sync:rust-representation-policy` after changing
+  it; never hand-edit the generated Haxe enum blocks, component schema, vocabulary table, or the
+  version-scoped runtime-reason consumers in the immutable runtime-plan schema/consumer manifest.
+  Lowering, clone/reuse logic, runtime/no-hxrt analysis, and thread/task/Dynamic bound inference must
+  consume the same validated decision rather than reconstructing a pass-local type classifier.
+  Typed-AST collection must classify value-bearing positions rather than every node type: control
+  wrappers, type expressions, direct method callees, and declaration method carriers may be typed as
+  `Dynamic`, anonymous structures, or functions even though they do not materialize such a value.
+  Preserve function-valued fields and real expression results, but suppress those scaffolding shapes
+  so runtime/no-hxrt reports do not invent requirements from compiler-internal typing artifacts.
+  Capture the complete typed module graph at Haxe's `onAfterTyping` boundary before Reflaxe extracts
+  method bodies into per-class compilation data; a late `Context.getAllModuleTypes()` rescan can keep
+  declarations while silently losing expression-only runtime requirements and operation checks such
+  as `throw`, reflection, or platform calls. Haxe may invoke the callback incrementally, so accumulate
+  the latest module reference by `ModuleTypeHelper.getUniqueId()` and consume one deterministic
+  snapshot at compile start. Do not key this map with `ModuleType.getPath()`: its suffix test can make
+  a primary `NotWidget` and secondary `Widget` declaration collide. Direct call/constructor arguments
+  are real value positions even when their syntax is `if` or `switch`; classify the resulting argument
+  type without broadly treating control/body wrappers as stored values. Immediately invoked `FEnum`
+  constructor targets are call scaffolding, but a constructor assigned to a variable remains a real
+  function value.
+  A representation-changing crossing needs both the actual expression type and the expected
+  destination type before Rust AST construction. Record call/constructor arguments, local
+  initializers, assignments, returns, casts, and control-expression results through that shared path;
+  a scalar passed to a framework-owned `Dynamic` parameter must not disappear merely because the
+  framework method body is outside the user snapshot. Suppress module fallbacks only for the runtime
+  reason categories covered by real decisions, never merely because a non-null decision array exists.
+  Haxe `Position.min/max` values are source-string coordinates, not the UTF-8 byte ranges promised by
+  runtime plans and source maps. Convert through `RustSourcePosition` before serialization and convert
+  back before `Context.makePosition`; an ASCII-only span fixture cannot prove this contract.
+  Reset `RustSourcePosition` once before the first after-typing capture for a compilation request, then
+  retain its private stable-path and display-location maps through final diagnostics. Clearing those
+  maps again during a later representation scan loses exact external-classpath locations for wrapper
+  expressions such as `throw` and `try`, even though their saved byte ranges are still correct.
+  Early exact no-hxrt findings and later broad module-path findings are two incomplete sources of
+  information. Combine them unconditionally before diagnostics—an already blocked result does not
+  mean collection is complete—and keep exact same-reason expression locations distinct.
+  Once a real value position is admitted, recurse through representation-bearing type arguments,
+  function signatures, anonymous fields, and typedef targets: an outer native container does not
+  make an inner `Dynamic`/HxRef/runtime-backed payload no-hxrt eligible.
+  Also scan emitted declaration storage such as enum-constructor payloads even when no expression
+  constructs them; the constructor's function-shaped type is a carrier, not a function value.
+  Boundary-only `Clone`, `Send`, `Sync`, and static requirements belong at the proven crossing, not
+  on unrelated single-thread native values.
+  Treat the current representation/lowering plan as the intentionally small intermediate layer
+  between typed Haxe and `RustAST`. It records only meaning that Rust syntax must not rediscover,
+  including representation, move/copy/clone/borrow behavior, null handling, boundary conversions,
+  runtime needs, required bounds, and exact source locations. Do not copy a whole-function C-style
+  IR such as the sibling `haxe.c` `HxcIR` by default: Rust already provides structured control flow,
+  typed enums, ownership checks, borrows, and automatic cleanup, so a second block/instruction/type
+  model would duplicate both the typed Haxe input and `RustAST`. Revisit a fuller function model only
+  through a `thinking:xhigh` design bead with concrete failing fixtures showing that whole-function
+  ownership, async/exception cleanup, or passes that repeatedly recover meaning from generated Rust
+  nodes cannot be made reliable in the bounded plan plus structural Rust AST. Start any such work as
+  a narrow per-function pilot, not a compiler-wide rewrite.
+  Before adding a saved plan field or temporary compiler marker, name the exact source fact that
+  would otherwise be lost, use a closed typed choice with the smallest useful payload, name one
+  producer and one lowering consumer, and define when the value stops being legal. Fail on malformed,
+  duplicate, missing, or unused decisions; unsupported source must receive an exact source diagnostic.
+  Saved-decision replay gotcha: a Haxe default value, read-only static initializer, or base constructor
+  body may intentionally be emitted at several Rust sites. A source byte range cannot distinguish
+  those generated copies. Register a replayable declaration expression only after typed analysis finds
+  a real use that lowering will emit; an unused default or read-only static declaration must create no
+  action. Derive the replay family from the declaration owner (constructor body, method default,
+  constructor default, or read-only static) through one shared typed helper; do not build it from the
+  caller's current module or from separately spelled strings in analysis and lowering. Store that
+  family on the saved action and require every emitted copy—including the first—to present the same
+  family plus a stable generated-site identity. Count the first site as the one normal use and later
+  sites as explicit replays; using the decision twice at the same generated site must still fail. Do
+  not loosen the ordinary one-use check for source expressions that are not deliberately replayed.
+  Run source-only validity checks, such as scoped-borrow escape detection, on the complete typed Haxe
+  snapshot before Rust AST construction. Do not let invalid source enter a later conversion and replace
+  the useful Haxe error with an unrelated internal lowering failure.
+  Haxe typed-class body gotcha: `ClassType.constructor` is stored separately from `fields` and
+  `statics`. Any analysis that claims complete executable-body coverage must scan the constructor
+  explicitly; otherwise constructor-only conversions or runtime requirements disappear before lowering.
+  Saved Dynamic source-shape gotcha: construct the type spelling, carrier kind, owned-value kind, and
+  copy/clone choice as one opaque fingerprint from the actual Haxe `Type`; do not expose a factory that
+  accepts those facts independently. The saved decision must name the same exact source location as
+  its action.
+  Anonymous borrowed-field gotcha: runtime anonymous records own values and read them back by exact
+  stored Rust type. Reject fields declared with `rust.Ref<T>`, `rust.MutRef<T>`, `rust.Slice<T>`,
+  `rust.MutSlice<T>`, or `rust.Str`, including nullable forms and ordinary non-core Haxe abstracts
+  around either the field or complete record, until a guard-bound read API can preserve the lifetime.
+  Use one applied-type-aware recognizer for both representation and borrow-region analysis. Detect
+  recursive types by their active instantiated identity instead of a fail-open depth limit, and stop
+  at unrelated `@:coreType` abstracts rather than blindly following them. Storing an owned value
+  while reading a borrowed carrier, or storing the short-lived reference, is not a valid shortcut.
+  Transparent callable-target gotcha: representation and no-hxrt source analysis must share one helper
+  that unwraps metadata, parentheses, and only casts between identical function types. This keeps
+  cast-wrapped immediate enum constructors as call syntax and preserves exact `Sys`/`Type`/`Reflect`
+  operation errors without hiding type-changing casts or stored functions.
+  Expression-build gotcha: never call `compileExpr` speculatively and then discard the result before
+  compiling the same source expression again. Besides duplicated compiler work, that can consume one
+  saved boundary action twice even when generated Rust contains only one expression.
+  The printer only formats the already selected Rust structure. Cover each admitted choice with a
+  focused generated-shape test and a runtime test when behavior can change.
+  Central exhaustive `RustAST` child traversal and modest pass-result/final checks are worthwhile
+  follow-ups as the tree and pass list grow, but migrate them separately and preserve current pass
+  order/output. Do not bundle that infrastructure with an unrelated lowering or runtime behavior fix.
 - Structural trait/impl gotcha: generated traits and impls must use `RTrait` / `RImpl` with typed
   generics, trait paths, target types, where predicates, receivers, signatures, and associated items.
   Every body-transforming pass must recurse into trait defaults, impl methods, and non-null associated
@@ -336,6 +486,12 @@ Agent policy:
     must use `HxRef<Anon>` with Haxe reference equality. If a Rust-first API needs an owned pair, expose a
     distinct nominal `rust.*` facade; native map iterators must bridge their items back into the ordinary
     anonymous-record representation.
+  - Anonymous-field Dynamic-storage gotcha: generated literals, assignments, and constant-name
+    `Reflect.setField` calls must convert the source through the compiler's saved Dynamic action and call
+    `set_dyn`; do not hide that conversion in generic `Anon::set<T>`. Preserve `Option<T>` or another
+    exact Rust carrier only for a concretely typed field whose typed reads request that carrier. A field
+    declared `Dynamic` keeps ordinary Haxe null behavior, so `None` becomes Dynamic null rather than a
+    boxed Rust `Option` value.
   - Structural-iterator gotcha: field names and function signatures alone do not make an anonymous value
     a native iterator. Reserve `hxrt::iter::Iter<T>` for Haxe's method-shaped `Iterator<T>` contract
     (`FMethod`); a mutable record with `FVar` callbacks named `hasNext` / `next` remains `HxRef<Anon>`.
@@ -399,7 +555,7 @@ Agent policy:
   - keeps a typed callable surface (no `untyped` at callsites)
   - supports Reflaxe `{0}` placeholder interpolation with varargs (`RustInjection.__rust__("foo({0})", arg0)`)
 - Reflaxe injection gotcha: `TargetCodeInjection.checkTargetCodeInjectionGeneric` returns an empty list when the injected string has no `{0}` placeholders. The compiler must treat that case as “literal injection string”.
-- Macro-injection provenance gotcha: a macro that returns another injection macro call must forward the
+- Macro-injection source-location gotcha: a macro that returns another injection macro call must forward the
   user callsite through every expansion layer with Haxe's special `@:pos(callerPos)` metadata. Assigning
   only `Expr.pos` is insufficient for the nested macro invocation and can leave typed `__rust__` nodes
   anchored in `src/reflaxe/rust/macros`. Keep the exact `rust.metal.Code.expr/stmt` line assertions in
@@ -410,6 +566,17 @@ Agent policy:
     preserve required Rust `String` -> `HxString` bridges in return/helper coercions, and skip
     borrowed inner string wrapping only when the source expression already lowers to
     `hxrt::string::HxString`.
+  - Ref-to-Dynamic gotcha: `rust.Ref<T>` is a temporary `&T`, so never put that reference token into
+    `Dynamic`. Copy a proven Copy inner value or clone a known concrete Clone inner value, and use the
+    inner Haxe type for runtime boxing/type IDs. A generic inner type without a proven bound and a
+    non-clone native handle must fail at the exact Haxe call/storage expression before Rust AST
+    construction, with a direct explanation instead of a later internal compiler error.
+  - Framework open-generic Dynamic gotcha: target std helpers are intentionally outside the
+    application saved-action snapshot, but a reviewed helper may box its own `T`. Admit that generated
+    path only when `T` is a direct parameter of the current framework class and its structural
+    `@:rustGeneric` declaration already includes `Clone + Send + Sync + 'static`, exactly matching
+    `Dynamic::from`. Record it as a compiler/framework action. Never use this exception for application
+    source, nested open types, borrowed values, or parameters whose required Rust bounds are missing.
 - Rust naming collisions across inheritance must preserve base-field names: assign names in base→derived order and only disambiguate derived names against already-used base names.
 - Inheritance method dispatch model: Rust does not “inherit” methods, so subclasses must synthesize concrete Rust methods for non-overridden base methods (compile the base body with `this` dispatch bound to the subclass). This avoids invalid calls like `Base::method(&RefCell<Sub>)` and eliminates `todo!()` stubs in base trait impls.
 - Base traits include inherited methods: if `BTrait` includes inherited `A.foo`, then `impl BTrait for RefCell<C>` must implement `foo` even if `B` didn’t declare it; emit base-trait impl methods from the base trait surface (declared + inherited), not just `baseType.fields.get()`.
@@ -501,7 +668,9 @@ Agent policy:
     symlink aliases (for example `/var/...` vs `/private/var/...`) can make packaged std overrides look like non-framework files and skip emission.
   - Validation gotcha: `.cross.hx` std override behavior must be validated through a real `-lib reflaxe.rust` install path (`haxelib newrepo` + `haxelib install <zip>`).
     A raw `-cp <pkg>/src` compile is not an equivalent packaging test and can resolve upstream std modules instead.
-  - Governance rule: keep `docs/stdlib-provenance-ledger.json` in sync with tracked `std/rust/_std/**/*.hx` files, keep
+  - Governance rule: keep `docs/stdlib-provenance-ledger.json`—the historical filename for the table
+    that records where each standard-library override came from—in sync with tracked
+    `std/rust/_std/**/*.hx` files, keep
     `docs/portable-stdlib-allowlist.json` aligned with `test/upstream_std_modules.txt`, and run boundary guards:
     `npm run guard:upstream-stdlib-boundary` + `npm run guard:stdlib-ledger` + `npm run guard:portable-stdlib-allowlist`.
     - Preferred update flow for Tier1 list changes: edit `test/upstream_std_modules.txt`, run
@@ -573,7 +742,7 @@ Agent policy:
 - Run upstream stdlib sweep locally:
   - Tier1 (default): `bash test/run-upstream-stdlib-sweep.sh` (or single-module: `--module haxe.Json`)
   - Tier2 (broader): `bash test/run-upstream-stdlib-sweep.sh --tier tier2`
-- Run stdlib boundary/provenance guards locally:
+- Run standard-library boundary and source-record guards locally:
   - `npm run stdlib:audit:candidates`
   - `npm run stdlib:sync:tier2`
   - `npm run stdlib:sync:allowlist`
@@ -582,7 +751,9 @@ Agent policy:
   - `npm run guard:portable-stdlib-allowlist`
   - `npm run guard:stdlib-candidates`
   - `npm run guard:stdlib-candidate-gap` (defaults to strict zero-gap; override only intentionally via `PORTABLE_STDLIB_CANDIDATE_GAP_MAX`)
-  - `guard:stdlib-ledger` also enforces that every provenance-ledger importable module is represented in Tier2; intentional non-importable boundary modules must carry `tier2SweepExcludeReason` in `docs/stdlib-provenance-ledger.json`.
+  - `guard:stdlib-ledger` also enforces that every module marked importable in
+    `docs/stdlib-provenance-ledger.json` is represented in Tier2; intentional non-importable boundary
+    modules must carry `tier2SweepExcludeReason` in that file.
 - Run Windows-safe smoke subset locally: `bash scripts/ci/windows-smoke.sh` (same subset used by the Windows CI job).
 - Run packaged-install smoke locally: `bash scripts/ci/package-smoke.sh` (build zip, install into local haxelib repo, compile, cargo build).
   - Regression coverage includes a symlinked working-directory compile pass to catch path-alias mismatches when classifying framework std files.
@@ -641,6 +812,19 @@ Agent policy:
   It also fails on stale naming artifacts (`idiomatic_profile`, `async_preview_retry`, `profile_contract.*`, `hxrt_plan.*`)
   to enforce hard-cutover naming.
 - Runtime gotcha: snapshots embed `runtime/hxrt/**` into `test/snapshot/**/intended/hxrt/`, so any change under `runtime/hxrt/` requires `bash test/run-snapshots.sh --update` to keep goldens in sync.
+- Source-map freshness gotcha: `rust-source-map.json` describes the compiler-emitted UTF-8 bytes and
+  is guarded by the complete generated filename, byte length, and SHA-256. `cargo fmt`, `-D rustfmt`,
+  or a manual `.rs` edit intentionally makes exact lookup fail. Never repair this by basename/line
+  guessing; consume diagnostics before formatting or regenerate the crate.
+  Hash the same `haxe.io.Bytes` used for offsets with `Sha256.make(bytes).toHex()`; the string
+  convenience hash is not a byte-contract substitute and diverges from standard UTF-8 SHA-256 for
+  non-ASCII generated source on the macro target.
+- Source-map origin-transfer gotcha: origin wrappers are semantically invisible but still own the
+  bytes they wrap. Structural recognizers must peel and rebuild complete `EOrigin`/block-tail chains;
+  destructive rewrites must move statement/expression origins onto the surviving node; and an enum
+  whole-value alias must never replace the complete arm block or erase live payload bindings.
+  `rust-source-map-policy.json` is the single source for compiler-generated reason IDs; run
+  `npm run docs:sync:rust-source-map-policy` instead of editing the Haxe enum or schema list by hand.
 - Snapshot runner gotcha: many snapshot crates share the same crate name (`hx_app`), so `test/run-snapshots.sh` must isolate `CARGO_TARGET_DIR` per case/variant
   (using a shared base cache) to avoid binary collisions and incorrect `stdout.txt` comparisons.
 - `cargo hx` wrapper gotcha: when a smoke/test run compiles both the repo wrapper tool (`tools/hx`) and generated-template wrappers with a shared `CARGO_TARGET_DIR`,
@@ -655,7 +839,12 @@ Agent policy:
   For intended-stack validation before staging, use a temporary full index (`GIT_INDEX_FILE=... git add -A`) and run `npm run docs:check:evidence` under that index.
   Once cases are staged, the repo pre-commit hook requires both generated summary artifacts to be staged, free of unstaged edits, and byte-for-byte current.
 - Disk-space gotcha: full snapshot regeneration and full harness runs can consume many GB in `test/snapshot/**/out*`, `examples/**/out*`, Cargo caches/registries, and `.cache/examples-target`.
-  If you hit `No space left on device`, run `npm run clean:artifacts:all` before re-running, then regenerate snapshots.
+  The independent consumer checkout's generated Cargo `target` directories can also retain tens of GB across
+  QA runs; they are rebuildable Cargo artifacts, but this repository's cleanup script cannot own a
+  sibling checkout. If you hit `No space left on device`, clean this repository with
+  `npm run clean:artifacts:all`, remove only stale consumer `target` directories when that checkout is
+  in scope, verify free space, and then rerun the failed gate. Never record an ENOSPC harness stop as
+  a compiler failure.
   When adding a new harness stage that writes ignored generated outputs or Cargo target/cache roots,
   update `scripts/ci/clean-artifacts.sh` in the same change so `npm run clean:artifacts:all`
   actually restores the repo to a no-generated-artifacts state after full validation.
@@ -754,10 +943,14 @@ Agent policy:
   belongs to the locked standard `semver` dependency, not a custom regex.
 - Tracked package/HXML versions are development sentinels. Exact versions are injected only into the
   staged Haxelib package and bound to the tag/source SHA in `release-metadata.json`.
-- Release artifact rule (strict): build the complete package twice, require byte-identical output,
-  validate the full ZIP contract, run package smoke against that exact ZIP, and compare hosted
-  state/size/SHA-256 to the approved local ZIP and checksum. Published releases and remote version
-  tags are immutable; never move/delete a remote version tag to recover.
+- Release artifact rule (strict): build the complete package twice and make the strict verifier
+  compare every candidate ZIP byte with the separate independent rebuild. A broad allowed-directory
+  list plus selected file checks is not a complete source-to-package proof because extra or changed
+  bytes can hide below an allowed root. Also ship exact file-by-file source records needed by an
+  offline package reviewer; do not make release evidence depend on a mutable branch URL. Run package
+  smoke against the exact verified ZIP, then compare hosted state/size/SHA-256 to the approved local
+  ZIP and checksum. Published releases and remote version tags are immutable; never move/delete a
+  remote version tag to recover.
 - If a valid tag lacks a complete GitHub Release, use existing-tag repair from `docs/release.md`;
   never advance the version merely to escape partial publication.
 - Treat `docs/release-reference-architecture.md` as the reference contract for sibling compiler

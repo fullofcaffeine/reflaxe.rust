@@ -65,7 +65,14 @@ fn describe(value: Option<i32>) -> hxrt::string::HxString {
     return hxrt::string::HxString::from(format!(
         "{}{}",
         "value:",
-        hxrt::dynamic::from(value).to_haxe_string()
+        ({
+            let __hx_opt = value;
+            match __hx_opt {
+                Some(__v) => hxrt::dynamic::from(__v),
+                None => hxrt::dynamic::Dynamic::null(),
+            }
+        })
+        .to_haxe_string()
     ));
 }
 
@@ -206,7 +213,14 @@ fn main() {
     crate::sys::Sys::println(hxrt::dynamic::from(hxrt::string::HxString::from(format!(
         "{}{}",
         "scalar:",
-        hxrt::dynamic::from(n).to_haxe_string()
+        ({
+            let __hx_opt = n;
+            match __hx_opt {
+                Some(__v) => hxrt::dynamic::from(__v),
+                None => hxrt::dynamic::Dynamic::null(),
+            }
+        })
+        .to_haxe_string()
     ))));
     crate::sys::Sys::println(hxrt::dynamic::from(quote(hxrt::string::HxString::from(
         "a\n\"\\\t",

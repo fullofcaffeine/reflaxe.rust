@@ -120,14 +120,20 @@ fn main() {
     let seven: Option<i32> = Some(7);
     let nullable_values: hxrt::array::Array<Option<i32>> =
         hxrt::array::Array::<Option<i32>>::from_vec(vec![seven, None]);
-    println!(
-        "{}",
-        hxrt::dynamic::from(nullable_index(nullable_values.clone(), 0))
-    );
-    println!(
-        "{}",
-        hxrt::dynamic::from(nullable_index(nullable_values.clone(), 1))
-    );
+    println!("{}", {
+        let __hx_opt = nullable_index(nullable_values.clone(), 0);
+        match __hx_opt {
+            Some(__v) => hxrt::dynamic::from(__v),
+            None => hxrt::dynamic::Dynamic::null(),
+        }
+    });
+    println!("{}", {
+        let __hx_opt = nullable_index(nullable_values.clone(), 1);
+        match __hx_opt {
+            Some(__v) => hxrt::dynamic::from(__v),
+            None => hxrt::dynamic::Dynamic::null(),
+        }
+    });
     let empty: crate::HxRef<hxrt::anon::Anon> = crate::HxRef::new(hxrt::anon::Anon::new());
     println!(
         "{}",

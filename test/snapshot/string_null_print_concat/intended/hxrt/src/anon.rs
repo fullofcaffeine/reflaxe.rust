@@ -20,7 +20,8 @@ use std::collections::BTreeMap;
 ///
 /// How
 /// - The compiler lowers object literals into a `HxRef<Anon>` (a shared, interior-mutable reference).
-/// - Field reads/writes are compiled into `borrow().get::<T>(...)` / `borrow_mut().set(...)`.
+/// - Generated field writes arrive through `set_dyn` after the compiler has explicitly converted the
+///   source value to `Dynamic`; typed reads use `get::<T>` and Dynamic reads use `get_dyn`.
 /// - For v1 stdlib parity, we also support runtime string keys (Reflect/JSON use-cases).
 #[derive(Clone, Debug, Default)]
 pub struct Anon {
@@ -35,6 +36,9 @@ impl Anon {
         }
     }
 
+    /// Stores a concrete value for runtime-internal callers that do not originate at a Haxe source
+    /// boundary. Generated Haxe field writes use `set_dyn` so the compiler can validate and report the
+    /// exact conversion before Rust is emitted.
     #[inline]
     pub fn set<T>(&mut self, key: &str, value: T)
     where
@@ -62,6 +66,10 @@ impl Anon {
         self.fields.get(key).cloned().unwrap_or_else(Dynamic::null)
     }
 
+    /// Stores an already-converted field payload.
+    ///
+    /// Generated code owns the conversion so borrowed values become owned before storage and typed
+    /// fields retain the exact carrier that `get<T>` will request, such as `Option<bool>`.
     #[inline]
     pub fn set_dyn(&mut self, key: &str, value: Dynamic) {
         self.fields.insert(key.to_string(), value);

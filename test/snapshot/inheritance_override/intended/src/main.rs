@@ -68,5 +68,5 @@ fn main() {
             __tmp.as_arc_opt().unwrap().clone();
         __up
     };
-    println!("{}", hxrt::dynamic::from(a.speak().clone()));
+    println!("{}", hxrt::dynamic::from(a.speak()));
 }

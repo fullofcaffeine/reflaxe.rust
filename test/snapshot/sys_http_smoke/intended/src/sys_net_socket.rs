@@ -201,15 +201,18 @@ impl Socket {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("host", host);
-                __b.set(
+                __b.set_dyn(
+                    "host",
+                    hxrt::dynamic::from_ref_with_type_id(host, 0x285d6471u32),
+                );
+                __b.set_dyn(
                     "port",
-                    crate::socket_native::peer_port(
+                    hxrt::dynamic::from(crate::socket_native::peer_port(
                         &({
                             let __b = __hx_this.borrow();
                             __b.handle.clone()
                         }),
-                    ),
+                    )),
                 );
             };
             __o
@@ -234,15 +237,18 @@ impl Socket {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set("host", host);
-                __b.set(
+                __b.set_dyn(
+                    "host",
+                    hxrt::dynamic::from_ref_with_type_id(host, 0x285d6471u32),
+                );
+                __b.set_dyn(
                     "port",
-                    crate::socket_native::host_port(
+                    hxrt::dynamic::from(crate::socket_native::host_port(
                         &({
                             let __b = __hx_this.borrow();
                             __b.handle.clone()
                         }),
-                    ),
+                    )),
                 );
             };
             __o
@@ -371,17 +377,26 @@ impl Socket {
             let __o = crate::HxRef::new(hxrt::anon::Anon::new());
             {
                 let mut __b = __o.borrow_mut();
-                __b.set(
+                __b.set_dyn(
                     "read",
-                    pick(read.clone(), idx_groups.get_unchecked(0 as usize)),
+                    hxrt::dynamic::from_ref(pick(
+                        read.clone(),
+                        idx_groups.get_unchecked(0 as usize),
+                    )),
                 );
-                __b.set(
+                __b.set_dyn(
                     "write",
-                    pick(write.clone(), idx_groups.get_unchecked(1 as usize)),
+                    hxrt::dynamic::from_ref(pick(
+                        write.clone(),
+                        idx_groups.get_unchecked(1 as usize),
+                    )),
                 );
-                __b.set(
+                __b.set_dyn(
                     "others",
-                    pick(others.clone(), idx_groups.get_unchecked(2 as usize)),
+                    hxrt::dynamic::from_ref(pick(
+                        others.clone(),
+                        idx_groups.get_unchecked(2 as usize),
+                    )),
                 );
             };
             __o

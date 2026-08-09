@@ -1,8 +1,15 @@
 package reflaxe.rust.ast;
 
+import haxe.io.Bytes;
+import reflaxe.rust.RustSourceMap.RustPrintedSourceFile;
+import reflaxe.rust.RustSourceMap.RustPrintedSourceMapping;
+import reflaxe.rust.RustSourceMap.RustSourceMapNodeKind;
 import reflaxe.rust.ast.RustAST;
+import reflaxe.rust.ast.RustAST.RustOrigin;
+import reflaxe.rust.ast.RustAST.RustOriginTools;
 
 class RustASTPrinter {
+	static var activeSourceMapRecorder:Null<RustSourceMapPrinterRecorder> = null;
 	// Rust-ish precedence levels used to avoid excessive parentheses.
 	// Higher number = tighter binding.
 	static inline var PREC_LOWEST = 0;
@@ -30,7 +37,7 @@ class RustASTPrinter {
 	}
 
 	static function isComparisonLikeExpr(expr:RustAST.RustExpr):Bool {
-		return switch (expr) {
+		return switch (RustOriginTools.withoutExpressionOrigin(expr)) {
 			case EBinary(op, _, _): isComparisonLikeOp(op);
 			case _: false;
 		}
@@ -39,6 +46,42 @@ class RustASTPrinter {
 	public static function printFile(file:RustAST.RustFile):String {
 		var out = printItemSequence(file.items);
 		return out.length > 0 ? (out + "\n") : "";
+	}
+
+	/**
+		Prints byte-identical Rust while recording the ranges owned by origin wrappers.
+
+		Why
+		- Source mapping must reuse the canonical printer. A second printer would inevitably drift in
+		  whitespace, precedence, or rustfmt-facing shape.
+		- Nested expressions are assembled as strings, so recording final byte offsets directly inside
+		  each recursive call is not possible until the parent places that string.
+
+		What
+		- Temporarily inserts private non-Rust sentinels around `ROrigin`, `SOrigin`, and `EOrigin`
+		  output, then removes them while calculating final UTF-8 byte spans.
+		- Returns the exact same `code` as `printFile` plus typed mapping metadata.
+
+		How
+		- Recording is deliberately non-reentrant because this static printer is used synchronously by
+		  Reflaxe's output iterator.
+		- Sentinel collision, imbalance, or duplicate closure fails closed; wrappers around syntax that
+		  prints no bytes simply produce no mapping.
+	**/
+	public static function printFileWithSourceMap(file:RustAST.RustFile, generatedFile:String):RustPrintedSourceFile {
+		if (activeSourceMapRecorder != null)
+			throw "Rust source-map printer is not reentrant";
+		var recorder = new RustSourceMapPrinterRecorder(generatedFile);
+		activeSourceMapRecorder = recorder;
+		var marked:String;
+		try {
+			marked = printFile(file);
+		} catch (error:haxe.Exception) {
+			activeSourceMapRecorder = null;
+			throw error;
+		}
+		activeSourceMapRecorder = null;
+		return recorder.finish(marked);
 	}
 
 	/**
@@ -60,6 +103,10 @@ class RustASTPrinter {
 	static function printItemSequence(items:Array<RustAST.RustItem>):String {
 		var present:Array<{item:RustAST.RustItem, text:String}> = [];
 		for (item in items) {
+			// Do this structural check before printing. In mapping mode an empty raw item would otherwise
+			// contain only recorder sentinels and incorrectly participate in separator decisions.
+			if (!itemPrintsContent(item))
+				continue;
 			var text = printItem(item);
 			if (StringTools.trim(text).length > 0)
 				present.push({item: item, text: text});
@@ -73,8 +120,25 @@ class RustASTPrinter {
 		return out.toString();
 	}
 
+	static function itemPrintsContent(item:RustAST.RustItem):Bool {
+		return switch (RustOriginTools.withoutItemOrigin(item)) {
+			case RItemGroup(group): {
+				var visible = false;
+				for (child in group) {
+					if (itemPrintsContent(child)) {
+						visible = true;
+						break;
+					}
+				}
+				visible;
+			}
+			case RRaw(fragment): StringTools.trim(fragment.code).length > 0;
+			case _: true;
+		};
+	}
+
 	static function compactItemBoundary(left:RustAST.RustItem, right:RustAST.RustItem):Bool {
-		return switch [left, right] {
+		return switch [RustOriginTools.withoutItemOrigin(left), RustOriginTools.withoutItemOrigin(right)] {
 			case [RInnerAttribute(_), RInnerAttribute(_)]: true;
 			case [RUse(_), RUse(_)]: true;
 			case [RTypeAlias(_), RTypeAlias(_)]: true;
@@ -161,6 +225,8 @@ class RustASTPrinter {
 
 	static function printItem(item:RustAST.RustItem):String {
 		return switch (item) {
+			case ROrigin(origin, inner): recordSourceMap(RustSourceMapNodeKind.Item, origin, printItem(inner));
+			case RItemGroup(group): printItemGroup(group);
 			case RAttributed(value): printAttributedItem(value);
 			case RInnerAttribute(attribute): printAttribute(attribute, true);
 			case RComment(comment): printComment(comment);
@@ -174,8 +240,22 @@ class RustASTPrinter {
 			case REnum(e): printEnum(e);
 			case RTrait(declaration): printTrait(declaration);
 			case RImpl(i): printImpl(i);
-			case RRaw(fragment): fragment.code;
+			case RRaw(fragment): recordSourceMap(RustSourceMapNodeKind.Item, fragment.origin, fragment.code);
 		}
+	}
+
+	static function printItemGroup(group:RustAST.RustItemGroup):String {
+		if (group == null)
+			throw "Cannot print a null Rust item group";
+		var parts:Array<String> = [];
+		for (item in group) {
+			if (!itemPrintsContent(item))
+				continue;
+			var printed = printItem(item);
+			if (StringTools.trim(printed).length > 0)
+				parts.push(printed);
+		}
+		return parts.join("\n");
 	}
 
 	/** Prints outer attributes immediately adjacent to their structurally owned target item. */
@@ -403,7 +483,8 @@ class RustASTPrinter {
 			case AssocFunction(method): printAssociatedFunction(method, indent);
 			case AssocType(declaration): printAssociatedType(declaration, indent);
 			case AssocConst(declaration): printAssociatedConstant(declaration, indent);
-			case AssocRaw(fragment): indentRawAssociated(fragment, indent);
+			case AssocRaw(fragment):
+				recordSourceMap(RustSourceMapNodeKind.Item, fragment.origin, indentRawAssociated(fragment, indent));
 		};
 	}
 
@@ -729,6 +810,7 @@ class RustASTPrinter {
 
 	static function printStmt(s:RustAST.RustStmt, indent:Int):String {
 		return switch (s) {
+			case SOrigin(origin, statement): recordSourceMap(RustSourceMapNodeKind.Statement, origin, printStmt(statement, indent));
 			case RLet(name, mutable, ty, expr): {
 					var out = "let";
 					if (mutable)
@@ -742,12 +824,12 @@ class RustASTPrinter {
 				}
 			case RSemi(e): {
 					// Avoid `;;` when an injected raw expression already includes a trailing semicolon.
-					var printed = printExpr(e, indent);
-					var trimmed = StringTools.rtrim(printed);
-					if (StringTools.endsWith(trimmed, ";"))
-						trimmed
-					else
-						trimmed + ";";
+					var printed = printSemiExpression(e, indent);
+					var alreadyTerminated = switch (RustOriginTools.withoutExpressionOrigin(e)) {
+						case ERaw(fragment): StringTools.endsWith(StringTools.rtrim(fragment.code), ";");
+						case _: false;
+					};
+					alreadyTerminated ? printed : printed + ";";
 				}
 			case RExpr(e, needsSemicolon):
 				printExpr(e, indent) + (needsSemicolon ? ";" : "");
@@ -770,9 +852,22 @@ class RustASTPrinter {
 		return printExprPrec(e, indent, PREC_LOWEST);
 	}
 
+	/** Trims raw statement whitespace inside provenance wrappers so recorder bytes stay invisible. */
+	static function printSemiExpression(e:RustAST.RustExpr, indent:Int):String {
+		return switch (e) {
+			case EOrigin(origin, expression):
+				recordSourceMap(RustSourceMapNodeKind.Expression, origin, printSemiExpression(expression, indent));
+			case ERaw(fragment):
+				recordSourceMap(RustSourceMapNodeKind.Expression, fragment.origin, StringTools.rtrim(fragment.code));
+			case _: printExpr(e, indent);
+		};
+	}
+
 	static function printExprPrec(e:RustAST.RustExpr, indent:Int, ctxPrec:Int):String {
 		return switch (e) {
-			case ERaw(fragment): fragment.code;
+			case EOrigin(origin, expression):
+				recordSourceMap(RustSourceMapNodeKind.Expression, origin, printExprPrec(expression, indent, ctxPrec));
+			case ERaw(fragment): recordSourceMap(RustSourceMapNodeKind.Expression, fragment.origin, fragment.code);
 			case ESelf: "self";
 			case ELitUnit: "()";
 			case ELitInt(v): Std.string(v);
@@ -827,7 +922,7 @@ class RustASTPrinter {
 						leftStr = "(" + leftStr + ")";
 					// Rust parsing gotcha: `x as i32 < 0` parses as `x as i32<0>` (generic arguments).
 					// Force parens around casts when used in comparisons.
-					if ((op == "<" || op == ">" || op == "<=" || op == ">=") && switch (left) {
+					if ((op == "<" || op == ">" || op == "<=" || op == ">=") && switch (RustOriginTools.withoutExpressionOrigin(left)) {
 							case ECast(_, _): true;
 							case _: false;
 						}) {
@@ -837,7 +932,7 @@ class RustASTPrinter {
 					var rightStr = printExprPrec(right, indent, prec + 1);
 					if (isComparisonLikeOp(op) && isComparisonLikeExpr(right))
 						rightStr = "(" + rightStr + ")";
-					if ((op == "<" || op == ">" || op == "<=" || op == ">=") && switch (right) {
+					if ((op == "<" || op == ">" || op == "<=" || op == ">=") && switch (RustOriginTools.withoutExpressionOrigin(right)) {
 							case ECast(_, _): true;
 							case _: false;
 						}) {
@@ -895,7 +990,7 @@ class RustASTPrinter {
 					for (a in arms) {
 						var pat = printPattern(a.pat);
 						var ex = printExprPrec(a.expr, indent + 1, PREC_LOWEST);
-						var needsComma = switch (a.expr) {
+						var needsComma = switch (RustOriginTools.withoutExpressionOrigin(a.expr)) {
 							case EBlock(_): false;
 							case _: true;
 						}
@@ -974,10 +1069,14 @@ class RustASTPrinter {
 	}
 
 	static function printIfBranch(e:RustAST.RustExpr, indent:Int):String {
-		return switch (e) {
+		return switch (RustOriginTools.withoutExpressionOrigin(e)) {
 			case EBlock(_): printExpr(e, indent);
 			case _: "{ " + printExpr(e, indent) + " }";
 		}
+	}
+
+	static function recordSourceMap(kind:RustSourceMapNodeKind, origin:RustOrigin, text:String):String {
+		return activeSourceMapRecorder == null ? text : activeSourceMapRecorder.wrap(kind, origin, text);
 	}
 
 	static function indentString(level:Int):String {
@@ -1008,5 +1107,96 @@ class RustASTPrinter {
 			}
 		}
 		return out.toString();
+	}
+}
+
+private typedef RustSourceMapPrinterMark = {
+	var nodeKind:RustSourceMapNodeKind;
+	var origin:RustOrigin;
+	var originDepth:Null<Int>;
+	var startByte:Null<Int>;
+	var endByte:Null<Int>;
+}
+
+/** Private sentinel recorder used only by `RustASTPrinter.printFileWithSourceMap`. */
+private class RustSourceMapPrinterRecorder {
+	static inline var MARKER_PREFIX:String = "\x01HXSM:";
+	static inline var MARKER_SUFFIX:String = ":\x02";
+
+	final generatedFile:String;
+	final marks:Array<RustSourceMapPrinterMark>;
+
+	public function new(generatedFile:String) {
+		this.generatedFile = generatedFile;
+		this.marks = [];
+	}
+
+	public function wrap(nodeKind:RustSourceMapNodeKind, origin:RustOrigin, text:String):String {
+		if (text == null)
+			throw "Rust source-map printer cannot record null text";
+		var id = marks.length;
+		marks.push({nodeKind: nodeKind, origin: origin, originDepth: null, startByte: null, endByte: null});
+		return marker(id, "start") + text + marker(id, "end");
+	}
+
+	public function finish(marked:String):RustPrintedSourceFile {
+		var output = new StringBuf();
+		var cursor = 0;
+		var byteOffset = 0;
+		var active:Array<Int> = [];
+		while (cursor < marked.length) {
+			var markerStart = marked.indexOf(MARKER_PREFIX, cursor);
+			if (markerStart < 0) {
+				var tail = marked.substr(cursor);
+				output.add(tail);
+				byteOffset += Bytes.ofString(tail).length;
+				cursor = marked.length;
+				break;
+			}
+			var ordinary = marked.substring(cursor, markerStart);
+			output.add(ordinary);
+			byteOffset += Bytes.ofString(ordinary).length;
+			var markerEnd = marked.indexOf(MARKER_SUFFIX, markerStart + MARKER_PREFIX.length);
+			if (markerEnd < 0)
+				throw "Rust source-map printer found an unterminated sentinel";
+			var payload = marked.substring(markerStart + MARKER_PREFIX.length, markerEnd);
+			var pieces = payload.split(":");
+			if (pieces.length != 2)
+				throw 'Rust source-map printer found an invalid sentinel: $payload';
+			var id = Std.parseInt(pieces[0]);
+			if (id == null || id < 0 || id >= marks.length)
+				throw 'Rust source-map printer found an unknown sentinel id: ${pieces[0]}';
+			var mark = marks[id];
+			switch (pieces[1]) {
+				case "start":
+					if (mark.startByte != null)
+						throw 'Rust source-map sentinel $id started twice';
+					mark.originDepth = active.length;
+					mark.startByte = byteOffset;
+					active.push(id);
+				case "end":
+					if (mark.startByte == null || mark.endByte != null || active.length == 0 || active[active.length - 1] != id)
+						throw 'Rust source-map sentinel $id ended out of order';
+					active.pop();
+					mark.endByte = byteOffset;
+				case _:
+					throw 'Rust source-map printer found an unknown sentinel action: ${pieces[1]}';
+			}
+			cursor = markerEnd + MARKER_SUFFIX.length;
+		}
+
+		var mappings:Array<RustPrintedSourceMapping> = [];
+		for (index in 0...marks.length) {
+			var mark = marks[index];
+			if (mark.originDepth == null || mark.startByte == null || mark.endByte == null)
+				throw 'Rust source-map sentinel $index was not balanced';
+			if (mark.endByte > mark.startByte)
+				mappings.push(RustPrintedSourceMapping.at(mark.nodeKind, mark.origin, mark.originDepth, mark.startByte, mark.endByte));
+		}
+		return RustPrintedSourceFile.of(generatedFile, output.toString(), mappings);
+	}
+
+	inline function marker(id:Int, action:String):String {
+		return MARKER_PREFIX + id + ":" + action + MARKER_SUFFIX;
 	}
 }

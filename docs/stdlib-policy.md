@@ -168,7 +168,9 @@ These mappings are reflected in deterministic runtime planning artifacts:
 
 `runtime_plan.*` also includes a semantic runtime ledger. Cargo feature reasons explain which runtime
 slice is selected; `runtimeRequirements` explains why source-visible semantics need runtime support,
-and `fallbackSummary` reports whether that blocks no-hxrt eligibility.
+and `fallbackSummary` reports whether that blocks no-hxrt eligibility. Representation-backed entries
+are derived from the same typed decision used by lowering and reuse analysis; operation-only needs
+such as reflection, exceptions, and platform abstraction remain separate semantic checks.
 
 ## Validation workflow
 

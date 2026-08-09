@@ -2918,6 +2918,9 @@ run_negative_case "test/negative/metal_ref_alias_tail_escape" 'Rust borrow regio
 run_negative_case "test/negative/metal_ref_alias_return_escape" 'Rust borrow region violation: returned borrow-only alias `alias` \(rust\.Ref<T>\)\. Return an owned value derived from the borrow instead\.' \
 	'typed borrow region rejects explicitly returned rust.Ref alias' \
 	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
+run_negative_case "test/negative/metal_ref_abstract_alias_escape" 'Rust borrow region violation: returned borrow-only alias `alias` \(rust\.Ref<T>\)\. Return an owned value derived from the borrow instead\.' \
+	'typed borrow region follows an ordinary Haxe abstract to reject an escaped rust.Ref alias' \
+	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
 run_negative_case "test/negative/metal_ref_alias_field_storage_escape" 'Rust borrow region violation: stored borrow-only alias `alias` \(rust\.Ref<T>\) in a field/static slot\.' \
 	'typed borrow region rejects rust.Ref alias field/static storage' \
 	'^Main\.hx:[0-9]+: characters [0-9]+-[0-9]+ : \[HXRS-BORROW-REGION\] Rust borrow region violation:'
@@ -3022,7 +3025,7 @@ run_runtime_plan_report_case "test/negative/runtime_fallback_reason_dynamic" "co
 	"" \
 	"" \
 	'"reasonKind":[[:space:]]*"dynamic"' \
-	'"sourceModule":[[:space:]]*"haxe[.]DynamicAccess"'
+	'"sourceSpan":[[:space:]]*"Main[.]hx:[0-9]+-[0-9]+"'
 run_runtime_plan_report_case "examples/profile_storyboard" "compile.metal.hxml" "metal" "default_features" \
 	'metal default-features runtime plan artifacts (profile_storyboard)' \
 	'rust_hxrt_default_features'

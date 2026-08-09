@@ -232,8 +232,8 @@ fn main() {
         let __o = crate::HxRef::new(hxrt::anon::Anon::new());
         {
             let mut __b = __o.borrow_mut();
-            __b.set("a", 1);
-            __b.set("b", hxrt::string::HxString::from("x"));
+            __b.set_dyn("a", hxrt::dynamic::from(1));
+            __b.set_dyn("b", hxrt::dynamic::from(hxrt::string::HxString::from("x")));
         };
         __o
     };

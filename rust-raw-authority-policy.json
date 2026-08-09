@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "scanRoots": [
+    "src",
+    "std",
+    "runtime"
+  ],
+  "boundaries": [
+    {
+      "constructor": "RawMetadataTraitImplementation",
+      "factory": "traitImplementationAt",
+      "authorityId": "metadata-owned",
+      "reasonId": "trait-implementation",
+      "owner": "The body text supplied by @:rustImpl metadata",
+      "structuralEnvelope": "The impl trait path, target type, generics, and where clause remain typed; only the author-supplied body is opaque."
+    },
+    {
+      "constructor": "RawSourceTargetCodeInjection",
+      "factory": "targetCodeInjectionAt",
+      "authorityId": "source-owned",
+      "reasonId": "target-code-injection",
+      "owner": "The Rust text supplied through the configured __rust__ source escape hatch",
+      "structuralEnvelope": "The complete injected expression is intentionally opaque and remains tied to its exact Haxe source position."
+    }
+  ],
+  "structuralRequirements": [
+    {
+      "id": "paths",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "requiredTokens": [
+        "class RustPath",
+        "class RustPathSegment",
+        "enum RustGenericArgument"
+      ]
+    },
+    {
+      "id": "types-generics-lifetimes",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "requiredTokens": [
+        "enum RustType",
+        "class RustGenericParameters",
+        "class RustLifetime"
+      ]
+    },
+    {
+      "id": "items-and-declarations",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "requiredTokens": [
+        "RItemGroup(group:RustItemGroup)",
+        "RUse(declaration:RustUseDeclaration)",
+        "RModule(declaration:RustModuleDeclaration)",
+        "RConst(declaration:RustConstantDeclaration)",
+        "RStatic(declaration:RustStaticDeclaration)",
+        "RTypeAlias(declaration:RustTypeAliasDeclaration)",
+        "RFn(f:RustFunction)"
+      ]
+    },
+    {
+      "id": "traits-impls-and-where-clauses",
+      "source": "src/reflaxe/rust/ast/RustAST.hx",
+      "requiredTokens": [
+        "class RustTraitDeclaration",
+        "class RustImpl",
+        "class RustWhereClause",
+        "AssocFunction(method:RustAssociatedFunction)",
+        "AssocType(declaration:RustAssociatedTypeDeclaration)",
+        "AssocConst(declaration:RustAssociatedConstantDeclaration)"
+      ]
+    },
+    {
+      "id": "structural-static-storage",
+      "source": "src/reflaxe/rust/RustCompiler.hx",
+      "requiredTokens": [
+        "RStatic(RustStaticDeclaration.named",
+        "RustLifetime.staticLifetime()",
+        "EClosure([], {stmts: [], tail: cellInitializer}"
+      ]
+    },
+    {
+      "id": "structural-fallback-expressions",
+      "source": "src/reflaxe/rust/RustCompiler.hx",
+      "requiredTokens": [
+        "defaultValueExprForType",
+        "generatedFallbackExpression",
+        "EMacroCall(\"todo\", [])"
+      ]
+    }
+  ]
+}

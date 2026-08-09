@@ -8,7 +8,13 @@ cd "$root_dir"
 usage() {
   cat <<'USAGE'
 Usage:
-  bash scripts/dev/cargo-hx.sh [options]
+  cargo hx [run|build|test|check|clippy] [options]
+  cargo hx dev [options]
+
+Commands:
+  run                       Compile Haxe and run the generated Rust app (default).
+  build|test|check|clippy   Compile Haxe and run that Cargo command.
+  dev                       Watch project inputs, recompile, and run on each change.
 
 Options:
   --project <path>          Optional. Project directory containing compile*.hxml.
@@ -16,7 +22,12 @@ Options:
   --profile <name>          Optional. Profile suffix (portable/metal).
   --hxml <path>             Optional. Explicit hxml file (relative to --project by default).
   --ci                      Prefer compile*.ci.hxml variants.
-  --action <name>           Cargo action: build|run|test|check|clippy. Default: run.
+  --action <name>           Compatibility spelling for a one-shot command or dev.
+  --mode <run|build|test>   Action repeated by `cargo hx dev`. Default: run.
+  --watch <path>            Extra dev watch root, relative to the project (repeatable).
+  --debounce-ms <n>         Dev rebuild delay. Default: 250.
+  --once                    Run one dev cycle and exit.
+  --no-haxe-server          Disable the incremental Haxe server in dev mode.
   --release                 Run cargo action with --release and pass -D rust_release to Haxe.
   --haxe-bin <path>         Haxe binary. Default: $HAXE_BIN or haxe.
   --cargo-bin <path>        Cargo binary. Default: $CARGO_BIN or cargo.
@@ -25,9 +36,11 @@ Options:
   -h, --help                Show this help.
 
 Examples:
-  cd examples/chat_loopback && cargo hx --profile portable --action run
-  cargo hx --project examples/chat_loopback --profile portable --ci --action test
-  cargo hx --project ./my_haxe_rust_app --action build --release
+  cargo hx dev
+  cargo hx dev --profile portable --mode test
+  cargo hx run
+  cargo hx test --ci
+  cargo hx build --release
 USAGE
 }
 
@@ -104,6 +117,14 @@ project_arg="$invocation_dir"
 profile=""
 hxml_arg=""
 action="run"
+action_was_set=0
+dev_mode="run"
+dev_mode_was_set=0
+dev_once=0
+dev_no_haxe_server=0
+dev_debounce_ms="250"
+dev_debounce_was_set=0
+declare -a dev_watch_paths=()
 ci=0
 release=0
 haxe_bin="${HAXE_BIN:-haxe}"
@@ -129,8 +150,35 @@ while [[ $# -gt 0 ]]; do
       ;;
     --action)
       [[ $# -ge 2 ]] || fail "--action requires a value"
+      [[ "$action_was_set" -eq 0 ]] || fail "choose either a positional command or --action, not both"
       action="$2"
+      action_was_set=1
       shift 2
+      ;;
+    --mode)
+      [[ $# -ge 2 ]] || fail "--mode requires a value"
+      dev_mode="$2"
+      dev_mode_was_set=1
+      shift 2
+      ;;
+    --watch)
+      [[ $# -ge 2 ]] || fail "--watch requires a value"
+      dev_watch_paths+=("$2")
+      shift 2
+      ;;
+    --debounce-ms)
+      [[ $# -ge 2 ]] || fail "--debounce-ms requires a value"
+      dev_debounce_ms="$2"
+      dev_debounce_was_set=1
+      shift 2
+      ;;
+    --once)
+      dev_once=1
+      shift
+      ;;
+    --no-haxe-server)
+      dev_no_haxe_server=1
+      shift
       ;;
     --ci)
       ci=1
@@ -162,6 +210,12 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
+    run|build|test|check|clippy|dev)
+      [[ "$action_was_set" -eq 0 ]] || fail "choose either a positional command or --action, not both"
+      action="$1"
+      action_was_set=1
+      shift
+      ;;
     *)
       fail "unknown argument: $1"
       ;;
@@ -169,9 +223,22 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$action" in
-  build|run|test|check|clippy) ;;
-  *) fail "invalid --action '$action' (expected: build, run, test, check, or clippy)" ;;
+  build|run|test|check|clippy|dev) ;;
+  *) fail "invalid command '$action' (expected: dev, build, run, test, check, or clippy)" ;;
 esac
+
+case "$dev_mode" in
+  run|build|test) ;;
+  *) fail "invalid --mode '$dev_mode' (expected: run, build, or test)" ;;
+esac
+
+if [[ "$action" != "dev" && ( "$dev_mode_was_set" -eq 1 || "$dev_once" -eq 1 || "$dev_no_haxe_server" -eq 1 || "$dev_debounce_was_set" -eq 1 || "${#dev_watch_paths[@]}" -gt 0 ) ]]; then
+  fail "--mode, --watch, --debounce-ms, --once, and --no-haxe-server require the dev command"
+fi
+
+if [[ "$action" == "dev" && "$release" -eq 1 ]]; then
+  fail "dev mode is an incremental debug loop; use 'cargo hx build --release' for a release build"
+fi
 
 project_abs="$(resolve_path_from_base "$project_arg" "$invocation_dir")"
 project_dir="$(normalize_existing_dir "$project_abs")"
@@ -229,6 +296,31 @@ rust_output_abs="$(resolve_path_from_base "$rust_output_rel" "$project_dir")"
 
 echo "[hx-cargo] project=$(display_path "$project_dir") profile=${profile:-auto} ci=$ci action=$action release=$release"
 echo "[hx-cargo] hxml=$selected_hxml_arg out=$(display_path "$rust_output_abs")"
+
+if [[ "$action" == "dev" ]]; then
+  watcher_script="$root_dir/scripts/dev/watch-haxe-rust.sh"
+  [[ -f "$watcher_script" ]] || fail "watcher script not found: scripts/dev/watch-haxe-rust.sh"
+
+  declare -a watcher_args=(
+    --hxml "$selected_hxml_abs"
+    --mode "$dev_mode"
+    --debounce-ms "$dev_debounce_ms"
+    --haxe-bin "$haxe_bin"
+    --cargo-bin "$cargo_bin"
+  )
+  if [[ "$dev_once" -eq 1 ]]; then
+    watcher_args+=(--once)
+  fi
+  if [[ "$dev_no_haxe_server" -eq 1 ]]; then
+    watcher_args+=(--no-haxe-server)
+  fi
+  for watch_path in "${dev_watch_paths[@]:-}"; do
+    watcher_args+=(--watch "$(resolve_path_from_base "$watch_path" "$project_dir")")
+  done
+
+  echo "[hx-cargo] dev mode=$dev_mode haxe_server=$([[ "$dev_no_haxe_server" -eq 1 ]] && printf off || printf auto)"
+  exec bash "$watcher_script" "${watcher_args[@]}"
+fi
 
 declare -a haxe_args=("$selected_hxml_arg" "-D" "rust_no_build")
 if [[ "$release" -eq 1 ]]; then

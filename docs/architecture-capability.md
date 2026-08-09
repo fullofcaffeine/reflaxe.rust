@@ -142,12 +142,13 @@ This manifest **does not authorize stable 1.0** and is independent from the stab
 - Evidence:
   - `test:metal-policy` (executable): Positive and negative compiler fixtures exercise fail-closed no-hxrt eligibility, emitted-runtime rejection, scoped borrow escape checks, overlap checks, typed native facades, and warning-clean Cargo builds.
   - `test:diagnostic-contract` (executable): The diagnostic registry and runtime fixture check keep borrow, no-hxrt, metadata, Cargo, dynamic, and reflection failures source-facing and versioned.
+  - `test:rust-source-map` (executable): Origin-wrapped Rust items, statements, expressions, and classified raw fragments survive the production pass pipeline and emit a repeatable, path-private, content-hashed map with exact typed lookup and no basename fallback.
   - `test:snapshots-and-clippy` (executable): Characterized Rust output, Cargo builds, rustfmt expectations, deny-warnings coverage, and curated Clippy checks detect output-shape regressions.
   - `docs:lifetime-boundary` (documentary): The design documents define which lexical borrows are modeled in typed Haxe and when lifetimes, HRTB, const generics, macros, layout, or unsafe remain inside a typed Rust implementation island.
 - Qualifications: none for this exact narrow claim.
 - Does not mean:
   - The current Haxe diagnostics cover every provenance or lifetime relation rustc can express.
-  - rustc diagnostics are already mapped perfectly back to originating Haxe expressions.
+  - The source-map foundation means every rustc diagnostic is already presented automatically as a polished Haxe diagnostic.
   - Arbitrary borrowed values can be stored or returned from Haxe without a typed boundary design.
 - Owner Beads: `haxe.rust-oo3.98.1`
 - Blocking Beads: none
@@ -169,12 +170,13 @@ This manifest **does not authorize stable 1.0** and is independent from the stab
 - Evidence:
   - `test:metal-policy` (executable): Positive and negative compiler fixtures exercise fail-closed no-hxrt eligibility, emitted-runtime rejection, scoped borrow escape checks, overlap checks, typed native facades, and warning-clean Cargo builds.
   - `test:diagnostic-contract` (executable): The diagnostic registry and runtime fixture check keep borrow, no-hxrt, metadata, Cargo, dynamic, and reflection failures source-facing and versioned.
+  - `test:rust-source-map` (executable): Origin-wrapped Rust items, statements, expressions, and classified raw fragments survive the production pass pipeline and emit a repeatable, path-private, content-hashed map with exact typed lookup and no basename fallback.
   - `test:snapshots-and-clippy` (executable): Characterized Rust output, Cargo builds, rustfmt expectations, deny-warnings coverage, and curated Clippy checks detect output-shape regressions.
   - `docs:lifetime-boundary` (documentary): The design documents define which lexical borrows are modeled in typed Haxe and when lifetimes, HRTB, const generics, macros, layout, or unsafe remain inside a typed Rust implementation island.
 - Qualifications:
   - Unknown closure variables and helper-call side effects need richer provenance analysis.
   - Field and static source identity and source-equivalence checks are narrower than local-variable analysis.
-  - Residual rustc diagnostics do not yet reliably map generated spans back to the originating Haxe expression.
+  - Residual rustc spans now have an exact content-hashed mapping foundation for origin-wrapped nodes, but Cargo JSON presentation and richer field/static/helper provenance remain open.
 - Does not mean:
   - The compiler implements Rust's undocumented or complete borrow-checker semantics.
   - Lifetime-heavy APIs should be forced through increasingly clever callback syntax.
@@ -290,8 +292,9 @@ This manifest **does not authorize stable 1.0** and is independent from the stab
   - `test:metal-policy` (executable): Positive and negative compiler fixtures exercise fail-closed no-hxrt eligibility, emitted-runtime rejection, scoped borrow escape checks, overlap checks, typed native facades, and warning-clean Cargo builds.
   - `test:hxrt-performance` (executable): The benchmark protocol tracks size, startup, throughput, and selected output-shape counters, including a metal no-hxrt lower-bound signal.
   - `contract:native-facades` (generated): Every shipped Rust helper island declares its Haxe owner, no-hxrt or hxrt-bridge contract, lowering rationale, dependencies, forbidden growth, evidence owner, and line budget.
+  - `contract:typed-rust-ir` (generated): A single policy generates the two exact author-controlled raw factories and inventories every production call site; compiler-owned paths, declarations, static storage, defaults, and recovery expressions remain structural.
 - Qualifications:
-  - RustCompiler and parts of RustAST still hide analysis-relevant syntax in raw strings, limiting structural optimization and source mapping.
+  - Only the three reviewed author-controlled raw producer calls remain: two __rust__ injection branches and one @:rustImpl body boundary. Those supplied bytes can map only as whole fragments and cannot be structurally optimized internally.
   - Portable class/reference workloads have not yet established allocation, clone, lock, dispatch, binary-size, and lifecycle budgets against hand-written Rust models.
   - The current performance suite is microcase-oriented and does not yet prove tail latency, sustained RSS trend, or mixed-workload operability.
 - Does not mean:
@@ -383,6 +386,20 @@ The registry names evidence authorities; it intentionally does not copy their ch
 - Purpose: The diagnostic registry and runtime fixture check keep borrow, no-hxrt, metadata, Cargo, dynamic, and reflection failures source-facing and versioned.
 - Paths: [`docs/diagnostic-contract.json`](diagnostic-contract.json), [`scripts/ci/diagnostic-contract-check.js`](../scripts/ci/diagnostic-contract-check.js), [`scripts/ci/check-diagnostic-contract.sh`](../scripts/ci/check-diagnostic-contract.sh)
 - Commands: `npm run test:diagnostic-contract`, `npm run test:diagnostic-contract:runtime`
+
+### test:rust-source-map
+
+- Class: `executable`
+- Purpose: Origin-wrapped Rust items, statements, expressions, and classified raw fragments survive the production pass pipeline and emit a repeatable, path-private, content-hashed map with exact typed lookup and no basename fallback.
+- Paths: [`src/reflaxe/rust/RustSourceMap.hx`](../src/reflaxe/rust/RustSourceMap.hx), [`docs/rust-source-maps.md`](rust-source-maps.md), [`docs/schemas/rust-source-map-v1.schema.json`](schemas/rust-source-map-v1.schema.json), [`test/scripts/rust-source-map.test.js`](../test/scripts/rust-source-map.test.js)
+- Commands: `npm run test:rust-source-map`
+
+### contract:typed-rust-ir
+
+- Class: `generated`
+- Purpose: A single policy generates the two exact author-controlled raw factories and inventories every production call site; compiler-owned paths, declarations, static storage, defaults, and recovery expressions remain structural.
+- Paths: [`rust-raw-authority-policy.json`](../rust-raw-authority-policy.json), [`docs/rust-raw-authority.md`](rust-raw-authority.md), [`docs/rust-raw-authority-inventory.json`](rust-raw-authority-inventory.json), [`scripts/ci/rust-raw-authority-policy.js`](../scripts/ci/rust-raw-authority-policy.js), [`test/scripts/rust-raw-authority.test.js`](../test/scripts/rust-raw-authority.test.js)
+- Commands: `npm run guard:rust-raw-authority`, `npm run test:rust-raw-authority`
 
 ### test:snapshots-and-clippy
 
