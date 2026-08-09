@@ -133,7 +133,7 @@ jobs:
           /bin/cp .haxerc "$RUNNER_TEMP/haxe-rust-lix-home/haxe/.haxerc"
           haxe_bin="$(pwd)/node_modules/.bin/haxe"
           haxelib_bin="$(pwd)/node_modules/.bin/haxelib"
-          test "$($haxe_bin -version 2>&1)" = "${{ env.HAXE_VERSION }}"
+          test "$(/usr/bin/env -i HOME="$RUNNER_TEMP/haxe-rust-lix-home" LANG=C "$RELEASE_NODE_BIN" "$haxe_bin" -version 2>&1)" = "${{ env.HAXE_VERSION }}"
           tool_dir="$RUNNER_TEMP/haxe-rust-release-tools"
           /bin/mkdir -p "$tool_dir"
           /bin/ln -s "$haxe_bin" "$tool_dir/haxe"

@@ -197,6 +197,11 @@ async function main() {
   )
   requireMatch(
     release,
+    /\/usr\/bin\/env -i HOME="\$RUNNER_TEMP\/haxe-rust-lix-home" LANG=C[\s\\]*"\$RELEASE_NODE_BIN" "\$haxe_bin" -version/,
+    'release must verify the Haxe shim with the exact Node executable and the same isolated Lix home'
+  )
+  requireMatch(
+    release,
     /\/usr\/bin\/git --no-replace-objects[^\n]*[\s\S]*fsck --strict --full --no-reflogs "\$SOURCE_COMMIT"[\s\S]*cat-file blob/,
     'release must validate reachable Git object identities before extracting executable bootstrap bytes'
   )
@@ -284,6 +289,11 @@ async function main() {
     repair,
     /\/bin\/cp \.haxerc "\$RUNNER_TEMP\/haxe-rust-lix-home\/haxe\/\.haxerc"[\s\S]*release_home="\$RUNNER_TEMP\/haxe-rust-lix-home"/,
     'repair must use one fresh Lix home with an exact global Haxe version inside temporary build directories'
+  )
+  requireMatch(
+    repair,
+    /\/usr\/bin\/env -i HOME="\$RUNNER_TEMP\/haxe-rust-lix-home" LANG=C[\s\\]*"\$RELEASE_NODE_BIN" "\$haxe_bin" -version/,
+    'repair must verify the Haxe shim with the exact Node executable and the same isolated Lix home'
   )
   requireMatch(repair, /REPAIR_TAG: \$\{\{ inputs\.tag \}\}/, 'manual input must cross into shell through an environment value')
   requireMatch(
