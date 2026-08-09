@@ -16,7 +16,8 @@
  *   - the current release-hardening milestone and its child-task checklist.
  *
  * How:
- *   Prefer `bd show --json` when available so in-session tracker state is used.
+ *   Prefer `bd show --json --include-dependents` when available so in-session tracker state and
+ *   reverse parent/child relationships are used.
  *   Fall back to `.beads/issues.jsonl` when `bd` is unavailable. In both modes,
  *   the script resolves parent/child relationships so the generated docs track
  *   milestone reality instead of umbrella-epic liveness.
@@ -69,10 +70,25 @@ function parseIssueShowJson(raw, commandLabel) {
   return parsed[0]
 }
 
-function runIssueShowFromBd(issueId) {
+function parseIssueChildrenJson(raw, issueId, commandLabel) {
+  let parsed
+  try {
+    parsed = JSON.parse(raw)
+  } catch (_error) {
+    throw new Error(`Invalid JSON from: ${commandLabel}`)
+  }
+
+  const children = parsed && parsed[issueId]
+  if (!Array.isArray(children)) {
+    throw new Error(`Tracker children not found for: ${commandLabel}`)
+  }
+  return children
+}
+
+function runIssueShowFromBd(issueId, execute = execFileSync) {
   let raw
   try {
-    raw = execFileSync('bd', ['show', issueId, '--json'], {
+    raw = execute('bd', ['show', issueId, '--json', '--include-dependents'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe']
     })
@@ -84,7 +100,37 @@ function runIssueShowFromBd(issueId) {
     throw new Error(message)
   }
 
-  return parseIssueShowJson(raw, `bd show ${issueId} --json`)
+  const issue = parseIssueShowJson(raw, `bd show ${issueId} --json --include-dependents`)
+  if (!Number.isInteger(issue.dependent_count) || issue.dependent_count <= 0) {
+    return issue
+  }
+
+  let childrenRaw
+  try {
+    childrenRaw = execute('bd', ['show', issueId, '--children', '--json'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+  } catch (error) {
+    const stderr = error && error.stderr ? String(error.stderr) : ''
+    const message =
+      `Failed to read internal tracker children for ${issueId} via bd.` +
+      (stderr.length > 0 ? `\n${stderr.trim()}` : '')
+    throw new Error(message)
+  }
+
+  const children = parseIssueChildrenJson(
+    childrenRaw,
+    issueId,
+    `bd show ${issueId} --children --json`
+  )
+  const otherDependents = Array.isArray(issue.dependents)
+    ? issue.dependents.filter((dependent) => dependent.dependency_type !== 'parent-child')
+    : []
+  return {
+    ...issue,
+    dependents: [...otherDependents, ...children]
+  }
 }
 
 function parseIssueJsonl(line, lineNumber) {
@@ -490,4 +536,10 @@ function main() {
   process.stdout.write(`[docs] tracker docs synced from ${issueReader.sourceLabel}\n`)
 }
 
-main()
+if (require.main === module) {
+  main()
+}
+
+module.exports = {
+  runIssueShowFromBd
+}

@@ -11,6 +11,7 @@ trap 'rm -f "$before_progress" "$before_vision"' EXIT
 cp docs/progress-tracker.md "$before_progress"
 cp docs/vision-vs-implementation.md "$before_vision"
 
+node test/scripts/progress-tracker-source.test.js
 node scripts/docs/sync-progress-tracker.js
 
 progress_changed=0
