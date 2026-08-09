@@ -21,6 +21,15 @@ function main() {
   assert(!fs.existsSync(legacyReleasePath), 'the separate normal Release workflow must be removed')
   requireMatch(ci, /npm audit\n/, 'a successful dependency audit must be part of the release gate')
 
+  const triggerStart = ci.indexOf('\non:\n')
+  const triggerEnd = ci.indexOf('\nconcurrency:\n')
+  assert(triggerStart !== -1 && triggerEnd > triggerStart, 'CI must have a readable event-trigger block')
+  const triggers = ci.slice(triggerStart, triggerEnd)
+  requireMatch(triggers, /\n  push:\n    branches: \[ main \]\n/, 'automatic push validation must be limited to main')
+  requireMatch(triggers, /\n  pull_request: \{\}\n/, 'every pull request, including a stacked one, must be validated')
+  requireMatch(triggers, /\n  workflow_dispatch: \{\}\n/, 'branch-only remote validation must remain available explicitly')
+  assert(!triggers.includes('push: {}'), 'feature pushes must not duplicate an open pull request run')
+
   const releaseStart = ci.indexOf('\n  release:\n')
   assert(releaseStart !== -1, 'CI must contain a release job')
   const release = ci.slice(releaseStart)
