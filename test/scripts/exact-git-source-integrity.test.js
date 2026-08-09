@@ -20,6 +20,7 @@ function git(cwd, args, options = {}) {
   return execFileSync('git', args, {
     cwd,
     encoding: options.encoding || 'utf8',
+    env: options.env || process.env,
     input: options.input,
     maxBuffer: 8 * 1024 * 1024
   })
@@ -178,7 +179,14 @@ function main() {
 
   withBootstrap('replacement-ref', ({ commit, exact }) => {
     const tree = git(exact, ['rev-parse', `${commit}^{tree}`]).trim()
-    const substitute = git(exact, ['commit-tree', tree], {
+    const substitute = git(exact, [
+      '-c',
+      'user.name=',
+      '-c',
+      'user.email=',
+      'commit-tree',
+      tree
+    ], {
       input: 'feat!: substituted release history\n',
       env: {
         ...process.env,
@@ -188,6 +196,11 @@ function main() {
         GIT_COMMITTER_EMAIL: 'exact-source@example.invalid'
       }
     }).trim()
+    assert.match(
+      git(exact, ['show', '-s', '--format=%an <%ae>%n%cn <%ce>', substitute]),
+      /^Exact Source Test <exact-source@example\.invalid>\nExact Source Test <exact-source@example\.invalid>\n$/,
+      'the synthetic replacement commit must not inherit a developer or CI runner identity'
+    )
     git(exact, ['replace', commit, substitute])
     assert.throws(
       () => assertExactBootstrap(exact, commit, TEST_ORIGIN, FIXTURE_TAGS),
