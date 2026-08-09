@@ -50,6 +50,8 @@ async function main() {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-real-release-callers-'))
   const repository = path.join(temporaryRoot, 'repository')
   const exactRoot = path.join(temporaryRoot, 'exact-source')
+  const releaseHome = path.join(temporaryRoot, 'release-home')
+  const releaseTemporaryRoot = path.join(temporaryRoot, 'release-temp')
   const externalBootstrap = path.join(temporaryRoot, 'exact-git-source.js')
   const injectedMarker = path.join(temporaryRoot, 'injected-shell-environment.txt')
   const bashEnvironment = path.join(temporaryRoot, 'bash-environment.sh')
@@ -58,10 +60,20 @@ async function main() {
   const originalReleaseGh = process.env.RELEASE_GH_BIN
   const originalReleaseGit = process.env.RELEASE_GIT_BIN
   const originalExpectedOrigin = process.env.RELEASE_EXPECTED_ORIGIN_URL
+  const originalReleaseHome = process.env.RELEASE_HOME
+  const originalReleaseTemporaryRoot = process.env.RELEASE_TEMP_ROOT
+  const originalTemporaryDirectory = process.env.TMPDIR
+  const originalTemporaryPath = process.env.TMP
   const originalArgv = process.argv
 
   try {
     fs.mkdirSync(repository)
+    fs.mkdirSync(releaseHome)
+    fs.mkdirSync(releaseTemporaryRoot)
+    process.env.RELEASE_HOME = releaseHome
+    process.env.RELEASE_TEMP_ROOT = releaseTemporaryRoot
+    delete process.env.TMPDIR
+    delete process.env.TMP
     git(repository, ['init', '-q'])
     git(repository, ['config', 'user.name', 'Release Caller Test'])
     git(repository, ['config', 'user.email', 'release-caller@example.invalid'])
@@ -468,6 +480,14 @@ if (args[1] === 'view') {
     else process.env.RELEASE_GIT_BIN = originalReleaseGit
     if (originalExpectedOrigin === undefined) delete process.env.RELEASE_EXPECTED_ORIGIN_URL
     else process.env.RELEASE_EXPECTED_ORIGIN_URL = originalExpectedOrigin
+    if (originalReleaseHome === undefined) delete process.env.RELEASE_HOME
+    else process.env.RELEASE_HOME = originalReleaseHome
+    if (originalReleaseTemporaryRoot === undefined) delete process.env.RELEASE_TEMP_ROOT
+    else process.env.RELEASE_TEMP_ROOT = originalReleaseTemporaryRoot
+    if (originalTemporaryDirectory === undefined) delete process.env.TMPDIR
+    else process.env.TMPDIR = originalTemporaryDirectory
+    if (originalTemporaryPath === undefined) delete process.env.TMP
+    else process.env.TMP = originalTemporaryPath
     process.argv = originalArgv
     fs.rmSync(temporaryRoot, { recursive: true, force: true })
   }
