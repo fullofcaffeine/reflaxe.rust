@@ -28,4 +28,18 @@ assert.match(
   'snapshot harness must retain the reviewed parallel, cold-output execution contract'
 )
 
+const conformancePolicy = jobBody('harness-conformance-policy', 'harness-examples')
+const conformancePolicyTimeout = conformancePolicy.match(/^    timeout-minutes: (\d+)$/m)
+
+assert(conformancePolicyTimeout, 'conformance and policy harness job must have an explicit timeout')
+assert(
+  Number(conformancePolicyTimeout[1]) >= 75,
+  `conformance and policy timeout must cover the observed full-suite runtime; found ${conformancePolicyTimeout[1]} minutes`
+)
+assert.match(
+  conformancePolicy,
+  /HARNESS_STAGES="conformance policy" HARNESS_CLEAN_OUTPUTS=1 HARNESS_CLEAN_CACHE=1 bash scripts\/ci\/harness\.sh/,
+  'conformance and policy harness must retain its reviewed cold execution contract'
+)
+
 console.log('[ci-harness-workflow-test] OK')
