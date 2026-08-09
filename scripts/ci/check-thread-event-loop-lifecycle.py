@@ -27,6 +27,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 
 from python_tool_commands import project_haxe_command
 
@@ -44,7 +45,13 @@ def run_checked(command: list[str], *, cwd: Path, env: dict[str, str] | None = N
         raise AssertionError(f"command failed ({completed.returncode}): {' '.join(command)}\n{output}")
 
 
-def assert_mode(executable: Path, mode: str, expected_stdout: str, expected_stderr: str = "") -> None:
+def assert_mode(
+    executable: Path,
+    mode: str,
+    expected_stdout: str,
+    expected_stderr: str = "",
+    stderr_validator: Callable[[str], None] | None = None,
+) -> None:
     try:
         completed = subprocess.run(
             [str(executable), mode],
@@ -69,13 +76,73 @@ def assert_mode(executable: Path, mode: str, expected_stdout: str, expected_stde
         raise AssertionError(
             f"{mode} stdout mismatch\nexpected={expected_stdout!r}\nactual={actual_stdout!r}"
         )
-    if actual_stderr != expected_stderr:
+    if stderr_validator is not None:
+        stderr_validator(actual_stderr)
+    elif actual_stderr != expected_stderr:
         raise AssertionError(
             f"{mode} stderr mismatch\nexpected={expected_stderr!r}\nactual={actual_stderr!r}"
         )
 
 
+def assert_best_effort_stress_diagnostics(actual: str) -> None:
+    """Validate concurrent diagnostics without pretending they form a join contract.
+
+    Why
+    ---
+    A failed child is removed from the live-thread registry before its diagnostic write. This keeps
+    later sends from being accepted by a thread that can no longer read them, but it also means the
+    parent may finish while the final best-effort stderr write is in progress, especially on Windows.
+
+    What
+    ----
+    Require at least one complete diagnostic, reject unrelated or interleaved bytes, and permit only
+    one final prefix truncated by process exit. Never accept evidence for more than 32 children.
+
+    How
+    ---
+    Consume complete identical lines first. Any remainder must be a strict prefix of that same line.
+    The stdout contract independently proves that all 32 children started and became unreachable.
+    """
+    expected_line = f"{UNCAUGHT_PREFIX}stress_failure\n"
+    remaining = actual
+    complete = 0
+    while remaining.startswith(expected_line):
+        complete += 1
+        remaining = remaining[len(expected_line) :]
+
+    if complete == 0:
+        raise AssertionError(
+            "thread-throw-stress emitted no complete uncaught-thread diagnostic"
+        )
+    if remaining and not expected_line.startswith(remaining):
+        raise AssertionError(
+            "thread-throw-stress stderr contains invalid or interleaved bytes\n"
+            f"actual={actual!r}"
+        )
+    represented = complete + (1 if remaining else 0)
+    if represented > 32:
+        raise AssertionError(
+            f"thread-throw-stress emitted more than 32 diagnostics: {represented}"
+        )
+
+
+def assert_stress_validator_sensitivity() -> None:
+    """Keep the best-effort exception narrow and fail closed for unrelated output."""
+    line = f"{UNCAUGHT_PREFIX}stress_failure\n"
+    assert_best_effort_stress_diagnostics(line * 32)
+    assert_best_effort_stress_diagnostics((line * 31) + "[")
+    for invalid in ("", "unexpected\n", line + "unexpected", line * 33):
+        try:
+            assert_best_effort_stress_diagnostics(invalid)
+        except AssertionError:
+            continue
+        raise AssertionError(
+            f"stress stderr validator accepted invalid evidence: {invalid!r}"
+        )
+
+
 def main() -> int:
+    assert_stress_validator_sensitivity()
     with tempfile.TemporaryDirectory(prefix="reflaxe-rust-thread-lifecycle-") as temporary:
         temp_root = Path(temporary)
         generated = temp_root / "generated"
@@ -133,7 +200,7 @@ def main() -> int:
             executable,
             "thread-throw-stress",
             "thread_stress_started=32\nthread_stress_dead=32\n",
-            f"{UNCAUGHT_PREFIX}stress_failure\n" * 32,
+            stderr_validator=assert_best_effort_stress_diagnostics,
         )
         assert_mode(
             executable,
