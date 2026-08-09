@@ -78,6 +78,11 @@ Agent policy:
 
 - When a bead has a `thinking:*` label, match reasoning depth to that label automatically.
 - If a claimed bead has no `thinking:*` label, infer one immediately and add it before substantial work.
+- Use `show-me-your-work` for long-running, unattended, or multi-phase work that a human will review
+  after the fact. Keep its decision log and run the skill's required fresh-context subagent review
+  before handoff. Using this skill is explicit authorization for that review subagent; it does not
+  authorize unrelated delegated implementation. This review checks whether the recorded decisions,
+  evidence, and verification tell the truth. It is separate from Oracle review.
 - `thinking:xhigh` should get a second-pass review before closure.
   - Use Oracle only when the work is also genuinely critical and remains unusually hard, materially undefined, non-convergent, or in need of a higher-quality independent challenge.
     - Invoke the globally installed `$oracle-review` skill for planning or review and let its caf-oracle facade own the ledger, agent provenance, checked evidence, browser dispatch, recovery, response capture, disposition, and archive. Do not maintain a parallel `/tmp/oracle` queue or manually upload and paste when the tool is available. If `$show-me-your-work` is active, link its concise trail to the request rather than duplicating artifacts.
@@ -89,6 +94,17 @@ Agent policy:
       checked independently; do not create a fake product defect from an upload omission.
   - Otherwise use an explicit written second-pass design review recorded in the bead comments.
 - Oracle is a review/escalation tool for `thinking:xhigh`; it is not a substitute for implementation, tests, or CI evidence.
+- Request Oracle review before closing a `thinking:xhigh` bead when the change defines or enforces a
+  high-consequence contract: release approval, compatibility or public-surface claims, compiler-wide
+  representation rules, exact source-location guarantees, security boundaries, migrations, or proof
+  used to justify a 1.0-quality claim. Request another Oracle pass after addressing `CHANGES REQUESTED`
+  when the bead still depends on Oracle approval; send a bundle for the exact new commit rather than
+  reusing the earlier archive.
+- Oracle is normally unnecessary for `thinking:low`, `thinking:medium`, or `thinking:high` work when
+  focused tests and ordinary review can settle the question. Escalate if the work grows into an
+  `xhigh` decision, evidence conflicts, or a plausible mistake could look correct while approving a
+  release or broad product claim. Do not request Oracle merely because a change is large, slow, or
+  technically unfamiliar.
 
 ## Product Source of Truth
 

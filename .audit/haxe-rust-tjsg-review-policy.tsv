@@ -1,0 +1,4 @@
+ts	phase	decision	why	evidence	result
+2026-08-01T06:35:08Z	policy	made show-me-your-work authorize its required independent review subagent	the skill cannot provide an independently checked trail if its reviewer is treated as forbidden	AGENTS.md	policy made explicit
+2026-08-01T06:35:09Z	policy	reserved Oracle for thinking:xhigh closure and defined concrete triggers	contributors need to know when an external review is required rather than escalating by habit	AGENTS.md	threshold stated in plain language
+2026-08-01T06:37:51Z	review	accepted the policy after an independent fresh-context review	show-me-your-work requires a separate reviewer to challenge the trail before handoff	AGENTS.md:81, .audit/haxe-rust-tjsg-review-policy.tsv	no substantive flags; separate unrelated dirty changes when committing
