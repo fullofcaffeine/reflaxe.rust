@@ -737,6 +737,39 @@ Agent policy:
 
 ## Testing + CI
 
+- Behavior-first testing rule: before adding broad permutations for meaningful new or changed behavior,
+  write down the concrete preconditions/input, compile or runtime action, observable result, important
+  error/edge behavior, owning product surface, and exact claim being protected. Beads acceptance criteria,
+  a small fixture table, or Given/When/Then prose are all acceptable; do not add a Gherkin framework for
+  this bookkeeping alone.
+- Red-state rule: use the smallest test that can faithfully observe the behavior, run it before the fix,
+  and record the exact command plus the relevant failure reason in the Bead, PR, or durable audit note.
+  A separate failing commit is optional. After the focused test passes, run the next real boundary owner
+  (normally generated Rust plus Cargo and runtime) and then the appropriate broader ring.
+- Expected-result rule: state where the expected answer comes from: the Haxe/Rust contract, a manually
+  written minimal expectation, pinned comparison implementation, invariant, reviewed generated file, or
+  real consumer behavior. Never generate an expected answer with the emitter under test or copy its
+  decision algorithm into the test.
+- Tracer-bullet rule: a new representation, ABI, runtime, package, or platform capability begins with one
+  narrow authored-Haxe path through compiler generation, strict target build, and the real observable
+  result before a permutation matrix is added. Keep both the focused regression and the representative
+  real-boundary proof when they protect different failure modes.
+- Keep these product surfaces independent: portable compiler behavior; representation/ownership/metal;
+  runtime-backed behavior; no-hxrt; diagnostics/source maps; and Cargo/package/downstream/platform.
+  Official Haxe target qualification applies only to the portable compiler surface. A green result in one
+  surface must not be used to advance another surface's claim.
+- `docs/testing-surface-scorecards.json` owns the checked surface, feedback-ring, example-tier, and
+  representative-workflow inventory. Run `npm run docs:sync:testing-scorecards` after reviewing that
+  structured source, then `npm run test:testing-surface-scorecards`. Do not hand-edit the generated
+  `docs/testing-surface-scorecards.md`.
+- Portfolio ranges are review prompts, not quotas: evaluate focused owners, real Haxe-to-Rust-to-Cargo
+  integration, and downstream/platform checks separately per surface. Do not count static formatting,
+  lint, schema, freshness, workflow, or security guards as behavior owners, and do not add test volume
+  merely to improve a percentage.
+- High-risk changes to representation, runtime, ABI, packages, security, migration, exact locations, or
+  public claims require a review pass distinct from implementation. Challenge whether the test would fail
+  under the bug, whether its expected answer is independent, whether negative cases or real boundaries are
+  missing, whether a selector could skip the owner, and whether the claim is broader than what ran.
 - CI health is a hard prerequisite for downstream consumer work such as the codex-hxrust sibling checkout. If CI is reported or observed failing, stop downstream feature work, inspect the failing run, fix the compiler/runtime/tests here first, commit and push the fix, and verify CI is passing or record an explicit equivalent green validation before resuming downstream work.
 - Run snapshots locally: `bash test/run-snapshots.sh`
 - Run upstream stdlib sweep locally:

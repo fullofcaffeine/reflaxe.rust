@@ -27,6 +27,18 @@ Run the full local CI harness (snapshots + upstream stdlib sweep + examples):
 npm run test:all
 ```
 
+The checked product-surface scorecards, example proof levels, and R0-R5 ownership map live in
+`docs/testing-surface-scorecards.json`. Validate their generated documentation and negative mutations with:
+
+```sh
+npm run guard:testing-surface-scorecards
+npm run test:testing-surface-scorecards
+```
+
+The scorecard does not skip tests. It keeps portable, representation/metal, runtime, no-hxrt,
+diagnostic/source-map, and Cargo/package/platform claims separate while semantic affected-test selection
+remains planned as report-only work under `haxe.rust-oo3.101`.
+
 Run semantic diff suites directly:
 
 ```sh

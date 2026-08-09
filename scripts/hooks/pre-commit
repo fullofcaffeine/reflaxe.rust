@@ -54,6 +54,15 @@ if grep -Eq '^(README\.md$|docs/faq\.md$|docs/architecture-capability(-manifest\
   node "$ROOT_DIR/scripts/ci/architecture-capability-manifest.js" --check
 fi
 
+if grep -Eq '^(AGENTS\.md$|examples/AGENTS\.md$|package\.json$|docs/(index\.md|examples-matrix\.md|testing-surface-scorecards\.(json|md))$|scripts/(ci/testing-surface-scorecards\.js|hooks/pre-commit)$|test/(README\.md|scripts/(pre-commit-evidence-wiring|testing-surface-scorecards)\.test\.js)$)' <<<"$STAGED_FILES"; then
+  echo "[pre-commit] Running testing product-surface scorecard contract..."
+  if ! git diff --quiet -- docs/testing-surface-scorecards.md; then
+    echo "[pre-commit] ERROR: docs/testing-surface-scorecards.md has unstaged changes; regenerate and stage the reviewed scorecard projection." >&2
+    exit 1
+  fi
+  npm --prefix "$ROOT_DIR" run test:testing-surface-scorecards
+fi
+
 if grep -Eq '^(scripts/(install-git-hooks\.sh|dev/sync-template-hook-installer\.js|hooks/pre-commit)$|templates/basic/scripts/(install-git-hooks\.sh|hooks/pre-commit)$|test/scripts/(git-hook-installation|pre-commit-evidence-wiring)\.test\.js$)' <<<"$STAGED_FILES"; then
   echo "[pre-commit] Verifying evidence-gate wiring..."
   npm --prefix "$ROOT_DIR" run hooks:check-template

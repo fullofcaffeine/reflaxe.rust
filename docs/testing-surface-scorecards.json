@@ -1,0 +1,330 @@
+{
+  "schemaVersion": 1,
+  "contract": "haxe-rust-testing-surface-scorecards",
+  "description": "One checked inventory that keeps independent product claims, example proof levels, feedback rings, and a representative test-first workflow separate.",
+  "portfolioGuidance": {
+    "focusedOwnerRange": "55-70%",
+    "verticalIntegrationRange": "25-40%",
+    "downstreamSystemRange": "small remainder",
+    "interpretation": "Review each product surface separately. These are planning ranges, not quotas, and static policy checks are outside the denominator.",
+    "currentMeasurement": "partial",
+    "note": "The repository has strong focused and vertical owners, but it does not yet publish a complete unique-owner count per surface. haxe.rust-oo3.101 tracks report-only measurement and affected-test observation."
+  },
+  "conclusionAudit": [
+    {
+      "conclusion": "behavior scenarios before broad automation",
+      "status": "partial",
+      "currentEvidence": "Beads acceptance criteria and .audit decision trails capture real recent scenarios; the required scenario fields are now documented for future behavior work."
+    },
+    {
+      "conclusion": "red test at the lowest faithful layer",
+      "status": "satisfied",
+      "currentEvidence": "AGENTS.md requires contract-first testing, and the representative workflow below records the actual pre-fix failure command and reason."
+    },
+    {
+      "conclusion": "independent source for expected results",
+      "status": "partial",
+      "currentEvidence": "Portable semantic comparisons use Haxe --interp, important generated shapes use reviewed contracts, and snapshots require review. Older fixtures do not all carry an explicit expected-result note."
+    },
+    {
+      "conclusion": "one vertical tracer bullet before permutations",
+      "status": "satisfied",
+      "currentEvidence": "The immutable rust.Ref<T> to Dynamic route is checked from typed Haxe analysis through generated Rust, Cargo, and runtime output before its negative permutation matrix."
+    },
+    {
+      "conclusion": "focused regression plus real-boundary proof",
+      "status": "satisfied",
+      "currentEvidence": "Representation, runtime, source-map, semantic-diff, package, example, Windows, and consumer lanes combine focused owners with real Cargo or system observers."
+    },
+    {
+      "conclusion": "surface-specific portfolio review",
+      "status": "partial",
+      "currentEvidence": "The scorecards below separate claims, but complete unique-owner ratios and failure-yield measurements remain report-only follow-up work."
+    },
+    {
+      "conclusion": "examples execute at the level they advertise",
+      "status": "satisfied",
+      "currentEvidence": "Every tracked example is classified below; CI compiles authored Haxe and runs Cargo tests and the generated program for the claim-bearing matrix."
+    },
+    {
+      "conclusion": "R0-R5 feedback rings with safe affected selection",
+      "status": "partial",
+      "currentEvidence": "Focused, hook, PR, extended, weekly, and release paths exist. Semantic-owner affected selection is not yet allowed to remove PR checks; haxe.rust-oo3.101 owns observation mode first."
+    },
+    {
+      "conclusion": "separate high-risk review pass",
+      "status": "satisfied",
+      "currentEvidence": "thinking:xhigh work requires a second pass, normally an exact-commit Oracle review, and the checklist below challenges test sensitivity and claim boundaries."
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "portable-compiler",
+      "name": "Portable regular-Haxe compiler behavior",
+      "status": "partial",
+      "officialHaxeTargetQualification": "applies",
+      "profiles": ["portable"],
+      "protectedClaims": [
+        "Supported regular Haxe programs preserve the reviewed Haxe behavior when compiled to Rust.",
+        "Portable standard-library inventory coverage is not presented as blanket runtime parity."
+      ],
+      "focusedOwners": [
+        {"path": "test/semantic_diff", "command": "npm run test:semantic-diff"},
+        {"path": "test/compiler", "command": "npm run test:rust-structural-items"}
+      ],
+      "verticalOwners": [
+        {"path": "test/semantic_diff", "command": "npm run test:semantic-diff", "observer": "Haxe --interp compared with generated Rust run"},
+        {"path": "test/run-upstream-stdlib-sweep.sh", "command": "npm run test:upstream-stdlib", "observer": "generated Cargo check across the Tier1 portable module inventory"}
+      ],
+      "systemOwners": [
+        {"path": "scripts/ci/windows-smoke.sh", "command": "npm run test:windows-smoke", "observer": "Windows runner"}
+      ],
+      "examples": ["hello", "bytes_ops", "chat_loopback", "profile_storyboard", "serde_json", "sys_file_io", "sys_net_loopback", "sys_process", "sys_thread_smoke", "thread_pool_smoke", "tui_todo"],
+      "fullBackstop": "npm run test:all",
+      "lastCleanProof": ".audit/haxe-rust-oo3.98.3.2-oracle-c1c95fbe.tsv row 65",
+      "residualRisks": ["A pinned official Haxe target-qualification checkout is not yet integrated; haxe.rust-oo3.102 owns that bounded smoke."]
+    },
+    {
+      "id": "representation-metal",
+      "name": "Representation, lowering, ownership, borrowing, traits, and metal",
+      "status": "partial",
+      "officialHaxeTargetQualification": "does-not-apply",
+      "profiles": ["metal", "portable where representation is shared"],
+      "protectedClaims": [
+        "Typed representation and borrow decisions agree with emitted Rust ownership behavior.",
+        "Rust-native metal routes remain separate from portable Haxe compatibility claims."
+      ],
+      "focusedOwners": [
+        {"path": "test/scripts/rust-representation-plan.test.js", "command": "npm run test:rust-representation-plan"},
+        {"path": "test/compiler", "command": "npm run test:rust-structural-pass-analysis"}
+      ],
+      "verticalOwners": [
+        {"path": "test/positive/representation_borrow_dynamic", "command": "npm run test:rust-representation-plan", "observer": "saved decision audit, generated Rust shape, Cargo check, and runtime stdout"},
+        {"path": "test/snapshot", "command": "npm test", "observer": "generated Rust, rustfmt, Cargo build, and reviewed output"}
+      ],
+      "systemOwners": [
+        {"path": "scripts/ci/check-codex-hxrust-smoke.sh", "command": "npm run test:codex-hxrust", "observer": "independent consumer application"}
+      ],
+      "examples": ["async_retry_pipeline", "chat_loopback", "metal_first_dataflow", "metal_native_net", "profile_storyboard"],
+      "fullBackstop": "npm run test:all",
+      "lastCleanProof": ".audit/haxe-rust-oo3.98.3.2-oracle-c1c95fbe.tsv rows 63-65",
+      "residualRisks": ["The broad architecture-capability epic remains open; this scorecard covers only named admitted routes."]
+    },
+    {
+      "id": "runtime",
+      "name": "Runtime-backed Haxe behavior",
+      "status": "partial",
+      "officialHaxeTargetQualification": "does-not-apply",
+      "profiles": ["portable", "metal with hxrt"],
+      "protectedClaims": [
+        "Runtime helpers are used only where runtime state or Haxe behavior requires them.",
+        "Identity, lifecycle, exception, reflection, thread, and platform behavior is proved at a real runtime boundary."
+      ],
+      "focusedOwners": [
+        {"path": "runtime/hxrt", "command": "npm run test:hxref-lifecycle"},
+        {"path": "test/runtime_e2e", "command": "npm run test:runtime-e2e-contract"}
+      ],
+      "verticalOwners": [
+        {"path": "test/runtime_e2e", "command": "npm run test:runtime-e2e-contract", "observer": "isolated generated target processes"},
+        {"path": "test/semantic_diff", "command": "npm run test:semantic-diff", "observer": "Haxe and generated Rust runtime comparison"}
+      ],
+      "systemOwners": [
+        {"path": ".github/workflows/ci.yml", "command": "npm run test:windows-smoke", "observer": "Windows platform behavior"}
+      ],
+      "examples": ["bytes_ops", "chat_loopback", "serde_json", "sys_file_io", "sys_net_loopback", "sys_process", "sys_thread_smoke", "thread_pool_smoke", "tui_todo"],
+      "fullBackstop": "npm run test:all",
+      "lastCleanProof": ".audit/haxe-rust-oo3.98.3.2-oracle-c1c95fbe.tsv row 65",
+      "residualRisks": ["Green runtime checks do not advance no-hxrt claims."]
+    },
+    {
+      "id": "no-hxrt",
+      "name": "No-hxrt eligibility and emitted dependency absence",
+      "status": "partial",
+      "officialHaxeTargetQualification": "does-not-apply",
+      "profiles": ["metal plus rust_no_hxrt"],
+      "protectedClaims": [
+        "Eligible programs emit and build without hxrt.",
+        "Ineligible source fails at the exact Haxe boundary before a late generated-Rust backstop becomes the normal detector."
+      ],
+      "focusedOwners": [
+        {"path": "test/negative/representation_dynamic_crossings", "command": "npm run test:rust-representation-plan"},
+        {"path": "scripts/ci/check-metal-policy.sh", "command": "npm run test:metal-fallback"}
+      ],
+      "verticalOwners": [
+        {"path": "test/positive/metal_no_hxrt_minimal", "command": "bash scripts/ci/check-metal-policy.sh", "observer": "cold generated crate inspection and Cargo build"},
+        {"path": "examples/metal_native_net", "command": "HARNESS_STAGES=examples bash scripts/ci/harness.sh", "observer": "generated no-hxrt TCP/UDP runtime"}
+      ],
+      "systemOwners": [],
+      "examples": ["metal_native_net"],
+      "fullBackstop": "npm run test:all",
+      "lastCleanProof": ".audit/haxe-rust-oo3.98.3.2-oracle-c1c95fbe.tsv row 65",
+      "residualRisks": ["Warm compiler state is never accepted as release proof for dependency absence; exact-profile cold generation remains required."]
+    },
+    {
+      "id": "diagnostics-source-maps",
+      "name": "Diagnostics and deterministic source mapping",
+      "status": "partial",
+      "officialHaxeTargetQualification": "does-not-apply",
+      "profiles": ["portable", "metal", "no-hxrt"],
+      "protectedClaims": [
+        "Errors point to the exact stable Haxe location without leaking machine paths.",
+        "Source maps and reports are deterministic in UTF-8 byte coordinates."
+      ],
+      "focusedOwners": [
+        {"path": "test/scripts/rust-source-map.test.js", "command": "npm run test:rust-source-map"},
+        {"path": "test/scripts/diagnostic-contract.test.js", "command": "npm run test:diagnostic-contract"}
+      ],
+      "verticalOwners": [
+        {"path": "scripts/ci/check-diagnostic-contract.sh", "command": "npm run test:diagnostic-contract:runtime", "observer": "real compiler diagnostics from authored Haxe"},
+        {"path": "test/positive/rust_source_map", "command": "npm run test:rust-source-map", "observer": "generated Rust map plus exact original content"}
+      ],
+      "systemOwners": [],
+      "examples": [],
+      "fullBackstop": "npm run test:all",
+      "lastCleanProof": ".audit/haxe-rust-oo3.98.3.2-oracle-c1c95fbe.tsv row 65",
+      "residualRisks": ["Broader transformed-origin coverage remains tracked separately from the exact boundaries already admitted."]
+    },
+    {
+      "id": "cargo-package-platform",
+      "name": "Cargo, package, downstream, release, and platform behavior",
+      "status": "partial",
+      "officialHaxeTargetQualification": "does-not-apply",
+      "profiles": ["portable", "metal", "release artifact"],
+      "protectedClaims": [
+        "Generated Cargo projects build with the supported Rust policy and reviewed dependency graph.",
+        "The release package is rebuilt from reviewed inputs and verified independently of the candidate archive.",
+        "Downstream and platform checks stay separate from compiler semantic claims."
+      ],
+      "focusedOwners": [
+        {"path": "test/scripts/release-artifact.test.js", "command": "npm run test:release-artifact"},
+        {"path": "test/scripts/rust-toolchain-policy.test.js", "command": "npm run test:rust-toolchain-policy"}
+      ],
+      "verticalOwners": [
+        {"path": "scripts/ci/package-smoke.sh", "command": "npm run test:package-smoke", "observer": "clean Haxelib install, Haxe compile, Cargo build, and run"},
+        {"path": "scripts/ci/fresh-cargo-resolution.js", "command": "npm run test:fresh-cargo-resolution", "observer": "empty Cargo homes on the exact minimum toolchain"}
+      ],
+      "systemOwners": [
+        {"path": "scripts/ci/check-codex-hxrust-smoke.sh", "command": "npm run test:codex-hxrust", "observer": "independent application"},
+        {"path": "scripts/ci/windows-smoke.sh", "command": "npm run test:windows-smoke", "observer": "Windows runner"}
+      ],
+      "examples": ["hello", "chat_loopback", "profile_storyboard"],
+      "fullBackstop": "npm run ci:local",
+      "lastCleanProof": ".audit/haxe-rust-p6hs.13.tsv rows 28-29",
+      "residualRisks": ["Professional legal approval is separate from engineering release-integrity checks."]
+    }
+  ],
+  "feedbackRings": [
+    {
+      "id": "R0",
+      "name": "focused owner",
+      "currentCommand": "npm run test:rust-representation-plan (or the named smallest owner)",
+      "claim": "Fast diagnosis for one behavior owner.",
+      "selection": "manual exact command",
+      "cacheRule": "Warm reuse is allowed for iteration, but not for no-hxrt or release proof."
+    },
+    {
+      "id": "R1",
+      "name": "local smoke and pre-commit",
+      "currentCommand": "installed scripts/hooks/pre-commit plus npm run hooks:check",
+      "claim": "Changed high-risk contracts and deterministic generated records are checked before commit.",
+      "selection": "path triggers with fail-closed freshness checks",
+      "cacheRule": "Developer caches are allowed; generated evidence must remain byte-identical."
+    },
+    {
+      "id": "R2",
+      "name": "required pull request",
+      "currentCommand": ".github/workflows/ci.yml harness and policy jobs",
+      "claim": "All required product surfaces run independently on every pull request.",
+      "selection": "broad required shards; no semantic test is removed by an affected selector",
+      "cacheRule": "Tool downloads may be cached; product outputs are regenerated."
+    },
+    {
+      "id": "R3",
+      "name": "extended",
+      "currentCommand": "npm run test:upstream-stdlib:tier2 plus PR performance and platform jobs",
+      "claim": "Broader inventory, performance, and platform pressure tests the required path.",
+      "selection": "currently broad rather than affected; observation-mode semantic selection is deferred to haxe.rust-oo3.101",
+      "cacheRule": "Selector misses cannot hide because the broad job remains active."
+    },
+    {
+      "id": "R4",
+      "name": "full and weekly",
+      "currentCommand": "npm run ci:local and .github/workflows/weekly-ci-evidence.yml",
+      "claim": "Full Linux, Windows, downstream, and evidence paths catch cross-surface interactions.",
+      "selection": "always-run backstop",
+      "cacheRule": "Caches may speed tools; immutable reports and clean generated outputs remain separate."
+    },
+    {
+      "id": "R5",
+      "name": "release",
+      "currentCommand": ".github/workflows/ci.yml release job and npm run test:release",
+      "claim": "The exact tested commit is rebuilt and its package is verified from reviewed inputs.",
+      "selection": "release policy only; never affected-path selection",
+      "cacheRule": "Cold exact-profile proof is required; a warm compiler cache cannot prove no-hxrt or release behavior."
+    }
+  ],
+  "retryPolicy": {
+    "productTestRetries": "disabled",
+    "networkBootstrapRetries": "allowed only around external downloads and must not hide a product-test failure",
+    "quarantine": "A claim-bearing test may be quarantined only with an owner, expiry, Bead, preserved failure artifact, and another active proof for the same public claim.",
+    "currentQuarantines": []
+  },
+  "highRiskReviewChecklist": [
+    "Did the new or changed test fail for the intended reason before the fix?",
+    "Is the expected result independent of the implementation being tested?",
+    "Are important negative and edge cases missing?",
+    "Does a mock remove the boundary named by the claim?",
+    "Could path-based selection skip the real semantic owner?",
+    "Is a green result from one product surface being used to advance another surface?",
+    "Does the public wording claim more than the observed compile, build, runtime, package, or platform level?"
+  ],
+  "representativeWorkflow": {
+    "title": "Scoped Rust borrow hidden inside a runtime anonymous record",
+    "surface": "representation-metal",
+    "scenario": {
+      "preconditions": "A typed anonymous record declares an optional field whose transparent Haxe type ultimately contains a scoped Rust borrow.",
+      "action": "Compile a runtime-name reflection write and typed read through the representation-plan fixture.",
+      "observableResult": "Compilation reports HXRS-BORROW-REGION at the Haxe value before any Rust source directory is created.",
+      "edgeBehavior": "Deep acyclic wrappers and abstracts around the whole record are rejected, while equally deep owned values and recursive owned records remain accepted.",
+      "protectedClaim": "Runtime anonymous records cannot store an owned value under a field later exposed as a scoped Rust borrow."
+    },
+    "redState": {
+      "command": "npm run test:rust-representation-plan",
+      "evidence": ".audit/haxe-rust-oo3.98.3.2-oracle-c1c95fbe.tsv row 63",
+      "failure": "The deep wrapper, outer-record abstract, and omitted mutable-borrow field compiled past the intended early check."
+    },
+    "expectedResult": {
+      "kind": "manually-authored-invariant",
+      "source": "Haxe transparent-type meaning plus the reviewed Rust Anon::get<T> owned-value and lifetime contract",
+      "independence": "The expectation comes from the source-language type and Rust lifetime rules, not from reusing the emitter's classification algorithm."
+    },
+    "tracerBullet": {
+      "fixture": "test/positive/representation_borrow_dynamic",
+      "command": "npm run test:rust-representation-plan",
+      "observedLevels": ["authored-haxe", "typed-decision", "generated-rust", "cargo-build", "runtime"],
+      "result": "The saved decision is consumed once, generated Rust copies or clones the owned referent, Cargo accepts it, and runtime prints 7|hello|true without a borrow escaping."
+    },
+    "broaderProof": {
+      "command": "npm run test:all",
+      "evidence": ".audit/haxe-rust-oo3.98.3.2-oracle-c1c95fbe.tsv row 65",
+      "result": "Passed in 7201 seconds across 138 snapshots, 36 portable behavior comparisons, runtime, package, examples, and policy gates."
+    }
+  },
+  "examples": [
+    {"id": "async_retry_pipeline", "tier": "capability-showcase", "surfaces": ["representation-metal", "runtime"], "observedLevels": ["authored-haxe", "compile", "cargo-build", "cargo-test", "runtime"]},
+    {"id": "bytes_ops", "tier": "capability-showcase", "surfaces": ["portable-compiler", "runtime"], "observedLevels": ["authored-haxe", "compile", "cargo-build", "cargo-test", "runtime"]},
+    {"id": "chat_loopback", "tier": "flagship-application", "surfaces": ["portable-compiler", "representation-metal", "runtime", "cargo-package-platform"], "observedLevels": ["authored-haxe", "compile", "cargo-build", "cargo-test", "runtime"]},
+    {"id": "classes", "tier": "compile-only-snippet", "surfaces": ["portable-compiler"], "observedLevels": ["authored-haxe", "compile", "cargo-build", "runtime"]},
+    {"id": "hello", "tier": "capability-showcase", "surfaces": ["portable-compiler", "cargo-package-platform"], "observedLevels": ["authored-haxe", "compile", "cargo-build", "runtime"]},
+    {"id": "metal_first_dataflow", "tier": "capability-showcase", "surfaces": ["representation-metal"], "observedLevels": ["authored-haxe", "compile", "cargo-build", "cargo-test", "runtime"]},
+    {"id": "metal_native_net", "tier": "capability-showcase", "surfaces": ["representation-metal", "no-hxrt"], "observedLevels": ["authored-haxe", "compile", "cargo-build", "runtime"]},
+    {"id": "profile_storyboard", "tier": "capability-showcase", "surfaces": ["portable-compiler", "representation-metal", "cargo-package-platform"], "observedLevels": ["authored-haxe", "compile", "cargo-build", "cargo-test", "runtime", "native-differential"]},
+    {"id": "serde_json", "tier": "capability-showcase", "surfaces": ["portable-compiler", "runtime"], "observedLevels": ["authored-haxe", "compile", "cargo-build", "cargo-test", "runtime"]},
+    {"id": "sys_file_io", "tier": "capability-showcase", "surfaces": ["portable-compiler", "runtime"], "observedLevels": ["authored-haxe", "compile", "cargo-build", "runtime", "platform"]},
+    {"id": "sys_net_loopback", "tier": "capability-showcase", "surfaces": ["portable-compiler", "runtime"], "observedLevels": ["authored-haxe", "compile", "cargo-build", "runtime", "platform"]},
+    {"id": "sys_process", "tier": "capability-showcase", "surfaces": ["portable-compiler", "runtime"], "observedLevels": ["authored-haxe", "compile", "cargo-build", "runtime", "platform"]},
+    {"id": "sys_thread_smoke", "tier": "capability-showcase", "surfaces": ["portable-compiler", "runtime"], "observedLevels": ["authored-haxe", "compile", "cargo-build", "runtime", "platform"]},
+    {"id": "thread_pool_smoke", "tier": "capability-showcase", "surfaces": ["portable-compiler", "runtime"], "observedLevels": ["authored-haxe", "compile", "cargo-build", "runtime"]},
+    {"id": "tui_todo", "tier": "flagship-application", "surfaces": ["portable-compiler", "runtime"], "observedLevels": ["authored-haxe", "compile", "cargo-build", "cargo-test", "runtime"]}
+  ]
+}

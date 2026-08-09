@@ -12,6 +12,8 @@ Interpretation rule:
 
 - example coverage is useful product evidence and onboarding material,
 - it is not, by itself, blanket semantic-closure proof for an entire stdlib or platform family,
+- each example's flagship/showcase/snippet tier and the levels actually executed in CI are owned by
+  `docs/testing-surface-scorecards.json` and rendered in `docs/testing-surface-scorecards.md`,
 - for release-truth posture, pair this page with `docs/semver-release-posture.md` and
   `docs/semantic-confidence-summary.md`.
 

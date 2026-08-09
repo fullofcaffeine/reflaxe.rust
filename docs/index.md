@@ -42,6 +42,7 @@ the latest immutable GitHub Release for the exact current version.
 - [GA decision record](ga-decision-record.md): historical Milestone 28 gate outcome that led to the semver/public-packaging follow-up.
 - [GA caveat classification](ga-caveat-classification.md): historical blocker/defer/non-issue input used by the Milestone 28 gate.
 - [Examples matrix](examples-matrix.md): scenario coverage, profile entrypoints, and native-parity quick check (`profile_storyboard`).
+- [Testing strategy and product-surface scorecards](testing-surface-scorecards.md): independent claim boundaries, R0-R5 feedback rings, executable example tiers, and a real red-to-green representation workflow.
 - [Portable near-native guidance](portable-near-native-guidance.md): when portable can lower to native Rust representations/cost, when `metal` is still the right contract, and where `reflaxe.std` fits.
 - [Portable vs metal authoring](portable-vs-metal-authoring.md): concise source-style guidance for performance-oriented users choosing between portable and metal.
 - [Consumer runtime benchmark corpus](consumer-runtime-benchmark-corpus.md): product-neutral benchmark candidates for DTO/codecs, JSON/schema validation, process/tool shims, state transitions, async/runtime surfaces, and no-runtime lower-bound signals.
