@@ -24,9 +24,13 @@
   local-only or stale tags later, and permit only the single newly derived stable tag at the reviewed
   commit. Semantic-release's broad `git push --tags` must pass through the reviewed guard that
   publishes only that approved ref.
-- Host controls are preconditions, not post-release observations. Check them immediately before a
-  write-capable release command, then re-read and validate the exact mutable, non-prerelease draft
-  and receipt-bound asset set immediately before changing the draft to public.
+- Host controls are preconditions, but GitHub's short-lived Actions token cannot read the
+  repository-administration immutable-Releases endpoint. Immediately before a write-capable release
+  command, use that token to verify the publicly readable version-tag update/deletion ruleset. Then
+  re-read and validate the exact mutable, non-prerelease draft and receipt-bound asset set before
+  changing the draft to public, and require the published Release itself to report immutable.
+  `verify-host-controls.js` remains a maintainer audit that deliberately requires repository-
+  administration read access; never call it from the ordinary release or repair token.
 - Two reproducible builds are useful only when their inputs independently come from the reviewed
   commit. Comparing two packages built from the same live checkout is not source evidence.
 - Artifact construction and verification may use Node built-ins, but must not load executable package

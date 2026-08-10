@@ -214,7 +214,7 @@ jobs:
             RELEASE_TEMP_ROOT="$RUNNER_TEMP" \
             RELEASE_TOOL_DIR="$RELEASE_TOOL_DIR" \
             TMPDIR="$RUNNER_TEMP" \
-            "$RELEASE_NODE_BIN" scripts/release/verify-host-controls.js "$GITHUB_REPOSITORY"
+            "$RELEASE_NODE_BIN" scripts/release/verify-host-tag-controls.js "$GITHUB_REPOSITORY"
           env -i \
             CI=true \
             GH_TOKEN="$GH_TOKEN" \

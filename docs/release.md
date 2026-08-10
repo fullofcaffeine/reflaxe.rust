@@ -155,8 +155,11 @@ Version-tag rules should prevent updates/deletions and restrict creation to the 
 These host settings are part of the release contract, not facts that source tests can enforce by
 themselves. A maintainer with repository-administration read access can audit them with
 `node scripts/release/verify-host-controls.js OWNER/REPOSITORY`; the short-lived publication token
-cannot read the repository-administration endpoint, so the post-publication verifier enforces
-release immutability from the hosted Release itself.
+cannot read the repository-administration endpoint. Normal release and repair therefore run
+`node scripts/release/verify-host-tag-controls.js OWNER/REPOSITORY` immediately before publication,
+using the public ruleset API to prove that version tags cannot be updated or deleted. The
+post-publication verifier separately requires the hosted Release itself to report immutable. This
+split keeps both checks fail-closed within the authority GitHub actually gives each credential.
 
 This personal repository currently enforces version-tag update/deletion protection and creates tags
 with the same-run `GITHUB_TOKEN`; it does not configure a separate long-lived release credential.

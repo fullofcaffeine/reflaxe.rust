@@ -5,6 +5,7 @@ const crypto = require('crypto')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
+const { execFileSync } = require('child_process')
 
 const repoRoot = path.resolve(__dirname, '..', '..')
 const provenanceModulePath = path.join(repoRoot, 'scripts', 'release', 'release-provenance.js')
@@ -157,8 +158,7 @@ function main() {
       /remote release tag is missing/
     )
 
-    const controls = {
-      'gh api repos/fullofcaffeine/reflaxe.rust/immutable-releases': JSON.stringify({ enabled: true }),
+    const tagControls = {
       'gh api repos/fullofcaffeine/reflaxe.rust/rulesets': JSON.stringify([
         { id: 42, name: 'Immutable semantic version tags', target: 'tag', enforcement: 'active' }
       ]),
@@ -169,6 +169,32 @@ function main() {
         conditions: { ref_name: { include: ['refs/tags/v*'], exclude: [] } },
         rules: [{ type: 'deletion' }, { type: 'non_fast_forward' }]
       })
+    }
+    provenance.verifyHostTagControls({
+      repository: 'fullofcaffeine/reflaxe.rust',
+      run: identityRunner(tagControls)
+    })
+    expectThrow(
+      () =>
+        provenance.verifyHostTagControls({
+          repository: 'fullofcaffeine/reflaxe.rust',
+          run: identityRunner({
+            ...tagControls,
+            'gh api repos/fullofcaffeine/reflaxe.rust/rulesets/42': JSON.stringify({
+              id: 42,
+              target: 'tag',
+              enforcement: 'active',
+              conditions: { ref_name: { include: ['refs/tags/v*'], exclude: [] } },
+              rules: [{ type: 'non_fast_forward' }]
+            })
+          })
+        }),
+      /semantic-version tag ruleset does not prevent update and deletion/
+    )
+
+    const controls = {
+      'gh api repos/fullofcaffeine/reflaxe.rust/immutable-releases': JSON.stringify({ enabled: true }),
+      ...tagControls
     }
     provenance.verifyHostReleaseControls({
       repository: 'fullofcaffeine/reflaxe.rust',
@@ -185,6 +211,34 @@ function main() {
         }),
       /immutable GitHub Releases are not enabled/
     )
+
+    const fakeGh = path.join(temp, 'gh')
+    fs.writeFileSync(
+      fakeGh,
+      `#!/bin/sh
+case "$*" in
+  "api repos/fullofcaffeine/reflaxe.rust/immutable-releases") printf '%s' '{"enabled":true}' ;;
+  "api repos/fullofcaffeine/reflaxe.rust/rulesets") printf '%s' '[{"id":42,"name":"Immutable semantic version tags","target":"tag","enforcement":"active"}]' ;;
+  "api repos/fullofcaffeine/reflaxe.rust/rulesets/42") printf '%s' '{"id":42,"conditions":{"ref_name":{"include":["refs/tags/v*"]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"}]}' ;;
+  *) exit 97 ;;
+esac
+`
+    )
+    fs.chmodSync(fakeGh, 0o755)
+    const cliEnvironment = { ...process.env, PATH: `${temp}${path.delimiter}${process.env.PATH || ''}` }
+    delete cliEnvironment.RELEASE_GH_BIN
+    const tagAudit = execFileSync(
+      process.execPath,
+      [path.join(repoRoot, 'scripts', 'release', 'verify-host-tag-controls.js'), 'fullofcaffeine/reflaxe.rust'],
+      { encoding: 'utf8', env: cliEnvironment }
+    )
+    assert.match(tagAudit, /immutable semantic-version tag ruleset 42/)
+    const completeAudit = execFileSync(
+      process.execPath,
+      [path.join(repoRoot, 'scripts', 'release', 'verify-host-controls.js'), 'fullofcaffeine/reflaxe.rust'],
+      { encoding: 'utf8', env: cliEnvironment }
+    )
+    assert.match(completeAudit, /immutable releases and tag ruleset 42/)
 
     const config = require(path.join(repoRoot, 'release.config.js'))
     const names = config.plugins.map((entry) => (Array.isArray(entry) ? entry[0] : entry))

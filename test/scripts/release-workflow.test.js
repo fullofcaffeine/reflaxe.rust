@@ -267,8 +267,12 @@ async function main() {
     /PATH="\$RELEASE_TOOL_DIR:\/usr\/bin:\/bin"/,
     'semantic-release PATH must resolve git through the reviewed guard before the system executable'
   )
-  const hostControl = release.indexOf('scripts/release/verify-host-controls.js')
-  assert(hostControl > releaseAssert && hostControl < semanticRelease, 'host release controls must be checked immediately before publication authority')
+  const hostControl = release.indexOf('scripts/release/verify-host-tag-controls.js')
+  assert(hostControl > releaseAssert && hostControl < semanticRelease, 'token-readable host tag controls must be checked immediately before publication authority')
+  assert(
+    !release.includes('scripts/release/verify-host-controls.js'),
+    'the short-lived release token must not call the maintainer-only repository-administration audit'
+  )
   assert(!release.includes('actions/cache'), 'the privileged release job must not restore an executable cache')
   assert(!release.includes('workflow_dispatch'), 'normal publication must not have a manual bypass')
 
@@ -332,8 +336,12 @@ async function main() {
   )
   requireMatch(
     repair,
-    /scripts\/release\/verify-host-controls\.js[\s\S]*scripts\/release\/repair-release\.js/,
-    'repair must verify immutable-release and tag controls before receiving publication authority'
+    /scripts\/release\/verify-host-tag-controls\.js[\s\S]*scripts\/release\/repair-release\.js/,
+    'repair must verify token-readable immutable-tag controls before receiving publication authority'
+  )
+  assert(
+    !repair.includes('scripts/release/verify-host-controls.js'),
+    'the short-lived repair token must not call the maintainer-only repository-administration audit'
   )
   requireMatch(repair, /RELEASE_EXPECTED_ORIGIN_URL="\$GITHUB_SERVER_URL\/\$GITHUB_REPOSITORY\.git"/, 'repair callers must retain the workflow-owned repository URL')
   requireMatch(repair, /"\$RELEASE_NODE_BIN" scripts\/release\/repair-release\.js "\$REPAIR_TAG"/, 'repair must use the non-version-deriving repair command')

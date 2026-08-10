@@ -88,7 +88,17 @@ function assertAbsoluteTool(environment, key, required) {
   environment[key] = executable
 }
 
-function releaseProcessEnvironment(source, additionalKeys = []) {
+/**
+ * Why: Release code must not inherit arbitrary process state, while small maintainer CLIs should
+ * still work without requiring callers to manually export every absolute tool path.
+ *
+ * What: Build the allowlisted release environment and optionally require named reviewed tools.
+ *
+ * How: Copy only approved keys, resolve required tools once through the existing non-strict lookup,
+ * and immediately validate that every result is an absolute executable. Strict hosted workflows
+ * still have to provide their exact tool paths and never consult ambient PATH.
+ */
+function releaseProcessEnvironment(source, additionalKeys = [], requiredTools = []) {
   const environment = {}
   for (const key of [...RELEASE_ENVIRONMENT_KEYS, ...additionalKeys]) {
     if (source[key] !== undefined) environment[key] = source[key]
@@ -106,7 +116,12 @@ function releaseProcessEnvironment(source, additionalKeys = []) {
   ]) {
     assertAbsoluteTool(environment, key, strict)
   }
-  if (environment.RELEASE_GH_BIN !== undefined) {
+  const requiredToolSet = new Set(requiredTools)
+  for (const key of requiredToolSet) {
+    if (!RELEASE_ENVIRONMENT_KEYS.includes(key)) throw new Error(`unknown reviewed release tool: ${key}`)
+    assertAbsoluteTool(environment, key, true)
+  }
+  if (environment.RELEASE_GH_BIN !== undefined && !requiredToolSet.has('RELEASE_GH_BIN')) {
     assertAbsoluteTool(environment, 'RELEASE_GH_BIN', true)
   }
   const home = environment.RELEASE_HOME || (!strict ? source.HOME : null)

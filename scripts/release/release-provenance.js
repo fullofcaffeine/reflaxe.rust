@@ -22,7 +22,7 @@ function defaultRun(command, args, options = {}) {
   const git = command === 'git'
   const environment = git
     ? gitObjectEnvironment(options.env || process.env)
-    : releaseProcessEnvironment(options.env || process.env, HOST_ENVIRONMENT_KEYS)
+    : releaseProcessEnvironment(options.env || process.env, HOST_ENVIRONMENT_KEYS, ['RELEASE_GH_BIN'])
   const executable = git
     ? (options.env || process.env).RELEASE_GIT_BIN || '/usr/bin/git'
     : environment.RELEASE_GH_BIN
@@ -256,13 +256,27 @@ function verifyHostedRelease({ receipt, cwd, run = defaultRun }) {
   return release
 }
 
-function verifyHostReleaseControls({ repository, cwd, run = defaultRun }) {
+function validateRepositoryName(repository) {
   if (typeof repository !== 'string' || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
     throw new Error('repository must use OWNER/NAME form')
   }
-  const immutable = JSON.parse(run('gh', ['api', `repos/${repository}/immutable-releases`], { cwd }))
-  if (!immutable.enabled) throw new Error('immutable GitHub Releases are not enabled')
+}
 
+/**
+ * Why: GitHub Actions' short-lived repository token can read public rulesets, but it cannot read
+ * the repository-administration endpoint that reports the global immutable-Releases setting.
+ * Publication must still fail before mutation when version tags can be moved or deleted.
+ *
+ * What: Verify only the public host control that the workflow token can truthfully enforce before
+ * publication: the active v* tag ruleset must forbid deletion and non-fast-forward updates.
+ *
+ * How: Read the public ruleset summary and its complete rule payload, then require the exact
+ * semantic-version namespace and both mutation guards. Release immutability is checked from the
+ * published Release itself after publication; maintainers can audit both settings with
+ * verifyHostReleaseControls.
+ */
+function verifyHostTagControls({ repository, cwd, run = defaultRun }) {
+  validateRepositoryName(repository)
   const summaries = JSON.parse(run('gh', ['api', `repos/${repository}/rulesets`], { cwd }))
   const summary = summaries.find(
     (entry) =>
@@ -283,6 +297,24 @@ function verifyHostReleaseControls({ repository, cwd, run = defaultRun }) {
   ) {
     throw new Error('semantic-version tag ruleset does not prevent update and deletion')
   }
+  return { ruleset }
+}
+
+/**
+ * Why: Release immutability is a repository-administration setting and therefore requires a
+ * maintainer credential to audit directly.
+ *
+ * What: Perform the complete administrative audit of immutable Releases plus immutable version
+ * tags. This is deliberately not a GitHub Actions publication-token check.
+ *
+ * How: Read the administration endpoint first, then reuse the same tag-ruleset validator used by
+ * release and repair workflows.
+ */
+function verifyHostReleaseControls({ repository, cwd, run = defaultRun }) {
+  validateRepositoryName(repository)
+  const immutable = JSON.parse(run('gh', ['api', `repos/${repository}/immutable-releases`], { cwd }))
+  if (!immutable.enabled) throw new Error('immutable GitHub Releases are not enabled')
+  const { ruleset } = verifyHostTagControls({ repository, cwd, run })
   return { immutable, ruleset }
 }
 
@@ -298,5 +330,6 @@ module.exports = {
   verifyHostReleaseControls,
   verifyHostedDraft,
   verifyHostedRelease,
+  verifyHostTagControls,
   verifyTagIdentity
 }
