@@ -227,6 +227,9 @@ esac
     fs.chmodSync(fakeGh, 0o755)
     const cliEnvironment = { ...process.env, PATH: `${temp}${path.delimiter}${process.env.PATH || ''}` }
     delete cliEnvironment.RELEASE_GH_BIN
+    delete cliEnvironment.RELEASE_TEMP_ROOT
+    delete cliEnvironment.TMP
+    delete cliEnvironment.TMPDIR
     const tagAudit = execFileSync(
       process.execPath,
       [path.join(repoRoot, 'scripts', 'release', 'verify-host-tag-controls.js'), 'fullofcaffeine/reflaxe.rust'],

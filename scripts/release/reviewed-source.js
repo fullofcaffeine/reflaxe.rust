@@ -125,7 +125,7 @@ function releaseProcessEnvironment(source, additionalKeys = [], requiredTools = 
     assertAbsoluteTool(environment, 'RELEASE_GH_BIN', true)
   }
   const home = environment.RELEASE_HOME || (!strict ? source.HOME : null)
-  const temporary = environment.RELEASE_TEMP_ROOT || (!strict ? (source.TMPDIR || source.TMP) : null)
+  const temporary = environment.RELEASE_TEMP_ROOT || (!strict ? (source.TMPDIR || source.TMP || os.tmpdir()) : null)
   if (!home || !path.isAbsolute(home)) throw new Error('reviewed release execution requires an absolute RELEASE_HOME')
   if (!temporary || !path.isAbsolute(temporary)) {
     throw new Error('reviewed release execution requires an absolute RELEASE_TEMP_ROOT')
