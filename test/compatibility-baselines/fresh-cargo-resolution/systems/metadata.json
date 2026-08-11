@@ -649,7 +649,7 @@
         "dependencies": []
       },
       {
-        "id": "futures-core@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "futures-core@0.3.34:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "alloc",
           "std"
@@ -657,7 +657,7 @@
         "dependencies": []
       },
       {
-        "id": "futures-task@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "futures-task@0.3.34:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "alloc",
           "std"
@@ -665,7 +665,7 @@
         "dependencies": []
       },
       {
-        "id": "futures-util@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "futures-util@0.3.34:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "alloc",
           "slab",
@@ -674,7 +674,7 @@
         "dependencies": [
           {
             "name": "futures_core",
-            "package": "futures-core@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "futures-core@0.3.34:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -684,7 +684,7 @@
           },
           {
             "name": "futures_task",
-            "package": "futures-task@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "futures-task@0.3.34:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -1149,7 +1149,7 @@
           },
           {
             "name": "futures_util",
-            "package": "futures-util@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "futures-util@0.3.34:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -1825,7 +1825,7 @@
         ]
       },
       {
-        "id": "rustls-webpki@0.103.13:registry+https://github.com/rust-lang/crates.io-index",
+        "id": "rustls-webpki@0.103.14:registry+https://github.com/rust-lang/crates.io-index",
         "enabledFeatures": [
           "alloc",
           "ring",
@@ -1914,7 +1914,7 @@
           },
           {
             "name": "webpki",
-            "package": "rustls-webpki@0.103.13:registry+https://github.com/rust-lang/crates.io-index",
+            "package": "rustls-webpki@0.103.14:registry+https://github.com/rust-lang/crates.io-index",
             "kinds": [
               {
                 "kind": "normal",
@@ -5191,9 +5191,9 @@
       "dependencies": []
     },
     {
-      "id": "futures-core@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "futures-core@0.3.34:registry+https://github.com/rust-lang/crates.io-index",
       "name": "futures-core",
-      "version": "0.3.33",
+      "version": "0.3.34",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.36.0",
       "enabledFeatures": [
@@ -5217,9 +5217,9 @@
       ]
     },
     {
-      "id": "futures-task@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "futures-task@0.3.34:registry+https://github.com/rust-lang/crates.io-index",
       "name": "futures-task",
-      "version": "0.3.33",
+      "version": "0.3.34",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [
@@ -5229,9 +5229,9 @@
       "dependencies": []
     },
     {
-      "id": "futures-util@0.3.33:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "futures-util@0.3.34:registry+https://github.com/rust-lang/crates.io-index",
       "name": "futures-util",
-      "version": "0.3.33",
+      "version": "0.3.34",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [
@@ -5243,7 +5243,7 @@
         {
           "name": "futures-channel",
           "rename": null,
-          "requirement": "^0.3.33",
+          "requirement": "^0.3.34",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": true,
@@ -5256,7 +5256,7 @@
         {
           "name": "futures-core",
           "rename": null,
-          "requirement": "^0.3.33",
+          "requirement": "^0.3.34",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -5267,7 +5267,7 @@
         {
           "name": "futures-io",
           "rename": null,
-          "requirement": "^0.3.33",
+          "requirement": "^0.3.34",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": true,
@@ -5280,7 +5280,7 @@
         {
           "name": "futures-macro",
           "rename": null,
-          "requirement": "=0.3.33",
+          "requirement": "=0.3.34",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": true,
@@ -5291,7 +5291,7 @@
         {
           "name": "futures-sink",
           "rename": null,
-          "requirement": "^0.3.33",
+          "requirement": "^0.3.34",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": true,
@@ -5302,7 +5302,7 @@
         {
           "name": "futures-task",
           "rename": null,
-          "requirement": "^0.3.33",
+          "requirement": "^0.3.34",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": false,
@@ -7891,9 +7891,9 @@
       ]
     },
     {
-      "id": "rustls-webpki@0.103.13:registry+https://github.com/rust-lang/crates.io-index",
+      "id": "rustls-webpki@0.103.14:registry+https://github.com/rust-lang/crates.io-index",
       "name": "rustls-webpki",
-      "version": "0.103.13",
+      "version": "0.103.14",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "rustVersion": "1.71.0",
       "enabledFeatures": [
@@ -7905,7 +7905,7 @@
         {
           "name": "aws-lc-rs",
           "rename": null,
-          "requirement": "^1.14",
+          "requirement": "^1.18",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "normal",
           "optional": true,
@@ -7916,7 +7916,7 @@
         {
           "name": "base64",
           "rename": null,
-          "requirement": "^0.22",
+          "requirement": "^0.23",
           "source": "registry+https://github.com/rust-lang/crates.io-index",
           "kind": "dev",
           "optional": false,
