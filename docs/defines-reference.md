@@ -22,6 +22,10 @@ control live in the [public compatibility manifest](public-compatibility-manifes
   - Run `cargo fmt` after code generation (best effort).
 - `rust_deny_warnings`
   - Emit crate-level deny warnings for generated Rust.
+- `rust_forbid_unsafe`
+  - Emit `#![forbid(unsafe_code)]` in the generated crate root.
+  - Use it when the complete crate, including copied native helpers, must contain only safe Rust.
+  - Do not use it for a reviewed native facade that must contain a small `unsafe` implementation.
 - `rust_nested_modules`
   - Emit generated Haxe package/type modules under nested Rust source directories
     (`foo.bar.Baz` -> `src/foo/bar/baz.rs`) instead of one flat `foo_bar_baz.rs` file.

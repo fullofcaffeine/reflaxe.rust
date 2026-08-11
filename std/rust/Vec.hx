@@ -20,6 +20,11 @@ extern class Vec<T> {
 
 	@:rustMutating
 	public function pop():Option<T>;
+
+	/** Returns `true` when this native Rust vector has no elements. */
+	@:native("is_empty")
+	public function isEmpty():Bool;
+
 	public function clone():Vec<T>;
 
 	/**

@@ -30184,6 +30184,156 @@
       ]
     },
     {
+      "name": "rust.process.CurrentProcess",
+      "source": "std/rust/process/CurrentProcess.hx",
+      "kind": "class",
+      "signature": "@:native (\"crate::current_process_tools::CurrentProcess\") @:rustExtraSrc (\"rust/native/current_process_tools.rs\") extern class CurrentProcess",
+      "contract": "rust-values-qualified",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "rust.Result",
+        "rust.Vec",
+        "rust.process.CurrentProcessError"
+      ],
+      "transitiveTypeReferences": [
+        "rust.Option",
+        "rust.Result",
+        "rust.Vec",
+        "rust.process.CurrentProcessError"
+      ],
+      "operations": [
+        {
+          "id": "function:userArgumentCount",
+          "kind": "function",
+          "name": "userArgumentCount",
+          "signature": "@:native (\"user_argument_count\") public static function userArgumentCount () : Result < Int, CurrentProcessError >",
+          "contract": "rust-values-qualified",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "rust.Result",
+            "rust.process.CurrentProcessError"
+          ]
+        },
+        {
+          "id": "function:readStdinChunk",
+          "kind": "function",
+          "name": "readStdinChunk",
+          "signature": "@:native (\"read_stdin_chunk\") public static function readStdinChunk (maxBytes : Int) : Result < Vec < Int >, CurrentProcessError >",
+          "contract": "rust-values-qualified",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "rust.Result",
+            "rust.Vec",
+            "rust.process.CurrentProcessError"
+          ]
+        },
+        {
+          "id": "function:writeStdout",
+          "kind": "function",
+          "name": "writeStdout",
+          "signature": "@:native (\"write_stdout\") public static function writeStdout (bytes : Vec < Int >) : Result < Bool, CurrentProcessError >",
+          "contract": "rust-values-qualified",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "rust.Result",
+            "rust.Vec",
+            "rust.process.CurrentProcessError"
+          ]
+        },
+        {
+          "id": "function:writeStderrUtf8",
+          "kind": "function",
+          "name": "writeStderrUtf8",
+          "signature": "@:native (\"write_stderr_utf8\") public static function writeStderrUtf8 (message : String) : Result < Bool, CurrentProcessError >",
+          "contract": "rust-values-qualified",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "rust.Result",
+            "rust.process.CurrentProcessError"
+          ]
+        },
+        {
+          "id": "function:exit",
+          "kind": "function",
+          "name": "exit",
+          "signature": "@:native (\"exit\") public static function exit (code : Int) : Void",
+          "contract": "rust-values-qualified",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "rust.process.CurrentProcessError",
+      "source": "std/rust/process/CurrentProcessError.hx",
+      "kind": "class",
+      "signature": "@:native (\"crate::current_process_tools::CurrentProcessError\") extern class CurrentProcessError",
+      "contract": "rust-values-qualified",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "function:isInvalidInput",
+          "kind": "function",
+          "name": "isInvalidInput",
+          "signature": "@:native (\"is_invalid_input\") public function isInvalidInput () : Bool",
+          "contract": "rust-values-qualified",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:isRead",
+          "kind": "function",
+          "name": "isRead",
+          "signature": "@:native (\"is_read\") public function isRead () : Bool",
+          "contract": "rust-values-qualified",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:isWrite",
+          "kind": "function",
+          "name": "isWrite",
+          "signature": "@:native (\"is_write\") public function isWrite () : Bool",
+          "contract": "rust-values-qualified",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:isFlush",
+          "kind": "function",
+          "name": "isFlush",
+          "signature": "@:native (\"is_flush\") public function isFlush () : Bool",
+          "contract": "rust-values-qualified",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
       "name": "rust.process.NativeCommands",
       "source": "std/rust/process/NativeCommands.hx",
       "kind": "class",
@@ -32557,6 +32707,17 @@
           "typeReferences": [
             "rust.Option"
           ]
+        },
+        {
+          "id": "function:isEmpty",
+          "kind": "function",
+          "name": "isEmpty",
+          "signature": "@:native (\"is_empty\") public function isEmpty () : Bool",
+          "contract": "rust-values-qualified",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
         },
         {
           "id": "function:clone",
@@ -37584,6 +37745,15 @@
       "contract": "build-experimental",
       "valueGrammar": "filesystem directory path",
       "default": "unset",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ]
+    },
+    {
+      "name": "rust_forbid_unsafe",
+      "contract": "build-controls",
+      "valueGrammar": "presence flag",
+      "default": "disabled",
       "evidenceIds": [
         "test:public-compatibility"
       ]

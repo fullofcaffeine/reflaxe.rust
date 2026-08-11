@@ -3759,6 +3759,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 			// User classes
 			var otherUserClasses = getUserClassesForModules();
+			if (Context.defined("rust_forbid_unsafe")) {
+				items.push(RInnerAttribute(RustAttribute.pathList(rustRelativePath(["forbid"]), [rustRelativePath(["unsafe_code"])])));
+			}
 			if (Context.defined("rust_deny_warnings")) {
 				items.push(RInnerAttribute(RustAttribute.pathList(rustRelativePath(["deny"]), [rustRelativePath(["warnings"])])));
 			}
