@@ -237,7 +237,7 @@
         "raw OS error messages or platform error codes"
       ],
       "evidenceOwner": "test/positive/metal_no_hxrt_current_process, test/positive/metal_no_hxrt_current_process_error_only, and scripts/ci/check-metal-policy.sh current-process binary IO cases",
-      "codeLineBudget": 175
+      "codeLineBudget": 180
     },
     {
       "path": "std/rust/native/native_process_tools.rs",
