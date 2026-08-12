@@ -231,7 +231,7 @@ This manifest **does not authorize stable 1.0** and is independent from the stab
 - Evidence:
   - `test:metal-policy` (executable): Positive and negative compiler fixtures exercise fail-closed no-hxrt eligibility, emitted-runtime rejection, scoped borrow escape checks, overlap checks, typed native facades, and warning-clean Cargo builds.
   - `contract:native-facades` (generated): Every shipped Rust helper island declares its Haxe owner, no-hxrt or hxrt-bridge contract, lowering rationale, dependencies, forbidden growth, evidence owner, and line budget.
-  - `test:fresh-cargo-resolution` (executable): Representative portable and metal dependency graphs resolve twice from an empty Cargo cache on the supported minimum Rust and match immutable baselines.
+  - `test:fresh-cargo-resolution` (executable): Representative portable and metal dependency graphs use reviewed locks, reproduce immutable normalized metadata with frozen Cargo commands on the supported minimum Rust, and reject incompatible Rust requirements.
   - `test:snapshots-and-clippy` (executable): Characterized Rust output, Cargo builds, rustfmt expectations, deny-warnings coverage, and curated Clippy checks detect output-shape regressions.
 - Qualifications:
   - The @:rustCargo grammar still needs a structured stable contract before broad third-party dependency admission.
@@ -453,7 +453,7 @@ The registry names evidence authorities; it intentionally does not copy their ch
 ### test:fresh-cargo-resolution
 
 - Class: `executable`
-- Purpose: Representative portable and metal dependency graphs resolve twice from an empty Cargo cache on the supported minimum Rust and match immutable baselines.
+- Purpose: Representative portable and metal dependency graphs use reviewed locks, reproduce immutable normalized metadata with frozen Cargo commands on the supported minimum Rust, and reject incompatible Rust requirements.
 - Paths: [`scripts/ci/fresh-cargo-resolution.js`](../scripts/ci/fresh-cargo-resolution.js), [`test/compatibility-baselines/fresh-cargo-resolution`](../test/compatibility-baselines/fresh-cargo-resolution), [`docs/rust-toolchain-policy.md`](rust-toolchain-policy.md)
 - Commands: `npm run test:fresh-cargo-resolution`
 

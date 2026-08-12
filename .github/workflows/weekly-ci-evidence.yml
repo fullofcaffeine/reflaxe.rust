@@ -20,6 +20,60 @@ env:
   CARGO_HTTP_MULTIPLEXING: "false"
 
 jobs:
+  cargo-registry-observation:
+    name: Weekly live Cargo registry observation
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install npm dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Resolve Rust toolchain policy
+        id: rust-policy
+        run: node scripts/ci/rust-toolchain-policy.js --github-output --activate minimum
+
+      - name: Setup exact minimum Rust
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30
+        with:
+          toolchain: ${{ steps.rust-policy.outputs.minimum }}
+
+      - name: Observe live Cargo registry
+        run: npm run fresh-cargo-resolution:observe
+
+      - name: Archive live Cargo observation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fresh-cargo-resolution-observation
+          path: .cache/fresh-cargo-resolution/observation
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish observation summary
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          rust_version="$(rustc --version)"
+          {
+            echo "## Weekly live Cargo registry observation"
+            echo "- Result: ${JOB_STATUS}"
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo "- Rust toolchain: \`${rust_version}\`"
+            echo "- Artifact: \`fresh-cargo-resolution-observation\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   local-equivalent:
     name: Weekly local CI equivalent (Linux)
     runs-on: ubuntu-latest
@@ -108,6 +162,7 @@ jobs:
         with:
           name: portable-stdlib-candidates
           path: .cache/weekly-evidence/portable-stdlib-candidates.json
+          include-hidden-files: true
           if-no-files-found: warn
 
       - name: Upload semantic confidence summary artifact
@@ -118,6 +173,7 @@ jobs:
           path: |
             .cache/weekly-evidence/semantic-confidence-summary.json
             .cache/weekly-evidence/semantic-confidence-summary.md
+          include-hidden-files: true
           if-no-files-found: warn
 
       - name: Publish Linux evidence summary
@@ -314,6 +370,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs:
+      - cargo-registry-observation
       - local-equivalent
       - windows-smoke
       - codex-hxrust-qa
@@ -323,17 +380,19 @@ jobs:
           set -euo pipefail
           run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           linux_status="${{ needs.local-equivalent.result }}"
+          cargo_status="${{ needs.cargo-registry-observation.result }}"
           windows_status="${{ needs.windows-smoke.result }}"
           codex_status="${{ needs.codex-hxrust-qa.result }}"
 
           {
             echo "## Weekly CI Evidence Rollup"
+            echo "- Live Cargo registry observation: **${cargo_status}**"
             echo "- Linux local-equivalent job: **${linux_status}**"
             echo "- Windows smoke job: **${windows_status}**"
             echo "- codex-hxrust consumer compatibility job: **${codex_status}**"
             echo "- Run URL: ${run_url}"
             echo ""
-            if [[ "${linux_status}" != "success" || "${windows_status}" != "success" || "${codex_status}" != "success" ]]; then
+            if [[ "${cargo_status}" != "success" || "${linux_status}" != "success" || "${windows_status}" != "success" || "${codex_status}" != "success" ]]; then
               echo "### Action Required"
               echo "Open a regression issue in the tracker the same day, assign an owner, and include:"
               echo "- failing job + failing step"

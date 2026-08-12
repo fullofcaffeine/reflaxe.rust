@@ -235,9 +235,9 @@
     },
     {
       "id": "test:fresh-cargo-resolution",
-      "label": "Fresh Cargo dependency resolution",
+      "label": "Reviewed Cargo dependency graph",
       "evidenceClass": "executable",
-      "description": "Representative portable and metal dependency graphs resolve twice from an empty Cargo cache on the supported minimum Rust and match immutable baselines.",
+      "description": "Representative portable and metal dependency graphs use reviewed locks, reproduce immutable normalized metadata with frozen Cargo commands on the supported minimum Rust, and reject incompatible Rust requirements.",
       "paths": [
         "scripts/ci/fresh-cargo-resolution.js",
         "test/compatibility-baselines/fresh-cargo-resolution",

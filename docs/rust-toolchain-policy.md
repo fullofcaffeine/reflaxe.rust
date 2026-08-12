@@ -5,14 +5,16 @@ releases, and recurring evidence. The machine source is
 [`rust-toolchain-policy.json`](../rust-toolchain-policy.json).
 
 <!-- BEGIN GENERATED RUST TOOLCHAIN POLICY -->
-- Policy schema: `2`
+- Policy schema: `3`
 - Minimum supported Rust: `1.96.0`
 - Reproducible release toolchain: `1.96.1`
 - Compatibility lane: Rust `stable`
 - Generated Cargo `rust-version`: `1.96.0`
 - Generated Cargo resolver: `3` (`fallback` for incompatible dependency Rust versions)
 - Generated application lockfile policy: `commit`; CI mode: `locked`
-- Fresh-resolution evidence cases: `minimal`, `portable`, `systems`, `async-feature`, `metal`
+- Reviewed dependency graph: `reviewed-lock`; admission toolchain: `minimum-sysroot-pair`
+- Live dependency observation: `fresh-live` with 2 independent passes
+- Dependency evidence cases: `minimal`, `portable`, `systems`, `async-feature`, `metal`
 - Toolchain/floor review cadence: every 12 weeks
 - Minimum notice before a floor raise: 30 days
 - Earliest project release carrying a floor raise: `minor`
@@ -89,15 +91,61 @@ generated-current-Clippy contract, fresh-resolution CI, and archived evidence wi
 `rust-version` plus resolver, rejects an older actual compiler, and verifies Cargo supplies
 actionable guidance for an unmet floor.
 
-`npm run test:fresh-cargo-resolution` creates an empty Cargo home for every case in two independent
-passes, removes pre-existing locks, resolves metadata, compares both passes byte-for-byte, checks and
-tests the first pass on exact Rust `1.96.0`, compares the result with the reviewed locks/metadata, and
-proves that an incompatible dependency requirement is rejected. Required CI repeats the same
-reviewed graph on current stable and archives each lane's summary, locks, and normalized metadata.
+`npm run test:fresh-cargo-resolution` copies the reviewed locks into clean workspaces. It fetches only
+those locked packages. It then runs Cargo metadata, check, and test with `--frozen` on exact Rust
+`1.96.0`. It compares the result with the reviewed normalized metadata and proves that an
+incompatible dependency requirement is rejected. Required CI repeats this check on current stable.
+Both lanes archive their summary, lock, and normalized metadata evidence. A new crates.io release
+cannot change this required result.
 
-When a deliberate dependency-policy update changes the selected graph, run
-`npm run fresh-cargo-resolution:refresh` on exact Rust `1.96.0`, review every lock and normalized
-metadata diff, then rerun the minimum and current lanes before accepting the new baseline.
+The weekly `npm run fresh-cargo-resolution:observe` job is separate. It resolves the live registry
+twice from empty Cargo homes and compares the two results. It also records an upper-edge resolution
+that can show newer packages which exceed the Rust floor. Drift makes the observation job fail and
+produces a digest-bound candidate artifact, but it does not change tracked files or mandatory CI.
+
+For an intentional update, review every change in that candidate. Then run
+`npm run fresh-cargo-resolution:admit -- --candidate-sha256 <reviewed-digest> --dry-run` on exact Rust
+`1.96.0`. The observer prints this digest after it writes the closed candidate tree. Record it during
+review rather than recomputing it at admission time. The command verifies the same captured bytes
+with frozen Cargo commands and does not resolve the registry again. Remove `--dry-run` only after
+review. The admission command rejects stale input, a different Cargo/rustc pair, a changed candidate
+tree, unknown or extra evidence files, unknown evidence fields, and same-version checksum changes.
+Rerun the minimum and current reviewed-graph lanes before accepting the new baseline.
+
+A new compatibility case is a complete dependency graph, not only a new policy entry. Its
+classification lists every lock package, normalized package, graph node, dependency edge, feature,
+checksum, and declared Rust version. The reviewer can therefore inspect every new authority fact.
+
+The recorded digest binds admission to the files that an operator reviewed. It is not a signature
+and does not prove which machine produced those files. The review must therefore inspect the
+observer output and retain the workflow or local-run evidence that produced the digest.
+
+Admission publishes the new reviewed baseline as one recoverable local transaction. One process
+holds the publication lock. It first writes a complete candidate directory and a small journal.
+It then renames the old baseline and installs the candidate. The next reader uses the journal and
+the directories that exist to finish or undo an interrupted publication. Focused tests interrupt
+the transaction before the first rename, between the two renames, and after the second rename.
+Stale-lock recovery uses a separate short-lived reclaim lock. This prevents two processes that saw
+the same dead owner from deleting each other's new live lock. If its owner stops, the next command
+also stops. It tells the operator to inspect the reclaim lock. The command does not guess that
+removal is safe.
+
+The current-stable CI job also compiles representative generated crates with the reviewed lock.
+The wrapper accepts only the exact `check` and Clippy commands used by that job. It compares the
+generated crate's Cargo inputs with the reviewed `portable` case, copies the crate, installs the
+reviewed lock, and runs Cargo with `--frozen`. This check can still download missing reviewed crate
+bytes. It does not let the live registry select different dependency versions.
+
+The commands use `rustc --print sysroot` to select Cargo and rustc from one installation. If you set
+`RUSTC_BIN` or `CARGO_BIN`, set both to sibling binaries from that sysroot. The selected sysroot's
+`bin` directory comes first in the controlled `PATH`, so Cargo subcommands such as `clippy` cannot
+fall back to another rustup installation. The evidence runner uses
+an isolated Cargo home and rejects registry/source replacements, offline mode, target overrides,
+compiler or rustdoc overrides, Rust/rustdoc flags, and Cargo profile overrides. Proxy and
+certificate settings can stay because they change transport, not dependency identity. The CI value
+`CARGO_INCREMENTAL=0` is accepted and then removed: it disables compiler caching, does not select
+dependencies, and is not passed into the evidence command's controlled Cargo environment. Other
+values remain rejected.
 
 Use `npm run toolchain:sync` only after reviewing a policy change. Generated consumers must not be
 edited independently.

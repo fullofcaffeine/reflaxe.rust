@@ -1,48 +1,59 @@
 {
-  "schemaVersion": 1,
-  "policySchemaVersion": 2,
+  "schemaVersion": 2,
+  "authority": "reviewed-lock",
+  "policySchemaVersion": 3,
+  "policySha256": "6b2f2a043a8b907e9bdf8d825654259a240688cf91a93963e5d9c07fe168fc7c",
+  "normalizationSchemaVersion": 2,
   "minimumSupportedRust": "1.96.0",
+  "admittedRustcVersion": "1.96.0",
+  "admittedCargoVersion": "1.96.0",
   "resolverVersion": "3",
   "incompatibleRustVersions": "fallback",
   "applicationLockfile": "commit",
-  "ciMode": "locked",
-  "emptyCargoHomePerCase": true,
-  "repeatRuns": 2,
+  "requiredGate": "reviewed-lock",
+  "observationMode": "fresh-live",
+  "admissionToolchain": "minimum-sysroot-pair",
+  "lockfileFormat": 4,
   "cases": [
     {
       "id": "minimal",
       "contract": "minimal generated crate",
       "fixture": "test/snapshot/hello_trace/intended",
+      "resolutionInputSha256": "cf699c7be4f7a41ff1f87343e6bd56979c44b3f06ad3ebfc482807a55ed993aa",
       "lockSha256": "fb1b6ae633a16dd3ca8953514c1f331ad7818184974f2f01dd78cc21c2a781d0",
-      "metadataSha256": "839437d9a0c919419dbc388b3d019cbc411c87e2429e5cd929a36d7e0f4e7c0f"
+      "metadataSha256": "9c0a0550b22de66d5c9a519202146a854200017b40d584b0695ecef3d3dfe830"
     },
     {
       "id": "portable",
       "contract": "portable generated crate",
       "fixture": "test/snapshot/v1_smoke/intended",
+      "resolutionInputSha256": "cf699c7be4f7a41ff1f87343e6bd56979c44b3f06ad3ebfc482807a55ed993aa",
       "lockSha256": "fb1b6ae633a16dd3ca8953514c1f331ad7818184974f2f01dd78cc21c2a781d0",
-      "metadataSha256": "d6c76ae2d2fef2cde0ccda6597ff21a400134768e77660c6905e61d0f25a37cd"
+      "metadataSha256": "d8a3a7d825c589d7c025a0c586792fbaab51170bb06543d7dd0027e7025a664e"
     },
     {
       "id": "systems",
       "contract": "systems and TLS generated crate",
       "fixture": "test/snapshot/sys_ssl_sni/intended",
-      "lockSha256": "9e302796164dbf9fa8fe388ee5108ae4122f4c6e0ffcc643aad2996547174c6c",
-      "metadataSha256": "e421139966fac907ed2cce86120f3d3bc89baa283c524e62f47d2b5b8a7cbb21"
+      "resolutionInputSha256": "dae02d0c79be7d23edf288794cb86cccb097eafe2728f636435fe99ef14248ec",
+      "lockSha256": "0ed2fd0f5ce84a76f5fcfb006a598f17513712bf16163a03fd24a18803c0ff14",
+      "metadataSha256": "e75b0d1458ec5d3024369ddf206e6cb8d7bf13c8c658ab4b02e84e3dac01aaec"
     },
     {
       "id": "async-feature",
       "contract": "experimental async Tokio generated crate",
       "fixture": "test/snapshot/rust_async_tasks/intended_tokio",
+      "resolutionInputSha256": "44f5f1fda936454e480a9173c054eb1671803991b8242dc065d39b4de8788992",
       "lockSha256": "1fd55075b1005a45476e860e5dd5cc9df92a993d6a6b3dce25c6b416e76b6bd0",
-      "metadataSha256": "8f50b9303d3cd76603104d728729400e8e9860ac2471459b02877b009c98ffb7"
+      "metadataSha256": "bb017a90d9ef7b922b18cbd29f5ccec674e3d0b09523c2c7c4c3242225f201da"
     },
     {
       "id": "metal",
       "contract": "metal generated crate",
       "fixture": "test/snapshot/metal_v1_smoke/intended_metal",
+      "resolutionInputSha256": "cf699c7be4f7a41ff1f87343e6bd56979c44b3f06ad3ebfc482807a55ed993aa",
       "lockSha256": "fb1b6ae633a16dd3ca8953514c1f331ad7818184974f2f01dd78cc21c2a781d0",
-      "metadataSha256": "8130475cd1649ada669ed759f4fd6fc8b5aa38eaf623e633f8976275e7763573"
+      "metadataSha256": "a57af199c7df0842b1d13ec3505c804893632ac1f0fbc16f2a28013d36d6d6e8"
     }
   ]
 }

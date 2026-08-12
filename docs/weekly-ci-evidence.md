@@ -18,17 +18,23 @@ Automated workflow:
 
 Jobs:
 
-1. Linux local-equivalent validation:
+1. Live Cargo registry observation:
+   - exact minimum Rust lane from `rust-toolchain-policy.json`
+   - two independent resolutions from isolated Cargo homes
+   - a separate upper-edge view that can show dependencies above the supported Rust floor
+   - a digest-bound artifact when the live graph differs from the reviewed graph
+   - no repository write permission and no tracked baseline update
+2. Linux local-equivalent validation:
    - exact minimum Rust lane from `rust-toolchain-policy.json`
    - `npm run docs:sync:progress`
    - `npm run docs:check:progress` (inside `scripts/ci/local.sh`)
    - `bash scripts/ci/local.sh` (includes Tier2 upstream stdlib sweep)
    - compiler-owned `profile_storyboard` runtime assertions execute through generated portable and
      metal Cargo tests; a required-test inventory makes a missing generated test fail the harness
-2. Windows smoke validation:
+3. Windows smoke validation:
    - exact minimum Rust lane from the same policy
    - `bash scripts/ci/windows-smoke.sh`
-3. Independent `codex-hxrust` consumer compatibility:
+4. Independent `codex-hxrust` consumer compatibility:
    - exact minimum Rust lane from the same policy
    - clones `https://github.com/fullofcaffeine/codex-hxrust` beside this repo
    - `npm run test:codex-hxrust`
@@ -47,9 +53,10 @@ compiler or lint incompatibilities without silently changing the minimum support
 also checks a bounded committed generated crate against rolling-current Clippy's `correctness` and
 `suspicious` groups, so new semantic/lifecycle lint findings in representative compiler output are
 detected without duplicating the full snapshot harness or promoting style-only churn to a compatibility
-failure. The exact-minimum and current-stable jobs each repeat fresh resolution with an empty Cargo
-home per minimal, portable, systems/TLS, async-feature, and metal case; compare normalized metadata
-and locks with the reviewed baseline; and archive the lane evidence. See
+failure. The exact-minimum and current-stable jobs each copy the reviewed locks into clean
+workspaces, fetch only those packages, run frozen Cargo checks, and compare normalized metadata with
+the reviewed baseline. They archive the lane evidence. Live registry changes are observed only by
+the separate weekly job, so a new package release cannot veto an unchanged commit. See
 [Rust Toolchain Policy](rust-toolchain-policy.md).
 
 ## PR CI harness topology
@@ -111,9 +118,9 @@ the stronger release-posture evidence.
 
 - Keep baseline, defect/fix, real release, later no-op or repair, toolchain transition,
   cross-platform, and representative-application evidence distinct.
-- A scheduled or manually dispatched run is valid recurring evidence only when all three required
-  jobs succeed on the same `haxe.rust` commit: Linux local-equivalent validation, Windows smoke,
-  and `codex-hxrust` QA.
+- A scheduled or manually dispatched run is valid recurring evidence only when all four required
+  jobs succeed on the same `haxe.rust` commit: live Cargo registry observation, Linux
+  local-equivalent validation, Windows smoke, and `codex-hxrust` QA.
 - Record exact `haxe.rust` and `codex-hxrust` SHAs, workflow/run and job identifiers, semantic
   confidence artifacts, and the open P0/P1 regression inventory when a run informs a posture
   decision.

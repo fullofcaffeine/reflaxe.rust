@@ -172,7 +172,7 @@ Last clean proof: .audit/haxe-rust-oo3.98.3.2-oracle-c1c95fbe.tsv row 65.
 **Real vertical owners**
 
 - `npm run test:package-smoke` — clean Haxelib install, Haxe compile, Cargo build, and run
-- `npm run test:fresh-cargo-resolution` — empty Cargo homes on the exact minimum toolchain
+- `npm run test:fresh-cargo-resolution` — reviewed locks in clean workspaces with isolated Cargo homes on the exact minimum toolchain
 
 **Downstream or platform owners**
 

@@ -284,9 +284,12 @@ Agent policy:
   `rust-toolchain-policy.json`. Its MSRV-aware fallback is only a preference for dependencies that
   publish `rust-version`; it does not replace exact-minimum compilation. Application `Cargo.lock`
   files are app-owned, preserved, committed after review, and consumed with `--locked` in CI/release
-  builds. Compiler evidence uses the two-pass, per-case-empty Cargo homes and reviewed
-  locks/normalized metadata under `test/compatibility-baselines/fresh-cargo-resolution`; refresh that
-  baseline only on exact Rust 1.96 after reviewing all graph changes.
+  builds. Mandatory compiler checks use the reviewed locks and normalized metadata under
+  `test/compatibility-baselines/fresh-cargo-resolution`; crates.io publishing must never veto an
+  unchanged commit. The read-only weekly observer resolves twice from empty Cargo homes and reports
+  drift. To update the reviewed graph, record the observer's closed candidate-tree SHA-256 while
+  inspecting that exact candidate, then pass the digest to the separate admission command with the
+  paired Cargo/rustc binaries from exact Rust 1.96. Do not recompute the review digest at admission.
 - Release-input ownership gotcha: release notices, SBOM entries, vendored Reflaxe records, and the
   packaged Haxe source record must be read from code-owned exact paths, not editable pointers in an
   evidence file. Every consumed package input must be a regular Git blob; reject symlinks, gitlinks,

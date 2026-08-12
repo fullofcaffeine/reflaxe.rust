@@ -56,7 +56,10 @@ function validateDependencyResolution(manifest, errors) {
     'applicationLockfile',
     'ciMode',
     'evidenceBaseline',
-    'repeatRuns',
+    'requiredGate',
+    'observationMode',
+    'observationRepeatRuns',
+    'admissionToolchain',
     'cases'
   ], 'dependencyResolution', errors)
   if (policy.resolverVersion !== '3') errors.push('dependencyResolution.resolverVersion must be 3')
@@ -70,8 +73,17 @@ function validateDependencyResolution(manifest, errors) {
   if (!isRepositoryRelativePath(policy.evidenceBaseline)) {
     errors.push('dependencyResolution.evidenceBaseline must be a repository-relative path')
   }
-  if (!Number.isInteger(policy.repeatRuns) || policy.repeatRuns < 2) {
-    errors.push('dependencyResolution.repeatRuns must be at least 2')
+  if (policy.requiredGate !== 'reviewed-lock') {
+    errors.push('dependencyResolution.requiredGate must be reviewed-lock')
+  }
+  if (policy.observationMode !== 'fresh-live') {
+    errors.push('dependencyResolution.observationMode must be fresh-live')
+  }
+  if (!Number.isInteger(policy.observationRepeatRuns) || policy.observationRepeatRuns < 2) {
+    errors.push('dependencyResolution.observationRepeatRuns must be at least 2')
+  }
+  if (policy.admissionToolchain !== 'minimum-sysroot-pair') {
+    errors.push('dependencyResolution.admissionToolchain must be minimum-sysroot-pair')
   }
   if (!Array.isArray(policy.cases) || policy.cases.length === 0) {
     errors.push('dependencyResolution.cases must be a non-empty array')
@@ -122,7 +134,7 @@ function validateManifest(manifest) {
     'components',
     'dependencyResolution'
   ], 'manifest', errors)
-  if (manifest.schemaVersion !== 2) errors.push('schemaVersion must be 2')
+  if (manifest.schemaVersion !== 3) errors.push('schemaVersion must be 3')
   for (const field of ['minimumSupportedRust', 'releaseToolchain', 'generatedCargoRustVersion']) {
     if (parseRustVersion(manifest[field]) == null) errors.push(`${field} must be canonical major.minor.patch Rust SemVer`)
   }
@@ -199,7 +211,9 @@ function renderDocs(manifest) {
 - Generated Cargo \`rust-version\`: \`${manifest.generatedCargoRustVersion}\`
 - Generated Cargo resolver: \`${manifest.dependencyResolution.resolverVersion}\` (\`${manifest.dependencyResolution.incompatibleRustVersions}\` for incompatible dependency Rust versions)
 - Generated application lockfile policy: \`${manifest.dependencyResolution.applicationLockfile}\`; CI mode: \`${manifest.dependencyResolution.ciMode}\`
-- Fresh-resolution evidence cases: ${manifest.dependencyResolution.cases.map((entry) => `\`${entry.id}\``).join(', ')}
+- Reviewed dependency graph: \`${manifest.dependencyResolution.requiredGate}\`; admission toolchain: \`${manifest.dependencyResolution.admissionToolchain}\`
+- Live dependency observation: \`${manifest.dependencyResolution.observationMode}\` with ${manifest.dependencyResolution.observationRepeatRuns} independent passes
+- Dependency evidence cases: ${manifest.dependencyResolution.cases.map((entry) => `\`${entry.id}\``).join(', ')}
 - Toolchain/floor review cadence: every ${manifest.reviewCadenceWeeks} weeks
 - Minimum notice before a floor raise: ${manifest.minimumFloorRaiseNoticeDays} days
 - Earliest project release carrying a floor raise: \`${manifest.floorRaiseRelease}\`
@@ -326,26 +340,31 @@ function checkConsumers(manifest) {
     errors.push('all normal CI Rust jobs must explicitly activate the minimum Rust lane')
   }
   if (!ci.includes('--github-output --activate current')) errors.push('current-stable CI must explicitly activate its Rust lane')
-  if ((ci.match(/fresh-cargo-resolution\.js --lane minimum --check-baseline/g) || []).length < 1) {
-    errors.push('minimum CI must run fresh Cargo resolution against the tracked baseline')
+  if ((ci.match(/fresh-cargo-resolution\.js --mode verify-reviewed --lane minimum/g) || []).length < 1) {
+    errors.push('minimum CI must verify the reviewed Cargo graph')
   }
-  if ((ci.match(/fresh-cargo-resolution\.js --lane current --check-baseline/g) || []).length < 1) {
-    errors.push('current-stable CI must run fresh Cargo resolution against the tracked baseline')
+  if ((ci.match(/fresh-cargo-resolution\.js --mode verify-reviewed --lane current/g) || []).length < 1) {
+    errors.push('current-stable CI must verify the reviewed Cargo graph')
   }
-  if (!ci.includes('name: fresh-cargo-resolution-minimum')
-      || !ci.includes('path: .cache/fresh-cargo-resolution/minimum')) {
-    errors.push('CI must archive minimum fresh Cargo resolution evidence')
+  if (ci.includes('--mode observe-live') || ci.includes('--mode admit')
+      || ci.includes('fresh-cargo-resolution:observe') || ci.includes('fresh-cargo-resolution:admit')) {
+    errors.push('mandatory CI must not observe or admit the live Cargo registry')
   }
-  if (!ci.includes('name: fresh-cargo-resolution-current')
-      || !ci.includes('path: .cache/fresh-cargo-resolution/current')) {
-    errors.push('CI must archive current-stable fresh Cargo resolution evidence')
+  if (!ci.includes('name: reviewed-cargo-resolution-minimum')
+      || !ci.includes('path: .cache/fresh-cargo-resolution/reviewed/minimum')
+      || (ci.match(/include-hidden-files: true/g) || []).length < 2) {
+    errors.push('CI must archive minimum reviewed Cargo evidence')
   }
-  if (!ci.includes('cargo check --manifest-path "$generated_smoke/Cargo.toml"')) {
-    errors.push('current-stable CI must compile representative generated Rust')
+  if (!ci.includes('name: reviewed-cargo-resolution-current')
+      || !ci.includes('path: .cache/fresh-cargo-resolution/reviewed/current')) {
+    errors.push('CI must archive current-stable reviewed Cargo evidence')
   }
   const normalizedCiCommands = ci.replace(/\\\r?\n\s*/g, ' ').replace(/\s+/g, ' ')
+  if (!normalizedCiCommands.includes('run-reviewed-generated-cargo.js --case portable --fixture "$generated_smoke" -- check')) {
+    errors.push('current-stable CI must compile representative generated Rust')
+  }
   if (!ci.includes('test/snapshot/deny_warnings/intended/.')
-      || !normalizedCiCommands.includes('cargo clippy --manifest-path "$generated_clippy/Cargo.toml" --all-targets -- -A clippy::all -D clippy::correctness -D clippy::suspicious')) {
+      || !normalizedCiCommands.includes('run-reviewed-generated-cargo.js --case portable --fixture "$generated_clippy" -- clippy --all-targets -- -A clippy::all -D clippy::correctness -D clippy::suspicious')) {
     errors.push('current-stable CI must Clippy-check the representative generated output-quality contract')
   }
   const releaseStart = ci.indexOf('\n  release:\n')
@@ -356,12 +375,23 @@ function checkConsumers(manifest) {
 
   const weekly = fs.readFileSync(path.join(repoRoot, '.github', 'workflows', 'weekly-ci-evidence.yml'), 'utf8')
   const minimumLaneCount = (weekly.match(/toolchain: \$\{\{ steps\.rust-policy\.outputs\.minimum \}\}/g) || []).length
-  if (minimumLaneCount < 3) errors.push('all three weekly evidence jobs must exercise the minimum Rust lane')
-  if ((weekly.match(/--github-output --activate minimum/g) || []).length < 3) {
-    errors.push('all three weekly evidence jobs must explicitly activate the minimum Rust lane')
+  if (minimumLaneCount < 4) errors.push('all four weekly evidence jobs must exercise the minimum Rust lane')
+  if ((weekly.match(/--github-output --activate minimum/g) || []).length < 4) {
+    errors.push('all four weekly evidence jobs must explicitly activate the minimum Rust lane')
   }
-  if ((weekly.match(/Rust toolchain: \\?`\$\{rust_version\}\\?`/g) || []).length < 3) {
-    errors.push('all three weekly evidence summaries must record the actual Rust toolchain')
+  if ((weekly.match(/Rust toolchain: \\?`\$\{rust_version\}\\?`/g) || []).length < 4) {
+    errors.push('all four weekly evidence summaries must record the actual Rust toolchain')
+  }
+  if (!weekly.includes('npm run fresh-cargo-resolution:observe')) {
+    errors.push('weekly evidence must observe the live Cargo registry')
+  }
+  if (!weekly.includes('name: fresh-cargo-resolution-observation')
+      || !weekly.includes('path: .cache/fresh-cargo-resolution/observation')
+      || !weekly.includes('include-hidden-files: true') || !weekly.includes('if: always()')) {
+    errors.push('weekly evidence must always archive the live Cargo observation')
+  }
+  if (/permissions:\s*[\s\S]{0,100}(contents:\s*write|pull-requests:\s*write)/.test(weekly)) {
+    errors.push('weekly live observation must not have repository write permission')
   }
 
   const repair = fs.readFileSync(path.join(repoRoot, '.github', 'workflows', 'release-repair.yml'), 'utf8')
@@ -373,7 +403,10 @@ function checkConsumers(manifest) {
 
   const harness = fs.readFileSync(path.join(repoRoot, 'scripts', 'ci', 'harness.sh'), 'utf8')
   if (!harness.includes('npm run test:fresh-cargo-resolution')) {
-    errors.push('the full policy harness must run fresh Cargo resolution at the Rust floor')
+    errors.push('the full policy harness must verify the reviewed Cargo graph at the Rust floor')
+  }
+  if (harness.includes('--mode observe-live') || harness.includes('fresh-cargo-resolution:observe')) {
+    errors.push('the full policy harness must not resolve the live Cargo registry')
   }
 
   for (const relative of ['README.md', 'docs/install-via-lix.md', 'docs/workflow.md', 'docs/faq.md']) {
