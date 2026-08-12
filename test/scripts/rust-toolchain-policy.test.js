@@ -2,6 +2,7 @@
 
 const assert = require('assert')
 const cp = require('child_process')
+const crypto = require('crypto')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
@@ -23,6 +24,14 @@ function runFreshResolution(args = [], env = process.env) {
 
 function writeJson(filePath, value) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`)
+}
+
+function jsonBytes(value) {
+  return Buffer.from(`${JSON.stringify(value, null, 2)}\n`)
+}
+
+function sha256(value) {
+  return crypto.createHash('sha256').update(value).digest('hex')
 }
 
 function expectFailure(result, pattern) {
@@ -56,14 +65,17 @@ function main() {
   assert.strictEqual(firstDocs.stdout, secondDocs.stdout, 'generated policy summary must be byte-for-byte repeatable')
 
   const canonical = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-  assert.strictEqual(canonical.schemaVersion, 2, 'dependency-resolution ownership requires Rust toolchain policy schema v2')
+  assert.strictEqual(canonical.schemaVersion, 3, 'reviewed dependency authority requires Rust toolchain policy schema v3')
   assert.deepStrictEqual(canonical.dependencyResolution, {
     resolverVersion: '3',
     incompatibleRustVersions: 'fallback',
     applicationLockfile: 'commit',
     ciMode: 'locked',
     evidenceBaseline: 'test/compatibility-baselines/fresh-cargo-resolution',
-    repeatRuns: 2,
+    requiredGate: 'reviewed-lock',
+    observationMode: 'fresh-live',
+    observationRepeatRuns: 2,
+    admissionToolchain: 'minimum-sysroot-pair',
     cases: [
       {
         id: 'minimal',
@@ -127,19 +139,129 @@ function main() {
     cargo: '/custom/cargo'
   }, 'explicit tool command overrides must remain authoritative')
 
-  const freshContract = runFreshResolution(['--contract-only'])
+  assert.throws(
+    () => freshResolutionApi.assertControlledEnvironment({ RUSTFLAGS: '-C target-cpu=native' }),
+    /FCR011_UNCONTROLLED_ENVIRONMENT.*RUSTFLAGS/,
+    'dependency evidence must reject build flags inherited from an ambient shell'
+  )
+  assert.doesNotThrow(
+    () => freshResolutionApi.assertControlledEnvironment({ HTTPS_PROXY: 'http://proxy.invalid' }),
+    'network transport settings do not change dependency identity and may remain available'
+  )
+  assert.doesNotThrow(
+    () => freshResolutionApi.assertControlledEnvironment({ CARGO_HOME: '/ambient/cache' }),
+    'the evidence runner replaces an ambient Cargo home with an isolated directory'
+  )
+  assert.throws(
+    () => freshResolutionApi.assertControlledEnvironment({ CARGO_PROFILE_RELEASE_LTO: 'true' }),
+    /FCR011_UNCONTROLLED_ENVIRONMENT.*CARGO_PROFILE_RELEASE_LTO/,
+    'ambient Cargo profile settings must not change the checked build'
+  )
+
+  const freshContract = runFreshResolution(['--mode', 'contract-only'])
   assert.strictEqual(freshContract.status, 0, freshContract.stderr || freshContract.stdout)
 
-  const incompatibleMutation = runFreshResolution(['--mutation-only'])
+  const baselineRoot = path.dirname(freshResolutionBaselinePath)
+  const baselineArtifacts = new Map(canonical.dependencyResolution.cases.map((entry) => [entry.id, {
+    lock: fs.readFileSync(path.join(baselineRoot, entry.id, 'Cargo.lock')),
+    metadata: fs.readFileSync(path.join(baselineRoot, entry.id, 'metadata.json'))
+  }]))
+  const checksumCandidate = new Map([...baselineArtifacts].map(([id, artifact]) => [id, {
+    lock: Buffer.from(artifact.lock),
+    metadata: Buffer.from(artifact.metadata)
+  }]))
+  checksumCandidate.get('minimal').lock = Buffer.from(
+    checksumCandidate.get('minimal').lock.toString('utf8').replace(
+      /checksum = "([0-9a-f])([0-9a-f]{63})"/,
+      (_match, first, rest) => `checksum = "${first === '0' ? '1' : '0'}${rest}"`
+    )
+  )
+  const checksumClassification = freshResolutionApi.classifyArtifacts(canonical, baselineArtifacts, checksumCandidate)
+  assert.strictEqual(checksumClassification.admissible, false, 'a checksum change for one package identity must fail closed')
+  assert(checksumClassification.changes.some((change) => change.category === 'package-checksum-changed'))
+
+  const unknownMetadataCandidate = new Map([...baselineArtifacts].map(([id, artifact]) => [id, {
+    lock: Buffer.from(artifact.lock),
+    metadata: Buffer.from(artifact.metadata)
+  }]))
+  const unknownMetadata = JSON.parse(unknownMetadataCandidate.get('minimal').metadata)
+  unknownMetadata.unreviewedField = true
+  unknownMetadataCandidate.get('minimal').metadata = Buffer.from(`${JSON.stringify(unknownMetadata, null, 2)}\n`)
+  assert.throws(
+    () => freshResolutionApi.classifyArtifacts(canonical, baselineArtifacts, unknownMetadataCandidate),
+    /FCR202_ADMISSION_UNCLASSIFIED_CHANGE.*unknown field.*unreviewedField/,
+    'a new normalized metadata field must receive an explicit classifier before admission'
+  )
+
+  const baselineManifestBytes = fs.readFileSync(freshResolutionBaselinePath)
+  const baselineManifest = JSON.parse(baselineManifestBytes)
+  const classification = { schemaVersion: 1, relation: 'match', admissible: true, changes: [] }
+  const admissionFixtureRoot = fs.mkdtempSync(path.join(repoRoot, '.cache', 'fresh-cargo-admission-test-'))
+  try {
+    const fallbackRoot = path.join(admissionFixtureRoot, 'fallback')
+    fs.mkdirSync(fallbackRoot, { recursive: true })
+    const artifactBytes = []
+    for (const entry of canonical.dependencyResolution.cases) {
+      fs.cpSync(path.join(baselineRoot, entry.id), path.join(fallbackRoot, entry.id), { recursive: true })
+      artifactBytes.push(baselineArtifacts.get(entry.id).lock, baselineArtifacts.get(entry.id).metadata)
+    }
+    const artifactDigest = sha256(Buffer.concat(artifactBytes))
+    const observation = {
+      schemaVersion: 1,
+      mode: 'observe-live',
+      baseManifestSha256: sha256(baselineManifestBytes),
+      policySha256: sha256(fs.readFileSync(manifestPath)),
+      normalizationSchemaVersion: 1,
+      actualRustc: canonical.minimumSupportedRust,
+      actualCargo: canonical.minimumSupportedRust,
+      resolutionInputs: baselineManifest.cases.map((entry) => ({ id: entry.id, sha256: entry.resolutionInputSha256 })),
+      passDigests: { fallback: [artifactDigest, artifactDigest], upperEdge: [] },
+      fallback: baselineManifest.cases.map((entry) => ({
+        id: entry.id,
+        lockSha256: entry.lockSha256,
+        metadataSha256: entry.metadataSha256
+      })),
+      upperEdge: null,
+      classificationSha256: sha256(jsonBytes(classification)),
+      baselineRelation: 'match',
+      admissible: true,
+      lockedMetadataPassed: true,
+      lockedCheckPassed: true,
+      lockedTestPassed: true,
+      repeatabilityPassed: true,
+      mutationRejected: true,
+      upperEdgeOnly: false
+    }
+    assert.doesNotThrow(
+      () => freshResolutionApi.verifyObservationIntegrity(canonical, admissionFixtureRoot, observation, classification),
+      'a digest-bound exact baseline candidate must pass admission integrity checks'
+    )
+    const tamperedLock = path.join(fallbackRoot, 'minimal', 'Cargo.lock')
+    fs.appendFileSync(tamperedLock, '\n')
+    assert.throws(
+      () => freshResolutionApi.verifyObservationIntegrity(canonical, admissionFixtureRoot, observation, classification),
+      /FCR201_ADMISSION_ARTIFACT_INTEGRITY.*artifact digest does not match/,
+      'admission must reject a changed candidate artifact before Cargo runs'
+    )
+    fs.writeFileSync(tamperedLock, baselineArtifacts.get('minimal').lock)
+    const staleObservation = structuredClone(observation)
+    staleObservation.resolutionInputs[0].sha256 = '0'.repeat(64)
+    assert.throws(
+      () => freshResolutionApi.verifyObservationIntegrity(canonical, admissionFixtureRoot, staleObservation, classification),
+      /FCR200_ADMISSION_STALE_BASE.*resolution input changed/,
+      'admission must reject a candidate after its Cargo input changes'
+    )
+  } finally {
+    fs.rmSync(admissionFixtureRoot, { recursive: true, force: true })
+  }
+
+  const incompatibleMutation = runFreshResolution(['--mode', 'mutation-only'])
   assert.strictEqual(incompatibleMutation.status, 0, incompatibleMutation.stderr || incompatibleMutation.stdout)
   expectFailure(
-    runFreshResolution(['--lane', 'current', '--refresh-baseline']),
-    /refresh-baseline is allowed only on the exact minimum lane/
+    runFreshResolution(['--lane', 'minimum', '--refresh-baseline']),
+    /FCR900_USAGE_REMOVED_REFRESH.*observe-live followed by admit/
   )
-  expectFailure(
-    runFreshResolution(['--lane', 'minimum', '--check-baseline', '--refresh-baseline']),
-    /requires exactly one of --check-baseline or --refresh-baseline/
-  )
+  expectFailure(runFreshResolution(['--mode', 'unknown']), /mode must be/)
 
   assert.throws(
     () => freshResolutionApi.safeOutputDirectory(repoRoot, 'minimum'),
@@ -196,7 +318,7 @@ function main() {
     tamperedPolicy.dependencyResolution.evidenceBaseline = path.relative(repoRoot, tamperedBaselineRoot)
     assert.throws(
       () => freshResolutionApi.checkBaseline(tamperedPolicy),
-      /baseline manifest or artifact digests are stale/,
+      /FCR020_BASELINE_INTEGRITY.*reviewed graph manifest, inputs, or artifact digests are stale/,
       'tracked dependency metadata must be integrity-protected by the baseline manifest'
     )
   } finally {
@@ -238,10 +360,22 @@ function main() {
     expectFailure(run(['--manifest', invalidMinimumPath, '--validate-only']), /minimumSupportedRust.*SemVer/)
 
     const legacySchema = structuredClone(canonical)
-    legacySchema.schemaVersion = 1
+    legacySchema.schemaVersion = 2
     const legacySchemaPath = path.join(root, 'legacy-schema.json')
     writeJson(legacySchemaPath, legacySchema)
-    expectFailure(run(['--manifest', legacySchemaPath, '--validate-only']), /schemaVersion must be 2/)
+    expectFailure(run(['--manifest', legacySchemaPath, '--validate-only']), /schemaVersion must be 3/)
+
+    const legacyFreshGate = structuredClone(canonical)
+    legacyFreshGate.dependencyResolution.requiredGate = 'fresh-live'
+    const legacyFreshGatePath = path.join(root, 'legacy-fresh-gate.json')
+    writeJson(legacyFreshGatePath, legacyFreshGate)
+    expectFailure(run(['--manifest', legacyFreshGatePath, '--validate-only']), /requiredGate must be reviewed-lock/)
+
+    const missingAdmissionPair = structuredClone(canonical)
+    missingAdmissionPair.dependencyResolution.admissionToolchain = 'minimum-rustc'
+    const missingAdmissionPairPath = path.join(root, 'missing-admission-pair.json')
+    writeJson(missingAdmissionPairPath, missingAdmissionPair)
+    expectFailure(run(['--manifest', missingAdmissionPairPath, '--validate-only']), /admissionToolchain must be minimum-sysroot-pair/)
 
     const unknownPolicyField = structuredClone(canonical)
     unknownPolicyField.dependencyResolution.cases[0].fixtures = unknownPolicyField.dependencyResolution.cases[0].fixture
@@ -280,10 +414,10 @@ function main() {
     expectFailure(run(['--manifest', unlockedCiPath, '--validate-only']), /ciMode must be locked/)
 
     const singleResolution = structuredClone(canonical)
-    singleResolution.dependencyResolution.repeatRuns = 1
+    singleResolution.dependencyResolution.observationRepeatRuns = 1
     const singleResolutionPath = path.join(root, 'single-resolution.json')
     writeJson(singleResolutionPath, singleResolution)
-    expectFailure(run(['--manifest', singleResolutionPath, '--validate-only']), /repeatRuns must be at least 2/)
+    expectFailure(run(['--manifest', singleResolutionPath, '--validate-only']), /observationRepeatRuns must be at least 2/)
 
     const duplicateCase = structuredClone(canonical)
     duplicateCase.dependencyResolution.cases.push(structuredClone(duplicateCase.dependencyResolution.cases[0]))

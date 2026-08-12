@@ -201,7 +201,7 @@
       ],
       "verticalOwners": [
         {"path": "scripts/ci/package-smoke.sh", "command": "npm run test:package-smoke", "observer": "clean Haxelib install, Haxe compile, Cargo build, and run"},
-        {"path": "scripts/ci/fresh-cargo-resolution.js", "command": "npm run test:fresh-cargo-resolution", "observer": "empty Cargo homes on the exact minimum toolchain"}
+        {"path": "scripts/ci/fresh-cargo-resolution.js", "command": "npm run test:fresh-cargo-resolution", "observer": "reviewed locks in clean workspaces with isolated Cargo homes on the exact minimum toolchain"}
       ],
       "systemOwners": [
         {"path": "scripts/ci/check-codex-hxrust-smoke.sh", "command": "npm run test:codex-hxrust", "observer": "independent application"},

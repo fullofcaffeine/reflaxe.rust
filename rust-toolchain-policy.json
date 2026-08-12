@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "minimumSupportedRust": "1.96.0",
   "releaseToolchain": "1.96.1",
   "currentStableLane": "stable",
@@ -18,7 +18,10 @@
     "applicationLockfile": "commit",
     "ciMode": "locked",
     "evidenceBaseline": "test/compatibility-baselines/fresh-cargo-resolution",
-    "repeatRuns": 2,
+    "requiredGate": "reviewed-lock",
+    "observationMode": "fresh-live",
+    "observationRepeatRuns": 2,
+    "admissionToolchain": "minimum-sysroot-pair",
     "cases": [
       {
         "id": "minimal",

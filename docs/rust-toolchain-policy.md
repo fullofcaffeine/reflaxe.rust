@@ -5,14 +5,16 @@ releases, and recurring evidence. The machine source is
 [`rust-toolchain-policy.json`](../rust-toolchain-policy.json).
 
 <!-- BEGIN GENERATED RUST TOOLCHAIN POLICY -->
-- Policy schema: `2`
+- Policy schema: `3`
 - Minimum supported Rust: `1.96.0`
 - Reproducible release toolchain: `1.96.1`
 - Compatibility lane: Rust `stable`
 - Generated Cargo `rust-version`: `1.96.0`
 - Generated Cargo resolver: `3` (`fallback` for incompatible dependency Rust versions)
 - Generated application lockfile policy: `commit`; CI mode: `locked`
-- Fresh-resolution evidence cases: `minimal`, `portable`, `systems`, `async-feature`, `metal`
+- Reviewed dependency graph: `reviewed-lock`; admission toolchain: `minimum-sysroot-pair`
+- Live dependency observation: `fresh-live` with 2 independent passes
+- Dependency evidence cases: `minimal`, `portable`, `systems`, `async-feature`, `metal`
 - Toolchain/floor review cadence: every 12 weeks
 - Minimum notice before a floor raise: 30 days
 - Earliest project release carrying a floor raise: `minor`
@@ -89,15 +91,30 @@ generated-current-Clippy contract, fresh-resolution CI, and archived evidence wi
 `rust-version` plus resolver, rejects an older actual compiler, and verifies Cargo supplies
 actionable guidance for an unmet floor.
 
-`npm run test:fresh-cargo-resolution` creates an empty Cargo home for every case in two independent
-passes, removes pre-existing locks, resolves metadata, compares both passes byte-for-byte, checks and
-tests the first pass on exact Rust `1.96.0`, compares the result with the reviewed locks/metadata, and
-proves that an incompatible dependency requirement is rejected. Required CI repeats the same
-reviewed graph on current stable and archives each lane's summary, locks, and normalized metadata.
+`npm run test:fresh-cargo-resolution` copies the reviewed locks into clean workspaces. It fetches only
+those locked packages. It then runs Cargo metadata, check, and test with `--frozen` on exact Rust
+`1.96.0`. It compares the result with the reviewed normalized metadata and proves that an
+incompatible dependency requirement is rejected. Required CI repeats this check on current stable.
+Both lanes archive their summary, lock, and normalized metadata evidence. A new crates.io release
+cannot change this required result.
 
-When a deliberate dependency-policy update changes the selected graph, run
-`npm run fresh-cargo-resolution:refresh` on exact Rust `1.96.0`, review every lock and normalized
-metadata diff, then rerun the minimum and current lanes before accepting the new baseline.
+The weekly `npm run fresh-cargo-resolution:observe` job is separate. It resolves the live registry
+twice from empty Cargo homes and compares the two results. It also records an upper-edge resolution
+that can show newer packages which exceed the Rust floor. Drift makes the observation job fail and
+produces a digest-bound candidate artifact, but it does not change tracked files or mandatory CI.
+
+For an intentional update, review every change in that candidate. Then run
+`npm run fresh-cargo-resolution:admit -- --dry-run` on exact Rust `1.96.0`. The command verifies the
+same captured bytes with frozen Cargo commands and does not resolve the registry again. Remove
+`--dry-run` only after review. The admission command rejects stale input, a different Cargo/rustc
+pair, changed artifact digests, unknown evidence fields, and same-version checksum changes. Rerun
+the minimum and current reviewed-graph lanes before accepting the new baseline.
+
+The commands use `rustc --print sysroot` to select Cargo and rustc from one installation. If you set
+`RUSTC_BIN` or `CARGO_BIN`, set both to sibling binaries from that sysroot. The evidence runner uses
+an isolated Cargo home and rejects registry/source replacements, offline mode, target overrides,
+compiler wrappers, Rust flags, and Cargo profile overrides. Proxy and certificate settings can stay
+because they change transport, not dependency identity.
 
 Use `npm run toolchain:sync` only after reviewing a policy change. Generated consumers must not be
 edited independently.
