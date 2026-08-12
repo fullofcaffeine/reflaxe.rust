@@ -10,6 +10,7 @@ const path = require('path')
 const repoRoot = path.resolve(__dirname, '..', '..')
 const checker = path.join(repoRoot, 'scripts', 'ci', 'rust-toolchain-policy.js')
 const freshResolutionChecker = path.join(repoRoot, 'scripts', 'ci', 'fresh-cargo-resolution.js')
+const reviewedGeneratedCargo = path.join(repoRoot, 'scripts', 'ci', 'run-reviewed-generated-cargo.js')
 const manifestPath = path.join(repoRoot, 'rust-toolchain-policy.json')
 const freshResolutionBaselinePath = path.join(repoRoot, 'test', 'compatibility-baselines', 'fresh-cargo-resolution', 'manifest.json')
 const freshResolutionApi = require(freshResolutionChecker)
@@ -20,6 +21,10 @@ function run(args = [], env = process.env) {
 
 function runFreshResolution(args = [], env = process.env) {
   return cp.spawnSync(process.execPath, [freshResolutionChecker, ...args], { cwd: repoRoot, encoding: 'utf8', env })
+}
+
+function runReviewedGeneratedCargo(args = [], env = process.env) {
+  return cp.spawnSync(process.execPath, [reviewedGeneratedCargo, ...args], { cwd: repoRoot, encoding: 'utf8', env })
 }
 
 function writeJson(filePath, value) {
@@ -106,6 +111,19 @@ function main() {
   }, 'rust-toolchain-policy.json must own the complete fresh-resolution and lock contract')
   assert(fs.existsSync(freshResolutionChecker), 'fresh Cargo resolution checker must exist')
   assert(fs.existsSync(freshResolutionBaselinePath), 'fresh Cargo resolution baseline manifest must exist')
+  assert(fs.existsSync(reviewedGeneratedCargo), 'reviewed generated-crate Cargo wrapper must exist')
+  expectFailure(
+    runReviewedGeneratedCargo([
+      '--case', 'portable', '--fixture', 'test/snapshot/v1_smoke/intended', '--', 'metadata'
+    ]),
+    /FCR040_REVIEWED_GENERATED_COMMAND.*must match one reviewed generated-crate command/
+  )
+  expectFailure(
+    runReviewedGeneratedCargo([
+      '--case', 'portable', '--case', 'systems', '--fixture', 'test/snapshot/v1_smoke/intended', '--', 'check'
+    ]),
+    /FCR040_REVIEWED_GENERATED_COMMAND.*only --case.*--fixture/
+  )
 
   assert.strictEqual(
     typeof freshResolutionApi.selectToolchainCommands,
@@ -157,6 +175,41 @@ function main() {
     /FCR011_UNCONTROLLED_ENVIRONMENT.*CARGO_PROFILE_RELEASE_LTO/,
     'ambient Cargo profile settings must not change the checked build'
   )
+  assert.throws(
+    () => freshResolutionApi.assertControlledEnvironment({ RUSTDOC: '/tmp/unreviewed-rustdoc' }),
+    /FCR011_UNCONTROLLED_ENVIRONMENT.*RUSTDOC/,
+    'dependency evidence must not execute an ambient rustdoc binary'
+  )
+  assert.throws(
+    () => freshResolutionApi.assertControlledEnvironment({ CARGO_ENCODED_RUSTDOCFLAGS: '--cfg\u001ftest_override' }),
+    /FCR011_UNCONTROLLED_ENVIRONMENT.*CARGO_ENCODED_RUSTDOCFLAGS/,
+    'dependency evidence must reject encoded rustdoc flags'
+  )
+  assert.deepStrictEqual(
+    freshResolutionApi.controlledCargoEnvironment({
+      PATH: '/usr/bin',
+      HTTPS_PROXY: 'http://proxy.invalid',
+      CC: '/tmp/unreviewed-compiler',
+      GIT_CONFIG_GLOBAL: '/tmp/unreviewed-git-config'
+    }),
+    { PATH: '/usr/bin', HTTPS_PROXY: 'http://proxy.invalid' },
+    'Cargo evidence must inherit only operating essentials and approved transport settings'
+  )
+
+  const cargoConfigRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'fresh-cargo-ancestor-config-'))
+  try {
+    const fixture = path.join(cargoConfigRoot, 'fixture')
+    fs.mkdirSync(path.join(cargoConfigRoot, '.cargo'), { recursive: true })
+    fs.mkdirSync(fixture)
+    fs.writeFileSync(path.join(cargoConfigRoot, '.cargo', 'config.toml'), '[net]\noffline = true\n')
+    assert.throws(
+      () => freshResolutionApi.assertNoAncestorCargoConfiguration(fixture, fixture),
+      /FCR011_UNCONTROLLED_ENVIRONMENT.*Cargo configuration outside/,
+      'Cargo must not inherit configuration from outside the retained fixture snapshot'
+    )
+  } finally {
+    fs.rmSync(cargoConfigRoot, { recursive: true, force: true })
+  }
 
   const freshContract = runFreshResolution(['--mode', 'contract-only'])
   assert.strictEqual(freshContract.status, 0, freshContract.stderr || freshContract.stdout)
@@ -180,6 +233,48 @@ function main() {
   assert.strictEqual(checksumClassification.admissible, false, 'a checksum change for one package identity must fail closed')
   assert(checksumClassification.changes.some((change) => change.category === 'package-checksum-changed'))
 
+  const versionMetadataCandidate = new Map([...baselineArtifacts].map(([id, artifact]) => [id, {
+    lock: Buffer.from(artifact.lock),
+    metadata: Buffer.from(artifact.metadata)
+  }]))
+  const versionMetadata = JSON.parse(versionMetadataCandidate.get('minimal').metadata)
+  const changedPackage = versionMetadata.packages.find((pkg) => pkg.name === 'bitflags')
+  const oldPackageId = changedPackage.id
+  changedPackage.version = '999.0.0'
+  changedPackage.rustVersion = '1.96.0'
+  changedPackage.enabledFeatures = ['reviewed-feature-change']
+  changedPackage.dependencies = [{
+    name: 'reviewed-dependency-change', rename: null, requirement: '^1', source: 'registry',
+    kind: 'normal', optional: false, usesDefaultFeatures: true, features: [], target: null
+  }]
+  changedPackage.id = `${changedPackage.name}@999.0.0:${changedPackage.source}`
+  const changedNode = versionMetadata.resolvedGraph.nodes.find((node) => node.id === oldPackageId)
+  changedNode.id = changedPackage.id
+  changedNode.enabledFeatures = ['reviewed-feature-change']
+  const dependencyTarget = versionMetadata.packages.find((pkg) => pkg.name === 'cfg-if')
+  changedNode.dependencies = [{
+    name: 'cfg_if', package: dependencyTarget.id, kinds: [{ kind: 'normal', target: null }]
+  }]
+  versionMetadata.resolvedGraph.nodes = versionMetadata.resolvedGraph.nodes.map((node) => ({
+    ...node,
+    dependencies: node.dependencies.map((dependency) => dependency.package === oldPackageId
+      ? { ...dependency, package: changedPackage.id }
+      : dependency)
+  }))
+  versionMetadataCandidate.get('minimal').metadata = jsonBytes(versionMetadata)
+  const completeVersionClassification = freshResolutionApi.classifyArtifacts(
+    canonical,
+    baselineArtifacts,
+    versionMetadataCandidate
+  )
+  for (const category of [
+    'metadata-package-identity-changed', 'declared-msrv-changed',
+    'enabled-features-changed', 'declared-dependencies-changed', 'topology-edges-changed'
+  ]) {
+    assert(completeVersionClassification.changes.some((change) => change.category === category),
+      `version changes must retain the related ${category} fact`)
+  }
+
   const unknownMetadataCandidate = new Map([...baselineArtifacts].map(([id, artifact]) => [id, {
     lock: Buffer.from(artifact.lock),
     metadata: Buffer.from(artifact.metadata)
@@ -193,17 +288,41 @@ function main() {
     'a new normalized metadata field must receive an explicit classifier before admission'
   )
 
+  const reorderedMetadataCandidate = new Map([...baselineArtifacts].map(([id, artifact]) => [id, {
+    lock: Buffer.from(artifact.lock),
+    metadata: Buffer.from(artifact.metadata)
+  }]))
+  const reorderedMetadata = JSON.parse(reorderedMetadataCandidate.get('minimal').metadata)
+  reorderedMetadata.packages.reverse()
+  reorderedMetadataCandidate.get('minimal').metadata = jsonBytes(reorderedMetadata)
+  assert.throws(
+    () => freshResolutionApi.classifyArtifacts(canonical, baselineArtifacts, reorderedMetadataCandidate),
+    /FCR202_ADMISSION_UNCLASSIFIED_CHANGE.*canonical byte order/,
+    'normalization schema v2 must reject evidence whose set-like fields use a different order'
+  )
+
   const baselineManifestBytes = fs.readFileSync(freshResolutionBaselinePath)
   const baselineManifest = JSON.parse(baselineManifestBytes)
   const classification = { schemaVersion: 1, relation: 'match', admissible: true, changes: [] }
-  const admissionFixtureRoot = fs.mkdtempSync(path.join(repoRoot, '.cache', 'fresh-cargo-admission-test-'))
+  const admissionArtifacts = new Map([...baselineArtifacts].map(([id, artifact]) => [id, {
+    lock: Buffer.from(artifact.lock),
+    metadata: Buffer.from(artifact.metadata)
+  }]))
+  const cacheRoot = path.join(repoRoot, '.cache')
+  fs.mkdirSync(cacheRoot, { recursive: true })
+  const admissionBase = path.join(repoRoot, '.cache', 'fresh-cargo-resolution')
+  fs.mkdirSync(admissionBase, { recursive: true })
+  const admissionFixtureRoot = fs.mkdtempSync(path.join(admissionBase, 'admission-test-'))
   try {
     const fallbackRoot = path.join(admissionFixtureRoot, 'fallback')
     fs.mkdirSync(fallbackRoot, { recursive: true })
     const artifactBytes = []
     for (const entry of canonical.dependencyResolution.cases) {
-      fs.cpSync(path.join(baselineRoot, entry.id), path.join(fallbackRoot, entry.id), { recursive: true })
-      artifactBytes.push(baselineArtifacts.get(entry.id).lock, baselineArtifacts.get(entry.id).metadata)
+      const target = path.join(fallbackRoot, entry.id)
+      fs.mkdirSync(target, { recursive: true })
+      fs.writeFileSync(path.join(target, 'Cargo.lock'), admissionArtifacts.get(entry.id).lock)
+      fs.writeFileSync(path.join(target, 'metadata.json'), admissionArtifacts.get(entry.id).metadata)
+      artifactBytes.push(admissionArtifacts.get(entry.id).lock, admissionArtifacts.get(entry.id).metadata)
     }
     const artifactDigest = sha256(Buffer.concat(artifactBytes))
     const observation = {
@@ -211,15 +330,15 @@ function main() {
       mode: 'observe-live',
       baseManifestSha256: sha256(baselineManifestBytes),
       policySha256: sha256(fs.readFileSync(manifestPath)),
-      normalizationSchemaVersion: 1,
+      normalizationSchemaVersion: freshResolutionApi.normalizationSchemaVersion,
       actualRustc: canonical.minimumSupportedRust,
       actualCargo: canonical.minimumSupportedRust,
       resolutionInputs: baselineManifest.cases.map((entry) => ({ id: entry.id, sha256: entry.resolutionInputSha256 })),
       passDigests: { fallback: [artifactDigest, artifactDigest], upperEdge: [] },
       fallback: baselineManifest.cases.map((entry) => ({
         id: entry.id,
-        lockSha256: entry.lockSha256,
-        metadataSha256: entry.metadataSha256
+        lockSha256: sha256(admissionArtifacts.get(entry.id).lock),
+        metadataSha256: sha256(admissionArtifacts.get(entry.id).metadata)
       })),
       upperEdge: null,
       classificationSha256: sha256(jsonBytes(classification)),
@@ -243,7 +362,7 @@ function main() {
       /FCR201_ADMISSION_ARTIFACT_INTEGRITY.*artifact digest does not match/,
       'admission must reject a changed candidate artifact before Cargo runs'
     )
-    fs.writeFileSync(tamperedLock, baselineArtifacts.get('minimal').lock)
+    fs.writeFileSync(tamperedLock, admissionArtifacts.get('minimal').lock)
     const staleObservation = structuredClone(observation)
     staleObservation.resolutionInputs[0].sha256 = '0'.repeat(64)
     assert.throws(
@@ -251,6 +370,53 @@ function main() {
       /FCR200_ADMISSION_STALE_BASE.*resolution input changed/,
       'admission must reject a candidate after its Cargo input changes'
     )
+    const observationPath = path.join(admissionFixtureRoot, 'observation.json')
+    const classificationPath = path.join(admissionFixtureRoot, 'classification.json')
+    fs.writeFileSync(observationPath, jsonBytes(observation))
+    fs.writeFileSync(classificationPath, jsonBytes(classification))
+    assert.doesNotThrow(
+      () => freshResolutionApi.assertCandidateFileInventory(canonical, admissionFixtureRoot, observation),
+      'the exact closed candidate tree must be accepted'
+    )
+    const reviewedTreeDigest = freshResolutionApi.candidateTreeDigest(admissionFixtureRoot)
+    fs.appendFileSync(classificationPath, ' ')
+    assert.notStrictEqual(
+      freshResolutionApi.candidateTreeDigest(admissionFixtureRoot),
+      reviewedTreeDigest,
+      'any candidate file change after review must change the operator-supplied tree digest'
+    )
+    fs.writeFileSync(classificationPath, jsonBytes(classification))
+    const capturedCandidate = freshResolutionApi.captureCandidateSnapshot(
+      admissionFixtureRoot,
+      freshResolutionApi.candidateTreeDigest(admissionFixtureRoot)
+    )
+    try {
+      fs.appendFileSync(classificationPath, ' ')
+      assert.notStrictEqual(
+        freshResolutionApi.candidateTreeDigest(admissionFixtureRoot),
+        freshResolutionApi.candidateTreeDigest(capturedCandidate.candidateDir),
+        'admission must use the immutable candidate copy after it captures the reviewed tree'
+      )
+    } finally {
+      fs.rmSync(capturedCandidate.root, { recursive: true, force: true })
+      fs.writeFileSync(classificationPath, jsonBytes(classification))
+    }
+    fs.appendFileSync(observationPath, ' ')
+    expectFailure(
+      runFreshResolution([
+        '--mode', 'admit', '--candidate-dir', admissionFixtureRoot,
+        '--candidate-sha256', freshResolutionApi.candidateTreeDigest(admissionFixtureRoot), '--dry-run'
+      ]),
+      /FCR201_ADMISSION_ARTIFACT_INTEGRITY.*canonical JSON bytes/
+    )
+    fs.writeFileSync(observationPath, jsonBytes(observation))
+    fs.writeFileSync(path.join(admissionFixtureRoot, 'unexpected.txt'), 'unexpected\n')
+    assert.throws(
+      () => freshResolutionApi.assertCandidateFileInventory(canonical, admissionFixtureRoot, observation),
+      /FCR201_ADMISSION_ARTIFACT_INTEGRITY.*file inventory differs/,
+      'admission must reject files outside the closed candidate inventory'
+    )
+    fs.rmSync(path.join(admissionFixtureRoot, 'unexpected.txt'))
   } finally {
     fs.rmSync(admissionFixtureRoot, { recursive: true, force: true })
   }
@@ -261,6 +427,14 @@ function main() {
     runFreshResolution(['--lane', 'minimum', '--refresh-baseline']),
     /FCR900_USAGE_REMOVED_REFRESH.*observe-live followed by admit/
   )
+  expectFailure(
+    runFreshResolution(['--mode', 'admit']),
+    /FCR900_USAGE.*requires --candidate-sha256/,
+  )
+  expectFailure(
+    runFreshResolution(['--mode', 'admit', '--dry-rnu']),
+    /FCR900_USAGE.*unknown argument.*--dry-rnu/,
+  )
   expectFailure(runFreshResolution(['--mode', 'unknown']), /mode must be/)
 
   assert.throws(
@@ -268,6 +442,43 @@ function main() {
     /must be below \.cache\/fresh-cargo-resolution/,
     'fresh-resolution evidence output must not be able to delete arbitrary paths'
   )
+  assert.throws(
+    () => freshResolutionApi.ownedOutputDirectory(
+      ['--out-dir', '.cache/fresh-cargo-resolution/unowned'],
+      '--out-dir',
+      'observation'
+    ),
+    /FCR900_USAGE.*mode-owned path/,
+    'a mode that replaces its output must use one fixed tool-owned directory'
+  )
+  if (process.platform !== 'win32') {
+    const symlinkTarget = fs.mkdtempSync(path.join(os.tmpdir(), 'fresh-resolution-symlink-target-'))
+    const evidenceRoot = path.join(repoRoot, '.cache', 'fresh-cargo-resolution')
+    const symlinkRoot = path.join(evidenceRoot, 'symlink-fixture')
+    fs.mkdirSync(evidenceRoot, { recursive: true })
+    fs.rmSync(symlinkRoot, { recursive: true, force: true })
+    fs.symlinkSync(symlinkTarget, symlinkRoot, 'dir')
+    try {
+      assert.throws(
+        () => freshResolutionApi.safeOutputDirectory(path.join(symlinkRoot, 'observation')),
+        /FCR900_USAGE.*symlinked path components/,
+        'fresh-resolution cleanup must not traverse an evidence-root symlink'
+      )
+    } finally {
+      fs.unlinkSync(symlinkRoot)
+      fs.rmSync(symlinkTarget, { recursive: true, force: true })
+    }
+    fs.symlinkSync(symlinkTarget, symlinkRoot, 'dir')
+    try {
+      assert.throws(
+        () => freshResolutionApi.safeOutputDirectory(path.join(symlinkRoot, 'observation')),
+        /FCR900_USAGE.*symlinked path components/,
+        'fresh-resolution cleanup must also reject a dangling ancestor symlink'
+      )
+    } finally {
+      fs.unlinkSync(symlinkRoot)
+    }
+  }
 
   const [floorMajor, floorMinor] = canonical.minimumSupportedRust.split('.').map((part) => BigInt(part))
   const incompatibleRustVersion = `${floorMajor}.${floorMinor + 1n}.0`
@@ -308,8 +519,6 @@ function main() {
     'normalized metadata must reject every dependency that declares an MSRV above the policy floor'
   )
 
-  const cacheRoot = path.join(repoRoot, '.cache')
-  fs.mkdirSync(cacheRoot, { recursive: true })
   const tamperedBaselineRoot = fs.mkdtempSync(path.join(cacheRoot, 'fresh-resolution-baseline-test-'))
   try {
     fs.cpSync(path.dirname(freshResolutionBaselinePath), tamperedBaselineRoot, { recursive: true })
@@ -318,12 +527,78 @@ function main() {
     tamperedPolicy.dependencyResolution.evidenceBaseline = path.relative(repoRoot, tamperedBaselineRoot)
     assert.throws(
       () => freshResolutionApi.checkBaseline(tamperedPolicy),
-      /FCR020_BASELINE_INTEGRITY.*reviewed graph manifest, inputs, or artifact digests are stale/,
+      /FCR020_BASELINE_INTEGRITY.*(canonical JSON bytes|artifact digests are stale)/,
       'tracked dependency metadata must be integrity-protected by the baseline manifest'
+    )
+    fs.rmSync(tamperedBaselineRoot, { recursive: true, force: true })
+    fs.cpSync(path.dirname(freshResolutionBaselinePath), tamperedBaselineRoot, { recursive: true })
+    fs.writeFileSync(path.join(tamperedBaselineRoot, 'unreviewed.txt'), 'unreviewed\n')
+    assert.throws(
+      () => freshResolutionApi.checkBaseline(tamperedPolicy),
+      /FCR020_BASELINE_INTEGRITY.*file inventory differs.*unreviewed\.txt/,
+      'reviewed dependency authority must reject files outside its closed inventory'
     )
   } finally {
     fs.rmSync(tamperedBaselineRoot, { recursive: true, force: true })
   }
+
+  for (const phase of ['prepared', 'old-moved', 'new-installed']) {
+    const interruptedBaselineRoot = fs.mkdtempSync(path.join(cacheRoot, `fresh-resolution-publication-${phase}-`))
+    try {
+      fs.rmSync(interruptedBaselineRoot, { recursive: true, force: true })
+      fs.cpSync(baselineRoot, interruptedBaselineRoot, { recursive: true })
+      const interruptedPolicy = structuredClone(canonical)
+      interruptedPolicy.dependencyResolution.evidenceBaseline = path.relative(repoRoot, interruptedBaselineRoot)
+      assert.throws(
+        () => freshResolutionApi.writeBaselineAtomically(
+          interruptedPolicy,
+          baselineArtifacts,
+          { rustcVersion: canonical.minimumSupportedRust, cargoVersion: canonical.minimumSupportedRust },
+          { stopAfterPhase: phase }
+        ),
+        /FCR299_TEST_PUBLICATION_INTERRUPTION/
+      )
+      if (phase === 'old-moved') {
+        assert.strictEqual(fs.existsSync(interruptedBaselineRoot), false,
+          'the old-moved interruption must reproduce the missing canonical-name window')
+      }
+      const recovered = freshResolutionApi.checkBaseline(interruptedPolicy, { allowCurrentAuthorityChange: true })
+      assert.strictEqual(fs.existsSync(interruptedBaselineRoot), true,
+        `${phase} recovery must leave one complete reviewed baseline at the canonical path`)
+      assert.strictEqual(recovered.manifest.admittedCargoVersion, canonical.minimumSupportedRust,
+        `${phase} recovery must retain the complete expected baseline identity`)
+      const paths = freshResolutionApi.publicationPaths(interruptedBaselineRoot)
+      assert.strictEqual(fs.existsSync(paths.journal), false, `${phase} recovery must remove the transaction journal`)
+      assert.strictEqual(fs.existsSync(paths.previous), false, `${phase} recovery must remove the prior-tree staging name`)
+      assert.strictEqual(fs.existsSync(paths.staged), false, `${phase} recovery must remove the candidate staging name`)
+    } finally {
+      const paths = freshResolutionApi.publicationPaths(interruptedBaselineRoot)
+      fs.rmSync(interruptedBaselineRoot, { recursive: true, force: true })
+      fs.rmSync(paths.journal, { force: true })
+      fs.rmSync(paths.lock, { force: true })
+      fs.rmSync(paths.previous, { recursive: true, force: true })
+      fs.rmSync(paths.staged, { recursive: true, force: true })
+    }
+  }
+
+  const reviewedBaselineAcrossCurrentChange = freshResolutionApi.checkBaseline(canonical, {
+    allowCurrentAuthorityChange: true
+  })
+  const changedPolicyManifest = structuredClone(reviewedBaselineAcrossCurrentChange.manifest)
+  changedPolicyManifest.policySha256 = '0'.repeat(64)
+  const policyChangeClassification = freshResolutionApi.classifyArtifacts(
+    canonical,
+    reviewedBaselineAcrossCurrentChange.artifacts,
+    reviewedBaselineAcrossCurrentChange.artifacts,
+    {
+      baselinePolicy: reviewedBaselineAcrossCurrentChange.policy,
+      baselineManifest: changedPolicyManifest
+    }
+  )
+  assert.strictEqual(policyChangeClassification.relation, 'drift')
+  assert.strictEqual(policyChangeClassification.admissible, true)
+  assert(policyChangeClassification.changes.some((change) => change.category === 'authority-input-changed'
+    && change.field === 'policySha256'), 'an intentional policy change must be classified instead of blocking observation')
 
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-toolchain-policy-'))
   try {

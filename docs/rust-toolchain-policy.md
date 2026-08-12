@@ -104,17 +104,35 @@ that can show newer packages which exceed the Rust floor. Drift makes the observ
 produces a digest-bound candidate artifact, but it does not change tracked files or mandatory CI.
 
 For an intentional update, review every change in that candidate. Then run
-`npm run fresh-cargo-resolution:admit -- --dry-run` on exact Rust `1.96.0`. The command verifies the
-same captured bytes with frozen Cargo commands and does not resolve the registry again. Remove
-`--dry-run` only after review. The admission command rejects stale input, a different Cargo/rustc
-pair, changed artifact digests, unknown evidence fields, and same-version checksum changes. Rerun
-the minimum and current reviewed-graph lanes before accepting the new baseline.
+`npm run fresh-cargo-resolution:admit -- --candidate-sha256 <reviewed-digest> --dry-run` on exact Rust
+`1.96.0`. The observer prints this digest after it writes the closed candidate tree. Record it during
+review rather than recomputing it at admission time. The command verifies the same captured bytes
+with frozen Cargo commands and does not resolve the registry again. Remove `--dry-run` only after
+review. The admission command rejects stale input, a different Cargo/rustc pair, a changed candidate
+tree, unknown or extra evidence files, unknown evidence fields, and same-version checksum changes.
+Rerun the minimum and current reviewed-graph lanes before accepting the new baseline.
+
+The recorded digest binds admission to the files that an operator reviewed. It is not a signature
+and does not prove which machine produced those files. The review must therefore inspect the
+observer output and retain the workflow or local-run evidence that produced the digest.
+
+Admission publishes the new reviewed baseline as one recoverable local transaction. One process
+holds the publication lock. It first writes a complete candidate directory and a small journal.
+It then renames the old baseline and installs the candidate. The next reader uses the journal and
+the directories that exist to finish or undo an interrupted publication. Focused tests interrupt
+the transaction before the first rename, between the two renames, and after the second rename.
+
+The current-stable CI job also compiles representative generated crates with the reviewed lock.
+The wrapper accepts only the exact `check` and Clippy commands used by that job. It compares the
+generated crate's Cargo inputs with the reviewed `portable` case, copies the crate, installs the
+reviewed lock, and runs Cargo with `--frozen`. This check can still download missing reviewed crate
+bytes. It does not let the live registry select different dependency versions.
 
 The commands use `rustc --print sysroot` to select Cargo and rustc from one installation. If you set
 `RUSTC_BIN` or `CARGO_BIN`, set both to sibling binaries from that sysroot. The evidence runner uses
 an isolated Cargo home and rejects registry/source replacements, offline mode, target overrides,
-compiler wrappers, Rust flags, and Cargo profile overrides. Proxy and certificate settings can stay
-because they change transport, not dependency identity.
+compiler or rustdoc overrides, Rust/rustdoc flags, and Cargo profile overrides. Proxy and
+certificate settings can stay because they change transport, not dependency identity.
 
 Use `npm run toolchain:sync` only after reviewing a policy change. Generated consumers must not be
 edited independently.

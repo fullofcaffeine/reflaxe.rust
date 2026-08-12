@@ -110,6 +110,7 @@ jobs:
         with:
           name: reviewed-cargo-resolution-minimum
           path: .cache/fresh-cargo-resolution/reviewed/minimum
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
 
@@ -142,10 +143,12 @@ jobs:
           generated_clippy="$(mktemp -d)"
           trap 'rm -rf "$generated_smoke" "$generated_clippy"' EXIT
           cp -R test/snapshot/v1_smoke/intended/. "$generated_smoke/"
-          cargo check --manifest-path "$generated_smoke/Cargo.toml"
+          node scripts/ci/run-reviewed-generated-cargo.js \
+            --case portable --fixture "$generated_smoke" -- check
           cp -R test/snapshot/deny_warnings/intended/. "$generated_clippy/"
-          cargo clippy --manifest-path "$generated_clippy/Cargo.toml" --all-targets -- \
-            -A clippy::all -D clippy::correctness -D clippy::suspicious
+          node scripts/ci/run-reviewed-generated-cargo.js \
+            --case portable --fixture "$generated_clippy" -- clippy --all-targets -- \
+              -A clippy::all -D clippy::correctness -D clippy::suspicious
 
       - name: Verify reviewed dependency graph on current stable
         run: node scripts/ci/fresh-cargo-resolution.js --mode verify-reviewed --lane current --out-dir .cache/fresh-cargo-resolution/reviewed/current
@@ -155,6 +158,7 @@ jobs:
         with:
           name: reviewed-cargo-resolution-current
           path: .cache/fresh-cargo-resolution/reviewed/current
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
 

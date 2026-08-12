@@ -118,9 +118,9 @@ the stronger release-posture evidence.
 
 - Keep baseline, defect/fix, real release, later no-op or repair, toolchain transition,
   cross-platform, and representative-application evidence distinct.
-- A scheduled or manually dispatched run is valid recurring evidence only when all three required
-  jobs succeed on the same `haxe.rust` commit: Linux local-equivalent validation, Windows smoke,
-  and `codex-hxrust` QA.
+- A scheduled or manually dispatched run is valid recurring evidence only when all four required
+  jobs succeed on the same `haxe.rust` commit: live Cargo registry observation, Linux
+  local-equivalent validation, Windows smoke, and `codex-hxrust` QA.
 - Record exact `haxe.rust` and `codex-hxrust` SHAs, workflow/run and job identifiers, semantic
   confidence artifacts, and the open P0/P1 regression inventory when a run informs a posture
   decision.

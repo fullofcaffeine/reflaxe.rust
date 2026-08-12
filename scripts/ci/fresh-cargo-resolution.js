@@ -26,7 +26,7 @@ const policyPath = path.join(repoRoot, 'rust-toolchain-policy.json')
 const cargoBin = process.env.CARGO_BIN || 'cargo'
 const rustcBin = process.env.RUSTC_BIN || 'rustc'
 const commandTimeoutMs = Number.parseInt(process.env.FRESH_CARGO_COMMAND_TIMEOUT_MS || '900000', 10)
-const normalizationSchemaVersion = 1
+const normalizationSchemaVersion = 2
 const baselineSchemaVersion = 2
 const observationSchemaVersion = 1
 const { validateManifest } = require('./rust-toolchain-policy.js')
@@ -39,10 +39,22 @@ function fail(id, message) {
   throw diagnostic(id, message)
 }
 
+function parseJsonBytes(bytes, label, id) {
+  try {
+    const value = JSON.parse(bytes.toString('utf8'))
+    if (!bytes.equals(jsonBytes(value))) fail(id, `${label} must use canonical JSON bytes`)
+    return value
+  } catch (error) {
+    if (error.message != null && error.message.startsWith(`${id}:`)) throw error
+    fail(id, `cannot read ${label}: ${error.message}`)
+  }
+}
+
 function readJson(filePath, label, id = 'FCR020_BASELINE_INTEGRITY') {
   try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    return parseJsonBytes(fs.readFileSync(filePath), label, id)
   } catch (error) {
+    if (error.message != null && error.message.startsWith(`${id}:`)) throw error
     fail(id, `cannot read ${label}: ${error.message}`)
   }
 }
@@ -55,9 +67,15 @@ function jsonBytes(value) {
   return Buffer.from(`${JSON.stringify(value, null, 2)}\n`)
 }
 
+function compareText(left, right) {
+  return Buffer.compare(Buffer.from(left), Buffer.from(right))
+}
+
 function argumentValue(args, name, fallback = null) {
-  const index = args.indexOf(name)
-  if (index < 0) return fallback
+  const indexes = args.flatMap((value, index) => value === name ? [index] : [])
+  if (indexes.length === 0) return fallback
+  if (indexes.length > 1) fail('FCR900_USAGE', `${name} must appear at most once`)
+  const index = indexes[0]
   if (index + 1 >= args.length) fail('FCR900_USAGE', `${name} requires a value`)
   return args[index + 1]
 }
@@ -133,9 +151,9 @@ function exactManifestField(source, field) {
   return match == null ? null : match[1]
 }
 
-function verifyFixtureManifests(policy) {
+function verifyFixtureManifests(policy, snapshot = null) {
   for (const entry of policy.dependencyResolution.cases) {
-    const source = fs.readFileSync(path.join(repoRoot, entry.fixture, 'Cargo.toml'), 'utf8')
+    const source = fs.readFileSync(path.join(snapshotFixtureRoot(snapshot, entry), 'Cargo.toml'), 'utf8')
     if (exactManifestField(source, 'rust-version') !== policy.minimumSupportedRust) fail('FCR021_REVIEWED_GRAPH_MISMATCH', `${entry.id} fixture rust-version does not match ${policy.minimumSupportedRust}`)
     if (exactManifestField(source, 'resolver') !== policy.dependencyResolution.resolverVersion) fail('FCR021_REVIEWED_GRAPH_MISMATCH', `${entry.id} fixture resolver does not match ${policy.dependencyResolution.resolverVersion}`)
   }
@@ -181,7 +199,8 @@ function loadSelectedToolchain(options = {}) {
     fail('FCR010_TOOLCHAIN_PAIR_MISMATCH', 'Cargo and rustc must be sibling binaries from the selected Rust sysroot')
   }
   return {
-    ...commands,
+    rustc: actualRustc,
+    cargo: actualCargo,
     rustcVersion: canonicalVersion(toolVersion(commands.rustc, 'rustc')),
     cargoVersion: canonicalVersion(toolVersion(commands.cargo, 'cargo')),
     sysroot
@@ -190,7 +209,22 @@ function loadSelectedToolchain(options = {}) {
 
 const prohibitedEnvironmentExact = new Set([
   'CARGO_NET_OFFLINE', 'CARGO_BUILD_TARGET', 'CARGO_ENCODED_RUSTFLAGS', 'CARGO_INCREMENTAL',
-  'RUSTC_BOOTSTRAP', 'RUSTFLAGS', 'RUSTC_WRAPPER', 'RUSTC_WORKSPACE_WRAPPER', 'RUSTDOCFLAGS'
+  'CARGO_ENCODED_RUSTDOCFLAGS', 'RUSTC_BOOTSTRAP', 'RUSTFLAGS', 'RUSTC_WRAPPER',
+  'RUSTC_WORKSPACE_WRAPPER', 'RUSTDOC', 'RUSTDOCFLAGS'
+])
+
+const cargoTransportEnvironment = new Set([
+  'CARGO_HTTP_CAINFO', 'CARGO_HTTP_CHECK_REVOKE', 'CARGO_HTTP_DEBUG',
+  'CARGO_HTTP_LOW_SPEED_LIMIT', 'CARGO_HTTP_MULTIPLEXING', 'CARGO_HTTP_PROXY',
+  'CARGO_HTTP_SSL_VERSION', 'CARGO_HTTP_TIMEOUT', 'CARGO_NET_GIT_FETCH_WITH_CLI',
+  'CARGO_NET_RETRY', 'CARGO_NET_SSH_KNOWN_HOSTS'
+])
+
+const operatingEnvironment = new Set([
+  'COMSPEC', 'HOMEDRIVE', 'HOMEPATH', 'LANG', 'LC_ALL', 'LC_CTYPE', 'LOCALAPPDATA',
+  'LOGNAME', 'NUMBER_OF_PROCESSORS', 'OS', 'PATHEXT', 'PROCESSOR_ARCHITECTURE',
+  'PATH', 'SYSTEMDRIVE', 'SYSTEMROOT', 'TERM', 'TZ', 'USER', 'USERNAME',
+  'WINDIR'
 ])
 
 function environmentAffectsResolutionOrBuild(name) {
@@ -200,7 +234,37 @@ function environmentAffectsResolutionOrBuild(name) {
 
 function assertControlledEnvironment(environment = process.env) {
   const bad = Object.keys(environment).filter(environmentAffectsResolutionOrBuild)
-  if (bad.length > 0) fail('FCR011_UNCONTROLLED_ENVIRONMENT', `unset resolution-affecting environment variable(s): ${bad.sort().join(', ')}`)
+  if (bad.length > 0) fail('FCR011_UNCONTROLLED_ENVIRONMENT', `unset resolution-affecting environment variable(s): ${bad.sort(compareText).join(', ')}`)
+}
+
+function controlledCargoEnvironment(environment = process.env) {
+  assertControlledEnvironment(environment)
+  const controlled = {}
+  for (const [name, value] of Object.entries(environment)) {
+    if (operatingEnvironment.has(name) || cargoTransportEnvironment.has(name)
+        || name === 'HTTP_PROXY' || name === 'HTTPS_PROXY' || name === 'NO_PROXY'
+        || name === 'http_proxy' || name === 'https_proxy' || name === 'no_proxy') {
+      controlled[name] = value
+    }
+  }
+  return controlled
+}
+
+function assertNoAncestorCargoConfiguration(directory, allowedRoot) {
+  let current = path.resolve(directory)
+  const allowed = path.resolve(allowedRoot)
+  while (true) {
+    const cargoDirectory = path.join(current, '.cargo')
+    for (const name of ['config', 'config.toml']) {
+      const config = path.join(cargoDirectory, name)
+      if (fs.existsSync(config) && !path.resolve(config).startsWith(`${allowed}${path.sep}`)) {
+        fail('FCR011_UNCONTROLLED_ENVIRONMENT', `Cargo configuration outside the retained fixture snapshot is not allowed: ${name}`)
+      }
+    }
+    const parent = path.dirname(current)
+    if (parent === current) break
+    current = parent
+  }
 }
 
 function stablePackageKey(pkg) {
@@ -216,7 +280,7 @@ function normalizeDependency(dependency) {
     kind: dependency.kind || 'normal',
     optional: dependency.optional,
     usesDefaultFeatures: dependency.uses_default_features,
-    features: [...dependency.features].sort(),
+    features: [...dependency.features].sort(compareText),
     target: dependency.target || null
   }
 }
@@ -228,21 +292,21 @@ function normalizeResolvedDependency(dependency, packageKeyById) {
     name: dependency.name,
     package: packageId,
     kinds: (dependency.dep_kinds || []).map((kind) => ({ kind: kind.kind || 'normal', target: kind.target || null }))
-      .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))
+      .sort((left, right) => compareText(JSON.stringify(left), JSON.stringify(right)))
   }
 }
 
 function normalizeMetadata(raw, entry, policy, options = {}) {
   const packageKeyById = new Map(raw.packages.map((pkg) => [pkg.id, stablePackageKey(pkg)]))
-  const featuresById = new Map((raw.resolve && raw.resolve.nodes || []).map((node) => [node.id, [...node.features].sort()]))
+  const featuresById = new Map((raw.resolve && raw.resolve.nodes || []).map((node) => [node.id, [...node.features].sort(compareText)]))
   const rootPackage = raw.resolve && raw.resolve.root != null ? packageKeyById.get(raw.resolve.root) : null
   if (rootPackage == null) fail('FCR021_REVIEWED_GRAPH_MISMATCH', `${entry.id} Cargo metadata has no stable root package`)
   const packages = raw.packages.map((pkg) => ({
     id: stablePackageKey(pkg), name: pkg.name, version: pkg.version, source: pkg.source || 'path',
     rustVersion: pkg.rust_version == null ? null : canonicalVersion(pkg.rust_version),
     enabledFeatures: featuresById.get(pkg.id) || [],
-    dependencies: pkg.dependencies.map(normalizeDependency).sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))
-  })).sort((left, right) => left.id.localeCompare(right.id))
+    dependencies: pkg.dependencies.map(normalizeDependency).sort((left, right) => compareText(JSON.stringify(left), JSON.stringify(right)))
+  })).sort((left, right) => compareText(left.id, right.id))
   const incompatible = packages.filter((pkg) => pkg.rustVersion != null && compareRustVersions(pkg.rustVersion, policy.minimumSupportedRust) > 0)
   if (!options.allowIncompatible && incompatible.length > 0) fail('FCR102_OBSERVATION_INCOMPATIBLE', `${entry.id} resolved dependencies declaring Rust newer than ${policy.minimumSupportedRust}: ${incompatible.map((pkg) => `${pkg.name}@${pkg.version}=${pkg.rustVersion}`).join(', ')}`)
   const resolveNodes = (raw.resolve.nodes || []).map((node) => {
@@ -251,14 +315,14 @@ function normalizeMetadata(raw, entry, policy, options = {}) {
     const dependencies = Array.isArray(node.deps)
       ? node.deps.map((dependency) => normalizeResolvedDependency(dependency, packageKeyById))
       : (node.dependencies || []).map((dependencyId) => ({ name: null, package: packageKeyById.get(dependencyId), kinds: [] }))
-    dependencies.sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))
-    return { id, enabledFeatures: [...node.features].sort(), dependencies }
-  }).sort((left, right) => left.id.localeCompare(right.id))
+    dependencies.sort((left, right) => compareText(JSON.stringify(left), JSON.stringify(right)))
+    return { id, enabledFeatures: [...node.features].sort(compareText), dependencies }
+  }).sort((left, right) => compareText(left.id, right.id))
   const normalizeIds = (values, owner) => (values || []).map((id) => {
     const stable = packageKeyById.get(id)
     if (stable == null) fail('FCR021_REVIEWED_GRAPH_MISMATCH', `${entry.id} Cargo metadata ${owner} contains an unknown package`)
     return stable
-  }).sort()
+  }).sort(compareText)
   return {
     schemaVersion: normalizationSchemaVersion,
     caseId: entry.id,
@@ -276,33 +340,38 @@ function normalizeMetadata(raw, entry, policy, options = {}) {
 }
 
 function cargoEnvironment(cargoHome, targetDir, toolchain) {
-  assertControlledEnvironment()
-  const environment = { ...process.env }
-  for (const name of prohibitedEnvironmentExact) delete environment[name]
-  for (const name of Object.keys(environment)) if (environmentAffectsResolutionOrBuild(name)) delete environment[name]
+  const environment = controlledCargoEnvironment()
   return {
     ...environment,
+    HOME: path.dirname(cargoHome),
+    USERPROFILE: path.dirname(cargoHome),
+    TMPDIR: path.dirname(cargoHome),
+    TMP: path.dirname(cargoHome),
+    TEMP: path.dirname(cargoHome),
     CARGO_HOME: cargoHome,
     CARGO_TARGET_DIR: targetDir,
     CARGO_TERM_COLOR: 'never',
     CARGO_NET_RETRY: process.env.CARGO_NET_RETRY || '10',
     CARGO_HTTP_MULTIPLEXING: process.env.CARGO_HTTP_MULTIPLEXING || 'false',
-    RUSTC: toolchain.rustc
+    RUSTC: toolchain.rustc,
+    RUSTDOC: path.join(toolchain.sysroot, 'bin', `rustdoc${process.platform === 'win32' ? '.exe' : ''}`)
   }
 }
 
 function resolutionInputFiles(fixtureRoot) {
   const out = []
   function visit(directory) {
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => compareText(a.name, b.name))) {
       if (entry.name === 'target' || entry.name === 'Cargo.lock') continue
       const full = path.join(directory, entry.name)
+      if (entry.isSymbolicLink()) fail('FCR011_UNCONTROLLED_ENVIRONMENT', 'Cargo input trees must not contain symlinks')
       if (entry.isDirectory()) visit(full)
       else if (entry.isFile() && (entry.name === 'Cargo.toml' || /(^|[/\\])\.cargo[/\\]config(?:\.toml)?$/.test(full))) out.push(full)
+      else if (!entry.isFile()) fail('FCR011_UNCONTROLLED_ENVIRONMENT', 'Cargo input trees must contain only directories and regular files')
     }
   }
   visit(fixtureRoot)
-  return out.sort()
+  return out.sort(compareText)
 }
 
 function resolutionInputDigest(entry) {
@@ -317,8 +386,191 @@ function resolutionInputDigest(entry) {
   return hash.digest('hex')
 }
 
+function fixtureTreeDigest(root) {
+  const hash = crypto.createHash('sha256')
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })
+      .sort((left, right) => compareText(left.name, right.name))) {
+      if (entry.name === 'target' || entry.name === 'Cargo.lock') continue
+      const full = path.join(directory, entry.name)
+      const relative = path.relative(root, full).split(path.sep).join('/')
+      if (entry.isSymbolicLink()) fail('FCR200_ADMISSION_STALE_BASE', `fixture input must not contain symlink ${relative}`)
+      if (entry.isDirectory()) visit(full)
+      else if (entry.isFile()) {
+        const bytes = fs.readFileSync(full)
+        hash.update(`${relative}\0${bytes.length}\0`)
+        hash.update(bytes)
+      } else fail('FCR200_ADMISSION_STALE_BASE', `fixture input must contain only directories and regular files: ${relative}`)
+    }
+  }
+  visit(root)
+  return hash.digest('hex')
+}
+
+function captureAuthoritySnapshot(policy) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'reflaxe-rust-cargo-authority-'))
+  const policyBytes = fs.readFileSync(policyPath)
+  if (!policyBytes.equals(jsonBytes(policy))) {
+    fs.rmSync(root, { recursive: true, force: true })
+    fail('FCR200_ADMISSION_STALE_BASE', 'Rust toolchain policy changed while it was being captured')
+  }
+  const inputDigests = new Map()
+  const fixtureDigests = new Map()
+  try {
+    for (const entry of policy.dependencyResolution.cases) {
+      const source = path.join(repoRoot, entry.fixture)
+      const target = path.join(root, 'fixtures', entry.id)
+      fs.cpSync(source, target, { recursive: true })
+      const sourceDigest = fixtureTreeDigest(source)
+      const targetDigest = fixtureTreeDigest(target)
+      if (sourceDigest !== targetDigest) fail('FCR200_ADMISSION_STALE_BASE', `${entry.id} changed while its fixture was captured`)
+      fixtureDigests.set(entry.id, sourceDigest)
+      const snapshotEntry = { ...entry, fixture: path.relative(repoRoot, target) }
+      inputDigests.set(entry.id, resolutionInputDigest(snapshotEntry))
+    }
+  } catch (error) {
+    fs.rmSync(root, { recursive: true, force: true })
+    throw error
+  }
+  return { root, policyBytes, inputDigests, fixtureDigests }
+}
+
+function snapshotFixtureRoot(snapshot, entry) {
+  return snapshot == null
+    ? path.join(repoRoot, entry.fixture)
+    : path.join(snapshot.root, 'fixtures', entry.id)
+}
+
+function assertAuthoritySnapshotCurrent(policy, snapshot) {
+  if (snapshot == null) return
+  if (!fs.readFileSync(policyPath).equals(snapshot.policyBytes)) {
+    fail('FCR200_ADMISSION_STALE_BASE', 'Rust toolchain policy changed during the operation')
+  }
+  for (const entry of policy.dependencyResolution.cases) {
+    if (fixtureTreeDigest(path.join(repoRoot, entry.fixture)) !== snapshot.fixtureDigests.get(entry.id)) {
+      fail('FCR200_ADMISSION_STALE_BASE', `${entry.id} fixture changed during the operation`)
+    }
+    if (resolutionInputDigest(entry) !== snapshot.inputDigests.get(entry.id)) {
+      fail('FCR200_ADMISSION_STALE_BASE', `${entry.id} resolution input changed during the operation`)
+    }
+  }
+}
+
 function baselineDirectory(policy) {
   return path.resolve(repoRoot, policy.dependencyResolution.evidenceBaseline)
+}
+
+function publicationPaths(root) {
+  const scope = sha256(path.relative(repoRoot, root)).slice(0, 16)
+  const parent = path.dirname(root)
+  return {
+    lock: path.join(parent, `.fresh-cargo-${scope}.lock`),
+    journal: path.join(parent, `.fresh-cargo-${scope}.journal.json`),
+    staged: path.join(parent, `.fresh-cargo-${scope}.staged`),
+    previous: path.join(parent, `.fresh-cargo-${scope}.previous`)
+  }
+}
+
+function processIsRunning(pid) {
+  if (!Number.isInteger(pid) || pid < 1) return false
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    return error.code !== 'ESRCH'
+  }
+}
+
+function acquirePublicationLock(root) {
+  const paths = publicationPaths(root)
+  const deadline = Date.now() + 10000
+  while (true) {
+    try {
+      const fd = fs.openSync(paths.lock, 'wx', 0o600)
+      fs.writeFileSync(fd, jsonBytes({ schemaVersion: 1, pid: process.pid }))
+      return { fd, path: paths.lock }
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error
+      let owner = null
+      try {
+        owner = readJson(paths.lock, 'Cargo baseline publication lock')
+      } catch (_error) {
+        if (Date.now() >= deadline) fail('FCR204_PUBLICATION_BUSY', 'the Cargo baseline publication lock is unreadable; inspect it before removal')
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50)
+        continue
+      }
+      if (!processIsRunning(owner.pid)) {
+        fs.rmSync(paths.lock, { force: true })
+        continue
+      }
+      if (Date.now() >= deadline) fail('FCR204_PUBLICATION_BUSY', 'another Cargo baseline operation holds the publication lock')
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50)
+    }
+  }
+}
+
+function releasePublicationLock(lock) {
+  fs.closeSync(lock.fd)
+  fs.rmSync(lock.path, { force: true })
+}
+
+function recoverBaselinePublication(root) {
+  const paths = publicationPaths(root)
+  if (!fs.existsSync(paths.journal)) return
+  const journal = readJson(paths.journal, 'Cargo baseline publication journal')
+  assertExactObject(journal, ['schemaVersion'], 'Cargo baseline publication journal', 'FCR205_PUBLICATION_RECOVERY')
+  if (journal.schemaVersion !== 1) {
+    fail('FCR205_PUBLICATION_RECOVERY', 'Cargo baseline publication journal is invalid')
+  }
+  const rootExists = fs.existsSync(root)
+  const previousExists = fs.existsSync(paths.previous)
+  const stagedExists = fs.existsSync(paths.staged)
+  if (!rootExists && previousExists) fs.renameSync(paths.previous, root)
+  else if (rootExists && previousExists) fs.rmSync(paths.previous, { recursive: true, force: true })
+  else if (!rootExists) fail('FCR205_PUBLICATION_RECOVERY', 'Cargo baseline and recovery copy are both missing')
+  if (stagedExists) fs.rmSync(paths.staged, { recursive: true, force: true })
+  fs.rmSync(paths.journal, { force: true })
+}
+
+function policyForReviewedBaseline(currentPolicy, manifest) {
+  assertExactObject(manifest, [
+    'schemaVersion', 'authority', 'policySchemaVersion', 'policySha256',
+    'normalizationSchemaVersion', 'minimumSupportedRust', 'admittedRustcVersion',
+    'admittedCargoVersion', 'resolverVersion', 'incompatibleRustVersions',
+    'applicationLockfile', 'requiredGate', 'observationMode', 'admissionToolchain',
+    'lockfileFormat', 'cases'
+  ], 'reviewed graph manifest')
+  assertArray(manifest.cases, 'reviewed graph manifest.cases')
+  const caseIds = new Set()
+  const cases = manifest.cases.map((entry, index) => {
+    assertExactObject(entry, [
+      'id', 'contract', 'fixture', 'resolutionInputSha256', 'lockSha256', 'metadataSha256'
+    ], `reviewed graph manifest.cases[${index}]`)
+    if (caseIds.has(entry.id)) fail('FCR020_BASELINE_INTEGRITY', `reviewed graph manifest repeats case ${entry.id}`)
+    caseIds.add(entry.id)
+    assertDigest(entry.resolutionInputSha256, `reviewed graph manifest.cases[${index}].resolutionInputSha256`)
+    assertDigest(entry.lockSha256, `reviewed graph manifest.cases[${index}].lockSha256`)
+    assertDigest(entry.metadataSha256, `reviewed graph manifest.cases[${index}].metadataSha256`)
+    return {
+      id: entry.id,
+      contract: entry.contract,
+      fixture: entry.fixture
+    }
+  })
+  return {
+    schemaVersion: manifest.policySchemaVersion,
+    minimumSupportedRust: manifest.minimumSupportedRust,
+    dependencyResolution: {
+      resolverVersion: manifest.resolverVersion,
+      incompatibleRustVersions: manifest.incompatibleRustVersions,
+      applicationLockfile: manifest.applicationLockfile,
+      evidenceBaseline: currentPolicy.dependencyResolution.evidenceBaseline,
+      requiredGate: manifest.requiredGate,
+      observationMode: manifest.observationMode,
+      admissionToolchain: manifest.admissionToolchain,
+      cases
+    }
+  }
 }
 
 function artifactsFromDirectory(policy, root, id = 'FCR020_BASELINE_INTEGRITY') {
@@ -333,6 +585,58 @@ function artifactsFromDirectory(policy, root, id = 'FCR020_BASELINE_INTEGRITY') 
   return artifacts
 }
 
+function assertBaselineFileInventory(policy, root) {
+  const expected = new Set(['README.md', 'manifest.json'])
+  for (const entry of policy.dependencyResolution.cases) {
+    expected.add(`${entry.id}/Cargo.lock`)
+    expected.add(`${entry.id}/metadata.json`)
+  }
+  const actual = new Set()
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((left, right) => compareText(left.name, right.name))) {
+      const full = path.join(directory, entry.name)
+      const relative = path.relative(root, full).split(path.sep).join('/')
+      if (entry.isSymbolicLink()) fail('FCR020_BASELINE_INTEGRITY', `reviewed graph must not contain symlink ${relative}`)
+      if (entry.isDirectory()) visit(full)
+      else if (entry.isFile()) actual.add(relative)
+      else fail('FCR020_BASELINE_INTEGRITY', `reviewed graph must contain only directories and regular files: ${relative}`)
+    }
+  }
+  const stat = fs.lstatSync(root)
+  if (stat.isSymbolicLink() || !stat.isDirectory()) fail('FCR020_BASELINE_INTEGRITY', 'reviewed graph root must be a real directory')
+  visit(root)
+  const missing = [...expected].filter((entry) => !actual.has(entry))
+  const extra = [...actual].filter((entry) => !expected.has(entry))
+  if (missing.length > 0 || extra.length > 0) {
+    fail('FCR020_BASELINE_INTEGRITY', `reviewed graph file inventory differs (missing=${missing.sort(compareText).join(',') || 'none'}; extra=${extra.sort(compareText).join(',') || 'none'})`)
+  }
+}
+
+function assertBaselineRoot(root, allowMissing = false) {
+  let stat
+  try {
+    stat = fs.lstatSync(root)
+  } catch (error) {
+    if (allowMissing && error.code === 'ENOENT') return
+    fail('FCR020_BASELINE_INTEGRITY', `cannot inspect reviewed graph root: ${error.message}`)
+  }
+  if (stat.isSymbolicLink() || !stat.isDirectory()) {
+    fail('FCR020_BASELINE_INTEGRITY', 'reviewed graph root must be a real directory')
+  }
+}
+
+function assertBaselineManifestFile(manifestPath) {
+  let stat
+  try {
+    stat = fs.lstatSync(manifestPath)
+  } catch (error) {
+    fail('FCR020_BASELINE_INTEGRITY', `cannot inspect reviewed graph manifest: ${error.message}`)
+  }
+  if (stat.isSymbolicLink() || !stat.isFile()) {
+    fail('FCR020_BASELINE_INTEGRITY', 'reviewed graph manifest must be a regular file')
+  }
+}
+
 function lockfileFormat(bytes) {
   const match = /^version = ([0-9]+)$/m.exec(bytes.toString('utf8'))
   if (match == null) fail('FCR020_BASELINE_INTEGRITY', 'Cargo.lock has no supported lockfile version')
@@ -343,15 +647,15 @@ function policyDigest() {
   return sha256(fs.readFileSync(policyPath))
 }
 
-function buildBaselineManifest(policy, artifacts, toolchainIdentity) {
+function buildBaselineManifest(policy, artifacts, toolchainIdentity, options = {}) {
   const formats = new Set([...artifacts.values()].map((artifact) => lockfileFormat(artifact.lock)))
   if (formats.size !== 1) fail('FCR020_BASELINE_INTEGRITY', 'reviewed Cargo locks use different format versions')
   return {
     schemaVersion: baselineSchemaVersion,
     authority: 'reviewed-lock',
     policySchemaVersion: policy.schemaVersion,
-    policySha256: policyDigest(),
-    normalizationSchemaVersion,
+    policySha256: options.policySha256 || policyDigest(),
+    normalizationSchemaVersion: options.normalizationSchemaVersion || normalizationSchemaVersion,
     minimumSupportedRust: policy.minimumSupportedRust,
     admittedRustcVersion: toolchainIdentity.rustcVersion,
     admittedCargoVersion: toolchainIdentity.cargoVersion,
@@ -366,33 +670,78 @@ function buildBaselineManifest(policy, artifacts, toolchainIdentity) {
       id: entry.id,
       contract: entry.contract,
       fixture: entry.fixture,
-      resolutionInputSha256: resolutionInputDigest(entry),
+      resolutionInputSha256: options.resolutionInputDigests == null
+        ? resolutionInputDigest(entry)
+        : options.resolutionInputDigests.get(entry.id),
       lockSha256: sha256(artifacts.get(entry.id).lock),
       metadataSha256: sha256(artifacts.get(entry.id).metadata)
     }))
   }
 }
 
-function checkBaseline(policy) {
+function checkBaseline(policy, options = {}) {
   const root = baselineDirectory(policy)
-  const manifestPath = path.join(root, 'manifest.json')
-  if (!fs.existsSync(path.join(root, 'README.md')) || !fs.existsSync(manifestPath)) fail('FCR020_BASELINE_INTEGRITY', 'reviewed graph documentation or manifest is missing')
-  const manifest = readJson(manifestPath, 'reviewed graph manifest')
-  if (manifest.schemaVersion !== baselineSchemaVersion || manifest.authority !== 'reviewed-lock') fail('FCR020_BASELINE_INTEGRITY', 'reviewed graph manifest schema or authority is invalid')
-  const artifacts = artifactsFromDirectory(policy, root)
-  const expected = buildBaselineManifest(policy, artifacts, { rustcVersion: manifest.admittedRustcVersion, cargoVersion: manifest.admittedCargoVersion })
-  if (!jsonBytes(expected).equals(fs.readFileSync(manifestPath))) fail('FCR020_BASELINE_INTEGRITY', 'reviewed graph manifest, inputs, or artifact digests are stale')
-  return { root, manifest, artifacts, manifestSha256: sha256(fs.readFileSync(manifestPath)) }
+  const lock = acquirePublicationLock(root)
+  try {
+    assertBaselineRoot(root, true)
+    recoverBaselinePublication(root)
+    assertBaselineRoot(root)
+    const manifestPath = path.join(root, 'manifest.json')
+    assertBaselineManifestFile(manifestPath)
+    const manifest = readJson(manifestPath, 'reviewed graph manifest')
+    if (manifest.schemaVersion !== baselineSchemaVersion || manifest.authority !== 'reviewed-lock') fail('FCR020_BASELINE_INTEGRITY', 'reviewed graph manifest schema or authority is invalid')
+    const baselinePolicy = policyForReviewedBaseline(policy, manifest)
+    assertBaselineFileInventory(baselinePolicy, root)
+    const artifacts = artifactsFromDirectory(baselinePolicy, root)
+    for (const entry of baselinePolicy.dependencyResolution.cases) {
+      const metadata = parseJsonBytes(artifacts.get(entry.id).metadata, `${entry.id} reviewed metadata`, 'FCR020_BASELINE_INTEGRITY')
+      assertNormalizedMetadataShape(metadata, `${entry.id} reviewed metadata`)
+      if (metadata.schemaVersion !== manifest.normalizationSchemaVersion) {
+        fail('FCR020_BASELINE_INTEGRITY', `${entry.id} reviewed metadata uses the wrong normalization schema`)
+      }
+    }
+    const baselineInputs = new Map(manifest.cases.map((entry) => [entry.id, entry.resolutionInputSha256]))
+    const expected = buildBaselineManifest(baselinePolicy, artifacts, {
+      rustcVersion: manifest.admittedRustcVersion,
+      cargoVersion: manifest.admittedCargoVersion
+    }, {
+      policySha256: manifest.policySha256,
+      resolutionInputDigests: baselineInputs,
+      normalizationSchemaVersion: manifest.normalizationSchemaVersion
+    })
+    if (!jsonBytes(expected).equals(fs.readFileSync(manifestPath))) fail('FCR020_BASELINE_INTEGRITY', 'reviewed graph manifest, inputs, or artifact digests are stale')
+    if (!options.allowCurrentAuthorityChange) {
+      if (manifest.policySha256 !== policyDigest()) fail('FCR020_BASELINE_INTEGRITY', 'reviewed graph policy digest is stale')
+      if (manifest.cases.length !== policy.dependencyResolution.cases.length) fail('FCR020_BASELINE_INTEGRITY', 'reviewed graph case inventory is stale')
+      for (const entry of policy.dependencyResolution.cases) {
+        const reviewed = manifest.cases.find((candidate) => candidate.id === entry.id)
+        if (reviewed == null || reviewed.contract !== entry.contract || reviewed.fixture !== entry.fixture
+            || reviewed.resolutionInputSha256 !== resolutionInputDigest(entry)) {
+          fail('FCR020_BASELINE_INTEGRITY', `${entry.id} reviewed graph authority input is stale`)
+        }
+      }
+    }
+    return {
+      root,
+      manifest,
+      artifacts,
+      policy: baselinePolicy,
+      manifestSha256: sha256(fs.readFileSync(manifestPath))
+    }
+  } finally {
+    releasePublicationLock(lock)
+  }
 }
 
-function runLockedCases(policy, artifacts, expectedMetadata, toolchain) {
+function runLockedCases(policy, artifacts, expectedMetadata, toolchain, snapshot = null) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'reflaxe-rust-reviewed-resolution-'))
   const verified = new Map()
   try {
     for (const entry of policy.dependencyResolution.cases) {
       console.log(`[fresh-cargo-resolution] verify reviewed: ${entry.id}`)
       const caseRoot = path.join(root, 'cases', entry.id)
-      fs.cpSync(path.join(repoRoot, entry.fixture), caseRoot, { recursive: true })
+      fs.cpSync(snapshotFixtureRoot(snapshot, entry), caseRoot, { recursive: true })
+      assertNoAncestorCargoConfiguration(caseRoot, caseRoot)
       fs.rmSync(path.join(caseRoot, 'target'), { recursive: true, force: true })
       fs.writeFileSync(path.join(caseRoot, 'Cargo.lock'), artifacts.get(entry.id).lock)
       const cargoHome = path.join(root, 'cargo-homes', entry.id)
@@ -421,7 +770,8 @@ function runFreshPass(policy, passIndex, toolchain, options = {}) {
     for (const entry of policy.dependencyResolution.cases) {
       console.log(`[fresh-cargo-resolution] live ${options.upperEdge ? 'upper-edge' : 'fallback'} pass ${passIndex}/${policy.dependencyResolution.observationRepeatRuns}: ${entry.id}`)
       const caseRoot = path.join(root, 'cases', entry.id)
-      fs.cpSync(path.join(repoRoot, entry.fixture), caseRoot, { recursive: true })
+      fs.cpSync(snapshotFixtureRoot(options.snapshot, entry), caseRoot, { recursive: true })
+      assertNoAncestorCargoConfiguration(caseRoot, caseRoot)
       fs.rmSync(path.join(caseRoot, 'Cargo.lock'), { force: true })
       fs.rmSync(path.join(caseRoot, 'target'), { recursive: true, force: true })
       const env = cargoEnvironment(path.join(root, 'cargo-homes', entry.id), path.join(root, 'targets', entry.id), toolchain)
@@ -518,14 +868,14 @@ function parseLock(bytes) {
   return { format: lockfileFormat(bytes), packages }
 }
 
-function assertExactObject(value, allowedKeys, owner) {
+function assertExactObject(value, allowedKeys, owner, id = 'FCR202_ADMISSION_UNCLASSIFIED_CHANGE') {
   if (value == null || typeof value !== 'object' || Array.isArray(value)) {
-    fail('FCR202_ADMISSION_UNCLASSIFIED_CHANGE', `${owner} must be an object`)
+    fail(id, `${owner} must be an object`)
   }
   const unknown = Object.keys(value).filter((key) => !allowedKeys.includes(key))
   const missing = allowedKeys.filter((key) => !Object.hasOwn(value, key))
-  if (unknown.length > 0) fail('FCR202_ADMISSION_UNCLASSIFIED_CHANGE', `${owner} contains unknown field(s): ${unknown.sort().join(', ')}`)
-  if (missing.length > 0) fail('FCR202_ADMISSION_UNCLASSIFIED_CHANGE', `${owner} lacks field(s): ${missing.sort().join(', ')}`)
+  if (unknown.length > 0) fail(id, `${owner} contains unknown field(s): ${unknown.sort(compareText).join(', ')}`)
+  if (missing.length > 0) fail(id, `${owner} lacks field(s): ${missing.sort(compareText).join(', ')}`)
 }
 
 function assertArray(value, owner) {
@@ -576,10 +926,110 @@ function assertNormalizedMetadataShape(metadata, owner) {
       }
     }
   }
+  if (metadata.schemaVersion === 2 && !jsonBytes(metadata).equals(jsonBytes(canonicalNormalizedMetadata(metadata)))) {
+    fail('FCR202_ADMISSION_UNCLASSIFIED_CHANGE', `${owner} is not in canonical byte order`)
+  }
+}
+
+function canonicalNormalizedMetadata(metadata) {
+  return {
+    schemaVersion: metadata.schemaVersion,
+    caseId: metadata.caseId,
+    contract: metadata.contract,
+    fixture: metadata.fixture,
+    minimumSupportedRust: metadata.minimumSupportedRust,
+    resolverVersion: metadata.resolverVersion,
+    incompatibleRustVersions: metadata.incompatibleRustVersions,
+    rootPackage: metadata.rootPackage,
+    workspaceMembers: [...metadata.workspaceMembers].sort(compareText),
+    workspaceDefaultMembers: [...metadata.workspaceDefaultMembers].sort(compareText),
+    resolvedGraph: {
+      root: metadata.resolvedGraph.root,
+      nodes: metadata.resolvedGraph.nodes.map((node) => ({
+        id: node.id,
+        enabledFeatures: [...node.enabledFeatures].sort(compareText),
+        dependencies: node.dependencies.map((dependency) => ({
+          name: dependency.name,
+          package: dependency.package,
+          kinds: dependency.kinds.map((kind) => ({ kind: kind.kind, target: kind.target }))
+            .sort((left, right) => compareText(JSON.stringify(left), JSON.stringify(right)))
+        })).sort((left, right) => compareText(JSON.stringify(left), JSON.stringify(right)))
+      })).sort((left, right) => compareText(left.id, right.id))
+    },
+    packages: metadata.packages.map((pkg) => ({
+      id: pkg.id,
+      name: pkg.name,
+      version: pkg.version,
+      source: pkg.source,
+      rustVersion: pkg.rustVersion,
+      enabledFeatures: [...pkg.enabledFeatures].sort(compareText),
+      dependencies: pkg.dependencies.map((dependency) => ({
+        name: dependency.name,
+        rename: dependency.rename,
+        requirement: dependency.requirement,
+        source: dependency.source,
+        kind: dependency.kind,
+        optional: dependency.optional,
+        usesDefaultFeatures: dependency.usesDefaultFeatures,
+        features: [...dependency.features].sort(compareText),
+        target: dependency.target
+      })).sort((left, right) => compareText(JSON.stringify(left), JSON.stringify(right)))
+    })).sort((left, right) => compareText(left.id, right.id))
+  }
 }
 
 function compareValues(changes, caseId, category, subject, field, left, right) {
   if (JSON.stringify(left) !== JSON.stringify(right)) changes.push({ caseId, category, subject, field, old: left, new: right })
+}
+
+function sortedValues(values) {
+  return [...values].sort((left, right) => compareText(JSON.stringify(left), JSON.stringify(right)))
+}
+
+function sortedResolvedDependencies(values, idMap = new Map()) {
+  return sortedValues(values.map((dependency) => ({
+    ...dependency,
+    package: idMap.get(dependency.package) || dependency.package,
+    kinds: sortedValues(dependency.kinds)
+  })))
+}
+
+function logicalPackagePairs(leftValues, rightValues) {
+  const pairs = []
+  const leftRemaining = new Set(leftValues.map((value) => value.id || value.identity))
+  const rightRemaining = new Set(rightValues.map((value) => value.id || value.identity))
+  for (const left of leftValues) {
+    const leftId = left.id || left.identity
+    const exact = rightValues.find((right) => (right.id || right.identity) === leftId)
+    if (exact != null) {
+      pairs.push([left, exact])
+      leftRemaining.delete(leftId)
+      rightRemaining.delete(exact.id || exact.identity)
+    }
+  }
+  for (const left of leftValues.filter((value) => leftRemaining.has(value.id || value.identity))) {
+    const candidates = rightValues.filter((right) => rightRemaining.has(right.id || right.identity)
+      && right.name === left.name)
+    const reverseCandidates = leftValues.filter((other) => leftRemaining.has(other.id || other.identity)
+      && other.name === left.name)
+    if (candidates.length !== 1 || reverseCandidates.length !== 1) continue
+    const right = candidates[0]
+    pairs.push([left, right])
+    leftRemaining.delete(left.id || left.identity)
+    rightRemaining.delete(right.id || right.identity)
+  }
+  return {
+    pairs,
+    leftOnly: leftValues.filter((value) => leftRemaining.has(value.id || value.identity)),
+    rightOnly: rightValues.filter((value) => rightRemaining.has(value.id || value.identity))
+  }
+}
+
+function remapNode(node, idMap) {
+  return {
+    ...node,
+    dependencies: sortedResolvedDependencies(node.dependencies, idMap)
+  }
 }
 
 function classifyCase(entry, before, after, policy) {
@@ -590,7 +1040,7 @@ function classifyCase(entry, before, after, policy) {
   const lockIds = new Set([...beforeLock.packages.keys(), ...afterLock.packages.keys()])
   const removed = []
   const added = []
-  for (const id of [...lockIds].sort()) {
+  for (const id of [...lockIds].sort(compareText)) {
     const left = beforeLock.packages.get(id)
     const right = afterLock.packages.get(id)
     if (left == null) added.push(right)
@@ -627,60 +1077,99 @@ function classifyCase(entry, before, after, policy) {
   for (const pkg of added.filter((candidate) => !consumedAdded.has(candidate.identity))) {
     changes.push({ caseId: entry.id, category: 'package-added', subject: pkg.identity, field: 'identity', old: null, new: pkg.identity })
   }
-  const oldMeta = JSON.parse(before.metadata)
-  const newMeta = JSON.parse(after.metadata)
+  const oldMeta = parseJsonBytes(before.metadata, `${entry.id} reviewed metadata`, 'FCR202_ADMISSION_UNCLASSIFIED_CHANGE')
+  const newMeta = parseJsonBytes(after.metadata, `${entry.id} candidate metadata`, 'FCR202_ADMISSION_UNCLASSIFIED_CHANGE')
   assertNormalizedMetadataShape(oldMeta, `${entry.id} reviewed metadata`)
   assertNormalizedMetadataShape(newMeta, `${entry.id} candidate metadata`)
   for (const field of ['schemaVersion', 'caseId', 'contract', 'fixture', 'minimumSupportedRust', 'resolverVersion', 'incompatibleRustVersions', 'rootPackage', 'workspaceMembers', 'workspaceDefaultMembers']) {
     compareValues(changes, entry.id, field.startsWith('workspace') || field === 'rootPackage' ? 'topology-changed' : 'authority-input-changed', entry.id, field, oldMeta[field], newMeta[field])
   }
-  const oldPackages = new Map(oldMeta.packages.map((pkg) => [pkg.id, pkg]))
-  const newPackages = new Map(newMeta.packages.map((pkg) => [pkg.id, pkg]))
-  for (const id of [...new Set([...oldPackages.keys(), ...newPackages.keys()])].sort()) {
-    const left = oldPackages.get(id)
-    const right = newPackages.get(id)
-    if (left == null) {
-      changes.push({ caseId: entry.id, category: 'metadata-package-added', subject: id, field: 'id', old: null, new: id })
-      continue
-    }
-    if (right == null) {
-      changes.push({ caseId: entry.id, category: 'metadata-package-removed', subject: id, field: 'id', old: id, new: null })
-      continue
-    }
+  const metadataPairs = logicalPackagePairs(oldMeta.packages, newMeta.packages)
+  const newToOldIds = new Map(metadataPairs.pairs.map(([left, right]) => [right.id, left.id]))
+  for (const [left, right] of metadataPairs.pairs) {
+    const subject = left.id === right.id ? left.id : `${left.name}:${left.source}->${right.source}`
     for (const field of ['name', 'version', 'source']) {
-      compareValues(changes, entry.id, 'metadata-package-identity-changed', id, field, left[field], right[field])
+      compareValues(changes, entry.id, 'metadata-package-identity-changed', subject, field, left[field], right[field])
     }
-    compareValues(changes, entry.id, 'declared-msrv-changed', id, 'rustVersion', left.rustVersion, right.rustVersion)
-    compareValues(changes, entry.id, 'enabled-features-changed', id, 'enabledFeatures', left.enabledFeatures, right.enabledFeatures)
-    compareValues(changes, entry.id, 'declared-dependencies-changed', id, 'dependencies', left.dependencies, right.dependencies)
+    compareValues(changes, entry.id, 'declared-msrv-changed', subject, 'rustVersion', left.rustVersion, right.rustVersion)
+    compareValues(changes, entry.id, 'enabled-features-changed', subject, 'enabledFeatures', sortedValues(left.enabledFeatures), sortedValues(right.enabledFeatures))
+    compareValues(changes, entry.id, 'declared-dependencies-changed', subject, 'dependencies', sortedValues(left.dependencies), sortedValues(right.dependencies))
+  }
+  for (const pkg of metadataPairs.leftOnly) {
+    changes.push({ caseId: entry.id, category: 'metadata-package-removed', subject: pkg.id, field: 'id', old: pkg.id, new: null })
+  }
+  for (const pkg of metadataPairs.rightOnly) {
+    changes.push({ caseId: entry.id, category: 'metadata-package-added', subject: pkg.id, field: 'id', old: null, new: pkg.id })
   }
   const oldNodes = new Map(oldMeta.resolvedGraph.nodes.map((node) => [node.id, node]))
   const newNodes = new Map(newMeta.resolvedGraph.nodes.map((node) => [node.id, node]))
-  compareValues(changes, entry.id, 'topology-changed', entry.id, 'resolvedGraph.root', oldMeta.resolvedGraph.root, newMeta.resolvedGraph.root)
-  for (const id of [...new Set([...oldNodes.keys(), ...newNodes.keys()])].sort()) {
-    const left = oldNodes.get(id)
-    const right = newNodes.get(id)
-    if (left == null) changes.push({ caseId: entry.id, category: 'topology-node-added', subject: id, field: 'node', old: null, new: id })
-    else if (right == null) changes.push({ caseId: entry.id, category: 'topology-node-removed', subject: id, field: 'node', old: id, new: null })
-    else {
-      compareValues(changes, entry.id, 'enabled-features-changed', id, 'resolvedEnabledFeatures', left.enabledFeatures, right.enabledFeatures)
-      compareValues(changes, entry.id, 'topology-edges-changed', id, 'dependencies', left.dependencies, right.dependencies)
-    }
+  compareValues(changes, entry.id, 'topology-changed', entry.id, 'resolvedGraph.root', oldMeta.resolvedGraph.root, newToOldIds.get(newMeta.resolvedGraph.root) || newMeta.resolvedGraph.root)
+  for (const [leftPackage, rightPackage] of metadataPairs.pairs) {
+    const left = oldNodes.get(leftPackage.id)
+    const right = newNodes.get(rightPackage.id)
+    if (left == null || right == null) continue
+    compareValues(changes, entry.id, 'enabled-features-changed', leftPackage.id, 'resolvedEnabledFeatures', sortedValues(left.enabledFeatures), sortedValues(right.enabledFeatures))
+    compareValues(changes, entry.id, 'topology-edges-changed', leftPackage.id, 'dependencies', sortedResolvedDependencies(left.dependencies), remapNode(right, newToOldIds).dependencies)
+  }
+  for (const pkg of metadataPairs.leftOnly) {
+    if (oldNodes.has(pkg.id)) changes.push({ caseId: entry.id, category: 'topology-node-removed', subject: pkg.id, field: 'node', old: pkg.id, new: null })
+  }
+  for (const pkg of metadataPairs.rightOnly) {
+    if (newNodes.has(pkg.id)) changes.push({ caseId: entry.id, category: 'topology-node-added', subject: pkg.id, field: 'node', old: null, new: pkg.id })
   }
   if (changes.length === 0 && (!before.lock.equals(after.lock) || !before.metadata.equals(after.metadata))) changes.push({ caseId: entry.id, category: 'serialization-changed', subject: entry.id, field: 'bytes', old: sha256(Buffer.concat([before.lock, before.metadata])), new: sha256(Buffer.concat([after.lock, after.metadata])) })
   return changes
 }
 
-function classifyArtifacts(policy, baselineArtifacts, candidateArtifacts) {
-  const changes = policy.dependencyResolution.cases.flatMap((entry) => classifyCase(entry, baselineArtifacts.get(entry.id), candidateArtifacts.get(entry.id), policy))
-    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))
+function classifyArtifacts(policy, baselineArtifacts, candidateArtifacts, options = {}) {
+  const baselinePolicy = options.baselinePolicy || policy
+  const baselineEntries = new Map(baselinePolicy.dependencyResolution.cases.map((entry) => [entry.id, entry]))
+  const currentEntries = new Map(policy.dependencyResolution.cases.map((entry) => [entry.id, entry]))
+  const changes = []
+  for (const id of [...new Set([...baselineEntries.keys(), ...currentEntries.keys()])].sort(compareText)) {
+    const beforeEntry = baselineEntries.get(id)
+    const afterEntry = currentEntries.get(id)
+    if (beforeEntry == null) {
+      changes.push({
+        caseId: id,
+        category: 'authority-input-changed',
+        subject: id,
+        field: 'case',
+        old: null,
+        new: { contract: afterEntry.contract, fixture: afterEntry.fixture }
+      })
+      continue
+    }
+    if (afterEntry == null) {
+      changes.push({
+        caseId: id,
+        category: 'authority-input-changed',
+        subject: id,
+        field: 'case',
+        old: { contract: beforeEntry.contract, fixture: beforeEntry.fixture },
+        new: null
+      })
+      continue
+    }
+    changes.push(...classifyCase(afterEntry, baselineArtifacts.get(id), candidateArtifacts.get(id), policy))
+  }
+  if (options.baselineManifest != null) {
+    const currentPolicySha256 = options.currentPolicySha256 || policyDigest()
+    const currentInputDigests = options.currentInputDigests || new Map(
+      policy.dependencyResolution.cases.map((entry) => [entry.id, resolutionInputDigest(entry)]))
+    compareValues(changes, '<policy>', 'authority-input-changed', '<policy>', 'policySha256', options.baselineManifest.policySha256, currentPolicySha256)
+    const oldInputs = new Map(options.baselineManifest.cases.map((entry) => [entry.id, entry.resolutionInputSha256]))
+    for (const entry of policy.dependencyResolution.cases) {
+      compareValues(changes, entry.id, 'authority-input-changed', entry.id, 'resolutionInputSha256', oldInputs.get(entry.id) || null, currentInputDigests.get(entry.id))
+    }
+  }
+  changes.sort((left, right) => compareText(JSON.stringify(left), JSON.stringify(right)))
   const checksumIncident = changes.some((change) => change.category === 'package-checksum-changed')
-  const authorityInputChange = changes.some((change) => change.category === 'authority-input-changed'
-    || change.category === 'lock-format' || change.category === 'serialization-changed')
+  const unclassifiedSerialization = changes.some((change) => change.category === 'serialization-changed')
   return {
     schemaVersion: 1,
     relation: changes.length === 0 ? 'match' : 'drift',
-    admissible: !checksumIncident && !authorityInputChange,
+    admissible: !checksumIncident && !unclassifiedSerialization,
     changes
   }
 }
@@ -690,7 +1179,99 @@ function safeOutputDirectory(value, lane = 'minimum') {
   const resolved = path.resolve(repoRoot, value || path.join(evidenceRoot, lane))
   const relative = path.relative(evidenceRoot, resolved)
   if (relative.length === 0 || relative.startsWith('..') || path.isAbsolute(relative)) fail('FCR900_USAGE', 'evidence output directory must be below .cache/fresh-cargo-resolution')
+  const components = path.relative(repoRoot, resolved).split(path.sep).filter((part) => part.length > 0)
+  let current = repoRoot
+  for (const component of components) {
+    current = path.join(current, component)
+    let stat = null
+    try {
+      stat = fs.lstatSync(current)
+    } catch (error) {
+      if (error.code === 'ENOENT') break
+      throw error
+    }
+    if (stat.isSymbolicLink()) fail('FCR900_USAGE', 'evidence output directory must not contain symlinked path components')
+    if (!stat.isDirectory()) fail('FCR900_USAGE', 'evidence output path components must be directories')
+  }
   return resolved
+}
+
+function ownedOutputDirectory(args, option, lane) {
+  const expected = path.join(repoRoot, '.cache', 'fresh-cargo-resolution', lane)
+  const requested = path.resolve(repoRoot, argumentValue(args, option, expected))
+  if (requested !== expected) fail('FCR900_USAGE', `${option} must use the mode-owned path ${path.relative(repoRoot, expected)}`)
+  return safeOutputDirectory(expected, lane)
+}
+
+function candidateTreeDigest(root) {
+  const rootStat = fs.lstatSync(root)
+  if (rootStat.isSymbolicLink() || !rootStat.isDirectory()) {
+    fail('FCR201_ADMISSION_ARTIFACT_INTEGRITY', 'candidate root must be a real directory')
+  }
+  const hash = crypto.createHash('sha256')
+  const files = []
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((left, right) => compareText(left.name, right.name))) {
+      const full = path.join(directory, entry.name)
+      if (entry.isSymbolicLink()) fail('FCR201_ADMISSION_ARTIFACT_INTEGRITY', 'candidate tree must not contain symlinks')
+      if (entry.isDirectory()) visit(full)
+      else if (entry.isFile()) files.push(full)
+      else fail('FCR201_ADMISSION_ARTIFACT_INTEGRITY', 'candidate tree must contain only directories and regular files')
+    }
+  }
+  visit(root)
+  for (const file of files) {
+    const relative = path.relative(root, file).split(path.sep).join('/')
+    const bytes = fs.readFileSync(file)
+    hash.update(`${relative}\0${bytes.length}\0`)
+    hash.update(bytes)
+  }
+  return hash.digest('hex')
+}
+
+function captureCandidateSnapshot(candidateDir, reviewedDigest) {
+  const sourceDigest = candidateTreeDigest(candidateDir)
+  if (sourceDigest !== reviewedDigest) fail('FCR201_ADMISSION_ARTIFACT_INTEGRITY', 'candidate tree digest differs from --candidate-sha256')
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'reflaxe-rust-admission-candidate-'))
+  const snapshot = path.join(root, 'candidate')
+  try {
+    fs.cpSync(candidateDir, snapshot, { recursive: true, errorOnExist: true, force: false })
+    if (candidateTreeDigest(snapshot) !== reviewedDigest) {
+      fail('FCR201_ADMISSION_ARTIFACT_INTEGRITY', 'candidate changed while its admission snapshot was captured')
+    }
+    return { root, candidateDir: snapshot }
+  } catch (error) {
+    fs.rmSync(root, { recursive: true, force: true })
+    throw error
+  }
+}
+
+function assertCandidateFileInventory(policy, candidateDir, observation) {
+  const expected = new Set(['classification.json', 'observation.json'])
+  for (const entry of policy.dependencyResolution.cases) {
+    expected.add(`fallback/${entry.id}/Cargo.lock`)
+    expected.add(`fallback/${entry.id}/metadata.json`)
+    if (observation.upperEdge != null) {
+      expected.add(`upper-edge/${entry.id}/Cargo.lock`)
+      expected.add(`upper-edge/${entry.id}/metadata.json`)
+    }
+  }
+  const actual = new Set()
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((left, right) => compareText(left.name, right.name))) {
+      const full = path.join(directory, entry.name)
+      if (entry.isSymbolicLink()) fail('FCR201_ADMISSION_ARTIFACT_INTEGRITY', 'candidate tree must not contain symlinks')
+      if (entry.isDirectory()) visit(full)
+      else if (entry.isFile()) actual.add(path.relative(candidateDir, full).split(path.sep).join('/'))
+      else fail('FCR201_ADMISSION_ARTIFACT_INTEGRITY', 'candidate tree must contain only directories and regular files')
+    }
+  }
+  visit(candidateDir)
+  const missing = [...expected].filter((entry) => !actual.has(entry))
+  const extra = [...actual].filter((entry) => !expected.has(entry))
+  if (missing.length > 0 || extra.length > 0) {
+    fail('FCR201_ADMISSION_ARTIFACT_INTEGRITY', `candidate file inventory differs (missing=${missing.sort(compareText).join(',') || 'none'}; extra=${extra.sort(compareText).join(',') || 'none'})`)
+  }
 }
 
 function writeArtifactTree(policy, artifacts, root) {
@@ -732,7 +1313,7 @@ function artifactDigests(policy, artifacts) {
   }))
 }
 
-function writeObservation(policy, baseline, fallback, upperEdge, classification, toolchain, outDir, passDigests) {
+function writeObservation(policy, baseline, fallback, upperEdge, classification, toolchain, outDir, passDigests, snapshot) {
   fs.rmSync(outDir, { recursive: true, force: true })
   fs.mkdirSync(outDir, { recursive: true })
   writeArtifactTree(policy, fallback, path.join(outDir, 'fallback'))
@@ -742,11 +1323,14 @@ function writeObservation(policy, baseline, fallback, upperEdge, classification,
     schemaVersion: observationSchemaVersion,
     mode: 'observe-live',
     baseManifestSha256: baseline.manifestSha256,
-    policySha256: policyDigest(),
+    policySha256: sha256(snapshot.policyBytes),
     normalizationSchemaVersion,
     actualRustc: toolchain.rustcVersion,
     actualCargo: toolchain.cargoVersion,
-    resolutionInputs: policy.dependencyResolution.cases.map((entry) => ({ id: entry.id, sha256: resolutionInputDigest(entry) })),
+    resolutionInputs: policy.dependencyResolution.cases.map((entry) => ({
+      id: entry.id,
+      sha256: snapshot.inputDigests.get(entry.id)
+    })),
     passDigests,
     fallback: artifactDigests(policy, fallback),
     upperEdge: upperEdge == null ? null : artifactDigests(policy, upperEdge),
@@ -834,7 +1418,6 @@ function assertObservationShape(policy, observation, classification) {
     fail('FCR201_ADMISSION_ARTIFACT_INTEGRITY', 'candidate toolchain versions must be strings')
   }
   const expectedAdmissible = !classification.changes.some((change) => change.category === 'package-checksum-changed'
-    || change.category === 'authority-input-changed' || change.category === 'lock-format'
     || change.category === 'serialization-changed')
   if (classification.admissible !== expectedAdmissible) fail('FCR201_ADMISSION_ARTIFACT_INTEGRITY', 'candidate classification has an invalid admissible decision')
   if (observation.passDigests.fallback.length !== policy.dependencyResolution.observationRepeatRuns) {
@@ -859,6 +1442,7 @@ function runMutationProbe(policy, toolchain = loadSelectedToolchain()) {
     fs.writeFileSync(path.join(root, 'src', 'main.rs'), 'fn main() { assert_eq!(msrv_probe::value(), 1); }\n')
     fs.writeFileSync(path.join(root, 'msrv-probe', 'Cargo.toml'), `[package]\nname = "msrv_probe"\nversion = "1.1.0"\nedition = "2021"\nrust-version = "${unsupported}"\n\n[lib]\npath = "src/lib.rs"\n`)
     fs.writeFileSync(path.join(root, 'msrv-probe', 'src', 'lib.rs'), 'pub fn value() -> i32 { 1 }\n')
+    assertNoAncestorCargoConfiguration(root, root)
     const env = cargoEnvironment(path.join(root, 'cargo-home'), path.join(root, 'target'), toolchain)
     const replacements = [[root, '<msrv-mutation>'], [repoRoot, '<repo>']]
     runCommand(toolchain.cargo, ['generate-lockfile', '--quiet'], { cwd: root, env, label: 'MSRV mutation lockfile generation', replacements })
@@ -883,18 +1467,25 @@ function runVerifyReviewed(policy, args) {
   const toolchain = loadSelectedToolchain()
   verifyLane(policy, lane, toolchain)
   const baseline = checkBaseline(policy)
-  const verified = runLockedCases(policy, baseline.artifacts, baseline.artifacts, toolchain)
-  let mutationRejected = null
-  if (lane === 'minimum') {
-    runMutationProbe(policy, toolchain)
-    mutationRejected = true
+  const snapshot = captureAuthoritySnapshot(policy)
+  try {
+    verifyFixtureManifests(policy, snapshot)
+    const verified = runLockedCases(policy, baseline.artifacts, baseline.artifacts, toolchain, snapshot)
+    let mutationRejected = null
+    if (lane === 'minimum') {
+      runMutationProbe(policy, toolchain)
+      mutationRejected = true
+    }
+    assertAuthoritySnapshotCurrent(policy, snapshot)
+    writeReviewedEvidence(policy, verified, toolchain, ownedOutputDirectory(args, '--out-dir', `reviewed/${lane}`), {
+      mode: 'verify-reviewed',
+      lane,
+      mutationRejected,
+      admissible: true
+    })
+  } finally {
+    fs.rmSync(snapshot.root, { recursive: true, force: true })
   }
-  writeReviewedEvidence(policy, verified, toolchain, safeOutputDirectory(argumentValue(args, '--out-dir'), `reviewed/${lane}`), {
-    mode: 'verify-reviewed',
-    lane,
-    mutationRejected,
-    admissible: true
-  })
   console.log(`[fresh-cargo-resolution] reviewed graph OK (lane=${lane}, rustc=${toolchain.rustcVersion}, cargo=${toolchain.cargoVersion})`)
 }
 
@@ -903,37 +1494,51 @@ function runObserveLive(policy, args) {
   if (lane !== 'minimum') fail('FCR900_USAGE', 'live observation requires --lane minimum')
   const toolchain = loadSelectedToolchain()
   verifyLane(policy, lane, toolchain)
-  const baseline = checkBaseline(policy)
-  let fallback = null
-  const fallbackPassDigests = []
-  for (let index = 1; index <= policy.dependencyResolution.observationRepeatRuns; index += 1) {
-    const candidate = runFreshPass(policy, index, toolchain)
-    fallbackPassDigests.push(artifactSetDigest(policy, candidate))
-    if (fallback == null) fallback = candidate
-    else compareArtifactMaps(policy, fallback, candidate, 'FCR100_OBSERVATION_NONDETERMINISTIC')
-  }
-  let upperEdge = null
-  const upperPassDigests = []
-  if (args.includes('--include-upper-edge')) {
+  const baseline = checkBaseline(policy, { allowCurrentAuthorityChange: true })
+  const snapshot = captureAuthoritySnapshot(policy)
+  try {
+    verifyFixtureManifests(policy, snapshot)
+    let fallback = null
+    const fallbackPassDigests = []
     for (let index = 1; index <= policy.dependencyResolution.observationRepeatRuns; index += 1) {
-      const candidate = runFreshPass(policy, index, toolchain, { upperEdge: true })
-      upperPassDigests.push(artifactSetDigest(policy, candidate))
-      if (upperEdge == null) upperEdge = candidate
-      else compareArtifactMaps(policy, upperEdge, candidate, 'FCR100_OBSERVATION_NONDETERMINISTIC')
+      const candidate = runFreshPass(policy, index, toolchain, { snapshot })
+      fallbackPassDigests.push(artifactSetDigest(policy, candidate))
+      if (fallback == null) fallback = candidate
+      else compareArtifactMaps(policy, fallback, candidate, 'FCR100_OBSERVATION_NONDETERMINISTIC')
     }
+    let upperEdge = null
+    const upperPassDigests = []
+    if (args.includes('--include-upper-edge')) {
+      for (let index = 1; index <= policy.dependencyResolution.observationRepeatRuns; index += 1) {
+        const candidate = runFreshPass(policy, index, toolchain, { upperEdge: true, snapshot })
+        upperPassDigests.push(artifactSetDigest(policy, candidate))
+        if (upperEdge == null) upperEdge = candidate
+        else compareArtifactMaps(policy, upperEdge, candidate, 'FCR100_OBSERVATION_NONDETERMINISTIC')
+      }
+    }
+    runMutationProbe(policy, toolchain)
+    const classification = classifyArtifacts(policy, baseline.artifacts, fallback, {
+      baselinePolicy: baseline.policy,
+      baselineManifest: baseline.manifest,
+      currentPolicySha256: sha256(snapshot.policyBytes),
+      currentInputDigests: snapshot.inputDigests
+    })
+    assertAuthoritySnapshotCurrent(policy, snapshot)
+    const outDir = ownedOutputDirectory(args, '--out-dir', 'observation')
+    writeObservation(policy, baseline, fallback, upperEdge, classification, toolchain, outDir, { fallback: fallbackPassDigests, upperEdge: upperPassDigests }, snapshot)
+    const candidateSha256 = candidateTreeDigest(outDir)
+    if (classification.relation === 'drift') fail('FCR101_OBSERVATION_DRIFT', `${classification.changes.length} reviewed dependency difference(s); candidate written to ${path.relative(repoRoot, outDir)}; candidate SHA-256 ${candidateSha256}`)
+    console.log(`[fresh-cargo-resolution] live observation matches the reviewed graph; candidate SHA-256 ${candidateSha256}`)
+  } finally {
+    fs.rmSync(snapshot.root, { recursive: true, force: true })
   }
-  runMutationProbe(policy, toolchain)
-  const classification = classifyArtifacts(policy, baseline.artifacts, fallback)
-  const outDir = safeOutputDirectory(argumentValue(args, '--out-dir'), 'observation')
-  writeObservation(policy, baseline, fallback, upperEdge, classification, toolchain, outDir, { fallback: fallbackPassDigests, upperEdge: upperPassDigests })
-  if (classification.relation === 'drift') fail('FCR101_OBSERVATION_DRIFT', `${classification.changes.length} reviewed dependency difference(s); candidate written to ${path.relative(repoRoot, outDir)}`)
-  console.log('[fresh-cargo-resolution] live observation matches the reviewed graph')
 }
 
-function verifyObservationIntegrity(policy, candidateDir, observation, classification) {
+function verifyObservationIntegrity(policy, candidateDir, observation, classification, snapshot = null) {
   assertObservationShape(policy, observation, classification)
   if (observation.schemaVersion !== observationSchemaVersion || observation.mode !== 'observe-live') fail('FCR201_ADMISSION_ARTIFACT_INTEGRITY', 'candidate observation schema or mode is invalid')
-  if (observation.policySha256 !== policyDigest()) fail('FCR200_ADMISSION_STALE_BASE', 'policy changed after observation')
+  const currentPolicySha256 = snapshot == null ? policyDigest() : sha256(snapshot.policyBytes)
+  if (observation.policySha256 !== currentPolicySha256) fail('FCR200_ADMISSION_STALE_BASE', 'policy changed after observation')
   if (observation.classificationSha256 !== sha256(jsonBytes(classification))) fail('FCR201_ADMISSION_ARTIFACT_INTEGRITY', 'candidate classification digest does not match')
   function verifyArtifactSet(directory, digests, owner) {
     if (digests.length !== policy.dependencyResolution.cases.length) fail('FCR201_ADMISSION_ARTIFACT_INTEGRITY', `${owner} has the wrong number of cases`)
@@ -942,6 +1547,11 @@ function verifyObservationIntegrity(policy, candidateDir, observation, classific
       const expected = digests.find((item) => item.id === entry.id)
       if (expected == null) fail('FCR201_ADMISSION_ARTIFACT_INTEGRITY', `${owner} lacks ${entry.id} digests`)
       const artifact = artifacts.get(entry.id)
+      const metadata = parseJsonBytes(artifact.metadata, `${owner} ${entry.id} metadata`, 'FCR201_ADMISSION_ARTIFACT_INTEGRITY')
+      assertNormalizedMetadataShape(metadata, `${owner} ${entry.id} metadata`)
+      if (metadata.schemaVersion !== observation.normalizationSchemaVersion) {
+        fail('FCR201_ADMISSION_ARTIFACT_INTEGRITY', `${owner} ${entry.id} metadata uses the wrong normalization schema`)
+      }
       if (sha256(artifact.lock) !== expected.lockSha256 || sha256(artifact.metadata) !== expected.metadataSha256) {
         fail('FCR201_ADMISSION_ARTIFACT_INTEGRITY', `${owner} ${entry.id} artifact digest does not match`)
       }
@@ -951,7 +1561,8 @@ function verifyObservationIntegrity(policy, candidateDir, observation, classific
   if (observation.resolutionInputs.length !== policy.dependencyResolution.cases.length) fail('FCR201_ADMISSION_ARTIFACT_INTEGRITY', 'candidate has the wrong number of resolution inputs')
   for (const entry of policy.dependencyResolution.cases) {
     const expectedInput = observation.resolutionInputs.find((item) => item.id === entry.id)
-    if (expectedInput == null || expectedInput.sha256 !== resolutionInputDigest(entry)) fail('FCR200_ADMISSION_STALE_BASE', `${entry.id} resolution input changed after observation`)
+    const currentInputSha256 = snapshot == null ? resolutionInputDigest(entry) : snapshot.inputDigests.get(entry.id)
+    if (expectedInput == null || expectedInput.sha256 !== currentInputSha256) fail('FCR200_ADMISSION_STALE_BASE', `${entry.id} resolution input changed after observation`)
   }
   const fallbackArtifacts = verifyArtifactSet('fallback', observation.fallback, 'candidate fallback')
   const fallbackDigest = artifactSetDigest(policy, fallbackArtifacts)
@@ -970,64 +1581,107 @@ function verifyObservationIntegrity(policy, candidateDir, observation, classific
   return fallbackArtifacts
 }
 
-function writeBaselineAtomically(policy, artifacts, toolchain) {
+function writeBaselineAtomically(policy, artifacts, toolchain, options = {}) {
   const root = baselineDirectory(policy)
-  const parent = path.dirname(root)
-  const temp = fs.mkdtempSync(path.join(parent, '.fresh-cargo-admit-'))
-  const backup = `${root}.previous-${process.pid}`
+  const paths = publicationPaths(root)
+  const lock = acquirePublicationLock(root)
   try {
-    fs.writeFileSync(path.join(temp, 'README.md'), fs.readFileSync(path.join(root, 'README.md')))
-    writeArtifactTree(policy, artifacts, temp)
-    fs.writeFileSync(path.join(temp, 'manifest.json'), jsonBytes(buildBaselineManifest(policy, artifacts, toolchain)))
-    fs.renameSync(root, backup)
-    try {
-      fs.renameSync(temp, root)
-    } catch (error) {
-      fs.renameSync(backup, root)
-      throw error
+    recoverBaselinePublication(root)
+    const currentManifest = fs.readFileSync(path.join(root, 'manifest.json'))
+    if (options.expectedManifestSha256 != null && sha256(currentManifest) !== options.expectedManifestSha256) {
+      fail('FCR200_ADMISSION_STALE_BASE', 'reviewed graph changed before publication')
     }
-    fs.rmSync(backup, { recursive: true, force: true })
+    fs.rmSync(paths.staged, { recursive: true, force: true })
+    fs.mkdirSync(paths.staged)
+    fs.writeFileSync(path.join(paths.staged, 'README.md'), fs.readFileSync(path.join(root, 'README.md')))
+    writeArtifactTree(policy, artifacts, paths.staged)
+    fs.writeFileSync(path.join(paths.staged, 'manifest.json'), jsonBytes(buildBaselineManifest(
+      policy,
+      artifacts,
+      toolchain,
+      {
+        policySha256: options.policySha256,
+        resolutionInputDigests: options.resolutionInputDigests
+      }
+    )))
+    fs.writeFileSync(paths.journal, jsonBytes({ schemaVersion: 1 }))
+    if (options.stopAfterPhase === 'prepared') throw diagnostic('FCR299_TEST_PUBLICATION_INTERRUPTION', 'stopped after prepared')
+    fs.renameSync(root, paths.previous)
+    if (options.stopAfterPhase === 'old-moved') throw diagnostic('FCR299_TEST_PUBLICATION_INTERRUPTION', 'stopped after old-moved')
+    fs.renameSync(paths.staged, root)
+    if (options.stopAfterPhase === 'new-installed') throw diagnostic('FCR299_TEST_PUBLICATION_INTERRUPTION', 'stopped after new-installed')
+    fs.rmSync(paths.previous, { recursive: true, force: true })
+    fs.rmSync(paths.journal, { force: true })
   } finally {
-    fs.rmSync(temp, { recursive: true, force: true })
+    releasePublicationLock(lock)
   }
 }
 
 function runAdmit(policy, args) {
-  const candidateDir = safeOutputDirectory(argumentValue(args, '--candidate-dir'), 'observation')
-  const baseline = checkBaseline(policy)
-  const observation = readJson(path.join(candidateDir, 'observation.json'), 'candidate observation', 'FCR201_ADMISSION_ARTIFACT_INTEGRITY')
-  const classification = readJson(path.join(candidateDir, 'classification.json'), 'candidate classification', 'FCR201_ADMISSION_ARTIFACT_INTEGRITY')
-  if (observation.baseManifestSha256 !== baseline.manifestSha256) fail('FCR200_ADMISSION_STALE_BASE', 'reviewed graph changed after observation')
-  const candidate = verifyObservationIntegrity(policy, candidateDir, observation, classification)
-  const baselineClassification = classifyArtifacts(policy, baseline.artifacts, candidate)
-  if (!jsonBytes(baselineClassification).equals(jsonBytes(classification))) {
-    fail('FCR202_ADMISSION_UNCLASSIFIED_CHANGE', 'candidate classification does not describe its artifact bytes')
+  const candidateSourceDir = safeOutputDirectory(argumentValue(args, '--candidate-dir'), 'observation')
+  const reviewedCandidateDigest = argumentValue(args, '--candidate-sha256')
+  if (reviewedCandidateDigest == null) fail('FCR900_USAGE', 'admission requires --candidate-sha256 from the reviewed candidate tree')
+  assertDigest(reviewedCandidateDigest, '--candidate-sha256')
+  const candidateSnapshot = captureCandidateSnapshot(candidateSourceDir, reviewedCandidateDigest)
+  let snapshot = null
+  try {
+    snapshot = captureAuthoritySnapshot(policy)
+    verifyFixtureManifests(policy, snapshot)
+    const candidateDir = candidateSnapshot.candidateDir
+    const baseline = checkBaseline(policy, { allowCurrentAuthorityChange: true })
+    const observation = readJson(path.join(candidateDir, 'observation.json'), 'candidate observation', 'FCR201_ADMISSION_ARTIFACT_INTEGRITY')
+    const classification = readJson(path.join(candidateDir, 'classification.json'), 'candidate classification', 'FCR201_ADMISSION_ARTIFACT_INTEGRITY')
+    assertCandidateFileInventory(policy, candidateDir, observation)
+    if (observation.baseManifestSha256 !== baseline.manifestSha256) fail('FCR200_ADMISSION_STALE_BASE', 'reviewed graph changed after observation')
+    const candidate = verifyObservationIntegrity(policy, candidateDir, observation, classification, snapshot)
+    const baselineClassification = classifyArtifacts(policy, baseline.artifacts, candidate, {
+      baselinePolicy: baseline.policy,
+      baselineManifest: baseline.manifest,
+      currentPolicySha256: sha256(snapshot.policyBytes),
+      currentInputDigests: snapshot.inputDigests
+    })
+    if (!jsonBytes(baselineClassification).equals(jsonBytes(classification))) {
+      fail('FCR202_ADMISSION_UNCLASSIFIED_CHANGE', 'candidate classification does not describe its artifact bytes')
+    }
+    if (!classification.admissible) {
+      const checksum = classification.changes.find((change) => change.category === 'package-checksum-changed')
+      if (checksum != null) fail('FCR203_PACKAGE_IDENTITY_CHECKSUM_CHANGED', `${checksum.caseId} ${checksum.subject} changed checksum without changing package identity`)
+      fail('FCR202_ADMISSION_UNCLASSIFIED_CHANGE', 'candidate classification is not admissible')
+    }
+    const toolchain = loadSelectedToolchain()
+    verifyLane(policy, 'minimum', toolchain)
+    if (observation.actualRustc !== toolchain.rustcVersion || observation.actualCargo !== toolchain.cargoVersion) fail('FCR010_TOOLCHAIN_PAIR_MISMATCH', 'admission toolchain differs from observation toolchain')
+    const verificationDir = safeOutputDirectory(null, 'admission-verification')
+    const verified = runLockedCases(policy, candidate, candidate, toolchain, snapshot)
+    runMutationProbe(policy, toolchain)
+    const recomputed = classifyArtifacts(policy, baseline.artifacts, verified, {
+      baselinePolicy: baseline.policy,
+      baselineManifest: baseline.manifest,
+      currentPolicySha256: sha256(snapshot.policyBytes),
+      currentInputDigests: snapshot.inputDigests
+    })
+    if (!jsonBytes(recomputed).equals(jsonBytes(classification))) fail('FCR202_ADMISSION_UNCLASSIFIED_CHANGE', 'candidate classification changed during frozen admission verification')
+    assertAuthoritySnapshotCurrent(policy, snapshot)
+    writeReviewedEvidence(policy, verified, toolchain, verificationDir, {
+      mode: 'admission-verification',
+      lane: 'minimum',
+      mutationRejected: true,
+      admissible: classification.admissible
+    })
+    if (args.includes('--dry-run')) {
+      console.log(`[fresh-cargo-resolution] candidate is admissible without re-resolution: ${path.relative(repoRoot, candidateSourceDir)}`)
+      return
+    }
+    writeBaselineAtomically(policy, verified, toolchain, {
+      expectedManifestSha256: baseline.manifestSha256,
+      policySha256: sha256(snapshot.policyBytes),
+      resolutionInputDigests: snapshot.inputDigests
+    })
+  } finally {
+    if (snapshot != null) fs.rmSync(snapshot.root, { recursive: true, force: true })
+    fs.rmSync(candidateSnapshot.root, { recursive: true, force: true })
   }
-  if (!classification.admissible) {
-    const checksum = classification.changes.find((change) => change.category === 'package-checksum-changed')
-    if (checksum != null) fail('FCR203_PACKAGE_IDENTITY_CHECKSUM_CHANGED', `${checksum.caseId} ${checksum.subject} changed checksum without changing package identity`)
-    fail('FCR202_ADMISSION_UNCLASSIFIED_CHANGE', 'candidate classification is not admissible')
-  }
-  const toolchain = loadSelectedToolchain()
-  verifyLane(policy, 'minimum', toolchain)
-  if (observation.actualRustc !== toolchain.rustcVersion || observation.actualCargo !== toolchain.cargoVersion) fail('FCR010_TOOLCHAIN_PAIR_MISMATCH', 'admission toolchain differs from observation toolchain')
-  const verificationDir = safeOutputDirectory(path.join(candidateDir, 'admission-verification'))
-  const verified = runLockedCases(policy, candidate, candidate, toolchain)
-  runMutationProbe(policy, toolchain)
-  const recomputed = classifyArtifacts(policy, baseline.artifacts, verified)
-  if (!jsonBytes(recomputed).equals(jsonBytes(classification))) fail('FCR202_ADMISSION_UNCLASSIFIED_CHANGE', 'candidate classification changed during frozen admission verification')
-  writeReviewedEvidence(policy, verified, toolchain, verificationDir, {
-    mode: 'admission-verification',
-    lane: 'minimum',
-    mutationRejected: true,
-    admissible: classification.admissible
-  })
-  if (args.includes('--dry-run')) {
-    console.log(`[fresh-cargo-resolution] candidate is admissible without re-resolution: ${path.relative(repoRoot, candidateDir)}`)
-    return
-  }
-  writeBaselineAtomically(policy, verified, toolchain)
-  console.log(`[fresh-cargo-resolution] admitted exact candidate from ${path.relative(repoRoot, candidateDir)}`)
+  console.log(`[fresh-cargo-resolution] admitted exact candidate from ${path.relative(repoRoot, candidateSourceDir)}`)
 }
 
 function main() {
@@ -1035,9 +1689,33 @@ function main() {
   const args = process.argv.slice(2)
   if (args.includes('--refresh-baseline')) fail('FCR900_USAGE_REMOVED_REFRESH', 'use observe-live followed by admit')
   const policy = loadPolicy()
-  verifyFixtureManifests(policy)
   const mode = argumentValue(args, '--mode')
+  const valueOptions = new Set(['--mode'])
+  const flags = new Set()
+  if (mode === 'verify-reviewed') {
+    valueOptions.add('--lane')
+    valueOptions.add('--out-dir')
+  } else if (mode === 'observe-live') {
+    valueOptions.add('--lane')
+    valueOptions.add('--out-dir')
+    flags.add('--include-upper-edge')
+  } else if (mode === 'admit') {
+    valueOptions.add('--candidate-dir')
+    valueOptions.add('--candidate-sha256')
+    flags.add('--dry-run')
+  }
+  const seen = new Set()
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index]
+    if (seen.has(argument)) fail('FCR900_USAGE', `${argument} must appear at most once`)
+    seen.add(argument)
+    if (flags.has(argument)) continue
+    if (!valueOptions.has(argument)) fail('FCR900_USAGE', `unknown argument for ${mode || '<missing-mode>'}: ${argument}`)
+    if (index + 1 >= args.length || args[index + 1].startsWith('--')) fail('FCR900_USAGE', `${argument} requires a value`)
+    index += 1
+  }
   if (mode === 'contract-only') {
+    verifyFixtureManifests(policy)
     checkBaseline(policy)
     console.log('[fresh-cargo-resolution] reviewed graph contract OK')
     return
@@ -1062,13 +1740,26 @@ if (require.main === module) {
 }
 
 module.exports = {
+  assertNoAncestorCargoConfiguration,
   assertControlledEnvironment,
+  assertCandidateFileInventory,
   buildBaselineManifest,
+  captureCandidateSnapshot,
+  candidateTreeDigest,
   checkBaseline,
   classifyArtifacts,
   compareRustVersions,
+  controlledCargoEnvironment,
+  cargoEnvironment,
+  loadSelectedToolchain,
+  normalizationSchemaVersion,
   normalizeMetadata,
+  ownedOutputDirectory,
+  publicationPaths,
+  recoverBaselinePublication,
+  resolutionInputDigest,
   safeOutputDirectory,
   selectToolchainCommands,
-  verifyObservationIntegrity
+  verifyObservationIntegrity,
+  writeBaselineAtomically
 }

@@ -346,21 +346,25 @@ function checkConsumers(manifest) {
   if ((ci.match(/fresh-cargo-resolution\.js --mode verify-reviewed --lane current/g) || []).length < 1) {
     errors.push('current-stable CI must verify the reviewed Cargo graph')
   }
-  if (ci.includes('--mode observe-live')) errors.push('mandatory CI must not resolve the live Cargo registry')
+  if (ci.includes('--mode observe-live') || ci.includes('--mode admit')
+      || ci.includes('fresh-cargo-resolution:observe') || ci.includes('fresh-cargo-resolution:admit')) {
+    errors.push('mandatory CI must not observe or admit the live Cargo registry')
+  }
   if (!ci.includes('name: reviewed-cargo-resolution-minimum')
-      || !ci.includes('path: .cache/fresh-cargo-resolution/reviewed/minimum')) {
+      || !ci.includes('path: .cache/fresh-cargo-resolution/reviewed/minimum')
+      || (ci.match(/include-hidden-files: true/g) || []).length < 2) {
     errors.push('CI must archive minimum reviewed Cargo evidence')
   }
   if (!ci.includes('name: reviewed-cargo-resolution-current')
       || !ci.includes('path: .cache/fresh-cargo-resolution/reviewed/current')) {
     errors.push('CI must archive current-stable reviewed Cargo evidence')
   }
-  if (!ci.includes('cargo check --manifest-path "$generated_smoke/Cargo.toml"')) {
+  const normalizedCiCommands = ci.replace(/\\\r?\n\s*/g, ' ').replace(/\s+/g, ' ')
+  if (!normalizedCiCommands.includes('run-reviewed-generated-cargo.js --case portable --fixture "$generated_smoke" -- check')) {
     errors.push('current-stable CI must compile representative generated Rust')
   }
-  const normalizedCiCommands = ci.replace(/\\\r?\n\s*/g, ' ').replace(/\s+/g, ' ')
   if (!ci.includes('test/snapshot/deny_warnings/intended/.')
-      || !normalizedCiCommands.includes('cargo clippy --manifest-path "$generated_clippy/Cargo.toml" --all-targets -- -A clippy::all -D clippy::correctness -D clippy::suspicious')) {
+      || !normalizedCiCommands.includes('run-reviewed-generated-cargo.js --case portable --fixture "$generated_clippy" -- clippy --all-targets -- -A clippy::all -D clippy::correctness -D clippy::suspicious')) {
     errors.push('current-stable CI must Clippy-check the representative generated output-quality contract')
   }
   const releaseStart = ci.indexOf('\n  release:\n')
@@ -383,7 +387,7 @@ function checkConsumers(manifest) {
   }
   if (!weekly.includes('name: fresh-cargo-resolution-observation')
       || !weekly.includes('path: .cache/fresh-cargo-resolution/observation')
-      || !weekly.includes('if: always()')) {
+      || !weekly.includes('include-hidden-files: true') || !weekly.includes('if: always()')) {
     errors.push('weekly evidence must always archive the live Cargo observation')
   }
   if (/permissions:\s*[\s\S]{0,100}(contents:\s*write|pull-requests:\s*write)/.test(weekly)) {

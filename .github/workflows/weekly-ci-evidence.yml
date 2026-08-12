@@ -55,6 +55,7 @@ jobs:
         with:
           name: fresh-cargo-resolution-observation
           path: .cache/fresh-cargo-resolution/observation
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
 
@@ -161,6 +162,7 @@ jobs:
         with:
           name: portable-stdlib-candidates
           path: .cache/weekly-evidence/portable-stdlib-candidates.json
+          include-hidden-files: true
           if-no-files-found: warn
 
       - name: Upload semantic confidence summary artifact
@@ -171,6 +173,7 @@ jobs:
           path: |
             .cache/weekly-evidence/semantic-confidence-summary.json
             .cache/weekly-evidence/semantic-confidence-summary.md
+          include-hidden-files: true
           if-no-files-found: warn
 
       - name: Publish Linux evidence summary
