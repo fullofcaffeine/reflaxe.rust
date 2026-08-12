@@ -47,10 +47,7 @@ impl CurrentProcess {
     }
 
     pub fn read_stdin_chunk(max_bytes: i32) -> Result<Vec<i32>, CurrentProcessError> {
-        let max_bytes = usize::try_from(max_bytes)
-            .ok()
-            .filter(|value| (1..=MAX_CHUNK_BYTES).contains(value))
-            .ok_or_else(|| CurrentProcessError::new(CurrentProcessErrorKind::InvalidInput))?;
+        let max_bytes = Self::validate_read_size(max_bytes)?;
         let mut bytes = vec![0_u8; max_bytes];
         let read = std::io::stdin()
             .lock()
@@ -60,7 +57,14 @@ impl CurrentProcess {
         Ok(bytes.into_iter().map(i32::from).collect())
     }
 
-    pub fn write_stdout(bytes: Vec<i32>) -> Result<bool, CurrentProcessError> {
+    fn validate_read_size(max_bytes: i32) -> Result<usize, CurrentProcessError> {
+        usize::try_from(max_bytes)
+            .ok()
+            .filter(|value| (1..=MAX_CHUNK_BYTES).contains(value))
+            .ok_or_else(|| CurrentProcessError::new(CurrentProcessErrorKind::InvalidInput))
+    }
+
+    pub fn write_stdout(bytes: Vec<i32>) -> Result<(), CurrentProcessError> {
         let bytes = validated_bytes(bytes)?;
         let mut stdout = std::io::stdout().lock();
         stdout
@@ -69,15 +73,11 @@ impl CurrentProcess {
         stdout
             .flush()
             .map_err(|_| CurrentProcessError::new(CurrentProcessErrorKind::Flush))?;
-        Ok(true)
+        Ok(())
     }
 
-    pub fn write_stderr_utf8(message: String) -> Result<bool, CurrentProcessError> {
-        if message.len() > MAX_CHUNK_BYTES {
-            return Err(CurrentProcessError::new(
-                CurrentProcessErrorKind::InvalidInput,
-            ));
-        }
+    pub fn write_stderr_utf8(message: String) -> Result<(), CurrentProcessError> {
+        Self::validate_stderr_utf8(&message)?;
         let mut stderr = std::io::stderr().lock();
         stderr
             .write_all(message.as_bytes())
@@ -85,7 +85,17 @@ impl CurrentProcess {
         stderr
             .flush()
             .map_err(|_| CurrentProcessError::new(CurrentProcessErrorKind::Flush))?;
-        Ok(true)
+        Ok(())
+    }
+
+    fn validate_stderr_utf8(message: &str) -> Result<(), CurrentProcessError> {
+        if message.len() <= MAX_CHUNK_BYTES {
+            Ok(())
+        } else {
+            Err(CurrentProcessError::new(
+                CurrentProcessErrorKind::InvalidInput,
+            ))
+        }
     }
 
     pub fn exit(code: i32) -> ! {
@@ -106,4 +116,81 @@ fn validated_bytes(values: Vec<i32>) -> Result<Vec<u8>, CurrentProcessError> {
                 .map_err(|_| CurrentProcessError::new(CurrentProcessErrorKind::InvalidInput))
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn error_predicates_are_exact_and_disjoint() {
+        let cases = [
+            (
+                super::CurrentProcessErrorKind::InvalidInput,
+                [true, false, false, false],
+            ),
+            (
+                super::CurrentProcessErrorKind::Read,
+                [false, true, false, false],
+            ),
+            (
+                super::CurrentProcessErrorKind::Write,
+                [false, false, true, false],
+            ),
+            (
+                super::CurrentProcessErrorKind::Flush,
+                [false, false, false, true],
+            ),
+        ];
+
+        for (kind, expected) in cases {
+            let error = super::CurrentProcessError::new(kind);
+            assert_eq!(
+                [
+                    error.is_invalid_input(),
+                    error.is_read(),
+                    error.is_write(),
+                    error.is_flush(),
+                ],
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn byte_payload_accepts_the_exact_limit_and_rejects_one_more() {
+        assert_eq!(
+            super::validated_bytes(vec![0; super::MAX_CHUNK_BYTES])
+                .expect("exact byte limit must be accepted")
+                .len(),
+            super::MAX_CHUNK_BYTES
+        );
+        assert!(matches!(
+            super::validated_bytes(vec![0; super::MAX_CHUNK_BYTES + 1]),
+            Err(error) if error.is_invalid_input()
+        ));
+    }
+
+    #[test]
+    fn utf8_diagnostic_accepts_the_exact_limit_and_rejects_one_more() {
+        assert!(
+            super::CurrentProcess::validate_stderr_utf8(&"x".repeat(super::MAX_CHUNK_BYTES))
+                .is_ok()
+        );
+        assert!(matches!(
+            super::CurrentProcess::validate_stderr_utf8(&"x".repeat(super::MAX_CHUNK_BYTES + 1)),
+            Err(error) if error.is_invalid_input()
+        ));
+    }
+
+    #[test]
+    fn stdin_read_size_accepts_the_exact_limit_and_rejects_one_more() {
+        assert_eq!(
+            super::CurrentProcess::validate_read_size(super::MAX_CHUNK_BYTES as i32)
+                .expect("exact read limit must be accepted"),
+            super::MAX_CHUNK_BYTES
+        );
+        assert!(matches!(
+            super::CurrentProcess::validate_read_size((super::MAX_CHUNK_BYTES + 1) as i32),
+            Err(error) if error.is_invalid_input()
+        ));
+    }
 }

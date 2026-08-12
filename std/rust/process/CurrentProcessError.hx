@@ -21,6 +21,7 @@ package rust.process;
  * ordinary typed control flow immediately.
  */
 @:native("crate::current_process_tools::CurrentProcessError")
+@:rustExtraSrc("rust/native/current_process_tools.rs")
 extern class CurrentProcessError {
 	@:native("is_invalid_input")
 	public function isInvalidInput():Bool;

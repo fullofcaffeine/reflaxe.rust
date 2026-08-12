@@ -384,6 +384,9 @@ The facade has this closed contract:
 - `exit(...)` terminates the current process with an explicit status.
 - `CurrentProcessError` reports invalid input, read, write, or flush errors without raw OS text.
 
+The write calls return `Ok` without a value. A successful write has no additional state to report,
+so Haxe `Void` maps directly to Rust's unit value, `()`.
+
 The native helper owns each temporary standard-stream lock. It does not expose reusable handles,
 files, environment mutation, shell execution, or platform error codes.
 
@@ -413,8 +416,10 @@ The M43 fixture bead added the initial contract before implementation:
 | `test/positive/metal_no_hxrt_command_child` | Proves narrow `CommandChild` live lifecycle operations without `hxrt`. |
 | `test/negative/metal_process_raw_escape` | Rejects app-side raw `std::process::Command` as a substitute for the facade under strict policy. |
 | `scripts/ci/check-metal-policy.sh` native-process output-shape cases | Checks for avoidable `hxrt`, `Dynamic`, raw, portable process paths, direct `std::process::Command` helper use, quiet status execution, owned stdout capture, owned `std::process::Output` conversion, direct `current_dir(cwd)` wiring, direct `command.env(...)` / `env_remove(...)` / `env_clear()` wiring, composed cwd+env helper wiring, direct `Stdio::piped` / `write_all` / `wait_with_output` stdin wiring, composed stdin+cwd+env helper wiring, `CommandSpec` owned config storage plus `command_from_spec` builder wiring, `CommandError` typed category/output-decode wiring, and `CommandChild` direct `std::process::Child` lifecycle wiring. |
-| `test/positive/metal_no_hxrt_current_process` | Proves exact current-process binary IO, argument rejection, explicit statuses, typed errors, and safe-only Rust without `hxrt`. |
-| `scripts/ci/check-metal-policy.sh` current-process binary IO case | Checks direct standard IO, exact writes and flushes, checked bytes, no `VecTools`, `rust_forbid_unsafe`, Rust quality gates, and runtime bytes. |
+| `test/positive/metal_no_hxrt_current_process` | Proves exact current-process binary IO, argument rejection, explicit statuses, typed errors, and safe-only Rust without `hxrt`. Its helper tests cover the exact 1 MiB boundary and all four error predicates. |
+| `test/positive/metal_no_hxrt_current_process_error_only` | Proves that a signature which mentions only `CurrentProcessError` still copies and declares the native module that owns its Rust type. |
+| `test/positive/result_void_wildcard` | Proves that a discarded Haxe `Void` success value becomes Rust's unit value, `()`, without an avoidable Clippy warning. |
+| `scripts/ci/check-metal-policy.sh` current-process binary IO cases | Check direct standard IO, exact writes and flushes, checked bytes, no `VecTools`, `rust_forbid_unsafe`, Rust quality gates, helper unit tests, exact runtime bytes, and copied-helper ownership. |
 | `test/positive/metal_no_hxrt_native_tcp` | Proves a typed blocking localhost TCP round trip through `rust.net.NativeTcp`, `TcpListener`, and `TcpStream` without `hxrt`. |
 | `scripts/ci/check-metal-policy.sh` native-TCP output-shape case | Checks for avoidable `hxrt`, `Dynamic`, raw, portable socket paths, direct `std::net` wrapper structs, localhost bind/connect wiring, `accept`, `write_all`, `Shutdown::Write`, and `read_to_string`. |
 | `test/positive/metal_no_hxrt_native_udp` | Proves a typed blocking localhost UDP datagram round trip through `rust.net.NativeUdp` and `UdpSocket` without `hxrt`. |

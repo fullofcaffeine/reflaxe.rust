@@ -2413,6 +2413,10 @@ run_current_process_binary_io_case() {
 		echo "[metal-policy] error: current-process fixture failed Clippy for ${failure_label}."
 		exit 1
 	fi
+	if ! (cd "$out_dir" && cargo test -q); then
+		echo "[metal-policy] error: current-process helper boundary and error-category tests failed for ${failure_label}."
+		exit 1
+	fi
 
 	printf '\x43\x53\x54\x52\x01\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00' >"$expected_greeting"
 	printf 'input rejected\n' >"$expected_diagnostic"
@@ -2445,6 +2449,80 @@ run_current_process_binary_io_case() {
 	fi
 
 	rm -f "$log_file" "$expected_greeting" "$expected_diagnostic" "$stdout_file" "$stderr_file"
+	rm -rf "$out_dir"
+	finish_policy_case "$failure_label" "$case_start"
+}
+
+run_current_process_error_only_case() {
+	local fixture_rel="$1"
+	local hxml_file="$2"
+	local failure_label="$3"
+	local case_start="$SECONDS"
+	local fixture_dir="$root_dir/$fixture_rel"
+	local out_dir="$fixture_dir/out_current_process_error_only"
+	local log_file="$fixture_dir/.compile_current_process_error_only.log"
+	echo "[metal-policy] case: ${failure_label}"
+
+	rm -rf "$out_dir"
+	rm -f "$log_file"
+
+	set +e
+	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_output=out_current_process_error_only) >"$log_file" 2>&1
+	local compile_status=$?
+	set -e
+
+	if [[ "$compile_status" -ne 0 ]]; then
+		echo "[metal-policy] error: expected compile success for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+	if [[ ! -f "$out_dir/src/current_process_tools.rs" ]] || ! match_regex 'mod current_process_tools' "$out_dir/src/main.rs"; then
+		echo "[metal-policy] error: CurrentProcessError did not own its copied native module for ${failure_label}."
+		exit 1
+	fi
+	if ! (cd "$out_dir" && cargo fmt -q && cargo fmt --check && cargo clippy --all-targets -- -D warnings -A clippy::needless-return); then
+		echo "[metal-policy] error: CurrentProcessError-only fixture failed Rust quality gates for ${failure_label}."
+		exit 1
+	fi
+
+	rm -f "$log_file"
+	rm -rf "$out_dir"
+	finish_policy_case "$failure_label" "$case_start"
+}
+
+run_result_void_wildcard_case() {
+	local fixture_rel="$1"
+	local hxml_file="$2"
+	local failure_label="$3"
+	local case_start="$SECONDS"
+	local fixture_dir="$root_dir/$fixture_rel"
+	local out_dir="$fixture_dir/out_result_void_wildcard"
+	local log_file="$fixture_dir/.compile_result_void_wildcard.log"
+	local main_rs="$out_dir/src/main.rs"
+	echo "[metal-policy] case: ${failure_label}"
+
+	rm -rf "$out_dir"
+	rm -f "$log_file"
+	set +e
+	(cd "$fixture_dir" && haxe "$hxml_file" -D rust_no_build -D rust_output=out_result_void_wildcard) >"$log_file" 2>&1
+	local compile_status=$?
+	set -e
+	if [[ "$compile_status" -ne 0 ]]; then
+		echo "[metal-policy] error: expected compile success for ${failure_label}."
+		sed "s|$root_dir|.|g" "$log_file"
+		exit 1
+	fi
+	if ! match_regex 'Result<\(\), i32>' "$main_rs" || ! match_regex 'let _: \(\) = __p;' "$main_rs"; then
+		echo "[metal-policy] error: discarded Void payload did not retain exact warning-free Rust unit shape for ${failure_label}."
+		sed "s|$root_dir|.|g" "$main_rs"
+		exit 1
+	fi
+	if ! (cd "$out_dir" && cargo fmt -q && cargo fmt --check && cargo clippy --all-targets -- -D warnings -A clippy::needless-return -A clippy::single-match); then
+		echo "[metal-policy] error: discarded Void payload fixture failed Rust quality gates for ${failure_label}."
+		exit 1
+	fi
+
+	rm -f "$log_file"
 	rm -rf "$out_dir"
 	finish_policy_case "$failure_label" "$case_start"
 }
@@ -2956,6 +3034,10 @@ run_native_process_output_shape_case() {
 if [[ "${REFLAXE_CURRENT_PROCESS_ONLY:-0}" == "1" ]]; then
 	run_current_process_binary_io_case "test/positive/metal_no_hxrt_current_process" "compile.hxml" \
 		'rust.process.CurrentProcess emits safe direct binary standard IO'
+	run_current_process_error_only_case "test/positive/metal_no_hxrt_current_process_error_only" "compile.hxml" \
+		'rust.process.CurrentProcessError owns its copied native module'
+	run_result_void_wildcard_case "test/positive/result_void_wildcard" "compile.hxml" \
+		'discarded Result<Void> payload emits exact Rust unit'
 	exit 0
 fi
 
@@ -3291,6 +3373,10 @@ run_socket_addr_output_shape_case "test/positive/metal_no_hxrt_socket_addr" "com
 	'rust.net.SocketAddr emits direct std::net no-hxrt output'
 run_current_process_binary_io_case "test/positive/metal_no_hxrt_current_process" "compile.hxml" \
 	'rust.process.CurrentProcess emits safe direct binary standard IO'
+run_current_process_error_only_case "test/positive/metal_no_hxrt_current_process_error_only" "compile.hxml" \
+	'rust.process.CurrentProcessError owns its copied native module'
+run_result_void_wildcard_case "test/positive/result_void_wildcard" "compile.hxml" \
+	'discarded Result<Void> payload emits exact Rust unit'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_native_process" "compile.hxml" \
 	'rust.process.NativeCommands emits direct std::process no-hxrt output'
 run_native_process_output_shape_case "test/positive/metal_no_hxrt_command_output" "compile.hxml" \

@@ -9146,8 +9146,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 						&& currentLocalReadCounts.exists(v.id) ? currentLocalReadCounts.get(v.id) : 0;
 					if (readCount == 0 && !mutable) {
 						// Keep initializer side effects but avoid `unused_variables` warnings for
-						// compiler-introduced temporaries that are never read.
-						var underscoreTy:Null<RustType> = initExpr == null ? localStorageTy : null;
+						// compiler-introduced temporaries that are never read. Unit values need an
+						// explicit `()` annotation because Clippy rejects inferred `let _ = unit;`.
+						var underscoreTy:Null<RustType> = initExpr == null || localStorageTy == RUnit ? localStorageTy : null;
 						RLet("_", false, underscoreTy, initExpr);
 					} else {
 						RLet(name, mutable, localStorageTy, initExpr);

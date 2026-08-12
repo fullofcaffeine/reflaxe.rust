@@ -42,11 +42,11 @@ extern class CurrentProcess {
 
 	/** Validate and write all bytes, then flush stdout. */
 	@:native("write_stdout")
-	public static function writeStdout(bytes:Vec<Int>):Result<Bool, CurrentProcessError>;
+	public static function writeStdout(bytes:Vec<Int>):Result<Void, CurrentProcessError>;
 
 	/** Write and flush one bounded UTF-8 diagnostic. */
 	@:native("write_stderr_utf8")
-	public static function writeStderrUtf8(message:String):Result<Bool, CurrentProcessError>;
+	public static function writeStderrUtf8(message:String):Result<Void, CurrentProcessError>;
 
 	/** Terminate immediately with the requested process status. */
 	@:native("exit")

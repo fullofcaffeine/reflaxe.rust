@@ -30237,7 +30237,7 @@
           "id": "function:writeStdout",
           "kind": "function",
           "name": "writeStdout",
-          "signature": "@:native (\"write_stdout\") public static function writeStdout (bytes : Vec < Int >) : Result < Bool, CurrentProcessError >",
+          "signature": "@:native (\"write_stdout\") public static function writeStdout (bytes : Vec < Int >) : Result < Void, CurrentProcessError >",
           "contract": "rust-values-qualified",
           "evidenceIds": [
             "test:public-compatibility"
@@ -30252,7 +30252,7 @@
           "id": "function:writeStderrUtf8",
           "kind": "function",
           "name": "writeStderrUtf8",
-          "signature": "@:native (\"write_stderr_utf8\") public static function writeStderrUtf8 (message : String) : Result < Bool, CurrentProcessError >",
+          "signature": "@:native (\"write_stderr_utf8\") public static function writeStderrUtf8 (message : String) : Result < Void, CurrentProcessError >",
           "contract": "rust-values-qualified",
           "evidenceIds": [
             "test:public-compatibility"
@@ -30279,7 +30279,7 @@
       "name": "rust.process.CurrentProcessError",
       "source": "std/rust/process/CurrentProcessError.hx",
       "kind": "class",
-      "signature": "@:native (\"crate::current_process_tools::CurrentProcessError\") extern class CurrentProcessError",
+      "signature": "@:native (\"crate::current_process_tools::CurrentProcessError\") @:rustExtraSrc (\"rust/native/current_process_tools.rs\") extern class CurrentProcessError",
       "contract": "rust-values-qualified",
       "evidenceIds": [
         "test:public-compatibility"
