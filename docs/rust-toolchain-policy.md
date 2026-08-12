@@ -112,6 +112,10 @@ review. The admission command rejects stale input, a different Cargo/rustc pair,
 tree, unknown or extra evidence files, unknown evidence fields, and same-version checksum changes.
 Rerun the minimum and current reviewed-graph lanes before accepting the new baseline.
 
+A new compatibility case is a complete dependency graph, not only a new policy entry. Its
+classification lists every lock package, normalized package, graph node, dependency edge, feature,
+checksum, and declared Rust version. The reviewer can therefore inspect every new authority fact.
+
 The recorded digest binds admission to the files that an operator reviewed. It is not a signature
 and does not prove which machine produced those files. The review must therefore inspect the
 observer output and retain the workflow or local-run evidence that produced the digest.
@@ -121,6 +125,10 @@ holds the publication lock. It first writes a complete candidate directory and a
 It then renames the old baseline and installs the candidate. The next reader uses the journal and
 the directories that exist to finish or undo an interrupted publication. Focused tests interrupt
 the transaction before the first rename, between the two renames, and after the second rename.
+Stale-lock recovery uses a separate short-lived reclaim lock. This prevents two processes that saw
+the same dead owner from deleting each other's new live lock. If its owner stops, the next command
+also stops. It tells the operator to inspect the reclaim lock. The command does not guess that
+removal is safe.
 
 The current-stable CI job also compiles representative generated crates with the reviewed lock.
 The wrapper accepts only the exact `check` and Clippy commands used by that job. It compares the

@@ -465,9 +465,70 @@ function publicationPaths(root) {
   const parent = path.dirname(root)
   return {
     lock: path.join(parent, `.fresh-cargo-${scope}.lock`),
+    reclaimLock: path.join(parent, `.fresh-cargo-${scope}.reclaim.lock`),
     journal: path.join(parent, `.fresh-cargo-${scope}.journal.json`),
     staged: path.join(parent, `.fresh-cargo-${scope}.staged`),
     previous: path.join(parent, `.fresh-cargo-${scope}.previous`)
+  }
+}
+
+function createOwnedLock(lockPath) {
+  const token = crypto.randomBytes(16).toString('hex')
+  let fd = null
+  try {
+    fd = fs.openSync(lockPath, 'wx', 0o600)
+    fs.writeFileSync(fd, jsonBytes({ schemaVersion: 2, pid: process.pid, token }))
+    fs.fsyncSync(fd)
+    return { fd, path: lockPath, token }
+  } catch (error) {
+    if (fd != null) {
+      fs.closeSync(fd)
+      fs.rmSync(lockPath, { force: true })
+    }
+    throw error
+  }
+}
+
+function readLockOwner(lockPath) {
+  const owner = readJson(lockPath, 'Cargo baseline publication lock', 'FCR204_PUBLICATION_BUSY')
+  const keys = owner != null && owner.schemaVersion === 1
+    ? ['schemaVersion', 'pid']
+    : ['schemaVersion', 'pid', 'token']
+  assertExactObject(owner, keys, 'Cargo baseline publication lock', 'FCR204_PUBLICATION_BUSY')
+  if (![1, 2].includes(owner.schemaVersion) || !Number.isInteger(owner.pid) || owner.pid < 1
+    || (owner.schemaVersion === 2 && (typeof owner.token !== 'string' || !/^[0-9a-f]{32}$/.test(owner.token)))) {
+    fail('FCR204_PUBLICATION_BUSY', 'the Cargo baseline publication lock is invalid; inspect it before removal')
+  }
+  return owner
+}
+
+function releaseOwnedLock(lock) {
+  let owner = null
+  try {
+    owner = readLockOwner(lock.path)
+  } catch (error) {
+    fs.closeSync(lock.fd)
+    throw error
+  }
+  if (owner.token !== lock.token || owner.pid !== process.pid) {
+    fs.closeSync(lock.fd)
+    fail('FCR204_PUBLICATION_BUSY', 'the Cargo baseline publication lock changed while it was held')
+  }
+  fs.closeSync(lock.fd)
+  fs.rmSync(lock.path)
+}
+
+function acquireReclaimLock(paths, deadline) {
+  while (true) {
+    try {
+      return createOwnedLock(paths.reclaimLock)
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error
+      if (Date.now() >= deadline) {
+        fail('FCR204_PUBLICATION_BUSY', 'stale-lock recovery is busy or interrupted; inspect the reclaim lock before removal')
+      }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50)
+    }
   }
 }
 
@@ -486,21 +547,39 @@ function acquirePublicationLock(root) {
   const deadline = Date.now() + 10000
   while (true) {
     try {
-      const fd = fs.openSync(paths.lock, 'wx', 0o600)
-      fs.writeFileSync(fd, jsonBytes({ schemaVersion: 1, pid: process.pid }))
-      return { fd, path: paths.lock }
+      return createOwnedLock(paths.lock)
     } catch (error) {
       if (error.code !== 'EEXIST') throw error
       let owner = null
       try {
-        owner = readJson(paths.lock, 'Cargo baseline publication lock')
+        owner = readLockOwner(paths.lock)
       } catch (_error) {
         if (Date.now() >= deadline) fail('FCR204_PUBLICATION_BUSY', 'the Cargo baseline publication lock is unreadable; inspect it before removal')
         Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50)
         continue
       }
       if (!processIsRunning(owner.pid)) {
-        fs.rmSync(paths.lock, { force: true })
+        const reclaimLock = acquireReclaimLock(paths, deadline)
+        let acquired = null
+        try {
+          let current = null
+          try {
+            current = readLockOwner(paths.lock)
+          } catch (readError) {
+            if (!fs.existsSync(paths.lock)) continue
+            throw readError
+          }
+          if (processIsRunning(current.pid)) continue
+          fs.rmSync(paths.lock)
+          try {
+            acquired = createOwnedLock(paths.lock)
+          } catch (createError) {
+            if (createError.code !== 'EEXIST') throw createError
+          }
+        } finally {
+          releaseOwnedLock(reclaimLock)
+        }
+        if (acquired != null) return acquired
         continue
       }
       if (Date.now() >= deadline) fail('FCR204_PUBLICATION_BUSY', 'another Cargo baseline operation holds the publication lock')
@@ -510,8 +589,7 @@ function acquirePublicationLock(root) {
 }
 
 function releasePublicationLock(lock) {
-  fs.closeSync(lock.fd)
-  fs.rmSync(lock.path, { force: true })
+  releaseOwnedLock(lock)
 }
 
 function recoverBaselinePublication(root) {
@@ -1121,6 +1199,92 @@ function classifyCase(entry, before, after, policy) {
   return changes
 }
 
+function classifyWholeCase(entry, artifact, direction) {
+  if (artifact == null) {
+    fail('FCR202_ADMISSION_UNCLASSIFIED_CHANGE', `${entry.id} has no complete Cargo artifact set to classify`)
+  }
+  const added = direction === 'added'
+  const oldValue = (value) => added ? null : value
+  const newValue = (value) => added ? value : null
+  const changes = [{
+    caseId: entry.id,
+    category: 'authority-input-changed',
+    subject: entry.id,
+    field: 'case',
+    old: oldValue({ contract: entry.contract, fixture: entry.fixture }),
+    new: newValue({ contract: entry.contract, fixture: entry.fixture })
+  }]
+  const lock = parseLock(artifact.lock)
+  changes.push({
+    caseId: entry.id,
+    category: 'lock-format',
+    subject: entry.id,
+    field: 'lockfileFormat',
+    old: oldValue(lock.format),
+    new: newValue(lock.format)
+  })
+  for (const pkg of [...lock.packages.values()].sort((left, right) => compareText(left.identity, right.identity))) {
+    changes.push({
+      caseId: entry.id,
+      category: added ? 'package-added' : 'package-removed',
+      subject: pkg.identity,
+      field: 'package',
+      old: oldValue(pkg),
+      new: newValue(pkg)
+    })
+  }
+  const metadata = parseJsonBytes(
+    artifact.metadata,
+    `${entry.id} ${added ? 'candidate' : 'reviewed'} metadata`,
+    'FCR202_ADMISSION_UNCLASSIFIED_CHANGE'
+  )
+  assertNormalizedMetadataShape(metadata, `${entry.id} ${added ? 'candidate' : 'reviewed'} metadata`)
+  for (const field of [
+    'schemaVersion', 'caseId', 'contract', 'fixture', 'minimumSupportedRust', 'resolverVersion',
+    'incompatibleRustVersions', 'rootPackage', 'workspaceMembers', 'workspaceDefaultMembers'
+  ]) {
+    changes.push({
+      caseId: entry.id,
+      category: field.startsWith('workspace') || field === 'rootPackage'
+        ? 'topology-changed'
+        : 'authority-input-changed',
+      subject: entry.id,
+      field,
+      old: oldValue(metadata[field]),
+      new: newValue(metadata[field])
+    })
+  }
+  changes.push({
+    caseId: entry.id,
+    category: 'topology-changed',
+    subject: entry.id,
+    field: 'resolvedGraph.root',
+    old: oldValue(metadata.resolvedGraph.root),
+    new: newValue(metadata.resolvedGraph.root)
+  })
+  for (const pkg of metadata.packages) {
+    changes.push({
+      caseId: entry.id,
+      category: added ? 'metadata-package-added' : 'metadata-package-removed',
+      subject: pkg.id,
+      field: 'package',
+      old: oldValue(pkg),
+      new: newValue(pkg)
+    })
+  }
+  for (const node of metadata.resolvedGraph.nodes) {
+    changes.push({
+      caseId: entry.id,
+      category: added ? 'topology-node-added' : 'topology-node-removed',
+      subject: node.id,
+      field: 'node',
+      old: oldValue(node),
+      new: newValue(node)
+    })
+  }
+  return changes
+}
+
 function classifyArtifacts(policy, baselineArtifacts, candidateArtifacts, options = {}) {
   const baselinePolicy = options.baselinePolicy || policy
   const baselineEntries = new Map(baselinePolicy.dependencyResolution.cases.map((entry) => [entry.id, entry]))
@@ -1130,25 +1294,11 @@ function classifyArtifacts(policy, baselineArtifacts, candidateArtifacts, option
     const beforeEntry = baselineEntries.get(id)
     const afterEntry = currentEntries.get(id)
     if (beforeEntry == null) {
-      changes.push({
-        caseId: id,
-        category: 'authority-input-changed',
-        subject: id,
-        field: 'case',
-        old: null,
-        new: { contract: afterEntry.contract, fixture: afterEntry.fixture }
-      })
+      changes.push(...classifyWholeCase(afterEntry, candidateArtifacts.get(id), 'added'))
       continue
     }
     if (afterEntry == null) {
-      changes.push({
-        caseId: id,
-        category: 'authority-input-changed',
-        subject: id,
-        field: 'case',
-        old: { contract: beforeEntry.contract, fixture: beforeEntry.fixture },
-        new: null
-      })
+      changes.push(...classifyWholeCase(beforeEntry, baselineArtifacts.get(id), 'removed'))
       continue
     }
     changes.push(...classifyCase(afterEntry, baselineArtifacts.get(id), candidateArtifacts.get(id), policy))
@@ -1740,6 +1890,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  acquirePublicationLock,
   assertNoAncestorCargoConfiguration,
   assertControlledEnvironment,
   assertCandidateFileInventory,
@@ -1757,6 +1908,7 @@ module.exports = {
   ownedOutputDirectory,
   publicationPaths,
   recoverBaselinePublication,
+  releasePublicationLock,
   resolutionInputDigest,
   safeOutputDirectory,
   selectToolchainCommands,

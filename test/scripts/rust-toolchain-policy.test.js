@@ -11,6 +11,7 @@ const repoRoot = path.resolve(__dirname, '..', '..')
 const checker = path.join(repoRoot, 'scripts', 'ci', 'rust-toolchain-policy.js')
 const freshResolutionChecker = path.join(repoRoot, 'scripts', 'ci', 'fresh-cargo-resolution.js')
 const reviewedGeneratedCargo = path.join(repoRoot, 'scripts', 'ci', 'run-reviewed-generated-cargo.js')
+const publicationLockRaceFixture = path.join(repoRoot, 'test', 'fixtures', 'fresh-cargo-publication-lock-race.js')
 const manifestPath = path.join(repoRoot, 'rust-toolchain-policy.json')
 const freshResolutionBaselinePath = path.join(repoRoot, 'test', 'compatibility-baselines', 'fresh-cargo-resolution', 'manifest.json')
 const freshResolutionApi = require(freshResolutionChecker)
@@ -232,6 +233,74 @@ function main() {
   const checksumClassification = freshResolutionApi.classifyArtifacts(canonical, baselineArtifacts, checksumCandidate)
   assert.strictEqual(checksumClassification.admissible, false, 'a checksum change for one package identity must fail closed')
   assert(checksumClassification.changes.some((change) => change.category === 'package-checksum-changed'))
+
+  const addedCasePolicy = structuredClone(canonical)
+  const systemsCase = canonical.dependencyResolution.cases.find((entry) => entry.id === 'systems')
+  const addedCase = {
+    id: 'new-sensitive-case',
+    contract: 'new reviewed compatibility surface',
+    fixture: systemsCase.fixture
+  }
+  addedCasePolicy.dependencyResolution.cases.push(addedCase)
+  const addedCaseMetadata = JSON.parse(baselineArtifacts.get('systems').metadata)
+  addedCaseMetadata.caseId = addedCase.id
+  addedCaseMetadata.contract = addedCase.contract
+  addedCaseMetadata.fixture = addedCase.fixture
+  const addedCaseCandidates = new Map([...baselineArtifacts].map(([id, artifact]) => [id, {
+    lock: Buffer.from(artifact.lock),
+    metadata: Buffer.from(artifact.metadata)
+  }]))
+  addedCaseCandidates.set(addedCase.id, {
+    lock: Buffer.from(baselineArtifacts.get('systems').lock),
+    metadata: jsonBytes(addedCaseMetadata)
+  })
+  const addedCaseClassification = freshResolutionApi.classifyArtifacts(
+    addedCasePolicy,
+    baselineArtifacts,
+    addedCaseCandidates,
+    { baselinePolicy: canonical }
+  )
+  assert.strictEqual(addedCaseClassification.admissible, true)
+  const addedLockPackages = addedCaseClassification.changes.filter((change) => change.caseId === addedCase.id
+    && change.category === 'package-added')
+  const expectedLockPackageCount = baselineArtifacts.get('systems').lock.toString('utf8')
+    .split(/^\[\[package\]\]\s*$/m).length - 1
+  assert.strictEqual(addedLockPackages.length, expectedLockPackageCount)
+  assert(addedLockPackages.every((change) => change.new != null
+    && Object.hasOwn(change.new, 'checksum') && Array.isArray(change.new.dependencies)),
+  'a new case must list every Cargo.lock package, including checksum and dependency facts')
+  const addedMetadataPackages = addedCaseClassification.changes.filter((change) => change.caseId === addedCase.id
+    && change.category === 'metadata-package-added')
+  assert.strictEqual(addedMetadataPackages.length, addedCaseMetadata.packages.length)
+  assert(addedMetadataPackages.every((change) => change.new != null
+    && Object.hasOwn(change.new, 'rustVersion') && Array.isArray(change.new.enabledFeatures)
+    && Array.isArray(change.new.dependencies)),
+  'a new case must list every normalized package with MSRV, features, and declared dependencies')
+  const addedNodes = addedCaseClassification.changes.filter((change) => change.caseId === addedCase.id
+    && change.category === 'topology-node-added')
+  assert.strictEqual(addedNodes.length, addedCaseMetadata.resolvedGraph.nodes.length)
+  assert(addedNodes.every((change) => change.new != null
+    && Array.isArray(change.new.enabledFeatures) && Array.isArray(change.new.dependencies)),
+  'a new case must list every resolved node, feature set, and graph edge')
+  assert(addedCaseClassification.changes.some((change) => change.caseId === addedCase.id
+    && change.field === 'resolvedGraph.root' && change.new === addedCaseMetadata.resolvedGraph.root),
+  'a new case must list the root of the resolved dependency graph')
+  const removedCasePolicy = structuredClone(addedCasePolicy)
+  removedCasePolicy.dependencyResolution.cases = removedCasePolicy.dependencyResolution.cases
+    .filter((entry) => entry.id !== addedCase.id)
+  const removedCaseClassification = freshResolutionApi.classifyArtifacts(
+    removedCasePolicy,
+    addedCaseCandidates,
+    baselineArtifacts,
+    { baselinePolicy: addedCasePolicy }
+  )
+  assert.strictEqual(removedCaseClassification.admissible, true)
+  assert.strictEqual(removedCaseClassification.changes.filter((change) => change.caseId === addedCase.id
+    && change.category === 'package-removed').length, expectedLockPackageCount)
+  assert.strictEqual(removedCaseClassification.changes.filter((change) => change.caseId === addedCase.id
+    && change.category === 'metadata-package-removed').length, addedCaseMetadata.packages.length)
+  assert.strictEqual(removedCaseClassification.changes.filter((change) => change.caseId === addedCase.id
+    && change.category === 'topology-node-removed').length, addedCaseMetadata.resolvedGraph.nodes.length)
 
   const versionMetadataCandidate = new Map([...baselineArtifacts].map(([id, artifact]) => [id, {
     lock: Buffer.from(artifact.lock),
@@ -576,9 +645,73 @@ function main() {
       fs.rmSync(interruptedBaselineRoot, { recursive: true, force: true })
       fs.rmSync(paths.journal, { force: true })
       fs.rmSync(paths.lock, { force: true })
+      fs.rmSync(paths.reclaimLock, { force: true })
       fs.rmSync(paths.previous, { recursive: true, force: true })
       fs.rmSync(paths.staged, { recursive: true, force: true })
     }
+  }
+
+  const publicationRaceRoot = path.join(cacheRoot, 'fresh-cargo-publication-lock-race-baseline')
+  const publicationRace = cp.spawnSync(process.execPath, [
+    publicationLockRaceFixture,
+    freshResolutionChecker,
+    publicationRaceRoot
+  ], { cwd: repoRoot, encoding: 'utf8', timeout: 30000 })
+  const publicationRacePaths = freshResolutionApi.publicationPaths(publicationRaceRoot)
+  try {
+    assert.strictEqual(
+      publicationRace.status,
+      0,
+      publicationRace.stderr || publicationRace.stdout || 'stale-lock race fixture failed'
+    )
+    assert.match(publicationRace.stdout, /stale-lock race serialized/)
+  } finally {
+    fs.rmSync(`${publicationRaceRoot}.barrier`, { recursive: true, force: true })
+    fs.rmSync(`${publicationRaceRoot}.critical`, { force: true })
+    fs.rmSync(publicationRacePaths.lock, { force: true })
+    fs.rmSync(publicationRacePaths.reclaimLock, { force: true })
+  }
+
+  const interruptedReclaimRoot = path.join(cacheRoot, 'fresh-cargo-interrupted-reclaim-baseline')
+  const interruptedReclaimPaths = freshResolutionApi.publicationPaths(interruptedReclaimRoot)
+  const originalNow = Date.now
+  let nowCalls = 0
+  try {
+    fs.writeFileSync(interruptedReclaimPaths.lock,
+      jsonBytes({ schemaVersion: 1, pid: 2147483647 }))
+    fs.writeFileSync(interruptedReclaimPaths.reclaimLock,
+      jsonBytes({ schemaVersion: 2, pid: 2147483647, token: '0'.repeat(32) }))
+    const startedAt = originalNow()
+    Date.now = () => nowCalls++ === 0 ? startedAt : startedAt + 10001
+    assert.throws(
+      () => freshResolutionApi.acquirePublicationLock(interruptedReclaimRoot),
+      /FCR204_PUBLICATION_BUSY.*stale-lock recovery is busy or interrupted/,
+      'an interrupted reclaim must require operator inspection instead of guessing that removal is safe'
+    )
+  } finally {
+    Date.now = originalNow
+    fs.rmSync(interruptedReclaimPaths.lock, { force: true })
+    fs.rmSync(interruptedReclaimPaths.reclaimLock, { force: true })
+  }
+
+  const malformedLockRoot = path.join(cacheRoot, 'fresh-cargo-malformed-lock-baseline')
+  const malformedLockPaths = freshResolutionApi.publicationPaths(malformedLockRoot)
+  const malformedNow = Date.now
+  let malformedNowCalls = 0
+  try {
+    fs.writeFileSync(malformedLockPaths.lock, jsonBytes({ schemaVersion: 2, pid: 2147483647 }))
+    const startedAt = malformedNow()
+    Date.now = () => malformedNowCalls++ === 0 ? startedAt : startedAt + 10001
+    assert.throws(
+      () => freshResolutionApi.acquirePublicationLock(malformedLockRoot),
+      /FCR204_PUBLICATION_BUSY.*unreadable; inspect it before removal/,
+      'a malformed lock must require operator inspection instead of stale-lock removal'
+    )
+    assert.strictEqual(fs.existsSync(malformedLockPaths.lock), true)
+  } finally {
+    Date.now = malformedNow
+    fs.rmSync(malformedLockPaths.lock, { force: true })
+    fs.rmSync(malformedLockPaths.reclaimLock, { force: true })
   }
 
   const reviewedBaselineAcrossCurrentChange = freshResolutionApi.checkBaseline(canonical, {
