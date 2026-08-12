@@ -206,6 +206,21 @@ function main() {
     { PATH: '/usr/bin', HTTPS_PROXY: 'http://proxy.invalid' },
     'Cargo evidence must inherit only operating essentials and approved transport settings'
   )
+  const controlledToolchainEnvironment = freshResolutionApi.cargoEnvironment(
+    '/private/cargo-home',
+    '/private/target',
+    { rustc: '/toolchains/current/bin/rustc', sysroot: '/toolchains/current' }
+  )
+  assert.strictEqual(
+    controlledToolchainEnvironment.PATH.split(path.delimiter)[0],
+    '/toolchains/current/bin',
+    'Cargo subcommands such as clippy must resolve from the selected Cargo and rustc toolchain'
+  )
+  assert.strictEqual(
+    controlledToolchainEnvironment.RUSTC,
+    '/toolchains/current/bin/rustc',
+    'the controlled Cargo environment must use the exact selected rustc'
+  )
 
   const cargoConfigRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'fresh-cargo-ancestor-config-'))
   try {

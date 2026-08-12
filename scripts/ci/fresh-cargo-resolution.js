@@ -342,8 +342,11 @@ function normalizeMetadata(raw, entry, policy, options = {}) {
 
 function cargoEnvironment(cargoHome, targetDir, toolchain) {
   const environment = controlledCargoEnvironment()
+  const toolchainBin = path.join(toolchain.sysroot, 'bin')
+  const ambientPath = environment.PATH || ''
   return {
     ...environment,
+    PATH: ambientPath === '' ? toolchainBin : `${toolchainBin}${path.delimiter}${ambientPath}`,
     HOME: path.dirname(cargoHome),
     USERPROFILE: path.dirname(cargoHome),
     TMPDIR: path.dirname(cargoHome),

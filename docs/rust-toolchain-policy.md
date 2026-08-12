@@ -137,7 +137,9 @@ reviewed lock, and runs Cargo with `--frozen`. This check can still download mis
 bytes. It does not let the live registry select different dependency versions.
 
 The commands use `rustc --print sysroot` to select Cargo and rustc from one installation. If you set
-`RUSTC_BIN` or `CARGO_BIN`, set both to sibling binaries from that sysroot. The evidence runner uses
+`RUSTC_BIN` or `CARGO_BIN`, set both to sibling binaries from that sysroot. The selected sysroot's
+`bin` directory comes first in the controlled `PATH`, so Cargo subcommands such as `clippy` cannot
+fall back to another rustup installation. The evidence runner uses
 an isolated Cargo home and rejects registry/source replacements, offline mode, target overrides,
 compiler or rustdoc overrides, Rust/rustdoc flags, and Cargo profile overrides. Proxy and
 certificate settings can stay because they change transport, not dependency identity. The CI value
