@@ -120,6 +120,13 @@ fn validated_bytes(values: Vec<i32>) -> Result<Vec<u8>, CurrentProcessError> {
 
 #[cfg(test)]
 mod tests {
+    const EXPECTED_ONE_MIB: usize = 1_048_576;
+
+    #[test]
+    fn transfer_limit_is_exactly_one_mibibyte() {
+        assert_eq!(super::MAX_CHUNK_BYTES, EXPECTED_ONE_MIB);
+    }
+
     #[test]
     fn error_predicates_are_exact_and_disjoint() {
         let cases = [
@@ -158,25 +165,22 @@ mod tests {
     #[test]
     fn byte_payload_accepts_the_exact_limit_and_rejects_one_more() {
         assert_eq!(
-            super::validated_bytes(vec![0; super::MAX_CHUNK_BYTES])
+            super::validated_bytes(vec![0; EXPECTED_ONE_MIB])
                 .expect("exact byte limit must be accepted")
                 .len(),
-            super::MAX_CHUNK_BYTES
+            EXPECTED_ONE_MIB
         );
         assert!(matches!(
-            super::validated_bytes(vec![0; super::MAX_CHUNK_BYTES + 1]),
+            super::validated_bytes(vec![0; EXPECTED_ONE_MIB + 1]),
             Err(error) if error.is_invalid_input()
         ));
     }
 
     #[test]
     fn utf8_diagnostic_accepts_the_exact_limit_and_rejects_one_more() {
-        assert!(
-            super::CurrentProcess::validate_stderr_utf8(&"x".repeat(super::MAX_CHUNK_BYTES))
-                .is_ok()
-        );
+        assert!(super::CurrentProcess::validate_stderr_utf8(&"x".repeat(EXPECTED_ONE_MIB)).is_ok());
         assert!(matches!(
-            super::CurrentProcess::validate_stderr_utf8(&"x".repeat(super::MAX_CHUNK_BYTES + 1)),
+            super::CurrentProcess::validate_stderr_utf8(&"x".repeat(EXPECTED_ONE_MIB + 1)),
             Err(error) if error.is_invalid_input()
         ));
     }
@@ -184,12 +188,12 @@ mod tests {
     #[test]
     fn stdin_read_size_accepts_the_exact_limit_and_rejects_one_more() {
         assert_eq!(
-            super::CurrentProcess::validate_read_size(super::MAX_CHUNK_BYTES as i32)
+            super::CurrentProcess::validate_read_size(EXPECTED_ONE_MIB as i32)
                 .expect("exact read limit must be accepted"),
-            super::MAX_CHUNK_BYTES
+            EXPECTED_ONE_MIB
         );
         assert!(matches!(
-            super::CurrentProcess::validate_read_size((super::MAX_CHUNK_BYTES + 1) as i32),
+            super::CurrentProcess::validate_read_size((EXPECTED_ONE_MIB + 1) as i32),
             Err(error) if error.is_invalid_input()
         ));
     }
