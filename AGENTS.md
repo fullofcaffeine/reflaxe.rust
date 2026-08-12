@@ -939,6 +939,7 @@ Agent policy:
 - The generated Cargo crate emits a minimal `.gitignore` by default (opt-out: `-D rust_no_gitignore`).
 - Codegen-only: add `-D rust_no_build` (alias: `-D rust_codegen_only`).
 - Deny warnings (opt-in): add `-D rust_deny_warnings` to emit `#![deny(warnings)]` in the generated crate root.
+- Forbid unsafe Rust (opt-in): add `-D rust_forbid_unsafe` to emit `#![forbid(unsafe_code)]` in the generated crate root.
 - Release: add `-D rust_build_release` / `-D rust_release`.
 - Optional target triple: `-D rust_target=x86_64-unknown-linux-gnu` (passed to `cargo build --target ...`).
 - Cargo/tooling knobs (for parity with other targets’ tool scaffolding):

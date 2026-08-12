@@ -235,7 +235,9 @@ optional cwd, env, and stdin settings. Use the `Detailed` command/output methods
 `rust.process.CommandError` when recovery needs typed IO/stdin/UTF-8 error categories instead of
 String-only diagnostics. Use `rust.process.CommandChild` only for the narrow no-hxrt lifecycle
 case: spawn from a `CommandSpec`, write and close one stdin payload, wait, or kill and wait.
-It is not a live `sys.io.Process` stream/shell/async replacement.
+Use `rust.process.CurrentProcess` for bounded binary stdin/stdout and one UTF-8 stderr diagnostic in
+a small protocol helper. It validates byte values, flushes writes, and returns closed typed errors.
+These facades are not a live `sys.io.Process` stream, shell, or async replacement.
 For networking, `rust.net.NativeTcp` is a narrow blocking localhost TCP proof with typed
 `TcpListener` / `TcpStream` wrappers, and `rust.net.NativeUdp` is a narrow blocking localhost
 datagram proof with a typed `UdpSocket` wrapper. The TCP facade supports UTF-8 streams and

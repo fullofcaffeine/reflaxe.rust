@@ -222,6 +222,24 @@
       "codeLineBudget": 30
     },
     {
+      "path": "std/rust/native/current_process_tools.rs",
+      "ownerFacades": ["rust.process.CurrentProcess", "rust.process.CurrentProcessError"],
+      "classification": "permanent-native-facade",
+      "runtimeContract": "no-hxrt",
+      "whyNotLoweringToday": "The helper owns temporary standard-stream locks, checked byte conversion, exact write and flush behavior, process argument inspection, and diverging process exit. Current Haxe externs cannot express this complete std::io lifecycle as direct calls without a native facade.",
+      "allowedUsePrefixes": ["std::io"],
+      "allowedDependencyPrefixes": ["std::env", "std::io", "std::process"],
+      "allowedRuntimeDependencies": [],
+      "forbiddenGrowth": [
+        "portable sys.io stream semantics",
+        "reusable or global standard-stream handles",
+        "files, environment mutation, or shell execution",
+        "raw OS error messages or platform error codes"
+      ],
+      "evidenceOwner": "test/positive/metal_no_hxrt_current_process, test/positive/metal_no_hxrt_current_process_error_only, and scripts/ci/check-metal-policy.sh current-process binary IO cases",
+      "codeLineBudget": 180
+    },
+    {
       "path": "std/rust/native/native_process_tools.rs",
       "ownerFacades": ["rust.process.NativeCommands", "rust.process.CommandSpec", "rust.process.CommandChild", "rust.process.CommandOutput", "rust.process.CommandError", "rust.process.CommandEnv"],
       "classification": "permanent-native-facade",

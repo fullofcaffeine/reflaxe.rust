@@ -16,6 +16,40 @@ Tracker anchor: `haxe.rust-oo3.74` ("Milestone 42 - Metal as haxified Rust").
 
 This is not "portable Haxe plus a few Rust APIs." It is the explicit Rust-native authoring lane.
 
+### Capability parity
+
+Metal aims to support the work that a Rust author can do. It does not aim to copy each Rust token
+into Haxe syntax.
+
+Ordinary Haxe syntax owns the common case. Typed metadata, macros, and scoped callback APIs add
+Rust facts that Haxe cannot express directly. These facts include borrow regions, trait bounds,
+native ownership, and deterministic resource release.
+
+Some Rust libraries require exact lifetime forms, const generics, macros, or contained `unsafe`
+code. A small native module owns those details. A typed Haxe facade exposes the safe and useful
+contract. This design keeps access to the full Rust ecosystem without adding raw Rust to application
+code.
+
+`rustc` remains the final authority for ownership, borrowing, lifetimes, traits, and safety. Haxe
+diagnostics give earlier and more relevant errors where the typed source contains enough facts.
+
+### Generated Rust quality contract
+
+Generated Rust is a code-review surface. Metal output must use direct Rust types and standard-library
+operations when they preserve the source contract.
+
+The generated crate must have these properties for an admitted Metal feature:
+
+- Rust ownership and borrow rules remain visible to `rustc`.
+- Names, modules, control flow, and error types remain understandable to a Rust reader.
+- Resource release follows clear Rust scopes and RAII behavior.
+- The compiler does not add avoidable clones, allocations, runtime wrappers, or type erasure.
+- `rustfmt`, warnings, Clippy, output-shape checks, and runtime fixtures protect the reviewed form.
+- A safe-only application can enable `rust_forbid_unsafe` for the complete generated crate.
+
+If a feature cannot meet this contract, keep it unsupported or use a documented native facade. Do
+not hide the gap with `Dynamic`, raw code injection, or generated-text repair.
+
 ## Capability-Driven Portable Facades
 
 A later layer can support cross-target development without adding a third profile: portable-shaped
