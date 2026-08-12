@@ -171,6 +171,15 @@ function main() {
     () => freshResolutionApi.assertControlledEnvironment({ CARGO_HOME: '/ambient/cache' }),
     'the evidence runner replaces an ambient Cargo home with an isolated directory'
   )
+  assert.doesNotThrow(
+    () => freshResolutionApi.assertControlledEnvironment({ CARGO_INCREMENTAL: '0' }),
+    'incremental compilation does not select dependencies and the evidence runner does not inherit it'
+  )
+  assert.throws(
+    () => freshResolutionApi.assertControlledEnvironment({ CARGO_INCREMENTAL: '1' }),
+    /FCR011_UNCONTROLLED_ENVIRONMENT.*CARGO_INCREMENTAL/,
+    'dependency evidence must reject an ambient request to enable incremental compiler state'
+  )
   assert.throws(
     () => freshResolutionApi.assertControlledEnvironment({ CARGO_PROFILE_RELEASE_LTO: 'true' }),
     /FCR011_UNCONTROLLED_ENVIRONMENT.*CARGO_PROFILE_RELEASE_LTO/,
@@ -190,6 +199,7 @@ function main() {
     freshResolutionApi.controlledCargoEnvironment({
       PATH: '/usr/bin',
       HTTPS_PROXY: 'http://proxy.invalid',
+      CARGO_INCREMENTAL: '0',
       CC: '/tmp/unreviewed-compiler',
       GIT_CONFIG_GLOBAL: '/tmp/unreviewed-git-config'
     }),

@@ -208,7 +208,7 @@ function loadSelectedToolchain(options = {}) {
 }
 
 const prohibitedEnvironmentExact = new Set([
-  'CARGO_NET_OFFLINE', 'CARGO_BUILD_TARGET', 'CARGO_ENCODED_RUSTFLAGS', 'CARGO_INCREMENTAL',
+  'CARGO_NET_OFFLINE', 'CARGO_BUILD_TARGET', 'CARGO_ENCODED_RUSTFLAGS',
   'CARGO_ENCODED_RUSTDOCFLAGS', 'RUSTC_BOOTSTRAP', 'RUSTFLAGS', 'RUSTC_WRAPPER',
   'RUSTC_WORKSPACE_WRAPPER', 'RUSTDOC', 'RUSTDOCFLAGS'
 ])
@@ -227,13 +227,14 @@ const operatingEnvironment = new Set([
   'WINDIR'
 ])
 
-function environmentAffectsResolutionOrBuild(name) {
-  return prohibitedEnvironmentExact.has(name)
+function environmentAffectsResolutionOrBuild(name, value) {
+  return (name === 'CARGO_INCREMENTAL' && value !== '0')
+    || prohibitedEnvironmentExact.has(name)
     || /^CARGO_(BUILD|PROFILE|REGISTRIES|REGISTRY|SOURCE|TARGET)_/.test(name)
 }
 
 function assertControlledEnvironment(environment = process.env) {
-  const bad = Object.keys(environment).filter(environmentAffectsResolutionOrBuild)
+  const bad = Object.keys(environment).filter((name) => environmentAffectsResolutionOrBuild(name, environment[name]))
   if (bad.length > 0) fail('FCR011_UNCONTROLLED_ENVIRONMENT', `unset resolution-affecting environment variable(s): ${bad.sort(compareText).join(', ')}`)
 }
 

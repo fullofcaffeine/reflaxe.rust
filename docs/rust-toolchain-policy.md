@@ -140,7 +140,10 @@ The commands use `rustc --print sysroot` to select Cargo and rustc from one inst
 `RUSTC_BIN` or `CARGO_BIN`, set both to sibling binaries from that sysroot. The evidence runner uses
 an isolated Cargo home and rejects registry/source replacements, offline mode, target overrides,
 compiler or rustdoc overrides, Rust/rustdoc flags, and Cargo profile overrides. Proxy and
-certificate settings can stay because they change transport, not dependency identity.
+certificate settings can stay because they change transport, not dependency identity. The CI value
+`CARGO_INCREMENTAL=0` is accepted and then removed: it disables compiler caching, does not select
+dependencies, and is not passed into the evidence command's controlled Cargo environment. Other
+values remain rejected.
 
 Use `npm run toolchain:sync` only after reviewing a policy change. Generated consumers must not be
 edited independently.
