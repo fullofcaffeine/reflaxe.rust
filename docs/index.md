@@ -51,7 +51,8 @@ the latest immutable GitHub Release for the exact current version.
 - [Metal systems facades roadmap](metal-systems-facades-roadmap.md): active plan for Rust-native file/process/socket/TLS/DB facades and no-hxrt proof.
 - [Metal typed DSL authority](metal-typed-dsl-authority.md): rules for admitting typed DSLs and containing `rust.metal.Code`.
 - [Metal trait, impl, and bound model](metal-trait-impl-bound-model.md): current trait-facing surfaces and missing typed Rust trait shapes.
-- [Extern and lifetime-island cookbook](extern-lifetime-island-cookbook.md): typed facade pattern for Rust APIs with lifetimes, HRTB, const generics, macro setup, or contained unsafe internals.
+- [Extern and lifetime-island cookbook](extern-lifetime-island-cookbook.md): typed facade pattern for lifetime-heavy safe Rust helpers and guidance for a separate unsafe boundary.
+- [Typed Rust support-crate facility](support-crate-facility.md): reserved `@:rustSupportCrate` contract for a separate, content-bound Rust library with bounded unsafe authority.
 - [Native facade helper policy](native-facade-policy.md) and [manifest](native-facade-manifest.json): taxonomy, machine-checkable inventory, and guardrails for `std/rust/native/*.rs` typed helper modules so they do not become a second runtime.
 - [Native wrapper facility spike](native-wrapper-facility-spike.md): reserved `@:rustNativeWrapper` metadata, candidate generated Rust shape, and migration criteria for simple value-wrapper helpers.
 - [RAII guard and lifetime-island rules](raii-guard-lifetime-islands.md): when to expose guards as scoped callbacks versus typed Rust islands.

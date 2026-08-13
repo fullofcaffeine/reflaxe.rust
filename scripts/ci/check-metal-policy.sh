@@ -3098,6 +3098,16 @@ run_negative_case "test/negative/profile_removed_rusty" 'Unknown `-D reflaxe_rus
 	'rusty profile selector removed'
 run_negative_case "test/negative/native_wrapper_reserved_metadata" '`@:rustNativeWrapper` is reserved for the native wrapper facility spike and is not enabled as product metadata\.' \
 	'reserved native wrapper metadata is rejected'
+run_negative_case "test/negative/support_crate_reserved_metadata" '`@:rustSupportCrate` is reserved for the typed support-crate facility and is not enabled as product metadata\.' \
+	'reserved support crate metadata is rejected'
+run_negative_case "test/negative/support_crate_reserved_field_metadata" '`@:rustSupportCrate` is reserved for the typed support-crate facility and is not enabled as product metadata\.' \
+	'reserved support crate field metadata is rejected'
+run_negative_case "test/negative/support_crate_reserved_typedef_field_metadata" '`@:rustSupportCrate` is reserved for the typed support-crate facility and is not enabled as product metadata\.' \
+	'reserved support crate anonymous typedef field metadata is rejected in portable mode'
+run_negative_case "test/negative/support_crate_reserved_abstract_field_metadata" '`@:rustSupportCrate` is reserved for the typed support-crate facility and is not enabled as product metadata\.' \
+	'reserved support crate abstract implementation field metadata is rejected'
+run_positive_compile_case "test/positive/support_crate_expression_metadata_ignored" \
+	'expression metadata discarded by Haxe cannot request a support crate'
 run_internal_helper_boundary_cases
 run_negative_case "test/negative/portable_native_import_strict" 'portable contract imported native target modules: rust\.Option' \
 	'portable native-target import strict mode rejects rust.* imports' \

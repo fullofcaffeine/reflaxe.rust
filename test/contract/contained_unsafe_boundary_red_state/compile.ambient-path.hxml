@@ -1,0 +1,9 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_profile=metal
+-D rust_no_hxrt
+-D rust_forbid_unsafe
+-D rust_deny_warnings
+-D rust_cargo_subcommand=check
+-D rust_output=out_ambient
+-main AmbientMain

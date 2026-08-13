@@ -37469,6 +37469,15 @@
       ]
     },
     {
+      "name": "rustSupportCrate",
+      "contract": "metadata-reserved",
+      "grammar": "reserved typed support-crate declaration or field; typed application use rejected",
+      "default": "absent",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ]
+    },
+    {
       "name": "rustTest",
       "contract": "metadata-stable",
       "grammar": "marker, constant test name, or documented object form with serial defaulting to true",

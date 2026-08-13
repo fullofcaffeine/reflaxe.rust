@@ -55,7 +55,7 @@
   "callSites": [
     {
       "path": "src/reflaxe/rust/RustCompiler.hx",
-      "line": 10697,
+      "line": 10777,
       "enclosingFunction": "compileExpr",
       "factory": "targetCodeInjectionAt",
       "authorityId": "source-owned",
@@ -63,7 +63,7 @@
     },
     {
       "path": "src/reflaxe/rust/RustCompiler.hx",
-      "line": 10709,
+      "line": 10789,
       "enclosingFunction": "compileExpr",
       "factory": "targetCodeInjectionAt",
       "authorityId": "source-owned",
@@ -71,7 +71,7 @@
     },
     {
       "path": "src/reflaxe/rust/RustCompiler.hx",
-      "line": 17139,
+      "line": 17219,
       "enclosingFunction": "addSpec",
       "factory": "traitImplementationAt",
       "authorityId": "metadata-owned",

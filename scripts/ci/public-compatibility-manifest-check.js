@@ -61,6 +61,7 @@ const metadataPolicies = {
   rustNativeWrapper: ['reserved compiler marker; application use rejected', 'absent'],
   rustRepresentation: ['reserved compiler marker; application use rejected', 'absent'],
   rustReturn: ['compiler-recognized marker; no arguments', 'absent'],
+  rustSupportCrate: ['reserved typed support-crate declaration or field; typed application use rejected', 'absent'],
   rustTest: ['marker, constant test name, or documented object form with serial defaulting to true', 'absent']
 }
 

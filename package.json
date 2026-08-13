@@ -58,6 +58,7 @@
     "test:reflection-contract": "bash scripts/ci/check-reflection-contract.sh",
     "test:rust-toolchain-policy": "node test/scripts/rust-toolchain-policy.test.js",
     "test:rust-toolchain-floor": "bash scripts/ci/check-rust-toolchain-floor.sh",
+    "test:support-crate-boundary": "node test/scripts/support-crate-boundary.test.js",
     "test:fresh-cargo-resolution": "node scripts/ci/fresh-cargo-resolution.js --mode verify-reviewed --lane minimum --out-dir .cache/fresh-cargo-resolution/reviewed/minimum",
     "test:fresh-cargo-resolution:current": "node scripts/ci/fresh-cargo-resolution.js --mode verify-reviewed --lane current --out-dir .cache/fresh-cargo-resolution/reviewed/current",
     "fresh-cargo-resolution:observe": "node scripts/ci/fresh-cargo-resolution.js --mode observe-live --lane minimum --include-upper-edge --out-dir .cache/fresh-cargo-resolution/observation",
