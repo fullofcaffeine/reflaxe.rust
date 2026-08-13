@@ -453,6 +453,9 @@ run_policy_group() {
   run_stage "Rust toolchain minimum and generated Cargo contract" bash scripts/ci/check-rust-toolchain-floor.sh
   intermediate_cleanup "rust-toolchain-floor"
 
+  run_stage "contained unsafe support-crate red-state contract" npm run test:support-crate-boundary
+  intermediate_cleanup "support-crate-boundary"
+
   run_stage "reviewed Cargo dependency graph at the Rust floor" npm run test:fresh-cargo-resolution
   intermediate_cleanup "fresh-cargo-resolution"
 

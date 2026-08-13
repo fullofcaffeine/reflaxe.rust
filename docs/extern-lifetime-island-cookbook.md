@@ -2,7 +2,8 @@
 
 This cookbook shows the preferred pattern for Rust APIs that are valuable to metal code but too
 Rust-specific to model directly in Haxe signatures today: lifetimes, HRTB, const generics,
-associated types, macro-heavy setup, or tightly contained `unsafe`.
+associated types, or macro-heavy setup. It also explains the separate planned boundary for bounded
+unsafe code.
 
 ## The Rule
 
@@ -13,7 +14,6 @@ Use this shape when:
 
 - the Rust implementation needs explicit lifetimes or `for<'a>` bounds;
 - the API needs macro setup or const-generic details that would become stringly Haxe;
-- a safe public operation needs a small internal `unsafe` block;
 - exposing a 1:1 Rust signature would force Haxe users into awkward source just to satisfy the
   backend.
 
@@ -54,6 +54,14 @@ fn first_word_view<'a>(text: &'a str) -> &'a str {
 The Haxe surface returns an owned `String`. The Rust island uses the borrowed view internally and
 does not expose the lifetime parameter to Haxe.
 
+`@:rustExtraSrc` copies this module into the generated application crate. If that crate contains
+`#![forbid(unsafe_code)]`, the copied module cannot contain unsafe code.
+
+Use a separately reviewed Cargo crate when an implementation needs bounded unsafe code today. The
+planned [`@:rustSupportCrate` facility](support-crate-facility.md) will make that separate crate
+content-bound and packageable. The compiler currently reserves and rejects this metadata. Do not
+disable the application's unsafe prohibition to make a copied helper compile.
+
 ## Metadata Checklist
 
 - `@:native("crate::module::Type")` maps a Haxe extern class to the Rust module/type.
@@ -75,7 +83,9 @@ The Rust island should expose the smallest safe API that Haxe needs:
 - return owned values or compiler-supported borrowed tokens, not arbitrary borrowed references;
 - validate indices, nullability assumptions, encoding assumptions, and platform preconditions at the
   boundary;
-- keep panics and `unsafe` internals contained behind a safe function contract;
+- keep panics contained behind a safe function contract;
+- keep unsafe internals in a separately governed crate when the generated application forbids
+  unsafe code;
 - document any cost that the facade hides, such as allocation, clone, locking, or runtime handle use.
 
 If the natural Rust result is borrowed, either use a scoped callback API in Haxe or return an owned
@@ -89,8 +99,9 @@ inside typed extern islands unless a dedicated scoped Haxe facade exists.
 ## Cargo Tests
 
 For non-trivial islands, add Rust tests beside the helper module or in the generated crate fixture.
-The snapshot harness already runs `cargo build`; richer behavior should also run `cargo test` through
-an example or CI script when the island has parsing, unsafe code, or platform-sensitive behavior.
+The snapshot harness already runs `cargo build`. Richer behavior must also run `cargo test` through
+an example or CI script when the island has parsing or platform-sensitive behavior. A separate
+unsafe support crate also needs direct safety review and its own Cargo tests.
 
 ## Reference Fixture
 

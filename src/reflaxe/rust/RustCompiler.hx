@@ -2056,6 +2056,13 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	override public function onCompileStart() {
+		// Capture and release the complete typed graphs before any validation can
+		// abort this request. A warm compiler server must never retain a failed
+		// request's ClassField bodies for the next compilation.
+		var completeTypedModules = snapshotTypedModuleTypes();
+		typedModuleSnapshotByIdentity = [];
+		var capturedNoHxrtOperationsByIdentity = typedNoHxrtOperationsByIdentity;
+		typedNoHxrtOperationsByIdentity = [];
 		cachedMainClass = null;
 		cachedMainClassResolved = false;
 		// Reset cached class hierarchy info per compilation.
@@ -2099,8 +2106,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// Collect extra Rust sources declared via metadata (framework code can bring its own modules).
 		RustExtraSrcRegistry.collectFromContext();
 
-		// Keep the M94 wrapper-facility spike from silently becoming product metadata.
-		rejectReservedNativeWrapperMetadata();
+		// Keep reserved Rust facilities from silently becoming product metadata.
+		rejectReservedRustMetadata();
 
 		// Collect optional metal-lane declarations (`@:rustMetal` canonical, `@:haxeMetal` alias)
 		// for strict island checks in portable mode.
@@ -2171,7 +2178,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		// Capture representation-bearing expressions before Reflaxe extracts/consumes ClassField
 		// bodies. Later report and no-hxrt stages must reuse this exact typed snapshot.
-		var completeTypedModules = snapshotTypedModuleTypes();
 		if (completeTypedModules.length == 0)
 			completeTypedModules = Context.getAllModuleTypes();
 		// Borrow-only aliases must be rejected from the complete typed Haxe tree before Rust
@@ -2182,7 +2188,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var completeTypedModulePaths = snapshotTypedModulePaths(completeTypedModules);
 		var completeUserModules = userProjectModuleTypes(completeTypedModules);
 		for (moduleType in completeUserModules) {
-			var capturedOperations = typedNoHxrtOperationsByIdentity.get(moduleType.getUniqueId());
+			var capturedOperations = capturedNoHxrtOperationsByIdentity.get(moduleType.getUniqueId());
 			if (capturedOperations != null)
 				typedNoHxrtOperations = typedNoHxrtOperations.concat(capturedOperations);
 		}
@@ -2197,11 +2203,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				Context.defined("rust_allow_unresolved_monomorph_dynamic"), Context.defined("rust_allow_unmapped_coretype_dynamic"),
 				snapshotRepresentationDecisions(), snapshotRepresentationCoverage(), typedNoHxrtOperations.copy());
 		}
-		// Do not retain typed module graphs beyond the one phase that owns their complete bodies. This
-		// also lets a compilation-server reuse refill the callback map with fresh module references.
-		typedModuleSnapshotByIdentity = [];
-		typedNoHxrtOperationsByIdentity = [];
-
 		// Collect Haxe-authored Rust test wrappers (`@:rustTest`) once per compile.
 		collectRustTests();
 
@@ -5208,48 +5209,127 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
-		Rejects `@:rustNativeWrapper` until the native-wrapper generator has a stable contract.
+		Rejects reserved Rust metadata until each facility has a complete implementation.
 
 		Why
-		- M94 defines the proposed wrapper facility shape, but accepting metadata silently would
-		  make users think the generator exists and could create misleading facade evidence.
-		- Native facade helpers are part of the Rust authority boundary, so unsupported wrapper
-		  declarations must fail early at the metadata site instead of degrading to ignored metadata.
+		- The native-wrapper and support-crate designs reserve public spellings before they emit Rust.
+		- Haxe normally ignores unknown metadata. Silent acceptance would make users think that the
+		  requested Rust artifact exists and could create misleading safety or packaging evidence.
+		- Both facilities change where Rust code lives, so unsupported declarations must fail at the
+		  metadata site instead of degrading to ordinary ignored metadata.
 
 		What
-		- Reserves `@:rustNativeWrapper(...)` across classes, enums, typedefs, and abstracts.
-		- Emits an actionable diagnostic that points users back to `@:rustExtraSrc` plus the
-		  native facade manifest until a future bead lands an audited generator.
+		- Reserves `@:rustNativeWrapper(...)` and `@:rustSupportCrate(...)` across type and field
+		  metadata.
+		- Emits an actionable diagnostic that names the current supported boundary and design document.
 
 		How
 		- Walks typed module metadata from `Context.getAllModuleTypes()`.
 		- Uses the same metadata-name normalization as other Rust metadata readers.
-		- Does not parse the proposed object shape here; parsing belongs to the future generator
-		  once the accepted subset and emitted Rust contract are implemented together.
+		- Does not parse either proposed object shape here. Exact parsing belongs to each future
+		  planner once its accepted subset and emitted Rust contract are implemented together.
 	**/
-	function rejectReservedNativeWrapperMetadata():Void {
+	function rejectReservedRustMetadata():Void {
 		for (moduleType in Context.getAllModuleTypes()) {
 			switch (moduleType) {
 				case TClassDecl(clsRef):
-					rejectReservedNativeWrapperMeta(clsRef.get().meta);
+					var cls = clsRef.get();
+					rejectReservedRustMeta(cls.meta);
+					for (field in cls.fields.get())
+						rejectReservedRustField(field);
+					for (field in cls.statics.get())
+						rejectReservedRustField(field);
+					if (cls.constructor != null)
+						rejectReservedRustField(cls.constructor.get());
 				case TEnumDecl(enRef):
-					rejectReservedNativeWrapperMeta(enRef.get().meta);
+					var en = enRef.get();
+					rejectReservedRustMeta(en.meta);
+					for (field in en.constructs)
+						rejectReservedRustMeta(field.meta);
 				case TTypeDecl(tdRef):
-					rejectReservedNativeWrapperMeta(tdRef.get().meta);
+					var td = tdRef.get();
+					rejectReservedRustMeta(td.meta);
+					rejectReservedRustTypeFields(td.type);
 				case TAbstract(abRef):
-					rejectReservedNativeWrapperMeta(abRef.get().meta);
+					var abstractType = abRef.get();
+					rejectReservedRustMeta(abstractType.meta);
+					if (abstractType.impl != null) {
+						var impl = abstractType.impl.get();
+						for (field in impl.fields.get())
+							rejectReservedRustField(field);
+						for (field in impl.statics.get())
+							rejectReservedRustField(field);
+						if (impl.constructor != null)
+							rejectReservedRustField(impl.constructor.get());
+					}
 			}
 		}
 	}
 
-	function rejectReservedNativeWrapperMeta(meta:haxe.macro.Type.MetaAccess):Void {
+	function rejectReservedRustTypeFields(type:Type):Void {
+		switch (type) {
+			case TAnonymous(anonymousRef):
+				for (field in anonymousRef.get().fields) {
+					rejectReservedRustField(field);
+					rejectReservedRustTypeFields(field.type);
+				}
+			case TFun(arguments, result):
+				for (argument in arguments)
+					rejectReservedRustTypeFields(argument.t);
+				rejectReservedRustTypeFields(result);
+			case TInst(_, parameters) | TEnum(_, parameters) | TType(_, parameters) | TAbstract(_, parameters):
+				for (parameter in parameters)
+					rejectReservedRustTypeFields(parameter);
+			case TDynamic(inner) if (inner != null):
+				rejectReservedRustTypeFields(inner);
+			case TLazy(resolve):
+				rejectReservedRustTypeFields(resolve());
+			case TMono(monomorph):
+				var inner = monomorph.get();
+				if (inner != null)
+					rejectReservedRustTypeFields(inner);
+			case _:
+		}
+	}
+
+	/**
+		Rejects reserved compiler metadata on a typed field and its expression.
+
+		Haxe stores anonymous typedef fields and abstract implementation fields
+		outside the ordinary module-level class-field lists. Keep this scan at the
+		typed boundary so no supported field placement can silently opt in.
+	**/
+	function rejectReservedRustField(field:ClassField):Void {
+		rejectReservedRustMeta(field.meta);
+		var expression = field.expr();
+		if (expression != null)
+			rejectReservedRustExpr(expression);
+	}
+
+	function rejectReservedRustExpr(expression:TypedExpr):Void {
+		switch (expression.expr) {
+			case TMeta(metadata, _):
+				rejectReservedRustMetaEntry(metadata.name, metadata.pos);
+			case _:
+		}
+		TypedExprTools.iter(expression, rejectReservedRustExpr);
+	}
+
+	function rejectReservedRustMeta(meta:haxe.macro.Type.MetaAccess):Void {
 		if (meta == null)
 			return;
-		for (entry in meta.get()) {
-			if (!metaNameEquals(entry.name, "rustNativeWrapper"))
-				continue;
+		for (entry in meta.get())
+			rejectReservedRustMetaEntry(entry.name, entry.pos);
+	}
+
+	function rejectReservedRustMetaEntry(name:String, pos:haxe.macro.Expr.Position):Void {
+		if (metaNameEquals(name, "rustNativeWrapper")) {
 			Context.error("`@:rustNativeWrapper` is reserved for the native wrapper facility spike and is not enabled as product metadata. "
-				+ "Use `@:rustExtraSrc` plus a native facade manifest entry for now; see docs/native-wrapper-facility-spike.md.", entry.pos);
+				+ "Use `@:rustExtraSrc` plus a native facade manifest entry for now; see docs/native-wrapper-facility-spike.md.", pos);
+		}
+		if (metaNameEquals(name, "rustSupportCrate")) {
+			Context.error("`@:rustSupportCrate` is reserved for the typed support-crate facility and is not enabled as product metadata. "
+				+ "Use an explicitly reviewed `@:rustCargo` dependency for temporary linkage; see docs/support-crate-facility.md.", pos);
 		}
 	}
 

@@ -8,9 +8,14 @@ policy is:**
 
 This doc describes the recommended, documented pattern for binding to Rust.
 
-For APIs whose Rust shape needs explicit lifetimes, HRTB, const generics, macro-heavy setup, or
-contained `unsafe`, use the [Extern and lifetime-island cookbook](extern-lifetime-island-cookbook.md)
-as the practical template.
+For APIs whose Rust shape needs explicit lifetimes, HRTB, const generics, or macro-heavy setup, use
+the [Extern and lifetime-island cookbook](extern-lifetime-island-cookbook.md) as the practical
+template.
+
+`@:rustExtraSrc` remains in the generated application crate. It cannot contain unsafe code when the
+application forbids unsafe. The planned
+[typed support-crate facility](support-crate-facility.md) reserves `@:rustSupportCrate` for a
+separate, content-bound crate. The compiler rejects that metadata until the complete facility lands.
 
 Compiler-generated native wrappers are not a shipped user feature yet. The M94
 [native wrapper facility spike](native-wrapper-facility-spike.md) reserves `@:rustNativeWrapper` for
