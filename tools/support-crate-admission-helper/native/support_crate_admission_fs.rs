@@ -5,7 +5,7 @@
 //! express. It deliberately contains no product policy and uses only safe APIs.
 
 use rustix::fd::OwnedFd;
-use rustix::fs::{openat, statat, AtFlags, Dir, FileType, Mode, OFlags, CWD};
+use rustix::fs::{fstat, openat, statat, AtFlags, Dir, FileType, Mode, OFlags, CWD};
 use std::fs::File;
 use std::io::Read;
 use std::os::unix::fs::MetadataExt;
@@ -58,6 +58,15 @@ impl AdmissionFsErrorFactory {
 #[derive(Clone, Debug)]
 pub struct PinnedDirectory {
     fd: Arc<OwnedFd>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PinnedChild {
+    parent: Arc<OwnedFd>,
+    component: String,
+    device: i32,
+    inode: u64,
+    kind: FileType,
 }
 
 #[derive(Debug)]
@@ -131,10 +140,13 @@ impl PinnedDirectory {
         &self,
         maximum_entries: i32,
         maximum_name_bytes: i32,
+        maximum_segment_bytes: i32,
     ) -> Result<Vec<String>, AdmissionFsError> {
         let maximum_entries = usize::try_from(maximum_entries)
             .map_err(|_| AdmissionFsError::new(AdmissionFsErrorKind::InvalidInput))?;
         let maximum_name_bytes = usize::try_from(maximum_name_bytes)
+            .map_err(|_| AdmissionFsError::new(AdmissionFsErrorKind::InvalidInput))?;
+        let maximum_segment_bytes = usize::try_from(maximum_segment_bytes)
             .map_err(|_| AdmissionFsError::new(AdmissionFsErrorKind::InvalidInput))?;
         let mut names = Vec::new();
         let mut name_bytes = 0usize;
@@ -148,6 +160,9 @@ impl PinnedDirectory {
             let name = std::str::from_utf8(bytes)
                 .map_err(|_| AdmissionFsError::new(AdmissionFsErrorKind::InvalidInput))?;
             validate_component(name, false)?;
+            if bytes.len() > maximum_segment_bytes {
+                return Err(AdmissionFsError::new(AdmissionFsErrorKind::InvalidInput));
+            }
             if names.len() >= maximum_entries {
                 return Err(AdmissionFsError::new(AdmissionFsErrorKind::InvalidInput));
             }
@@ -167,50 +182,21 @@ impl PinnedDirectory {
         Ok(names)
     }
 
-    pub fn read_file(
-        &self,
-        component: String,
-        maximum_bytes: i32,
-    ) -> Result<Vec<i32>, AdmissionFsError> {
+    pub fn inspect_child(&self, component: String) -> Result<PinnedChild, AdmissionFsError> {
         validate_component(&component, false)?;
-        let maximum = usize::try_from(maximum_bytes)
-            .ok()
-            .filter(|value| *value > 0)
-            .ok_or_else(|| AdmissionFsError::new(AdmissionFsErrorKind::InvalidInput))?;
-
-        // Reject known special files before open. In particular, opening a FIFO
-        // read-only can wait forever for a writer. NONBLOCK below also closes the
-        // race where the name changes after this descriptor-relative check.
-        let before_open = statat(
+        let identity = statat(
             self.fd.as_ref(),
             component.as_str(),
             AtFlags::SYMLINK_NOFOLLOW,
         )
         .map_err(classify_errno)?;
-        if !FileType::from_raw_mode(before_open.st_mode).is_file() {
-            return Err(AdmissionFsError::new(AdmissionFsErrorKind::WrongKind));
-        }
-        let fd = openat(
-            self.fd.as_ref(),
-            component.as_str(),
-            OFlags::RDONLY | OFlags::NONBLOCK | OFlags::CLOEXEC | OFlags::NOFOLLOW,
-            Mode::empty(),
-        )
-        .map_err(classify_errno)?;
-        let mut file = File::from(fd);
-        let metadata = file.metadata().map_err(classify_io)?;
-        if !metadata.is_file() || metadata.nlink() != 1 {
-            return Err(AdmissionFsError::new(AdmissionFsErrorKind::WrongKind));
-        }
-        let mut bytes = Vec::new();
-        file.by_ref()
-            .take((maximum + 1) as u64)
-            .read_to_end(&mut bytes)
-            .map_err(classify_io)?;
-        if bytes.len() > maximum {
-            return Err(AdmissionFsError::new(AdmissionFsErrorKind::InvalidInput));
-        }
-        Ok(bytes.into_iter().map(i32::from).collect())
+        Ok(PinnedChild {
+            parent: self.fd.clone(),
+            component,
+            device: identity.st_dev,
+            inode: identity.st_ino,
+            kind: FileType::from_raw_mode(identity.st_mode),
+        })
     }
 
     fn open_from<Fd: rustix::fd::AsFd>(
@@ -226,6 +212,64 @@ impl PinnedDirectory {
         .map_err(classify_errno)?;
         Ok(Self { fd: Arc::new(fd) })
     }
+}
+
+impl PinnedChild {
+    pub fn open_directory(&self) -> Result<PinnedDirectory, AdmissionFsError> {
+        if !self.kind.is_dir() {
+            return Err(AdmissionFsError::new(AdmissionFsErrorKind::WrongKind));
+        }
+        let fd = openat(
+            self.parent.as_ref(),
+            self.component.as_str(),
+            OFlags::RDONLY | OFlags::DIRECTORY | OFlags::CLOEXEC | OFlags::NOFOLLOW,
+            Mode::empty(),
+        )
+        .map_err(classify_errno)?;
+        let identity = fstat(&fd).map_err(classify_errno)?;
+        if identity.st_dev != self.device || identity.st_ino != self.inode {
+            return Err(AdmissionFsError::new(AdmissionFsErrorKind::Io));
+        }
+        Ok(PinnedDirectory { fd: Arc::new(fd) })
+    }
+
+    pub fn read_file(&self, maximum_bytes: i32) -> Result<Vec<i32>, AdmissionFsError> {
+        if !self.kind.is_file() {
+            return Err(AdmissionFsError::new(AdmissionFsErrorKind::WrongKind));
+        }
+        let maximum = usize::try_from(maximum_bytes)
+            .ok()
+            .filter(|value| *value > 0)
+            .ok_or_else(|| AdmissionFsError::new(AdmissionFsErrorKind::InvalidInput))?;
+
+        let fd = openat(
+            self.parent.as_ref(),
+            self.component.as_str(),
+            OFlags::RDONLY | OFlags::NONBLOCK | OFlags::CLOEXEC | OFlags::NOFOLLOW,
+            Mode::empty(),
+        )
+        .map_err(classify_errno)?;
+        let identity = fstat(&fd).map_err(classify_errno)?;
+        let mut file = File::from(fd);
+        let metadata = file.metadata().map_err(classify_io)?;
+        if !metadata.is_file()
+            || metadata.nlink() != 1
+            || identity.st_dev != self.device
+            || identity.st_ino != self.inode
+        {
+            return Err(AdmissionFsError::new(AdmissionFsErrorKind::WrongKind));
+        }
+        let mut bytes = Vec::new();
+        file.by_ref()
+            .take((maximum + 1) as u64)
+            .read_to_end(&mut bytes)
+            .map_err(classify_io)?;
+        if bytes.len() > maximum {
+            return Err(AdmissionFsError::new(AdmissionFsErrorKind::InvalidInput));
+        }
+        Ok(bytes.into_iter().map(i32::from).collect())
+    }
+
 }
 
 fn validate_component(value: &str, allow_parent: bool) -> Result<(), AdmissionFsError> {

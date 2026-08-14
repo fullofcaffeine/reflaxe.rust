@@ -1,15 +1,29 @@
 {
   "schemaVersion": 1,
   "platform": "darwin-arm64",
-  "binarySha256": "eb68f7a6c9b9dddeed93e15aef22f185a4a84242f88f97cd9530d0b6bf614add",
+  "binarySha256": "dd8d561a82e150610ee36b2fb66390361fe04057a9ee788980f9d8a0b8f0293d",
   "binaryMode": "0755",
   "sourceInputs": {
-    "fileCount": 406,
-    "sha256": "23334550b38d3e9eb411eb37449fa1e7e6d58944a47f970df8fa3c802278a582"
+    "fileCount": 407,
+    "sha256": "28eaa2ca9298c2529ec8b76e1950f1d11abc757e7cc86230ac6c8574924e683f"
+  },
+  "build": {
+    "cargoTarget": "aarch64-apple-darwin",
+    "sdkVersion": "15.4",
+    "sdkSettingsSha256": "ef439bf972bb4b45310699d2a31cd08466cbb0c30642bc9a48985c22856d42f4",
+    "deploymentTarget": "11.0",
+    "linkerSha256": "14a051d9b2ab1cf1cde36e6fc37ecedfa3d6ee3f9575b77f09ee8a06205157c8",
+    "cargoConfigSha256": "e85c2be7f271351e782d5b14a6f07a82953a87f35392f0b852d19f2ff7b69441",
+    "rustflags": "",
+    "cargoEncodedRustflags": "",
+    "cargoIncremental": false,
+    "cargoOffline": true
   },
   "toolchain": {
     "haxe": "4.3.7",
     "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25) (Homebrew)\ncommit-hash: ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96\nhost: aarch64-apple-darwin\nrelease: 1.96.0\nLLVM version: 22.1.6",
-    "cargo": "cargo 1.96.0 (30a34c682 2026-05-25) (Homebrew)\nrelease: 1.96.0\ncommit-hash: 30a34c6821b57de0aaec83a901aca39f88f6778c\nhost: aarch64-apple-darwin"
+    "rustcExecutableSha256": "5837d01bce1d878da485c25b3668cc313d6c12f7d4e77c4ff84faf8b7c5d5c3f",
+    "cargo": "cargo 1.96.0 (30a34c682 2026-05-25) (Homebrew)\nrelease: 1.96.0\ncommit-hash: 30a34c6821b57de0aaec83a901aca39f88f6778c\nhost: aarch64-apple-darwin",
+    "cargoExecutableSha256": "73b6571fa5331421034c8be25bed6d16f3925d39fa2d539cd09bb939d73bc21c"
   }
 }

@@ -200,6 +200,7 @@ final class SupportCrateAdmissionProtocol {
 			var classpath = classpaths[index];
 			if (classpath.ref != index)
 				throw protocolError("classpath refs must equal their frame ordinal");
+			requireClasspathComponents(classpath.path);
 			payload.writeU32(classpath.ref);
 			payload.writeSizedString(classpath.path, MAX_CLASSPATH_BYTES, "classpath path");
 		}
@@ -230,6 +231,19 @@ final class SupportCrateAdmissionProtocol {
 		if (bytes.length > MAX_REQUEST_BYTES)
 			throw protocolError("request frame exceeds its byte limit");
 		return bytes;
+	}
+
+	static function requireClasspathComponents(path:String):Void {
+		var components = 0;
+		for (component in path.split("/")) {
+			if (component.length == 0 || component == ".")
+				continue;
+			components++;
+			if (components > MAX_CLASSPATH_COMPONENTS)
+				throw protocolError("classpath path has too many components");
+			if (Bytes.ofString(component).length > MAX_PATH_SEGMENT_BYTES)
+				throw protocolError("classpath component is above the closed byte limit");
+		}
 	}
 
 	public static function decodeRequest(bytes:Bytes):SupportCrateAdmissionRequest {

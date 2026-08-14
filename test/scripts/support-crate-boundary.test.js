@@ -297,6 +297,19 @@ test('support-crate metadata uses a closed compile-time grammar', () => {
       expected: /\[HXRS-METADATA-VALUE\].*sourceRoot/
     },
     {
+      name: 'source root above 32 components',
+      source: supportCrateSource().replace(
+        'native/native_page_size_support',
+        Array.from({ length: 33 }, (_, index) => `d${index}`).join('/')
+      ),
+      expected: /\[HXRS-METADATA-VALUE\].*sourceRoot/
+    },
+    {
+      name: 'source root component above 255 UTF-8 bytes',
+      source: supportCrateSource().replace('native/native_page_size_support', `native/${'é'.repeat(128)}`),
+      expected: /\[HXRS-METADATA-VALUE\].*sourceRoot/
+    },
+    {
       name: 'reserved Rust crate identifier',
       source: supportCrateSource()
         .replaceAll('native_page_size_support', 'crate'),

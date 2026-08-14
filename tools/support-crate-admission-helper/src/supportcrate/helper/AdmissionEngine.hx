@@ -68,6 +68,8 @@ final class AdmissionEngine {
 	static inline final MAX_FILES = 256;
 	static inline final MAX_ENTRIES = 256 * 33;
 	static inline final MAX_PATH_DEPTH = 32;
+	static inline final MAX_CLASSPATH_COMPONENTS = 128;
+	public static inline final MAX_PATH_SEGMENT_BYTES = 255;
 	static inline final MAX_FILE_BYTES = 2 * 1024 * 1024;
 	static inline final MAX_CRATE_BYTES = 16 * 1024 * 1024;
 	static inline final MAX_TOTAL_SOURCE_BYTES = 32 * 1024 * 1024;
@@ -154,10 +156,15 @@ final class AdmissionEngine {
 		};
 		var segmentStart = absolute ? 1 : 0;
 		var cursor = segmentStart;
+		var componentCount = 0;
 		while (cursor <= path.length) {
 			if (cursor == path.length || path.charAt(cursor) == "/") {
 				var component = path.substr(segmentStart, cursor - segmentStart);
 				if (component.length > 0 && component != ".") {
+					componentCount++;
+					if (componentCount > MAX_CLASSPATH_COMPONENTS
+						|| AdmissionByteTools.utf8Length(component) > MAX_PATH_SEGMENT_BYTES)
+						return invalidInput();
 					current = switch current.openDirectory(component) {
 						case Ok(value): value;
 						case Err(error): return Err(error);
@@ -171,6 +178,8 @@ final class AdmissionEngine {
 	}
 
 	static function openSourceRoot(root:PinnedDirectory, segments:Vec<String>):Result<PinnedDirectory, AdmissionFsError> {
+		if (VecTools.len(segments) <= 0 || VecTools.len(segments) > MAX_PATH_DEPTH)
+			return invalidInput();
 		var current = root;
 		var index = 0;
 		while (index < VecTools.len(segments)) {
@@ -178,6 +187,9 @@ final class AdmissionEngine {
 				case Some(value): value;
 				case None: return Err(AdmissionFsErrorFactory.invalidInput());
 			};
+			if (AdmissionByteTools.utf8Length(segment) <= 0
+				|| AdmissionByteTools.utf8Length(segment) > MAX_PATH_SEGMENT_BYTES)
+				return invalidInput();
 			current = switch current.openDirectory(segment) {
 				case Ok(value): value;
 				case Err(error): return Err(error);
@@ -191,7 +203,8 @@ final class AdmissionEngine {
 		maximumResponseBytes:Int):Result<TreeRead, AdmissionFsError> {
 		var entries = new Vec<AdmissionTreeEntry>();
 		var path = new Vec<String>();
-		return switch appendDirectory(root, path, entries, 0, 0, 0, maximumSourceBytes, maximumResponseBytes) {
+		var budget = new TraversalBudget();
+		return switch appendDirectory(root, path, entries, budget, 0, 0, 0, maximumSourceBytes, maximumResponseBytes) {
 			case Ok(value) if (VecTools.len(value.entries) > 0 && value.fileCount > 0):
 				Ok(new TreeRead(canonicalTreeOrder(value.entries.clone()), value.sourceBytes, value.fileCount, value.responseBytes));
 			case Ok(_): invalidInput();
@@ -200,16 +213,18 @@ final class AdmissionEngine {
 	}
 
 	static function appendDirectory(directory:PinnedDirectory, parent:Vec<String>, entries:Vec<AdmissionTreeEntry>,
-		sourceBytes:Int, fileCount:Int, responseBytes:Int, maximumSourceBytes:Int,
+		budget:TraversalBudget, sourceBytes:Int, fileCount:Int, responseBytes:Int, maximumSourceBytes:Int,
 		maximumResponseBytes:Int):Result<TreeRead, AdmissionFsError> {
-		var remainingEntries = MAX_ENTRIES - VecTools.len(entries);
-		var remainingNameBytes = maximumResponseBytes - responseBytes;
+		var remainingEntries = MAX_ENTRIES - VecTools.len(entries) - budget.reservedEntries;
+		var remainingNameBytes = maximumResponseBytes - responseBytes - budget.reservedNameBytes;
 		if (remainingEntries <= 0 || remainingNameBytes <= 0)
 			return invalidInput();
-		var names = switch directory.entryNames(remainingEntries, remainingNameBytes) {
+		var names = switch directory.entryNames(remainingEntries, remainingNameBytes, MAX_PATH_SEGMENT_BYTES) {
 			case Ok(value): value;
 			case Err(error): return Err(error);
 		};
+		if (!budget.reserve(names.clone(), remainingEntries, remainingNameBytes))
+			return invalidInput();
 		var index = 0;
 		while (index < VecTools.len(names)) {
 			if (VecTools.len(entries) >= MAX_ENTRIES)
@@ -218,6 +233,8 @@ final class AdmissionEngine {
 				case Some(value): value;
 				case None: return invalidInput();
 			};
+			if (!budget.release(name))
+				return invalidInput();
 			var path = parent.clone();
 			path.push(name);
 			if (VecTools.len(path) > MAX_PATH_DEPTH)
@@ -225,11 +242,21 @@ final class AdmissionEngine {
 			var entryBytes = encodedEntryBytes(path.clone());
 			if (entryBytes < RESPONSE_ENTRY_BYTES || responseBytes + entryBytes > maximumResponseBytes)
 				return invalidInput();
-			switch directory.openDirectory(name) {
+			var child = switch directory.inspectChild(name) {
+				case Ok(value): value;
+				case Err(error): return Err(error);
+			};
+			#if support_crate_admission_test_barriers
+			switch AdmissionTestBarrier.beforeChildOpen(name) {
+				case Ok(_):
+				case Err(error): return Err(error);
+			}
+			#end
+			switch child.openDirectory() {
 				case Ok(child):
 					entries.push(new AdmissionTreeEntry(Directory, path.clone(), logicalPath(path.clone()), None));
 					responseBytes += entryBytes;
-					switch appendDirectory(child, path, entries, sourceBytes, fileCount, responseBytes,
+					switch appendDirectory(child, path, entries, budget, sourceBytes, fileCount, responseBytes,
 						maximumSourceBytes, maximumResponseBytes) {
 						case Ok(nested):
 							entries = nested.entries;
@@ -241,14 +268,18 @@ final class AdmissionEngine {
 				case Err(directoryError):
 					if (!directoryError.isWrongKind())
 						return Err(directoryError);
+					if (fileCount >= MAX_FILES)
+						return invalidInput();
 					var remainingFileBytes = MAX_FILE_BYTES;
 					if (maximumSourceBytes - sourceBytes < remainingFileBytes)
 						remainingFileBytes = maximumSourceBytes - sourceBytes;
+					if (MAX_CRATE_BYTES - sourceBytes < remainingFileBytes)
+						remainingFileBytes = MAX_CRATE_BYTES - sourceBytes;
 					if (maximumResponseBytes - responseBytes - entryBytes < remainingFileBytes)
 						remainingFileBytes = maximumResponseBytes - responseBytes - entryBytes;
 					if (remainingFileBytes <= 0)
 						return invalidInput();
-					var bytes = switch directory.readFile(name, remainingFileBytes) {
+					var bytes = switch child.readFile(remainingFileBytes) {
 						case Ok(value): value;
 						case Err(error): return Err(error);
 					};
@@ -397,5 +428,45 @@ private final class TreeRead {
 		this.sourceBytes = sourceBytes;
 		this.fileCount = fileCount;
 		this.responseBytes = responseBytes;
+	}
+}
+
+/** Tracks names retained by every active recursive directory enumeration. */
+private final class TraversalBudget {
+	public var reservedEntries = 0;
+	public var reservedNameBytes = 0;
+
+	public function new() {}
+
+	public function reserve(names:Vec<String>, maximumEntries:Int, maximumNameBytes:Int):Bool {
+		var entryCount = VecTools.len(names);
+		if (entryCount > maximumEntries)
+			return false;
+		var nameBytes = 0;
+		var index = 0;
+		while (index < entryCount) {
+			var name = switch VecTools.get(names, index) {
+				case Some(value): value;
+				case None: return false;
+			};
+			var length = AdmissionByteTools.utf8Length(name);
+			if (length <= 0 || length > AdmissionEngine.MAX_PATH_SEGMENT_BYTES
+				|| nameBytes > maximumNameBytes - length)
+				return false;
+			nameBytes += length;
+			index++;
+		}
+		reservedEntries += entryCount;
+		reservedNameBytes += nameBytes;
+		return true;
+	}
+
+	public function release(name:String):Bool {
+		var length = AdmissionByteTools.utf8Length(name);
+		if (reservedEntries <= 0 || length <= 0 || length > reservedNameBytes)
+			return false;
+		reservedEntries--;
+		reservedNameBytes -= length;
+		return true;
 	}
 }

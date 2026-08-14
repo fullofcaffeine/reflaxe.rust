@@ -295,6 +295,10 @@ later read. The package-owned helper opens each child relative to an open
 parent directory. An open directory is called a pinned directory here. A later
 pathname replacement cannot redirect reads below that pinned directory.
 
+The helper also captures the device and inode numbers of each selected child.
+It compares that identity after the final descriptor-relative open. A changed
+directory or file identity causes a closed source rejection.
+
 The helper logic is Haxe source compiled through the haxe.rust Metal profile.
 A small safe-Rust facade calls the operating-system directory APIs. The facade
 contains no `unsafe` block. It does not contain product rules or manifest
@@ -319,9 +323,10 @@ detects changes during admission. It does not claim one atomic filesystem
 snapshot against a hostile writer.
 
 The helper enforces limits while it discovers and reads the tree. It does not
-first collect an unbounded directory or response. Version 1 permits at most 32
-path components, 256 files and 8,448 total entries per crate, 2 MiB per file,
-16 MiB per crate, 32 MiB across all selected crates, and a 40 MiB response.
+first collect an unbounded directory or response. Version 1 permits at most 128
+real components in one classpath, 32 logical source-path components, 255 UTF-8
+bytes in one component, 256 files and 8,448 total entries per crate, 2 MiB per
+file, 16 MiB per crate, 32 MiB across all selected crates, and a 40 MiB response.
 
 The helper returns a typed binary response with logical paths and copied file
 bytes. Haxe then performs an independent check. It checks the exact manifest,
@@ -334,10 +339,14 @@ failure even when the numeric exit code is zero. Any stderr, partial result,
 invalid frame, nonzero exit, signal, timeout, or runner exception discards all
 returned bytes and closes the process, pipes, timer, and event loop.
 
-The current packaged helper supports Apple Silicon macOS. Linux source uses
-the same portable Metal code and safe Rust facade. Linux remains disabled
-until a Linux VM builds and proves its exact package binary. Windows needs a
-separate host implementation.
+Haxe 4.3.7 declares `eval.luv.Process.kill()`, but its eval runtime omits the
+method binding. The runner derives a PID only from its open process watcher.
+It keeps that watcher open until the exit callback reaps the child.
+
+The current packaged helper supports Apple Silicon macOS only. The portable
+Haxe policy can be reused for another host, but that host must first provide and
+prove its own exact packaged binary and native facade. Windows needs a separate
+host implementation.
 
 The current proof uses the reviewed Git source package. One command rebuilds the
 helper through Haxe/Metal and locked Cargo, then compares the fresh bytes with
@@ -352,6 +361,11 @@ SHA-256 digest, the complete source-input digest, exact Haxe/Rust/Cargo tool
 identity, and the locked dependency graph. The package directory contains
 `binary-provenance.json`, `dependency-inventory.json`, and
 `THIRD_PARTY_NOTICES.md`.
+
+The build selects `aarch64-apple-darwin`, the Rust compiler, the linker, the
+macOS SDK, and the deployment target. It clears Rust flags and disables Cargo
+network work and incremental compilation. The evidence records these inputs.
+The dependency graph contains only packages reachable for Darwin ARM64.
 
 The Haxelib release ZIP does not include the helper yet. Release packaging
 remains disabled until a packed-install test proves the same binary, executable

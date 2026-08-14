@@ -89,7 +89,13 @@ test('the deadline remains active until inherited output pipes reach EOF', () =>
 })
 
 test('an exception after spawn closes the process, pipes, timer, and loop', () => {
-  runProbe('exec /bin/sleep 10', 'PipeFailed', 2000, ['support_crate_admission_test_throw_after_spawn'])
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    runProbe('exec /bin/sleep 10', 'PipeFailed', 2000, ['support_crate_admission_test_throw_after_spawn'])
+  }
+})
+
+test('stdout above the fixed response limit is rejected', () => {
+  runProbe('dd if=/dev/zero bs=1048576 count=41 2>/dev/null', 'ProtocolRejected')
 })
 
 test('helper admission requires an exact digest and owner-executable mode', () => {

@@ -118,6 +118,14 @@ final class Main {
 			new SupportCrateAdmissionClasspathBinding(0, ""),
 			new SupportCrateAdmissionClasspathBinding(1, "../dependency/src/")
 		], [new SupportCrateAdmissionDeclaration(0, ["native", "helper"])]));
+		expectProtocolError("classpath path has too many components", () -> SupportCrateAdmissionProtocol.encodeRequest(
+			new SupportCrateAdmissionRequest([
+				new SupportCrateAdmissionClasspathBinding(0, [for (index in 0...129) "d" + index].join("/"))
+			], [new SupportCrateAdmissionDeclaration(0, ["native", "helper"])])));
+		expectProtocolError("classpath component is above the closed byte limit",
+			() -> SupportCrateAdmissionProtocol.encodeRequest(new SupportCrateAdmissionRequest([
+				new SupportCrateAdmissionClasspathBinding(0, [for (_ in 0...128) "é"].join(""))
+			], [new SupportCrateAdmissionDeclaration(0, ["native", "helper"])])));
 		expectProtocolError("request magic is invalid", () -> SupportCrateAdmissionProtocol.decodeRequest(withByte(request, 0, 0)));
 		expectProtocolError("protocol version is unsupported", () -> SupportCrateAdmissionProtocol.decodeRequest(withU16(request, 8, 2)));
 		expectProtocolError("request payload length does not match", () -> SupportCrateAdmissionProtocol.decodeRequest(withU32(request, 12, 0)));
@@ -184,7 +192,7 @@ final class Main {
 					expectedRoot,
 					"native/support-crate-admission/darwin-arm64/hxrs-support-crate-admission"
 				])), value.executablePath, "macOS package-owned helper path");
-				assertEquals("eb68f7a6c9b9dddeed93e15aef22f185a4a84242f88f97cd9530d0b6bf614add", value.expectedSha256,
+				assertEquals("dd8d561a82e150610ee36b2fb66390361fe04057a9ee788980f9d8a0b8f0293d", value.expectedSha256,
 					"macOS helper digest");
 		}
 

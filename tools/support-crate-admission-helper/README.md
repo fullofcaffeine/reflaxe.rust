@@ -49,6 +49,12 @@ If another process renames `sample_support` after it was opened, the descriptor
 still refers to the original directory. New child reads continue below that
 original directory.
 
+A pinned parent does not pin a child name. Another process can replace `lib.rs`
+after discovery but before open. The helper therefore records the child's
+device and inode numbers before open. These numbers identify one filesystem
+object on the selected volume. The helper compares them with the opened child.
+It rejects the tree if the identity changed.
+
 This works on the current Apple Silicon Mac through the Unix `openat` family.
 Linux can use the same facade after it gets its own packaged-binary evidence.
 Windows needs another native facade.
@@ -66,9 +72,11 @@ Windows needs another native facade.
 8. The helper sorts the complete tree by UTF-8 logical-path bytes.
 9. The helper returns one bounded binary response through stdout.
 10. The compiler decodes and independently validates that response.
-11. The compiler keeps the admitted bytes in one immutable plan.
+11. The compiler constructs and validates one immutable plan from the admitted
+    bytes.
 
-Stage 2B stops after step 11. It reports
+Stage 2B then deliberately discards that plan. It stops before publication and
+reports
 `HXRS-SUPPORT-CRATE-EMISSION-DISABLED`. Stage 3 will copy the admitted bytes into
 the generated Cargo project.
 
@@ -95,8 +103,10 @@ an unbounded list.
 
 - Request: 1 MiB.
 - Classpaths: 256.
+- Real path components in one classpath: 128.
 - Support-crate declarations: 32.
 - Logical path depth: 32 components.
+- UTF-8 bytes in one path component: 255.
 - Files per crate: 256.
 - Total tree entries per crate: 8,448.
 - File bytes: 2 MiB.
@@ -106,6 +116,11 @@ an unbounded list.
 
 The compiler runner also limits stderr and enforces a 15-second wall deadline.
 The deadline remains active until the child exits and both output pipes close.
+
+Haxe 4.3.7 declares `eval.luv.Process.kill()`, but its eval runtime does not
+bind that method. The runner gets the PID from its open process watcher instead.
+It keeps that watcher open until the exit callback reaps the child. This rule
+prevents exceptional cleanup from closing the watcher before child exit.
 
 ## Failure behavior
 
@@ -146,6 +161,15 @@ The second command requires all these facts to match:
 - source-input and toolchain provenance;
 - the Cargo lock, dependency graph, checksums, features, and licenses;
 - the generated third-party notice inventory.
+
+The package build supports `aarch64-apple-darwin` only. It selects the Cargo
+target, Rust compiler, linker, macOS SDK, and deployment target explicitly. It
+also clears Rust flags and disables incremental and network work. The build
+rejects unreviewed user or ancestor Cargo configuration files.
+
+The dependency inventory uses Cargo's Darwin ARM64 graph. It includes only
+packages that the helper can reach for that target. Thus, Linux, Windows, and
+Redox-only packages do not appear in the macOS notice file.
 
 Run the behavior suites with:
 

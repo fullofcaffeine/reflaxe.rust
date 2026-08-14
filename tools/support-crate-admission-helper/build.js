@@ -3,6 +3,7 @@
 const assert = require('node:assert/strict')
 const crypto = require('node:crypto')
 const fs = require('node:fs')
+const os = require('node:os')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 
@@ -18,9 +19,9 @@ const cargo = process.env.CARGO_BIN || 'cargo'
 const rustc = process.env.RUSTC_BIN || 'rustc'
 const host = `${process.platform}-${process.arch}`
 const packagePlatform = new Map([
-  ['darwin-arm64', 'darwin-arm64'],
-  ['linux-x64', 'linux-x86_64']
+  ['darwin-arm64', 'darwin-arm64']
 ]).get(host)
+const cargoTarget = 'aarch64-apple-darwin'
 const check = process.argv.includes('--check')
 const allowedArguments = new Set(['--check'])
 
@@ -38,13 +39,75 @@ const inventoryPath = path.join(packagedDirectory, 'dependency-inventory.json')
 const provenancePath = path.join(packagedDirectory, 'binary-provenance.json')
 const noticesPath = path.join(packagedDirectory, 'THIRD_PARTY_NOTICES.md')
 
-function run(command, args, cwd = repoRoot) {
-  const result = spawnSync(command, args, { cwd, encoding: 'utf8', env: process.env })
+function utf8Compare(left, right) {
+  return Buffer.compare(Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8'))
+}
+
+function resolveExecutable(command) {
+  const candidates = command.includes(path.sep)
+    ? [path.resolve(command)]
+    : (process.env.PATH || '').split(path.delimiter).map(directory => path.join(directory, command))
+  for (const candidate of candidates) {
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK)
+      return fs.realpathSync(candidate)
+    } catch (_) {}
+  }
+  throw new Error(`cannot resolve executable: ${command}`)
+}
+
+const resolvedCargo = resolveExecutable(cargo)
+const resolvedRustc = resolveExecutable(rustc)
+const resolvedHaxe = resolveExecutable(haxe)
+const xcrun = resolveExecutable('xcrun')
+
+function run(command, args, cwd = repoRoot, env = process.env) {
+  const result = spawnSync(command, args, { cwd, encoding: 'utf8', env })
   assert.ifError(result.error)
   if (result.status !== 0) {
     throw new Error(`${command} failed:\n${result.stdout || ''}${result.stderr || ''}`)
   }
   return result.stdout.trim()
+}
+
+const sdkRoot = run(xcrun, ['--sdk', 'macosx', '--show-sdk-path'])
+const sdkVersion = run(xcrun, ['--sdk', 'macosx', '--show-sdk-version'])
+const sdkSettings = path.join(sdkRoot, 'SDKSettings.json')
+if (!fs.existsSync(sdkSettings)) throw new Error('selected macOS SDK omits SDKSettings.json')
+const linker = fs.realpathSync(run(xcrun, ['--sdk', 'macosx', '--find', 'clang']))
+const cargoHome = path.resolve(process.env.CARGO_HOME || path.join(process.env.HOME, '.cargo'))
+const admittedRepositoryConfig = path.join(repoRoot, '.cargo', 'config.toml')
+for (let current = repoRoot; ; current = path.dirname(current)) {
+  for (const name of ['config', 'config.toml']) {
+    const config = path.join(current, '.cargo', name)
+    if (fs.existsSync(config) && config !== admittedRepositoryConfig) {
+      throw new Error(`ancestor Cargo configuration is not admitted for the package build: ${config}`)
+    }
+  }
+  if (path.dirname(current) === current) break
+}
+for (const config of [path.join(cargoHome, 'config'), path.join(cargoHome, 'config.toml')]) {
+  if (fs.existsSync(config)) {
+    throw new Error(`user Cargo configuration is not admitted for the package build: ${config}`)
+  }
+}
+const cargoEnvironment = {
+  PATH: process.env.PATH || '',
+  HOME: process.env.HOME,
+  TMPDIR: process.env.TMPDIR || os.tmpdir(),
+  LANG: 'C',
+  LC_ALL: 'C',
+  CARGO_HOME: cargoHome,
+  CARGO_INCREMENTAL: '0',
+  CARGO_NET_OFFLINE: 'true',
+  RUSTC: resolvedRustc,
+  RUSTFLAGS: '',
+  CARGO_ENCODED_RUSTFLAGS: '',
+  SDKROOT: sdkRoot,
+  MACOSX_DEPLOYMENT_TARGET: '11.0',
+  CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER: linker,
+  SOURCE_DATE_EPOCH: '0',
+  ZERO_AR_DATE: '1'
 }
 
 function sha256(bytes) {
@@ -84,13 +147,14 @@ function sourceInputIdentity() {
     'tools/support-crate-admission-helper/compile.hxml',
     'tools/support-crate-admission-helper/build.js',
     'tools/support-crate-admission-helper/Cargo.lock',
+    '.cargo/config.toml',
     'package.json',
     'package-lock.json',
     'rust-toolchain.toml',
     'rust-toolchain-policy.json'
   ]
   const files = roots.flatMap(relative => walkFiles(path.join(repoRoot, relative)))
-    .sort((left, right) => path.relative(repoRoot, left).localeCompare(path.relative(repoRoot, right), 'en'))
+    .sort((left, right) => utf8Compare(path.relative(repoRoot, left), path.relative(repoRoot, right)))
   const digest = crypto.createHash('sha256')
   for (const file of files) {
     const relative = path.relative(repoRoot, file).split(path.sep).join('/')
@@ -117,15 +181,27 @@ function lockPackages() {
 }
 
 function dependencyInventory() {
-  const metadata = JSON.parse(run(cargo, [
+  const metadata = JSON.parse(run(resolvedCargo, [
     'metadata',
     '--locked',
     '--format-version', '1',
+    '--filter-platform', cargoTarget,
     '--manifest-path', path.join(outputRoot, 'Cargo.toml')
-  ]))
+  ], repoRoot, cargoEnvironment))
   const locked = lockPackages()
   const idToRef = new Map(metadata.packages.map(item => [item.id, `${item.name}@${item.version}`]))
-  const packages = metadata.packages.map(item => {
+  const nodeById = new Map(metadata.resolve.nodes.map(node => [node.id, node]))
+  const reachable = new Set()
+  const pending = [metadata.resolve.root]
+  while (pending.length > 0) {
+    const id = pending.pop()
+    if (reachable.has(id)) continue
+    reachable.add(id)
+    const node = nodeById.get(id)
+    if (!node) throw new Error(`Cargo metadata root graph omits node: ${id}`)
+    for (const dependency of node.dependencies) pending.push(dependency)
+  }
+  const packages = metadata.packages.filter(item => reachable.has(item.id)).map(item => {
     const ref = `${item.name}@${item.version}`
     const lock = locked.get(ref)
     if (!lock) throw new Error(`Cargo metadata package is absent from Cargo.lock: ${ref}`)
@@ -140,18 +216,23 @@ function dependencyInventory() {
       checksum: lock.checksum,
       license
     }
-  }).sort((left, right) => left.ref.localeCompare(right.ref, 'en'))
-  const nodes = metadata.resolve.nodes.map(node => ({
+  }).sort((left, right) => utf8Compare(left.ref, right.ref))
+  const nodes = metadata.resolve.nodes.filter(node => reachable.has(node.id)).map(node => ({
     ref: idToRef.get(node.id),
-    dependencies: node.dependencies.map(id => idToRef.get(id)).sort((left, right) => left.localeCompare(right, 'en')),
-    features: [...node.features].sort((left, right) => left.localeCompare(right, 'en'))
-  })).sort((left, right) => left.ref.localeCompare(right.ref, 'en'))
+    dependencies: node.dependencies.filter(id => reachable.has(id)).map(id => idToRef.get(id)).sort(utf8Compare),
+    features: [...node.features].sort(utf8Compare)
+  })).sort((left, right) => utf8Compare(left.ref, right.ref))
   if (nodes.some(node => !node.ref || node.dependencies.some(value => !value))) {
     throw new Error('Cargo metadata contains an unresolved dependency identity')
+  }
+  const irrelevant = new Set(['linux-raw-sys', 'windows-sys', 'windows-targets', 'redox_syscall'])
+  if (packages.some(item => irrelevant.has(item.name))) {
+    throw new Error('Darwin ARM64 dependency evidence contains another target family')
   }
   return {
     schemaVersion: 1,
     platform: packagePlatform,
+    cargoTarget,
     cargoLockSha256: sha256(fs.readFileSync(path.join(helperRoot, 'Cargo.lock'))),
     packages,
     nodes
@@ -197,10 +278,24 @@ function provenance(binaryBytes) {
     binarySha256: sha256(binaryBytes),
     binaryMode: '0755',
     sourceInputs: sourceInputIdentity(),
+    build: {
+      cargoTarget,
+      sdkVersion,
+      sdkSettingsSha256: sha256(fs.readFileSync(sdkSettings)),
+      deploymentTarget: cargoEnvironment.MACOSX_DEPLOYMENT_TARGET,
+      linkerSha256: sha256(fs.readFileSync(linker)),
+      cargoConfigSha256: sha256(fs.readFileSync(path.join(repoRoot, '.cargo', 'config.toml'))),
+      rustflags: '',
+      cargoEncodedRustflags: '',
+      cargoIncremental: false,
+      cargoOffline: true
+    },
     toolchain: {
-      haxe: run(haxe, ['--version']),
-      rustc: normalizedVersion(rustc, ['--version', '--verbose'], ['commit-hash', 'host', 'release', 'LLVM version']),
-      cargo: normalizedVersion(cargo, ['--version', '--verbose'], ['release', 'commit-hash', 'host'])
+      haxe: run(resolvedHaxe, ['--version']),
+      rustc: normalizedVersion(resolvedRustc, ['--version', '--verbose'], ['commit-hash', 'host', 'release', 'LLVM version']),
+      rustcExecutableSha256: sha256(fs.readFileSync(resolvedRustc)),
+      cargo: normalizedVersion(resolvedCargo, ['--version', '--verbose'], ['release', 'commit-hash', 'host']),
+      cargoExecutableSha256: sha256(fs.readFileSync(resolvedCargo))
     }
   }
 }
@@ -219,17 +314,18 @@ function verifyGitMode() {
 }
 
 fs.rmSync(outputRoot, { recursive: true, force: true })
-run(haxe, ['compile.hxml', '-D', `rust_output=${path.basename(outputRoot)}`], helperRoot)
+run(resolvedHaxe, ['compile.hxml', '-D', `rust_output=${path.basename(outputRoot)}`], helperRoot)
 fs.copyFileSync(path.join(helperRoot, 'Cargo.lock'), path.join(outputRoot, 'Cargo.lock'))
-run(cargo, [
+run(resolvedCargo, [
   'build',
   '--release',
   '--locked',
+  '--target', cargoTarget,
   '--manifest-path',
   path.join(outputRoot, 'Cargo.toml')
-])
+], repoRoot, cargoEnvironment)
 
-const builtBinary = path.join(outputRoot, 'target', 'release', 'hxrs_support_crate_admission')
+const builtBinary = path.join(outputRoot, 'target', cargoTarget, 'release', 'hxrs_support_crate_admission')
 const builtBytes = fs.readFileSync(builtBinary)
 const inventory = dependencyInventory()
 const record = provenance(builtBytes)

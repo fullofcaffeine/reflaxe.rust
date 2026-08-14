@@ -57,17 +57,33 @@ private final class SupportCrateAdmissionReadState {
 
 	public function append(buffer:Buffer, limit:Int):Void {
 		var count = buffer.size();
-		var previousTotal = total;
-		total += count;
-		if (previousTotal < limit) {
-			var retained = count;
-			if (total > limit)
-				retained -= total - limit;
-			if (retained > 0)
-				bytes.addBytes(buffer.toBytes(), 0, retained);
-		}
-		if (total > limit)
+		var retained = appendCount(count, limit);
+		if (retained > 0)
+			bytes.addBytes(buffer.toBytes(), 0, retained);
+	}
+
+	public function appendCount(count:Int, limit:Int):Int {
+		if (count <= 0 || exceededLimit)
+			return 0;
+		if (limit < 0 || total < 0 || total > limit) {
 			exceededLimit = true;
+			total = limit < 0 ? 0 : limit;
+			return 0;
+		}
+		var remaining = limit - total;
+		if (remaining <= 0) {
+			exceededLimit = true;
+			total = limit;
+			return 0;
+		}
+		var retained = count < remaining ? count : remaining;
+		if (count > remaining) {
+			total = limit;
+			exceededLimit = true;
+		} else {
+			total += count;
+		}
+		return retained;
 	}
 }
 
@@ -235,8 +251,6 @@ final class SupportCrateAdmissionRunner {
 			closeHandle(stdoutPipe);
 			closeHandle(stderrPipe);
 			stopAndCloseTimer(timer);
-			if (process != null)
-				closeHandle(process);
 			try {
 				loop.run(DEFAULT);
 			} catch (_:Exception) {}
@@ -286,6 +300,9 @@ final class SupportCrateAdmissionRunner {
 	}
 
 	static function killProcess(process:Process):Bool {
+		// Haxe 4.3.7 declares Process.kill(), but evalLuv.ml does not bind that
+		// instance method. Derive the PID only from this still-open owned watcher,
+		// then retain the watcher until onExit closes it after child reaping.
 		return switch Process.killPid(process.pid(), SIGKILL) {
 			case Ok(_): true;
 			case Error(_): false;

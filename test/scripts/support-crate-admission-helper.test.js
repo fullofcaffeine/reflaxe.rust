@@ -199,13 +199,15 @@ function waitForFile(file, child) {
   })
 }
 
-function startBarrierHelper(input, cwd, ready, release) {
+function startBarrierHelper(input, cwd, ready, release, phase = 'after-first-pass', component = '') {
   const child = spawn(barrierHelperBinary, [], {
     cwd,
     env: {
       ...process.env,
       HXRS_ADMISSION_TEST_READY: ready,
-      HXRS_ADMISSION_TEST_RELEASE: release
+      HXRS_ADMISSION_TEST_RELEASE: release,
+      HXRS_ADMISSION_TEST_PHASE: phase,
+      HXRS_ADMISSION_TEST_COMPONENT: component
     },
     stdio: ['pipe', 'pipe', 'pipe']
   })
@@ -482,6 +484,34 @@ test('a source file above the per-file byte limit is rejected', () => {
   }
 })
 
+test('a 255-byte UTF-8 source name remains admissible', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hxrs-admission-name-limit-'))
+  try {
+    const classpathRoot = path.join(root, 'classpath')
+    const crateRoot = writeCrate(classpathRoot)
+    const name = `${'é'.repeat(124)}abcd.rs`
+    assert.equal(Buffer.byteLength(name, 'utf8'), 255)
+    fs.writeFileSync(path.join(crateRoot, 'src', name), 'pub fn boundary() {}\n')
+    const response = runHelper(request([fs.realpathSync(classpathRoot)], [['native', 'sample_support']]))
+    assert.equal(response.status, 'accepted')
+    assert.ok(response.bundles[0].entries.some(entry => entry.path === `src/${name}`))
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('a classpath above 128 real components is rejected before source lookup', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hxrs-admission-classpath-depth-'))
+  try {
+    const components = Array.from({ length: 129 }, (_, index) => `d${index}`)
+    const response = runHelper(request([path.join(root, ...components)], [['native', 'sample_support']]))
+    assert.equal(response.status, 'rejected')
+    assert.equal(response.code, 2)
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test('a source path deeper than 32 components is rejected', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hxrs-admission-deep-tree-'))
   try {
@@ -592,6 +622,72 @@ test('replacing a pathname cannot redirect a pinned source directory', async () 
     assert.equal(response.status, 'accepted')
     const library = response.bundles[0].entries.find(entry => entry.path === 'src/lib.rs')
     assert.equal(library.bytes.toString('utf8'), 'pub fn answer() -> i32 { 42 }\n')
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('replacing a selected child directory before open is rejected', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hxrs-admission-child-directory-race-'))
+  try {
+    const classpathRoot = path.join(root, 'classpath')
+    const crateRoot = writeCrate(classpathRoot)
+    const selected = path.join(crateRoot, 'src', 'selected')
+    fs.mkdirSync(selected)
+    fs.writeFileSync(path.join(selected, 'original.rs'), 'pub fn original() {}\n')
+    const ready = path.join(root, 'ready')
+    const release = path.join(root, 'release')
+    const running = startBarrierHelper(
+      request([fs.realpathSync(classpathRoot)], [['native', 'sample_support']]),
+      root,
+      ready,
+      release,
+      'before-child-open',
+      'selected'
+    )
+    await waitForFile(ready, running.child)
+    fs.renameSync(selected, `${selected}-original`)
+    fs.mkdirSync(selected)
+    fs.writeFileSync(path.join(selected, 'replacement.rs'), 'pub fn replacement() {}\n')
+    fs.writeFileSync(release, '')
+    const result = await running.completed
+    assert.equal(result.status, 0, result.stderr.toString('utf8'))
+    assert.equal(result.stderr.length, 0)
+    const response = decodeResponse(result.stdout)
+    assert.equal(response.status, 'rejected')
+    assert.equal(response.code, 5)
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('replacing a selected file before open is rejected', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hxrs-admission-child-file-race-'))
+  try {
+    const classpathRoot = path.join(root, 'classpath')
+    const crateRoot = writeCrate(classpathRoot)
+    const selected = path.join(crateRoot, 'src', 'selected.rs')
+    fs.writeFileSync(selected, 'pub fn original() {}\n')
+    const ready = path.join(root, 'ready')
+    const release = path.join(root, 'release')
+    const running = startBarrierHelper(
+      request([fs.realpathSync(classpathRoot)], [['native', 'sample_support']]),
+      root,
+      ready,
+      release,
+      'before-child-open',
+      'selected.rs'
+    )
+    await waitForFile(ready, running.child)
+    fs.renameSync(selected, `${selected}.original`)
+    fs.writeFileSync(selected, 'pub fn replacement() {}\n')
+    fs.writeFileSync(release, '')
+    const result = await running.completed
+    assert.equal(result.status, 0, result.stderr.toString('utf8'))
+    assert.equal(result.stderr.length, 0)
+    const response = decodeResponse(result.stdout)
+    assert.equal(response.status, 'rejected')
+    assert.equal(response.code, 5)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }

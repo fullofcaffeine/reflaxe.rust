@@ -12,8 +12,8 @@ import reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelp
 final class Main {
 	#if macro
 	public static macro function run():Expr {
-		var executable = requiredDefine("support_crate_runner_executable");
 		var expected = requiredDefine("support_crate_runner_expected");
+		var executable = requiredDefine("support_crate_runner_executable");
 		if (expected == "HelperValid" || expected == "HelperInvalid") {
 			var digest = requiredDefine("support_crate_runner_sha256");
 			var valid = @:privateAccess SupportCrateAdmissionRunner.validHelper(new SupportCrateAdmissionHelperLocation("", executable, digest));
@@ -32,7 +32,8 @@ final class Main {
 			case PipeFailed: "PipeFailed";
 			case ExitFailed: "ExitFailed";
 			case StderrRejected: "StderrRejected";
-			case HelperInvalid | StartFailed | ProtocolRejected: "Unexpected";
+			case ProtocolRejected: "ProtocolRejected";
+			case HelperInvalid | StartFailed: "Unexpected";
 		};
 		if (actual != expected)
 			Context.fatalError('expected `${expected}`, received `${actual}`', Context.currentPos());

@@ -9,5 +9,8 @@ import rust.Result;
 extern class AdmissionTestBarrier {
 	@:native("after_first_pass")
 	public static function afterFirstPass():Result<Void, AdmissionFsError>;
+
+	@:native("before_child_open")
+	public static function beforeChildOpen(component:String):Result<Void, AdmissionFsError>;
 }
 #end

@@ -25,8 +25,19 @@ extern class PinnedDirectory {
 	public function openDirectory(component:String):Result<PinnedDirectory, AdmissionFsError>;
 
 	@:native("entry_names")
-	public function entryNames(maximumEntries:Int, maximumNameBytes:Int):Result<Vec<String>, AdmissionFsError>;
+	public function entryNames(maximumEntries:Int, maximumNameBytes:Int,
+		maximumSegmentBytes:Int):Result<Vec<String>, AdmissionFsError>;
+
+	@:native("inspect_child")
+	public function inspectChild(component:String):Result<PinnedChild, AdmissionFsError>;
+}
+
+/** One descriptor-relative child identity captured before its final open. */
+@:native("crate::support_crate_admission_fs::PinnedChild")
+extern class PinnedChild {
+	@:native("open_directory")
+	public function openDirectory():Result<PinnedDirectory, AdmissionFsError>;
 
 	@:native("read_file")
-	public function readFile(component:String, maximumBytes:Int):Result<Vec<Int>, AdmissionFsError>;
+	public function readFile(maximumBytes:Int):Result<Vec<Int>, AdmissionFsError>;
 }

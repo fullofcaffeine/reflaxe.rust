@@ -62,7 +62,7 @@
     "test:support-crate-admission-helper": "node test/scripts/support-crate-admission-helper.test.js",
     "test:support-crate-admission-runner": "node test/scripts/support-crate-admission-runner.test.js",
     "build:support-crate-admission-helper": "node tools/support-crate-admission-helper/build.js",
-    "test:support-crate-admission-package": "node tools/support-crate-admission-helper/build.js --check",
+    "test:support-crate-admission-package": "node test/scripts/support-crate-admission-package.test.js",
     "test:fresh-cargo-resolution": "node scripts/ci/fresh-cargo-resolution.js --mode verify-reviewed --lane minimum --out-dir .cache/fresh-cargo-resolution/reviewed/minimum",
     "test:fresh-cargo-resolution:current": "node scripts/ci/fresh-cargo-resolution.js --mode verify-reviewed --lane current --out-dir .cache/fresh-cargo-resolution/reviewed/current",
     "fresh-cargo-resolution:observe": "node scripts/ci/fresh-cargo-resolution.js --mode observe-live --lane minimum --include-upper-edge --out-dir .cache/fresh-cargo-resolution/observation",
