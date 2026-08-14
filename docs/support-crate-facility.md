@@ -370,6 +370,12 @@ and all checked-in Cargo dependency sources. The package directory contains
 `binary-provenance.json`, `dependency-inventory.json`, and
 `THIRD_PARTY_NOTICES.md`.
 
+The Haxe launcher receives the repository root as its explicit first scope.
+This binds compiler and library selection to the reviewed root `.haxerc` and
+`haxe_libraries`. A later compiler `--cwd` changes only the helper's relative
+source and output directory. Nested Haxe scope files cannot select unrecorded
+compiler or library inputs.
+
 The build selects `aarch64-apple-darwin`, the Rust compiler, the linker, the
 macOS SDK, and the deployment target. It clears Haxe path/cache overrides and
 Rust flags. It rejects a caller-provided `HAXE_BIN`. Cargo gets a new empty home

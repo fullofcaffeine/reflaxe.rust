@@ -180,6 +180,12 @@ and the exact Haxe version in `.haxerc`. It clears Haxe path and cache overrides
 The evidence covers the launcher, the real Haxe executable, the Haxe standard
 library, the scoped Haxe library files, and all local compiler sources.
 
+Every Haxeshim call starts with `--cwd` for the repository root. This first
+directory selects the reviewed `.haxerc` and `haxe_libraries` scope. The compile
+call then uses a second `--cwd` for this helper, so relative source and output
+paths still work. A nested `.haxerc` or `haxe_libraries` directory below the
+repository root cannot replace the compiler or libraries used for generation.
+
 When a reviewed Cargo dependency changes, regenerate the vendor tree before
 the package build:
 

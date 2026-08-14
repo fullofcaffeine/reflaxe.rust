@@ -8,6 +8,7 @@ const { spawnSync } = require('node:child_process')
 
 const repoRoot = path.resolve(__dirname, '..', '..')
 const buildScript = path.join(repoRoot, 'tools', 'support-crate-admission-helper', 'build.js')
+const helperRoot = path.dirname(buildScript)
 const packageRoot = path.join(repoRoot, 'native', 'support-crate-admission', 'darwin-arm64')
 
 function runBuild(environment = {}) {
@@ -67,6 +68,35 @@ assert.deepEqual({
   cargoOffline: true,
   cargoVendored: true
 })
+
+const nestedHaxeScope = path.join(helperRoot, '.haxerc')
+const nestedHaxeLibraries = path.join(helperRoot, 'haxe_libraries')
+assert.equal(fs.existsSync(nestedHaxeScope), false, 'the package fixture requires no helper-local .haxerc')
+assert.equal(fs.existsSync(nestedHaxeLibraries), false, 'the package fixture requires no helper-local haxe_libraries')
+try {
+  fs.writeFileSync(nestedHaxeScope, `${JSON.stringify({
+    version: 'support-crate-hostile',
+    resolveLibs: 'scoped'
+  }, null, 2)}\n`)
+  fs.mkdirSync(nestedHaxeLibraries)
+  fs.writeFileSync(
+    path.join(nestedHaxeLibraries, 'reflaxe.rust.hxml'),
+    '-cp /nonexistent/helper-local-reflaxe-rust\n'
+  )
+
+  const nestedHaxeScopeResult = runBuild()
+  assert.ifError(nestedHaxeScopeResult.error)
+  assert.equal(
+    nestedHaxeScopeResult.status,
+    0,
+    `a helper-local Haxe scope must not replace the reviewed repository scope:\n${nestedHaxeScopeResult.stdout || ''}${nestedHaxeScopeResult.stderr || ''}`
+  )
+  const nestedScopeProvenance = JSON.parse(fs.readFileSync(path.join(packageRoot, 'binary-provenance.json'), 'utf8'))
+  assert.equal(nestedScopeProvenance.toolchain.haxe, '4.3.7')
+} finally {
+  fs.rmSync(nestedHaxeScope, { force: true })
+  fs.rmSync(nestedHaxeLibraries, { recursive: true, force: true })
+}
 
 const hostileRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hxrs-hostile-haxe-'))
 const hostileHaxe = path.join(hostileRoot, 'haxe-wrapper.js')

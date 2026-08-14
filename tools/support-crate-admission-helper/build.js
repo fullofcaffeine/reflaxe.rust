@@ -132,6 +132,7 @@ const haxeEnvironment = {
   LANG: 'C',
   LC_ALL: 'C'
 }
+const haxeScopeArguments = ['--cwd', repoRoot]
 
 function sha256(bytes) {
   return crypto.createHash('sha256').update(bytes).digest('hex')
@@ -347,7 +348,7 @@ function provenance(binaryBytes) {
       cargoVendorConfigSha256: sha256(fs.readFileSync(cargoVendorConfig))
     },
     toolchain: {
-      haxe: run(process.execPath, [resolvedHaxeShim, '--version'], repoRoot, haxeEnvironment),
+      haxe: run(process.execPath, [resolvedHaxeShim, ...haxeScopeArguments, '--version'], repoRoot, haxeEnvironment),
       haxeLauncherSha256: sha256(fs.readFileSync(resolvedHaxeShim)),
       haxeCompilerSha256: sha256(fs.readFileSync(resolvedHaxeCompiler)),
       haxeStd: treeIdentity(haxeStdRoot, 'toolchain/haxe-stdlib'),
@@ -375,7 +376,13 @@ function verifyGitMode() {
 }
 
 fs.rmSync(outputRoot, { recursive: true, force: true })
-run(process.execPath, [resolvedHaxeShim, 'compile.hxml', '-D', `rust_output=${path.basename(outputRoot)}`], helperRoot, haxeEnvironment)
+run(process.execPath, [
+  resolvedHaxeShim,
+  ...haxeScopeArguments,
+  '--cwd', helperRoot,
+  'compile.hxml',
+  '-D', `rust_output=${path.basename(outputRoot)}`
+], repoRoot, haxeEnvironment)
 fs.copyFileSync(path.join(helperRoot, 'Cargo.lock'), path.join(outputRoot, 'Cargo.lock'))
 run(resolvedCargo, [
   'build',
