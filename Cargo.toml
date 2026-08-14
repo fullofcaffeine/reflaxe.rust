@@ -5,5 +5,8 @@ exclude = [
   "test",
   ".cache",
   "tools/hx",
+  "tools/support-crate-admission-helper/out",
+    "tools/support-crate-admission-helper/out_barrier",
+    "tools/support-crate-admission-helper/out_verify",
 ]
 resolver = "3"

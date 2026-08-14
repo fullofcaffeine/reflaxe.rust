@@ -1,11 +1,11 @@
 # Typed Rust support-crate facility
 
-Status: declaration parser implemented. `@:rustSupportCrate` is not available
-for application use. A valid declaration stops with
-`HXRS-SUPPORT-CRATE-SOURCE-ADMISSION-UNAVAILABLE`.
+Status: source admission is implemented for Apple Silicon macOS. The compiler
+reads an exact support-crate bundle, validates it, and stops with
+`HXRS-SUPPORT-CRATE-EMISSION-DISABLED`.
 
-This stage validates declaration intent only. It does not read support-crate
-source files or change Cargo and Rust output.
+The compiler does not add the admitted crate to generated Cargo output yet.
+Linux and Windows stop before source admission. No pathname fallback is used.
 
 ## Why this facility exists
 
@@ -24,8 +24,8 @@ current `@:rustCargo({path: ...})` metadata can link such a crate. However, the
 path is ambient input. haxe.rust does not copy, validate, hash, or package that
 source.
 
-The planned `@:rustSupportCrate` facility closes this gap. It will let one
-typed Haxe facade select one closed Rust library bundle. haxe.rust will own the
+The `@:rustSupportCrate` facility closes this gap in finite stages. It lets one
+typed Haxe facade select one closed Rust library bundle. haxe.rust owns the
 bundle's exact source bytes, generated location, Cargo connection, and content
 identity.
 
@@ -138,10 +138,11 @@ accepted `Cargo.toml` bytes. The checked-in manifest must match those bytes
 exactly. This mirror keeps normal Cargo development possible without admitting
 arbitrary manifest behavior.
 
-The compiler will read every admitted source byte once. One immutable plan will
-hold the copied bytes, lengths, hashes, owners, target policy, dependency
-policy, and generated destination. Output code will use that plan and will not
-reopen the source checkout.
+The helper reads every candidate source byte in two complete passes. It compares
+the two trees to detect a change during admission. Only the validated first copy
+crosses the protocol boundary. The compiler validates that copy and stores it in
+one immutable plan. Later output code will use the plan and will not reopen the
+source checkout.
 
 ## Generated project
 
@@ -230,7 +231,7 @@ containment or the semantic soundness of the support implementation.
 
 ## Delivery stages
 
-The feature has finite delivery stages. Stages 1 and 2A are implemented:
+The feature has finite delivery stages. Stages 1, 2A, and 2B are implemented:
 
 1. Reserve and document the public metadata. Reject every typed declaration or
    field use. Haxe discards ordinary expression metadata that has no typed
@@ -284,18 +285,77 @@ The compiler then reports:
 This result means that the declaration is valid. It does not mean that the
 source directory exists or contains reviewed bytes.
 
-### Why Stage 2B needs a native helper
+### What Stage 2B does
 
 Haxe 4.3.7 can inspect and read files by pathname. It cannot open one child
-relative to an already open parent directory on all compiler hosts.
+relative to an already open parent directory through its macro API.
 
 Another process can replace a pathname component between a kind check and a
-later read. A separate helper must use parent-relative operating-system calls.
-It must validate and read each file through the same open handle.
+later read. The package-owned helper opens each child relative to an open
+parent directory. An open directory is called a pinned directory here. A later
+pathname replacement cannot redirect reads below that pinned directory.
 
-The helper will be a one-shot haxe.rust tool. It will not be a command runner,
-a daemon, or application code. The source-admission decision explains the
-exact boundary and the remaining host decisions.
+The helper logic is Haxe source compiled through the haxe.rust Metal profile.
+A small safe-Rust facade calls the operating-system directory APIs. The facade
+contains no `unsafe` block. It does not contain product rules or manifest
+policy.
+
+The compiler starts the packaged helper directly. It does not use a
+shell, `PATH`, a download, or a consumer-side build. The compiler checks the
+helper size, execute mode, and SHA-256 digest before it starts the process.
+
+This is a verify-then-execute boundary on macOS. It does not prove that the
+executed inode is the same inode that was hashed. The installed haxe.rust package
+directory is therefore a trusted boundary. A process that can replace files in
+that directory can also replace compiler code. A future platform facade can add
+a stronger execute-by-descriptor operation without changing the protocol.
+
+The helper reads the complete tree twice through pinned directories. Both
+passes must return the same paths, file kinds, and bytes. It rejects symbolic
+links, hard links, FIFOs, other special files, duplicate classpath matches, and
+size-limit violations. It sorts the complete result by UTF-8 path bytes after
+the walk, so a file such as `foo.rs` sorts before `foo/bar.rs`. This comparison
+detects changes during admission. It does not claim one atomic filesystem
+snapshot against a hostile writer.
+
+The helper enforces limits while it discovers and reads the tree. It does not
+first collect an unbounded directory or response. Version 1 permits at most 32
+path components, 256 files and 8,448 total entries per crate, 2 MiB per file,
+16 MiB per crate, 32 MiB across all selected crates, and a 40 MiB response.
+
+The helper returns a typed binary response with logical paths and copied file
+bytes. Haxe then performs an independent check. It checks the exact manifest,
+tree shape, text format, path grammar, file limits, order, and hashes.
+
+The process runner drains stdout and stderr at the same time. It applies fixed
+byte limits and a 15-second deadline. The deadline stays active until the child
+has exited and both output pipes reach end-of-file. A termination signal is a
+failure even when the numeric exit code is zero. Any stderr, partial result,
+invalid frame, nonzero exit, signal, timeout, or runner exception discards all
+returned bytes and closes the process, pipes, timer, and event loop.
+
+The current packaged helper supports Apple Silicon macOS. Linux source uses
+the same portable Metal code and safe Rust facade. Linux remains disabled
+until a Linux VM builds and proves its exact package binary. Windows needs a
+separate host implementation.
+
+The current proof uses the reviewed Git source package. One command rebuilds the
+helper through Haxe/Metal and locked Cargo, then compares the fresh bytes with
+the packaged binary:
+
+```text
+npm run test:support-crate-admission-package
+```
+
+The check also verifies Git mode `100755`, file mode `0755`, the hard-coded
+SHA-256 digest, the complete source-input digest, exact Haxe/Rust/Cargo tool
+identity, and the locked dependency graph. The package directory contains
+`binary-provenance.json`, `dependency-inventory.json`, and
+`THIRD_PARTY_NOTICES.md`.
+
+The Haxelib release ZIP does not include the helper yet. Release packaging
+remains disabled until a packed-install test proves the same binary, executable
+mode, provenance, dependency inventory, and notices outside the repository.
 
 The metadata becomes `metadata-qualified` only after stage 5. Stable status
 requires one released downstream consumer and a second distinct support-crate
@@ -329,8 +389,23 @@ boundary:
 - an ambient support path compiles but is absent from generated ownership and
   package output.
 
-The focused fixtures prove the Stage 2A grammar and request lifetime. They also
-prove that a valid request creates no Cargo or Rust output.
+The focused fixtures prove the declaration grammar and request lifetime. They
+also prove that admitted source creates no Cargo or Rust output in Stage 2B.
+
+The macOS fixtures prove these boundaries:
+
+- exact and parent-relative classpath admission.
+- duplicate classpath rejection.
+- nested Rust modules, including `src/platform/mod.rs`.
+- symbolic-link, hard-link, extra-file, empty-directory, text, and manifest rejection.
+- FIFO rejection without waiting for a writer.
+- global UTF-8 path ordering, depth, entry, per-file, per-crate, total-source,
+  and response limits.
+- byte-exact request and response frames.
+- clean exit, stderr, nonzero exit, signal, partial output, inherited-pipe,
+  exception-cleanup, and timeout behavior.
+- no machine path in the public diagnostic.
+- no generated Cargo or Rust output after successful source admission.
 
 The warm compiler-server fixture uses this sequence:
 
@@ -345,6 +420,12 @@ function-argument,
 typedef-field, and abstract-field placements remain rejected. The packaged
 compiler reaches the same stable source-admission diagnostic and creates no
 Rust output.
+
+A second warm-server fixture performs admitted requests from two different
+caller directories. It also places a fake helper under a caller classpath. All
+three requests reach the same Stage 3 stop, and the fake helper never runs.
+This proves that request working directories and classpaths do not replace the
+package helper anchor.
 
 The reconciled independent architecture review and local decision matrix are
 in [the original Oracle disposition](oracle-contained-unsafe-support-crate-disposition.md).

@@ -103,6 +103,23 @@ function compileThroughServer(port, fixtureRoot, reserved) {
   })
 }
 
+function compileAdmittedSourceThroughServer(port, callerRoot, sourceRoot, shadowRoot) {
+  return spawnSync(haxe, [
+    '--connect', String(port),
+    '-cp', shadowRoot,
+    '-cp', sourceRoot,
+    '-lib', 'reflaxe.rust',
+    '-D', 'reflaxe_rust_profile=metal',
+    '-D', 'rust_no_build',
+    '-D', `rust_output=${path.join(callerRoot, 'out')}`,
+    '-main', 'supportcrateadmitted.Main'
+  ], {
+    cwd: callerRoot,
+    encoding: 'utf8',
+    env: process.env
+  })
+}
+
 function compileNegativeFixture(fixture) {
   return spawnSync(haxe, ['compile.hxml'], {
     cwd: path.join(repoRoot, 'test', 'negative', fixture),
@@ -161,6 +178,60 @@ class Main {
   }
 }
 `
+}
+
+function admittedSourceManifest() {
+  return `[package]
+name = "sample_support"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+`
+}
+
+function compileAdmittedSourceFixture(mutate) {
+  const cacheRoot = path.join(repoRoot, '.cache')
+  fs.mkdirSync(cacheRoot, { recursive: true })
+  const fixtureRoot = fs.mkdtempSync(path.join(cacheRoot, 'support-crate-admission-'))
+  const crateRoot = path.join(fixtureRoot, 'native', 'sample_support')
+  const output = path.join(fixtureRoot, 'out')
+  fs.mkdirSync(path.join(crateRoot, 'src'), { recursive: true })
+  fs.writeFileSync(path.join(fixtureRoot, 'Main.hx'), `
+@:rustSupportCrate({
+  name: "sample_support",
+  sourceRoot: "native/sample_support",
+  unsafePolicy: "forbid",
+  targets: ["*"],
+  dependencies: []
+})
+@:native("sample_support::Api")
+extern class SampleSupportApi {
+  public static function answer():Int;
+}
+class Main { static function main():Void { SampleSupportApi.answer(); } }
+`)
+  fs.writeFileSync(path.join(crateRoot, 'Cargo.toml'), admittedSourceManifest())
+  fs.writeFileSync(path.join(crateRoot, 'src', 'lib.rs'), 'pub fn answer() -> i32 { 42 }\n')
+  mutate(crateRoot)
+  const result = spawnSync(haxe, [
+    '-lib', 'reflaxe.rust',
+    '-D', 'reflaxe_rust_profile=metal',
+    '-D', 'rust_no_build',
+    '-D', `rust_output=${output}`,
+    '-main', 'Main'
+  ], {
+    cwd: fixtureRoot,
+    encoding: 'utf8',
+    env: process.env
+  })
+  result.outputExists = fs.existsSync(output)
+  fs.rmSync(fixtureRoot, { recursive: true, force: true })
+  return result
 }
 
 test('current facilities cannot own a separate contained-unsafe support crate', () => {
@@ -368,6 +439,62 @@ test('a repeated declaration must be exactly equal after normalization', () => {
   assert.match(transcript(result), /\[HXRS-METADATA-VALUE\].*Conflicting `@:rustSupportCrate` declaration/)
 })
 
+test('a complete source bundle reaches the Stage 3 emission stop on macOS arm64', { skip: process.platform !== 'darwin' || process.arch !== 'arm64' }, () => {
+  const fixtureRoot = path.join(repoRoot, 'test', 'contract', 'support_crate_admitted_source')
+  const output = path.join(fixtureRoot, 'out')
+  fs.rmSync(output, { recursive: true, force: true })
+  try {
+    const result = spawnSync(haxe, ['compile.hxml'], {
+      cwd: fixtureRoot,
+      encoding: 'utf8',
+      env: process.env
+    })
+    assert.ifError(result.error)
+    assert.notEqual(result.status, 0, 'Stage 3 output unexpectedly became enabled')
+    assert.match(transcript(result), /\[HXRS-SUPPORT-CRATE-EMISSION-DISABLED\]/)
+    assert.doesNotMatch(transcript(result), /\/private\/|\/Users\//,
+      'the admission diagnostic leaked a machine-local source path')
+    assert.equal(fs.existsSync(output), false, 'admission created Cargo or Rust output')
+  } finally {
+    fs.rmSync(output, { recursive: true, force: true })
+  }
+})
+
+test('source admission rejects malformed bundle authority on macOS arm64', { skip: process.platform !== 'darwin' || process.arch !== 'arm64' }, () => {
+  const cases = [
+    {
+      name: 'manifest mismatch',
+      mutate: root => fs.appendFileSync(path.join(root, 'Cargo.toml'), '\n[workspace]\n')
+    },
+    {
+      name: 'non-canonical Rust line endings',
+      mutate: root => fs.writeFileSync(path.join(root, 'src', 'lib.rs'), 'pub fn answer() -> i32 { 42 }\r\n')
+    },
+    {
+      name: 'forbidden root build script',
+      mutate: root => fs.writeFileSync(path.join(root, 'build.rs'), 'fn main() {}\n')
+    },
+    {
+      name: 'empty source directory',
+      mutate: root => fs.mkdirSync(path.join(root, 'src', 'empty'))
+    },
+    {
+      name: 'hard-linked source file',
+      mutate: root => fs.linkSync(path.join(root, 'src', 'lib.rs'), path.join(root, 'src', 'alias.rs'))
+    }
+  ]
+
+  for (const fixture of cases) {
+    const result = compileAdmittedSourceFixture(fixture.mutate)
+    assert.ifError(result.error)
+    assert.notEqual(result.status, 0, `${fixture.name} unexpectedly compiled`)
+    assert.match(transcript(result), /\[HXRS-SUPPORT-CRATE-SOURCE-ADMISSION-UNAVAILABLE\]/, fixture.name)
+    assert.doesNotMatch(transcript(result), /\/private\/|\/Users\//,
+      `${fixture.name} leaked a machine-local source path`)
+    assert.equal(result.outputExists, false, `${fixture.name} created Cargo or Rust output`)
+  }
+})
+
 test('support-crate request planning stays isolated through a warm compiler server', async () => {
   const port = await unusedLoopbackPort()
   const fixtureRoot = path.join(repoRoot, 'test', 'contract', 'support_crate_warm_lifecycle')
@@ -421,6 +548,61 @@ test('support-crate request planning stays isolated through a warm compiler serv
         resolve()
       }, 2000).unref()
     })
+  }
+})
+
+test('the warm compiler keeps its package helper anchor across caller directories', {
+  skip: process.platform !== 'darwin' || process.arch !== 'arm64'
+}, async () => {
+  const port = await unusedLoopbackPort()
+  const sourceRoot = path.join(repoRoot, 'test', 'contract', 'support_crate_admitted_source')
+  const cacheRoot = path.join(repoRoot, '.cache')
+  fs.mkdirSync(cacheRoot, { recursive: true })
+  const scratch = fs.mkdtempSync(path.join(cacheRoot, 'hxrs-admission-anchor-'))
+  const firstCaller = path.join(scratch, 'first')
+  const secondCaller = path.join(scratch, 'nested', 'second')
+  const shadowRoot = path.join(scratch, 'shadow')
+  const shadowHelper = path.join(
+    shadowRoot,
+    'native',
+    'support-crate-admission',
+    'darwin-arm64',
+    'hxrs-support-crate-admission'
+  )
+  const shadowMarker = path.join(scratch, 'shadow-was-run')
+  fs.mkdirSync(firstCaller, { recursive: true })
+  fs.mkdirSync(secondCaller, { recursive: true })
+  fs.mkdirSync(path.dirname(shadowHelper), { recursive: true })
+  fs.writeFileSync(shadowHelper, `#!/bin/sh\ntouch '${shadowMarker}'\nexit 1\n`, { mode: 0o700 })
+  const compilerServer = spawn(haxeServer, ['--wait', String(port)], {
+    cwd: repoRoot,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: process.env
+  })
+
+  try {
+    await waitForCompilerServer(port, compilerServer)
+    for (const callerRoot of [firstCaller, secondCaller, firstCaller]) {
+      const result = compileAdmittedSourceThroughServer(port, callerRoot, sourceRoot, shadowRoot)
+      assert.ifError(result.error)
+      assert.notEqual(result.status, 0, 'Stage 3 output unexpectedly became enabled')
+      assert.match(transcript(result), /\[HXRS-SUPPORT-CRATE-EMISSION-DISABLED\]/)
+      assert.doesNotMatch(transcript(result), /HXRS-SUPPORT-CRATE-SOURCE-ADMISSION-UNAVAILABLE/)
+      assert.equal(fs.existsSync(path.join(callerRoot, 'out')), false)
+    }
+    assert.equal(fs.existsSync(shadowMarker), false,
+      'a caller classpath replaced the package-owned admission helper')
+  } finally {
+    compilerServer.kill('SIGTERM')
+    await new Promise(resolve => {
+      if (compilerServer.exitCode !== null) return resolve()
+      compilerServer.once('exit', resolve)
+      setTimeout(() => {
+        compilerServer.kill('SIGKILL')
+        resolve()
+      }, 2000).unref()
+    })
+    fs.rmSync(scratch, { recursive: true, force: true })
   }
 })
 

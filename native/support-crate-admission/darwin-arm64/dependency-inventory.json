@@ -1,0 +1,410 @@
+{
+  "schemaVersion": 1,
+  "platform": "darwin-arm64",
+  "cargoLockSha256": "ed303c453797de3269abf60acf0f6a499d44712c5a5fdf5c82811f75d251f8f3",
+  "packages": [
+    {
+      "ref": "bitflags@2.13.1",
+      "name": "bitflags",
+      "version": "2.13.1",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "ref": "cfg-if@1.0.4",
+      "name": "cfg-if",
+      "version": "1.0.4",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "ref": "errno@0.3.14",
+      "name": "errno",
+      "version": "0.3.14",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "ref": "hxrs_support_crate_admission@0.0.1",
+      "name": "hxrs_support_crate_admission",
+      "version": "0.0.1",
+      "source": "package-owned",
+      "checksum": null,
+      "license": "GPL-3.0-only"
+    },
+    {
+      "ref": "hxrt@0.0.1",
+      "name": "hxrt",
+      "version": "0.0.1",
+      "source": "package-owned",
+      "checksum": null,
+      "license": "GPL-3.0-only"
+    },
+    {
+      "ref": "libc@0.2.189",
+      "name": "libc",
+      "version": "0.2.189",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "ref": "linux-raw-sys@0.12.1",
+      "name": "linux-raw-sys",
+      "version": "0.12.1",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53",
+      "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT"
+    },
+    {
+      "ref": "lock_api@0.4.14",
+      "name": "lock_api",
+      "version": "0.4.14",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "224399e74b87b5f3557511d98dff8b14089b3dadafcab6bb93eab67d3aace965",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "ref": "parking_lot_core@0.9.12",
+      "name": "parking_lot_core",
+      "version": "0.9.12",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "2621685985a2ebf1c516881c026032ac7deafcda1a2c9b7850dc81e3dfcb64c1",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "ref": "parking_lot@0.12.5",
+      "name": "parking_lot",
+      "version": "0.12.5",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "93857453250e3077bd71ff98b6a65ea6621a19bb0f559a85248955ac12c45a1a",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "ref": "proc-macro2@1.0.107",
+      "name": "proc-macro2",
+      "version": "1.0.107",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "985e7ec9bb745e6ce6535b544d84d6cd6f7ad8bd711c398938ae983b91a766d9",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "ref": "quote@1.0.47",
+      "name": "quote",
+      "version": "1.0.47",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "1fbf4db142a473a8d80c26bbf18454ed458bf8d26c8219c331daecfdbd079001",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "ref": "redox_syscall@0.5.18",
+      "name": "redox_syscall",
+      "version": "0.5.18",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "ed2bf2547551a7053d6fdfafda3f938979645c44812fbfcda098faae3f1a362d",
+      "license": "MIT"
+    },
+    {
+      "ref": "rustix@1.1.4",
+      "name": "rustix",
+      "version": "1.1.4",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "b6fe4565b9518b83ef4f91bb47ce29620ca828bd32cb7e408f0062e9930ba190",
+      "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT"
+    },
+    {
+      "ref": "scopeguard@1.2.0",
+      "name": "scopeguard",
+      "version": "1.2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "ref": "serde_core@1.0.229",
+      "name": "serde_core",
+      "version": "1.0.229",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "67dca2c9c51e58a4791a4b1ed58308b39c64224d349a935ab5039aa360942a48",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "ref": "serde_derive@1.0.229",
+      "name": "serde_derive",
+      "version": "1.0.229",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "e7a5d71263a5a7d47b41f6b3f06ba276f10cc18b0931f1799f710578e2309348",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "ref": "serde@1.0.229",
+      "name": "serde",
+      "version": "1.0.229",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "4148590afebada386688f18773da617792bf2ef03ffc1e4cbd2b1d45b023e0ba",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "ref": "smallvec@1.15.2",
+      "name": "smallvec",
+      "version": "1.15.2",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "8ed6a63f02c8539c91a8685a86f4099661ba3da017932f6ebbea6de3f0fa7c90",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "ref": "syn@3.0.3",
+      "name": "syn",
+      "version": "3.0.3",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "53e9bae58849f64dfa4f5d5ae372c8341f7305f82a3868709269343628b659a3",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "ref": "unicode-ident@1.0.24",
+      "name": "unicode-ident",
+      "version": "1.0.24",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75",
+      "license": "(MIT OR Apache-2.0) AND Unicode-3.0"
+    },
+    {
+      "ref": "windows-link@0.2.1",
+      "name": "windows-link",
+      "version": "0.2.1",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "ref": "windows-sys@0.61.2",
+      "name": "windows-sys",
+      "version": "0.61.2",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc",
+      "license": "MIT OR Apache-2.0"
+    }
+  ],
+  "nodes": [
+    {
+      "ref": "bitflags@2.13.1",
+      "dependencies": [],
+      "features": [
+        "std"
+      ]
+    },
+    {
+      "ref": "cfg-if@1.0.4",
+      "dependencies": [],
+      "features": []
+    },
+    {
+      "ref": "errno@0.3.14",
+      "dependencies": [
+        "libc@0.2.189",
+        "windows-sys@0.61.2"
+      ],
+      "features": [
+        "std"
+      ]
+    },
+    {
+      "ref": "hxrs_support_crate_admission@0.0.1",
+      "dependencies": [
+        "hxrt@0.0.1",
+        "rustix@1.1.4"
+      ],
+      "features": []
+    },
+    {
+      "ref": "hxrt@0.0.1",
+      "dependencies": [
+        "parking_lot@0.12.5",
+        "serde@1.0.229"
+      ],
+      "features": [
+        "core",
+        "io"
+      ]
+    },
+    {
+      "ref": "libc@0.2.189",
+      "dependencies": [],
+      "features": [
+        "default",
+        "std"
+      ]
+    },
+    {
+      "ref": "linux-raw-sys@0.12.1",
+      "dependencies": [],
+      "features": [
+        "auxvec",
+        "elf",
+        "errno",
+        "general",
+        "ioctl",
+        "no_std"
+      ]
+    },
+    {
+      "ref": "lock_api@0.4.14",
+      "dependencies": [
+        "scopeguard@1.2.0"
+      ],
+      "features": [
+        "atomic_usize",
+        "default"
+      ]
+    },
+    {
+      "ref": "parking_lot_core@0.9.12",
+      "dependencies": [
+        "cfg-if@1.0.4",
+        "libc@0.2.189",
+        "redox_syscall@0.5.18",
+        "smallvec@1.15.2",
+        "windows-link@0.2.1"
+      ],
+      "features": []
+    },
+    {
+      "ref": "parking_lot@0.12.5",
+      "dependencies": [
+        "lock_api@0.4.14",
+        "parking_lot_core@0.9.12"
+      ],
+      "features": [
+        "default"
+      ]
+    },
+    {
+      "ref": "proc-macro2@1.0.107",
+      "dependencies": [
+        "unicode-ident@1.0.24"
+      ],
+      "features": [
+        "proc-macro"
+      ]
+    },
+    {
+      "ref": "quote@1.0.47",
+      "dependencies": [
+        "proc-macro2@1.0.107"
+      ],
+      "features": [
+        "proc-macro"
+      ]
+    },
+    {
+      "ref": "redox_syscall@0.5.18",
+      "dependencies": [
+        "bitflags@2.13.1"
+      ],
+      "features": [
+        "default",
+        "userspace"
+      ]
+    },
+    {
+      "ref": "rustix@1.1.4",
+      "dependencies": [
+        "bitflags@2.13.1",
+        "errno@0.3.14",
+        "libc@0.2.189",
+        "linux-raw-sys@0.12.1",
+        "windows-sys@0.61.2"
+      ],
+      "features": [
+        "alloc",
+        "fs",
+        "std"
+      ]
+    },
+    {
+      "ref": "scopeguard@1.2.0",
+      "dependencies": [],
+      "features": []
+    },
+    {
+      "ref": "serde_core@1.0.229",
+      "dependencies": [
+        "serde_derive@1.0.229"
+      ],
+      "features": [
+        "result",
+        "std"
+      ]
+    },
+    {
+      "ref": "serde_derive@1.0.229",
+      "dependencies": [
+        "proc-macro2@1.0.107",
+        "quote@1.0.47",
+        "syn@3.0.3"
+      ],
+      "features": [
+        "default"
+      ]
+    },
+    {
+      "ref": "serde@1.0.229",
+      "dependencies": [
+        "serde_core@1.0.229"
+      ],
+      "features": [
+        "default",
+        "std"
+      ]
+    },
+    {
+      "ref": "smallvec@1.15.2",
+      "dependencies": [],
+      "features": []
+    },
+    {
+      "ref": "syn@3.0.3",
+      "dependencies": [
+        "proc-macro2@1.0.107",
+        "quote@1.0.47",
+        "unicode-ident@1.0.24"
+      ],
+      "features": [
+        "clone-impls",
+        "derive",
+        "parsing",
+        "printing",
+        "proc-macro"
+      ]
+    },
+    {
+      "ref": "unicode-ident@1.0.24",
+      "dependencies": [],
+      "features": []
+    },
+    {
+      "ref": "windows-link@0.2.1",
+      "dependencies": [],
+      "features": []
+    },
+    {
+      "ref": "windows-sys@0.61.2",
+      "dependencies": [
+        "windows-link@0.2.1"
+      ],
+      "features": [
+        "default",
+        "Win32",
+        "Win32_Foundation",
+        "Win32_Networking",
+        "Win32_Networking_WinSock",
+        "Win32_System",
+        "Win32_System_Diagnostics",
+        "Win32_System_Diagnostics_Debug"
+      ]
+    }
+  ]
+}

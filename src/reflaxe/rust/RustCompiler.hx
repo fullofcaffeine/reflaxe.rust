@@ -121,6 +121,10 @@ import reflaxe.rust.RustProfile;
 import reflaxe.rust.RustDiagnostic.RustDiagnosticId;
 import reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequestPlan;
 import reflaxe.rust.SupportCrateRequestPlanner.SupportCratePlanningFailure;
+import reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperLocatorResult;
+import reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionResponse;
+import reflaxe.rust.SupportCrateAdmissionRunner.SupportCrateAdmissionRunResult;
+import reflaxe.rust.SupportCrateAdmissionValidator.SupportCrateAdmissionValidationFailure;
 import reflaxe.rust.compiler.RustBuildContext;
 import reflaxe.rust.compiler.RustClassContext;
 import reflaxe.rust.compiler.RustFuncContext;
@@ -255,6 +259,12 @@ private typedef WholeScrutineeAliasRewrite = {
  * - Cargo.toml emitted as an extra file at compile end
  */
 class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFile, RustFile> {
+	static final supportCrateAdmissionPackageRoot:Null<String> = SupportCrateAdmissionHelperLocator.anchorPackageRoot(sourceFileAtCallSite());
+
+	static function sourceFileAtCallSite(?position:haxe.PosInfos):String {
+		return position.fileName;
+	}
+
 	var didEmitMain:Bool = false;
 	var crateName:String = "hx_app";
 	var mainBaseType:Null<BaseType> = null;
@@ -2141,9 +2151,34 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		supportCrateRequestPlan = parsedSupportCrates;
 		if (!parsedSupportCrates.isEmpty()) {
 			var owner = parsedSupportCrates.firstOwner();
+			var admitted = false;
+			var detail = switch SupportCrateAdmissionHelperLocator.locate(supportCrateAdmissionPackageRoot) {
+				case Unavailable(_):
+					"This host has no reviewed package-owned source-admission helper.";
+				case Available(location):
+					switch SupportCrateAdmissionRunner.run(location, parsedSupportCrates, Context.getClassPath()) {
+						case Failed(_):
+							"The package-owned source-admission helper did not produce a valid complete response.";
+						case Completed(Rejected(value)):
+							"The package-owned source-admission helper rejected the request with closed category "
+							+ Std.string(value.code) + ".";
+						case Completed(Accepted(value)):
+							try {
+								SupportCrateAdmissionValidator.validate(parsedSupportCrates, value);
+								admitted = true;
+								"";
+							} catch (_:SupportCrateAdmissionValidationFailure) {
+								"The helper response failed independent Haxe source-bundle validation.";
+							}
+					}
+			};
+			if (admitted)
+				RustDiagnostic.error(RustDiagnosticId.SupportCrateEmissionDisabled,
+					"Exact support-crate source bytes were admitted and independently validated, but Stage 3 output integration is disabled. "
+					+ "No Cargo or Rust output was changed; see docs/support-crate-facility.md.",
+					owner == null ? Context.currentPos() : owner.pos);
 			RustDiagnostic.error(RustDiagnosticId.SupportCrateSourceAdmissionUnavailable,
-				"The support-crate declaration is valid, but exact native source admission is not implemented yet. "
-				+ "No support-crate source was read and no Cargo or Rust output was changed; see docs/support-crate-facility.md.",
+				detail + " No Cargo or Rust output was changed; see docs/support-crate-facility.md.",
 				owner == null ? Context.currentPos() : owner.pos);
 		}
 

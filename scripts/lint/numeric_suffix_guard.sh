@@ -3,6 +3,9 @@ set -euo pipefail
 
 # Guard: Disallow numeric-suffixed identifiers in compiler sources
 # Rationale: Numeric suffixes (e.g., foo2, helper3) obscure intent and reduce readability.
+# A declaration can use the reviewed `numeric-suffix-guard: allow-standard-encoding`
+# marker when the number is part of a standard external name such as SHA-256 or
+# an unsigned protocol width. The marker keeps the exception local and visible.
 
 TARGET_DIR='src/reflaxe/rust'
 
@@ -74,6 +77,7 @@ if [[ "$FULL_SCAN" -eq 0 ]] && git rev-parse --is-inside-work-tree >/dev/null 2>
           next if !defined($file) || $file !~ /\.hx$/;
           if (/^\+[^+]/) {
             my $line = substr($_, 1);
+            next if $line =~ /numeric-suffix-guard:\s*allow-standard-encoding/;
             if ($line =~ $decl || $line =~ $param) {
               print "[guard:numeric] $file: $line";
               $found = 1;
@@ -93,11 +97,13 @@ if [[ "$FULL_SCAN" -ne 0 ]]; then
   echo "[guard:numeric] Full scan enabled; scanning entire ${TARGET_DIR} tree..."
 
   if [[ "$use_rg" -eq 1 ]]; then
-    if rg -n -e "${DECL_PATTERN}" -e "${PARAM_PATTERN}" "${TARGET_DIR}" --no-heading --hidden --glob '!**/docs/**' --glob '!**/test/**' ; then
+    if rg -n -e "${DECL_PATTERN}" -e "${PARAM_PATTERN}" "${TARGET_DIR}" --no-heading --hidden --glob '!**/docs/**' --glob '!**/test/**' \
+      | rg -v 'numeric-suffix-guard: allow-standard-encoding' ; then
       found=1
     fi
   else
-    if grep -RInE "${DECL_PATTERN}|${PARAM_PATTERN}" "${TARGET_DIR}" --exclude-dir=docs --exclude-dir=test ; then
+    if grep -RInE "${DECL_PATTERN}|${PARAM_PATTERN}" "${TARGET_DIR}" --exclude-dir=docs --exclude-dir=test \
+      | grep -v 'numeric-suffix-guard: allow-standard-encoding' ; then
       found=1
     fi
   fi
