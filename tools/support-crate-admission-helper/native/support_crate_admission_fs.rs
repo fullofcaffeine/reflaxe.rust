@@ -5,7 +5,8 @@
 //! express. It deliberately contains no product policy and uses only safe APIs.
 
 use rustix::fd::OwnedFd;
-use rustix::fs::{fstat, openat, statat, AtFlags, Dir, FileType, Mode, OFlags, CWD};
+use rustix::fs::{fstat, openat, Dir, FileType, Mode, OFlags, CWD};
+use rustix::io::fcntl_dupfd_cloexec;
 use std::fs::File;
 use std::io::Read;
 use std::os::unix::fs::MetadataExt;
@@ -62,10 +63,7 @@ pub struct PinnedDirectory {
 
 #[derive(Clone, Debug)]
 pub struct PinnedChild {
-    parent: Arc<OwnedFd>,
-    component: String,
-    device: i32,
-    inode: u64,
+    fd: Arc<OwnedFd>,
     kind: FileType,
 }
 
@@ -184,17 +182,19 @@ impl PinnedDirectory {
 
     pub fn inspect_child(&self, component: String) -> Result<PinnedChild, AdmissionFsError> {
         validate_component(&component, false)?;
-        let identity = statat(
+        // Acquire the exact child once. Keeping only a pathname plus inode is
+        // insufficient because a filesystem may later reuse the same inode.
+        // O_NONBLOCK ensures that opening a FIFO cannot wait for a writer.
+        let fd = openat(
             self.fd.as_ref(),
             component.as_str(),
-            AtFlags::SYMLINK_NOFOLLOW,
+            OFlags::RDONLY | OFlags::NONBLOCK | OFlags::CLOEXEC | OFlags::NOFOLLOW,
+            Mode::empty(),
         )
         .map_err(classify_errno)?;
+        let identity = fstat(&fd).map_err(classify_errno)?;
         Ok(PinnedChild {
-            parent: self.fd.clone(),
-            component,
-            device: identity.st_dev,
-            inode: identity.st_ino,
+            fd: Arc::new(fd),
             kind: FileType::from_raw_mode(identity.st_mode),
         })
     }
@@ -219,18 +219,9 @@ impl PinnedChild {
         if !self.kind.is_dir() {
             return Err(AdmissionFsError::new(AdmissionFsErrorKind::WrongKind));
         }
-        let fd = openat(
-            self.parent.as_ref(),
-            self.component.as_str(),
-            OFlags::RDONLY | OFlags::DIRECTORY | OFlags::CLOEXEC | OFlags::NOFOLLOW,
-            Mode::empty(),
-        )
-        .map_err(classify_errno)?;
-        let identity = fstat(&fd).map_err(classify_errno)?;
-        if identity.st_dev != self.device || identity.st_ino != self.inode {
-            return Err(AdmissionFsError::new(AdmissionFsErrorKind::Io));
-        }
-        Ok(PinnedDirectory { fd: Arc::new(fd) })
+        Ok(PinnedDirectory {
+            fd: self.fd.clone(),
+        })
     }
 
     pub fn read_file(&self, maximum_bytes: i32) -> Result<Vec<i32>, AdmissionFsError> {
@@ -242,21 +233,12 @@ impl PinnedChild {
             .filter(|value| *value > 0)
             .ok_or_else(|| AdmissionFsError::new(AdmissionFsErrorKind::InvalidInput))?;
 
-        let fd = openat(
-            self.parent.as_ref(),
-            self.component.as_str(),
-            OFlags::RDONLY | OFlags::NONBLOCK | OFlags::CLOEXEC | OFlags::NOFOLLOW,
-            Mode::empty(),
-        )
-        .map_err(classify_errno)?;
-        let identity = fstat(&fd).map_err(classify_errno)?;
+        // Duplicate the retained descriptor so File can own its read cursor.
+        // This operation cannot redirect the read through a replaced name.
+        let fd = fcntl_dupfd_cloexec(self.fd.as_ref(), 0).map_err(classify_errno)?;
         let mut file = File::from(fd);
         let metadata = file.metadata().map_err(classify_io)?;
-        if !metadata.is_file()
-            || metadata.nlink() != 1
-            || identity.st_dev != self.device
-            || identity.st_ino != self.inode
-        {
+        if !metadata.is_file() || metadata.nlink() != 1 {
             return Err(AdmissionFsError::new(AdmissionFsErrorKind::WrongKind));
         }
         let mut bytes = Vec::new();
@@ -269,7 +251,6 @@ impl PinnedChild {
         }
         Ok(bytes.into_iter().map(i32::from).collect())
     }
-
 }
 
 fn validate_component(value: &str, allow_parent: bool) -> Result<(), AdmissionFsError> {
@@ -279,7 +260,10 @@ fn validate_component(value: &str, allow_parent: bool) -> Result<(), AdmissionFs
         || value.as_bytes().contains(&0)
         || value.as_bytes().contains(&b'/')
         || value.as_bytes().contains(&b'\\')
-        || value.as_bytes().iter().any(|byte| *byte < 0x20 || *byte == 0x7f)
+        || value
+            .as_bytes()
+            .iter()
+            .any(|byte| *byte < 0x20 || *byte == 0x7f)
     {
         return Err(AdmissionFsError::new(AdmissionFsErrorKind::InvalidInput));
     }

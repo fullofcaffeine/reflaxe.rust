@@ -12,6 +12,10 @@
 *.yaml text eol=lf
 *.yml text eol=lf
 
+# Cargo verifies the exact upstream bytes in this generated vendor tree. Keep
+# those bytes opaque and do not apply this repository's whitespace policy.
+tools/support-crate-admission-helper/vendor/** -text -whitespace
+
 # This is an exact upstream-to-vendor patch. Its added lines preserve upstream
 # whitespace byte-for-byte, so the outer repository must not reinterpret them.
 vendor/reflaxe/reflaxe-rust.patch text eol=lf whitespace=-blank-at-eol,-space-before-tab

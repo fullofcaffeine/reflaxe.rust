@@ -627,7 +627,7 @@ test('replacing a pathname cannot redirect a pinned source directory', async () 
   }
 })
 
-test('replacing a selected child directory before open is rejected', async () => {
+test('a selected child directory stays pinned while the second pass detects its replaced name', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hxrs-admission-child-directory-race-'))
   try {
     const classpathRoot = path.join(root, 'classpath')
@@ -655,13 +655,13 @@ test('replacing a selected child directory before open is rejected', async () =>
     assert.equal(result.stderr.length, 0)
     const response = decodeResponse(result.stdout)
     assert.equal(response.status, 'rejected')
-    assert.equal(response.code, 5)
+    assert.equal(response.code, 6)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }
 })
 
-test('replacing a selected file before open is rejected', async () => {
+test('a selected file stays pinned while the second pass detects its replaced name', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hxrs-admission-child-file-race-'))
   try {
     const classpathRoot = path.join(root, 'classpath')
@@ -687,7 +687,7 @@ test('replacing a selected file before open is rejected', async () => {
     assert.equal(result.stderr.length, 0)
     const response = decodeResponse(result.stdout)
     assert.equal(response.status, 'rejected')
-    assert.equal(response.code, 5)
+    assert.equal(response.code, 6)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }

@@ -40,7 +40,7 @@ enum SupportCrateAdmissionHelperLocatorResult {
 **/
 final class SupportCrateAdmissionHelperLocator {
 	static inline var DARWIN_ARM64_HELPER:String = "native/support-crate-admission/darwin-arm64/hxrs-support-crate-admission";
-	static inline var DARWIN_ARM64_SHA256:String = "dd8d561a82e150610ee36b2fb66390361fe04057a9ee788980f9d8a0b8f0293d"; // numeric-suffix-guard: allow-standard-encoding (SHA-256)
+	static inline var DARWIN_ARM64_SHA256:String = "8bd0cab5f86501f92b6600472867542e48252d8ffa3606c3061408115bf124d5"; // numeric-suffix-guard: allow-standard-encoding (SHA-256)
 
 	public static function locate(packageRoot:Null<String>):SupportCrateAdmissionHelperLocatorResult {
 		var machine:Null<String> = null;

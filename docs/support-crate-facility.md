@@ -295,9 +295,15 @@ later read. The package-owned helper opens each child relative to an open
 parent directory. An open directory is called a pinned directory here. A later
 pathname replacement cannot redirect reads below that pinned directory.
 
-The helper also captures the device and inode numbers of each selected child.
-It compares that identity after the final descriptor-relative open. A changed
-directory or file identity causes a closed source rejection.
+The helper opens each selected child once, relative to the pinned parent. It
+keeps that exact child descriptor for the later directory walk or file read.
+It does not reopen the child name after a separate identity check.
+
+This rule avoids an inode-reuse gap. Some filesystems can reuse an inode number
+after a replacement. A pathname plus that number is therefore not permanent
+authority for a later read. The retained descriptor continues to refer to the
+object that the helper opened. The second complete traversal rejects a changed
+namespace or changed bytes.
 
 The helper logic is Haxe source compiled through the haxe.rust Metal profile.
 A small safe-Rust facade calls the operating-system directory APIs. The facade
@@ -358,14 +364,18 @@ npm run test:support-crate-admission-package
 
 The check also verifies Git mode `100755`, file mode `0755`, the hard-coded
 SHA-256 digest, the complete source-input digest, exact Haxe/Rust/Cargo tool
-identity, and the locked dependency graph. The package directory contains
+identity, and the locked dependency graph. The source-input identity includes
+the real Haxe compiler, its standard library, `.haxerc`, scoped Haxe inputs,
+and all checked-in Cargo dependency sources. The package directory contains
 `binary-provenance.json`, `dependency-inventory.json`, and
 `THIRD_PARTY_NOTICES.md`.
 
 The build selects `aarch64-apple-darwin`, the Rust compiler, the linker, the
-macOS SDK, and the deployment target. It clears Rust flags and disables Cargo
-network work and incremental compilation. The evidence records these inputs.
-The dependency graph contains only packages reachable for Darwin ARM64.
+macOS SDK, and the deployment target. It clears Haxe path/cache overrides and
+Rust flags. It rejects a caller-provided `HAXE_BIN`. Cargo gets a new empty home
+directory and reads only the checked-in vendor tree while offline. The evidence
+records these inputs. The published dependency graph contains only packages
+reachable for Darwin ARM64.
 
 The Haxelib release ZIP does not include the helper yet. Release packaging
 remains disabled until a packed-install test proves the same binary, executable

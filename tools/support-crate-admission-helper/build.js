@@ -9,7 +9,10 @@ const { spawnSync } = require('node:child_process')
 
 const helperRoot = __dirname
 const repoRoot = path.resolve(helperRoot, '..', '..')
-const haxe = process.env.HAXE_BIN || path.join(
+if (Object.prototype.hasOwnProperty.call(process.env, 'HAXE_BIN')) {
+  throw new Error('HAXE_BIN is not admitted for the support-crate helper package build')
+}
+const haxeShim = path.join(
   repoRoot,
   'node_modules',
   '.bin',
@@ -38,6 +41,7 @@ const packagedBinary = path.join(packagedDirectory, 'hxrs-support-crate-admissio
 const inventoryPath = path.join(packagedDirectory, 'dependency-inventory.json')
 const provenancePath = path.join(packagedDirectory, 'binary-provenance.json')
 const noticesPath = path.join(packagedDirectory, 'THIRD_PARTY_NOTICES.md')
+const cargoVendorConfig = path.join(helperRoot, 'cargo-vendor-config.toml')
 
 function utf8Compare(left, right) {
   return Buffer.compare(Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8'))
@@ -58,8 +62,24 @@ function resolveExecutable(command) {
 
 const resolvedCargo = resolveExecutable(cargo)
 const resolvedRustc = resolveExecutable(rustc)
-const resolvedHaxe = resolveExecutable(haxe)
+const resolvedHaxeShim = resolveExecutable(haxeShim)
 const xcrun = resolveExecutable('xcrun')
+
+const haxeScope = JSON.parse(fs.readFileSync(path.join(repoRoot, '.haxerc'), 'utf8'))
+if (typeof haxeScope.version !== 'string' || haxeScope.resolveLibs !== 'scoped') {
+  throw new Error('the package build requires one exact scoped Haxe version in .haxerc')
+}
+const resolvedHaxeCompiler = resolveExecutable(path.join(
+  os.homedir(),
+  'haxe',
+  'versions',
+  haxeScope.version,
+  process.platform === 'win32' ? 'haxe.exe' : 'haxe'
+))
+const haxeStdRoot = path.join(path.dirname(resolvedHaxeCompiler), 'std')
+if (!fs.statSync(haxeStdRoot).isDirectory()) {
+  throw new Error(`selected Haxe ${haxeScope.version} omits its standard library`)
+}
 
 function run(command, args, cwd = repoRoot, env = process.env) {
   const result = spawnSync(command, args, { cwd, encoding: 'utf8', env })
@@ -75,7 +95,8 @@ const sdkVersion = run(xcrun, ['--sdk', 'macosx', '--show-sdk-version'])
 const sdkSettings = path.join(sdkRoot, 'SDKSettings.json')
 if (!fs.existsSync(sdkSettings)) throw new Error('selected macOS SDK omits SDKSettings.json')
 const linker = fs.realpathSync(run(xcrun, ['--sdk', 'macosx', '--find', 'clang']))
-const cargoHome = path.resolve(process.env.CARGO_HOME || path.join(process.env.HOME, '.cargo'))
+const cargoHome = fs.mkdtempSync(path.join(os.tmpdir(), 'hxrs-support-cargo-home-'))
+process.on('exit', () => fs.rmSync(cargoHome, { recursive: true, force: true }))
 const admittedRepositoryConfig = path.join(repoRoot, '.cargo', 'config.toml')
 for (let current = repoRoot; ; current = path.dirname(current)) {
   for (const name of ['config', 'config.toml']) {
@@ -85,11 +106,6 @@ for (let current = repoRoot; ; current = path.dirname(current)) {
     }
   }
   if (path.dirname(current) === current) break
-}
-for (const config of [path.join(cargoHome, 'config'), path.join(cargoHome, 'config.toml')]) {
-  if (fs.existsSync(config)) {
-    throw new Error(`user Cargo configuration is not admitted for the package build: ${config}`)
-  }
 }
 const cargoEnvironment = {
   PATH: process.env.PATH || '',
@@ -108,6 +124,13 @@ const cargoEnvironment = {
   CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER: linker,
   SOURCE_DATE_EPOCH: '0',
   ZERO_AR_DATE: '1'
+}
+const haxeEnvironment = {
+  PATH: [path.dirname(process.execPath), '/usr/bin', '/bin', '/usr/sbin', '/sbin'].join(path.delimiter),
+  HOME: os.homedir(),
+  TMPDIR: process.env.TMPDIR || os.tmpdir(),
+  LANG: 'C',
+  LC_ALL: 'C'
 }
 
 function sha256(bytes) {
@@ -135,6 +158,25 @@ function walkFiles(root) {
   return result
 }
 
+function appendDigestFile(digest, logicalPath, file) {
+  const bytes = fs.readFileSync(file)
+  digest.update(Buffer.from(`${Buffer.byteLength(logicalPath)}:${logicalPath}:${bytes.length}:`, 'utf8'))
+  digest.update(bytes)
+}
+
+function treeIdentity(root, logicalRoot) {
+  const files = walkFiles(root).sort((left, right) => utf8Compare(
+    path.relative(root, left),
+    path.relative(root, right)
+  ))
+  const digest = crypto.createHash('sha256')
+  for (const file of files) {
+    const relative = path.relative(root, file).split(path.sep).join('/')
+    appendDigestFile(digest, `${logicalRoot}/${relative}`, file)
+  }
+  return { fileCount: files.length, sha256: digest.digest('hex') }
+}
+
 function sourceInputIdentity() {
   const roots = [
     'src',
@@ -147,7 +189,10 @@ function sourceInputIdentity() {
     'tools/support-crate-admission-helper/compile.hxml',
     'tools/support-crate-admission-helper/build.js',
     'tools/support-crate-admission-helper/Cargo.lock',
+    'tools/support-crate-admission-helper/cargo-vendor-config.toml',
+    'tools/support-crate-admission-helper/vendor',
     '.cargo/config.toml',
+    '.haxerc',
     'package.json',
     'package-lock.json',
     'rust-toolchain.toml',
@@ -158,12 +203,20 @@ function sourceInputIdentity() {
   const digest = crypto.createHash('sha256')
   for (const file of files) {
     const relative = path.relative(repoRoot, file).split(path.sep).join('/')
-    const bytes = fs.readFileSync(file)
-    digest.update(Buffer.from(`${Buffer.byteLength(relative)}:${relative}:${bytes.length}:`, 'utf8'))
-    digest.update(bytes)
+    appendDigestFile(digest, relative, file)
   }
-  return { fileCount: files.length, sha256: digest.digest('hex') }
+  appendDigestFile(digest, 'toolchain/haxe-launcher', resolvedHaxeShim)
+  appendDigestFile(digest, 'toolchain/haxe-compiler', resolvedHaxeCompiler)
+  const haxeStd = treeIdentity(haxeStdRoot, 'toolchain/haxe-stdlib')
+  digest.update(Buffer.from(`haxe-stdlib:${haxeStd.fileCount}:${haxeStd.sha256}`, 'utf8'))
+  return {
+    repositoryFileCount: files.length,
+    haxeStdFileCount: haxeStd.fileCount,
+    sha256: digest.digest('hex')
+  }
 }
+
+const cargoSourceArguments = ['--config', cargoVendorConfig, '--offline']
 
 function lockPackages() {
   const lockText = fs.readFileSync(path.join(helperRoot, 'Cargo.lock'), 'utf8')
@@ -184,6 +237,7 @@ function dependencyInventory() {
   const metadata = JSON.parse(run(resolvedCargo, [
     'metadata',
     '--locked',
+    ...cargoSourceArguments,
     '--format-version', '1',
     '--filter-platform', cargoTarget,
     '--manifest-path', path.join(outputRoot, 'Cargo.toml')
@@ -288,10 +342,17 @@ function provenance(binaryBytes) {
       rustflags: '',
       cargoEncodedRustflags: '',
       cargoIncremental: false,
-      cargoOffline: true
+      cargoOffline: true,
+      cargoVendored: true,
+      cargoVendorConfigSha256: sha256(fs.readFileSync(cargoVendorConfig))
     },
     toolchain: {
-      haxe: run(resolvedHaxe, ['--version']),
+      haxe: run(process.execPath, [resolvedHaxeShim, '--version'], repoRoot, haxeEnvironment),
+      haxeLauncherSha256: sha256(fs.readFileSync(resolvedHaxeShim)),
+      haxeCompilerSha256: sha256(fs.readFileSync(resolvedHaxeCompiler)),
+      haxeStd: treeIdentity(haxeStdRoot, 'toolchain/haxe-stdlib'),
+      node: process.version,
+      nodeExecutableSha256: sha256(fs.readFileSync(process.execPath)),
       rustc: normalizedVersion(resolvedRustc, ['--version', '--verbose'], ['commit-hash', 'host', 'release', 'LLVM version']),
       rustcExecutableSha256: sha256(fs.readFileSync(resolvedRustc)),
       cargo: normalizedVersion(resolvedCargo, ['--version', '--verbose'], ['release', 'commit-hash', 'host']),
@@ -314,12 +375,13 @@ function verifyGitMode() {
 }
 
 fs.rmSync(outputRoot, { recursive: true, force: true })
-run(resolvedHaxe, ['compile.hxml', '-D', `rust_output=${path.basename(outputRoot)}`], helperRoot)
+run(process.execPath, [resolvedHaxeShim, 'compile.hxml', '-D', `rust_output=${path.basename(outputRoot)}`], helperRoot, haxeEnvironment)
 fs.copyFileSync(path.join(helperRoot, 'Cargo.lock'), path.join(outputRoot, 'Cargo.lock'))
 run(resolvedCargo, [
   'build',
   '--release',
   '--locked',
+  ...cargoSourceArguments,
   '--target', cargoTarget,
   '--manifest-path',
   path.join(outputRoot, 'Cargo.toml')

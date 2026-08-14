@@ -29,12 +29,13 @@ generates the executable's Rust code. Haxe owns:
 - closed error results.
 
 The file `native/support_crate_admission_fs.rs` is a narrow safe-Rust facade.
-It uses `rustix` to open a child relative to an already open directory. It also
-checks file kinds and reads bounded regular files. It contains no product rule,
-manifest rule, shell command, or `unsafe` block.
+It uses `rustix` to open a child relative to an already open directory. It
+keeps that exact child descriptor for the later directory walk or file read.
+It also checks file kinds and reads bounded regular files. It contains no
+product rule, manifest rule, shell command, or `unsafe` block.
 
-This split keeps the reusable logic in Haxe. It uses handwritten Rust only for
-the operating-system operation that Haxe 4.3.7 cannot express.
+This split keeps the reusable logic in Haxe. One hand-authored safe-Rust facade
+owns only the operating-system operation that Haxe 4.3.7 cannot express.
 
 ## What a pinned directory means
 
@@ -49,11 +50,17 @@ If another process renames `sample_support` after it was opened, the descriptor
 still refers to the original directory. New child reads continue below that
 original directory.
 
-A pinned parent does not pin a child name. Another process can replace `lib.rs`
-after discovery but before open. The helper therefore records the child's
-device and inode numbers before open. These numbers identify one filesystem
-object on the selected volume. The helper compares them with the opened child.
-It rejects the tree if the identity changed.
+A pinned parent does not make a child name immutable. The helper therefore
+opens each child once, relative to the pinned parent. It keeps the returned
+descriptor instead of keeping only the name or inode number.
+
+This detail is important. Some filesystems can reuse an inode number. A later
+open by name could then select a replacement object with the same number. A
+retained descriptor continues to refer to the object that the helper opened.
+
+The helper uses that descriptor for the first traversal. It then performs a
+second traversal from the pinned source root. The second traversal rejects a
+name that now selects different paths, kinds, or bytes.
 
 This works on the current Apple Silicon Mac through the Unix `openat` family.
 Linux can use the same facade after it gets its own packaged-binary evidence.
@@ -67,12 +74,13 @@ Windows needs another native facade.
 3. The compiler verifies the packaged helper's size, mode, and SHA-256 digest.
 4. The helper opens every classpath one component at a time.
 5. The requested source root must exist under exactly one classpath.
-6. The helper reads the complete source tree twice through pinned directories.
-7. Both reads must contain identical paths, kinds, and bytes.
-8. The helper sorts the complete tree by UTF-8 logical-path bytes.
-9. The helper returns one bounded binary response through stdout.
-10. The compiler decodes and independently validates that response.
-11. The compiler constructs and validates one immutable plan from the admitted
+6. The helper opens each selected child once and retains its exact descriptor.
+7. The helper reads the complete source tree twice through pinned directories.
+8. Both reads must contain identical paths, kinds, and bytes.
+9. The helper sorts the complete tree by UTF-8 logical-path bytes.
+10. The helper returns one bounded binary response through stdout.
+11. The compiler decodes and independently validates that response.
+12. The compiler constructs and validates one immutable plan from the admitted
     bytes.
 
 Stage 2B then deliberately discards that plan. It stops before publication and
@@ -162,10 +170,32 @@ The second command requires all these facts to match:
 - the Cargo lock, dependency graph, checksums, features, and licenses;
 - the generated third-party notice inventory.
 
+The package build does not use downloaded Cargo source directories. All locked
+Cargo dependency sources are checked in under `vendor/`. Cargo gets a new empty
+home directory for each build and runs offline against only that vendor tree.
+The source-input digest covers every vendored byte and its source configuration.
+
+The package build also rejects `HAXE_BIN`. It uses the repository Lix launcher
+and the exact Haxe version in `.haxerc`. It clears Haxe path and cache overrides.
+The evidence covers the launcher, the real Haxe executable, the Haxe standard
+library, the scoped Haxe library files, and all local compiler sources.
+
+When a reviewed Cargo dependency changes, regenerate the vendor tree before
+the package build:
+
+```sh
+cargo vendor --locked --versioned-dirs \
+  --manifest-path tools/support-crate-admission-helper/out/Cargo.toml \
+  tools/support-crate-admission-helper/vendor
+```
+
+Review the vendor diff, its license files, and `Cargo.lock`. Then rebuild the
+package and commit the new provenance, dependency inventory, and notices.
+
 The package build supports `aarch64-apple-darwin` only. It selects the Cargo
 target, Rust compiler, linker, macOS SDK, and deployment target explicitly. It
 also clears Rust flags and disables incremental and network work. The build
-rejects unreviewed user or ancestor Cargo configuration files.
+rejects unreviewed ancestor Cargo configuration files.
 
 The dependency inventory uses Cargo's Darwin ARM64 graph. It includes only
 packages that the helper can reach for that target. Thus, Linux, Windows, and

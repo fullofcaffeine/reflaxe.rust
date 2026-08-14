@@ -32,7 +32,13 @@ extern class PinnedDirectory {
 	public function inspectChild(component:String):Result<PinnedChild, AdmissionFsError>;
 }
 
-/** One descriptor-relative child identity captured before its final open. */
+/**
+	One exact child object opened relative to its retained parent directory.
+
+	The native facade keeps the child descriptor itself. It does not keep a
+	pathname and reopen it later, because a replaced name could otherwise select
+	a different object. Directory traversal and file reads consume this descriptor.
+**/
 @:native("crate::support_crate_admission_fs::PinnedChild")
 extern class PinnedChild {
 	@:native("open_directory")
