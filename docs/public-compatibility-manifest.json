@@ -24735,6 +24735,17 @@
           "typeReferences": []
         },
         {
+          "id": "enum-value:SupportCrateSourceAdmissionUnavailable",
+          "kind": "enum-value",
+          "name": "SupportCrateSourceAdmissionUnavailable",
+          "signature": "var SupportCrateSourceAdmissionUnavailable = \"HXRS-SUPPORT-CRATE-SOURCE-ADMISSION-UNAVAILABLE\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
           "id": "enum-value:CargoDependencyConflict",
           "kind": "enum-value",
           "name": "CargoDependencyConflict",
@@ -26094,6 +26105,510 @@
             "test:public-compatibility"
           ],
           "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateRequestPlan",
+      "source": "src/reflaxe/rust/SupportCrateRequestPlan.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateRequestPlan",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateDeclarationOwner",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequest"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateDeclarationOwner",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRegistryDependency",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequest",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateUnsafePolicy"
+      ],
+      "operations": [
+        {
+          "id": "constructor:new",
+          "kind": "constructor",
+          "name": "new",
+          "signature": "public function new (requests : Array < SupportCrateRequest >)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequest"
+          ]
+        },
+        {
+          "id": "function:empty",
+          "kind": "function",
+          "name": "empty",
+          "signature": "public static function empty () : SupportCrateRequestPlan",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:isEmpty",
+          "kind": "function",
+          "name": "isEmpty",
+          "signature": "public function isEmpty () : Bool",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:requests",
+          "kind": "function",
+          "name": "requests",
+          "signature": "public function requests () : Array < SupportCrateRequest >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequest"
+          ]
+        },
+        {
+          "id": "function:firstOwner",
+          "kind": "function",
+          "name": "firstOwner",
+          "signature": "public function firstOwner () : Null < SupportCrateDeclarationOwner >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateRequestPlan.SupportCrateDeclarationOwner"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateRequestPlan.SupportCrateDeclarationOwner",
+      "source": "src/reflaxe/rust/SupportCrateRequestPlan.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateDeclarationOwner",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "field:declaration",
+          "kind": "field",
+          "name": "declaration",
+          "signature": "public final declaration : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:pos",
+          "kind": "field",
+          "name": "pos",
+          "signature": "public final pos : Position",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "constructor:new",
+          "kind": "constructor",
+          "name": "new",
+          "signature": "public function new (declaration : String, pos : Position)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRegistryDependency",
+      "source": "src/reflaxe/rust/SupportCrateRequestPlan.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateRegistryDependency",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "field:name",
+          "kind": "field",
+          "name": "name",
+          "signature": "public final name : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:version",
+          "kind": "field",
+          "name": "version",
+          "signature": "public final version : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:defaultFeatures",
+          "kind": "field",
+          "name": "defaultFeatures",
+          "signature": "public final defaultFeatures : Bool",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "constructor:new",
+          "kind": "constructor",
+          "name": "new",
+          "signature": "public function new (name : String, version : String, defaultFeatures : Bool, features : Array < String >)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:features",
+          "kind": "function",
+          "name": "features",
+          "signature": "public function features () : Array < String >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:equals",
+          "kind": "function",
+          "name": "equals",
+          "signature": "public function equals (other : SupportCrateRegistryDependency) : Bool",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequest",
+      "source": "src/reflaxe/rust/SupportCrateRequestPlan.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateRequest",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateDeclarationOwner",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRegistryDependency",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateUnsafePolicy"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateDeclarationOwner",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRegistryDependency",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateUnsafePolicy"
+      ],
+      "operations": [
+        {
+          "id": "field:name",
+          "kind": "field",
+          "name": "name",
+          "signature": "public final name : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:sourceRoot",
+          "kind": "field",
+          "name": "sourceRoot",
+          "signature": "public final sourceRoot : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:unsafePolicy",
+          "kind": "field",
+          "name": "unsafePolicy",
+          "signature": "public final unsafePolicy : SupportCrateUnsafePolicy",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateRequestPlan.SupportCrateUnsafePolicy"
+          ]
+        },
+        {
+          "id": "constructor:new",
+          "kind": "constructor",
+          "name": "new",
+          "signature": "public function new (name : String, sourceRootSegments : Array < String >, unsafePolicy : SupportCrateUnsafePolicy, targets : Array < String >, dependencies : Array < SupportCrateRegistryDependency >, owners : Array < SupportCrateDeclarationOwner >)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateRequestPlan.SupportCrateDeclarationOwner",
+            "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRegistryDependency",
+            "reflaxe.rust.SupportCrateRequestPlan.SupportCrateUnsafePolicy"
+          ]
+        },
+        {
+          "id": "function:sourceRootSegments",
+          "kind": "function",
+          "name": "sourceRootSegments",
+          "signature": "public function sourceRootSegments () : Array < String >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:targets",
+          "kind": "function",
+          "name": "targets",
+          "signature": "public function targets () : Array < String >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:dependencies",
+          "kind": "function",
+          "name": "dependencies",
+          "signature": "public function dependencies () : Array < SupportCrateRegistryDependency >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRegistryDependency"
+          ]
+        },
+        {
+          "id": "function:owners",
+          "kind": "function",
+          "name": "owners",
+          "signature": "public function owners () : Array < SupportCrateDeclarationOwner >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateRequestPlan.SupportCrateDeclarationOwner"
+          ]
+        },
+        {
+          "id": "function:withOwner",
+          "kind": "function",
+          "name": "withOwner",
+          "signature": "public function withOwner (owner : SupportCrateDeclarationOwner) : SupportCrateRequest",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateRequestPlan.SupportCrateDeclarationOwner"
+          ]
+        },
+        {
+          "id": "function:hasSameDeclaration",
+          "kind": "function",
+          "name": "hasSameDeclaration",
+          "signature": "public function hasSameDeclaration (other : SupportCrateRequest) : Bool",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateRequestPlan.SupportCrateUnsafePolicy",
+      "source": "src/reflaxe/rust/SupportCrateRequestPlan.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract SupportCrateUnsafePolicy (String) to String",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:Forbid",
+          "kind": "enum-value",
+          "name": "Forbid",
+          "signature": "var Forbid = \"forbid\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:Audited",
+          "kind": "enum-value",
+          "name": "Audited",
+          "signature": "var Audited = \"audited\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateRequestPlanner",
+      "source": "src/reflaxe/rust/SupportCrateRequestPlanner.hx",
+      "kind": "class",
+      "signature": "class SupportCrateRequestPlanner",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.SupportCrateRequestPlan"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.SupportCrateRequestPlan",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateDeclarationOwner",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRegistryDependency",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequest",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateUnsafePolicy"
+      ],
+      "operations": [
+        {
+          "id": "function:build",
+          "kind": "function",
+          "name": "build",
+          "signature": "public static function build (moduleTypes : Array < ModuleType >, rustTarget : Null < String >) : SupportCrateRequestPlan",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateRequestPlan"
+          ]
+        },
+        {
+          "id": "function:merge",
+          "kind": "function",
+          "name": "merge",
+          "signature": "public static function merge (plans : Array < SupportCrateRequestPlan >) : SupportCrateRequestPlan",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateRequestPlan"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateRequestPlanner.SupportCratePlanningFailure",
+      "source": "src/reflaxe/rust/SupportCrateRequestPlanner.hx",
+      "kind": "class",
+      "signature": "final class SupportCratePlanningFailure",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.RustDiagnostic.RustDiagnosticId"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.RustDiagnostic.RustDiagnosticId"
+      ],
+      "operations": [
+        {
+          "id": "field:id",
+          "kind": "field",
+          "name": "id",
+          "signature": "public final id : RustDiagnosticId",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustDiagnostic.RustDiagnosticId"
+          ]
+        },
+        {
+          "id": "field:detail",
+          "kind": "field",
+          "name": "detail",
+          "signature": "public final detail : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:pos",
+          "kind": "field",
+          "name": "pos",
+          "signature": "public final pos : Position",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "constructor:new",
+          "kind": "constructor",
+          "name": "new",
+          "signature": "public function new (id : RustDiagnosticId, detail : String, pos : Position)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.RustDiagnostic.RustDiagnosticId"
+          ]
         }
       ]
     },
@@ -37471,7 +37986,7 @@
     {
       "name": "rustSupportCrate",
       "contract": "metadata-reserved",
-      "grammar": "reserved typed support-crate declaration or field; typed application use rejected",
+      "grammar": "exact five-field object on an extern class; valid declarations stop before source admission and every other typed placement is rejected",
       "default": "absent",
       "evidenceIds": [
         "test:public-compatibility"

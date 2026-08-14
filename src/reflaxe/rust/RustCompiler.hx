@@ -119,6 +119,8 @@ import reflaxe.rust.naming.RustNaming;
 import reflaxe.rust.ProfileResolver;
 import reflaxe.rust.RustProfile;
 import reflaxe.rust.RustDiagnostic.RustDiagnosticId;
+import reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequestPlan;
+import reflaxe.rust.SupportCrateRequestPlanner.SupportCratePlanningFailure;
 import reflaxe.rust.compiler.RustBuildContext;
 import reflaxe.rust.compiler.RustClassContext;
 import reflaxe.rust.compiler.RustFuncContext;
@@ -338,6 +340,12 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	// Haxe's after-typing callback is the last stable owner of complete ClassField bodies. Keep the
 	// module references until `onCompileStart` can filter them with initialized source roots.
 	var typedModuleSnapshotByIdentity:Map<String, ModuleType> = [];
+	// Haxe can remove metadata from typed expression types after onAfterTyping.
+	// Parse it there and retain only detached facts. Stage 2A never stores source
+	// bytes, hashes, resolved paths, or generated-output state.
+	var supportCrateRequestPlan:SupportCrateRequestPlan = SupportCrateRequestPlan.empty();
+	var supportCratePlanByIdentity:Map<String, SupportCrateRequestPlan> = [];
+	var supportCrateFailureByIdentity:Map<String, SupportCratePlanningFailure> = [];
 	var typedNoHxrtOperationsByIdentity:Map<String, Array<RuntimeRequirementEntry>> = [];
 	// Typed method bodies are still intact at `onCompileStart`, before Reflaxe extracts them into
 	// per-class compilation data. Runtime/no-hxrt reporting later in the pipeline must consume this
@@ -1145,8 +1153,8 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		- Reflaxe starts target lowering after Haxe finishes typing, and later extraction may remove
 		  executable expressions from their original `ClassField` declarations.
 		- Accumulate each after-typing delivery by Reflaxe's collision-safe type identity here. Save small
-		  exact operation rows immediately because inline/target extraction can remove those calls; keep the
-		  typed module only long enough for `onCompileStart` to build representation decisions.
+		  exact operation rows immediately because later compiler work can remove calls or typed metadata.
+		  Keep each typed module only until `onCompileStart` builds the remaining representation decisions.
 		- `onCompileStart` filters both snapshots to user modules, then releases all retained typed graphs.
 	**/
 	public function new() {
@@ -1162,6 +1170,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				var identity = moduleType.getUniqueId();
 				typedModuleSnapshotByIdentity.set(identity, moduleType);
 				typedNoHxrtOperationsByIdentity.set(identity, NoHxrtEligibilityAnalyzer.captureOperationEntries([moduleType]));
+				try {
+					var plan = SupportCrateRequestPlanner.build([moduleType], Context.definedValue("rust_target"));
+					supportCratePlanByIdentity.set(identity, plan);
+					supportCrateFailureByIdentity.remove(identity);
+				} catch (failure:SupportCratePlanningFailure) {
+					supportCratePlanByIdentity.remove(identity);
+					supportCrateFailureByIdentity.set(identity, failure);
+				}
 			}
 		});
 	}
@@ -2061,6 +2077,15 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		// request's ClassField bodies for the next compilation.
 		var completeTypedModules = snapshotTypedModuleTypes();
 		typedModuleSnapshotByIdentity = [];
+		var supportCratePlanIdentities = [for (identity in supportCratePlanByIdentity.keys()) identity];
+		supportCratePlanIdentities.sort(compareStrings);
+		var capturedSupportCratePlans = [for (identity in supportCratePlanIdentities) supportCratePlanByIdentity.get(identity)];
+		var supportCrateFailureIdentities = [for (identity in supportCrateFailureByIdentity.keys()) identity];
+		supportCrateFailureIdentities.sort(compareStrings);
+		var capturedSupportCrateFailure = supportCrateFailureIdentities.length == 0 ? null : supportCrateFailureByIdentity.get(supportCrateFailureIdentities[0]);
+		supportCratePlanByIdentity = [];
+		supportCrateFailureByIdentity = [];
+		supportCrateRequestPlan = SupportCrateRequestPlan.empty();
 		var capturedNoHxrtOperationsByIdentity = typedNoHxrtOperationsByIdentity;
 		typedNoHxrtOperationsByIdentity = [];
 		cachedMainClass = null;
@@ -2099,6 +2124,28 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			Context.warning("rust_debug_string_types active", Context.currentPos());
 		}
 		#end
+
+		// Consume the detached after-typing result before ambient Cargo and
+		// extra-source registries do unrelated work. Haxe can remove metadata from
+		// typed expression types before this callback, so a retained Type reference
+		// is not an authoritative snapshot.
+		if (capturedSupportCrateFailure != null)
+			RustDiagnostic.error(capturedSupportCrateFailure.id, capturedSupportCrateFailure.detail, capturedSupportCrateFailure.pos);
+		var parsedSupportCrates:SupportCrateRequestPlan;
+		try {
+			parsedSupportCrates = SupportCrateRequestPlanner.merge(capturedSupportCratePlans);
+		} catch (failure:SupportCratePlanningFailure) {
+			RustDiagnostic.error(failure.id, failure.detail, failure.pos);
+			throw "unreachable after compiler diagnostic";
+		}
+		supportCrateRequestPlan = parsedSupportCrates;
+		if (!parsedSupportCrates.isEmpty()) {
+			var owner = parsedSupportCrates.firstOwner();
+			RustDiagnostic.error(RustDiagnosticId.SupportCrateSourceAdmissionUnavailable,
+				"The support-crate declaration is valid, but exact native source admission is not implemented yet. "
+				+ "No support-crate source was read and no Cargo or Rust output was changed; see docs/support-crate-facility.md.",
+				owner == null ? Context.currentPos() : owner.pos);
+		}
 
 		// Collect Cargo dependencies declared via `@:rustCargo(...)` metadata.
 		CargoMetaRegistry.collectFromContext();
@@ -5209,25 +5256,23 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
-		Rejects reserved Rust metadata until each facility has a complete implementation.
+		Rejects reserved Rust metadata whose facility has no typed planner.
 
 		Why
-		- The native-wrapper and support-crate designs reserve public spellings before they emit Rust.
+		- The native-wrapper design reserves its public spelling before it emits Rust.
 		- Haxe normally ignores unknown metadata. Silent acceptance would make users think that the
 		  requested Rust artifact exists and could create misleading safety or packaging evidence.
-		- Both facilities change where Rust code lives, so unsupported declarations must fail at the
+		- The facility changes where Rust code lives, so unsupported declarations must fail at the
 		  metadata site instead of degrading to ordinary ignored metadata.
 
 		What
-		- Reserves `@:rustNativeWrapper(...)` and `@:rustSupportCrate(...)` across type and field
-		  metadata.
+		- Reserves `@:rustNativeWrapper(...)` across type and field metadata.
 		- Emits an actionable diagnostic that names the current supported boundary and design document.
 
 		How
 		- Walks typed module metadata from `Context.getAllModuleTypes()`.
 		- Uses the same metadata-name normalization as other Rust metadata readers.
-		- Does not parse either proposed object shape here. Exact parsing belongs to each future
-		  planner once its accepted subset and emitted Rust contract are implemented together.
+		- Support-crate placement and parsing belong to `SupportCrateRequestPlanner`.
 	**/
 	function rejectReservedRustMetadata():Void {
 		for (moduleType in Context.getAllModuleTypes()) {
@@ -5326,10 +5371,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		if (metaNameEquals(name, "rustNativeWrapper")) {
 			Context.error("`@:rustNativeWrapper` is reserved for the native wrapper facility spike and is not enabled as product metadata. "
 				+ "Use `@:rustExtraSrc` plus a native facade manifest entry for now; see docs/native-wrapper-facility-spike.md.", pos);
-		}
-		if (metaNameEquals(name, "rustSupportCrate")) {
-			Context.error("`@:rustSupportCrate` is reserved for the typed support-crate facility and is not enabled as product metadata. "
-				+ "Use an explicitly reviewed `@:rustCargo` dependency for temporary linkage; see docs/support-crate-facility.md.", pos);
 		}
 	}
 

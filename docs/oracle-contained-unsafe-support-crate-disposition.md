@@ -88,23 +88,29 @@ facade. The generated application remains safe Rust. Only the separate,
 reviewed support crate can contain bounded unsafe code, and its safe public API
 must still be reviewed and tested by its owner.
 
-The work will proceed in these finite stages:
+The work will proceed in these finite stages. A later source-admission review
+split the old stage 2 into stages 2A and 2B:
 
 1. Reserve and document the metadata contract with a hard unsupported-site
    diagnostic.
-2. Add the exact parser, immutable Cargo/support plans, unique classpath
-   resolution, no-follow source admission, canonical manifest check, and
-   planning tests while emission remains disabled.
-3. Add exact support-subtree synchronization, workspace and path-dependency
+2. **Stage 2A:** Add the exact parser and immutable declaration request plan.
+   Do not read the filesystem. Keep source admission unavailable.
+3. **Stage 2B:** Add unique classpath resolution, no-follow source admission,
+   canonical manifest checks, and the immutable byte plan.
+4. Add exact support-subtree synchronization, workspace and path-dependency
    emission, provenance output, automatic application `forbid`, and collision
    controls.
-4. Add target admission, locked/offline dependency-closure evidence, rustc
+5. Add target admission, locked/offline dependency-closure evidence, rustc
    input-closure evidence, Clippy/rustfmt checks, negative unsafe controls,
    source correlation, and compiler-server isolation.
-5. Add package-install evidence, package-level governance, and one generic
+6. Add package-install evidence, package-level governance, and one generic
    audited tracer. Then promote the metadata to `metadata-qualified`.
-6. Release haxe.rust. Only then can GameCarry replace its ambient or
+7. Release haxe.rust. Only then can GameCarry replace its ambient or
    handwritten native boundary with the released facility.
+
+The [source-admission disposition](oracle-support-crate-source-admission-disposition.md)
+owns this correction. It explains why Haxe 4.3.7 cannot perform the required
+race-safe source read through its current public APIs.
 
 The facility stops and requires a new design if it needs:
 

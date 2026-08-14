@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
 const assert = require('node:assert/strict')
+const crypto = require('node:crypto')
 const fs = require('node:fs')
+const os = require('node:os')
 const path = require('node:path')
 const net = require('node:net')
 const { spawn, spawnSync } = require('node:child_process')
@@ -18,6 +20,7 @@ const defaultHaxe = path.join(
   process.platform === 'win32' ? 'haxe.cmd' : 'haxe'
 )
 const haxe = process.env.HAXE_BIN || defaultHaxe
+const haxeServer = process.env.HAXE_SERVER_BIN || haxe
 
 function compile(hxml, outputName) {
   return spawnSync(haxe, [hxml, '-D', `rust_output=${outputName}`], {
@@ -29,6 +32,36 @@ function compile(hxml, outputName) {
 
 function transcript(result) {
   return `${result.stdout || ''}${result.stderr || ''}`
+}
+
+function snapshotTree(root, normalizeGeneratedManifest = false) {
+  const entries = []
+  const visit = (absolute, relative) => {
+    const stat = fs.lstatSync(absolute)
+    const identity = { path: relative, mode: stat.mode, size: stat.size }
+    if (stat.isDirectory()) {
+      entries.push({ ...identity, kind: 'directory' })
+      for (const name of fs.readdirSync(absolute).sort()) {
+        visit(path.join(absolute, name), relative === '' ? name : `${relative}/${name}`)
+      }
+    } else if (stat.isFile()) {
+      let bytes = fs.readFileSync(absolute)
+      if (normalizeGeneratedManifest && relative === '_GeneratedFiles.json') {
+        const manifest = JSON.parse(bytes.toString('utf8'))
+        delete manifest.id
+        delete manifest.wasCached
+        bytes = Buffer.from(JSON.stringify(manifest))
+      }
+      const sha256 = crypto.createHash('sha256').update(bytes).digest('hex')
+      entries.push({ ...identity, size: bytes.length, kind: 'file', sha256 })
+    } else if (stat.isSymbolicLink()) {
+      entries.push({ ...identity, kind: 'symlink', target: fs.readlinkSync(absolute) })
+    } else {
+      entries.push({ ...identity, kind: 'other' })
+    }
+  }
+  visit(root, '')
+  return entries
 }
 
 async function unusedLoopbackPort() {
@@ -70,12 +103,64 @@ function compileThroughServer(port, fixtureRoot, reserved) {
   })
 }
 
-function compileFixture(fixture) {
+function compileNegativeFixture(fixture) {
+  return spawnSync(haxe, ['compile.hxml'], {
+    cwd: path.join(repoRoot, 'test', 'negative', fixture),
+    encoding: 'utf8',
+    env: process.env
+  })
+}
+
+function compilePositiveFixture(fixture) {
   return spawnSync(haxe, ['compile.hxml'], {
     cwd: path.join(repoRoot, 'test', 'positive', fixture),
     encoding: 'utf8',
     env: process.env
   })
+}
+
+function compileSupportCrateSource(source, extraArgs = []) {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'haxe-rust-support-crate-plan-'))
+  const output = path.join(fixtureRoot, 'out')
+  fs.writeFileSync(path.join(fixtureRoot, 'Main.hx'), source)
+  const result = spawnSync(haxe, [
+    '-cp', fixtureRoot,
+    '-lib', 'reflaxe.rust',
+    '-D', 'reflaxe_rust_profile=metal',
+    '-D', 'rust_no_build',
+    '-D', `rust_output=${output}`,
+    ...extraArgs,
+    '-main', 'Main'
+  ], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    env: process.env
+  })
+  result.outputExists = fs.existsSync(output)
+  fs.rmSync(fixtureRoot, { recursive: true, force: true })
+  return result
+}
+
+function supportCrateSource(overrides = '') {
+  return `
+@:rustSupportCrate({
+  name: "native_page_size_support",
+  sourceRoot: "native/native_page_size_support",
+  unsafePolicy: "audited",
+  targets: ["*"],
+  dependencies: []${overrides}
+})
+@:native("native_page_size_support::PageSize")
+extern class PageSize {
+  public static function current():Int;
+}
+
+class Main {
+  static function main():Void {
+    PageSize.current();
+  }
+}
+`
 }
 
 test('current facilities cannot own a separate contained-unsafe support crate', () => {
@@ -110,11 +195,184 @@ test('current facilities cannot own a separate contained-unsafe support crate', 
   }
 })
 
-test('reserved support-crate metadata stays rejected through a warm compiler server', async () => {
+test('a valid support-crate declaration reaches only the unavailable source-admission boundary', () => {
+  const result = compileSupportCrateSource(supportCrateSource())
+  assert.ifError(result.error)
+  assert.notEqual(result.status, 0, 'source admission is not implemented in Stage 2A')
+  assert.match(transcript(result), /\[HXRS-SUPPORT-CRATE-SOURCE-ADMISSION-UNAVAILABLE\]/)
+  assert.equal(result.outputExists, false, 'Stage 2A must fail before it creates generated output')
+})
+
+test('support-crate metadata uses a closed compile-time grammar', () => {
+  const cases = [
+    {
+      name: 'missing required field',
+      source: supportCrateSource().replace('  dependencies: []\n', ''),
+      expected: /\[HXRS-METADATA-VALUE\].*missing required field `dependencies`/
+    },
+    {
+      name: 'unknown field',
+      source: supportCrateSource(',\n  command: "cargo build"'),
+      expected: /\[HXRS-METADATA-VALUE\].*unknown field `command`/
+    },
+    {
+      name: 'duplicate field',
+      source: supportCrateSource(',\n  name: "other_support"'),
+      expected: /\[HXRS-METADATA-VALUE\].*duplicate field `name`/
+    },
+    {
+      name: 'parent traversal',
+      source: supportCrateSource().replace('native/native_page_size_support', '../native_page_size_support'),
+      expected: /\[HXRS-METADATA-VALUE\].*sourceRoot/
+    },
+    {
+      name: 'reserved Rust crate identifier',
+      source: supportCrateSource()
+        .replaceAll('native_page_size_support', 'crate'),
+      expected: /\[HXRS-METADATA-VALUE\].*lowercase Rust identifier/
+    },
+    ...['std', 'core', 'alloc'].map(name => ({
+      name: `backend-reserved crate root ${name}`,
+      source: supportCrateSource().replaceAll('native_page_size_support', name),
+      expected: /\[HXRS-METADATA-VALUE\].*lowercase Rust identifier/
+    })),
+    {
+      name: 'Cargo-reserved package name test',
+      source: supportCrateSource().replaceAll('native_page_size_support', 'test'),
+      expected: /\[HXRS-METADATA-VALUE\].*lowercase Rust identifier/
+    },
+    {
+      name: 'crate name longer than Cargo permits',
+      source: supportCrateSource().replaceAll('native_page_size_support', `x${'a'.repeat(64)}`),
+      expected: /\[HXRS-METADATA-VALUE\].*lowercase Rust identifier/
+    },
+    {
+      name: 'crate path mismatch',
+      source: supportCrateSource().replace('native_page_size_support::PageSize', 'other_crate::PageSize'),
+      expected: /\[HXRS-METADATA-VALUE\].*`@:native`.*native_page_size_support/
+    },
+    {
+      name: 'invalid unsafe policy',
+      source: supportCrateSource().replace('unsafePolicy: "audited"', 'unsafePolicy: "allow"'),
+      expected: /\[HXRS-METADATA-VALUE\].*unsafePolicy.*forbid.*audited/
+    },
+    {
+      name: 'target-specific declaration without rust_target',
+      source: supportCrateSource().replace('targets: ["*"]', 'targets: ["aarch64-apple-darwin"]'),
+      expected: /\[HXRS-METADATA-VALUE\].*requires `-D rust_target=/
+    },
+    {
+      name: 'version range',
+      source: supportCrateSource().replace('dependencies: []', 'dependencies: [{name: "libc", version: "^0.2", defaultFeatures: false, features: []}]'),
+      expected: /\[HXRS-METADATA-VALUE\].*exact registry version/
+    },
+    {
+      name: 'non-canonical exact version',
+      source: supportCrateSource().replace('dependencies: []', 'dependencies: [{name: "libc", version: "=01.2.3", defaultFeatures: false, features: []}]'),
+      expected: /\[HXRS-METADATA-VALUE\].*exact registry version/
+    },
+    {
+      name: 'exact version component larger than Cargo SemVer permits',
+      source: supportCrateSource().replace('dependencies: []', 'dependencies: [{name: "libc", version: "=18446744073709551616.0.0", defaultFeatures: false, features: []}]'),
+      expected: /\[HXRS-METADATA-VALUE\].*exact registry version/
+    },
+    {
+      name: 'self dependency',
+      source: supportCrateSource().replace('dependencies: []', 'dependencies: [{name: "native_page_size_support", version: "=1.0.0", defaultFeatures: false, features: []}]'),
+      expected: /\[HXRS-METADATA-VALUE\].*cannot depend on itself/
+    }
+  ]
+
+  for (const fixture of cases) {
+    const result = compileSupportCrateSource(fixture.source)
+    assert.ifError(result.error)
+    assert.notEqual(result.status, 0, `${fixture.name} unexpectedly compiled`)
+    assert.match(transcript(result), fixture.expected, fixture.name)
+  }
+})
+
+test('normalization makes equivalent repeated declarations equal', () => {
+  const declaration = supportCrateSource().replace(/\nclass Main[\s\S]*$/, '')
+  const first = declaration
+    .replace('targets: ["*"]', 'targets: ["x86_64-apple-darwin", "aarch64-apple-darwin"]')
+    .replace('dependencies: []', 'dependencies: [{name: "serde", version: "=1.0.0", defaultFeatures: false, features: []}, {name: "libc", version: "=0.2.180", defaultFeatures: false, features: ["std", "alloc"]}]')
+  const second = declaration
+    .replace('extern class PageSize', 'extern class PageSizeAgain')
+    .replace('::PageSize")', '::PageSizeAgain")')
+    .replace('targets: ["*"]', 'targets: ["aarch64-apple-darwin", "x86_64-apple-darwin"]')
+    .replace('dependencies: []', 'dependencies: [{name: "libc", version: "=0.2.180", defaultFeatures: false, features: ["alloc", "std"]}, {name: "serde", version: "=1.0.0", defaultFeatures: false, features: []}]')
+  const source = `${first}\n${second}\nclass Main { static function main():Void {} }\n`
+  const result = compileSupportCrateSource(source, ['-D', 'rust_target=x86_64-apple-darwin'])
+  assert.ifError(result.error)
+  assert.notEqual(result.status, 0, 'source admission is not implemented in Stage 2A')
+  assert.match(transcript(result), /\[HXRS-SUPPORT-CRATE-SOURCE-ADMISSION-UNAVAILABLE\]/)
+})
+
+test('a valid two-part Cargo target name is preserved exactly', () => {
+  const source = supportCrateSource().replace('targets: ["*"]', 'targets: ["wasm32-wasip1"]')
+  const result = compileSupportCrateSource(source, ['-D', 'rust_target=wasm32-wasip1'])
+  assert.ifError(result.error)
+  assert.notEqual(result.status, 0, 'source admission is not implemented in Stage 2A')
+  assert.match(transcript(result), /\[HXRS-SUPPORT-CRATE-SOURCE-ADMISSION-UNAVAILABLE\]/)
+})
+
+test('a valid Cargo target name can contain a dotted architecture segment', () => {
+  const target = 'thumbv8m.main-none-eabi'
+  const source = supportCrateSource().replace('targets: ["*"]', `targets: ["${target}"]`)
+  const result = compileSupportCrateSource(source, ['-D', `rust_target=${target}`])
+  assert.ifError(result.error)
+  assert.notEqual(result.status, 0, 'source admission is not implemented in Stage 2A')
+  assert.match(transcript(result), /\[HXRS-SUPPORT-CRATE-SOURCE-ADMISSION-UNAVAILABLE\]/)
+})
+
+test('the Stage 2A planner cannot read the filesystem', () => {
+  const source = fs.readFileSync(path.join(repoRoot, 'src', 'reflaxe', 'rust', 'SupportCrateRequestPlanner.hx'), 'utf8')
+  assert.doesNotMatch(source, /sys\.FileSystem|sys\.io\.File|Context\.resolvePath|Context\.getClassPath/)
+})
+
+test('support-crate metadata inside an inline record field is rejected', () => {
+  const result = compileNegativeFixture('support_crate_reserved_inline_record_field_metadata')
+  assert.ifError(result.error)
+  assert.notEqual(result.status, 0, 'inline record field metadata unexpectedly compiled')
+  assert.match(transcript(result), /\[HXRS-METADATA-PLACEMENT\].*only on an extern class/)
+})
+
+test('support-crate metadata on type parameters and function arguments is rejected', () => {
+  for (const fixture of [
+    'support_crate_reserved_type_parameter_metadata',
+    'support_crate_reserved_recursive_type_parameter_metadata',
+    'support_crate_reserved_local_type_parameter_metadata',
+    'support_crate_reserved_local_record_type_metadata',
+    'support_crate_reserved_expression_record_type_metadata',
+    'support_crate_reserved_class_init_metadata',
+    'support_crate_reserved_overload_type_parameter_metadata',
+    'support_crate_reserved_argument_metadata'
+  ]) {
+    const result = compileNegativeFixture(fixture)
+    assert.ifError(result.error)
+    assert.notEqual(result.status, 0, `${fixture} unexpectedly compiled`)
+    assert.match(transcript(result), /\[HXRS-METADATA-PLACEMENT\].*only on an extern class/)
+  }
+})
+
+test('a repeated declaration must be exactly equal after normalization', () => {
+  const declaration = supportCrateSource().replace(/\nclass Main[\s\S]*$/, '')
+  const second = declaration
+    .replace('extern class PageSize', 'extern class PageSizeAgain')
+    .replace('::PageSize")', '::PageSizeAgain")')
+    .replace('sourceRoot: "native/native_page_size_support"', 'sourceRoot: "native/other_support"')
+  const source = `${declaration}\n${second}\nclass Main { static function main():Void {} }\n`
+  const result = compileSupportCrateSource(source)
+  assert.ifError(result.error)
+  assert.notEqual(result.status, 0, 'conflicting declarations unexpectedly merged')
+  assert.match(transcript(result), /\[HXRS-METADATA-VALUE\].*Conflicting `@:rustSupportCrate` declaration/)
+})
+
+test('support-crate request planning stays isolated through a warm compiler server', async () => {
   const port = await unusedLoopbackPort()
   const fixtureRoot = path.join(repoRoot, 'test', 'contract', 'support_crate_warm_lifecycle')
   const output = path.join(fixtureRoot, 'out')
-  const compilerServer = spawn(haxe, ['--wait', String(port)], {
+  const compilerServer = spawn(haxeServer, ['--wait', String(port)], {
     cwd: repoRoot,
     stdio: ['ignore', 'pipe', 'pipe'],
     env: process.env
@@ -126,23 +384,32 @@ test('reserved support-crate metadata stays rejected through a warm compiler ser
     const safeFirst = compileThroughServer(port, fixtureRoot, false)
     assert.ifError(safeFirst.error)
     assert.equal(safeFirst.status, 0, transcript(safeFirst))
-    const safeBytes = fs.readFileSync(path.join(output, 'src', 'main.rs'))
+    const safeTree = snapshotTree(output)
+    const stableSafeTree = snapshotTree(output, true)
+    const safeMain = fs.readFileSync(path.join(output, 'src', 'main.rs'))
 
     const reservedFirst = compileThroughServer(port, fixtureRoot, true)
     assert.ifError(reservedFirst.error)
     assert.notEqual(reservedFirst.status, 0, 'reserved metadata unexpectedly compiled through the warm server')
-    assert.match(transcript(reservedFirst), /`@:rustSupportCrate` is reserved for the typed support-crate facility/)
+    assert.match(transcript(reservedFirst), /\[HXRS-SUPPORT-CRATE-SOURCE-ADMISSION-UNAVAILABLE\]/)
+    assert.deepEqual(snapshotTree(output), safeTree,
+      'the first rejected warm request changed the accepted output tree')
 
     const safeSecond = compileThroughServer(port, fixtureRoot, false)
     assert.ifError(safeSecond.error)
     assert.equal(safeSecond.status, 0, transcript(safeSecond))
-    assert.deepEqual(fs.readFileSync(path.join(output, 'src', 'main.rs')), safeBytes,
-      'safe output changed after the rejected warm request')
+    assert.deepEqual(fs.readFileSync(path.join(output, 'src', 'main.rs')), safeMain,
+      'the second safe compile changed generated main.rs')
+    const safeSecondTree = snapshotTree(output)
+    assert.deepEqual(snapshotTree(output, true), stableSafeTree,
+      'the safe warm compile changed the complete generated output tree')
 
     const reservedSecond = compileThroughServer(port, fixtureRoot, true)
     assert.ifError(reservedSecond.error)
     assert.notEqual(reservedSecond.status, 0, 'the repeated reserved request unexpectedly compiled')
-    assert.match(transcript(reservedSecond), /`@:rustSupportCrate` is reserved for the typed support-crate facility/)
+    assert.match(transcript(reservedSecond), /\[HXRS-SUPPORT-CRATE-SOURCE-ADMISSION-UNAVAILABLE\]/)
+    assert.deepEqual(snapshotTree(output), safeSecondTree,
+      'the repeated rejected warm request changed the accepted output tree')
   } finally {
     fs.rmSync(output, { recursive: true, force: true })
     compilerServer.kill('SIGTERM')
@@ -164,7 +431,7 @@ test('expression metadata discarded by Haxe cannot request a support crate', () 
   fs.rmSync(output, { recursive: true, force: true })
 
   try {
-    const result = compileFixture(fixture)
+    const result = compilePositiveFixture(fixture)
     assert.ifError(result.error)
     assert.equal(result.status, 0, transcript(result))
     assert.equal(fs.existsSync(path.join(output, 'support-crates')), false)
@@ -173,4 +440,10 @@ test('expression metadata discarded by Haxe cannot request a support crate', () 
   } finally {
     fs.rmSync(output, { recursive: true, force: true })
   }
+})
+
+test('recursive generic constraints compile without support metadata', () => {
+  const result = compilePositiveFixture('support_crate_recursive_generic_no_metadata')
+  assert.ifError(result.error)
+  assert.equal(result.status, 0, transcript(result))
 })
