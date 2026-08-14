@@ -123,6 +123,25 @@ class Main {
 HX
 }
 
+write_support_crate_plan_main() {
+  local dest_dir="$1"
+  "$CAT_BIN" > "$dest_dir/SupportCratePlanMain.hx" <<'HX'
+@:native("demo_support::Api")
+@:rustSupportCrate({
+  name: "demo_support",
+  sourceRoot: "native/demo_support",
+  unsafePolicy: "forbid",
+  targets: ["*"],
+  dependencies: []
+})
+extern class DemoSupportApi {}
+
+class SupportCratePlanMain {
+  static function main() {}
+}
+HX
+}
+
 log "verify package layout"
 [[ -f "$pkg_dir/haxelib.json" ]]
 [[ -d "$pkg_dir/src" ]]
@@ -221,6 +240,26 @@ NODE
 )
 
 assert_emitted_std_modules "$app_dir/out"
+
+log "verify packaged support-crate declaration planner"
+write_support_crate_plan_main "$app_dir"
+support_crate_log="$tmp_root/support-crate-plan.log"
+if (
+  cd "$app_dir"
+  "$RELEASE_HAXE_BIN" -cp . -lib reflaxe.rust -main SupportCratePlanMain -D rust_output=out_support_crate -D rust_no_build
+) >"$support_crate_log" 2>&1; then
+  echo "error: packaged support-crate declaration unexpectedly compiled" >&2
+  exit 1
+fi
+if ! match_fixed "[HXRS-SUPPORT-CRATE-SOURCE-ADMISSION-UNAVAILABLE]" "$support_crate_log"; then
+  echo "error: packaged compiler did not report the stable support-crate source-admission diagnostic" >&2
+  "$CAT_BIN" "$support_crate_log" >&2
+  exit 1
+fi
+if [[ -e "$app_dir/out_support_crate" ]]; then
+  echo "error: packaged support-crate declaration created Rust output before source admission" >&2
+  exit 1
+fi
 
 if [[ -z "${CARGO_TARGET_DIR:-}" ]]; then
   export CARGO_TARGET_DIR="$root_dir/.cache/package-smoke-target"

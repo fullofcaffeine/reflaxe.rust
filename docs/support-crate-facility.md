@@ -1,8 +1,11 @@
 # Typed Rust support-crate facility
 
-Status: design reserved. `@:rustSupportCrate` is not available for application
-use. The compiler rejects it until the complete contract has implementation and
-evidence.
+Status: declaration parser implemented. `@:rustSupportCrate` is not available
+for application use. A valid declaration stops with
+`HXRS-SUPPORT-CRATE-SOURCE-ADMISSION-UNAVAILABLE`.
+
+This stage validates declaration intent only. It does not read support-crate
+source files or change Cargo and Rust output.
 
 ## Why this facility exists
 
@@ -52,8 +55,10 @@ extern class PageSize {
 
 All five fields are required:
 
-- `name` is one lowercase Rust crate identifier. It is also the Cargo package,
-  dependency, import, and generated-directory name.
+- `name` is one lowercase Rust crate identifier of at most 64 characters. It is also the Cargo package,
+  dependency, import, and generated-directory name. Rust keywords and the
+  backend-reserved crate roots `std`, `core`, and `alloc`, and Cargo's reserved
+  package name `test` are not valid names.
 - `sourceRoot` is one classpath-relative source directory. It cannot be an
   absolute path or contain empty, current-directory, or parent-directory
   segments. It must resolve through exactly one active Haxe class path. The
@@ -62,7 +67,9 @@ All five fields are required:
   crate permission to contain reviewed unsafe code. It is not a soundness
   certificate.
 - `targets` is either exactly `["*"]` or a unique list of exact Cargo target
-  triples. A target-specific crate requires a matching `rust_target` define.
+  names, including targets such as `thumbv8m.main-none-eabi` that contain a
+  dotted architecture segment. A target-specific crate requires a matching
+  `rust_target` define.
 - `dependencies` is an explicit list, including `[]` when the crate has no
   direct dependency.
 
@@ -77,8 +84,10 @@ A direct dependency uses this closed form:
 }
 ```
 
-Version 1 accepts only exact default-registry versions. It rejects version
-ranges, Git, paths, alternate registries, renamed packages, optional
+Version 1 accepts only canonical, stable `=major.minor.patch` versions from the
+default registry. It rejects prerelease/build suffixes, leading-zero versions,
+SemVer components larger than Cargo's unsigned 64-bit limit, version ranges,
+Git, paths, alternate registries, renamed packages, optional
 dependencies, target-specific dependency sections, and raw Cargo text.
 
 The metadata can appear only on an `extern class`. Its structural `@:native`
@@ -221,17 +230,72 @@ containment or the semantic soundness of the support implementation.
 
 ## Delivery stages
 
-The feature has finite delivery stages:
+The feature has finite delivery stages. Stages 1 and 2A are implemented:
 
 1. Reserve and document the public metadata. Reject every typed declaration or
    field use. Haxe discards ordinary expression metadata that has no typed
    meaning, so expression metadata cannot request this facility and is not part
    of its placement grammar.
-2. Add the exact parser and immutable plans. Keep emission disabled.
-3. Add exact artifact and Cargo emission behind the planned contract.
-4. Add target, dependency, unsafe, tool, and compiler-server proof.
-5. Add installed-package proof, package governance, and one generic tracer.
-6. Release haxe.rust before a downstream product adopts the facility.
+2. **Stage 2A:** Parse the exact declaration into an immutable request plan.
+   Do not read the filesystem. Stop with the source-admission diagnostic.
+3. **Stage 2B:** Admit exact source bytes with one package-owned native helper.
+   Stop with an emission-disabled diagnostic.
+4. Add exact artifact and Cargo emission behind the admitted source plan.
+5. Add target, dependency, unsafe, tool, and compiler-server proof.
+6. Add installed-package proof, package governance, and one generic tracer.
+7. Release haxe.rust before a downstream product adopts the facility.
+
+### What Stage 2A does
+
+The compiler accepts the exact five-field object on an `extern class`. It
+checks the crate name, logical source root, unsafe policy, targets, registry
+dependencies, and matching `@:native` prefix.
+
+The compiler normalizes target, dependency, and feature order. Therefore, two
+declarations can use a different source order and still describe one request.
+Every other value must be equal. The compiler rejects union-style merging.
+
+Haxe can remove metadata from expression types after typing is complete. The
+planner therefore runs in the final typing callback. It stores only normalized
+request facts or one diagnostic. The later compile step clears those detached
+records before it reports an error. This order keeps warm compiler requests
+separate and does not retain a mutable typed program as proof.
+
+For example, this declaration has valid syntax:
+
+```haxe
+@:rustSupportCrate({
+  name: "native_page_size_support",
+  sourceRoot: "native/native_page_size_support",
+  unsafePolicy: "audited",
+  targets: ["*"],
+  dependencies: []
+})
+@:native("native_page_size_support::PageSize")
+extern class PageSize {}
+```
+
+The compiler then reports:
+
+```text
+[HXRS-SUPPORT-CRATE-SOURCE-ADMISSION-UNAVAILABLE]
+```
+
+This result means that the declaration is valid. It does not mean that the
+source directory exists or contains reviewed bytes.
+
+### Why Stage 2B needs a native helper
+
+Haxe 4.3.7 can inspect and read files by pathname. It cannot open one child
+relative to an already open parent directory on all compiler hosts.
+
+Another process can replace a pathname component between a kind check and a
+later read. A separate helper must use parent-relative operating-system calls.
+It must validate and read each file through the same open handle.
+
+The helper will be a one-shot haxe.rust tool. It will not be a command runner,
+a daemon, or application code. The source-admission decision explains the
+exact boundary and the remaining host decisions.
 
 The metadata becomes `metadata-qualified` only after stage 5. Stable status
 requires one released downstream consumer and a second distinct support-crate
@@ -265,8 +329,24 @@ boundary:
 - an ambient support path compiles but is absent from generated ownership and
   package output.
 
-The negative fixtures prove that application code cannot silently opt into the
-unfinished facility. They cover metadata on a type and on a field.
+The focused fixtures prove the Stage 2A grammar and request lifetime. They also
+prove that a valid request creates no Cargo or Rust output.
+
+The warm compiler-server fixture uses this sequence:
+
+```text
+safe -> valid but unavailable -> safe -> valid but unavailable
+```
+
+The two safe compiles produce byte-identical `src/main.rs`. Each rejected
+request leaves the complete accepted output tree unchanged. Invalid field, inline-record-field,
+type-parameter (including local generic functions and overloads), local record,
+function-argument,
+typedef-field, and abstract-field placements remain rejected. The packaged
+compiler reaches the same stable source-admission diagnostic and creates no
+Rust output.
 
 The reconciled independent architecture review and local decision matrix are
-in [the Oracle disposition](oracle-contained-unsafe-support-crate-disposition.md).
+in [the original Oracle disposition](oracle-contained-unsafe-support-crate-disposition.md).
+The later [source-admission disposition](oracle-support-crate-source-admission-disposition.md)
+explains the Stage 2 split and the native helper boundary.
