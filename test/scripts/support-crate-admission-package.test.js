@@ -69,6 +69,28 @@ assert.deepEqual({
   cargoVendored: true
 })
 
+const rootCargoManifest = path.join(repoRoot, 'Cargo.toml')
+const originalRootCargoManifest = fs.readFileSync(rootCargoManifest, 'utf8')
+try {
+  fs.writeFileSync(
+    rootCargoManifest,
+    `${originalRootCargoManifest}\n[workspace.metadata.hxrs_source_input_probe]\nenabled = true\n`
+  )
+  const changedRootCargoManifest = runBuild()
+  assert.ifError(changedRootCargoManifest.error)
+  assert.notEqual(
+    changedRootCargoManifest.status,
+    0,
+    'a root Cargo.toml change must invalidate the recorded helper source inputs'
+  )
+  assert.match(
+    `${changedRootCargoManifest.stdout || ''}${changedRootCargoManifest.stderr || ''}`,
+    /binary provenance is stale/
+  )
+} finally {
+  fs.writeFileSync(rootCargoManifest, originalRootCargoManifest)
+}
+
 const nestedHaxeScope = path.join(helperRoot, '.haxerc')
 const nestedHaxeLibraries = path.join(helperRoot, 'haxe_libraries')
 assert.equal(fs.existsSync(nestedHaxeScope), false, 'the package fixture requires no helper-local .haxerc')

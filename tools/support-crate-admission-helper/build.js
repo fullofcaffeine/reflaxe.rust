@@ -194,6 +194,7 @@ function sourceInputIdentity() {
     'tools/support-crate-admission-helper/vendor',
     '.cargo/config.toml',
     '.haxerc',
+    'Cargo.toml',
     'package.json',
     'package-lock.json',
     'rust-toolchain.toml',
