@@ -1,0 +1,5 @@
+-cp .
+-lib reflaxe.rust
+-D support_crate_expected_root=../../..
+--macro supportcrateadmission.Main.run()
+--no-output

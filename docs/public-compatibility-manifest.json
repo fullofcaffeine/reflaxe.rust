@@ -24746,6 +24746,17 @@
           "typeReferences": []
         },
         {
+          "id": "enum-value:SupportCrateEmissionDisabled",
+          "kind": "enum-value",
+          "name": "SupportCrateEmissionDisabled",
+          "signature": "var SupportCrateEmissionDisabled = \"HXRS-SUPPORT-CRATE-EMISSION-DISABLED\"",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
           "id": "enum-value:CargoDependencyConflict",
           "kind": "enum-value",
           "name": "CargoDependencyConflict",
@@ -26105,6 +26116,1670 @@
             "test:public-compatibility"
           ],
           "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionHelperLocator",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionHelperLocator.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateAdmissionHelperLocator",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperLocatorResult"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperLocation",
+        "reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperLocatorResult",
+        "reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperUnavailable"
+      ],
+      "operations": [
+        {
+          "id": "function:locate",
+          "kind": "function",
+          "name": "locate",
+          "signature": "public static function locate (packageRoot : Null < String >) : SupportCrateAdmissionHelperLocatorResult",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperLocatorResult"
+          ]
+        },
+        {
+          "id": "function:anchorPackageRoot",
+          "kind": "function",
+          "name": "anchorPackageRoot",
+          "signature": "public static function anchorPackageRoot (sourceFile : String) : Null < String >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperLocation",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionHelperLocator.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateAdmissionHelperLocation",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "field:packageRoot",
+          "kind": "field",
+          "name": "packageRoot",
+          "signature": "public final packageRoot : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:executablePath",
+          "kind": "field",
+          "name": "executablePath",
+          "signature": "public final executablePath : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:expectedSha256",
+          "kind": "field",
+          "name": "expectedSha256",
+          "signature": "public final expectedSha256 : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "constructor:new",
+          "kind": "constructor",
+          "name": "new",
+          "signature": "public function new (packageRoot : String, executablePath : String, expectedSha256 : String)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperLocatorResult",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionHelperLocator.hx",
+      "kind": "enum",
+      "signature": "enum SupportCrateAdmissionHelperLocatorResult",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperLocation",
+        "reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperUnavailable"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperLocation",
+        "reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperUnavailable"
+      ],
+      "operations": [
+        {
+          "id": "enum-constructor:Available",
+          "kind": "enum-constructor",
+          "name": "Available",
+          "signature": "Available (value : SupportCrateAdmissionHelperLocation)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperLocation"
+          ]
+        },
+        {
+          "id": "enum-constructor:Unavailable",
+          "kind": "enum-constructor",
+          "name": "Unavailable",
+          "signature": "Unavailable (reason : SupportCrateAdmissionHelperUnavailable)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperUnavailable"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperUnavailable",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionHelperLocator.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract SupportCrateAdmissionHelperUnavailable (Int) to Int",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:UnsupportedHost",
+          "kind": "enum-value",
+          "name": "UnsupportedHost",
+          "signature": "var UnsupportedHost = 1",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:LoadedCompilerUnavailable",
+          "kind": "enum-value",
+          "name": "LoadedCompilerUnavailable",
+          "signature": "var LoadedCompilerUnavailable = 2",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:PackageLayoutInvalid",
+          "kind": "enum-value",
+          "name": "PackageLayoutInvalid",
+          "signature": "var PackageLayoutInvalid = 3",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionProtocol",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionProtocol.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateAdmissionProtocol",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "haxe.io.Bytes",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionRequest",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionResponse"
+      ],
+      "transitiveTypeReferences": [
+        "haxe.Int32",
+        "haxe.Int64",
+        "haxe.io.Bytes",
+        "haxe.io.Encoding",
+        "haxe.io.Input",
+        "haxe.io.Output",
+        "hxrt.fs.FileHandle",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionAccepted",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionBundle",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionClasspathBinding",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionDeclaration",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionErrorCode",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionRejected",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionRequest",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionResponse",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeEntry",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeKind",
+        "rust.HxRef",
+        "sys.io.File",
+        "sys.io.FileInput",
+        "sys.io.FileOutput",
+        "sys.io.FileSeek"
+      ],
+      "operations": [
+        {
+          "id": "field:MAJOR",
+          "kind": "field",
+          "name": "MAJOR",
+          "signature": "public static inline var MAJOR : Int = 1",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:MINOR",
+          "kind": "field",
+          "name": "MINOR",
+          "signature": "public static inline var MINOR : Int = 0",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:MAX_CLASSPATHS",
+          "kind": "field",
+          "name": "MAX_CLASSPATHS",
+          "signature": "public static inline var MAX_CLASSPATHS : Int = 256",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:MAX_CLASSPATH_BYTES",
+          "kind": "field",
+          "name": "MAX_CLASSPATH_BYTES",
+          "signature": "public static inline var MAX_CLASSPATH_BYTES : Int = 16 * 1024",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:MAX_CLASSPATH_COMPONENTS",
+          "kind": "field",
+          "name": "MAX_CLASSPATH_COMPONENTS",
+          "signature": "public static inline var MAX_CLASSPATH_COMPONENTS : Int = 128",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:MAX_DECLARATIONS",
+          "kind": "field",
+          "name": "MAX_DECLARATIONS",
+          "signature": "public static inline var MAX_DECLARATIONS : Int = 32",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:MAX_REQUEST_BYTES",
+          "kind": "field",
+          "name": "MAX_REQUEST_BYTES",
+          "signature": "public static inline var MAX_REQUEST_BYTES : Int = 1024 * 1024",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:MAX_FILES_PER_CRATE",
+          "kind": "field",
+          "name": "MAX_FILES_PER_CRATE",
+          "signature": "public static inline var MAX_FILES_PER_CRATE : Int = 256",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:MAX_TREE_ENTRIES_PER_CRATE",
+          "kind": "field",
+          "name": "MAX_TREE_ENTRIES_PER_CRATE",
+          "signature": "public static inline var MAX_TREE_ENTRIES_PER_CRATE : Int = MAX_FILES_PER_CRATE * 33",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:MAX_PATH_DEPTH",
+          "kind": "field",
+          "name": "MAX_PATH_DEPTH",
+          "signature": "public static inline var MAX_PATH_DEPTH : Int = 32",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:MAX_PATH_SEGMENT_BYTES",
+          "kind": "field",
+          "name": "MAX_PATH_SEGMENT_BYTES",
+          "signature": "public static inline var MAX_PATH_SEGMENT_BYTES : Int = 255",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:MAX_FILE_BYTES",
+          "kind": "field",
+          "name": "MAX_FILE_BYTES",
+          "signature": "public static inline var MAX_FILE_BYTES : Int = 2 * 1024 * 1024",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:MAX_CRATE_BYTES",
+          "kind": "field",
+          "name": "MAX_CRATE_BYTES",
+          "signature": "public static inline var MAX_CRATE_BYTES : Int = 16 * 1024 * 1024",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:MAX_TOTAL_SOURCE_BYTES",
+          "kind": "field",
+          "name": "MAX_TOTAL_SOURCE_BYTES",
+          "signature": "public static inline var MAX_TOTAL_SOURCE_BYTES : Int = 32 * 1024 * 1024",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:MAX_RESPONSE_BYTES",
+          "kind": "field",
+          "name": "MAX_RESPONSE_BYTES",
+          "signature": "public static inline var MAX_RESPONSE_BYTES : Int = 40 * 1024 * 1024",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:encodeRequest",
+          "kind": "function",
+          "name": "encodeRequest",
+          "signature": "public static function encodeRequest (request : SupportCrateAdmissionRequest) : Bytes",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "haxe.io.Bytes",
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionRequest"
+          ]
+        },
+        {
+          "id": "function:decodeRequest",
+          "kind": "function",
+          "name": "decodeRequest",
+          "signature": "public static function decodeRequest (bytes : Bytes) : SupportCrateAdmissionRequest",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "haxe.io.Bytes",
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionRequest"
+          ]
+        },
+        {
+          "id": "function:encodeResponse",
+          "kind": "function",
+          "name": "encodeResponse",
+          "signature": "public static function encodeResponse (response : SupportCrateAdmissionResponse) : Bytes",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "haxe.io.Bytes",
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionResponse"
+          ]
+        },
+        {
+          "id": "function:decodeResponse",
+          "kind": "function",
+          "name": "decodeResponse",
+          "signature": "public static function decodeResponse (bytes : Bytes, expectedClasspaths : Int, expectedDeclarations : Int) : SupportCrateAdmissionResponse",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "haxe.io.Bytes",
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionResponse"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionAccepted",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionProtocol.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateAdmissionAccepted",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionBundle"
+      ],
+      "transitiveTypeReferences": [
+        "haxe.Int32",
+        "haxe.Int64",
+        "haxe.io.Bytes",
+        "haxe.io.Encoding",
+        "haxe.io.Input",
+        "haxe.io.Output",
+        "hxrt.fs.FileHandle",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionBundle",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeEntry",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeKind",
+        "rust.HxRef",
+        "sys.io.File",
+        "sys.io.FileInput",
+        "sys.io.FileOutput",
+        "sys.io.FileSeek"
+      ],
+      "operations": [
+        {
+          "id": "constructor:new",
+          "kind": "constructor",
+          "name": "new",
+          "signature": "public function new (bundles : Array < SupportCrateAdmissionBundle >)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionBundle"
+          ]
+        },
+        {
+          "id": "function:bundles",
+          "kind": "function",
+          "name": "bundles",
+          "signature": "public function bundles () : Array < SupportCrateAdmissionBundle >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionBundle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionBundle",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionProtocol.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateAdmissionBundle",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeEntry"
+      ],
+      "transitiveTypeReferences": [
+        "haxe.Int32",
+        "haxe.Int64",
+        "haxe.io.Bytes",
+        "haxe.io.Encoding",
+        "haxe.io.Input",
+        "haxe.io.Output",
+        "hxrt.fs.FileHandle",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeEntry",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeKind",
+        "rust.HxRef",
+        "sys.io.File",
+        "sys.io.FileInput",
+        "sys.io.FileOutput",
+        "sys.io.FileSeek"
+      ],
+      "operations": [
+        {
+          "id": "field:declarationRef",
+          "kind": "field",
+          "name": "declarationRef",
+          "signature": "public final declarationRef : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:selectedClasspathRef",
+          "kind": "field",
+          "name": "selectedClasspathRef",
+          "signature": "public final selectedClasspathRef : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "constructor:new",
+          "kind": "constructor",
+          "name": "new",
+          "signature": "public function new (declarationRef : Int, selectedClasspathRef : Int, entries : Array < SupportCrateAdmissionTreeEntry >)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeEntry"
+          ]
+        },
+        {
+          "id": "function:entries",
+          "kind": "function",
+          "name": "entries",
+          "signature": "public function entries () : Array < SupportCrateAdmissionTreeEntry >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeEntry"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionClasspathBinding",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionProtocol.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateAdmissionClasspathBinding",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "field:ref",
+          "kind": "field",
+          "name": "ref",
+          "signature": "public final ref : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:path",
+          "kind": "field",
+          "name": "path",
+          "signature": "public final path : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "constructor:new",
+          "kind": "constructor",
+          "name": "new",
+          "signature": "public function new (ref : Int, path : String)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionDeclaration",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionProtocol.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateAdmissionDeclaration",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "field:ref",
+          "kind": "field",
+          "name": "ref",
+          "signature": "public final ref : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "constructor:new",
+          "kind": "constructor",
+          "name": "new",
+          "signature": "public function new (ref : Int, sourceRootSegments : Array < String >)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:sourceRootSegments",
+          "kind": "function",
+          "name": "sourceRootSegments",
+          "signature": "public function sourceRootSegments () : Array < String >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionErrorCode",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionProtocol.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract SupportCrateAdmissionErrorCode (Int) to Int",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-value:HostCapabilityUnavailable",
+          "kind": "enum-value",
+          "name": "HostCapabilityUnavailable",
+          "signature": "var HostCapabilityUnavailable = 1",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:ClasspathInvalid",
+          "kind": "enum-value",
+          "name": "ClasspathInvalid",
+          "signature": "var ClasspathInvalid = 2",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceNotFound",
+          "kind": "enum-value",
+          "name": "SourceNotFound",
+          "signature": "var SourceNotFound = 3",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceAmbiguous",
+          "kind": "enum-value",
+          "name": "SourceAmbiguous",
+          "signature": "var SourceAmbiguous = 4",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceInvalid",
+          "kind": "enum-value",
+          "name": "SourceInvalid",
+          "signature": "var SourceInvalid = 5",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:SourceChanged",
+          "kind": "enum-value",
+          "name": "SourceChanged",
+          "signature": "var SourceChanged = 6",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionProtocolError",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionProtocol.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateAdmissionProtocolError extends haxe.Exception",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "haxe.Exception"
+      ],
+      "transitiveTypeReferences": [
+        "haxe.CallStack",
+        "haxe.CallStack.StackItem",
+        "haxe.Exception"
+      ],
+      "operations": []
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionRejected",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionProtocol.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateAdmissionRejected",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionErrorCode"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionErrorCode"
+      ],
+      "operations": [
+        {
+          "id": "field:code",
+          "kind": "field",
+          "name": "code",
+          "signature": "public final code : SupportCrateAdmissionErrorCode",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionErrorCode"
+          ]
+        },
+        {
+          "id": "field:declarationRef",
+          "kind": "field",
+          "name": "declarationRef",
+          "signature": "public final declarationRef : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:classpathRef",
+          "kind": "field",
+          "name": "classpathRef",
+          "signature": "public final classpathRef : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:componentIndex",
+          "kind": "field",
+          "name": "componentIndex",
+          "signature": "public final componentIndex : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "constructor:new",
+          "kind": "constructor",
+          "name": "new",
+          "signature": "public function new (code : SupportCrateAdmissionErrorCode, declarationRef : Int, classpathRef : Int, componentIndex : Int)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionErrorCode"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionRequest",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionProtocol.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateAdmissionRequest",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionClasspathBinding",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionDeclaration"
+      ],
+      "transitiveTypeReferences": [
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionClasspathBinding",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionDeclaration"
+      ],
+      "operations": [
+        {
+          "id": "constructor:new",
+          "kind": "constructor",
+          "name": "new",
+          "signature": "public function new (classpaths : Array < SupportCrateAdmissionClasspathBinding >, declarations : Array < SupportCrateAdmissionDeclaration >)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionClasspathBinding",
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionDeclaration"
+          ]
+        },
+        {
+          "id": "function:classpaths",
+          "kind": "function",
+          "name": "classpaths",
+          "signature": "public function classpaths () : Array < SupportCrateAdmissionClasspathBinding >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionClasspathBinding"
+          ]
+        },
+        {
+          "id": "function:declarations",
+          "kind": "function",
+          "name": "declarations",
+          "signature": "public function declarations () : Array < SupportCrateAdmissionDeclaration >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionDeclaration"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionResponse",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionProtocol.hx",
+      "kind": "enum",
+      "signature": "enum SupportCrateAdmissionResponse",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionAccepted",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionRejected"
+      ],
+      "transitiveTypeReferences": [
+        "haxe.Int32",
+        "haxe.Int64",
+        "haxe.io.Bytes",
+        "haxe.io.Encoding",
+        "haxe.io.Input",
+        "haxe.io.Output",
+        "hxrt.fs.FileHandle",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionAccepted",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionBundle",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionErrorCode",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionRejected",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeEntry",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeKind",
+        "rust.HxRef",
+        "sys.io.File",
+        "sys.io.FileInput",
+        "sys.io.FileOutput",
+        "sys.io.FileSeek"
+      ],
+      "operations": [
+        {
+          "id": "enum-constructor:Accepted",
+          "kind": "enum-constructor",
+          "name": "Accepted",
+          "signature": "Accepted (value : SupportCrateAdmissionAccepted)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionAccepted"
+          ]
+        },
+        {
+          "id": "enum-constructor:Rejected",
+          "kind": "enum-constructor",
+          "name": "Rejected",
+          "signature": "Rejected (value : SupportCrateAdmissionRejected)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionRejected"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeEntry",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionProtocol.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateAdmissionTreeEntry",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "haxe.io.Bytes",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeKind"
+      ],
+      "transitiveTypeReferences": [
+        "haxe.Int32",
+        "haxe.Int64",
+        "haxe.io.Bytes",
+        "haxe.io.Encoding",
+        "haxe.io.Input",
+        "haxe.io.Output",
+        "hxrt.fs.FileHandle",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeKind",
+        "rust.HxRef",
+        "sys.io.File",
+        "sys.io.FileInput",
+        "sys.io.FileOutput",
+        "sys.io.FileSeek"
+      ],
+      "operations": [
+        {
+          "id": "field:kind",
+          "kind": "field",
+          "name": "kind",
+          "signature": "public final kind : SupportCrateAdmissionTreeKind",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeKind"
+          ]
+        },
+        {
+          "id": "function:directory",
+          "kind": "function",
+          "name": "directory",
+          "signature": "public static function directory (pathSegments : Array < String >) : SupportCrateAdmissionTreeEntry",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:file",
+          "kind": "function",
+          "name": "file",
+          "signature": "public static function file (pathSegments : Array < String >, bytes : Bytes) : SupportCrateAdmissionTreeEntry",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "haxe.io.Bytes"
+          ]
+        },
+        {
+          "id": "function:pathSegments",
+          "kind": "function",
+          "name": "pathSegments",
+          "signature": "public function pathSegments () : Array < String >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "function:fileBytes",
+          "kind": "function",
+          "name": "fileBytes",
+          "signature": "public function fileBytes () : Null < Bytes >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "haxe.io.Bytes"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeKind",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionProtocol.hx",
+      "kind": "enum-abstract",
+      "signature": "enum abstract SupportCrateAdmissionTreeKind (Int) to Int",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "sys.io.File"
+      ],
+      "transitiveTypeReferences": [
+        "haxe.Int32",
+        "haxe.Int64",
+        "haxe.io.Bytes",
+        "haxe.io.Encoding",
+        "haxe.io.Input",
+        "haxe.io.Output",
+        "hxrt.fs.FileHandle",
+        "rust.HxRef",
+        "sys.io.File",
+        "sys.io.FileInput",
+        "sys.io.FileOutput",
+        "sys.io.FileSeek"
+      ],
+      "operations": [
+        {
+          "id": "enum-value:Directory",
+          "kind": "enum-value",
+          "name": "Directory",
+          "signature": "var Directory = 0",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-value:File",
+          "kind": "enum-value",
+          "name": "File",
+          "signature": "var File = 1",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "sys.io.File"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionRunner",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionRunner.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateAdmissionRunner",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperLocation",
+        "reflaxe.rust.SupportCrateAdmissionRunner.SupportCrateAdmissionRunResult",
+        "reflaxe.rust.SupportCrateRequestPlan"
+      ],
+      "transitiveTypeReferences": [
+        "haxe.Int32",
+        "haxe.Int64",
+        "haxe.io.Bytes",
+        "haxe.io.Encoding",
+        "haxe.io.Input",
+        "haxe.io.Output",
+        "hxrt.fs.FileHandle",
+        "reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperLocation",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionAccepted",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionBundle",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionErrorCode",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionRejected",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionResponse",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeEntry",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeKind",
+        "reflaxe.rust.SupportCrateAdmissionRunner.SupportCrateAdmissionRunFailure",
+        "reflaxe.rust.SupportCrateAdmissionRunner.SupportCrateAdmissionRunResult",
+        "reflaxe.rust.SupportCrateRequestPlan",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateDeclarationOwner",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRegistryDependency",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequest",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateUnsafePolicy",
+        "rust.HxRef",
+        "sys.io.File",
+        "sys.io.FileInput",
+        "sys.io.FileOutput",
+        "sys.io.FileSeek"
+      ],
+      "operations": [
+        {
+          "id": "function:run",
+          "kind": "function",
+          "name": "run",
+          "signature": "public static function run (location : SupportCrateAdmissionHelperLocation, plan : SupportCrateRequestPlan, activeClasspaths : Array < String >) : SupportCrateAdmissionRunResult",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionHelperLocator.SupportCrateAdmissionHelperLocation",
+            "reflaxe.rust.SupportCrateAdmissionRunner.SupportCrateAdmissionRunResult",
+            "reflaxe.rust.SupportCrateRequestPlan"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionRunner.SupportCrateAdmissionRunFailure",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionRunner.hx",
+      "kind": "enum",
+      "signature": "enum SupportCrateAdmissionRunFailure",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [],
+      "transitiveTypeReferences": [],
+      "operations": [
+        {
+          "id": "enum-constructor:HelperInvalid",
+          "kind": "enum-constructor",
+          "name": "HelperInvalid",
+          "signature": "HelperInvalid",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:StartFailed",
+          "kind": "enum-constructor",
+          "name": "StartFailed",
+          "signature": "StartFailed",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:TimedOut",
+          "kind": "enum-constructor",
+          "name": "TimedOut",
+          "signature": "TimedOut",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:PipeFailed",
+          "kind": "enum-constructor",
+          "name": "PipeFailed",
+          "signature": "PipeFailed",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:ExitFailed",
+          "kind": "enum-constructor",
+          "name": "ExitFailed",
+          "signature": "ExitFailed",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:StderrRejected",
+          "kind": "enum-constructor",
+          "name": "StderrRejected",
+          "signature": "StderrRejected",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "enum-constructor:ProtocolRejected",
+          "kind": "enum-constructor",
+          "name": "ProtocolRejected",
+          "signature": "ProtocolRejected",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionRunner.SupportCrateAdmissionRunResult",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionRunner.hx",
+      "kind": "enum",
+      "signature": "enum SupportCrateAdmissionRunResult",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionResponse",
+        "reflaxe.rust.SupportCrateAdmissionRunner.SupportCrateAdmissionRunFailure"
+      ],
+      "transitiveTypeReferences": [
+        "haxe.Int32",
+        "haxe.Int64",
+        "haxe.io.Bytes",
+        "haxe.io.Encoding",
+        "haxe.io.Input",
+        "haxe.io.Output",
+        "hxrt.fs.FileHandle",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionAccepted",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionBundle",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionErrorCode",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionRejected",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionResponse",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeEntry",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeKind",
+        "reflaxe.rust.SupportCrateAdmissionRunner.SupportCrateAdmissionRunFailure",
+        "rust.HxRef",
+        "sys.io.File",
+        "sys.io.FileInput",
+        "sys.io.FileOutput",
+        "sys.io.FileSeek"
+      ],
+      "operations": [
+        {
+          "id": "enum-constructor:Completed",
+          "kind": "enum-constructor",
+          "name": "Completed",
+          "signature": "Completed (response : SupportCrateAdmissionResponse)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionResponse"
+          ]
+        },
+        {
+          "id": "enum-constructor:Failed",
+          "kind": "enum-constructor",
+          "name": "Failed",
+          "signature": "Failed (reason : SupportCrateAdmissionRunFailure)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionRunner.SupportCrateAdmissionRunFailure"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionValidator",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionValidator.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateAdmissionValidator",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionAccepted",
+        "reflaxe.rust.SupportCratePlan",
+        "reflaxe.rust.SupportCrateRequestPlan"
+      ],
+      "transitiveTypeReferences": [
+        "haxe.Int32",
+        "haxe.Int64",
+        "haxe.io.Bytes",
+        "haxe.io.Encoding",
+        "haxe.io.Input",
+        "haxe.io.Output",
+        "hxrt.fs.FileHandle",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionAccepted",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionBundle",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeEntry",
+        "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionTreeKind",
+        "reflaxe.rust.SupportCratePlan",
+        "reflaxe.rust.SupportCratePlan.SupportCratePlanEntry",
+        "reflaxe.rust.SupportCratePlan.SupportCrateSourceFile",
+        "reflaxe.rust.SupportCrateRequestPlan",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateDeclarationOwner",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRegistryDependency",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequest",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateUnsafePolicy",
+        "rust.HxRef",
+        "sys.io.File",
+        "sys.io.FileInput",
+        "sys.io.FileOutput",
+        "sys.io.FileSeek"
+      ],
+      "operations": [
+        {
+          "id": "function:validate",
+          "kind": "function",
+          "name": "validate",
+          "signature": "public static function validate (requestPlan : SupportCrateRequestPlan, accepted : SupportCrateAdmissionAccepted) : SupportCratePlan",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateAdmissionProtocol.SupportCrateAdmissionAccepted",
+            "reflaxe.rust.SupportCratePlan",
+            "reflaxe.rust.SupportCrateRequestPlan"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateAdmissionValidator.SupportCrateAdmissionValidationFailure",
+      "source": "src/reflaxe/rust/SupportCrateAdmissionValidator.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateAdmissionValidationFailure extends Exception",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "haxe.Exception"
+      ],
+      "transitiveTypeReferences": [
+        "haxe.CallStack",
+        "haxe.CallStack.StackItem",
+        "haxe.Exception"
+      ],
+      "operations": []
+    },
+    {
+      "name": "reflaxe.rust.SupportCrateManifestRenderer",
+      "source": "src/reflaxe/rust/SupportCrateManifestRenderer.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateManifestRenderer",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "haxe.io.Bytes",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequest"
+      ],
+      "transitiveTypeReferences": [
+        "haxe.Int32",
+        "haxe.Int64",
+        "haxe.io.Bytes",
+        "haxe.io.Encoding",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateDeclarationOwner",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRegistryDependency",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequest",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateUnsafePolicy"
+      ],
+      "operations": [
+        {
+          "id": "function:render",
+          "kind": "function",
+          "name": "render",
+          "signature": "public static function render (request : SupportCrateRequest) : Bytes",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "haxe.io.Bytes",
+            "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequest"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCratePlan",
+      "source": "src/reflaxe/rust/SupportCratePlan.hx",
+      "kind": "class",
+      "signature": "final class SupportCratePlan",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.SupportCratePlan.SupportCratePlanEntry"
+      ],
+      "transitiveTypeReferences": [
+        "haxe.Int32",
+        "haxe.Int64",
+        "haxe.io.Bytes",
+        "haxe.io.Encoding",
+        "reflaxe.rust.SupportCratePlan.SupportCratePlanEntry",
+        "reflaxe.rust.SupportCratePlan.SupportCrateSourceFile",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateDeclarationOwner",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRegistryDependency",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequest",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateUnsafePolicy"
+      ],
+      "operations": [
+        {
+          "id": "constructor:new",
+          "kind": "constructor",
+          "name": "new",
+          "signature": "public function new (entries : Array < SupportCratePlanEntry >)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCratePlan.SupportCratePlanEntry"
+          ]
+        },
+        {
+          "id": "function:entries",
+          "kind": "function",
+          "name": "entries",
+          "signature": "public function entries () : Array < SupportCratePlanEntry >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCratePlan.SupportCratePlanEntry"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCratePlan.SupportCratePlanEntry",
+      "source": "src/reflaxe/rust/SupportCratePlan.hx",
+      "kind": "class",
+      "signature": "final class SupportCratePlanEntry",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "reflaxe.rust.SupportCratePlan.SupportCrateSourceFile",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequest"
+      ],
+      "transitiveTypeReferences": [
+        "haxe.Int32",
+        "haxe.Int64",
+        "haxe.io.Bytes",
+        "haxe.io.Encoding",
+        "reflaxe.rust.SupportCratePlan.SupportCrateSourceFile",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateDeclarationOwner",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRegistryDependency",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequest",
+        "reflaxe.rust.SupportCrateRequestPlan.SupportCrateUnsafePolicy"
+      ],
+      "operations": [
+        {
+          "id": "field:request",
+          "kind": "field",
+          "name": "request",
+          "signature": "public final request : SupportCrateRequest",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequest"
+          ]
+        },
+        {
+          "id": "field:selectedClasspathRef",
+          "kind": "field",
+          "name": "selectedClasspathRef",
+          "signature": "public final selectedClasspathRef : Int",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "constructor:new",
+          "kind": "constructor",
+          "name": "new",
+          "signature": "public function new (request : SupportCrateRequest, selectedClasspathRef : Int, sourceFiles : Array < SupportCrateSourceFile >)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCratePlan.SupportCrateSourceFile",
+            "reflaxe.rust.SupportCrateRequestPlan.SupportCrateRequest"
+          ]
+        },
+        {
+          "id": "function:sourceFiles",
+          "kind": "function",
+          "name": "sourceFiles",
+          "signature": "public function sourceFiles () : Array < SupportCrateSourceFile >",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "reflaxe.rust.SupportCratePlan.SupportCrateSourceFile"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reflaxe.rust.SupportCratePlan.SupportCrateSourceFile",
+      "source": "src/reflaxe/rust/SupportCratePlan.hx",
+      "kind": "class",
+      "signature": "final class SupportCrateSourceFile",
+      "contract": "internal-helper",
+      "evidenceIds": [
+        "test:public-compatibility"
+      ],
+      "directTypeReferences": [
+        "haxe.io.Bytes"
+      ],
+      "transitiveTypeReferences": [
+        "haxe.Int32",
+        "haxe.Int64",
+        "haxe.io.Bytes",
+        "haxe.io.Encoding"
+      ],
+      "operations": [
+        {
+          "id": "field:relativePath",
+          "kind": "field",
+          "name": "relativePath",
+          "signature": "public final relativePath : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "field:sha256",
+          "kind": "field",
+          "name": "sha256",
+          "signature": "public final sha256 : String",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": []
+        },
+        {
+          "id": "constructor:new",
+          "kind": "constructor",
+          "name": "new",
+          "signature": "public function new (relativePath : String, bytes : Bytes, sha256 : String)",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "haxe.io.Bytes"
+          ]
+        },
+        {
+          "id": "function:bytes",
+          "kind": "function",
+          "name": "bytes",
+          "signature": "public function bytes () : Bytes",
+          "contract": "internal-helper",
+          "evidenceIds": [
+            "test:public-compatibility"
+          ],
+          "typeReferences": [
+            "haxe.io.Bytes"
+          ]
         }
       ]
     },

@@ -1,0 +1,5 @@
+[source.crates-io]
+replace-with = "hxrs-vendored-sources"
+
+[source.hxrs-vendored-sources]
+directory = "support-crate-admission-helper/vendor"

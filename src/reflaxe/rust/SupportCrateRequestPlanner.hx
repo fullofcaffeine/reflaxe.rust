@@ -2,6 +2,7 @@ package reflaxe.rust;
 
 #if macro
 import haxe.ds.ObjectMap;
+import haxe.io.Bytes;
 import haxe.macro.Expr;
 import haxe.macro.Type;
 import haxe.macro.TypedExprTools;
@@ -59,6 +60,8 @@ private final class SupportCratePlacementState {
 	- Performs no filesystem operation and retains no process-static state.
 **/
 class SupportCrateRequestPlanner {
+	static inline final MAX_SOURCE_ROOT_SEGMENTS = 32;
+	static inline final MAX_SOURCE_ROOT_SEGMENT_BYTES = 255;
 	public static function build(moduleTypes:Array<ModuleType>, rustTarget:Null<String>):SupportCrateRequestPlan {
 		var requests:Array<SupportCrateRequest> = [];
 		var placement = new SupportCratePlacementState();
@@ -291,9 +294,15 @@ class SupportCrateRequestPlanner {
 		if (value == null || value.length == 0 || value.charAt(0) == "/" || value.indexOf("\\") >= 0 || value.indexOf(":") >= 0)
 			return fail(RustDiagnosticId.MetadataValue, "`@:rustSupportCrate.sourceRoot` must be a relative slash-separated logical path.", pos);
 		var segments = value.split("/");
+		if (segments.length > MAX_SOURCE_ROOT_SEGMENTS)
+			return fail(RustDiagnosticId.MetadataValue,
+				"`@:rustSupportCrate.sourceRoot` has more than 32 path segments.", pos);
 		for (segment in segments) {
 			if (segment.length == 0 || segment == "." || segment == ".." || segment.indexOf("\x00") >= 0)
 				return fail(RustDiagnosticId.MetadataValue, "`@:rustSupportCrate.sourceRoot` contains an empty, current-directory, or parent-directory segment.", pos);
+			if (Bytes.ofString(segment).length > MAX_SOURCE_ROOT_SEGMENT_BYTES)
+				return fail(RustDiagnosticId.MetadataValue,
+					"`@:rustSupportCrate.sourceRoot` contains a path segment above 255 UTF-8 bytes.", pos);
 		}
 		return segments;
 	}

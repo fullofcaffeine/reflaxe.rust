@@ -11,6 +11,8 @@ target/
 # Generated outputs (kept in snapshots via `intended/`)
 out/
 **/out/
+**/out_barrier/
+**/out_verify/
 out_ci/
 **/out_ci/
 out_rusty/

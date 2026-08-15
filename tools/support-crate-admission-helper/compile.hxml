@@ -1,0 +1,9 @@
+-cp src
+-cp native
+-lib reflaxe.rust
+-D reflaxe_rust_profile=metal
+-D rust_no_build
+-D rust_deny_warnings
+-D rust_output=out
+-D rust_crate=hxrs_support_crate_admission
+-main supportcrate.helper.Main
