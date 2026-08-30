@@ -33,7 +33,7 @@ const conformancePolicyTimeout = conformancePolicy.match(/^    timeout-minutes: 
 
 assert(conformancePolicyTimeout, 'conformance and policy harness job must have an explicit timeout')
 assert(
-  Number(conformancePolicyTimeout[1]) >= 75,
+  Number(conformancePolicyTimeout[1]) >= 90,
   `conformance and policy timeout must cover the observed full-suite runtime; found ${conformancePolicyTimeout[1]} minutes`
 )
 assert.match(
