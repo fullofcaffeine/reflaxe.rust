@@ -145,16 +145,19 @@ function assertExactRepairTagResolution() {
 async function main() {
   const ci = fs.readFileSync(ciPath, 'utf8')
   const packageSmoke = fs.readFileSync(packageSmokePath, 'utf8')
-  const explicitLibraryPaths = packageSmoke.match(/HAXE_LIBRARY_PATH=/g) || []
-  assert.strictEqual(
-    explicitLibraryPaths.length,
-    1,
-    'only the source-layout smoke may set an explicit reviewed Haxe library path'
+  assert(
+    !packageSmoke.includes('HAXE_LIBRARY_PATH='),
+    'the raw release Haxe binary must not receive a Lix-only library-path hint'
   )
   requireMatch(
     packageSmoke,
-    /HAXE_LIBRARY_PATH="\$root_dir\/haxe_libraries"[\s\\]*"\$RELEASE_HAXE_BIN" -cp "\$source_app_dir"/,
-    'the isolated source-layout smoke must resolve reflaxe.rust from the exact reviewed repository'
+    /"\$RELEASE_HAXE_BIN"[\s\\]*-cp "\$source_app_dir"[\s\\]*-cp "\$root_dir\/src"[\s\\]*-cp "\$root_dir\/std"[\s\\]*-cp "\$root_dir\/std\/rust\/_std"[\s\\]*-cp "\$root_dir\/vendor\/reflaxe\/src"/,
+    'the isolated source-layout smoke must pass every reviewed target and framework classpath to the raw Haxe executable'
+  )
+  requireMatch(
+    packageSmoke,
+    /-D reflaxe=4\.0\.0-beta[\s\\]*-D reflaxe\.rust=0\.0\.0-development[\s\\]*--macro 'nullSafety\("reflaxe\.rust"\)'[\s\\]*--macro 'reflaxe\.rust\.CompilerBootstrap\.Start\(\)'[\s\\]*--macro 'reflaxe\.rust\.CompilerInit\.Start\(\)'/,
+    'the isolated source-layout smoke must activate the exact reviewed Reflaxe and Rust compiler macros'
   )
   requireMatch(
     packageSmoke,

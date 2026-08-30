@@ -210,12 +210,27 @@ assert_emitted_std_modules() {
   fi
 }
 
-log "compile source layout via repo haxe_libraries"
+log "compile source layout via reviewed checkout roots"
 write_smoke_main "$source_app_dir"
 (
   cd "$root_dir"
-  HAXE_LIBRARY_PATH="$root_dir/haxe_libraries" \
-    "$RELEASE_HAXE_BIN" -cp "$source_app_dir" -lib reflaxe.rust -main Main -D rust_output="$source_app_dir/out_source" -D rust_no_build
+  # The reviewed release executable is the raw Haxe binary, not the Lix shim that expands
+  # HAXE_LIBRARY_PATH. Pass the source checkout roots explicitly so this gate cannot fall back to
+  # an ambient Haxelib installation or miss the target std overrides before typing starts.
+  "$RELEASE_HAXE_BIN" \
+    -cp "$source_app_dir" \
+    -cp "$root_dir/src" \
+    -cp "$root_dir/std" \
+    -cp "$root_dir/std/rust/_std" \
+    -cp "$root_dir/vendor/reflaxe/src" \
+    -D reflaxe=4.0.0-beta \
+    -D reflaxe.rust=0.0.0-development \
+    --macro 'nullSafety("reflaxe.rust")' \
+    --macro 'reflaxe.rust.CompilerBootstrap.Start()' \
+    --macro 'reflaxe.rust.CompilerInit.Start()' \
+    -main Main \
+    -D rust_output="$source_app_dir/out_source" \
+    -D rust_no_build
 )
 
 assert_emitted_std_modules "$source_app_dir/out_source"
