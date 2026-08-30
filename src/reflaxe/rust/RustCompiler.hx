@@ -7828,7 +7828,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var compiled = compileStaticFunctionShape(f);
 
 		function needsCrateVisibility(cls:ClassType, cf:ClassField):Bool {
-			return (cls.meta != null && (cls.meta.has(":allow") || cls.meta.has(":access")))
+			// Inherited Rust shims compile the base Haxe method body inside each child module.
+			// Keep private static helpers callable from those compiler-generated copies without
+			// making them part of the generated crate's public API.
+			return classHasSubclasses(cls)
+				|| (cls.meta != null && (cls.meta.has(":allow") || cls.meta.has(":access")))
 				|| (cf.meta != null && (cf.meta.has(":allow") || cf.meta.has(":access")));
 		}
 
@@ -13792,7 +13796,9 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				case _: false;
 			}
 			var actualIsHxRef = rustTypeIsHxRef(actualRustTy) || switch (actualExpr.expr) {
-				case TNew(_, _, _): true;
+				// Expected-type propagation can type `this` as the destination interface even
+				// though its emitted value is the current class's concrete HxRef.
+				case TNew(_, _, _) | TConst(TThis): true;
 				case _: false;
 			};
 
