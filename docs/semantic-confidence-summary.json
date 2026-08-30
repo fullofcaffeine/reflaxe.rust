@@ -16,7 +16,7 @@
     "portableCandidateImportableModules": 184,
     "portableCandidateCoveredInTier2": 184,
     "portableCandidateMissingFromTier2": 0,
-    "portableSemanticDiffCases": 36,
+    "portableSemanticDiffCases": 37,
     "laneSemanticDiffCases": 2,
     "snapshotCases": 138,
     "bucketsByClass": {
@@ -64,6 +64,7 @@
       "function_value_mutable_callbacks",
       "generic_base_specialization",
       "generic_interface_specialization",
+      "inherited_interface_self_coercion",
       "int64_parity",
       "iterator_helper_boundary",
       "json_stringify_replacer",
