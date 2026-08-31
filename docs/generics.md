@@ -101,12 +101,15 @@ That means:
 
 - concrete calls on a subclass can resolve inherited methods,
 - base-trait impls for subclasses delegate to real methods rather than `todo!()` stubs,
-- `super.method(...)` calls compile through per-base super thunks on the current class.
+- `super.method(...)` calls compile through per-base super thunks on the current class,
+- inherited bodies can call private base static helpers through crate-private Rust access, and
+- `this` is upcast when an inherited body passes it to an interface-typed parameter.
 
 Evidence:
 
 - `test/snapshot/inheritance_inherited_method`
 - `test/snapshot/super_method_call`
+- `test/semantic_diff/inherited_interface_self_coercion`
 - `test/semantic_diff/virtual_dispatch`
 
 ## Concrete superclass specialization

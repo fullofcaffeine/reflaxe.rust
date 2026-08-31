@@ -88,7 +88,7 @@ impl Exception {
         ));
     }
 
-    fn caught(
+    pub(crate) fn caught(
         value: hxrt::dynamic::Dynamic,
     ) -> crate::HxRc<dyn crate::haxe_exception::ExceptionTrait + Send + Sync> {
         return {
@@ -103,7 +103,7 @@ impl Exception {
         };
     }
 
-    fn thrown(value: hxrt::dynamic::Dynamic) -> hxrt::dynamic::Dynamic {
+    pub(crate) fn thrown(value: hxrt::dynamic::Dynamic) -> hxrt::dynamic::Dynamic {
         return value;
     }
 }

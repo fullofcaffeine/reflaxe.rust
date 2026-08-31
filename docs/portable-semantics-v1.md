@@ -50,7 +50,9 @@ Conformance fixtures:
    parameters into generated Rust.
 4. Generic interfaces inherited through a superclass chain must be implemented on the concrete
    child storage type with composed interface arguments; interface-parent specialization follows
-   the same rule.
+   the same rule. An inherited method must upcast `this` when an interface-typed parameter requires
+   it. Compiler-generated child shims must retain access to private static helpers from the base
+   method body without making those helpers public outside the crate.
 5. Concrete and base-typed field compound assignments must evaluate the receiver once, capture an
    owned current value before the RHS, end any read borrow before user code runs, and preserve Haxe
    expression-result semantics. Base-typed updates dispatch through the generated polymorphic field
