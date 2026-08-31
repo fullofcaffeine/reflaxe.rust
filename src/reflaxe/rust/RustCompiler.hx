@@ -13265,6 +13265,50 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			});
 		}
 
+		/**
+			Wraps a required trait-object handle when its destination admits null.
+
+			Why
+			- Haxe types an optional interface parameter as `Null<Interface>`, while a required
+			  interface argument remains the same non-null interface at the call site.
+			- Rust represents those values differently: the required value is an `Arc<dyn Trait>`
+			  and the nullable destination is `HxDynRef<dyn Trait>`.
+
+			What
+			- Converts the already type-checked required interface value into the nullable carrier.
+			- Leaves concrete-class upcasts to the existing conversion below.
+
+			How
+			- Detects only the closed `Arc<dyn Trait>` to `HxDynRef<dyn Trait>` representation edge,
+			  requires structurally equal trait-object inner types, and constructs the nullable wrapper
+			  directly around the compiled value. Interface-inheritance upcasts remain unadmitted.
+		**/
+		var requiredTraitSource = unwrapMetaParen(valueExpr);
+		while (true) {
+			switch (requiredTraitSource.expr) {
+				case TCast(inner, _):
+					requiredTraitSource = unwrapMetaParen(inner);
+					continue;
+				case _:
+			}
+			break;
+		}
+		var requiredTraitSourceType = switch (requiredTraitSource.expr) {
+			case TLocal(variable): variable.t;
+			case _: requiredTraitSource.t;
+		};
+		var requiredTraitSourceRust = toRustType(requiredTraitSourceType, requiredTraitSource.pos);
+		var requiredTraitExpectedInner = rustTypeSingleGenericArgument(expectedRust);
+		var requiredTraitSourceInner = rustTypeSingleGenericArgument(requiredTraitSourceRust);
+		if (rustTypeIsDynRefCarrier(expectedRust)
+			&& rustTypeContainsTraitObject(expectedRust)
+			&& rustTypeIsRcTraitObject(requiredTraitSourceRust)
+			&& requiredTraitExpectedInner != null
+			&& requiredTraitSourceInner != null
+			&& rustTypesEqual(requiredTraitExpectedInner, requiredTraitSourceInner)) {
+			return ECall(rustDynRefMemberExpr("new"), [compiled]);
+		}
+
 		// `Null<T>` (Option<T>) used where a non-null `T` is expected.
 		//
 		// Haxe allows this implicitly in many places (especially in upstream stdlib for "dynamic-ish"
