@@ -446,14 +446,17 @@ impl Unserializer {
                         }
                     };
                     let cl: u32 = ({
-                        let __hx_value = ({
+                        let __hx_recv = {
                             let __b = __hx_this.borrow();
                             __b.resolver.clone()
-                        })
-                        .borrow()
-                        .get::<crate::HxDynRef<
-                            dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
-                        >>("resolveClass");
+                        };
+                        let __hx_value = {
+                            let __hx_value =
+                                __hx_recv.borrow().get::<crate::HxDynRef<
+                                    dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                                >>("resolveClass");
+                            __hx_value
+                        };
                         __hx_value
                     })(hxrt::string::HxString::from(
                         name.clone(),
@@ -491,14 +494,17 @@ impl Unserializer {
                         }
                     };
                     let e: u32 = ({
-                        let __hx_value = ({
+                        let __hx_recv = {
                             let __b = __hx_this.borrow();
                             __b.resolver.clone()
-                        })
-                        .borrow()
-                        .get::<crate::HxDynRef<
-                            dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
-                        >>("resolveEnum");
+                        };
+                        let __hx_value = {
+                            let __hx_value =
+                                __hx_recv.borrow().get::<crate::HxDynRef<
+                                    dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                                >>("resolveEnum");
+                            __hx_value
+                        };
                         __hx_value
                     })(hxrt::string::HxString::from(
                         name_2.clone(),
@@ -536,14 +542,17 @@ impl Unserializer {
                         }
                     };
                     let cl_2: u32 = ({
-                        let __hx_value = ({
+                        let __hx_recv = {
                             let __b = __hx_this.borrow();
                             __b.resolver.clone()
-                        })
-                        .borrow()
-                        .get::<crate::HxDynRef<
-                            dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
-                        >>("resolveClass");
+                        };
+                        let __hx_value = {
+                            let __hx_value =
+                                __hx_recv.borrow().get::<crate::HxDynRef<
+                                    dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                                >>("resolveClass");
+                            __hx_value
+                        };
                         __hx_value
                     })(hxrt::string::HxString::from(
                         name_3.clone(),
@@ -840,14 +849,17 @@ impl Unserializer {
                         }
                     };
                     let cl_3: u32 = ({
-                        let __hx_value = ({
+                        let __hx_recv = {
                             let __b = __hx_this.borrow();
                             __b.resolver.clone()
-                        })
-                        .borrow()
-                        .get::<crate::HxDynRef<
-                            dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
-                        >>("resolveClass");
+                        };
+                        let __hx_value = {
+                            let __hx_value =
+                                __hx_recv.borrow().get::<crate::HxDynRef<
+                                    dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                                >>("resolveClass");
+                            __hx_value
+                        };
                         __hx_value
                     })(hxrt::string::HxString::from(
                         name_4.clone(),
@@ -911,14 +923,17 @@ impl Unserializer {
                         }
                     };
                     let edecl: u32 = ({
-                        let __hx_value = ({
+                        let __hx_recv = {
                             let __b = __hx_this.borrow();
                             __b.resolver.clone()
-                        })
-                        .borrow()
-                        .get::<crate::HxDynRef<
-                            dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
-                        >>("resolveEnum");
+                        };
+                        let __hx_value = {
+                            let __hx_value =
+                                __hx_recv.borrow().get::<crate::HxDynRef<
+                                    dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                                >>("resolveEnum");
+                            __hx_value
+                        };
                         __hx_value
                     })(hxrt::string::HxString::from(
                         name_5.clone(),
@@ -1464,14 +1479,17 @@ impl Unserializer {
                         }
                     };
                     let edecl_2: u32 = ({
-                        let __hx_value = ({
+                        let __hx_recv = {
                             let __b = __hx_this.borrow();
                             __b.resolver.clone()
-                        })
-                        .borrow()
-                        .get::<crate::HxDynRef<
-                            dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
-                        >>("resolveEnum");
+                        };
+                        let __hx_value = {
+                            let __hx_value =
+                                __hx_recv.borrow().get::<crate::HxDynRef<
+                                    dyn Fn(hxrt::string::HxString) -> u32 + Send + Sync,
+                                >>("resolveEnum");
+                            __hx_value
+                        };
                         __hx_value
                     })(hxrt::string::HxString::from(
                         name_6.clone(),

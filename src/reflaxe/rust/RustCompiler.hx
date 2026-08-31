@@ -16423,6 +16423,30 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 	}
 
 	/**
+		Reports whether a Rust expression can directly own a borrow guard.
+
+		Why
+		- Rust ties a guard from `borrow()` to the receiver value.
+		- A method call or block can produce a temporary receiver that Rust drops before the guard's
+		  final use.
+
+		What
+		- Paths and fields rooted in paths are stable places.
+		- Other expression shapes must first enter a generated local binding.
+
+		How
+		- Instance-field and anonymous-field lowering share this structural Rust AST check before they
+		  create a borrow guard.
+	**/
+	function isStableBorrowReceiver(e:RustExpr):Bool {
+		return switch (e) {
+			case EPath(_): true;
+			case EField(base, _): isStableBorrowReceiver(base);
+			case _: false;
+		}
+	}
+
+	/**
 		Compile a typed field read from a runtime anonymous object.
 
 		Why
@@ -16479,8 +16503,23 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 	function compileAnonObjectFieldRead(obj:TypedExpr, cf:ClassField, pos:haxe.macro.Expr.Position):RustExpr {
 		var recv = compileExpr(obj);
-		var borrowed = ECall(rustField(recv, "borrow"), []);
-		return compileAnonObjectBorrowedFieldRead(borrowed, cf, pos);
+		var scopesBorrowGuard = isOptionalAnonField(cf) || switch (followType(cf.type)) {
+			case TFun(_, _): true;
+			case _: false;
+		};
+		if (!scopesBorrowGuard || isStableBorrowReceiver(recv)) {
+			var borrowed = ECall(rustField(recv, "borrow"), []);
+			return compileAnonObjectBorrowedFieldRead(borrowed, cf, pos);
+		}
+
+		var borrowed = ECall(rustField(rustSingleExpr("__hx_recv"), "borrow"), []);
+		return EBlock({
+			stmts: [
+				RLet("__hx_recv", false, null, recv),
+				RLet("__hx_value", false, null, compileAnonObjectBorrowedFieldRead(borrowed, cf, pos))
+			],
+			tail: rustSingleExpr("__hx_value")
+		});
 	}
 
 	function currentThisPathExpr():RustExpr {
@@ -16793,14 +16832,6 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		}
 
 		var recv = compileExpr(obj);
-		function isStableBorrowReceiver(e:RustExpr):Bool {
-			return switch (e) {
-				case EPath(_): true;
-				case EField(base, _): isStableBorrowReceiver(base);
-				case _: false;
-			}
-		}
-
 		// `RefCell::borrow()` returns a guard with a lifetime tied to the receiver.
 		// If the receiver is a temporary expression (e.g. `{ ... }.borrow()`), Rust rejects it with
 		// "temporary value dropped while borrowed". Keep complex receivers alive via a local binding.
