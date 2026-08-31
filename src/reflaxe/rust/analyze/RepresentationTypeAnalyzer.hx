@@ -471,6 +471,7 @@ class RepresentationTypeAnalyzer {
 		- Named types retain a structural declaration-plus-arguments key; display text is never used.
 	**/
 	@:allow(reflaxe.rust.analyze.RepresentationDecisionAnalyzer)
+	@:allow(reflaxe.rust.RustCompiler)
 	static function traversalIdentityFactory():Type->String {
 		var state = new RustTypeTraversalState();
 		return type -> state.inventoryIdentity(type);
