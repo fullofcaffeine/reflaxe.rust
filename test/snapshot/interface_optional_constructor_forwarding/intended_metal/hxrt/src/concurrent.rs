@@ -1,0 +1,443 @@
+//! Rust-native concurrency helpers for `std/rust/concurrent/*`.
+//!
+//! Why
+//! - `sys.thread.*` provides Haxe-portable threading semantics.
+//! - Rust-first code also needs a typed, idiomatic layer for channels/tasks/locks without
+//!   dropping into raw injection from application code.
+//!
+//! What
+//! - `ChannelHandle<T>`: typed MPSC channel helper (`send`/`recv`/`try_recv`).
+//! - `TaskHandle<T>`: spawn + join one-shot thread tasks.
+//! - `MutexHandle<T>` / `RwLockHandle<T>`: closure-scoped lock helpers.
+//!
+//! How
+//! - Runtime values are wrapped in `HxRef<...>` so they follow nullable/shared semantics expected
+//!   by generated Haxe code.
+//! - Callback-based lock helpers avoid leaking Rust guard lifetimes into Haxe code.
+
+use crate::cell::{HxDynRef, HxRc, HxRef};
+use crate::{dynamic, exception};
+use parking_lot::{Mutex as ParkMutex, RwLock as ParkRwLock};
+use std::cell::RefCell;
+use std::sync::mpsc;
+use std::sync::Arc;
+
+fn throw_msg(msg: &str) -> ! {
+    exception::throw(dynamic::from(String::from(msg)))
+}
+
+const LOCK_REENTRANCY_ERROR: &str =
+    "HXRT-LOCK-REENTRANCY: same-handle lock access from a rust.concurrent callback is not allowed";
+
+thread_local! {
+    static ACTIVE_LOCK_CALLBACKS: RefCell<Vec<*const ()>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Return the allocation identity used to recognize one shared native lock handle.
+///
+/// Why
+/// - Callback helpers hold a non-reentrant Rust guard while arbitrary Haxe code runs.
+/// - The compiler cannot know the callback's dynamic call graph or which shared handle it will
+///   touch, so compile-time lowering cannot safely reject same-handle access.
+///
+/// What
+/// - The opaque `HxRef` allocation address is used only as a scoped equality token.
+/// - No target layout, payload address, or pointer arithmetic is exposed to generated code.
+///
+/// How
+/// - The owning `HxRef` remains alive throughout every helper call, so allocation reuse cannot
+///   alias an active token.
+fn lock_identity<T>(handle: &HxRef<T>) -> *const () {
+    match handle.as_arc_opt() {
+        Some(reference) => Arc::as_ptr(reference).cast::<()>(),
+        None => throw_msg("Null Access"),
+    }
+}
+
+fn ensure_lock_access_allowed<T>(handle: &HxRef<T>) -> *const () {
+    let identity = lock_identity(handle);
+    let is_active = ACTIVE_LOCK_CALLBACKS.with(|active| active.borrow().contains(&identity));
+    if is_active {
+        throw_msg(LOCK_REENTRANCY_ERROR);
+    }
+    identity
+}
+
+/// Unwind-safe marker for a callback that currently owns one native lock guard.
+///
+/// Why
+/// - Re-entering the same `parking_lot` mutex/RwLock can block the current thread forever.
+/// - Releasing the guard before invoking the callback would silently remove the helper's atomicity.
+///
+/// What
+/// - Same-thread access to any handle already present in the active callback stack throws the
+///   stable Haxe-visible `HXRT-LOCK-REENTRANCY` error before lock acquisition.
+/// - Different handles remain usable; applications still own a consistent cross-thread lock order.
+///
+/// How
+/// - A thread-local stack permits nested callbacks on different handles.
+/// - `Drop` removes the marker during normal return, Haxe throw, or Rust unwind, before control
+///   reaches the surrounding Haxe catch boundary.
+struct LockCallbackScope {
+    identity: *const (),
+}
+
+impl LockCallbackScope {
+    fn enter<T>(handle: &HxRef<T>) -> Self {
+        let identity = ensure_lock_access_allowed(handle);
+        ACTIVE_LOCK_CALLBACKS.with(|active| active.borrow_mut().push(identity));
+        Self { identity }
+    }
+}
+
+impl Drop for LockCallbackScope {
+    fn drop(&mut self) {
+        ACTIVE_LOCK_CALLBACKS.with(|active| {
+            let mut active = active.borrow_mut();
+            if let Some(index) = active
+                .iter()
+                .rposition(|identity| *identity == self.identity)
+            {
+                active.remove(index);
+            }
+        });
+    }
+}
+
+/// Typed multi-producer, single-consumer channel handle.
+#[derive(Debug)]
+pub struct ChannelHandle<T> {
+    sender: mpsc::Sender<T>,
+    receiver: ParkMutex<mpsc::Receiver<T>>,
+}
+
+/// One-shot task join handle.
+#[derive(Debug)]
+pub struct TaskHandle<T> {
+    join: ParkMutex<Option<std::thread::JoinHandle<T>>>,
+}
+
+/// Shared mutex-backed value.
+#[derive(Debug)]
+pub struct MutexHandle<T> {
+    value: ParkMutex<T>,
+}
+
+/// Shared read/write-locked value.
+#[derive(Debug)]
+pub struct RwLockHandle<T> {
+    value: ParkRwLock<T>,
+}
+
+pub fn channel_new<T>() -> HxRef<ChannelHandle<T>> {
+    let (sender, receiver) = mpsc::channel::<T>();
+    HxRef::new(ChannelHandle {
+        sender,
+        receiver: ParkMutex::new(receiver),
+    })
+}
+
+pub fn channel_send<T>(channel: &HxRef<ChannelHandle<T>>, value: T) {
+    let sender = {
+        let channel_borrow = channel.borrow();
+        channel_borrow.sender.clone()
+    };
+    if sender.send(value).is_err() {
+        throw_msg("Channel is disconnected");
+    }
+}
+
+pub fn channel_recv<T>(channel: &HxRef<ChannelHandle<T>>) -> T {
+    let recv_result = {
+        let channel_borrow = channel.borrow();
+        let receiver = channel_borrow.receiver.lock();
+        receiver.recv()
+    };
+    match recv_result {
+        Ok(value) => value,
+        Err(_) => throw_msg("Channel is disconnected"),
+    }
+}
+
+pub fn channel_try_recv<T>(channel: &HxRef<ChannelHandle<T>>) -> Option<T> {
+    let recv_result = {
+        let channel_borrow = channel.borrow();
+        let receiver = channel_borrow.receiver.lock();
+        receiver.try_recv()
+    };
+    match recv_result {
+        Ok(value) => Some(value),
+        Err(mpsc::TryRecvError::Empty) => None,
+        Err(mpsc::TryRecvError::Disconnected) => throw_msg("Channel is disconnected"),
+    }
+}
+
+pub fn task_spawn<T>(job: HxDynRef<dyn Fn() -> T + Send + Sync>) -> HxRef<TaskHandle<T>>
+where
+    T: Send + 'static,
+{
+    let job: HxRc<dyn Fn() -> T + Send + Sync> = match job.as_arc_opt() {
+        Some(rc) => rc.clone(),
+        None => throw_msg("Null Access"),
+    };
+
+    let join = std::thread::spawn(move || job());
+    HxRef::new(TaskHandle {
+        join: ParkMutex::new(Some(join)),
+    })
+}
+
+pub fn task_join<T>(task: &HxRef<TaskHandle<T>>) -> T {
+    let join = {
+        let task_borrow = task.borrow();
+        let mut slot = task_borrow.join.lock();
+        match slot.take() {
+            Some(join) => join,
+            None => throw_msg("Task already joined"),
+        }
+    };
+
+    match join.join() {
+        Ok(value) => value,
+        Err(_) => throw_msg("Task panicked"),
+    }
+}
+
+pub fn mutex_new<T>(value: T) -> HxRef<MutexHandle<T>> {
+    HxRef::new(MutexHandle {
+        value: ParkMutex::new(value),
+    })
+}
+
+pub fn mutex_get<T>(mutex: &HxRef<MutexHandle<T>>) -> T
+where
+    T: Clone,
+{
+    ensure_lock_access_allowed(mutex);
+    let mutex_borrow = mutex.borrow();
+    let guard = mutex_borrow.value.lock();
+    guard.clone()
+}
+
+pub fn mutex_set<T>(mutex: &HxRef<MutexHandle<T>>, value: T) {
+    ensure_lock_access_allowed(mutex);
+    let mutex_borrow = mutex.borrow();
+    let mut guard = mutex_borrow.value.lock();
+    *guard = value;
+}
+
+pub fn mutex_replace<T>(mutex: &HxRef<MutexHandle<T>>, value: T) -> T {
+    ensure_lock_access_allowed(mutex);
+    let mutex_borrow = mutex.borrow();
+    let mut guard = mutex_borrow.value.lock();
+    std::mem::replace(&mut *guard, value)
+}
+
+pub fn mutex_update<T>(
+    mutex: &HxRef<MutexHandle<T>>,
+    callback: HxDynRef<dyn Fn(T) -> T + Send + Sync>,
+) -> T
+where
+    T: Clone,
+{
+    let callback: HxRc<dyn Fn(T) -> T + Send + Sync> = match callback.as_arc_opt() {
+        Some(rc) => rc.clone(),
+        None => throw_msg("Null Access"),
+    };
+    let _callback_scope = LockCallbackScope::enter(mutex);
+    let mutex_borrow = mutex.borrow();
+    let mut guard = mutex_borrow.value.lock();
+    let next = callback(guard.clone());
+    *guard = next.clone();
+    next
+}
+
+pub fn mutex_with_ref<T, R>(
+    mutex: &HxRef<MutexHandle<T>>,
+    callback: HxDynRef<dyn Fn(&T) -> R + Send + Sync>,
+) -> R {
+    let callback: HxRc<dyn Fn(&T) -> R + Send + Sync> = match callback.as_arc_opt() {
+        Some(rc) => rc.clone(),
+        None => throw_msg("Null Access"),
+    };
+    let _callback_scope = LockCallbackScope::enter(mutex);
+    let mutex_borrow = mutex.borrow();
+    let guard = mutex_borrow.value.lock();
+    callback(&*guard)
+}
+
+pub fn mutex_with_mut<T, R>(
+    mutex: &HxRef<MutexHandle<T>>,
+    callback: HxDynRef<dyn Fn(&mut T) -> R + Send + Sync>,
+) -> R {
+    let callback: HxRc<dyn Fn(&mut T) -> R + Send + Sync> = match callback.as_arc_opt() {
+        Some(rc) => rc.clone(),
+        None => throw_msg("Null Access"),
+    };
+    let _callback_scope = LockCallbackScope::enter(mutex);
+    let mutex_borrow = mutex.borrow();
+    let mut guard = mutex_borrow.value.lock();
+    callback(&mut *guard)
+}
+
+pub fn rw_lock_new<T>(value: T) -> HxRef<RwLockHandle<T>>
+where
+    T: Send + Sync,
+{
+    HxRef::new(RwLockHandle {
+        value: ParkRwLock::new(value),
+    })
+}
+
+pub fn rw_lock_read<T>(lock: &HxRef<RwLockHandle<T>>) -> T
+where
+    T: Clone + Send + Sync,
+{
+    ensure_lock_access_allowed(lock);
+    let lock_borrow = lock.borrow();
+    let guard = lock_borrow.value.read();
+    guard.clone()
+}
+
+pub fn rw_lock_write<T>(lock: &HxRef<RwLockHandle<T>>, value: T)
+where
+    T: Send + Sync,
+{
+    ensure_lock_access_allowed(lock);
+    let lock_borrow = lock.borrow();
+    let mut guard = lock_borrow.value.write();
+    *guard = value;
+}
+
+pub fn rw_lock_replace<T>(lock: &HxRef<RwLockHandle<T>>, value: T) -> T
+where
+    T: Send + Sync,
+{
+    ensure_lock_access_allowed(lock);
+    let lock_borrow = lock.borrow();
+    let mut guard = lock_borrow.value.write();
+    std::mem::replace(&mut *guard, value)
+}
+
+pub fn rw_lock_update<T>(
+    lock: &HxRef<RwLockHandle<T>>,
+    callback: HxDynRef<dyn Fn(T) -> T + Send + Sync>,
+) -> T
+where
+    T: Clone + Send + Sync,
+{
+    let callback: HxRc<dyn Fn(T) -> T + Send + Sync> = match callback.as_arc_opt() {
+        Some(rc) => rc.clone(),
+        None => throw_msg("Null Access"),
+    };
+    let _callback_scope = LockCallbackScope::enter(lock);
+    let lock_borrow = lock.borrow();
+    let mut guard = lock_borrow.value.write();
+    let next = callback(guard.clone());
+    *guard = next.clone();
+    next
+}
+
+pub fn rw_lock_with_read<T, R>(
+    lock: &HxRef<RwLockHandle<T>>,
+    callback: HxDynRef<dyn Fn(&T) -> R + Send + Sync>,
+) -> R
+where
+    T: Send + Sync,
+{
+    let callback: HxRc<dyn Fn(&T) -> R + Send + Sync> = match callback.as_arc_opt() {
+        Some(rc) => rc.clone(),
+        None => throw_msg("Null Access"),
+    };
+    let _callback_scope = LockCallbackScope::enter(lock);
+    let lock_borrow = lock.borrow();
+    let guard = lock_borrow.value.read();
+    callback(&*guard)
+}
+
+pub fn rw_lock_with_write<T, R>(
+    lock: &HxRef<RwLockHandle<T>>,
+    callback: HxDynRef<dyn Fn(&mut T) -> R + Send + Sync>,
+) -> R
+where
+    T: Send + Sync,
+{
+    let callback: HxRc<dyn Fn(&mut T) -> R + Send + Sync> = match callback.as_arc_opt() {
+        Some(rc) => rc.clone(),
+        None => throw_msg("Null Access"),
+    };
+    let _callback_scope = LockCallbackScope::enter(lock);
+    let lock_borrow = lock.borrow();
+    let mut guard = lock_borrow.value.write();
+    callback(&mut *guard)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn channel_roundtrip() {
+        let channel = channel_new::<i32>();
+        channel_send(&channel, 7);
+        assert_eq!(channel_try_recv(&channel), Some(7));
+        assert_eq!(channel_try_recv(&channel), None);
+    }
+
+    #[test]
+    fn task_spawn_join() {
+        let job_rc: HxRc<dyn Fn() -> i32 + Send + Sync> = HxRc::new(|| 42);
+        let task = task_spawn(HxDynRef::new(job_rc));
+        assert_eq!(task_join(&task), 42);
+    }
+
+    #[test]
+    fn mutex_with_lock_mutates() {
+        let mutex = mutex_new::<i32>(1);
+        let inc_rc: HxRc<dyn Fn(i32) -> i32 + Send + Sync> = HxRc::new(|value: i32| value + 4);
+        let out = mutex_update(&mutex, HxDynRef::new(inc_rc));
+        assert_eq!(out, 5);
+        assert_eq!(mutex_get(&mutex), 5);
+        assert_eq!(mutex_replace(&mutex, 9), 5);
+    }
+
+    #[test]
+    fn mutex_scoped_guards_do_not_escape() {
+        let mutex = mutex_new::<i32>(10);
+        let read_rc: HxRc<dyn Fn(&i32) -> i32 + Send + Sync> = HxRc::new(|value: &i32| *value + 1);
+        assert_eq!(mutex_with_ref(&mutex, HxDynRef::new(read_rc)), 11);
+
+        let write_rc: HxRc<dyn Fn(&mut i32) -> i32 + Send + Sync> = HxRc::new(|value: &mut i32| {
+            *value += 5;
+            *value
+        });
+        assert_eq!(mutex_with_mut(&mutex, HxDynRef::new(write_rc)), 15);
+        assert_eq!(mutex_get(&mutex), 15);
+    }
+
+    #[test]
+    fn rw_lock_read_write_roundtrip() {
+        let lock = rw_lock_new::<i32>(3);
+        assert_eq!(rw_lock_read(&lock), 3);
+        rw_lock_write(&lock, 6);
+        assert_eq!(rw_lock_read(&lock), 6);
+        assert_eq!(rw_lock_replace(&lock, 10), 6);
+        let update_rc: HxRc<dyn Fn(i32) -> i32 + Send + Sync> = HxRc::new(|value: i32| value + 2);
+        let out = rw_lock_update(&lock, HxDynRef::new(update_rc));
+        assert_eq!(out, 12);
+    }
+
+    #[test]
+    fn rw_lock_scoped_guards_do_not_escape() {
+        let lock = rw_lock_new::<i32>(2);
+        let read_rc: HxRc<dyn Fn(&i32) -> i32 + Send + Sync> = HxRc::new(|value: &i32| *value);
+        assert_eq!(rw_lock_with_read(&lock, HxDynRef::new(read_rc)), 2);
+
+        let write_rc: HxRc<dyn Fn(&mut i32) -> i32 + Send + Sync> = HxRc::new(|value: &mut i32| {
+            *value *= 4;
+            *value
+        });
+        assert_eq!(rw_lock_with_write(&lock, HxDynRef::new(write_rc)), 8);
+        assert_eq!(rw_lock_read(&lock), 8);
+    }
+}
