@@ -5,19 +5,19 @@
 
 # Rust compiler dynamic bridge points (line-scoped; see docs/dynamic-boundaries.md)
 src/reflaxe/rust/DynamicBoundary.hx:23
-src/reflaxe/rust/RustCompiler.hx:1145
-src/reflaxe/rust/RustCompiler.hx:1848
-src/reflaxe/rust/RustCompiler.hx:1970
-src/reflaxe/rust/RustCompiler.hx:2464
-src/reflaxe/rust/RustCompiler.hx:2760
-src/reflaxe/rust/RustCompiler.hx:2761
-src/reflaxe/rust/RustCompiler.hx:2768
-src/reflaxe/rust/RustCompiler.hx:2771
-src/reflaxe/rust/RustCompiler.hx:2779
-src/reflaxe/rust/RustCompiler.hx:10829
-src/reflaxe/rust/RustCompiler.hx:13626
-src/reflaxe/rust/RustCompiler.hx:13645
-src/reflaxe/rust/RustCompiler.hx:19748
+src/reflaxe/rust/RustCompiler.hx:1180
+src/reflaxe/rust/RustCompiler.hx:1883
+src/reflaxe/rust/RustCompiler.hx:2005
+src/reflaxe/rust/RustCompiler.hx:2499
+src/reflaxe/rust/RustCompiler.hx:2795
+src/reflaxe/rust/RustCompiler.hx:2796
+src/reflaxe/rust/RustCompiler.hx:2803
+src/reflaxe/rust/RustCompiler.hx:2806
+src/reflaxe/rust/RustCompiler.hx:2814
+src/reflaxe/rust/RustCompiler.hx:10839
+src/reflaxe/rust/RustCompiler.hx:13636
+src/reflaxe/rust/RustCompiler.hx:13655
+src/reflaxe/rust/RustCompiler.hx:19875
 src/reflaxe/rust/RustSourceMap.hx:419
 src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:77
 src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:81
@@ -58,7 +58,7 @@ src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:327
 src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:332
 src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:336
 src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:338
-src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:745
+src/reflaxe/rust/analyze/RepresentationTypeAnalyzer.hx:746
 src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:118
 src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:149
 src/reflaxe/rust/analyze/RuntimeRequirementAnalyzer.hx:153

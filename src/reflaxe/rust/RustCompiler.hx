@@ -811,6 +811,41 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		};
 	}
 
+	/**
+		Reports whether a Rust type retains a generic type argument from its Haxe source type.
+
+		Why / What / How
+		- Rust generic carriers commonly make `Debug` conditional on their stored type arguments.
+		- A fixed carrier-name list misses other emitted containers, while recursing through erased Haxe
+		  parameters would reject harmless shapes such as `Class<T>`, which lowers to `u32`.
+		- Walk the structural Rust type and return true only when a named path contains a type argument.
+	**/
+	function rustTypeRetainsGenericTypeArgument(type:RustType):Bool {
+		return switch (type) {
+			case RNamed(path): {
+					var found = false;
+					for (segment in path) {
+						for (index in 0...segment.genericArgumentCount) {
+							switch (segment.genericArgumentAt(index)) {
+								case GenericType(_): found = true;
+								case _:
+							}
+						}
+					}
+					found;
+				}
+			case RBorrow(inner, _, _): rustTypeRetainsGenericTypeArgument(inner);
+			case RTuple(elements): {
+					var found = false;
+					for (element in elements)
+						if (rustTypeRetainsGenericTypeArgument(element)) found = true;
+					found;
+				}
+			case RSlice(element) | RArray(element, _): rustTypeRetainsGenericTypeArgument(element);
+			case RTraitObject(_) | RUnit | RBool | RI32 | RF64 | RString: false;
+		};
+	}
+
 	function rustLifetimesEqual(left:RustLifetime, right:RustLifetime):Bool {
 		if (left == null || right == null || left.kind != right.kind)
 			return false;
@@ -3958,32 +3993,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			items.push(RConst(RustConstantDeclaration.named(VPub, "__HX_TYPE_ID", rustNamedType("u32"), typeIdExprForClass(classType))));
 
 			var derives = rustDerivePathsFromMeta(classType.meta);
-			var canDeriveDebug = true;
-			for (spec in getAllInstanceVarFieldSpecsForStruct(classType)) {
-				var cf = spec.field;
-				var fieldType = specializeAncestorType(classType, spec.owner, cf.type);
-				if (shouldOptionWrapStructFieldType(fieldType)) {
-					canDeriveDebug = false;
-					break;
-				}
-				// Trait objects (`dyn ...`) do not implement `Debug` by default, so auto-deriving `Debug`
-				// for any struct that contains them would fail to compile.
-				if (rustTypeContainsTraitObject(toRustType(fieldType, cf.pos))) {
-					canDeriveDebug = false;
-					break;
-				}
-			}
-			if (canDeriveDebug) {
-				for (spec in getAllInstanceDynamicMethodFieldSpecsForStorage(classType)) {
-					var cf = spec.field;
-					var fieldType = specializeAncestorType(classType, spec.owner, cf.type);
-					if (rustTypeContainsTraitObject(toRustType(fieldType, cf.pos))) {
-						canDeriveDebug = false;
-						break;
-					}
-				}
-			}
-			if (canDeriveDebug) {
+			if (canAutomaticallyDeriveDebugForClass(classType)) {
 				derives = mergeUniqueRustPaths([rustRelativePath(["Debug"])], derives);
 			}
 
@@ -17482,6 +17492,123 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 		var target = spec.forType != null ? spec.forType : defaultForType;
 		var associated:Array<RustAssociatedItem> = spec.body == null ? [] : [AssocRaw(spec.body)];
 		return RustImpl.traitImplementation(implGenerics, spec.traitPath, target, RustWhereClause.empty(), associated);
+	}
+
+	/**
+		Checks whether Rust can derive `Debug` for one generated class declaration.
+
+		Why
+		- Rust derive requirements pass through handles such as `HxRef<Nested>` and
+		  `Array<HxRef<Nested>>`.
+		- Looking only for a trait object in the current class misses a nested generated type that cannot
+		  implement `Debug`, so Rust later rejects the outer derive with `E0277`.
+
+		What
+		- Follows generated class fields and generic carriers until every stored generated dependency is
+		  eligible.
+		- Retains the direct checks for option-wrapped polymorphic fields and Rust trait objects.
+
+		How
+		- Applied Haxe type arguments form the visit identity, so typedef and ordinary abstract wrappers
+		  are normalized while generic instances remain distinct.
+		- An exact recursive type instance is safe to revisit through Rust's indirection. A
+		  parameter-changing recursion is rejected conservatively instead of walking forever.
+	**/
+	function canAutomaticallyDeriveDebugForClass(classType:ClassType):Bool {
+		var typeIdentity = RepresentationTypeAnalyzer.traversalIdentityFactory();
+		var activeDefinitions:Map<String, String> = [];
+		var resolvedInstances:Map<String, Bool> = [];
+		var parameters = classType.params == null ? [] : [for (parameter in classType.params) parameter.t];
+		return classInstanceCanAutomaticallyDeriveDebug(classType, parameters, typeIdentity, activeDefinitions, resolvedInstances);
+	}
+
+	function classInstanceCanAutomaticallyDeriveDebug(classType:ClassType, parameters:Array<Type>, typeIdentity:Type->String,
+			activeDefinitions:Map<String, String>, resolvedInstances:Map<String, Bool>):Bool {
+		var definitionKey = "class:" + classKey(classType);
+		var instanceKey = appliedDebugDeriveInstanceKey(definitionKey, parameters, typeIdentity);
+		if (resolvedInstances.exists(instanceKey))
+			return resolvedInstances.get(instanceKey);
+
+		var activeInstance = activeDefinitions.get(definitionKey);
+		if (activeInstance != null)
+			return activeInstance == instanceKey;
+		activeDefinitions.set(definitionKey, instanceKey);
+
+		var eligible = true;
+		for (spec in getAllInstanceVarFieldSpecsForStruct(classType)) {
+			var fieldType = specializedClassInstanceFieldType(classType, parameters, spec.owner, spec.field.type);
+			if (!fieldTypeCanAutomaticallyDeriveDebug(fieldType, spec.field.pos, typeIdentity, activeDefinitions, resolvedInstances)) {
+				eligible = false;
+				break;
+			}
+		}
+		if (eligible) {
+			for (spec in getAllInstanceDynamicMethodFieldSpecsForStorage(classType)) {
+				var fieldType = specializedClassInstanceFieldType(classType, parameters, spec.owner, spec.field.type);
+				if (!fieldTypeCanAutomaticallyDeriveDebug(fieldType, spec.field.pos, typeIdentity, activeDefinitions, resolvedInstances)) {
+					eligible = false;
+					break;
+				}
+			}
+		}
+
+		activeDefinitions.remove(definitionKey);
+		resolvedInstances.set(instanceKey, eligible);
+		return eligible;
+	}
+
+	function appliedDebugDeriveInstanceKey(definitionKey:String, parameters:Array<Type>, typeIdentity:Type->String):String {
+		return definitionKey + "\u0000" + [for (parameter in parameters) typeIdentity(parameter)].join("\u0000");
+	}
+
+	function specializedClassInstanceFieldType(classType:ClassType, parameters:Array<Type>, owner:ClassType, fieldType:Type):Type {
+		var specialized = specializeAncestorType(classType, owner, fieldType);
+		if (classType.params != null && classType.params.length > 0 && classType.params.length == parameters.length)
+			specialized = TypeTools.applyTypeParameters(specialized, classType.params, parameters);
+		return specialized;
+	}
+
+	function fieldTypeCanAutomaticallyDeriveDebug(fieldType:Type, pos:haxe.macro.Expr.Position, typeIdentity:Type->String,
+			activeDefinitions:Map<String, String>, resolvedInstances:Map<String, Bool>):Bool {
+		var rustType = toRustType(fieldType, pos);
+		if (shouldOptionWrapStructFieldType(fieldType) || rustTypeContainsTraitObject(rustType))
+			return false;
+
+		var followed = followType(fieldType);
+		return switch (followed) {
+			case TInst(classRef, parameters): {
+					var nestedClass = classRef.get();
+					if (nestedClass != null
+						&& !nestedClass.isExtern
+						&& !nestedClass.isInterface
+						&& !classHasSubclasses(nestedClass)
+						&& shouldEmitClass(nestedClass, false)) {
+						classInstanceCanAutomaticallyDeriveDebug(nestedClass, parameters, typeIdentity, activeDefinitions, resolvedInstances);
+					} else if (rustTypeRetainsGenericTypeArgument(rustType)) {
+						fieldTypeParametersCanAutomaticallyDeriveDebug(parameters, pos, typeIdentity, activeDefinitions, resolvedInstances);
+					} else {
+						true;
+					}
+				}
+			case TEnum(_, parameters):
+				rustTypeRetainsGenericTypeArgument(rustType)
+					? fieldTypeParametersCanAutomaticallyDeriveDebug(parameters, pos, typeIdentity, activeDefinitions, resolvedInstances)
+					: true;
+			case TAbstract(_, parameters):
+				rustTypeRetainsGenericTypeArgument(rustType)
+					? fieldTypeParametersCanAutomaticallyDeriveDebug(parameters, pos, typeIdentity, activeDefinitions, resolvedInstances)
+					: true;
+			case _: true;
+		};
+	}
+
+	function fieldTypeParametersCanAutomaticallyDeriveDebug(parameters:Array<Type>, pos:haxe.macro.Expr.Position, typeIdentity:Type->String,
+			activeDefinitions:Map<String, String>, resolvedInstances:Map<String, Bool>):Bool {
+		for (parameter in parameters) {
+			if (!fieldTypeCanAutomaticallyDeriveDebug(parameter, pos, typeIdentity, activeDefinitions, resolvedInstances))
+				return false;
+		}
+		return true;
 	}
 
 	function mergeUniqueRustPaths(base:Array<RustPath>, extra:Array<RustPath>):Array<RustPath> {
