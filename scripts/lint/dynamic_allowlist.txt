@@ -15,9 +15,9 @@ src/reflaxe/rust/RustCompiler.hx:2803
 src/reflaxe/rust/RustCompiler.hx:2806
 src/reflaxe/rust/RustCompiler.hx:2814
 src/reflaxe/rust/RustCompiler.hx:10839
-src/reflaxe/rust/RustCompiler.hx:13636
-src/reflaxe/rust/RustCompiler.hx:13655
-src/reflaxe/rust/RustCompiler.hx:19875
+src/reflaxe/rust/RustCompiler.hx:13641
+src/reflaxe/rust/RustCompiler.hx:13660
+src/reflaxe/rust/RustCompiler.hx:19972
 src/reflaxe/rust/RustSourceMap.hx:419
 src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:77
 src/reflaxe/rust/analyze/RepresentationAnalysisSnapshot.hx:81

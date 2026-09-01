@@ -11128,6 +11128,11 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				compileUnop(op, postFix, expr, e);
 
 			case TIf(cond, eThen, eElse):
+				if (eElse != null) {
+					var narrowed = compileNullableScalarSwitchNarrowing(cond, eThen, eElse, e.t);
+					if (narrowed != null)
+						return narrowed;
+				}
 				var condExpr = coerceExprToExpected(compileExpr(cond), cond, Context.getType("Bool"));
 				if (eElse == null) {
 					// `if (...) expr;` in Haxe is statement-shaped; ensure the Rust `if` branches yield `()`.
@@ -14182,6 +14187,98 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 				// call/local assignment lowering and prevents branch-only fallback moves.
 				maybeCloneForBranchReuseValue(compileExpr(e), e);
 		}
+	}
+
+	/**
+		Lowers Haxe's proven non-null scalar switch arm without a second null check.
+
+		Why
+		- Haxe rewrites `switch (value:Null<Int>)` into a null test and a non-null branch.
+		- The non-null branch contains `var bound = value; bound`, but both local types remain
+		  `Null<Int>` in the typed tree.
+		- Normal nullable coercion must keep a catchable `Null Access` branch. In this exact branch,
+		  the preceding condition already proves that the value is present.
+
+		What
+		- Recognizes only the two-expression alias block produced for a nullable scalar switch.
+		- Emits one native `Option` match that binds the present payload directly.
+
+		How
+		- Requires the null comparison, alias initializer, and alias tail to name the same Haxe local.
+		- Requires a Copy inner type and the exact non-null Rust result type, then compiles the source once.
+		- Returns `null` for every other conditional so ordinary Haxe null behavior stays unchanged.
+	**/
+	function compileNullableScalarSwitchNarrowing(cond:TypedExpr, thenExpr:TypedExpr, elseExpr:TypedExpr,
+			expected:Type):Null<RustExpr> {
+		var condition = unwrapMetaParen(cond);
+		var comparedLocal:Null<TVar> = null;
+		var nullWhenTrue = false;
+		switch (condition.expr) {
+			case TBinop(op, left, right) if (op == OpEq || op == OpNotEq):
+				var leftValue = unwrapMetaParen(left);
+				var rightValue = unwrapMetaParen(right);
+				if (isNullConstExpr(leftValue)) {
+					switch (rightValue.expr) {
+						case TLocal(variable): comparedLocal = variable;
+						case _:
+					}
+				} else if (isNullConstExpr(rightValue)) {
+					switch (leftValue.expr) {
+						case TLocal(variable): comparedLocal = variable;
+						case _:
+					}
+				}
+				nullWhenTrue = op == OpEq;
+			case _:
+		}
+		if (comparedLocal == null)
+			return null;
+
+		var presentBranch = nullWhenTrue ? elseExpr : thenExpr;
+		var nullBranch = nullWhenTrue ? thenExpr : elseExpr;
+		var present = unwrapMetaParen(presentBranch);
+		var expressions = switch (present.expr) {
+			case TBlock(items) if (items.length == 2): items;
+			case _: null;
+		};
+		if (expressions == null)
+			return null;
+
+		var alias:Null<TVar> = null;
+		var initializer:Null<TypedExpr> = null;
+		switch (unwrapMetaParen(expressions[0]).expr) {
+			case TVar(variable, value) if (value != null):
+				alias = variable;
+				initializer = unwrapMetaParen(value);
+			case _:
+		}
+		if (alias == null || initializer == null)
+			return null;
+
+		var sourceMatches = switch (initializer.expr) {
+			case TLocal(variable): variable.id == comparedLocal.id;
+			case _: false;
+		};
+		var tailMatches = switch (unwrapMetaParen(expressions[1]).expr) {
+			case TLocal(variable): variable.id == alias.id;
+			case _: false;
+		};
+		if (!sourceMatches || !tailMatches)
+			return null;
+
+		var inner = nullOptionInnerType(alias.t, present.pos);
+		if (inner == null || !isCopyType(inner))
+			return null;
+		if (!rustTypesEqual(toRustType(inner, present.pos), toRustType(expected, present.pos)))
+			return null;
+
+		// The emitted match replaces the typed null comparison, so consume that skipped local read.
+		consumeLocalRead(comparedLocal);
+		var nullRust = coerceExprToExpected(compileBranchExpr(nullBranch), nullBranch, expected);
+		return EMatch(compileExpr(initializer), [
+			{pat: PPath(RustPath.single("None")), expr: nullRust},
+			{pat: PTupleStruct(RustPath.single("Some"), [PBind("__hx_value")]), expr: rustSingleExpr("__hx_value")}
+		]);
 	}
 
 	/**
