@@ -23,6 +23,34 @@ pub(crate) fn __hx_is_subtype_type_id(actual: u32, expected: u32) -> bool {
     false
 }
 
+fn read_exit(value: Option<i32>) -> Option<i32> {
+    return value;
+}
+
+fn close_source() {}
+
+fn narrow_read(value: Option<i32>) -> i32 {
+    match hxrt::exception::catch_unwind(|| {
+        let exit: Option<i32> = read_exit(value);
+        close_source();
+        let concrete_exit: i32 = match exit {
+            None => -1,
+            Some(__hx_value) => __hx_value,
+        };
+        return concrete_exit;
+    }) {
+        Ok(__hx_ok) => __hx_ok,
+        Err(__hx_ex) => {
+            match __hx_ex.downcast::<crate::HxRef<crate::haxe_exception::Exception>>() {
+                Ok(_) => {
+                    return -2;
+                }
+                Err(__hx_ex) => hxrt::exception::rethrow(__hx_ex),
+            }
+        }
+    }
+}
+
 fn narrow(value: Option<i32>) -> i32 {
     return match value {
         None => -1,
@@ -38,6 +66,14 @@ fn narrow_float(value: Option<f64>) -> f64 {
 }
 
 fn main() {
+    if narrow_read(Some(9)) != 9 {
+        hxrt::exception::throw(hxrt::dynamic::from(String::from("read narrowing failed")));
+    }
+    if narrow_read(None) != -1 {
+        hxrt::exception::throw(hxrt::dynamic::from(String::from(
+            "null read narrowing failed",
+        )));
+    }
     if narrow(Some(7)) != 7 {
         hxrt::exception::throw(hxrt::dynamic::from(String::from(
             "non-null narrowing failed",

@@ -14205,6 +14205,7 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 
 		How
 		- Requires the null comparison, alias initializer, and alias tail to name the same Haxe local.
+		- Peels only metadata, parentheses, and transparent singleton blocks around the alias tail.
 		- Requires a Copy inner type and the exact non-null Rust result type, then compiles the source once.
 		- Returns `null` for every other conditional so ordinary Haxe null behavior stays unchanged.
 	**/
@@ -14259,7 +14260,14 @@ class RustCompiler extends GenericCompiler<RustFile, RustFile, RustExpr, RustFil
 			case TLocal(variable): variable.id == comparedLocal.id;
 			case _: false;
 		};
-		var tailMatches = switch (unwrapMetaParen(expressions[1]).expr) {
+		function unwrapAliasTail(expression:TypedExpr):TypedExpr {
+			var current = unwrapMetaParen(expression);
+			return switch (current.expr) {
+				case TBlock(items) if (items.length == 1): unwrapAliasTail(items[0]);
+				case _: current;
+			};
+		}
+		var tailMatches = switch (unwrapAliasTail(expressions[1]).expr) {
 			case TLocal(variable): variable.id == alias.id;
 			case _: false;
 		};
