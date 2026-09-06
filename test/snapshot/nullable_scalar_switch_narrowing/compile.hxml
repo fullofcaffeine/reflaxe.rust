@@ -1,0 +1,8 @@
+-cp .
+-lib reflaxe.rust
+-D reflaxe_rust_strict_examples
+-D rust_output=out
+-D rust_cargo_subcommand=run
+-D rust_cargo_quiet
+-D reflaxe.dont_output_metadata_id
+-main Main
