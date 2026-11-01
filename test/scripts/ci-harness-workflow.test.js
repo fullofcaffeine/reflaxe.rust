@@ -19,7 +19,7 @@ const timeout = snapshots.match(/^    timeout-minutes: (\d+)$/m)
 
 assert(timeout, 'snapshot harness job must have an explicit timeout')
 assert(
-  Number(timeout[1]) >= 60,
+  Number(timeout[1]) >= 90,
   `snapshot harness timeout must cover the observed full-suite runtime; found ${timeout[1]} minutes`
 )
 assert.match(
